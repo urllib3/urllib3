@@ -4,3 +4,4 @@ syntax: glob
 *.pidaproject
 *.db
 *.log
+dist
