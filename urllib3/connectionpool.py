@@ -6,7 +6,7 @@ from StringIO import StringIO
 from itertools import count
 
 from urllib import urlencode
-from httplib import HTTPConnection, HTTPException
+from httplib import HTTPConnection, HTTPSConnection, HTTPException
 from socket import error as SocketError, timeout as SocketTimeout
 
 from filepost import encode_multipart_formdata
@@ -95,8 +95,12 @@ class HTTPConnectionPool(object):
         particular multithreaded situations where one does not want to use more
         than maxsize connections per host to prevent flooding.
 
+    ssl
+        If set to True, a HTTPSConnection is used instead of a HTTPConnection.
+        The default port for a HTTPSConnection is 443.
+
     """
-    def __init__(self, host, port=None, timeout=None, maxsize=1, block=False):
+    def __init__(self, host, port=None, timeout=None, maxsize=1, block=False, ssl = False):
         self.host = host
         self.port = port
         self.timeout = timeout
@@ -108,6 +112,11 @@ class HTTPConnectionPool(object):
 
         self.num_connections = 0
         self.num_requests = 0
+
+        if not ssl:
+            self.connection = HTTPConnection
+        else:
+            self.connection = HTTPSConnection
 
     @staticmethod
     def get_host(url):
@@ -149,7 +158,7 @@ class HTTPConnectionPool(object):
         """
         self.num_connections += 1
         log.info("Starting new HTTP connection (%d): %s" % (self.num_connections, self.host))
-        return HTTPConnection(host=self.host, port=self.port)
+        return self.connection(host=self.host, port=self.port)
 
     def _get_conn(self, timeout=None):
         """
