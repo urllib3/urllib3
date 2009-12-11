@@ -100,7 +100,7 @@ class HTTPConnectionPool(object):
         The default port for a HTTPSConnection is 443.
 
     """
-    def __init__(self, host, port=None, timeout=None, maxsize=1, block=False, ssl = False):
+    def __init__(self, host, port=None, timeout=None, maxsize=1, block=False, ssl=False):
         self.host = host
         self.port = port
         self.timeout = timeout
@@ -113,10 +113,9 @@ class HTTPConnectionPool(object):
         self.num_connections = 0
         self.num_requests = 0
 
-        if not ssl:
-            self.connection = HTTPConnection
-        else:
-            self.connection = HTTPSConnection
+        self.ConnectionCls = HTTPConnection
+        if ssl:
+            self.ConnectionCls = HTTPSConnection
 
     @staticmethod
     def get_host(url):
@@ -132,14 +131,15 @@ class HTTPConnectionPool(object):
         # This code is actually similar to urlparse.urlsplit, but much
         # simplified for our needs.
         port = None
+        scheme = 'http'
         if '//' in url:
-            scheme, url = url.split('//', 1)
+            scheme, url = url.split('://', 1)
         if '/' in url:
             url, path = url.split('/', 1)
         if ':' in url:
             url, port = url.split(':', 1)
             port = int(port)
-        return url, port
+        return scheme, url, port
 
     @staticmethod
     def from_url(url, timeout=None, maxsize=10):
@@ -149,8 +149,8 @@ class HTTPConnectionPool(object):
         This is a shortcut for not having to determine the host of the url
         before creating an HTTPConnectionPool instance.
         """
-        host, port = HTTPConnectionPool.get_host(url)
-        return HTTPConnectionPool(host, port=port, timeout=timeout, maxsize=maxsize)
+        scheme, host, port = HTTPConnectionPool.get_host(url)
+        return HTTPConnectionPool(host, port=port, timeout=timeout, maxsize=maxsize, ssl=scheme=='https')
 
     def _new_conn(self):
         """
@@ -158,7 +158,7 @@ class HTTPConnectionPool(object):
         """
         self.num_connections += 1
         log.info("Starting new HTTP connection (%d): %s" % (self.num_connections, self.host))
-        return self.connection(host=self.host, port=self.port)
+        return self.ConnectionCls(host=self.host, port=self.port)
 
     def _get_conn(self, timeout=None):
         """
