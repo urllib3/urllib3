@@ -25,6 +25,10 @@ class TimeoutError(HTTPError):
     "Raised when a socket timeout occurs."
     pass
 
+class HostChangedError(HTTPError):
+    "Raised when an existing pool gets a request for a foreign host."
+    pass
+
 ## Response objects
 
 class HTTPResponse(object):
@@ -94,13 +98,11 @@ class HTTPConnectionPool(object):
         until a connection has been released. This is a useful side effect for
         particular multithreaded situations where one does not want to use more
         than maxsize connections per host to prevent flooding.
-
-    ssl
-        If set to True, a HTTPSConnection is used instead of a HTTPConnection.
-        The default port for a HTTPSConnection is 443.
-
     """
-    def __init__(self, host, port=None, timeout=None, maxsize=1, block=False, ssl=False):
+
+    scheme = 'http'
+
+    def __init__(self, host, port=None, timeout=None, maxsize=1, block=False):
         self.host = host
         self.port = port
         self.timeout = timeout
@@ -113,52 +115,13 @@ class HTTPConnectionPool(object):
         self.num_connections = 0
         self.num_requests = 0
 
-        self.ConnectionCls = HTTPConnection
-        if ssl:
-            self.ConnectionCls = HTTPSConnection
-
-    @staticmethod
-    def get_host(url):
-        """
-        Given a url, return its host and port (None if it's not there).
-
-        For example:
-        >>> HTTPConnectionPool.get_host('http://google.com/mail/')
-        google.com, None
-        >>> HTTPConnectionPool.get_host('google.com:80')
-        google.com, 80
-        """
-        # This code is actually similar to urlparse.urlsplit, but much
-        # simplified for our needs.
-        port = None
-        scheme = 'http'
-        if '//' in url:
-            scheme, url = url.split('://', 1)
-        if '/' in url:
-            url, path = url.split('/', 1)
-        if ':' in url:
-            url, port = url.split(':', 1)
-            port = int(port)
-        return scheme, url, port
-
-    @staticmethod
-    def from_url(url, timeout=None, maxsize=10):
-        """
-        Given a url, return an HTTPConnectionPool instance of its host.
-
-        This is a shortcut for not having to determine the host of the url
-        before creating an HTTPConnectionPool instance.
-        """
-        scheme, host, port = HTTPConnectionPool.get_host(url)
-        return HTTPConnectionPool(host, port=port, timeout=timeout, maxsize=maxsize, ssl=scheme=='https')
-
     def _new_conn(self):
         """
         Return a fresh HTTPConnection.
         """
         self.num_connections += 1
         log.info("Starting new HTTP connection (%d): %s" % (self.num_connections, self.host))
-        return self.ConnectionCls(host=self.host, port=self.port)
+        return HTTPConnection(host=self.host, port=self.port)
 
     def _get_conn(self, timeout=None):
         """
@@ -186,6 +149,9 @@ class HTTPConnectionPool(object):
             # This should never happen if self.block == True
             log.warning("HttpConnectionPool is full, discarding connection: %s" % self.host)
 
+    def is_same_host(self, url):
+        return url.startswith('/') or get_host(url) == (self.scheme, self.host, self.port)
+
     def urlopen(self, method, url, body=None, headers={}, retries=3, redirect=True):
         """
         Get a connection from the pool and perform an HTTP request.
@@ -209,6 +175,15 @@ class HTTPConnectionPool(object):
         """
         if retries < 0:
             raise MaxRetryError("Max retries exceeded for url: %s" % url)
+
+        # Check host
+        if not self.is_same_host(url):
+            host = "%s://%s" % (self.scheme, self.host)
+            if self.port:
+                host = "%s:%d" % (host, self.port)
+
+            raise HostChangedError("Connection pool with host '%s' tried to open a foreign host: %s" % (host, url))
+
 
         try:
             # Request a connection from the queue
@@ -274,3 +249,61 @@ class HTTPConnectionPool(object):
         body, content_type = encode_multipart_formdata(fields)
         headers.update({'Content-Type': content_type})
         return self.urlopen('POST', url, body, headers=headers, retries=retries, redirect=redirect)
+
+
+class HTTPSConnectionPool(HTTPConnectionPool):
+    """
+    Same as HTTPConnectionPool, but HTTPS.
+    """
+
+    scheme = 'https'
+
+    def _new_conn(self):
+        """
+        Return a fresh HTTPSConnection.
+        """
+        self.num_connections += 1
+        log.info("Starting new HTTPS connection (%d): %s" % (self.num_connections, self.host))
+        return HTTPSConnection(host=self.host, port=self.port)
+
+
+## Helpers
+
+def get_host(url):
+    """
+    Given a url, return its scheme, host and port (None if it's not there).
+
+    For example:
+    >>> get_host('http://google.com/mail/')
+    http, google.com, None
+    >>> get_host('google.com:80')
+    http, google.com, 80
+    """
+    # This code is actually similar to urlparse.urlsplit, but much
+    # simplified for our needs.
+    port = None
+    scheme = 'http'
+    if '//' in url:
+        scheme, url = url.split('://', 1)
+    if '/' in url:
+        url, path = url.split('/', 1)
+    if ':' in url:
+        url, port = url.split(':', 1)
+        port = int(port)
+    return scheme, url, port
+
+def connection_from_url(url, **kw):
+    """
+    Given a url, return an HTTP(S)ConnectionPool instance of its host.
+
+    This is a shortcut for not having to determine the host of the url
+    before creating an HTTP(S)ConnectionPool instance.
+
+    Passes on whatever kw arguments to the constructor of
+    HTTP(S)ConnectionPool. (e.g. timeout, maxsize, block)
+    """
+    scheme, host, port = get_host(url)
+    if scheme == 'https':
+        return HTTPSConnectionPool(host, port=port, **kw)
+    else:
+        return HTTPConnectionPool(host, port=port, **kw)
