@@ -2,7 +2,7 @@ Highlights
 ==========
 
  * Re-use the same socket connection for multiple requests
-   (``HTTPConnectionPool``)
+   (``HTTPConnectionPool`` and ``HTTPSConnectionPool``)
  * File posting (``encode_multipart_formdata``)
  * Built-in redirection and retries (optional)
  * Thread-safe
@@ -49,11 +49,11 @@ for more nice syntax-highlighted examples.
 
 But, long story short::
 
-  from urllib3 import HTTPConnectionPool
+  import urllib3
 
   API_URL = 'http://ajax.googleapis.com/ajax/services/search/web'
   
-  http_pool = HTTPConnectionPool.from_url(API_URL)
+  http_pool = urllib3.connection_from_url(API_URL)
   
   fields = {'v': '1.0', 'q': 'urllib3'}
   r = http_pool.get_url(API_URL, fields)
