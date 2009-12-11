@@ -1,0 +1,15 @@
+README.txt
+setup.py
+test/benchmark.py
+test/dummy_server.py
+test/test_connectionpool.py
+test/test_withdummy.py
+urllib3/__init__.py
+urllib3/connectionpool.py
+urllib3/filepost.py
+urllib3.egg-info/PKG-INFO
+urllib3.egg-info/SOURCES.txt
+urllib3.egg-info/dependency_links.txt
+urllib3.egg-info/entry_points.txt
+urllib3.egg-info/not-zip-safe
+urllib3.egg-info/top_level.txt
