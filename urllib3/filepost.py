@@ -68,7 +68,7 @@ def encode_multipart_formdata(fields):
                         'value': str(value)
                     }
 
-    body += '--%s--\n\r' % BOUNDARY
+    body += '--%s--\r\n' % BOUNDARY
     content_type = 'multipart/form-data; boundary=%s' % BOUNDARY
 
     return body, content_type
