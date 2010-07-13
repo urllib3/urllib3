@@ -5,3 +5,4 @@ syntax: glob
 *.db
 *.log
 dist
+build
