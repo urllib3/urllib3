@@ -6,7 +6,7 @@ Highlights
  * File posting (``encode_multipart_formdata``)
  * Built-in redirection and retries (optional)
  * Thread-safe
- * Small and ease to understand codebase perfect for extending and building upon. For a more comprehensive alternative, have a look at `httplib2 <http://code.google.com/p/httplib2/>`_.
+ * Small and easy to understand codebase perfect for extending and building upon. For a more comprehensive alternative, have a look at `httplib2 <http://code.google.com/p/httplib2/>`_.
 
 What's wrong with urllib and urllib2?
 =====================================
