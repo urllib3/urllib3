@@ -152,7 +152,7 @@ class HTTPConnectionPool(object):
     def is_same_host(self, url):
         return url.startswith('/') or get_host(url) == (self.scheme, self.host, self.port)
 
-    def urlopen(self, method, url, body=None, headers={}, retries=3, redirect=True):
+    def urlopen(self, method, url, body=None, headers={}, retries=3, redirect=True, assert_same_host=True):
         """
         Get a connection from the pool and perform an HTTP request.
 
@@ -177,7 +177,7 @@ class HTTPConnectionPool(object):
             raise MaxRetryError("Max retries exceeded for url: %s" % url)
 
         # Check host
-        if not self.is_same_host(url):
+        if assert_same_host and not self.is_same_host(url):
             host = "%s://%s" % (self.scheme, self.host)
             if self.port:
                 host = "%s:%d" % (host, self.port)
