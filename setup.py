@@ -1,5 +1,4 @@
 from setuptools import setup, find_packages
-import sys, os
 
 version = '0.3'
 
@@ -9,7 +8,15 @@ setup(name='urllib3',
       version=version,
       description="HTTP library with thread-safe connection pooling and file post support",
       long_description=long_description,
-      classifiers=[], # Get strings from http://pypi.python.org/pypi?%3Aaction=list_classifiers
+      classifiers=[
+          'Environment :: Web Environment',
+          'Intended Audience :: Developers',
+          'License :: OSI Approved :: MIT License',
+          'Operating System :: OS Independent',
+          'Programming Language :: Python',
+          'Topic :: Internet :: WWW/HTTP',
+          'Topic :: Software Development :: Libraries',
+      ],
       keywords='urllib httplib threadsafe filepost http',
       author='Andrey Petrov',
       author_email='andrey.petrov@shazow.net',
