@@ -1,5 +1,3 @@
-import httplib
-
 import mimetools, mimetypes
 
 ENCODE_TEMPLATE= """--%(boundary)s
