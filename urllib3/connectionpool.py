@@ -2,19 +2,35 @@ import logging
 log = logging.getLogger(__name__)
 
 from Queue import Queue, Empty, Full
-from StringIO import StringIO
-from itertools import count
+try:
+    from cStringIO import StringIO
+except ImportError, e:
+    from StringIO import StringIO
+
+try:
+    import ssl
+except ImportError, e:
+    ssl = None
 
 from urllib import urlencode
 from httplib import HTTPConnection, HTTPSConnection, HTTPException
+import socket
 from socket import error as SocketError, timeout as SocketTimeout
 
+import gzip
+import zlib
+
 from filepost import encode_multipart_formdata
+
 
 ## Exceptions
 
 class HTTPError(Exception):
     "Base exception used by this module."
+    pass
+
+class SSLError(Exception):
+    "Raised when SSL certificate fails in an HTTPS connection."
     pass
 
 class MaxRetryError(HTTPError):
@@ -54,7 +70,26 @@ class HTTPResponse(object):
         NOTE: This method will perform r.read() which will have side effects
         on the original http.HTTPResponse object.
         """
-        return HTTPResponse(data=r.read(),
+        tmp_data = StringIO(r.read())
+        try:
+            if r.getheader('content-encoding') == 'gzip':
+                log.debug("Received response with content-encoding: gzip, decompressing with gzip.")
+
+                gzipper = gzip.GzipFile(fileobj=tmp_data)
+                data = gzipper.read()
+            elif r.getheader('content-encoding') == 'deflate':
+                log.debug("Received response with content-encoding: deflate, decompressing with zlib.")
+                try:
+                    data = zlib.decompress(tmp_data)
+                except zlib.error, e:
+                    data = zlib.decompress(tmp_data, -zlib.MAX_WBITS)
+            else:
+                data = tmp_data.read()
+
+        except IOError:
+            raise HTTPError("Received response with content-encoding: %s, but failed to decompress it." % (r.getheader('content-encoding')))
+
+        return HTTPResponse(data=data,
                     headers=dict(r.getheaders()),
                     status=r.status,
                     version=r.version,
@@ -67,6 +102,34 @@ class HTTPResponse(object):
 
     def getheader(self, name, default=None):
         return self.headers.get(name, default)
+
+
+## Connection objects
+
+class VerifiedHTTPSConnection(HTTPSConnection):
+    """
+    Based on httplib.HTTPSConnection but wraps the socket with SSL certification.
+    """
+
+    def add_cert(self, key_file=None, cert_file=None, cert_reqs='CERT_NONE', ca_certs=None):
+        ssl_req_scheme = {
+            'CERT_NONE' : ssl.CERT_NONE,
+            'CERT_OPTIONAL' : ssl.CERT_OPTIONAL,
+            'CERT_REQUIRED' : ssl.CERT_REQUIRED
+        }
+
+        self.key_file = key_file
+        self.cert_file = cert_file
+        self.cert_reqs = ssl_req_scheme.get(cert_reqs) or ssl.CERT_NONE
+        self.ca_certs = ca_certs
+
+    def connect(self):
+        # Add certificate verification
+        sock = socket.create_connection((self.host, self.port), self.timeout)
+
+        # Wrap socket using verification with the root certs in trusted_root_certs
+        self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file, cert_reqs=self.cert_reqs, ca_certs=self.ca_certs)
+
 
 ## Pool objects
 
@@ -172,6 +235,11 @@ class HTTPConnectionPool(object):
         redirect
             Automatically handle redirects (status codes 301, 302, 303, 307),
             each redirect counts as a retry.
+
+        assert_same_host
+            If True, will make sure that the host of the pool requests is consistent
+            else will raise HostChangedError. When False, you can use the pool on an
+            HTTP proxy and request foreign hosts.
         """
         if retries < 0:
             raise MaxRetryError("Max retries exceeded for url: %s" % url)
@@ -183,7 +251,6 @@ class HTTPConnectionPool(object):
                 host = "%s:%d" % (host, self.port)
 
             raise HostChangedError("Connection pool with host '%s' tried to open a foreign host: %s" % (host, url))
-
 
         try:
             # Request a connection from the queue
@@ -207,6 +274,10 @@ class HTTPConnectionPool(object):
         except (SocketTimeout, Empty), e:
             # Timed out either by socket or queue
             raise TimeoutError("Request timed out after %f seconds" % self.timeout)
+
+        except (ssl.SSLError), e:
+            # SSL certificate error
+            raise SSLError(message=e.message)
 
         except (HTTPException, SocketError), e:
             log.warn("Retrying (%d attempts remain) after connection broken by '%r': %s" % (retries, e, url))
@@ -258,16 +329,83 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     scheme = 'https'
 
+    def __init__(self, host, port=None, timeout=None, maxsize=1, block=False, key_file=None, cert_file=None, cert_reqs='CERT_NONE', ca_certs=None):
+        self.host = host
+        self.port = port
+        self.timeout = timeout
+        self.pool = Queue(maxsize)
+        self.block = block
+
+        self.key_file = key_file
+        self.cert_file = cert_file
+        self.cert_reqs = cert_reqs
+        self.ca_certs = ca_certs
+
+        # Fill the queue up so that doing get() on it will block properly
+        [self.pool.put(None) for i in xrange(maxsize)]
+
+        self.num_connections = 0
+        self.num_requests = 0
+
     def _new_conn(self):
         """
         Return a fresh HTTPSConnection.
         """
         self.num_connections += 1
         log.info("Starting new HTTPS connection (%d): %s" % (self.num_connections, self.host))
-        return HTTPSConnection(host=self.host, port=self.port)
+
+        if not ssl:
+            return HTTPSConnection(host=self.host, port=self.port)
+
+        connection = VerifiedHTTPSConnection(host=self.host, port=self.port)
+        connection.add_cert(key_file=self.key_file, cert_file=self.cert_file, cert_reqs=self.cert_file, ca_certs=self.ca_certs)
+        return connection
 
 
 ## Helpers
+
+
+def make_headers(keep_alive=None, accept_encoding=None, user_agent=None, basic_auth=None):
+    """
+    Shortcuts for generating request headers.
+
+    keep_alive
+        If true, adds 'connection: keep-alive' header.
+
+    accept_encoding
+        Can be a boolean, list, or string.
+        True translates to 'gzip,deflate'.
+        List will get joined by comma.
+        String will be used as provided.
+
+    user_agent
+        String representing the user-agent you want, such as "python-urllib3/0.6"
+
+    basic_auth
+        Colon-separated username:password string for 'authorization: basic ...'
+        auth header.
+    """
+    headers = {}
+    if accept_encoding:
+        if isinstance(accept_encoding, str):
+            pass
+        elif isinstance(accept_encoding, list):
+            accept_encoding = ','.join(accept_encoding)
+        else:
+            accept_encoding = 'gzip,deflate'
+        headers['accept-encoding'] = accept_encoding
+
+    if user_agent:
+        headers['user-agent'] = user_agent
+
+    if keep_alive:
+        headers['connection'] = 'keep-alive'
+
+    if basic_auth:
+        headers['authorization'] = 'Basic ' + basic_auth.encode('base64').strip()
+
+    return headers
+
 
 def get_host(url):
     """

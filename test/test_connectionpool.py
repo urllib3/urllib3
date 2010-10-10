@@ -3,7 +3,7 @@ import unittest
 import sys
 sys.path.append('../')
 
-from urllib3.connectionpool import HTTPConnectionPool, get_host, connection_from_url, HostChangedError
+from urllib3.connectionpool import HTTPConnectionPool, get_host, connection_from_url, make_headers
 
 class TestConnectionPool(unittest.TestCase):
     def test_get_host(self):
@@ -47,3 +47,18 @@ class TestConnectionPool(unittest.TestCase):
             c = connection_from_url(a)
             self.assertFalse(c.is_same_host(b), "%s =? %s" % (a,b))
 
+    def test_make_headers(self):
+        self.assertEqual(make_headers(accept_encoding=True),
+            {'accept-encoding': 'gzip,deflate'})
+
+        self.assertEqual(make_headers(accept_encoding='foo,bar'),
+            {'accept-encoding': 'foo,bar'})
+
+        self.assertEqual(make_headers(accept_encoding=['foo','bar']),
+            {'accept-encoding': 'foo,bar'})
+
+        self.assertEqual(make_headers(accept_encoding=True, user_agent='banana'),
+            {'accept-encoding': 'gzip,deflate', 'user-agent': 'banana'})
+
+        self.assertEqual(make_headers(user_agent='banana'),
+            {'user-agent': 'banana'})

@@ -1,0 +1,23 @@
+# Contributions to the urllib3 project
+
+## Creator & Maintainer
+
+* Andrey Petrov <andrey.petrov@shazow.net>
+
+
+## Patches
+
+* HTTPS patch (which inspired HTTPSConnectionPool)
+  * victor.vde <http://code.google.com/u/victor.vde/>
+
+* NTLM-authenticated HTTPSConnectionPool
+  * erikcederstrand <http://code.google.com/u/erikcederstrand/>
+
+* Basic-authenticated HTTPSConnectionPool (merged into make_headers)
+  * erikcederstrand <http://code.google.com/u/erikcederstrand/>
+
+* Client-verified SSL certificates for HTTPSConnectionPool
+  * niphlod <http://code.google.com/u/niphlod/>
+
+* Response gzip and deflate encoding support
+  * niphlod <http://code.google.com/u/niphlod/>
