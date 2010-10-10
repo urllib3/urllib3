@@ -1,6 +1,6 @@
 Metadata-Version: 1.0
 Name: urllib3
-Version: 0.3.1
+Version: 0.4.0
 Summary: HTTP library with thread-safe connection pooling and file post support
 Home-page: http://code.google.com/p/urllib3/
 Author: Andrey Petrov

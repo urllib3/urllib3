@@ -2,9 +2,10 @@ Highlights
 ==========
 
  * Re-use the same socket connection for multiple requests
-   (``HTTPConnectionPool`` and ``HTTPSConnectionPool``)
+   (``HTTPConnectionPool`` and ``HTTPSConnectionPool``) (with client-side certificates)
  * File posting (``encode_multipart_formdata``)
  * Built-in redirection and retries (optional)
+ * Supports gzip and deflate (big thanks to niphlod)
  * Thread-safe
  * Small and easy to understand codebase perfect for extending and building upon. For a more comprehensive alternative, have a look at `httplib2 <http://code.google.com/p/httplib2/>`_.
 
@@ -12,7 +13,7 @@ What's wrong with urllib and urllib2?
 =====================================
 
 There are two critical features missing from the Python standard library:
-Connection re-using/pooling and file posting. It's not terribly hard to 
+Connection re-using/pooling and file posting. It's not terribly hard to
 implement these yourself, but it's much easier to use a module that already
 did the work for you.
 
@@ -28,7 +29,7 @@ Performance. When you normally do a urllib call, a separate socket
 connection is created with each request. By reusing existing sockets
 (supported since HTTP 1.1), the requests will take up less resources on the
 server's end, and also provide a faster response time at the client's end.
-With some simple benchmarks (see `test/benchmark.py 
+With some simple benchmarks (see `test/benchmark.py
 <http://code.google.com/p/urllib3/source/browse/trunk/test/benchmark.py>`_
 ), downloading 15 URLs from google.com is about twice as fast when using
 HTTPConnectionPool (which uses 1 connection) than using plain urllib (which
@@ -53,11 +54,10 @@ But, long story short::
   import urllib3
 
   API_URL = 'http://ajax.googleapis.com/ajax/services/search/web'
-  
+
   http_pool = urllib3.connection_from_url(API_URL)
-  
+
   fields = {'v': '1.0', 'q': 'urllib3'}
   r = http_pool.get_url(API_URL, fields)
-  
-  print r.status, r.data
 
+  print r.status, r.data

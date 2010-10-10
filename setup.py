@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-version = '0.3.1'
+version = '0.4.0'
 
 long_description = open('README.txt').read()
 
@@ -21,7 +21,7 @@ setup(name='urllib3',
       author='Andrey Petrov',
       author_email='andrey.petrov@shazow.net',
       url='http://code.google.com/p/urllib3/',
-      download_url='http://urllib3.googlecode.com/files/urllib3-0.3.1.tar.gz',
+      download_url='http://urllib3.googlecode.com/files/urllib3-0.4.0.tar.gz',
       license='MIT',
       packages=find_packages(exclude=['ez_setup', 'tests']),
       include_package_data=True,
