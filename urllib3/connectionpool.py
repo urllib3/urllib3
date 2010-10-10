@@ -235,6 +235,11 @@ class HTTPConnectionPool(object):
         redirect
             Automatically handle redirects (status codes 301, 302, 303, 307),
             each redirect counts as a retry.
+
+        assert_same_host
+            If True, will make sure that the host of the pool requests is consistent
+            else will raise HostChangedError. When False, you can use the pool on an
+            HTTP proxy and request foreign hosts.
         """
         if retries < 0:
             raise MaxRetryError("Max retries exceeded for url: %s" % url)
@@ -333,9 +338,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
         self.key_file = key_file
         self.cert_file = cert_file
-
         self.cert_reqs = cert_reqs
-
         self.ca_certs = ca_certs
 
         # Fill the queue up so that doing get() on it will block properly
@@ -362,9 +365,12 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 ## Helpers
 
 
-def make_headers(accept_encoding=None, user_agent=None):
+def make_headers(keep_alive=None, accept_encoding=None, user_agent=None, basic_auth=None):
     """
     Shortcuts for generating request headers.
+
+    keep_alive
+        If true, adds 'connection: keep-alive' header.
 
     accept_encoding
         Can be a boolean, list, or string.
@@ -374,6 +380,10 @@ def make_headers(accept_encoding=None, user_agent=None):
 
     user_agent
         String representing the user-agent you want, such as "python-urllib3/0.6"
+
+    basic_auth
+        Colon-separated username:password string for 'authorization: basic ...'
+        auth header.
     """
     headers = {}
     if accept_encoding:
@@ -387,6 +397,12 @@ def make_headers(accept_encoding=None, user_agent=None):
 
     if user_agent:
         headers['user-agent'] = user_agent
+
+    if keep_alive:
+        headers['connection'] = 'keep-alive'
+
+    if basic_auth:
+        headers['authorization'] = 'Basic ' + basic_auth.encode('base64').strip()
 
     return headers
 
