@@ -17,7 +17,7 @@
   * erikcederstrand <http://code.google.com/u/erikcederstrand/>
 
 * Client-verified SSL certificates for HTTPSConnectionPool
-  * niphlod <http://code.google.com/u/niphlod/>
+  * niphlod <niphlod@gmail.com>
 
 * Response gzip and deflate encoding support
-  * niphlod <http://code.google.com/u/niphlod/>
+  * niphlod <niphlod@gmail.com>

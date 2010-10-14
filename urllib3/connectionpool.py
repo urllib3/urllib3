@@ -53,9 +53,9 @@ class HTTPResponse(object):
 
     Similar to httplib's HTTPResponse but the data is pre-loaded.
     """
-    def __init__(self, data='', headers={}, status=0, version=0, reason=None, strict=0):
+    def __init__(self, data='', headers=None, status=0, version=0, reason=None, strict=0):
         self.data = data
-        self.headers = headers
+        self.headers = headers or {}
         self.status = status
         self.version = version
         self.reason = reason
@@ -111,7 +111,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     Based on httplib.HTTPSConnection but wraps the socket with SSL certification.
     """
 
-    def add_cert(self, key_file=None, cert_file=None, cert_reqs='CERT_NONE', ca_certs=None):
+    def set_cert(self, key_file=None, cert_file=None, cert_reqs='CERT_NONE', ca_certs=None):
         ssl_req_scheme = {
             'CERT_NONE' : ssl.CERT_NONE,
             'CERT_OPTIONAL' : ssl.CERT_OPTIONAL,
@@ -161,16 +161,21 @@ class HTTPConnectionPool(object):
         until a connection has been released. This is a useful side effect for
         particular multithreaded situations where one does not want to use more
         than maxsize connections per host to prevent flooding.
+
+    headers
+        Headers to include with all requests, unless other headers are given
+        explicitly.
     """
 
     scheme = 'http'
 
-    def __init__(self, host, port=None, timeout=None, maxsize=1, block=False):
+    def __init__(self, host, port=None, timeout=None, maxsize=1, block=False, headers=None):
         self.host = host
         self.port = port
         self.timeout = timeout
         self.pool = Queue(maxsize)
         self.block = block
+        self.headers = headers or {}
 
         # Fill the queue up so that doing get() on it will block properly
         [self.pool.put(None) for i in xrange(maxsize)]
@@ -215,7 +220,7 @@ class HTTPConnectionPool(object):
     def is_same_host(self, url):
         return url.startswith('/') or get_host(url) == (self.scheme, self.host, self.port)
 
-    def urlopen(self, method, url, body=None, headers={}, retries=3, redirect=True, assert_same_host=True):
+    def urlopen(self, method, url, body=None, headers=None, retries=3, redirect=True, assert_same_host=True):
         """
         Get a connection from the pool and perform an HTTP request.
 
@@ -227,7 +232,9 @@ class HTTPConnectionPool(object):
             see HTTPConnectionPool.post_url for more convenience).
 
         headers
-            Custom headers to send (such as User-Agent, If-None-Match, etc.)
+            Dictionary of custom headers to send, such as User-Agent, If-None-Match,
+            etc. If None, pool headers are used. If provided, these headers completely
+            replace any pool-specific headers.
 
         retries
             Number of retries to allow before raising a MaxRetryError exception.
@@ -241,6 +248,9 @@ class HTTPConnectionPool(object):
             else will raise HostChangedError. When False, you can use the pool on an
             HTTP proxy and request foreign hosts.
         """
+        if headers == None:
+            headers = self.headers
+
         if retries < 0:
             raise MaxRetryError("Max retries exceeded for url: %s" % url)
 
@@ -290,18 +300,18 @@ class HTTPConnectionPool(object):
 
         return response
 
-    def get_url(self, url, fields={}, headers={}, retries=3, redirect=True):
+    def get_url(self, url, fields=None, headers=None, retries=3, redirect=True):
         """
         Wrapper for performing GET with urlopen (see urlopen for more details).
 
-        Supports an optional ``fields`` parameter of key/value strings. If
-        provided, they will be added to the url.
+        Supports an optional ``fields`` dictionary parameter key/value strings.
+        If provided, they will be added to the url.
         """
         if fields:
             url += '?' + urlencode(fields)
         return self.urlopen('GET', url, headers=headers, retries=retries, redirect=redirect)
 
-    def post_url(self, url, fields={}, headers={}, retries=3, redirect=True):
+    def post_url(self, url, fields=None, headers=None, retries=3, redirect=True):
         """
         Wrapper for performing POST with urlopen (see urlopen for more details).
 
@@ -317,7 +327,7 @@ class HTTPConnectionPool(object):
         overwritten because it depends on the dynamic random boundary string
         which is used to compose the body of the request.
         """
-        body, content_type = encode_multipart_formdata(fields)
+        body, content_type = encode_multipart_formdata(fields or {})
         headers.update({'Content-Type': content_type})
         return self.urlopen('POST', url, body, headers=headers, retries=retries, redirect=redirect)
 
@@ -329,12 +339,13 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     scheme = 'https'
 
-    def __init__(self, host, port=None, timeout=None, maxsize=1, block=False, key_file=None, cert_file=None, cert_reqs='CERT_NONE', ca_certs=None):
+    def __init__(self, host, port=None, timeout=None, maxsize=1, block=False, headers=None, key_file=None, cert_file=None, cert_reqs='CERT_NONE', ca_certs=None):
         self.host = host
         self.port = port
         self.timeout = timeout
         self.pool = Queue(maxsize)
         self.block = block
+        self.headers = headers or {}
 
         self.key_file = key_file
         self.cert_file = cert_file
