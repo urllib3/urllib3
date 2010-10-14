@@ -287,7 +287,7 @@ class HTTPConnectionPool(object):
 
         except (ssl.SSLError), e:
             # SSL certificate error
-            raise SSLError(message=e.message)
+            raise SSLError(e)
 
         except (HTTPException, SocketError), e:
             log.warn("Retrying (%d attempts remain) after connection broken by '%r': %s" % (retries, e, url))
@@ -369,7 +369,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             return HTTPSConnection(host=self.host, port=self.port)
 
         connection = VerifiedHTTPSConnection(host=self.host, port=self.port)
-        connection.add_cert(key_file=self.key_file, cert_file=self.cert_file, cert_reqs=self.cert_file, ca_certs=self.ca_certs)
+        connection.set_cert(key_file=self.key_file, cert_file=self.cert_file, cert_reqs=self.cert_reqs, ca_certs=self.ca_certs)
         return connection
 
 
@@ -456,3 +456,4 @@ def connection_from_url(url, **kw):
         return HTTPSConnectionPool(host, port=port, **kw)
     else:
         return HTTPConnectionPool(host, port=port, **kw)
+
