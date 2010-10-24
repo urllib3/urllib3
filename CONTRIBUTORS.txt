@@ -21,3 +21,6 @@
 
 * Response gzip and deflate encoding support
   * niphlod <niphlod@gmail.com>
+
+* Better unicode support for filepost using StringIO buffers
+  * niphlod <niphlod@gmail.com>

@@ -47,10 +47,20 @@ class TestConnectionPool(unittest.TestCase):
 
     def test_upload(self):
         data = "I'm in ur multipart form-data, hazing a cheezburgr"
-        fields = {'upload_param': 'filefield',
-                'upload_filename': 'lolcat.txt',
-                'upload_size': len(data),
-                'filefield': ('lolcat.txt', data)}
+        fields = {
+            'upload_param': 'filefield',
+            'upload_filename': 'lolcat.txt',
+            'upload_size': len(data),
+            'filefield': ('lolcat.txt', data),
+        }
+
+        r = self.http_pool.post_url('/upload', fields=fields)
+        self.assertEquals(r.status, 200, r.data)
+
+    def test_unicode_upload(self):
+        fields = {
+            u'\xe2\x99\xa5': (u'\xe2\x99\xa5.txt', u'\xe2\x99\xa5'),
+        }
 
         r = self.http_pool.post_url('/upload', fields=fields)
         self.assertEquals(r.status, 200, r.data)
@@ -58,7 +68,7 @@ class TestConnectionPool(unittest.TestCase):
     def test_timeout(self):
         pool = HTTPConnectionPool(HOST, PORT, timeout=0.1)
         try:
-            r = pool.get_url('/sleep', fields={'seconds': 0.2})
+            r = pool.get_url('/sleep', fields={'seconds': '0.2'})
             self.fail("Failed to raise TimeoutError exception")
         except TimeoutError, e:
             pass

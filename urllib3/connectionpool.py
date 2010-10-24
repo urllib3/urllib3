@@ -328,7 +328,10 @@ class HTTPConnectionPool(object):
         which is used to compose the body of the request.
         """
         body, content_type = encode_multipart_formdata(fields or {})
+
+        headers = headers or {}
         headers.update({'Content-Type': content_type})
+
         return self.urlopen('POST', url, body, headers=headers, retries=retries, redirect=redirect)
 
 

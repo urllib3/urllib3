@@ -1,72 +1,44 @@
 import mimetools, mimetypes
 
-ENCODE_TEMPLATE= """--%(boundary)s
-Content-Disposition: form-data; name="%(name)s"
+try:
+    from cStringIO import StringIO
+except:
+    from StringIO import StringIO
 
-%(value)s
-""".replace('\n','\r\n')
-
-ENCODE_TEMPLATE_FILE = """--%(boundary)s
-Content-Disposition: form-data; name="%(name)s"; filename="%(filename)s"
-Content-Type: %(contenttype)s
-
-%(value)s
-""".replace('\n','\r\n')
-
-# TODO: is replace('\n', '\r\n') going to cause problems on other platforms?
-# Are we better off building a list of strings and doing '\r\n'.join(body)?
+import codecs
+writer = codecs.lookup('utf-8')[3]
 
 def get_content_type(filename):
     return mimetypes.guess_type(filename)[0] or 'application/octet-stream'
 
 def encode_multipart_formdata(fields):
-    """
-    Given a dictionary field parameters, returns the HTTP request body and the
-    content_type (which includes the boundary string), to be used with an
-    httplib-like call.
-
-    Normal key/value items are treated as regular parameters, but key/tuple
-    items are treated as files, where a value tuple is a (filename, data) tuple.
-
-    For example:
-
-    fields = {
-        'foo': 'bar',
-        'foofile': ('foofile.txt', 'contents of foofile'),
-    }
-
-    body, content_type = encode_multipart_formdata(fields)
-    """
-
+    body = StringIO()
     BOUNDARY = mimetools.choose_boundary()
 
-    body = ""
+    for fieldname, value in fields.iteritems():
+        body.write("--%s\r\n" % (BOUNDARY))
 
-    # NOTE: Every non-binary possibly-unicode variable must be casted to str()
-    # because if a unicode value pollutes the `body` string, then all of body
-    # will become unicode. Appending a binary file string to a unicode string
-    # will cast the binary data to unicode, which will raise an encoding
-    # exception. Long story short, we want to stick to plain strings.
-    # This is not ideal, but if anyone has a better method, I'd love to hear it.
-
-    for key, value in fields.iteritems():
         if isinstance(value, tuple):
-            filename, value = value
-            body += ENCODE_TEMPLATE_FILE % {
-                        'boundary': BOUNDARY,
-                        'name': str(key),
-                        'value': str(value),
-                        'filename': str(filename),
-                        'contenttype': str(get_content_type(filename))
-                    }
+            filename, data = value
+            body.write('Content-Disposition: form-data; name="%s"; filename="%s"\r\n' % (fieldname, filename))
+            body.write('Content-Type: %s\r\n\r\n' % (get_content_type(filename)))
         else:
-            body += ENCODE_TEMPLATE % {
-                        'boundary': BOUNDARY,
-                        'name': str(key),
-                        'value': str(value)
-                    }
+            data = value
+            body.write('Content-Disposition: form-data; name="%s"\r\n' % (fieldname))
+            body.write('Content-Type: text/plain\r\n\r\n')
 
-    body += '--%s--\r\n' % BOUNDARY
+        if isinstance(data, int):
+            data = str(data) # Backwards compatibility
+
+        if isinstance(data, unicode):
+            writer(body).write(data)
+        else:
+            body.write(data)
+
+        body.write('\r\n')
+
+    body.write('--%s--\r\n' % (BOUNDARY))
+
     content_type = 'multipart/form-data; boundary=%s' % BOUNDARY
 
-    return body, content_type
+    return body.getvalue(), content_type
