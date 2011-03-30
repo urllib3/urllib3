@@ -291,12 +291,12 @@ class HTTPConnectionPool(object):
 
         except (HTTPException, SocketError), e:
             log.warn("Retrying (%d attempts remain) after connection broken by '%r': %s" % (retries, e, url))
-            return self.urlopen(method, url, body, headers, retries-1, redirect) # Try again
+            return self.urlopen(method, url, body, headers, retries-1, redirect, assert_same_host) # Try again
 
         # Handle redirection
         if redirect and response.status in [301, 302, 303, 307] and 'location' in response.headers: # Redirect, retry
             log.info("Redirecting %s -> %s" % (url, response.headers.get('location')))
-            return self.urlopen(method, response.headers.get('location'), body, headers, retries-1, redirect)
+            return self.urlopen(method, response.headers.get('location'), body, headers, retries-1, redirect, assert_same_host)
 
         return response
 
