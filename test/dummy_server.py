@@ -40,7 +40,7 @@ class TestingApp(object):
         file = request.params.get(param)
 
         if not isinstance(file, FieldStorage):
-            return Response("Not a file: %s" % param, status='400')
+            return Response("'%s' is not a file: %r" % (param, file), status='400')
 
         data = file.value
         if int(size) != len(data):

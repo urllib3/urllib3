@@ -58,8 +58,16 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEquals(r.status, 200, r.data)
 
     def test_unicode_upload(self):
+        fieldname = u'myfile'
+        filename = u'\xe2\x99\xa5.txt'
+        data = u'\xe2\x99\xa5'.encode('utf8')
+        size = len(data)
+
         fields = {
-            u'\xe2\x99\xa5': (u'\xe2\x99\xa5.txt', u'\xe2\x99\xa5'),
+            u'upload_param': fieldname,
+            u'upload_filename': filename,
+            u'upload_size': len(data),
+            fieldname: (filename, data),
         }
 
         r = self.http_pool.post_url('/upload', fields=fields)

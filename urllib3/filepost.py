@@ -16,15 +16,15 @@ def encode_multipart_formdata(fields):
     BOUNDARY = mimetools.choose_boundary()
 
     for fieldname, value in fields.iteritems():
-        body.write("--%s\r\n" % (BOUNDARY))
+        body.write('--%s\r\n' % (BOUNDARY))
 
         if isinstance(value, tuple):
             filename, data = value
-            body.write('Content-Disposition: form-data; name="%s"; filename="%s"\r\n' % (fieldname, filename))
+            writer(body).write('Content-Disposition: form-data; name="%s"; filename="%s"\r\n' % (fieldname, filename))
             body.write('Content-Type: %s\r\n\r\n' % (get_content_type(filename)))
         else:
             data = value
-            body.write('Content-Disposition: form-data; name="%s"\r\n' % (fieldname))
+            writer(body).write('Content-Disposition: form-data; name="%s"\r\n' % (fieldname))
             body.write('Content-Type: text/plain\r\n\r\n')
 
         if isinstance(data, int):
