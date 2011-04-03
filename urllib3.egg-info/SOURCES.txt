@@ -13,3 +13,5 @@ urllib3.egg-info/dependency_links.txt
 urllib3.egg-info/entry_points.txt
 urllib3.egg-info/not-zip-safe
 urllib3.egg-info/top_level.txt
+urllib3/contrib/__init__.py
+urllib3/contrib/ntlmpool.py
