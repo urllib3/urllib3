@@ -145,6 +145,10 @@ class HTTPConnectionPool(object):
         Port used for this HTTP Connection (None is equivalent to 80), passed
         into httplib.HTTPConnection()
 
+    strict
+        Causes BadStatusLine to be raised if the status line can’t be parsed 
+        as a valid HTTP/1.0 or 1.1 status line, passed into httplib.HTTPConnection()
+
     timeout
         Socket timeout for each individual connection, can be a float. None
         disables timeout.
@@ -169,9 +173,10 @@ class HTTPConnectionPool(object):
 
     scheme = 'http'
 
-    def __init__(self, host, port=None, timeout=None, maxsize=1, block=False, headers=None):
+    def __init__(self, host, port=None, strict=False, timeout=None, maxsize=1, block=False, headers=None):
         self.host = host
         self.port = port
+        self.strict = strict
         self.timeout = timeout
         self.pool = Queue(maxsize)
         self.block = block
@@ -342,9 +347,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     scheme = 'https'
 
-    def __init__(self, host, port=None, timeout=None, maxsize=1, block=False, headers=None, key_file=None, cert_file=None, cert_reqs='CERT_NONE', ca_certs=None):
+    def __init__(self, host, port=None, strict=False, timeout=None, maxsize=1, block=False, headers=None, key_file=None, cert_file=None, cert_reqs='CERT_NONE', ca_certs=None):
         self.host = host
         self.port = port
+        self.strict = strict
         self.timeout = timeout
         self.pool = Queue(maxsize)
         self.block = block
