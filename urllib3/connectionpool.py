@@ -146,7 +146,7 @@ class HTTPConnectionPool(object):
         into httplib.HTTPConnection()
 
     strict
-        Causes BadStatusLine to be raised if the status line can’t be parsed 
+        Causes BadStatusLine to be raised if the status line can't be parsed 
         as a valid HTTP/1.0 or 1.1 status line, passed into httplib.HTTPConnection()
 
     timeout
