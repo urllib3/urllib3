@@ -135,27 +135,22 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEquals(conn.sock, None)
         self.http_pool._put_conn(conn)
 
-
-if __name__ == '__main__':
-    unittest.main()
-                
     def test_post_with_urlencode(self):
         data = {'banana': 'hammock', 'lol': 'cat'}
         r = self.http_pool.post_url('/echo', fields=data, encode_multipart=False)
         self.assertEquals(r.data, urllib.urlencode(data))
-        
+
     def test_post_with_multipart(self):
         data = {'banana': 'hammock', 'lol': 'cat'}
         r = self.http_pool.post_url('/echo', fields=data, encode_multipart=True)
         body = r.data.split('\r\n')
-        
+
         encoded_data = encode_multipart_formdata(data)[0]
         expected_body = encoded_data.split('\r\n')
-        
+
+        # TODO: Get rid of extra parsing stuff when you can specify 
+        # a custom boundary to encode_multipart_formdata
         """
-        TODO: Get rid of extra parsing stuff when you can specify 
-        a custom boundary to encode_multipart_formdata
-        
         We need to loop the return lines because a timestamp is attached from within
         encode_multipart_formdata.  When the server echos back the data, it has the 
         timestamp from when the data was encoded, which is not equivalent to when we
@@ -164,9 +159,9 @@ if __name__ == '__main__':
         for i, line in enumerate(body):
             if line.startswith('--'):
                 continue
-            
+
             self.assertEquals(body[i], expected_body[i])
-        
-        
-        
-        
+
+
+if __name__ == '__main__':
+    unittest.main()
