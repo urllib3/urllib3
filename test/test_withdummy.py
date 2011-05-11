@@ -3,7 +3,9 @@ import unittest
 import sys
 sys.path.append('../')
 
-from urllib3 import HTTPConnectionPool, TimeoutError, MaxRetryError
+import urllib
+
+from urllib3 import HTTPConnectionPool, TimeoutError, MaxRetryError, encode_multipart_formdata
 
 HOST="localhost"
 PORT=8081
@@ -96,3 +98,35 @@ class TestConnectionPool(unittest.TestCase):
         except MaxRetryError, e:
             pass
 
+                
+    def test_post_with_urlencode(self):
+        data = {'banana': 'hammock', 'lol': 'cat'}
+        r = self.http_pool.post_url('/echo', fields=data, encode_multipart=False)
+        self.assertEquals(r.data, urllib.urlencode(data))
+        
+    def test_post_with_multipart(self):
+        data = {'banana': 'hammock', 'lol': 'cat'}
+        r = self.http_pool.post_url('/echo', fields=data, encode_multipart=True)
+        body = r.data.split('\r\n')
+        
+        encoded_data = encode_multipart_formdata(data)[0]
+        expected_body = encoded_data.split('\r\n')
+        
+        """
+        TODO: Get rid of extra parsing stuff when you can specify 
+        a custom boundary to encode_multipart_formdata
+        
+        We need to loop the return lines because a timestamp is attached from within
+        encode_multipart_formdata.  When the server echos back the data, it has the 
+        timestamp from when the data was encoded, which is not equivalent to when we
+        run encode_multipart_formdata on the data again.
+        """
+        for i, line in enumerate(body):
+            if line.startswith('--'):
+                continue
+            
+            self.assertEquals(body[i], expected_body[i])
+        
+        
+        
+        

@@ -24,3 +24,6 @@
 
 * Better unicode support for filepost using StringIO buffers
   * niphlod <niphlod@gmail.com>
+
+* Non-multipart encoding for POST requests
+  * btoconnor <brian@btoconnor.net>

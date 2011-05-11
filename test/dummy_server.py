@@ -61,6 +61,10 @@ class TestingApp(object):
         seconds = float(request.params.get('seconds', '1'))
         time.sleep(seconds)
         return Response()
+        
+    def echo(self, request):
+        """Echo back the params"""
+        return Response("%s" % request.body)
 
 
 def make_server(HOST="localhost", PORT=8081):

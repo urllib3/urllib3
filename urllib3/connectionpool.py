@@ -316,7 +316,7 @@ class HTTPConnectionPool(object):
             url += '?' + urlencode(fields)
         return self.urlopen('GET', url, headers=headers, retries=retries, redirect=redirect)
 
-    def post_url(self, url, fields=None, headers=None, retries=3, redirect=True):
+    def post_url(self, url, fields=None, headers=None, retries=3, redirect=True, encode_multipart=True):
         """
         Wrapper for performing POST with urlopen (see urlopen for more details).
 
@@ -328,11 +328,23 @@ class HTTPConnectionPool(object):
             'foofile': ('foofile.txt', 'contents of foofile'),
         }
 
+        If encode_multipart=True (default), then
+        ``urllib3.filepost.encode_multipart_formdata`` is used to encode the
+        payload with the appropriate content type. Otherwise ``urllib.urlencode``
+        if used with 'application/x-www-form-urlencoded' content type.
+
+        Multipart encoding must be used when posting files, and it's reasonably
+        safe to use it other times too. It may break request signing, such as
+        OAuth.
+
         NOTE: If ``headers`` are supplied, the 'Content-Type' value will be
         overwritten because it depends on the dynamic random boundary string
         which is used to compose the body of the request.
         """
-        body, content_type = encode_multipart_formdata(fields or {})
+        if encode_multipart:
+            body, content_type = encode_multipart_formdata(fields or {})
+        else:
+            body, content_type = urlencode(fields or {}), 'application/x-www-form-urlencoded'
 
         headers = headers or {}
         headers.update({'Content-Type': content_type})
