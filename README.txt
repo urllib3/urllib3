@@ -61,3 +61,33 @@ But, long story short::
   r = http_pool.get_url(API_URL, fields)
 
   print r.status, r.data
+
+Run the tests
+=============
+
+First we need to install ``nose`` and ``webob``, then add the
+source directory to your PYTHONPATH, then run ``nosetests``.
+
+    $ pip install nose webob
+    $ cd patch/to/urllib3
+    $ python setup.py develop
+    $ nosetests
+    ...........E
+
+Some tests require the ``dummy_server.py`` running to pass.
+
+    $ python -O test/dummy_server.py
+    $ nosetests
+    ............
+
+Success!
+
+Contributing
+============
+
+ * Open an issue to start a discussion around a feature or a bug.
+ * Write a fix, attach a patch to the issue.
+ * Write a test which shows that the bug was fixed or that the feature works
+   as expected. Attach patch for the test to the issue.
+ * Bug the author until it gets merged and published. :) Make sure to include
+   what information you want added to the ``CONTRIBUTORS.txt`` if any.
