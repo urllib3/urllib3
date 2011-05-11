@@ -1,7 +1,5 @@
 import unittest
-
 import sys
-sys.path.append('../')
 
 import urllib
 
@@ -98,6 +96,48 @@ class TestConnectionPool(unittest.TestCase):
         except MaxRetryError, e:
             pass
 
+    def test_keepalive(self):
+        # First with close
+        r = self.http_pool.get_url('/keepalive?close=1', retries=0,
+                                   headers={"Connection": "close"})
+        self.assertEquals(r.status, 200)
+
+        # The dummyserver will have responded with Connection:close,
+        # and httplib will properly cleanup the socket.
+
+        # We grab the HTTPConnection object straight from the Queue,
+        # because _get_conn() is where the check & reset occurs
+        conn = self.http_pool.pool.get()
+        self.assertEquals(conn.sock, None)
+        self.http_pool._put_conn(conn)
+
+        # Now with keep-alive
+        r = self.http_pool.get_url('/keepalive?close=0', retries=0,
+                                   headers={"Connection": "keep-alive",
+                                            "Keep-alive": "1"})
+        self.assertEquals(r.status, 200)
+
+        # The dummyserver responded with Connection:keep-alive, but
+        # the base implementation automatically closes it anyway. Perfect
+        # test case!
+
+        conn = self.http_pool.pool.get()
+        self.assertNotEquals(conn.sock, None)
+        self.http_pool._put_conn(conn)
+
+        # ... and with close again
+        # NOTE: This is the one that should get auto-cleaned-up!
+        r = self.http_pool.get_url('/keepalive?close=1', retries=0,
+                                   headers={"Connection": "close"})
+        self.assertEquals(r.status, 200)
+
+        conn = self.http_pool.pool.get()
+        self.assertEquals(conn.sock, None)
+        self.http_pool._put_conn(conn)
+
+
+if __name__ == '__main__':
+    unittest.main()
                 
     def test_post_with_urlencode(self):
         data = {'banana': 'hammock', 'lol': 'cat'}

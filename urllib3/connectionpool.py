@@ -14,6 +14,7 @@ except ImportError, e:
 
 from urllib import urlencode
 from httplib import HTTPConnection, HTTPSConnection, HTTPException
+from select import select
 import socket
 from socket import error as SocketError, timeout as SocketTimeout
 
@@ -204,6 +205,13 @@ class HTTPConnectionPool(object):
         conn = None
         try:
             conn = self.pool.get(block=self.block, timeout=timeout)
+
+            # If this is a persistent connection, check if it got disconnected
+            if conn and conn.sock and select([conn.sock], [], [], 0.0)[0]:
+                # Either data is buffered (bad), or the connection is dropped.
+                log.warning("Connection pool detected dropped connection, resetting: %s" % self.host)
+                conn.close()
+
         except Empty, e:
             pass # Oh well, we'll create a new connection then
 
@@ -220,7 +228,7 @@ class HTTPConnectionPool(object):
             self.pool.put(conn, block=False)
         except Full, e:
             # This should never happen if self.block == True
-            log.warning("HttpConnectionPool is full, discarding connection: %s" % self.host)
+            log.warning("Connection pool is full, discarding connection: %s" % self.host)
 
     def is_same_host(self, url):
         return url.startswith('/') or get_host(url) == (self.scheme, self.host, self.port)

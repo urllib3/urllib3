@@ -56,6 +56,15 @@ class TestingApp(object):
         target = request.params.get('target', '/')
         return exc.HTTPSeeOther(location=target)
 
+    def keepalive(self, request):
+        if request.params.get('close', '0') == '1':
+            response = Response('Closing')
+            response.headers['Connection'] = 'close'
+        else:
+            response = Response('Keeping alive')
+            response.headers['Connection'] = 'keep-alive'
+        return response
+
     def sleep(self, request):
         "Sleep for a specified amount of ``seconds``"
         seconds = float(request.params.get('seconds', '1'))
@@ -76,5 +85,15 @@ def make_server(HOST="localhost", PORT=8081):
 
 
 if __name__ == '__main__':
+    if __debug__:
+        # BaseHTTPServer raises an assertion error with __debug__
+        # enabled when responding with a "Connection" header
+        from sys import argv
+        print "The Keep-alive test will fail because __debug__ is active!"
+        print ""
+        print "To properly test keep-alive, re-run in optimized mode:"
+        print ""
+        print "  $ python -O %s" % argv[0]
+        print ""
     httpd = make_server()
     httpd.serve_forever()

@@ -1,8 +1,5 @@
 import unittest
 
-import sys
-sys.path.append('../')
-
 from urllib3.connectionpool import HTTPConnectionPool, get_host, connection_from_url, make_headers
 
 class TestConnectionPool(unittest.TestCase):
@@ -47,6 +44,19 @@ class TestConnectionPool(unittest.TestCase):
             c = connection_from_url(a)
             self.assertFalse(c.is_same_host(b), "%s =? %s" % (a,b))
 
+    def test_get_connection(self):
+        from time import sleep
+
+        pool = HTTPConnectionPool(host='www.apache.org', maxsize=1, timeout=3.0)
+
+        response = pool.get_url('/', retries=0, headers={"Connection": "keep-alive",
+                                                         "Keep-alive": "5"})
+
+        sleep(6)
+        # by now, the connection should have dropped, making this fail without the patch:
+        response = pool.get_url('/', retries=0, headers={"Connection": "keep-alive",
+                                                         "Keep-alive": "1"})
+
     def test_make_headers(self):
         self.assertEqual(make_headers(accept_encoding=True),
             {'accept-encoding': 'gzip,deflate'})
@@ -62,3 +72,6 @@ class TestConnectionPool(unittest.TestCase):
 
         self.assertEqual(make_headers(user_agent='banana'),
             {'user-agent': 'banana'})
+
+if __name__ == '__main__':
+    unittest.main()
