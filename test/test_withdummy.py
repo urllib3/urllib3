@@ -66,7 +66,7 @@ class TestConnectionPool(unittest.TestCase):
         fields = {
             u'upload_param': fieldname,
             u'upload_filename': filename,
-            u'upload_size': len(data),
+            u'upload_size': size,
             fieldname: (filename, data),
         }
 
@@ -74,9 +74,9 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEquals(r.status, 200, r.data)
 
     def test_timeout(self):
-        pool = HTTPConnectionPool(HOST, PORT, timeout=0.1)
+        pool = HTTPConnectionPool(HOST, PORT, timeout=0.01)
         try:
-            r = pool.get_url('/sleep', fields={'seconds': '0.2'})
+            r = pool.get_url('/sleep', fields={'seconds': '0.02'})
             self.fail("Failed to raise TimeoutError exception")
         except TimeoutError, e:
             pass
@@ -162,6 +162,15 @@ class TestConnectionPool(unittest.TestCase):
 
             self.assertEquals(body[i], expected_body[i])
 
+    def test_check_gzip(self):
+        r = self.http_pool.get_url('/encodingrequest', headers = { 'accept-encoding' : 'gzip' } )
+        self.assertEqual(r.headers.get('content-encoding'), 'gzip')
+        self.assertEqual(r.data, 'hello, world!')
+
+    def test_check_deflate(self):
+        r = self.http_pool.get_url('/encodingrequest', headers = { 'accept-encoding' : 'deflate' } )
+        self.assertEqual(r.headers.get('content-encoding'), 'deflate')
+        self.assertEqual(r.data, 'hello, world!')
 
 if __name__ == '__main__':
     unittest.main()

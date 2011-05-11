@@ -3,7 +3,8 @@
 
 from webob import Request, Response, exc
 from cgi import FieldStorage
-import time
+from StringIO import StringIO
+import time, gzip, zlib
 
 class TestingApp(object):
     """
@@ -70,10 +71,26 @@ class TestingApp(object):
         seconds = float(request.params.get('seconds', '1'))
         time.sleep(seconds)
         return Response()
-        
+
     def echo(self, request):
         """Echo back the params"""
         return Response("%s" % request.body)
+
+    def encodingrequest(self, request):
+        "Check for UA accepting gzip/defkate encoding"
+        data        = "hello, world!"
+        encoding    = request.headers.get('Accept-Encoding', '')
+        headers     = {}
+        if 'gzip' in encoding:
+            headers = { 'Content-Encoding' : 'gzip' }
+            file = StringIO()
+            gzip.GzipFile('', mode = 'w', fileobj = file).write(data)
+            data = file.getvalue()
+        elif 'deflate' in encoding:
+            headers = { 'Content-Encoding' : 'deflate' }
+            data = zlib.compress(data)
+        return Response(data, headers = headers)
+
 
 
 def make_server(HOST="localhost", PORT=8081):

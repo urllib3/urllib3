@@ -71,12 +71,12 @@ class HTTPResponse(object):
         NOTE: This method will perform r.read() which will have side effects
         on the original http.HTTPResponse object.
         """
-        tmp_data = StringIO(r.read())
+        tmp_data = r.read()
         try:
             if r.getheader('content-encoding') == 'gzip':
                 log.debug("Received response with content-encoding: gzip, decompressing with gzip.")
 
-                gzipper = gzip.GzipFile(fileobj=tmp_data)
+                gzipper = gzip.GzipFile(fileobj=StringIO(tmp_data))
                 data = gzipper.read()
             elif r.getheader('content-encoding') == 'deflate':
                 log.debug("Received response with content-encoding: deflate, decompressing with zlib.")
@@ -85,7 +85,7 @@ class HTTPResponse(object):
                 except zlib.error, e:
                     data = zlib.decompress(tmp_data, -zlib.MAX_WBITS)
             else:
-                data = tmp_data.read()
+                data = tmp_data
 
         except IOError:
             raise HTTPError("Received response with content-encoding: %s, but failed to decompress it." % (r.getheader('content-encoding')))
