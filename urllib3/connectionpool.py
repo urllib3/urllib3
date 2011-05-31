@@ -9,8 +9,10 @@ except ImportError, e:
 
 try:
     import ssl
+    BaseSSLError = ssl.SSLError
 except ImportError, e:
     ssl = None
+    BaseSSLError = None
 
 from urllib import urlencode
 from httplib import HTTPConnection, HTTPSConnection, HTTPException
@@ -298,7 +300,7 @@ class HTTPConnectionPool(object):
             # Timed out either by socket or queue
             raise TimeoutError("Request timed out after %f seconds" % self.timeout)
 
-        except (ssl.SSLError), e:
+        except (BaseSSLError), e:
             # SSL certificate error
             raise SSLError(e)
 
