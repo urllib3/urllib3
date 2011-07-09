@@ -3,22 +3,30 @@ NTLM authenticating pool, contributed by erikcederstran
 
 Issue #10, see: http://code.google.com/p/urllib3/issues/detail?id=10
 """
+
+import httplib
 from logging import getLogger
 from ntlm import ntlm
-import httplib
+
 from urllib3 import HTTPSConnectionPool
+
 
 log = getLogger(__name__)
 
+
 class NTLMConnectionPool(HTTPSConnectionPool):
-    '''Implements an NTLM authentication version of an urllib3 connection pool'''
+    """
+    Implements an NTLM authentication version of an urllib3 connection pool
+    """
 
     scheme = 'https'
 
     def __init__(self, user, pw, authurl, *args, **kwargs):
-        '''authurl is a random URL on the server that is protected by NTLM.
-           user is the Windows user, probably in the DOMAIN\username format.
-           pw is the password for the user.'''
+        """
+        authurl is a random URL on the server that is protected by NTLM.
+        user is the Windows user, probably in the DOMAIN\username format.
+        pw is the password for the user.
+        """
         super(NTLMConnectionPool, self).__init__(*args, **kwargs)
         self.authurl = authurl
         self.rawuser = user
@@ -31,7 +39,8 @@ class NTLMConnectionPool(HTTPSConnectionPool):
         # Performs the NTLM handshake that secures the connection. The socket
         # must be kept open while requests are performed.
         self.num_connections += 1
-        log.debug('Starting NTLM HTTPS connection no. %d: https://%s%s' % (self.num_connections, self.host, self.authurl))
+        log.debug('Starting NTLM HTTPS connection no. %d: https://%s%s' %
+                  (self.num_connections, self.host, self.authurl))
 
         headers = {}
         headers['Connection'] = 'Keep-Alive'
@@ -41,7 +50,8 @@ class NTLMConnectionPool(HTTPSConnectionPool):
         conn = httplib.HTTPSConnection(host=self.host, port=self.port)
 
         # Send negotiation message
-        headers[req_header] = 'NTLM %s' % ntlm.create_NTLM_NEGOTIATE_MESSAGE(self.rawuser)
+        headers[req_header] = (
+            'NTLM %s' % ntlm.create_NTLM_NEGOTIATE_MESSAGE(self.rawuser))
         log.debug('Request headers: %s' % headers)
         conn.request('GET', self.authurl, None, headers)
         res = conn.getresponse()
@@ -61,11 +71,18 @@ class NTLMConnectionPool(HTTPSConnectionPool):
             if s[:5] == 'NTLM ':
                 auth_header_value = s[5:]
         if auth_header_value is None:
-            raise Exception('Unexpected %s response header: %s' % (resp_header, reshdr[resp_header]))
+            raise Exception('Unexpected %s response header: %s' %
+                            (resp_header, reshdr[resp_header]))
 
         # Send authentication message
-        ServerChallenge, NegotiateFlags = ntlm.parse_NTLM_CHALLENGE_MESSAGE(auth_header_value)
-        headers[req_header] = 'NTLM %s' % ntlm.create_NTLM_AUTHENTICATE_MESSAGE(ServerChallenge, self.user, self.domain, self.pw, NegotiateFlags)
+        ServerChallenge, NegotiateFlags = \
+            ntlm.parse_NTLM_CHALLENGE_MESSAGE(auth_header_value)
+        auth_msg = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(ServerChallenge,
+                                                         self.user,
+                                                         self.domain,
+                                                         self.pw,
+                                                         NegotiateFlags)
+        headers[req_header] = 'NTLM %s' % auth_msg
         log.debug('Request headers: %s' % headers)
         conn.request('GET', self.authurl, None, headers)
         res = conn.getresponse()
@@ -74,15 +91,21 @@ class NTLMConnectionPool(HTTPSConnectionPool):
         log.debug('Response data: %s [...]' % res.read()[:100])
         if res.status != 200:
             if res.status == 401:
-                raise Exception('Server rejected request: wrong username or password')
-            raise Exception('Wrong server response: %s %s' % (res.status, res.reason))
+                raise Exception('Server rejected request: wrong '
+                                'username or password')
+            raise Exception('Wrong server response: %s %s' %
+                            (res.status, res.reason))
 
         res.fp = None
         log.debug('Connection established')
         return conn
 
-    def urlopen(self, method, url, body=None, headers=None, retries=3, redirect=True, assert_same_host=True):
+    def urlopen(self, method, url, body=None, headers=None, retries=3,
+                redirect=True, assert_same_host=True):
         if headers is None:
             headers = {}
         headers['Connection'] = 'Keep-Alive'
-        return super(NTLMConnectionPool, self).urlopen(method, url, body, headers, retries, redirect, assert_same_host)
+        return super(NTLMConnectionPool, self).urlopen(method, url, body,
+                                                       headers, retries,
+                                                       redirect,
+                                                       assert_same_host)

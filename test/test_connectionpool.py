@@ -1,6 +1,13 @@
+import sys
 import unittest
 
-from urllib3.connectionpool import HTTPConnectionPool, get_host, connection_from_url, make_headers
+sys.path.append('../')
+from urllib3.connectionpool import (
+    connection_from_url,
+    get_host,
+    HTTPConnectionPool,
+    make_headers)
+
 
 class TestConnectionPool(unittest.TestCase):
     def test_get_host(self):
@@ -30,7 +37,7 @@ class TestConnectionPool(unittest.TestCase):
             ('http://google.com:42/', 'http://google.com:42/abracadabra'),
         ]
 
-        for a,b in same_host:
+        for a, b in same_host:
             c = connection_from_url(a)
             self.assertTrue(c.is_same_host(b), "%s =? %s" % (a, b))
 
@@ -40,37 +47,49 @@ class TestConnectionPool(unittest.TestCase):
             ('http://google.com', 'https://google.net/'),
         ]
 
-        for a,b in not_same_host:
+        for a, b in not_same_host:
             c = connection_from_url(a)
-            self.assertFalse(c.is_same_host(b), "%s =? %s" % (a,b))
+            self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
 
     def test_get_connection(self):
         from time import sleep
 
-        pool = HTTPConnectionPool(host='www.apache.org', maxsize=1, timeout=3.0)
+        pool = HTTPConnectionPool(host='www.apache.org',
+                                  maxsize=1,
+                                  timeout=3.0)
 
-        response = pool.get_url('/', retries=0, headers={"Connection": "keep-alive",
-                                                         "Keep-alive": "5"})
+        response = pool.get_url('/',
+                                retries=0,
+                                headers={"Connection": "keep-alive",
+                                         "Keep-alive": "5"})
 
         sleep(6)
-        # by now, the connection should have dropped, making this fail without the patch:
-        response = pool.get_url('/', retries=0, headers={"Connection": "keep-alive",
-                                                         "Keep-alive": "1"})
+        # by now, the connection should have dropped, making
+        # this fail without the patch:
+        response = pool.get_url('/',
+                                retries=0,
+                                headers={"Connection": "keep-alive",
+                                         "Keep-alive": "1"})
 
     def test_make_headers(self):
-        self.assertEqual(make_headers(accept_encoding=True),
+        self.assertEqual(
+            make_headers(accept_encoding=True),
             {'accept-encoding': 'gzip,deflate'})
 
-        self.assertEqual(make_headers(accept_encoding='foo,bar'),
+        self.assertEqual(
+            make_headers(accept_encoding='foo,bar'),
             {'accept-encoding': 'foo,bar'})
 
-        self.assertEqual(make_headers(accept_encoding=['foo','bar']),
+        self.assertEqual(
+            make_headers(accept_encoding=['foo', 'bar']),
             {'accept-encoding': 'foo,bar'})
 
-        self.assertEqual(make_headers(accept_encoding=True, user_agent='banana'),
+        self.assertEqual(
+            make_headers(accept_encoding=True, user_agent='banana'),
             {'accept-encoding': 'gzip,deflate', 'user-agent': 'banana'})
 
-        self.assertEqual(make_headers(user_agent='banana'),
+        self.assertEqual(
+            make_headers(user_agent='banana'),
             {'user-agent': 'banana'})
 
 if __name__ == '__main__':

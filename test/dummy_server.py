@@ -1,10 +1,17 @@
 #!/usr/bin/env python
-# Dummy server used for unit testing
 
-from webob import Request, Response, exc
+"""
+Dummy server used for unit testing
+"""
+
+import gzip
+import time
+import zlib
+
 from cgi import FieldStorage
 from StringIO import StringIO
-import time, gzip, zlib
+from webob import Request, Response, exc
+
 
 class TestingApp(object):
     """
@@ -17,7 +24,7 @@ class TestingApp(object):
     """
     def __call__(self, environ, start_response):
         req = Request(environ)
-        target = req.path_info[1:].replace('/','_')
+        target = req.path_info[1:].replace('/', '_')
         method = getattr(self, target, self.index)
         resp = method(req)
         return resp(environ, start_response)
@@ -30,7 +37,8 @@ class TestingApp(object):
         "Confirm that the request matches the desired method type"
         method = request.params.get('method')
         if request.method != method:
-            return Response("Wrong method: %s != %s" % (method, request.method), status='400')
+            return Response("Wrong method: %s != %s" %
+                            (method, request.method), status='400')
         return Response()
 
     def upload(self, request):
@@ -41,14 +49,17 @@ class TestingApp(object):
         file = request.params.get(param)
 
         if not isinstance(file, FieldStorage):
-            return Response("'%s' is not a file: %r" % (param, file), status='400')
+            return Response("'%s' is not a file: %r" %
+                            (param, file), status='400')
 
         data = file.value
         if int(size) != len(data):
-            return Response("Wrong size: %d != %d" % (size, len(data)), status='400')
+            return Response("Wrong size: %d != %d" %
+                            (size, len(data)), status='400')
 
         if filename != file.filename:
-            return Response("Wrong filename: %s != %s" % (filename, file.filename), status='400')
+            return Response("Wrong filename: %s != %s" %
+                            (filename, file.filename), status='400')
 
         return Response()
 
@@ -78,19 +89,18 @@ class TestingApp(object):
 
     def encodingrequest(self, request):
         "Check for UA accepting gzip/defkate encoding"
-        data        = "hello, world!"
-        encoding    = request.headers.get('Accept-Encoding', '')
-        headers     = {}
+        data = "hello, world!"
+        encoding = request.headers.get('Accept-Encoding', '')
+        headers = {}
         if 'gzip' in encoding:
-            headers = { 'Content-Encoding' : 'gzip' }
+            headers = {'Content-Encoding': 'gzip'}
             file = StringIO()
-            gzip.GzipFile('', mode = 'w', fileobj = file).write(data)
+            gzip.GzipFile('', mode='w', fileobj=file).write(data)
             data = file.getvalue()
         elif 'deflate' in encoding:
-            headers = { 'Content-Encoding' : 'deflate' }
+            headers = {'Content-Encoding': 'deflate'}
             data = zlib.compress(data)
-        return Response(data, headers = headers)
-
+        return Response(data, headers=headers)
 
 
 def make_server(HOST="localhost", PORT=8081):

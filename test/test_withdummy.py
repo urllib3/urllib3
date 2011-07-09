@@ -1,17 +1,22 @@
-import unittest
+import logging
 import sys
-
+import unittest
 import urllib
 
-from urllib3 import HTTPConnectionPool, TimeoutError, MaxRetryError, encode_multipart_formdata
+from urllib3 import (
+    encode_multipart_formdata,
+    HTTPConnectionPool,
+    TimeoutError,
+    MaxRetryError)
 
-HOST="localhost"
-PORT=8081
 
-import logging
+HOST = "localhost"
+PORT = 8081
+
 log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
+
 
 class TestConnectionPool(unittest.TestCase):
     def __init__(self, *args, **kw):
@@ -22,16 +27,20 @@ class TestConnectionPool(unittest.TestCase):
             if r.data != "Dummy server!":
                 raise Exception("Got unexpected response: %s" % r.data)
         except Exception, e:
-            raise Exception("Dummy server not running, make sure HOST and PORT correspond to the dummy server: %s" % e.message)
+            raise Exception("Dummy server not running, make sure HOST "
+                            "and PORT correspond to the dummy server: %s"
+                            % e.message)
 
         return super(TestConnectionPool, self).__init__(*args, **kw)
 
     def test_get_url(self):
-        r = self.http_pool.get_url('/specific_method', fields={'method': 'GET'})
+        r = self.http_pool.get_url('/specific_method',
+                                   fields={'method': 'GET'})
         self.assertEquals(r.status, 200, r.data)
 
     def test_post_url(self):
-        r = self.http_pool.post_url('/specific_method', fields={'method': 'POST'})
+        r = self.http_pool.post_url('/specific_method',
+                                    fields={'method': 'POST'})
         self.assertEquals(r.status, 200, r.data)
 
     def test_urlopen_put(self):
@@ -39,10 +48,12 @@ class TestConnectionPool(unittest.TestCase):
 
     def test_wrong_specific_method(self):
         # To make sure the dummy server is actually returning failed responses
-        r = self.http_pool.get_url('/specific_method', fields={'method': 'POST'})
+        r = self.http_pool.get_url('/specific_method',
+                                   fields={'method': 'POST'})
         self.assertEquals(r.status, 400, r.data)
 
-        r = self.http_pool.post_url('/specific_method', fields={'method': 'GET'})
+        r = self.http_pool.post_url('/specific_method',
+                                    fields={'method': 'GET'})
         self.assertEquals(r.status, 400, r.data)
 
     def test_upload(self):
@@ -76,22 +87,28 @@ class TestConnectionPool(unittest.TestCase):
     def test_timeout(self):
         pool = HTTPConnectionPool(HOST, PORT, timeout=0.01)
         try:
-            r = pool.get_url('/sleep', fields={'seconds': '0.02'})
+            r = pool.get_url('/sleep',
+                             fields={'seconds': '0.02'})
             self.fail("Failed to raise TimeoutError exception")
         except TimeoutError, e:
             pass
 
     def test_redirect(self):
-        r = self.http_pool.get_url('/redirect', fields={'target': '/'}, redirect=False)
+        r = self.http_pool.get_url('/redirect',
+                                   fields={'target': '/'},
+                                   redirect=False)
         self.assertEquals(r.status, 303)
 
-        r = self.http_pool.get_url('/redirect', fields={'target': '/'})
+        r = self.http_pool.get_url('/redirect',
+                                   fields={'target': '/'})
         self.assertEquals(r.status, 200)
         self.assertEquals(r.data, 'Dummy server!')
 
     def test_maxretry(self):
         try:
-            r = self.http_pool.get_url('/redirect', fields={'target': '/'}, retries=0)
+            r = self.http_pool.get_url('/redirect',
+                                       fields={'target': '/'},
+                                       retries=0)
             self.fail("Failed to raise MaxRetryError exception")
         except MaxRetryError, e:
             pass
@@ -137,24 +154,29 @@ class TestConnectionPool(unittest.TestCase):
 
     def test_post_with_urlencode(self):
         data = {'banana': 'hammock', 'lol': 'cat'}
-        r = self.http_pool.post_url('/echo', fields=data, encode_multipart=False)
+        r = self.http_pool.post_url('/echo',
+                                    fields=data,
+                                    encode_multipart=False)
         self.assertEquals(r.data, urllib.urlencode(data))
 
     def test_post_with_multipart(self):
         data = {'banana': 'hammock', 'lol': 'cat'}
-        r = self.http_pool.post_url('/echo', fields=data, encode_multipart=True)
+        r = self.http_pool.post_url('/echo',
+                                    fields=data,
+                                    encode_multipart=True)
         body = r.data.split('\r\n')
 
         encoded_data = encode_multipart_formdata(data)[0]
         expected_body = encoded_data.split('\r\n')
 
-        # TODO: Get rid of extra parsing stuff when you can specify 
+        # TODO: Get rid of extra parsing stuff when you can specify
         # a custom boundary to encode_multipart_formdata
         """
-        We need to loop the return lines because a timestamp is attached from within
-        encode_multipart_formdata.  When the server echos back the data, it has the 
-        timestamp from when the data was encoded, which is not equivalent to when we
-        run encode_multipart_formdata on the data again.
+        We need to loop the return lines because a timestamp is attached
+        from within encode_multipart_formdata. When the server echos back
+        the data, it has the timestamp from when the data was encoded, which
+        is not equivalent to when we run encode_multipart_formdata on
+        the data again.
         """
         for i, line in enumerate(body):
             if line.startswith('--'):
@@ -163,12 +185,14 @@ class TestConnectionPool(unittest.TestCase):
             self.assertEquals(body[i], expected_body[i])
 
     def test_check_gzip(self):
-        r = self.http_pool.get_url('/encodingrequest', headers = { 'accept-encoding' : 'gzip' } )
+        r = self.http_pool.get_url('/encodingrequest',
+                                   headers={'accept-encoding': 'gzip'})
         self.assertEqual(r.headers.get('content-encoding'), 'gzip')
         self.assertEqual(r.data, 'hello, world!')
 
     def test_check_deflate(self):
-        r = self.http_pool.get_url('/encodingrequest', headers = { 'accept-encoding' : 'deflate' } )
+        r = self.http_pool.get_url('/encodingrequest',
+                                   headers={'accept-encoding': 'deflate'})
         self.assertEqual(r.headers.get('content-encoding'), 'deflate')
         self.assertEqual(r.data, 'hello, world!')
 
