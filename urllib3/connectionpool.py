@@ -1,21 +1,28 @@
 import gzip
+import zlib
 import logging
 import socket
+
+
+from urllib import urlencode
+from httplib import HTTPConnection, HTTPSConnection, HTTPException
+from Queue import Queue, Empty, Full
+from select import select
+from socket import error as SocketError, timeout as SocketTimeout
+
+
 try:
     import ssl
+    BaseSSLError = ssl.SSLError
 except ImportError, e:
     ssl = None
-import zlib
+    BaseSSLError = None
 
 try:
     from cStringIO import StringIO
 except ImportError, e:
     from StringIO import StringIO
-from httplib import HTTPConnection, HTTPSConnection, HTTPException
-from Queue import Queue, Empty, Full
-from select import select
-from socket import error as SocketError, timeout as SocketTimeout
-from urllib import urlencode
+
 
 from filepost import encode_multipart_formdata
 
@@ -326,7 +333,7 @@ class HTTPConnectionPool(object):
             raise TimeoutError("Request timed out after %f seconds" %
                                self.timeout)
 
-        except (ssl.SSLError), e:
+        except (BaseSSLError), e:
             # SSL certificate error
             raise SSLError(e)
 
