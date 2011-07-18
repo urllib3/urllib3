@@ -27,3 +27,6 @@
 
 * Non-multipart encoding for POST requests
   * btoconnor <brian@btoconnor.net>
+
+* Code review and PEP8 compliance fixes.
+  * p.dobrogost <http://code.google.com/u/@WBRSRlBZDhBFXQB6/>
