@@ -52,6 +52,7 @@ class TestConnectionPool(unittest.TestCase):
             self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
 
     def test_get_connection(self):
+        # TODO: Rewrite this test somehow to use dummy_server instead of an external service.
         from time import sleep
 
         pool = HTTPConnectionPool(host='www.apache.org',
@@ -61,9 +62,9 @@ class TestConnectionPool(unittest.TestCase):
         response = pool.get_url('/',
                                 retries=0,
                                 headers={"Connection": "keep-alive",
-                                         "Keep-alive": "5"})
+                                         "Keep-alive": "0.5"})
 
-        sleep(6)
+        sleep(1)
         # by now, the connection should have dropped, making
         # this fail without the patch:
         response = pool.get_url('/',
