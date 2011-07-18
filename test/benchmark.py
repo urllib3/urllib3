@@ -45,7 +45,7 @@ def urllib_get(url_list):
 
 def pool_get(url_list):
     assert url_list
-    pool = HTTPConnectionPool.from_url(url_list[0])
+    pool = urllib3.connection_from_url(url_list[0])
     for url in url_list:
         now = time.time()
         r = pool.get_url(url)
