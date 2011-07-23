@@ -54,23 +54,27 @@ class TestConnectionPool(unittest.TestCase):
     def test_get_connection(self):
         # TODO: Rewrite this test somehow to use dummy_server instead of an external service.
         from time import sleep
+        
+        # timeout returned by www.apache.org server in keep-alive header
+        WWW_APACHE_ORG_KEEP_ALIVE_TIMEOUT = 5
 
         pool = HTTPConnectionPool(host='www.apache.org',
                                   maxsize=1,
                                   timeout=3.0)
 
-        response = pool.get_url('/',
-                                retries=0,
-                                headers={"Connection": "keep-alive",
-                                         "Keep-alive": "0.5"})
+        r = pool.get_url('/',
+                         retries=0,
+                         headers={"Connection": "keep-alive"})
+        self.assertEqual(r.status, 200, r.data)        
 
-        sleep(1)
+        sleep(WWW_APACHE_ORG_KEEP_ALIVE_TIMEOUT)
+
         # by now, the connection should have dropped, making
-        # this fail without the patch:
-        response = pool.get_url('/',
-                                retries=0,
-                                headers={"Connection": "keep-alive",
-                                         "Keep-alive": "1"})
+        # this fail without recycling closed HTTPConnections
+        r = pool.get_url('/',
+                         retries=0,
+                         headers={"Connection": "keep-alive"})
+        self.assertEqual(r.status, 200, r.data)
 
     def test_make_headers(self):
         self.assertEqual(
