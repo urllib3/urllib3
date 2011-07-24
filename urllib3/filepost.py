@@ -1,10 +1,11 @@
 import codecs
 import mimetools
 import mimetypes
+
 try:
     from cStringIO import StringIO
-except:
-    from StringIO import StringIO
+except ImportError:
+    from StringIO import StringIO # pylint: disable-msg=W0404
 
 
 writer = codecs.lookup('utf-8')[3]

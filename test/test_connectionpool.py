@@ -1,6 +1,8 @@
 import sys
 import unittest
 
+from time import sleep
+
 sys.path.append('../')
 from urllib3.connectionpool import (
     connection_from_url,
@@ -53,7 +55,6 @@ class TestConnectionPool(unittest.TestCase):
 
     def test_get_connection(self):
         # TODO: Rewrite this test somehow to use dummy_server instead of an external service.
-        from time import sleep
         
         # timeout returned by www.apache.org server in keep-alive header
         WWW_APACHE_ORG_KEEP_ALIVE_TIMEOUT = 5

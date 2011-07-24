@@ -11,7 +11,8 @@ import zlib
 from cgi import FieldStorage
 from StringIO import StringIO
 from webob import Request, Response, exc
-
+from wsgiref import simple_server
+    
 
 class TestingApp(object):
     """
@@ -29,7 +30,7 @@ class TestingApp(object):
         resp = method(req)
         return resp(environ, start_response)
 
-    def index(self, request):
+    def index(self, _request):
         "Render simple message"
         return Response("Dummy server!")
 
@@ -46,20 +47,20 @@ class TestingApp(object):
         param = request.params.get('upload_param', 'myfile')
         filename = request.params.get('upload_filename', '')
         size = int(request.params.get('upload_size', '0'))
-        file = request.params.get(param)
+        file_ = request.params.get(param)
 
-        if not isinstance(file, FieldStorage):
+        if not isinstance(file_, FieldStorage):
             return Response("'%s' is not a file: %r" %
-                            (param, file), status='400')
+                            (param, file_), status='400')
 
-        data = file.value
+        data = file_.value
         if int(size) != len(data):
             return Response("Wrong size: %d != %d" %
                             (size, len(data)), status='400')
 
-        if filename != file.filename:
+        if filename != file_.filename:
             return Response("Wrong filename: %s != %s" %
-                            (filename, file.filename), status='400')
+                            (filename, file_.filename), status='400')
 
         return Response()
 
@@ -94,9 +95,9 @@ class TestingApp(object):
         headers = {}
         if 'gzip' in encoding:
             headers = {'Content-Encoding': 'gzip'}
-            file = StringIO()
-            gzip.GzipFile('', mode='w', fileobj=file).write(data)
-            data = file.getvalue()
+            file_ = StringIO()
+            gzip.GzipFile('', mode='w', fileobj=file_).write(data)
+            data = file_.getvalue()
         elif 'deflate' in encoding:
             headers = {'Content-Encoding': 'deflate'}
             data = zlib.compress(data)
@@ -105,10 +106,9 @@ class TestingApp(object):
 
 def make_server(HOST="localhost", PORT=8081):
     app = TestingApp()
-    from wsgiref.simple_server import make_server
 
     print 'Creating server on http://%s:%s' % (HOST, PORT)
-    return make_server(HOST, PORT, app)
+    return simple_server.make_server(HOST, PORT, app)
 
 
 if __name__ == '__main__':

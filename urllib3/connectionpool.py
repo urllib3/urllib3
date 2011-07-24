@@ -14,14 +14,14 @@ from socket import error as SocketError, timeout as SocketTimeout
 try:
     import ssl
     BaseSSLError = ssl.SSLError
-except ImportError, e:
+except ImportError:
     ssl = None
     BaseSSLError = None
 
 try:
     from cStringIO import StringIO
-except ImportError, e:
-    from StringIO import StringIO
+except ImportError:
+    from StringIO import StringIO # pylint: disable-msg=W0404
 
 
 from filepost import encode_multipart_formdata
@@ -97,7 +97,7 @@ class HTTPResponse(object):
                           "decompressing with zlib.")
                 try:
                     data = zlib.decompress(tmp_data)
-                except zlib.error, e:
+                except zlib.error:
                     data = zlib.decompress(tmp_data, -zlib.MAX_WBITS)
             else:
                 data = tmp_data
@@ -130,8 +130,13 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     SSL certification.
     """
 
-    def set_cert(self, key_file=None, cert_file=None, cert_reqs='CERT_NONE',
-                 ca_certs=None):
+    def __init__(self):
+        HTTPSConnection.__init__()        
+        self.cert_reqs = None
+        self.ca_certs = None
+    
+    def set_cert(self, key_file=None, cert_file=None,
+                 cert_reqs='CERT_NONE', ca_certs=None):
         ssl_req_scheme = {
             'CERT_NONE': ssl.CERT_NONE,
             'CERT_OPTIONAL': ssl.CERT_OPTIONAL,
@@ -208,7 +213,8 @@ class HTTPConnectionPool(object):
         self.headers = headers or {}
 
         # Fill the queue up so that doing get() on it will block properly
-        [self.pool.put(None) for i in xrange(maxsize)]
+        for _ in xrange(maxsize):
+            self.pool.put(None)
 
         self.num_connections = 0
         self.num_requests = 0
@@ -238,7 +244,7 @@ class HTTPConnectionPool(object):
                             "connection, resetting: %s" % self.host)
                 conn.close()
 
-        except Empty, e:
+        except Empty:
             pass  # Oh well, we'll create a new connection then
 
         return conn or self._new_conn()
@@ -252,7 +258,7 @@ class HTTPConnectionPool(object):
         """
         try:
             self.pool.put(conn, block=False)
-        except Full, e:
+        except Full:
             # This should never happen if self.block == True
             log.warning("HttpConnectionPool is full, discarding connection: %s"
                         % self.host)
@@ -317,7 +323,8 @@ class HTTPConnectionPool(object):
             conn.sock.settimeout(self.timeout)
             httplib_response = conn.getresponse()
             log.debug("\"%s %s %s\" %s %s" %
-                      (method, url, conn._http_vsn_str,
+                      (method, url,
+                       conn._http_vsn_str, # pylint: disable-msg=W0212
                        httplib_response.status, httplib_response.length))
 
             # from_httplib will perform httplib_response.read() which will have
@@ -417,27 +424,19 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     scheme = 'https'
 
-    def __init__(self, host, port=None, strict=False, timeout=None, maxsize=1,
-                 block=False, headers=None, key_file=None,
-                 cert_file=None, cert_reqs='CERT_NONE', ca_certs=None):
-        self.host = host
-        self.port = port
-        self.strict = strict
-        self.timeout = timeout
-        self.pool = Queue(maxsize)
-        self.block = block
-        self.headers = headers or {}
-
+    def __init__(self, host, port=None,
+                 strict=False, timeout=None, maxsize=1,
+                 block=False, headers=None,
+                 key_file=None, cert_file=None,
+                 cert_reqs='CERT_NONE', ca_certs=None):
+        
+        super(HTTPSConnectionPool, self).__init__(self, host, port,
+                                                  strict, timeout, maxsize,
+                                                  block, headers)
         self.key_file = key_file
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
         self.ca_certs = ca_certs
-
-        # Fill the queue up so that doing get() on it will block properly
-        [self.pool.put(None) for i in xrange(maxsize)]
-
-        self.num_connections = 0
-        self.num_requests = 0
 
     def _new_conn(self):
         """
@@ -520,7 +519,7 @@ def get_host(url):
     if '//' in url:
         scheme, url = url.split('://', 1)
     if '/' in url:
-        url, path = url.split('/', 1)
+        url, _path = url.split('/', 1)
     if ':' in url:
         url, port = url.split(':', 1)
         port = int(port)

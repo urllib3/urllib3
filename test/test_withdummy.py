@@ -95,10 +95,10 @@ class TestConnectionPool(unittest.TestCase):
     def test_timeout(self):
         pool = HTTPConnectionPool(HOST, PORT, timeout=0.01)
         try:
-            r = pool.get_url('/sleep',
-                             fields={'seconds': '0.02'})
+            pool.get_url('/sleep',
+                         fields={'seconds': '0.02'})
             self.fail("Failed to raise TimeoutError exception")
-        except TimeoutError, e:
+        except TimeoutError:
             pass
 
     def test_redirect(self):
@@ -114,11 +114,11 @@ class TestConnectionPool(unittest.TestCase):
 
     def test_maxretry(self):
         try:
-            r = self.http_pool.get_url('/redirect',
-                                       fields={'target': '/'},
-                                       retries=0)
+            self.http_pool.get_url('/redirect',
+                                   fields={'target': '/'},
+                                   retries=0)
             self.fail("Failed to raise MaxRetryError exception")
-        except MaxRetryError, e:
+        except MaxRetryError:
             pass
 
     def test_keepalive(self):
@@ -132,6 +132,7 @@ class TestConnectionPool(unittest.TestCase):
 
         # We grab the HTTPConnection object straight from the Queue,
         # because _get_conn() is where the check & reset occurs
+        # pylint: disable-msg=W0212
         conn = self.http_pool.pool.get()
         self.assertEqual(conn.sock, None)
         self.http_pool._put_conn(conn)
