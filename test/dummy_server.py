@@ -5,6 +5,8 @@ Dummy server used for unit testing
 """
 
 import gzip
+import logging
+import sys
 import time
 import zlib
 
@@ -12,7 +14,7 @@ from cgi import FieldStorage
 from StringIO import StringIO
 from webob import Request, Response, exc
 from wsgiref import simple_server
-    
+
 
 class TestingApp(object):
     """
@@ -107,20 +109,23 @@ class TestingApp(object):
 def make_server(HOST="localhost", PORT=8081):
     app = TestingApp()
 
-    print 'Creating server on http://%s:%s' % (HOST, PORT)
+    log.info('Creating server on http://%s:%s' % (HOST, PORT))
     return simple_server.make_server(HOST, PORT, app)
 
 
 if __name__ == '__main__':
+
+    log = logging.getLogger(__name__)
+    log.setLevel(logging.DEBUG)
+    log.addHandler(logging.StreamHandler(sys.stderr))
+
     if __debug__:
         # BaseHTTPServer raises an assertion error with __debug__
         # enabled when responding with a "Connection" header
-        from sys import argv
-        print "The Keep-alive test will fail because __debug__ is active!"
-        print ""
-        print "To properly test keep-alive, re-run in optimized mode:"
-        print ""
-        print "  $ python -O %s" % argv[0]
-        print ""
+        log.warning("The Keep-alive test will fail because"
+                    " __debug__ is active!")
+        log.warning("To properly test keep-alive, re-run in optimized mode:\n")
+        log.warning("  $ python -O %s" % sys.argv[0])
+
     httpd = make_server()
     httpd.serve_forever()
