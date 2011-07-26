@@ -16,6 +16,18 @@ from webob import Request, Response, exc
 from wsgiref import simple_server
 
 
+class TestRequestHandler(simple_server.WSGIRequestHandler):
+    def log_request(self, code='-', size='-'):  # pylint: disable-msg=W0622
+        """
+        We don't want BaseHTTPServer to clutter output by logging our
+        helper requests.
+        """
+        if "/set_up" in self.requestline:
+            return
+        else:
+            simple_server.WSGIRequestHandler.log_request(self, code, size)
+
+
 class TestingApp(object):
     """
     Simple app that performs various operations, useful for testing an HTTP
@@ -35,6 +47,15 @@ class TestingApp(object):
     def index(self, _request):
         "Render simple message"
         return Response("Dummy server!")
+
+    def set_up(self, request):
+        test_type = request.params.get('test_type')
+        test_id = request.params.get('test_id')
+        if test_id:
+            print '\nNew test %s: %s' % (test_type, test_id)
+        else:
+            print '\nNew test %s' % test_type
+        return Response("Dummy server is ready!")
 
     def specific_method(self, request):
         "Confirm that the request matches the desired method type"
@@ -110,7 +131,8 @@ def make_server(HOST="localhost", PORT=8081):
     app = TestingApp()
 
     log.info('Creating server on http://%s:%s' % (HOST, PORT))
-    return simple_server.make_server(HOST, PORT, app)
+    return simple_server.make_server(HOST, PORT,
+                                     app, handler_class=TestRequestHandler)
 
 
 if __name__ == '__main__':

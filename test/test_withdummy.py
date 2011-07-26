@@ -21,12 +21,14 @@ log.addHandler(logging.StreamHandler(sys.stdout))
 class TestConnectionPool(unittest.TestCase):
 
     @staticmethod
-    def _setUp():     
+    def _setUp(test_id, test_type):
         # Create connection pool and test for dummy server...
         http_pool = HTTPConnectionPool(HOST, PORT)
         try:
-            r = http_pool.get_url('/', retries=1)
-            if r.data != "Dummy server!":
+            r = http_pool.get_url('/set_up', retries=1,
+                                  fields={'test_id': test_id,
+                                          'test_type': test_type})
+            if r.data != "Dummy server is ready!":
                 raise Exception("Got unexpected response: %s" % r.data)
             return http_pool
         except Exception, e:
@@ -35,10 +37,10 @@ class TestConnectionPool(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls._setUp()
-        
-    def setUp(self):     
-        self.http_pool = self._setUp()
+        cls._setUp(cls.__name__, test_type='suite')
+
+    def setUp(self):
+        self.http_pool = self._setUp(self.id(), test_type='case')
 
     def test_get_url(self):
         r = self.http_pool.get_url('/specific_method',
@@ -204,6 +206,7 @@ class TestConnectionPool(unittest.TestCase):
                                    headers={'accept-encoding': 'deflate'})
         self.assertEqual(r.headers.get('content-encoding'), 'deflate')
         self.assertEqual(r.data, 'hello, world!')
+
 
 if __name__ == '__main__':
     unittest.main()
