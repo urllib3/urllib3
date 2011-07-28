@@ -240,8 +240,8 @@ class HTTPConnectionPool(object):
             # If this is a persistent connection, check if it got disconnected
             if conn and conn.sock and select([conn.sock], [], [], 0.0)[0]:
                 # Either data is buffered (bad), or the connection is dropped.
-                log.warning("Connection pool detected dropped "
-                            "connection, resetting: %s" % self.host)
+                log.info("Connection pool detected dropped "
+                         "connection, resetting: %s" % self.host)
                 conn.close()
 
         except Empty:
