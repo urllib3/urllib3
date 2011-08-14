@@ -108,11 +108,11 @@ class TestingApp(object):
         return Response()
 
     def echo(self, request):
-        """Echo back the params"""
+        "Echo back the params"
         return Response("%s" % request.body)
 
     def encodingrequest(self, request):
-        "Check for UA accepting gzip/defkate encoding"
+        "Check for UA accepting gzip/deflate encoding"
         data = "hello, world!"
         encoding = request.headers.get('Accept-Encoding', '')
         headers = {}
