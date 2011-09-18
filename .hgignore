@@ -1,8 +1,7 @@
 syntax: glob
-*.pyc
 .*
-*.pidaproject
-*.db
+*.pyc
+*.egg-info
 *.log
 dist
 build
