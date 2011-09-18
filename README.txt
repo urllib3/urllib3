@@ -1,13 +1,13 @@
 Highlights
 ==========
 
- * Re-use the same socket connection for multiple requests
+- Re-use the same socket connection for multiple requests
    (``HTTPConnectionPool`` and ``HTTPSConnectionPool``) (with client-side certificates)
- * File posting (``encode_multipart_formdata``)
- * Built-in redirection and retries (optional)
- * Supports gzip and deflate (big thanks to niphlod)
- * Thread-safe
- * Small and easy to understand codebase perfect for extending and building upon. For a more comprehensive alternative, have a look at `httplib2 <http://code.google.com/p/httplib2/>`_.
+- File posting (``encode_multipart_formdata``)
+- Built-in redirection and retries (optional)
+- Supports gzip and deflate (big thanks to niphlod)
+- Thread-safe
+- Small and easy to understand codebase perfect for extending and building upon. For a more comprehensive alternative, have a look at `httplib2 <http://code.google.com/p/httplib2/>`_.
 
 What's wrong with urllib and urllib2?
 =====================================
@@ -37,11 +37,11 @@ uses 15 connections).
 
 This library is perfect for:
 
- * Talking to an API
- * Crawling a website
- * Any situation where being able to post files, handle redirection, and
-   retrying is useful. It's relatively lightweight, so it can be used for
-   anything!
+- Talking to an API
+- Crawling a website
+- Any situation where being able to post files, handle redirection, and
+  retrying is useful. It's relatively lightweight, so it can be used for
+  anything!
 
 Examples
 ========
@@ -66,7 +66,7 @@ Run the tests
 =============
 
 First we need to install ``nose`` and ``webob``, then add the
-source directory to your PYTHONPATH, then run ``nosetests``::
+source directory to your PYTHONPATH, then run ``nosetests``. ::
 
   $ pip install nose webob
   $ cd patch/to/urllib3
@@ -74,7 +74,7 @@ source directory to your PYTHONPATH, then run ``nosetests``::
   $ nosetests
   ...........E
 
-Some tests require the ``dummy_server.py`` running to pass::
+Some tests require the ``dummy_server.py`` running to pass. ::
 
   $ python -O test/dummy_server.py
   $ nosetests
@@ -85,9 +85,9 @@ Success!
 Contributing
 ============
 
- * Open an issue to start a discussion around a feature or a bug.
- * Write a fix, attach a patch to the issue.
- * Write a test which shows that the bug was fixed or that the feature works
-   as expected. Attach patch for the test to the issue.
- * Bug the author until it gets merged and published. :) Make sure to include
-   what information you want added to the ``CONTRIBUTORS.txt`` if any.
+- Open an issue to start a discussion around a feature or a bug.
+- Write a fix, attach a patch to the issue.
+- Write a test which shows that the bug was fixed or that the feature works
+  as expected. Attach patch for the test to the issue.
+- Bug the author until it gets merged and published. :) Make sure to include
+  what information you want added to the ``CONTRIBUTORS.txt`` if any.
