@@ -2,7 +2,7 @@ Highlights
 ==========
 
 - Re-use the same socket connection for multiple requests
-   (``HTTPConnectionPool`` and ``HTTPSConnectionPool``) (with client-side certificates)
+  (``HTTPConnectionPool`` and ``HTTPSConnectionPool``) (with client-side certificates)
 - File posting (``encode_multipart_formdata``)
 - Built-in redirection and retries (optional)
 - Supports gzip and deflate (big thanks to niphlod)
