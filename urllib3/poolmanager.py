@@ -19,9 +19,8 @@ class PriorityEntry(object):
         self.key = key
         self.is_valid = is_valid
 
-    def __iter__(self):
-        for v in [self.priority, self.key, self.is_valid]:
-            yield v
+    def __cmp__(self, other):
+        return self.priority - other.priority
 
 
 class RecentlyUsedContainer(MutableMapping):
@@ -29,8 +28,17 @@ class RecentlyUsedContainer(MutableMapping):
     Provides a dict-like that maintains up to ``maxsize`` keys while throwing
     away the least-recently-used keys beyond ``maxsize``.
 
-    Excess keys are cleaned out every time a new key is set.
+    The weakness of this datastructure is if few keys infinitely contend for the
+    top most-accessed spots and at least one key remains within the maxsize
+    limit but is never accessed.
     """
+
+    # TODO: Make this threadsafe.
+
+    # If len(self.priority_heap) exceeds self.maxsize * CLEANUP_FACTOR, then we
+    # will attempt to cleanup some of the heap's invalidated entries during the
+    # next 'get' operation.
+    CLEANUP_FACTOR = 10
 
     def __init__(self, maxsize=10):
         self.maxsize = maxsize
@@ -58,6 +66,28 @@ class RecentlyUsedContainer(MutableMapping):
         self.priority_lookup[key] = new_entry
         heappush(self.priority_heap, new_entry)
 
+    def _prune_entries(self, num):
+        while num > 0:
+            p = heappop(self.priority_heap)
+
+            if not p.is_valid:
+                continue # Invalidated entry, skip
+
+            del self._container[p.key]
+            del self.priority_lookup[p.key]
+            num -= 1
+
+    def _prune_invalidated_entries(self):
+        "Rebuild our priority_heap without the invalidated entries."
+        new_heap = []
+        while self.priority_heap:
+            p = heappop(self.priority_heap)
+
+            if p.is_valid:
+                heappush(new_heap, p)
+
+        self.priority_heap = new_heap
+
     def __getitem__(self, key):
         item = self._container.get(key)
 
@@ -70,6 +100,11 @@ class RecentlyUsedContainer(MutableMapping):
         # Insert new entry with new high priority
         self._push_entry(key)
 
+        if len(self.priority_heap) > self.maxsize * self.CLEANUP_FACTOR:
+            # Heap is getting too big, try to clean up any tailing invalidated
+            # entries.
+            self._prune_invalidated_entries()
+
         return item
 
     def __setitem__(self, key, item):
@@ -78,19 +113,9 @@ class RecentlyUsedContainer(MutableMapping):
         self._container[key] = item
         self._push_entry(key)
 
-        excess_entries = len(self.priority_heap) - self.maxsize
-        if excess_entries < 1:
-            return
+        # Discard invalid and excess entries
+        self._prune_entries(len(self._container) - self.maxsize)
 
-        # Discard old entries
-        for _ in xrange(excess_entries):
-            _, key, is_valid = heappop(self.priority_heap)
-
-            if not is_valid:
-                continue # Invalidated entry, skip
-
-            del self._container[key]
-            del self.priority_lookup[key]
 
     def __delitem__(self, key):
         self._invalidate_entry(key)
@@ -115,6 +140,8 @@ class PoolManager(object):
     num_pools
         Number of connection pools to cache before discarding the least recently
         used pool.
+
+    Additional parameters are used to create fresh ConnectionPool instances.
 
     """
 

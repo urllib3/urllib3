@@ -161,7 +161,12 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
 ## Pool objects
 
-class HTTPConnectionPool(object):
+class ConnectionPool(object):
+    # TODO: Move more shared logic into this base class.
+    pass
+
+
+class HTTPConnectionPool(ConnectionPool):
     """
     Thread-safe connection pool for one host.
 
@@ -429,8 +434,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  block=False, headers=None,
                  key_file=None, cert_file=None,
                  cert_reqs='CERT_NONE', ca_certs=None):
-        
-        super(HTTPSConnectionPool, self).__init__(self, host, port,
+
+        super(HTTPSConnectionPool, self).__init__(host, port,
                                                   strict, timeout, maxsize,
                                                   block, headers)
         self.key_file = key_file
