@@ -33,7 +33,8 @@ class RecentlyUsedContainer(MutableMapping):
     limit but is never accessed.
     """
 
-    # TODO: Make this threadsafe.
+    # TODO: Make this threadsafe. _prune_invalidated_entries should be the
+    # only real pain-point for this.
 
     # If len(self.priority_heap) exceeds self.maxsize * CLEANUP_FACTOR, then we
     # will attempt to cleanup some of the heap's invalidated entries during the
@@ -55,11 +56,16 @@ class RecentlyUsedContainer(MutableMapping):
         # the absolute access count for the key by inserting a new entry.
         self.priority_lookup = {}
 
-    def _invalidate_entry(self, key):
-        # Invalidate old entry
-        self.priority_lookup[key].is_valid = False
+        # Trigger a heap cleanup when we get past this size
+        self.priority_heap_limit = maxsize * self.CLEANUP_FACTOR
 
     def _push_entry(self, key):
+        # Invalidate old entry if it exists
+        old_entry = self.priority_lookup.get(key)
+        if old_entry:
+            old_entry.is_valid = False
+
+        # Roll over the priority count and make a new entry
         new_count = next(self.counter)
         new_entry = PriorityEntry(new_count, key, True)
 
@@ -94,13 +100,11 @@ class RecentlyUsedContainer(MutableMapping):
         if not item:
             return
 
-        # Invalidate old entry
-        self._invalidate_entry(key)
-
-        # Insert new entry with new high priority
+        # Insert new entry with new high priority, also implicitly invalidates
+        # the old entry.
         self._push_entry(key)
 
-        if len(self.priority_heap) > self.maxsize * self.CLEANUP_FACTOR:
+        if len(self.priority_heap) > self.priority_heap_limit:
             # Heap is getting too big, try to clean up any tailing invalidated
             # entries.
             self._prune_invalidated_entries()
@@ -169,7 +173,10 @@ class PoolManager(object):
         if pool:
             return pool
 
-        pool = pool_classes_by_scheme[scheme](host, port, **self.connection_pool_kw)
+        # Make a fresh ConnectionPool of the desired type
+        pool_cls = pool_classes_by_scheme[scheme]
+        pool = pool_cls(host, port, **self.connection_pool_kw)
+
         self.pools[pool_key] = pool
 
         return pool

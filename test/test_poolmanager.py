@@ -54,6 +54,18 @@ class TestLRUContainer(unittest.TestCase):
 
         self.assertTrue(len(d.priority_heap) <= d.CLEANUP_FACTOR * d.maxsize)
 
+    def test_same_key(self):
+        d = Container(5)
+
+        for i in xrange(10):
+            d['foo'] = i
+
+        self.assertEqual(d.keys(), ['foo'])
+
+        d._prune_invalidated_entries()
+
+        self.assertEqual(len(d.priority_heap), 1)
+
 
 class TestPoolManager(unittest.TestCase):
     def test_same_url(self):
