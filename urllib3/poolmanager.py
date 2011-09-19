@@ -11,7 +11,17 @@ pool_classes_by_scheme = {
 }
 
 
-PriorityEntry = namedtuple('PriorityEntry', ['priority', 'key', 'is_valid'])
+class PriorityEntry(object):
+    __slots__ = ['priority', 'key', 'is_valid']
+
+    def __init__(self, priority, key, is_valid=True):
+        self.priority = priority
+        self.key = key
+        self.is_valid = is_valid
+
+    def __iter__(self):
+        for v in [self.priority, self.key, self.is_valid]:
+            yield v
 
 
 class RecentlyUsedContainer(MutableMapping):
@@ -42,7 +52,7 @@ class RecentlyUsedContainer(MutableMapping):
         self.priority_lookup[key].is_valid = False
 
     def _push_entry(self, key):
-        new_count = self.counter()
+        new_count = next(self.counter)
         new_entry = PriorityEntry(new_count, key, True)
 
         self.priority_lookup[key] = new_entry
@@ -68,7 +78,7 @@ class RecentlyUsedContainer(MutableMapping):
         self._container[key] = item
         self._push_entry(key)
 
-        excess_entries = self.max_size - len(self.priorty_heap)
+        excess_entries = len(self.priority_heap) - self.maxsize
         if excess_entries < 1:
             return
 
@@ -80,7 +90,7 @@ class RecentlyUsedContainer(MutableMapping):
                 continue # Invalidated entry, skip
 
             del self._container[key]
-            del self._priority_lookup[key]
+            del self.priority_lookup[key]
 
     def __delitem__(self, key):
         self._invalidate_entry(key)
@@ -88,10 +98,10 @@ class RecentlyUsedContainer(MutableMapping):
         del self._priority_lookup[key]
 
     def __len__(self):
-        return len(self.count_heap)
+        return len(self.priority_heap)
 
     def __iter__(self):
-        return self._container.__iter()
+        return self._container.__iter__()
 
     def __contains__(self, key):
         return self._container.__contains__(key)
