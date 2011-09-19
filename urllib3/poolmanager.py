@@ -1,6 +1,6 @@
 from heapq import heappop, heappush
 from itertools import count
-from collections import MutableMapping, namedtuple
+from collections import MutableMapping
 
 from connectionpool import HTTPConnectionPool, HTTPSConnectionPool, get_host
 
