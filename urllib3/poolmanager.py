@@ -60,6 +60,7 @@ class RecentlyUsedContainer(MutableMapping):
         self.priority_heap_limit = maxsize * self.CLEANUP_FACTOR
 
     def _push_entry(self, key):
+        "Push entry onto our priority heap, invalidate the old entry if exists."
         # Invalidate old entry if it exists
         old_entry = self.priority_lookup.get(key)
         if old_entry:
@@ -73,6 +74,7 @@ class RecentlyUsedContainer(MutableMapping):
         heappush(self.priority_heap, new_entry)
 
     def _prune_entries(self, num):
+        "Pop entries from our priority heap until we popped ``num`` valid ones."
         while num > 0:
             p = heappop(self.priority_heap)
 
@@ -112,7 +114,6 @@ class RecentlyUsedContainer(MutableMapping):
         return item
 
     def __setitem__(self, key, item):
-        # TODO: Make sure behaviour is correct when setting an existing key.
         # Add item to our container and priority heap
         self._container[key] = item
         self._push_entry(key)
