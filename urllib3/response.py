@@ -36,10 +36,10 @@ class HTTPResponse(object):
 
     Extra parameters for behaviour not present in httplib.HTTPResponse:
 
-    preload_body
+    preload_content
         If True, the response's body will be preloaded during construction.
 
-    skip_decode
+    decode_content
         If True, attempts to decode specific content-encoding's based on headers
         (like 'gzip' and 'deflate') will be skipped and raw data will be used
         instead.
@@ -56,7 +56,7 @@ class HTTPResponse(object):
     }
 
     def __init__(self, body='', headers=None, status=0, version=0, reason=None,
-                 strict=0, preload_body=True, skip_decode=False,
+                 strict=0, preload_content=True, decode_content=True,
                  original_response=None):
         self.headers = headers or {}
         self.status = status
@@ -64,7 +64,7 @@ class HTTPResponse(object):
         self.reason = reason
         self.strict = strict
 
-        self._skip_decode = skip_decode
+        self._decode_content = decode_content
         self._body = None
         self._fp = None
         self._original_response = original_response
@@ -72,8 +72,8 @@ class HTTPResponse(object):
         if hasattr(body, 'read'):
             self._fp = body
 
-        if preload_body:
-            self._body = self.read()
+        if preload_content:
+            self._body = self.read(decode_content=decode_content)
 
     @property
     def data(self):
@@ -85,16 +85,16 @@ class HTTPResponse(object):
             return self.read()
 
 
-    def read(self, amt=None, decode_body=True, cache_body=True):
+    def read(self, amt=None, decode_content=True, cache_content=True):
         """
         Similar to ``httplib.HTTPResponse.read(amt=None)`` but adds two more
         behaviours:
 
-        decode_body
+        decode_content
             If True, will attempt to decode the body based on the
             'content-encoding' header.
 
-        cache_body
+        cache_content
             If True, will save the returned data such that the same result is
             returned despite of the state of the underlying file object. This
             is useful if you want the ``.data`` property to continue working
@@ -106,8 +106,8 @@ class HTTPResponse(object):
 
         data = self._fp and self._fp.read(amt)
 
-        if not decode_body or not decoder:
-            if cache_body:
+        if not decode_content or not decoder:
+            if cache_content:
                 self._body = data
 
             return data
@@ -118,13 +118,13 @@ class HTTPResponse(object):
             raise HTTPError("Received response with content-encoding: %s, but "
                             "failed to decode it." % content_encoding)
 
-        if cache_body:
+        if cache_content:
             self._body = data
 
         return data
 
     @staticmethod
-    def from_httplib(r, preload_body=True, skip_decode=False):
+    def from_httplib(r, **response_kw):
         """
         Given an httplib.HTTPResponse instance ``r``, return a corresponding
         urllib3.HTTPResponse object.
@@ -134,14 +134,13 @@ class HTTPResponse(object):
         """
 
         return HTTPResponse(body=r,
-                    headers=dict(r.getheaders()),
-                    status=r.status,
-                    version=r.version,
-                    reason=r.reason,
-                    strict=r.strict,
-                    preload_body=preload_body,
-                    skip_decode=skip_decode,
-                    original_response=r)
+                            headers=dict(r.getheaders()),
+                            status=r.status,
+                            version=r.version,
+                            reason=r.reason,
+                            strict=r.strict,
+                            original_response=r,
+                            **response_kw)
 
     # Backwards-compatibility methods for httplib.HTTPResponse
     def getheaders(self):
