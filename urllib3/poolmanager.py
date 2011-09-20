@@ -84,6 +84,10 @@ class RecentlyUsedContainer(MutableMapping):
         "Rebuild our access_log without the invalidated entries."
         self.access_log = deque(e for e in self.access_log if e.is_valid)
 
+    def _get_ordered_access_keys(self):
+        # Used for testing
+        return [e.key for e in self.access_log if e.is_valid]
+
     def __getitem__(self, key):
         item = self._container.get(key)
 

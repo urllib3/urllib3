@@ -65,6 +65,21 @@ class TestLRUContainer(unittest.TestCase):
 
         self.assertEqual(len(d.access_log), 1)
 
+    def test_access_ordering(self):
+        d = Container(5)
+
+        for i in xrange(10):
+            d[i] = True
+
+        self.assertEqual(d._get_ordered_access_keys(), [9,8,7,6,5])
+
+        new_order = [7,8,6,9,5]
+        for k in reversed(new_order):
+            d[k]
+
+        self.assertEqual(d._get_ordered_access_keys(), new_order)
+
+
 
 class TestPoolManager(unittest.TestCase):
     def test_same_url(self):
