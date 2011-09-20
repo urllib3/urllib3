@@ -1,4 +1,3 @@
-from itertools import count
 from collections import MutableMapping, deque
 
 from connectionpool import HTTPConnectionPool, HTTPSConnectionPool, get_host
@@ -36,7 +35,7 @@ class RecentlyUsedContainer(MutableMapping):
     # TODO: Make this threadsafe. _prune_invalidated_entries should be the
     # only real pain-point for this.
 
-    # If len(self.access_log) exceeds self.maxsize * CLEANUP_FACTOR, then we
+    # If len(self.access_log) exceeds self._maxsize * CLEANUP_FACTOR, then we
     # will attempt to cleanup the invalidated entries in the access_log
     # datastructure during the next 'get' operation.
     CLEANUP_FACTOR = 10
@@ -83,12 +82,7 @@ class RecentlyUsedContainer(MutableMapping):
 
     def _prune_invalidated_entries(self):
         "Rebuild our access_log without the invalidated entries."
-        for _ in xrange(len(self.access_log)):
-            if self.access_log[-1].is_valid:
-                self.access_log.rotate(1)
-                continue
-
-            self.access_log.pop()
+        self.access_log = deque(e for e in self.access_log if e.is_valid)
 
     def __getitem__(self, key):
         item = self._container.get(key)
