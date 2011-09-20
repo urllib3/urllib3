@@ -1,6 +1,5 @@
-from heapq import heappop, heappush
 from itertools import count
-from collections import MutableMapping
+from collections import MutableMapping, deque
 
 from connectionpool import HTTPConnectionPool, HTTPSConnectionPool, get_host
 
@@ -16,16 +15,12 @@ port_by_scheme = {
 }
 
 
-class PriorityEntry(object):
-    __slots__ = ['priority', 'key', 'is_valid']
+class AccessEntry(object):
+    __slots__ = ('key', 'is_valid')
 
-    def __init__(self, priority, key, is_valid=True):
-        self.priority = priority
+    def __init__(self, key, is_valid=True):
         self.key = key
         self.is_valid = is_valid
-
-    def __cmp__(self, other):
-        return self.priority - other.priority
 
 
 class RecentlyUsedContainer(MutableMapping):
@@ -41,9 +36,9 @@ class RecentlyUsedContainer(MutableMapping):
     # TODO: Make this threadsafe. _prune_invalidated_entries should be the
     # only real pain-point for this.
 
-    # If len(self.priority_heap) exceeds self.maxsize * CLEANUP_FACTOR, then we
-    # will attempt to cleanup some of the heap's invalidated entries during the
-    # next 'get' operation.
+    # If len(self.access_log) exceeds self.maxsize * CLEANUP_FACTOR, then we
+    # will attempt to cleanup the invalidated entries in the access_log
+    # datastructure during the next 'get' operation.
     CLEANUP_FACTOR = 10
 
     def __init__(self, maxsize=10):
@@ -51,55 +46,49 @@ class RecentlyUsedContainer(MutableMapping):
 
         self._container = {}
 
-        # Global access counter to determine relative recency
-        self.counter = count()
+        # We use a deque to to store our keys ordered by the last access.
+        self.access_log = deque()
 
-        # We use a heap to store our keys sorted by their absolute access count
-        self.priority_heap = []
-
-        # We look up the heap entry by the key to invalidate it when we update
-        # the absolute access count for the key by inserting a new entry.
-        self.priority_lookup = {}
+        # We look up the access log entry by the key to invalidate it so we can
+        # insert a new authorative entry at the head without having to dig and
+        # find the old entry for removal immediately.
+        self.access_lookup = {}
 
         # Trigger a heap cleanup when we get past this size
-        self.priority_heap_limit = maxsize * self.CLEANUP_FACTOR
+        self.access_log_limit = maxsize * self.CLEANUP_FACTOR
 
     def _push_entry(self, key):
-        "Push entry onto our priority heap, invalidate the old entry if exists."
+        "Push entry onto our access log, invalidate the old entry if exists."
         # Invalidate old entry if it exists
-        old_entry = self.priority_lookup.get(key)
+        old_entry = self.access_lookup.get(key)
         if old_entry:
             old_entry.is_valid = False
 
-        # Roll over the priority count and make a new entry
-        new_count = next(self.counter)
-        new_entry = PriorityEntry(new_count, key, True)
+        new_entry = AccessEntry(key)
 
-        self.priority_lookup[key] = new_entry
-        heappush(self.priority_heap, new_entry)
+        self.access_lookup[key] = new_entry
+        self.access_log.appendleft(new_entry)
 
     def _prune_entries(self, num):
-        "Pop entries from our priority heap until we popped ``num`` valid ones."
+        "Pop entries from our access log until we popped ``num`` valid ones."
         while num > 0:
-            p = heappop(self.priority_heap)
+            p = self.access_log.pop()
 
             if not p.is_valid:
                 continue # Invalidated entry, skip
 
             del self._container[p.key]
-            del self.priority_lookup[p.key]
+            del self.access_lookup[p.key]
             num -= 1
 
     def _prune_invalidated_entries(self):
-        "Rebuild our priority_heap without the invalidated entries."
-        new_heap = []
-        while self.priority_heap:
-            p = heappop(self.priority_heap)
+        "Rebuild our access_log without the invalidated entries."
+        for _ in xrange(len(self.access_log)):
+            if self.access_log[-1].is_valid:
+                self.access_log.rotate(1)
+                continue
 
-            if p.is_valid:
-                heappush(new_heap, p)
-
-        self.priority_heap = new_heap
+            self.access_log.pop()
 
     def __getitem__(self, key):
         item = self._container.get(key)
@@ -111,7 +100,7 @@ class RecentlyUsedContainer(MutableMapping):
         # the old entry.
         self._push_entry(key)
 
-        if len(self.priority_heap) > self.priority_heap_limit:
+        if len(self.access_log) > self.access_log_limit:
             # Heap is getting too big, try to clean up any tailing invalidated
             # entries.
             self._prune_invalidated_entries()
@@ -119,7 +108,7 @@ class RecentlyUsedContainer(MutableMapping):
         return item
 
     def __setitem__(self, key, item):
-        # Add item to our container and priority heap
+        # Add item to our container and access log
         self._container[key] = item
         self._push_entry(key)
 
@@ -130,10 +119,10 @@ class RecentlyUsedContainer(MutableMapping):
     def __delitem__(self, key):
         self._invalidate_entry(key)
         del self._container[key]
-        del self._priority_lookup[key]
+        del self._access_lookup[key]
 
     def __len__(self):
-        return len(self.priority_heap)
+        return len(self.access_log)
 
     def __iter__(self):
         return self._container.__iter__()

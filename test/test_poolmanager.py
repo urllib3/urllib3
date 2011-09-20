@@ -33,7 +33,6 @@ class TestLRUContainer(unittest.TestCase):
             d[i] = str(i)
 
         for i in xrange(5):
-            # Push 0 to the top 5 times, create invalid priority entries, create invalid priority entries, create invalid priority entries, create invalid priority entries
             d.get(0)
 
         # Add one more entry
@@ -52,7 +51,7 @@ class TestLRUContainer(unittest.TestCase):
         for i in xrange(100):
             d.get(i % 2)
 
-        self.assertTrue(len(d.priority_heap) <= d.CLEANUP_FACTOR * d._maxsize)
+        self.assertTrue(len(d.access_log) <= d.CLEANUP_FACTOR * d._maxsize)
 
     def test_same_key(self):
         d = Container(5)
@@ -64,7 +63,7 @@ class TestLRUContainer(unittest.TestCase):
 
         d._prune_invalidated_entries()
 
-        self.assertEqual(len(d.priority_heap), 1)
+        self.assertEqual(len(d.access_log), 1)
 
 
 class TestPoolManager(unittest.TestCase):
@@ -103,7 +102,7 @@ class TestPoolManager(unittest.TestCase):
             conn = p.connection_from_url(url)
             connections.add(conn)
 
-        self.assertEqual(len(connections), 6, p.pools.keys())
+        self.assertEqual(len(connections), 5)
 
 
 
