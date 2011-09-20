@@ -1,6 +1,7 @@
 from collections import MutableMapping, deque
 
-from connectionpool import HTTPConnectionPool, HTTPSConnectionPool, get_host
+
+from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, get_host
 
 
 pool_classes_by_scheme = {

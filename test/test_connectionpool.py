@@ -55,7 +55,7 @@ class TestConnectionPool(unittest.TestCase):
 
     def test_get_connection(self):
         # TODO: Rewrite this test somehow to use dummy_server instead of an external service.
-        
+
         # timeout returned by www.apache.org server in keep-alive header
         WWW_APACHE_ORG_KEEP_ALIVE_TIMEOUT = 5
 
@@ -66,7 +66,7 @@ class TestConnectionPool(unittest.TestCase):
         r = pool.get_url('/',
                          retries=0,
                          headers={"Connection": "keep-alive"})
-        self.assertEqual(r.status, 200, r.data)        
+        self.assertEqual(r.status, 200, r.data)
 
         sleep(WWW_APACHE_ORG_KEEP_ALIVE_TIMEOUT)
 
@@ -97,6 +97,7 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(
             make_headers(user_agent='banana'),
             {'user-agent': 'banana'})
+
 
 if __name__ == '__main__':
     unittest.main()
