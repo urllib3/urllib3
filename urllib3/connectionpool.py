@@ -131,10 +131,10 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     """
 
     def __init__(self):
-        HTTPSConnection.__init__()        
+        HTTPSConnection.__init__()
         self.cert_reqs = None
         self.ca_certs = None
-    
+
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs='CERT_NONE', ca_certs=None):
         ssl_req_scheme = {

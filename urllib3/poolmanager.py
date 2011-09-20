@@ -10,6 +10,11 @@ pool_classes_by_scheme = {
     'https': HTTPSConnectionPool,
 }
 
+port_by_scheme = {
+    'http': 80,
+    'https': 433,
+}
+
 
 class PriorityEntry(object):
     __slots__ = ['priority', 'key', 'is_valid']
@@ -42,7 +47,7 @@ class RecentlyUsedContainer(MutableMapping):
     CLEANUP_FACTOR = 10
 
     def __init__(self, maxsize=10):
-        self.maxsize = maxsize
+        self._maxsize = maxsize
 
         self._container = {}
 
@@ -119,7 +124,7 @@ class RecentlyUsedContainer(MutableMapping):
         self._push_entry(key)
 
         # Discard invalid and excess entries
-        self._prune_entries(len(self._container) - self.maxsize)
+        self._prune_entries(len(self._container) - self._maxsize)
 
 
     def __delitem__(self, key):
@@ -166,9 +171,9 @@ class PoolManager(object):
         """
         scheme, host, port = get_host(url)
 
-        # We hash pools on their scheme://host, because we want a separate pool
-        # if it's the same host but different scheme.
-        pool_key = scheme + '://' + host
+        # If the scheme, host, or port doesn't match existing open connections,
+        # open a new ConnectionPool.
+        pool_key = (scheme, host, port or port_by_scheme.get(scheme, 80))
 
         pool = self.pools.get(pool_key)
         if pool:

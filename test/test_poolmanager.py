@@ -52,7 +52,7 @@ class TestLRUContainer(unittest.TestCase):
         for i in xrange(100):
             d.get(i % 2)
 
-        self.assertTrue(len(d.priority_heap) <= d.CLEANUP_FACTOR * d.maxsize)
+        self.assertTrue(len(d.priority_heap) <= d.CLEANUP_FACTOR * d._maxsize)
 
     def test_same_key(self):
         d = Container(5)
@@ -103,7 +103,7 @@ class TestPoolManager(unittest.TestCase):
             conn = p.connection_from_url(url)
             connections.add(conn)
 
-        self.assertEqual(len(connections), 5)
+        self.assertEqual(len(connections), 6, p.pools.keys())
 
 
 
