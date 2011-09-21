@@ -16,10 +16,6 @@ class RecentlyUsedContainer(MutableMapping):
     """
     Provides a dict-like that maintains up to ``maxsize`` keys while throwing
     away the least-recently-used keys beyond ``maxsize``.
-
-    The weakness of this datastructure is if few keys infinitely contend for the
-    top most-accessed spots and at least one key remains within the maxsize
-    limit but is never accessed.
     """
 
     # TODO: Make this threadsafe. _prune_invalidated_entries should be the
