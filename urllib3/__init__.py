@@ -2,6 +2,11 @@
 urllib3 - Thread-safe connection pooling and re-using.
 """
 
+__author__ = "Andrey Petrov (andrey.petrov@shazow.net)"
+__license__ = "MIT"
+__version__ = "$Rev$"
+
+
 from .connectionpool import (
     HTTPConnectionPool,
     HTTPSConnectionPool,
@@ -16,11 +21,6 @@ from .exceptions import (
     SSLError,
     TimeoutError)
 
-
+from .poolmanager import PoolManager
 from .response import HTTPResponse
 from .filepost import encode_multipart_formdata
-
-
-__author__ = "Andrey Petrov (andrey.petrov@shazow.net)"
-__license__ = "MIT"
-__version__ = "$Rev$"

@@ -56,7 +56,7 @@ class HTTPResponse(object):
     }
 
     def __init__(self, body='', headers=None, status=0, version=0, reason=None,
-                 strict=0, preload_content=True, decode_content=True,
+                 strict=0, preload_content=False, decode_content=True,
                  original_response=None):
         self.headers = headers or {}
         self.status = status
@@ -82,7 +82,7 @@ class HTTPResponse(object):
             return self._body
 
         if self._fp:
-            return self.read()
+            return self.read(decode_content=self._decode_content)
 
 
     def read(self, amt=None, decode_content=True, cache_content=True):
