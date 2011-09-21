@@ -1,4 +1,13 @@
-from setuptools import setup, find_packages
+#!/usr/bin/env python
+
+from distutils.core import setup
+
+
+try:
+        import setuptools
+except ImportError, _:
+        pass # No 'develop' command, oh well.
+
 
 version = '0.5'
 
@@ -23,13 +32,5 @@ setup(name='urllib3',
       url='http://code.google.com/p/urllib3/',
       download_url='http://urllib3.googlecode.com/files/urllib3-0.5.tar.gz',
       license='MIT',
-      packages=find_packages(exclude=['ez_setup', 'tests']),
-      include_package_data=True,
-      zip_safe=False,
-      install_requires=[
-          # -*- Extra requirements: -*-
-      ],
-      entry_points="""
-      # -*- Entry points: -*-
-      """,
+      packages=['urllib3'],
       )
