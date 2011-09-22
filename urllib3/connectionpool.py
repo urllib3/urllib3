@@ -266,10 +266,12 @@ class HTTPConnectionPool(ConnectionPool):
 
             # Import httplib's response into our own wrapper object
             response = HTTPResponse.from_httplib(httplib_response,
+                                                 pool=self,
+                                                 connection=conn,
                                                  **response_kw)
 
-            # Put the connection back to be reused
-            self._put_conn(conn)
+            # The connection will be put back into the pool when
+            # response.release_conn() is called (implicitly by response.read())
 
         except (SocketTimeout, Empty), e:
             # Timed out either by socket or queue

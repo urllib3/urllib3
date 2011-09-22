@@ -221,7 +221,7 @@ class TestConnectionPool(unittest.TestCase):
     def test_lazy_load_twice(self):
         http_pool = HTTPConnectionPool(HOST, PORT, block=True, maxsize=1, timeout=2)
 
-        payload_size = 1024 * 1024
+        payload_size = 1024 * 512
         first_chunk = 512
 
         boundary = 'foo'

@@ -57,7 +57,7 @@ class HTTPResponse(object):
 
     def __init__(self, body='', headers=None, status=0, version=0, reason=None,
                  strict=0, preload_content=False, decode_content=True,
-                 original_response=None):
+                 original_response=None, pool=None, connection=None):
         self.headers = headers or {}
         self.status = status
         self.version = version
@@ -69,11 +69,20 @@ class HTTPResponse(object):
         self._fp = None
         self._original_response = original_response
 
+        self._pool = pool
+        self._connection = connection
+
         if hasattr(body, 'read'):
             self._fp = body
 
         if preload_content:
             self._body = self.read(decode_content=decode_content)
+
+    def release_conn(self):
+        if not self._pool or not self._connection:
+            return
+
+        self._pool._put_conn(self._connection)
 
     @property
     def data(self):
@@ -110,25 +119,32 @@ class HTTPResponse(object):
 
         data = self._fp and self._fp.read(amt)
 
-        if amt:
-            return data
+        try:
 
-        if not decode_content or not decoder:
+            if amt:
+                return data
+
+            if not decode_content or not decoder:
+                if cache_content:
+                    self._body = data
+
+                return data
+
+            try:
+                data = decoder(data)
+            except IOError:
+                raise HTTPError("Received response with content-encoding: %s, but "
+                                "failed to decode it." % content_encoding)
+
             if cache_content:
                 self._body = data
 
             return data
 
-        try:
-            data = decoder(data)
-        except IOError:
-            raise HTTPError("Received response with content-encoding: %s, but "
-                            "failed to decode it." % content_encoding)
+        finally:
 
-        if cache_content:
-            self._body = data
-
-        return data
+            if self._original_response and self._original_response.isclosed():
+                self.release_conn()
 
     @staticmethod
     def from_httplib(r, **response_kw):
