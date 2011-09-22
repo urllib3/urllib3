@@ -109,7 +109,10 @@ class TestingApp(object):
 
     def echo(self, request):
         "Echo back the params"
-        return Response("%s" % request.body)
+        if request.method == 'GET':
+            return Response(request.query_string)
+
+        return Response(request.body)
 
     def encodingrequest(self, request):
         "Check for UA accepting gzip/deflate encoding"

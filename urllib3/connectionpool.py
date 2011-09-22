@@ -1,5 +1,3 @@
-import gzip
-import zlib
 import logging
 import socket
 
@@ -18,111 +16,21 @@ except ImportError:
     ssl = None
     BaseSSLError = None
 
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO # pylint: disable-msg=W0404
 
-
-from filepost import encode_multipart_formdata
+from .filepost import encode_multipart_formdata
+from .response import HTTPResponse
+from .exceptions import (
+    SSLError,
+    MaxRetryError,
+    TimeoutError,
+    HostChangedError,
+    EmptyPoolError)
 
 
 log = logging.getLogger(__name__)
 
 
-## Exceptions
-
-class HTTPError(Exception):
-    "Base exception used by this module."
-    pass
-
-
-class SSLError(Exception):
-    "Raised when SSL certificate fails in an HTTPS connection."
-    pass
-
-
-class MaxRetryError(HTTPError):
-    "Raised when the maximum number of retries is exceeded."
-    pass
-
-
-class TimeoutError(HTTPError):
-    "Raised when a socket timeout occurs."
-    pass
-
-
-class HostChangedError(HTTPError):
-    "Raised when an existing pool gets a request for a foreign host."
-    pass
-
-
-## Response objects
-
-class HTTPResponse(object):
-    """
-    HTTP Response container.
-
-    Similar to httplib's HTTPResponse but the data is pre-loaded.
-    """
-
-    def __init__(self, data='', headers=None, status=0, version=0, reason=None,
-                 strict=0):
-        self.data = data
-        self.headers = headers or {}
-        self.status = status
-        self.version = version
-        self.reason = reason
-        self.strict = strict
-
-    @staticmethod
-    def from_httplib(r):
-        """
-        Given an httplib.HTTPResponse instance, return a corresponding
-        urllib3.HTTPResponse object.
-
-        NOTE: This method will perform r.read() which will have side effects
-        on the original http.HTTPResponse object.
-        """
-        tmp_data = r.read()
-        try:
-            if r.getheader('content-encoding') == 'gzip':
-                log.debug("Received response with content-encoding: gzip, "
-                          "decompressing with gzip.")
-
-                gzipper = gzip.GzipFile(fileobj=StringIO(tmp_data))
-                data = gzipper.read()
-            elif r.getheader('content-encoding') == 'deflate':
-                log.debug("Received response with content-encoding: deflate, "
-                          "decompressing with zlib.")
-                try:
-                    data = zlib.decompress(tmp_data)
-                except zlib.error:
-                    data = zlib.decompress(tmp_data, -zlib.MAX_WBITS)
-            else:
-                data = tmp_data
-
-        except IOError:
-            raise HTTPError("Received response with content-encoding: %s, "
-                            "but failed to decompress it." %
-                            (r.getheader('content-encoding')))
-
-        return HTTPResponse(data=data,
-                    headers=dict(r.getheaders()),
-                    status=r.status,
-                    version=r.version,
-                    reason=r.reason,
-                    strict=r.strict)
-
-    # Backwards-compatibility methods for httplib.HTTPResponse
-    def getheaders(self):
-        return self.headers
-
-    def getheader(self, name, default=None):
-        return self.headers.get(name, default)
-
-
-## Connection objects
+## Connection objects (extension of httplib)
 
 class VerifiedHTTPSConnection(HTTPSConnection):
     """
@@ -162,7 +70,6 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 ## Pool objects
 
 class ConnectionPool(object):
-    # TODO: Move more shared logic into this base class.
     pass
 
 
@@ -221,6 +128,7 @@ class HTTPConnectionPool(ConnectionPool):
         for _ in xrange(maxsize):
             self.pool.put(None)
 
+        # These are mostly for testing and debugging purposes.
         self.num_connections = 0
         self.num_requests = 0
 
@@ -245,11 +153,13 @@ class HTTPConnectionPool(ConnectionPool):
             # If this is a persistent connection, check if it got disconnected
             if conn and conn.sock and select([conn.sock], [], [], 0.0)[0]:
                 # Either data is buffered (bad), or the connection is dropped.
-                log.info("Connection pool detected dropped "
-                         "connection, resetting: %s" % self.host)
+                log.info("Resetting dropped connection: %s" % self.host)
                 conn.close()
 
         except Empty:
+            if self.block:
+                raise EmptyPoolError("Pool reached maximum size and no more "
+                                     "connections are allowed.")
             pass  # Oh well, we'll create a new connection then
 
         return conn or self._new_conn()
@@ -268,12 +178,32 @@ class HTTPConnectionPool(ConnectionPool):
             log.warning("HttpConnectionPool is full, discarding connection: %s"
                         % self.host)
 
+    def _make_request(self, conn, method, url, **httplib_request_kw):
+        """
+        Perform a request on a given httplib connection object taken from our
+        pool.
+        """
+        self.num_requests += 1
+
+        conn.request(method, url, **httplib_request_kw)
+        conn.sock.settimeout(self.timeout)
+        httplib_response = conn.getresponse()
+
+        log.debug("\"%s %s %s\" %s %s" %
+                  (method, url,
+                   conn._http_vsn_str, # pylint: disable-msg=W0212
+                   httplib_response.status, httplib_response.length))
+
+        return httplib_response
+
+
     def is_same_host(self, url):
         return (url.startswith('/') or
                 get_host(url) == (self.scheme, self.host, self.port))
 
     def urlopen(self, method, url, body=None, headers=None, retries=3,
-                redirect=True, assert_same_host=True):
+                redirect=True, assert_same_host=True, pool_timeout=None,
+                **response_kw):
         """
         Get a connection from the pool and perform an HTTP request.
 
@@ -302,8 +232,16 @@ class HTTPConnectionPool(ConnectionPool):
             If True, will make sure that the host of the pool requests is
             consistent else will raise HostChangedError. When False, you can
             use the pool on an HTTP proxy and request foreign hosts.
+
+        pool_timeout
+            If set and the pool is set to block=True, then this method will
+            block for ``pool_timeout`` seconds and raise EmptyPoolError if no
+            connection is available within the time period.
+
+        Additional parameters are passed to
+        ``HTTPResponse.from_httplib(r, **response_kw)``
         """
-        if headers == None:
+        if headers is None:
             headers = self.headers
 
         if retries < 0:
@@ -319,23 +257,20 @@ class HTTPConnectionPool(ConnectionPool):
                                    "open a foreign host: %s" % (host, url))
 
         # Request a connection from the queue
-        conn = self._get_conn()
+        conn = self._get_conn(timeout=pool_timeout)
 
         try:
-            # Make the request
-            self.num_requests += 1
-            conn.request(method, url, body=body, headers=headers)
-            conn.sock.settimeout(self.timeout)
-            httplib_response = conn.getresponse()
-            log.debug("\"%s %s %s\" %s %s" %
-                      (method, url,
-                       conn._http_vsn_str, # pylint: disable-msg=W0212
-                       httplib_response.status, httplib_response.length))
+            # Make the request on the httplib connection object
+            httplib_response = self._make_request(conn, method, url,
+                                                  body=body, headers=headers)
+            # Import httplib's response into our own wrapper object
+            response = HTTPResponse.from_httplib(httplib_response,
+                                                 pool=self,
+                                                 connection=conn,
+                                                 **response_kw)
 
-            # from_httplib will perform httplib_response.read() which will have
-            # the side effect of letting us use this connection for another
-            # request.
-            response = HTTPResponse.from_httplib(httplib_response)
+            # The connection will be put back into the pool when
+            # response.release_conn() is called (implicitly by response.read())
 
         except (SocketTimeout, Empty), e:
             # Timed out either by socket or queue
@@ -368,7 +303,7 @@ class HTTPConnectionPool(ConnectionPool):
         return response
 
     def get_url(self, url, fields=None, headers=None, retries=3,
-                redirect=True):
+                redirect=True, **response_kw):
         """
         Wrapper for performing GET with urlopen (see urlopen for more details).
 
@@ -378,10 +313,11 @@ class HTTPConnectionPool(ConnectionPool):
         if fields:
             url += '?' + urlencode(fields)
         return self.urlopen('GET', url, headers=headers, retries=retries,
-                            redirect=redirect)
+                            redirect=redirect, **response_kw)
 
     def post_url(self, url, fields=None, headers=None, retries=3,
-                 redirect=True, encode_multipart=True):
+                 redirect=True, encode_multipart=True, multipart_boundary=None,
+                 **response_kw):
         """
         Wrapper for performing POST with urlopen (see urlopen
         for more details).
@@ -409,7 +345,8 @@ class HTTPConnectionPool(ConnectionPool):
         which is used to compose the body of the request.
         """
         if encode_multipart:
-            body, content_type = encode_multipart_formdata(fields or {})
+            body, content_type = encode_multipart_formdata(fields or {},
+                                    boundary=multipart_boundary)
         else:
             body, content_type = (
                 urlencode(fields or {}),
@@ -419,7 +356,7 @@ class HTTPConnectionPool(ConnectionPool):
         headers.update({'Content-Type': content_type})
 
         return self.urlopen('POST', url, body, headers=headers,
-                            retries=retries, redirect=redirect)
+                            retries=retries, redirect=redirect, **response_kw)
 
 
 class HTTPSConnectionPool(HTTPConnectionPool):

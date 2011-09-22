@@ -207,6 +207,47 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(r.headers.get('content-encoding'), 'deflate')
         self.assertEqual(r.data, 'hello, world!')
 
+    def test_partial_response(self):
+        http_pool = HTTPConnectionPool(HOST, PORT, maxsize=1)
+
+        req_data = {'lol': 'cat'}
+        resp_data = urllib.urlencode(req_data)
+
+        r = http_pool.get_url('/echo', fields=req_data)
+
+        self.assertEqual(r.read(5), resp_data[:5])
+        self.assertEqual(r.read(), resp_data[5:])
+
+    def test_lazy_load_twice(self):
+        return
+        http_pool = HTTPConnectionPool(HOST, PORT, block=True, maxsize=1, timeout=2)
+
+        payload_size = 1024 * 2
+        first_chunk = 512
+
+        boundary = 'foo'
+
+        req_data = {'count': 'a' * payload_size}
+        resp_data = encode_multipart_formdata(req_data, boundary=boundary)[0]
+
+        req2_data = {'count': 'b' * payload_size}
+        resp2_data = encode_multipart_formdata(req2_data, boundary=boundary)[0]
+
+        r1 = http_pool.post_url('/echo', fields=req_data, multipart_boundary=boundary)
+
+        self.assertEqual(r1.read(first_chunk), resp_data[:first_chunk])
+
+        r2 = http_pool.post_url('/echo', fields=req2_data, multipart_boundary=boundary)
+
+        self.assertEqual(r2.read(first_chunk), resp2_data[:first_chunk])
+
+        self.assertEqual(r1.read(), resp_data[first_chunk:])
+        self.assertEqual(r2.read(), resp2_data[first_chunk:])
+
+        self.assertEqual(http_pool.num_connections, 1)
+        self.assertEqual(http_pool.num_requests, 2)
+
+
 
 if __name__ == '__main__':
     unittest.main()
