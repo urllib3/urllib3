@@ -307,10 +307,10 @@ class HTTPConnectionPool(object):
             raise HostChangedError("Connection pool with host '%s' tried to "
                                    "open a foreign host: %s" % (host, url))
 
-        try:
-            # Request a connection from the queue
-            conn = self._get_conn()
+        # Request a connection from the queue
+        conn = self._get_conn()
 
+        try:
             # Make the request
             self.num_requests += 1
             conn.request(method, url, body=body, headers=headers)
@@ -324,9 +324,6 @@ class HTTPConnectionPool(object):
             # the side effect of letting us use this connection for another
             # request.
             response = HTTPResponse.from_httplib(httplib_response)
-
-            # Put the connection back to be reused
-            self._put_conn(conn)
 
         except (SocketTimeout, Empty), e:
             # Timed out either by socket or queue
@@ -342,6 +339,9 @@ class HTTPConnectionPool(object):
                      "broken by '%r': %s" % (retries, e, url))
             return self.urlopen(method, url, body, headers, retries - 1,
                                 redirect, assert_same_host)  # Try again
+        finally:
+            # Put the connection back to be reused
+            self._put_conn(conn)
 
         # Handle redirection
         if (redirect and
