@@ -207,6 +207,29 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(r.headers.get('content-encoding'), 'deflate')
         self.assertEqual(r.data, 'hello, world!')
 
+    def test_partial_response(self):
+        http_pool = HTTPConnectionPool(HOST, PORT, maxsize=1)
+
+        req_data = {'lol': 'cat'}
+        resp_data = urllib.urlencode(req_data)
+
+        r = http_pool.get_url('/echo', fields=req_data)
+
+        self.assertEqual(r.read(cache_content=False), resp_data)
+
+    def test_lazy_load_twice(self):
+        http_pool = HTTPConnectionPool(HOST, PORT, maxsize=1)
+
+        req_data = {'lol': 'cat'}
+        resp_data = urllib.urlencode(req_data)
+
+        r1 = http_pool.get_url('/echo', fields=req_data)
+        r2 = http_pool.get_url('/echo', fields=req_data)
+
+        self.assertEqual(r2.data, resp_data)
+        self.assertEqual(r1.data, resp_data)
+
+
 
 if __name__ == '__main__':
     unittest.main()
