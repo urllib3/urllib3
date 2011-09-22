@@ -240,7 +240,8 @@ class HTTPConnectionPool(ConnectionPool):
             # from_httplib will perform httplib_response.read() which will have
             # the side effect of letting us use this connection for another
             # request.
-            response = HTTPResponse.from_httplib(httplib_response, **response_kw)
+            response = HTTPResponse.from_httplib(httplib_response,
+                                                 **response_kw)
 
             # Put the connection back to be reused
             self._put_conn(conn)
@@ -286,7 +287,8 @@ class HTTPConnectionPool(ConnectionPool):
                             redirect=redirect, **response_kw)
 
     def post_url(self, url, fields=None, headers=None, retries=3,
-                 redirect=True, encode_multipart=True, **response_kw):
+                 redirect=True, encode_multipart=True, multipart_boundary=None,
+                 **response_kw):
         """
         Wrapper for performing POST with urlopen (see urlopen
         for more details).
@@ -314,7 +316,8 @@ class HTTPConnectionPool(ConnectionPool):
         which is used to compose the body of the request.
         """
         if encode_multipart:
-            body, content_type = encode_multipart_formdata(fields or {})
+            body, content_type = encode_multipart_formdata(fields or {},
+                                    boundary=multipart_boundary)
         else:
             body, content_type = (
                 urlencode(fields or {}),

@@ -221,20 +221,24 @@ class TestConnectionPool(unittest.TestCase):
     def test_lazy_load_twice(self):
         http_pool = HTTPConnectionPool(HOST, PORT, maxsize=1)
 
-        payload_size = 1024 * 8
-        break_points = [256, 512]
+        payload_size = 1024 * 1024
+        break_points = [256, 517]
 
-        req_data = {'count': str(i % 10 for i in xrange(payload_size))}
-        resp_data = urllib.urlencode(req_data)
+        boundary = 'foo'
 
+        req_data = {'count': ''.join(str(i % 10) for i in xrange(payload_size))}
+        resp_data = encode_multipart_formdata(req_data, boundary=boundary)[0]
 
-        r1 = http_pool.post_url('/echo', fields=req_data)
-        r2 = http_pool.post_url('/echo', fields=req_data)
+        r1 = http_pool.post_url('/echo', fields=req_data, multipart_boundary=boundary)
+
+        self.assertEqual(r1.read(break_points[1]), resp_data[:break_points[1]])
+
+        r2 = http_pool.post_url('/echo', fields=req_data, multipart_boundary=boundary)
 
         self.assertEqual(r2.read(break_points[0]), resp_data[:break_points[0]])
-        self.assertEqual(r1.read(break_points[1]), resp_data[:break_points[1]])
-        self.assertEqual(r2.read(), resp_data[break_points[0]:])
+
         self.assertEqual(r1.read(), resp_data[break_points[1]:])
+        self.assertEqual(r2.read(), resp_data[break_points[0]:])
 
 
 
