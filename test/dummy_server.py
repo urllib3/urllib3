@@ -1,7 +1,16 @@
 #!/usr/bin/env python
 
 """
-Dummy server used for unit testing
+Dummy server used for unit testing.
+
+Can be run with native python as:
+
+    python -O test/dummy_server.py
+
+Or using gunicorn with http/1.1 support and much better performance:
+
+    gunicorn test.dummy_server:app -b localhost:8081
+
 """
 
 import gzip
@@ -14,6 +23,9 @@ from cgi import FieldStorage
 from StringIO import StringIO
 from webob import Request, Response, exc
 from wsgiref import simple_server
+
+
+log = logging.getLogger(__name__)
 
 
 class TestRequestHandler(simple_server.WSGIRequestHandler):
@@ -130,9 +142,9 @@ class TestingApp(object):
         return Response(data, headers=headers)
 
 
-def make_server(HOST="localhost", PORT=8081):
-    app = TestingApp()
+app = TestingApp()
 
+def make_server(HOST="localhost", PORT=8081):
     log.info('Creating server on http://%s:%s' % (HOST, PORT))
     return simple_server.make_server(HOST, PORT,
                                      app, handler_class=TestRequestHandler)
@@ -140,7 +152,6 @@ def make_server(HOST="localhost", PORT=8081):
 
 if __name__ == '__main__':
 
-    log = logging.getLogger(__name__)
     log.setLevel(logging.DEBUG)
     log.addHandler(logging.StreamHandler(sys.stderr))
 
