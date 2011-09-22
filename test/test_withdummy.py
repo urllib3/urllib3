@@ -215,7 +215,8 @@ class TestConnectionPool(unittest.TestCase):
 
         r = http_pool.get_url('/echo', fields=req_data)
 
-        self.assertEqual(r.read(cache_content=False), resp_data)
+        self.assertEqual(r.read(5), resp_data[:5])
+        self.assertEqual(r.read(), resp_data[5:])
 
     def test_lazy_load_twice(self):
         http_pool = HTTPConnectionPool(HOST, PORT, maxsize=1)
@@ -226,8 +227,10 @@ class TestConnectionPool(unittest.TestCase):
         r1 = http_pool.get_url('/echo', fields=req_data)
         r2 = http_pool.get_url('/echo', fields=req_data)
 
-        self.assertEqual(r2.data, resp_data)
-        self.assertEqual(r1.data, resp_data)
+        self.assertEqual(r2.read(5), resp_data[:5])
+        self.assertEqual(r1.read(3), resp_data[:3])
+        self.assertEqual(r2.read(), resp_data[5:])
+        self.assertEqual(r1.read(), resp_data[3:])
 
 
 
