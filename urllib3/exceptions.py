@@ -23,3 +23,7 @@ class TimeoutError(HTTPError):
 class HostChangedError(HTTPError):
     "Raised when an existing pool gets a request for a foreign host."
     pass
+
+class EmptyPoolError(HTTPError):
+    "Raised when a pool runs out of connections and no more are allowed."
+    pass

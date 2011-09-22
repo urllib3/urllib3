@@ -10,6 +10,8 @@ from urllib3.connectionpool import (
     HTTPConnectionPool,
     make_headers)
 
+from urllib3.exceptions import EmptyPoolError
+
 
 class TestConnectionPool(unittest.TestCase):
     def test_get_host(self):
@@ -97,6 +99,26 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(
             make_headers(user_agent='banana'),
             {'user-agent': 'banana'})
+
+    def test_max_connections(self):
+        pool = HTTPConnectionPool(host='localhost', maxsize=1, block=True)
+
+        pool._get_conn(timeout=0.01)
+
+        try:
+            pool._get_conn(timeout=0.01)
+            self.fail("Managed to get a connection without EmptyPoolError")
+        except EmptyPoolError:
+            pass
+
+        try:
+            pool.get_url('/', pool_timeout=0.01)
+            self.fail("Managed to get a connection without EmptyPoolError")
+        except EmptyPoolError:
+            pass
+
+        self.assertEqual(pool.num_connections, 1)
+
 
 
 if __name__ == '__main__':

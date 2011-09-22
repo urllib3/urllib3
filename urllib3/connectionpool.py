@@ -17,9 +17,14 @@ except ImportError:
     BaseSSLError = None
 
 
-from .exceptions import SSLError, MaxRetryError, TimeoutError, HostChangedError
 from .filepost import encode_multipart_formdata
 from .response import HTTPResponse
+from .exceptions import (
+    SSLError,
+    MaxRetryError,
+    TimeoutError,
+    HostChangedError,
+    EmptyPoolError)
 
 
 log = logging.getLogger(__name__)
@@ -123,6 +128,7 @@ class HTTPConnectionPool(ConnectionPool):
         for _ in xrange(maxsize):
             self.pool.put(None)
 
+        # These are mostly for testing and debugging purposes.
         self.num_connections = 0
         self.num_requests = 0
 
@@ -147,11 +153,13 @@ class HTTPConnectionPool(ConnectionPool):
             # If this is a persistent connection, check if it got disconnected
             if conn and conn.sock and select([conn.sock], [], [], 0.0)[0]:
                 # Either data is buffered (bad), or the connection is dropped.
-                log.info("Connection pool detected dropped "
-                         "connection, resetting: %s" % self.host)
+                log.info("Resetting dropped connection: %s" % self.host)
                 conn.close()
 
         except Empty:
+            if self.block:
+                raise EmptyPoolError("Pool reached maximum size and no more "
+                                     "connections are allowed.")
             pass  # Oh well, we'll create a new connection then
 
         return conn or self._new_conn()
@@ -170,12 +178,32 @@ class HTTPConnectionPool(ConnectionPool):
             log.warning("HttpConnectionPool is full, discarding connection: %s"
                         % self.host)
 
+    def _make_request(self, conn, method, url, **httplib_request_kw):
+        """
+        Perform a request on a given httplib connection object taken from our
+        pool.
+        """
+        self.num_requests += 1
+
+        conn.request(method, url, **httplib_request_kw)
+        conn.sock.settimeout(self.timeout)
+        httplib_response = conn.getresponse()
+
+        log.debug("\"%s %s %s\" %s %s" %
+                  (method, url,
+                   conn._http_vsn_str, # pylint: disable-msg=W0212
+                   httplib_response.status, httplib_response.length))
+
+        return httplib_response
+
+
     def is_same_host(self, url):
         return (url.startswith('/') or
                 get_host(url) == (self.scheme, self.host, self.port))
 
     def urlopen(self, method, url, body=None, headers=None, retries=3,
-                redirect=True, assert_same_host=True, **response_kw):
+                redirect=True, assert_same_host=True, pool_timeout=None,
+                **response_kw):
         """
         Get a connection from the pool and perform an HTTP request.
 
@@ -205,10 +233,15 @@ class HTTPConnectionPool(ConnectionPool):
             consistent else will raise HostChangedError. When False, you can
             use the pool on an HTTP proxy and request foreign hosts.
 
+        pool_timeout
+            If set and the pool is set to block=True, then this method will
+            block for ``pool_timeout`` seconds and raise EmptyPoolError if no
+            connection is available within the time period.
+
         Additional parameters are passed to
         ``HTTPResponse.from_httplib(r, **response_kw)``
         """
-        if headers == None:
+        if headers is None:
             headers = self.headers
 
         if retries < 0:
@@ -225,21 +258,13 @@ class HTTPConnectionPool(ConnectionPool):
 
         try:
             # Request a connection from the queue
-            conn = self._get_conn()
+            conn = self._get_conn(timeout=pool_timeout)
 
-            # Make the request
-            self.num_requests += 1
-            conn.request(method, url, body=body, headers=headers)
-            conn.sock.settimeout(self.timeout)
-            httplib_response = conn.getresponse()
-            log.debug("\"%s %s %s\" %s %s" %
-                      (method, url,
-                       conn._http_vsn_str, # pylint: disable-msg=W0212
-                       httplib_response.status, httplib_response.length))
+            # Make the request on the httplib connection object
+            httplib_response = self._make_request(conn, method, url,
+                                                  body=body, headers=headers)
 
-            # from_httplib will perform httplib_response.read() which will have
-            # the side effect of letting us use this connection for another
-            # request.
+            # Import httplib's response into our own wrapper object
             response = HTTPResponse.from_httplib(httplib_response,
                                                  **response_kw)
 
