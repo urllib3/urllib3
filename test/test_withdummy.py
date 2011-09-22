@@ -218,8 +218,11 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(r.read(5), resp_data[:5])
         self.assertEqual(r.read(), resp_data[5:])
 
+    @unittest.skip("hi")
     def test_lazy_load_twice(self):
-        return
+        # This test is sad and confusing. Need to figure out what's
+        # going on with partial reads and socket reuse.
+
         http_pool = HTTPConnectionPool(HOST, PORT, block=True, maxsize=1, timeout=2)
 
         payload_size = 1024 * 2
