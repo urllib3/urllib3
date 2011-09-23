@@ -335,13 +335,18 @@ class HTTPConnectionPool(object):
             raise SSLError(e)
 
         except (HTTPException, SocketError), e:
+            # Connection broken, discard. It will be replaced next _get_conn().
+            conn = None
+
+        finally:
+            # Put the connection back to be reused
+            self._put_conn(conn)
+
+        if not conn:
             log.warn("Retrying (%d attempts remain) after connection "
                      "broken by '%r': %s" % (retries, e, url))
             return self.urlopen(method, url, body, headers, retries - 1,
                                 redirect, assert_same_host)  # Try again
-        finally:
-            # Put the connection back to be reused
-            self._put_conn(conn)
 
         # Handle redirection
         if (redirect and
