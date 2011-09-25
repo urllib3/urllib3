@@ -203,7 +203,7 @@ class HTTPConnectionPool(ConnectionPool):
 
     def urlopen(self, method, url, body=None, headers=None, retries=3,
                 redirect=True, assert_same_host=True, pool_timeout=None,
-                **response_kw):
+                release_conn=None, **response_kw):
         """
         Get a connection from the pool and perform an HTTP request.
 
@@ -238,6 +238,14 @@ class HTTPConnectionPool(ConnectionPool):
             block for ``pool_timeout`` seconds and raise EmptyPoolError if no
             connection is available within the time period.
 
+        release_conn
+            If False, then the urlopen call will not release the connection
+            back into the pool once a response is received. This is useful if
+            you're not preloading the response's content immediately. You will
+            need to call ``r.release_conn()`` on the response ``r`` to return
+            the connection back into the pool. If None, it takes the value of
+            ``response_kw.get('preload_content', True)``.
+
         Additional parameters are passed to
         ``HTTPResponse.from_httplib(r, **response_kw)``
         """
@@ -246,6 +254,9 @@ class HTTPConnectionPool(ConnectionPool):
 
         if retries < 0:
             raise MaxRetryError("Max retries exceeded for url: %s" % url)
+
+        if release_conn is None:
+            release_conn = response_kw.get('preload_content', True)
 
         # Check host
         if assert_same_host and not self.is_same_host(url):
@@ -286,8 +297,9 @@ class HTTPConnectionPool(ConnectionPool):
             conn = None
 
         finally:
-            # Put the connection back to be reused
-            self._put_conn(conn)
+            if release_conn:
+                # Put the connection back to be reused
+                self._put_conn(conn)
 
         if not conn:
             log.warn("Retrying (%d attempts remain) after connection "
