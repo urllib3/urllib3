@@ -291,8 +291,14 @@ class HTTPConnectionPool(ConnectionPool):
                                                  connection=conn,
                                                  **response_kw)
 
-            # The connection will be put back into the pool when
-            # response.release_conn() is called (implicitly by response.read())
+            if release_conn:
+                # The connection will be released manually in the ``finally:``
+                response.connection = None
+
+            # else:
+            #     The connection will be put back into the pool when
+            #     response.release_conn() is called (implicitly by
+            #     response.read())
 
         except (SocketTimeout, Empty), e:
             # Timed out either by socket or queue
@@ -310,8 +316,7 @@ class HTTPConnectionPool(ConnectionPool):
         finally:
             if release_conn:
                 # Put the connection back to be reused
-                response.release_conn() # Equivalent to self._put_conn(conn) but
-                                        # tracks release state.
+                self._put_conn(conn)
 
         if not conn:
             log.warn("Retrying (%d attempts remain) after connection "

@@ -207,6 +207,16 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(r.headers.get('content-encoding'), 'deflate')
         self.assertEqual(r.data, 'hello, world!')
 
+    def test_connection_count(self):
+        http_pool = HTTPConnectionPool(HOST, PORT, maxsize=1)
+
+        http_pool.get_url('/')
+        http_pool.get_url('/')
+        http_pool.get_url('/')
+
+        self.assertEqual(http_pool.num_connections, 1)
+        self.assertEqual(http_pool.num_requests, 3)
+
     @unittest.skip("Broken due to dummy_server")
     def test_partial_response(self):
         http_pool = HTTPConnectionPool(HOST, PORT, maxsize=1)
