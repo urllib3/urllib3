@@ -7,6 +7,7 @@ Dummy server used for unit testing.
 import gzip
 import logging
 import sys
+import os
 import time
 import zlib
 
@@ -14,10 +15,17 @@ from cgi import FieldStorage
 from StringIO import StringIO
 from webob import Request, Response, exc
 
-from eventlet import wsgi, listen
+from eventlet import wsgi
+import eventlet
 
 
 log = logging.getLogger(__name__)
+
+CERTS_PATH = os.path.join(os.path.dirname(__file__), 'certs')
+CERTS = {
+    'certfile': os.path.join(CERTS_PATH, 'server.crt'),
+    'keyfile': os.path.join(CERTS_PATH, 'server.key'),
+}
 
 
 class TestingApp(object):
@@ -127,16 +135,35 @@ class TestingApp(object):
             data = zlib.compress(data)
         return Response(data, headers=headers)
 
+    def shutdown(self, request):
+        raise eventlet.StopServe()
+
 
 app = TestingApp()
 
 
-def make_server(HOST="localhost", PORT=8081):
-    return wsgi.server(listen(('', PORT)), app)
+def make_server(host="localhost", port=8081, scheme='http'):
+    socket = eventlet.listen((host, port))
+
+    if scheme == 'https':
+        socket = eventlet.wrap_ssl(socket, server_side=True, **CERTS)
+
+    # Async version that doesn't work:
+    # return eventlet.spawn(wsgi.server, socket, app)
+
+    # Blocking version that does work:
+    return wsgi.server(socket, app)
 
 
 if __name__ == '__main__':
     log.setLevel(logging.DEBUG)
     log.addHandler(logging.StreamHandler(sys.stderr))
 
-    make_server()
+    from urllib3 import get_host
+
+    url = "http://localhost:8081"
+    if len(sys.argv) > 1:
+        url = sys.argv[1]
+
+    scheme, host, port = get_host(url)
+    make_server(scheme=scheme, host=host, port=port)
