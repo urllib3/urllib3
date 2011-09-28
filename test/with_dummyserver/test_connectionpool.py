@@ -164,30 +164,6 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(conn.sock, None)
         self.http_pool._put_conn(conn)
 
-
-    def test_get_connection(self):
-        # FIXME: This test doesn't seem to fail when it should.
-
-        # timeout returned by www.apache.org server in keep-alive header
-        KEEPALIVE_TIMEOUT = 0
-
-        pool = HTTPConnectionPool(host=HOST, port=PORT, maxsize=1, timeout=3.0)
-
-        r = pool.get_url('/',
-                         retries=0,
-                         headers={"Connection": "keep-alive"})
-        self.assertEqual(r.status, 200, r.data)
-
-        sleep(KEEPALIVE_TIMEOUT)
-
-        # by now, the connection should have dropped, making
-        # this fail without recycling closed HTTPConnections
-        r = pool.get_url('/',
-                         retries=0,
-                         headers={"Connection": "keep-alive"})
-        self.assertEqual(r.status, 200, r.data)
-
-
     def test_post_with_urlencode(self):
         data = {'banana': 'hammock', 'lol': 'cat'}
         r = self.http_pool.post_url('/echo',
