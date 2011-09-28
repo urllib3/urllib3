@@ -4,9 +4,7 @@ import unittest
 import urllib
 
 
-from time import sleep
-
-
+from .dummy_server import TestWithDummyServer
 from urllib3 import encode_multipart_formdata, HTTPConnectionPool
 from urllib3.exceptions import TimeoutError, EmptyPoolError, MaxRetryError
 
@@ -20,28 +18,10 @@ log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
 
-class TestConnectionPool(unittest.TestCase):
-
-    @classmethod
-    def _announce_setup(cls, test_id, test_type):
-        # Create connection pool and test for dummy server...
-        try:
-            r = cls._http_pool.get_url('/set_up', retries=1,
-                                  fields={'test_id': test_id,
-                                          'test_type': test_type})
-            if r.data != "Dummy server is ready!":
-                raise Exception("Got unexpected response: %s" % r.data)
-        except Exception, e:
-            raise Exception("Dummy server not running, make sure HOST and PORT "
-                            "correspond to the dummy server: %s" % e.message)
-
-    @classmethod
-    def setUpClass(cls):
-        cls._http_pool = HTTPConnectionPool(HOST, PORT)
-        cls._announce_setup(cls.__name__, test_type='suite')
+class TestConnectionPool(TestWithDummyServer):
 
     def setUp(self):
-        self._announce_setup(self.id(), test_type='case')
+        self._http_pool = HTTPConnectionPool(self.host, self.port)
 
     def test_get_url(self):
         r = self._http_pool.get_url('/specific_method',

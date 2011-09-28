@@ -17,6 +17,8 @@ from webob import Request, Response, exc
 
 from eventlet import wsgi
 import eventlet
+import threading
+import unittest
 
 
 log = logging.getLogger(__name__)
@@ -136,23 +138,46 @@ class TestingApp(object):
         return Response(data, headers=headers)
 
     def shutdown(self, request):
-        raise eventlet.StopServe()
+        sys.exit()
 
 
 app = TestingApp()
 
 
-def make_server(host="localhost", port=8081, scheme='http'):
+def make_server(host="localhost", port=8081, scheme='http', **kw):
     socket = eventlet.listen((host, port))
 
     if scheme == 'https':
         socket = eventlet.wrap_ssl(socket, server_side=True, **CERTS)
 
-    # Async version that doesn't work:
-    # return eventlet.spawn(wsgi.server, socket, app)
-
     # Blocking version that does work:
-    return wsgi.server(socket, app)
+    return wsgi.server(socket, app, **kw)
+
+def make_server_thread(**kw):
+    return threading.Thread(target=make_server, kwargs=kw).start() 
+
+
+class TestWithDummyServer(unittest.TestCase):
+    scheme = 'http'
+    host = 'localhost'
+    port = 8081
+
+    @classmethod
+    def setUpClass(cls):
+        cls.server_thread = make_server_thread(host=cls.host, port=cls.port,
+                                               scheme=cls.scheme)
+
+        import time
+        time.sleep(0.1)
+
+    @classmethod
+    def tearDownClass(cls):
+        import urllib # Yup, that's right.
+        try:
+            urllib.urlopen(cls.scheme + '://' + cls.host + ':' + str(cls.port) + '/shutdown')
+        except IOError:
+            pass
+
 
 
 if __name__ == '__main__':

@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 
 from distutils.core import setup
-import sys
 
 
 try:
-        import setuptools
+    import setuptools
 except ImportError, _:
-        pass # No 'develop' command, oh well.
+    pass # No 'develop' command, oh well.
 
 
 version = '0.5'
