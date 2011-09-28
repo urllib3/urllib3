@@ -2,15 +2,6 @@
 
 """
 Dummy server used for unit testing.
-
-Can be run with native python as:
-
-    python -O test/dummy_server.py
-
-Or using gunicorn with http/1.1 support and much better performance:
-
-    gunicorn test.dummy_server:app -b localhost:8081
-
 """
 
 import gzip
@@ -22,22 +13,11 @@ import zlib
 from cgi import FieldStorage
 from StringIO import StringIO
 from webob import Request, Response, exc
-from wsgiref import simple_server
+
+from eventlet import wsgi, listen
 
 
 log = logging.getLogger(__name__)
-
-
-class TestRequestHandler(simple_server.WSGIRequestHandler):
-    def log_request(self, code='-', size='-'):  # pylint: disable-msg=W0622
-        """
-        We don't want BaseHTTPServer to clutter output by logging our
-        helper requests.
-        """
-        if "/set_up" in self.requestline:
-            return
-        else:
-            simple_server.WSGIRequestHandler.log_request(self, code, size)
 
 
 class TestingApp(object):
@@ -144,24 +124,13 @@ class TestingApp(object):
 
 app = TestingApp()
 
+
 def make_server(HOST="localhost", PORT=8081):
-    log.info('Creating server on http://%s:%s' % (HOST, PORT))
-    return simple_server.make_server(HOST, PORT,
-                                     app, handler_class=TestRequestHandler)
+    return wsgi.server(listen(('', PORT)), app)
 
 
 if __name__ == '__main__':
-
     log.setLevel(logging.DEBUG)
     log.addHandler(logging.StreamHandler(sys.stderr))
 
-    if __debug__:
-        # BaseHTTPServer raises an assertion error with __debug__
-        # enabled when responding with a "Connection" header
-        log.warning("The Keep-alive test will fail because"
-                    " __debug__ is active!")
-        log.warning("To properly test keep-alive, re-run in optimized mode:\n")
-        log.warning("  $ python -O %s" % sys.argv[0])
-
-    httpd = make_server()
-    httpd.serve_forever()
+    make_server()

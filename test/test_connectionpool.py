@@ -1,8 +1,6 @@
 import sys
 import unittest
 
-from time import sleep
-
 sys.path.append('../')
 from urllib3.connectionpool import (
     connection_from_url,
@@ -54,30 +52,6 @@ class TestConnectionPool(unittest.TestCase):
         for a, b in not_same_host:
             c = connection_from_url(a)
             self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
-
-    def test_get_connection(self):
-        # TODO: Rewrite this test somehow to use dummy_server instead of an external service.
-
-        # timeout returned by www.apache.org server in keep-alive header
-        WWW_APACHE_ORG_KEEP_ALIVE_TIMEOUT = 5
-
-        pool = HTTPConnectionPool(host='www.apache.org',
-                                  maxsize=1,
-                                  timeout=3.0)
-
-        r = pool.get_url('/',
-                         retries=0,
-                         headers={"Connection": "keep-alive"})
-        self.assertEqual(r.status, 200, r.data)
-
-        sleep(WWW_APACHE_ORG_KEEP_ALIVE_TIMEOUT)
-
-        # by now, the connection should have dropped, making
-        # this fail without recycling closed HTTPConnections
-        r = pool.get_url('/',
-                         retries=0,
-                         headers={"Connection": "keep-alive"})
-        self.assertEqual(r.status, 200, r.data)
 
     def test_make_headers(self):
         self.assertEqual(

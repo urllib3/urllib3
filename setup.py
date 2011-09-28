@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from distutils.core import setup
+import sys
 
 
 try:
@@ -10,8 +11,13 @@ except ImportError, _:
 
 
 version = '0.5'
-
 long_description = open('README.txt').read()
+
+requirements = []
+tests_requirements = requirements + [
+    'nose',
+    'eventlet'
+]
 
 setup(name='urllib3',
       version=version,
@@ -33,4 +39,6 @@ setup(name='urllib3',
       download_url='http://urllib3.googlecode.com/files/urllib3-0.5.tar.gz',
       license='MIT',
       packages=['urllib3'],
+      requires=requirements,
+      tests_require=tests_requirements,
       )

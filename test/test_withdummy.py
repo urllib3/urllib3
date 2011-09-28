@@ -3,6 +3,10 @@ import sys
 import unittest
 import urllib
 
+
+from time import sleep
+
+
 from urllib3 import (
     encode_multipart_formdata,
     HTTPConnectionPool,
@@ -163,6 +167,32 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(conn.sock, None)
         self.http_pool._put_conn(conn)
 
+
+    def test_get_connection(self):
+        # FIXME: This test doesn't seem to fail when it should.
+
+        # timeout returned by www.apache.org server in keep-alive header
+        KEEPALIVE_TIMEOUT = 0
+
+        pool = HTTPConnectionPool(host='www.apache.org',
+                                  maxsize=1,
+                                  timeout=3.0)
+
+        r = pool.get_url('/',
+                         retries=0,
+                         headers={"Connection": "keep-alive"})
+        self.assertEqual(r.status, 200, r.data)
+
+        sleep(KEEPALIVE_TIMEOUT)
+
+        # by now, the connection should have dropped, making
+        # this fail without recycling closed HTTPConnections
+        r = pool.get_url('/',
+                         retries=0,
+                         headers={"Connection": "keep-alive"})
+        self.assertEqual(r.status, 200, r.data)
+
+
     def test_post_with_urlencode(self):
         data = {'banana': 'hammock', 'lol': 'cat'}
         r = self.http_pool.post_url('/echo',
@@ -217,19 +247,17 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(http_pool.num_connections, 1)
         self.assertEqual(http_pool.num_requests, 3)
 
-    @unittest.skip("Broken due to dummy_server")
     def test_partial_response(self):
         http_pool = HTTPConnectionPool(HOST, PORT, maxsize=1)
 
         req_data = {'lol': 'cat'}
         resp_data = urllib.urlencode(req_data)
 
-        r = http_pool.get_url('/echo', fields=req_data)
+        r = http_pool.get_url('/echo', fields=req_data, preload_content=False)
 
         self.assertEqual(r.read(5), resp_data[:5])
         self.assertEqual(r.read(), resp_data[5:])
 
-    @unittest.skip("Broken due to dummy_server")
     def test_lazy_load_twice(self):
         # This test is sad and confusing. Need to figure out what's
         # going on with partial reads and socket reuse.
@@ -247,11 +275,11 @@ class TestConnectionPool(unittest.TestCase):
         req2_data = {'count': 'b' * payload_size}
         resp2_data = encode_multipart_formdata(req2_data, boundary=boundary)[0]
 
-        r1 = http_pool.post_url('/echo', fields=req_data, multipart_boundary=boundary)
+        r1 = http_pool.post_url('/echo', fields=req_data, multipart_boundary=boundary, preload_content=False)
 
         self.assertEqual(r1.read(first_chunk), resp_data[:first_chunk])
 
-        r2 = http_pool.post_url('/echo', fields=req2_data, multipart_boundary=boundary)
+        r2 = http_pool.post_url('/echo', fields=req2_data, multipart_boundary=boundary, preload_content=False)
 
         self.assertEqual(r2.read(first_chunk), resp2_data[:first_chunk])
 
