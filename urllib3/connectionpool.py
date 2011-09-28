@@ -282,10 +282,13 @@ class HTTPConnectionPool(ConnectionPool):
             raise HostChangedError("Connection pool with host '%s' tried to "
                                    "open a foreign host: %s" % (host, url))
 
-        # Request a connection from the queue
-        conn = self._get_conn(timeout=pool_timeout)
+        conn = None
 
         try:
+            # Request a connection from the queue
+            # (Could raise SocketError: Bad file descriptor)
+            conn = self._get_conn(timeout=pool_timeout)
+
             # Make the request on the httplib connection object
             httplib_response = self._make_request(conn, method, url,
                                                   timeout=timeout,
@@ -303,8 +306,8 @@ class HTTPConnectionPool(ConnectionPool):
 
             # else:
             #     The connection will be put back into the pool when
-            #     response.release_conn() is called (implicitly by
-            #     response.read())
+            #     ``response.release_conn()`` is called (implicitly by
+            #     ``response.read()``)
 
         except (SocketTimeout, Empty), e:
             # Timed out either by socket or queue
@@ -320,7 +323,7 @@ class HTTPConnectionPool(ConnectionPool):
             conn = None
 
         finally:
-            if release_conn:
+            if conn and release_conn:
                 # Put the connection back to be reused
                 self._put_conn(conn)
 
