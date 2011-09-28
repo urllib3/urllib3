@@ -137,6 +137,9 @@ class TestConnectionPool(unittest.TestCase):
     @unittest.skip("We don't have a dummy_server which properly closes the "
                    "connection when requested.")
     def test_keepalive_close(self):
+        # NOTE: This used to run against apache.org but it made the test suite
+        # really slow and fail half the time. Setting it to skip until we can
+        # make this run better locally.
         pool = HTTPConnectionPool(HOST, PORT, block=True, maxsize=1, timeout=2)
         r = pool.get_url('/keepalive?close=1', retries=0,
                          headers={
