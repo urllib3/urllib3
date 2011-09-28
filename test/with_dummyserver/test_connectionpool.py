@@ -171,9 +171,7 @@ class TestConnectionPool(unittest.TestCase):
         # timeout returned by www.apache.org server in keep-alive header
         KEEPALIVE_TIMEOUT = 0
 
-        pool = HTTPConnectionPool(host='www.apache.org',
-                                  maxsize=1,
-                                  timeout=3.0)
+        pool = HTTPConnectionPool(host=HOST, port=PORT, maxsize=1, timeout=3.0)
 
         r = pool.get_url('/',
                          retries=0,
