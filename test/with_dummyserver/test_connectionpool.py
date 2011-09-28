@@ -14,6 +14,7 @@ from urllib3.exceptions import TimeoutError, EmptyPoolError, MaxRetryError
 HOST = "localhost"
 PORT = 8081
 
+
 log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -124,10 +125,23 @@ class TestConnectionPool(unittest.TestCase):
             pass
 
     def test_keepalive(self):
-        # First with close
-        r = self._http_pool.get_url('/keepalive?close=1', retries=0,
-                                   headers={"Connection": "close"})
+        pool = HTTPConnectionPool(HOST, PORT, block=True, maxsize=1)
+
+        r = pool.get_url('/keepalive?close=0')
+        r = pool.get_url('/keepalive?close=0')
+
         self.assertEqual(r.status, 200)
+        self.assertEqual(pool.num_connections, 1)
+        self.assertEqual(pool.num_requests, 2)
+
+    @unittest.skip("We don't have a dummy_server which properly closes the "
+                   "connection when requested.")
+    def test_keepalive_close(self):
+        pool = HTTPConnectionPool(HOST, PORT, block=True, maxsize=1, timeout=2)
+        r = pool.get_url('/keepalive?close=1', retries=0,
+                         headers={
+                             "Connection": "close",
+                         })
 
         # The dummyserver will have responded with Connection:close,
         # and httplib will properly cleanup the socket.
@@ -140,28 +154,36 @@ class TestConnectionPool(unittest.TestCase):
         self._http_pool._put_conn(conn)
 
         # Now with keep-alive
-        r = self._http_pool.get_url('/keepalive?close=0', retries=0,
-                                   headers={"Connection": "keep-alive",
-                                            "Keep-alive": "1"})
-        self.assertEqual(r.status, 200)
+        r = pool.get_url('/keepalive?close=0', retries=0,
+                         headers={
+                             "Connection": "keep-alive",
+                         })
 
-        # The dummyserver responded with Connection:keep-alive, but
-        # the base implementation automatically closes it anyway. Perfect
-        # test case!
+        self.assertEqual(pool.num_connections, 2)
 
+        # The dummyserver responded with Connection:keep-alive, the connection
+        # persists.
         conn = self._http_pool.pool.get()
         self.assertNotEqual(conn.sock, None)
         self._http_pool._put_conn(conn)
 
-        # ... and with close again
-        # NOTE: This is the one that should get auto-cleaned-up!
-        r = self._http_pool.get_url('/keepalive?close=1', retries=0,
-                                   headers={"Connection": "close"})
+        # Another request asking the server to close the connection. This one
+        # should get cleaned up for the next request.
+        r = pool.get_url('/keepalive?close=1', retries=0,
+                         headers={
+                             "Connection": "close",
+                         })
+
         self.assertEqual(r.status, 200)
+        self.assertEqual(pool.num_connections, 2)
 
         conn = self._http_pool.pool.get()
         self.assertEqual(conn.sock, None)
         self._http_pool._put_conn(conn)
+
+        # Next request
+        r = pool.get_url('/keepalive?close=0')
+        self.assertEqual(pool.num_connections, 3)
 
     def test_post_with_urlencode(self):
         data = {'banana': 'hammock', 'lol': 'cat'}

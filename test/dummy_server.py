@@ -34,6 +34,11 @@ class TestingApp(object):
         target = req.path_info[1:].replace('/', '_')
         method = getattr(self, target, self.index)
         resp = method(req)
+
+        if resp.headers.get('Connection') == 'close':
+            # Can we kill the connection somehow?
+            pass
+
         return resp(environ, start_response)
 
     def index(self, _request):
@@ -88,9 +93,10 @@ class TestingApp(object):
         if request.params.get('close', '0') == '1':
             response = Response('Closing')
             response.headers['Connection'] = 'close'
-        else:
-            response = Response('Keeping alive')
-            response.headers['Connection'] = 'keep-alive'
+            return response
+
+        response = Response('Keeping alive')
+        response.headers['Connection'] = 'keep-alive'
         return response
 
     def sleep(self, request):
