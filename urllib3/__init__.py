@@ -32,6 +32,17 @@ from .response import HTTPResponse
 from .filepost import encode_multipart_formdata
 
 
+# Set default logging handler to avoid "No handler found" warnings.
 import logging
-logging.getLogger(__name__).setLevel(logging.ERROR)
+try:
+    from logging import NullHandler
+except ImportError:
+    class NullHandler(logging.Handler):
+        def emit(self, record):
+            pass
+
+logging.getLogger(__name__).addHandler(NullHandler())
+
+# Clean up
 del logging
+del NullHandler
