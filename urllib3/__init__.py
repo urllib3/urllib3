@@ -30,3 +30,8 @@ from .exceptions import (
 from .poolmanager import PoolManager
 from .response import HTTPResponse
 from .filepost import encode_multipart_formdata
+
+
+import logging
+logging.getLogger(__name__).setLevel(logging.ERROR)
+del logging
