@@ -45,11 +45,8 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     Based on httplib.HTTPSConnection but wraps the socket with
     SSL certification.
     """
-
-    def __init__(self):
-        HTTPSConnection.__init__()
-        self.cert_reqs = None
-        self.ca_certs = None
+    cert_reqs = None
+    cert_reqs = None
 
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs='CERT_NONE', ca_certs=None):
