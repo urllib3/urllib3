@@ -27,7 +27,7 @@ from .exceptions import (
     SSLError,
     TimeoutError)
 
-from .poolmanager import PoolManager
+from .poolmanager import PoolManager, ProxyManager, proxy_from_url
 from .response import HTTPResponse
 from .filepost import encode_multipart_formdata
 

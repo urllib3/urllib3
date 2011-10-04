@@ -5,7 +5,13 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from ._collections import RecentlyUsedContainer
-from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, get_host
+from .connectionpool import (
+    HTTPConnectionPool, HTTPSConnectionPool,
+    get_host, connection_from_url,
+)
+
+
+__all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
 
 
 pool_classes_by_scheme = {
@@ -76,3 +82,23 @@ class PoolManager(object):
         "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
         conn = self.connection_from_url(url)
         return conn.urlopen(method, url, **kw)
+
+
+class ProxyManager(object):
+    """
+    Given a ConnectionPool to a proxy, the ProxyManager's ``urlopen`` method
+    will make requests to any url through the defined proxy.
+    """
+
+    def __init__(self, proxy_pool):
+        self.proxy_pool = proxy_pool
+
+    def urlopen(self, method, url, **kw):
+        "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
+        kw['assert_same_host'] = False
+        return self.proxy_pool.urlopen(method, url, **kw)
+
+
+def proxy_from_url(url, **pool_kw):
+    proxy_pool = connection_from_url(url, **pool_kw)
+    return ProxyManager(proxy_pool)
