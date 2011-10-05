@@ -143,7 +143,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def _new_conn(self):
         """
-        Return a fresh HTTPConnection.
+        Return a fresh :class:`httplib.HTTPConnection`.
         """
         self.num_connections += 1
         log.info("Starting new HTTP connection (%d): %s" %
@@ -153,7 +153,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     def _get_conn(self, timeout=None):
         """
         Get a connection. Will return a pooled connection if one is available.
-        Otherwise, a fresh connection is returned.
+
+        If no connections are available and :prop:`.block` is ``False``, then a
+        fresh connection is returned.
+
+        :param timeout:
+            Seconds to wait before giving up and raising
+            :class:`urllib3.exceptions.EmptyPoolError` if the pool is empty and
+            :prop:`.block` is True.
         """
         conn = None
         try:
@@ -176,6 +183,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     def _put_conn(self, conn):
         """
         Put a connection back into the pool.
+
+        :param conn:
+            Connection object for the current host and port as returned by
+            :meth:`._new_conn` or :meth:`._get_conn`.
 
         If the pool is already full, the connection is discarded because we
         exceeded maxsize. If connections are discarded frequently, then maxsize
@@ -376,7 +387,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     def _new_conn(self):
         """
-        Return a fresh HTTPSConnection.
+        Return a fresh :class:`httplib.HTTPSConnection`.
         """
         self.num_connections += 1
         log.info("Starting new HTTPS connection (%d): %s"
@@ -414,6 +425,13 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
     :param basic_auth:
         Colon-separated username:password string for 'authorization: basic ...'
         auth header.
+
+    Example: ::
+
+        >>> make_headers(keep_alive=True, user_agent="Batman/1.0")
+        {'connection': 'keep-alive', 'user-agent': 'Batman/1.0'}
+        >>> make_headers(accept_encoding=True)
+        {'accept-encoding': 'gzip,deflate'}
     """
     headers = {}
     if accept_encoding:
@@ -445,9 +463,9 @@ def get_host(url):
     For example: ::
 
         >>> get_host('http://google.com/mail/')
-        http, google.com, None
+        ('http', 'google.com', None)
         >>> get_host('google.com:80')
-        http, google.com, 80
+        ('http', 'google.com', 80)
     """
     # This code is actually similar to urlparse.urlsplit, but much
     # simplified for our needs.
@@ -477,6 +495,11 @@ def connection_from_url(url, **kw):
         Passes additional parameters to the constructor of the appropriate
         :class:`.ConnectionPool`. Useful for specifying things like
         timeout, maxsize, headers, etc.
+
+    Example: ::
+
+        >>> conn = connection_from_url('http://google.com/')
+        >>> r = conn.urlopen('GET', '/')
     """
     scheme, host, port = get_host(url)
     if scheme == 'https':
