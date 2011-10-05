@@ -5,6 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from ._collections import RecentlyUsedContainer
+from .request import RequestMethods
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, get_host
 
 
@@ -19,7 +20,7 @@ port_by_scheme = {
 }
 
 
-class PoolManager(object):
+class PoolManager(RequestMethods):
     """
     Allows for arbitrary requests while transparently keeping track of
     necessary connection pools for you.

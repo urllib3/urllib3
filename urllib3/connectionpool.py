@@ -8,7 +8,6 @@ import logging
 import socket
 
 
-from urllib import urlencode
 from httplib import HTTPConnection, HTTPSConnection, HTTPException
 from Queue import Queue, Empty, Full
 from select import select
@@ -23,14 +22,15 @@ except ImportError:
     BaseSSLError = None
 
 
-from .filepost import encode_multipart_formdata
+from .request import RequestMethods
 from .response import HTTPResponse
 from .exceptions import (
     SSLError,
     MaxRetryError,
     TimeoutError,
     HostChangedError,
-    EmptyPoolError)
+    EmptyPoolError,
+)
 
 
 log = logging.getLogger(__name__)
@@ -78,7 +78,7 @@ class ConnectionPool(object):
     pass
 
 
-class HTTPConnectionPool(ConnectionPool):
+class HTTPConnectionPool(ConnectionPool, RequestMethods):
     """
     Thread-safe connection pool for one host.
 
@@ -341,62 +341,6 @@ class HTTPConnectionPool(ConnectionPool):
                                 assert_same_host)
 
         return response
-
-    def get_url(self, url, fields=None, headers=None, retries=3,
-                redirect=True, **response_kw):
-        """
-        Wrapper for performing GET with urlopen (see urlopen for more details).
-
-        Supports an optional ``fields`` dictionary parameter key/value strings.
-        If provided, they will be added to the url.
-        """
-        if fields:
-            url += '?' + urlencode(fields)
-        return self.urlopen('GET', url, headers=headers, retries=retries,
-                            redirect=redirect, **response_kw)
-
-    def post_url(self, url, fields=None, headers=None, retries=3,
-                 redirect=True, encode_multipart=True, multipart_boundary=None,
-                 **response_kw):
-        """
-        Wrapper for performing POST with urlopen (see urlopen
-        for more details).
-
-        Supports an optional ``fields`` parameter of key/value strings AND
-        key/filetuple. A filetuple is a (filename, data) tuple. For example:
-
-        fields = {
-            'foo': 'bar',
-            'foofile': ('foofile.txt', 'contents of foofile'),
-        }
-
-        If encode_multipart=True (default), then
-        ``urllib3.filepost.encode_multipart_formdata`` is used to encode the
-        payload with the appropriate content type. Otherwise
-        ``urllib.urlencode`` is used with 'application/x-www-form-urlencoded'
-        content type.
-
-        Multipart encoding must be used when posting files, and it's reasonably
-        safe to use it other times too. It may break request signing, such as
-        OAuth.
-
-        NOTE: If ``headers`` are supplied, the 'Content-Type' value will be
-        overwritten because it depends on the dynamic random boundary string
-        which is used to compose the body of the request.
-        """
-        if encode_multipart:
-            body, content_type = encode_multipart_formdata(fields or {},
-                                    boundary=multipart_boundary)
-        else:
-            body, content_type = (
-                urlencode(fields or {}),
-                'application/x-www-form-urlencoded')
-
-        headers = headers or {}
-        headers.update({'Content-Type': content_type})
-
-        return self.urlopen('POST', url, body, headers=headers,
-                            retries=retries, redirect=redirect, **response_kw)
 
 
 class HTTPSConnectionPool(HTTPConnectionPool):
