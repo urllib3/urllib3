@@ -14,63 +14,93 @@ __all__ = ['RequestMethods']
 
 
 class RequestMethods(object):
+    """
+    Convenience mixin for classes who implement a :meth:`.urlopen` method, such
+    as :class:`urllib3.connectionpool.HTTPConnectionPool` and
+    :class:`urllib3.poolmanager.PoolManager`.
 
-    def urlopen(self, method, url, body=None, headers=None, **kw):
+    Provides behavior for making common types of HTTP request methods and
+    decides which type of request field encoding to use.
+
+    Specifically,
+
+    :meth:`.request_encode_url` is for sending requests whose fields are encoded
+    in the URL (such as GET, HEAD, DELETE).
+
+    :meth:`.request_encode_body` is for sending requests whose fields are
+    encoded in the *body* of the request using multipart or www-orm-urlencoded
+    (such as for POST, PUT, PATCH).
+
+    :meth:`.request` is for making any kind of request, it will look up the
+    appropriate encoding format and use one of the above two methods to make
+    the request.
+    """
+
+    def urlopen(self, method, url, body=None, headers=None,
+                encode_multipart=True, multipart_boundary=None,
+                **kw):
         raise NotImplemented("Classes extending RequestMethods must implement "
                              "their own ``urlopen`` method.")
 
     def request(self, method, url, fields=None, headers=None, **urlopen_kw):
         """
-        Make a request using ``urlopen`` with the proper encoding of ``fields``
-        based on the ``method`` used.
+        Make a request using :meth:`.urlopen` with the appropriate encoding of
+        ``fields`` based on the ``method`` used.
         """
         method = method.upper()
 
         if method in self._encode_url_methods:
-            return self._request_encode_url(method, url, fields=fields,
+            return self.request_encode_url(method, url, fields=fields,
                                             headers=headers,
                                             **urlopen_kw)
         else:
-            return self._request_encode_body(method, url, fields=fields,
+            return self.request_encode_body(method, url, fields=fields,
                                              headers=headers,
                                              **urlopen_kw)
 
-    def _request_encode_url(self, method, url, fields=None, **urlopen_kw):
+    def request_encode_url(self, method, url, fields=None, **urlopen_kw):
         """
-        Make a request with the ``fields`` encoded in the url.
+        Make a request using :meth:`.urlopen` with the ``fields`` encoded in
+        the url. This is useful for request methods like GET, HEAD, DELETE, etc.
         """
         if fields:
             url += '?' + urlencode(fields)
         return self.urlopen(method, url, **urlopen_kw)
 
-    def _request_encode_body(self, method, url, fields=None, headers=None,
-                             encode_multipart=True, multipart_boundary=None,
-                             **urlopen_kw):
+    def request_encode_body(self, method, url, fields=None, headers=None,
+                            encode_multipart=True, multipart_boundary=None,
+                            **urlopen_kw):
         """
-        Make a request with the ``fields`` encoded in the body.
+        Make a request using :meth:`.urlopen` with the ``fields`` encoded in
+        the body. This is useful for request methods like POST, PUT, PATCH, etc.
 
-        If ``encode_multipart=True`` (default), then
-        ``urllib3.filepost.encode_multipart_formdata`` is used to encode the
+        When ``encode_multipart=True`` (default), then
+        :meth:`urllib3.filepost.encode_multipart_formdata` is used to encode the
         payload with the appropriate content type. Otherwise
-        ``urllib.urlencode`` is used with 'application/x-www-form-urlencoded'
-        content type.
+        :meth:`urllib.urlencode` is used with the
+        'application/x-www-form-urlencoded' content type.
 
         Multipart encoding must be used when posting files, and it's reasonably
-        safe to use it other times too. It may break request signing, such as
-        OAuth.
+        safe to use it in other times too. However, it may break request signing,
+        such as with OAuth.
 
         Supports an optional ``fields`` parameter of key/value strings AND
-        key/filetuple. A filetuple is a (filename, data) tuple. For example:
+        key/filetuple. A filetuple is a (filename, data) tuple. For example: ::
 
-        fields = {
-            'foo': 'bar',
-            'foofile': ('foofile.txt', 'contents of foofile'),
-        }
+            fields = {
+                'foo': 'bar',
+                'fakefile': ('foofile.txt', 'contents of foofile'),
+                'realfile': ('barfile.txt', open('realfile').read()),
+                'nonamefile': ('contents of nonamefile field'),
+            }
 
-        NOTE: If ``headers`` are supplied, the 'Content-Type' value will be
+        When uploading a file, providing a filename (the first parameter of the
+        tuple) is optional but recommended to best mimick behavior of browsers.
+
+        Note that if ``headers`` are supplied, the 'Content-Type' header will be
         overwritten because it depends on the dynamic random boundary string
-        which is used to compose the body of the request.
-        OAuth.
+        which is used to compose the body of the request. The random boundary
+        string can be explicitly set with the ``multipart_boundary`` parameter.
         """
         if encode_multipart:
             body, content_type = encode_multipart_formdata(fields or {},
@@ -87,42 +117,43 @@ class RequestMethods(object):
     # url-encoded methods:
 
     def get_url(self, url, fields=None, **urlopen_kw):
-        return self._request_encode_url('GET', url, fields=fields,
-                                        **urlopen_kw)
+        return self.request_encode_url('GET', url, fields=fields,
+                                       **urlopen_kw)
 
     def head_url(self, url, fields=None, **urlopen_kw):
-        return self._request_encode_url('HEAD', url, fields=fields,
-                                        **urlopen_kw)
+        return self.request_encode_url('HEAD', url, fields=fields,
+                                       **urlopen_kw)
 
     def delete_url(self, url, fields=None, **urlopen_kw):
-        return self._request_encode_url('DELETE', url, fields=fields,
-                                        **urlopen_kw)
+        return self.request_encode_url('DELETE', url, fields=fields,
+                                       **urlopen_kw)
+
+    def options_url(self, url, fields=None, **urlopen_kw):
+        return self.request_encode_url('OPTIONS', url, fields=fields,
+                                       **urlopen_kw)
 
     # body-encoded methods:
 
     def post_url(self, url, fields=None, headers=None, **urlopen_kw):
-        return self._request_encode_body('POST', url, fields=fields,
-                                         headers=headers,
-                                         **urlopen_kw)
+        return self.request_encode_body('POST', url, fields=fields,
+                                        headers=headers,
+                                        **urlopen_kw)
 
     def put_url(self, url, fields=None, headers=None, **urlopen_kw):
-        return self._request_encode_body('PUT', url, fields=fields,
-                                         headers=headers,
-                                         **urlopen_kw)
+        return self.request_encode_body('PUT', url, fields=fields,
+                                        headers=headers,
+                                        **urlopen_kw)
 
     def patch_url(self, url, fields=None, headers=None, **urlopen_kw):
-        return self._request_encode_body('PATCH', url, fields=fields,
-                                         headers=headers,
-                                         **urlopen_kw)
+        return self.request_encode_body('PATCH', url, fields=fields,
+                                        headers=headers,
+                                        **urlopen_kw)
 
-    _encode_url_methods = {
-        'DELETE': delete_url,
-        'GET': get_url,
-        'HEAD': head_url,
-    }
+    def trace_url(self, url, fields=None, headers=None, **urlopen_kw):
+        return self.request_encode_body('TRACE', url, fields=fields,
+                                        headers=headers,
+                                        **urlopen_kw)
 
-    _encode_body_methods = {
-        'PATCH': patch_url,
-        'POST': post_url,
-        'PUT': put_url,
-    }
+    _encode_url_methods = set(['DELETE', 'GET', 'HEAD', 'OPTIONS'])
+
+    _encode_body_methods = set(['PATCH', 'POST', 'PUT', 'TRACE'])

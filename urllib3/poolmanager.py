@@ -25,11 +25,22 @@ class PoolManager(RequestMethods):
     Allows for arbitrary requests while transparently keeping track of
     necessary connection pools for you.
 
-    num_pools
+    :param num_pools:
         Number of connection pools to cache before discarding the least recently
         used pool.
 
-    Additional parameters are used to create fresh ConnectionPool instances.
+    :param **connection_pool_kw:
+        Additional parameters are used to create fresh
+        :class:`urllib3.connectionpool.ConnectionPool` instances.
+
+    Example: ::
+
+        >>> manager = PoolManager()
+        >>> r = manager.urlopen("http://google.com/")
+        >>> r = manager.urlopen("http://google.com/mail")
+        >>> r = manager.urlopen("http://yahoo.com/")
+        >>> len(r.pools)
+        2
 
     """
 
@@ -37,13 +48,14 @@ class PoolManager(RequestMethods):
 
     def __init__(self, num_pools=10, **connection_pool_kw):
         self.connection_pool_kw = connection_pool_kw
-
         self.pools = RecentlyUsedContainer(num_pools)
-        self.recently_used_pools = []
 
     def connection_from_host(self, host, port=80, scheme='http'):
         """
         Get a ConnectionPool based on the host, port, and scheme.
+
+        Note that an appropriate ``port`` value is required here to normalize
+        connection pools in our container most effectively.
         """
         pool_key = (scheme, host, port)
 
@@ -63,9 +75,12 @@ class PoolManager(RequestMethods):
 
     def connection_from_url(self, url):
         """
-        Similar to connectionpool.connection_from_url but doesn't pass any
-        additional keywords to the ConnectionPool constructor. Additional
-        keywords are taken from the PoolManager constructor.
+        Similar to :func:`urllib3.connectionpool.connection_from_url` but
+        doesn't pass any additional parameters to the
+        :class:`urllib3.connectionpool.ConnectionPool` constructor.
+
+        Additional parameters are taken from the :class:`.PoolManager`
+        constructor.
         """
         scheme, host, port = get_host(url)
 
@@ -74,6 +89,11 @@ class PoolManager(RequestMethods):
         return  self.connection_from_host(host, port=port, scheme=scheme)
 
     def urlopen(self, method, url, **kw):
-        "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
+        """
+        Same as :meth:`urllib3.connectionpool.HTTPConnectionPool.urlopen`.
+
+        ``url`` must be absolute, such that an appropriate
+        :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
+        """
         conn = self.connection_from_url(url)
         return conn.urlopen(method, url, **kw)
