@@ -230,7 +230,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 redirect=True, assert_same_host=True, timeout=_Default,
                 pool_timeout=None, release_conn=None, **response_kw):
         """
-        Get a connection from the pool and perform an HTTP request.
+        Get a connection from the pool and perform an HTTP request. This is the
+        lowest level call for making a request, so you'll need to specify all
+        the details.
+
+        More commonly, it's appropriate to use a convenience method provided by
+        :class:`.RequestMethods`, such as :meth:`.request`.
 
         :param method:
             HTTP request method (such as GET, POST, PUT, etc.)
@@ -274,9 +279,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             the connection back into the pool. If None, it takes the value of
             ``response_kw.get('preload_content', True)``.
 
-        :param **response_kw:
+        :param \**response_kw:
             Additional parameters are passed to
-            :meth:`urllib3.response.HTTPResponse.from_httplib(r, **response_kw)``
+            :meth:`urllib3.response.HTTPResponse.from_httplib`
         """
         if headers is None:
             headers = self.headers

@@ -46,6 +46,12 @@ class RequestMethods(object):
         """
         Make a request using :meth:`.urlopen` with the appropriate encoding of
         ``fields`` based on the ``method`` used.
+
+        This is a convenience method that requires the least amount of manual
+        effort. It can be used in most situations, while still having the option
+        to drop down to more specific methods when necessary, such as
+        :meth:`request_encode_url`, :meth:`request_encode_body`,
+        or even the lowest level :meth:`urlopen`.
         """
         method = method.upper()
 
