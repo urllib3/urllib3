@@ -29,7 +29,7 @@ class PoolManager(RequestMethods):
         Number of connection pools to cache before discarding the least recently
         used pool.
 
-    :param **connection_pool_kw:
+    :param \**connection_pool_kw:
         Additional parameters are used to create fresh
         :class:`urllib3.connectionpool.ConnectionPool` instances.
 
@@ -96,4 +96,4 @@ class PoolManager(RequestMethods):
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
         conn = self.connection_from_url(url)
-        return conn.urlopen(method, url, **kw)
+        return conn.urlopen(method, url, assert_same_host=False, **kw)

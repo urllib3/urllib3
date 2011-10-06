@@ -112,7 +112,8 @@ class RequestMethods(object):
         headers = headers or {}
         headers.update({'Content-Type': content_type})
 
-        return self.urlopen(method, url, body, headers=headers, **urlopen_kw)
+        return self.urlopen(method, url, body=body, headers=headers,
+                            **urlopen_kw)
 
     # url-encoded methods:
 

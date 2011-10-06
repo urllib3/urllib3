@@ -111,7 +111,7 @@ class RecentlyUsedContainer(MutableMapping):
         del self._access_lookup[key]
 
     def __len__(self):
-        return len(self.access_log)
+        return self._container.__len__()
 
     def __iter__(self):
         return self._container.__iter__()

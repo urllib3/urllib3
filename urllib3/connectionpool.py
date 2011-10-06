@@ -160,7 +160,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         :param timeout:
             Seconds to wait before giving up and raising
             :class:`urllib3.exceptions.EmptyPoolError` if the pool is empty and
-            :prop:`.block` is True.
+            :prop:`.block` is ``True``.
         """
         conn = None
         try:
@@ -254,7 +254,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             each redirect counts as a retry.
 
         :param assert_same_host:
-            If True, will make sure that the host of the pool requests is
+            If ``True``, will make sure that the host of the pool requests is
             consistent else will raise HostChangedError. When False, you can
             use the pool on an HTTP proxy and request foreign hosts.
 
@@ -364,9 +364,13 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     """
     Same as :class:`.HTTPConnectionPool`, but HTTPS.
 
-    When Python is compiled with the ``ssl`` module, then
+    When Python is compiled with the :mod:`ssl` module, then
     :class:`.VerifiedHTTPSConnection` is used, which *can* verify certificates,
     instead of :class:httplib.HTTPSConnection`.
+
+    The ``key_file``, ``cert_file``, ``cert_reqs``, and ``ca_certs`` parameters
+    are only used if :mod:`ssl` is available and are fed into
+    :meth:`ssl.wrap_socket` to upgrade the connection socket into an SSL socket.
     """
 
     scheme = 'https'
@@ -410,11 +414,11 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
     Shortcuts for generating request headers.
 
     :param keep_alive:
-        If true, adds 'connection: keep-alive' header.
+        If ``True``, adds 'connection: keep-alive' header.
 
     :param accept_encoding:
         Can be a boolean, list, or string.
-        True translates to 'gzip,deflate'.
+        ``True`` translates to 'gzip,deflate'.
         List will get joined by comma.
         String will be used as provided.
 
@@ -491,7 +495,7 @@ def connection_from_url(url, **kw):
     :param url:
         Absolute URL string that must include the scheme. Port is optional.
 
-    :param **kw:
+    :param \**kw:
         Passes additional parameters to the constructor of the appropriate
         :class:`.ConnectionPool`. Useful for specifying things like
         timeout, maxsize, headers, etc.
