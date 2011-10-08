@@ -1,17 +1,26 @@
 #!/usr/bin/env python
 
 from distutils.core import setup
-import sys
+import os
+import re
 
 
 try:
-        import setuptools
+    import setuptools
 except ImportError, _:
-        pass # No 'develop' command, oh well.
+    pass # No 'develop' command, oh well.
 
 
-version = '0.5'
-long_description = open('README.txt').read()
+# Get the version (borrowed from SQLAlchemy)
+fp = open(os.path.join(os.path.dirname(__file__), 'urllib3', '__init__.py'))
+VERSION = re.compile(r".*__version__ = '(.*?)'",
+                     re.S).match(fp.read()).group(1)
+fp.close()
+
+
+version = VERSION
+long_description = open('README.rst').read()
+long_description += '\n\n' + open('CHANGES.rst').read()
 
 requirements = []
 tests_requirements = requirements + [
@@ -21,7 +30,7 @@ tests_requirements = requirements + [
 
 setup(name='urllib3',
       version=version,
-      description="HTTP library with thread-safe connection pooling and file post support",
+      description="HTTP library with thread-safe connection pooling, file post, and more.",
       long_description=long_description,
       classifiers=[
           'Environment :: Web Environment',
@@ -32,11 +41,10 @@ setup(name='urllib3',
           'Topic :: Internet :: WWW/HTTP',
           'Topic :: Software Development :: Libraries',
       ],
-      keywords='urllib httplib threadsafe filepost http',
+      keywords='urllib httplib threadsafe filepost http https ssl pooling',
       author='Andrey Petrov',
       author_email='andrey.petrov@shazow.net',
-      url='http://code.google.com/p/urllib3/',
-      download_url='http://urllib3.googlecode.com/files/urllib3-0.5.tar.gz',
+      url='https://github.com/shazow/urllib3',
       license='MIT',
       packages=['urllib3'],
       requires=requirements,

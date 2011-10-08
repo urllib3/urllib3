@@ -8,9 +8,9 @@
 urllib3 - Thread-safe connection pooling and re-using.
 """
 
-__author__ = "Andrey Petrov (andrey.petrov@shazow.net)"
-__license__ = "MIT"
-__version__ = "$Rev$"
+__author__ = 'Andrey Petrov (andrey.petrov@shazow.net)'
+__license__ = 'MIT'
+__version__ = '1.0'
 
 
 from .connectionpool import (
@@ -43,6 +43,6 @@ except ImportError:
 
 logging.getLogger(__name__).addHandler(NullHandler())
 
-# Clean up
+# ... Clean up.
 del logging
 del NullHandler
