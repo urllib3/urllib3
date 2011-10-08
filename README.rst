@@ -46,7 +46,7 @@ This library is perfect for:
 Examples
 ========
 
-Go to `urllib3.readthedocs.org <http://urllib3.readthedocs.com>`_
+Go to `urllib3.readthedocs.org <http://urllib3.readthedocs.org>`_
 for more nice syntax-highlighted examples.
 
 But, long story short::
@@ -60,7 +60,9 @@ But, long story short::
   print r.status, r.data
 
 The ``PoolManager`` will take care of reusing connections for you whenever
-you request the same host.
+you request the same host. For more fine-grained control of your connection
+pools, you should look at
+`ConnectionPool <http://urllib3.readthedocs.org/#connectionpool>`_.
 
 
 Run the tests
@@ -71,6 +73,8 @@ tests. ::
 
   $ python setup.py test
   ...........E
+
+Tests can also be run using ``nosetests``.
 
 Some tests require the ``dummy_server.py`` running to pass. In another
 terminal: ::
