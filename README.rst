@@ -2,12 +2,15 @@ Highlights
 ==========
 
 - Re-use the same socket connection for multiple requests
-  (``HTTPConnectionPool`` and ``HTTPSConnectionPool``) (with client-side certificates)
-- File posting (``encode_multipart_formdata``)
-- Built-in redirection and retries (optional)
-- Supports gzip and deflate (big thanks to niphlod)
-- Thread-safe
-- Small and easy to understand codebase perfect for extending and building upon. For a more comprehensive alternative, have a look at `httplib2 <http://code.google.com/p/httplib2/>`_.
+  (``HTTPConnectionPool`` and ``HTTPSConnectionPool``)
+  (with optional client-side certificate verification).
+- File posting (``encode_multipart_formdata``).
+- Built-in redirection and retries (optional).
+- Supports gzip and deflate decoding.
+- Thread-safe and sanity-safe.
+- Small and easy to understand codebase perfect for extending and building upon.
+  For a more comprehensive solution, have a look at
+  `Requests <http://python-requests.org/>`_.
 
 What's wrong with urllib and urllib2?
 =====================================
