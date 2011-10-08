@@ -25,7 +25,8 @@ long_description += '\n\n' + open('CHANGES.rst').read()
 requirements = []
 tests_requirements = requirements + [
     'nose',
-    'eventlet'
+    'webob',
+    'eventlet',
 ]
 
 setup(name='urllib3',
@@ -49,4 +50,5 @@ setup(name='urllib3',
       packages=['urllib3'],
       requires=requirements,
       tests_require=tests_requirements,
+      test_suite='test',
       )

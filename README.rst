@@ -66,18 +66,19 @@ you request the same host.
 Run the tests
 =============
 
-First we need to install ``nose`` and ``webob``, then add the
-source directory to your PYTHONPATH, then run ``nosetests``. ::
+Running the test command will install the necessary dependencies and run the
+tests. ::
 
-  $ pip install nose webob
-  $ cd patch/to/urllib3
-  $ python setup.py develop
-  $ nosetests
+  $ python setup.py test
   ...........E
 
-Some tests require the ``dummy_server.py`` running to pass. ::
+Some tests require the ``dummy_server.py`` running to pass. In another
+terminal: ::
 
   $ python -O test/dummy_server.py
+
+Then run the tests again: ::
+
   $ nosetests
   ............
 
