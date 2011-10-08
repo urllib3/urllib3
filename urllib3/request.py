@@ -36,6 +36,10 @@ class RequestMethods(object):
     the request.
     """
 
+    _encode_url_methods = set(['DELETE', 'GET', 'HEAD', 'OPTIONS'])
+
+    _encode_body_methods = set(['PATCH', 'POST', 'PUT', 'TRACE'])
+
     def urlopen(self, method, url, body=None, headers=None,
                 encode_multipart=True, multipart_boundary=None,
                 **kw):
@@ -121,46 +125,21 @@ class RequestMethods(object):
         return self.urlopen(method, url, body=body, headers=headers,
                             **urlopen_kw)
 
-    # url-encoded methods:
+    # Deprecated:
 
     def get_url(self, url, fields=None, **urlopen_kw):
+        """
+        Backwards-compatible method for 0.x. Should be considered deprecated
+        in favour of :meth:`.request`.
+        """
         return self.request_encode_url('GET', url, fields=fields,
                                        **urlopen_kw)
 
-    def head_url(self, url, fields=None, **urlopen_kw):
-        return self.request_encode_url('HEAD', url, fields=fields,
-                                       **urlopen_kw)
-
-    def delete_url(self, url, fields=None, **urlopen_kw):
-        return self.request_encode_url('DELETE', url, fields=fields,
-                                       **urlopen_kw)
-
-    def options_url(self, url, fields=None, **urlopen_kw):
-        return self.request_encode_url('OPTIONS', url, fields=fields,
-                                       **urlopen_kw)
-
-    # body-encoded methods:
-
     def post_url(self, url, fields=None, headers=None, **urlopen_kw):
+        """
+        Backwards-compatible method for 0.x. Should be considered deprecated
+        in favour of :meth:`.request`.
+        """
         return self.request_encode_body('POST', url, fields=fields,
                                         headers=headers,
                                         **urlopen_kw)
-
-    def put_url(self, url, fields=None, headers=None, **urlopen_kw):
-        return self.request_encode_body('PUT', url, fields=fields,
-                                        headers=headers,
-                                        **urlopen_kw)
-
-    def patch_url(self, url, fields=None, headers=None, **urlopen_kw):
-        return self.request_encode_body('PATCH', url, fields=fields,
-                                        headers=headers,
-                                        **urlopen_kw)
-
-    def trace_url(self, url, fields=None, headers=None, **urlopen_kw):
-        return self.request_encode_body('TRACE', url, fields=fields,
-                                        headers=headers,
-                                        **urlopen_kw)
-
-    _encode_url_methods = set(['DELETE', 'GET', 'HEAD', 'OPTIONS'])
-
-    _encode_body_methods = set(['PATCH', 'POST', 'PUT', 'TRACE'])
