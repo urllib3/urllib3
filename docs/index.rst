@@ -5,13 +5,22 @@ urllib3 Documentation
 Highlights
 ==========
 
-- Re-use the same socket connection for multiple requests
-  (:class:`HTTPConnectionPool` and :class:`HTTPSConnectionPool`)
-  (with optional client-side certificate verification).
-- File posting (:func:`encode_multipart_formdata`).
+- Re-use the same socket connection for multiple requests, with optional
+  client-side certificate verification. See:
+  :class:`~urllib3.connectionpool.HTTPConnectionPool` and
+  :class:`~urllib3.connectionpool.HTTPSConnectionPool`
+
+- File posting. See:
+  :func:`~urllib3.filepost.encode_multipart_formdata`
+
 - Built-in redirection and retries (optional).
-- Supports gzip and deflate decoding.
+
+- Supports gzip and deflate decoding. See:
+  :func:`~urllib3.response.decode_gzip` and
+  :func:`~urllib3.response.decode_deflate`
+
 - Thread-safe and sanity-safe.
+
 - Small and easy to understand codebase perfect for extending and building upon.
   For a more comprehensive solution, have a look at
   `Requests <http://python-requests.org/>`_.
@@ -26,82 +35,120 @@ Installing
 ``pip install urllib3`` or fetch the latest source from
 `github.com/shazow/urllib3 <https://github.com/shazow/urllib3>`_.
 
-ConnectionPool
---------------
+Usage
+-----
 
-If you need to make requests to the same host repeatedly, then you should use a
-:doc:`ConnectionPool <pools>`. ::
+::
 
-    >>> from urllib3 import HTTPConnectionPool
-    >>> pool = HTTPConnectionPool('ajax.googleapis.com', maxsize=1)
-    >>> r = pool.request('GET', '/ajax/services/search/web',
-    ...                  fields={'q': 'urllib3', 'v': '1.0'})
+    >>> import urllib3
+    >>> http = urllib3.PoolManager()
+    >>> r = http.request('GET', 'http://google.com/')
     >>> r.status
     200
-    >>> r.headers['content-type']
-    'text/javascript; charset=utf-8'
-    >>> len(r.data)
-    3318
-    >>> r = pool.request('GET', '/ajax/services/search/web',
-    ...                  fields={'q': 'python', 'v': '1.0'})
-    >>> len(r.data)
-    2960
-    >>> pool.num_connections
-    1
-    >>> pool.num_requests
-    2
-
-By default, the pool will cache just one connection. If you're planning on using
-such a pool in a multithreaded environment, you should set the ``maxsize`` of
-the pool to a higher number, such as the number of threads. You can also control
-many other variables like timeout, blocking, and default headers.
-
-
-PoolManager
------------
-
-If you need to make requests to multiple hosts, then you can use a
-:doc:`PoolManager <managers>`, which takes care of maintaining your pools
-so you don't have to. ::
-
-    >>> from urllib3 import PoolManager
-    >>> manager = PoolManager(10)
-    >>> r = manager.request('GET', 'http://google.com/')
     >>> r.headers['server']
     'gws'
-    >>> r = manager.request('GET', 'http://yahoo.com/')
-    >>> r.headers['server']
-    'YTS/1.20.0'
-    >>> r = manager.request('POST', 'http://google.com/mail')
-    >>> r = manager.request('HEAD', 'http://google.com/calendar')
-    >>> len(manager.pools)
-    2
-    >>> conn = manager.connection_from_host('google.com')
-    >>> conn.num_requests
-    3
-
-The PoolManager uses a Least Recently Used (LRU) policy for discarding old
-pools. That is, if you set the PoolManager ``num_pools`` to 10, then after
-making requests to 11 different hosts, the least recently used pool will be
-discarded.
-
-Actually, the cleanup of old pools doesn't happen immediately, but you can read
-more about it in :class:`urllib3._collections.RecentlyUsedContainer`
-implementation.
-
+    >>> r.data
+    ...
 
 Components
 ==========
 
+:mod:`urllib3` tries to strike a fine balance between power, extendability, and
+sanity. To achieve this, the codebase is a collection of small reusable
+utilities and abstractions composed together in a few helpful layers.
+
+PoolManager
+-----------
+
+The highest level is the :doc:`PoolManager(...) <managers>`.
+
+The :class:`PoolManager` will take care of reusing connections for you
+whenever you request the same host. this should cover most scenarios without
+significant loss of efficiency, but you can always drop down to a lower level
+component for more granular control.
+
+::
+
+    >>> http = urllib3.PoolManager(10)
+    >>> r1 = http.request('GET', 'http://google.com/')
+    >>> r2 = http.request('GET', 'http://google.com/mail')
+    >>> r3 = http.request('GET', 'http://yahoo.com/')
+    >>> len(http.pools)
+    2
+
+A :class:`PoolManager` is a proxy for a collection of :class:`ConnectionPool`
+objects. They both inherit from :class:`RequestMethods` to make sure that
+their API is similar, so that instances of either can be passed around
+interchangeably.
+
+ConnectionPool
+--------------
+
+The next layer is the :doc:`ConnectionPool(...) <pools>`.
+
+The :class:`HTTPConnectionPool` and :class:`HTTPSConnectionPool` classes allow
+you to define a pool of connections to a single host and make requests against
+this pool with automatic **connection reusing** and **thread safety**.
+
+When the :mod:`ssl` module is available, then :class:`HTTPSConnectionPool`
+objects can be configured to check SSL certificates against specific provided
+certificate authorities. ::
+
+    >>> conn = urllib3.connection_from_url('http://google.com')
+    >>> r1 = conn.request('GET', 'http://google.com/')
+    >>> r2 = conn.request('GET', '/mail')
+    >>> r3 = conn.request('GET', 'http://yahoo.com/')
+    Traceback (most recent call last)
+      ...
+    HostChangedError: Connection pool with host 'http://google.com' tried to
+    open a foreign host: http://yahoo.com/
+
+Again, a ConnectionPool is a pool of connections to a specific host. Trying to
+access a different host through the same pool will raise a ``HostChangedError``
+exception unless you specify ``assert_same_host=False``. Do this at your own
+risk as the outcome is completely dependent on the behaviour of the host server.
+
+If you need to access multiple hosts and don't want to manage your own
+collection of :class:`ConnectionPool` objects, then you should use a
+:class:`PoolManager`.
+
+A :class:`ConnectionPool` is composed of a collection of
+:class:`httplib.HTTPConnection` objects.
+
+Foundation
+----------
+
+At the very core, just like its predecessors, :mod:`urllib3` is built on top of
+:mod:`httplib` -- the lowest level HTTP library included in the Python
+standard library.
+
+To aid the limited functionality of the :mod:`httplib` module, :mod:`urllib3`
+provides various helper methods which are used with the higher level components
+but can also be used independently.
+
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 3
+
+   helpers
+
+
+.. toctree::
+   :hidden:
 
    pools
    managers
+   collections
+   helpers
 
-Indices and tables
-==================
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+Contributing
+============
+
+#. `Open an issue <https://github.com/shazow/urllib3/issues>`_ to start a
+   discussion around a feature or a bug.
+#. Fork the `urllib3 repository on Github <https://github.com/shazow/urllib3>`_
+   to start making your changes.
+#. Write a test which shows that the bug was fixed or that the feature works
+   as expected.
+#. Send a pull request and bug the maintainer until it gets merged and published.
+   :) Make sure to add yourself to ``CONTRIBUTORS.txt``.

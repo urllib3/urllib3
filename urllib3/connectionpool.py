@@ -223,6 +223,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
 
     def is_same_host(self, url):
+        """
+        Check if the given ``url`` is a member of the same host as this
+        conncetion pool.
+        """
+        # TODO: Add optional support for socket.gethostbyname checking.
         return (url.startswith('/') or
                 get_host(url) == (self.scheme, self.host, self.port))
 
@@ -232,10 +237,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         Get a connection from the pool and perform an HTTP request. This is the
         lowest level call for making a request, so you'll need to specify all
-        the details.
+        the raw details.
 
-        More commonly, it's appropriate to use a convenience method provided by
-        :class:`.RequestMethods`, such as :meth:`.request`.
+        .. note::
+
+           More commonly, it's appropriate to use a convenience method provided
+           by :class:`.RequestMethods`, such as :meth:`.request`.
 
         :param method:
             HTTP request method (such as GET, POST, PUT, etc.)
@@ -508,7 +515,7 @@ def connection_from_url(url, **kw):
     Example: ::
 
         >>> conn = connection_from_url('http://google.com/')
-        >>> r = conn.urlopen('GET', '/')
+        >>> r = conn.request('GET', '/')
     """
     scheme, host, port = get_host(url)
     if scheme == 'https':

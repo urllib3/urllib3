@@ -15,9 +15,9 @@ __all__ = ['RequestMethods']
 
 class RequestMethods(object):
     """
-    Convenience mixin for classes who implement a :meth:`.urlopen` method, such
-    as :class:`urllib3.connectionpool.HTTPConnectionPool` and
-    :class:`urllib3.poolmanager.PoolManager`.
+    Convenience mixin for classes who implement a :meth:`urlopen` method, such
+    as :class:`~urllib3.connectionpool.HTTPConnectionPool` and
+    :class:`~urllib3.poolmanager.PoolManager`.
 
     Provides behavior for making common types of HTTP request methods and
     decides which type of request field encoding to use.
@@ -48,7 +48,7 @@ class RequestMethods(object):
 
     def request(self, method, url, fields=None, headers=None, **urlopen_kw):
         """
-        Make a request using :meth:`.urlopen` with the appropriate encoding of
+        Make a request using :meth:`urlopen` with the appropriate encoding of
         ``fields`` based on the ``method`` used.
 
         This is a convenience method that requires the least amount of manual
@@ -70,7 +70,7 @@ class RequestMethods(object):
 
     def request_encode_url(self, method, url, fields=None, **urlopen_kw):
         """
-        Make a request using :meth:`.urlopen` with the ``fields`` encoded in
+        Make a request using :meth:`urlopen` with the ``fields`` encoded in
         the url. This is useful for request methods like GET, HEAD, DELETE, etc.
         """
         if fields:
@@ -81,7 +81,7 @@ class RequestMethods(object):
                             encode_multipart=True, multipart_boundary=None,
                             **urlopen_kw):
         """
-        Make a request using :meth:`.urlopen` with the ``fields`` encoded in
+        Make a request using :meth:`urlopen` with the ``fields`` encoded in
         the body. This is useful for request methods like POST, PUT, PATCH, etc.
 
         When ``encode_multipart=True`` (default), then
@@ -129,16 +129,16 @@ class RequestMethods(object):
 
     def get_url(self, url, fields=None, **urlopen_kw):
         """
-        Backwards-compatible method for 0.x. Should be considered deprecated
-        in favour of :meth:`.request`.
+        .. deprecated:: 1.0
+           Use :meth:`request` instead.
         """
         return self.request_encode_url('GET', url, fields=fields,
                                        **urlopen_kw)
 
     def post_url(self, url, fields=None, headers=None, **urlopen_kw):
         """
-        Backwards-compatible method for 0.x. Should be considered deprecated
-        in favour of :meth:`.request`.
+        .. deprecated:: 1.0
+           Use :meth:`request` instead.
         """
         return self.request_encode_body('POST', url, fields=fields,
                                         headers=headers,

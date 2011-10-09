@@ -91,14 +91,15 @@ Then run the tests again: ::
 
 Success!
 
+
 Contributing
 ============
 
-- `Open an issue <https://github.com/shazow/urllib3/issues>`_ to start a
-  discussion around a feature or a bug.
-- Fork the `urllib3 repository on Github <https://github.com/shazow/urllib3>`_
-  to start making your changes.
-- Write a test which shows that the bug was fixed or that the feature works
-  as expected. Attach patch for the test to the issue.
-- Send a pull request and bug the maintainer until it gets merged and published.
-  :) Make sure to add yourself to ``CONTRIBUTORS.txt``.
+#. `Open an issue <https://github.com/shazow/urllib3/issues>`_ to start a
+   discussion around a feature or a bug.
+#. Fork the `urllib3 repository on Github <https://github.com/shazow/urllib3>`_
+   to start making your changes.
+#. Write a test which shows that the bug was fixed or that the feature works
+   as expected.
+#. Send a pull request and bug the maintainer until it gets merged and published.
+   :) Make sure to add yourself to ``CONTRIBUTORS.txt``.

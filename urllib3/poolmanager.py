@@ -61,7 +61,7 @@ class PoolManager(RequestMethods):
 
     def connection_from_host(self, host, port=80, scheme='http'):
         """
-        Get a ConnectionPool based on the host, port, and scheme.
+        Get a :class:`ConnectionPool` based on the host, port, and scheme.
 
         Note that an appropriate ``port`` value is required here to normalize
         connection pools in our container most effectively.
@@ -95,7 +95,7 @@ class PoolManager(RequestMethods):
 
         port = port or port_by_scheme.get(scheme, 80)
 
-        return  self.connection_from_host(host, port=port, scheme=scheme)
+        return self.connection_from_host(host, port=port, scheme=scheme)
 
     def urlopen(self, method, url, **kw):
         """
