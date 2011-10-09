@@ -2,6 +2,15 @@
 urllib3 Documentation
 =====================
 
+.. toctree::
+   :hidden:
+
+   pools
+   managers
+   helpers
+   collections
+
+
 Highlights
 ==========
 
@@ -129,15 +138,6 @@ but can also be used independently.
 
 .. toctree::
 
-   helpers
-
-
-.. toctree::
-   :hidden:
-
-   pools
-   managers
-   collections
    helpers
 
 
