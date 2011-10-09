@@ -10,17 +10,16 @@ try:
 except ImportError, _:
     pass # No 'develop' command, oh well.
 
+base_path = os.path.dirname(__file__)
 
 # Get the version (borrowed from SQLAlchemy)
-fp = open(os.path.join(os.path.dirname(__file__), 'urllib3', '__init__.py'))
+fp = open(os.path.join(base_path, 'urllib3', '__init__.py'))
 VERSION = re.compile(r".*__version__ = '(.*?)'",
                      re.S).match(fp.read()).group(1)
 fp.close()
 
 
 version = VERSION
-long_description = open('README.rst').read()
-long_description += '\n\n' + open('CHANGES.rst').read()
 
 requirements = []
 tests_requirements = requirements + [
@@ -32,7 +31,7 @@ tests_requirements = requirements + [
 setup(name='urllib3',
       version=version,
       description="HTTP library with thread-safe connection pooling, file post, and more.",
-      long_description=long_description,
+      long_description=open('README.rst').read() + '\n\n' + open('CHANGES.rst').read(),
       classifiers=[
           'Environment :: Web Environment',
           'Intended Audience :: Developers',
