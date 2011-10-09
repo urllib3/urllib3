@@ -62,10 +62,10 @@ PoolManager
 
 The highest level is the :doc:`PoolManager(...) <managers>`.
 
-The :class:`PoolManager` will take care of reusing connections for you
-whenever you request the same host. this should cover most scenarios without
-significant loss of efficiency, but you can always drop down to a lower level
-component for more granular control.
+The :class:`~urllib3.poolmanagers.PoolManager` will take care of reusing
+connections for you whenever you request the same host. this should cover most
+scenarios without significant loss of efficiency, but you can always drop down
+to a lower level component for more granular control.
 
 ::
 
@@ -76,23 +76,24 @@ component for more granular control.
     >>> len(http.pools)
     2
 
-A :class:`PoolManager` is a proxy for a collection of :class:`ConnectionPool`
-objects. They both inherit from :class:`RequestMethods` to make sure that
-their API is similar, so that instances of either can be passed around
-interchangeably.
+A :class:`~urllib3.poolmanagers.PoolManager` is a proxy for a collection of
+:class:`ConnectionPool` objects. They both inherit from
+:class:`~urllib3.request.RequestMethods` to make sure that their API is
+similar, so that instances of either can be passed around interchangeably.
 
 ConnectionPool
 --------------
 
 The next layer is the :doc:`ConnectionPool(...) <pools>`.
 
-The :class:`HTTPConnectionPool` and :class:`HTTPSConnectionPool` classes allow
-you to define a pool of connections to a single host and make requests against
-this pool with automatic **connection reusing** and **thread safety**.
+The :class:`~urllib3.connectionpool.HTTPConnectionPool` and
+:class:`~urllib3.connectionpool.HTTPSConnectionPool` classes allow you to
+define a pool of connections to a single host and make requests against this
+pool with automatic **connection reusing** and **thread safety**.
 
-When the :mod:`ssl` module is available, then :class:`HTTPSConnectionPool`
-objects can be configured to check SSL certificates against specific provided
-certificate authorities. ::
+When the :mod:`ssl` module is available, then
+:class:`~urllib3.connectionpool.HTTPSConnectionPool` objects can be configured
+to check SSL certificates against specific provided certificate authorities. ::
 
     >>> conn = urllib3.connection_from_url('http://google.com')
     >>> r1 = conn.request('GET', 'http://google.com/')
@@ -109,11 +110,11 @@ exception unless you specify ``assert_same_host=False``. Do this at your own
 risk as the outcome is completely dependent on the behaviour of the host server.
 
 If you need to access multiple hosts and don't want to manage your own
-collection of :class:`ConnectionPool` objects, then you should use a
-:class:`PoolManager`.
+collection of :class:`~urllib3.connectionpool.ConnectionPool` objects, then you
+should use a :class:`~urllib3.poolmanager.PoolManager`.
 
-A :class:`ConnectionPool` is composed of a collection of
-:class:`httplib.HTTPConnection` objects.
+A :class:`~urllib3.connectionpool.ConnectionPool` is composed of a collection
+of :class:`httplib.HTTPConnection` objects.
 
 Foundation
 ----------
@@ -127,7 +128,6 @@ provides various helper methods which are used with the higher level components
 but can also be used independently.
 
 .. toctree::
-   :maxdepth: 3
 
    helpers
 
