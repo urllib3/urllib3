@@ -17,7 +17,49 @@ Changes
 * Refactored code to be even more decoupled, reusable, and extendable.
 * License header added to ``.py`` files.
 * Embiggened the documentation: Lots of Sphinx-friendly docstrings in the code
-  and docs in ``docs/`` and on
-  `urllib3.readthedocs.org <http://urllib3.readthedocs.org/>`_.
+  and docs in ``docs/`` and on urllib3.readthedocs.org.
 * Embettered all the things!
 * Started writing this file.
+
+
+0.4.1 (2011-07-17)
+++++++++++++++++++
+
+* Minor bug fixes, code cleanup.
+
+
+0.4 (2011-03-01)
+++++++++++++++++
+
+* Better unicode support.
+* Added ``VerifiedHTTPSConnection``.
+* Added ``NTLMConnectionPool`` in contrib.
+* Minor improvements.
+
+
+0.3.1 (2010-07-13)
+++++++++++++++++++
+
+* Added ``assert_host_name`` optional parameter. Now compatible with proxies.
+
+
+0.3 (2009-12-10)
+++++++++++++++++
+
+* Added HTTPS support.
+* Minor bug fixes.
+* Refactored, broken backwards compatibility with 0.2.
+* API to be treated as stable from this version forward.
+
+
+0.2 (2008-11-17)
+++++++++++++++++
+
+* Added unit tests.
+* Bug fixes.
+
+
+0.1 (2008-11-16)
+++++++++++++++++
+
+* First release.
