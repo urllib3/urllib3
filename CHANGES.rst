@@ -4,8 +4,10 @@ Changes
 1.0 (2011-10-08)
 ++++++++++++++++
 
-* Added ``ProxyManager`` (still needs some work for HTTPS support).
-* Added ``PoolManager`` with LRU expiration of connections.
+* Added ``PoolManager`` with LRU expiration of connections (tested and
+  documented).
+* Added ``ProxyManager`` (needs tests, docs, and confirmation that it works
+  with HTTPS proxies).
 * Added optional partial-read support for responses when
   ``preload_content=False``. You can now make requests and just read the headers
   without loading the content.
