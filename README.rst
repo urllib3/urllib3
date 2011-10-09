@@ -33,7 +33,7 @@ connection is created with each request. By reusing existing sockets
 (supported since HTTP 1.1), the requests will take up less resources on the
 server's end, and also provide a faster response time at the client's end.
 With some simple benchmarks (see `test/benchmark.py
-<http://code.google.com/p/urllib3/source/browse/trunk/test/benchmark.py>`_
+<https://github.com/shazow/urllib3/blob/master/test/benchmark.py>`_
 ), downloading 15 URLs from google.com is about twice as fast when using
 HTTPConnectionPool (which uses 1 connection) than using plain urllib (which
 uses 15 connections).
