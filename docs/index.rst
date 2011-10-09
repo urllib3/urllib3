@@ -144,8 +144,10 @@ but can also be used independently.
 Contributing
 ============
 
-#. `Open an issue <https://github.com/shazow/urllib3/issues>`_ to start a
-   discussion around a feature or a bug.
+#. `Check for open issues <https://github.com/shazow/urllib3/issues>`_ or open
+   a fresh issue to start a discussion around a feature idea or a bug. There is
+   a *Contributor Friendly* tag for issues that should be ideal for people who
+   are not very familiar with the codebase yet.
 #. Fork the `urllib3 repository on Github <https://github.com/shazow/urllib3>`_
    to start making your changes.
 #. Write a test which shows that the bug was fixed or that the feature works
