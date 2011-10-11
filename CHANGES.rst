@@ -1,6 +1,13 @@
 Changes
 =======
 
+1.0.1 (2011-10-10)
+++++++++++++++++++
+
+* Fixed a bug where the same connection would get returned into the pool twice,
+  causing extraneous "HttpConnectionPool is full" log warnings.
+
+
 1.0 (2011-10-08)
 ++++++++++++++++
 
