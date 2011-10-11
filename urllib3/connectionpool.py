@@ -46,7 +46,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     SSL certification.
     """
     cert_reqs = None
-    cert_reqs = None
+    ca_certs = None
 
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs='CERT_NONE', ca_certs=None):
