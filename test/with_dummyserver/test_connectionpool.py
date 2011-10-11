@@ -253,7 +253,6 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(r.read(5), resp_data[:5])
         self.assertEqual(r.read(), resp_data[5:])
 
-    #@unittest.skip("FIXME: Stalling.")
     def test_lazy_load_twice(self):
         # This test is sad and confusing. Need to figure out what's
         # going on with partial reads and socket reuse.
@@ -293,6 +292,37 @@ class TestConnectionPool(unittest.TestCase):
             self.assertEqual(http_pool.num_requests, 1)
 
         self.assertEqual(http_pool.num_connections, 1)
+
+    def test_for_double_release(self):
+        MAXSIZE=5
+
+        # Check default state
+        http_pool = HTTPConnectionPool(HOST, PORT, maxsize=MAXSIZE)
+        self.assertEqual(http_pool.num_connections, 0)
+
+        # Make an empty slot for testing
+        http_pool.pool.get()
+
+        self.assertEqual(http_pool.pool.qsize(), MAXSIZE-1)
+
+
+        # Check state after simple request
+        http_pool.urlopen('GET', '/')
+        self.assertEqual(http_pool.pool.qsize(), MAXSIZE-1)
+
+        # Check state without release
+        http_pool.urlopen('GET', '/', preload_content=False)
+        self.assertEqual(http_pool.pool.qsize(), MAXSIZE-2)
+
+        http_pool.urlopen('GET', '/')
+        self.assertEqual(http_pool.pool.qsize(), MAXSIZE-2)
+
+        # Check state after read
+        http_pool.urlopen('GET', '/').data
+        self.assertEqual(http_pool.pool.qsize(), MAXSIZE-2)
+
+        http_pool.urlopen('GET', '/')
+        self.assertEqual(http_pool.pool.qsize(), MAXSIZE-2)
 
 
 

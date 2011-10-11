@@ -325,7 +325,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # mess.
             response_conn = not release_conn and conn
 
-
             # Import httplib's response into our own wrapper object
             response = HTTPResponse.from_httplib(httplib_response,
                                                  pool=self,
