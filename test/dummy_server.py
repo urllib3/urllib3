@@ -148,10 +148,6 @@ def make_server(host="localhost", port=8081, scheme='http'):
     if scheme == 'https':
         socket = eventlet.wrap_ssl(socket, server_side=True, **CERTS)
 
-    # Async version that doesn't work:
-    # return eventlet.spawn(wsgi.server, socket, app)
-
-    # Blocking version that does work:
     return wsgi.server(socket, app)
 
 

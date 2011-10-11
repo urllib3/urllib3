@@ -26,7 +26,7 @@ class TestConnectionPool(unittest.TestCase):
     def _announce_setup(cls, test_id, test_type):
         # Create connection pool and test for dummy server...
         try:
-            r = cls._http_pool.get_url('/set_up', retries=1,
+            r = cls._http_pool.request('GET', '/set_up', retries=1,
                                   fields={'test_id': test_id,
                                           'test_type': test_type})
             if r.data != "Dummy server is ready!":
@@ -43,13 +43,13 @@ class TestConnectionPool(unittest.TestCase):
     def setUp(self):
         self._announce_setup(self.id(), test_type='case')
 
-    def test_get_url(self):
-        r = self._http_pool.get_url('/specific_method',
+    def test_get(self):
+        r = self._http_pool.request('GET', '/specific_method',
                                    fields={'method': 'GET'})
         self.assertEqual(r.status, 200, r.data)
 
     def test_post_url(self):
-        r = self._http_pool.post_url('/specific_method',
+        r = self._http_pool.request('POST', '/specific_method',
                                     fields={'method': 'POST'})
         self.assertEqual(r.status, 200, r.data)
 
@@ -59,11 +59,11 @@ class TestConnectionPool(unittest.TestCase):
 
     def test_wrong_specific_method(self):
         # To make sure the dummy server is actually returning failed responses
-        r = self._http_pool.get_url('/specific_method',
+        r = self._http_pool.request('GET', '/specific_method',
                                    fields={'method': 'POST'})
         self.assertEqual(r.status, 400, r.data)
 
-        r = self._http_pool.post_url('/specific_method',
+        r = self._http_pool.request('POST', '/specific_method',
                                     fields={'method': 'GET'})
         self.assertEqual(r.status, 400, r.data)
 
@@ -76,7 +76,7 @@ class TestConnectionPool(unittest.TestCase):
             'filefield': ('lolcat.txt', data),
         }
 
-        r = self._http_pool.post_url('/upload', fields=fields)
+        r = self._http_pool.request('POST', '/upload', fields=fields)
         self.assertEqual(r.status, 200, r.data)
 
     def test_unicode_upload(self):
@@ -92,32 +92,32 @@ class TestConnectionPool(unittest.TestCase):
             fieldname: (filename, data),
         }
 
-        r = self._http_pool.post_url('/upload', fields=fields)
+        r = self._http_pool.request('POST', '/upload', fields=fields)
         self.assertEqual(r.status, 200, r.data)
 
     def test_timeout(self):
         pool = HTTPConnectionPool(HOST, PORT, timeout=0.01)
         try:
-            pool.get_url('/sleep',
+            pool.request('GET', '/sleep',
                          fields={'seconds': '0.02'})
             self.fail("Failed to raise TimeoutError exception")
         except TimeoutError:
             pass
 
     def test_redirect(self):
-        r = self._http_pool.get_url('/redirect',
+        r = self._http_pool.request('GET', '/redirect',
                                    fields={'target': '/'},
                                    redirect=False)
         self.assertEqual(r.status, 303)
 
-        r = self._http_pool.get_url('/redirect',
+        r = self._http_pool.request('GET', '/redirect',
                                    fields={'target': '/'})
         self.assertEqual(r.status, 200)
         self.assertEqual(r.data, 'Dummy server!')
 
     def test_maxretry(self):
         try:
-            self._http_pool.get_url('/redirect',
+            self._http_pool.request('GET', '/redirect',
                                    fields={'target': '/'},
                                    retries=0)
             self.fail("Failed to raise MaxRetryError exception")
@@ -127,8 +127,8 @@ class TestConnectionPool(unittest.TestCase):
     def test_keepalive(self):
         pool = HTTPConnectionPool(HOST, PORT, block=True, maxsize=1)
 
-        r = pool.get_url('/keepalive?close=0')
-        r = pool.get_url('/keepalive?close=0')
+        r = pool.request('GET', '/keepalive?close=0')
+        r = pool.request('GET', '/keepalive?close=0')
 
         self.assertEqual(r.status, 200)
         self.assertEqual(pool.num_connections, 1)
@@ -141,7 +141,7 @@ class TestConnectionPool(unittest.TestCase):
         # really slow and fail half the time. Setting it to skip until we can
         # make this run better locally.
         pool = HTTPConnectionPool(HOST, PORT, block=True, maxsize=1, timeout=2)
-        r = pool.get_url('/keepalive?close=1', retries=0,
+        r = pool.request('GET', '/keepalive?close=1', retries=0,
                          headers={
                              "Connection": "close",
                          })
@@ -157,7 +157,7 @@ class TestConnectionPool(unittest.TestCase):
         self._http_pool._put_conn(conn)
 
         # Now with keep-alive
-        r = pool.get_url('/keepalive?close=0', retries=0,
+        r = pool.request('GET', '/keepalive?close=0', retries=0,
                          headers={
                              "Connection": "keep-alive",
                          })
@@ -172,7 +172,7 @@ class TestConnectionPool(unittest.TestCase):
 
         # Another request asking the server to close the connection. This one
         # should get cleaned up for the next request.
-        r = pool.get_url('/keepalive?close=1', retries=0,
+        r = pool.request('GET', '/keepalive?close=1', retries=0,
                          headers={
                              "Connection": "close",
                          })
@@ -185,19 +185,19 @@ class TestConnectionPool(unittest.TestCase):
         self._http_pool._put_conn(conn)
 
         # Next request
-        r = pool.get_url('/keepalive?close=0')
+        r = pool.request('GET', '/keepalive?close=0')
         self.assertEqual(pool.num_connections, 3)
 
     def test_post_with_urlencode(self):
         data = {'banana': 'hammock', 'lol': 'cat'}
-        r = self._http_pool.post_url('/echo',
+        r = self._http_pool.request('POST', '/echo',
                                     fields=data,
                                     encode_multipart=False)
         self.assertEqual(r.data, urllib.urlencode(data))
 
     def test_post_with_multipart(self):
         data = {'banana': 'hammock', 'lol': 'cat'}
-        r = self._http_pool.post_url('/echo',
+        r = self._http_pool.request('POST', '/echo',
                                     fields=data,
                                     encode_multipart=True)
         body = r.data.split('\r\n')
@@ -221,13 +221,13 @@ class TestConnectionPool(unittest.TestCase):
             self.assertEqual(body[i], expected_body[i])
 
     def test_check_gzip(self):
-        r = self._http_pool.get_url('/encodingrequest',
+        r = self._http_pool.request('GET', '/encodingrequest',
                                    headers={'accept-encoding': 'gzip'})
         self.assertEqual(r.headers.get('content-encoding'), 'gzip')
         self.assertEqual(r.data, 'hello, world!')
 
     def test_check_deflate(self):
-        r = self._http_pool.get_url('/encodingrequest',
+        r = self._http_pool.request('GET', '/encodingrequest',
                                    headers={'accept-encoding': 'deflate'})
         self.assertEqual(r.headers.get('content-encoding'), 'deflate')
         self.assertEqual(r.data, 'hello, world!')
@@ -235,9 +235,9 @@ class TestConnectionPool(unittest.TestCase):
     def test_connection_count(self):
         http_pool = HTTPConnectionPool(HOST, PORT, maxsize=1)
 
-        http_pool.get_url('/')
-        http_pool.get_url('/')
-        http_pool.get_url('/')
+        http_pool.request('GET', '/')
+        http_pool.request('GET', '/')
+        http_pool.request('GET', '/')
 
         self.assertEqual(http_pool.num_connections, 1)
         self.assertEqual(http_pool.num_requests, 3)
@@ -248,7 +248,7 @@ class TestConnectionPool(unittest.TestCase):
         req_data = {'lol': 'cat'}
         resp_data = urllib.urlencode(req_data)
 
-        r = http_pool.get_url('/echo', fields=req_data, preload_content=False)
+        r = http_pool.request('GET', '/echo', fields=req_data, preload_content=False)
 
         self.assertEqual(r.read(5), resp_data[:5])
         self.assertEqual(r.read(), resp_data[5:])
@@ -270,12 +270,12 @@ class TestConnectionPool(unittest.TestCase):
         req2_data = {'count': 'b' * payload_size}
         resp2_data = encode_multipart_formdata(req2_data, boundary=boundary)[0]
 
-        r1 = http_pool.post_url('/echo', fields=req_data, multipart_boundary=boundary, preload_content=False)
+        r1 = http_pool.request('POST', '/echo', fields=req_data, multipart_boundary=boundary, preload_content=False)
 
         self.assertEqual(r1.read(first_chunk), resp_data[:first_chunk])
 
         try:
-            r2 = http_pool.post_url('/echo', fields=req2_data, multipart_boundary=boundary,
+            r2 = http_pool.request('POST', '/echo', fields=req2_data, multipart_boundary=boundary,
                                     preload_content=False, pool_timeout=0.001)
 
             # This branch should generally bail here, but maybe someday it will
