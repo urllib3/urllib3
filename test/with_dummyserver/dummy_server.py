@@ -179,7 +179,6 @@ class TestWithDummyServer(unittest.TestCase):
             pass
 
 
-
 if __name__ == '__main__':
     log.setLevel(logging.DEBUG)
     log.addHandler(logging.StreamHandler(sys.stderr))

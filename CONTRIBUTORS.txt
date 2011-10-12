@@ -30,3 +30,6 @@
 
 * Code review, PEP8 compliance, benchmark fix.
   * p.dobrogost <http://code.google.com/u/@WBRSRlBZDhBFXQB6/>
+
+* Bugfixes, Suggestions, Requests integration.
+  * kennethreitz <me@kennethreitz.com>
