@@ -17,7 +17,6 @@ from webob import Request, Response, exc
 
 from eventlet import wsgi
 import eventlet
-import threading
 import unittest
 
 
@@ -141,32 +140,35 @@ class TestingApp(object):
         sys.exit()
 
 
-app = TestingApp()
-
-
 def make_server(host="localhost", port=8081, scheme='http', **kw):
     socket = eventlet.listen((host, port))
 
     if scheme == 'https':
         socket = eventlet.wrap_ssl(socket, server_side=True, **CERTS)
 
-    # Blocking version that does work:
-    return wsgi.server(socket, app, **kw)
+    dummy_log_fp = open('/dev/null', 'a')
+
+    return wsgi.server(socket, TestingApp(), log=dummy_log_fp, **kw)
+
 
 def make_server_thread(**kw):
-    return threading.Thread(target=make_server, kwargs=kw).start() 
+    import threading
+    t = threading.Thread(target=make_server, kwargs=kw)
+    t.start()
+    return t
 
 
-class TestWithDummyServer(unittest.TestCase):
+class HTTPDummyServerTestCase(unittest.TestCase):
     scheme = 'http'
     host = 'localhost'
-    port = 8081
+    port = 18081
 
     @classmethod
     def setUpClass(cls):
         cls.server_thread = make_server_thread(host=cls.host, port=cls.port,
                                                scheme=cls.scheme)
 
+        # TODO: Loop-check here instead
         import time
         time.sleep(0.1)
 
@@ -177,6 +179,13 @@ class TestWithDummyServer(unittest.TestCase):
             urllib.urlopen(cls.scheme + '://' + cls.host + ':' + str(cls.port) + '/shutdown')
         except IOError:
             pass
+        cls.server_thread.join()
+
+
+class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
+    scheme = 'https'
+    host = 'localhost'
+    port = 18082
 
 
 if __name__ == '__main__':
