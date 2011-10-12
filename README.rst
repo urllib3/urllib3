@@ -75,21 +75,9 @@ Running the test command will install the necessary dependencies and run the
 tests. ::
 
   $ python setup.py test
-  ...........E
+  ...................................
 
-Tests can also be run using ``nosetests``.
-
-Some tests require the ``dummy_server.py`` running to pass. In another
-terminal: ::
-
-  $ python -O test/dummy_server.py
-
-Then run the tests again: ::
-
-  $ nosetests
-  ............
-
-Success!
+Success! Tests can also be run using ``nosetests`` for cleaner output.
 
 
 Contributing
