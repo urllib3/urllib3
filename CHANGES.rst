@@ -1,6 +1,9 @@
 Changes
 =======
 
+* Fixed typo in ``VerifiedHTTPSConnection`` which would only present as a bug if
+  you're using the object manually. (Thanks pyos)
+
 1.0.1 (2011-10-10)
 ++++++++++++++++++
 
