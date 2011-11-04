@@ -6,6 +6,7 @@
 
 from collections import MutableMapping, deque
 
+import threading
 
 __all__ = ['RecentlyUsedContainer']
 
@@ -39,6 +40,7 @@ class RecentlyUsedContainer(MutableMapping):
 
         # We use a deque to to store our keys ordered by the last access.
         self.access_log = deque()
+        self.access_log_lock = threading.RLock()
 
         # We look up the access log entry by the key to invalidate it so we can
         # insert a new authorative entry at the head without having to dig and
@@ -58,12 +60,14 @@ class RecentlyUsedContainer(MutableMapping):
         new_entry = AccessEntry(key)
 
         self.access_lookup[key] = new_entry
-        self.access_log.appendleft(new_entry)
+        with self.access_log_lock:
+            self.access_log.appendleft(new_entry)
 
     def _prune_entries(self, num):
         "Pop entries from our access log until we popped ``num`` valid ones."
         while num > 0:
-            p = self.access_log.pop()
+            with self.access_log_lock:
+                p = self.access_log.pop()
 
             if not p.is_valid:
                 continue # Invalidated entry, skip
@@ -74,11 +78,13 @@ class RecentlyUsedContainer(MutableMapping):
 
     def _prune_invalidated_entries(self):
         "Rebuild our access_log without the invalidated entries."
-        self.access_log = deque(e for e in self.access_log if e.is_valid)
+        with self.access_log_lock:
+            self.access_log = deque(e for e in self.access_log if e.is_valid)
 
     def _get_ordered_access_keys(self):
         # Used for testing
-        return [e.key for e in self.access_log if e.is_valid]
+        with self.access_log_lock:
+            return [e.key for e in self.access_log if e.is_valid]
 
     def __getitem__(self, key):
         item = self._container.get(key)
