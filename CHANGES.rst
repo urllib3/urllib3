@@ -1,8 +1,18 @@
 Changes
 =======
 
+1.0.2 (2011-11-04)
+++++++++++++++++++
+
 * Fixed typo in ``VerifiedHTTPSConnection`` which would only present as a bug if
   you're using the object manually. (Thanks pyos)
+
+* Made RecentlyUsedContainer (and consequently PoolManager) more thread-safe by
+  wrapping the access log in a mutex. (Thanks @christer)
+
+* Made RecentlyUsedContainer more dict-like (corrected ``__delitem__`` and
+  ``__getitem__`` behaviour), with tests. Shouldn't affect core urllib3 code.
+
 
 1.0.1 (2011-10-10)
 ++++++++++++++++++
