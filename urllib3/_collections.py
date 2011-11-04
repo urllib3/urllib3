@@ -60,7 +60,6 @@ class RecentlyUsedContainer(MutableMapping):
         self._invalidate_entry(key)
 
         new_entry = AccessEntry(key)
-
         self.access_lookup[key] = new_entry
 
         self.access_log_lock.acquire()
@@ -77,8 +76,8 @@ class RecentlyUsedContainer(MutableMapping):
             if not p.is_valid:
                 continue # Invalidated entry, skip
 
-            del self._container[p.key]
-            del self.access_lookup[p.key]
+            self._container.pop(p.key, None)
+            self.access_lookup.pop(p.key, None)
             num -= 1
 
     def _prune_invalidated_entries(self):
