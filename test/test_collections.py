@@ -79,6 +79,38 @@ class TestLRUContainer(unittest.TestCase):
 
         self.assertEqual(d._get_ordered_access_keys(), new_order)
 
+    def test_delete(self):
+        d = Container(5)
+
+        for i in xrange(5):
+            d[i] = True
+
+        del d[0]
+        self.assertFalse(0 in d)
+
+        d.pop(1)
+        self.assertFalse(1 in d)
+
+        d.pop(1, None)
+
+    def test_get(self):
+        d = Container(5)
+
+        for i in xrange(5):
+            d[i] = True
+
+        r = d.get(4)
+        self.assertEqual(r, True)
+
+        r = d.get(5)
+        self.assertEqual(r, None)
+
+        r = d.get(5, 42)
+        self.assertEqual(r, 42)
+
+        self.assertRaises(KeyError, lambda: d[5])
+
+
 
 if __name__ == '__main__':
     unittest.main()
