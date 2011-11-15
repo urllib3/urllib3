@@ -488,7 +488,7 @@ def get_host(url):
     # simplified for our needs.
     port = None
     scheme = 'http'
-    if '//' in url:
+    if '://' in url:
         scheme, url = url.split('://', 1)
     if '/' in url:
         url, _path = url.split('/', 1)
