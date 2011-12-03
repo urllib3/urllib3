@@ -146,7 +146,7 @@ def make_server(host="localhost", port=8081, scheme='http', **kw):
     if scheme == 'https':
         socket = eventlet.wrap_ssl(socket, server_side=True, **CERTS)
 
-    dummy_log_fp = open('/dev/null', 'a')
+    dummy_log_fp = open(os.devnull, 'a')
 
     return wsgi.server(socket, TestingApp(), log=dummy_log_fp, **kw)
 

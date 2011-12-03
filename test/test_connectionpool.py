@@ -1,7 +1,6 @@
 import sys
 import unittest
 
-sys.path.append('../')
 from urllib3.connectionpool import (
     connection_from_url,
     get_host,
