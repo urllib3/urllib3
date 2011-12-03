@@ -3,10 +3,6 @@ import unittest
 
 from StringIO import StringIO
 
-
-sys.path.append('../')
-
-
 from urllib3.response import HTTPResponse
 
 
