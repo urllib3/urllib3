@@ -8,6 +8,7 @@ from urllib3.exceptions import TimeoutError, EmptyPoolError, MaxRetryError
 
 from dummyserver.testcase import HTTPDummyServerTestCase
 
+
 log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -298,7 +299,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         http_pool.urlopen('GET', '/')
         self.assertEqual(http_pool.pool.qsize(), MAXSIZE-2)
-
 
 
 if __name__ == '__main__':
