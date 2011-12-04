@@ -1,4 +1,3 @@
-import sys
 import unittest
 
 from urllib3.connectionpool import (

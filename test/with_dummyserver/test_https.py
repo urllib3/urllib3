@@ -1,6 +1,5 @@
 import logging
 import sys
-import os
 import unittest
 
 from dummyserver.testcase import HTTPSDummyServerTestCase
