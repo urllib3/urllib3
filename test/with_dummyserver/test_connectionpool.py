@@ -1,12 +1,3 @@
-if __name__ == '__main__' and __package__ is None:
-    print """
-    Warning!
-
-    This module uses relative import and must be run
-    using Python interpreter's "-m" option
-
-    """
-
 import logging
 import sys
 import unittest
@@ -15,7 +6,7 @@ import urllib
 from urllib3 import encode_multipart_formdata, HTTPConnectionPool
 from urllib3.exceptions import TimeoutError, EmptyPoolError, MaxRetryError
 
-from .dummy_server import HTTPDummyServerTestCase
+from dummyserver.testcase import HTTPDummyServerTestCase
 
 log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)

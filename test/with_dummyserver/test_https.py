@@ -3,21 +3,12 @@ import sys
 import os
 import unittest
 
-from .dummy_server import HTTPSDummyServerTestCase
+from dummyserver.testcase import HTTPSDummyServerTestCase
+from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD
 
 from urllib3 import HTTPSConnectionPool
 from urllib3.connectionpool import VerifiedHTTPSConnection
-from urllib3.exceptions import (
-    TimeoutError, EmptyPoolError, MaxRetryError, SSLError,
-)
-
-
-
-CERTS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                          'certs'))
-
-CA_PATH = os.path.join(CERTS_PATH, 'client.pem')
-CA_BAD_PATH = os.path.join(CERTS_PATH, 'client_bad.pem')
+from urllib3.exceptions import SSLError
 
 
 log = logging.getLogger('urllib3.connectionpool')
@@ -45,17 +36,17 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             https_pool.request('GET', '/')
             self.fail("Didn't raise SSL error with no CA")
         except SSLError, e:
-            self.assertIn('No root certificates', str(e))
+            self.assertTrue('No root certificates' in str(e))
 
-        https_pool.ca_certs = CA_BAD_PATH
+        https_pool.ca_certs = DEFAULT_CA_BAD
 
         try:
             https_pool.request('GET', '/')
             self.fail("Didn't raise SSL error with wrong CA")
         except SSLError, e:
-            self.assertIn('certificate verify failed', str(e))
+            self.assertTrue('certificate verify failed' in str(e))
 
-        https_pool.ca_certs = CA_PATH
+        https_pool.ca_certs = DEFAULT_CA
         https_pool.request('GET', '/') # Should succeed without exceptions.
 
 
