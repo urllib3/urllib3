@@ -209,6 +209,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if timeout is _Default:
             timeout = self.timeout
+            conn.timeout = timeout # This only does anything in Py26+
 
         conn.request(method, url, **httplib_request_kw)
         conn.sock.settimeout(timeout)
