@@ -1,6 +1,6 @@
 import unittest
 
-from .server import make_server_thread, eventlet_server, DEFAULT_CERTS
+from .server import make_server_thread, make_server, DEFAULT_CERTS
 
 
 class HTTPDummyServerTestCase(unittest.TestCase):
@@ -11,7 +11,7 @@ class HTTPDummyServerTestCase(unittest.TestCase):
 
     @classmethod
     def _start_server(cls):
-        cls.server_thread = make_server_thread(eventlet_server,
+        cls.server_thread = make_server_thread(make_server,
                                                host=cls.host, port=cls.port,
                                                scheme=cls.scheme,
                                                certs=cls.certs)

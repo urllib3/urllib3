@@ -110,8 +110,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(pool.num_connections, 1)
         self.assertEqual(pool.num_requests, 2)
 
-    #@unittest.skip("We don't have a dummy_server which properly closes the "
-    #               "connection when requested.")
     def test_keepalive_close(self):
         # NOTE: This used to run against apache.org but it made the test suite
         # really slow and fail half the time. Setting it to skip until we can

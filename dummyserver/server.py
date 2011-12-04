@@ -38,6 +38,18 @@ def eventlet_server(host="localhost", port=8081, scheme='http', certs=None, **kw
     return eventlet.wsgi.server(socket, TestingApp(), log=dummy_log_fp, **kw)
 
 
+def simple_server(host="localhost", port=8081, **kw):
+    from wsgiref.simple_server import make_server
+    return make_server(host, port, TestingApp())
+
+
+def make_server(**kw):
+    try:
+        return eventlet_server(**kw)
+    except ImportError:
+        return simple_server(**kw)
+
+
 def make_server_thread(target, **kw):
     import threading
     t = threading.Thread(target=target, kwargs=kw)
@@ -56,4 +68,4 @@ if __name__ == '__main__':
         url = sys.argv[1]
 
     scheme, host, port = get_host(url)
-    eventlet_server(scheme=scheme, host=host, port=port)
+    make_server(scheme=scheme, host=host, port=port)

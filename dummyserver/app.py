@@ -121,4 +121,3 @@ class TestingApp(object):
 
     def shutdown(self, request):
         sys.exit()
-
