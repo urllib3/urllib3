@@ -1,10 +1,6 @@
 import sys
 import unittest
 
-
-sys.path.append('../')
-
-
 from urllib3.poolmanager import PoolManager
 from urllib3 import connection_from_url
 

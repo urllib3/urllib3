@@ -1,10 +1,6 @@
 import sys
 import unittest
 
-
-sys.path.append('../')
-
-
 from urllib3._collections import RecentlyUsedContainer as Container
 
 
