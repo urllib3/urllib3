@@ -492,6 +492,8 @@ def get_host(url):
         scheme, url = url.split('://', 1)
     if '/' in url:
         url, _path = url.split('/', 1)
+    if '@' in url:
+        _auth, url = url.split('@', 1)
     if ':' in url:
         url, port = url.split(':', 1)
         port = int(port)
