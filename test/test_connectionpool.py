@@ -1,7 +1,5 @@
-import sys
 import unittest
 
-sys.path.append('../')
 from urllib3.connectionpool import (
     connection_from_url,
     get_host,
@@ -25,6 +23,7 @@ class TestConnectionPool(unittest.TestCase):
             'http://google.com:8000': ('http', 'google.com', 8000),
             'https://google.com': ('https', 'google.com', None),
             'https://google.com:8000': ('https', 'google.com', 8000),
+            'http://user:password@127.0.0.1:1234': ('http', '127.0.0.1', 1234),
         }
         for url, expected_host in url_host_map.iteritems():
             returned_host = get_host(url)

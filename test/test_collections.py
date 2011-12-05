@@ -1,9 +1,4 @@
-import sys
 import unittest
-
-
-sys.path.append('../')
-
 
 from urllib3._collections import RecentlyUsedContainer as Container
 
@@ -109,7 +104,6 @@ class TestLRUContainer(unittest.TestCase):
         self.assertEqual(r, 42)
 
         self.assertRaises(KeyError, lambda: d[5])
-
 
 
 if __name__ == '__main__':

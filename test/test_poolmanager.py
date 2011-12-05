@@ -1,9 +1,4 @@
-import sys
 import unittest
-
-
-sys.path.append('../')
-
 
 from urllib3.poolmanager import PoolManager
 from urllib3 import connection_from_url
@@ -46,7 +41,6 @@ class TestPoolManager(unittest.TestCase):
             connections.add(conn)
 
         self.assertEqual(len(connections), 5)
-
 
 
 if __name__ == '__main__':

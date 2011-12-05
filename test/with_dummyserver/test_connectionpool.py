@@ -3,10 +3,10 @@ import sys
 import unittest
 import urllib
 
-
-from .dummy_server import HTTPDummyServerTestCase
 from urllib3 import encode_multipart_formdata, HTTPConnectionPool
 from urllib3.exceptions import TimeoutError, EmptyPoolError, MaxRetryError
+
+from dummyserver.testcase import HTTPDummyServerTestCase
 
 
 log = logging.getLogger('urllib3.connectionpool')
@@ -110,8 +110,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(pool.num_connections, 1)
         self.assertEqual(pool.num_requests, 2)
 
-    #@unittest.skip("We don't have a dummy_server which properly closes the "
-    #               "connection when requested.")
     def test_keepalive_close(self):
         # NOTE: This used to run against apache.org but it made the test suite
         # really slow and fail half the time. Setting it to skip until we can
@@ -299,7 +297,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         http_pool.urlopen('GET', '/')
         self.assertEqual(http_pool.pool.qsize(), MAXSIZE-2)
-
 
 
 if __name__ == '__main__':
