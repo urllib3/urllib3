@@ -24,9 +24,10 @@ version = VERSION
 
 requirements = []
 tests_requirements = requirements + [
+    'coverage',
+    'eventlet',
     'nose',
     'webob',
-    'eventlet',
 ]
 
 setup(name='urllib3',
