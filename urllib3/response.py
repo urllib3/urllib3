@@ -129,21 +129,15 @@ class HTTPResponse(object):
         content_encoding = self.headers.get('content-encoding')
         decoder = self.CONTENT_DECODERS.get(content_encoding)
 
-        data = self._fp and self._fp.read(amt) if amt else self._fp.read()
+        data = self._fp and self._fp.read(amt) if amt is not None else self._fp.read()
 
         try:
-
-            if amt:
-                return data
-
-            if not decode_content or not decoder:
-                if cache_content:
-                    self._body = data
-
+            if amt is not None:
                 return data
 
             try:
-                data = decoder(data)
+                if decode_content and decoder:
+                    data = decoder(data)
             except IOError:
                 raise HTTPError("Received response with content-encoding: %s, but "
                                 "failed to decode it." % content_encoding)
@@ -154,7 +148,6 @@ class HTTPResponse(object):
             return data
 
         finally:
-
             if self._original_response and self._original_response.isclosed():
                 self.release_conn()
 
