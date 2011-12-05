@@ -78,6 +78,10 @@ class HTTPResponse(object):
         self._pool = pool
         self._connection = connection
 
+        # Convert the body to a StringIO object
+        if isinstance(body, basestring):
+            self._fp = StringIO(body)
+
         if hasattr(body, 'read'):
             self._fp = body
 
@@ -125,7 +129,7 @@ class HTTPResponse(object):
         content_encoding = self.headers.get('content-encoding')
         decoder = self.CONTENT_DECODERS.get(content_encoding)
 
-        data = self._fp and self._fp.read(amt)
+        data = self._fp and self._fp.read(amt) if amt else self._fp.read()
 
         try:
 
