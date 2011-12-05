@@ -7,6 +7,9 @@
 
 ## Patches
 
+* Bugfixes, Improvements and Test coverage
+  * georgemarshall <http://github.com/georgemarshall>
+
 * HTTPS patch (which inspired HTTPSConnectionPool)
   * victor.vde <http://code.google.com/u/victor.vde/>
 
