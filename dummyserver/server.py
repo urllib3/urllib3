@@ -8,7 +8,7 @@ import logging
 import os
 import sys
 
-from .app import TestingApp
+from dummyserver.app import TestingApp
 
 
 log = logging.getLogger(__name__)
@@ -66,6 +66,8 @@ if __name__ == '__main__':
     url = "http://localhost:8081"
     if len(sys.argv) > 1:
         url = sys.argv[1]
+
+    print "Starting server at: %s" % url
 
     scheme, host, port = get_host(url)
     make_server(scheme=scheme, host=host, port=port)

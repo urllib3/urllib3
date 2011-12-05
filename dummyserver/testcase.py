@@ -1,6 +1,6 @@
 import unittest
 
-from .server import make_server_thread, make_server, DEFAULT_CERTS
+from dummyserver.server import make_server_thread, make_server, DEFAULT_CERTS
 
 
 class HTTPDummyServerTestCase(unittest.TestCase):
