@@ -4,6 +4,7 @@ import sys
 import time
 import zlib
 
+from urlparse import urlsplit
 from cgi import FieldStorage
 from StringIO import StringIO
 from webob import Request, Response, exc
@@ -23,12 +24,17 @@ class TestingApp(object):
     """
     def __call__(self, environ, start_response):
         req = Request(environ)
-        target = req.path_info[1:].replace('/', '_')
+
+        path = req.path_info[:]
+        if not path.startswith('/'):
+            path = urlsplit(path).path
+
+        target = path[1:].replace('/', '_')
         method = getattr(self, target, self.index)
         resp = method(req)
 
         if resp.headers.get('Connection') == 'close':
-            # Can we kill the connection somehow?
+            # FIXME: Can we kill the connection somehow?
             pass
 
         return resp(environ, start_response)
