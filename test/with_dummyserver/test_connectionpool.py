@@ -297,7 +297,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         pool.urlopen('GET', '/')
         self.assertEqual(pool.pool.qsize(), MAXSIZE-2)
-        
+
     def test_release_conn_parameter(self):
         MAXSIZE=5
         pool = HTTPConnectionPool(self.host, self.port, maxsize=MAXSIZE)
@@ -305,7 +305,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # Make request without releasing connection
         pool.urlopen('GET', '/', release_conn=False)
         self.assertEqual(pool.pool.qsize(), MAXSIZE-1)
-        
 
 
 if __name__ == '__main__':
