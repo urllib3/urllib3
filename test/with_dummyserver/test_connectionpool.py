@@ -273,12 +273,11 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # Check default state
         pool = HTTPConnectionPool(self.host, self.port, maxsize=MAXSIZE)
         self.assertEqual(pool.num_connections, 0)
+        self.assertEqual(pool.pool.qsize(), MAXSIZE)
 
         # Make an empty slot for testing
         pool.pool.get()
-
         self.assertEqual(pool.pool.qsize(), MAXSIZE-1)
-
 
         # Check state after simple request
         pool.urlopen('GET', '/')
@@ -301,6 +300,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     def test_release_conn_parameter(self):
         MAXSIZE=5
         pool = HTTPConnectionPool(self.host, self.port, maxsize=MAXSIZE)
+        self.assertEqual(pool.pool.qsize(), MAXSIZE)
 
         # Make request without releasing connection
         pool.urlopen('GET', '/', release_conn=False)
