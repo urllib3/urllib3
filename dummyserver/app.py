@@ -1,13 +1,6 @@
-#!/usr/bin/env python
-
-"""
-Dummy server used for unit testing.
-"""
-
 import gzip
 import logging
 import sys
-import os
 import time
 import zlib
 
@@ -15,18 +8,8 @@ from cgi import FieldStorage
 from StringIO import StringIO
 from webob import Request, Response, exc
 
-from eventlet import wsgi
-import eventlet
-import unittest
-
 
 log = logging.getLogger(__name__)
-
-CERTS_PATH = os.path.join(os.path.dirname(__file__), 'certs')
-CERTS = {
-    'certfile': os.path.join(CERTS_PATH, 'server.crt'),
-    'keyfile': os.path.join(CERTS_PATH, 'server.key'),
-}
 
 
 class TestingApp(object):
@@ -138,65 +121,3 @@ class TestingApp(object):
 
     def shutdown(self, request):
         sys.exit()
-
-
-def make_server(host="localhost", port=8081, scheme='http', **kw):
-    socket = eventlet.listen((host, port))
-
-    if scheme == 'https':
-        socket = eventlet.wrap_ssl(socket, server_side=True, **CERTS)
-
-    dummy_log_fp = open(os.devnull, 'a')
-
-    return wsgi.server(socket, TestingApp(), log=dummy_log_fp, **kw)
-
-
-def make_server_thread(**kw):
-    import threading
-    t = threading.Thread(target=make_server, kwargs=kw)
-    t.start()
-    return t
-
-
-class HTTPDummyServerTestCase(unittest.TestCase):
-    scheme = 'http'
-    host = 'localhost'
-    port = 18081
-
-    @classmethod
-    def setUpClass(cls):
-        cls.server_thread = make_server_thread(host=cls.host, port=cls.port,
-                                               scheme=cls.scheme)
-
-        # TODO: Loop-check here instead
-        import time
-        time.sleep(0.1)
-
-    @classmethod
-    def tearDownClass(cls):
-        import urllib # Yup, that's right.
-        try:
-            urllib.urlopen(cls.scheme + '://' + cls.host + ':' + str(cls.port) + '/shutdown')
-        except IOError:
-            pass
-        cls.server_thread.join()
-
-
-class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
-    scheme = 'https'
-    host = 'localhost'
-    port = 18082
-
-
-if __name__ == '__main__':
-    log.setLevel(logging.DEBUG)
-    log.addHandler(logging.StreamHandler(sys.stderr))
-
-    from urllib3 import get_host
-
-    url = "http://localhost:8081"
-    if len(sys.argv) > 1:
-        url = sys.argv[1]
-
-    scheme, host, port = get_host(url)
-    make_server(scheme=scheme, host=host, port=port)

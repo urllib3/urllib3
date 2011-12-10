@@ -1,4 +1,3 @@
-import sys
 import unittest
 
 from urllib3.poolmanager import PoolManager
@@ -42,7 +41,6 @@ class TestPoolManager(unittest.TestCase):
             connections.add(conn)
 
         self.assertEqual(len(connections), 5)
-
 
 
 if __name__ == '__main__':
