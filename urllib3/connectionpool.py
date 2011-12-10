@@ -209,6 +209,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if timeout is _Default:
             timeout = self.timeout
+            if hasattr(conn, 'timeout'):
+                conn.timeout = timeout
 
         conn.request(method, url, **httplib_request_kw)
         conn.sock.settimeout(timeout)
