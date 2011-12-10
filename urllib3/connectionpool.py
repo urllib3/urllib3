@@ -244,6 +244,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
            More commonly, it's appropriate to use a convenience method provided
            by :class:`.RequestMethods`, such as :meth:`.request`.
 
+        .. note::
+
+           `release_conn` will only behave as expected if
+           `preload_content=False` because we want to make
+           `preload_content=False` the default behaviour someday soon without
+           breaking backwards compatibility.
+
         :param method:
             HTTP request method (such as GET, POST, PUT, etc.)
 
@@ -279,10 +286,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         :param release_conn:
             If False, then the urlopen call will not release the connection
-            back into the pool once a response is received. This is useful if
-            you're not preloading the response's content immediately. You will
-            need to call ``r.release_conn()`` on the response ``r`` to return
-            the connection back into the pool. If None, it takes the value of
+            back into the pool once a response is received (but will release if
+            you read the entire contents of the response such as when
+            `preload_content=True`). This is useful if you're not preloading
+            the response's content immediately. You will need to call
+            ``r.release_conn()`` on the response ``r`` to return the connection
+            back into the pool. If None, it takes the value of
             ``response_kw.get('preload_content', True)``.
 
         :param \**response_kw:
