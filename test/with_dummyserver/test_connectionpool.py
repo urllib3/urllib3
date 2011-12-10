@@ -17,29 +17,29 @@ log.addHandler(logging.StreamHandler(sys.stdout))
 class TestConnectionPool(HTTPDummyServerTestCase):
 
     def setUp(self):
-        self._pool = HTTPConnectionPool(self.host, self.port)
+        self.pool = HTTPConnectionPool(self.host, self.port)
 
     def test_get(self):
-        r = self._pool.request('GET', '/specific_method',
+        r = self.pool.request('GET', '/specific_method',
                                fields={'method': 'GET'})
         self.assertEqual(r.status, 200, r.data)
 
     def test_post_url(self):
-        r = self._pool.request('POST', '/specific_method',
+        r = self.pool.request('POST', '/specific_method',
                                fields={'method': 'POST'})
         self.assertEqual(r.status, 200, r.data)
 
     def test_urlopen_put(self):
-        r = self._pool.urlopen('PUT', '/specific_method?method=PUT')
+        r = self.pool.urlopen('PUT', '/specific_method?method=PUT')
         self.assertEqual(r.status, 200, r.data)
 
     def test_wrong_specific_method(self):
         # To make sure the dummy server is actually returning failed responses
-        r = self._pool.request('GET', '/specific_method',
+        r = self.pool.request('GET', '/specific_method',
                                fields={'method': 'POST'})
         self.assertEqual(r.status, 400, r.data)
 
-        r = self._pool.request('POST', '/specific_method',
+        r = self.pool.request('POST', '/specific_method',
                                fields={'method': 'GET'})
         self.assertEqual(r.status, 400, r.data)
 
@@ -52,7 +52,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             'filefield': ('lolcat.txt', data),
         }
 
-        r = self._pool.request('POST', '/upload', fields=fields)
+        r = self.pool.request('POST', '/upload', fields=fields)
         self.assertEqual(r.status, 200, r.data)
 
     def test_unicode_upload(self):
@@ -68,7 +68,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             fieldname: (filename, data),
         }
 
-        r = self._pool.request('POST', '/upload', fields=fields)
+        r = self.pool.request('POST', '/upload', fields=fields)
         self.assertEqual(r.status, 200, r.data)
 
     def test_timeout(self):
@@ -81,19 +81,19 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             pass
 
     def test_redirect(self):
-        r = self._pool.request('GET', '/redirect',
+        r = self.pool.request('GET', '/redirect',
                                    fields={'target': '/'},
                                    redirect=False)
         self.assertEqual(r.status, 303)
 
-        r = self._pool.request('GET', '/redirect',
+        r = self.pool.request('GET', '/redirect',
                                    fields={'target': '/'})
         self.assertEqual(r.status, 200)
         self.assertEqual(r.data, 'Dummy server!')
 
     def test_maxretry(self):
         try:
-            self._pool.request('GET', '/redirect',
+            self.pool.request('GET', '/redirect',
                                    fields={'target': '/'},
                                    retries=0)
             self.fail("Failed to raise MaxRetryError exception")
@@ -164,14 +164,14 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_post_with_urlencode(self):
         data = {'banana': 'hammock', 'lol': 'cat'}
-        r = self._pool.request('POST', '/echo',
+        r = self.pool.request('POST', '/echo',
                                     fields=data,
                                     encode_multipart=False)
         self.assertEqual(r.data, urllib.urlencode(data))
 
     def test_post_with_multipart(self):
         data = {'banana': 'hammock', 'lol': 'cat'}
-        r = self._pool.request('POST', '/echo',
+        r = self.pool.request('POST', '/echo',
                                     fields=data,
                                     encode_multipart=True)
         body = r.data.split('\r\n')
@@ -195,34 +195,34 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             self.assertEqual(body[i], expected_body[i])
 
     def test_check_gzip(self):
-        r = self._pool.request('GET', '/encodingrequest',
+        r = self.pool.request('GET', '/encodingrequest',
                                    headers={'accept-encoding': 'gzip'})
         self.assertEqual(r.headers.get('content-encoding'), 'gzip')
         self.assertEqual(r.data, 'hello, world!')
 
     def test_check_deflate(self):
-        r = self._pool.request('GET', '/encodingrequest',
+        r = self.pool.request('GET', '/encodingrequest',
                                    headers={'accept-encoding': 'deflate'})
         self.assertEqual(r.headers.get('content-encoding'), 'deflate')
         self.assertEqual(r.data, 'hello, world!')
 
     def test_connection_count(self):
-        http_pool = HTTPConnectionPool(self.host, self.port, maxsize=1)
+        pool = HTTPConnectionPool(self.host, self.port, maxsize=1)
 
-        http_pool.request('GET', '/')
-        http_pool.request('GET', '/')
-        http_pool.request('GET', '/')
+        pool.request('GET', '/')
+        pool.request('GET', '/')
+        pool.request('GET', '/')
 
-        self.assertEqual(http_pool.num_connections, 1)
-        self.assertEqual(http_pool.num_requests, 3)
+        self.assertEqual(pool.num_connections, 1)
+        self.assertEqual(pool.num_requests, 3)
 
     def test_partial_response(self):
-        http_pool = HTTPConnectionPool(self.host, self.port, maxsize=1)
+        pool = HTTPConnectionPool(self.host, self.port, maxsize=1)
 
         req_data = {'lol': 'cat'}
         resp_data = urllib.urlencode(req_data)
 
-        r = http_pool.request('GET', '/echo', fields=req_data, preload_content=False)
+        r = pool.request('GET', '/echo', fields=req_data, preload_content=False)
 
         self.assertEqual(r.read(5), resp_data[:5])
         self.assertEqual(r.read(), resp_data[5:])
@@ -231,7 +231,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # This test is sad and confusing. Need to figure out what's
         # going on with partial reads and socket reuse.
 
-        http_pool = HTTPConnectionPool(self.host, self.port, block=True, maxsize=1, timeout=2)
+        pool = HTTPConnectionPool(self.host, self.port, block=True, maxsize=1, timeout=2)
 
         payload_size = 1024 * 2
         first_chunk = 512
@@ -244,12 +244,12 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         req2_data = {'count': 'b' * payload_size}
         resp2_data = encode_multipart_formdata(req2_data, boundary=boundary)[0]
 
-        r1 = http_pool.request('POST', '/echo', fields=req_data, multipart_boundary=boundary, preload_content=False)
+        r1 = pool.request('POST', '/echo', fields=req_data, multipart_boundary=boundary, preload_content=False)
 
         self.assertEqual(r1.read(first_chunk), resp_data[:first_chunk])
 
         try:
-            r2 = http_pool.request('POST', '/echo', fields=req2_data, multipart_boundary=boundary,
+            r2 = pool.request('POST', '/echo', fields=req2_data, multipart_boundary=boundary,
                                     preload_content=False, pool_timeout=0.001)
 
             # This branch should generally bail here, but maybe someday it will
@@ -259,44 +259,52 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
             self.assertEqual(r1.read(), resp_data[first_chunk:])
             self.assertEqual(r2.read(), resp2_data[first_chunk:])
-            self.assertEqual(http_pool.num_requests, 2)
+            self.assertEqual(pool.num_requests, 2)
 
         except EmptyPoolError:
             self.assertEqual(r1.read(), resp_data[first_chunk:])
-            self.assertEqual(http_pool.num_requests, 1)
+            self.assertEqual(pool.num_requests, 1)
 
-        self.assertEqual(http_pool.num_connections, 1)
+        self.assertEqual(pool.num_connections, 1)
 
     def test_for_double_release(self):
         MAXSIZE=5
 
         # Check default state
-        http_pool = HTTPConnectionPool(self.host, self.port, maxsize=MAXSIZE)
-        self.assertEqual(http_pool.num_connections, 0)
+        pool = HTTPConnectionPool(self.host, self.port, maxsize=MAXSIZE)
+        self.assertEqual(pool.num_connections, 0)
+        self.assertEqual(pool.pool.qsize(), MAXSIZE)
 
         # Make an empty slot for testing
-        http_pool.pool.get()
-
-        self.assertEqual(http_pool.pool.qsize(), MAXSIZE-1)
-
+        pool.pool.get()
+        self.assertEqual(pool.pool.qsize(), MAXSIZE-1)
 
         # Check state after simple request
-        http_pool.urlopen('GET', '/')
-        self.assertEqual(http_pool.pool.qsize(), MAXSIZE-1)
+        pool.urlopen('GET', '/')
+        self.assertEqual(pool.pool.qsize(), MAXSIZE-1)
 
         # Check state without release
-        http_pool.urlopen('GET', '/', preload_content=False)
-        self.assertEqual(http_pool.pool.qsize(), MAXSIZE-2)
+        pool.urlopen('GET', '/', preload_content=False)
+        self.assertEqual(pool.pool.qsize(), MAXSIZE-2)
 
-        http_pool.urlopen('GET', '/')
-        self.assertEqual(http_pool.pool.qsize(), MAXSIZE-2)
+        pool.urlopen('GET', '/')
+        self.assertEqual(pool.pool.qsize(), MAXSIZE-2)
 
         # Check state after read
-        http_pool.urlopen('GET', '/').data
-        self.assertEqual(http_pool.pool.qsize(), MAXSIZE-2)
+        pool.urlopen('GET', '/').data
+        self.assertEqual(pool.pool.qsize(), MAXSIZE-2)
 
-        http_pool.urlopen('GET', '/')
-        self.assertEqual(http_pool.pool.qsize(), MAXSIZE-2)
+        pool.urlopen('GET', '/')
+        self.assertEqual(pool.pool.qsize(), MAXSIZE-2)
+
+    def test_release_conn_parameter(self):
+        MAXSIZE=5
+        pool = HTTPConnectionPool(self.host, self.port, maxsize=MAXSIZE)
+        self.assertEqual(pool.pool.qsize(), MAXSIZE)
+
+        # Make request without releasing connection
+        pool.request('GET', '/', release_conn=False, preload_content=False)
+        self.assertEqual(pool.pool.qsize(), MAXSIZE-1)
 
 
 if __name__ == '__main__':
