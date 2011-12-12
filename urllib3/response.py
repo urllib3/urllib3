@@ -129,11 +129,15 @@ class HTTPResponse(object):
         content_encoding = self.headers.get('content-encoding')
         decoder = self.CONTENT_DECODERS.get(content_encoding)
 
-        data = self._fp and self._fp.read(amt) if amt is not None else self._fp.read()
+        if self._fp is None:
+            return
 
         try:
-            if amt is not None:
-                return data
+            if amt is None:
+                # cStringIO doesn't like amt=None
+                data = self._fp.read()
+            else:
+                return self._fp.read(amt)
 
             try:
                 if decode_content and decoder:

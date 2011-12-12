@@ -27,6 +27,10 @@ class TestResponse(unittest.TestCase):
         r = HTTPResponse()
         self.assertEqual(r.data, '')
 
+    def test_none(self):
+        r = HTTPResponse(None)
+        self.assertEqual(r.data, None)
+
     def test_preload(self):
         fp = StringIO('foo')
 
