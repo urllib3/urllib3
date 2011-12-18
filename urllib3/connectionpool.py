@@ -350,9 +350,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             #     ``response.release_conn()`` is called (implicitly by
             #     ``response.read()``)
 
-        except (SocketTimeout, Empty), e:
-            # Timed out either by socket or queue
-            raise TimeoutError("Request timed out after %f seconds" % timeout)
+        except (Empty), e:
+            # Timed out by queue
+            raise TimeoutError("Request timed out. (pool_timeout=%s)" %
+                               pool_timeout)
+
+        except (SocketTimeout), e:
+            # Timed out by socket
+            raise TimeoutError("Request timed out. (timeout=%s)" %
+                               timeout)
 
         except (BaseSSLError), e:
             # SSL certificate error
