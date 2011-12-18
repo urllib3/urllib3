@@ -306,6 +306,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if retries < 0:
             raise MaxRetryError("Max retries exceeded for url: %s" % url)
 
+        if timeout is _Default:
+            timeout = self.timeout
+
         if release_conn is None:
             release_conn = response_kw.get('preload_content', True)
 
@@ -349,8 +352,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         except (SocketTimeout, Empty), e:
             # Timed out either by socket or queue
-            raise TimeoutError("Request timed out after %f seconds" %
-                               self.timeout)
+            raise TimeoutError("Request timed out after %f seconds" % timeout)
 
         except (BaseSSLError), e:
             # SSL certificate error
