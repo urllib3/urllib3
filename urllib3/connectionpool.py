@@ -13,6 +13,7 @@ from Queue import Queue, Empty, Full
 from select import select
 from socket import error as SocketError, timeout as SocketTimeout
 
+from backports.ssl_match_hostname import match_hostname, CertificateError
 
 try:
     import ssl
@@ -71,6 +72,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                                     cert_reqs=self.cert_reqs,
                                     ca_certs=self.ca_certs)
 
+        match_hostname(self.sock.getpeercert(), self.host)
 
 ## Pool objects
 
@@ -364,6 +366,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # SSL certificate error
             raise SSLError(e)
 
+        except (CertificateError), e:
+            # Name mismatch
+            raise CertificateError
+            
         except (HTTPException, SocketError), e:
             # Connection broken, discard. It will be replaced next _get_conn().
             conn = None
