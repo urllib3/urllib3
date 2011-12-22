@@ -4,11 +4,11 @@
 # This module is part of urllib3 and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+import httplib
 import logging
 import socket
 
 
-from httplib import HTTPConnection, HTTPSConnection, HTTPException
 from Queue import Queue, Empty, Full
 from select import select
 from socket import error as SocketError, timeout as SocketTimeout
@@ -38,9 +38,55 @@ log = logging.getLogger(__name__)
 _Default = object()
 
 
+class LoggerWithContext(logging.LoggerAdapter):
+    def process(self, msg, kwargs):
+        return self.extra + msg, kwargs
+
+
+class IdentityProvider(object):
+    def __init__(self):
+        self.identifier = 0
+        
+    def generate_identity(self):
+        self.identifier +=1
+        identifier = {'id': self.identifier}
+        return identifier
+    
+
+class Identifable(object):
+    def __init__(self, **kw):
+        if kw.get('identity'):
+            self.identity = kw.get('identity')
+        else:
+            self.identity = {'id': None}
+
+
+class Connection(Identifable):
+    def __init__(self, **kw):
+        Identifable.__init__(self, **kw)
+        
+    def __str__(self):
+        str_ = '%(class)s (%(id)i)' % ({
+              'class': self.__class__.__name__,
+              'id': self.identity['id']})
+        return str_
+
+        
 ## Connection objects (extension of httplib)
 
-class VerifiedHTTPSConnection(HTTPSConnection):
+class HTTPConnection(httplib.HTTPConnection, Connection):
+    def __init__(self, **kw):
+        httplib.HTTPConnection.__init__(self, **kw)
+        Connection.__init__(self, **kw) 
+
+
+class HTTPSConnection(httplib.HTTPSConnection, Connection):
+    def __init__(self, **kw):
+        httplib.HTTPSConnection.__init__(self, **kw)
+        Connection.__init__(self, **kw)
+
+
+class VerifiedHTTPSConnection(httplib.HTTPSConnection, Connection):
     """
     Based on httplib.HTTPSConnection but wraps the socket with
     SSL certification.
@@ -74,13 +120,32 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
 ## Pool objects
 
-class ConnectionPool(object):
+class ConnectionPool(Identifable):
     """
     Base class for all connection pools, such as
     :class:`.HTTPConnectionPool` and :class:`.HTTPSConnectionPool`.
     """
-    pass
-
+    
+    # provider for connection pools
+    _identity_provider = IdentityProvider()
+    
+    def __init__(self, **kw):
+        identity = self._identity_provider.generate_identity()
+        self.identity = identity
+        self.log = LoggerWithContext(log, '%s: ' % self) 
+        
+        # provider for connections
+        self.identity_provider = IdentityProvider()
+        
+    def __str__(self):
+        port = str(self.port) if self.port else 'not set' 
+        str_ = '%(class)s, %(host)s:%(port)s (%(id)i)' % {
+               'class': self.__class__.__name__,
+               'id': self.identity['id'],
+               'host': self.host,
+               'port': port}
+        return str_
+    
 
 class HTTPConnectionPool(ConnectionPool, RequestMethods):
     """
@@ -140,15 +205,21 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # These are mostly for testing and debugging purposes.
         self.num_connections = 0
         self.num_requests = 0
+        super(HTTPConnectionPool, self).__init__(host=self.host,
+                                                 port=self.port)
 
     def _new_conn(self):
         """
         Return a fresh :class:`httplib.HTTPConnection`.
         """
         self.num_connections += 1
-        log.info("Starting new HTTP connection (%d): %s" %
-                 (self.num_connections, self.host))
-        return HTTPConnection(host=self.host, port=self.port)
+        self.log.info("Starting new (%d) HTTP connection" %
+                      self.num_connections)
+
+        conn = HTTPConnection(host=self.host, port=self.port)
+        conn.identity = self.identity_provider.generate_identity()        
+
+        return conn
 
     def _get_conn(self, timeout=None):
         """
@@ -169,16 +240,23 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # If this is a persistent connection, check if it got disconnected
             if conn and conn.sock and select([conn.sock], [], [], 0.0)[0]:
                 # Either data is buffered (bad), or the connection is dropped.
-                log.info("Resetting dropped connection: %s" % self.host)
+                self.log.info("Resetting dropped connection %s" %
+                              str(conn))
                 conn.close()
 
         except Empty:
             if self.block:
-                raise EmptyPoolError("Pool reached maximum size and no more "
-                                     "connections are allowed.")
+                raise EmptyPoolError("Pool %s reached maximum size and no more "
+                                     "connections are allowed." % self.host)
             pass  # Oh well, we'll create a new connection then
 
-        return conn or self._new_conn()
+        if not conn:
+            conn = self._new_conn()
+        else:
+            self.log.debug("Connection %s fetched from pool" %
+                           str(conn))
+            
+        return conn 
 
     def _put_conn(self, conn):
         """
@@ -194,10 +272,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         try:
             self.pool.put(conn, block=False)
+            self.log.debug("Connection %s returned to the pool" %
+                           str(conn))
         except Full:
             # This should never happen if self.block == True
-            log.warning("HttpConnectionPool is full, discarding connection: %s"
-                        % self.host)
+            self.log.warning("Pool is full, discarding connection %s" %
+                             str(conn))
 
     def _make_request(self, conn, method, url, timeout=_Default,
                       **httplib_request_kw):
@@ -216,10 +296,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn.sock.settimeout(timeout)
         httplib_response = conn.getresponse()
 
-        log.debug("\"%s %s %s\" %s %s" %
-                  (method, url,
-                   conn._http_vsn_str, # pylint: disable-msg=W0212
-                   httplib_response.status, httplib_response.length))
+        self.log.debug("\"%s %s %s\" %s %s" %
+                       (method, url,
+                        conn._http_vsn_str, # pylint: disable-msg=W0212
+                        httplib_response.status, httplib_response.length))
 
         return httplib_response
 
@@ -364,7 +444,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # SSL certificate error
             raise SSLError(e)
 
-        except (HTTPException, SocketError), e:
+        except (httplib.HTTPException, SocketError), e:
             # Connection broken, discard. It will be replaced next _get_conn().
             conn = None
 
@@ -374,8 +454,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 self._put_conn(conn)
 
         if not conn:
-            log.warn("Retrying (%d attempts remain) after connection "
-                     "broken by '%r': %s" % (retries, e, url))
+            self.log.warning("Retrying (%d attempts remain) after connection "
+                             "broken by '%r': %s" % (retries, e, url))
             return self.urlopen(method, url, body, headers, retries - 1,
                                 redirect, assert_same_host)  # Try again
 
@@ -383,8 +463,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if (redirect and
             response.status in [301, 302, 303, 307] and
             'location' in response.headers):  # Redirect, retry
-            log.info("Redirecting %s -> %s" %
-                     (url, response.headers.get('location')))
+            self.log.info("Redirecting %s -> %s" %
+                          (url, response.headers.get('location')))
             return self.urlopen(method, response.headers.get('location'), body,
                                 headers, retries - 1, redirect,
                                 assert_same_host)
@@ -426,16 +506,18 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         Return a fresh :class:`httplib.HTTPSConnection`.
         """
         self.num_connections += 1
-        log.info("Starting new HTTPS connection (%d): %s"
-                 % (self.num_connections, self.host))
+        self.log.info("Starting new (%d) HTTPS connection" %
+                      self.num_connections)
 
-        if not ssl:
-            return HTTPSConnection(host=self.host, port=self.port)
+        if ssl:
+            conn = VerifiedHTTPSConnection(host=self.host, port=self.port)
+            conn.set_cert(key_file=self.key_file, cert_file=self.cert_file,
+                          cert_reqs=self.cert_reqs, ca_certs=self.ca_certs)
+        else:
+            conn = httplib.HTTPSConnection(host=self.host, port=self.port)
+        conn.identity = self.identity_provider.generate_identity()        
 
-        connection = VerifiedHTTPSConnection(host=self.host, port=self.port)
-        connection.set_cert(key_file=self.key_file, cert_file=self.cert_file,
-                            cert_reqs=self.cert_reqs, ca_certs=self.ca_certs)
-        return connection
+        return conn
 
 
 ## Helpers
