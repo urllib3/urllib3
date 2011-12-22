@@ -54,7 +54,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         try:
             https_fail_pool.request('GET', '/')
-            self.fail("Didn't raise SSL error with wrong CA")
+            self.fail("Didn't raise SSL invalid common name")
         except SSLError, e:
             self.assertTrue("doesn't match" in str(e))
 
