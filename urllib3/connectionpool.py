@@ -71,8 +71,8 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file,
                                     cert_reqs=self.cert_reqs,
                                     ca_certs=self.ca_certs)
-
-        match_hostname(self.sock.getpeercert(), self.host)
+        if self.ca_certs:
+            match_hostname(self.sock.getpeercert(), self.host)
 
 ## Pool objects
 
@@ -368,7 +368,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         except (CertificateError), e:
             # Name mismatch
-            raise CertificateError
+            raise SSLError(e)
             
         except (HTTPException, SocketError), e:
             # Connection broken, discard. It will be replaced next _get_conn().
