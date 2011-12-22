@@ -13,7 +13,7 @@ from Queue import Queue, Empty, Full
 from select import select
 from socket import error as SocketError, timeout as SocketTimeout
 
-from backports.ssl_match_hostname import match_hostname, CertificateError
+from .packages.ssl_match_hostname import match_hostname, CertificateError
 
 try:
     import ssl
