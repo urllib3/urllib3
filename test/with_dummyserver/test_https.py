@@ -58,9 +58,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         except SSLError, e:
             self.assertTrue("doesn't match" in str(e))
 
-        https_pool.ca_certs = DEFAULT_CA
-        https_pool.request('GET', '/') # Should succeed without exceptions.
-
 
 if __name__ == '__main__':
     unittest.main()
