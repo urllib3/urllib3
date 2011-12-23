@@ -18,7 +18,7 @@ DEFAULT_CERTS = {
     'certfile': os.path.join(CERTS_PATH, 'server.crt'),
     'keyfile': os.path.join(CERTS_PATH, 'server.key'),
 }
-DEFAULT_CA = os.path.join(CERTS_PATH, 'client.pem')
+DEFAULT_CA = os.path.join(CERTS_PATH, 'cacert.pem')
 DEFAULT_CA_BAD = os.path.join(CERTS_PATH, 'client_bad.pem')
 
 
