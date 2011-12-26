@@ -48,6 +48,16 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.ca_certs = DEFAULT_CA
         https_pool.request('GET', '/') # Should succeed without exceptions.
 
+        https_fail_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                              cert_reqs='CERT_REQUIRED')
+        https_fail_pool.ca_certs = DEFAULT_CA
+
+        try:
+            https_fail_pool.request('GET', '/')
+            self.fail("Didn't raise SSL invalid common name")
+        except SSLError, e:
+            self.assertTrue("doesn't match" in str(e))
+
 
 if __name__ == '__main__':
     unittest.main()
