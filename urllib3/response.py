@@ -98,10 +98,9 @@ class HTTPResponse(object):
             return self._body
 
         if self._fp:
-            return self.read(decode_content=self._decode_content,
-                             cache_content=True)
+            return self.read(cache_content=True)
 
-    def read(self, amt=None, decode_content=True, cache_content=False):
+    def read(self, amt=None, decode_content=None, cache_content=False):
         """
         Similar to :meth:`httplib.HTTPResponse.read`, but with two additional
         parameters: ``decode_content`` and ``cache_content``.
@@ -124,6 +123,8 @@ class HTTPResponse(object):
         """
         content_encoding = self.headers.get('content-encoding')
         decoder = self.CONTENT_DECODERS.get(content_encoding)
+        if decode_content is None:
+            decode_content = self._decode_content
 
         data = self._fp and self._fp.read(amt)
 
