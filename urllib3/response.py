@@ -88,7 +88,7 @@ class HTTPResponse(object):
         """
         Should we redirect and where to?
 
-        :returns Truthy redirect location string if we got a redirect status
+        :returns: Truthy redirect location string if we got a redirect status
             code and valid location. ``None`` if redirect status and no
             location. ``False`` if not a redirect status code.
         """

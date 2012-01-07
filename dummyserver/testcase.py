@@ -6,6 +6,7 @@ from dummyserver.server import make_server_thread, make_server, DEFAULT_CERTS
 class HTTPDummyServerTestCase(unittest.TestCase):
     scheme = 'http'
     host = 'localhost'
+    host_alt = '127.0.0.1' # Some tests need two hosts
     port = 18081
     certs = DEFAULT_CERTS
 

@@ -305,8 +305,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if headers is None:
             headers = self.headers
 
+        log.debug("Url: %s (Host: %s, Retries: %s)" % (url, self.host, retries)) # XXX
+
         if retries < 0:
-            raise MaxRetryError("Max retries exceeded for url: %s" % url)
+            raise MaxRetryError(url)
 
         if timeout is _Default:
             timeout = self.timeout
@@ -320,8 +322,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if self.port:
                 host = "%s:%d" % (host, self.port)
 
-            raise HostChangedError("Connection pool with host '%s' tried to "
-                                   "open a foreign host: %s" % (host, url))
+            raise HostChangedError(host, url, retries - 1)
 
         conn = None
 
