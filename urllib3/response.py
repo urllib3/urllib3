@@ -168,8 +168,8 @@ class HTTPResponse(object):
             if self._original_response and self._original_response.isclosed():
                 self.release_conn()
 
-    @staticmethod
-    def from_httplib(r, **response_kw):
+    @classmethod
+    def from_httplib(ResponseCls, r, **response_kw):
         """
         Given an :class:`httplib.HTTPResponse` instance ``r``, return a
         corresponding :class:`urllib3.response.HTTPResponse` object.
@@ -178,14 +178,14 @@ class HTTPResponse(object):
         with ``original_response=r``.
         """
 
-        return HTTPResponse(body=r,
-                            headers=dict(r.getheaders()),
-                            status=r.status,
-                            version=r.version,
-                            reason=r.reason,
-                            strict=r.strict,
-                            original_response=r,
-                            **response_kw)
+        return ResponseCls(body=r,
+                           headers=dict(r.getheaders()),
+                           status=r.status,
+                           version=r.version,
+                           reason=r.reason,
+                           strict=r.strict,
+                           original_response=r,
+                           **response_kw)
 
     # Backwards-compatibility methods for httplib.HTTPResponse
     def getheaders(self):
