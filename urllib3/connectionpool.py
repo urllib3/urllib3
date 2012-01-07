@@ -305,8 +305,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if headers is None:
             headers = self.headers
 
-        log.debug("Url: %s (Host: %s, Retries: %s)" % (url, self.host, retries)) # XXX
-
         if retries < 0:
             raise MaxRetryError(url)
 

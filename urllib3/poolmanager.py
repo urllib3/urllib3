@@ -109,9 +109,6 @@ class PoolManager(RequestMethods):
             return conn.urlopen(method, url, **kw)
 
         except HostChangedError, e:
-            log.info("Pool redirecting across hosts: %s -> %s" %
-                     (e.original_host, e.new_url))
-
             kw['retries'] = e.retries # Persist retries countdown
             return self.urlopen(method, e.new_url, **kw)
 
