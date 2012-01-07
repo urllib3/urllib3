@@ -13,6 +13,7 @@ from Queue import Queue, Empty, Full
 from select import select
 from socket import error as SocketError, timeout as SocketTimeout
 
+from .packages.ssl_match_hostname import match_hostname, CertificateError
 
 try:
     import ssl
@@ -70,7 +71,8 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file,
                                     cert_reqs=self.cert_reqs,
                                     ca_certs=self.ca_certs)
-
+        if self.ca_certs:
+            match_hostname(self.sock.getpeercert(), self.host)
 
 ## Pool objects
 
@@ -210,6 +212,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if timeout is _Default:
             timeout = self.timeout
 
+        conn.timeout = timeout # This only does anything in Py26+
+
         conn.request(method, url, **httplib_request_kw)
         conn.sock.settimeout(timeout)
         httplib_response = conn.getresponse()
@@ -304,6 +308,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if retries < 0:
             raise MaxRetryError("Max retries exceeded for url: %s" % url)
 
+        if timeout is _Default:
+            timeout = self.timeout
+
         if release_conn is None:
             release_conn = response_kw.get('preload_content', True)
 
@@ -345,13 +352,22 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             #     ``response.release_conn()`` is called (implicitly by
             #     ``response.read()``)
 
-        except (SocketTimeout, Empty), e:
-            # Timed out either by socket or queue
-            raise TimeoutError("Request timed out after %f seconds" %
-                               self.timeout)
+        except (Empty), e:
+            # Timed out by queue
+            raise TimeoutError("Request timed out. (pool_timeout=%s)" %
+                               pool_timeout)
+
+        except (SocketTimeout), e:
+            # Timed out by socket
+            raise TimeoutError("Request timed out. (timeout=%s)" %
+                               timeout)
 
         except (BaseSSLError), e:
             # SSL certificate error
+            raise SSLError(e)
+
+        except (CertificateError), e:
+            # Name mismatch
             raise SSLError(e)
 
         except (HTTPException, SocketError), e:
@@ -369,15 +385,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             return self.urlopen(method, url, body, headers, retries - 1,
                                 redirect, assert_same_host)  # Try again
 
-        # Handle redirection
-        if (redirect and
-            response.status in [301, 302, 303, 307] and
-            'location' in response.headers):  # Redirect, retry
-            log.info("Redirecting %s -> %s" %
-                     (url, response.headers.get('location')))
-            return self.urlopen(method, response.headers.get('location'), body,
-                                headers, retries - 1, redirect,
-                                assert_same_host)
+        # Handle redirect?
+        redirect_location = redirect and response.get_redirect_location()
+        if redirect_location:
+            log.info("Redirecting %s -> %s" % (url, redirect_location))
+            return self.urlopen(method, redirect_location, body, headers,
+                                retries - 1, redirect, assert_same_host)
 
         return response
 
