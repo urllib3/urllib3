@@ -4,12 +4,13 @@ Changes
 1.1 (2012-01-07)
 ++++++++++++++++
 
-* Refactored dummyserver to its own root namespace module (used for testing).
+* Refactored ``dummyserver`` to its own root namespace module (used for
+  testing).
 
-* Added hostname verification for VerifiedHTTPSConnection by vendoring in Py32's
-  ``ssl_match_hostname``. (Issue #25)
+* Added hostname verification for ``VerifiedHTTPSConnection`` by vendoring in
+  Py32's ``ssl_match_hostname``. (Issue #25)
 
-* Fixed cross-host HTTP redirects when using PoolManager. (Issue #10)
+* Fixed cross-host HTTP redirects when using ``PoolManager``. (Issue #10)
 
 * Fixed ``decode_content`` being ignored when set through ``urlopen``. (Issue
   #27)

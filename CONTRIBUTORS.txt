@@ -33,3 +33,6 @@
 
 * Bugfixes, Suggestions, Requests integration.
   * kennethreitz <me@kennethreitz.com>
+
+* [Brief summary of your changes]
+  * [Your name and email/website]
