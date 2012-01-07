@@ -78,6 +78,10 @@ class HTTPResponse(object):
         self._pool = pool
         self._connection = connection
 
+        # Convert the body to a StringIO object
+        if isinstance(body, basestring):
+            self._fp = StringIO(body)
+
         if hasattr(body, 'read'):
             self._fp = body
 
@@ -139,21 +143,19 @@ class HTTPResponse(object):
         if decode_content is None:
             decode_content = self._decode_content
 
-        data = self._fp and self._fp.read(amt)
+        if self._fp is None:
+            return
 
         try:
-
-            if amt:
-                return data
-
-            if not decode_content or not decoder:
-                if cache_content:
-                    self._body = data
-
-                return data
+            if amt is None:
+                # cStringIO doesn't like amt=None
+                data = self._fp.read()
+            else:
+                return self._fp.read(amt)
 
             try:
-                data = decoder(data)
+                if decode_content and decoder:
+                    data = decoder(data)
             except IOError:
                 raise HTTPError("Received response with content-encoding: %s, but "
                                 "failed to decode it." % content_encoding)
@@ -164,7 +166,6 @@ class HTTPResponse(object):
             return data
 
         finally:
-
             if self._original_response and self._original_response.isclosed():
                 self.release_conn()
 

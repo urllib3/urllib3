@@ -1,7 +1,8 @@
 .*
-*.pyc
+*.py[co]
+*.egg
 *.egg-info
 *.log
-/dist
-/build
-/docs/_build
+dist/*
+build/*
+docs/_build/*
