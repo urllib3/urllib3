@@ -84,6 +84,12 @@ class HTTPResponse(object):
         if preload_content:
             self._body = self.read(decode_content=decode_content)
 
+    def get_redirect_location(self):
+        if self.status in [301, 302, 303, 307]:
+            return self.headers.get('location')
+
+        return False
+
     def release_conn(self):
         if not self._pool or not self._connection:
             return
