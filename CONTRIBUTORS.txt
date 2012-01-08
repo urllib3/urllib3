@@ -28,5 +28,5 @@
 * kennethreitz <me@kennethreitz.com>
   * Bugfixes, suggestions, Requests integration
 
-* [Your name, and email or website]
+* [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
