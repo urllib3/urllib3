@@ -7,32 +7,26 @@
 
 ## Patches
 
-* HTTPS patch (which inspired HTTPSConnectionPool)
-  * victor.vde <http://code.google.com/u/victor.vde/>
+* victor.vde <http://code.google.com/u/victor.vde/>
+  * HTTPS patch (which inspired HTTPSConnectionPool)
 
-* NTLM-authenticated HTTPSConnectionPool
-  * erikcederstrand <http://code.google.com/u/erikcederstrand/>
+* erikcederstrand <http://code.google.com/u/erikcederstrand/>
+  * NTLM-authenticated HTTPSConnectionPool
+  * Basic-authenticated HTTPSConnectionPool (merged into make_headers)
 
-* Basic-authenticated HTTPSConnectionPool (merged into make_headers)
-  * erikcederstrand <http://code.google.com/u/erikcederstrand/>
+* niphlod <niphlod@gmail.com>
+  * Client-verified SSL certificates for HTTPSConnectionPool
+  * Response gzip and deflate encoding support
+  * Better unicode support for filepost using StringIO buffers
 
-* Client-verified SSL certificates for HTTPSConnectionPool
-  * niphlod <niphlod@gmail.com>
+* btoconnor <brian@btoconnor.net>
+  * Non-multipart encoding for POST requests
 
-* Response gzip and deflate encoding support
-  * niphlod <niphlod@gmail.com>
+* p.dobrogost <http://code.google.com/u/@WBRSRlBZDhBFXQB6/>
+  * Code review, PEP8 compliance, benchmark fix
 
-* Better unicode support for filepost using StringIO buffers
-  * niphlod <niphlod@gmail.com>
+* kennethreitz <me@kennethreitz.com>
+  * Bugfixes, suggestions, Requests integration
 
-* Non-multipart encoding for POST requests
-  * btoconnor <brian@btoconnor.net>
-
-* Code review, PEP8 compliance, benchmark fix.
-  * p.dobrogost <http://code.google.com/u/@WBRSRlBZDhBFXQB6/>
-
-* Bugfixes, Suggestions, Requests integration.
-  * kennethreitz <me@kennethreitz.com>
-
-* [Brief summary of your changes]
-  * [Your name and email/website]
+* [Your name, and email or website]
+  * [Brief summary of your changes]
