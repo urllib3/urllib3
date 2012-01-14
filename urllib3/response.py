@@ -71,21 +71,17 @@ class HTTPResponse(object):
         self.strict = strict
 
         self._decode_content = decode_content
-        self._body = None
+        self._body = body if body and isinstance(body, basestring) else None
         self._fp = None
         self._original_response = original_response
 
         self._pool = pool
         self._connection = connection
 
-        # Convert the body to a StringIO object
-        if isinstance(body, basestring):
-            self._fp = StringIO(body)
-
         if hasattr(body, 'read'):
             self._fp = body
 
-        if preload_content:
+        if preload_content and not self._body:
             self._body = self.read(decode_content=decode_content)
 
     def release_conn(self):

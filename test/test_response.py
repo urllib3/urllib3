@@ -25,7 +25,7 @@ class TestResponse(unittest.TestCase):
 
     def test_default(self):
         r = HTTPResponse()
-        self.assertEqual(r.data, '')
+        self.assertIsNone(r.data)
 
     def test_none(self):
         r = HTTPResponse(None)
@@ -49,8 +49,8 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(fp.tell(), fp.len)
 
     def test_decode_bad_data(self):
-        data = '\x00' * 10
-        self.assertRaises(zlib.error, HTTPResponse, data, headers={
+        fp = StringIO('\x00' * 10)
+        self.assertRaises(zlib.error, HTTPResponse, fp, headers={
             'content-encoding': 'deflate'
         })
 
