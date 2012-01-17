@@ -114,8 +114,8 @@ class TestConnectionPool(unittest.TestCase):
                 done_closing.set()  # let the test know it can proceed
 
         done_closing = Event()
-        address = start_server(server)
-        pool = HTTPConnectionPool(*address)
+        host, port = start_server(server)
+        pool = HTTPConnectionPool(host, port)
 
         response = pool.request('GET', '/', retries=0)
         self.assertEqual(response.status, 200)
