@@ -38,6 +38,10 @@ log = logging.getLogger(__name__)
 
 _Default = object()
 
+port_by_scheme = {
+    'http': 80,
+    'https': 443,
+}
 
 ## Connection objects (extension of httplib)
 
@@ -232,8 +236,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conncetion pool.
         """
         # TODO: Add optional support for socket.gethostbyname checking.
+        scheme, host, port = get_host(url)
+        if (self.port is not None) and (port is None):
+            # Try promoting `port` from None to an actual integer if our
+            # own `self.port` is an integer it can be compared against.
+            port = port_by_scheme.get(scheme)
         return (url.startswith('/') or
-                get_host(url) == (self.scheme, self.host, self.port))
+                (scheme, host, port) == (self.scheme, self.host, self.port))
 
     def urlopen(self, method, url, body=None, headers=None, retries=3,
                 redirect=True, assert_same_host=True, timeout=_Default,

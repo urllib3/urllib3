@@ -1,7 +1,7 @@
 import unittest
 
-from urllib3.poolmanager import (PoolManager, pool_classes_by_scheme,
-                                 port_by_scheme)
+from urllib3.connectionpool import port_by_scheme
+from urllib3.poolmanager import PoolManager
 from urllib3 import connection_from_url
 
 from test_connectionpool import read_request, start_server
