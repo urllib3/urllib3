@@ -65,9 +65,11 @@ class TestPoolManager(unittest.TestCase):
         host, port = start_server(server)
         port_by_scheme['http'] = port
         try:
-            p.request('GET', 'http://%s/' % host, retries=0)
+            response = p.request('GET', 'http://%s/' % host, retries=0)
         finally:
             port_by_scheme['http'] = 80
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.data, 'Inspire.')
 
 
 if __name__ == '__main__':
