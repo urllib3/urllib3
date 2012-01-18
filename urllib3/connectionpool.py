@@ -239,9 +239,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         # TODO: Add optional support for socket.gethostbyname checking.
         scheme, host, port = get_host(url)
-        if (self.port is not None) and (port is None):
-            # Try promoting `port` from None to an actual integer if our
-            # own `self.port` is an integer it can be compared against.
+        if self.port and not port:
+            # Our own `self.port` is an integer, but the URL specifies
+            # no ':NNNN' explicit port number.  So we need to fetch the
+            # default port number that the URL will use, so that it can
+            # successfully be compared to our own port integer.
             port = port_by_scheme.get(scheme)
         return (url.startswith('/') or
                 (scheme, host, port) == (self.scheme, self.host, self.port))
