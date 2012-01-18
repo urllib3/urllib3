@@ -8,7 +8,9 @@ import logging
 import socket
 
 
-from httplib import HTTPConnection, HTTPSConnection, HTTPException
+from httplib import (HTTPConnection, HTTPSConnection, HTTPException,
+                     HTTP_PORT, HTTPS_PORT)
+
 from Queue import Queue, Empty, Full
 from select import select
 from socket import error as SocketError, timeout as SocketTimeout
@@ -39,8 +41,8 @@ log = logging.getLogger(__name__)
 _Default = object()
 
 port_by_scheme = {
-    'http': 80,
-    'https': 443,
+    'http': HTTP_PORT,
+    'https': HTTPS_PORT,
 }
 
 ## Connection objects (extension of httplib)
