@@ -4,7 +4,7 @@ from urllib3.connectionpool import port_by_scheme
 from urllib3.poolmanager import PoolManager
 from urllib3 import connection_from_url
 
-from test_connectionpool import read_request, start_server
+from threadserver import read_request, start_server
 
 class TestPoolManager(unittest.TestCase):
     def test_same_url(self):
@@ -58,7 +58,8 @@ class TestPoolManager(unittest.TestCase):
                       'Inspire.')
             sock.close()
 
-        # We pretend, for a moment, that HTTP lives on the port at which
+        # By globally adjusting `port_by_scheme` we pretend for a moment
+        # that HTTP's default port is not 80, but is the port at which
         # our test server happens to be listening.
 
         p = PoolManager()

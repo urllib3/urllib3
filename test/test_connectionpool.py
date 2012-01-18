@@ -1,7 +1,5 @@
 import unittest
-import socket
-from threading import Event, Thread
-from Queue import Queue
+from threading import Event
 
 from urllib3.connectionpool import (
     connection_from_url,
@@ -11,6 +9,7 @@ from urllib3.connectionpool import (
 
 from urllib3.exceptions import EmptyPoolError
 
+from threadserver import read_request, start_server
 
 class TestConnectionPool(unittest.TestCase):
     def test_get_host(self):
@@ -126,32 +125,6 @@ class TestConnectionPool(unittest.TestCase):
         response = pool.request('GET', '/', retries=0)
         self.assertEqual(response.status, 200)
         self.assertEqual(response.data, 'Response 1')
-
-# Prepare to serve HTTP on localhost.
-
-def read_request(sock):
-    """Read `sock` until a double CR-LF, and return the data received."""
-    s = ''
-    while not s.endswith('\r\n\r\n'):
-        s += sock.recv(65536)
-    return s
-
-def start_server(server_function):
-    """Create a listening server socket and publish its port on a queue."""
-
-    def server_thread():
-        sock = socket.socket()
-        sock.bind(('127.0.0.1', 0))
-        address = sock.getsockname()
-        sock.listen(1)  # Once listen() returns, the server socket is ready
-        q.put(address)     # ... so we can safely tell the client to use it now
-        server_function(sock)
-
-    q = Queue()
-    t = Thread(target=server_thread)
-    t.daemon = True
-    t.start()
-    return q.get()  # Wait until the server has started up, then return.
 
 # "python -m" command line support:
 
