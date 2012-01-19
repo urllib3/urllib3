@@ -6,7 +6,7 @@
 
 import logging
 import socket
-
+import urlparse
 
 from httplib import HTTPConnection, HTTPSConnection, HTTPException
 from Queue import Queue, Empty, Full
@@ -316,6 +316,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Check host
         if assert_same_host and not self.is_same_host(url):
+            
             host = "%s://%s" % (self.scheme, self.host)
             if self.port:
                 host = "%s:%d" % (host, self.port)
@@ -328,6 +329,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Request a connection from the queue
             # (Could raise SocketError: Bad file descriptor)
             conn = self._get_conn(timeout=pool_timeout)
+
+            # split the url from host if present.
+            if url.startswith("http://") or url.startswith("https://"):
+                parsed = urlparse.urlsplit(url)
+                url = parsed.path
 
             # Make the request on the httplib connection object
             httplib_response = self._make_request(conn, method, url,
@@ -518,6 +524,9 @@ def get_host(url):
     if ':' in url:
         url, port = url.split(':', 1)
         port = int(port)
+
+    port = port or (443 if scheme == 'https' else 80)
+
     return scheme, url, port
 
 
