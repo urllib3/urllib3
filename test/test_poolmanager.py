@@ -20,6 +20,22 @@ class TestPoolManager(unittest.TestCase):
 
         self.assertEqual(conn1, conn2)
 
+    def test_post_request(self):
+
+       pool_manager = PoolManager()
+
+       url = "http://www.snee.com/xml/crud/posttest.cgi"
+
+       params = { "fname": "test firstname", "lname": "test lastname" }
+
+       response = pool_manager.request(method="POST", url=url,
+                                          fields=params)
+
+       self.assertEqual(response.status, 200)
+
+       self.assertTrue(response.data.find('''<p>First name: "test firstname"</p><p>Last
+                           name: "test lastname"</p>'''))
+
     def test_many_urls(self):
         urls = [
             "http://localhost:8081/foo",

@@ -12,16 +12,16 @@ from urllib3.exceptions import EmptyPoolError
 class TestConnectionPool(unittest.TestCase):
     def test_get_host(self):
         url_host_map = {
-            'http://google.com/mail': ('http', 'google.com', None),
-            'http://google.com/mail/': ('http', 'google.com', None),
-            'google.com/mail': ('http', 'google.com', None),
-            'http://google.com/': ('http', 'google.com', None),
-            'http://google.com': ('http', 'google.com', None),
-            'http://www.google.com': ('http', 'www.google.com', None),
-            'http://mail.google.com': ('http', 'mail.google.com', None),
+            'http://google.com/mail': ('http', 'google.com', 80),
+            'http://google.com/mail/': ('http', 'google.com', 80),
+            'google.com/mail': ('http', 'google.com', 80),
+            'http://google.com/': ('http', 'google.com', 80),
+            'http://google.com': ('http', 'google.com', 80),
+            'http://www.google.com': ('http', 'www.google.com', 80),
+            'http://mail.google.com': ('http', 'mail.google.com', 80),
             'http://google.com:8000/mail/': ('http', 'google.com', 8000),
             'http://google.com:8000': ('http', 'google.com', 8000),
-            'https://google.com': ('https', 'google.com', None),
+            'https://google.com': ('https', 'google.com', 443),
             'https://google.com:8000': ('https', 'google.com', 8000),
             'http://user:password@127.0.0.1:1234': ('http', '127.0.0.1', 1234),
         }
