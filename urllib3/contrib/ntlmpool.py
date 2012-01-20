@@ -10,7 +10,10 @@ NTLM authenticating pool, contributed by erikcederstran
 Issue #10, see: http://code.google.com/p/urllib3/issues/detail?id=10
 """
 
-import httplib
+try:
+    from http.client import HTTPSConnection
+except ImportError:
+    from httplib import HTTPSConnection
 from logging import getLogger
 from ntlm import ntlm
 
@@ -53,7 +56,7 @@ class NTLMConnectionPool(HTTPSConnectionPool):
         req_header = 'Authorization'
         resp_header = 'www-authenticate'
 
-        conn = httplib.HTTPSConnection(host=self.host, port=self.port)
+        conn = HTTPSConnection(host=self.host, port=self.port)
 
         # Send negotiation message
         headers[req_header] = (

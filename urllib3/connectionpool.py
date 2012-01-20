@@ -7,9 +7,16 @@
 import logging
 import socket
 
+try:   # Python 3
+    from http.client import HTTPConnection, HTTPSConnection, HTTPException
+except ImportError:
+    from httplib import HTTPConnection, HTTPSConnection, HTTPException
 
-from httplib import HTTPConnection, HTTPSConnection, HTTPException
-from Queue import Queue, Empty, Full
+try:   # Python 3
+    from queue import Queue, Empty, Full
+except ImportError:
+    from Queue import Queue, Empty, Full
+    
 from select import select
 from socket import error as SocketError, timeout as SocketTimeout
 
@@ -351,25 +358,25 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             #     ``response.release_conn()`` is called (implicitly by
             #     ``response.read()``)
 
-        except (Empty), e:
+        except Empty as e:
             # Timed out by queue
             raise TimeoutError("Request timed out. (pool_timeout=%s)" %
                                pool_timeout)
 
-        except (SocketTimeout), e:
+        except SocketTimeout as e:
             # Timed out by socket
             raise TimeoutError("Request timed out. (timeout=%s)" %
                                timeout)
 
-        except (BaseSSLError), e:
+        except BaseSSLError as e:
             # SSL certificate error
             raise SSLError(e)
 
-        except (CertificateError), e:
+        except CertificateError as e:
             # Name mismatch
             raise SSLError(e)
 
-        except (HTTPException, SocketError), e:
+        except (HTTPException, SocketError) as e:
             # Connection broken, discard. It will be replaced next _get_conn().
             conn = None
 

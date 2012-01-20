@@ -5,14 +5,15 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import codecs
-import mimetools
 import mimetypes
 
 try:
-    from cStringIO import StringIO
+    from mimetools import choose_boundary
 except ImportError:
-    from StringIO import StringIO # pylint: disable-msg=W0404
+    # I don't like using an undocumented function, but I don't yet know what it does
+    from email.generator import _make_boundary as choose_boundary
 
+from io import BytesIO
 
 writer = codecs.lookup('utf-8')[3]
 
@@ -35,9 +36,9 @@ def encode_multipart_formdata(fields, boundary=None):
         If not specified, then a random boundary will be generated using
         :func:`mimetools.choose_boundary`.
     """
-    body = StringIO()
+    body = BytesIO()
     if boundary is None:
-        boundary = mimetools.choose_boundary()
+        boundary = choose_boundary()
 
     for fieldname, value in fields.iteritems():
         body.write('--%s\r\n' % (boundary))

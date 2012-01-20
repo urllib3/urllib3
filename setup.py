@@ -8,7 +8,7 @@ import re
 
 try:
     import setuptools
-except ImportError, _:
+except ImportError:
     pass # No 'develop' command, oh well.
 
 base_path = os.path.dirname(__file__)

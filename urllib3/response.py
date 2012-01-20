@@ -8,11 +8,7 @@ import gzip
 import logging
 import zlib
 
-
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO # pylint: disable-msg=W0404
+from io import BytesIO
 
 
 from .exceptions import HTTPError
@@ -22,7 +18,7 @@ log = logging.getLogger(__name__)
 
 
 def decode_gzip(data):
-    gzipper = gzip.GzipFile(fileobj=StringIO(data))
+    gzipper = gzip.GzipFile(fileobj=BytesIO(data))
     return gzipper.read()
 
 
