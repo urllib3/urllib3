@@ -8,7 +8,7 @@ import logging
 import os
 import sys
 
-from dummyserver.app import TestingApp
+from dummyserver.handlers import TestingApp
 
 
 log = logging.getLogger(__name__)
@@ -22,38 +22,68 @@ DEFAULT_CA = os.path.join(CERTS_PATH, 'cacert.pem')
 DEFAULT_CA_BAD = os.path.join(CERTS_PATH, 'client_bad.pem')
 
 
-def eventlet_server(host="localhost", port=8081, scheme='http', certs=None, **kw):
+# Different types of servers we have:
+
+def eventlet_server(wsgi_handler, host="localhost", port=8081, scheme='http',
+                    certs=None, **kw):
     import eventlet
     import eventlet.wsgi
 
     certs = certs or {}
 
-    socket = eventlet.listen((host, port))
+    sock = eventlet.listen((host, port))
 
     if scheme == 'https':
-        socket = eventlet.wrap_ssl(socket, server_side=True, **certs)
+        sock = eventlet.wrap_ssl(sock, server_side=True, **certs)
 
     dummy_log_fp = open(os.devnull, 'a')
 
-    return eventlet.wsgi.server(socket, TestingApp(), log=dummy_log_fp, **kw)
+    return eventlet.wsgi.server(sock, wsgi_handler, log=dummy_log_fp, **kw)
 
 
-def simple_server(host="localhost", port=8081, **kw):
-    from wsgiref.simple_server import make_server
-    return make_server(host, port, TestingApp())
+def simple_server(wsgi_handler, host="localhost", port=8081, **kw):
+    from wsgiref.simple_server import make_server as _make_server
+    return _make_server(host, port, wsgi_handler)
 
 
-def make_server(**kw):
+def socket_server(socket_handler, host="localhost", port=8081, lock=None):
+    """
+    :param request_handler: Callable which receives a socket argument for one request.
+    :param lock: Lock which gets acquired immediately and released when the
+        socket handler is ready to receive requests.
+
+    :returns: a callable which starts a socket-based server that releases the
+        lock when ready.
+    """
+    lock and lock.acquire()
+
+    import socket
+
+    sock = socket.socket()
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind((host, port))
+
+    # Once listen() returns, the server socket is ready
+    sock.listen(1)
+    lock and lock.release()
+
+    socket_handler(sock)
+
+
+def make_wsgi_server(App=TestingApp, **kw):
     try:
-        return eventlet_server(**kw)
+        return eventlet_server(App(), **kw)
     except ImportError:
-        return simple_server(**kw)
+        return simple_server(App(), **kw)
 
 
-def make_server_thread(target, **kw):
-    import threading
-    t = threading.Thread(target=target, kwargs=kw)
+def make_server_thread(target, daemon=False, **kw):
+    from threading import Thread
+
+    t = Thread(target=target, kwargs=kw)
+    t.daemon = daemon
     t.start()
+
     return t
 
 
@@ -67,7 +97,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         url = sys.argv[1]
 
-    print "Starting server at: %s" % url
+    print "Starting WSGI server at: %s" % url
 
     scheme, host, port = get_host(url)
-    make_server(scheme=scheme, host=host, port=port)
+    make_wsgi_server(scheme=scheme, host=host, port=port)

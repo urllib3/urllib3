@@ -13,7 +13,11 @@ from webob import Request, Response, exc
 log = logging.getLogger(__name__)
 
 
-class TestingApp(object):
+class WSGIHandler(object):
+    pass
+
+
+class TestingApp(WSGIHandler):
     """
     Simple app that performs various operations, useful for testing an HTTP
     library.
