@@ -9,7 +9,7 @@ import socket
 
 
 from httplib import HTTPConnection, HTTPSConnection, HTTPException
-from Queue import Queue, Empty, Full
+from Queue import LifoQueue, Empty, Full
 from select import select
 from socket import error as SocketError, timeout as SocketTimeout
 
@@ -131,7 +131,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.port = port
         self.strict = strict
         self.timeout = timeout
-        self.pool = Queue(maxsize)
+        self.pool = LifoQueue(maxsize)
         self.block = block
         self.headers = headers or {}
 

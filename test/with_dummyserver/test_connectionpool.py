@@ -216,6 +216,16 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(pool.num_connections, 1)
         self.assertEqual(pool.num_requests, 3)
 
+    def test_connection_count_bigpool(self):
+        http_pool = HTTPConnectionPool(self.host, self.port, maxsize=16)
+
+        http_pool.request('GET', '/')
+        http_pool.request('GET', '/')
+        http_pool.request('GET', '/')
+
+        self.assertEqual(http_pool.num_connections, 1)
+        self.assertEqual(http_pool.num_requests, 3)
+
     def test_partial_response(self):
         pool = HTTPConnectionPool(self.host, self.port, maxsize=1)
 
