@@ -5,7 +5,9 @@
 * Andrey Petrov <andrey.petrov@shazow.net>
 
 
-## Patches
+## Contributors
+
+In chronological order:
 
 * victor.vde <http://code.google.com/u/victor.vde/>
   * HTTPS patch (which inspired HTTPSConnectionPool)
@@ -27,6 +29,9 @@
 
 * kennethreitz <me@kennethreitz.com>
   * Bugfixes, suggestions, Requests integration
+
+* georgemarshall <http://github.com/georgemarshall>
+  * Bugfixes, Improvements and Test coverage
 
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
