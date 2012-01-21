@@ -8,7 +8,9 @@ import logging
 import socket
 
 
-from httplib import HTTPConnection, HTTPSConnection, HTTPException
+from httplib import (HTTPConnection, HTTPSConnection, HTTPException,
+                     HTTP_PORT, HTTPS_PORT)
+
 from Queue import Queue, Empty, Full
 from select import select
 from socket import error as SocketError, timeout as SocketTimeout
@@ -38,6 +40,10 @@ log = logging.getLogger(__name__)
 
 _Default = object()
 
+port_by_scheme = {
+    'http': HTTP_PORT,
+    'https': HTTPS_PORT,
+}
 
 ## Connection objects (extension of httplib)
 
@@ -232,8 +238,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conncetion pool.
         """
         # TODO: Add optional support for socket.gethostbyname checking.
+        scheme, host, port = get_host(url)
+        if self.port and not port:
+            # Our own `self.port` is an integer, but the URL specifies
+            # no ':NNNN' explicit port number.  So we need to fetch the
+            # default port number that the URL will use, so that it can
+            # successfully be compared to our own port integer.
+            port = port_by_scheme.get(scheme)
         return (url.startswith('/') or
-                get_host(url) == (self.scheme, self.host, self.port))
+                (scheme, host, port) == (self.scheme, self.host, self.port))
 
     def urlopen(self, method, url, body=None, headers=None, retries=3,
                 redirect=True, assert_same_host=True, timeout=_Default,

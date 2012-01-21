@@ -1,4 +1,5 @@
 import unittest
+from threading import Event
 
 from urllib3.connectionpool import (
     connection_from_url,
@@ -8,6 +9,7 @@ from urllib3.connectionpool import (
 
 from urllib3.exceptions import EmptyPoolError
 
+from threadserver import read_request, start_server
 
 class TestConnectionPool(unittest.TestCase):
     def test_get_host(self):
@@ -92,7 +94,39 @@ class TestConnectionPool(unittest.TestCase):
 
         self.assertEqual(pool.num_connections, 1)
 
+    def test_recovery_when_server_closes_connection(self):
+        # Does the pool work seamlessly if an open connection in the
+        # connection pool gets hung up on by the server, then reaches
+        # the front of the queue again?
 
+        def server(listener):
+            for i in 0, 1:
+                sock = listener.accept()[0]
+                read_request(sock)
+                body = 'Response %d' % i
+                sock.send('HTTP/1.1 200 OK\r\n'
+                          'Content-Type: text/plain\r\n'
+                          'Content-Length: %d\r\n'
+                          '\r\n'
+                          '%s' % (len(body), body))
+                sock.close()  # simulate a server timing out, closing socket
+                done_closing.set()  # let the test know it can proceed
+
+        done_closing = Event()
+        host, port = start_server(server)
+        pool = HTTPConnectionPool(host, port)
+
+        response = pool.request('GET', '/', retries=0)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.data, 'Response 0')
+
+        done_closing.wait()  # wait until the socket in our pool gets closed
+
+        response = pool.request('GET', '/', retries=0)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.data, 'Response 1')
+
+# "python -m" command line support:
 
 if __name__ == '__main__':
     unittest.main()
