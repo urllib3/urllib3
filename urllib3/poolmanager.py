@@ -105,7 +105,7 @@ class PoolManager(RequestMethods):
 
         except HostChangedError, e:
             kw['retries'] = e.retries # Persist retries countdown
-            return self.urlopen(method, e.new_url, **kw)
+            return self.urlopen(method, e.url, **kw)
 
 
 class ProxyManager(RequestMethods):

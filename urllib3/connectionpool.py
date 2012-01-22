@@ -87,7 +87,16 @@ class ConnectionPool(object):
     Base class for all connection pools, such as
     :class:`.HTTPConnectionPool` and :class:`.HTTPSConnectionPool`.
     """
-    pass
+
+    scheme = None
+
+    def __init__(self, host, port=None):
+        self.host = host
+        self.port = port
+
+    def __str__(self):
+        return '%s(host=%r, port=%r)' % (type(self).__name__,
+                                         self.host, self.port)
 
 
 class HTTPConnectionPool(ConnectionPool, RequestMethods):
@@ -187,7 +196,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         except Empty:
             if self.block:
-                raise EmptyPoolError("Pool reached maximum size and no more "
+                raise EmptyPoolError(self,
+                                     "Pool reached maximum size and no more "
                                      "connections are allowed.")
             pass  # Oh well, we'll create a new connection then
 
@@ -323,7 +333,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             headers = self.headers
 
         if retries < 0:
-            raise MaxRetryError(self.scheme + '://' + self.host + url)
+            raise MaxRetryError(self, url)
 
         if timeout is _Default:
             timeout = self.timeout
@@ -337,7 +347,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if self.port:
                 host = "%s:%d" % (host, self.port)
 
-            raise HostChangedError(host, url, retries - 1)
+            raise HostChangedError(self, url, retries - 1)
 
         conn = None
 
@@ -370,12 +380,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         except (Empty), e:
             # Timed out by queue
-            raise TimeoutError("Request timed out. (pool_timeout=%s)" %
+            raise TimeoutError(self, "Request timed out. (pool_timeout=%s)" %
                                pool_timeout)
 
         except (SocketTimeout), e:
             # Timed out by socket
-            raise TimeoutError("Request timed out. (timeout=%s)" %
+            raise TimeoutError(self, "Request timed out. (timeout=%s)" %
                                timeout)
 
         except (BaseSSLError), e:

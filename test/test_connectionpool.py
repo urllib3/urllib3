@@ -92,6 +92,11 @@ class TestConnectionPool(unittest.TestCase):
 
         self.assertEqual(pool.num_connections, 1)
 
+    def test_exception_str(self):
+        self.assertEqual(
+            str(EmptyPoolError(HTTPConnectionPool(host='localhost'), "Test.")),
+            "HTTPConnectionPool(host='localhost', port=None): Test.")
+
 
 if __name__ == '__main__':
     unittest.main()
