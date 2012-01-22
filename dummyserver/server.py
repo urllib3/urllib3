@@ -61,6 +61,37 @@ class EventletServerThread(threading.Thread):
             pass
         self.join()
 
+def tornado_server(host, port, scheme='http', certs=None, **kw):
+    import tornado.wsgi
+    import tornado.httpserver
+    container = tornado.wsgi.WSGIContainer(TestingApp())
+    if scheme == 'https':
+        http_server = tornado.httpserver.HTTPServer(container, ssl_options=certs)
+    else:
+        http_server = tornado.httpserver.HTTPServer(container)
+    http_server.listen(port)
+    return http_server
+    
+class TornadoServerThread(threading.Thread):
+    def __init__(self, host, port, **kw):
+        import tornado.wsgi
+        threading.Thread.__init__(self)
+        self.host = host
+        self.port = port
+        self.kw = kw
+    
+    def run(self):
+        import tornado.ioloop
+        self.server = tornado_server(self.host, self.port, **self.kw)
+        self.ioloop = tornado.ioloop.IOLoop.instance()
+        self.ioloop.start()
+    
+    def stop(self):
+        self.server.stop()
+        self.ioloop.stop()
+        #self.ioloop.close()
+        import time
+        time.sleep(0.1)
 
 def simple_server(host="localhost", port=8081, **kw):
     from wsgiref.simple_server import make_server
@@ -87,7 +118,10 @@ def make_server_thread(**kw):
     try:
         t = EventletServerThread(**kw)
     except ImportError:
-        t = SimpleServerThread(**kw)
+        try:
+            t = TornadoServerThread(**kw)
+        except ImportError:
+            t = SimpleServerThread(**kw)
     t.start()
     return t
 
