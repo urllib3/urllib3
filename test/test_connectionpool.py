@@ -25,7 +25,7 @@ class TestConnectionPool(unittest.TestCase):
             'https://google.com:8000': ('https', 'google.com', 8000),
             'http://user:password@127.0.0.1:1234': ('http', '127.0.0.1', 1234),
         }
-        for url, expected_host in url_host_map.iteritems():
+        for url, expected_host in url_host_map.items():
             returned_host = get_host(url)
             self.assertEquals(returned_host, expected_host)
 

@@ -1,27 +1,27 @@
 import unittest
 
-from io import BytesIO, StringIO
+from io import BytesIO
 
 from urllib3.response import HTTPResponse
 
 
 class TestResponse(unittest.TestCase):
     def test_preload(self):
-        fp = StringIO('foo')
+        fp = BytesIO(b'foo')
 
         r = HTTPResponse(fp, preload_content=True)
 
-        self.assertEqual(fp.tell(), fp.len)
-        self.assertEqual(r.data, 'foo')
+        self.assertEqual(fp.tell(), len(b'foo'))
+        self.assertEqual(r.data, b'foo')
 
     def test_no_preload(self):
-        fp = StringIO('foo')
+        fp = BytesIO(b'foo')
 
         r = HTTPResponse(fp, preload_content=False)
 
         self.assertEqual(fp.tell(), 0)
-        self.assertEqual(r.data, 'foo')
-        self.assertEqual(fp.tell(), fp.len)
+        self.assertEqual(r.data, b'foo')
+        self.assertEqual(fp.tell(), len(b'foo'))
 
     def test_decode_deflate(self):
         import zlib

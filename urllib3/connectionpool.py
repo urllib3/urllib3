@@ -40,6 +40,9 @@ from .exceptions import (
     EmptyPoolError,
 )
 
+from . import six
+xrange = six.moves.xrange
+
 
 log = logging.getLogger(__name__)
 
@@ -379,6 +382,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         except (HTTPException, SocketError) as e:
             # Connection broken, discard. It will be replaced next _get_conn().
             conn = None
+            # This is necessary so we can access e below
+            err = e
 
         finally:
             if conn and release_conn:
@@ -387,7 +392,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if not conn:
             log.warn("Retrying (%d attempts remain) after connection "
-                     "broken by '%r': %s" % (retries, e, url))
+                     "broken by '%r': %s" % (retries, err, url))
             return self.urlopen(method, url, body, headers, retries - 1,
                                 redirect, assert_same_host)  # Try again
 

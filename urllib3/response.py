@@ -174,12 +174,14 @@ class HTTPResponse(object):
         with ``original_response=r``.
         """
 
+        # HTTPResponse objects in Python 3 don't have a .strict attribute
+        strict = getattr(r, 'strict', 0)
         return ResponseCls(body=r,
                            headers=dict(r.getheaders()),
                            status=r.status,
                            version=r.version,
                            reason=r.reason,
-                           strict=r.strict,
+                           strict=strict,
                            original_response=r,
                            **response_kw)
 

@@ -1,10 +1,15 @@
 import logging
 import sys
 import unittest
-import urllib
+
+try:
+    from urllib.parse import urlencode
+except:
+    from urllib import urlencode
 
 from urllib3 import encode_multipart_formdata, HTTPConnectionPool
 from urllib3.exceptions import TimeoutError, EmptyPoolError, MaxRetryError
+from urllib3.six import u
 
 from dummyserver.testcase import HTTPDummyServerTestCase
 
@@ -56,15 +61,15 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(r.status, 200, r.data)
 
     def test_unicode_upload(self):
-        fieldname = u'myfile'
-        filename = u'\xe2\x99\xa5.txt'
-        data = u'\xe2\x99\xa5'.encode('utf8')
+        fieldname = u('myfile')
+        filename = u('\xe2\x99\xa5.txt')
+        data = u('\xe2\x99\xa5').encode('utf8')
         size = len(data)
 
         fields = {
-            u'upload_param': fieldname,
-            u'upload_filename': filename,
-            u'upload_size': size,
+            u('upload_param'): fieldname,
+            u('upload_filename'): filename,
+            u('upload_size'): size,
             fieldname: (filename, data),
         }
 
@@ -167,17 +172,17 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('POST', '/echo',
                                     fields=data,
                                     encode_multipart=False)
-        self.assertEqual(r.data, urllib.urlencode(data))
+        self.assertEqual(r.data.decode('utf-8'), urlencode(data))
 
     def test_post_with_multipart(self):
         data = {'banana': 'hammock', 'lol': 'cat'}
         r = self.pool.request('POST', '/echo',
                                     fields=data,
                                     encode_multipart=True)
-        body = r.data.split('\r\n')
+        body = r.data.split(b'\r\n')
 
         encoded_data = encode_multipart_formdata(data)[0]
-        expected_body = encoded_data.split('\r\n')
+        expected_body = encoded_data.split(b'\r\n')
 
         # TODO: Get rid of extra parsing stuff when you can specify
         # a custom boundary to encode_multipart_formdata
@@ -220,7 +225,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, maxsize=1)
 
         req_data = {'lol': 'cat'}
-        resp_data = urllib.urlencode(req_data)
+        resp_data = urlencode(req_data).encode('utf-8')
 
         r = pool.request('GET', '/echo', fields=req_data, preload_content=False)
 
