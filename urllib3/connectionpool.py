@@ -12,7 +12,7 @@ from httplib import (HTTPConnection, HTTPSConnection, HTTPException,
                      HTTP_PORT, HTTPS_PORT)
 
 from Queue import Queue, Empty, Full
-from select import select
+from select import poll, POLLIN
 from socket import error as SocketError, timeout as SocketTimeout
 
 from .packages.ssl_match_hostname import match_hostname, CertificateError
@@ -175,10 +175,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             conn = self.pool.get(block=self.block, timeout=timeout)
 
             # If this is a persistent connection, check if it got disconnected
-            if conn and conn.sock and select([conn.sock], [], [], 0.0)[0]:
-                # Either data is buffered (bad), or the connection is dropped.
-                log.info("Resetting dropped connection: %s" % self.host)
-                conn.close()
+            if conn and conn.sock:
+                # poll-based replacement to select([conn.sock], [], [], 0.0)[0]:
+                p = poll()
+                p.register(conn.sock, POLLIN)
+                for (fno, ev) in p.poll(0.0):
+                    if fno == conn.sock.fileno():
+                        # Either data is buffered (bad), or the connection is dropped.
+                        log.info("Resetting dropped connection: %s" % self.host)
+                        conn.close()                        
 
         except Empty:
             if self.block:
