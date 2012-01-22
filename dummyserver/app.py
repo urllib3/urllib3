@@ -1,12 +1,17 @@
+from __future__ import print_function
+
 import gzip
 import logging
 import sys
 import time
 import zlib
 
-from urlparse import urlsplit
+try:
+    from urllib.parse import urlsplit
+except ImportError:
+    from urlparse import urlsplit
 from cgi import FieldStorage
-from StringIO import StringIO
+from io import BytesIO
 from webob import Request, Response, exc
 
 
@@ -47,9 +52,9 @@ class TestingApp(object):
         test_type = request.params.get('test_type')
         test_id = request.params.get('test_id')
         if test_id:
-            print '\nNew test %s: %s' % (test_type, test_id)
+            print('\nNew test %s: %s' % (test_type, test_id))
         else:
-            print '\nNew test %s' % test_type
+            print('\nNew test %s' % test_type)
         return Response("Dummy server is ready!")
 
     def specific_method(self, request):
@@ -117,7 +122,7 @@ class TestingApp(object):
         headers = {}
         if 'gzip' in encoding:
             headers = {'Content-Encoding': 'gzip'}
-            file_ = StringIO()
+            file_ = BytesIO()
             gzip.GzipFile('', mode='w', fileobj=file_).write(data)
             data = file_.getvalue()
         elif 'deflate' in encoding:

@@ -3,6 +3,7 @@
 """
 Dummy server used for unit testing.
 """
+from __future__ import print_function
 
 import logging
 import os
@@ -136,7 +137,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         url = sys.argv[1]
 
-    print "Starting server at: %s" % url
+    print("Starting server at: %s" % url)
 
     scheme, host, port = get_host(url)
     make_server(scheme=scheme, host=host, port=port)

@@ -14,7 +14,6 @@ log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
-
 class TestHTTPS(HTTPSDummyServerTestCase):
     def setUp(self):
         self._pool = HTTPSConnectionPool(self.host, self.port)
@@ -34,7 +33,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         try:
             https_pool.request('GET', '/')
             self.fail("Didn't raise SSL error with no CA")
-        except SSLError, e:
+        except SSLError as e:
             self.assertTrue('No root certificates' in str(e))
 
         https_pool.ca_certs = DEFAULT_CA_BAD
@@ -42,7 +41,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         try:
             https_pool.request('GET', '/')
             self.fail("Didn't raise SSL error with wrong CA")
-        except SSLError, e:
+        except SSLError as e:
             self.assertTrue('certificate verify failed' in str(e))
 
         https_pool.ca_certs = DEFAULT_CA
@@ -55,7 +54,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         try:
             https_fail_pool.request('GET', '/')
             self.fail("Didn't raise SSL invalid common name")
-        except SSLError, e:
+        except SSLError as e:
             self.assertTrue("doesn't match" in str(e))
 
 

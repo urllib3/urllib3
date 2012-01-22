@@ -4,6 +4,7 @@
 Really simple rudimentary benchmark to compare ConnectionPool versus standard
 urllib to demonstrate the usefulness of connection re-using.
 """
+from __future__ import print_function
 
 import sys
 import time
@@ -40,7 +41,7 @@ def urllib_get(url_list):
         now = time.time()
         r = urllib.urlopen(url)
         elapsed = time.time() - now
-        print "Got in %0.3f: %s" % (elapsed, url)
+        print("Got in %0.3f: %s" % (elapsed, url))
 
 
 def pool_get(url_list):
@@ -50,22 +51,22 @@ def pool_get(url_list):
         now = time.time()
         r = pool.get_url(url)
         elapsed = time.time() - now
-        print "Got in %0.3fs: %s" % (elapsed, url)
+        print("Got in %0.3fs: %s" % (elapsed, url))
 
 
 if __name__ == '__main__':
-    print "Running pool_get ..."
+    print("Running pool_get ...")
     now = time.time()
     pool_get(TO_DOWNLOAD)
     pool_elapsed = time.time() - now
 
-    print "Running urllib_get ..."
+    print("Running urllib_get ...")
     now = time.time()
     urllib_get(TO_DOWNLOAD)
     urllib_elapsed = time.time() - now
 
-    print "Completed pool_get in %0.3fs" % pool_elapsed
-    print "Completed urllib_get in %0.3fs" % urllib_elapsed
+    print("Completed pool_get in %0.3fs" % pool_elapsed)
+    print("Completed urllib_get in %0.3fs" % urllib_elapsed)
 
 
 """
