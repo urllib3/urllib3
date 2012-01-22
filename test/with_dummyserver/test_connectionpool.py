@@ -9,7 +9,7 @@ except:
 
 from urllib3 import encode_multipart_formdata, HTTPConnectionPool
 from urllib3.exceptions import TimeoutError, EmptyPoolError, MaxRetryError
-from urllib3.six import u
+from urllib3.packages.six import u
 
 from dummyserver.testcase import HTTPDummyServerTestCase
 

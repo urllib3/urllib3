@@ -14,8 +14,8 @@ except ImportError:
 
 from io import BytesIO
 
-from . import six
-from .six import b
+from .packages import six
+from .packages.six import b
 
 writer = codecs.lookup('utf-8')[3]
 

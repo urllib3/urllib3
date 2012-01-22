@@ -40,7 +40,7 @@ from .exceptions import (
     EmptyPoolError,
 )
 
-from . import six
+from .packages import six
 xrange = six.moves.xrange
 
 

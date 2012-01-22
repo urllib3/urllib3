@@ -1,7 +1,7 @@
 import unittest
 
 from urllib3._collections import RecentlyUsedContainer as Container
-from urllib3 import six
+from urllib3.packages import six
 xrange = six.moves.xrange
 
 class TestLRUContainer(unittest.TestCase):
