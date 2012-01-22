@@ -235,16 +235,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     def is_same_host(self, url):
         """
         Check if the given ``url`` is a member of the same host as this
-        conncetion pool.
+        connection pool.
         """
         # TODO: Add optional support for socket.gethostbyname checking.
         scheme, host, port = get_host(url)
+
         if self.port and not port:
-            # Our own `self.port` is an integer, but the URL specifies
-            # no ':NNNN' explicit port number.  So we need to fetch the
-            # default port number that the URL will use, so that it can
-            # successfully be compared to our own port integer.
+            # Use explicit default port for comparison when none is given.
             port = port_by_scheme.get(scheme)
+
         return (url.startswith('/') or
                 (scheme, host, port) == (self.scheme, self.host, self.port))
 
