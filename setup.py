@@ -4,7 +4,7 @@ from distutils.core import setup
 
 import os
 import re
-
+import sys
 
 try:
     import setuptools
@@ -26,8 +26,11 @@ requirements = []
 tests_requirements = requirements + [
     'nose',
     'webob',
-    'eventlet',
 ]
+if sys.version_info[0] >= 3:
+    tests_requirements.append('tornado')
+else:
+    tests_requirements.append('eventlet')
 
 setup(name='urllib3',
       version=version,
