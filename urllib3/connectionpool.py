@@ -324,7 +324,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             headers = self.headers
 
         if retries < 0:
-            raise MaxRetryError(url)
+            raise MaxRetryError(self.scheme + '://' + self.host + url)
 
         if timeout is _Default:
             timeout = self.timeout
