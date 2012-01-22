@@ -12,8 +12,7 @@ class HTTPDummyServerTestCase(unittest.TestCase):
 
     @classmethod
     def _start_server(cls):
-        cls.server_thread = make_server_thread(make_server,
-                                               host=cls.host, port=cls.port,
+        cls.server_thread = make_server_thread(host=cls.host, port=cls.port,
                                                scheme=cls.scheme,
                                                certs=cls.certs)
 
@@ -23,13 +22,7 @@ class HTTPDummyServerTestCase(unittest.TestCase):
 
     @classmethod
     def _stop_server(cls):
-        import urllib # Yup, that's right.
-        try:
-            urllib.urlopen(cls.scheme + '://' + cls.host + ':' + str(cls.port) + '/shutdown')
-        except IOError:
-            pass
-        cls.server_thread.join()
-
+        cls.server_thread.stop()
 
     @classmethod
     def setUpClass(cls):

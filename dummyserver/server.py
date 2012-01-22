@@ -7,6 +7,7 @@ Dummy server used for unit testing.
 import logging
 import os
 import sys
+import threading
 
 from dummyserver.app import TestingApp
 
@@ -37,11 +38,44 @@ def eventlet_server(host="localhost", port=8081, scheme='http', certs=None, **kw
 
     return eventlet.wsgi.server(socket, TestingApp(), log=dummy_log_fp, **kw)
 
+class EventletServerThread(threading.Thread):
+    def __init__(self, host, port, scheme='http', certs=None, **kw):
+        import eventlet
+        import eventlet.wsgi  # We need to check the imports in the main thread
+        
+        threading.Thread.__init__(self)
+        self.host = host
+        self.port = port
+        self.scheme = scheme
+        self.certs = certs
+        self.kw = kw
+    
+    def run(self):
+        eventlet_server(self.host, self.port, self.scheme, self.certs, **self.kw)
+    
+    def stop(self):
+        import urllib # Yup, that's right.
+        try:
+            urllib.urlopen(self.scheme + '://' + self.host + ':' + str(self.port) + '/shutdown')
+        except IOError:
+            pass
+        self.join()
+
 
 def simple_server(host="localhost", port=8081, **kw):
     from wsgiref.simple_server import make_server
     return make_server(host, port, TestingApp())
 
+class SimpleServerThread(threading.Thread):
+    def __init__(self, host, port, **kw):
+        threading.Thread.__init__(self)
+        self.server = simple_server(host, port, **kw)
+    
+    def run(self):
+        self.server.serve_forever()
+    
+    def stop(self):
+        self.server.shutdown()
 
 def make_server(**kw):
     try:
@@ -49,10 +83,11 @@ def make_server(**kw):
     except ImportError:
         return simple_server(**kw)
 
-
-def make_server_thread(target, **kw):
-    import threading
-    t = threading.Thread(target=target, kwargs=kw)
+def make_server_thread(**kw):
+    try:
+        t = EventletServerThread(**kw)
+    except ImportError:
+        t = SimpleServerThread(**kw)
     t.start()
     return t
 
