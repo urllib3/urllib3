@@ -24,10 +24,12 @@ class SocketDummyServerTestCase(unittest.TestCase):
     @classmethod
     def _start_server(cls, socket_handler):
         ready_lock = Lock()
+        ready_lock.acquire()
         cls.server_thread = make_server_thread(socket_server,
                                                socket_handler=socket_handler,
+                                               ready_lock=ready_lock,
                                                host=cls.host, port=cls.port)
-
+        # Lock gets released by thread above
         ready_lock.acquire()
 
 class HTTPDummyServerTestCase(unittest.TestCase):

@@ -46,17 +46,16 @@ def simple_server(wsgi_handler, host="localhost", port=8081, **kw):
     return _make_server(host, port, wsgi_handler)
 
 
-def socket_server(socket_handler, host="localhost", port=8081, lock=None):
+def socket_server(socket_handler, host="localhost", port=8081, ready_lock=None):
     """
-    :param request_handler: Callable which receives a socket argument for one request.
+    :param socket_handler: Callable which receives a socket argument for one
+        request.
     :param lock: Lock which gets acquired immediately and released when the
         socket handler is ready to receive requests.
 
     :returns: a callable which starts a socket-based server that releases the
         lock when ready.
     """
-    lock and lock.acquire()
-
     import socket
 
     sock = socket.socket()
@@ -65,7 +64,9 @@ def socket_server(socket_handler, host="localhost", port=8081, lock=None):
 
     # Once listen() returns, the server socket is ready
     sock.listen(1)
-    lock and lock.release()
+
+    if ready_lock:
+        ready_lock.release()
 
     socket_handler(sock)
 
