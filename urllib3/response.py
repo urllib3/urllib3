@@ -177,7 +177,8 @@ class HTTPResponse(object):
         # HTTPResponse objects in Python 3 don't have a .strict attribute
         strict = getattr(r, 'strict', 0)
         return ResponseCls(body=r,
-                           headers=dict(r.getheaders()),
+                           # In Python 3, the header keys are returned capitalised
+                           headers=dict((k.lower(), v) for k,v in r.getheaders()),
                            status=r.status,
                            version=r.version,
                            reason=r.reason,
