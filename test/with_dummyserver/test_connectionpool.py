@@ -194,7 +194,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         the data again.
         """
         for i, line in enumerate(body):
-            if line.startswith('--'):
+            if line.startswith(b'--'):
                 continue
 
             self.assertEqual(body[i], expected_body[i])

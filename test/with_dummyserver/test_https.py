@@ -3,6 +3,7 @@ import sys
 import unittest
 
 from dummyserver.testcase import HTTPSDummyServerTestCase
+from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD
 
 from urllib3 import HTTPSConnectionPool
 from urllib3.connectionpool import VerifiedHTTPSConnection
