@@ -117,7 +117,7 @@ class TestingApp(object):
 
     def encodingrequest(self, request):
         "Check for UA accepting gzip/deflate encoding"
-        data = "hello, world!"
+        data = b"hello, world!"
         encoding = request.headers.get('Accept-Encoding', '')
         headers = {}
         if 'gzip' in encoding:

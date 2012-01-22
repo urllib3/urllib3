@@ -203,13 +203,13 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('GET', '/encodingrequest',
                                    headers={'accept-encoding': 'gzip'})
         self.assertEqual(r.headers.get('content-encoding'), 'gzip')
-        self.assertEqual(r.data, 'hello, world!')
+        self.assertEqual(r.data, b'hello, world!')
 
     def test_check_deflate(self):
         r = self.pool.request('GET', '/encodingrequest',
                                    headers={'accept-encoding': 'deflate'})
         self.assertEqual(r.headers.get('content-encoding'), 'deflate')
-        self.assertEqual(r.data, 'hello, world!')
+        self.assertEqual(r.data, b'hello, world!')
 
     def test_connection_count(self):
         pool = HTTPConnectionPool(self.host, self.port, maxsize=1)
