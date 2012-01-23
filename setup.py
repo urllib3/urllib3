@@ -29,10 +29,6 @@ tests_requirements = requirements + [
     'nose',
     'webob',
 ]
-if sys.version_info[0] >= 3:
-    tests_requirements.append('tornado')
-else:
-    tests_requirements.append('eventlet')
 
 setup(name='urllib3',
       version=version,
