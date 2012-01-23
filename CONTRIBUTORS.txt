@@ -36,5 +36,8 @@ In chronological order:
 * Thomas Kluyver <thomas@kluyver.me.uk>
   * Python 3 support
 
+* brandon-rhodes <http://rhodesmill.org/brandon>
+  * Design review, bugfixes, test coverage.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

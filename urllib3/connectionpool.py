@@ -7,9 +7,24 @@
 import logging
 import socket
 
+<<<<<<< HEAD
 from select import poll, POLLIN
 from socket import error as SocketError, timeout as SocketTimeout
 
+=======
+
+from httplib import (HTTPConnection, HTTPSConnection, HTTPException,
+                     HTTP_PORT, HTTPS_PORT)
+
+from Queue import Queue, Empty, Full
+from socket import error as SocketError, timeout as SocketTimeout
+
+try:
+    from select import poll, POLLIN
+except ImportError: # Doesn't exist on OSX and other platforms
+    from select import select
+    poll = False
+>>>>>>> master
 
 try:   # Python 3
     from http.client import HTTPConnection, HTTPSConnection, HTTPException
@@ -31,6 +46,7 @@ except ImportError:
     BaseSSLError = None
 
 
+from .packages.ssl_match_hostname import match_hostname, CertificateError
 from .request import RequestMethods
 from .response import HTTPResponse
 from .exceptions import (SSLError,
@@ -587,7 +603,10 @@ def is_connection_dropped(conn):
     :param conn:
         ``HTTPConnection`` object.
     """
-    # poll-based replacement to select([conn.sock], [], [], 0.0)[0]:
+    if not poll:
+        return select([conn.sock], [], [], 0.0)[0]
+
+    # This version is better on platforms that support it.
     p = poll()
     p.register(conn.sock, POLLIN)
     for (fno, ev) in p.poll(0.0):
