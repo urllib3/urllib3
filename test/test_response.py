@@ -49,7 +49,7 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(fp.tell(), len(b'foo'))
 
     def test_decode_bad_data(self):
-        fp = BytesIO('\x00' * 10)
+        fp = BytesIO(b'\x00' * 10)
         self.assertRaises(zlib.error, HTTPResponse, fp, headers={
             'content-encoding': 'deflate'
         })
