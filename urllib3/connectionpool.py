@@ -49,8 +49,8 @@ from .exceptions import (SSLError,
     EmptyPoolError,
 )
 
-from urllib3.packages.ssl_match_hostname import match_hostname, CertificateError
-from urllib3.packages import six
+from .packages.ssl_match_hostname import match_hostname, CertificateError
+from .packages import six
 
 xrange = six.moves.xrange
 
