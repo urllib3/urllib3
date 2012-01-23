@@ -7,12 +7,6 @@
 import logging
 import socket
 
-<<<<<<< HEAD
-from select import poll, POLLIN
-from socket import error as SocketError, timeout as SocketTimeout
-
-=======
-
 from httplib import (HTTPConnection, HTTPSConnection, HTTPException,
                      HTTP_PORT, HTTPS_PORT)
 
@@ -24,7 +18,6 @@ try:
 except ImportError: # Doesn't exist on OSX and other platforms
     from select import select
     poll = False
->>>>>>> master
 
 try:   # Python 3
     from http.client import HTTPConnection, HTTPSConnection, HTTPException
