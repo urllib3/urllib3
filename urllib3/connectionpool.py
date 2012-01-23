@@ -7,7 +7,6 @@
 import logging
 import socket
 
-from Queue import Queue, Empty, Full
 from socket import error as SocketError, timeout as SocketTimeout
 
 try:
