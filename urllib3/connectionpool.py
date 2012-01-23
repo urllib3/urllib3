@@ -7,17 +7,23 @@
 import logging
 import socket
 
-
-from httplib import (HTTPConnection, HTTPSConnection, HTTPException,
-                     HTTP_PORT, HTTPS_PORT)
-
-from Queue import Queue, Empty, Full
 from select import poll, POLLIN
 from socket import error as SocketError, timeout as SocketTimeout
 
-from .packages.ssl_match_hostname import match_hostname, CertificateError
 
-try:
+try:   # Python 3
+    from http.client import HTTPConnection, HTTPSConnection, HTTPException
+    from http.client import HTTP_PORT, HTTPS_PORT
+except ImportError:
+    from httplib import HTTPConnection, HTTPSConnection, HTTPException
+    from httplib import HTTP_PORT, HTTPS_PORT
+
+try:   # Python 3
+    from queue import Queue, Empty, Full
+except ImportError:
+    from Queue import Queue, Empty, Full
+
+try:   # Compiled with SSL?
     import ssl
     BaseSSLError = ssl.SSLError
 except ImportError:
@@ -27,14 +33,17 @@ except ImportError:
 
 from .request import RequestMethods
 from .response import HTTPResponse
-from .exceptions import (
-    SSLError,
+from .exceptions import (SSLError,
     MaxRetryError,
     TimeoutError,
     HostChangedError,
     EmptyPoolError,
 )
 
+from urllib3.packages.ssl_match_hostname import match_hostname, CertificateError
+from urllib3.packages import six
+
+xrange = six.moves.xrange
 
 log = logging.getLogger(__name__)
 
@@ -372,27 +381,29 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             #     ``response.release_conn()`` is called (implicitly by
             #     ``response.read()``)
 
-        except (Empty), e:
+        except Empty as e:
             # Timed out by queue
             raise TimeoutError(self, "Request timed out. (pool_timeout=%s)" %
                                pool_timeout)
 
-        except (SocketTimeout), e:
+        except SocketTimeout as e:
             # Timed out by socket
             raise TimeoutError(self, "Request timed out. (timeout=%s)" %
                                timeout)
 
-        except (BaseSSLError), e:
+        except BaseSSLError as e:
             # SSL certificate error
             raise SSLError(e)
 
-        except (CertificateError), e:
+        except CertificateError as e:
             # Name mismatch
             raise SSLError(e)
 
-        except (HTTPException, SocketError), e:
+        except (HTTPException, SocketError) as e:
             # Connection broken, discard. It will be replaced next _get_conn().
             conn = None
+            # This is necessary so we can access e below
+            err = e
 
         finally:
             if conn and release_conn:
@@ -401,7 +412,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if not conn:
             log.warn("Retrying (%d attempts remain) after connection "
-                     "broken by '%r': %s" % (retries, e, url))
+                     "broken by '%r': %s" % (retries, err, url))
             return self.urlopen(method, url, body, headers, retries - 1,
                                 redirect, assert_same_host)  # Try again
 

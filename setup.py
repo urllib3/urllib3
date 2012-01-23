@@ -4,11 +4,11 @@ from distutils.core import setup
 
 import os
 import re
-
+import sys
 
 try:
     import setuptools
-except ImportError, _:
+except ImportError:
     pass # No 'develop' command, oh well.
 
 base_path = os.path.dirname(__file__)
@@ -25,10 +25,14 @@ version = VERSION
 requirements = []
 tests_requirements = requirements + [
     'coverage',
-    'eventlet',
+    'tornado',
     'nose',
     'webob',
 ]
+if sys.version_info[0] >= 3:
+    tests_requirements.append('tornado')
+else:
+    tests_requirements.append('eventlet')
 
 setup(name='urllib3',
       version=version,
@@ -48,7 +52,9 @@ setup(name='urllib3',
       author_email='andrey.petrov@shazow.net',
       url='http://urllib3.readthedocs.org/',
       license='MIT',
-      packages=['urllib3', 'dummyserver', 'urllib3.packages', 'urllib3.packages.ssl_match_hostname'],
+      packages=['urllib3', 'dummyserver', 'urllib3.packages',
+                'urllib3.packages.ssl_match_hostname', 'urllib3.packages.mimetools_choose_boundary',
+                ],
       requires=requirements,
       tests_require=tests_requirements,
       test_suite='test',

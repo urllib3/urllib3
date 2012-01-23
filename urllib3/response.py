@@ -8,11 +8,7 @@ import gzip
 import logging
 import zlib
 
-
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO # pylint: disable-msg=W0404
+from io import BytesIO
 
 
 from .exceptions import HTTPError
@@ -22,7 +18,7 @@ log = logging.getLogger(__name__)
 
 
 def decode_gzip(data):
-    gzipper = gzip.GzipFile(fileobj=StringIO(data))
+    gzipper = gzip.GzipFile(fileobj=BytesIO(data))
     return gzipper.read()
 
 
@@ -175,12 +171,15 @@ class HTTPResponse(object):
         with ``original_response=r``.
         """
 
+        # HTTPResponse objects in Python 3 don't have a .strict attribute
+        strict = getattr(r, 'strict', 0)
         return ResponseCls(body=r,
-                           headers=dict(r.getheaders()),
+                           # In Python 3, the header keys are returned capitalised
+                           headers=dict((k.lower(), v) for k,v in r.getheaders()),
                            status=r.status,
                            version=r.version,
                            reason=r.reason,
-                           strict=r.strict,
+                           strict=strict,
                            original_response=r,
                            **response_kw)
 

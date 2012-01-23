@@ -23,7 +23,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                          fields={'target': '%s/' % self.base_url})
 
         self.assertEqual(r.status, 200)
-        self.assertEqual(r.data, 'Dummy server!')
+        self.assertEqual(r.data, b'Dummy server!')
 
     def test_cross_host_redirect(self):
         http = PoolManager()

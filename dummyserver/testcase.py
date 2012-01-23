@@ -3,8 +3,7 @@ import unittest
 from threading import Lock
 
 from dummyserver.server import (
-    make_server_thread,
-    make_wsgi_server, socket_server,
+    TornadoServerThread, SocketServerThread,
     DEFAULT_CERTS,
 )
 
@@ -25,12 +24,14 @@ class SocketDummyServerTestCase(unittest.TestCase):
     def _start_server(cls, socket_handler):
         ready_lock = Lock()
         ready_lock.acquire()
-        cls.server_thread = make_server_thread(socket_server,
-                                               socket_handler=socket_handler,
+        cls.server_thread = SocketServerThread(socket_handler=socket_handler,
                                                ready_lock=ready_lock,
                                                host=cls.host, port=cls.port)
+        cls.server_thread.start()
+
         # Lock gets released by thread above
         ready_lock.acquire()
+
 
 class HTTPDummyServerTestCase(unittest.TestCase):
     scheme = 'http'
@@ -41,10 +42,10 @@ class HTTPDummyServerTestCase(unittest.TestCase):
 
     @classmethod
     def _start_server(cls):
-        cls.server_thread = make_server_thread(make_wsgi_server,
-                                               host=cls.host, port=cls.port,
-                                               scheme=cls.scheme,
-                                               certs=cls.certs)
+        cls.server_thread = TornadoServerThread(host=cls.host, port=cls.port,
+                                                scheme=cls.scheme,
+                                                certs=cls.certs)
+        cls.server_thread.start()
 
         # TODO: Loop-check here instead
         import time
@@ -52,13 +53,7 @@ class HTTPDummyServerTestCase(unittest.TestCase):
 
     @classmethod
     def _stop_server(cls):
-        import urllib # Yup, that's right.
-        try:
-            urllib.urlopen(cls.scheme + '://' + cls.host + ':' + str(cls.port) + '/shutdown')
-        except IOError:
-            pass
-        cls.server_thread.join()
-
+        cls.server_thread.stop()
 
     @classmethod
     def setUpClass(cls):

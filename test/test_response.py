@@ -1,7 +1,7 @@
 import unittest
 import zlib
 
-from StringIO import StringIO
+from io import BytesIO
 
 from urllib3.response import HTTPResponse
 
@@ -32,35 +32,36 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(r.data, None)
 
     def test_preload(self):
-        fp = StringIO('foo')
+        fp = BytesIO(b'foo')
 
         r = HTTPResponse(fp, preload_content=True)
 
-        self.assertEqual(fp.tell(), fp.len)
-        self.assertEqual(r.data, 'foo')
+        self.assertEqual(fp.tell(), len(b'foo'))
+        self.assertEqual(r.data, b'foo')
 
     def test_no_preload(self):
-        fp = StringIO('foo')
+        fp = BytesIO(b'foo')
 
         r = HTTPResponse(fp, preload_content=False)
 
         self.assertEqual(fp.tell(), 0)
-        self.assertEqual(r.data, 'foo')
-        self.assertEqual(fp.tell(), fp.len)
+        self.assertEqual(r.data, b'foo')
+        self.assertEqual(fp.tell(), len(b'foo'))
 
     def test_decode_bad_data(self):
-        fp = StringIO('\x00' * 10)
+        fp = BytesIO('\x00' * 10)
         self.assertRaises(zlib.error, HTTPResponse, fp, headers={
             'content-encoding': 'deflate'
         })
 
     def test_decode_deflate(self):
-        data = 'foo'.encode('zlib')
+        import zlib
+        data = zlib.compress(b'foo')
 
-        fp = StringIO(data)
+        fp = BytesIO(data)
         r = HTTPResponse(fp, headers={'content-encoding': 'deflate'})
 
-        self.assertEqual(r.data, 'foo')
+        self.assertEqual(r.data, b'foo')
 
 
 if __name__ == '__main__':

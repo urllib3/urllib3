@@ -3,10 +3,17 @@
 """
 Dummy server used for unit testing.
 """
+from __future__ import print_function
 
 import logging
 import os
 import sys
+import threading
+import socket
+
+import tornado.wsgi
+import tornado.httpserver
+import tornado.ioloop
 
 from dummyserver.handlers import TestingApp
 
@@ -24,68 +31,69 @@ DEFAULT_CA_BAD = os.path.join(CERTS_PATH, 'client_bad.pem')
 
 # Different types of servers we have:
 
-def eventlet_server(wsgi_handler, host="localhost", port=8081, scheme='http',
-                    certs=None, **kw):
-    import eventlet
-    import eventlet.wsgi
 
-    certs = certs or {}
-
-    sock = eventlet.listen((host, port))
-
-    if scheme == 'https':
-        sock = eventlet.wrap_ssl(sock, server_side=True, **certs)
-
-    dummy_log_fp = open(os.devnull, 'a')
-
-    return eventlet.wsgi.server(sock, wsgi_handler, log=dummy_log_fp, **kw)
-
-
-def simple_server(wsgi_handler, host="localhost", port=8081, **kw):
-    from wsgiref.simple_server import make_server as _make_server
-    return _make_server(host, port, wsgi_handler)
-
-
-def socket_server(socket_handler, host="localhost", port=8081, ready_lock=None):
+class SocketServerThread(threading.Thread):
     """
     :param socket_handler: Callable which receives a socket argument for one
         request.
-    :param lock: Lock which gets acquired immediately and released when the
-        socket handler is ready to receive requests.
-
-    :returns: a callable which starts a socket-based server that releases the
-        lock when ready.
+    :param ready_lock: Lock which gets released when the socket handler is
+        ready to receive requests.
     """
-    import socket
+    def __init__(self, socket_handler, host='localhost', port=8081,
+                 ready_lock=None):
+        threading.Thread.__init__(self)
 
-    sock = socket.socket()
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind((host, port))
+        self.socket_handler = socket_handler
+        self.host = host
+        self.port = port
+        self.ready_lock = ready_lock
 
-    # Once listen() returns, the server socket is ready
-    sock.listen(1)
+    def _start_server(self):
+        sock = socket.socket()
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind((self.host, self.port))
 
-    if ready_lock:
-        ready_lock.release()
+        # Once listen() returns, the server socket is ready
+        sock.listen(1)
 
-    socket_handler(sock)
+        if self.ready_lock:
+            self.ready_lock.release()
+
+        self.socket_handler(sock)
+
+    def run(self):
+        self.server = self._start_server()
 
 
-def make_wsgi_server(App=TestingApp, **kw):
-    try:
-        return eventlet_server(App(), **kw)
-    except ImportError:
-        return simple_server(App(), **kw)
+class TornadoServerThread(threading.Thread):
+    def __init__(self, host='localhost', port=8081, scheme='http', certs=None):
+        threading.Thread.__init__(self)
 
+        self.host = host
+        self.port = port
+        self.scheme = scheme
+        self.certs = certs
 
-def make_server_thread(target, daemon=False, **kw):
-    from threading import Thread
+    def _start_server(self):
+        container = tornado.wsgi.WSGIContainer(TestingApp())
 
-    t = Thread(target=target, kwargs=kw)
-    t.daemon = daemon
-    t.start()
+        if self.scheme == 'https':
+            http_server = tornado.httpserver.HTTPServer(container,
+                                                        ssl_options=self.certs)
+        else:
+            http_server = tornado.httpserver.HTTPServer(container)
 
-    return t
+        http_server.listen(self.port)
+        return http_server
+
+    def run(self):
+        self.server = self._start_server()
+        self.ioloop = tornado.ioloop.IOLoop.instance()
+        self.ioloop.start()
+
+    def stop(self):
+        self.server.stop()
+        self.ioloop.stop()
 
 
 if __name__ == '__main__':
@@ -98,7 +106,8 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         url = sys.argv[1]
 
-    print "Starting WSGI server at: %s" % url
+    print("Starting WGI server at: %s" % url)
 
     scheme, host, port = get_host(url)
-    make_wsgi_server(scheme=scheme, host=host, port=port)
+    t = TornadoServerThread(scheme=scheme, host=host, port=port)
+    t.start()

@@ -1,7 +1,8 @@
 import unittest
 
 from urllib3._collections import RecentlyUsedContainer as Container
-
+from urllib3.packages import six
+xrange = six.moves.xrange
 
 class TestLRUContainer(unittest.TestCase):
     def test_maxsize(self):
@@ -34,7 +35,7 @@ class TestLRUContainer(unittest.TestCase):
         d[5] = '5'
 
         # Check state
-        self.assertEqual(d.keys(), [0, 2, 3, 4, 5])
+        self.assertEqual(list(d.keys()), [0, 2, 3, 4, 5])
 
     def test_pruning(self):
         d = Container(5)
@@ -54,7 +55,7 @@ class TestLRUContainer(unittest.TestCase):
         for i in xrange(10):
             d['foo'] = i
 
-        self.assertEqual(d.keys(), ['foo'])
+        self.assertEqual(list(d.keys()), ['foo'])
 
         d._prune_invalidated_entries()
 
