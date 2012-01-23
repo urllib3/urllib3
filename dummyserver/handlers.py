@@ -48,6 +48,10 @@ class TestingApp(WSGIHandler):
     def __call__(self, environ, start_response):
         req = HTTPRequest(environ)
 
+        req.params = {}
+        for k, v in req.arguments.items():
+            req.params[k] = next(v)
+
         path = req.path[:]
         if not path.startswith('/'):
             path = urlsplit(path).path
@@ -67,8 +71,8 @@ class TestingApp(WSGIHandler):
         return Response("Dummy server!")
 
     def set_up(self, request):
-        test_type = request.arguments.get('test_type')
-        test_id = request.arguments.get('test_id')
+        test_type = request.params.get('test_type')
+        test_id = request.params.get('test_id')
         if test_id:
             print('\nNew test %s: %s' % (test_type, test_id))
         else:
@@ -77,7 +81,10 @@ class TestingApp(WSGIHandler):
 
     def specific_method(self, request):
         "Confirm that the request matches the desired method type"
-        method = request.arguments.get('method', [None])[0]
+        method = request.params.get('method')
+        if method and not isinstance(method, str):
+            method = method.decode('utf8')
+
         if request.method != method:
             return Response("Wrong method: %s != %s" %
                             (method, request.method), status='400')
@@ -85,10 +92,11 @@ class TestingApp(WSGIHandler):
 
     def upload(self, request):
         "Confirm that the uploaded file conforms to specification"
-        param = request.arguments.get('upload_param', 'myfile')
-        filename = request.arguments.get('upload_filename', '')
-        size = int(request.arguments.get('upload_size', '0'))
-        file_ = request.arguments.get(param)
+        # FIXME: This is a huge broken mess
+        param = request.params.get('upload_param', 'myfile')
+        filename = request.params.get('upload_filename', '')
+        size = int(request.params.get('upload_size', '0'))
+        file_ = request.params.get(param)
 
         if not isinstance(file_, FieldStorage):
             return Response("'%s' is not a file: %r" %
@@ -107,12 +115,12 @@ class TestingApp(WSGIHandler):
 
     def redirect(self, request):
         "Perform a redirect to ``target``"
-        target = request.arguments.get('target', '/')
+        target = request.params.get('target', '/')
         headers = [('Location', target)]
         return Response(status='302', headers=headers)
 
     def keepalive(self, request):
-        if request.arguments.get('close', '0') == '1':
+        if request.params.get('close', '0') == '1':
             headers = [('Connection', 'close')]
             return Response('Closing', headers=headers)
 
@@ -121,14 +129,14 @@ class TestingApp(WSGIHandler):
 
     def sleep(self, request):
         "Sleep for a specified amount of ``seconds``"
-        seconds = float(request.arguments.get('seconds', '1'))
+        seconds = float(request.params.get('seconds', '1'))
         time.sleep(seconds)
         return Response()
 
     def echo(self, request):
         "Echo back the params"
         if request.method == 'GET':
-            return Response(request.query_string)
+            return Response(request.query)
 
         return Response(request.body)
 

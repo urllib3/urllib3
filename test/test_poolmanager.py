@@ -1,6 +1,5 @@
 import unittest
 
-from urllib3.connectionpool import port_by_scheme
 from urllib3.poolmanager import PoolManager
 from urllib3 import connection_from_url
 
