@@ -33,5 +33,8 @@ In chronological order:
 * georgemarshall <http://github.com/georgemarshall>
   * Bugfixes, Improvements and Test coverage
 
+* Thomas Kluyver <thomas@kluyver.me.uk>
+  * Python 3 support
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
