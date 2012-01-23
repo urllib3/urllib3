@@ -27,7 +27,6 @@ tests_requirements = requirements + [
     'coverage',
     'tornado',
     'nose',
-    'webob',
 ]
 
 setup(name='urllib3',
