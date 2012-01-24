@@ -93,7 +93,6 @@ class TestingApp(WSGIHandler):
     def upload(self, request):
         "Confirm that the uploaded file conforms to specification"
         # FIXME: This is a huge broken mess
-        print(request.params)
         param = request.params.get('upload_param', 'myfile').decode('ascii')
         filename = request.params.get('upload_filename', '').decode('utf-8')
         size = int(request.params.get('upload_size', '0'))
@@ -123,7 +122,7 @@ class TestingApp(WSGIHandler):
         "Perform a redirect to ``target``"
         target = request.params.get('target', '/')
         headers = [('Location', target)]
-        return Response(status='302', headers=headers)
+        return Response(status='303', headers=headers)
 
     def keepalive(self, request):
         if request.params.get('close', '0') == '1':
