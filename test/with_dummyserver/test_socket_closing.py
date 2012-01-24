@@ -19,16 +19,16 @@ class TestSocketClosing(SocketDummyServerTestCase):
             for i in 0, 1:
                 sock = listener.accept()[0]
 
-                buf = ''
-                while not buf.endswith('\r\n\r\n'):
+                buf = b''
+                while not buf.endswith(b'\r\n\r\n'):
                     buf = sock.recv(65536)
 
                 body = 'Response %d' % i
-                sock.send('HTTP/1.1 200 OK\r\n'
+                sock.send(('HTTP/1.1 200 OK\r\n'
                           'Content-Type: text/plain\r\n'
                           'Content-Length: %d\r\n'
                           '\r\n'
-                          '%s' % (len(body), body))
+                          '%s' % (len(body), body)).encode('utf-8'))
 
                 sock.close()  # simulate a server timing out, closing socket
                 done_closing.set()  # let the test know it can proceed
@@ -38,10 +38,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         response = pool.request('GET', '/', retries=0)
         self.assertEqual(response.status, 200)
-        self.assertEqual(response.data, 'Response 0')
+        self.assertEqual(response.data, b'Response 0')
 
         done_closing.wait()  # wait until the socket in our pool gets closed
 
         response = pool.request('GET', '/', retries=0)
         self.assertEqual(response.status, 200)
-        self.assertEqual(response.data, 'Response 1')
+        self.assertEqual(response.data, b'Response 1')
