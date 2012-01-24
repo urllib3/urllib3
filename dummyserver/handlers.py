@@ -50,7 +50,7 @@ class TestingApp(WSGIHandler):
 
         req.params = {}
         for k, v in req.arguments.items():
-            req.params[k] = next(v)
+            req.params[k] = next(iter(v))
 
         path = req.path[:]
         if not path.startswith('/'):
@@ -93,21 +93,27 @@ class TestingApp(WSGIHandler):
     def upload(self, request):
         "Confirm that the uploaded file conforms to specification"
         # FIXME: This is a huge broken mess
-        param = request.params.get('upload_param', 'myfile')
-        filename = request.params.get('upload_filename', '')
+        print(request.params)
+        param = request.params.get('upload_param', 'myfile').decode('ascii')
+        filename = request.params.get('upload_filename', '').decode('utf-8')
         size = int(request.params.get('upload_size', '0'))
-        file_ = request.params.get(param)
+        files_ = request.files.get(param)
+        
+        if len(files_) != 1:
+            return Response("Expected 1 file for '%s', not %d" %(param, len(files_)),
+                                                    status='400')
+        file_ = files_[0]
 
-        if not isinstance(file_, FieldStorage):
-            return Response("'%s' is not a file: %r" %
-                            (param, file_), status='400')
+        #~ if not isinstance(file_, FieldStorage):
+            #~ return Response("'%s' is not a file: %r" %
+                            #~ (param, file_), status='400')
 
-        data = file_.value
+        data = file_['body']
         if int(size) != len(data):
             return Response("Wrong size: %d != %d" %
                             (size, len(data)), status='400')
 
-        if filename != file_.filename:
+        if filename != file_['filename']:
             return Response("Wrong filename: %s != %s" %
                             (filename, file_.filename), status='400')
 
