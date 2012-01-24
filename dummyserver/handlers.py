@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 class Response(object):
     def __init__(self, body='', status='200 OK', headers=None):
-        if isinstance(body, str):
+        if not isinstance(body, bytes):
             body = body.encode('utf8')
 
         self.body = body
