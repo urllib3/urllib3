@@ -1,5 +1,5 @@
-from urllib3 import HTTPConnectionPool, PoolManager
-from urllib3.connectionpool import port_by_scheme
+from urllib3 import HTTPConnectionPool
+from urllib3.poolmanager import ProxyManager, proxy_from_url
 
 from dummyserver.testcase import SocketDummyServerTestCase
 
@@ -45,3 +45,36 @@ class TestSocketClosing(SocketDummyServerTestCase):
         response = pool.request('GET', '/', retries=0)
         self.assertEqual(response.status, 200)
         self.assertEqual(response.data, b'Response 1')
+
+
+
+class TestProxyManager(SocketDummyServerTestCase):
+
+    def test_simple(self):
+        base_url = 'http://%s:%d' % (self.host, self.port)
+        proxy = proxy_from_url(base_url)
+
+        def echo_socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                      'Content-Type: text/plain\r\n'
+                      'Content-Length: %d\r\n'
+                      '\r\n'
+                      '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
+
+        self._start_server(echo_socket_handler)
+
+        r = proxy.request('GET', 'http://google.com/')
+
+        self.assertEqual(r.status, 200)
+        self.assertEqual(r.data, b'GET http://google.com/ HTTP/1.1\r\n'
+                                 b'Host: google.com\r\n'
+                                 b'Accept-Encoding: identity\r\n'
+                                 b'Proxy-Connection: Keep-Alive\r\n'
+                                 b'Accept: */*\r\n'
+                                 b'\r\n')

@@ -1,8 +1,8 @@
 import unittest
 
 from dummyserver.testcase import HTTPDummyServerTestCase
-from urllib3.connectionpool import port_by_scheme
 from urllib3.poolmanager import PoolManager
+from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError
 
 
@@ -61,7 +61,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         self.assertEqual(r.status, 200)
         self.assertEqual(r.data, b'Dummy server!')
-
 
 
 if __name__ == '__main__':
