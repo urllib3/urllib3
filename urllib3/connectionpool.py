@@ -16,10 +16,10 @@ except ImportError: # Doesn't exist on OSX and other platforms
     poll = False
 
 try:   # Python 3
-    from http.client import HTTPConnection, HTTPSConnection, HTTPException
+    from http.client import HTTPConnection, HTTPException
     from http.client import HTTP_PORT, HTTPS_PORT
 except ImportError:
-    from httplib import HTTPConnection, HTTPSConnection, HTTPException
+    from httplib import HTTPConnection, HTTPException
     from httplib import HTTP_PORT, HTTPS_PORT
 
 try:   # Python 3
@@ -27,12 +27,22 @@ try:   # Python 3
 except ImportError:
     from Queue import Queue, Empty, Full
 
+
 try:   # Compiled with SSL?
+    HTTPSConnection = None
+    BaseSSLError = None
+    ssl = None
+
+    try:   # Python 3
+        from http.client import HTTPSConnection
+    except ImportError:
+        from httplib import HTTPSConnection
+
     import ssl
     BaseSSLError = ssl.SSLError
+
 except ImportError:
-    ssl = None
-    BaseSSLError = None
+    pass
 
 
 from .packages.ssl_match_hostname import match_hostname, CertificateError
@@ -469,6 +479,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  % (self.num_connections, self.host))
 
         if not ssl:
+            if not HTTPSConnection:
+                raise SSLError("Can't connect to HTTPS URL because the SSL "
+                               "module is not available.")
+
             return HTTPSConnection(host=self.host, port=self.port)
 
         connection = VerifiedHTTPSConnection(host=self.host, port=self.port)

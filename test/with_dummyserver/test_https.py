@@ -14,6 +14,7 @@ log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
+
 class TestHTTPS(HTTPSDummyServerTestCase):
     def setUp(self):
         self._pool = HTTPSConnectionPool(self.host, self.port)
@@ -53,6 +54,25 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.fail("Didn't raise SSL invalid common name")
         except SSLError as e:
             self.assertTrue("doesn't match" in str(e))
+
+    def test_no_ssl(self):
+        import urllib3.connectionpool
+        OriginalHTTPSConnection = urllib3.connectionpool.HTTPSConnection
+        OriginalSSL = urllib3.connectionpool.ssl
+
+        urllib3.connectionpool.HTTPSConnection = None
+        urllib3.connectionpool.ssl = None
+
+        self.assertRaises(SSLError, self._pool._new_conn)
+
+        self.assertRaises(SSLError,
+            lambda: self._pool.request('GET', '/specific_method',
+                                       fields={'method': 'GET'}))
+
+        # Undo
+        urllib3.HTTPSConnection = OriginalHTTPSConnection
+        urllib3.connectionpool.ssl = OriginalSSL
+
 
 
 if __name__ == '__main__':
