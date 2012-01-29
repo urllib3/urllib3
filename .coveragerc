@@ -1,2 +1,9 @@
 [run]
 omit = urllib3/packages/*
+
+[report]
+exclude_lines =
+    # Platform-specific.*
+    except ImportError:
+    try:.* # Python 3
+    pass

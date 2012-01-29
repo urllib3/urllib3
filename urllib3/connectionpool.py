@@ -166,8 +166,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def __init__(self, host, port=None, strict=False, timeout=None, maxsize=1,
                  block=False, headers=None):
-        self.host = host
-        self.port = port
+        super(HTTPConnectionPool, self).__init__(host, port)
+
         self.strict = strict
         self.timeout = timeout
         self.pool = Queue(maxsize)
@@ -478,7 +478,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         log.info("Starting new HTTPS connection (%d): %s"
                  % (self.num_connections, self.host))
 
-        if not ssl:
+        if not ssl: # Platform-specific: Python compiled without +ssl
             if not HTTPSConnection:
                 raise SSLError("Can't connect to HTTPS URL because the SSL "
                                "module is not available.")
@@ -606,7 +606,7 @@ def is_connection_dropped(conn):
     :param conn:
         ``HTTPConnection`` object.
     """
-    if not poll:
+    if not poll: # Platform-specific
         return select([conn.sock], [], [], 0.0)[0]
 
     # This version is better on platforms that support it.

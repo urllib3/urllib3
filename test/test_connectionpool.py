@@ -43,6 +43,8 @@ class TestConnectionPool(unittest.TestCase):
             self.assertTrue(c.is_same_host(b), "%s =? %s" % (a, b))
 
         not_same_host = [
+            ('https://google.com/', 'http://google.com/'),
+            ('http://google.com/', 'https://google.com/'),
             ('http://yahoo.com/', 'http://google.com/'),
             ('http://google.com:42', 'https://google.com/abracadabra'),
             ('http://google.com', 'https://google.net/'),
@@ -73,6 +75,14 @@ class TestConnectionPool(unittest.TestCase):
             make_headers(user_agent='banana'),
             {'user-agent': 'banana'})
 
+        self.assertEqual(
+            make_headers(keep_alive=True),
+            {'connection': 'keep-alive'})
+
+        self.assertEqual(
+            make_headers(basic_auth='foo:bar'),
+            {'authorization': 'Basic Zm9vOmJhcg=='})
+
     def test_max_connections(self):
         pool = HTTPConnectionPool(host='localhost', maxsize=1, block=True)
 
@@ -91,6 +101,20 @@ class TestConnectionPool(unittest.TestCase):
             pass
 
         self.assertEqual(pool.num_connections, 1)
+
+    def test_pool_edgecases(self):
+        pool = HTTPConnectionPool(host='localhost', maxsize=1, block=False)
+
+        conn1 = pool._get_conn()
+        conn2 = pool._get_conn() # New because block=False
+
+        pool._put_conn(conn1)
+        pool._put_conn(conn2) # Should be discarded
+
+        self.assertEqual(conn1, pool._get_conn())
+        self.assertNotEqual(conn2, pool._get_conn())
+
+        self.assertEqual(pool.num_connections, 3)
 
     def test_exception_str(self):
         self.assertEqual(
