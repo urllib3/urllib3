@@ -30,11 +30,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         conn = https_pool._new_conn()
         self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
 
-        try:
-            https_pool.request('GET', '/')
-            self.fail("Didn't raise SSL error with no CA")
-        except SSLError as e:
-            self.assertTrue('No root certificates' in str(e))
+        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
 
         https_pool.ca_certs = DEFAULT_CA_BAD
 
@@ -42,7 +38,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             https_pool.request('GET', '/')
             self.fail("Didn't raise SSL error with wrong CA")
         except SSLError as e:
-            self.assertTrue('certificate verify failed' in str(e))
+            self.assertTrue('certificate verify failed' in str(e),
+                            "Expected 'certificate verify failed', instead got: %r" % e)
 
         https_pool.ca_certs = DEFAULT_CA
         https_pool.request('GET', '/') # Should succeed without exceptions.

@@ -6,7 +6,6 @@ import sys
 import time
 import zlib
 
-from cgi import FieldStorage
 from io import BytesIO
 from tornado.wsgi import HTTPRequest
 
@@ -97,15 +96,11 @@ class TestingApp(WSGIHandler):
         filename = request.params.get('upload_filename', '').decode('utf-8')
         size = int(request.params.get('upload_size', '0'))
         files_ = request.files.get(param)
-        
+
         if len(files_) != 1:
             return Response("Expected 1 file for '%s', not %d" %(param, len(files_)),
                                                     status='400')
         file_ = files_[0]
-
-        #~ if not isinstance(file_, FieldStorage):
-            #~ return Response("'%s' is not a file: %r" %
-                            #~ (param, file_), status='400')
 
         data = file_['body']
         if int(size) != len(data):
