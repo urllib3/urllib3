@@ -24,9 +24,9 @@ except ImportError:
     from httplib import HTTP_PORT, HTTPS_PORT
 
 try:   # Python 3
-    from queue import Queue, Empty, Full
+    from queue import LifoQueue, Empty, Full
 except ImportError:
-    from Queue import Queue, Empty, Full
+    from Queue import LifoQueue, Empty, Full
 
 
 try:   # Compiled with SSL?
@@ -114,6 +114,7 @@ class ConnectionPool(object):
     """
 
     scheme = None
+    QueueCls = LifoQueue
 
     def __init__(self, host, port=None):
         self.host = host
@@ -171,7 +172,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         self.strict = strict
         self.timeout = timeout
-        self.pool = Queue(maxsize)
+        self.pool = self.QueueCls(maxsize)
         self.block = block
         self.headers = headers or {}
 

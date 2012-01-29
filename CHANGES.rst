@@ -11,6 +11,9 @@ Changes
 * Use ``select.poll`` instead of ``select.select`` for platforms that support
   it.
 
+* Use ``Queue.LifoQueue`` instead of ``Queue.Queue`` for more aggressive
+  connection reusing. Configurable by overriding ``ConnectionPool.QueueCls``.
+
 * Fixed ``ImportError`` during install when ``ssl`` module is not available.
   (Issue #41)
 
