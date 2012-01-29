@@ -4,7 +4,6 @@ from distutils.core import setup
 
 import os
 import re
-import sys
 
 try:
     import setuptools

@@ -1,7 +1,7 @@
 Changes
 =======
 
-1.2 (Soon)
+1.2 (2012-01-29)
 ++++++++++++++++
 
 * Added Python 3 support (tested on 3.2.2)
@@ -20,6 +20,8 @@ Changes
 * Ported ``dummyserver`` to use ``tornado`` instead of ``webob`` +
   ``eventlet``. Removed extraneous unsupported dummyserver testing backends.
   Added socket-level tests.
+
+* More tests. Achievement Unlocked: 99% Coverage.
 
 
 1.1 (2012-01-07)
