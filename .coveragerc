@@ -1,0 +1,2 @@
+[run]
+omit = urllib3/packages/*
