@@ -7,6 +7,7 @@
 import logging
 import socket
 
+from base64 import b64encode
 from socket import error as SocketError, timeout as SocketTimeout
 
 try:
@@ -540,7 +541,7 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
 
     if basic_auth:
         headers['authorization'] = 'Basic ' + \
-            basic_auth.encode('base64').strip()
+            b64encode(six.b(basic_auth)).decode('utf-8')
 
     return headers
 
