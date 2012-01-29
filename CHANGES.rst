@@ -1,6 +1,13 @@
 Changes
 =======
 
+1.2 (Soon)
+++++++++++++++++
+
+* Added Python 3 support (tested on 3.2.2)
+
+* Dropped Python 2.5 support (tested on 2.6.7, 2.7.2)
+
 1.1 (2012-01-07)
 ++++++++++++++++
 

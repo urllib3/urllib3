@@ -8,6 +8,7 @@ Highlights
 - Built-in redirection and retries (optional).
 - Supports gzip and deflate decoding.
 - Thread-safe and sanity-safe.
+- Tested on Python 2.6+ and Python 3.2+.
 - Small and easy to understand codebase perfect for extending and building upon.
   For a more comprehensive solution, have a look at
   `Requests <http://python-requests.org/>`_.
