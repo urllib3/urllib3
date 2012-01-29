@@ -8,6 +8,20 @@ Changes
 
 * Dropped Python 2.5 support (tested on 2.6.7, 2.7.2)
 
+* Use ``select.poll`` instead of ``select.select`` for platforms that support
+  it.
+
+* Fixed ``ImportError`` during install when ``ssl`` module is not available.
+  (Issue #41)
+
+* Fixed ``PoolManager`` redirects between schemes (such as HTTP -> HTTPS) not
+  completing properly. (Issue #28, uncovered by Issue #10 in v1.1)
+
+* Ported ``dummyserver`` to use ``tornado`` instead of ``webob`` +
+  ``eventlet``. Removed extraneous unsupported dummyserver testing backends.
+  Added socket-level tests.
+
+
 1.1 (2012-01-07)
 ++++++++++++++++
 
