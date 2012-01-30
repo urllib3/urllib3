@@ -72,13 +72,14 @@ pools, you should look at
 Run the tests
 =============
 
-Running the test command will install the necessary dependencies and run the
-tests. ::
+We use some external dependencies to run the urllib3 test suite. Easiest way to
+run the tests is thusly from the urllib3 source root: ::
 
-  $ python setup.py test
-  ...................................
+  $ pip install -r test-requirements.txt
+  $ nosetests
+  .....................................................
 
-Success! Tests can also be run using ``nosetests`` for cleaner output.
+Success! You could also ``pip install coverage`` to get code coverage reporting.
 
 
 Contributing
