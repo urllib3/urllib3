@@ -30,7 +30,7 @@ except ImportError:
 
 
 try:   # Compiled with SSL?
-    HTTPSConnection = None
+    HTTPSConnection = object
     BaseSSLError = None
     ssl = None
 
@@ -481,7 +481,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  % (self.num_connections, self.host))
 
         if not ssl: # Platform-specific: Python compiled without +ssl
-            if not HTTPSConnection:
+            if not HTTPSConnection or HTTPSConnection is object:
                 raise SSLError("Can't connect to HTTPS URL because the SSL "
                                "module is not available.")
 
