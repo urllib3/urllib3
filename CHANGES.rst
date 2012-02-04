@@ -1,6 +1,12 @@
 Changes
 =======
 
+1.2.1 (Soon)
+++++++++++++
+
+* Fixed another bug related to when ``ssl`` module is not available. (Issue #41)
+
+
 1.2 (2012-01-29)
 ++++++++++++++++
 
