@@ -6,7 +6,7 @@ from urllib3.connectionpool import (
     HTTPConnectionPool,
     make_headers)
 
-from urllib3.exceptions import EmptyPoolError
+from urllib3.exceptions import EmptyPoolError, LocationParseError
 
 
 class TestConnectionPool(unittest.TestCase):
@@ -53,6 +53,16 @@ class TestConnectionPool(unittest.TestCase):
         for a, b in not_same_host:
             c = connection_from_url(a)
             self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
+
+    def test_invalid_host(self):
+        # TODO: Add more tests
+        invalid_host = [
+            'http://google.com:foo',
+        ]
+
+        for location in invalid_host:
+            self.assertRaises(LocationParseError, get_host, location)
+
 
     def test_make_headers(self):
         self.assertEqual(

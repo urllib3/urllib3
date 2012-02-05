@@ -49,11 +49,13 @@ except ImportError:
 from .packages.ssl_match_hostname import match_hostname, CertificateError
 from .request import RequestMethods
 from .response import HTTPResponse
-from .exceptions import (SSLError,
-    MaxRetryError,
-    TimeoutError,
-    HostChangedError,
+from .exceptions import (
     EmptyPoolError,
+    HostChangedError,
+    LocationParseError,
+    MaxRetryError,
+    SSLError,
+    TimeoutError,
 )
 
 from .packages.ssl_match_hostname import match_hostname, CertificateError
@@ -558,10 +560,12 @@ def get_host(url):
         >>> get_host('google.com:80')
         ('http', 'google.com', 80)
     """
+
     # This code is actually similar to urlparse.urlsplit, but much
     # simplified for our needs.
     port = None
     scheme = 'http'
+
     if '://' in url:
         scheme, url = url.split('://', 1)
     if '/' in url:
@@ -570,7 +574,12 @@ def get_host(url):
         _auth, url = url.split('@', 1)
     if ':' in url:
         url, port = url.split(':', 1)
+
+        if not port.isdigit():
+            raise LocationParseError("Failed to parse: %s")
+
         port = int(port)
+
     return scheme, url, port
 
 
