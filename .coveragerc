@@ -7,3 +7,4 @@ exclude_lines =
     except ImportError:
     try:.* # Python 3
     pass
+    .* # Abstract

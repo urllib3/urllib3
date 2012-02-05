@@ -16,20 +16,14 @@ __version__ = 'dev'
 from .connectionpool import (
     HTTPConnectionPool,
     HTTPSConnectionPool,
-    connection_from_url,
-    get_host,
-    make_headers)
+    connection_from_url
+)
 
-
-from .exceptions import (
-    HTTPError,
-    MaxRetryError,
-    SSLError,
-    TimeoutError)
-
+from . import exceptions
+from .filepost import encode_multipart_formdata
 from .poolmanager import PoolManager, ProxyManager, proxy_from_url
 from .response import HTTPResponse
-from .filepost import encode_multipart_formdata
+from .util import make_headers, get_host
 
 
 # Set default logging handler to avoid "No handler found" warnings.

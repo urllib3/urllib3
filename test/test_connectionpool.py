@@ -1,11 +1,7 @@
 import unittest
 
-from urllib3.connectionpool import (
-    connection_from_url,
-    get_host,
-    HTTPConnectionPool,
-    make_headers)
-
+from urllib3.connectionpool import connection_from_url, HTTPConnectionPool
+from urllib3.util import get_host, make_headers
 from urllib3.exceptions import EmptyPoolError, LocationParseError
 
 
