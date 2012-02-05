@@ -101,7 +101,7 @@ class TestConnectionPool(unittest.TestCase):
             pass
 
         try:
-            pool.get_url('/', pool_timeout=0.01)
+            pool.request('GET', '/', pool_timeout=0.01)
             self.fail("Managed to get a connection without EmptyPoolError")
         except EmptyPoolError:
             pass
