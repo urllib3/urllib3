@@ -1,10 +1,13 @@
 Changes
 =======
 
-1.2.1 (Soon)
+1.2.1 (2012-02-05)
 ++++++++++++
 
 * Fixed another bug related to when ``ssl`` module is not available. (Issue #41)
+
+* Location parsing errors now raise ``urllib3.exceptions.LocationParseError``
+  which inherits from ``ValueError``.
 
 
 1.2 (2012-01-29)
