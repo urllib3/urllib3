@@ -57,7 +57,7 @@ class EmptyPoolError(PoolError):
     pass
 
 
-class LocationParseError(HTTPError, ValueError):
+class LocationParseError(ValueError, HTTPError):
     "Raised when get_host or similar fails to parse the URL input."
 
     def __init__(self, location):
