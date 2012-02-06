@@ -9,6 +9,12 @@ dev (master branch)
 * Refactored helpers into a ``urllib3.util`` submodule.
 
 
+1.2.2 (2012-02-06)
+++++++++++++++++++
+
+* Fixed packaging bug of not shipping ``test-requirements.txt``. (Issue #47)
+
+
 1.2.1 (2012-02-05)
 ++++++++++++++++++
 
