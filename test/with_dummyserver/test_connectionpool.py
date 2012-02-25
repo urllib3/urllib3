@@ -60,6 +60,21 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('POST', '/upload', fields=fields)
         self.assertEqual(r.status, 200, r.data)
 
+    def test_one_name_multiple_values(self):
+        fields = [
+            ('foo', 'a'),
+            ('foo', 'b'),
+        ]
+
+        # urlencode
+        r = self.pool.request('GET', '/echo', fields=fields)
+        self.assertEqual(r.data, 'foo=a&foo=b')
+
+        # multipart
+        r = self.pool.request('POST', '/echo', fields=fields)
+        self.assertEqual(r.data.count('name="foo"'), 2)
+
+
     def test_unicode_upload(self):
         fieldname = u('myfile')
         filename = u('\xe2\x99\xa5.txt')
