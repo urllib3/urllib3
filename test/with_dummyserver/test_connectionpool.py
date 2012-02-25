@@ -68,11 +68,11 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         # urlencode
         r = self.pool.request('GET', '/echo', fields=fields)
-        self.assertEqual(r.data, 'foo=a&foo=b')
+        self.assertEqual(r.data, b'foo=a&foo=b')
 
         # multipart
         r = self.pool.request('POST', '/echo', fields=fields)
-        self.assertEqual(r.data.count('name="foo"'), 2)
+        self.assertEqual(r.data.count(b'name="foo"'), 2)
 
 
     def test_unicode_upload(self):
