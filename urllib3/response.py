@@ -171,11 +171,20 @@ class HTTPResponse(object):
         with ``original_response=r``.
         """
 
+        # comma-seperate header values with identical header names
+        headers = {}
+        for k, v in r.getheaders():
+            # In Python 3, the header keys are returned capitalised
+            k = k.lower()
+            if k in headers:
+                headers[k] = headers[k] + ", " + v
+            else:
+                headers[k] = v
+
         # HTTPResponse objects in Python 3 don't have a .strict attribute
         strict = getattr(r, 'strict', 0)
         return ResponseCls(body=r,
-                           # In Python 3, the header keys are returned capitalised
-                           headers=dict((k.lower(), v) for k,v in r.getheaders()),
+                           headers=headers,
                            status=r.status,
                            version=r.version,
                            reason=r.reason,
