@@ -4,6 +4,7 @@ from urllib3._collections import RecentlyUsedContainer as Container
 from urllib3.packages import six
 xrange = six.moves.xrange
 
+
 class TestLRUContainer(unittest.TestCase):
     def test_maxsize(self):
         d = Container(5)

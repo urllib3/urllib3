@@ -101,13 +101,10 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             pass
 
     def test_redirect(self):
-        r = self.pool.request('GET', '/redirect',
-                                   fields={'target': '/'},
-                                   redirect=False)
+        r = self.pool.request('GET', '/redirect', fields={'target': '/'}, redirect=False)
         self.assertEqual(r.status, 303)
 
-        r = self.pool.request('GET', '/redirect',
-                                   fields={'target': '/'})
+        r = self.pool.request('GET', '/redirect', fields={'target': '/'})
         self.assertEqual(r.status, 200)
         self.assertEqual(r.data, b'Dummy server!')
 
@@ -184,9 +181,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_post_with_urlencode(self):
         data = {'banana': 'hammock', 'lol': 'cat'}
-        r = self.pool.request('POST', '/echo',
-                                    fields=data,
-                                    encode_multipart=False)
+        r = self.pool.request('POST', '/echo', fields=data, encode_multipart=False)
         self.assertEqual(r.data.decode('utf-8'), urlencode(data))
 
     def test_post_with_multipart(self):
