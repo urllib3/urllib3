@@ -5,6 +5,6 @@ omit = urllib3/packages/*
 exclude_lines =
     .* # Platform-specific.*
     except ImportError:
-    try:.* # Python 3
+    .*:.* # Python 3
     pass
     .* # Abstract
