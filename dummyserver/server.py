@@ -83,7 +83,7 @@ class TornadoServerThread(threading.Thread):
         else:
             http_server = tornado.httpserver.HTTPServer(container)
 
-        http_server.listen(self.port)
+        http_server.listen(self.port, address=self.host)
         return http_server
 
     def run(self):
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         url = sys.argv[1]
 
-    print("Starting WGI server at: %s" % url)
+    print("Starting WSGI server at: %s" % url)
 
     scheme, host, port = get_host(url)
     t = TornadoServerThread(scheme=scheme, host=host, port=port)
