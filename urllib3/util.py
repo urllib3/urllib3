@@ -107,7 +107,6 @@ def get_host(url):
 
 
 
-
 def is_connection_dropped(conn):
     """
     Returns True if the connection is dropped and should be closed.

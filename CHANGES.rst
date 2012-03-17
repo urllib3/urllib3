@@ -14,6 +14,8 @@ dev (master branch)
 * Fixed multiple Set-Cookie headers in response not getting merged properly in
   Python 3. (Issue #53)
 
+* AppEngine support with Py27. (Issue #61)
+
 
 1.2.2 (2012-02-06)
 ++++++++++++++++++
