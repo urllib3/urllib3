@@ -9,12 +9,14 @@ from base64 import b64encode
 
 try:
     from select import poll, POLLIN
-except ImportError: # Doesn't exist on OSX and other platforms
-    from select import select
+except ImportError: # `poll` doesn't exist on OSX and other platforms
     poll = False
+    try:
+        from select import select
+    except ImportError: # `select` doesn't exist on AppEngine.
+        select = False
 
 from .packages import six
-
 from .exceptions import LocationParseError
 
 
@@ -114,6 +116,11 @@ def is_connection_dropped(conn):
         ``HTTPConnection`` object.
     """
     if not poll: # Platform-specific
+        if not select: #Platform-specific
+            # For environments like AppEngine which handle its own socket reuse, we
+            # can assume they will be recycled transparently to us.
+            return False
+
         return select([conn.sock], [], [], 0.0)[0]
 
     # This version is better on platforms that support it.
