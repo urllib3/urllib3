@@ -35,7 +35,7 @@ try:   # Compiled with SSL?
     import ssl
     BaseSSLError = ssl.SSLError
 
-except ImportError:
+except (ImportError, AttributeError):
     pass
 
 
@@ -207,7 +207,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             conn = self.pool.get(block=self.block, timeout=timeout)
 
             # If this is a persistent connection, check if it got disconnected
-            if conn and conn.sock and is_connection_dropped(conn):
+            if conn and is_connection_dropped(conn):
                 log.info("Resetting dropped connection: %s" % self.host)
                 conn.close()
 
@@ -251,9 +251,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             timeout = self.timeout
 
         conn.timeout = timeout # This only does anything in Py26+
-
         conn.request(method, url, **httplib_request_kw)
-        conn.sock.settimeout(timeout)
+
+        # Set timeout
+        sock = getattr(conn, 'sock', False) # AppEngine doesn't have sock attr.
+        if sock:
+            sock.settimeout(timeout)
+
         httplib_response = conn.getresponse()
 
         log.debug("\"%s %s %s\" %s %s" %

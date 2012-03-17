@@ -114,19 +114,24 @@ def is_connection_dropped(conn):
 
     :param conn:
         ``HTTPConnection`` object.
+
+    Note: For platforms like AppEngine, this will always return ``False`` to
+    let the platform handle connection recycling transparently for us.
     """
+    sock = getattr(conn, 'sock', False)
+    if not sock: #Platform-specific: AppEngine
+        return False
+
     if not poll: # Platform-specific
-        if not select: #Platform-specific
-            # For environments like AppEngine which handle its own socket reuse, we
-            # can assume they will be recycled transparently to us.
+        if not select: #Platform-specific: AppEngine
             return False
 
-        return select([conn.sock], [], [], 0.0)[0]
+        return select([sock], [], [], 0.0)[0]
 
     # This version is better on platforms that support it.
     p = poll()
-    p.register(conn.sock, POLLIN)
+    p.register(sock, POLLIN)
     for (fno, ev) in p.poll(0.0):
-        if fno == conn.sock.fileno():
+        if fno == sock.fileno():
             # Either data is buffered (bad), or the connection is dropped.
             return True
