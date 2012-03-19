@@ -294,7 +294,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         .. note::
 
            More commonly, it's appropriate to use a convenience method provided
-           by :class:`.RequestMethods`, such as :meth:`.request`.
+           by :class:`.RequestMethods`, such as :meth:`request`.
 
         .. note::
 
