@@ -32,6 +32,8 @@ Highlights
 
 - Tested on Python 2.6+ and Python 3.2+, 99% unit test coverage.
 
+- Works with AppEngine, gevent, and eventlib.
+
 - Small and easy to understand codebase perfect for extending and building upon.
   For a more comprehensive solution, have a look at
   `Requests <http://python-requests.org/>`_ which is also powered by urllib3.
