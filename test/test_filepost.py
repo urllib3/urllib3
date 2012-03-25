@@ -1,9 +1,10 @@
 import unittest
 
 from urllib3.filepost import encode_multipart_formdata, iter_fields
+from urllib3.packages.six import b
 
 
-BOUNDARY = '---boundary---'
+BOUNDARY = '!! test boundary !!'
 
 
 class TestIterfields(unittest.TestCase):
@@ -35,46 +36,50 @@ class TestMultipartEncoding(unittest.TestCase):
 
         for fields in fieldsets:
             encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
-            self.assertEqual(encoded.count(BOUNDARY), 3)
+            self.assertEqual(encoded.count(b(BOUNDARY)), 3)
 
 
     def test_field_encoding(self):
         fieldsets = [
             [('k', 'v'), ('k2', 'v2')],
-            [(b'k', b'v'), (b'k2', b'v2')],
-            [(b'k', b'v'), ('k2', 'v2')],
+            [('k', b'v'), ('k2', b'v2')],
+            [('k', b'v'), ('k2', 'v2')],
         ]
 
         for fields in fieldsets:
             encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
 
             self.assertEqual(encoded,
-                b'-----boundary---\r\n'
+                b'--' + b(BOUNDARY) + b'\r\n'
                 b'Content-Disposition: form-data; name="k"\r\n'
                 b'Content-Type: text/plain\r\n'
                 b'\r\n'
                 b'v\r\n'
-                b'-----boundary---\r\n'
+                b'--' + b(BOUNDARY) + b'\r\n'
                 b'Content-Disposition: form-data; name="k2"\r\n'
                 b'Content-Type: text/plain\r\n'
                 b'\r\n'
-                b'v2\r\n-----boundary-----\r\n')
+                b'v2\r\n'
+                b'--' + b(BOUNDARY) + b'--\r\n'
+                , fields)
 
             self.assertEqual(content_type,
-                b'multipart/form-data; boundary=---boundary---')
+                b'multipart/form-data; boundary=' + b(BOUNDARY))
 
 
     def test_filename(self):
-        fields = [('k', ('somename', 'v'))]
+        fields = [('k', ('somename', b'v'))]
 
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
 
         self.assertEqual(encoded,
-            b'-----boundary---\r\n'
+            b'--' + b(BOUNDARY) + b'\r\n'
             b'Content-Disposition: form-data; name="k"; filename="somename"\r\n'
             b'Content-Type: application/octet-stream\r\n'
             b'\r\n'
-            b'v\r\n-----boundary-----\r\n')
+            b'v\r\n'
+            b'--' + b(BOUNDARY) + b'--\r\n'
+            )
 
         self.assertEqual(content_type,
-            b'multipart/form-data; boundary=---boundary---')
+            b'multipart/form-data; boundary=' + b(BOUNDARY))
