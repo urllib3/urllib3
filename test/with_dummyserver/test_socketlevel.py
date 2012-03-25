@@ -1,9 +1,30 @@
 from urllib3 import HTTPConnectionPool
-from urllib3.poolmanager import ProxyManager, proxy_from_url
+from urllib3.poolmanager import proxy_from_url
 
 from dummyserver.testcase import SocketDummyServerTestCase
 
 from threading import Event
+
+
+class TestCookies(SocketDummyServerTestCase):
+
+    def test_multi_setcookie(self):
+        def multicookie_response_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            sock.send(b'HTTP/1.1 200 OK\r\n'
+                      b'Set-Cookie: foo=1\r\n'
+                      b'Set-Cookie: bar=1\r\n'
+                      b'\r\n')
+
+        self._start_server(multicookie_response_handler)
+        pool = HTTPConnectionPool(self.host, self.port)
+        r = pool.request('GET', '/', retries=0)
+        self.assertEquals(r.headers, {'set-cookie': 'foo=1, bar=1'})
 
 
 class TestSocketClosing(SocketDummyServerTestCase):

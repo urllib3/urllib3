@@ -1,6 +1,24 @@
 Changes
 =======
 
+1.3 (2012-03-25)
+++++++++++++++++
+
+* Removed pre-1.0 deprecated API.
+
+* Refactored helpers into a ``urllib3.util`` submodule.
+
+* Fixed multipart encoding to support list-of-tuples for keys with multiple
+  values. (Issue #48)
+
+* Fixed multiple Set-Cookie headers in response not getting merged properly in
+  Python 3. (Issue #53)
+
+* AppEngine support with Py27. (Issue #61)
+
+* Minor ``encode_multipart_formdata`` fixes related to Python 3 strings vs
+  bytes.
+
 
 1.2.2 (2012-02-06)
 ++++++++++++++++++

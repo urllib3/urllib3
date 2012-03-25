@@ -1,11 +1,7 @@
 import unittest
 
-from urllib3.connectionpool import (
-    connection_from_url,
-    get_host,
-    HTTPConnectionPool,
-    make_headers)
-
+from urllib3.connectionpool import connection_from_url, HTTPConnectionPool
+from urllib3.util import get_host, make_headers
 from urllib3.exceptions import EmptyPoolError, LocationParseError
 
 
@@ -105,7 +101,7 @@ class TestConnectionPool(unittest.TestCase):
             pass
 
         try:
-            pool.get_url('/', pool_timeout=0.01)
+            pool.request('GET', '/', pool_timeout=0.01)
             self.fail("Managed to get a connection without EmptyPoolError")
         except EmptyPoolError:
             pass
