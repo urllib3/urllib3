@@ -15,7 +15,7 @@ except ImportError:
 from io import BytesIO
 
 from .packages import six
-from .packages.six import b, u
+from .packages.six import b
 
 writer = codecs.lookup('utf-8')[3]
 
@@ -45,6 +45,8 @@ def encode_multipart_formdata(fields, boundary=None):
         treated as the field name, and the value as the body of the form-data
         bytes. If the value is a tuple of two elements, then the first element
         is treated as the filename of the form-data section.
+
+        Field names and filenames must be unicode.
 
     :param boundary:
         If not specified, then a random boundary will be generated using

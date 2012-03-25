@@ -1,7 +1,7 @@
 import unittest
 
 from urllib3.filepost import encode_multipart_formdata, iter_fields
-from urllib3.packages.six import b
+from urllib3.packages.six import b, u
 
 
 BOUNDARY = '!! test boundary !!'
@@ -42,8 +42,8 @@ class TestMultipartEncoding(unittest.TestCase):
     def test_field_encoding(self):
         fieldsets = [
             [('k', 'v'), ('k2', 'v2')],
-            [('k', b'v'), ('k2', b'v2')],
-            [('k', b'v'), ('k2', 'v2')],
+            [('k', b'v'), (u('k2'), b'v2')],
+            [('k', b'v'), (u('k2'), 'v2')],
         ]
 
         for fields in fieldsets:
