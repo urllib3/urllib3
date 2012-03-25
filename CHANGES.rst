@@ -16,6 +16,9 @@ dev (master branch)
 
 * AppEngine support with Py27. (Issue #61)
 
+* Minor ``encode_multipart_formdata`` fixes related to Python 3 strings vs
+  bytes.
+
 
 1.2.2 (2012-02-06)
 ++++++++++++++++++
