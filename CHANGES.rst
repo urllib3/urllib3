@@ -4,6 +4,10 @@ Changes
 dev (master branch)
 +++++++++++++++++++
 
+
+1.3 (2012-03-25)
+++++++++++++++++
+
 * Removed pre-1.0 deprecated API.
 
 * Refactored helpers into a ``urllib3.util`` submodule.
