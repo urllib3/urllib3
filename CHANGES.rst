@@ -4,6 +4,8 @@ Changes
 dev (master branch)
 +++++++++++++++++++
 
+* Minor AppEngine-related fixes.
+
 
 1.3 (2012-03-25)
 ++++++++++++++++
