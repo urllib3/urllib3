@@ -172,7 +172,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.pool = self.QueueCls(maxsize)
         self.block = block
         self.headers = headers or {}
-        self._buffering = True
 
         # Fill the queue up so that doing get() on it will block properly
         for _ in xrange(maxsize):
@@ -259,14 +258,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if sock:
             sock.settimeout(timeout)
 
-        if self._buffering:
-            try:
-                httplib_response = conn.getresponse(buffering=True)
-            except TypeError:
-                # Don't try buffering again - kwarg not supported
-                self._buffering = False
-                httplib_response = conn.getresponse()
-        else:
+        try:
+            # Python 2.7+ added buffering of HTTP responses - use if available.
+            httplib_response = conn.getresponse(buffering=True)
+        except TypeError:
             httplib_response = conn.getresponse()
 
         # AppEngine doesn't have a version attr.
