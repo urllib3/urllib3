@@ -118,11 +118,11 @@ def is_connection_dropped(conn):
     let the platform handle connection recycling transparently for us.
     """
     sock = getattr(conn, 'sock', False)
-    if not sock: #Platform-specific: AppEngine
+    if not sock: # Platform-specific: AppEngine
         return False
 
     if not poll: # Platform-specific
-        if not select: #Platform-specific: AppEngine
+        if not select: # Platform-specific: AppEngine
             return False
 
         return select([sock], [], [], 0.0)[0]
