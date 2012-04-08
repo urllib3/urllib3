@@ -258,7 +258,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if sock:
             sock.settimeout(timeout)
 
-        httplib_response = conn.getresponse()
+        try:
+            # Python 2.7+ added buffering of HTTP responses - use if available.
+            httplib_response = conn.getresponse(buffering=True)
+        except TypeError:
+            httplib_response = conn.getresponse()
 
         # AppEngine doesn't have a version attr.
         http_version = getattr(conn, '_http_vsn_str', 'HTTP/?'),
