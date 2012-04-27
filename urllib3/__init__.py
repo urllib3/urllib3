@@ -21,7 +21,7 @@ from .connectionpool import (
 
 from . import exceptions
 from .filepost import encode_multipart_formdata
-from .poolmanager import PoolManager, ProxyManager, proxy_from_url
+from .poolmanager import PoolManager
 from .response import HTTPResponse
 from .util import make_headers, get_host
 

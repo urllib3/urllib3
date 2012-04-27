@@ -13,7 +13,7 @@ from .exceptions import HostChangedError
 from .request import RequestMethods
 
 
-__all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
+__all__ = ['PoolManager', ]
 
 
 pool_classes_by_scheme = {
@@ -50,8 +50,9 @@ class PoolManager(RequestMethods):
 
     # TODO: Make sure there are no memory leaks here.
 
-    def __init__(self, num_pools=10, **connection_pool_kw):
+    def __init__(self, num_pools=10, proxy_url = None, **connection_pool_kw):
         self.connection_pool_kw = connection_pool_kw
+        self.proxy_url = proxy_url
         self.pools = RecentlyUsedContainer(num_pools)
 
     def connection_from_host(self, host, port=80, scheme='http'):
@@ -71,7 +72,7 @@ class PoolManager(RequestMethods):
 
         # Make a fresh ConnectionPool of the desired type
         pool_cls = pool_classes_by_scheme[scheme]
-        pool = pool_cls(host, port, **self.connection_pool_kw)
+        pool = pool_cls(host, port, proxy_url = self.proxy_url, **self.connection_pool_kw)
 
         self.pools[pool_key] = pool
 
@@ -106,33 +107,3 @@ class PoolManager(RequestMethods):
         except HostChangedError as e:
             kw['retries'] = e.retries # Persist retries countdown
             return self.urlopen(method, e.url, **kw)
-
-
-class ProxyManager(RequestMethods):
-    """
-    Given a ConnectionPool to a proxy, the ProxyManager's ``urlopen`` method
-    will make requests to any url through the defined proxy.
-    """
-
-    def __init__(self, proxy_pool):
-        self.proxy_pool = proxy_pool
-
-    def _set_proxy_headers(self, headers=None):
-        headers = headers or {}
-
-        # Same headers are curl passes for --proxy1.0
-        headers['Accept'] = '*/*'
-        headers['Proxy-Connection'] = 'Keep-Alive'
-
-        return headers
-
-    def urlopen(self, method, url, **kw):
-        "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
-        kw['assert_same_host'] = False
-        kw['headers'] = self._set_proxy_headers(kw.get('headers'))
-        return self.proxy_pool.urlopen(method, url, **kw)
-
-
-def proxy_from_url(url, **pool_kw):
-    proxy_pool = connection_from_url(url, **pool_kw)
-    return ProxyManager(proxy_pool)
