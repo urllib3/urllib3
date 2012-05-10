@@ -1,10 +1,10 @@
 #!/bin/sh
 
-TESTNAME="test/$1"
+TESTNAME="$1"
 
 if [ -z $TESTNAME ] || [ ! -f $TESTNAME ] ; then
     echo "Invalid test specified, please choose from the following:"
-    for x in `(cd test/ && ls -w1 *.py | grep "test_")` ; do
+    for x in `(find test/ -iname '*.py' | grep "test_")` ; do
         echo " - $x";
     done
     exit
