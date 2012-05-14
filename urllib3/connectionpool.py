@@ -186,7 +186,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         Return a fresh :class:`httplib.HTTPConnection`.
         """
         self.num_connections += 1
-        log.info("Starting new HTTP connection (%d): %s" %
+        log.debug("Starting new HTTP connection (%d): %s" %
                  (self.num_connections, self.host))
         return HTTPConnection(host=self.host, port=self.port)
 
@@ -482,7 +482,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         Return a fresh :class:`httplib.HTTPSConnection`.
         """
         self.num_connections += 1
-        log.info("Starting new HTTPS connection (%d): %s"
+        log.debug("Starting new HTTPS connection (%d): %s"
                  % (self.num_connections, self.host))
 
         if not ssl: # Platform-specific: Python compiled without +ssl
