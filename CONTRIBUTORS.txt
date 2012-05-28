@@ -39,5 +39,8 @@ In chronological order:
 * brandon-rhodes <http://rhodesmill.org/brandon>
   * Design review, bugfixes, test coverage.
 
+* Cal Leeming <cal.leeming@simplicitymedialtd.co.uk>
+  * SOCKS4/5 proxy support
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
