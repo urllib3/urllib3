@@ -8,6 +8,8 @@ dev (master branch)
 
 * Switched from ``mimetools.choose_boundary`` to ``uuid.uuid4()``.
 
+* Improved url parsing. (Issue #73)
+
 
 1.3 (2012-03-25)
 ++++++++++++++++
