@@ -22,6 +22,16 @@ class TestUtil(unittest.TestCase):
             'http://google.com/foo=http://bar:42/baz': ('http', 'google.com', None),
             'http://google.com?foo=http://bar:42/baz': ('http', 'google.com', None),
             'http://google.com#foo=http://bar:42/baz': ('http', 'google.com', None),
+            '[2a00:1450:4001:c01::67]': ('http', '2a00:1450:4001:c01::67', None),
+            'http://[2a00:1450:4001:c01::67]': ('http', '2a00:1450:4001:c01::67', None),
+            'http://[2a00:1450:4001:c01::67]/test': ('http', '2a00:1450:4001:c01::67', None),
+            'http://[2a00:1450:4001:c01::67]:80': ('http', '2a00:1450:4001:c01::67', 80),
+            'http://[2a00:1450:4001:c01::67]:80/test': ('http', '2a00:1450:4001:c01::67', 80),
+            '173.194.35.7': ('http', '173.194.35.7', None),
+            'http://173.194.35.7': ('http', '173.194.35.7', None),
+            'http://173.194.35.7/test': ('http', '173.194.35.7', None),
+            'http://173.194.35.7:80': ('http', '173.194.35.7', 80),
+            'http://173.194.35.7:80/test': ('http', '173.194.35.7', 80),
         }
         for url, expected_host in url_host_map.items():
             returned_host = get_host(url)
