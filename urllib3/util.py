@@ -132,7 +132,7 @@ def get_host(url):
         _auth, url = url.split('@', 1)
 
     # IPv6
-    if url[0] == '[':
+    if url and url[0] == '[':
         host, url = url[1:].split(']', 1)
 
     # Port
