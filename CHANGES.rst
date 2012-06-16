@@ -4,6 +4,10 @@ Changes
 dev (master branch)
 +++++++++++++++++++
 
+
+1.4 (2012-06-16)
+++++++++++++++++
+
 * Minor AppEngine-related fixes.
 
 * Switched from ``mimetools.choose_boundary`` to ``uuid.uuid4()``.
