@@ -14,7 +14,6 @@ Changes
 * IPv6 url support. (Issue #72)
 
 
->>>>>>> master
 1.3 (2012-03-25)
 ++++++++++++++++
 
