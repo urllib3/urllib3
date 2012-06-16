@@ -250,6 +250,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if timeout is _Default:
             timeout = self.timeout
 
+        if not self.is_same_host(url):
+            scheme, host, port = get_host(url)
+            if (scheme == 'https' and self.scheme == 'https' and
+                self.over_http and hasattr(conn, 'set_tunnel')):
+                if not port:
+                    port = 443
+                conn.set_tunnel(host, port) # This only does anything in Py27+
+
         conn.timeout = timeout # This only does anything in Py26+
         conn.request(method, url, **httplib_request_kw)
 
@@ -467,7 +475,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  strict=False, timeout=None, maxsize=1,
                  block=False, headers=None,
                  key_file=None, cert_file=None,
-                 cert_reqs='CERT_NONE', ca_certs=None):
+                 cert_reqs='CERT_NONE', ca_certs=None,
+                 over_http=False):
 
         super(HTTPSConnectionPool, self).__init__(host, port,
                                                   strict, timeout, maxsize,
@@ -476,6 +485,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
         self.ca_certs = ca_certs
+        self.over_http = over_http
 
     def _new_conn(self):
         """
@@ -485,7 +495,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         log.info("Starting new HTTPS connection (%d): %s"
                  % (self.num_connections, self.host))
 
-        if not ssl: # Platform-specific: Python compiled without +ssl
+        # Platform-specific: Python compiled without +ssl
+        if not ssl or self.over_http:
             if not HTTPSConnection or HTTPSConnection is object:
                 raise SSLError("Can't connect to HTTPS URL because the SSL "
                                "module is not available.")
@@ -498,7 +509,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         return connection
 
 
-def connection_from_url(url, **kw):
+def connection_from_url(url, force_https=False, **kw):
     """
     Given a url, return an :class:`.ConnectionPool` instance of its host.
 
@@ -507,6 +518,11 @@ def connection_from_url(url, **kw):
 
     :param url:
         Absolute URL string that must include the scheme. Port is optional.
+
+    :param force_https:
+        Whether to use HTTPS connection even if the URL specifies the
+        HTTP protocol, for proxying HTTPS over HTTP. This has an effect only
+        on Python2.7+, and is ignored in ealier versions. Default is False.
 
     :param \**kw:
         Passes additional parameters to the constructor of the appropriate
@@ -519,7 +535,12 @@ def connection_from_url(url, **kw):
         >>> r = conn.request('GET', '/')
     """
     scheme, host, port = get_host(url)
-    if scheme == 'https':
+    if force_https and scheme == 'http':
+        if hasattr(HTTPConnection, 'set_tunnel'): # This only works on Py27+
+            kw['over_http'] = True
+        else:
+            force_https = False
+    if scheme == 'https' or force_https:
         return HTTPSConnectionPool(host, port=port, **kw)
     else:
         return HTTPConnectionPool(host, port=port, **kw)
