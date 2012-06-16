@@ -16,6 +16,11 @@ except ImportError: # `poll` doesn't exist on OSX and other platforms
     except ImportError: # `select` doesn't exist on AppEngine.
         select = False
 
+try:  # Python 3
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
+
 from .packages import six
 from .exceptions import LocationParseError
 
@@ -110,47 +115,21 @@ def get_host(url):
         ('http', 'google.com', 80)
     """
 
-    # While this code has overlap with stdlib's urlparse, it is much
-    # simplified for our needs and less annoying.
-    # Additionally, this imeplementations does silly things to be optimal
-    # on CPython.
+    original_url = url
 
-    scheme = 'http'
-    host = None
-    port = None
+    if '://' not in url:
+        # urlparse fails when there is no scheme
+        url = 'http://' + url
+    try:
+        u = urlparse(url)
 
-    # Scheme
-    if '://' in url:
-        scheme, url = url.split('://', 1)
+        # We need to access the properties we want in advance because urlparse
+        # is supersmart and doesn't parse when you tell it to.
+        r = u.scheme, u.hostname, u.port
+    except ValueError, e:
+        raise LocationParseError("Failed to parse: %s" % original_url)
 
-    # Find the earliest Authority Terminator
-    # (http://tools.ietf.org/html/rfc3986#section-3.2)
-    url, _path = split_first(url, ['/', '?', '#'])
-
-    # Auth
-    if '@' in url:
-        _auth, url = url.split('@', 1)
-
-    # IPv6
-    if url and url[0] == '[':
-        host, url = url[1:].split(']', 1)
-
-    # Port
-    if ':' in url:
-        _host, port = url.split(':', 1)
-
-        if not host:
-            host = _host
-
-        if not port.isdigit():
-            raise LocationParseError("Failed to parse: %s" % url)
-
-        port = int(port)
-
-    elif not host:
-        host = url
-
-    return scheme, host, port
+    return r
 
 
 def is_connection_dropped(conn):
