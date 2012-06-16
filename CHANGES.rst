@@ -10,6 +10,8 @@ dev (master branch)
 
 * Improved url parsing. (Issue #73)
 
+* IPv6 url support. (Issue #72)
+
 
 1.3 (2012-03-25)
 ++++++++++++++++
