@@ -16,6 +16,11 @@ except ImportError: # `poll` doesn't exist on OSX and other platforms
     except ImportError: # `select` doesn't exist on AppEngine.
         select = False
 
+try:  # Python 3
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
+
 from .packages import six
 from .exceptions import LocationParseError
 
@@ -110,30 +115,18 @@ def get_host(url):
         ('http', 'google.com', 80)
     """
 
-    # This code is actually similar to urlparse.urlsplit, but much
-    # simplified for our needs.
-    port = None
-    scheme = 'http'
+    original_url = url
 
-    if '://' in url:
-        scheme, url = url.split('://', 1)
+    if '://' not in url:
+        url = 'http://' + url
 
-    # Find the earliest Authority Terminator
-    # http://tools.ietf.org/html/rfc3986#section-3.2
-    url, _path = split_first(url, ['/', '?', '#'])
+    try:
+        u = urlparse(url)
+        r = u.scheme, u.hostname, u.port
+    except ValueError, e:
+        raise LocationParseError("Failed to parse: %s" % original_url)
 
-    if '@' in url:
-        _auth, url = url.split('@', 1)
-    if ':' in url:
-        url, port = url.split(':', 1)
-
-        if not port.isdigit():
-            raise LocationParseError("Failed to parse: %s" % url)
-
-        port = int(port)
-
-    return scheme, url, port
-
+    return r
 
 
 def is_connection_dropped(conn):
