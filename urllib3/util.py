@@ -118,10 +118,14 @@ def get_host(url):
     original_url = url
 
     if '://' not in url:
+        # urlparse fails when there is no scheme
         url = 'http://' + url
 
     try:
         u = urlparse(url)
+
+        # We need to access the properties we want in advance because urlparse
+        # is supersmart and doesn't parse when you tell it to.
         r = u.scheme, u.hostname, u.port
     except ValueError, e:
         raise LocationParseError("Failed to parse: %s" % original_url)
