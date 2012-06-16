@@ -120,7 +120,6 @@ def get_host(url):
     if '://' not in url:
         # urlparse fails when there is no scheme
         url = 'http://' + url
-
     try:
         u = urlparse(url)
 
