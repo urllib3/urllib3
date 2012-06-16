@@ -1,6 +1,20 @@
 Changes
 =======
 
+
+1.4 (2012-06-16)
+++++++++++++++++
+
+* Minor AppEngine-related fixes.
+
+* Switched from ``mimetools.choose_boundary`` to ``uuid.uuid4()``.
+
+* Improved url parsing. (Issue #73)
+
+* IPv6 url support. (Issue #72)
+
+
+>>>>>>> master
 1.3 (2012-03-25)
 ++++++++++++++++
 
