@@ -1,8 +1,23 @@
 import unittest
 
 from urllib3.connectionpool import connection_from_url, HTTPConnectionPool
-from urllib3.exceptions import EmptyPoolError
+from urllib3.packages.ssl_match_hostname import CertificateError
+from urllib3.exceptions import (
+    EmptyPoolError,
+    MaxRetryError,
+    SSLError,
+    TimeoutError,
+)
 
+from socket import error as SocketError, timeout as SocketTimeout
+from ssl import SSLError as BaseSSLError
+
+try:   # Python 3
+    from queue import LifoQueue, Empty, Full
+    from http.client import HTTPException
+except ImportError:
+    from Queue import LifoQueue, Empty, Full
+    from httplib import HTTPException
 
 class TestConnectionPool(unittest.TestCase):
     def test_same_host(self):
@@ -62,6 +77,35 @@ class TestConnectionPool(unittest.TestCase):
         self.assertNotEqual(conn2, pool._get_conn())
 
         self.assertEqual(pool.num_connections, 3)
+
+    def test_pool_size(self):
+        POOL_SIZE = 1
+        pool = HTTPConnectionPool(host='localhost', maxsize=POOL_SIZE, block=True)
+
+        def _raise(ex):
+            raise ex()
+
+        def _test(exception, expect):
+            pool._make_request = lambda *args, **kwargs: _raise(exception)
+            with self.assertRaises(expect):
+                pool.request('GET', '/')
+
+            self.assertEqual(pool.pool.qsize(), POOL_SIZE)
+
+        #make sure that all of the exceptions return the connection to the pool
+        _test(Empty, TimeoutError)
+        _test(SocketTimeout, TimeoutError)
+        _test(BaseSSLError, SSLError)
+        _test(CertificateError, SSLError)
+
+        # The pool should never be empty, and with these two exceptions being raised,
+        # a retry will be triggered, but that retry will fail, eventually raising
+        # MaxRetryError, not EmptyPoolError
+        # See: https://github.com/shazow/urllib3/issues/76
+        pool._make_request = lambda *args, **kwargs: _raise(HTTPException)
+        with self.assertRaises(MaxRetryError):
+            pool.request('GET', '/', retries=1, pool_timeout=0.01)
+        self.assertEqual(pool.pool.qsize(), POOL_SIZE)
 
     def test_exception_str(self):
         self.assertEqual(

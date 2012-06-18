@@ -7,7 +7,7 @@
 import logging
 import socket
 
-from socket import error as SocketError, timeout as SocketTimeout
+from socket import timeout as SocketTimeout
 
 try:   # Python 3
     from http.client import HTTPConnection, HTTPException
@@ -377,8 +377,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn = None
 
         try:
-            # Request a connection from the queue
-            # (Could raise SocketError: Bad file descriptor)
             conn = self._get_conn(timeout=pool_timeout)
 
             # Make the request on the httplib connection object
@@ -421,29 +419,35 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Name mismatch
             raise SSLError(e)
 
-        except (HTTPException, SocketError) as e:
+        except HTTPException as e:
             # Connection broken, discard. It will be replaced next _get_conn().
             conn = None
             # This is necessary so we can access e below
             err = e
 
         finally:
-            if conn and release_conn:
+            if release_conn:
                 # Put the connection back to be reused
+                # Note: a none value can always be added as it will result
+                # in a new connection being created
                 self._put_conn(conn)
 
         if not conn:
             log.warn("Retrying (%d attempts remain) after connection "
                      "broken by '%r': %s" % (retries, err, url))
             return self.urlopen(method, url, body, headers, retries - 1,
-                                redirect, assert_same_host)  # Try again
+                                redirect, assert_same_host,
+                                timeout=timeout, pool_timeout=pool_timeout,
+                                release_conn=release_conn, **response_kw)  # Try again
 
         # Handle redirect?
         redirect_location = redirect and response.get_redirect_location()
         if redirect_location:
             log.info("Redirecting %s -> %s" % (url, redirect_location))
             return self.urlopen(method, redirect_location, body, headers,
-                                retries - 1, redirect, assert_same_host)
+                                retries - 1, redirect, assert_same_host,
+                                timeout=timeout, pool_timeout=pool_timeout,
+                                release_conn=release_conn, **response_kw)
 
         return response
 
