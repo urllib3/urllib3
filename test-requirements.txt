@@ -1,2 +1,2 @@
 nose
-tornado
+tornado==2.1.1
