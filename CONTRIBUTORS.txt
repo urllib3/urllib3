@@ -39,5 +39,8 @@ In chronological order:
 * brandon-rhodes <http://rhodesmill.org/brandon>
   * Design review, bugfixes, test coverage.
 
+* studer <theo.studer@gmail.com>
+  * IPv6 url support and test coverage
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
