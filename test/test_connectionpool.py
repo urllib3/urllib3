@@ -9,14 +9,14 @@ from urllib3.exceptions import (
     TimeoutError,
 )
 
-from socket import error as SocketError, timeout as SocketTimeout
+from socket import timeout as SocketTimeout
 from ssl import SSLError as BaseSSLError
 
 try:   # Python 3
-    from queue import LifoQueue, Empty, Full
+    from queue import Empty
     from http.client import HTTPException
 except ImportError:
-    from Queue import LifoQueue, Empty, Full
+    from Queue import Empty
     from httplib import HTTPException
 
 class TestConnectionPool(unittest.TestCase):
