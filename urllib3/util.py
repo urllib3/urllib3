@@ -6,6 +6,7 @@
 
 
 from base64 import b64encode
+from collections import namedtuple
 
 try:
     from select import poll, POLLIN
@@ -18,6 +19,21 @@ except ImportError: # `poll` doesn't exist on OSX and other platforms
 
 from .packages import six
 from .exceptions import LocationParseError
+
+
+class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment'])):
+    """
+    Datastructure for representing an HTTP URL.
+    """
+    slots = ()
+
+    def __new__(cls, scheme=None, auth=None, host=None, port=None, path=None, query=None, fragment=None):
+        return super(Url, cls).__new__(cls, scheme, auth, host, port, path, query, fragment)
+
+    @property
+    def hostname(self):
+        """For backwards-compatibility with urlparse. We're nice like that."""
+        return self.host
 
 
 def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
@@ -75,39 +91,48 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
 def split_first(s, delims):
     """
     Given a string and an iterable of delimiters, split on the first found
-    delimiter. Return two split parts.
+    delimiter. Return two split parts and the matched delimiter.
 
     If not found, then the first part is the full input string.
+
+    Example: ::
+
+        >>> split_first('foo/bar?baz', '?/=')
+        ('foo', 'bar?baz', '/')
+        >>> split_first('foo/bar?baz', '123')
+        ('foo/bar?baz', '', None)
 
     Scales linearly with number of delims. Not ideal for large number of delims.
     """
     min_idx = None
+    min_delim = None
     for d in delims:
         idx = s.find(d)
         if idx < 0:
             continue
 
-        if not min_idx:
+        if min_idx is None or idx < min_idx:
             min_idx = idx
-        else:
-            min_idx = min(idx, min_idx)
+            min_delim = d
 
     if min_idx < 0:
-        return s, ''
+        return s, '', None
 
-    return s[:min_idx], s[min_idx+1:]
+    return s[:min_idx], s[min_idx+1:], min_delim
 
 
-def get_host(url):
+def parse_url(url):
     """
-    Given a url, return its scheme, host and port (None if it's not there).
+    Given a url, return a parsed :class:`.Url` namedtuple.
 
-    For example: ::
+    Partly backwards-compatible with :module:`urlparse`.
 
-        >>> get_host('http://google.com/mail/')
-        ('http', 'google.com', None)
-        >>> get_host('google.com:80')
-        ('http', 'google.com', 80)
+    Example: ::
+
+        >>> parse_url('http://google.com/mail/')
+        Url(scheme='http', host='google.com', port=None, path='/', ...)
+        >>> prase_url('google.com:80')
+        Url(scheme='http', host='google.com', port=80, path='', ...)
     """
 
     # While this code has overlap with stdlib's urlparse, it is much
@@ -115,9 +140,13 @@ def get_host(url):
     # Additionally, this imeplementations does silly things to be optimal
     # on CPython.
 
-    scheme = 'http'
+    scheme = None # FIXME: Should the scheme default to http?
+    auth = None
     host = None
     port = None
+    path = '' # FIXME: Should the path default to None?
+    fragment = None
+    query = None
 
     # Scheme
     if '://' in url:
@@ -125,11 +154,15 @@ def get_host(url):
 
     # Find the earliest Authority Terminator
     # (http://tools.ietf.org/html/rfc3986#section-3.2)
-    url, _path = split_first(url, ['/', '?', '#'])
+    url, path_, delim = split_first(url, ['/', '?', '#'])
+
+    if delim:
+        # Reassemble the path
+        path = delim + path_
 
     # Auth
     if '@' in url:
-        _auth, url = url.split('@', 1)
+        auth, url = url.split('@', 1)
 
     # IPv6
     if url and url[0] == '[':
@@ -147,10 +180,30 @@ def get_host(url):
 
         port = int(port)
 
-    elif not host:
+    elif not host and url:
         host = url
 
-    return scheme, host, port
+    # Fragment
+    if '#' in path:
+        path, fragment = path.split('#', 1)
+
+    # Query
+    if '?' in path:
+        path, query = path.split('?', 1)
+
+    # Paths start with '/'
+    if path and path[0] != '/':
+        path = '/' + path
+
+    return Url(scheme, auth, host, port, path, query, fragment)
+
+
+def get_host(url):
+    """
+    Deprecated. Use parse_url instead.
+    """
+    p = parse_url(url)
+    return p.scheme or 'http', p.hostname, p.port
 
 
 def is_connection_dropped(conn):
