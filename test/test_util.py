@@ -1,5 +1,7 @@
 import unittest
+import logging
 
+from urllib3 import add_stderr_logger
 from urllib3.util import get_host, make_headers, split_first
 from urllib3.exceptions import LocationParseError
 
@@ -100,3 +102,11 @@ class TestUtil(unittest.TestCase):
         for input, expected in test_cases.iteritems():
             output = split_first(*input)
             self.assertEqual(output, expected)
+
+    def test_add_stderr_logger(self):
+        handler = add_stderr_logger(level=logging.INFO) # Don't actually print debug
+        logger = logging.getLogger('urllib3')
+        self.assertTrue(handler in logger.handlers)
+
+        logger.debug('Testing add_stderr_logger')
+        logger.removeHandler(handler)
