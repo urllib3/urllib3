@@ -4,6 +4,9 @@ Changes
 dev (master branch)
 +++++++++++++++++++
 
+* Added ``urllib3.add_stderr_logger()`` for quickly enabling STDERR debug
+  logging in urllib3.
+
 
 1.4 (2012-06-16)
 ++++++++++++++++
