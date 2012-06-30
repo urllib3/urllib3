@@ -24,7 +24,7 @@ from .exceptions import LocationParseError
 class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment'])):
     """
     Datastructure for representing an HTTP URL. Used as a return value for
-    ``parse_url``.
+    :func:`parse_url`.
     """
     slots = ()
 
@@ -207,7 +207,7 @@ def parse_url(url):
 
 def get_host(url):
     """
-    Deprecated. Use parse_url instead.
+    Deprecated. Use :func:`parse_url` instead.
     """
     p = parse_url(url)
     return p.scheme or 'http', p.hostname, p.port
