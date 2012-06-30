@@ -2,7 +2,7 @@ import unittest
 import logging
 
 from urllib3 import add_stderr_logger
-from urllib3.util import get_host, make_headers, split_first
+from urllib3.util import get_host, make_headers, split_first, parse_url, Url
 from urllib3.exceptions import LocationParseError
 
 
@@ -62,6 +62,25 @@ class TestUtil(unittest.TestCase):
         for location in invalid_host:
             self.assertRaises(LocationParseError, get_host, location)
 
+    def test_parse_url(self):
+        url_host_map = {
+            'http://google.com/mail': Url('http', None, 'google.com', None, '/mail'),
+            'http://google.com/mail/': Url('http', None, 'google.com', None, '/mail/'),
+            'google.com/mail': Url(None, None, 'google.com', None, '/mail'),
+            'http://google.com/': Url('http', None, 'google.com', None, '/'),
+            'http://google.com': Url('http', None, 'google.com', None, None),
+            '': Url(),
+            '/': Url(path='/'),
+            '?': Url(path='', query=''),
+            '#': Url(path='', fragment=''),
+            '#?/!google.com/?foo#bar': Url(path='', fragment='?/!google.com/?foo#bar'),
+            '/foo': Url(path='/foo'),
+            '/foo?bar=baz': Url(path='/foo', query='bar=baz'),
+            '/foo?bar=baz#banana?apple/orange': Url(path='/foo', query='bar=baz', fragment='banana?apple/orange'),
+        }
+        for url, expected_host in url_host_map.items():
+            returned_host = parse_url(url)
+            self.assertEquals(returned_host, expected_host)
 
     def test_make_headers(self):
         self.assertEqual(
@@ -95,9 +114,11 @@ class TestUtil(unittest.TestCase):
 
     def test_split_first(self):
         test_cases = {
-            ('abcd', 'b'): ('a', 'cd'),
-            ('abcd', 'cb'): ('a', 'cd'),
-            ('abcd', ''): ('abcd', ''),
+            ('abcd', 'b'): ('a', 'cd', 'b'),
+            ('abcd', 'cb'): ('a', 'cd', 'b'),
+            ('abcd', ''): ('abcd', '', None),
+            ('abcd', 'a'): ('', 'bcd', 'a'),
+            ('abcd', 'ab'): ('', 'bcd', 'a'),
         }
         for input, expected in test_cases.iteritems():
             output = split_first(*input)
