@@ -7,6 +7,9 @@ dev (master branch)
 * Added ``urllib3.add_stderr_logger()`` for quickly enabling STDERR debug
   logging in urllib3.
 
+* Native full URL parsing (including auth, path, query, fragment) available in
+  ``urllib3.util.parse_url(url)``.
+
 
 1.4 (2012-06-16)
 ++++++++++++++++
