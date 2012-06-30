@@ -10,6 +10,8 @@ dev (master branch)
 * Native full URL parsing (including auth, path, query, fragment) available in
   ``urllib3.util.parse_url(url)``.
 
+* Built-in redirect will switch method to 'GET' if status code is 303.
+
 
 1.4 (2012-06-16)
 ++++++++++++++++

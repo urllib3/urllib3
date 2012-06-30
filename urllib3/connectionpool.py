@@ -441,6 +441,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Handle redirect?
         redirect_location = redirect and response.get_redirect_location()
         if redirect_location:
+            if response.status == 303:
+                method = 'GET'
             log.info("Redirecting %s -> %s" % (url, redirect_location))
             return self.urlopen(method, redirect_location, body, headers,
                                 retries - 1, redirect, assert_same_host)
