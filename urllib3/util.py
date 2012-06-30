@@ -37,58 +37,6 @@ class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 
         return self.host
 
 
-def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
-                 basic_auth=None):
-    """
-    Shortcuts for generating request headers.
-
-    :param keep_alive:
-        If ``True``, adds 'connection: keep-alive' header.
-
-    :param accept_encoding:
-        Can be a boolean, list, or string.
-        ``True`` translates to 'gzip,deflate'.
-        List will get joined by comma.
-        String will be used as provided.
-
-    :param user_agent:
-        String representing the user-agent you want, such as
-        "python-urllib3/0.6"
-
-    :param basic_auth:
-        Colon-separated username:password string for 'authorization: basic ...'
-        auth header.
-
-    Example: ::
-
-        >>> make_headers(keep_alive=True, user_agent="Batman/1.0")
-        {'connection': 'keep-alive', 'user-agent': 'Batman/1.0'}
-        >>> make_headers(accept_encoding=True)
-        {'accept-encoding': 'gzip,deflate'}
-    """
-    headers = {}
-    if accept_encoding:
-        if isinstance(accept_encoding, str):
-            pass
-        elif isinstance(accept_encoding, list):
-            accept_encoding = ','.join(accept_encoding)
-        else:
-            accept_encoding = 'gzip,deflate'
-        headers['accept-encoding'] = accept_encoding
-
-    if user_agent:
-        headers['user-agent'] = user_agent
-
-    if keep_alive:
-        headers['connection'] = 'keep-alive'
-
-    if basic_auth:
-        headers['authorization'] = 'Basic ' + \
-            b64encode(six.b(basic_auth)).decode('utf-8')
-
-    return headers
-
-
 def split_first(s, delims):
     """
     Given a string and an iterable of delimiters, split on the first found
@@ -211,6 +159,58 @@ def get_host(url):
     """
     p = parse_url(url)
     return p.scheme or 'http', p.hostname, p.port
+
+
+def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
+                 basic_auth=None):
+    """
+    Shortcuts for generating request headers.
+
+    :param keep_alive:
+        If ``True``, adds 'connection: keep-alive' header.
+
+    :param accept_encoding:
+        Can be a boolean, list, or string.
+        ``True`` translates to 'gzip,deflate'.
+        List will get joined by comma.
+        String will be used as provided.
+
+    :param user_agent:
+        String representing the user-agent you want, such as
+        "python-urllib3/0.6"
+
+    :param basic_auth:
+        Colon-separated username:password string for 'authorization: basic ...'
+        auth header.
+
+    Example: ::
+
+        >>> make_headers(keep_alive=True, user_agent="Batman/1.0")
+        {'connection': 'keep-alive', 'user-agent': 'Batman/1.0'}
+        >>> make_headers(accept_encoding=True)
+        {'accept-encoding': 'gzip,deflate'}
+    """
+    headers = {}
+    if accept_encoding:
+        if isinstance(accept_encoding, str):
+            pass
+        elif isinstance(accept_encoding, list):
+            accept_encoding = ','.join(accept_encoding)
+        else:
+            accept_encoding = 'gzip,deflate'
+        headers['accept-encoding'] = accept_encoding
+
+    if user_agent:
+        headers['user-agent'] = user_agent
+
+    if keep_alive:
+        headers['connection'] = 'keep-alive'
+
+    if basic_auth:
+        headers['authorization'] = 'Basic ' + \
+            b64encode(six.b(basic_auth)).decode('utf-8')
+
+    return headers
 
 
 def is_connection_dropped(conn):
