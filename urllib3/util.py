@@ -23,7 +23,8 @@ from .exceptions import LocationParseError
 
 class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment'])):
     """
-    Datastructure for representing an HTTP URL.
+    Datastructure for representing an HTTP URL. Used as a return value for
+    ``parse_url``.
     """
     slots = ()
 
@@ -123,7 +124,8 @@ def split_first(s, delims):
 
 def parse_url(url):
     """
-    Given a url, return a parsed :class:`.Url` namedtuple.
+    Given a url, return a parsed :class:`.Url` namedtuple. Best-effort is
+    performed to parse incomplete urls. Fields not provided will be None.
 
     Partly backwards-compatible with :module:`urlparse`.
 
@@ -132,7 +134,9 @@ def parse_url(url):
         >>> parse_url('http://google.com/mail/')
         Url(scheme='http', host='google.com', port=None, path='/', ...)
         >>> prase_url('google.com:80')
-        Url(scheme='http', host='google.com', port=80, path='', ...)
+        Url(scheme=None, host='google.com', port=80, path=None, ...)
+        >>> prase_url('/foo?bar')
+        Url(scheme=None, host=None, port=None, path='/foo', query='bar', ...)
     """
 
     # While this code has overlap with stdlib's urlparse, it is much
@@ -140,11 +144,11 @@ def parse_url(url):
     # Additionally, this imeplementations does silly things to be optimal
     # on CPython.
 
-    scheme = None # FIXME: Should the scheme default to http?
+    scheme = None
     auth = None
     host = None
     port = None
-    path = '' # FIXME: Should the path default to None?
+    path = None
     fragment = None
     query = None
 
@@ -182,6 +186,9 @@ def parse_url(url):
 
     elif not host and url:
         host = url
+
+    if not path:
+        return Url(scheme, auth, host, port, path, query, fragment)
 
     # Fragment
     if '#' in path:
