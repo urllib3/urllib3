@@ -156,10 +156,6 @@ def parse_url(url):
     if '?' in path:
         path, query = path.split('?', 1)
 
-    # Paths start with '/'
-    if path and path[0] != '/':
-        path = '/' + path
-
     return Url(scheme, auth, host, port, path, query, fragment)
 
 
