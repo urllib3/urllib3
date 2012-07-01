@@ -74,7 +74,7 @@ def split_first(s, delims):
             min_idx = idx
             min_delim = d
 
-    if min_idx < 0:
+    if min_idx is None or min_idx < 0:
         return s, '', None
 
     return s[:min_idx], s[min_idx+1:], min_delim
