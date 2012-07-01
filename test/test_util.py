@@ -78,9 +78,25 @@ class TestUtil(unittest.TestCase):
             '/foo?bar=baz': Url(path='/foo', query='bar=baz'),
             '/foo?bar=baz#banana?apple/orange': Url(path='/foo', query='bar=baz', fragment='banana?apple/orange'),
         }
-        for url, expected_host in url_host_map.items():
-            returned_host = parse_url(url)
-            self.assertEquals(returned_host, expected_host)
+        for url, expected_url in url_host_map.items():
+            returned_url = parse_url(url)
+            self.assertEquals(returned_url, expected_url)
+
+    def test_request_uri(self):
+        url_host_map = {
+            'http://google.com/mail': '/mail',
+            'http://google.com/mail/': '/mail/',
+            'http://google.com/': '/',
+            'http://google.com': '/',
+            '': '/',
+            '/': '/',
+            '?': '/?',
+            '#': '/',
+            '/foo?bar=baz': '/foo?bar=baz',
+        }
+        for url, expected_request_uri in url_host_map.items():
+            returned_url = parse_url(url)
+            self.assertEquals(returned_url.request_uri, expected_request_uri)
 
     def test_make_headers(self):
         self.assertEqual(

@@ -36,6 +36,16 @@ class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 
         """For backwards-compatibility with urlparse. We're nice like that."""
         return self.host
 
+    @property
+    def request_uri(self):
+        """Absolute path including the query string."""
+        uri = self.path or '/'
+
+        if self.query is not None:
+            uri += '?' + self.query
+
+        return uri
+
 
 def split_first(s, delims):
     """
