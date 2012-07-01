@@ -136,7 +136,7 @@ class TestUtil(unittest.TestCase):
             ('abcd', 'a'): ('', 'bcd', 'a'),
             ('abcd', 'ab'): ('', 'bcd', 'a'),
         }
-        for input, expected in test_cases.iteritems():
+        for input, expected in test_cases.items():
             output = split_first(*input)
             self.assertEqual(output, expected)
 
