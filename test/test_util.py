@@ -64,11 +64,12 @@ class TestUtil(unittest.TestCase):
 
     def test_parse_url(self):
         url_host_map = {
-            'http://google.com/mail': Url('http', None, 'google.com', None, '/mail'),
-            'http://google.com/mail/': Url('http', None, 'google.com', None, '/mail/'),
-            'google.com/mail': Url(None, None, 'google.com', None, '/mail'),
-            'http://google.com/': Url('http', None, 'google.com', None, '/'),
-            'http://google.com': Url('http', None, 'google.com', None, None),
+            'http://google.com/mail': Url('http', host='google.com', path='/mail'),
+            'http://google.com/mail/': Url('http', host='google.com', path='/mail/'),
+            'google.com/mail': Url(host='google.com', path='/mail'),
+            'http://google.com/': Url('http', host='google.com', path='/'),
+            'http://google.com': Url('http', host='google.com'),
+            'http://google.com?foo': Url('http', host='google.com', path='', query='foo'),
             '': Url(),
             '/': Url(path='/'),
             '?': Url(path='', query=''),
