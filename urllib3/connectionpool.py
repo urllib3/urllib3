@@ -268,15 +268,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         log.debug("\"%s %s %s\" %s %s" % (method, url, http_version,
                                           httplib_response.status,
                                           httplib_response.length))
-
         return httplib_response
-
 
     def is_same_host(self, url):
         """
         Check if the given ``url`` is a member of the same host as this
         connection pool.
         """
+        if url.startswith('/'):
+            return True
+
         # TODO: Add optional support for socket.gethostbyname checking.
         scheme, host, port = get_host(url)
 
@@ -284,8 +285,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Use explicit default port for comparison when none is given.
             port = port_by_scheme.get(scheme)
 
-        return (url.startswith('/') or
-                (scheme, host, port) == (self.scheme, self.host, self.port))
+        return (scheme, host, port) == (self.scheme, self.host, self.port)
 
     def urlopen(self, method, url, body=None, headers=None, retries=3,
                 redirect=True, assert_same_host=True, timeout=_Default,
