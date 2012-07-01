@@ -161,7 +161,7 @@ def parse_url(url):
 
 def get_host(url):
     """
-    Deprecated. Use :func:`parse_url` instead.
+    Deprecated. Use :func:`.parse_url` instead.
     """
     p = parse_url(url)
     return p.scheme or 'http', p.hostname, p.port
@@ -224,7 +224,7 @@ def is_connection_dropped(conn):
     Returns True if the connection is dropped and should be closed.
 
     :param conn:
-        ``HTTPConnection`` object.
+        :class:`urllib3.connectionpool.HTTPConnectionPool` object.
 
     Note: For platforms like AppEngine, this will always return ``False`` to
     let the platform handle connection recycling transparently for us.
