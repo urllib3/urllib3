@@ -36,19 +36,7 @@ class TestLRUContainer(unittest.TestCase):
         d[5] = '5'
 
         # Check state
-        self.assertEqual(list(d.keys()), [0, 2, 3, 4, 5])
-
-    def test_pruning(self):
-        d = Container(5)
-
-        for i in xrange(5):
-            d[i] = str(i)
-
-        # Contend 2 entries for the most-used slot to balloon the heap
-        for i in xrange(100):
-            d.get(i % 2)
-
-        self.assertTrue(len(d.access_log) <= d.CLEANUP_FACTOR * d._maxsize)
+        self.assertEqual(list(d.keys()), [2, 3, 4, 0, 5])
 
     def test_same_key(self):
         d = Container(5)
@@ -57,10 +45,7 @@ class TestLRUContainer(unittest.TestCase):
             d['foo'] = i
 
         self.assertEqual(list(d.keys()), ['foo'])
-
-        d._prune_invalidated_entries()
-
-        self.assertEqual(len(d.access_log), 1)
+        self.assertEqual(len(d), 1)
 
     def test_access_ordering(self):
         d = Container(5)
@@ -68,13 +53,14 @@ class TestLRUContainer(unittest.TestCase):
         for i in xrange(10):
             d[i] = True
 
-        self.assertEqual(d._get_ordered_access_keys(), [9,8,7,6,5])
+        # keys should be ordered by access time
+        self.assertEqual(list(d.keys()), [5, 6, 7, 8, 9])
 
         new_order = [7,8,6,9,5]
-        for k in reversed(new_order):
+        for k in new_order:
             d[k]
 
-        self.assertEqual(d._get_ordered_access_keys(), new_order)
+        self.assertEqual(list(d.keys()), new_order)
 
     def test_delete(self):
         d = Container(5)
@@ -107,6 +93,26 @@ class TestLRUContainer(unittest.TestCase):
 
         self.assertRaises(KeyError, lambda: d[5])
 
+    def test_disposal(self):
+        evicted_items = []
+        def dispose_func(arg):
+            # save the evicted datum for inspection
+            evicted_items.append(arg)
+
+        d = Container(5, dispose_func=dispose_func)
+        for i in xrange(5):
+            d[i] = i
+        self.assertEqual(list(d.keys()), list(xrange(5)))
+        # nothing should have been disposed
+        self.assertEqual(evicted_items, [])
+
+        d[5] = 5
+        self.assertEqual(list(d.keys()), list(xrange(1, 6)))
+        # dispose_func should have been called on the LRU item, 0
+        self.assertEqual(evicted_items, [0])
+
+        d.clear()
+        self.assertEqual(evicted_items, list(xrange(0, 6)))
 
 if __name__ == '__main__':
     unittest.main()
