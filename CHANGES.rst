@@ -11,6 +11,10 @@ dev (master branch)
   ``urllib3.util.parse_url(url)``.
 
 * Built-in redirect will switch method to 'GET' if status code is 303.
+  (Issue #11)
+
+* ``urllib3.PoolManager`` strips the scheme and host before sending the request
+  uri. (Issue #8)
 
 
 1.4 (2012-06-16)
