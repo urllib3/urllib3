@@ -53,7 +53,15 @@ class PoolManager(RequestMethods):
 
     def __init__(self, num_pools=10, **connection_pool_kw):
         self.connection_pool_kw = connection_pool_kw
-        self.pools = RecentlyUsedContainer(num_pools)
+        self.pools = RecentlyUsedContainer(num_pools, dispose_func=lambda p: p.close())
+
+    def close(self):
+        """Empty our store of pools and direct them all to close.
+
+        This won't break in-flight connections, because the message is forwarded to
+        HTTPConnectionPool.close(), which is thread-safe.
+        """
+        self.pools.clear()
 
     def connection_from_host(self, host, port=None, scheme='http'):
         """
