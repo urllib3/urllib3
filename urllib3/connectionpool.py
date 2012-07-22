@@ -232,17 +232,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             Connection object for the current host and port as returned by
             :meth:`._new_conn` or :meth:`._get_conn`.
 
-        If the pool is already full, the connection is discarded because we
-        exceeded maxsize. If connections are discarded frequently, then maxsize
-        should be increased.
+        If the pool is already full, the connection is closed and discarded
+        because we exceeded maxsize. If connections are discarded frequently,
+        then maxsize should be increased.
 
         If the pool is closed, then the connection will be closed and discarded.
         """
-        conn_returned = False
-
         try:
             self.pool.put(conn, block=False)
-            conn_returned = True
+            return # Everything is dandy, done.
         except AttributeError:
             # self.pool is None.
             pass
@@ -251,8 +249,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             log.warning("HttpConnectionPool is full, discarding connection: %s"
                         % self.host)
 
-        if not conn_returned:
-            conn.close()
+        # Connection never got put back into the pool, close it.
+        conn.close()
 
     def _make_request(self, conn, method, url, timeout=_Default,
                       **httplib_request_kw):
