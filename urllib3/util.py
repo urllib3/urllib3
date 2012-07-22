@@ -7,6 +7,7 @@
 
 from base64 import b64encode
 from collections import namedtuple
+from socket import error as SocketError
 
 try:
     from select import poll, POLLIN
@@ -237,7 +238,10 @@ def is_connection_dropped(conn):
         if not select: # Platform-specific: AppEngine
             return False
 
-        return select([sock], [], [], 0.0)[0]
+        try:
+            return select([sock], [], [], 0.0)[0]
+        except SocketError:
+            return True
 
     # This version is better on platforms that support it.
     p = poll()
