@@ -9,7 +9,6 @@ import logging
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import connection_from_url, port_by_scheme
-from .exceptions import HostChangedError
 from .request import RequestMethods
 from .util import parse_url
 
@@ -49,11 +48,19 @@ class PoolManager(RequestMethods):
 
     """
 
-    # TODO: Make sure there are no memory leaks here.
-
     def __init__(self, num_pools=10, **connection_pool_kw):
         self.connection_pool_kw = connection_pool_kw
-        self.pools = RecentlyUsedContainer(num_pools)
+        self.pools = RecentlyUsedContainer(num_pools,
+                                           dispose_func=lambda p: p.close())
+
+    def clear(self):
+        """
+        Empty our store of pools and direct them all to close.
+
+        This will not affect in-flight connections, but they will not be
+        re-used after completion.
+        """
+        self.pools.clear()
 
     def connection_from_host(self, host, port=None, scheme='http'):
         """
@@ -91,9 +98,6 @@ class PoolManager(RequestMethods):
         """
         u = parse_url(url)
         return self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
-
-    def handle_redirect(response):
-        pass
 
     def urlopen(self, method, url, redirect=True, **kw):
         """
