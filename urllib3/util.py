@@ -86,7 +86,7 @@ def parse_url(url):
     Given a url, return a parsed :class:`.Url` namedtuple. Best-effort is
     performed to parse incomplete urls. Fields not provided will be None.
 
-    Partly backwards-compatible with :module:`urlparse`.
+    Partly backwards-compatible with :mod:`urlparse`.
 
     Example: ::
 
