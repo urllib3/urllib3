@@ -225,7 +225,7 @@ def is_connection_dropped(conn):
     Returns True if the connection is dropped and should be closed.
 
     :param conn:
-        :class:`urllib3.connectionpool.HTTPConnectionPool` object.
+        :class:`httplib.HTTPConnection` object.
 
     Note: For platforms like AppEngine, this will always return ``False`` to
     let the platform handle connection recycling transparently for us.
