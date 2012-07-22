@@ -3,6 +3,7 @@ import unittest
 from urllib3.connectionpool import connection_from_url, HTTPConnectionPool
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
+    ClosedPoolError,
     EmptyPoolError,
     HostChangedError,
     MaxRetryError,
@@ -119,6 +120,32 @@ class TestConnectionPool(unittest.TestCase):
 
         with self.assertRaises(HostChangedError):
             c.request('GET', 'http://yahoo.com:80', assert_same_host=True)
+
+    def test_pool_close(self):
+        pool = connection_from_url('http://google.com:80')
+
+        # Populate with some connections
+        conn1 = pool._get_conn()
+        conn2 = pool._get_conn()
+        conn3 = pool._get_conn()
+        pool._put_conn(conn1)
+        pool._put_conn(conn2)
+
+        old_pool_queue = pool.pool
+
+        pool.close()
+        self.assertEqual(pool.pool, None)
+
+        with self.assertRaises(ClosedPoolError):
+            pool._get_conn()
+
+        pool._put_conn(conn3)
+
+        with self.assertRaises(ClosedPoolError):
+            pool._get_conn()
+
+        with self.assertRaises(Empty):
+            old_pool_queue.get(block=False)
 
 
 if __name__ == '__main__':

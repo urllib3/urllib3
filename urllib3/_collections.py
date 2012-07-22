@@ -33,13 +33,13 @@ class RecentlyUsedContainer(MutableMapping):
         ``dispose_func(value)`` is called.  Callback which will get called
     """
 
-    ContainerType = OrderedDict
+    ContainerCls = OrderedDict
 
     def __init__(self, maxsize=10, dispose_func=None):
         self._maxsize = maxsize
         self.dispose_func = dispose_func
 
-        self._container = self.ContainerType()
+        self._container = self.ContainerCls()
         self._lock = Lock()
 
     def __getitem__(self, key):

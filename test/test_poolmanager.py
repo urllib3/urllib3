@@ -43,7 +43,7 @@ class TestPoolManager(unittest.TestCase):
 
         self.assertEqual(len(connections), 5)
 
-    def test_pool_close(self):
+    def test_manager_clear(self):
         p = PoolManager(5)
 
         conn_pool = p.connection_from_url('http://google.com')
