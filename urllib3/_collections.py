@@ -16,20 +16,21 @@ except ImportError:
 __all__ = ['RecentlyUsedContainer']
 
 
-_Empty = object()
+_Null = object()
 
 
 class RecentlyUsedContainer(MutableMapping):
     """
-    Provides a dict-like that maintains up to ``maxsize`` keys while throwing
-    away the least-recently-used keys beyond ``maxsize``.
+    Provides a thread-safe dict-like container which maintains up to
+    ``maxsize`` keys while throwing away the least-recently-used keys beyond
+    ``maxsize``.
 
     :param maxsize:
         Maximum number of recent elements to retain.
 
     :param dispose_func:
-        Callback which will get called wwhenever an element is evicted from
-        the container.
+        Every time an item is evicted from the container,
+        ``dispose_func(value)`` is called.  Callback which will get called
     """
 
     ContainerType = OrderedDict
@@ -38,13 +39,12 @@ class RecentlyUsedContainer(MutableMapping):
         self._maxsize = maxsize
         self.dispose_func = dispose_func
 
-        # OrderedDict is not inherently threadsafe, so protect it with a lock
         self._container = self.ContainerType()
         self._lock = Lock()
 
     def clear(self):
         with self._lock:
-            # copy pointers to all values, then wipe the mapping
+            # Copy pointers to all values, then wipe the mapping
             # under Python 2, this copies the list of values twice :-|
             values = list(self._container.values())
             self._container.clear()
@@ -60,27 +60,27 @@ class RecentlyUsedContainer(MutableMapping):
             self._container[key] = item
             return item
 
-    def __setitem__(self, key, item):
-        evicted_entry = _Empty
+    def __setitem__(self, key, value):
+        evicted_value = _Null
         with self._lock:
             # Possibly evict the existing value of 'key'
-            evicted_entry = self._container.get(key, _Empty)
-            self._container[key] = item
+            evicted_value = self._container.get(key, _Null)
+            self._container[key] = value
 
             # If we didn't evict an existing value, we might have to evict the
             # least recently used item from the beginning of the container.
             if len(self._container) > self._maxsize:
-                _key, evicted_entry = self._container.popitem(last=False)
+                _key, evicted_value = self._container.popitem(last=False)
 
-        if self.dispose_func and evicted_entry is not _Empty:
-            self.dispose_func(evicted_entry)
+        if self.dispose_func and evicted_value is not _Null:
+            self.dispose_func(evicted_value)
 
     def __delitem__(self, key):
         with self._lock:
-            entry = self._container.pop(key)
+            value = self._container.pop(key)
 
         if self.dispose_func:
-            self.dispose_func(entry)
+            self.dispose_func(value)
 
     def __len__(self):
         with self._lock:
