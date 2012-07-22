@@ -9,25 +9,25 @@ import socket
 
 from socket import timeout as SocketTimeout
 
-try:   # Python 3
+try: # Python 3
     from http.client import HTTPConnection, HTTPException
     from http.client import HTTP_PORT, HTTPS_PORT
 except ImportError:
     from httplib import HTTPConnection, HTTPException
     from httplib import HTTP_PORT, HTTPS_PORT
 
-try:   # Python 3
+try: # Python 3
     from queue import LifoQueue, Empty, Full
 except ImportError:
     from Queue import LifoQueue, Empty, Full
 
 
-try:   # Compiled with SSL?
+try: # Compiled with SSL?
     HTTPSConnection = object
     BaseSSLError = None
     ssl = None
 
-    try:   # Python 3
+    try: # Python 3
         from http.client import HTTPSConnection
     except ImportError:
         from httplib import HTTPSConnection
@@ -35,7 +35,7 @@ try:   # Compiled with SSL?
     import ssl
     BaseSSLError = ssl.SSLError
 
-except (ImportError, AttributeError):
+except (ImportError, AttributeError): # Platform-specific: No SSL.
     pass
 
 
@@ -43,6 +43,7 @@ from .request import RequestMethods
 from .response import HTTPResponse
 from .util import get_host, is_connection_dropped
 from .exceptions import (
+    ClosedPoolError,
     EmptyPoolError,
     HostChangedError,
     MaxRetryError,
@@ -206,10 +207,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         try:
             conn = self.pool.get(block=self.block, timeout=timeout)
 
-            # If this is a persistent connection, check if it got disconnected
-            if conn and is_connection_dropped(conn):
-                log.info("Resetting dropped connection: %s" % self.host)
-                conn.close()
+        except AttributeError: # self.pool is None
+            raise ClosedPoolError(self, "Pool is closed.")
 
         except Empty:
             if self.block:
@@ -217,6 +216,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                      "Pool reached maximum size and no more "
                                      "connections are allowed.")
             pass  # Oh well, we'll create a new connection then
+
+        # If this is a persistent connection, check if it got disconnected
+        if conn and is_connection_dropped(conn):
+            log.info("Resetting dropped connection: %s" % self.host)
+            conn.close()
 
         return conn or self._new_conn()
 
@@ -228,16 +232,25 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             Connection object for the current host and port as returned by
             :meth:`._new_conn` or :meth:`._get_conn`.
 
-        If the pool is already full, the connection is discarded because we
-        exceeded maxsize. If connections are discarded frequently, then maxsize
-        should be increased.
+        If the pool is already full, the connection is closed and discarded
+        because we exceeded maxsize. If connections are discarded frequently,
+        then maxsize should be increased.
+
+        If the pool is closed, then the connection will be closed and discarded.
         """
         try:
             self.pool.put(conn, block=False)
+            return # Everything is dandy, done.
+        except AttributeError:
+            # self.pool is None.
+            pass
         except Full:
             # This should never happen if self.block == True
             log.warning("HttpConnectionPool is full, discarding connection: %s"
                         % self.host)
+
+        # Connection never got put back into the pool, close it.
+        conn.close()
 
     def _make_request(self, conn, method, url, timeout=_Default,
                       **httplib_request_kw):
@@ -269,6 +282,22 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                           httplib_response.status,
                                           httplib_response.length))
         return httplib_response
+
+    def close(self):
+        """
+        Close all pooled connections and disable the pool.
+        """
+        # Disable access to the pool
+        old_pool, self.pool = self.pool, None
+
+        try:
+            while True:
+                conn = old_pool.get(block=False)
+                if conn:
+                    conn.close()
+
+        except Empty:
+            pass # Done.
 
     def is_same_host(self, url):
         """

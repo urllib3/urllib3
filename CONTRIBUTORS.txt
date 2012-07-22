@@ -42,5 +42,8 @@ In chronological order:
 * studer <theo.studer@gmail.com>
   * IPv6 url support and test coverage
 
+* Shivaram Lingamneni <slingamn@cs.stanford.edu>
+  * Support for explicitly closing pooled connections
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

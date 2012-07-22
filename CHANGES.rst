@@ -19,7 +19,9 @@ dev (master branch)
 * New ``urllib3.exceptions.DecodeError`` exception for when automatic decoding,
   based on the Content-Type header, fails.
 
-* Fixed bug with pool depletion and leaking connections (Issue #76).
+* Fixed bug with pool depletion and leaking connections (Issue #76). Added
+  explicit connection closing on pool eviction. Added
+  ``urllib3.PoolManager.clear()``.
 
 
 1.4 (2012-06-16)
