@@ -203,17 +203,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             :class:`urllib3.exceptions.EmptyPoolError` if the pool is empty and
             :prop:`.block` is ``True``.
         """
-        if self.pool is None:
-            raise ClosedPoolError(self, "Pool is closed.")
-
         conn = None
         try:
             conn = self.pool.get(block=self.block, timeout=timeout)
 
-            # If this is a persistent connection, check if it got disconnected
-            if conn and is_connection_dropped(conn):
-                log.info("Resetting dropped connection: %s" % self.host)
-                conn.close()
+        except AttributeError: # self.pool is None
+            raise ClosedPoolError(self, "Pool is closed.")
 
         except Empty:
             if self.block:
@@ -221,6 +216,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                      "Pool reached maximum size and no more "
                                      "connections are allowed.")
             pass  # Oh well, we'll create a new connection then
+
+        # If this is a persistent connection, check if it got disconnected
+        if conn and is_connection_dropped(conn):
+            log.info("Resetting dropped connection: %s" % self.host)
+            conn.close()
 
         return conn or self._new_conn()
 
