@@ -15,6 +15,7 @@ from urllib3.exceptions import (
     TimeoutError,
 )
 from urllib3.packages.six import u
+from socket import timeout as SocketTimeout
 
 from dummyserver.testcase import HTTPDummyServerTestCase
 
@@ -97,13 +98,30 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(r.status, 200, r.data)
 
     def test_timeout(self):
-        pool = HTTPConnectionPool(self.host, self.port, timeout=0.01)
-        try:
-            pool.request('GET', '/sleep',
-                         fields={'seconds': '0.02'})
-            self.fail("Failed to raise TimeoutError exception")
-        except TimeoutError:
-            pass
+        url = '/sleep?seconds=0.005'
+        timeout = 0.001
+
+        # Pool-global timeout
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+
+        conn = pool._get_conn()
+        with self.assertRaises(SocketTimeout):
+            pool._make_request(conn, 'GET', url)
+        pool._put_conn(conn)
+
+        with self.assertRaises(TimeoutError):
+            pool.request('GET', url)
+
+        # Request-specific timeout
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.5)
+
+        conn = pool._get_conn()
+        with self.assertRaises(SocketTimeout):
+            pool._make_request(conn, 'GET', url, timeout=timeout)
+        pool._put_conn(conn)
+
+        with self.assertRaises(TimeoutError):
+            pool.request('GET', url, timeout=timeout)
 
     def test_redirect(self):
         r = self.pool.request('GET', '/redirect', fields={'target': '/'}, redirect=False)

@@ -23,6 +23,8 @@ dev (master branch)
   explicit connection closing on pool eviction. Added
   ``urllib3.PoolManager.clear()``.
 
+* 100% unit test coverage.
+
 
 1.4 (2012-06-16)
 ++++++++++++++++
