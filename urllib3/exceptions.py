@@ -23,6 +23,10 @@ class SSLError(HTTPError):
     "Raised when SSL certificate fails in an HTTPS connection."
     pass
 
+class DecodeError(HTTPError):
+    "Raised when automatic decoding based on Content-Type fails."
+    pass
+
 
 ## Leaf Exceptions
 

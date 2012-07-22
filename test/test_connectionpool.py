@@ -4,6 +4,7 @@ from urllib3.connectionpool import connection_from_url, HTTPConnectionPool
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
     EmptyPoolError,
+    HostChangedError,
     MaxRetryError,
     SSLError,
     TimeoutError,
@@ -112,6 +113,12 @@ class TestConnectionPool(unittest.TestCase):
         with self.assertRaises(MaxRetryError):
             pool.request('GET', '/', retries=1, pool_timeout=0.01)
         self.assertEqual(pool.pool.qsize(), POOL_SIZE)
+
+    def test_assert_same_host(self):
+        c = connection_from_url('http://google.com:80')
+
+        with self.assertRaises(HostChangedError):
+            c.request('GET', 'http://yahoo.com:80', assert_same_host=True)
 
 
 if __name__ == '__main__':

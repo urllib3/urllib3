@@ -1,9 +1,9 @@
 import unittest
-import zlib
 
 from io import BytesIO
 
 from urllib3.response import HTTPResponse
+from urllib3.exceptions import DecodeError
 
 class TestLegacyResponse(unittest.TestCase):
     def test_getheaders(self):
@@ -50,7 +50,7 @@ class TestResponse(unittest.TestCase):
 
     def test_decode_bad_data(self):
         fp = BytesIO(b'\x00' * 10)
-        self.assertRaises(zlib.error, HTTPResponse, fp, headers={
+        self.assertRaises(DecodeError, HTTPResponse, fp, headers={
             'content-encoding': 'deflate'
         })
 

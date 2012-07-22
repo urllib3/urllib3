@@ -8,7 +8,12 @@ except:
     from urllib import urlencode
 
 from urllib3 import encode_multipart_formdata, HTTPConnectionPool
-from urllib3.exceptions import TimeoutError, EmptyPoolError, MaxRetryError
+from urllib3.exceptions import (
+    EmptyPoolError,
+    DecodeError,
+    MaxRetryError,
+    TimeoutError,
+)
 from urllib3.packages.six import u
 
 from dummyserver.testcase import HTTPDummyServerTestCase
@@ -220,6 +225,15 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                                    headers={'accept-encoding': 'deflate'})
         self.assertEqual(r.headers.get('content-encoding'), 'deflate')
         self.assertEqual(r.data, b'hello, world!')
+
+    def test_bad_decode(self):
+        with self.assertRaises(DecodeError):
+            self.pool.request('GET', '/encodingrequest',
+                              headers={'accept-encoding': 'garbage-deflate'})
+
+        with self.assertRaises(DecodeError):
+            self.pool.request('GET', '/encodingrequest',
+                              headers={'accept-encoding': 'garbage-gzip'})
 
     def test_connection_count(self):
         pool = HTTPConnectionPool(self.host, self.port, maxsize=1)
