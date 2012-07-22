@@ -30,7 +30,7 @@ Highlights
 
 - Thread-safe and sanity-safe.
 
-- Tested on Python 2.6+ and Python 3.2+, 99% unit test coverage.
+- Tested on Python 2.6+ and Python 3.2+, 100% unit test coverage.
 
 - Works with AppEngine, gevent, and eventlib.
 

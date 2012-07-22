@@ -4,6 +4,13 @@ Helpers
 Useful methods for working with :mod:`httplib`, completely decoupled from
 code specific to **urllib3**.
 
+
+Utilities
+---------
+
+.. automodule:: urllib3.util
+   :members:
+
 Filepost
 --------
 
