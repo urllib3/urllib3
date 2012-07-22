@@ -53,7 +53,7 @@ class TestLRUContainer(unittest.TestCase):
         for i in xrange(10):
             d[i] = True
 
-        # keys should be ordered by access time
+        # Keys should be ordered by access time
         self.assertEqual(list(d.keys()), [5, 6, 7, 8, 9])
 
         new_order = [7,8,6,9,5]
@@ -95,24 +95,33 @@ class TestLRUContainer(unittest.TestCase):
 
     def test_disposal(self):
         evicted_items = []
+
         def dispose_func(arg):
-            # save the evicted datum for inspection
+            # Save the evicted datum for inspection
             evicted_items.append(arg)
 
         d = Container(5, dispose_func=dispose_func)
         for i in xrange(5):
             d[i] = i
         self.assertEqual(list(d.keys()), list(xrange(5)))
-        # nothing should have been disposed
-        self.assertEqual(evicted_items, [])
+        self.assertEqual(evicted_items, []) # Nothing disposed
 
         d[5] = 5
         self.assertEqual(list(d.keys()), list(xrange(1, 6)))
-        # dispose_func should have been called on the LRU item, 0
         self.assertEqual(evicted_items, [0])
 
+        del d[1]
+        self.assertEqual(evicted_items, [0, 1])
+
         d.clear()
-        self.assertEqual(evicted_items, list(xrange(0, 6)))
+        self.assertEqual(evicted_items, [0, 1, 2, 3, 4, 5])
+
+    def test_iter(self):
+        d = Container()
+
+        with self.assertRaises(NotImplementedError):
+            for i in d:
+                self.fail("Iteration shouldn't be implemented.")
 
 if __name__ == '__main__':
     unittest.main()
