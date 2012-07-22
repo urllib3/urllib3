@@ -10,25 +10,25 @@ import threading
 
 from socket import timeout as SocketTimeout
 
-try:   # Python 3
+try: # Python 3
     from http.client import HTTPConnection, HTTPException
     from http.client import HTTP_PORT, HTTPS_PORT
 except ImportError:
     from httplib import HTTPConnection, HTTPException
     from httplib import HTTP_PORT, HTTPS_PORT
 
-try:   # Python 3
+try: # Python 3
     from queue import LifoQueue, Empty, Full
 except ImportError:
     from Queue import LifoQueue, Empty, Full
 
 
-try:   # Compiled with SSL?
+try: # Compiled with SSL?
     HTTPSConnection = object
     BaseSSLError = None
     ssl = None
 
-    try:   # Python 3
+    try: # Python 3
         from http.client import HTTPSConnection
     except ImportError:
         from httplib import HTTPSConnection

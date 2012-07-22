@@ -3,92 +3,92 @@
 #
 # This module is part of urllib3 and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-from __future__ import with_statement
 
-import threading
 from collections import MutableMapping
+from threading import Lock
 
-try:
-    # available on 2.7 and up
+try: # Python 2.7+
     from collections import OrderedDict
-    # hush pyflakes
-    OrderedDict
 except ImportError:
     from .packages.ordered_dict import OrderedDict
 
+
 __all__ = ['RecentlyUsedContainer']
+
+
+_Empty = object()
+
 
 class RecentlyUsedContainer(MutableMapping):
     """
     Provides a dict-like that maintains up to ``maxsize`` keys while throwing
     away the least-recently-used keys beyond ``maxsize``.
+
+    :param maxsize:
+        Maximum number of recent elements to retain.
+
+    :param dispose_func:
+        Callback which will get called wwhenever an element is evicted from
+        the container.
     """
 
-    # this is an object no one else knows about, sort of a hyper-None
-    # cf. the implementation of OrderedDict
-    __marker = object()
+    ContainerType = OrderedDict
 
     def __init__(self, maxsize=10, dispose_func=None):
-        """Constructor.
-
-        Args:
-            maxsize - int, maximum number of elements to retain
-            dispose_func - callback taking a single argument, called to destroy
-                elements that are being evicted or released
-        """
         self._maxsize = maxsize
         self.dispose_func = dispose_func
 
         # OrderedDict is not inherently threadsafe, so protect it with a lock
-        self._mapping = OrderedDict()
-        self._lock = threading.Lock()
+        self._container = self.ContainerType()
+        self._lock = Lock()
 
     def clear(self):
         with self._lock:
             # copy pointers to all values, then wipe the mapping
             # under Python 2, this copies the list of values twice :-|
-            values = list(self._mapping.values())
-            self._mapping.clear()
+            values = list(self._container.values())
+            self._container.clear()
 
         if self.dispose_func:
             for value in values:
                 self.dispose_func(value)
 
     def __getitem__(self, key):
+        # Re-insert the item, moving it to the end of the eviction line.
         with self._lock:
-            # remove and re-add the item, moving it to the end of the eviction line
-            # throw the KeyError back to calling code if it's not present:
-            item = self._mapping.pop(key)
-            self._mapping[key] = item
+            item = self._container.pop(key)
+            self._container[key] = item
             return item
 
     def __setitem__(self, key, item):
-        evicted_entry = self.__marker
+        evicted_entry = _Empty
         with self._lock:
-            # possibly evict the existing value of 'key'
-            evicted_entry = self._mapping.get(key, self.__marker)
-            self._mapping[key] = item
-            # if we didn't evict an existing value, we might have to evict the LRU value
-            if len(self._mapping) > self._maxsize:
-                # pop from the beginning of the dict
-                _key, evicted_entry = self._mapping.popitem(last=False)
+            # Possibly evict the existing value of 'key'
+            evicted_entry = self._container.get(key, _Empty)
+            self._container[key] = item
 
-        if self.dispose_func and evicted_entry is not self.__marker:
+            # If we didn't evict an existing value, we might have to evict the
+            # least recently used item from the beginning of the container.
+            if len(self._container) > self._maxsize:
+                _key, evicted_entry = self._container.popitem(last=False)
+
+        if self.dispose_func and evicted_entry is not _Empty:
             self.dispose_func(evicted_entry)
 
     def __delitem__(self, key):
         with self._lock:
-            entry = self._mapping.pop(key)
+            entry = self._container.pop(key)
+
         if self.dispose_func:
             self.dispose_func(entry)
 
     def __len__(self):
         with self._lock:
-            return len(self._mapping)
+            return len(self._container)
 
     def __iter__(self):
         raise NotImplementedError('Iteration over this class is unlikely to be threadsafe.')
 
     def keys(self):
         with self._lock:
-            return self._mapping.keys()
+            return self._container.keys()
