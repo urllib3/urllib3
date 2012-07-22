@@ -16,6 +16,11 @@ dev (master branch)
 * ``urllib3.PoolManager`` strips the scheme and host before sending the request
   uri. (Issue #8)
 
+* New ``urllib3.exceptions.DecodeError`` exception for when automatic decoding,
+  based on the Content-Type header, fails.
+
+* Fixed bug with pool depletion and leaking connections (Issue #76).
+
 
 1.4 (2012-06-16)
 ++++++++++++++++
