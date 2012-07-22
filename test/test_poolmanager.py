@@ -2,6 +2,7 @@ import unittest
 
 from urllib3.poolmanager import PoolManager
 from urllib3 import connection_from_url
+from urllib3.exceptions import ClosedPoolError
 
 
 class TestPoolManager(unittest.TestCase):
@@ -41,6 +42,29 @@ class TestPoolManager(unittest.TestCase):
             connections.add(conn)
 
         self.assertEqual(len(connections), 5)
+
+    def test_pool_close(self):
+        p = PoolManager(5)
+
+        conn_pool = p.connection_from_url('http://google.com')
+        self.assertEqual(len(p.pools), 1)
+
+        conn = conn_pool._get_conn()
+
+        p.clear()
+        self.assertEqual(len(p.pools), 0)
+
+        with self.assertRaises(ClosedPoolError):
+            conn_pool._get_conn()
+
+        conn_pool._put_conn(conn)
+
+        with self.assertRaises(ClosedPoolError):
+            conn_pool._get_conn()
+
+        self.assertEqual(len(p.pools), 0)
+
+
 
 
 if __name__ == '__main__':

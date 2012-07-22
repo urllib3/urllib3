@@ -42,17 +42,6 @@ class RecentlyUsedContainer(MutableMapping):
         self._container = self.ContainerType()
         self._lock = Lock()
 
-    def clear(self):
-        with self._lock:
-            # Copy pointers to all values, then wipe the mapping
-            # under Python 2, this copies the list of values twice :-|
-            values = list(self._container.values())
-            self._container.clear()
-
-        if self.dispose_func:
-            for value in values:
-                self.dispose_func(value)
-
     def __getitem__(self, key):
         # Re-insert the item, moving it to the end of the eviction line.
         with self._lock:
@@ -88,6 +77,17 @@ class RecentlyUsedContainer(MutableMapping):
 
     def __iter__(self):
         raise NotImplementedError('Iteration over this class is unlikely to be threadsafe.')
+
+    def clear(self):
+        with self._lock:
+            # Copy pointers to all values, then wipe the mapping
+            # under Python 2, this copies the list of values twice :-|
+            values = list(self._container.values())
+            self._container.clear()
+
+        if self.dispose_func:
+            for value in values:
+                self.dispose_func(value)
 
     def keys(self):
         with self._lock:

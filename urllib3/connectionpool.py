@@ -204,7 +204,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             :prop:`.block` is ``True``.
         """
         if self.pool is None:
-            raise ClosedPoolError("Pool is closed.")
+            raise ClosedPoolError(self, "Pool is closed.")
 
         conn = None
         try:
@@ -290,7 +290,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         try:
             while True:
                 conn = old_pool.get(block=False)
-                conn.close()
+                if conn:
+                    conn.close()
 
         except Empty:
             pass # Done.

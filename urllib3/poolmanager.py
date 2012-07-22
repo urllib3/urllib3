@@ -53,7 +53,7 @@ class PoolManager(RequestMethods):
         self.pools = RecentlyUsedContainer(num_pools,
                                            dispose_func=lambda p: p.close())
 
-    def close(self):
+    def clear(self):
         """
         Empty our store of pools and direct them all to close.
 
