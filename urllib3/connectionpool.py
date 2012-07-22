@@ -238,16 +238,21 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         If the pool is closed, then the connection will be closed and discarded.
         """
-        if self.pool is None:
-            conn.close()
-            return
+        conn_returned = False
 
         try:
             self.pool.put(conn, block=False)
+            conn_returned = True
+        except AttributeError:
+            # self.pool is None.
+            pass
         except Full:
             # This should never happen if self.block == True
             log.warning("HttpConnectionPool is full, discarding connection: %s"
                         % self.host)
+
+        if not conn_returned:
+            conn.close()
 
     def _make_request(self, conn, method, url, timeout=_Default,
                       **httplib_request_kw):
