@@ -97,10 +97,12 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
         # use SNI if available (since 3.2)
-        try:
+
+        # python >= 3.2
+        if hasattr(ssl, "SSLContext"):
             context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
             context.verify_mode = self.cert_reqs
-            if self.verify_mode != ssl.CERT_NONE:
+            if context.verify_mode != ssl.CERT_NONE:
                 try:
                     context.load_verify_locations(self.ca_certs)
                 except TypeError as e:
@@ -109,9 +111,14 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             if self.cert_file != None:
                 context.load_cert_chain(self.cert_file, self.key_file)
 
-            self.sock = context.wrap_socket(sock, server_hostname=self.host)
+            # ssl is SNI-capable
+            if hasattr(ssl, "HAS_SNI"):
+                self.sock = context.wrap_socket(sock, server_hostname=self.host)
+            else:
+                self.sock = context.wrap_socket(sock)
 
-        except AttributeError:
+        # python < 3.2
+        else:
             self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file,
                                         cert_reqs=self.cert_reqs,
                                         ca_certs=self.ca_certs)
