@@ -100,7 +100,11 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         try:
             context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
             context.verify_mode = self.cert_reqs
-            context.load_verify_locations(self.ca_certs)
+            if self.verify_mode != ssl.CERT_NONE:
+                try:
+                    context.load_verify_locations(self.ca_certs)
+                except TypeError as e:
+                    raise BaseSSLError(e)
 
             if self.cert_file != None:
                 context.load_cert_chain(self.cert_file, self.key_file)
