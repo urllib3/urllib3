@@ -96,9 +96,22 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
-        self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file,
-                                    cert_reqs=self.cert_reqs,
-                                    ca_certs=self.ca_certs)
+        # use SNI if available (since 3.2)
+        try:
+            context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+            context.verify_mode = self.cert_reqs
+            context.load_verify_locations(self.ca_certs)
+
+            if self.cert_file != None:
+                context.load_cert_chain(self.cert_file, self.key_file)
+
+            self.sock = context.wrap_socket(sock, server_hostname=self.host)
+
+        except AttributeError:
+            self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file,
+                                        cert_reqs=self.cert_reqs,
+                                        ca_certs=self.ca_certs)
+
         if self.ca_certs:
             match_hostname(self.sock.getpeercert(), self.host)
 
