@@ -112,7 +112,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                 context.load_cert_chain(self.cert_file, self.key_file)
 
             # ssl is SNI-capable
-            if hasattr(ssl, "HAS_SNI"):
+            if hasattr(ssl, "HAS_SNI") and ssl.HAS_SNI:
                 self.sock = context.wrap_socket(sock, server_hostname=self.host)
             else:
                 self.sock = context.wrap_socket(sock)
