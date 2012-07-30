@@ -280,6 +280,8 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
                 raise SSLError(e)
         if certfile != None:
             context.load_cert_chain(certfile, keyfile)
+        if HAS_SNI: # Platform-specific: OpenSSL with enabled SNI
+            return context.wrap_socket(sock, server_hostname=server_hostname)
         return context.wrap_socket(sock)
 
     else: # Platform-specific: Python < 3.2
