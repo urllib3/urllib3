@@ -19,6 +19,15 @@ except ImportError: # `poll` doesn't exist on OSX and other platforms
     except ImportError: # `select` doesn't exist on AppEngine.
         select = False
 
+try:
+    from ssl import SSLContext
+except ImportError: # python < 3.2
+    SSLContext = False
+try:
+    from ssl import HAS_SNI
+except ImportError: # openssl without SNI
+    HAS_SNI = False
+
 from .packages import six
 from .exceptions import LocationParseError
 
