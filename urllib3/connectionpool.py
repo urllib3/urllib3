@@ -491,7 +491,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     When Python is compiled with the :mod:`ssl` module, then
     :class:`.VerifiedHTTPSConnection` is used, which *can* verify certificates,
-    instead of :class:httplib.HTTPSConnection`.
+    instead of :class:`httplib.HTTPSConnection`.
 
     The ``key_file``, ``cert_file``, ``cert_reqs``, and ``ca_certs`` parameters
     are only used if :mod:`ssl` is available and are fed into
