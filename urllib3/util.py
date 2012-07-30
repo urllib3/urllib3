@@ -8,6 +8,7 @@
 from base64 import b64encode
 from collections import namedtuple
 from socket import error as SocketError
+from ssl import wrap_socket, CERT_NONE
 
 try:
     from select import poll, POLLIN
@@ -250,3 +251,15 @@ def is_connection_dropped(conn):
         if fno == sock.fileno():
             # Either data is buffered (bad), or the connection is dropped.
             return True
+
+def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
+                    ca_certs=None, server_hostname=None):
+    """
+    All arguments except `server_hostname` have the same meaning as for
+    :func:`ssl.wrap_socket`
+
+    :param server_hostname:
+        Hostname of the expected certificate
+    """
+    return wrap_socket(sock, keyfile=keyfile, certfile=certfile,
+                       ca_certs=ca_certs, cert_reqs=cert_reqs)
