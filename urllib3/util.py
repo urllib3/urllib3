@@ -8,7 +8,7 @@
 from base64 import b64encode
 from collections import namedtuple
 from socket import error as SocketError
-from ssl import wrap_socket, CERT_NONE
+from ssl import wrap_socket, CERT_NONE, SSLError
 
 try:
     from select import poll, POLLIN
@@ -20,7 +20,7 @@ except ImportError: # `poll` doesn't exist on OSX and other platforms
         select = False
 
 try:
-    from ssl import SSLContext
+    from ssl import SSLContext, PROTOCOL_SSLv23
 except ImportError: # python < 3.2
     SSLContext = False
 try:
@@ -270,5 +270,18 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
     :param server_hostname:
         Hostname of the expected certificate
     """
-    return wrap_socket(sock, keyfile=keyfile, certfile=certfile,
+    if SSLContext: # Platform-specific: Python >= 3.2
+        context = SSLContext(PROTOCOL_SSLv23)
+        context.verify_mode = cert_reqs
+        if context.verify_mode != CERT_NONE:
+            try:
+                context.load_verify_locations(ca_certs)
+            except TypeError as e:
+                raise SSLError(e)
+        if certfile != None:
+            context.load_cert_chain(certfile, keyfile)
+        return context.wrap_socket(sock)
+
+    else: # Platform-specific: Python < 3.2
+        return wrap_socket(sock, keyfile=keyfile, certfile=certfile,
                        ca_certs=ca_certs, cert_reqs=cert_reqs)
