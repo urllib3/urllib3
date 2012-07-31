@@ -41,7 +41,7 @@ except (ImportError, AttributeError): # Platform-specific: No SSL.
 
 from .request import RequestMethods
 from .response import HTTPResponse
-from .util import get_host, is_connection_dropped
+from .util import get_host, is_connection_dropped, ssl_wrap_socket
 from .exceptions import (
     ClosedPoolError,
     EmptyPoolError,
@@ -96,32 +96,10 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
-        # use SNI if available (since 3.2)
-
-        # python >= 3.2
-        if hasattr(ssl, "SSLContext"):
-            context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-            context.verify_mode = self.cert_reqs
-            if context.verify_mode != ssl.CERT_NONE:
-                try:
-                    context.load_verify_locations(self.ca_certs)
-                except TypeError as e:
-                    raise BaseSSLError(e)
-
-            if self.cert_file != None:
-                context.load_cert_chain(self.cert_file, self.key_file)
-
-            # ssl is SNI-capable
-            if hasattr(ssl, "HAS_SNI") and ssl.HAS_SNI:
-                self.sock = context.wrap_socket(sock, server_hostname=self.host)
-            else:
-                self.sock = context.wrap_socket(sock)
-
-        # python < 3.2
-        else:
-            self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file,
-                                        cert_reqs=self.cert_reqs,
-                                        ca_certs=self.ca_certs)
+        self.sock = ssl_wrap_socket(sock, self.key_file, self.cert_file,
+                                    cert_reqs=self.cert_reqs,
+                                    ca_certs=self.ca_certs,
+                                    server_hostname=self.host)
 
         if self.ca_certs:
             match_hostname(self.sock.getpeercert(), self.host)
@@ -515,7 +493,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     When Python is compiled with the :mod:`ssl` module, then
     :class:`.VerifiedHTTPSConnection` is used, which *can* verify certificates,
-    instead of :class:httplib.HTTPSConnection`.
+    instead of :class:`httplib.HTTPSConnection`.
 
     The ``key_file``, ``cert_file``, ``cert_reqs``, and ``ca_certs`` parameters
     are only used if :mod:`ssl` is available and are fed into

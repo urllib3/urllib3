@@ -8,6 +8,7 @@
 from base64 import b64encode
 from collections import namedtuple
 from socket import error as SocketError
+from ssl import wrap_socket, CERT_NONE, SSLError
 
 try:
     from select import poll, POLLIN
@@ -17,6 +18,15 @@ except ImportError: # `poll` doesn't exist on OSX and other platforms
         from select import select
     except ImportError: # `select` doesn't exist on AppEngine.
         select = False
+
+try:
+    from ssl import SSLContext, PROTOCOL_SSLv23
+except ImportError: # python < 3.2
+    SSLContext = False
+try:
+    from ssl import HAS_SNI
+except ImportError: # openssl without SNI
+    HAS_SNI = False
 
 from .packages import six
 from .exceptions import LocationParseError
@@ -83,7 +93,7 @@ def split_first(s, delims):
 
 def parse_url(url):
     """
-    Given a url, return a parsed :class:`.Url` namedtuple. Best-effort is
+    Given a url, return a parsed :class:`.Url` named tuple. Best-effort is
     performed to parse incomplete urls. Fields not provided will be None.
 
     Partly backwards-compatible with :mod:`urlparse`.
@@ -92,9 +102,9 @@ def parse_url(url):
 
         >>> parse_url('http://google.com/mail/')
         Url(scheme='http', host='google.com', port=None, path='/', ...)
-        >>> prase_url('google.com:80')
+        >>> parse_url('google.com:80')
         Url(scheme=None, host='google.com', port=80, path=None, ...)
-        >>> prase_url('/foo?bar')
+        >>> parse_url('/foo?bar')
         Url(scheme=None, host=None, port=None, path='/foo', query='bar', ...)
     """
 
@@ -250,3 +260,30 @@ def is_connection_dropped(conn):
         if fno == sock.fileno():
             # Either data is buffered (bad), or the connection is dropped.
             return True
+
+def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
+                    ca_certs=None, server_hostname=None):
+    """
+    All arguments except `server_hostname` have the same meaning as for
+    :func:`ssl.wrap_socket`
+
+    :param server_hostname:
+        Hostname of the expected certificate
+    """
+    if SSLContext: # Platform-specific: Python >= 3.2
+        context = SSLContext(PROTOCOL_SSLv23)
+        context.verify_mode = cert_reqs
+        if context.verify_mode != CERT_NONE:
+            try:
+                context.load_verify_locations(ca_certs)
+            except TypeError as e:
+                raise SSLError(e)
+        if certfile != None:
+            context.load_cert_chain(certfile, keyfile)
+        if HAS_SNI: # Platform-specific: OpenSSL with enabled SNI
+            return context.wrap_socket(sock, server_hostname=server_hostname)
+        return context.wrap_socket(sock)
+
+    else: # Platform-specific: Python < 3.2
+        return wrap_socket(sock, keyfile=keyfile, certfile=certfile,
+                       ca_certs=ca_certs, cert_reqs=cert_reqs)
