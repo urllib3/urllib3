@@ -145,14 +145,20 @@ class TestingApp(WSGIHandler):
         data = b"hello, world!"
         encoding = request.headers.get('Accept-Encoding', '')
         headers = None
-        if 'gzip' in encoding:
+        if encoding == 'gzip':
             headers = [('Content-Encoding', 'gzip')]
             file_ = BytesIO()
             gzip.GzipFile('', mode='w', fileobj=file_).write(data)
             data = file_.getvalue()
-        elif 'deflate' in encoding:
+        elif encoding == 'deflate':
             headers = [('Content-Encoding', 'deflate')]
             data = zlib.compress(data)
+        elif encoding == 'garbage-gzip':
+            headers = [('Content-Encoding', 'gzip')]
+            data = 'garbage'
+        elif encoding == 'garbage-deflate':
+            headers = [('Content-Encoding', 'deflate')]
+            data = 'garbage'
         return Response(data, headers=headers)
 
     def shutdown(self, request):

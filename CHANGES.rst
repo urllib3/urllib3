@@ -1,6 +1,30 @@
 Changes
 =======
 
+1.5 (2012-08-02)
+++++++++++++++++
+
+* Added ``urllib3.add_stderr_logger()`` for quickly enabling STDERR debug
+  logging in urllib3.
+
+* Native full URL parsing (including auth, path, query, fragment) available in
+  ``urllib3.util.parse_url(url)``.
+
+* Built-in redirect will switch method to 'GET' if status code is 303.
+  (Issue #11)
+
+* ``urllib3.PoolManager`` strips the scheme and host before sending the request
+  uri. (Issue #8)
+
+* New ``urllib3.exceptions.DecodeError`` exception for when automatic decoding,
+  based on the Content-Type header, fails.
+
+* Fixed bug with pool depletion and leaking connections (Issue #76). Added
+  explicit connection closing on pool eviction. Added
+  ``urllib3.PoolManager.clear()``.
+
+* 99% -> 100% unit test coverage.
+
 
 1.4 (2012-06-16)
 ++++++++++++++++
