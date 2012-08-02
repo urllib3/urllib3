@@ -92,9 +92,9 @@ def parse_url(url):
 
         >>> parse_url('http://google.com/mail/')
         Url(scheme='http', host='google.com', port=None, path='/', ...)
-        >>> prase_url('google.com:80')
+        >>> parse_url('google.com:80')
         Url(scheme=None, host='google.com', port=80, path=None, ...)
-        >>> prase_url('/foo?bar')
+        >>> parse_url('/foo?bar')
         Url(scheme=None, host=None, port=None, path='/foo', query='bar', ...)
     """
 
