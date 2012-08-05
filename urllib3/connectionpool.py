@@ -497,7 +497,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     The ``key_file``, ``cert_file``, ``cert_reqs``, and ``ca_certs`` parameters
     are only used if :mod:`ssl` is available and are fed into
-    :meth:`ssl.wrap_socket` to upgrade the connection socket into an SSL socket.
+    :meth:`urllib3.util.ssl_wrap_socket` to upgrade the connection socket into an SSL socket.
     """
 
     scheme = 'https'
