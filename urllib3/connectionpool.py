@@ -6,8 +6,9 @@
 
 import logging
 import socket
+import errno
 
-from socket import timeout as SocketTimeout
+from socket import error as SocketError, timeout as SocketTimeout
 
 try: # Python 3
     from http.client import HTTPConnection, HTTPException
@@ -454,6 +455,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             conn = None
             # This is necessary so we can access e below
             err = e
+
+        except SocketError as e:
+            # If this isn't a "Connection Refused" socket.error, uncatch it.
+            if e.errno != errno.ECONNREFUSED:
+                raise
+            # Treat like HTTPException: discard connection, save error, retry.
+            conn = None
+            err = e
+
 
         finally:
             if release_conn:
