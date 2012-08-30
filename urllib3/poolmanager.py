@@ -141,7 +141,8 @@ class ProxyManager(RequestMethods):
         headers = headers or {}
 
         # Same headers are curl passes for --proxy1.0
-        headers['Accept'] = '*/*'
+        if 'Accept' not in headers:
+            headers['Accept'] = '*/*'
         headers['Proxy-Connection'] = 'Keep-Alive'
 
         return headers
