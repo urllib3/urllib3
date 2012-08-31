@@ -138,14 +138,11 @@ class ProxyManager(RequestMethods):
         self.proxy_pool = proxy_pool
 
     def _set_proxy_headers(self, headers=None):
-        headers = headers or {}
+        headers_ = {'Accept' : '*/*'}
+        if headers:
+            headers_.update(headers)
 
-        # Same headers are curl passes for --proxy1.0
-        if 'Accept' not in headers:
-            headers['Accept'] = '*/*'
-        headers['Proxy-Connection'] = 'Keep-Alive'
-
-        return headers
+        return headers_
 
     def urlopen(self, method, url, **kw):
         "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
