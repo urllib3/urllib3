@@ -1,7 +1,6 @@
 import unittest
 
 from urllib3.poolmanager import PoolManager
-from urllib3.poolmanager import ProxyManager
 from urllib3 import connection_from_url
 from urllib3.exceptions import ClosedPoolError
 
@@ -65,20 +64,8 @@ class TestPoolManager(unittest.TestCase):
 
         self.assertEqual(len(p.pools), 0)
 
-    def test_proxy_headers(self):
-        p = ProxyManager(None)
 
-        #verify default headers
-        default_headers = {'Accept': '*/*'}
-        headers = p._set_proxy_headers()
 
-        self.assertEqual(headers, default_headers)
-
-        #verify default headers don't overwrite provided headers
-        provided_headers = {'Accept': 'application/json', 'custom': 'header'}
-        headers = p._set_proxy_headers(provided_headers)
-
-        self.assertEqual(headers, provided_headers)
 
 if __name__ == '__main__':
     unittest.main()
