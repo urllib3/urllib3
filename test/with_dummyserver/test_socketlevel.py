@@ -96,6 +96,5 @@ class TestProxyManager(SocketDummyServerTestCase):
         self.assertEqual(r.data, b'GET http://google.com/ HTTP/1.1\r\n'
                                  b'Host: google.com\r\n'
                                  b'Accept-Encoding: identity\r\n'
-                                 b'Proxy-Connection: Keep-Alive\r\n'
                                  b'Accept: */*\r\n'
                                  b'\r\n')
