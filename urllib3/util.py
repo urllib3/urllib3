@@ -220,7 +220,7 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
     return headers
 
 
-def is_connection_dropped(conn):
+def is_connection_dropped(conn):  # (No coverage)
     """
     Returns True if the connection is dropped and should be closed.
 
