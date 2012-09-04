@@ -187,8 +187,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         Return a fresh :class:`httplib.HTTPConnection`.
         """
         self.num_connections += 1
-        log.info("Starting new HTTP connection (%d): %s" %
-                 (self.num_connections, self.host))
+        log.debug("Starting new HTTP connection (%d): %s" %
+                  (self.num_connections, self.host))
         return HTTPConnection(host=self.host, port=self.port)
 
     def _get_conn(self, timeout=None):
@@ -219,7 +219,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # If this is a persistent connection, check if it got disconnected
         if conn and is_connection_dropped(conn):
-            log.info("Resetting dropped connection: %s" % self.host)
+            log.debug("Resetting dropped connection: %s" % self.host)
             conn.close()
 
         return conn or self._new_conn()
@@ -246,8 +246,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             pass
         except Full:
             # This should never happen if self.block == True
-            log.warning("HttpConnectionPool is full, discarding connection: %s"
-                        % self.host)
+            log.warn("HttpConnectionPool is full, discarding connection: %s"
+                     % self.host)
 
         # Connection never got put back into the pool, close it.
         conn.close()
@@ -476,7 +476,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if redirect_location:
             if response.status == 303:
                 method = 'GET'
-            log.info("Redirecting %s -> %s" % (url, redirect_location))
+            log.debug("Redirecting %s -> %s" % (url, redirect_location))
             return self.urlopen(method, redirect_location, body, headers,
                                 retries - 1, redirect, assert_same_host,
                                 timeout=timeout, pool_timeout=pool_timeout,
@@ -519,8 +519,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         Return a fresh :class:`httplib.HTTPSConnection`.
         """
         self.num_connections += 1
-        log.info("Starting new HTTPS connection (%d): %s"
-                 % (self.num_connections, self.host))
+        log.debug("Starting new HTTPS connection (%d): %s"
+                  % (self.num_connections, self.host))
 
         if not ssl: # Platform-specific: Python compiled without +ssl
             if not HTTPSConnection or HTTPSConnection is object:
