@@ -40,9 +40,9 @@ class PoolManager(RequestMethods):
     Example: ::
 
         >>> manager = PoolManager(num_pools=2)
-        >>> r = manager.urlopen("http://google.com/")
-        >>> r = manager.urlopen("http://google.com/mail")
-        >>> r = manager.urlopen("http://yahoo.com/")
+        >>> r = manager.request('GET', 'http://google.com/')
+        >>> r = manager.request('GET', 'http://google.com/mail')
+        >>> r = manager.request('GET', 'http://yahoo.com/')
         >>> len(manager.pools)
         2
 
