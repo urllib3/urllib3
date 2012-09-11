@@ -121,7 +121,10 @@ class RequestMethods(object):
             body, content_type = (urlencode(fields or {}),
                                     'application/x-www-form-urlencoded')
 
-        headers = headers or {}
+        if hasattr(self, 'headers'):
+            headers = headers or self.headers or {}
+        else:
+            headers = headers or {}
         headers.update({'Content-Type': content_type})
 
         return self.urlopen(method, url, body=body, headers=headers,
