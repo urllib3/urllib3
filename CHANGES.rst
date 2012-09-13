@@ -4,7 +4,7 @@ Changes
 dev (master branch)
 +++++++++++++++++++
 
-* ...
+* Exceptions are now pickleable, with tests. (Issue #101)
 
 
 1.5 (2012-08-02)
