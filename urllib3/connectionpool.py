@@ -41,7 +41,7 @@ except (ImportError, AttributeError): # Platform-specific: No SSL.
 
 from .request import RequestMethods
 from .response import HTTPResponse
-from .util import get_host, is_connection_dropped
+from .util import get_host, is_connection_dropped, ssl_wrap_socket
 from .exceptions import (
     ClosedPoolError,
     EmptyPoolError,
@@ -96,9 +96,11 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
-        self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file,
+        self.sock = ssl_wrap_socket(sock, self.key_file, self.cert_file,
                                     cert_reqs=self.cert_reqs,
-                                    ca_certs=self.ca_certs)
+                                    ca_certs=self.ca_certs,
+                                    server_hostname=self.host)
+
         if self.ca_certs:
             match_hostname(self.sock.getpeercert(), self.host)
 
@@ -491,11 +493,11 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     When Python is compiled with the :mod:`ssl` module, then
     :class:`.VerifiedHTTPSConnection` is used, which *can* verify certificates,
-    instead of :class:httplib.HTTPSConnection`.
+    instead of :class:`httplib.HTTPSConnection`.
 
     The ``key_file``, ``cert_file``, ``cert_reqs``, and ``ca_certs`` parameters
     are only used if :mod:`ssl` is available and are fed into
-    :meth:`ssl.wrap_socket` to upgrade the connection socket into an SSL socket.
+    :meth:`urllib3.util.ssl_wrap_socket` to upgrade the connection socket into an SSL socket.
     """
 
     scheme = 'https'

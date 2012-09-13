@@ -1,9 +1,15 @@
-from urllib3 import HTTPConnectionPool
+from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
+from urllib3.exceptions import SSLError
 
 from dummyserver.testcase import SocketDummyServerTestCase
 
 from threading import Event
+
+try:
+    from ssl import HAS_SNI
+except ImportError: # openssl without SNI
+    HAS_SNI = False
 
 
 class TestCookies(SocketDummyServerTestCase):
@@ -26,6 +32,28 @@ class TestCookies(SocketDummyServerTestCase):
         r = pool.request('GET', '/', retries=0)
         self.assertEquals(r.headers, {'set-cookie': 'foo=1, bar=1'})
 
+if HAS_SNI:
+    class TestSNI(SocketDummyServerTestCase):
+
+        def test_hostname_in_first_request_packet(self):
+            done_receiving = Event()
+            self.buf = b''
+
+            def socket_handler(listener):
+                sock = listener.accept()[0]
+
+                self.buf = sock.recv(65536) # We only accept one packet
+                done_receiving.set()  # let the test know it can proceed
+
+            self._start_server(socket_handler)
+            pool = HTTPSConnectionPool(self.host, self.port)
+            try:
+                pool.request('GET', '/', retries=0)
+            except SSLError: # We are violating the protocol
+                pass
+            done_receiving.wait()
+            self.assertTrue(self.buf.find(self.host.encode()) != -1,
+                            "missing hostname in SSL handshake")
 
 class TestSocketClosing(SocketDummyServerTestCase):
 
