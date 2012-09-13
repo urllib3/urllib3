@@ -18,6 +18,10 @@ class PoolError(HTTPError):
         self.pool = pool
         HTTPError.__init__(self, "%s: %s" % (pool, message))
 
+    def __reduce__(self):
+        # For pickling purposes.
+        return self.__class__, (None, self.url)
+
 
 class SSLError(HTTPError):
     "Raised when SSL certificate fails in an HTTPS connection."
