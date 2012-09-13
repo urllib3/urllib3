@@ -9,7 +9,8 @@
 
 class HTTPError(Exception):
     "Base exception used by this module."
-    pass
+    def __init__(self, message):
+        Exception.__init__(self, message)
 
 
 class PoolError(HTTPError):
@@ -72,6 +73,6 @@ class LocationParseError(ValueError, HTTPError):
 
     def __init__(self, location):
         message = "Failed to parse: %s" % location
-        super(LocationParseError, self).__init__(self, message)
+        HTTPError.__init__(self, message)
 
         self.location = location
