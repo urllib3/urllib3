@@ -9,8 +9,7 @@
 
 class HTTPError(Exception):
     "Base exception used by this module."
-    def __init__(self, message):
-        Exception.__init__(self, message)
+    pass
 
 
 class PoolError(HTTPError):
