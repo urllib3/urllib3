@@ -33,6 +33,10 @@ class PoolManager(RequestMethods):
         Number of connection pools to cache before discarding the least
         recently used pool.
 
+    :param headers:
+        Headers to include with all requests, unless other headers are given
+        explicitly.
+
     :param \**connection_pool_kw:
         Additional parameters are used to create fresh
         :class:`urllib3.connectionpool.ConnectionPool` instances.
@@ -48,7 +52,8 @@ class PoolManager(RequestMethods):
 
     """
 
-    def __init__(self, num_pools=10, **connection_pool_kw):
+    def __init__(self, num_pools=10, headers=None, **connection_pool_kw):
+        RequestMethods.__init__(self, headers)
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools,
                                            dispose_func=lambda p: p.close())
@@ -113,6 +118,8 @@ class PoolManager(RequestMethods):
 
         kw['assert_same_host'] = False
         kw['redirect'] = False
+        if 'headers' not in kw:
+            kw['headers'] = self.headers
 
         response = conn.urlopen(method, u.request_uri, **kw)
 

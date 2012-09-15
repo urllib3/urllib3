@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import gzip
+import json
 import logging
 import sys
 import time
@@ -160,6 +161,9 @@ class TestingApp(WSGIHandler):
             headers = [('Content-Encoding', 'deflate')]
             data = 'garbage'
         return Response(data, headers=headers)
+
+    def headers(self, request):
+        return Response(json.dumps(request.headers))
 
     def shutdown(self, request):
         sys.exit()

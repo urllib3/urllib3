@@ -6,6 +6,8 @@ dev (master branch)
 
 * Exceptions are now pickleable, with tests. (Issue #101)
 
+* Fixed default headers not getting passed in some cases. (Issue #99)
+
 
 1.5 (2012-08-02)
 ++++++++++++++++

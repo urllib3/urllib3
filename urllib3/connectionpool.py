@@ -166,13 +166,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def __init__(self, host, port=None, strict=False, timeout=None, maxsize=1,
                  block=False, headers=None):
-        super(HTTPConnectionPool, self).__init__(host, port)
+        ConnectionPool.__init__(self, host, port)
+        RequestMethods.__init__(self, headers)
 
         self.strict = strict
         self.timeout = timeout
         self.pool = self.QueueCls(maxsize)
         self.block = block
-        self.headers = headers or {}
 
         # Fill the queue up so that doing get() on it will block properly
         for _ in xrange(maxsize):
@@ -506,9 +506,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  key_file=None, cert_file=None,
                  cert_reqs='CERT_NONE', ca_certs=None):
 
-        super(HTTPSConnectionPool, self).__init__(host, port,
-                                                  strict, timeout, maxsize,
-                                                  block, headers)
+        HTTPConnectionPool.__init__(self, host, port,
+                                    strict, timeout, maxsize,
+                                    block, headers)
         self.key_file = key_file
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
