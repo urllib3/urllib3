@@ -449,7 +449,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Name mismatch
             raise SSLError(e)
 
-        except (HTTPException, socket.error) as e:
+        except HTTPException as e:
             # Connection broken, discard. It will be replaced next _get_conn().
             conn = None
             # This is necessary so we can access e below
