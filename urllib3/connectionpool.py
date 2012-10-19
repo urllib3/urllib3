@@ -77,6 +77,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     """
     cert_reqs = None
     ca_certs = None
+    ssl_version = ssl.PROTOCOL_SSLv23
 
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs='CERT_NONE', ca_certs=None):
@@ -99,7 +100,8 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         # trusted_root_certs
         self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file,
                                     cert_reqs=self.cert_reqs,
-                                    ca_certs=self.ca_certs)
+                                    ca_certs=self.ca_certs,
+                                    ssl_version=self.ssl_version)
         if self.ca_certs:
             match_hostname(self.sock.getpeercert(), self.host)
 
@@ -510,7 +512,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  strict=False, timeout=None, maxsize=1,
                  block=False, headers=None,
                  key_file=None, cert_file=None,
-                 cert_reqs='CERT_NONE', ca_certs=None):
+                 cert_reqs='CERT_NONE', ca_certs=None, ssl_version=ssl.PROTOCOL_SSLv23):
 
         HTTPConnectionPool.__init__(self, host, port,
                                     strict, timeout, maxsize,
@@ -519,6 +521,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
         self.ca_certs = ca_certs
+        self.ssl_version = ssl_version
 
     def _new_conn(self):
         """
@@ -542,6 +545,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                                              strict=self.strict)
         connection.set_cert(key_file=self.key_file, cert_file=self.cert_file,
                             cert_reqs=self.cert_reqs, ca_certs=self.ca_certs)
+        connection.ssl_version = self.ssl_version
+
         return connection
 
 
