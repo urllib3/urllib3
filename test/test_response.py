@@ -63,6 +63,14 @@ class TestResponse(unittest.TestCase):
 
         self.assertEqual(r.data, b'foo')
 
+    def test_decode_deflate_case_insensitve(self):
+        import zlib
+        data = zlib.compress(b'foo')
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'DeFlAtE'})
+
+        self.assertEqual(r.data, b'foo')
 
 if __name__ == '__main__':
     unittest.main()
