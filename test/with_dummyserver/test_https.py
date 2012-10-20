@@ -35,7 +35,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self._pool.ssl_version = ssl.PROTOCOL_SSLv2
         with self.assertRaises(SSLError):
             r = self._pool.request('GET', '/specific_method',
-                fields={'method': 'GET'})
+                                   fields={'method': 'GET'})
 
     def test_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
