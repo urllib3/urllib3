@@ -130,7 +130,7 @@ class PoolManager(RequestMethods):
         if response.status == 303:
             method = 'GET'
 
-        log.info("Redirecting %s -> %s" % (url, redirect_location))
+        log.debug("Redirecting %s -> %s" % (url, redirect_location))
         kw['retries'] = kw.get('retries', 3) - 1  # Persist retries countdown
         return self.urlopen(method, redirect_location, **kw)
 
