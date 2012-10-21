@@ -19,6 +19,7 @@ class SocketDummyServerTestCase(unittest.TestCase):
     scheme = 'http'
     host = 'localhost'
     port = 18080
+    server_thread = None
 
     @classmethod
     def _start_server(cls, socket_handler):
@@ -31,6 +32,10 @@ class SocketDummyServerTestCase(unittest.TestCase):
 
         # Lock gets released by thread above
         ready_lock.acquire()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server_thread and cls.server_thread.join()
 
 
 class HTTPDummyServerTestCase(unittest.TestCase):
