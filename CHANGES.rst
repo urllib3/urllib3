@@ -8,6 +8,9 @@ dev (master branch)
 
 * Fixed default headers not getting passed in some cases. (Issue #99)
 
+* Treat "content-encoding" header value as case-insensitive, per RFC 2616
+  Section 3.5. (Issue #110)
+
 
 1.5 (2012-08-02)
 ++++++++++++++++
