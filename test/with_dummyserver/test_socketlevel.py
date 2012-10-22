@@ -1,5 +1,7 @@
-from urllib3 import HTTPConnectionPool
+from urllib3.connectionpool import HTTPConnectionPool
 from urllib3.poolmanager import proxy_from_url
+from urllib3.exceptions import MaxRetryError
+from urllib3.util import is_connection_dropped
 
 from dummyserver.testcase import SocketDummyServerTestCase
 
@@ -66,6 +68,64 @@ class TestSocketClosing(SocketDummyServerTestCase):
         response = pool.request('GET', '/', retries=0)
         self.assertEqual(response.status, 200)
         self.assertEqual(response.data, b'Response 1')
+
+        done_closing.wait()  # wait until the socket in our pool gets closed
+
+    def test_retry_when_server_closes_connection_with_no_data(self):
+        # Test that the retry mechanism works when the server drops the connection
+        # prematurely
+
+        done_closing = Event()
+        ready = Event()
+
+        def socket_handler(listener):
+            for i in 0, 1, 2:
+                print "Entering", i
+                sock = listener.accept()[0]
+                print "Accepting", i
+
+                # only interact with client the second time
+                if i == 1:
+                    buf = b''
+                    while not buf.endswith(b'\r\n\r\n'):
+                        print "Reading..."
+                        buf = sock.recv(65536)
+
+                    print "Sending..."
+                    body = 'Response %d' % i
+                    sock.send(('HTTP/1.1 200 OK\r\n'
+                              'Content-Type: text/plain\r\n'
+                              'Content-Length: %d\r\n'
+                              '\r\n'
+                              '%s' % (len(body), body)).encode('utf-8'))
+                    print "Done."
+
+                sock.close()  # simulate a server timing out, closing socket
+                print "Setting done", i
+                done_closing.set()  # let the test know it can proceed
+
+        self._start_server(socket_handler)
+
+        pool = HTTPConnectionPool(self.host, self.port)
+
+        # Should succeed in the second retry
+        import time
+        time.sleep(0.1)
+        response = pool.request('GET', '/', retries=1)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.data, b'Response 1')
+
+        print "(Client) Waiting..."
+        done_closing.wait()  # wait until the socket in our pool gets closed
+
+        # Fail with no retries
+        with self.assertRaises(MaxRetryError):
+            # This is where a failure should occur for issue #104.
+            response = pool.request('GET', '/', retries=0)
+
+        print "(Client) Waiting final..."
+        done_closing.wait()  # wait until the socket in our pool gets closed
+
 
 
 
