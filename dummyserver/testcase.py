@@ -35,7 +35,7 @@ class SocketDummyServerTestCase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        cls.server_thread and cls.server_thread.join()
+        cls.server_thread and cls.server_thread.stop()
 
 
 class HTTPDummyServerTestCase(unittest.TestCase):

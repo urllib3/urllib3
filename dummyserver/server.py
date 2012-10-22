@@ -47,22 +47,41 @@ class SocketServerThread(threading.Thread):
         self.host = host
         self.port = port
         self.ready_lock = ready_lock
+        self.sock = socket.socket()
+        self._stopping = False
 
     def _start_server(self):
-        sock = socket.socket()
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind((self.host, self.port))
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.bind((self.host, self.port))
 
         # Once listen() returns, the server socket is ready
-        sock.listen(1)
+        self.sock.listen(1)
 
         if self.ready_lock:
             self.ready_lock.release()
 
-        self.socket_handler(sock)
+        try:
+            self.socket_handler(self.sock)
+        except KeyboardInterrupt:
+            raise
+        except:
+            if not self._stopping:
+                raise
 
     def run(self):
         self.server = self._start_server()
+
+    def stop(self):
+        if self.sock:
+            # If a test did not complete, it is possible that the socket handler
+            # is blocking on accept(). To overcome this, we shutdown the socket.
+            # This will cause a blocking accept() call to raise an exception
+            self._stopping = True
+            self.sock.shutdown(socket.SHUT_RDWR)
+            self.sock.close()
+            self.sock = None
+
+            self.join()
 
 
 class TornadoServerThread(threading.Thread):
