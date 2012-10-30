@@ -52,12 +52,10 @@ class TestMultipartEncoding(unittest.TestCase):
             self.assertEqual(encoded,
                 b'--' + b(BOUNDARY) + b'\r\n'
                 b'Content-Disposition: form-data; name="k"\r\n'
-                b'Content-Type: text/plain\r\n'
                 b'\r\n'
                 b'v\r\n'
                 b'--' + b(BOUNDARY) + b'\r\n'
                 b'Content-Disposition: form-data; name="k2"\r\n'
-                b'Content-Type: text/plain\r\n'
                 b'\r\n'
                 b'v2\r\n'
                 b'--' + b(BOUNDARY) + b'--\r\n'
