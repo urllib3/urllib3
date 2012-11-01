@@ -45,5 +45,8 @@ In chronological order:
 * Shivaram Lingamneni <slingamn@cs.stanford.edu>
   * Support for explicitly closing pooled connections
 
+* hartator <hartator@gmail.com>
+  * Corrected multipart behavior for params 
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
