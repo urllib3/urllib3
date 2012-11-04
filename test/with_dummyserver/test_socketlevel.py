@@ -1,6 +1,9 @@
+import socket
+import errno
+
 from urllib3 import HTTPConnectionPool
 from urllib3.poolmanager import proxy_from_url
-from urllib3.exceptions import MaxRetryError
+from urllib3.exceptions import MaxRetryError, TimeoutError
 
 from dummyserver.testcase import SocketDummyServerTestCase
 
@@ -70,11 +73,26 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
     def test_connection_refused(self):
         # Does the pool retry if there is no listener on the port?
-        # Note: Socket server is not started in this test.
+        # Note: Socket server is not started until after the test.
         pool = HTTPConnectionPool(self.host, self.port)
         with self.assertRaises(MaxRetryError):
             pool.request('GET', '/')
+        self._start_server(lambda x: None)
 
+    def test_connection_timeout(self):
+        timed_out = Event()
+        def socket_handler(listener):
+            timed_out.wait()
+            sock = listener.accept()[0]
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
+
+        with self.assertRaises(TimeoutError):
+            pool.request('GET', '/', retries=0)
+
+        timed_out.set()
 
 
 class TestProxyManager(SocketDummyServerTestCase):
