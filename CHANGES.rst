@@ -11,6 +11,9 @@ dev (master branch)
 * Treat "content-encoding" header value as case-insensitive, per RFC 2616
   Section 3.5. (Issue #110)
 
+* "Connection Refused" SocketErrors will get retried rather than raised.
+  (Issue #92)
+
 
 1.5 (2012-08-02)
 ++++++++++++++++

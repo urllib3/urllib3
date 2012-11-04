@@ -364,5 +364,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(pool.pool.qsize(), MAXSIZE-1)
 
 
+
 if __name__ == '__main__':
     unittest.main()

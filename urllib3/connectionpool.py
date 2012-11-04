@@ -460,10 +460,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # If this isn't a "Connection Refused" socket.error, uncatch it.
             if e.errno != errno.ECONNREFUSED:
                 raise
-            # Treat like HTTPException: discard connection, save error, retry.
-            conn = None
-            err = e
 
+            # Connection broken, discard. It will be replaced next _get_conn().
+            conn = None
+            # This is necessary so we can access e below
+            err = e
 
         finally:
             if release_conn:

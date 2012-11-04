@@ -23,6 +23,10 @@ except ImportError:
 
 
 class TestConnectionPool(unittest.TestCase):
+    """
+    Tests in this suite should exercise the ConnectionPool functionality
+    without actually making any network requests or connections.
+    """
     def test_same_host(self):
         same_host = [
             ('http://google.com/', '/'),
@@ -146,12 +150,6 @@ class TestConnectionPool(unittest.TestCase):
 
         with self.assertRaises(Empty):
             old_pool_queue.get(block=False)
-
-    def test_connection_refused(self):
-        # Assume that port 31456 is not bound to by any server.
-        pool = connection_from_url('http://localhost:31456')
-        with self.assertRaises(MaxRetryError):
-            pool.request('GET', '/')
 
 
 
