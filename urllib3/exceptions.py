@@ -38,10 +38,9 @@ class DecodeError(HTTPError):
 class MaxRetryError(PoolError):
     "Raised when the maximum number of retries is exceeded."
 
-    def __init__(self, pool, url):
-        message = "Max retries exceeded with url: %s" % url
+    def __init__(self, pool, url, reason):
+        message = "Max retries exceeded with url: %s (caused by %s: %s)" % (url, type(reason), reason)
         PoolError.__init__(self, pool, message)
-
         self.url = url
 
 

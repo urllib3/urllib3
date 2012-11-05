@@ -319,7 +319,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def urlopen(self, method, url, body=None, headers=None, retries=3,
                 redirect=True, assert_same_host=True, timeout=_Default,
-                pool_timeout=None, release_conn=None, **response_kw):
+                pool_timeout=None, release_conn=None, last_err=None,
+                **response_kw):
         """
         Get a connection from the pool and perform an HTTP request. This is the
         lowest level call for making a request, so you'll need to specify all
@@ -380,6 +381,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             back into the pool. If None, it takes the value of
             ``response_kw.get('preload_content', True)``.
 
+        :param last_err:
+            The last error encountered that forced a retry. This message from
+            this exception will be included in MaxRetryError, if raised.
+
         :param \**response_kw:
             Additional parameters are passed to
             :meth:`urllib3.response.HTTPResponse.from_httplib`
@@ -388,7 +393,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             headers = self.headers
 
         if retries < 0:
-            raise MaxRetryError(self, url)
+            raise MaxRetryError(self, url, last_err)
 
         if timeout is _Default:
             timeout = self.timeout
@@ -450,17 +455,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Name mismatch
             raise SSLError(e)
 
-        except HTTPException as e:
-            # Connection broken, discard. It will be replaced next _get_conn().
-            conn = None
-            # This is necessary so we can access e below
-            err = e
-
-        except SocketError as e:
-            # If this isn't a "Connection Refused" socket.error, uncatch it.
-            if e.errno != errno.ECONNREFUSED:
-                raise
-
+        except (HTTPException, SocketError) as e:
             # Connection broken, discard. It will be replaced next _get_conn().
             conn = None
             # This is necessary so we can access e below
@@ -480,7 +475,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             return self.urlopen(method, url, body, headers, retries - 1,
                                 redirect, assert_same_host,
                                 timeout=timeout, pool_timeout=pool_timeout,
-                                release_conn=release_conn, **response_kw)
+                                release_conn=release_conn, last_err=err,
+                                **response_kw)
 
         # Handle redirect?
         redirect_location = redirect and response.get_redirect_location()
