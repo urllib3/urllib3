@@ -93,7 +93,7 @@ class TestConnectionPool(unittest.TestCase):
     def test_retry_exception_str(self):
         self.assertEqual(
             str(MaxRetryError(HTTPConnectionPool(host='localhost'), "Test.", None)),
-            "HTTPConnectionPool(host='localhost', port=None): Max retries exceeded with url: Test. (caused by <type 'NoneType'>: None)")
+            "HTTPConnectionPool(host='localhost', port=None): Max retries exceeded with url: Test.")
 
         err = SocketError("Test")
         self.assertEqual(
