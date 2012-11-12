@@ -72,7 +72,7 @@ def encode_multipart_formdata(fields, boundary=None):
             data = value
             writer(body).write('Content-Disposition: form-data; name="%s"\r\n'
                                % (fieldname))
-            body.write(b'Content-Type: text/plain\r\n\r\n')
+            body.write(b'\r\n')
 
         if isinstance(data, int):
             data = str(data)  # Backwards compatibility
