@@ -363,6 +363,12 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool.request('GET', '/', release_conn=False, preload_content=False)
         self.assertEqual(pool.pool.qsize(), MAXSIZE-1)
 
+    ## FIXME: This borks on OSX because sockets on invalid hosts refuse to timeout. :(
+    #def test_dns_error(self):
+    #    pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
+    #
+    #    with self.assertRaises(MaxRetryError):
+    #        pool.request('GET', '/test', retries=2)
 
 
 if __name__ == '__main__':

@@ -17,6 +17,9 @@ dev (master branch)
 * Updated vendored `six`, no longer overrides the global `six` module
   namespace. (Issue #113)
 
+* `urllib3.exceptions.MaxRetryError` contains a `reason` property holding the
+  exception that prompted the final retry. If `reason is None` then it was due
+  to a redirect. (Issue #92, #114)
 
 1.5 (2012-08-02)
 ++++++++++++++++

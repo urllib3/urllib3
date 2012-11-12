@@ -93,12 +93,12 @@ class TestConnectionPool(unittest.TestCase):
     def test_retry_exception_str(self):
         self.assertEqual(
             str(MaxRetryError(HTTPConnectionPool(host='localhost'), "Test.", None)),
-            "HTTPConnectionPool(host='localhost', port=None): Max retries exceeded with url: Test.")
+            "HTTPConnectionPool(host='localhost', port=None): Max retries exceeded with url: Test. (Caused by redirect)")
 
         err = SocketError("Test")
         self.assertEqual(
             str(MaxRetryError(HTTPConnectionPool(host='localhost'), "Test.", err)),
-            "HTTPConnectionPool(host='localhost', port=None): Max retries exceeded with url: Test. (caused by <class 'socket.error'>: Test)")
+            "HTTPConnectionPool(host='localhost', port=None): Max retries exceeded with url: Test. (Caused by <class 'socket.error'>: Test)")
 
     def test_pool_size(self):
         POOL_SIZE = 1

@@ -1,6 +1,3 @@
-import socket
-import errno
-
 from urllib3 import HTTPConnectionPool
 from urllib3.poolmanager import proxy_from_url
 from urllib3.exceptions import MaxRetryError, TimeoutError
@@ -93,12 +90,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             pool.request('GET', '/', retries=0)
 
         timed_out.set()
-    
-    def test_dns_error(self):
-        pool = HTTPConnectionPool('thishostdoesnotexist.noway', self.port, timeout=0.001)
-        
-        with self.assertRaises(MaxRetryError):
-            pool.request('GET', '/test')
+
 
 class TestProxyManager(SocketDummyServerTestCase):
 

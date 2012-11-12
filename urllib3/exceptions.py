@@ -39,9 +39,13 @@ class MaxRetryError(PoolError):
     "Raised when the maximum number of retries is exceeded."
 
     def __init__(self, pool, url, reason=None):
+        self.reason = reason
+
         message = "Max retries exceeded with url: %s" % url
         if reason:
-            message += " (caused by %s: %s)" % (type(reason), reason)
+            message += " (Caused by %s: %s)" % (type(reason), reason)
+        else:
+            message += " (Caused by redirect)"
 
         PoolError.__init__(self, pool, message)
         self.url = url
