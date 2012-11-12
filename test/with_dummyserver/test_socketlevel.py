@@ -93,7 +93,12 @@ class TestSocketClosing(SocketDummyServerTestCase):
             pool.request('GET', '/', retries=0)
 
         timed_out.set()
-
+    
+    def test_dns_error(self):
+        pool = HTTPConnectionPool('thishostdoesnotexist.noway', self.port, timeout=0.001)
+        
+        with self.assertRaises(MaxRetryError):
+            pool.request('GET', '/test')
 
 class TestProxyManager(SocketDummyServerTestCase):
 

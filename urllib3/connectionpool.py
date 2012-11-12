@@ -450,21 +450,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Name mismatch
             raise SSLError(e)
 
-        except HTTPException as e:
+        except (HTTPException, SocketError) as e:
             # Connection broken, discard. It will be replaced next _get_conn().
             conn = None
             # This is necessary so we can access e below
             err = e
 
-        except SocketError as e:
-            # If this isn't a "Connection Refused" socket.error, uncatch it.
-            if e.errno != errno.ECONNREFUSED:
-                raise
-
-            # Connection broken, discard. It will be replaced next _get_conn().
-            conn = None
-            # This is necessary so we can access e below
-            err = e
+            if retries == 0:
+                raise MaxRetryError(self, url, e)
 
         finally:
             if release_conn:

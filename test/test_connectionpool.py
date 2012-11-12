@@ -11,7 +11,7 @@ from urllib3.exceptions import (
     TimeoutError,
 )
 
-from socket import timeout as SocketTimeout
+from socket import error as SocketError, timeout as SocketTimeout
 from ssl import SSLError as BaseSSLError
 
 try:   # Python 3
@@ -89,6 +89,16 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(
             str(EmptyPoolError(HTTPConnectionPool(host='localhost'), "Test.")),
             "HTTPConnectionPool(host='localhost', port=None): Test.")
+
+    def test_retry_exception_str(self):
+        self.assertEqual(
+            str(MaxRetryError(HTTPConnectionPool(host='localhost'), "Test.", None)),
+            "HTTPConnectionPool(host='localhost', port=None): Max retries exceeded with url: Test.")
+
+        err = SocketError("Test")
+        self.assertEqual(
+            str(MaxRetryError(HTTPConnectionPool(host='localhost'), "Test.", err)),
+            "HTTPConnectionPool(host='localhost', port=None): Max retries exceeded with url: Test. (caused by <class 'socket.error'>: Test)")
 
     def test_pool_size(self):
         POOL_SIZE = 1
