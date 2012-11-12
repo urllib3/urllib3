@@ -14,6 +14,9 @@ dev (master branch)
 * "Connection Refused" SocketErrors will get retried rather than raised.
   (Issue #92)
 
+* Updated vendored `six`, no longer overrides the global `six` module
+  namespace. (Issue #113)
+
 
 1.5 (2012-08-02)
 ++++++++++++++++
