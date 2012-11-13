@@ -21,6 +21,10 @@ dev (master branch)
   exception that prompted the final retry. If `reason is None` then it was due
   to a redirect. (Issue #92, #114)
 
+* Don't assume `Content-Type: text/plain` for multi-part encoding parameters
+  that are not files. (Issue #111)
+
+
 1.5 (2012-08-02)
 ++++++++++++++++
 
