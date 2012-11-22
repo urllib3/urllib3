@@ -85,12 +85,20 @@ class PoolManager(RequestMethods):
             return pool
 
         # Make a fresh ConnectionPool of the desired type
-        pool_cls = pool_classes_by_scheme[scheme]
-        pool = pool_cls(host, port, **self.connection_pool_kw)
-
+        pool = self._new_pool(scheme, host, port)
         self.pools[pool_key] = pool
-
         return pool
+
+    def _new_pool(self, scheme, host, port):
+        """
+        Create a new :class:`ConnectionPool` based on host, port and scheme.
+
+        This method is used to actually create the connection pools handed out
+        by :meth:`connection_from_url` and companion methods. It is intended
+        to be overridden for customization.
+        """
+        pool_cls = pool_classes_by_scheme[scheme]
+        return pool_cls(host, port, **self.connection_pool_kw)
 
     def connection_from_url(self, url):
         """
