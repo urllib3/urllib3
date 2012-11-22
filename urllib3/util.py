@@ -278,7 +278,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
                 context.load_verify_locations(ca_certs)
             except TypeError as e:
                 raise SSLError(e)
-        if certfile != None:
+        if certfile:
             context.load_cert_chain(certfile, keyfile)
         if HAS_SNI: # Platform-specific: OpenSSL with enabled SNI
             return context.wrap_socket(sock, server_hostname=server_hostname)
