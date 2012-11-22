@@ -274,7 +274,7 @@ if SSLContext:  # Platform-specific: Python >= 3.2
         if SSLContext:  # Platform-specific: Python >= 3.2
             context = SSLContext(PROTOCOL_SSLv23)
             context.verify_mode = cert_reqs
-            if context.verify_mode != CERT_NONE:
+            if ca_certs:
                 try:
                     context.load_verify_locations(ca_certs)
                 except TypeError as e:  # reraise as SSLError
