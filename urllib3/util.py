@@ -21,8 +21,9 @@ except ImportError: # `poll` doesn't exist on OSX and other platforms
 SSLContext = None
 HAS_SNI = False
 try:
-    from ssl import wrap_socket, CERT_NONE, SSLError  # any SSL at all?
-    from ssl import SSLContext, PROTOCOL_SSLv23  # modern SSL?
+    # any ssl at all?
+    from ssl import wrap_socket, CERT_NONE, SSLError, PROTOCOL_SSLv23
+    from ssl import SSLContext  # modern SSL?
     from ssl import HAS_SNI  # and SNI enabled?
 except ImportError:
     pass
@@ -262,7 +263,8 @@ def is_connection_dropped(conn):
 
 if SSLContext is not None:  # Platform-specific: Python >= 3.2
     def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
-                        ca_certs=None, server_hostname=None):
+                        ca_certs=None, server_hostname=None,
+                        ssl_version=PROTOCOL_SSLv23):
         """
         All arguments except `server_hostname` have the same meaning as for
         :func:`ssl.wrap_socket`
@@ -270,7 +272,7 @@ if SSLContext is not None:  # Platform-specific: Python >= 3.2
         :param server_hostname:
             Hostname of the expected certificate
         """
-        context = SSLContext(PROTOCOL_SSLv23)
+        context = SSLContext(ssl_version)
         context.verify_mode = cert_reqs
         if ca_certs:
             try:
@@ -286,6 +288,8 @@ if SSLContext is not None:  # Platform-specific: Python >= 3.2
 
 else:  # Platform-specific: Python < 3.2
     def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
-                        ca_certs=None, server_hostname=None):
+                        ca_certs=None, server_hostname=None,
+                        ssl_version=PROTOCOL_SSLv23):
         return wrap_socket(sock, keyfile=keyfile, certfile=certfile,
-                           ca_certs=ca_certs, cert_reqs=cert_reqs)
+                           ca_certs=ca_certs, cert_reqs=cert_reqs,
+                           ssl_version=ssl_version)
