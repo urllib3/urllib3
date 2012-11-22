@@ -261,29 +261,33 @@ def is_connection_dropped(conn):
             # Either data is buffered (bad), or the connection is dropped.
             return True
 
-def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
-                    ca_certs=None, server_hostname=None):
-    """
-    All arguments except `server_hostname` have the same meaning as for
-    :func:`ssl.wrap_socket`
+if SSLContext:  # Platform-specific: Python >= 3.2
+    def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
+                        ca_certs=None, server_hostname=None):
+        """
+        All arguments except `server_hostname` have the same meaning as for
+        :func:`ssl.wrap_socket`
 
-    :param server_hostname:
-        Hostname of the expected certificate
-    """
-    if SSLContext: # Platform-specific: Python >= 3.2
-        context = SSLContext(PROTOCOL_SSLv23)
-        context.verify_mode = cert_reqs
-        if context.verify_mode != CERT_NONE:
-            try:
-                context.load_verify_locations(ca_certs)
-            except TypeError as e:
-                raise SSLError(e)
-        if certfile:
-            context.load_cert_chain(certfile, keyfile)
-        if HAS_SNI: # Platform-specific: OpenSSL with enabled SNI
-            return context.wrap_socket(sock, server_hostname=server_hostname)
-        return context.wrap_socket(sock)
+        :param server_hostname:
+            Hostname of the expected certificate
+        """
+        if SSLContext:  # Platform-specific: Python >= 3.2
+            context = SSLContext(PROTOCOL_SSLv23)
+            context.verify_mode = cert_reqs
+            if context.verify_mode != CERT_NONE:
+                try:
+                    context.load_verify_locations(ca_certs)
+                except TypeError as e:  # reraise as SSLError
+                    raise SSLError(e)
+            if certfile:
+                context.load_cert_chain(certfile, keyfile)
+            if HAS_SNI:  # Platform-specific: OpenSSL with enabled SNI
+                return context.wrap_socket(sock,
+                                           server_hostname=server_hostname)
+            return context.wrap_socket(sock)
 
-    else: # Platform-specific: Python < 3.2
+else:  # Platform-specific: Python < 3.2
+    def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
+                        ca_certs=None, server_hostname=None):
         return wrap_socket(sock, keyfile=keyfile, certfile=certfile,
-                       ca_certs=ca_certs, cert_reqs=cert_reqs)
+                           ca_certs=ca_certs, cert_reqs=cert_reqs)
