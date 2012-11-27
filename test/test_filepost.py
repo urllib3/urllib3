@@ -99,3 +99,29 @@ class TestMultipartEncoding(unittest.TestCase):
 
         self.assertEqual(content_type,
             b'multipart/form-data; boundary=' + b(BOUNDARY))
+
+
+    def test_international_headers(self):
+        fields = [(u'ke\u00ff', (u'n\u00e4me', b'v1')),
+                  (u'\u03a4\u03b5\u03be\u03c4', b'v2')]
+
+        encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+
+        self.assertEqual(encoded,
+            b'--' + b(BOUNDARY) + b'\r\n'
+            b'Content-Disposition: form-data;'
+            b" name*=utf-8''ke%C3%BF;"
+            b" filename*=utf-8''n%C3%A4me\r\n"
+            b'Content-Type: application/octet-stream\r\n'
+            b'\r\n'
+            b'v1\r\n'
+            b'--' + b(BOUNDARY) + b'\r\n'
+            b'Content-Disposition: form-data;'
+            b" name*=utf-8''%CE%A4%CE%B5%CE%BE%CF%84\r\n"
+            b'\r\n'
+            b'v2\r\n'
+            b'--' + b(BOUNDARY) + b'--\r\n'
+            )
+
+        self.assertEqual(content_type,
+            b'multipart/form-data; boundary=' + b(BOUNDARY))
