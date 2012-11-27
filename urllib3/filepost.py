@@ -5,6 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import codecs
+import email.utils
 import mimetypes
 
 from uuid import uuid4
@@ -39,6 +40,18 @@ def iter_fields(fields):
     return ((k, v) for k, v in fields)
 
 
+def header_param(name, value):
+    if not any(ch in value for ch in '"\\\r\n'):
+        result = '%s="%s"' % (name, value)
+        try:
+            return result.encode('ascii')
+        except UnicodeEncodeError:
+            pass
+    value = value.encode('utf-8')
+    value = email.utils.encode_rfc2231(value, 'utf-8')
+    return ('%s*=%s' % (name, value)).encode('ascii')
+
+
 def encode_multipart_formdata(fields, boundary=None):
     """
     Encode a dictionary of ``fields`` using the multipart/form-data mime format.
@@ -64,14 +77,15 @@ def encode_multipart_formdata(fields, boundary=None):
 
         if isinstance(value, tuple):
             filename, data = value
-            writer(body).write('Content-Disposition: form-data; name="%s"; '
-                               'filename="%s"\r\n' % (fieldname, filename))
+            writer(body).write('Content-Disposition: form-data; %s; %s\r\n' %
+                               (header_param('name', fieldname),
+                                header_param('filename', filename)))
             body.write(b('Content-Type: %s\r\n\r\n' %
                        (get_content_type(filename))))
         else:
             data = value
-            writer(body).write('Content-Disposition: form-data; name="%s"\r\n'
-                               % (fieldname))
+            writer(body).write('Content-Disposition: form-data; %s\r\n'
+                               % (header_param('name', fieldname)))
             body.write(b'\r\n')
 
         if isinstance(data, int):
