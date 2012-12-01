@@ -190,7 +190,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.num_connections += 1
         log.info("Starting new HTTP connection (%d): %s" %
                  (self.num_connections, self.host))
-        return HTTPConnection(host=self.host, port=self.port)
+        return HTTPConnection(host=self.host,
+                              port=self.port,
+                              strict=self.strict)
 
     def _get_conn(self, timeout=None):
         """
@@ -531,9 +533,13 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                 raise SSLError("Can't connect to HTTPS URL because the SSL "
                                "module is not available.")
 
-            return HTTPSConnection(host=self.host, port=self.port)
+            return HTTPSConnection(host=self.host,
+                                   port=self.port,
+                                   strict=self.strict)
 
-        connection = VerifiedHTTPSConnection(host=self.host, port=self.port)
+        connection = VerifiedHTTPSConnection(host=self.host,
+                                             port=self.port,
+                                             strict=self.strict)
         connection.set_cert(key_file=self.key_file, cert_file=self.cert_file,
                             cert_reqs=self.cert_reqs, ca_certs=self.ca_certs)
         return connection
