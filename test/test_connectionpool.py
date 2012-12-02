@@ -92,13 +92,21 @@ class TestConnectionPool(unittest.TestCase):
 
     def test_retry_exception_str(self):
         self.assertEqual(
-            str(MaxRetryError(HTTPConnectionPool(host='localhost'), "Test.", None)),
-            "HTTPConnectionPool(host='localhost', port=None): Max retries exceeded with url: Test. (Caused by redirect)")
+            str(MaxRetryError(
+                HTTPConnectionPool(host='localhost'), "Test.", None)),
+            "HTTPConnectionPool(host='localhost', port=None): "
+            "Max retries exceeded with url: Test. (Caused by redirect)")
 
         err = SocketError("Test")
+
+        # using err.__class__ here, as socket.error is an alias for OSError
+        # since Py3.3 and gets printed as this
         self.assertEqual(
-            str(MaxRetryError(HTTPConnectionPool(host='localhost'), "Test.", err)),
-            "HTTPConnectionPool(host='localhost', port=None): Max retries exceeded with url: Test. (Caused by <class 'socket.error'>: Test)")
+            str(MaxRetryError(
+                HTTPConnectionPool(host='localhost'), "Test.", err)),
+            "HTTPConnectionPool(host='localhost', port=None): "
+            "Max retries exceeded with url: Test. "
+            "(Caused by {}: Test)".format(str(err.__class__)))
 
     def test_pool_size(self):
         POOL_SIZE = 1
