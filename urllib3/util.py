@@ -93,7 +93,7 @@ def split_first(s, delims):
 
 def parse_url(url):
     """
-    Given a url, return a parsed :class:`.Url` named tuple. Best-effort is
+    Given a url, return a parsed :class:`.Url` namedtuple. Best-effort is
     performed to parse incomplete urls. Fields not provided will be None.
 
     Partly backwards-compatible with :mod:`urlparse`.
