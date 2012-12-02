@@ -8,7 +8,6 @@
 from base64 import b64encode
 from collections import namedtuple
 from socket import error as SocketError
-from ssl import wrap_socket, CERT_NONE, SSLError
 
 try:
     from select import poll, POLLIN
@@ -19,14 +18,14 @@ except ImportError: # `poll` doesn't exist on OSX and other platforms
     except ImportError: # `select` doesn't exist on AppEngine.
         select = False
 
+SSLContext = None
+HAS_SNI = False
 try:
-    from ssl import SSLContext, PROTOCOL_SSLv23
-except ImportError: # python < 3.2
-    SSLContext = False
-try:
-    from ssl import HAS_SNI
-except ImportError: # openssl without SNI
-    HAS_SNI = False
+    from ssl import wrap_socket, CERT_NONE, SSLError  # any SSL at all?
+    from ssl import SSLContext, PROTOCOL_SSLv23  # modern SSL?
+    from ssl import HAS_SNI  # and SNI enabled?
+except ImportError:
+    pass
 
 from .packages import six
 from .exceptions import LocationParseError
@@ -261,7 +260,7 @@ def is_connection_dropped(conn):
             # Either data is buffered (bad), or the connection is dropped.
             return True
 
-if SSLContext:  # Platform-specific: Python >= 3.2
+if SSLContext is not None:  # Platform-specific: Python >= 3.2
     def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
                         ca_certs=None, server_hostname=None):
         """
