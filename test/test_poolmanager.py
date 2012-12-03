@@ -54,13 +54,11 @@ class TestPoolManager(unittest.TestCase):
         p.clear()
         self.assertEqual(len(p.pools), 0)
 
-        with self.assertRaises(ClosedPoolError):
-            conn_pool._get_conn()
+        self.assertRaises(ClosedPoolError, conn_pool._get_conn)
 
         conn_pool._put_conn(conn)
 
-        with self.assertRaises(ClosedPoolError):
-            conn_pool._get_conn()
+        self.assertRaises(ClosedPoolError, conn_pool._get_conn)
 
         self.assertEqual(len(p.pools), 0)
 
