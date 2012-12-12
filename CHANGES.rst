@@ -5,6 +5,7 @@ dev (master branch)
 +++++++++++++++++++
 
 * Allow an explicit content type to be specified when encoding file fields.
+  (Issue #126)
 
 * Exceptions are now pickleable, with tests. (Issue #101)
 
