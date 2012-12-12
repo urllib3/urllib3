@@ -105,12 +105,15 @@ class RequestMethods(object):
         such as with OAuth.
 
         Supports an optional ``fields`` parameter of key/value strings AND
-        key/filetuple. A filetuple is a (filename, data) tuple. For example: ::
+        key/filetuple. A filetuple is a (filename, data, MIME type) tuple where
+        the MIME type is optional. For example: ::
 
             fields = {
                 'foo': 'bar',
                 'fakefile': ('foofile.txt', 'contents of foofile'),
                 'realfile': ('barfile.txt', open('realfile').read()),
+                'typedfile': ('bazfile.bin', open('bazfile').read(),
+                              'image/jpeg'),
                 'nonamefile': ('contents of nonamefile field'),
             }
 
