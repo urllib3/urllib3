@@ -114,7 +114,7 @@ class RequestMethods(object):
                 'realfile': ('barfile.txt', open('realfile').read()),
                 'typedfile': ('bazfile.bin', open('bazfile').read(),
                               'image/jpeg'),
-                'nonamefile': ('contents of nonamefile field'),
+                'nonamefile': 'contents of nonamefile field',
             }
 
         When uploading a file, providing a filename (the first parameter of the
