@@ -4,6 +4,9 @@ Changes
 dev (master branch)
 +++++++++++++++++++
 
+* Allow an explicit content type to be specified when encoding file fields.
+  (Issue #126)
+
 * Exceptions are now pickleable, with tests. (Issue #101)
 
 * Fixed default headers not getting passed in some cases. (Issue #99)

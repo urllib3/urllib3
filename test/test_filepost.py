@@ -99,3 +99,21 @@ class TestMultipartEncoding(unittest.TestCase):
 
         self.assertEqual(content_type,
             b'multipart/form-data; boundary=' + b(BOUNDARY))
+
+
+    def test_explicit(self):
+        fields = [('k', ('somefile.txt', b'v', 'image/jpeg'))]
+
+        encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+
+        self.assertEqual(encoded,
+            b'--' + b(BOUNDARY) + b'\r\n'
+            b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
+            b'Content-Type: image/jpeg\r\n'
+            b'\r\n'
+            b'v\r\n'
+            b'--' + b(BOUNDARY) + b'--\r\n'
+            )
+
+        self.assertEqual(content_type,
+            b'multipart/form-data; boundary=' + b(BOUNDARY))
