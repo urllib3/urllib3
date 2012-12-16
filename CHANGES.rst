@@ -4,7 +4,7 @@ Changes
 dev (master branch)
 +++++++++++++++++++
 
-* Added SNI support for SSL connections. (Issue #89)
+* Added SNI support for SSL/TLS connections on Py32+. (Issue #89)
 
 * Tests fixed to be compatible with Py26 again. (Issue #125)
 
