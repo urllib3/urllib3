@@ -22,13 +22,13 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def test_simple(self):
         r = self._pool.request('GET', '/specific_method',
-            fields={'method': 'GET'})
+                               fields={'method': 'GET'})
         self.assertEqual(r.status, 200, r.data)
 
     def test_set_ssl_version_to_tlsv1(self):
         self._pool.ssl_version = ssl.PROTOCOL_TLSv1
         r = self._pool.request('GET', '/specific_method',
-            fields={'method': 'GET'})
+                               fields={'method': 'GET'})
         self.assertEqual(r.status, 200, r.data)
 
     def test_set_ssl_version_to_sslv2(self):
