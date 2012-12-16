@@ -119,9 +119,7 @@ class TestLRUContainer(unittest.TestCase):
     def test_iter(self):
         d = Container()
 
-        with self.assertRaises(NotImplementedError):
-            for i in d:
-                self.fail("Iteration shouldn't be implemented.")
+        self.assertRaises(NotImplementedError, d.__iter__)
 
 if __name__ == '__main__':
     unittest.main()
