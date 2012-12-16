@@ -288,7 +288,7 @@ if SSLContext is not None:  # Python 3.2+
                                        server_hostname=server_hostname)
         return context.wrap_socket(sock)
 
-else:
+else:  # Python 3.1 and earlier
     def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
                         ca_certs=None, server_hostname=None,
                         ssl_version=PROTOCOL_SSLv23):
