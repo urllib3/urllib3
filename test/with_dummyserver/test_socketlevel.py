@@ -52,7 +52,7 @@ if HAS_SNI:
             except SSLError: # We are violating the protocol
                 pass
             done_receiving.wait()
-            self.assertTrue(self.buf.find(self.host.encode()) != -1,
+            self.assertTrue(self.host.encode() in self.buf,
                             "missing hostname in SSL handshake")
 
 class TestSocketClosing(SocketDummyServerTestCase):
