@@ -11,12 +11,22 @@ from socket import error as SocketError
 
 try:
     from select import poll, POLLIN
-except ImportError: # `poll` doesn't exist on OSX and other platforms
+except ImportError:  # `poll` doesn't exist on OSX and other platforms
     poll = False
     try:
         from select import select
-    except ImportError: # `select` doesn't exist on AppEngine.
+    except ImportError:  # `select` doesn't exist on AppEngine.
         select = False
+
+try:  # Test for SSL features
+    SSLContext = None
+    HAS_SNI = False
+
+    from ssl import wrap_socket, CERT_NONE, SSLError, PROTOCOL_SSLv23
+    from ssl import SSLContext  # Modern SSL?
+    from ssl import HAS_SNI  # Has SNI?
+except ImportError:
+    pass
 
 from .packages import six
 from .exceptions import LocationParseError
@@ -220,7 +230,7 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
     return headers
 
 
-def is_connection_dropped(conn):  # (No coverage)
+def is_connection_dropped(conn):
     """
     Returns True if the connection is dropped and should be closed.
 
@@ -250,3 +260,37 @@ def is_connection_dropped(conn):  # (No coverage)
         if fno == sock.fileno():
             # Either data is buffered (bad), or the connection is dropped.
             return True
+
+
+if SSLContext is not None:  # Python 3.2+
+    def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
+                        ca_certs=None, server_hostname=None,
+                        ssl_version=PROTOCOL_SSLv23):
+        """
+        All arguments except `server_hostname` have the same meaning as for
+        :func:`ssl.wrap_socket`
+
+        :param server_hostname:
+            Hostname of the expected certificate
+        """
+        context = SSLContext(ssl_version)
+        context.verify_mode = cert_reqs
+        if ca_certs:
+            try:
+                context.load_verify_locations(ca_certs)
+            except TypeError as e:  # reraise as SSLError
+                raise SSLError(e)
+        if certfile:
+            context.load_cert_chain(certfile, keyfile)
+        if HAS_SNI:  # Platform-specific: OpenSSL with enabled SNI
+            return context.wrap_socket(sock,
+                                       server_hostname=server_hostname)
+        return context.wrap_socket(sock)
+
+else:
+    def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
+                        ca_certs=None, server_hostname=None,
+                        ssl_version=PROTOCOL_SSLv23):
+        return wrap_socket(sock, keyfile=keyfile, certfile=certfile,
+                           ca_certs=ca_certs, cert_reqs=cert_reqs,
+                           ssl_version=ssl_version)
