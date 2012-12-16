@@ -28,6 +28,7 @@ try:  # Test for SSL features
 except ImportError:
     pass
 
+
 from .packages import six
 from .exceptions import LocationParseError
 

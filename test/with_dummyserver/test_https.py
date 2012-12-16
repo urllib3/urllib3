@@ -32,6 +32,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.assertEqual(r.status, 200, r.data)
 
     def test_set_ssl_version_to_sslv2(self):
+        # Note: Test fails on Py32 with OpenSSL <1.0.
         self._pool.ssl_version = ssl.PROTOCOL_SSLv2
         self.assertRaises(SSLError,
                           self._pool.request, 'GET', '/specific_method',
