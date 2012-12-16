@@ -4,6 +4,9 @@ Changes
 dev (master branch)
 +++++++++++++++++++
 
+* Added ability to choose SSL version by passing an `ssl.PROTOCOL_*` constant
+  to the `ssl_version` parameter of `HTTPSConnectionPool`. (Issue #109)
+
 * Allow an explicit content type to be specified when encoding file fields.
   (Issue #126)
 
@@ -26,9 +29,6 @@ dev (master branch)
 
 * Don't assume `Content-Type: text/plain` for multi-part encoding parameters
   that are not files. (Issue #111)
-
-* Added ability to choose SSL version by passing an `ssl.PROTOCOL_*` constant
-  to the `ssl_version` parameter of `HTTPSConnectionPool`. (Issue #109)
 
 
 1.5 (2012-08-02)
