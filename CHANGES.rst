@@ -4,6 +4,8 @@ Changes
 dev (master branch)
 +++++++++++++++++++
 
+* Tests fixed to be compatible with Py26 again. (Issue #125)
+
 * Added ability to choose SSL version by passing an `ssl.PROTOCOL_*` constant
   to the `ssl_version` parameter of `HTTPSConnectionPool`. (Issue #109)
 
