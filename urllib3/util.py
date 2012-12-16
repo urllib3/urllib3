@@ -11,20 +11,20 @@ from socket import error as SocketError
 
 try:
     from select import poll, POLLIN
-except ImportError: # `poll` doesn't exist on OSX and other platforms
+except ImportError:  # `poll` doesn't exist on OSX and other platforms
     poll = False
     try:
         from select import select
-    except ImportError: # `select` doesn't exist on AppEngine.
+    except ImportError:  # `select` doesn't exist on AppEngine.
         select = False
 
-SSLContext = None
-HAS_SNI = False
-try:
-    # any ssl at all?
+try:  # Test for SSL features
+    SSLContext = None
+    HAS_SNI = False
+
     from ssl import wrap_socket, CERT_NONE, SSLError, PROTOCOL_SSLv23
-    from ssl import SSLContext  # modern SSL?
-    from ssl import HAS_SNI  # and SNI enabled?
+    from ssl import SSLContext  # Modern SSL?
+    from ssl import HAS_SNI  # Has SNI?
 except ImportError:
     pass
 
@@ -261,7 +261,7 @@ def is_connection_dropped(conn):
             # Either data is buffered (bad), or the connection is dropped.
             return True
 
-if SSLContext is not None:  # Platform-specific: Python >= 3.2
+if SSLContext is not None:  # Python 3.2+
     def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
                         ca_certs=None, server_hostname=None,
                         ssl_version=PROTOCOL_SSLv23):
@@ -286,7 +286,7 @@ if SSLContext is not None:  # Platform-specific: Python >= 3.2
                                        server_hostname=server_hostname)
         return context.wrap_socket(sock)
 
-else:  # Platform-specific: Python < 3.2
+else:
     def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
                         ca_certs=None, server_hostname=None,
                         ssl_version=PROTOCOL_SSLv23):
