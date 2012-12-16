@@ -32,7 +32,7 @@ dev (master branch)
 * Don't assume ``Content-Type: text/plain`` for multi-part encoding parameters
   that are not files. (Issue #111)
 
-* Pass `strict` param down to `httplib.HTTPConnection`. (Issue #122)
+* Pass `strict` param down to ``httplib.HTTPConnection``. (Issue #122)
 
 
 1.5 (2012-08-02)
