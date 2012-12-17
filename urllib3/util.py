@@ -269,7 +269,10 @@ def resolve_cert_reqs(candidate):
         return CERT_NONE
 
     if isinstance(candidate, str):
-        return getattr(ssl, candidate)
+        res = getattr(ssl, candidate, None)
+        if res is None:
+            res = getattr(ssl, 'CERT_' + candidate)
+        return res
 
     return candidate
 
