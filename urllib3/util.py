@@ -265,6 +265,16 @@ def is_connection_dropped(conn):
 
 
 def resolve_cert_reqs(candidate):
+    """
+    Resolves the argument to a numeric constant, which can be passed to
+    the wrap_socket function/method from the ssl module.
+    Defaults to CERT_NONE.
+    If given a string it is assumed to be the name of the constant in the ssl
+    module or it's abbrevation.
+    (So you can specify `REQUIRED` instead of `CERT_REQUIRED`.
+    If it's neither `None` nor a string we assume it is already the numeric
+    constant which can directly be passed to wrap_socket.
+    """
     if candidate is None:
         return CERT_NONE
 
@@ -278,6 +288,9 @@ def resolve_cert_reqs(candidate):
 
 
 def resolve_ssl_version(candidate):
+    """
+    like resolve_cert_reqs
+    """
     if candidate is None:
         return PROTOCOL_SSLv23
 
