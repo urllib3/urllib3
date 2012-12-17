@@ -111,6 +111,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                fields={'method': 'GET'})
         self.assertEqual(r.status, 200, r.data)
 
+    def test_ssl_version_as_short_string(self):
+        self._pool.ssl_version = 'TLSv1'
+        r = self._pool.request('GET', '/specific_method',
+                               fields={'method': 'GET'})
+        self.assertEqual(r.status, 200, r.data)
 
 if __name__ == '__main__':
     unittest.main()

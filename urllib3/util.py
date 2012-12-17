@@ -282,7 +282,10 @@ def resolve_ssl_version(candidate):
         return PROTOCOL_SSLv23
 
     if isinstance(candidate, str):
-        return getattr(ssl, candidate)
+        res = getattr(ssl, candidate, None)
+        if res is None:
+            res = getattr(ssl, 'PROTOCOL_' + candidate)
+        return res
 
     return candidate
 
