@@ -22,6 +22,7 @@ try:  # Test for SSL features
     SSLContext = None
     HAS_SNI = False
 
+    import ssl
     from ssl import wrap_socket, CERT_NONE, SSLError, PROTOCOL_SSLv23
     from ssl import SSLContext  # Modern SSL?
     from ssl import HAS_SNI  # Has SNI?
@@ -263,8 +264,18 @@ def is_connection_dropped(conn):
             return True
 
 
+def resolve_cert_reqs(candidate):
+    if candidate is None:
+        return CERT_NONE
+
+    if isinstance(candidate, str):
+        return getattr(ssl, candidate)
+
+    return candidate
+
+
 if SSLContext is not None:  # Python 3.2+
-    def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
+    def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                         ca_certs=None, server_hostname=None,
                         ssl_version=PROTOCOL_SSLv23):
         """
@@ -275,7 +286,7 @@ if SSLContext is not None:  # Python 3.2+
             Hostname of the expected certificate
         """
         context = SSLContext(ssl_version)
-        context.verify_mode = cert_reqs
+        context.verify_mode = resolve_cert_reqs(cert_reqs)
         if ca_certs:
             try:
                 context.load_verify_locations(ca_certs)
@@ -290,9 +301,10 @@ if SSLContext is not None:  # Python 3.2+
         return context.wrap_socket(sock)
 
 else:  # Python 3.1 and earlier
-    def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
+    def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                         ca_certs=None, server_hostname=None,
                         ssl_version=PROTOCOL_SSLv23):
+        cert_reqs = resolve_cert_reqs(cert_reqs)
         return wrap_socket(sock, keyfile=keyfile, certfile=certfile,
                            ca_certs=ca_certs, cert_reqs=cert_reqs,
                            ssl_version=ssl_version)

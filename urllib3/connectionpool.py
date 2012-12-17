@@ -80,16 +80,11 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     ssl_version = None
 
     def set_cert(self, key_file=None, cert_file=None,
-                 cert_reqs='CERT_NONE', ca_certs=None):
-        ssl_req_scheme = {
-            'CERT_NONE': ssl.CERT_NONE,
-            'CERT_OPTIONAL': ssl.CERT_OPTIONAL,
-            'CERT_REQUIRED': ssl.CERT_REQUIRED
-        }
+                 cert_reqs=None, ca_certs=None):
 
         self.key_file = key_file
         self.cert_file = cert_file
-        self.cert_reqs = ssl_req_scheme.get(cert_reqs) or ssl.CERT_NONE
+        self.cert_reqs = cert_reqs
         self.ca_certs = ca_certs
 
     def connect(self):

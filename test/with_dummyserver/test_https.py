@@ -87,6 +87,14 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         urllib3.HTTPSConnection = OriginalHTTPSConnection
         urllib3.connectionpool.ssl = OriginalSSL
 
+    def test_cert_reqs_as_constant(self):
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_reqs=ssl.CERT_REQUIRED)
+
+        https_pool.ca_certs = DEFAULT_CA_BAD
+        # if we pass in an invalid value it defaults to CERT_NONE
+        self.assertRaises(SSLError,
+                          https_pool.request, 'GET', '/')
 
 
 if __name__ == '__main__':
