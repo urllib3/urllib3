@@ -4,7 +4,7 @@ import sys
 import unittest
 
 from dummyserver.testcase import HTTPSDummyServerTestCase
-from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD
+from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, TIMED_OUT_CERTS
 
 from urllib3 import HTTPSConnectionPool
 from urllib3.connectionpool import VerifiedHTTPSConnection
@@ -88,6 +88,16 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         urllib3.connectionpool.ssl = OriginalSSL
 
 
+class TestTimedOutCert(HTTPSDummyServerTestCase):
+    certs = TIMED_OUT_CERTS
+
+    def setUp(self):
+        self._pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_reqs='CERT_REQUIRED')
+
+    def test_cert_valid_not_after(self):
+        self.assertRaises(SSLError,
+                          self._pool.request, 'GET', '/')
 
 if __name__ == '__main__':
     unittest.main()
