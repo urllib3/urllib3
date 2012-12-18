@@ -22,7 +22,8 @@ try:  # Test for SSL features
     SSLContext = None
     HAS_SNI = False
 
-    from ssl import wrap_socket, CERT_NONE, SSLError, PROTOCOL_SSLv23
+    from ssl import wrap_socket, CERT_NONE, SSLError, PROTOCOL_SSLv23, \
+        cert_time_to_seconds
     from ssl import SSLContext  # Modern SSL?
     from ssl import HAS_SNI  # Has SNI?
 except ImportError:
@@ -261,6 +262,17 @@ def is_connection_dropped(conn):
         if fno == sock.fileno():
             # Either data is buffered (bad), or the connection is dropped.
             return True
+
+
+def verify_cert_time(cert, time_to_check=None):
+    if time_to_check is None:
+        from time import time
+        time_to_check = time()
+
+    not_after = cert_time_to_seconds(cert['notAfter'])
+
+    if time_to_check > not_after:
+        raise SSLError('Host certificate lifetime has expired')
 
 
 if SSLContext is not None:  # Python 3.2+

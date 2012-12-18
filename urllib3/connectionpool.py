@@ -42,7 +42,8 @@ except (ImportError, AttributeError): # Platform-specific: No SSL.
 
 from .request import RequestMethods
 from .response import HTTPResponse
-from .util import get_host, is_connection_dropped, ssl_wrap_socket
+from .util import get_host, is_connection_dropped, \
+    ssl_wrap_socket, verify_cert_time
 from .exceptions import (
     ClosedPoolError,
     EmptyPoolError,
@@ -105,7 +106,9 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                                     ssl_version=self.ssl_version)
 
         if self.ca_certs:
-            match_hostname(self.sock.getpeercert(), self.host)
+            peercert = self.sock.getpeercert()
+            match_hostname(peercert, self.host)
+            verify_cert_time(peercert)
 
 
 ## Pool objects
