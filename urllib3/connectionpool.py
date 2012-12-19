@@ -513,7 +513,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  strict=False, timeout=None, maxsize=1,
                  block=False, headers=None,
                  key_file=None, cert_file=None,
-                 cert_reqs='CERT_NONE', ca_certs=None, ssl_version=None):
+                 cert_reqs=None, ca_certs=None, ssl_version=None):
 
         HTTPConnectionPool.__init__(self, host, port,
                                     strict, timeout, maxsize,
@@ -547,10 +547,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         connection.set_cert(key_file=self.key_file, cert_file=self.cert_file,
                             cert_reqs=self.cert_reqs, ca_certs=self.ca_certs)
 
-        if self.ssl_version is None:
-            connection.ssl_version = ssl.PROTOCOL_SSLv23
-        else:
-            connection.ssl_version = self.ssl_version
+        connection.ssl_version = self.ssl_version
 
         return connection
 
