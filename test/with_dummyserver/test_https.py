@@ -124,6 +124,13 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.ca_certs = DEFAULT_CA_BAD
         https_pool.request('GET', '/')
 
+    def test_verified_without_ca_certs(self):
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_reqs='CERT_REQUIRED')
+
+        self.assertRaises(SSLError,
+                          https_pool.request, 'GET', '/')
+
 
 if __name__ == '__main__':
     unittest.main()
