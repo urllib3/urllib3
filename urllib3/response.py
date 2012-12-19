@@ -100,6 +100,10 @@ class HTTPResponse(object):
         self._pool._put_conn(self._connection)
         self._connection = None
 
+    def close(self):
+        if self._fp:
+            self._fp.close()
+
     @property
     def data(self):
         # For backwords-compat with earlier urllib3 0.4 and earlier.
