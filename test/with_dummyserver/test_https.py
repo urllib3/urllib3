@@ -80,8 +80,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.assertRaises(SSLError, self._pool._new_conn)
 
         self.assertRaises(SSLError,
-            lambda: self._pool.request('GET', '/specific_method',
-                                       fields={'method': 'GET'}))
+                          self._pool.request, 'GET', '/specific_method',
+                          fields={'method': 'GET'})
 
         # Undo
         urllib3.HTTPSConnection = OriginalHTTPSConnection
