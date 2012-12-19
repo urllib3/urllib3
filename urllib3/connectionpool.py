@@ -9,6 +9,7 @@ import socket
 import errno
 
 from socket import error as SocketError, timeout as SocketTimeout
+from .util import resolve_cert_reqs, resolve_ssl_version
 
 try: # Python 3
     from http.client import HTTPConnection, HTTPException
@@ -91,15 +92,18 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         # Add certificate verification
         sock = socket.create_connection((self.host, self.port), self.timeout)
 
+        resolved_cert_reqs = resolve_cert_reqs(self.cert_reqs)
+        resolved_ssl_version = resolve_ssl_version(self.ssl_version)
+
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
         self.sock = ssl_wrap_socket(sock, self.key_file, self.cert_file,
-                                    cert_reqs=self.cert_reqs,
+                                    cert_reqs=resolved_cert_reqs,
                                     ca_certs=self.ca_certs,
                                     server_hostname=self.host,
-                                    ssl_version=self.ssl_version)
+                                    ssl_version=resolved_ssl_version)
 
-        if self.ca_certs:
+        if resolved_cert_reqs != ssl.CERT_NONE:
             match_hostname(self.sock.getpeercert(), self.host)
 
 

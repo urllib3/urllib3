@@ -313,8 +313,8 @@ if SSLContext is not None:  # Python 3.2+
         :param server_hostname:
             Hostname of the expected certificate
         """
-        context = SSLContext(resolve_ssl_version(ssl_version))
-        context.verify_mode = resolve_cert_reqs(cert_reqs)
+        context = SSLContext(ssl_version)
+        context.verify_mode = cert_reqs
         if ca_certs:
             try:
                 context.load_verify_locations(ca_certs)
@@ -332,8 +332,6 @@ else:  # Python 3.1 and earlier
     def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                         ca_certs=None, server_hostname=None,
                         ssl_version=None):
-        cert_reqs = resolve_cert_reqs(cert_reqs)
-        ssl_version = resolve_ssl_version(ssl_version)
         return wrap_socket(sock, keyfile=keyfile, certfile=certfile,
                            ca_certs=ca_certs, cert_reqs=cert_reqs,
                            ssl_version=ssl_version)
