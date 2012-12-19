@@ -132,6 +132,16 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.assertRaises(SSLError,
                           https_pool.request, 'GET', '/')
 
+    def test_invalid_ca_certs(self):
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_reqs='CERT_REQUIRED')
+
+        # Empty string won't throw on py2
+        https_pool.ca_certs = '/no_valid_path_to_ca_certs'
+
+        self.assertRaises(SSLError,
+                          https_pool.request, 'GET', '/')
+
 
 if __name__ == '__main__':
     unittest.main()

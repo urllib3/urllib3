@@ -318,8 +318,9 @@ if SSLContext is not None:  # Python 3.2+
         if ca_certs:
             try:
                 context.load_verify_locations(ca_certs)
-            except TypeError as e:  # Reraise as SSLError
-                # FIXME: This block needs a test.
+            # Py32 raises IOError
+            # Py33 raises FileNotFoundError
+            except Exception as e:  # Reraise as SSLError
                 raise SSLError(e)
         if certfile:
             # FIXME: This block needs a test.
