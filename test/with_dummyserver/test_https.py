@@ -54,10 +54,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.fail("Didn't raise SSL error with wrong CA")
         except SSLError as e:
             self.assertTrue('certificate verify failed' in str(e),
-                            "Expected 'certificate verify failed', instead got: %r" % e)
+                            "Expected 'certificate verify failed',"
+                            "instead got: %r" % e)
 
         https_pool.ca_certs = DEFAULT_CA
-        https_pool.request('GET', '/') # Should succeed without exceptions.
+        https_pool.request('GET', '/')  # Should succeed without exceptions.
 
         https_fail_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                               cert_reqs='CERT_REQUIRED')
