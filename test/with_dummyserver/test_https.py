@@ -117,5 +117,13 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                fields={'method': 'GET'})
         self.assertEqual(r.status, 200, r.data)
 
+    def test_ssl_unverified_with_ca_certs(self):
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_reqs='CERT_NONE')
+
+        https_pool.ca_certs = DEFAULT_CA_BAD
+        https_pool.request('GET', '/')
+
+
 if __name__ == '__main__':
     unittest.main()
