@@ -94,15 +94,14 @@ class HTTPResponse(object):
         return False
 
     def release_conn(self):
+        if self._fp:
+            self._fp.close()
+
         if not self._pool or not self._connection:
             return
 
         self._pool._put_conn(self._connection)
         self._connection = None
-
-    def close(self):
-        if self._fp:
-            self._fp.close()
 
     @property
     def data(self):

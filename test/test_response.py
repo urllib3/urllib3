@@ -31,11 +31,11 @@ class TestResponse(unittest.TestCase):
         r = HTTPResponse(None)
         self.assertEqual(r.data, None)
 
-    def test_close(self):
-        r = HTTPResponse()
+    def test_release_conn(self):
+        r = HTTPResponse(None)
         r._fp = BytesIO()
-        r.close()
-        self.assertTrue(r._fp.closed())
+        r.release_conn()
+        self.assertTrue(r._fp.closed)
 
     def test_preload(self):
         fp = BytesIO(b'foo')
