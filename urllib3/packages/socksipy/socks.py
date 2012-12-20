@@ -324,10 +324,14 @@ class socksocket(socket.socket):
         else:
             addr = destaddr
         self.sendall(("CONNECT " + addr + ":" + str(destport) + " HTTP/1.1\r\n" + "Host: " + destaddr + "\r\n\r\n").encode())
+        
         # We read the response until we get the string "\r\n\r\n"
-        resp = self.recv(1)
-        while resp.find("\r\n\r\n".encode()) == -1:
-            resp = resp + self.recv(1)
+        resp = self.recv(4096)
+        while "\r\n\r\n" not in resp:
+            d = self.recv(4096)
+            if not d:
+                raise GeneralProxyError((0, "connection closed unexpectedly"))
+            resp += d
         # We just need the first line to check if the connection
         # was successful
         statusline = resp.splitlines()[0].split(" ".encode(), 2)
