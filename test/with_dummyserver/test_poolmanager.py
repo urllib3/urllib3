@@ -84,8 +84,17 @@ class TestPoolManager(HTTPDummyServerTestCase):
         self.assertEqual(returned_headers.get('Foo'), None)
         self.assertEqual(returned_headers.get('Baz'), 'quux')
 
+        r = http.request_encode_body('GET', '%s/headers' % self.base_url, skip_accept_encoding=True)
+        returned_headers = json.loads(r.data.decode())
+        header_keys = [header_key.lower() for header_key in returned_headers.keys()]
+        self.assertNotIn("accept-encoding", header_keys)
+        self.assertIn("host", header_keys)
 
-
+        r = http.request_encode_body('GET', '%s/headers' % self.base_url, skip_host=True)
+        returned_headers = json.loads(r.data.decode())
+        header_keys = [header_key.lower() for header_key in returned_headers.keys()]
+        self.assertIn("accept-encoding", header_keys)
+        self.assertNotIn("host", header_keys)
 
 if __name__ == '__main__':
     unittest.main()
