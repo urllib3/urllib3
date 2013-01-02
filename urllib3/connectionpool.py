@@ -101,6 +101,10 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         resolved_cert_reqs = resolve_cert_reqs(self.cert_reqs)
         resolved_ssl_version = resolve_ssl_version(self.ssl_version)
 
+        if self._tunnel_host:
+            self.sock = sock
+            self._tunnel()
+
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
         self.sock = ssl_wrap_socket(sock, self.key_file, self.cert_file,
@@ -554,13 +558,32 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                 raise SSLError("Can't connect to HTTPS URL because the SSL "
                                "module is not available.")
 
-            return HTTPSConnection(host=self.host,
-                                   port=self.port,
+            if getattr(self, 'proxy', None) is None:
+                return HTTPSConnection(host=self.host,
+                                       port=self.port,
+                                       strict=self.strict)
+            connection = HTTPSConnection(host=self.proxy.host,
+                                   port=self.proxy.port,
                                    strict=self.strict)
+            connection._tunnel_host = self.host
+            connection._tunnel_port = self.port
+            if getattr(self, 'proxy_headers', None):
+                connection._tunnel_headers = self.proxy_headers
+            return connection
 
-        connection = VerifiedHTTPSConnection(host=self.host,
-                                             port=self.port,
-                                             strict=self.strict)
+        if getattr(self, 'proxy', None) is None:
+            connection = VerifiedHTTPSConnection(host=self.host,
+                                                 port=self.port,
+                                                 strict=self.strict)
+        else:
+            connection = VerifiedHTTPSConnection(host=self.proxy.host,
+                                                 port=self.proxy.port,
+                                                 strict=self.strict)
+            connection._tunnel_host = self.host
+            connection._tunnel_port = self.port
+            if getattr(self, 'proxy_headers', None):
+                connection._tunnel_headers = self.proxy_headers
+
         connection.set_cert(key_file=self.key_file, cert_file=self.cert_file,
                             cert_reqs=self.cert_reqs, ca_certs=self.ca_certs,
                             assert_hostname=self.assert_hostname,

@@ -145,7 +145,10 @@ class PoolManager(RequestMethods):
         if 'headers' not in kw:
             kw['headers'] = self.headers
 
-        response = conn.urlopen(method, u.request_uri, **kw)
+        if getattr(self, 'proxy', None) and u.scheme == "http":
+            response = conn.urlopen(method, url, **kw)
+        else:
+            response = conn.urlopen(method, u.request_uri, **kw)
 
         redirect_location = redirect and response.get_redirect_location()
         if not redirect_location:
@@ -163,16 +166,28 @@ class PoolManager(RequestMethods):
         kw['redirect'] = redirect
         return self.urlopen(method, redirect_location, **kw)
 
-
-class ProxyManager(RequestMethods):
+class ProxyManager(PoolManager):
     """
     Given a ConnectionPool to a proxy, the ProxyManager's ``urlopen`` method
     will make requests to any url through the defined proxy. The ProxyManager
     class will automatically set the 'Host' header if it is not provided.
     """
 
-    def __init__(self, proxy_pool):
-        self.proxy_pool = proxy_pool
+    def __init__(self, proxy_url, num_pools=10, headers=None, proxy_headers=None, **connection_pool_kw):
+        self.proxy = parse_url(proxy_url)
+        self.proxy_headers = proxy_headers
+        if self.proxy.scheme != "http":
+            raise AssertionError('Not supported proxy scheme %s'%self.proxy.scheme)
+        super(ProxyManager, self).__init__(num_pools, headers, **connection_pool_kw)
+
+    def connection_from_host(self, host, port=None, scheme='http'):
+        if scheme == "https":
+            pool = super(ProxyManager,self).connection_from_host(host, port, scheme)
+            pool.proxy = self.proxy
+            pool.proxy_headers = self.proxy_headers
+            return pool
+        return super(ProxyManager,self).connection_from_host(self.proxy.host,
+                self.proxy.port, self.proxy.scheme)
 
     def _set_proxy_headers(self, url, headers=None):
         """
@@ -187,16 +202,22 @@ class ProxyManager(RequestMethods):
 
         if headers:
             headers_.update(headers)
-
         return headers_
 
-    def urlopen(self, method, url, **kw):
+    def urlopen(self, method, url, redirect=True, **kw):
         "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
-        kw['assert_same_host'] = False
-        kw['headers'] = self._set_proxy_headers(url, headers=kw.get('headers'))
-        return self.proxy_pool.urlopen(method, url, **kw)
+        u = parse_url(url)
 
+        if u.scheme == "http":
+            # It's too late to set proxy headers on per-request basis for
+            # tunnelled HTTPS connections, should use
+            # constructor's proxy_headers instead
+            kw['headers'] = self._set_proxy_headers(kw.get('headers'))
+            if self.proxy_headers:
+                kw['headers'].update(self.proxy_headers)
 
-def proxy_from_url(url, **pool_kw):
-    proxy_pool = connection_from_url(url, **pool_kw)
-    return ProxyManager(proxy_pool)
+        return super(ProxyManager,self).urlopen(method, url, redirect, **kw)
+
+def proxy_from_url(url, **kw):
+    return ProxyManager(proxy_url=url, **kw)
+
