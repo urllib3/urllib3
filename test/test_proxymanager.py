@@ -5,7 +5,7 @@ from urllib3.poolmanager import ProxyManager
 
 class TestProxyManager(unittest.TestCase):
     def test_proxy_headers(self):
-        p = ProxyManager(None)
+        p = ProxyManager('http://something:1234')
 
         # Verify default headers
         default_headers = {'Accept': '*/*'}
