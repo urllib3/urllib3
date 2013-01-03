@@ -139,6 +139,8 @@ class PoolManager(RequestMethods):
 
 class ProxyManager(PoolManager):
     """
+    Behaves just like PoolManager, but sends all requests through
+    the defined proxy, using CONNECT method for HTTPS URLs
     """
 
     def __init__(self, proxy_url, num_pools=10, headers=None, proxy_headers=None, **connection_pool_kw):
@@ -161,6 +163,7 @@ class ProxyManager(PoolManager):
         headers_ = {'Accept': '*/*'}
         if headers:
             headers_.update(headers)
+
         return headers_
 
     def urlopen(self, method, url, redirect=True, **kw):

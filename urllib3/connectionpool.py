@@ -98,7 +98,8 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
         if self._tunnel_host:
             self.sock = sock
-            self._tunnel()
+            self._tunnel() # calls self._set_hostport(), so self.host is
+                           # self._tunnel_host below
 
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
@@ -130,6 +131,9 @@ class ConnectionPool(object):
     def __str__(self):
         return '%s(host=%r, port=%r)' % (type(self).__name__,
                                          self.host, self.port)
+    @property
+    def has_proxy(self):
+        return getattr(self, 'proxy', None) is not None
 
 
 class HTTPConnectionPool(ConnectionPool, RequestMethods):
@@ -537,44 +541,46 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         log.info("Starting new HTTPS connection (%d): %s"
                  % (self.num_connections, self.host))
 
+        _host = self.host
+        _port = self.port
+        if self.has_proxy:
+            _host = self.proxy.host
+            _port = self.proxy.port
+
         if not ssl: # Platform-specific: Python compiled without +ssl
             if not HTTPSConnection or HTTPSConnection is object:
                 raise SSLError("Can't connect to HTTPS URL because the SSL "
                                "module is not available.")
 
-            if getattr(self, 'proxy', None) is None:
-                return HTTPSConnection(host=self.host,
-                                       port=self.port,
-                                       strict=self.strict)
-            connection = HTTPSConnection(host=self.proxy.host,
-                                   port=self.proxy.port,
-                                   strict=self.strict)
-            connection._tunnel_host = self.host
-            connection._tunnel_port = self.port
-            if getattr(self, 'proxy_headers', None):
-                connection._tunnel_headers = self.proxy_headers
-            return connection
+            connection = HTTPSConnection(host=_host,
+                                         port=_port,
+                                         strict=self.strict)
 
-        if getattr(self, 'proxy', None) is None:
-            connection = VerifiedHTTPSConnection(host=self.host,
-                                                 port=self.port,
-                                                 strict=self.strict)
         else:
-            connection = VerifiedHTTPSConnection(host=self.proxy.host,
-                                                 port=self.proxy.port,
+            connection = VerifiedHTTPSConnection(host=_host,
+                                                 port=_port,
                                                  strict=self.strict)
-            connection._tunnel_host = self.host
-            connection._tunnel_port = self.port
-            if getattr(self, 'proxy_headers', None):
-                connection._tunnel_headers = self.proxy_headers
 
-        connection.set_cert(key_file=self.key_file, cert_file=self.cert_file,
-                            cert_reqs=self.cert_reqs, ca_certs=self.ca_certs)
+            connection.set_cert(key_file=self.key_file, cert_file=self.cert_file,
+                                cert_reqs=self.cert_reqs, ca_certs=self.ca_certs)
 
-        if self.ssl_version is None:
-            connection.ssl_version = ssl.PROTOCOL_SSLv23
-        else:
-            connection.ssl_version = self.ssl_version
+            if self.ssl_version is None:
+                connection.ssl_version = ssl.PROTOCOL_SSLv23
+            else:
+                connection.ssl_version = self.ssl_version
+
+        if self.has_proxy:
+            try:
+                # Python 2.7
+                connection.set_tunnel(self.host, self.port,
+                        getattr(self, 'proxy_headers', None))
+            except AttributeError:
+                # Python 2.6
+                connection._set_tunnel(self.host, self.port,
+                        getattr(self, 'proxy_headers', None))
+            connection.connect() # establish tunnel connection early, because
+                                 # otherwise httplib would improperly set
+                                 # Host: header to proxy's IP:port
 
         return connection
 
