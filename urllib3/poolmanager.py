@@ -148,9 +148,8 @@ class PoolManager(RequestMethods):
 
 class ProxyManager(PoolManager):
     """
-    Given a ConnectionPool to a proxy, the ProxyManager's ``urlopen`` method
-    will make requests to any url through the defined proxy. The ProxyManager
-    class will automatically set the 'Host' header if it is not provided.
+    Behaves just like PoolManager, but sends all requests through
+    the defined proxy, using CONNECT method for HTTPS URLs
     """
 
     def __init__(self, proxy_url, num_pools=10, headers=None, proxy_headers=None, **connection_pool_kw):
@@ -182,6 +181,7 @@ class ProxyManager(PoolManager):
 
         if headers:
             headers_.update(headers)
+
         return headers_
 
     def urlopen(self, method, url, redirect=True, **kw):
