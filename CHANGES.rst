@@ -4,6 +4,9 @@ Changes
 dev (master branch)
 +++++++++++++++++++
 
+* Ensure the connection is closed if no data is received, fixes conncetion leak
+  on some platforms. (Issue #133)
+
 * Added SNI support for SSL/TLS connections on Py32+. (Issue #89)
 
 * Tests fixed to be compatible with Py26 again. (Issue #125)
