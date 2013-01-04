@@ -14,8 +14,10 @@ import socket
 import tornado.wsgi
 import tornado.httpserver
 import tornado.ioloop
+import tornado.web
 
 from dummyserver.handlers import TestingApp
+from dummyserver.proxy import ProxyHandler
 
 
 log = logging.getLogger(__name__)
@@ -96,6 +98,25 @@ class TornadoServerThread(threading.Thread):
     def stop(self):
         self.ioloop.add_callback(self.server.stop)
         self.ioloop.add_callback(self.ioloop.stop)
+
+class ProxyServerThread(threading.Thread):
+    def __init__(self, host='localhost', port=8091, run_ioloop=True):
+        threading.Thread.__init__(self)
+
+        self.host = host
+        self.port = port
+        self.run_ioloop = run_ioloop
+
+    def run(self):
+        self.app = tornado.web.Application([(r'.*', ProxyHandler),])
+        self.app.listen(self.port, address=self.host)
+        if self.run_ioloop:
+            self.ioloop = tornado.ioloop.IOLoop.instance()
+            self.ioloop.start()
+
+    def stop(self):
+        if hasattr(self,'ioloop'):
+            self.ioloop.stop()
 
 
 if __name__ == '__main__':
