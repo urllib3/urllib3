@@ -212,6 +212,8 @@ class ProxyManager(PoolManager):
             # It's too late to set proxy headers on per-request basis for
             # tunnelled HTTPS connections, should use
             # constructor's proxy_headers instead
+            if not kw.get('headers') and self.headers:
+                kw['headers'] = self.headers
             kw['headers'] = self._set_proxy_headers(kw.get('headers'))
             if self.proxy_headers:
                 kw['headers'].update(self.proxy_headers)
