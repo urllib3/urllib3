@@ -567,16 +567,13 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
         if self.has_proxy:
             try:
-                # Python 2.7
-                connection.set_tunnel(self.host, self.port,
-                        getattr(self, 'proxy_headers', None))
+                set_tunnel = connection.set_tunnel   # Python 2.7
             except AttributeError:
-                # Python 2.6
-                connection._set_tunnel(self.host, self.port,
-                        getattr(self, 'proxy_headers', None))
-            connection.connect() # establish tunnel connection early, because
-                                 # otherwise httplib would improperly set
-                                 # Host: header to proxy's IP:port
+                set_tunnel = connection._set_tunnel  # Python 2.6
+            set_tunnel(self.host, self.port, getattr(self, 'proxy_headers', None))
+            connection.connect()  # establish tunnel connection early, because
+                                  # otherwise httplib would improperly set
+                                  # Host: header to proxy's IP:port
 
         return connection
 
