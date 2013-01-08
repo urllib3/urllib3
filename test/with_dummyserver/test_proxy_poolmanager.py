@@ -1,27 +1,28 @@
 import unittest
 import json
 
-from dummyserver.testcase import HTTPDummyServerTestCase,HTTPDummyProxyTestCase,HTTPSDummyServerTestCase
+from dummyserver.testcase import HTTPDummyProxyTestCase
 from urllib3.poolmanager import proxy_from_url
-from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError
 
-class TestHTTPProxyManager(HTTPDummyProxyTestCase,HTTPDummyServerTestCase):
-    base_url = 'http://%s:%d' % (HTTPDummyServerTestCase.host, HTTPDummyServerTestCase.port)
-    base_url_alt = 'http://%s:%d' % (HTTPDummyServerTestCase.host_alt, HTTPDummyServerTestCase.port)
+class TestHTTPProxyManager(HTTPDummyProxyTestCase):
+    http_url = 'http://%s:%d' % (HTTPDummyProxyTestCase.http_host, HTTPDummyProxyTestCase.http_port)
+    http_url_alt = 'http://%s:%d' % (HTTPDummyProxyTestCase.http_host_alt, HTTPDummyProxyTestCase.http_port)
+    https_url = 'https://%s:%d' % (HTTPDummyProxyTestCase.https_host, HTTPDummyProxyTestCase.https_port)
+    https_url_alt = 'https://%s:%d' % (HTTPDummyProxyTestCase.https_host_alt, HTTPDummyProxyTestCase.https_port)
     proxy_url = 'http://%s:%d' % (HTTPDummyProxyTestCase.proxy_host, HTTPDummyProxyTestCase.proxy_port)
 
     def test_redirect(self):
         http = proxy_from_url(self.proxy_url)
 
-        r = http.request('GET', '%s/redirect' % self.base_url,
-                         fields={'target': '%s/' % self.base_url},
+        r = http.request('GET', '%s/redirect' % self.http_url,
+                         fields={'target': '%s/' % self.http_url},
                          redirect=False)
 
         self.assertEqual(r.status, 303)
 
-        r = http.request('GET', '%s/redirect' % self.base_url,
-                         fields={'target': '%s/' % self.base_url})
+        r = http.request('GET', '%s/redirect' % self.http_url,
+                         fields={'target': '%s/' % self.http_url})
 
         self.assertEqual(r.status, 200)
         self.assertEqual(r.data, b'Dummy server!')
@@ -29,9 +30,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase,HTTPDummyServerTestCase):
     def test_cross_host_redirect(self):
         http = proxy_from_url(self.proxy_url)
 
-        cross_host_location = '%s/echo?a=b' % self.base_url_alt
+        cross_host_location = '%s/echo?a=b' % self.http_url_alt
         try:
-            http.request('GET', '%s/redirect' % self.base_url,
+            http.request('GET', '%s/redirect' % self.http_url,
                          fields={'target': cross_host_location},
                          timeout=0.1, retries=0)
             self.fail("Request succeeded instead of raising an exception like it should.")
@@ -39,31 +40,138 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase,HTTPDummyServerTestCase):
         except MaxRetryError:
             pass
 
-        r = http.request('GET', '%s/redirect' % self.base_url,
-                         fields={'target': '%s/echo?a=b' % self.base_url_alt},
+        r = http.request('GET', '%s/redirect' % self.http_url,
+                         fields={'target': '%s/echo?a=b' % self.http_url_alt},
                          timeout=0.01, retries=1)
-        self.assertNotEqual(r._pool.host, self.host_alt)
+        self.assertNotEqual(r._pool.host, self.http_host_alt)
+
+    def test_cross_protocol_redirect(self):
+        http = proxy_from_url(self.proxy_url)
+
+        cross_protocol_location = '%s/echo?a=b' % self.https_url
+        try:
+            http.request('GET', '%s/redirect' % self.http_url,
+                         fields={'target': cross_protocol_location},
+                         timeout=0.1, retries=0)
+            self.fail("Request succeeded instead of raising an exception like it should.")
+
+        except MaxRetryError:
+            pass
+
+        r = http.request('GET', '%s/redirect' % self.http_url,
+                         fields={'target': '%s/echo?a=b' % self.https_url},
+                         timeout=0.01, retries=1)
+        self.assertEqual(r._pool.host, self.https_host)
 
     def test_headers(self):
-        http = proxy_from_url(self.proxy_url,headers={'Foo': 'bar'})
+        http = proxy_from_url(self.proxy_url,headers={'Foo': 'bar'},
+                proxy_headers={'Hickory': 'dickory'})
 
-        r = http.request_encode_url('GET', '%s/headers' % self.base_url)
+        r = http.request_encode_url('GET', '%s/headers' % self.http_url)
         returned_headers = json.loads(r.data.decode())
         self.assertEqual(returned_headers.get('Foo'), 'bar')
+        self.assertEqual(returned_headers.get('Hickory'), 'dickory')
+        self.assertEqual(returned_headers.get('Host'),
+                '%s:%s'%(self.http_host,self.http_port))
 
-        r = http.request_encode_body('POST', '%s/headers' % self.base_url)
+        r = http.request_encode_url('GET', '%s/headers' % self.http_url_alt)
         returned_headers = json.loads(r.data.decode())
         self.assertEqual(returned_headers.get('Foo'), 'bar')
+        self.assertEqual(returned_headers.get('Hickory'), 'dickory')
+        self.assertEqual(returned_headers.get('Host'),
+                '%s:%s'%(self.http_host_alt,self.http_port))
 
-        r = http.request_encode_url('GET', '%s/headers' % self.base_url, headers={'Baz': 'quux'})
+        r = http.request_encode_url('GET', '%s/headers' % self.https_url)
+        returned_headers = json.loads(r.data.decode())
+        self.assertEqual(returned_headers.get('Foo'), 'bar')
+        self.assertEqual(returned_headers.get('Hickory'), None)
+        self.assertEqual(returned_headers.get('Host'),
+                '%s:%s'%(self.https_host,self.https_port))
+
+        r = http.request_encode_url('GET', '%s/headers' % self.https_url_alt)
+        returned_headers = json.loads(r.data.decode())
+        self.assertEqual(returned_headers.get('Foo'), 'bar')
+        self.assertEqual(returned_headers.get('Hickory'), None)
+        self.assertEqual(returned_headers.get('Host'),
+                '%s:%s'%(self.https_host_alt,self.https_port))
+
+        r = http.request_encode_body('POST', '%s/headers' % self.http_url)
+        returned_headers = json.loads(r.data.decode())
+        self.assertEqual(returned_headers.get('Foo'), 'bar')
+        self.assertEqual(returned_headers.get('Hickory'), 'dickory')
+        self.assertEqual(returned_headers.get('Host'),
+                '%s:%s'%(self.http_host,self.http_port))
+
+        r = http.request_encode_url('GET', '%s/headers' % self.http_url, headers={'Baz': 'quux'})
         returned_headers = json.loads(r.data.decode())
         self.assertEqual(returned_headers.get('Foo'), None)
         self.assertEqual(returned_headers.get('Baz'), 'quux')
+        self.assertEqual(returned_headers.get('Hickory'), 'dickory')
+        self.assertEqual(returned_headers.get('Host'),
+                '%s:%s'%(self.http_host,self.http_port))
 
-        r = http.request_encode_body('GET', '%s/headers' % self.base_url, headers={'Baz': 'quux'})
+        r = http.request_encode_url('GET', '%s/headers' % self.https_url, headers={'Baz': 'quux'})
         returned_headers = json.loads(r.data.decode())
         self.assertEqual(returned_headers.get('Foo'), None)
         self.assertEqual(returned_headers.get('Baz'), 'quux')
+        self.assertEqual(returned_headers.get('Hickory'), None)
+        self.assertEqual(returned_headers.get('Host'),
+                '%s:%s'%(self.https_host,self.https_port))
+
+        r = http.request_encode_body('GET', '%s/headers' % self.http_url, headers={'Baz': 'quux'})
+        returned_headers = json.loads(r.data.decode())
+        self.assertEqual(returned_headers.get('Foo'), None)
+        self.assertEqual(returned_headers.get('Baz'), 'quux')
+        self.assertEqual(returned_headers.get('Hickory'), 'dickory')
+        self.assertEqual(returned_headers.get('Host'),
+                '%s:%s'%(self.http_host,self.http_port))
+
+        r = http.request_encode_body('GET', '%s/headers' % self.https_url, headers={'Baz': 'quux'})
+        returned_headers = json.loads(r.data.decode())
+        self.assertEqual(returned_headers.get('Foo'), None)
+        self.assertEqual(returned_headers.get('Baz'), 'quux')
+        self.assertEqual(returned_headers.get('Hickory'), None)
+        self.assertEqual(returned_headers.get('Host'),
+                '%s:%s'%(self.https_host,self.https_port))
+
+    def test_proxy_pooling(self):
+        http = proxy_from_url(self.proxy_url)
+
+        for x in xrange(2):
+            r = http.urlopen('GET', self.http_url)
+        self.assertEqual(len(http.pools), 1)
+
+        for x in xrange(2):
+            r = http.urlopen('GET', self.http_url_alt)
+        self.assertEqual(len(http.pools), 1)
+
+        for x in xrange(2):
+            r = http.urlopen('GET', self.https_url)
+        self.assertEqual(len(http.pools), 2)
+
+        for x in xrange(2):
+            r = http.urlopen('GET', self.https_url_alt)
+        self.assertEqual(len(http.pools), 3)
+
+    def test_proxy_pooling_ext(self):
+        http = proxy_from_url(self.proxy_url)
+        hc1 = http.connection_from_url(self.http_url)
+        hc2 = http.connection_from_host(self.http_host, self.http_port)
+        hc3 = http.connection_from_url(self.http_url_alt)
+        hc4 = http.connection_from_host(self.http_host_alt, self.http_port)
+        self.assertIs(hc1,hc2)
+        self.assertIs(hc2,hc3)
+        self.assertIs(hc3,hc4)
+
+        sc1 = http.connection_from_url(self.https_url)
+        sc2 = http.connection_from_host(self.https_host,
+                self.https_port,scheme='https')
+        sc3 = http.connection_from_url(self.https_url_alt)
+        sc4 = http.connection_from_host(self.https_host_alt,
+                self.https_port,scheme='https')
+        self.assertIs(sc1,sc2)
+        self.assertIsNot(sc2,sc3)
+        self.assertIs(sc3,sc4)
 
 
 if __name__ == '__main__':

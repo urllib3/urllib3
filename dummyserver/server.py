@@ -69,13 +69,14 @@ class SocketServerThread(threading.Thread):
 
 
 class TornadoServerThread(threading.Thread):
-    def __init__(self, host='localhost', port=8081, scheme='http', certs=None):
+    def __init__(self, host='localhost', port=8081, scheme='http', certs=None, run_ioloop=True):
         threading.Thread.__init__(self)
 
         self.host = host
         self.port = port
         self.scheme = scheme
         self.certs = certs
+        self.run_ioloop = run_ioloop
 
     def _start_server(self):
         container = tornado.wsgi.WSGIContainer(TestingApp())
@@ -91,12 +92,14 @@ class TornadoServerThread(threading.Thread):
 
     def run(self):
         self.server = self._start_server()
-        self.ioloop = tornado.ioloop.IOLoop.instance()
-        self.ioloop.start()
+        if self.run_ioloop:
+            self.ioloop = tornado.ioloop.IOLoop.instance()
+            self.ioloop.start()
 
     def stop(self):
         self.server.stop()
-        self.ioloop.stop()
+        if hasattr(self, 'ioloop'):
+            self.ioloop.stop()
 
 class ProxyServerThread(threading.Thread):
     def __init__(self, host='localhost', port=8091, run_ioloop=True):
