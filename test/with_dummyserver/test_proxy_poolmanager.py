@@ -159,9 +159,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         hc2 = http.connection_from_host(self.http_host, self.http_port)
         hc3 = http.connection_from_url(self.http_url_alt)
         hc4 = http.connection_from_host(self.http_host_alt, self.http_port)
-        self.assertIs(hc1,hc2)
-        self.assertIs(hc2,hc3)
-        self.assertIs(hc3,hc4)
+        self.assertEqual(hc1,hc2)
+        self.assertEqual(hc2,hc3)
+        self.assertEqual(hc3,hc4)
 
         sc1 = http.connection_from_url(self.https_url)
         sc2 = http.connection_from_host(self.https_host,
@@ -169,9 +169,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         sc3 = http.connection_from_url(self.https_url_alt)
         sc4 = http.connection_from_host(self.https_host_alt,
                 self.https_port,scheme='https')
-        self.assertIs(sc1,sc2)
-        self.assertIsNot(sc2,sc3)
-        self.assertIs(sc3,sc4)
+        self.assertEqual(sc1,sc2)
+        self.assertNotEqual(sc2,sc3)
+        self.assertEqual(sc3,sc4)
 
 
 if __name__ == '__main__':
