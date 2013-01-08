@@ -139,13 +139,33 @@ class PoolManager(RequestMethods):
 
 class ProxyManager(PoolManager):
     """
-    Behaves just like PoolManager, but sends all requests through
+    Behaves just like :class:`PoolManager`, but sends all requests through
     the defined proxy, using CONNECT method for HTTPS URLs
+
+    :param poxy_url:
+        The URL of the proxy to be used
+
+    :param proxy_headers:
+        A dictionary contaning headers that will be sent to the proxy. In case
+        of HTTP they are being sent with each request, while in the
+        HTTPS/CONNECT case they are sent only once. Could be used for proxy
+        authentication.
+
+    Example:
+        >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
+        >>> r1 = proxy.request('GET', 'http://google.com/')
+        >>> r2 = proxy.request('GET', 'http://httpbin.org/')
+        >>> r3 = proxy.request('GET', 'https://httpbin.org/')
+        >>> r4 = proxy.request('GET', 'https://twitter.com/')
+        >>> len(proxy.pools)
+        3
+
     """
 
     def __init__(self, proxy_url, num_pools=10, headers=None, proxy_headers=None, **connection_pool_kw):
         self.proxy = parse_url(proxy_url)
         self.proxy_headers = proxy_headers
+        # TODO: add proxy authentication here
         if self.proxy.scheme != "http":
             raise AssertionError('Not supported proxy scheme %s'%self.proxy.scheme)
         super(ProxyManager, self).__init__(num_pools, headers, **connection_pool_kw)
@@ -163,7 +183,6 @@ class ProxyManager(PoolManager):
         headers_ = {'Accept': '*/*'}
         if headers:
             headers_.update(headers)
-
         return headers_
 
     def urlopen(self, method, url, redirect=True, **kw):
