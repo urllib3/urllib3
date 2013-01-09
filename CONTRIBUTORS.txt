@@ -48,7 +48,7 @@ In chronological order:
 * hartator <hartator@gmail.com>
   * Corrected multipart behavior for params 
 
-* Stanislav Vitkovskiy <stanislav.vitkovskiy@fairfaxmedia.com.au>
+* Stanislav Vitkovskiy <stas.vitkovsky@gmail.com>
   * Added HTTPS (CONNECT) proxy support
 
 * [Your name or handle] <[email or website]>

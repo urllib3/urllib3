@@ -12,6 +12,15 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     https_url_alt = 'https://%s:%d' % (HTTPDummyProxyTestCase.https_host_alt, HTTPDummyProxyTestCase.https_port)
     proxy_url = 'http://%s:%d' % (HTTPDummyProxyTestCase.proxy_host, HTTPDummyProxyTestCase.proxy_port)
 
+    def test_basic_proxy(self):
+        http = proxy_from_url(self.proxy_url)
+
+        r = http.request('GET', '%s/' % self.http_url)
+        self.assertEqual(r.status, 200)
+
+        r = http.request('GET', '%s/' % self.https_url)
+        self.assertEqual(r.status, 200)
+
     def test_redirect(self):
         http = proxy_from_url(self.proxy_url)
 
@@ -137,19 +146,19 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     def test_proxy_pooling(self):
         http = proxy_from_url(self.proxy_url)
 
-        for x in xrange(2):
+        for x in range(2):
             r = http.urlopen('GET', self.http_url)
         self.assertEqual(len(http.pools), 1)
 
-        for x in xrange(2):
+        for x in range(2):
             r = http.urlopen('GET', self.http_url_alt)
         self.assertEqual(len(http.pools), 1)
 
-        for x in xrange(2):
+        for x in range(2):
             r = http.urlopen('GET', self.https_url)
         self.assertEqual(len(http.pools), 2)
 
-        for x in xrange(2):
+        for x in range(2):
             r = http.urlopen('GET', self.https_url_alt)
         self.assertEqual(len(http.pools), 3)
 
