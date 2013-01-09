@@ -192,6 +192,12 @@ class ProxyManager(PoolManager):
     """
 
     def __init__(self, proxy_url, num_pools=10, headers=None, proxy_headers=None, **connection_pool_kw):
+        if isinstance(proxy_url, HTTPConnectionPool):
+            # TODO: may be we can use HTTPConnectionPool properties and put
+            # them to **connection_pool_kw or even put this instance of
+            # HTTPConnectionPool to self.pools for future use
+            proxy_url = '%s://%s:%i'%(proxy_url.scheme, proxy_url.host,
+                    proxy_url.port)
         self.proxy = parse_url(proxy_url)
         self.proxy_headers = proxy_headers
         # TODO: add proxy authentication here
