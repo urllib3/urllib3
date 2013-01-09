@@ -68,7 +68,7 @@ class ProxyHandler(tornado.web.RequestHandler):
         client = tornado.httpclient.AsyncHTTPClient()
         try:
             client.fetch(req, handle_response)
-        except tornado.httpclient.HTTPError, e:
+        except tornado.httpclient.HTTPError as e:
             if hasattr(e, 'response') and e.response:
                 self.handle_response(e.response)
             else:
@@ -108,7 +108,7 @@ class ProxyHandler(tornado.web.RequestHandler):
         def start_tunnel():
             client.read_until_close(client_close, read_from_client)
             upstream.read_until_close(upstream_close, read_from_upstream)
-            client.write('HTTP/1.0 200 Connection established\r\n\r\n')
+            client.write(b'HTTP/1.0 200 Connection established\r\n\r\n')
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         upstream = tornado.iostream.IOStream(s)
@@ -133,5 +133,5 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         port = int(sys.argv[1])
 
-    print "Starting HTTP proxy on port %d" % port
+    print ("Starting HTTP proxy on port %d" % port)
     run_proxy(port)

@@ -78,7 +78,7 @@ In chronological order:
 * Audrius Butkevicius <audrius.butkevicius@elastichosts.com>
   * Fixed a race condition
 
-* Stanislav Vitkovskiy <stanislav.vitkovskiy@fairfaxmedia.com.au>
+* Stanislav Vitkovskiy <stas.vitkovsky@gmail.com>
   * Added HTTPS (CONNECT) proxy support
 
 * [Your name or handle] <[email or website]>
