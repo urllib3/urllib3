@@ -2,8 +2,9 @@ import unittest
 import json
 
 from dummyserver.testcase import HTTPDummyProxyTestCase
-from urllib3.poolmanager import proxy_from_url
+from urllib3.poolmanager import proxy_from_url, ProxyManager
 from urllib3.exceptions import MaxRetryError
+from urllib3.connectionpool import connection_from_url
 
 class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     http_url = 'http://%s:%d' % (HTTPDummyProxyTestCase.http_host, HTTPDummyProxyTestCase.http_port)
@@ -14,6 +15,15 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_basic_proxy(self):
         http = proxy_from_url(self.proxy_url)
+
+        r = http.request('GET', '%s/' % self.http_url)
+        self.assertEqual(r.status, 200)
+
+        r = http.request('GET', '%s/' % self.https_url)
+        self.assertEqual(r.status, 200)
+
+    def test_oldapi(self):
+        http = ProxyManager(connection_from_url(self.proxy_url))
 
         r = http.request('GET', '%s/' % self.http_url)
         self.assertEqual(r.status, 200)
