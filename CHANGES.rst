@@ -4,6 +4,19 @@ Changes
 dev (master branch)
 +++++++++++++++++++
 
+* Ensure the connection is closed if no data is received, fixes conncetion leak
+  on some platforms. (Issue #133)
+
+* Added SNI support for SSL/TLS connections on Py32+. (Issue #89)
+
+* Tests fixed to be compatible with Py26 again. (Issue #125)
+
+* Added ability to choose SSL version by passing an ``ssl.PROTOCOL_*`` constant
+  to the ``ssl_version`` parameter of ``HTTPSConnectionPool``. (Issue #109)
+
+* Allow an explicit content type to be specified when encoding file fields.
+  (Issue #126)
+
 * Exceptions are now pickleable, with tests. (Issue #101)
 
 * Fixed default headers not getting passed in some cases. (Issue #99)
@@ -14,15 +27,17 @@ dev (master branch)
 * "Connection Refused" SocketErrors will get retried rather than raised.
   (Issue #92)
 
-* Updated vendored `six`, no longer overrides the global `six` module
+* Updated vendored ``six``, no longer overrides the global ``six`` module
   namespace. (Issue #113)
 
-* `urllib3.exceptions.MaxRetryError` contains a `reason` property holding the
-  exception that prompted the final retry. If `reason is None` then it was due
-  to a redirect. (Issue #92, #114)
+* ``urllib3.exceptions.MaxRetryError`` contains a ``reason`` property holding
+  the exception that prompted the final retry. If ``reason is None`` then it
+  was due to a redirect. (Issue #92, #114)
 
-* Don't assume `Content-Type: text/plain` for multi-part encoding parameters
+* Don't assume ``Content-Type: text/plain`` for multi-part encoding parameters
   that are not files. (Issue #111)
+
+* Pass `strict` param down to ``httplib.HTTPConnection``. (Issue #122)
 
 
 1.5 (2012-08-02)

@@ -121,7 +121,7 @@ class TestingApp(WSGIHandler):
         return Response(status='303', headers=headers)
 
     def keepalive(self, request):
-        if request.params.get('close', '0') == '1':
+        if request.params.get('close', b'0') == b'1':
             headers = [('Connection', 'close')]
             return Response('Closing', headers=headers)
 
