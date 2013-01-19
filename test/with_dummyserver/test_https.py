@@ -54,10 +54,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.fail("Didn't raise SSL error with wrong CA")
         except SSLError as e:
             self.assertTrue('certificate verify failed' in str(e),
-                            "Expected 'certificate verify failed', instead got: %r" % e)
+                            "Expected 'certificate verify failed',"
+                            "instead got: %r" % e)
 
         https_pool.ca_certs = DEFAULT_CA
-        https_pool.request('GET', '/') # Should succeed without exceptions.
+        https_pool.request('GET', '/')  # Should succeed without exceptions.
 
         https_fail_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                               cert_reqs='CERT_REQUIRED')
@@ -80,13 +81,66 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.assertRaises(SSLError, self._pool._new_conn)
 
         self.assertRaises(SSLError,
-            lambda: self._pool.request('GET', '/specific_method',
-                                       fields={'method': 'GET'}))
+                          self._pool.request, 'GET', '/specific_method',
+                          fields={'method': 'GET'})
 
         # Undo
         urllib3.HTTPSConnection = OriginalHTTPSConnection
         urllib3.connectionpool.ssl = OriginalSSL
 
+    def test_cert_reqs_as_constant(self):
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_reqs=ssl.CERT_REQUIRED)
+
+        https_pool.ca_certs = DEFAULT_CA_BAD
+        # if we pass in an invalid value it defaults to CERT_NONE
+        self.assertRaises(SSLError,
+                          https_pool.request, 'GET', '/')
+
+    def test_cert_reqs_as_short_string(self):
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_reqs='REQUIRED')
+
+        https_pool.ca_certs = DEFAULT_CA_BAD
+        # if we pass in an invalid value it defaults to CERT_NONE
+        self.assertRaises(SSLError,
+                          https_pool.request, 'GET', '/')
+
+    def test_ssl_version_as_string(self):
+        self._pool.ssl_version = 'PROTOCOL_TLSv1'
+        r = self._pool.request('GET', '/specific_method',
+                               fields={'method': 'GET'})
+        self.assertEqual(r.status, 200, r.data)
+
+    def test_ssl_version_as_short_string(self):
+        self._pool.ssl_version = 'TLSv1'
+        r = self._pool.request('GET', '/specific_method',
+                               fields={'method': 'GET'})
+        self.assertEqual(r.status, 200, r.data)
+
+    def test_ssl_unverified_with_ca_certs(self):
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_reqs='CERT_NONE')
+
+        https_pool.ca_certs = DEFAULT_CA_BAD
+        https_pool.request('GET', '/')
+
+    def test_verified_without_ca_certs(self):
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_reqs='CERT_REQUIRED')
+
+        self.assertRaises(SSLError,
+                          https_pool.request, 'GET', '/')
+
+    def test_invalid_ca_certs(self):
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_reqs='CERT_REQUIRED')
+
+        # Empty string won't throw on py2
+        https_pool.ca_certs = '/no_valid_path_to_ca_certs'
+
+        self.assertRaises(SSLError,
+                          https_pool.request, 'GET', '/')
 
 
 if __name__ == '__main__':
