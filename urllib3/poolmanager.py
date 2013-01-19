@@ -74,6 +74,7 @@ class PoolManager(RequestMethods):
         If ``port`` isn't given, it will be derived from the ``scheme`` using
         ``urllib3.connectionpool.port_by_scheme``.
         """
+        scheme = scheme or 'http'
         port = port or port_by_scheme.get(scheme, 80)
 
         pool_key = (scheme, host, port)
