@@ -7,7 +7,7 @@ dev (master branch)
 * Vendored ``socksipy`` now based on Anorov's fork which handles unexpectedly
   closed proxy connections and larger read buffers. (Issue #135)
 
-* Ensure the connection is closed if no data is received, fixes conncetion leak
+* Ensure the connection is closed if no data is received, fixes connection leak
   on some platforms. (Issue #133)
 
 * Added SNI support for SSL/TLS connections on Py32+. (Issue #89)
