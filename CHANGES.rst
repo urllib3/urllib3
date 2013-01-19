@@ -4,6 +4,11 @@ Changes
 dev (master branch)
 +++++++++++++++++++
 
+* Improved SSL-related code. ``cert_req`` now optionally takes a string like
+  "REQUIRED" or "NONE". Same with ``ssl_version`` takes strings like "SSLv23"
+  The string values reflect the suffix of the respective constant variable.
+  (Issue #130)
+
 * Vendored ``socksipy`` now based on Anorov's fork which handles unexpectedly
   closed proxy connections and larger read buffers. (Issue #135)
 
