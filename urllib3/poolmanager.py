@@ -86,7 +86,7 @@ class PoolManager(RequestMethods):
             return pool
 
         # Make a fresh ConnectionPool of the desired type
-        pool_cls = pool_classes_by_scheme[scheme]
+        pool_cls = pool_classes_by_scheme.get(scheme, 'http')
         pool = pool_cls(host, port, **self.connection_pool_kw)
 
         self.pools[pool_key] = pool
