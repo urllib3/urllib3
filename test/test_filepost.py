@@ -116,8 +116,8 @@ class TestMultipartEncoding(unittest.TestCase):
             )
 
     def test_international_headers(self):
-        fields = [(u'ke\u00ff', (u'n\u00e4me', b'v1')),
-                  (u'\u03a4\u03b5\u03be\u03c4', b'v2')]
+        fields = [(u('ke\u00ff'), (u('n\u00e4me'), b'v1')),
+                  (u('\u03a4\u03b5\u03be\u03c4'), b'v2')]
 
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
 

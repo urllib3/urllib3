@@ -44,12 +44,16 @@ def header_param(name, value):
     if not any(ch in value for ch in '"\\\r\n'):
         result = '%s="%s"' % (name, value)
         try:
-            return result.encode('ascii')
+            result.encode('ascii')
         except UnicodeEncodeError:
             pass
-    value = value.encode('utf-8')
+        else:
+            return result
+    if not six.PY3:
+        value = value.encode('utf-8')
     value = email.utils.encode_rfc2231(value, 'utf-8')
-    return ('%s*=%s' % (name, value)).encode('ascii')
+    value = '%s*=%s' % (name, value)
+    return value
 
 
 def encode_multipart_formdata(fields, boundary=None):
