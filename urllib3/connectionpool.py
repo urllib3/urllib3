@@ -97,8 +97,9 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
         if self._tunnel_host:
             self.sock = sock
-            self._tunnel() # calls self._set_hostport(), so self.host is
-                           # self._tunnel_host below
+            # Calls self._set_hostport(), so self.host is
+            # self._tunnel_host below.
+            self._tunnel()
 
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
@@ -566,14 +567,16 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             connection.ssl_version = self.ssl_version
 
         if self.has_proxy:
+            # Python 2.7+
             try:
-                set_tunnel = connection.set_tunnel   # Python 2.7
+                set_tunnel = connection.set_tunnel
+            # Python 2.6
             except AttributeError:
-                set_tunnel = connection._set_tunnel  # Python 2.6
+                set_tunnel = connection._set_tunnel
             set_tunnel(self.host, self.port, getattr(self, 'proxy_headers', None))
-            connection.connect()  # establish tunnel connection early, because
-                                  # otherwise httplib would improperly set
-                                  # Host: header to proxy's IP:port
+            # Establish tunnel connection early, because otherwise httplib
+            # would improperly set Host: header to proxy's IP:port.
+            connection.connect()
 
         return connection
 
