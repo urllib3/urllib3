@@ -169,10 +169,10 @@ class PoolManager(RequestMethods):
 class ProxyManager(PoolManager):
     """
     Behaves just like :class:`PoolManager`, but sends all requests through
-    the defined proxy, using CONNECT method for HTTPS URLs
+    the defined proxy, using the CONNECT method for HTTPS URLs.
 
     :param poxy_url:
-        The URL of the proxy to be used
+        The URL of the proxy to be used.
 
     :param proxy_headers:
         A dictionary contaning headers that will be sent to the proxy. In case
@@ -184,6 +184,8 @@ class ProxyManager(PoolManager):
         >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
         >>> r1 = proxy.request('GET', 'http://google.com/')
         >>> r2 = proxy.request('GET', 'http://httpbin.org/')
+        >>> len(proxy.pools)
+        1
         >>> r3 = proxy.request('GET', 'https://httpbin.org/')
         >>> r4 = proxy.request('GET', 'https://twitter.com/')
         >>> len(proxy.pools)
@@ -195,7 +197,7 @@ class ProxyManager(PoolManager):
         if isinstance(proxy_url, HTTPConnectionPool):
             # TODO: may be we can use HTTPConnectionPool properties and put
             # them to **connection_pool_kw or even put this instance of
-            # HTTPConnectionPool to self.pools for future use
+            # HTTPConnectionPool to self.pools for future use.
             proxy_url = '%s://%s:%i'%(proxy_url.scheme, proxy_url.host,
                     proxy_url.port)
         self.proxy = parse_url(proxy_url)
@@ -236,7 +238,7 @@ class ProxyManager(PoolManager):
         if u.scheme == "http":
             # It's too late to set proxy headers on per-request basis for
             # tunnelled HTTPS connections, should use
-            # constructor's proxy_headers instead
+            # constructor's proxy_headers instead.
             if not kw.get('headers') and self.headers:
                 kw['headers'] = self.headers.copy()
             kw['headers'] = self._set_proxy_headers(kw.get('headers'))

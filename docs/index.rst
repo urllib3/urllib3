@@ -110,6 +110,8 @@ HTTPS connections:
     >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
     >>> r1 = proxy.request('GET', 'http://google.com/')
     >>> r2 = proxy.request('GET', 'http://httpbin.org/')
+    >>> len(proxy.pools)
+    1
     >>> r3 = proxy.request('GET', 'https://httpbin.org/')
     >>> r4 = proxy.request('GET', 'https://twitter.com/')
     >>> len(proxy.pools)
