@@ -9,7 +9,7 @@ import socket
 import errno
 
 from socket import error as SocketError, timeout as SocketTimeout
-from .util import resolve_cert_reqs, resolve_ssl_version
+from .util import resolve_cert_reqs, resolve_ssl_version, match_fingerprint
 
 try: # Python 3
     from http.client import HTTPConnection, HTTPException
@@ -80,14 +80,15 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     ca_certs = None
     ssl_version = None
 
-    def set_cert(self, key_file=None, cert_file=None,
-                 cert_reqs=None, ca_certs=None, verify_hostname=None):
+    def set_cert(self, key_file=None, cert_file=None, cert_reqs=None,
+            ca_certs=None, verify_hostname=None, verify_fingerprint=None):
 
         self.key_file = key_file
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
         self.ca_certs = ca_certs
         self.verify_hostname = verify_hostname
+        self.verify_fingerprint = verify_fingerprint
 
     def connect(self):
         # Add certificate verification
@@ -105,8 +106,12 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                                     ssl_version=resolved_ssl_version)
 
         if resolved_cert_reqs != ssl.CERT_NONE:
-            match_hostname(self.sock.getpeercert(),
-                           self.verify_hostname or self.host)
+            if self.verify_fingerprint:
+                match_fingerprint(self.sock.getpeercert(binary_form=True),
+                                  self.verify_fingerprint)
+            else:
+                match_hostname(self.sock.getpeercert(),
+                               self.verify_hostname or self.host)
 
 ## Pool objects
 
@@ -504,7 +509,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     instead of :class:`httplib.HTTPSConnection`.
 
     The ``key_file``, ``cert_file``, ``cert_reqs``, ``ca_certs``,
-    ``ssl_version`` and ``verify_hostname``
+    ``ssl_version`` ``verify_fingerprint`` and ``verify_hostname``
     are only used if :mod:`ssl` is available and are fed into
     :meth:`urllib3.util.ssl_wrap_socket` to upgrade the connection socket
     into an SSL socket.
@@ -516,7 +521,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  strict=False, timeout=None, maxsize=1,
                  block=False, headers=None,
                  key_file=None, cert_file=None, cert_reqs=None,
-                 ca_certs=None, ssl_version=None, verify_hostname=None):
+                 ca_certs=None, ssl_version=None, verify_hostname=None,
+                 verify_fingerprint=None):
 
         HTTPConnectionPool.__init__(self, host, port,
                                     strict, timeout, maxsize,
@@ -527,6 +533,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.ca_certs = ca_certs
         self.ssl_version = ssl_version
         self.verify_hostname = verify_hostname
+        self.verify_fingerprint = verify_fingerprint
 
     def _new_conn(self):
         """
@@ -550,7 +557,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                                              strict=self.strict)
         connection.set_cert(key_file=self.key_file, cert_file=self.cert_file,
                             cert_reqs=self.cert_reqs, ca_certs=self.ca_certs,
-                            verify_hostname=self.verify_hostname)
+                            verify_hostname=self.verify_hostname,
+                            verify_fingerprint=self.verify_fingerprint)
 
         connection.ssl_version = self.ssl_version
 

@@ -8,6 +8,8 @@
 from base64 import b64encode
 from collections import namedtuple
 from socket import error as SocketError
+from hashlib import md5, sha1
+from binascii import hexlify, unhexlify
 
 try:
     from select import poll, POLLIN
@@ -24,6 +26,7 @@ try:  # Test for SSL features
 
     import ssl
     from ssl import wrap_socket, CERT_NONE, SSLError, PROTOCOL_SSLv23
+    from .exceptions import SSLError
     from ssl import SSLContext  # Modern SSL?
     from ssl import HAS_SNI  # Has SNI?
 except ImportError:
@@ -301,6 +304,43 @@ def resolve_ssl_version(candidate):
         return res
 
     return candidate
+
+
+def match_fingerprint(remote, local):
+    """
+    Compares if both supplied fingerprints match.
+
+    remote -- binary
+    local -- hexstring, can be separated by colons
+    """
+
+    # maps the raw byte length of a digest to its hash function
+    hashfunc_map = {
+        16: md5,
+        20: sha1
+    }
+
+    norm_local = local.replace(':', '').lower()
+
+    div, mod = divmod(len(norm_local), 2)
+
+    if mod != 0 or div not in hashfunc_map:
+        raise SSLError('Fingerprint is of invalid length')
+
+    # need encode() here for py32, works on py2 and p33
+    norm_local = unhexlify(norm_local.encode())
+
+    hashfunc = hashfunc_map[len(norm_local)]
+
+    # binary
+    norm_remote = hashfunc(remote).digest()
+
+    if not norm_remote == norm_local:
+        raise SSLError('Fingerprints did not match!\n'
+                       'Supplied: {0}\n'
+                       'Actual  : {1}'.format(hexlify(norm_local),
+                                              hexlify(norm_remote)))
+
 
 if SSLContext is not None:  # Python 3.2+
     def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
