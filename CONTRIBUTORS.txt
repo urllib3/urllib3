@@ -49,8 +49,10 @@ In chronological order:
   * Corrected multipart behavior for params
 
 * Thomas Weißschuh <thomas@t-8ch.de>
-  * various SSL patches
-  * Tests
+  * Support for TLS SNI
+  * API unification of ssl_version/cert_reqs
+  * SSL fingerprint and alternative hostname verification
+  * Bugfixes in testsuite
 
 * Sune Kirkeby <mig@ibofobi.dk>
   * Optional SNI-support for Python 2 via PyOpenSSL.
