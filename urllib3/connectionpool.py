@@ -82,14 +82,14 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None,
-                 verify_hostname=None, verify_fingerprint=None):
+                 assert_hostname=None, assert_fingerprint=None):
 
         self.key_file = key_file
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
         self.ca_certs = ca_certs
-        self.verify_hostname = verify_hostname
-        self.verify_fingerprint = verify_fingerprint
+        self.assert_hostname = assert_hostname
+        self.assert_fingerprint = assert_fingerprint
 
     def connect(self):
         # Add certificate verification
@@ -107,12 +107,12 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                                     ssl_version=resolved_ssl_version)
 
         if resolved_cert_reqs != ssl.CERT_NONE:
-            if self.verify_fingerprint:
+            if self.assert_fingerprint:
                 assert_fingerprint(self.sock.getpeercert(binary_form=True),
-                                   self.verify_fingerprint)
+                                   self.assert_fingerprint)
             else:
                 match_hostname(self.sock.getpeercert(),
-                               self.verify_hostname or self.host)
+                               self.assert_hostname or self.host)
 
 ## Pool objects
 
@@ -510,7 +510,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     instead of :class:`httplib.HTTPSConnection`.
 
     The ``key_file``, ``cert_file``, ``cert_reqs``, ``ca_certs``,
-    ``ssl_version``, ``verify_hostname`` and ``verify_fingerprint``
+    ``ssl_version``, ``assert_hostname`` and ``assert_fingerprint``
     are only used if :mod:`ssl` is available and are fed into
     :meth:`urllib3.util.ssl_wrap_socket` to upgrade the connection socket
     into an SSL socket.
@@ -523,7 +523,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  block=False, headers=None,
                  key_file=None, cert_file=None, cert_reqs=None,
                  ca_certs=None, ssl_version=None,
-                 verify_hostname=None, verify_fingerprint=None):
+                 assert_hostname=None, assert_fingerprint=None):
 
         HTTPConnectionPool.__init__(self, host, port,
                                     strict, timeout, maxsize,
@@ -533,8 +533,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.cert_reqs = cert_reqs
         self.ca_certs = ca_certs
         self.ssl_version = ssl_version
-        self.verify_hostname = verify_hostname
-        self.verify_fingerprint = verify_fingerprint
+        self.assert_hostname = assert_hostname
+        self.assert_fingerprint = assert_fingerprint
 
     def _new_conn(self):
         """
@@ -558,8 +558,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                                              strict=self.strict)
         connection.set_cert(key_file=self.key_file, cert_file=self.cert_file,
                             cert_reqs=self.cert_reqs, ca_certs=self.ca_certs,
-                            verify_hostname=self.verify_hostname,
-                            verify_fingerprint=self.verify_fingerprint)
+                            assert_hostname=self.assert_hostname,
+                            assert_fingerprint=self.assert_fingerprint)
 
         connection.ssl_version = self.ssl_version
 
