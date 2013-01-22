@@ -25,8 +25,7 @@ try:  # Test for SSL features
     HAS_SNI = False
 
     import ssl
-    from ssl import wrap_socket, CERT_NONE, SSLError, PROTOCOL_SSLv23
-    from .exceptions import SSLError
+    from ssl import wrap_socket, CERT_NONE, PROTOCOL_SSLv23
     from ssl import SSLContext  # Modern SSL?
     from ssl import HAS_SNI  # Has SNI?
 except ImportError:
@@ -34,7 +33,7 @@ except ImportError:
 
 
 from .packages import six
-from .exceptions import LocationParseError
+from .exceptions import LocationParseError, SSLError
 
 
 class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment'])):
@@ -306,40 +305,42 @@ def resolve_ssl_version(candidate):
     return candidate
 
 
-def match_fingerprint(remote, local):
+def assert_fingerprint(cert, fingerprint):
     """
-    Compares if both supplied fingerprints match.
+    Checks if given fingerprint matches the supplied certificate.
 
-    remote -- binary
-    local -- hexstring, can be separated by colons
+    :param cert:
+        Certificate as bytes object.
+    :param fingerprint:
+        Fingerprint as string of hexdigits, can be interspersed by colons.
     """
 
-    # maps the raw byte length of a digest to its hash function
+    # Maps the length of a digest to a possible hash function producing
+    # this digest
     hashfunc_map = {
         16: md5,
         20: sha1
     }
 
-    norm_local = local.replace(':', '').lower()
+    fingerprint = fingerprint.replace(':', '').lower()
 
-    div, mod = divmod(len(norm_local), 2)
+    digest_length, rest = divmod(len(fingerprint), 2)
 
-    if mod != 0 or div not in hashfunc_map:
+    if rest or digest_length not in hashfunc_map:
         raise SSLError('Fingerprint is of invalid length')
 
-    # need encode() here for py32, works on py2 and p33
-    norm_local = unhexlify(norm_local.encode())
+    # We need encode() here for py32, works on py2 and p33
+    fingerprint_bytes = unhexlify(fingerprint.encode())
 
-    hashfunc = hashfunc_map[len(norm_local)]
+    hashfunc = hashfunc_map[digest_length]
 
-    # binary
-    norm_remote = hashfunc(remote).digest()
+    cert_digest = hashfunc(cert).digest()
 
-    if not norm_remote == norm_local:
+    if not cert_digest == fingerprint_bytes:
         raise SSLError('Fingerprints did not match!\n'
                        'Supplied: {0}\n'
-                       'Actual  : {1}'.format(hexlify(norm_local),
-                                              hexlify(norm_remote)))
+                       'Actual  : {1}'.format(hexlify(fingerprint_bytes),
+                                              hexlify(cert_digest)))
 
 
 if SSLContext is not None:  # Python 3.2+

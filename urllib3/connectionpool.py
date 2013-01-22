@@ -9,7 +9,7 @@ import socket
 import errno
 
 from socket import error as SocketError, timeout as SocketTimeout
-from .util import resolve_cert_reqs, resolve_ssl_version, match_fingerprint
+from .util import resolve_cert_reqs, resolve_ssl_version, assert_fingerprint
 
 try: # Python 3
     from http.client import HTTPConnection, HTTPException
@@ -80,8 +80,9 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     ca_certs = None
     ssl_version = None
 
-    def set_cert(self, key_file=None, cert_file=None, cert_reqs=None,
-            ca_certs=None, verify_hostname=None, verify_fingerprint=None):
+    def set_cert(self, key_file=None, cert_file=None,
+                 cert_reqs=None, ca_certs=None,
+                 verify_hostname=None, verify_fingerprint=None):
 
         self.key_file = key_file
         self.cert_file = cert_file
@@ -107,8 +108,8 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
         if resolved_cert_reqs != ssl.CERT_NONE:
             if self.verify_fingerprint:
-                match_fingerprint(self.sock.getpeercert(binary_form=True),
-                                  self.verify_fingerprint)
+                assert_fingerprint(self.sock.getpeercert(binary_form=True),
+                                   self.verify_fingerprint)
             else:
                 match_hostname(self.sock.getpeercert(),
                                self.verify_hostname or self.host)
@@ -509,7 +510,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     instead of :class:`httplib.HTTPSConnection`.
 
     The ``key_file``, ``cert_file``, ``cert_reqs``, ``ca_certs``,
-    ``ssl_version`` ``verify_fingerprint`` and ``verify_hostname``
+    ``ssl_version``, ``verify_hostname`` and ``verify_fingerprint``
     are only used if :mod:`ssl` is available and are fed into
     :meth:`urllib3.util.ssl_wrap_socket` to upgrade the connection socket
     into an SSL socket.
@@ -521,8 +522,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  strict=False, timeout=None, maxsize=1,
                  block=False, headers=None,
                  key_file=None, cert_file=None, cert_reqs=None,
-                 ca_certs=None, ssl_version=None, verify_hostname=None,
-                 verify_fingerprint=None):
+                 ca_certs=None, ssl_version=None,
+                 verify_hostname=None, verify_fingerprint=None):
 
         HTTPConnectionPool.__init__(self, host, port,
                                     strict, timeout, maxsize,
