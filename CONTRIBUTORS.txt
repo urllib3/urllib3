@@ -46,7 +46,11 @@ In chronological order:
   * Support for explicitly closing pooled connections
 
 * hartator <hartator@gmail.com>
-  * Corrected multipart behavior for params 
+  * Corrected multipart behavior for params
+
+* Thomas Weißschuh <thomas@t-8ch.de>
+  * various SSL patches
+  * Tests
 
 * Sune Kirkeby <mig@ibofobi.dk>
   * Optional SNI-support for Python 2 via PyOpenSSL.

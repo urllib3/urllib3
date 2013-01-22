@@ -137,6 +137,14 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
         self._pool.ssl_version = ssl.PROTOCOL_SSLv3
         self.assertRaises(SSLError, self._pool.request, 'GET', '/')
 
+    def test_verify_specific_hostname(self):
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_REQUIRED')
+
+        https_pool.ca_certs = DEFAULT_CA
+        https_pool.verify_hostname = 'localhost'
+        https_pool.request('GET', '/')
+
 
 if __name__ == '__main__':
     unittest.main()
