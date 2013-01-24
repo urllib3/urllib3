@@ -181,7 +181,7 @@ class ProxyManager(PoolManager):
             proxy_url = '%s://%s:%i'%(proxy_url.scheme, proxy_url.host,
                     proxy_url.port)
         self.proxy = parse_url(proxy_url)
-        self.proxy_headers = proxy_headers
+        self.proxy_headers = proxy_headers or {}
         # TODO: add proxy authentication here
         if self.proxy.scheme != "http":
             raise AssertionError('Not supported proxy scheme %s'%self.proxy.scheme)
@@ -219,11 +219,9 @@ class ProxyManager(PoolManager):
             # It's too late to set proxy headers on per-request basis for
             # tunnelled HTTPS connections, should use
             # constructor's proxy_headers instead.
-            if not kw.get('headers') and self.headers:
-                kw['headers'] = self.headers.copy()
-            kw['headers'] = self._set_proxy_headers(kw.get('headers'))
-            if self.proxy_headers:
-                kw['headers'].update(self.proxy_headers)
+            kw['headers'] = self._set_proxy_headers(kw.get('headers',
+                self.headers))
+            kw['headers'].update(self.proxy_headers)
 
         return super(ProxyManager,self).urlopen(method, url, redirect, **kw)
 
