@@ -87,7 +87,14 @@ class PoolManager(RequestMethods):
         If ``port`` isn't given, it will be derived from the ``scheme`` using
         ``urllib3.connectionpool.port_by_scheme``.
         """
+
         scheme = scheme or 'http'
+
+        if self.proxy is not None and scheme == "http":
+            host = self.proxy.host
+            port = self.proxy.port
+            scheme = self.proxy.scheme
+
         port = port or port_by_scheme.get(scheme, 80)
 
         pool_key = (scheme, host, port)
@@ -182,11 +189,17 @@ class ProxyManager(PoolManager):
             # HTTPConnectionPool to self.pools for future use.
             proxy_url = '%s://%s:%i'%(proxy_url.scheme, proxy_url.host,
                     proxy_url.port)
-        self.proxy = parse_url(proxy_url)
+        proxy = parse_url(proxy_url)
+        if not proxy.port:
+            port = port_by_scheme.get(proxy.scheme, 80)
+            proxy = proxy._replace(port=port)
+        self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
         # TODO: add proxy authentication here
-        if self.proxy.scheme != "http":
+        if self.proxy.scheme not in ("http", "https"):
             raise AssertionError('Not supported proxy scheme %s'%self.proxy.scheme)
+        connection_pool_kw['proxy'] = self.proxy
+        connection_pool_kw['proxy_headers'] = self.proxy_headers
         super(ProxyManager, self).__init__(num_pools, headers, **connection_pool_kw)
 
     def connection_from_host(self, host, port=None, scheme='http'):
@@ -221,7 +234,7 @@ class ProxyManager(PoolManager):
             # It's too late to set proxy headers on per-request basis for
             # tunnelled HTTPS connections, should use
             # constructor's proxy_headers instead.
-            kw['headers'] = self._set_proxy_headers(kw.get('headers',
+            kw['headers'] = self._set_proxy_headers(url, kw.get('headers',
                 self.headers))
             kw['headers'].update(self.proxy_headers)
 

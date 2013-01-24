@@ -124,9 +124,6 @@ class ConnectionPool(object):
     scheme = None
     QueueCls = LifoQueue
 
-    proxy = None
-    proxy_headers = None
-
     def __init__(self, host, port=None):
         self.host = host
         self.port = port
@@ -173,12 +170,20 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     :param headers:
         Headers to include with all requests, unless other headers are given
         explicitly.
+
+    :param proxy:
+        Parsed proxy URL, should not be used directly, instead, see
+        :class:`urllib3.connectionpool.ProxyManager`"
+
+    :param proxy_headers:
+        A dictionary with proxy headers, should not be used directly,
+        instead, see :class:`urllib3.connectionpool.ProxyManager`"
     """
 
     scheme = 'http'
 
     def __init__(self, host, port=None, strict=False, timeout=None, maxsize=1,
-                 block=False, headers=None):
+                 block=False, headers=None, proxy=None, proxy_headers=None):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
 
@@ -186,6 +191,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.timeout = timeout
         self.pool = self.QueueCls(maxsize)
         self.block = block
+
+        self.proxy = proxy
+        self.proxy_headers = proxy_headers or {}
 
         # Fill the queue up so that doing get() on it will block properly
         for _ in xrange(maxsize):
@@ -521,12 +529,13 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     def __init__(self, host, port=None,
                  strict=False, timeout=None, maxsize=1,
                  block=False, headers=None,
+                 proxy=None, proxy_headers=None,
                  key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None, ssl_version=None):
 
         HTTPConnectionPool.__init__(self, host, port,
                                     strict, timeout, maxsize,
-                                    block, headers)
+                                    block, headers, proxy, proxy_headers)
         self.key_file = key_file
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
