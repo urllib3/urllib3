@@ -76,6 +76,11 @@ class PoolManager(RequestMethods):
         If ``port`` isn't given, it will be derived from the ``scheme`` using
         ``urllib3.connectionpool.port_by_scheme``.
         """
+        if self.proxy is not None and scheme == "http":
+            host = self.proxy.host
+            port = self.proxy.port
+            scheme = self.proxy.scheme
+
         port = port or port_by_scheme.get(scheme, 80)
 
         pool_key = (scheme, host, port)
@@ -173,21 +178,18 @@ class ProxyManager(PoolManager):
             # HTTPConnectionPool to self.pools for future use.
             proxy_url = '%s://%s:%i'%(proxy_url.scheme, proxy_url.host,
                     proxy_url.port)
-        self.proxy = parse_url(proxy_url)
+        proxy = parse_url(proxy_url)
+        if not proxy.port:
+            port = port_by_scheme.get(proxy.scheme, 80)
+            proxy = proxy._replace(port=port)
+        self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
         # TODO: add proxy authentication here
-        if self.proxy.scheme != "http":
+        if self.proxy.scheme not in ("http", "https"):
             raise AssertionError('Not supported proxy scheme %s'%self.proxy.scheme)
+        connection_pool_kw['proxy'] = self.proxy
+        connection_pool_kw['proxy_headers'] = self.proxy_headers
         super(ProxyManager, self).__init__(num_pools, headers, **connection_pool_kw)
-
-    def connection_from_host(self, host, port=None, scheme='http'):
-        if scheme == "https":
-            pool = super(ProxyManager,self).connection_from_host(host, port, scheme)
-            pool.proxy = self.proxy
-            pool.proxy_headers = self.proxy_headers
-            return pool
-        return super(ProxyManager,self).connection_from_host(self.proxy.host,
-                self.proxy.port, self.proxy.scheme)
 
     def _set_proxy_headers(self, headers=None):
         headers_ = {'Accept': '*/*'}
