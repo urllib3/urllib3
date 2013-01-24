@@ -32,5 +32,12 @@ class TestProxyManager(unittest.TestCase):
 
         self.assertEqual(headers, expected_headers)
 
+    def test_default_port(self):
+        p = ProxyManager('http://something')
+        self.assertEqual(p.proxy.port, 80)
+        p = ProxyManager('https://something')
+        self.assertEqual(p.proxy.port, 443)
+
+
 if __name__ == '__main__':
     unittest.main()
