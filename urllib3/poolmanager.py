@@ -52,6 +52,8 @@ class PoolManager(RequestMethods):
 
     """
 
+    proxy = None
+
     def __init__(self, num_pools=10, headers=None, **connection_pool_kw):
         RequestMethods.__init__(self, headers)
         self.connection_pool_kw = connection_pool_kw
@@ -121,7 +123,7 @@ class PoolManager(RequestMethods):
         if 'headers' not in kw:
             kw['headers'] = self.headers
 
-        if getattr(self, 'proxy', None) and u.scheme == "http":
+        if self.proxy is not None and u.scheme == "http":
             response = conn.urlopen(method, url, **kw)
         else:
             response = conn.urlopen(method, u.request_uri, **kw)
