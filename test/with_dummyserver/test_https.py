@@ -4,7 +4,7 @@ import sys
 import unittest
 
 from dummyserver.testcase import HTTPSDummyServerTestCase
-from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD
+from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from urllib3 import HTTPSConnectionPool
 from urllib3.connectionpool import VerifiedHTTPSConnection
@@ -30,13 +30,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         r = self._pool.request('GET', '/specific_method',
                                fields={'method': 'GET'})
         self.assertEqual(r.status, 200, r.data)
-
-    def test_set_ssl_version_to_sslv2(self):
-        # Note: Test fails on Py32 with OpenSSL <1.0.
-        self._pool.ssl_version = ssl.PROTOCOL_SSLv2
-        self.assertRaises(SSLError,
-                          self._pool.request, 'GET', '/specific_method',
-                          fields={'method': 'GET'})
 
     def test_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
@@ -141,6 +134,18 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         self.assertRaises(SSLError,
                           https_pool.request, 'GET', '/')
+
+
+class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
+    certs = DEFAULT_CERTS.copy()
+    certs['ssl_version'] = ssl.PROTOCOL_TLSv1
+
+    def setUp(self):
+        self._pool = HTTPSConnectionPool(self.host, self.port)
+
+    def test_set_ssl_version_to_sslv3(self):
+        self._pool.ssl_version = ssl.PROTOCOL_SSLv3
+        self.assertRaises(SSLError, self._pool.request, 'GET', '/')
 
 
 if __name__ == '__main__':
