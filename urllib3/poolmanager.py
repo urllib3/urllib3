@@ -153,8 +153,12 @@ class ProxyManager(RequestMethods):
     def __init__(self, proxy_pool):
         self.proxy_pool = proxy_pool
 
-    def _set_proxy_headers(self, headers=None):
+    def _set_proxy_headers(self, url, headers=None):
         headers_ = {'Accept': '*/*'}
+
+        host = parse_url(url).host
+        headers_['Host'] = host
+
         if headers:
             headers_.update(headers)
 
@@ -163,7 +167,7 @@ class ProxyManager(RequestMethods):
     def urlopen(self, method, url, **kw):
         "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
         kw['assert_same_host'] = False
-        kw['headers'] = self._set_proxy_headers(kw.get('headers'))
+        kw['headers'] = self._set_proxy_headers(url, headers=kw.get('headers'))
         return self.proxy_pool.urlopen(method, url, **kw)
 
 
