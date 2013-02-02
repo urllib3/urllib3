@@ -149,7 +149,9 @@ class TestingApp(WSGIHandler):
         if encoding == 'gzip':
             headers = [('Content-Encoding', 'gzip')]
             file_ = BytesIO()
-            gzip.GzipFile('', mode='w', fileobj=file_).write(data)
+            zipfile = gzip.GzipFile('', mode='w', fileobj=file_)
+            zipfile.write(data)
+            zipfile.close()
             data = file_.getvalue()
         elif encoding == 'deflate':
             headers = [('Content-Encoding', 'deflate')]
