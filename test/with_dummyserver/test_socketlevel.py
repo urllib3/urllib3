@@ -1,6 +1,6 @@
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
-from urllib3.exceptions import MaxRetryError, TimeoutError, SSLError
+from urllib3.exceptions import MaxRetryError, TimeoutError, SSLError, ConnectionTimeoutError
 
 from dummyserver.testcase import SocketDummyServerTestCase
 
@@ -104,7 +104,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         self.assertRaises(MaxRetryError, pool.request, 'GET', '/')
         self._start_server(lambda x: None)
 
-    def test_connection_timeout(self):
+    def test_connection_timeout_bad(self):
         timed_out = Event()
         def socket_handler(listener):
             timed_out.wait()
@@ -117,6 +117,25 @@ class TestSocketClosing(SocketDummyServerTestCase):
         self.assertRaises(TimeoutError, pool.request, 'GET', '/', retries=0)
 
         timed_out.set()
+
+    def test_connection_timeout(self):
+        import socket
+        for ipcnt in xrange(1, 128, 1):
+            sock = None
+            try:
+                sock = socket.create_connection(("127.0.0.%d" % ipcnt, self.port), 0.001)
+            except socket.error:
+                sock = None
+                continue
+            finally:
+                if sock:
+                    sock.close()
+
+            pool = HTTPConnectionPool("127.0.0.%d" % ipcnt, self.port, timeout=0.01, connect_timeout=0.001)
+            self.assertRaises(ConnectionTimeoutError, pool.request, 'GET', '/', retries=0)
+            pool = HTTPConnectionPool("127.0.0.%d" % ipcnt, self.port, timeout=0.001, connect_timeout=0.003)
+            self.assertRaises(ConnectionTimeoutError, pool.request, 'GET', '/', retries=0)
+            break
 
 
 class TestProxyManager(SocketDummyServerTestCase):

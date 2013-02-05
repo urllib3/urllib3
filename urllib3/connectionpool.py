@@ -91,7 +91,7 @@ also throws different exceptions in those two cases.
     def connect(self):
         """Connect to the host and port specified in __init__ with connect_timeout instead of timeout."""
         try:
-            self.sock = socket.create_connection((self.host,self.port), self.connect_timeout)
+            self.sock = socket.create_connection((self.host, self.port), self.connect_timeout)
         except SocketTimeout, err:
             raise InnerConnectionTimeoutError()
 
@@ -120,7 +120,7 @@ also throws different exceptions in those two cases.
     def connect(self):
         """Connect to a host on a given (SSL) port with connect_timeout instead of timeout."""
         try:
-            sock = socket.create_connection((self.host,self.port), self.connect_timeout)
+            sock = socket.create_connection((self.host, self.port), self.connect_timeout)
         except SocketTimeout, err:
             raise InnerConnectionTimeoutError()
 
@@ -129,6 +129,9 @@ also throws different exceptions in those two cases.
         else:
             sock.settimeout(self.timeout)
 
+        if self._tunnel_host:
+            self.sock = sock
+            self._tunnel()
         self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file)
 
 
@@ -152,7 +155,7 @@ class VerifiedHTTPSConnection(HTTPSConnectionTwo):
     def connect(self):
         # Add certificate verification
         try:
-            sock = socket.create_connection((self.host,self.port), self.connect_timeout)
+            sock = socket.create_connection((self.host, self.port), self.connect_timeout)
         except SocketTimeout, err:
             raise InnerConnectionTimeoutError()
 
@@ -161,6 +164,9 @@ class VerifiedHTTPSConnection(HTTPSConnectionTwo):
         else:
             sock.settimeout(self.timeout)
 
+        if self._tunnel_host:
+            self.sock = sock
+            self._tunnel()
 
         resolved_cert_reqs = resolve_cert_reqs(self.cert_reqs)
         resolved_ssl_version = resolve_ssl_version(self.ssl_version)
@@ -597,7 +603,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  block=False, headers=None,
                  key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None, ssl_version=None,
-                 connect_timeout=None):
+                 connect_timeout=socket._GLOBAL_DEFAULT_TIMEOUT):
 
         HTTPConnectionPool.__init__(self, host, port,
                                     strict, timeout, maxsize,

@@ -13,11 +13,12 @@ from urllib3.exceptions import (
     DecodeError,
     MaxRetryError,
     TimeoutError,
+    OperationTimeoutError,
 )
 from urllib3.packages.six import u
 from socket import timeout as SocketTimeout
 
-from dummyserver.testcase import HTTPDummyServerTestCase
+from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
 
 
 log = logging.getLogger('urllib3.connectionpool')
@@ -121,6 +122,14 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         self.assertRaises(TimeoutError, pool.request,
                           'GET', url, timeout=timeout)
+
+    def test_connection_timeout(self):
+        url = '/sleep?seconds=0.005'
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001, connect_timeout=0.01)
+        self.assertRaises(OperationTimeoutError, pool.request, 'GET', url)
+
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.002, connect_timeout=0.001)
+        self.assertRaises(OperationTimeoutError, pool.request, 'GET', url)
 
     def test_redirect(self):
         r = self.pool.request('GET', '/redirect', fields={'target': '/'}, redirect=False)

@@ -73,20 +73,24 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     def test_no_ssl(self):
         import urllib3.connectionpool
         OriginalHTTPSConnection = urllib3.connectionpool.HTTPSConnection
+        OriginalHTTPSConnectionTwo = urllib3.connectionpool.HTTPSConnectionTwo
         OriginalSSL = urllib3.connectionpool.ssl
+        OriginalVerifiedHTTPSConnection = urllib3.connectionpool.VerifiedHTTPSConnection
 
-        urllib3.connectionpool.HTTPSConnection = None
-        urllib3.connectionpool.ssl = None
+        try:
+            urllib3.connectionpool.HTTPSConnection = None
+            urllib3.connectionpool.ssl = None
 
-        self.assertRaises(SSLError, self._pool._new_conn)
+            self.assertRaises(SSLError, self._pool._new_conn)
 
-        self.assertRaises(SSLError,
-                          self._pool.request, 'GET', '/specific_method',
-                          fields={'method': 'GET'})
-
-        # Undo
-        urllib3.HTTPSConnection = OriginalHTTPSConnection
-        urllib3.connectionpool.ssl = OriginalSSL
+            self.assertRaises(SSLError,
+                              self._pool.request, 'GET', '/specific_method',
+                              fields={'method': 'GET'})
+        finally:
+            urllib3.connectionpool.HTTPSConnection = OriginalHTTPSConnection
+            urllib3.connectionpool.ssl = OriginalSSL
+            urllib3.connectionpool.HTTPSConnectionTwo = OriginalHTTPSConnectionTwo
+            urllib3.connectionpool.VerifiedHTTPSConnection = OriginalVerifiedHTTPSConnection
 
     def test_cert_reqs_as_constant(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
