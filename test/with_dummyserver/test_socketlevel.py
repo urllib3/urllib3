@@ -120,7 +120,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
     def test_connection_timeout(self):
         import socket
-        for ipcnt in xrange(1, 128, 1):
+        for ipcnt in xrange(2, 128, 1):
             sock = None
             try:
                 sock = socket.create_connection(("127.0.0.%d" % ipcnt, self.port), 0.001)

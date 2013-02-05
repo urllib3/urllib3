@@ -101,12 +101,14 @@ also throws different exceptions in those two cases.
             self.sock.settimeout(self.timeout)
 
 
-class HTTPSConnectionTwo(HTTPSConnection):
+class VerifiedHTTPSConnection(HTTPSConnection):
     """
-Based on httplib.HTTPConnection but has differents timeouts
-for connection time and operation (waiting for actual reply)
-also throws different exceptions in those two cases.
-"""
+    Based on httplib.HTTPSConnection but wraps the socket with
+    SSL certification.
+    """
+    cert_reqs = None
+    ca_certs = None
+    ssl_version = None
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  strict=None,
@@ -116,33 +118,6 @@ also throws different exceptions in those two cases.
         HTTPSConnection.__init__(self, host, port=port, key_file=key_file,
                                  cert_file=cert_file, strict=strict, timeout=timeout)
         self.connect_timeout = connect_timeout
-
-    def connect(self):
-        """Connect to a host on a given (SSL) port with connect_timeout instead of timeout."""
-        try:
-            sock = socket.create_connection((self.host, self.port), self.connect_timeout)
-        except SocketTimeout, err:
-            raise InnerConnectionTimeoutError()
-
-        if self.timeout is socket._GLOBAL_DEFAULT_TIMEOUT:
-            sock.settimeout(socket.getdefaulttimeout())
-        else:
-            sock.settimeout(self.timeout)
-
-        if self._tunnel_host:
-            self.sock = sock
-            self._tunnel()
-        self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file)
-
-
-class VerifiedHTTPSConnection(HTTPSConnectionTwo):
-    """
-    Based on httplib.HTTPSConnection but wraps the socket with
-    SSL certification.
-    """
-    cert_reqs = None
-    ca_certs = None
-    ssl_version = None
 
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None):
@@ -627,11 +602,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                 raise SSLError("Can't connect to HTTPS URL because the SSL "
                                "module is not available.")
 
-            return HTTPSConnectionTwo(host=self.host,
-                                      port=self.port,
-                                      strict=self.strict,
-                                      timeout=self.timeout,
-                                      connect_timeout=self.connect_timeout)
+            return HTTPSConnection(host=self.host,
+                                   port=self.port,
+                                   strict=self.strict,
+                                   timeout=self.timeout)
 
         connection = VerifiedHTTPSConnection(host=self.host,
                                              port=self.port,
