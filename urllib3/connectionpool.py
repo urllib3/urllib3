@@ -51,6 +51,9 @@ from .exceptions import (
     MaxRetryError,
     SSLError,
     TimeoutError,
+    ConnectionTimeoutError,
+    InnerConnectionTimeoutError,
+    OperationTimeoutError
 )
 
 from .packages.ssl_match_hostname import match_hostname, CertificateError
@@ -71,6 +74,33 @@ port_by_scheme = {
 
 ## Connection objects (extension of httplib)
 
+class HTTPConnectionTwo(HTTPConnection):
+    """
+Based on httplib.HTTPConnection but has differents timeouts
+for connection time and operation (waiting for actual reply)
+also throws different exceptions in those two cases.
+"""
+
+    def __init__(self, host, port=None, strict=None,
+                 timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+                 connect_timeout=socket._GLOBAL_DEFAULT_TIMEOUT):
+
+        HTTPConnection.__init__(self, host, port=port, strict=strict, timeout=timeout)
+        self.connect_timeout = connect_timeout
+
+    def connect(self):
+        """Connect to the host and port specified in __init__ with connect_timeout instead of timeout."""
+        try:
+            self.sock = socket.create_connection((self.host, self.port), self.connect_timeout)
+        except SocketTimeout, err:
+            raise InnerConnectionTimeoutError()
+
+        if self.timeout is socket._GLOBAL_DEFAULT_TIMEOUT:
+            self.sock.settimeout(socket.getdefaulttimeout())
+        else:
+            self.sock.settimeout(self.timeout)
+
+
 class VerifiedHTTPSConnection(HTTPSConnection):
     """
     Based on httplib.HTTPSConnection but wraps the socket with
@@ -79,6 +109,15 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     cert_reqs = None
     ca_certs = None
     ssl_version = None
+
+    def __init__(self, host, port=None, key_file=None, cert_file=None,
+                 strict=None,
+                 timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+                 connect_timeout=socket._GLOBAL_DEFAULT_TIMEOUT):
+
+        HTTPSConnection.__init__(self, host, port=port, key_file=key_file,
+                                 cert_file=cert_file, strict=strict, timeout=timeout)
+        self.connect_timeout = connect_timeout
 
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None):
@@ -90,7 +129,19 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
     def connect(self):
         # Add certificate verification
-        sock = socket.create_connection((self.host, self.port), self.timeout)
+        try:
+            sock = socket.create_connection((self.host, self.port), self.connect_timeout)
+        except SocketTimeout, err:
+            raise InnerConnectionTimeoutError()
+
+        if self.timeout is socket._GLOBAL_DEFAULT_TIMEOUT:
+            sock.settimeout(socket.getdefaulttimeout())
+        else:
+            sock.settimeout(self.timeout)
+
+        if self._tunnel_host:
+            self.sock = sock
+            self._tunnel()
 
         resolved_cert_reqs = resolve_cert_reqs(self.cert_reqs)
         resolved_ssl_version = resolve_ssl_version(self.ssl_version)
@@ -164,17 +215,23 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     :param headers:
         Headers to include with all requests, unless other headers are given
         explicitly.
+
+    :param connect_timeout:
+        Socket connection timeout for each individual connection, can be a float.
+        If None timeout parameter is used instead. Affects only connection attemp,
+        for actual operations timeout parameter is used.
     """
 
     scheme = 'http'
 
     def __init__(self, host, port=None, strict=False, timeout=None, maxsize=1,
-                 block=False, headers=None):
+                 block=False, headers=None, connect_timeout=socket._GLOBAL_DEFAULT_TIMEOUT):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
 
         self.strict = strict
         self.timeout = timeout
+        self.connect_timeout = connect_timeout
         self.pool = self.QueueCls(maxsize)
         self.block = block
 
@@ -188,14 +245,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def _new_conn(self):
         """
-        Return a fresh :class:`httplib.HTTPConnection`.
+        Return a fresh :class:`HTTPConnectionTwo`.
         """
         self.num_connections += 1
         log.info("Starting new HTTP connection (%d): %s" %
                  (self.num_connections, self.host))
-        return HTTPConnection(host=self.host,
-                              port=self.port,
-                              strict=self.strict)
+        return HTTPConnectionTwo(host=self.host,
+                                 port=self.port,
+                                 strict=self.strict,
+                                 timeout=self.timeout,
+                                 connect_timeout=self.connect_timeout)
 
     def _get_conn(self, timeout=None):
         """
@@ -409,7 +468,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
             raise HostChangedError(self, url, retries - 1)
 
-        conn = None
+        conn, response, err = None, None, None
 
         try:
             # Request a connection from the queue
@@ -444,8 +503,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         except SocketTimeout as e:
             # Timed out by socket
-            raise TimeoutError(self, "Request timed out. (timeout=%s)" %
-                               timeout)
+            raise OperationTimeoutError(self, "Request timed out. (timeout=%s)" %
+                                        timeout)
+
+        except InnerConnectionTimeoutError as e:
+            # Could not connect to host:port - timed out by socket
+            raise ConnectionTimeoutError(self, "Request timed out. (connect_timeout=%s)" %
+                                         self.connect_timeout)
 
         except BaseSSLError as e:
             # SSL certificate error
@@ -513,11 +577,12 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  strict=False, timeout=None, maxsize=1,
                  block=False, headers=None,
                  key_file=None, cert_file=None,
-                 cert_reqs=None, ca_certs=None, ssl_version=None):
+                 cert_reqs=None, ca_certs=None, ssl_version=None,
+                 connect_timeout=socket._GLOBAL_DEFAULT_TIMEOUT):
 
         HTTPConnectionPool.__init__(self, host, port,
                                     strict, timeout, maxsize,
-                                    block, headers)
+                                    block, headers, connect_timeout)
         self.key_file = key_file
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
@@ -526,7 +591,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     def _new_conn(self):
         """
-        Return a fresh :class:`httplib.HTTPSConnection`.
+        Return a fresh :class:`httplib.HTTPSConnectionTwo`.
         """
         self.num_connections += 1
         log.info("Starting new HTTPS connection (%d): %s"
@@ -539,11 +604,14 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
             return HTTPSConnection(host=self.host,
                                    port=self.port,
-                                   strict=self.strict)
+                                   strict=self.strict,
+                                   timeout=self.timeout)
 
         connection = VerifiedHTTPSConnection(host=self.host,
                                              port=self.port,
-                                             strict=self.strict)
+                                             strict=self.strict,
+                                             timeout=self.timeout,
+                                             connect_timeout=self.connect_timeout)
         connection.set_cert(key_file=self.key_file, cert_file=self.cert_file,
                             cert_reqs=self.cert_reqs, ca_certs=self.ca_certs)
 

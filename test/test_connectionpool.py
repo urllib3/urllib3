@@ -9,6 +9,9 @@ from urllib3.exceptions import (
     MaxRetryError,
     SSLError,
     TimeoutError,
+    InnerConnectionTimeoutError,
+    ConnectionTimeoutError,
+    OperationTimeoutError,
 )
 
 from socket import error as SocketError, timeout as SocketTimeout
@@ -126,6 +129,8 @@ class TestConnectionPool(unittest.TestCase):
         _test(SocketTimeout, TimeoutError)
         _test(BaseSSLError, SSLError)
         _test(CertificateError, SSLError)
+        _test(InnerConnectionTimeoutError, ConnectionTimeoutError)
+        _test(SocketTimeout, OperationTimeoutError)
 
         # The pool should never be empty, and with these two exceptions being raised,
         # a retry will be triggered, but that retry will fail, eventually raising
