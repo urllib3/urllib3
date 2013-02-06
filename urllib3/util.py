@@ -337,7 +337,7 @@ def assert_fingerprint(cert, fingerprint):
     cert_digest = hashfunc(cert).digest()
 
     if not cert_digest == fingerprint_bytes:
-        raise SSLError('Fingerprints did not match. Exspected "{0}", got "{1}"'
+        raise SSLError('Fingerprints did not match. Expected "{0}", got "{1}".'
                        .format(hexlify(fingerprint_bytes),
                                hexlify(cert_digest)))
 
