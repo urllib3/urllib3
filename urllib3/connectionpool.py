@@ -509,9 +509,11 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     :class:`.VerifiedHTTPSConnection` is used, which *can* verify certificates,
     instead of :class:`httplib.HTTPSConnection`.
 
-    The ``key_file``, ``cert_file``, ``cert_reqs``, ``ca_certs``,
-    ``ssl_version``, ``assert_hostname`` and ``assert_fingerprint``
-    are only used if :mod:`ssl` is available and are fed into
+    :class:`.VerifiedHTTPSConnection` uses one of ``assert_fingerprint``,
+    ``assert_hostname`` and ``host`` in this order to verify connections.
+
+    The ``key_file``, ``cert_file``, ``cert_reqs``, ``ca_certs`` and
+    ``ssl_version`` are only used if :mod:`ssl` is available and are fed into
     :meth:`urllib3.util.ssl_wrap_socket` to upgrade the connection socket
     into an SSL socket.
     """
