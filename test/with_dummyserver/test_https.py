@@ -4,7 +4,7 @@ import sys
 import unittest
 
 from dummyserver.testcase import HTTPSDummyServerTestCase
-from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD
+from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from urllib3 import HTTPSConnectionPool
 from urllib3.connectionpool import VerifiedHTTPSConnection
@@ -21,22 +21,13 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self._pool = HTTPSConnectionPool(self.host, self.port)
 
     def test_simple(self):
-        r = self._pool.request('GET', '/specific_method',
-                               fields={'method': 'GET'})
+        r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
     def test_set_ssl_version_to_tlsv1(self):
         self._pool.ssl_version = ssl.PROTOCOL_TLSv1
-        r = self._pool.request('GET', '/specific_method',
-                               fields={'method': 'GET'})
+        r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
-
-    def test_set_ssl_version_to_sslv2(self):
-        # Note: Test fails on Py32 with OpenSSL <1.0.
-        self._pool.ssl_version = ssl.PROTOCOL_SSLv2
-        self.assertRaises(SSLError,
-                          self._pool.request, 'GET', '/specific_method',
-                          fields={'method': 'GET'})
 
     def test_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
@@ -80,9 +71,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         self.assertRaises(SSLError, self._pool._new_conn)
 
-        self.assertRaises(SSLError,
-                          self._pool.request, 'GET', '/specific_method',
-                          fields={'method': 'GET'})
+        self.assertRaises(SSLError, self._pool.request, 'GET', '/')
 
         # Undo
         urllib3.HTTPSConnection = OriginalHTTPSConnection
@@ -94,8 +83,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         https_pool.ca_certs = DEFAULT_CA_BAD
         # if we pass in an invalid value it defaults to CERT_NONE
-        self.assertRaises(SSLError,
-                          https_pool.request, 'GET', '/')
+        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
 
     def test_cert_reqs_as_short_string(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
@@ -103,19 +91,16 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         https_pool.ca_certs = DEFAULT_CA_BAD
         # if we pass in an invalid value it defaults to CERT_NONE
-        self.assertRaises(SSLError,
-                          https_pool.request, 'GET', '/')
+        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
 
     def test_ssl_version_as_string(self):
         self._pool.ssl_version = 'PROTOCOL_TLSv1'
-        r = self._pool.request('GET', '/specific_method',
-                               fields={'method': 'GET'})
+        r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
     def test_ssl_version_as_short_string(self):
         self._pool.ssl_version = 'TLSv1'
-        r = self._pool.request('GET', '/specific_method',
-                               fields={'method': 'GET'})
+        r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
     def test_ssl_unverified_with_ca_certs(self):
@@ -129,8 +114,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_reqs='CERT_REQUIRED')
 
-        self.assertRaises(SSLError,
-                          https_pool.request, 'GET', '/')
+        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
 
     def test_invalid_ca_certs(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
@@ -139,8 +123,19 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         # Empty string won't throw on py2
         https_pool.ca_certs = '/no_valid_path_to_ca_certs'
 
-        self.assertRaises(SSLError,
-                          https_pool.request, 'GET', '/')
+        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+
+
+class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
+    certs = DEFAULT_CERTS.copy()
+    certs['ssl_version'] = ssl.PROTOCOL_TLSv1
+
+    def setUp(self):
+        self._pool = HTTPSConnectionPool(self.host, self.port)
+
+    def test_set_ssl_version_to_sslv3(self):
+        self._pool.ssl_version = ssl.PROTOCOL_SSLv3
+        self.assertRaises(SSLError, self._pool.request, 'GET', '/')
 
 
 if __name__ == '__main__':

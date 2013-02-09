@@ -41,8 +41,6 @@ ConnectionPools more easily:
 
     .. autofunction:: connection_from_url
 
-    .. autofunction:: make_headers
-
 API
 ---
 
