@@ -60,6 +60,7 @@ class SocketServerThread(threading.Thread):
             self.ready_lock.release()
 
         self.socket_handler(sock)
+        sock.close()
 
     def run(self):
         self.server = self._start_server()

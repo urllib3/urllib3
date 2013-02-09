@@ -26,6 +26,7 @@ class TestCookies(SocketDummyServerTestCase):
                       b'Set-Cookie: foo=1\r\n'
                       b'Set-Cookie: bar=1\r\n'
                       b'\r\n')
+            sock.close()
 
         self._start_server(multicookie_response_handler)
         pool = HTTPConnectionPool(self.host, self.port)
