@@ -4,6 +4,8 @@ Changes
 dev (master branch)
 +++++++++++++++++++
 
+* ``ProxyManager`` automatically adds ``Host: ...`` header if not given.
+
 * Improved SSL-related code. ``cert_req`` now optionally takes a string like
   "REQUIRED" or "NONE". Same with ``ssl_version`` takes strings like "SSLv23"
   The string values reflect the suffix of the respective constant variable.
