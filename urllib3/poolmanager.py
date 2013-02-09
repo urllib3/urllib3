@@ -155,12 +155,13 @@ class ProxyManager(RequestMethods):
         self.proxy_pool = proxy_pool
 
     def _set_proxy_headers(self, url, headers=None):
-        """Sets headers needed by proxies: specifically, the Accept and Host
-        headers. Only sets headers not provided by the user."""
+        """
+        Sets headers needed by proxies: specifically, the Accept and Host
+        headers. Only sets headers not provided by the user.
+        """
         headers_ = {'Accept': '*/*'}
 
         host = parse_url(url).host
-
         if host:
             headers_['Host'] = host
 
