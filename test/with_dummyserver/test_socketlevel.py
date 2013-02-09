@@ -144,8 +144,15 @@ class TestProxyManager(SocketDummyServerTestCase):
         r = proxy.request('GET', 'http://google.com/')
 
         self.assertEqual(r.status, 200)
-        self.assertEqual(r.data, b'GET http://google.com/ HTTP/1.1\r\n'
-                                 b'Host: google.com\r\n'
-                                 b'Accept-Encoding: identity\r\n'
-                                 b'Accept: */*\r\n'
-                                 b'\r\n')
+        # FIXME: The order of the headers is not predictable right now. We
+        # should fix that someday (maybe when we migrate to
+        # OrderedDict/MultiDict).
+        self.assertEqual(sorted(r.data.split('\r\n')),
+                         sorted([
+                             b'GET http://google.com/ HTTP/1.1',
+                             b'Host: google.com',
+                             b'Accept-Encoding: identity',
+                             b'Accept: */*',
+                             b'',
+                             b'',
+                         ]))
