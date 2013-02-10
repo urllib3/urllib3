@@ -147,7 +147,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         # FIXME: The order of the headers is not predictable right now. We
         # should fix that someday (maybe when we migrate to
         # OrderedDict/MultiDict).
-        self.assertEqual(sorted(r.data.split('\r\n')),
+        self.assertEqual(sorted(r.data.split(b'\r\n')),
                          sorted([
                              b'GET http://google.com/ HTTP/1.1',
                              b'Host: google.com',
