@@ -54,7 +54,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             http.request('GET', '%s/redirect' % self.http_url,
                          fields={'target': cross_host_location},
                          timeout=0.1, retries=0)
-            self.fail("Request succeeded instead of raising an exception like it should.")
+            self.fail("We don't want to follow redirects here.")
 
         except MaxRetryError:
             pass
