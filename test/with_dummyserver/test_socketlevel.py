@@ -1,15 +1,11 @@
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
 from urllib3.exceptions import MaxRetryError, TimeoutError, SSLError
+from urllib3.util import HAS_SNI
 
 from dummyserver.testcase import SocketDummyServerTestCase
 
 from threading import Event
-
-try:
-    from ssl import HAS_SNI
-except ImportError: # openssl without SNI
-    HAS_SNI = False
 
 
 class TestCookies(SocketDummyServerTestCase):
