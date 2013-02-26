@@ -29,6 +29,14 @@ try:  # Test for SSL features
 except ImportError:
     pass
 
+try:
+    OpenSSL = None
+    import OpenSSL.SSL
+    from socket import _fileobject
+    HAS_SNI = True
+except ImportError:
+    pass
+
 
 from .packages import six
 from .exceptions import LocationParseError
@@ -328,6 +336,77 @@ if SSLContext is not None:  # Python 3.2+
         if HAS_SNI:  # Platform-specific: OpenSSL with enabled SNI
             return context.wrap_socket(sock, server_hostname=server_hostname)
         return context.wrap_socket(sock)
+
+elif OpenSSL is not None:  # Use PyOpenSSL if installed
+    class wrapped_socket(object):
+        '''API-compatibility wrapper for Python OpenSSL's Connection-class.'''
+
+        def __init__(self, connection, socket):
+            self.connection = connection
+            self.socket = socket
+
+        def makefile(self, mode, bufsize=-1):
+            return _fileobject(self.connection, mode, bufsize)
+
+        def settimeout(self, timeout):
+            return self.socket.settimeout(timeout)
+
+        def sendall(self, data):
+            return self.connection.sendall(data)
+
+        def getpeercert(self):
+            x509 = self.connection.get_peer_certificate()
+            if not x509:
+                raise SSLError('')
+            return {
+                ### FIXME - need subjectAltName
+                'subject': (
+                    (('commonName', x509.get_subject().CN),),
+                ),
+            }
+
+    _openssl_versions = {
+        ssl.PROTOCOL_SSLv23: OpenSSL.SSL.SSLv23_METHOD,
+        ssl.PROTOCOL_SSLv3: OpenSSL.SSL.SSLv3_METHOD,
+        ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
+    }
+    _openssl_verify = {
+        ssl.CERT_NONE: OpenSSL.SSL.VERIFY_NONE,
+        ssl.CERT_OPTIONAL: OpenSSL.SSL.VERIFY_PEER,
+        ssl.CERT_REQUIRED: OpenSSL.SSL.VERIFY_PEER
+                           + OpenSSL.SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
+    }
+
+    def _verify_callback(cnx, x509, err_no, err_depth, return_code):
+        # FIXME - log this
+        #print `x509, err_no, err_depth, return_code`
+        return err_no == 0
+
+    def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
+                        ca_certs=None, server_hostname=None,
+                        ssl_version=None):
+        ctx = OpenSSL.SSL.Context(_openssl_versions[ssl_version])
+        if certfile:
+            ctx.use_certificate_file(certfile)
+        if keyfile:
+            ctx.use_privatekey_file(keyfile)
+        if cert_reqs != CERT_NONE:
+            ctx.set_verify(_openssl_verify[cert_reqs], _verify_callback)
+        if ca_certs:
+            try:
+                ctx.load_verify_locations(ca_certs, None)
+            except OpenSSL.SSL.Error as e:
+                raise SSLError('bad ca_certs: %r' % ca_certs, e)
+
+        cnx = OpenSSL.SSL.Connection(ctx, sock)
+        cnx.set_tlsext_host_name(server_hostname)
+        cnx.set_connect_state()
+        try:
+            cnx.do_handshake()
+        except OpenSSL.SSL.Error as e:
+            raise SSLError('bad handshake', e)
+
+        return wrapped_socket(cnx, sock)
 
 else:  # Python 3.1 and earlier
     def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
