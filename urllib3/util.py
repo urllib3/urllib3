@@ -7,6 +7,7 @@
 
 from base64 import b64encode
 from collections import namedtuple
+import os
 from socket import error as SocketError
 
 try:
@@ -30,10 +31,16 @@ except ImportError:
     pass
 
 try:
-    OpenSSL = None
-    import OpenSSL.SSL
-    from socket import _fileobject
-    HAS_SNI = True
+    OpenSSL = ServerSSLCertVerification = None
+    if os.environ.get('URLLIB3_USE_PYOPENSSL') == 'true':
+        import OpenSSL.SSL
+        from ndg.httpsclient.ssl_peer_verification import ServerSSLCertVerification, SUBJ_ALT_NAME_SUPPORT
+        from ndg.httpsclient.subj_alt_name import SubjectAltName
+        from pyasn1.codec.der import decoder as der_decoder
+        from socket import _fileobject
+        # SNI only *really* works if we can read the subjectAltName of
+        # certificates, so.
+        HAS_SNI = SUBJ_ALT_NAME_SUPPORT
 except ImportError:
     pass
 
@@ -338,6 +345,37 @@ if SSLContext is not None:  # Python 3.2+
         return context.wrap_socket(sock)
 
 elif OpenSSL is not None:  # Use PyOpenSSL if installed
+    ### FIXME - This is a slightly bug-fixed version of same from
+    ### ndg-httpsclient.
+    def get_subj_alt_name(peer_cert):
+        # Search through extensions
+        dns_name = []
+        if not SUBJ_ALT_NAME_SUPPORT:
+            return dns_name
+
+        general_names = SubjectAltName()
+        for i in range(peer_cert.get_extension_count()):
+            ext = peer_cert.get_extension(i)
+            ext_name = ext.get_short_name()
+            if ext_name != 'subjectAltName':
+                continue
+
+            # PyOpenSSL returns extension data in ASN.1 encoded form
+            ext_dat = ext.get_data()
+            decoded_dat = der_decoder.decode(ext_dat,
+                                             asn1Spec=general_names)
+
+            for name in decoded_dat:
+                if not isinstance(name, SubjectAltName):
+                    continue
+                for entry in range(len(name)):
+                    component = name.getComponentByPosition(entry)
+                    if component.getName() != 'dNSName':
+                        continue
+                    dns_name.append(str(component.getComponent()))
+
+        return dns_name
+
     class wrapped_socket(object):
         '''API-compatibility wrapper for Python OpenSSL's Connection-class.'''
 
@@ -359,10 +397,13 @@ elif OpenSSL is not None:  # Use PyOpenSSL if installed
             if not x509:
                 raise SSLError('')
             return {
-                ### FIXME - need subjectAltName
                 'subject': (
                     (('commonName', x509.get_subject().CN),),
                 ),
+                'subjectAltName': [
+                    ('DNS', value)
+                    for value in get_subj_alt_name(x509)
+                ]
             }
 
     _openssl_versions = {
@@ -378,8 +419,6 @@ elif OpenSSL is not None:  # Use PyOpenSSL if installed
     }
 
     def _verify_callback(cnx, x509, err_no, err_depth, return_code):
-        # FIXME - log this
-        #print `x509, err_no, err_depth, return_code`
         return err_no == 0
 
     def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
