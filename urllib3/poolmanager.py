@@ -218,9 +218,10 @@ class ProxyManager(PoolManager):
         """
         headers_ = {'Accept': '*/*'}
 
-        host = parse_url(url).host
+        parsed_url = parse_url(url)
+        host, port = parsed_url.host, parsed_url.port
         if host:
-            headers_['Host'] = host
+            headers_['Host'] = "%s:%s"%(host, port) if port else host
 
         if headers:
             headers_.update(headers)
