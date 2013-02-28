@@ -71,6 +71,7 @@ class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
     port = 18082
     certs = DEFAULT_CERTS
 
+
 class HTTPDummyProxyTestCase(unittest.TestCase):
 
     http_host = 'localhost'
@@ -90,18 +91,16 @@ class HTTPDummyProxyTestCase(unittest.TestCase):
     def setUpClass(cls):
         cls.http_thread = TornadoServerThread(host=cls.http_host,
                 port=cls.http_port, scheme='http')
-        cls.http_thread.start()
+        cls.http_thread._start_server()
         cls.https_thread = TornadoServerThread(host=cls.https_host,
                 port=cls.https_port, scheme='https',
-                certs=cls.https_certs, run_ioloop=False)
-        cls.https_thread.start()
+                certs=cls.https_certs)
+        cls.https_thread._start_server()
         cls.proxy_thread = ProxyServerThread(host=cls.proxy_host,
-                port=cls.proxy_port,run_ioloop=False)
+                port=cls.proxy_port)
         cls.proxy_thread.start()
 
     @classmethod
     def tearDownClass(cls):
-        cls.http_thread.stop()
-        cls.https_thread.stop()
         cls.proxy_thread.stop()
 
