@@ -70,14 +70,13 @@ class SocketServerThread(threading.Thread):
 
 
 class TornadoServerThread(threading.Thread):
-    def __init__(self, host='localhost', port=8081, scheme='http', certs=None, run_ioloop=True):
+    def __init__(self, host='localhost', port=8081, scheme='http', certs=None):
         threading.Thread.__init__(self)
 
         self.host = host
         self.port = port
         self.scheme = scheme
         self.certs = certs
-        self.run_ioloop = run_ioloop
 
     def _start_server(self):
         container = tornado.wsgi.WSGIContainer(TestingApp())
@@ -92,34 +91,29 @@ class TornadoServerThread(threading.Thread):
         return http_server
 
     def run(self):
+        self.ioloop = tornado.ioloop.IOLoop.instance()
         self.server = self._start_server()
-        if self.run_ioloop:
-            self.ioloop = tornado.ioloop.IOLoop.instance()
-            self.ioloop.start()
+        self.ioloop.start()
 
     def stop(self):
         self.ioloop.add_callback(self.server.stop)
-        if hasattr(self, 'ioloop'):
-            self.ioloop.add_callback(self.ioloop.stop)
+        self.ioloop.add_callback(self.ioloop.stop)
 
 class ProxyServerThread(threading.Thread):
-    def __init__(self, host='localhost', port=8091, run_ioloop=True):
+    def __init__(self, host='localhost', port=8091):
         threading.Thread.__init__(self)
 
         self.host = host
         self.port = port
-        self.run_ioloop = run_ioloop
 
     def run(self):
-        self.app = tornado.web.Application([(r'.*', ProxyHandler),])
+        self.ioloop = tornado.ioloop.IOLoop.instance()
+        self.app = tornado.web.Application([(r'.*', ProxyHandler)])
         self.app.listen(self.port, address=self.host)
-        if self.run_ioloop:
-            self.ioloop = tornado.ioloop.IOLoop.instance()
-            self.ioloop.start()
+        self.ioloop.start()
 
     def stop(self):
-        if hasattr(self,'ioloop'):
-            self.ioloop.stop()
+        self.ioloop.stop()
 
 
 if __name__ == '__main__':
