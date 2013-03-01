@@ -102,7 +102,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         # Does the pool retry if there is no listener on the port?
         # Note: Socket server is not started until after the test.
         pool = HTTPConnectionPool(self.host, self.port)
-        self.assertRaises(MaxRetryError, pool.request, 'GET', '/')
+        self.assertRaises(MaxRetryError, pool.request, 'GET', '/', retries=0)
         self._start_server(lambda x: None)
 
     def test_connection_timeout(self):
