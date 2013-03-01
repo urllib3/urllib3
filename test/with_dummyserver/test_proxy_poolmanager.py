@@ -2,9 +2,11 @@ import unittest
 import json
 
 from dummyserver.testcase import HTTPDummyProxyTestCase
+from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD
+
 from urllib3.poolmanager import proxy_from_url, ProxyManager
-from urllib3.exceptions import MaxRetryError
-from urllib3.connectionpool import connection_from_url
+from urllib3.exceptions import MaxRetryError, SSLError
+from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
 
 class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     http_url = 'http://%s:%d' % (HTTPDummyProxyTestCase.http_host, HTTPDummyProxyTestCase.http_port)
@@ -30,6 +32,38 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
         r = http.request('GET', '%s/' % self.https_url)
         self.assertEqual(r.status, 200)
+
+    def test_proxy_verified(self):
+        http = proxy_from_url(self.proxy_url, cert_reqs='REQUIRED',
+                              ca_certs=DEFAULT_CA_BAD)
+        https_pool = http._new_pool('https', self.https_host,
+                                    self.https_port)
+        try:
+            https_pool._new_conn()
+            self.fail("Didn't raise SSL error with wrong CA")
+        except SSLError as e:
+            self.assertTrue('certificate verify failed' in str(e),
+                            "Expected 'certificate verify failed',"
+                            "instead got: %r" % e)
+
+        http = proxy_from_url(self.proxy_url, cert_reqs='REQUIRED',
+                              ca_certs=DEFAULT_CA)
+        https_pool = http._new_pool('https', self.https_host,
+                                    self.https_port)
+
+        conn = https_pool._new_conn()
+        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
+        https_pool.request('GET', '/')  # Should succeed without exceptions.
+
+        http = proxy_from_url(self.proxy_url, cert_reqs='REQUIRED',
+                              ca_certs=DEFAULT_CA)
+        https_fail_pool = http._new_pool('https', '127.0.0.1', self.https_port)
+
+        try:
+            https_fail_pool.request('GET', '/')
+            self.fail("Didn't raise SSL invalid common name")
+        except SSLError as e:
+            self.assertTrue("doesn't match" in str(e))
 
     def test_redirect(self):
         http = proxy_from_url(self.proxy_url)
