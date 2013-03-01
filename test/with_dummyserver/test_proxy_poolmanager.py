@@ -39,7 +39,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         https_pool = http._new_pool('https', self.https_host,
                                     self.https_port)
         try:
-            https_pool._new_conn()
+            https_pool.request('GET', '/')
             self.fail("Didn't raise SSL error with wrong CA")
         except SSLError as e:
             self.assertTrue('certificate verify failed' in str(e),
