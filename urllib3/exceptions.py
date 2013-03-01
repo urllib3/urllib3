@@ -39,6 +39,11 @@ class SSLError(HTTPError):
     pass
 
 
+class ProxyError(HTTPError):
+    "Raised when the connection to a proxy fails."
+    pass
+
+
 class DecodeError(HTTPError):
     "Raised when automatic decoding based on Content-Type fails."
     pass

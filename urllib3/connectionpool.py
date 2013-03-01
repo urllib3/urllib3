@@ -54,6 +54,7 @@ from .exceptions import (
     MaxRetryError,
     SSLError,
     TimeoutError,
+    ProxyError,
 )
 
 from .packages.ssl_match_hostname import match_hostname, CertificateError
@@ -96,7 +97,11 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
     def connect(self):
         # Add certificate verification
-        sock = socket.create_connection((self.host, self.port), self.timeout)
+        try:
+            sock = socket.create_connection((self.host, self.port),
+                                            self.timeout)
+        except SocketError as e:
+            raise ProxyError('Cannot connect to proxy. Socket error: %s.' % e)
 
         resolved_cert_reqs = resolve_cert_reqs(self.cert_reqs)
         resolved_ssl_version = resolve_ssl_version(self.ssl_version)
@@ -482,6 +487,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             raise SSLError(e)
 
         except (HTTPException, SocketError) as e:
+            if isinstance(e, SocketError) and self.proxy is not None:
+                raise ProxyError('Cannot connect to proxy. '
+                                 'Socket error: %s.' % e)
+
             # Connection broken, discard. It will be replaced next _get_conn().
             conn = None
             # This is necessary so we can access e below
