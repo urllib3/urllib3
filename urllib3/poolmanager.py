@@ -204,10 +204,7 @@ class ProxyManager(PoolManager):
 
     def connection_from_host(self, host, port=None, scheme='http'):
         if scheme == "https":
-            pool = super(ProxyManager,self).connection_from_host(host, port, scheme)
-            pool.proxy = self.proxy
-            pool.proxy_headers = self.proxy_headers
-            return pool
+            return super(ProxyManager,self).connection_from_host(host, port, scheme)
         return super(ProxyManager,self).connection_from_host(self.proxy.host,
                 self.proxy.port, self.proxy.scheme)
 
