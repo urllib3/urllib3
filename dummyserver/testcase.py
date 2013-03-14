@@ -5,6 +5,7 @@ from threading import Lock
 from dummyserver.server import (
     TornadoServerThread, SocketServerThread,
     DEFAULT_CERTS,
+    ProxyServerThread,
 )
 
 
@@ -69,3 +70,37 @@ class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
     host = 'localhost'
     port = 18082
     certs = DEFAULT_CERTS
+
+
+class HTTPDummyProxyTestCase(unittest.TestCase):
+
+    http_host = 'localhost'
+    http_host_alt = '127.0.0.1'
+    http_port = 18081
+
+    https_host = 'localhost'
+    https_port = 18082
+    https_host_alt = '127.0.0.1'
+    https_certs = DEFAULT_CERTS
+
+    proxy_host = 'localhost'
+    proxy_host_alt = '127.0.0.1'
+    proxy_port = 18083
+
+    @classmethod
+    def setUpClass(cls):
+        cls.http_thread = TornadoServerThread(host=cls.http_host,
+                port=cls.http_port, scheme='http')
+        cls.http_thread._start_server()
+        cls.https_thread = TornadoServerThread(host=cls.https_host,
+                port=cls.https_port, scheme='https',
+                certs=cls.https_certs)
+        cls.https_thread._start_server()
+        cls.proxy_thread = ProxyServerThread(host=cls.proxy_host,
+                port=cls.proxy_port)
+        cls.proxy_thread.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.proxy_thread.stop()
+

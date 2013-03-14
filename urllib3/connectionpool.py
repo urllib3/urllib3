@@ -95,6 +95,12 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         resolved_cert_reqs = resolve_cert_reqs(self.cert_reqs)
         resolved_ssl_version = resolve_ssl_version(self.ssl_version)
 
+        if self._tunnel_host:
+            self.sock = sock
+            # Calls self._set_hostport(), so self.host is
+            # self._tunnel_host below.
+            self._tunnel()
+
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
         self.sock = ssl_wrap_socket(sock, self.key_file, self.cert_file,
@@ -164,12 +170,20 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     :param headers:
         Headers to include with all requests, unless other headers are given
         explicitly.
+
+    :param proxy:
+        Parsed proxy URL, should not be used directly, instead, see
+        :class:`urllib3.connectionpool.ProxyManager`"
+
+    :param proxy_headers:
+        A dictionary with proxy headers, should not be used directly,
+        instead, see :class:`urllib3.connectionpool.ProxyManager`"
     """
 
     scheme = 'http'
 
     def __init__(self, host, port=None, strict=False, timeout=None, maxsize=1,
-                 block=False, headers=None):
+                 block=False, headers=None, proxy=None, proxy_headers=None):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
 
@@ -177,6 +191,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.timeout = timeout
         self.pool = self.QueueCls(maxsize)
         self.block = block
+
+        self.proxy = proxy
+        self.proxy_headers = proxy_headers or {}
 
         # Fill the queue up so that doing get() on it will block properly
         for _ in xrange(maxsize):
@@ -512,12 +529,13 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     def __init__(self, host, port=None,
                  strict=False, timeout=None, maxsize=1,
                  block=False, headers=None,
+                 proxy=None, proxy_headers=None,
                  key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None, ssl_version=None):
 
         HTTPConnectionPool.__init__(self, host, port,
                                     strict, timeout, maxsize,
-                                    block, headers)
+                                    block, headers, proxy, proxy_headers)
         self.key_file = key_file
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
@@ -532,22 +550,42 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         log.info("Starting new HTTPS connection (%d): %s"
                  % (self.num_connections, self.host))
 
+        actual_host = self.host
+        actual_port = self.port
+        if self.proxy is not None:
+            actual_host = self.proxy.host
+            actual_port = self.proxy.port
+
         if not ssl: # Platform-specific: Python compiled without +ssl
             if not HTTPSConnection or HTTPSConnection is object:
                 raise SSLError("Can't connect to HTTPS URL because the SSL "
                                "module is not available.")
 
-            return HTTPSConnection(host=self.host,
-                                   port=self.port,
-                                   strict=self.strict)
+            connection = HTTPSConnection(host=actual_host,
+                                         port=actual_port,
+                                         strict=self.strict)
 
-        connection = VerifiedHTTPSConnection(host=self.host,
-                                             port=self.port,
-                                             strict=self.strict)
-        connection.set_cert(key_file=self.key_file, cert_file=self.cert_file,
-                            cert_reqs=self.cert_reqs, ca_certs=self.ca_certs)
+        else:
+            connection = VerifiedHTTPSConnection(host=actual_host,
+                                                 port=actual_port,
+                                                 strict=self.strict)
 
-        connection.ssl_version = self.ssl_version
+            connection.set_cert(key_file=self.key_file, cert_file=self.cert_file,
+                                cert_reqs=self.cert_reqs, ca_certs=self.ca_certs)
+
+            connection.ssl_version = self.ssl_version
+
+        if self.proxy is not None:
+            # Python 2.7+
+            try:
+                set_tunnel = connection.set_tunnel
+            # Python 2.6
+            except AttributeError:
+                set_tunnel = connection._set_tunnel
+            set_tunnel(self.host, self.port, self.proxy_headers)
+            # Establish tunnel connection early, because otherwise httplib
+            # would improperly set Host: header to proxy's IP:port.
+            connection.connect()
 
         return connection
 
