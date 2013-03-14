@@ -104,11 +104,6 @@ class PoolManager(RequestMethods):
 
         scheme = scheme or 'http'
 
-        if self.proxy is not None and scheme == "http":
-            host = self.proxy.host
-            port = self.proxy.port
-            scheme = self.proxy.scheme
-
         port = port or port_by_scheme.get(scheme, 80)
 
         pool_key = (scheme, host, port)
