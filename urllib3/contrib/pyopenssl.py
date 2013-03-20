@@ -115,10 +115,16 @@ class WrappedSocket(object):
     def sendall(self, data):
         return self.connection.sendall(data)
 
-    def getpeercert(self):
+    def getpeercert(self, binary_form=False):
         x509 = self.connection.get_peer_certificate()
         if not x509:
             raise ssl.SSLError('')
+
+        if binary_form:
+            return OpenSSL.crypto.dump_certificate(
+                OpenSSL.crypto.FILETYPE_ASN1,
+                x509)
+
         return {
             'subject': (
                 (('commonName', x509.get_subject().CN),),
