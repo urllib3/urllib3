@@ -48,5 +48,8 @@ In chronological order:
 * hartator <hartator@gmail.com>
   * Corrected multipart behavior for params 
 
+* Sune Kirkeby <mig@ibofobi.dk>
+  * Optional SNI-support for Python 2 via PyOpenSSL.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
