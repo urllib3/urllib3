@@ -9,6 +9,7 @@ urllib3 Documentation
    managers
    helpers
    collections
+   contrib
 
 
 Highlights
@@ -144,6 +145,15 @@ but can also be used independently.
 
    helpers
 
+Contrib Modules
+---------------
+
+These modules implement various extra features, that may not be ready for
+prime time.
+
+.. toctree::
+
+   contrib
 
 Contributing
 ============
