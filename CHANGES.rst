@@ -4,6 +4,8 @@ Changes
 dev (master branch)
 +++++++++++++++++++
 
+* Contrib: Optional SNI support for Py2 using PyOpenSSL. (Issue #156)
+
 * ``ProxyManager`` automatically adds ``Host: ...`` header if not given.
 
 * Improved SSL-related code. ``cert_req`` now optionally takes a string like
