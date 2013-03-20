@@ -29,19 +29,6 @@ try:  # Test for SSL features
 except ImportError:
     pass
 
-try:
-    OpenSSL = ServerSSLCertVerification = None
-    import OpenSSL.SSL
-    from ndg.httpsclient.ssl_peer_verification import ServerSSLCertVerification, SUBJ_ALT_NAME_SUPPORT
-    from ndg.httpsclient.subj_alt_name import SubjectAltName
-    from pyasn1.codec.der import decoder as der_decoder
-    from socket import _fileobject
-    # SNI only *really* works if we can read the subjectAltName of
-    # certificates, so.
-    HAS_SNI = SUBJ_ALT_NAME_SUPPORT
-except ImportError:
-    pass
-
 
 from .packages import six
 from .exceptions import LocationParseError
@@ -341,109 +328,6 @@ if SSLContext is not None:  # Python 3.2+
         if HAS_SNI:  # Platform-specific: OpenSSL with enabled SNI
             return context.wrap_socket(sock, server_hostname=server_hostname)
         return context.wrap_socket(sock)
-
-elif OpenSSL is not None:  # Use PyOpenSSL if installed
-    ### FIXME - This is a slightly bug-fixed version of same from
-    ### ndg-httpsclient.
-    def get_subj_alt_name(peer_cert):
-        # Search through extensions
-        dns_name = []
-        if not SUBJ_ALT_NAME_SUPPORT:
-            return dns_name
-
-        general_names = SubjectAltName()
-        for i in range(peer_cert.get_extension_count()):
-            ext = peer_cert.get_extension(i)
-            ext_name = ext.get_short_name()
-            if ext_name != 'subjectAltName':
-                continue
-
-            # PyOpenSSL returns extension data in ASN.1 encoded form
-            ext_dat = ext.get_data()
-            decoded_dat = der_decoder.decode(ext_dat,
-                                             asn1Spec=general_names)
-
-            for name in decoded_dat:
-                if not isinstance(name, SubjectAltName):
-                    continue
-                for entry in range(len(name)):
-                    component = name.getComponentByPosition(entry)
-                    if component.getName() != 'dNSName':
-                        continue
-                    dns_name.append(str(component.getComponent()))
-
-        return dns_name
-
-    class WrappedSocket(object):
-        '''API-compatibility wrapper for Python OpenSSL's Connection-class.'''
-
-        def __init__(self, connection, socket):
-            self.connection = connection
-            self.socket = socket
-
-        def makefile(self, mode, bufsize=-1):
-            return _fileobject(self.connection, mode, bufsize)
-
-        def settimeout(self, timeout):
-            return self.socket.settimeout(timeout)
-
-        def sendall(self, data):
-            return self.connection.sendall(data)
-
-        def getpeercert(self):
-            x509 = self.connection.get_peer_certificate()
-            if not x509:
-                raise SSLError('')
-            return {
-                'subject': (
-                    (('commonName', x509.get_subject().CN),),
-                ),
-                'subjectAltName': [
-                    ('DNS', value)
-                    for value in get_subj_alt_name(x509)
-                ]
-            }
-
-    _openssl_versions = {
-        ssl.PROTOCOL_SSLv23: OpenSSL.SSL.SSLv23_METHOD,
-        ssl.PROTOCOL_SSLv3: OpenSSL.SSL.SSLv3_METHOD,
-        ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
-    }
-    _openssl_verify = {
-        ssl.CERT_NONE: OpenSSL.SSL.VERIFY_NONE,
-        ssl.CERT_OPTIONAL: OpenSSL.SSL.VERIFY_PEER,
-        ssl.CERT_REQUIRED: OpenSSL.SSL.VERIFY_PEER
-                           + OpenSSL.SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
-    }
-
-    def _verify_callback(cnx, x509, err_no, err_depth, return_code):
-        return err_no == 0
-
-    def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
-                        ca_certs=None, server_hostname=None,
-                        ssl_version=None):
-        ctx = OpenSSL.SSL.Context(_openssl_versions[ssl_version])
-        if certfile:
-            ctx.use_certificate_file(certfile)
-        if keyfile:
-            ctx.use_privatekey_file(keyfile)
-        if cert_reqs != CERT_NONE:
-            ctx.set_verify(_openssl_verify[cert_reqs], _verify_callback)
-        if ca_certs:
-            try:
-                ctx.load_verify_locations(ca_certs, None)
-            except OpenSSL.SSL.Error as e:
-                raise SSLError('bad ca_certs: %r' % ca_certs, e)
-
-        cnx = OpenSSL.SSL.Connection(ctx, sock)
-        cnx.set_tlsext_host_name(server_hostname)
-        cnx.set_connect_state()
-        try:
-            cnx.do_handshake()
-        except OpenSSL.SSL.Error as e:
-            raise SSLError('bad handshake', e)
-
-        return WrappedSocket(cnx, sock)
 
 else:  # Python 3.1 and earlier
     def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
