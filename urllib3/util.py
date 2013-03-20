@@ -374,7 +374,7 @@ elif OpenSSL is not None:  # Use PyOpenSSL if installed
 
         return dns_name
 
-    class wrapped_socket(object):
+    class WrappedSocket(object):
         '''API-compatibility wrapper for Python OpenSSL's Connection-class.'''
 
         def __init__(self, connection, socket):
@@ -443,7 +443,7 @@ elif OpenSSL is not None:  # Use PyOpenSSL if installed
         except OpenSSL.SSL.Error as e:
             raise SSLError('bad handshake', e)
 
-        return wrapped_socket(cnx, sock)
+        return WrappedSocket(cnx, sock)
 
 else:  # Python 3.1 and earlier
     def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
