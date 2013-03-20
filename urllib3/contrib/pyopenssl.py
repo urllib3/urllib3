@@ -1,13 +1,14 @@
 '''SSL with SNI-support for Python 2.
 
-This is needs the following packages installed:
+This needs the following packages installed:
 
-    ndg-httpsclient (tested with 0.3.2)
-    pyOpenSSL (tested with 0.13)
-    pyasn1 (tested with 0.1.6)
+* pyOpenSSL (tested with 0.13)
+* ndg-httpsclient (tested with 0.3.2)
+* pyasn1 (tested with 0.1.6)
 
-To activate it call :func:`inject_into_urllib3`.  This can be done in a
-sitecustomize module.
+To activate it call :func:`urllib3.contrib.pyopenssl.inject_into_urllib3`.
+This can be done in a ``sitecustomize`` module, or at any other time before
+your application begins using ``urllib3``.
 '''
 
 from ndg.httpsclient.ssl_peer_verification import (ServerSSLCertVerification,
@@ -20,6 +21,8 @@ import ssl
 
 from .. import connectionpool
 from .. import util
+
+__all__ = ['inject_into_urllib3', 'extract_from_urllib3']
 
 # SNI only *really* works if we can read the subjectAltName of certificates.
 HAS_SNI = SUBJ_ALT_NAME_SUPPORT
