@@ -7,7 +7,6 @@
 
 from base64 import b64encode
 from collections import namedtuple
-import os
 from socket import error as SocketError
 
 try:
@@ -32,15 +31,14 @@ except ImportError:
 
 try:
     OpenSSL = ServerSSLCertVerification = None
-    if os.environ.get('URLLIB3_USE_PYOPENSSL') == 'true':
-        import OpenSSL.SSL
-        from ndg.httpsclient.ssl_peer_verification import ServerSSLCertVerification, SUBJ_ALT_NAME_SUPPORT
-        from ndg.httpsclient.subj_alt_name import SubjectAltName
-        from pyasn1.codec.der import decoder as der_decoder
-        from socket import _fileobject
-        # SNI only *really* works if we can read the subjectAltName of
-        # certificates, so.
-        HAS_SNI = SUBJ_ALT_NAME_SUPPORT
+    import OpenSSL.SSL
+    from ndg.httpsclient.ssl_peer_verification import ServerSSLCertVerification, SUBJ_ALT_NAME_SUPPORT
+    from ndg.httpsclient.subj_alt_name import SubjectAltName
+    from pyasn1.codec.der import decoder as der_decoder
+    from socket import _fileobject
+    # SNI only *really* works if we can read the subjectAltName of
+    # certificates, so.
+    HAS_SNI = SUBJ_ALT_NAME_SUPPORT
 except ImportError:
     pass
 
