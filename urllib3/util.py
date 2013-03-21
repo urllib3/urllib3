@@ -336,3 +336,6 @@ else:  # Python 3.1 and earlier
         return wrap_socket(sock, keyfile=keyfile, certfile=certfile,
                            ca_certs=ca_certs, cert_reqs=cert_reqs,
                            ssl_version=ssl_version)
+
+def i_am_broken():
+    raise Exception("I am not to be called!")
