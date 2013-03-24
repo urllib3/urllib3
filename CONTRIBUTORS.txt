@@ -51,5 +51,8 @@ In chronological order:
 * Sune Kirkeby <mig@ibofobi.dk>
   * Optional SNI-support for Python 2 via PyOpenSSL.
 
+* Pradyun Gedam <pradyuns7@gmail.com>
+ * Support for @ in proxy username and password.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
