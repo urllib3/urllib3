@@ -232,7 +232,7 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
     return headers
 
 
-def is_connection_dropped(conn):
+def is_connection_dropped(conn):  # Platform-specific
     """
     Returns True if the connection is dropped and should be closed.
 
@@ -246,7 +246,7 @@ def is_connection_dropped(conn):
     if not sock: # Platform-specific: AppEngine
         return False
 
-    if not poll: # Platform-specific
+    if not poll:
         if not select: # Platform-specific: AppEngine
             return False
 
