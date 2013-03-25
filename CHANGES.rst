@@ -51,6 +51,10 @@ dev (master branch)
 
 * Pass `strict` param down to ``httplib.HTTPConnection``. (Issue #122)
 
+* Added mechanism to verify SSL certificates by fingerprint (md5, sha1) or
+  against an arbitrary hostname (when connecting by IP or for misconfigured
+  servers). (Issue #140)
+
 
 1.5 (2012-08-02)
 ++++++++++++++++
