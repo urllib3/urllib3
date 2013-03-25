@@ -1,8 +1,13 @@
-Highlights
-==========
+=======
+urllib3
+=======
 
 .. image:: https://travis-ci.org/shazow/urllib3.png?branch=master
         :target: https://travis-ci.org/shazow/urllib3
+
+
+Highlights
+==========
 
 - Re-use the same socket connection for multiple requests
   (``HTTPConnectionPool`` and ``HTTPSConnectionPool``)
