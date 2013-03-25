@@ -19,6 +19,7 @@ class DeflateDecoder(object):
 
     def __init__(self):
         self._first_try = True
+        self._data = binary_type()
         self._obj = zlib.decompressobj()
 
     def __getattr__(self, name):
@@ -28,12 +29,16 @@ class DeflateDecoder(object):
         if not self._first_try:
             return self._obj.decompress(data)
 
-        self._first_try = False
+        self._data += data
         try:
             return self._obj.decompress(data)
         except zlib.error:
+            self._first_try = False
             self._obj = zlib.decompressobj(-zlib.MAX_WBITS)
-            return self.decompress(data)
+            try:
+                return self.decompress(self._data)
+            finally:
+                self._data = None
 
 
 def _get_decoder(mode):
@@ -144,8 +149,8 @@ class HTTPResponse(object):
         """
         # Note: content-encoding value should be case-insensitive, per RFC 2616
         # Section 3.5
+        content_encoding = self.headers.get('content-encoding', '').lower()
         if self._decoder is None:
-            content_encoding = self.headers.get('content-encoding', '').lower()
             if content_encoding in self.CONTENT_DECODERS:
                 self._decoder = _get_decoder(content_encoding)
         if decode_content is None:
