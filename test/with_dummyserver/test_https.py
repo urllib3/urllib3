@@ -137,6 +137,55 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
         self._pool.ssl_version = ssl.PROTOCOL_SSLv3
         self.assertRaises(SSLError, self._pool.request, 'GET', '/')
 
+    def test_assert_specific_hostname(self):
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_REQUIRED')
+
+        https_pool.ca_certs = DEFAULT_CA
+        https_pool.assert_hostname = 'localhost'
+        https_pool.request('GET', '/')
+
+    def test_assert_fingerprint_md5(self):
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_REQUIRED')
+
+        https_pool.ca_certs = DEFAULT_CA
+        https_pool.assert_fingerprint = 'CA:84:E1:AD0E5a:ef:2f:C3:09' \
+                                        ':E7:30:F8:CD:C8:5B'
+        https_pool.request('GET', '/')
+
+    def test_assert_fingerprint_sha1(self):
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_REQUIRED')
+
+        https_pool.ca_certs = DEFAULT_CA
+        https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
+                                        '7A:F2:8A:D7:1E:07:33:67:DE'
+        https_pool.request('GET', '/')
+
+    def test_assert_invalid_fingerprint(self):
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_REQUIRED')
+
+        https_pool.ca_certs = DEFAULT_CA
+        https_pool.assert_fingerprint = 'AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:' \
+                                        'AA:AA:AA:AA:AA:AA:AA:AA:AA'
+
+        self.assertRaises(SSLError,
+                          https_pool.request, 'GET', '/')
+
+        # invalid length
+        https_pool.assert_fingerprint = 'AA'
+
+        self.assertRaises(SSLError,
+                          https_pool.request, 'GET', '/')
+
+        # uneven length
+        https_pool.assert_fingerprint = 'AA:A'
+
+        self.assertRaises(SSLError,
+                          https_pool.request, 'GET', '/')
+
 
 if __name__ == '__main__':
     unittest.main()
