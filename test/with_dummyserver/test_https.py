@@ -174,6 +174,18 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
         self.assertRaises(SSLError,
                           https_pool.request, 'GET', '/')
 
+        # invalid length
+        https_pool.assert_fingerprint = 'AA'
+
+        self.assertRaises(SSLError,
+                          https_pool.request, 'GET', '/')
+
+        # uneven length
+        https_pool.assert_fingerprint = 'AA:A'
+
+        self.assertRaises(SSLError,
+                          https_pool.request, 'GET', '/')
+
 
 if __name__ == '__main__':
     unittest.main()
