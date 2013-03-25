@@ -84,7 +84,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
         self.assertEqual(returned_headers.get('Foo'), None)
         self.assertEqual(returned_headers.get('Baz'), 'quux')
 
+    def test_http_with_ssl_keywords(self):
+        http = PoolManager(ca_certs='REQUIRED')
 
+        r = http.request('GET', 'http://%s:%s/' % (self.host, self.port))
+        self.assertEqual(r.status, 200)
 
 
 if __name__ == '__main__':
