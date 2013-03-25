@@ -1,6 +1,9 @@
 Highlights
 ==========
 
+.. image:: https://travis-ci.org/shazow/urllib3.png?branch=master
+        :target: https://travis-ci.org/shazow/urllib3
+
 - Re-use the same socket connection for multiple requests
   (``HTTPConnectionPool`` and ``HTTPSConnectionPool``)
   (with optional client-side certificate verification).
