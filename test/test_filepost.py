@@ -62,7 +62,7 @@ class TestMultipartEncoding(unittest.TestCase):
                 , fields)
 
             self.assertEqual(content_type,
-                b'multipart/form-data; boundary=' + b(BOUNDARY))
+                'multipart/form-data; boundary=' + str(BOUNDARY))
 
 
     def test_filename(self):
@@ -80,7 +80,7 @@ class TestMultipartEncoding(unittest.TestCase):
             )
 
         self.assertEqual(content_type,
-            b'multipart/form-data; boundary=' + b(BOUNDARY))
+            'multipart/form-data; boundary=' + str(BOUNDARY))
 
 
     def test_textplain(self):
@@ -98,7 +98,7 @@ class TestMultipartEncoding(unittest.TestCase):
             )
 
         self.assertEqual(content_type,
-            b'multipart/form-data; boundary=' + b(BOUNDARY))
+            'multipart/form-data; boundary=' + str(BOUNDARY))
 
 
     def test_explicit(self):
@@ -116,4 +116,4 @@ class TestMultipartEncoding(unittest.TestCase):
             )
 
         self.assertEqual(content_type,
-            b'multipart/form-data; boundary=' + b(BOUNDARY))
+            'multipart/form-data; boundary=' + str(BOUNDARY))
