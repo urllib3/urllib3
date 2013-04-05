@@ -57,5 +57,8 @@ In chronological order:
 * Sune Kirkeby <mig@ibofobi.dk>
   * Optional SNI-support for Python 2 via PyOpenSSL.
 
+* Marc Schlaich <marc.schlaich@gmail.com>
+  * Various bugfixes and test improvements.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

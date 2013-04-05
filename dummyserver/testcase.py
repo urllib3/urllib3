@@ -32,6 +32,11 @@ class SocketDummyServerTestCase(unittest.TestCase):
         # Lock gets released by thread above
         ready_lock.acquire()
 
+    @classmethod
+    def tearDownClass(cls):
+        if hasattr(cls, 'server_thread'):
+            cls.server_thread.join()
+
 
 class HTTPDummyServerTestCase(unittest.TestCase):
     scheme = 'http'
@@ -54,6 +59,7 @@ class HTTPDummyServerTestCase(unittest.TestCase):
     @classmethod
     def _stop_server(cls):
         cls.server_thread.stop()
+        cls.server_thread.join()
 
     @classmethod
     def setUpClass(cls):
