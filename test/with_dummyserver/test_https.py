@@ -118,6 +118,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     def test_assert_specific_hostname(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_REQUIRED')
+        https_pool.ssl_version = ssl.PROTOCOL_TLSv1
 
         https_pool.ca_certs = DEFAULT_CA
         https_pool.assert_hostname = 'localhost'
@@ -126,6 +127,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     def test_assert_fingerprint_md5(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_REQUIRED')
+        https_pool.ssl_version = ssl.PROTOCOL_TLSv1
 
         https_pool.ca_certs = DEFAULT_CA
         https_pool.assert_fingerprint = 'CA:84:E1:AD0E5a:ef:2f:C3:09' \
@@ -135,6 +137,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     def test_assert_fingerprint_sha1(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_REQUIRED')
+        https_pool.ssl_version = ssl.PROTOCOL_TLSv1
 
         https_pool.ca_certs = DEFAULT_CA
         https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
@@ -144,6 +147,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     def test_assert_invalid_fingerprint(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_REQUIRED')
+        https_pool.ssl_version = ssl.PROTOCOL_TLSv1
 
         https_pool.ca_certs = DEFAULT_CA
         https_pool.assert_fingerprint = 'AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:' \
