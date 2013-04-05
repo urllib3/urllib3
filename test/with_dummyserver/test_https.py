@@ -93,16 +93,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         # if we pass in an invalid value it defaults to CERT_NONE
         self.assertRaises(SSLError, https_pool.request, 'GET', '/')
 
-    def test_ssl_version_as_string(self):
-        self._pool.ssl_version = 'PROTOCOL_TLSv1'
-        r = self._pool.request('GET', '/')
-        self.assertEqual(r.status, 200, r.data)
-
-    def test_ssl_version_as_short_string(self):
-        self._pool.ssl_version = 'TLSv1'
-        r = self._pool.request('GET', '/')
-        self.assertEqual(r.status, 200, r.data)
-
     def test_ssl_unverified_with_ca_certs(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_reqs='CERT_NONE')
@@ -124,18 +114,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.ca_certs = '/no_valid_path_to_ca_certs'
 
         self.assertRaises(SSLError, https_pool.request, 'GET', '/')
-
-
-class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
-    certs = DEFAULT_CERTS.copy()
-    certs['ssl_version'] = ssl.PROTOCOL_TLSv1
-
-    def setUp(self):
-        self._pool = HTTPSConnectionPool(self.host, self.port)
-
-    def test_set_ssl_version_to_sslv3(self):
-        self._pool.ssl_version = ssl.PROTOCOL_SSLv3
-        self.assertRaises(SSLError, self._pool.request, 'GET', '/')
 
     def test_assert_specific_hostname(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
@@ -171,20 +149,37 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
         https_pool.assert_fingerprint = 'AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:' \
                                         'AA:AA:AA:AA:AA:AA:AA:AA:AA'
 
-        self.assertRaises(SSLError,
-                          https_pool.request, 'GET', '/')
+        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
 
         # invalid length
         https_pool.assert_fingerprint = 'AA'
 
-        self.assertRaises(SSLError,
-                          https_pool.request, 'GET', '/')
+        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
 
         # uneven length
         https_pool.assert_fingerprint = 'AA:A'
 
-        self.assertRaises(SSLError,
-                          https_pool.request, 'GET', '/')
+        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+
+
+class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
+    certs = DEFAULT_CERTS.copy()
+    certs['ssl_version'] = ssl.PROTOCOL_TLSv1
+
+    def setUp(self):
+        self._pool = HTTPSConnectionPool(self.host, self.port)
+
+    def test_set_ssl_version_to_sslv3(self):
+        self._pool.ssl_version = ssl.PROTOCOL_SSLv3
+        self.assertRaises(SSLError, self._pool.request, 'GET', '/')
+
+    def test_ssl_version_as_string(self):
+        self._pool.ssl_version = 'PROTOCOL_SSLv3'
+        self.assertRaises(SSLError, self._pool.request, 'GET', '/')
+
+    def test_ssl_version_as_short_string(self):
+        self._pool.ssl_version = 'SSLv3'
+        self.assertRaises(SSLError, self._pool.request, 'GET', '/')
 
 
 if __name__ == '__main__':
