@@ -598,8 +598,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             # Python 2.7+
             try:
                 set_tunnel = connection.set_tunnel
-            # Python 2.6
-            except AttributeError:
+            except AttributeError:  # Platform-specific: Python 2.6
                 set_tunnel = connection._set_tunnel
             set_tunnel(self.host, self.port, self.proxy_headers)
             # Establish tunnel connection early, because otherwise httplib
