@@ -72,5 +72,45 @@ class TestResponse(unittest.TestCase):
 
         self.assertEqual(r.data, b'foo')
 
+    def test_chunked_decoding_deflate(self):
+        import zlib
+        data = zlib.compress(b'foo')
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
+                         preload_content=False)
+
+        self.assertEqual(r.read(3), b'')
+        self.assertEqual(r.read(1), b'f')
+        self.assertEqual(r.read(2), b'oo')
+
+    def test_chunked_decoding_deflate2(self):
+        import zlib
+        compress = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
+        data = compress.compress(b'foo')
+        data += compress.flush()
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
+                         preload_content=False)
+
+        self.assertEqual(r.read(1), b'')
+        self.assertEqual(r.read(1), b'f')
+        self.assertEqual(r.read(2), b'oo')
+
+    def test_chunked_decoding_gzip(self):
+        import zlib
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        data = compress.compress(b'foo')
+        data += compress.flush()
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
+                         preload_content=False)
+
+        self.assertEqual(r.read(11), b'')
+        self.assertEqual(r.read(1), b'f')
+        self.assertEqual(r.read(2), b'oo')
+
 if __name__ == '__main__':
     unittest.main()
