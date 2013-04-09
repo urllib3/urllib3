@@ -55,6 +55,8 @@ dev (master branch)
   against an arbitrary hostname (when connecting by IP or for misconfigured
   servers). (Issue #140)
 
+* Streaming decompression support. (Issue #159)
+
 
 1.5 (2012-08-02)
 ++++++++++++++++
