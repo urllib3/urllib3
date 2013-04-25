@@ -4,12 +4,6 @@ Changes
 1.6 (2013-04-25)
 ++++++++++++++++
 
-* ...
-
-
-1.6 (2013-04-25)
-++++++++++++++++
-
 * Contrib: Optional SNI support for Py2 using PyOpenSSL. (Issue #156)
 
 * ``ProxyManager`` automatically adds ``Host: ...`` header if not given.
