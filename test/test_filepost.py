@@ -52,19 +52,17 @@ class TestMultipartEncoding(unittest.TestCase):
             self.assertEqual(encoded,
                 b'--' + b(BOUNDARY) + b'\r\n'
                 b'Content-Disposition: form-data; name="k"\r\n'
-                b'Content-Type: text/plain\r\n'
                 b'\r\n'
                 b'v\r\n'
                 b'--' + b(BOUNDARY) + b'\r\n'
                 b'Content-Disposition: form-data; name="k2"\r\n'
-                b'Content-Type: text/plain\r\n'
                 b'\r\n'
                 b'v2\r\n'
                 b'--' + b(BOUNDARY) + b'--\r\n'
                 , fields)
 
             self.assertEqual(content_type,
-                b'multipart/form-data; boundary=' + b(BOUNDARY))
+                'multipart/form-data; boundary=' + str(BOUNDARY))
 
 
     def test_filename(self):
@@ -82,4 +80,40 @@ class TestMultipartEncoding(unittest.TestCase):
             )
 
         self.assertEqual(content_type,
-            b'multipart/form-data; boundary=' + b(BOUNDARY))
+            'multipart/form-data; boundary=' + str(BOUNDARY))
+
+
+    def test_textplain(self):
+        fields = [('k', ('somefile.txt', b'v'))]
+
+        encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+
+        self.assertEqual(encoded,
+            b'--' + b(BOUNDARY) + b'\r\n'
+            b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
+            b'Content-Type: text/plain\r\n'
+            b'\r\n'
+            b'v\r\n'
+            b'--' + b(BOUNDARY) + b'--\r\n'
+            )
+
+        self.assertEqual(content_type,
+            'multipart/form-data; boundary=' + str(BOUNDARY))
+
+
+    def test_explicit(self):
+        fields = [('k', ('somefile.txt', b'v', 'image/jpeg'))]
+
+        encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+
+        self.assertEqual(encoded,
+            b'--' + b(BOUNDARY) + b'\r\n'
+            b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
+            b'Content-Type: image/jpeg\r\n'
+            b'\r\n'
+            b'v\r\n'
+            b'--' + b(BOUNDARY) + b'--\r\n'
+            )
+
+        self.assertEqual(content_type,
+            'multipart/form-data; boundary=' + str(BOUNDARY))

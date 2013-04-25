@@ -45,5 +45,20 @@ In chronological order:
 * Shivaram Lingamneni <slingamn@cs.stanford.edu>
   * Support for explicitly closing pooled connections
 
+* hartator <hartator@gmail.com>
+  * Corrected multipart behavior for params
+
+* Thomas Weißschuh <thomas@t-8ch.de>
+  * Support for TLS SNI
+  * API unification of ssl_version/cert_reqs
+  * SSL fingerprint and alternative hostname verification
+  * Bugfixes in testsuite
+
+* Sune Kirkeby <mig@ibofobi.dk>
+  * Optional SNI-support for Python 2 via PyOpenSSL.
+
+* Marc Schlaich <marc.schlaich@gmail.com>
+  * Various bugfixes and test improvements.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

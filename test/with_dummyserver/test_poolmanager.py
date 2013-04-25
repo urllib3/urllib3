@@ -1,4 +1,5 @@
 import unittest
+import json
 
 from dummyserver.testcase import HTTPDummyServerTestCase
 from urllib3.poolmanager import PoolManager
@@ -61,6 +62,33 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         self.assertEqual(r.status, 200)
         self.assertEqual(r.data, b'Dummy server!')
+
+    def test_headers(self):
+        http = PoolManager(headers={'Foo': 'bar'})
+
+        r = http.request_encode_url('GET', '%s/headers' % self.base_url)
+        returned_headers = json.loads(r.data.decode())
+        self.assertEqual(returned_headers.get('Foo'), 'bar')
+
+        r = http.request_encode_body('POST', '%s/headers' % self.base_url)
+        returned_headers = json.loads(r.data.decode())
+        self.assertEqual(returned_headers.get('Foo'), 'bar')
+
+        r = http.request_encode_url('GET', '%s/headers' % self.base_url, headers={'Baz': 'quux'})
+        returned_headers = json.loads(r.data.decode())
+        self.assertEqual(returned_headers.get('Foo'), None)
+        self.assertEqual(returned_headers.get('Baz'), 'quux')
+
+        r = http.request_encode_body('GET', '%s/headers' % self.base_url, headers={'Baz': 'quux'})
+        returned_headers = json.loads(r.data.decode())
+        self.assertEqual(returned_headers.get('Foo'), None)
+        self.assertEqual(returned_headers.get('Baz'), 'quux')
+
+    def test_http_with_ssl_keywords(self):
+        http = PoolManager(ca_certs='REQUIRED')
+
+        r = http.request('GET', 'http://%s:%s/' % (self.host, self.port))
+        self.assertEqual(r.status, 200)
 
 
 if __name__ == '__main__':

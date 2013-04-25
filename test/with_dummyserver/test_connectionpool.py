@@ -105,23 +105,22 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
 
         conn = pool._get_conn()
-        with self.assertRaises(SocketTimeout):
-            pool._make_request(conn, 'GET', url)
+        self.assertRaises(SocketTimeout, pool._make_request,
+                          conn, 'GET', url)
         pool._put_conn(conn)
 
-        with self.assertRaises(TimeoutError):
-            pool.request('GET', url)
+        self.assertRaises(TimeoutError, pool.request, 'GET', url)
 
         # Request-specific timeout
         pool = HTTPConnectionPool(self.host, self.port, timeout=0.5)
 
         conn = pool._get_conn()
-        with self.assertRaises(SocketTimeout):
-            pool._make_request(conn, 'GET', url, timeout=timeout)
+        self.assertRaises(SocketTimeout, pool._make_request,
+                          conn, 'GET', url, timeout=timeout)
         pool._put_conn(conn)
 
-        with self.assertRaises(TimeoutError):
-            pool.request('GET', url, timeout=timeout)
+        self.assertRaises(TimeoutError, pool.request,
+                          'GET', url, timeout=timeout)
 
     def test_redirect(self):
         r = self.pool.request('GET', '/redirect', fields={'target': '/'}, redirect=False)
@@ -245,13 +244,13 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(r.data, b'hello, world!')
 
     def test_bad_decode(self):
-        with self.assertRaises(DecodeError):
-            self.pool.request('GET', '/encodingrequest',
-                              headers={'accept-encoding': 'garbage-deflate'})
+        self.assertRaises(DecodeError, self.pool.request,
+                          'GET', '/encodingrequest',
+                          headers={'accept-encoding': 'garbage-deflate'})
 
-        with self.assertRaises(DecodeError):
-            self.pool.request('GET', '/encodingrequest',
-                              headers={'accept-encoding': 'garbage-gzip'})
+        self.assertRaises(DecodeError, self.pool.request,
+                          'GET', '/encodingrequest',
+                          headers={'accept-encoding': 'garbage-gzip'})
 
     def test_connection_count(self):
         pool = HTTPConnectionPool(self.host, self.port, maxsize=1)
@@ -362,6 +361,13 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # Make request without releasing connection
         pool.request('GET', '/', release_conn=False, preload_content=False)
         self.assertEqual(pool.pool.qsize(), MAXSIZE-1)
+
+    ## FIXME: This borks on OSX because sockets on invalid hosts refuse to timeout. :(
+    #def test_dns_error(self):
+    #    pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
+    #
+    #    with self.assertRaises(MaxRetryError):
+    #        pool.request('GET', '/test', retries=2)
 
 
 if __name__ == '__main__':

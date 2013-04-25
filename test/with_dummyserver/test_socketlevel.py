@@ -1,8 +1,11 @@
-from urllib3 import HTTPConnectionPool
+from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
+from urllib3.exceptions import MaxRetryError, TimeoutError, SSLError
+from urllib3 import util
 
 from dummyserver.testcase import SocketDummyServerTestCase
 
+from nose.plugins.skip import SkipTest
 from threading import Event
 
 
@@ -20,11 +23,38 @@ class TestCookies(SocketDummyServerTestCase):
                       b'Set-Cookie: foo=1\r\n'
                       b'Set-Cookie: bar=1\r\n'
                       b'\r\n')
+            sock.close()
 
         self._start_server(multicookie_response_handler)
         pool = HTTPConnectionPool(self.host, self.port)
         r = pool.request('GET', '/', retries=0)
         self.assertEquals(r.headers, {'set-cookie': 'foo=1, bar=1'})
+
+
+class TestSNI(SocketDummyServerTestCase):
+
+    def test_hostname_in_first_request_packet(self):
+        if not util.HAS_SNI:
+            raise SkipTest('SNI-support not available')
+
+        done_receiving = Event()
+        self.buf = b''
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            self.buf = sock.recv(65536) # We only accept one packet
+            done_receiving.set()  # let the test know it can proceed
+
+        self._start_server(socket_handler)
+        pool = HTTPSConnectionPool(self.host, self.port)
+        try:
+            pool.request('GET', '/', retries=0)
+        except SSLError: # We are violating the protocol
+            pass
+        done_receiving.wait()
+        self.assertTrue(self.host.encode() in self.buf,
+                        "missing hostname in SSL handshake")
 
 
 class TestSocketClosing(SocketDummyServerTestCase):
@@ -67,6 +97,26 @@ class TestSocketClosing(SocketDummyServerTestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(response.data, b'Response 1')
 
+    def test_connection_refused(self):
+        # Does the pool retry if there is no listener on the port?
+        # Note: Socket server is not started until after the test.
+        pool = HTTPConnectionPool(self.host, self.port)
+        self.assertRaises(MaxRetryError, pool.request, 'GET', '/', retries=0)
+        self._start_server(lambda x: None)
+
+    def test_connection_timeout(self):
+        timed_out = Event()
+        def socket_handler(listener):
+            timed_out.wait()
+            sock = listener.accept()[0]
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
+
+        self.assertRaises(TimeoutError, pool.request, 'GET', '/', retries=0)
+
+        timed_out.set()
 
 
 class TestProxyManager(SocketDummyServerTestCase):
@@ -93,9 +143,15 @@ class TestProxyManager(SocketDummyServerTestCase):
         r = proxy.request('GET', 'http://google.com/')
 
         self.assertEqual(r.status, 200)
-        self.assertEqual(r.data, b'GET http://google.com/ HTTP/1.1\r\n'
-                                 b'Host: google.com\r\n'
-                                 b'Accept-Encoding: identity\r\n'
-                                 b'Proxy-Connection: Keep-Alive\r\n'
-                                 b'Accept: */*\r\n'
-                                 b'\r\n')
+        # FIXME: The order of the headers is not predictable right now. We
+        # should fix that someday (maybe when we migrate to
+        # OrderedDict/MultiDict).
+        self.assertEqual(sorted(r.data.split(b'\r\n')),
+                         sorted([
+                             b'GET http://google.com/ HTTP/1.1',
+                             b'Host: google.com',
+                             b'Accept-Encoding: identity',
+                             b'Accept: */*',
+                             b'',
+                             b'',
+                         ]))

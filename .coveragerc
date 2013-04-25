@@ -8,3 +8,4 @@ exclude_lines =
     .*:.* # Python \d.*
     pass
     .* # Abstract
+    import

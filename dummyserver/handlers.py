@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import gzip
+import json
 import logging
 import sys
 import time
@@ -120,7 +121,7 @@ class TestingApp(WSGIHandler):
         return Response(status='303', headers=headers)
 
     def keepalive(self, request):
-        if request.params.get('close', '0') == '1':
+        if request.params.get('close', b'0') == b'1':
             headers = [('Connection', 'close')]
             return Response('Closing', headers=headers)
 
@@ -148,7 +149,9 @@ class TestingApp(WSGIHandler):
         if encoding == 'gzip':
             headers = [('Content-Encoding', 'gzip')]
             file_ = BytesIO()
-            gzip.GzipFile('', mode='w', fileobj=file_).write(data)
+            zipfile = gzip.GzipFile('', mode='w', fileobj=file_)
+            zipfile.write(data)
+            zipfile.close()
             data = file_.getvalue()
         elif encoding == 'deflate':
             headers = [('Content-Encoding', 'deflate')]
@@ -160,6 +163,9 @@ class TestingApp(WSGIHandler):
             headers = [('Content-Encoding', 'deflate')]
             data = 'garbage'
         return Response(data, headers=headers)
+
+    def headers(self, request):
+        return Response(json.dumps(request.headers))
 
     def shutdown(self, request):
         sys.exit()

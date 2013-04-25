@@ -4,6 +4,63 @@ Changes
 1.5 (2012-08-02)
 ++++++++++++++++
 
+* Contrib: Optional SNI support for Py2 using PyOpenSSL. (Issue #156)
+
+* ``ProxyManager`` automatically adds ``Host: ...`` header if not given.
+
+* Improved SSL-related code. ``cert_req`` now optionally takes a string like
+  "REQUIRED" or "NONE". Same with ``ssl_version`` takes strings like "SSLv23"
+  The string values reflect the suffix of the respective constant variable.
+  (Issue #130)
+
+* Vendored ``socksipy`` now based on Anorov's fork which handles unexpectedly
+  closed proxy connections and larger read buffers. (Issue #135)
+
+* Ensure the connection is closed if no data is received, fixes connection leak
+  on some platforms. (Issue #133)
+
+* Added SNI support for SSL/TLS connections on Py32+. (Issue #89)
+
+* Tests fixed to be compatible with Py26 again. (Issue #125)
+
+* Added ability to choose SSL version by passing an ``ssl.PROTOCOL_*`` constant
+  to the ``ssl_version`` parameter of ``HTTPSConnectionPool``. (Issue #109)
+
+* Allow an explicit content type to be specified when encoding file fields.
+  (Issue #126)
+
+* Exceptions are now pickleable, with tests. (Issue #101)
+
+* Fixed default headers not getting passed in some cases. (Issue #99)
+
+* Treat "content-encoding" header value as case-insensitive, per RFC 2616
+  Section 3.5. (Issue #110)
+
+* "Connection Refused" SocketErrors will get retried rather than raised.
+  (Issue #92)
+
+* Updated vendored ``six``, no longer overrides the global ``six`` module
+  namespace. (Issue #113)
+
+* ``urllib3.exceptions.MaxRetryError`` contains a ``reason`` property holding
+  the exception that prompted the final retry. If ``reason is None`` then it
+  was due to a redirect. (Issue #92, #114)
+
+* Don't assume ``Content-Type: text/plain`` for multi-part encoding parameters
+  that are not files. (Issue #111)
+
+* Pass `strict` param down to ``httplib.HTTPConnection``. (Issue #122)
+
+* Added mechanism to verify SSL certificates by fingerprint (md5, sha1) or
+  against an arbitrary hostname (when connecting by IP or for misconfigured
+  servers). (Issue #140)
+
+* Streaming decompression support. (Issue #159)
+
+
+1.5 (2012-08-02)
+++++++++++++++++
+
 * Added ``urllib3.add_stderr_logger()`` for quickly enabling STDERR debug
   logging in urllib3.
 
