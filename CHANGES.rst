@@ -1,7 +1,7 @@
 Changes
 =======
 
-1.5 (2012-08-02)
+1.6 (2013-04-25)
 ++++++++++++++++
 
 * Contrib: Optional SNI support for Py2 using PyOpenSSL. (Issue #156)
