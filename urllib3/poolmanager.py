@@ -150,6 +150,7 @@ class PoolManager(RequestMethods):
 
         log.info("Redirecting %s -> %s" % (url, redirect_location))
         kw['retries'] = kw.get('retries', 3) - 1  # Persist retries countdown
+        kw['redirect'] = redirect
         return self.urlopen(method, redirect_location, **kw)
 
 
