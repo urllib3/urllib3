@@ -46,6 +46,9 @@ Changes
   the exception that prompted the final retry. If ``reason is None`` then it
   was due to a redirect. (Issue #92, #114)
 
+* Fixed ``PoolManager.urlopen()`` from not redirecting more than once.
+  (Issue #149)
+
 * Don't assume ``Content-Type: text/plain`` for multi-part encoding parameters
   that are not files. (Issue #111)
 
