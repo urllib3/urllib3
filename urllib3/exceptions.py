@@ -31,7 +31,7 @@ class RequestError(PoolError):
 
     def __reduce__(self):
         # For pickling purposes.
-        return self.__class__, (None, self.url)
+        return self.__class__, (None, self.url, None)
 
 
 class SSLError(HTTPError):
