@@ -60,5 +60,9 @@ In chronological order:
 * Marc Schlaich <marc.schlaich@gmail.com>
   * Various bugfixes and test improvements.
 
+* Bryce Boe <bbzbryce@gmail.com>
+  * Correct six.moves conflict
+  * Fixed pickle support of some exceptions
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
