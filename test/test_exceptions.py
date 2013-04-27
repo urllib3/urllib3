@@ -10,21 +10,24 @@ from urllib3.connectionpool import HTTPConnectionPool
 
 class TestPickle(unittest.TestCase):
 
+    def cycle(self, item):
+        return pickle.loads(pickle.dumps(item))
+
     def test_exceptions(self):
-        assert pickle.dumps(HTTPError(None))
-        assert pickle.dumps(MaxRetryError(None, None, None))
-        assert pickle.dumps(LocationParseError(None))
+        assert self.cycle(HTTPError(None))
+        assert self.cycle(MaxRetryError(None, None, None))
+        assert self.cycle(LocationParseError(None))
 
     def test_exceptions_with_objects(self):
-        assert pickle.dumps(HTTPError('foo'))
-        assert pickle.dumps(MaxRetryError(HTTPConnectionPool('localhost'),
-                                          '/', None))
-        assert pickle.dumps(LocationParseError('fake location'))
-        assert pickle.dumps(ClosedPoolError(HTTPConnectionPool('localhost'),
-                                            None))
-        assert pickle.dumps(EmptyPoolError(HTTPConnectionPool('localhost'),
-                                           None))
-        assert pickle.dumps(HostChangedError(HTTPConnectionPool('localhost'),
-                                             '/', None))
-        assert pickle.dumps(TimeoutError(HTTPConnectionPool('localhost'),
-                                         '/', None))
+        assert self.cycle(HTTPError('foo'))
+        assert self.cycle(MaxRetryError(HTTPConnectionPool('localhost'),
+                                        '/', None))
+        assert self.cycle(LocationParseError('fake location'))
+        assert self.cycle(ClosedPoolError(HTTPConnectionPool('localhost'),
+                                          None))
+        assert self.cycle(EmptyPoolError(HTTPConnectionPool('localhost'),
+                                         None))
+        assert self.cycle(HostChangedError(HTTPConnectionPool('localhost'),
+                                           '/', None))
+        assert self.cycle(TimeoutError(HTTPConnectionPool('localhost'),
+                                       '/', None))
