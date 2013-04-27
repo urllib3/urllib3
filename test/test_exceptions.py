@@ -2,7 +2,8 @@ import unittest
 import pickle
 
 from urllib3.exceptions import (HTTPError, MaxRetryError, LocationParseError,
-                                ClosedPoolError, EmptyPoolError, TimeoutError)
+                                ClosedPoolError, EmptyPoolError,
+                                HostChangedError, TimeoutError)
 from urllib3.connectionpool import HTTPConnectionPool
 
 
@@ -20,8 +21,10 @@ class TestPickle(unittest.TestCase):
                                           '/', None))
         assert pickle.dumps(LocationParseError('fake location'))
         assert pickle.dumps(ClosedPoolError(HTTPConnectionPool('localhost'),
-                                         None))
+                                            None))
         assert pickle.dumps(EmptyPoolError(HTTPConnectionPool('localhost'),
-                                         None))
+                                           None))
+        assert pickle.dumps(HostChangedError(HTTPConnectionPool('localhost'),
+                                             '/', None))
         assert pickle.dumps(TimeoutError(HTTPConnectionPool('localhost'),
                                          '/', None))
