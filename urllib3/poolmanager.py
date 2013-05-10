@@ -9,7 +9,7 @@ import logging
 try:
 	from urllib.parse import urljoin
 except ImportError:
-	from urllib import urljoin
+	from urlparse import urljoin
 
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
