@@ -119,6 +119,12 @@ class TestingApp(WSGIHandler):
         target = request.params.get('target', '/')
         headers = [('Location', target)]
         return Response(status='303', headers=headers)
+    
+    def redirect_to_relative_url(self, request):
+        '''Perform a redirect to ``target`` which is a relative url in Location header'''
+        target = request.params.get('target', '/relative_url')
+        headers = [('Location', target)]
+        return Response(status='303', headers=headers)
 
     def keepalive(self, request):
         if request.params.get('close', b'0') == b'1':
