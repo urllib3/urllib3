@@ -39,6 +39,21 @@ class TestPoolManager(HTTPDummyServerTestCase):
                          fields={'target': '%s/redirect?target=%s/' % (self.base_url, self.base_url)})
 
         self.assertEqual(r.status, 200)
+        self.assertEqual(r.data, b'Dummy server!')    
+
+    def test_redirect_to_relative_url(self):
+        http = PoolManager()
+    
+        r = http.request('GET', '%s/redirect' % self.base_url,
+                         fields = {'target': '/redirect'},
+                         redirect = False)
+    
+        self.assertEqual(r.status, 303)
+    
+        r = http.request('GET', '%s/redirect' % self.base_url, 
+                         fields = {'target': '/redirect'})
+    
+        self.assertEqual(r.status, 200)
         self.assertEqual(r.data, b'Dummy server!')
 
     def test_cross_host_redirect(self):
