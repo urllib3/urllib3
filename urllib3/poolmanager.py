@@ -150,10 +150,12 @@ class PoolManager(RequestMethods):
         if not redirect_location:
             return response
 
+        # Support relative URLs for redirecting.
+        redirect_location = urljoin(url, redirect_location)
+
+        # RFC 2616, Section 10.3.4
         if response.status == 303:
             method = 'GET'
-
-        redirect_location = urljoin(url, redirect_location)
 
         log.info("Redirecting %s -> %s" % (url, redirect_location))
         kw['retries'] = kw.get('retries', 3) - 1  # Persist retries countdown
