@@ -150,8 +150,6 @@ class PoolManager(RequestMethods):
         if not redirect_location:
             return response
 
-        redirect_location = urljoin(url, redirect_location)
-        
         if response.status == 303:
             method = 'GET'
 
