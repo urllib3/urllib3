@@ -6,10 +6,10 @@
 
 import logging
 
-try:
-	from urllib.parse import urljoin
+try:  # Python 3
+    from urllib.parse import urljoin
 except ImportError:
-	from urlparse import urljoin
+    from urlparse import urljoin
 
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
