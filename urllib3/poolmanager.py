@@ -7,9 +7,9 @@
 import logging
 
 try:
-    from urllib.parse import urljoin
-except:
-    from urlparse import urljoin
+	from urllib.parse import urljoin
+except ImportError:
+	from urlparse import urljoin
 
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
@@ -154,6 +154,8 @@ class PoolManager(RequestMethods):
         
         if response.status == 303:
             method = 'GET'
+
+        redirect_location = urljoin(url, redirect_location)
 
         log.info("Redirecting %s -> %s" % (url, redirect_location))
         kw['retries'] = kw.get('retries', 3) - 1  # Persist retries countdown
