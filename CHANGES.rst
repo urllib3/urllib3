@@ -4,7 +4,9 @@ Changes
 dev (master branch)
 +++++++++++++++++++
 
-* More exceptions are now pickleable, with tests. (Issue #174)
+* More exceptions are now pickle-able, with tests. (Issue #174)
+
+* Fixed redirecting with relative URLs in Location header. (Issue #178)
 
 
 1.6 (2013-04-25)
