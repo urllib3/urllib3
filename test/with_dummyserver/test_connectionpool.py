@@ -287,10 +287,28 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     def test_redirect(self):
         r = self.pool.request('GET', '/redirect', fields={'target': '/'}, redirect=False)
         self.assertEqual(r.status, 303)
+        self.assertEqual(r.redirect_history, [])
 
         r = self.pool.request('GET', '/redirect', fields={'target': '/'})
         self.assertEqual(r.status, 200)
         self.assertEqual(r.data, b'Dummy server!')
+        self.assertEqual(r.redirect_history, [(303, '/')])
+
+    def test_double_redirect_history(self):
+        r = self.pool.request('GET', '/multi_redirect', fields={'redirect_codes': '303,302,200'}, redirect=False)
+        self.assertEqual(r.status, 303)
+        self.assertEqual(r.redirect_history, [])
+
+        r = self.pool.request('GET', '/multi_redirect', retries=10, fields={'redirect_codes': '303,302,301,307,302,200'})
+        self.assertEqual(r.status, 200)
+        self.assertEqual(r.data, b'Done redirecting')
+        self.assertEqual(r.redirect_history, [
+            (303, '/multi_redirect?redirect_codes=302,301,307,302,200'),
+            (302, '/multi_redirect?redirect_codes=301,307,302,200'),
+            (301, '/multi_redirect?redirect_codes=307,302,200'),
+            (307, '/multi_redirect?redirect_codes=302,200'),
+            (302, '/multi_redirect?redirect_codes=200')
+        ])
 
     def test_max_retry(self):
         try:

@@ -382,7 +382,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def urlopen(self, method, url, body=None, headers=None, retries=3,
                 redirect=True, assert_same_host=True, timeout=_Default,
-                pool_timeout=None, release_conn=None, **response_kw):
+                pool_timeout=None, release_conn=None, redirect_history=None,
+                **response_kw):
         """
         Get a connection from the pool and perform an HTTP request. This is the
         lowest level call for making a request, so you'll need to specify all
@@ -448,6 +449,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             back into the pool. If None, it takes the value of
             ``response_kw.get('preload_content', True)``.
 
+        :param redirect_history:
+            Used to track previous redirect locations during recursive calls,
+            should not be passed directly by caller.
+
         :param \**response_kw:
             Additional parameters are passed to
             :meth:`urllib3.response.HTTPResponse.from_httplib`
@@ -464,6 +469,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Check host
         if assert_same_host and not self.is_same_host(url):
             raise HostChangedError(self, url, retries - 1)
+
+        if redirect_history is None:
+            redirect_history = []
 
         conn = None
 
@@ -497,6 +505,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             response = HTTPResponse.from_httplib(httplib_response,
                                                  pool=self,
                                                  connection=response_conn,
+                                                 redirect_history=redirect_history,
                                                  **response_kw)
 
             # else:
@@ -562,9 +571,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if response.status == 303:
                 method = 'GET'
             log.info("Redirecting %s -> %s" % (url, redirect_location))
+            redirect_history.append((response.status, redirect_location))
             return self.urlopen(method, redirect_location, body, headers,
                                 retries - 1, redirect, assert_same_host,
                                 timeout=timeout, pool_timeout=pool_timeout,
+                                redirect_history=redirect_history,
                                 release_conn=release_conn, **response_kw)
 
         return response
