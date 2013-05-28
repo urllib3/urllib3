@@ -123,7 +123,7 @@ class TestingApp(WSGIHandler):
 
     def multi_redirect(self, request):
         "Performs a redirect chain based on ``redirect_codes``"
-        codes = request.params.get('redirect_codes', '200')
+        codes = request.params.get('redirect_codes', '200').decode('utf-8')
         codes = codes.split(',')
         head, tail = codes[0], codes[1:]
         if not tail:
