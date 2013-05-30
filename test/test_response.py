@@ -1,6 +1,6 @@
 import unittest
 
-from io import BytesIO
+from io import BytesIO, BufferedReader
 
 from urllib3.response import HTTPResponse
 from urllib3.exceptions import DecodeError
@@ -111,6 +111,45 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(r.read(11), b'')
         self.assertEqual(r.read(1), b'f')
         self.assertEqual(r.read(2), b'oo')
+
+    def test_io(self):
+        import io
+        fp = BytesIO(b'foo')
+        resp = HTTPResponse(fp, preload_content=False)
+
+        self.assertEqual(resp.closed, False)
+        self.assertEqual(resp.readable(), True)
+        self.assertEqual(resp.writable(), False)
+        with self.assertRaises(IOError):
+            resp.fileno()
+
+        resp.close()
+        self.assertEqual(resp.closed, True)
+
+        #also try when only data is present.
+        resp2 = HTTPResponse('foodata')
+        with self.assertRaises(IOError):
+            resp2.fileno()
+
+        resp2._fp = 2
+        # A corner case where _fp is present but doesn't have `closed`,
+        # `isclosed`, or `fileno`.  Unlikely, but possible.
+        self.assertEqual(resp.closed, True)
+        with self.assertRaises(IOError):
+            resp2.fileno()
+
+
+
+    def test_io_bufferedreader(self):
+        fp = BytesIO(b'foo')
+        resp = HTTPResponse(fp, preload_content=False)
+        br = BufferedReader(resp)
+
+        self.assertEqual(br.read(), 'foo')
+
+        br.close()
+        self.assertEqual(resp.closed, True)
+
 
 if __name__ == '__main__':
     unittest.main()
