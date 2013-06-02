@@ -252,9 +252,9 @@ class HTTPResponse(io.IOBase):
             return True
         elif hasattr(self._fp, 'isclosed'):
             return self._fp.isclosed()
-        # it's probably more correct to check for `closed` *first*, but then
-        # the test coverage fails on 3.x, because everything with `isclosed`
-        # also has `closed
+        # It's probably more correct to check for `closed` *first*, but then
+        # the test coverage fails on 3.x.  This is because everything with
+        # `isclosed` also has `closed`.
         elif hasattr(self._fp, 'closed'):
             return self._fp.closed
         else:

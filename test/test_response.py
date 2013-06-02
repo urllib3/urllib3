@@ -130,8 +130,8 @@ class TestResponse(unittest.TestCase):
         resp.close()
         self.assertEqual(resp.closed, True)
 
-        #try closing with an httplib HTTPResponse, because it has a `isclosed`,
-        #method.
+        # Try closing with an `httplib.HTTPResponse`, because it has an
+        # `isclosed` method.
         hlr = OldHTTPResponse(socket.socket())
         resp2 = HTTPResponse(hlr, preload_content=False)
         self.assertEqual(resp2.closed, False)
