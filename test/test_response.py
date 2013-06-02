@@ -113,7 +113,6 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(r.read(2), b'oo')
 
     def test_io(self):
-        import io
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)
 
@@ -138,14 +137,12 @@ class TestResponse(unittest.TestCase):
         with self.assertRaises(IOError):
             resp2.fileno()
 
-
-
     def test_io_bufferedreader(self):
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)
         br = BufferedReader(resp)
 
-        self.assertEqual(br.read(), 'foo')
+        self.assertEqual(br.read(), b'foo')
 
         br.close()
         self.assertEqual(resp.closed, True)
