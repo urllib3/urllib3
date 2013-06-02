@@ -1,6 +1,6 @@
 import unittest
 
-from io import BytesIO
+from io import BytesIO, BufferedReader
 
 from urllib3.response import HTTPResponse
 from urllib3.exceptions import DecodeError
@@ -111,6 +111,54 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(r.read(11), b'')
         self.assertEqual(r.read(1), b'f')
         self.assertEqual(r.read(2), b'oo')
+
+    def test_io(self):
+        import socket
+        try:
+            from http.client import HTTPResponse as OldHTTPResponse
+        except:
+            from httplib import HTTPResponse as OldHTTPResponse
+
+        fp = BytesIO(b'foo')
+        resp = HTTPResponse(fp, preload_content=False)
+
+        self.assertEqual(resp.closed, False)
+        self.assertEqual(resp.readable(), True)
+        self.assertEqual(resp.writable(), False)
+        self.assertRaises(IOError, resp.fileno)
+
+        resp.close()
+        self.assertEqual(resp.closed, True)
+
+        # Try closing with an `httplib.HTTPResponse`, because it has an
+        # `isclosed` method.
+        hlr = OldHTTPResponse(socket.socket())
+        resp2 = HTTPResponse(hlr, preload_content=False)
+        self.assertEqual(resp2.closed, False)
+        resp2.close()
+        self.assertEqual(resp2.closed, True)
+
+        #also try when only data is present.
+        resp3 = HTTPResponse('foodata')
+        self.assertRaises(IOError, resp3.fileno)
+
+        resp3._fp = 2
+        # A corner case where _fp is present but doesn't have `closed`,
+        # `isclosed`, or `fileno`.  Unlikely, but possible.
+        self.assertEqual(resp3.closed, True)
+        self.assertRaises(IOError, resp3.fileno)
+
+    def test_io_bufferedreader(self):
+        fp = BytesIO(b'foo')
+        resp = HTTPResponse(fp, preload_content=False)
+        br = BufferedReader(resp)
+
+        self.assertEqual(br.read(), b'foo')
+
+        br.close()
+        self.assertEqual(resp.closed, True)
+
+
 
 if __name__ == '__main__':
     unittest.main()
