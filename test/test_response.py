@@ -119,23 +119,20 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(resp.closed, False)
         self.assertEqual(resp.readable(), True)
         self.assertEqual(resp.writable(), False)
-        with self.assertRaises(IOError):
-            resp.fileno()
+        self.assertRaises(IOError, resp.fileno)
 
         resp.close()
         self.assertEqual(resp.closed, True)
 
         #also try when only data is present.
         resp2 = HTTPResponse('foodata')
-        with self.assertRaises(IOError):
-            resp2.fileno()
+        self.assertRaises(IOError, resp2.fileno)
 
         resp2._fp = 2
         # A corner case where _fp is present but doesn't have `closed`,
         # `isclosed`, or `fileno`.  Unlikely, but possible.
         self.assertEqual(resp.closed, True)
-        with self.assertRaises(IOError):
-            resp2.fileno()
+        self.assertRaises(IOError, resp2.fileno)
 
     def test_io_bufferedreader(self):
         fp = BytesIO(b'foo')
