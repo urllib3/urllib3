@@ -113,6 +113,12 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(r.read(2), b'oo')
 
     def test_io(self):
+        import socket
+        try:
+            from http.client import HTTPResponse as OldHTTPResponse
+        except:
+            from httplib import HTTPResponse as OldHTTPResponse
+
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)
 
@@ -124,15 +130,23 @@ class TestResponse(unittest.TestCase):
         resp.close()
         self.assertEqual(resp.closed, True)
 
-        #also try when only data is present.
-        resp2 = HTTPResponse('foodata')
-        self.assertRaises(IOError, resp2.fileno)
+        #try closing with an httplib HTTPResponse, because it has a `isclosed`,
+        #method.
+        hlr = OldHTTPResponse(socket.socket())
+        resp2 = HTTPResponse(hlr, preload_content=False)
+        self.assertEqual(resp2.closed, False)
+        resp2.close()
+        self.assertEqual(resp2.closed, True)
 
-        resp2._fp = 2
+        #also try when only data is present.
+        resp3 = HTTPResponse('foodata')
+        self.assertRaises(IOError, resp3.fileno)
+
+        resp3._fp = 2
         # A corner case where _fp is present but doesn't have `closed`,
         # `isclosed`, or `fileno`.  Unlikely, but possible.
-        self.assertEqual(resp.closed, True)
-        self.assertRaises(IOError, resp2.fileno)
+        self.assertEqual(resp3.closed, True)
+        self.assertRaises(IOError, resp3.fileno)
 
     def test_io_bufferedreader(self):
         fp = BytesIO(b'foo')
@@ -143,6 +157,7 @@ class TestResponse(unittest.TestCase):
 
         br.close()
         self.assertEqual(resp.closed, True)
+
 
 
 if __name__ == '__main__':

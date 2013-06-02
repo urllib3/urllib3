@@ -250,10 +250,13 @@ class HTTPResponse(io.IOBase):
     def closed(self):
         if self._fp is None:
             return True
-        elif hasattr(self._fp, 'closed'):
-            return self._fp.closed
         elif hasattr(self._fp, 'isclosed'):
             return self._fp.isclosed()
+        # it's probably more correct to check for `closed` *first*, but then
+        # the test coverage fails on 3.x, because everything with `isclosed`
+        # also has `closed
+        elif hasattr(self._fp, 'closed'):
+            return self._fp.closed
         else:
             return True
 
