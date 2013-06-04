@@ -115,6 +115,15 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         self.assertRaises(SSLError, https_pool.request, 'GET', '/')
 
+    def test_dont_verify_hostname(self):
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_REQUIRED')
+
+        https_pool.ca_certs = DEFAULT_CA
+        https_pool.dont_verify_hostname = True
+        https_pool.assert_hostname = 'not-localhost'
+        https_pool.request('GET', '/')
+
     def test_assert_specific_hostname(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_REQUIRED')

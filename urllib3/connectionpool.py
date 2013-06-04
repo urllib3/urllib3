@@ -82,7 +82,8 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None,
-                 assert_hostname=None, assert_fingerprint=None):
+                 assert_hostname=None, assert_fingerprint=None,
+                 dont_verify_hostname=None):
 
         self.key_file = key_file
         self.cert_file = cert_file
@@ -90,6 +91,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         self.ca_certs = ca_certs
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
+        self.dont_verify_hostname = dont_verify_hostname
 
     def connect(self):
         # Add certificate verification
@@ -110,6 +112,8 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             if self.assert_fingerprint:
                 assert_fingerprint(self.sock.getpeercert(binary_form=True),
                                    self.assert_fingerprint)
+            elif self.dont_verify_hostname:
+                pass
             else:
                 match_hostname(self.sock.getpeercert(),
                                self.assert_hostname or self.host)
@@ -527,7 +531,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  block=False, headers=None,
                  key_file=None, cert_file=None, cert_reqs=None,
                  ca_certs=None, ssl_version=None,
-                 assert_hostname=None, assert_fingerprint=None):
+                 assert_hostname=None, assert_fingerprint=None,
+                 dont_verify_hostname = None):
 
         HTTPConnectionPool.__init__(self, host, port,
                                     strict, timeout, maxsize,
@@ -539,6 +544,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.ssl_version = ssl_version
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
+        self.dont_verify_hostname = dont_verify_hostname
 
     def _new_conn(self):
         """
@@ -563,7 +569,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         connection.set_cert(key_file=self.key_file, cert_file=self.cert_file,
                             cert_reqs=self.cert_reqs, ca_certs=self.ca_certs,
                             assert_hostname=self.assert_hostname,
-                            assert_fingerprint=self.assert_fingerprint)
+                            assert_fingerprint=self.assert_fingerprint,
+                            dont_verify_hostname = self.dont_verify_hostname)
 
         connection.ssl_version = self.ssl_version
 
