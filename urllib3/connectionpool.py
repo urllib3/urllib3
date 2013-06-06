@@ -68,6 +68,9 @@ port_by_scheme = {
     'https': HTTPS_PORT,
 }
 
+class DontVerify(object):
+    pass
+DontVerify = DontVerify()
 
 ## Connection objects (extension of httplib)
 
@@ -110,7 +113,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             if self.assert_fingerprint:
                 assert_fingerprint(self.sock.getpeercert(binary_form=True),
                                    self.assert_fingerprint)
-            else:
+            elif self.assert_hostname is not DontVerify:
                 match_hostname(self.sock.getpeercert(),
                                self.assert_hostname or self.host)
 

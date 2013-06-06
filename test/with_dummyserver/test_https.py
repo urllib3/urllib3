@@ -7,7 +7,7 @@ from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from urllib3 import HTTPSConnectionPool
-from urllib3.connectionpool import VerifiedHTTPSConnection
+from urllib3.connectionpool import VerifiedHTTPSConnection, DontVerify
 from urllib3.exceptions import SSLError
 
 
@@ -114,6 +114,14 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.ca_certs = '/no_valid_path_to_ca_certs'
 
         self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+
+    def test_dont_verify_hostname(self):
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_REQUIRED')
+
+        https_pool.ca_certs = DEFAULT_CA
+        https_pool.assert_hostname = DontVerify
+        https_pool.request('GET', '/')
 
     def test_assert_specific_hostname(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
