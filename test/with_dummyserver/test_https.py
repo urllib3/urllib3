@@ -120,7 +120,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          cert_reqs='CERT_REQUIRED')
 
         https_pool.ca_certs = DEFAULT_CA
-        https_pool.dont_verify_hostname = True
+        https_pool.verify_hostname = False
         https_pool.assert_hostname = 'not-localhost'
         https_pool.request('GET', '/')
 
