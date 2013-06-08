@@ -31,6 +31,11 @@ try:  # Test for SSL features
 except ImportError:
     pass
 
+try: # Python 3
+    from http.client import HTTPResponse
+except ImportError:
+    from httplib import HTTPResponse
+
 
 from .packages import six
 from .exceptions import LocationParseError, SSLError
@@ -340,6 +345,20 @@ def assert_fingerprint(cert, fingerprint):
         raise SSLError('Fingerprints did not match. Expected "{0}", got "{1}".'
                        .format(hexlify(fingerprint_bytes),
                                hexlify(cert_digest)))
+
+def is_fp_closed(fp):
+    """
+    Checks whether a given file-like object is closed.
+
+    :param fp:
+        The file-like object to check.
+    """
+    if isinstance(fp, HTTPResponse):
+        closed = True if (fp.fp is None) else False
+    else:
+        closed = fp.closed
+
+    return closed
 
 
 if SSLContext is not None:  # Python 3.2+
