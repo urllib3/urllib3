@@ -158,6 +158,57 @@ class TestResponse(unittest.TestCase):
         br.close()
         self.assertEqual(resp.closed, True)
 
+    def test_streaming(self):
+        fp = BytesIO(b'foo')
+        resp = HTTPResponse(fp, preload_content=False)
+        stream = resp.stream(2, decode_content=False)
+
+        self.assertEqual(next(stream), b'fo')
+        self.assertEqual(next(stream), b'o')
+        self.assertRaises(StopIteration, next, stream)
+
+    def test_gzipped_streaming(self):
+        import zlib
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        data = compress.compress(b'foo')
+        data += compress.flush()
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
+                         preload_content=False)
+        stream = r.stream(2)
+
+        self.assertEqual(next(stream), b'f')
+        self.assertEqual(next(stream), b'oo')
+        self.assertRaises(StopIteration, next, stream)
+
+    def test_deflate_streaming(self):
+        import zlib
+        data = zlib.compress(b'foo')
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
+                         preload_content=False)
+        stream = r.stream(2)
+
+        self.assertEqual(next(stream), b'f')
+        self.assertEqual(next(stream), b'oo')
+        self.assertRaises(StopIteration, next, stream)
+
+    def test_deflate2_streaming(self):
+        import zlib
+        compress = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
+        data = compress.compress(b'foo')
+        data += compress.flush()
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
+                         preload_content=False)
+        stream = r.stream(2)
+
+        self.assertEqual(next(stream), b'f')
+        self.assertEqual(next(stream), b'oo')
+        self.assertRaises(StopIteration, next, stream)
 
 
 if __name__ == '__main__':
