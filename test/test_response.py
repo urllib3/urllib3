@@ -217,6 +217,33 @@ class TestResponse(unittest.TestCase):
 
         self.assertRaises(StopIteration, next, stream)
 
+    def test_mock_httpresponse_stream(self):
+        # Mock out a HTTP Request that does enough to make it through urllib3's
+        # read() and close() calls, and also exhausts and underlying file
+        # object.
+        class MockHTTPRequest(object):
+            self.fp = None
+
+            def read(self, amt):
+                data = self.fp.read(amt)
+                if not data:
+                    self.fp = None
+
+                return data
+
+            def close(self):
+                self.fp = None
+
+        bio = BytesIO(b'foo')
+        fp = MockHTTPRequest()
+        fp.fp = bio
+        resp = HTTPResponse(fp, preload_content=False)
+        stream = resp.stream(2)
+
+        self.assertEqual(next(stream), b'fo')
+        self.assertEqual(next(stream), b'o')
+        self.assertRaises(StopIteration, next, stream)
+
 
 if __name__ == '__main__':
     unittest.main()
