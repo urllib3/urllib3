@@ -346,19 +346,19 @@ def assert_fingerprint(cert, fingerprint):
                        .format(hexlify(fingerprint_bytes),
                                hexlify(cert_digest)))
 
-def is_fp_closed(fp):
+def is_fp_closed(obj):
     """
     Checks whether a given file-like object is closed.
 
-    :param fp:
+    :param obj:
         The file-like object to check.
     """
-    if isinstance(fp, HTTPResponse):
-        closed = True if (fp.fp is None) else False
-    else:
-        closed = fp.closed
+    if hasattr(obj, 'fp'):
+        # Object is a container for another file-like object that gets released
+        # on exhaustion (e.g. HTTPResponse)
+        return obj.fp is None
 
-    return closed
+    return obj.closed
 
 
 if SSLContext is not None:  # Python 3.2+
