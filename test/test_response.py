@@ -210,6 +210,13 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(next(stream), b'oo')
         self.assertRaises(StopIteration, next, stream)
 
+    def test_empty_stream(self):
+        fp = BytesIO(b'')
+        resp = HTTPResponse(fp, preload_content=False)
+        stream = resp.stream(2, decode_content=False)
+
+        self.assertRaises(StopIteration, next, stream)
+
 
 if __name__ == '__main__':
     unittest.main()
