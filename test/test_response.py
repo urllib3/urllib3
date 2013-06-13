@@ -174,9 +174,9 @@ class TestResponse(unittest.TestCase):
         data += compress.flush()
 
         fp = BytesIO(data)
-        r = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
+        resp = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
                          preload_content=False)
-        stream = r.stream(2)
+        stream = resp.stream(2)
 
         self.assertEqual(next(stream), b'f')
         self.assertEqual(next(stream), b'oo')
@@ -187,9 +187,9 @@ class TestResponse(unittest.TestCase):
         data = zlib.compress(b'foo')
 
         fp = BytesIO(data)
-        r = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
+        resp = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
                          preload_content=False)
-        stream = r.stream(2)
+        stream = resp.stream(2)
 
         self.assertEqual(next(stream), b'f')
         self.assertEqual(next(stream), b'oo')
@@ -202,9 +202,9 @@ class TestResponse(unittest.TestCase):
         data += compress.flush()
 
         fp = BytesIO(data)
-        r = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
+        resp = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
                          preload_content=False)
-        stream = r.stream(2)
+        stream = resp.stream(2)
 
         self.assertEqual(next(stream), b'f')
         self.assertEqual(next(stream), b'oo')
