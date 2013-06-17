@@ -31,12 +31,6 @@ try:  # Test for SSL features
 except ImportError:
     pass
 
-try: # Python 3
-    from http.client import HTTPResponse
-except ImportError:
-    from httplib import HTTPResponse
-
-
 from .packages import six
 from .exceptions import LocationParseError, SSLError
 
