@@ -67,5 +67,10 @@ In chronological order:
 * Boris Figovsky <boris.figovsky@ravellosystems.com>
   * Allowed to skip SSL hostname verification
 
+* Cory Benfield <http://lukasa.co.uk/about/>
+  * Stream method for Response objects.
+  * Return native strings in header values.
+  * Generate 'Host' header when using proxies.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
