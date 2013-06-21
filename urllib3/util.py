@@ -142,7 +142,8 @@ def parse_url(url):
 
     # IPv6
     if url and url[0] == '[':
-        host, url = url[1:].split(']', 1)
+        host, url = url.split(']', 1)
+        host += ']'
 
     # Port
     if ':' in url:
