@@ -34,20 +34,20 @@ class TestUtil(unittest.TestCase):
             'http://173.194.35.7:80/test': ('http', '173.194.35.7', 80),
 
             # IPv6
-            '[2a00:1450:4001:c01::67]': ('http', '2a00:1450:4001:c01::67', None),
-            'http://[2a00:1450:4001:c01::67]': ('http', '2a00:1450:4001:c01::67', None),
-            'http://[2a00:1450:4001:c01::67]/test': ('http', '2a00:1450:4001:c01::67', None),
-            'http://[2a00:1450:4001:c01::67]:80': ('http', '2a00:1450:4001:c01::67', 80),
-            'http://[2a00:1450:4001:c01::67]:80/test': ('http', '2a00:1450:4001:c01::67', 80),
+            '[2a00:1450:4001:c01::67]': ('http', '[2a00:1450:4001:c01::67]', None),
+            'http://[2a00:1450:4001:c01::67]': ('http', '[2a00:1450:4001:c01::67]', None),
+            'http://[2a00:1450:4001:c01::67]/test': ('http', '[2a00:1450:4001:c01::67]', None),
+            'http://[2a00:1450:4001:c01::67]:80': ('http', '[2a00:1450:4001:c01::67]', 80),
+            'http://[2a00:1450:4001:c01::67]:80/test': ('http', '[2a00:1450:4001:c01::67]', 80),
 
             # More IPv6 from http://www.ietf.org/rfc/rfc2732.txt
-            'http://[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]:8000/index.html': ('http', 'FEDC:BA98:7654:3210:FEDC:BA98:7654:3210', 8000),
-            'http://[1080:0:0:0:8:800:200C:417A]/index.html': ('http', '1080:0:0:0:8:800:200C:417A', None),
-            'http://[3ffe:2a00:100:7031::1]': ('http', '3ffe:2a00:100:7031::1', None),
-            'http://[1080::8:800:200C:417A]/foo': ('http', '1080::8:800:200C:417A', None),
-            'http://[::192.9.5.5]/ipng': ('http', '::192.9.5.5', None),
-            'http://[::FFFF:129.144.52.38]:42/index.html': ('http', '::FFFF:129.144.52.38', 42),
-            'http://[2010:836B:4179::836B:4179]': ('http', '2010:836B:4179::836B:4179', None),
+            'http://[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]:8000/index.html': ('http', '[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]', 8000),
+            'http://[1080:0:0:0:8:800:200C:417A]/index.html': ('http', '[1080:0:0:0:8:800:200C:417A]', None),
+            'http://[3ffe:2a00:100:7031::1]': ('http', '[3ffe:2a00:100:7031::1]', None),
+            'http://[1080::8:800:200C:417A]/foo': ('http', '[1080::8:800:200C:417A]', None),
+            'http://[::192.9.5.5]/ipng': ('http', '[::192.9.5.5]', None),
+            'http://[::FFFF:129.144.52.38]:42/index.html': ('http', '[::FFFF:129.144.52.38]', 42),
+            'http://[2010:836B:4179::836B:4179]': ('http', '[2010:836B:4179::836B:4179]', None),
         }
         for url, expected_host in url_host_map.items():
             returned_host = get_host(url)
@@ -82,6 +82,9 @@ class TestUtil(unittest.TestCase):
         for url, expected_url in url_host_map.items():
             returned_url = parse_url(url)
             self.assertEquals(returned_url, expected_url)
+
+    def test_parse_url_invalid_IPv6(self):
+        self.assertRaises(ValueError, parse_url, '[::1')
 
     def test_request_uri(self):
         url_host_map = {
