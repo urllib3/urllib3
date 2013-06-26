@@ -8,6 +8,21 @@ dev (master branch)
 
 * Fixed redirecting with relative URLs in Location header. (Issue #178)
 
+* Support for relative urls in ``Location: ...`` header. (Issue #179)
+
+* ``urllib3.response.HTTPResponse`` now inherits from ``io.IOBase`` for bonus
+  file-like functionality. (Issue #187)
+
+* Passing ``assert_hostname=False`` when creating a HTTPSConnectionPool will
+  skip hostname verification for SSL connections. (Issue #194)
+
+* New method ``urllib3.response.HTTPResponse.stream(...)`` which acts as a
+  generator wrapped around ``.read(...)``. (Issue #198)
+
+* IPv6 url parsing enforces brackets around the hostname. (Issue #199)
+
+* ...
+
 
 1.6 (2013-04-25)
 ++++++++++++++++
