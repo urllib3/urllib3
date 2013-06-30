@@ -141,7 +141,7 @@ class ConnectionPool(object):
 
     def __init__(self, host, port=None):
         # httplib doesn't like it when we include brackets in ipv6 addresses
-        host = host.lstrip('[').rstrip(']')
+        host = host.strip('[]')
 
         self.host = host
         self.port = port
