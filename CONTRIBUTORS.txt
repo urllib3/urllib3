@@ -72,5 +72,8 @@ In chronological order:
   * Return native strings in header values.
   * Generate 'Host' header when using proxies.
 
+* Jason Robinson <jaywink@basshero.org>
+  * Add missing WrappedSocket.fileno method in PyOpenSSL
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
