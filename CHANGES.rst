@@ -21,6 +21,9 @@ dev (master branch)
 
 * IPv6 url parsing enforces brackets around the hostname. (Issue #199)
 
+* Fixed thread race condition in
+  ``urllib3.poolmanager.PoolManager.connection_from_host(...)`` (Issue #204)
+
 * ...
 
 
