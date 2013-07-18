@@ -75,5 +75,8 @@ In chronological order:
 * Jason Robinson <jaywink@basshero.org>
   * Add missing WrappedSocket.fileno method in PyOpenSSL
 
+* Audrius Butkevicius <audrius.butkevicius@elastichosts.com>
+  * Fixed a race condition
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
