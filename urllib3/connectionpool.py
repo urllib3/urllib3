@@ -26,7 +26,10 @@ except ImportError:
 
 try: # Compiled with SSL?
     HTTPSConnection = object
-    BaseSSLError = None
+
+    class BaseSSLError(BaseException):
+        pass
+
     ssl = None
 
     try: # Python 3
