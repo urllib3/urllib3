@@ -87,7 +87,7 @@ class TestingApp(WSGIHandler):
 
         if request.method != method:
             return Response("Wrong method: %s != %s" %
-                            (method, request.method), status='400')
+                            (method, request.method), status='400 Bad Request')
         return Response()
 
     def upload(self, request):
@@ -100,17 +100,18 @@ class TestingApp(WSGIHandler):
 
         if len(files_) != 1:
             return Response("Expected 1 file for '%s', not %d" %(param, len(files_)),
-                                                    status='400')
+                                                    status='400 Bad Request')
         file_ = files_[0]
 
         data = file_['body']
         if int(size) != len(data):
             return Response("Wrong size: %d != %d" %
-                            (size, len(data)), status='400')
+                            (size, len(data)), status='400 Bad Request')
 
         if filename != file_['filename']:
             return Response("Wrong filename: %s != %s" %
-                            (filename, file_.filename), status='400')
+                            (filename, file_.filename),
+                            status='400 Bad Request')
 
         return Response()
 
@@ -118,7 +119,7 @@ class TestingApp(WSGIHandler):
         "Perform a redirect to ``target``"
         target = request.params.get('target', '/')
         headers = [('Location', target)]
-        return Response(status='303', headers=headers)
+        return Response(status='303 See Other', headers=headers)
 
     def keepalive(self, request):
         if request.params.get('close', b'0') == b'1':
