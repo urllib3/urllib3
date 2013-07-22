@@ -170,6 +170,7 @@ class PoolManager(RequestMethods):
         kw['redirect'] = redirect
         return self.urlopen(method, redirect_location, **kw)
 
+
 class ProxyManager(PoolManager):
     """
     Behaves just like :class:`PoolManager`, but sends all requests through
@@ -197,13 +198,15 @@ class ProxyManager(PoolManager):
 
     """
 
-    def __init__(self, proxy_url, num_pools=10, headers=None, proxy_headers=None, **connection_pool_kw):
+    def __init__(self, proxy_url, num_pools=10, headers=None,
+                 proxy_headers=None, **connection_pool_kw):
+
         if isinstance(proxy_url, HTTPConnectionPool):
             # TODO: may be we can use HTTPConnectionPool properties and put
             # them to **connection_pool_kw or even put this instance of
             # HTTPConnectionPool to self.pools for future use.
-            proxy_url = '%s://%s:%i'%(proxy_url.scheme, proxy_url.host,
-                    proxy_url.port)
+            proxy_url = '%s://%s:%i' % (proxy_url.scheme, proxy_url.host,
+                                        proxy_url.port)
         proxy = parse_url(proxy_url)
         if not proxy.port:
             port = port_by_scheme.get(proxy.scheme, 80)
@@ -215,13 +218,16 @@ class ProxyManager(PoolManager):
             'Not supported proxy scheme %s' % self.proxy.scheme
         connection_pool_kw['proxy'] = self.proxy
         connection_pool_kw['proxy_headers'] = self.proxy_headers
-        super(ProxyManager, self).__init__(num_pools, headers, **connection_pool_kw)
+        super(ProxyManager, self).__init__(num_pools, headers,
+                                           **connection_pool_kw)
 
     def connection_from_host(self, host, port=None, scheme='http'):
         if scheme == "https":
-            return super(ProxyManager,self).connection_from_host(host, port, scheme)
-        return super(ProxyManager,self).connection_from_host(self.proxy.host,
-                self.proxy.port, self.proxy.scheme)
+            return super(ProxyManager, self).connection_from_host(host, port,
+                                                                  scheme)
+        return super(ProxyManager, self).connection_from_host(self.proxy.host,
+                                                              self.proxy.port,
+                                                              self.proxy.scheme)
 
     def _set_proxy_headers(self, url, headers=None):
         """
@@ -247,11 +253,11 @@ class ProxyManager(PoolManager):
             # tunnelled HTTPS connections, should use
             # constructor's proxy_headers instead.
             kw['headers'] = self._set_proxy_headers(url, kw.get('headers',
-                self.headers))
+                                                                self.headers))
             kw['headers'].update(self.proxy_headers)
 
-        return super(ProxyManager,self).urlopen(method, url, redirect, **kw)
+        return super(ProxyManager, self).urlopen(method, url, redirect, **kw)
+
 
 def proxy_from_url(url, **kw):
     return ProxyManager(proxy_url=url, **kw)
-
