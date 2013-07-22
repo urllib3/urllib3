@@ -216,8 +216,8 @@ class ProxyManager(PoolManager):
         # TODO: add proxy authentication here
         assert self.proxy.scheme in ("http", "https"), \
             'Not supported proxy scheme %s' % self.proxy.scheme
-        connection_pool_kw['proxy'] = self.proxy
-        connection_pool_kw['proxy_headers'] = self.proxy_headers
+        connection_pool_kw['_proxy'] = self.proxy
+        connection_pool_kw['_proxy_headers'] = self.proxy_headers
         super(ProxyManager, self).__init__(num_pools, headers,
                                            **connection_pool_kw)
 
