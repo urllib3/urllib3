@@ -70,6 +70,8 @@ class SocketServerThread(threading.Thread):
 
 
 class TornadoServerThread(threading.Thread):
+    app = tornado.wsgi.WSGIContainer(TestingApp())
+
     def __init__(self, host='localhost', port=8081, scheme='http', certs=None):
         threading.Thread.__init__(self)
 
@@ -79,13 +81,11 @@ class TornadoServerThread(threading.Thread):
         self.certs = certs
 
     def _start_server(self):
-        container = tornado.wsgi.WSGIContainer(TestingApp())
-
         if self.scheme == 'https':
-            http_server = tornado.httpserver.HTTPServer(container,
+            http_server = tornado.httpserver.HTTPServer(self.app,
                                                         ssl_options=self.certs)
         else:
-            http_server = tornado.httpserver.HTTPServer(container)
+            http_server = tornado.httpserver.HTTPServer(self.app)
 
         http_server.listen(self.port, address=self.host)
         return http_server
@@ -99,21 +99,8 @@ class TornadoServerThread(threading.Thread):
         self.ioloop.add_callback(self.server.stop)
         self.ioloop.add_callback(self.ioloop.stop)
 
-class ProxyServerThread(threading.Thread):
-    def __init__(self, host='localhost', port=8091):
-        threading.Thread.__init__(self)
-
-        self.host = host
-        self.port = port
-
-    def run(self):
-        self.ioloop = tornado.ioloop.IOLoop.instance()
-        self.app = tornado.web.Application([(r'.*', ProxyHandler)])
-        self.app.listen(self.port, address=self.host)
-        self.ioloop.start()
-
-    def stop(self):
-        self.ioloop.stop()
+class ProxyServerThread(TornadoServerThread):
+    app = tornado.web.Application([(r'.*', ProxyHandler)])
 
 
 if __name__ == '__main__':
