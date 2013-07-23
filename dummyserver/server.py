@@ -93,8 +93,8 @@ class TornadoServerThread(threading.Thread):
         self.ioloop.start()
 
     def stop(self):
-        self.server.stop()
-        self.ioloop.stop()
+        self.ioloop.add_callback(self.server.stop)
+        self.ioloop.add_callback(self.ioloop.stop)
 
 
 if __name__ == '__main__':
