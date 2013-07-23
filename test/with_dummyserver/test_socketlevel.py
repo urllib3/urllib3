@@ -45,6 +45,7 @@ class TestSNI(SocketDummyServerTestCase):
 
             self.buf = sock.recv(65536) # We only accept one packet
             done_receiving.set()  # let the test know it can proceed
+            sock.close()
 
         self._start_server(socket_handler)
         pool = HTTPSConnectionPool(self.host, self.port)
@@ -137,6 +138,7 @@ class TestProxyManager(SocketDummyServerTestCase):
                       'Content-Length: %d\r\n'
                       '\r\n'
                       '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
+            sock.close()
 
         self._start_server(echo_socket_handler)
 
