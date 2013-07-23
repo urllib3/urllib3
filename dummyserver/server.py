@@ -50,7 +50,8 @@ class SocketServerThread(threading.Thread):
 
     def _start_server(self):
         sock = socket.socket()
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        if sys.platform != 'win32':
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind((self.host, self.port))
 
         # Once listen() returns, the server socket is ready
