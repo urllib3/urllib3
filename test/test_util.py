@@ -102,6 +102,17 @@ class TestUtil(unittest.TestCase):
             returned_url = parse_url(url)
             self.assertEquals(returned_url.request_uri, expected_request_uri)
 
+    def test_netloc(self):
+        url_netloc_map = {
+            'http://google.com/mail': 'google.com',
+            'http://google.com:80/mail': 'google.com:80',
+            'google.com/foobar': 'google.com',
+            'google.com:12345': 'google.com:12345',
+        }
+
+        for url, expected_netloc in url_netloc_map.items():
+            self.assertEquals(parse_url(url).netloc, expected_netloc)
+
     def test_make_headers(self):
         self.assertEqual(
             make_headers(accept_encoding=True),
