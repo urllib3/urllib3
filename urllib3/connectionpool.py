@@ -413,10 +413,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Check host
         if assert_same_host and not self.is_same_host(url):
-            host = "%s://%s" % (self.scheme, self.host)
-            if self.port:
-                host = "%s:%d" % (host, self.port)
-
             raise HostChangedError(self, url, retries - 1)
 
         conn = None
