@@ -155,8 +155,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         :class:`httplib.HTTPConnection`.
 
     :param timeout:
-        Socket timeout for each individual connection, can be a float. None
-        disables timeout.
+        Socket timeout in seconds for each individual connection, can be
+        a float. None disables timeout.
 
     :param maxsize:
         Number of connections to save that can be reused. More than 1 is useful
@@ -379,6 +379,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         :param timeout:
             If specified, overrides the default timeout for this one request.
+            It may be a float (in seconds).
 
         :param pool_timeout:
             If set and the pool is set to block=True, then this method will
