@@ -23,5 +23,14 @@ class TestProxyManager(unittest.TestCase):
 
         self.assertEqual(headers, provided_headers)
 
+        # Verify proxy with nonstandard port
+        provided_headers = {'Accept': 'application/json'}
+        expected_headers = provided_headers.copy()
+        expected_headers.update({'Host': 'pypi.python.org:8080'})
+        url_with_port = 'http://pypi.python.org:8080/test'
+        headers = p._set_proxy_headers(url_with_port, provided_headers)
+
+        self.assertEqual(headers, expected_headers)
+
 if __name__ == '__main__':
     unittest.main()
