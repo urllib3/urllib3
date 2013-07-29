@@ -24,8 +24,8 @@ dev (master branch)
 * Fixed thread race condition in
   ``urllib3.poolmanager.PoolManager.connection_from_host(...)`` (Issue #204)
 
-* `ProxyManager` requests now include non-default port in `Host: ...` header.
-  (Issue #217)
+* ``ProxyManager`` requests now include non-default port in ``Host: ...``
+  header. (Issue #217)
 
 * ...
 
