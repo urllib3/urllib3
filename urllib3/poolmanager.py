@@ -202,9 +202,6 @@ class ProxyManager(PoolManager):
                  proxy_headers=None, **connection_pool_kw):
 
         if isinstance(proxy_url, HTTPConnectionPool):
-            # TODO: may be we can use HTTPConnectionPool properties and put
-            # them to **connection_pool_kw or even put this instance of
-            # HTTPConnectionPool to self.pools for future use.
             proxy_url = '%s://%s:%i' % (proxy_url.scheme, proxy_url.host,
                                         proxy_url.port)
         proxy = parse_url(proxy_url)
@@ -213,7 +210,6 @@ class ProxyManager(PoolManager):
             proxy = proxy._replace(port=port)
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
-        # TODO: add proxy authentication here
         assert self.proxy.scheme in ("http", "https"), \
             'Not supported proxy scheme %s' % self.proxy.scheme
         connection_pool_kw['_proxy'] = self.proxy
