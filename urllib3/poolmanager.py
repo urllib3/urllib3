@@ -13,7 +13,7 @@ except ImportError:
 
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
-from .connectionpool import connection_from_url, port_by_scheme
+from .connectionpool import port_by_scheme
 from .request import RequestMethods
 from .util import parse_url
 
@@ -109,15 +109,15 @@ class PoolManager(RequestMethods):
         pool_key = (scheme, host, port)
 
         with self.pools.lock:
-          # If the scheme, host, or port doesn't match existing open connections,
-          # open a new ConnectionPool.
-          pool = self.pools.get(pool_key)
-          if pool:
-              return pool
+            # If the scheme, host, or port doesn't match existing open
+            # connections, open a new ConnectionPool.
+            pool = self.pools.get(pool_key)
+            if pool:
+                return pool
 
-          # Make a fresh ConnectionPool of the desired type
-          pool = self._new_pool(scheme, host, port)
-          self.pools[pool_key] = pool
+            # Make a fresh ConnectionPool of the desired type
+            pool = self._new_pool(scheme, host, port)
+            self.pools[pool_key] = pool
         return pool
 
     def connection_from_url(self, url):
@@ -214,16 +214,16 @@ class ProxyManager(PoolManager):
             'Not supported proxy scheme %s' % self.proxy.scheme
         connection_pool_kw['_proxy'] = self.proxy
         connection_pool_kw['_proxy_headers'] = self.proxy_headers
-        super(ProxyManager, self).__init__(num_pools, headers,
-                                           **connection_pool_kw)
+        super(ProxyManager, self).__init__(
+            num_pools, headers, **connection_pool_kw)
 
     def connection_from_host(self, host, port=None, scheme='http'):
         if scheme == "https":
-            return super(ProxyManager, self).connection_from_host(host, port,
-                                                                  scheme)
-        return super(ProxyManager, self).connection_from_host(self.proxy.host,
-                                                              self.proxy.port,
-                                                              self.proxy.scheme)
+            return super(ProxyManager, self).connection_from_host(
+                host, port, scheme)
+
+        return super(ProxyManager, self).connection_from_host(
+            self.proxy.host, self.proxy.port, self.proxy.scheme)
 
     def _set_proxy_headers(self, url, headers=None):
         """
