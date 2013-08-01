@@ -43,3 +43,18 @@ API
 
     .. autoclass:: PoolManager
        :inherited-members:
+
+ProxyManager
+============
+
+:class:`.ProxyManager` is an HTTP proxy-aware subclass of :class:`.PoolManager`.
+It produces a single
+:class:`~urllib3.connectionpool.HTTPConnectionPool` instance for all HTTP
+connections and individual per-server:port
+:class:`~urllib3.connectionpool.HTTPSConnectionPool` instances for tunnelled
+HTTPS connections.
+
+API
+---
+    .. autoclass:: ProxyManager
+
