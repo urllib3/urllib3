@@ -81,5 +81,8 @@ In chronological order:
 * Stanislav Vitkovskiy <stas.vitkovsky@gmail.com>
   * Added HTTPS (CONNECT) proxy support
 
+* Stephen Holsapple <sholsapp@gmail.com>
+  * Added abstraction for granular control of request fields
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
