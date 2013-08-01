@@ -1,6 +1,7 @@
 import unittest
 
 from urllib3.filepost import encode_multipart_formdata, iter_fields
+from urllib3.fields import RequestField
 from urllib3.packages.six import b, u
 
 
@@ -117,3 +118,16 @@ class TestMultipartEncoding(unittest.TestCase):
 
         self.assertEqual(content_type,
             'multipart/form-data; boundary=' + str(BOUNDARY))
+
+    def test_request_fields(self):
+      fields = [RequestField('k', b'v', filename='somefile.txt', headers={'Content-Type': 'image/jpeg'})]
+
+      encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+
+      self.assertEquals(encoded,
+          b'--' + b(BOUNDARY) + b'\r\n'
+          b'Content-Type: image/jpeg\r\n'
+          b'\r\n'
+          b'v\r\n'
+          b'--' + b(BOUNDARY) + b'--\r\n'
+          )
