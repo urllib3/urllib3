@@ -27,6 +27,11 @@ dev (master branch)
 * ``ProxyManager`` requests now include non-default port in ``Host: ...``
   header. (Issue #217)
 
+* Added HTTPS proxy support in ``ProxyManager``. (Issue #170 #139)
+
+* New ``RequestField`` object can be passed to the ``fields=...`` param which
+  can specify headers. (Issue #220)
+
 * ...
 
 
