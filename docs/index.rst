@@ -95,6 +95,28 @@ A :class:`~urllib3.poolmanagers.PoolManager` is a proxy for a collection of
 :class:`~urllib3.request.RequestMethods` to make sure that their API is
 similar, so that instances of either can be passed around interchangeably.
 
+ProxyManager
+------------
+
+The :class:`~urllib3.poolmanagers.ProxyManager` is an HTTP proxy-aware
+subclass of :class:`~urllib3.poolmanagers.PoolManager`. It produces a single
+:class:`~urllib3.connectionpool.HTTPConnectionPool` instance for all HTTP
+connections and individual per-server:port
+:class:`~urllib3.connectionpool.HTTPSConnectionPool` instances for tunnelled
+HTTPS connections:
+
+::
+
+    >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
+    >>> r1 = proxy.request('GET', 'http://google.com/')
+    >>> r2 = proxy.request('GET', 'http://httpbin.org/')
+    >>> len(proxy.pools)
+    1
+    >>> r3 = proxy.request('GET', 'https://httpbin.org/')
+    >>> r4 = proxy.request('GET', 'https://twitter.com/')
+    >>> len(proxy.pools)
+    3
+
 ConnectionPool
 --------------
 

@@ -1,14 +1,19 @@
 import unittest
 
+import socket
 from threading import Lock
 
 from dummyserver.server import (
     TornadoServerThread, SocketServerThread,
     DEFAULT_CERTS,
+    ProxyServerThread,
 )
 
 
-# TODO: Change ports to auto-allocated?
+def get_free_port():
+    s = socket.socket()
+    s.bind(('127.0.0.1', 0))
+    return s.getsockname()[1]
 
 
 class SocketDummyServerTestCase(unittest.TestCase):
@@ -18,7 +23,7 @@ class SocketDummyServerTestCase(unittest.TestCase):
     """
     scheme = 'http'
     host = 'localhost'
-    port = 18080
+    port = get_free_port()
 
     @classmethod
     def _start_server(cls, socket_handler):
@@ -42,7 +47,7 @@ class HTTPDummyServerTestCase(unittest.TestCase):
     scheme = 'http'
     host = 'localhost'
     host_alt = '127.0.0.1' # Some tests need two hosts
-    port = 18081
+    port = get_free_port()
     certs = DEFAULT_CERTS
 
     @classmethod
@@ -73,5 +78,38 @@ class HTTPDummyServerTestCase(unittest.TestCase):
 class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
     scheme = 'https'
     host = 'localhost'
-    port = 18082
+    port = get_free_port()
     certs = DEFAULT_CERTS
+
+
+class HTTPDummyProxyTestCase(unittest.TestCase):
+
+    http_host = 'localhost'
+    http_host_alt = '127.0.0.1'
+    http_port = get_free_port()
+
+    https_host = 'localhost'
+    https_port = get_free_port()
+    https_host_alt = '127.0.0.1'
+    https_certs = DEFAULT_CERTS
+
+    proxy_host = 'localhost'
+    proxy_host_alt = '127.0.0.1'
+    proxy_port = get_free_port()
+
+    @classmethod
+    def setUpClass(cls):
+        cls.http_thread = TornadoServerThread(host=cls.http_host,
+                port=cls.http_port, scheme='http')
+        cls.http_thread._start_server()
+        cls.https_thread = TornadoServerThread(host=cls.https_host,
+                port=cls.https_port, scheme='https',
+                certs=cls.https_certs)
+        cls.https_thread._start_server()
+        cls.proxy_thread = ProxyServerThread(host=cls.proxy_host,
+                port=cls.proxy_port)
+        cls.proxy_thread.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.proxy_thread.stop()
