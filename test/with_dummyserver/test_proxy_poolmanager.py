@@ -1,11 +1,12 @@
 import unittest
 import json
+import socket
 
 from dummyserver.testcase import HTTPDummyProxyTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD
 
 from urllib3.poolmanager import proxy_from_url, ProxyManager
-from urllib3.exceptions import MaxRetryError, SSLError
+from urllib3.exceptions import MaxRetryError, SSLError, ProxyError
 from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
 
 class TestHTTPProxyManager(HTTPDummyProxyTestCase):
@@ -23,6 +24,19 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
         r = http.request('GET', '%s/' % self.https_url)
         self.assertEqual(r.status, 200)
+
+    def test_proxy_conn_fail(self):
+        # Get a free port on localhost, so a connection will be refused
+        s = socket.socket()
+        s.bind(('127.0.0.1', 0))
+        free_port = s.getsockname()[1]
+        s.close()
+
+        http = proxy_from_url('http://127.0.0.1:%s/' % free_port)
+        self.assertRaises(ProxyError, http.request, 'GET',
+                          '%s/' % self.https_url)
+        self.assertRaises(ProxyError, http.request, 'GET',
+                          '%s/' % self.http_url)
 
     def test_oldapi(self):
         http = ProxyManager(connection_from_url(self.proxy_url))
