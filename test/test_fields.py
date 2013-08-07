@@ -1,7 +1,7 @@
 import unittest
 
 from urllib3.fields import guess_content_type, RequestField
-from urllib3.packages.six import b
+from urllib3.packages.six import b, u
 
 
 class TestRequestField(unittest.TestCase):
@@ -37,3 +37,8 @@ class TestRequestField(unittest.TestCase):
         self.assertTrue('filename="value"' in parts)
         parts = field._render_parts([('name', 'value'), ('filename', 'value')])
         self.assertEqual(parts, 'name="value"; filename="value"')
+
+    def test_render_part(self):
+        field = RequestField('somename', 'data')
+        param = field._render_part('filename', u('n\u00e4me'))
+        self.assertEqual(param, "filename*=utf-8''n%C3%A4me")

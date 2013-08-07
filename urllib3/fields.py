@@ -4,7 +4,10 @@
 # This module is part of urllib3 and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+import email.utils
 import mimetypes
+
+from .packages import six
 
 
 def guess_content_type(filename, default='application/octet-stream'):
@@ -73,6 +76,33 @@ class RequestField(object):
       request_param.make_multipart(content_type=content_type)
       return request_param
 
+    def _render_part(self, name, value):
+        """
+        Helper function to format and quote a single header parameter.
+
+        Particularly useful for header parameters which might contain
+        non-ASCII values, like file names. This follows RFC 2231, as
+        suggested by RFC 2388 Section 4.4.
+
+        :param name:
+            The name of the parameter, a string expected to be ASCII only.
+        :param value:
+            The value of the parameter, provided as a unicode string.
+        """
+        if not any(ch in value for ch in '"\\\r\n'):
+            result = '%s="%s"' % (name, value)
+            try:
+                result.encode('ascii')
+            except UnicodeEncodeError:
+                pass
+            else:
+                return result
+        if not six.PY3:
+            value = value.encode('utf-8')
+        value = email.utils.encode_rfc2231(value, 'utf-8')
+        value = '%s*=%s' % (name, value)
+        return value
+
     def _render_parts(self, header_parts):
       """
       Helper function to format and quote a single header.
@@ -91,7 +121,7 @@ class RequestField(object):
 
       for name, value in iterable:
           if value:
-              parts.append('%s="%s"' % (name, value))
+              parts.append(self._render_part(name, value))
       return '; '.join(parts)
 
     def make_multipart(self, content_disposition=None, content_type=None, content_location=None):
