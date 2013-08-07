@@ -8,8 +8,10 @@ from urllib3.exceptions import MaxRetryError
 
 
 class TestPoolManager(HTTPDummyServerTestCase):
-    base_url = 'http://%s:%d' % (HTTPDummyServerTestCase.host, HTTPDummyServerTestCase.port)
-    base_url_alt = 'http://%s:%d' % (HTTPDummyServerTestCase.host_alt, HTTPDummyServerTestCase.port)
+
+    def setUp(self):
+        self.base_url = 'http://%s:%d' % (self.host, self.port)
+        self.base_url_alt = 'http://%s:%d' % (self.host_alt, self.port)
 
     def test_redirect(self):
         http = PoolManager()
@@ -39,20 +41,20 @@ class TestPoolManager(HTTPDummyServerTestCase):
                          fields={'target': '%s/redirect?target=%s/' % (self.base_url, self.base_url)})
 
         self.assertEqual(r.status, 200)
-        self.assertEqual(r.data, b'Dummy server!')    
+        self.assertEqual(r.data, b'Dummy server!')
 
     def test_redirect_to_relative_url(self):
         http = PoolManager()
-    
+
         r = http.request('GET', '%s/redirect' % self.base_url,
                          fields = {'target': '/redirect'},
                          redirect = False)
-    
+
         self.assertEqual(r.status, 303)
-    
-        r = http.request('GET', '%s/redirect' % self.base_url, 
+
+        r = http.request('GET', '%s/redirect' % self.base_url,
                          fields = {'target': '/redirect'})
-    
+
         self.assertEqual(r.status, 200)
         self.assertEqual(r.data, b'Dummy server!')
 

@@ -9,12 +9,17 @@ from urllib3.poolmanager import proxy_from_url, ProxyManager
 from urllib3.exceptions import MaxRetryError, SSLError, ProxyError
 from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
 
+
 class TestHTTPProxyManager(HTTPDummyProxyTestCase):
-    http_url = 'http://%s:%d' % (HTTPDummyProxyTestCase.http_host, HTTPDummyProxyTestCase.http_port)
-    http_url_alt = 'http://%s:%d' % (HTTPDummyProxyTestCase.http_host_alt, HTTPDummyProxyTestCase.http_port)
-    https_url = 'https://%s:%d' % (HTTPDummyProxyTestCase.https_host, HTTPDummyProxyTestCase.https_port)
-    https_url_alt = 'https://%s:%d' % (HTTPDummyProxyTestCase.https_host_alt, HTTPDummyProxyTestCase.https_port)
-    proxy_url = 'http://%s:%d' % (HTTPDummyProxyTestCase.proxy_host, HTTPDummyProxyTestCase.proxy_port)
+
+    def setUp(self):
+        self.http_url = 'http://%s:%d' % (self.http_host, self.http_port)
+        self.http_url_alt = 'http://%s:%d' % (self.http_host_alt,
+                                              self.http_port)
+        self.https_url = 'https://%s:%d' % (self.https_host, self.https_port)
+        self.https_url_alt = 'https://%s:%d' % (self.https_host_alt,
+                                                self.https_port)
+        self.proxy_url = 'http://%s:%d' % (self.proxy_host, self.proxy_port)
 
     def test_basic_proxy(self):
         http = proxy_from_url(self.proxy_url)
