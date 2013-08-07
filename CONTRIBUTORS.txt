@@ -84,5 +84,8 @@ In chronological order:
 * Stephen Holsapple <sholsapp@gmail.com>
   * Added abstraction for granular control of request fields
 
+* Martin von Gagern <Martin.vGagern@gmx.net>
+  * Support for non-ASCII header parameters
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
