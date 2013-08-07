@@ -13,7 +13,9 @@ from dummyserver.server import (
 def get_free_port():
     s = socket.socket()
     s.bind(('127.0.0.1', 0))
-    return s.getsockname()[1]
+    port = s.getsockname()[1]
+    s.close()
+    return port
 
 
 class SocketDummyServerTestCase(unittest.TestCase):
