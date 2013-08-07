@@ -11,6 +11,7 @@ import sys
 import threading
 import socket
 
+from tornado import netutil
 import tornado.wsgi
 import tornado.httpserver
 import tornado.ioloop
@@ -38,29 +39,29 @@ class SocketServerThread(threading.Thread):
     """
     :param socket_handler: Callable which receives a socket argument for one
         request.
-    :param ready_lock: Lock which gets released when the socket handler is
+    :param ready_event: Event which gets set when the socket handler is
         ready to receive requests.
     """
     def __init__(self, socket_handler, host='localhost', port=8081,
-                 ready_lock=None):
+                 ready_event=None):
         threading.Thread.__init__(self)
 
         self.socket_handler = socket_handler
         self.host = host
-        self.port = port
-        self.ready_lock = ready_lock
+        self.ready_event = ready_event
 
     def _start_server(self):
         sock = socket.socket()
         if sys.platform != 'win32':
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind((self.host, self.port))
+        sock.bind((self.host, 0))
+        self.port = sock.getsockname()[1]
 
         # Once listen() returns, the server socket is ready
         sock.listen(1)
 
-        if self.ready_lock:
-            self.ready_lock.release()
+        if self.ready_event:
+            self.ready_event.set()
 
         self.socket_handler(sock)
         sock.close()
@@ -72,13 +73,14 @@ class SocketServerThread(threading.Thread):
 class TornadoServerThread(threading.Thread):
     app = tornado.wsgi.WSGIContainer(TestingApp())
 
-    def __init__(self, host='localhost', port=8081, scheme='http', certs=None):
+    def __init__(self, host='localhost', scheme='http', certs=None,
+                 ready_event=None):
         threading.Thread.__init__(self)
 
         self.host = host
-        self.port = port
         self.scheme = scheme
         self.certs = certs
+        self.ready_event = ready_event
 
     def _start_server(self):
         if self.scheme == 'https':
@@ -87,17 +89,22 @@ class TornadoServerThread(threading.Thread):
         else:
             http_server = tornado.httpserver.HTTPServer(self.app)
 
-        http_server.listen(self.port, address=self.host)
+        sock, = netutil.bind_sockets(0, family=socket.AF_INET)
+        self.port = sock.getsockname()[1]
+        http_server.add_sockets([sock])
         return http_server
 
     def run(self):
         self.ioloop = tornado.ioloop.IOLoop.instance()
         self.server = self._start_server()
+        if self.ready_event:
+            self.ready_event.set()
         self.ioloop.start()
 
     def stop(self):
         self.ioloop.add_callback(self.server.stop)
         self.ioloop.add_callback(self.ioloop.stop)
+
 
 class ProxyServerThread(TornadoServerThread):
     app = tornado.web.Application([(r'.*', ProxyHandler)])
