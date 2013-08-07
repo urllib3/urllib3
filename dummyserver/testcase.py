@@ -57,7 +57,7 @@ class HTTPDummyServerTestCase(unittest.TestCase):
                                                 certs=cls.certs)
         cls.server_thread.start()
 
-        # TODO: Loop-check here instead
+        # FIXME: Need a better way to block until the server is ready...
         import time
         time.sleep(0.1)
 
@@ -109,6 +109,10 @@ class HTTPDummyProxyTestCase(unittest.TestCase):
         cls.proxy_thread = ProxyServerThread(host=cls.proxy_host,
                 port=cls.proxy_port)
         cls.proxy_thread.start()
+
+        # FIXME: Need a better way to block until the server is ready...
+        import time
+        time.sleep(0.1)
 
     @classmethod
     def tearDownClass(cls):
