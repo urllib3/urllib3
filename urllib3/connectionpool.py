@@ -59,6 +59,7 @@ from .exceptions import (
 
 from .packages.ssl_match_hostname import match_hostname, CertificateError
 from .packages import six
+from .util import parse_url
 
 
 xrange = six.moves.xrange
@@ -644,8 +645,12 @@ def connection_from_url(url, **kw):
         >>> conn = connection_from_url('http://google.com/')
         >>> r = conn.request('GET', '/')
     """
-    scheme, host, port = get_host(url)
-    if scheme == 'https':
-        return HTTPSConnectionPool(host, port=port, **kw)
+
+    u = parse_url(url)
+    if u.host is None:
+        raise ValueError('No host given')
+
+    if u.scheme == 'https':
+        return HTTPSConnectionPool(u.host, port=u.port, **kw)
     else:
-        return HTTPConnectionPool(host, port=port, **kw)
+        return HTTPConnectionPool(u.host, port=u.port, **kw)

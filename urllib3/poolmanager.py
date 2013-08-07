@@ -130,6 +130,9 @@ class PoolManager(RequestMethods):
         constructor.
         """
         u = parse_url(url)
+        if u.host is None:
+            raise ValueError('No host given')
+
         return self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
     def urlopen(self, method, url, redirect=True, **kw):
@@ -142,6 +145,9 @@ class PoolManager(RequestMethods):
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
         u = parse_url(url)
+        if u.host is None:
+            raise ValueError('No host given')
+
         conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
         kw['assert_same_host'] = False
