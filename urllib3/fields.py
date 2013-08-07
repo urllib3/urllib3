@@ -75,34 +75,34 @@ class RequestField(object):
 
     @classmethod
     def from_tuples(cls, fieldname, value):
-      """
-      A :class:`~urllib3.fields.RequestField` factory from old-style tuple parameters.
+        """
+        A :class:`~urllib3.fields.RequestField` factory from old-style tuple parameters.
 
-      Supports constructing :class:`~urllib3.fields.RequestField` from parameter
-      of key/value strings AND key/filetuple. A filetuple is a (filename, data, MIME type)
-      tuple where the MIME type is optional. For example: ::
+        Supports constructing :class:`~urllib3.fields.RequestField` from parameter
+        of key/value strings AND key/filetuple. A filetuple is a (filename, data, MIME type)
+        tuple where the MIME type is optional. For example: ::
 
-          'foo': 'bar',
-          'fakefile': ('foofile.txt', 'contents of foofile'),
-          'realfile': ('barfile.txt', open('realfile').read()),
-          'typedfile': ('bazfile.bin', open('bazfile').read(), 'image/jpeg'),
-          'nonamefile': 'contents of nonamefile field',
+            'foo': 'bar',
+            'fakefile': ('foofile.txt', 'contents of foofile'),
+            'realfile': ('barfile.txt', open('realfile').read()),
+            'typedfile': ('bazfile.bin', open('bazfile').read(), 'image/jpeg'),
+            'nonamefile': 'contents of nonamefile field',
 
-      Field names and filenames must be unicode.
-      """
-      if isinstance(value, tuple):
-          if len(value) == 3:
-              filename, data, content_type = value
-          else:
-              filename, data = value
-              content_type = guess_content_type(filename)
-      else:
-          filename = None
-          content_type = None
-          data = value
-      request_param = cls(fieldname, data, filename=filename)
-      request_param.make_multipart(content_type=content_type)
-      return request_param
+        Field names and filenames must be unicode.
+        """
+        if isinstance(value, tuple):
+            if len(value) == 3:
+                filename, data, content_type = value
+            else:
+                filename, data = value
+                content_type = guess_content_type(filename)
+        else:
+            filename = None
+            content_type = None
+            data = value
+        request_param = cls(fieldname, data, filename=filename)
+        request_param.make_multipart(content_type=content_type)
+        return request_param
 
     def _render_part(self, name, value):
         """
@@ -116,56 +116,56 @@ class RequestField(object):
         return format_header_param(name, value)
 
     def _render_parts(self, header_parts):
-      """
-      Helper function to format and quote a single header.
+        """
+        Helper function to format and quote a single header.
 
-      Useful for single headers that are composed of multiple items. E.g.,
-      'Content-Disposition' fields.
+        Useful for single headers that are composed of multiple items. E.g.,
+        'Content-Disposition' fields.
 
-      :param header_parts:
-          A sequence of (k, v) typles or a :class:`dict` of (k, v) to format as
-          `k1="v1"; k2="v2"; ...`.
-      """
-      parts = []
-      iterable = header_parts
-      if isinstance(header_parts, dict):
-          iterable = header_parts.items()
+        :param header_parts:
+            A sequence of (k, v) typles or a :class:`dict` of (k, v) to format as
+            `k1="v1"; k2="v2"; ...`.
+        """
+        parts = []
+        iterable = header_parts
+        if isinstance(header_parts, dict):
+            iterable = header_parts.items()
 
-      for name, value in iterable:
-          if value:
-              parts.append(self._render_part(name, value))
-      return '; '.join(parts)
+        for name, value in iterable:
+            if value:
+                parts.append(self._render_part(name, value))
+        return '; '.join(parts)
 
     def make_multipart(self, content_disposition=None, content_type=None, content_location=None):
-      """
-      Makes this request field into a multipart request field.
+        """
+        Makes this request field into a multipart request field.
 
-      This method overrides "Content-Disposition", "Content-Type" and
-      "Content-Location" headers to the request parameter.
+        This method overrides "Content-Disposition", "Content-Type" and
+        "Content-Location" headers to the request parameter.
 
-      :param content_type:
-          The 'Content-Type' of the request body.
-      :param content_location:
-          The 'Content-Location' of the request body.
+        :param content_type:
+            The 'Content-Type' of the request body.
+        :param content_location:
+            The 'Content-Location' of the request body.
 
-      """
-      self.headers['Content-Disposition'] = content_disposition or 'form-data'
-      self.headers['Content-Disposition'] += '; '.join(['', self._render_parts((('name', self._name), ('filename', self._filename)))])
-      self.headers['Content-Type'] = content_type
-      self.headers['Content-Location'] = content_location
+        """
+        self.headers['Content-Disposition'] = content_disposition or 'form-data'
+        self.headers['Content-Disposition'] += '; '.join(['', self._render_parts((('name', self._name), ('filename', self._filename)))])
+        self.headers['Content-Type'] = content_type
+        self.headers['Content-Location'] = content_location
 
     def render_headers(self):
-      """
-      Renders the headers for this request field.
-      """
-      lines = []
-      sort_keys = ['Content-Disposition', 'Content-Type', 'Content-Location']
-      for sort_key in sort_keys:
-          if self.headers.get(sort_key, False):
-              lines.append('%s: %s' % (sort_key, self.headers[sort_key]))
-      for header_name, header_value in self.headers.items():
-          if header_name not in sort_keys:
-              if header_value:
-                  lines.append('%s: %s' % (header_name, header_value))
-      lines.append('\r\n')
-      return '\r\n'.join(lines)
+        """
+        Renders the headers for this request field.
+        """
+        lines = []
+        sort_keys = ['Content-Disposition', 'Content-Type', 'Content-Location']
+        for sort_key in sort_keys:
+            if self.headers.get(sort_key, False):
+                lines.append('%s: %s' % (sort_key, self.headers[sort_key]))
+        for header_name, header_value in self.headers.items():
+            if header_name not in sort_keys:
+                if header_value:
+                    lines.append('%s: %s' % (header_name, header_value))
+        lines.append('\r\n')
+        return '\r\n'.join(lines)
