@@ -45,8 +45,7 @@ def format_header_param(name, value):
             pass
         else:
             return result
-    if not six.PY3:
-        value = value.encode('utf-8')
+    if not six.PY3: value = value.encode('utf-8')
     value = email.utils.encode_rfc2231(value, 'utf-8')
     value = '%s*=%s' % (name, value)
     return value
