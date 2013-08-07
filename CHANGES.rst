@@ -34,6 +34,10 @@ dev (master branch)
 
 * Raise ``urllib3.exceptions.ProxyError`` when connecting to proxy fails.
   (Issue #221)
+  
+* Use international headers when posting file names. (Issue #119)
+
+* ...
 
 
 1.6 (2013-04-25)
