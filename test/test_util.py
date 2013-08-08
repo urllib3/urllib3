@@ -57,6 +57,8 @@ class TestUtil(unittest.TestCase):
         # TODO: Add more tests
         invalid_host = [
             'http://google.com:foo',
+            'http://::1/',
+            'http://::1:80/',
         ]
 
         for location in invalid_host:

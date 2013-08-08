@@ -1,7 +1,8 @@
 import unittest
 import json
 
-from dummyserver.testcase import HTTPDummyServerTestCase
+from dummyserver.testcase import (HTTPDummyServerTestCase,
+                                  IPv6HTTPDummyServerTestCase)
 from urllib3.poolmanager import PoolManager
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError
@@ -122,6 +123,14 @@ class TestPoolManager(HTTPDummyServerTestCase):
         r = http.request('GET', 'http://%s:%s/' % (self.host, self.port))
         self.assertEqual(r.status, 200)
 
+
+class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
+    def setUp(self):
+        self.base_url = 'http://[%s]:%d' % (self.host, self.port)
+
+    def test_ipv6(self):
+        http = PoolManager()
+        http.request('GET', self.base_url)
 
 if __name__ == '__main__':
     unittest.main()
