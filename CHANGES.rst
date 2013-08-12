@@ -37,6 +37,8 @@ dev (master branch)
   
 * Use international headers when posting file names. (Issue #119)
 
+* Improved IPv6 support. (Issue #203)
+
 * ...
 
 
