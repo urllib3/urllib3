@@ -1,12 +1,15 @@
 import unittest
-
+import socket
 import threading
+from nose.plugins.skip import SkipTest
 
 from dummyserver.server import (
     TornadoServerThread, SocketServerThread,
     DEFAULT_CERTS,
     ProxyServerThread,
 )
+
+has_ipv6 = hasattr(socket, 'has_ipv6')
 
 
 class SocketDummyServerTestCase(unittest.TestCase):
@@ -105,3 +108,14 @@ class HTTPDummyProxyTestCase(unittest.TestCase):
     def tearDownClass(cls):
         cls.proxy_thread.stop()
         cls.proxy_thread.join()
+
+
+class IPv6HTTPDummyServerTestCase(HTTPDummyServerTestCase):
+    host = '::1'
+
+    @classmethod
+    def setUpClass(cls):
+        if not has_ipv6:
+            raise SkipTest('IPv6 not available')
+        else:
+            super(IPv6HTTPDummyServerTestCase, cls).setUpClass()
