@@ -100,8 +100,10 @@ class RequestField(object):
             filename = None
             content_type = None
             data = value
+
         request_param = cls(fieldname, data, filename=filename)
         request_param.make_multipart(content_type=content_type)
+
         return request_param
 
     def _render_part(self, name, value):
@@ -134,7 +136,27 @@ class RequestField(object):
         for name, value in iterable:
             if value:
                 parts.append(self._render_part(name, value))
+
         return '; '.join(parts)
+
+    def render_headers(self):
+        """
+        Renders the headers for this request field.
+        """
+        lines = []
+
+        sort_keys = ['Content-Disposition', 'Content-Type', 'Content-Location']
+        for sort_key in sort_keys:
+            if self.headers.get(sort_key, False):
+                lines.append('%s: %s' % (sort_key, self.headers[sort_key]))
+
+        for header_name, header_value in self.headers.items():
+            if header_name not in sort_keys:
+                if header_value:
+                    lines.append('%s: %s' % (header_name, header_value))
+
+        lines.append('\r\n')
+        return '\r\n'.join(lines)
 
     def make_multipart(self, content_disposition=None, content_type=None, content_location=None):
         """
@@ -153,19 +175,3 @@ class RequestField(object):
         self.headers['Content-Disposition'] += '; '.join(['', self._render_parts((('name', self._name), ('filename', self._filename)))])
         self.headers['Content-Type'] = content_type
         self.headers['Content-Location'] = content_location
-
-    def render_headers(self):
-        """
-        Renders the headers for this request field.
-        """
-        lines = []
-        sort_keys = ['Content-Disposition', 'Content-Type', 'Content-Location']
-        for sort_key in sort_keys:
-            if self.headers.get(sort_key, False):
-                lines.append('%s: %s' % (sort_key, self.headers[sort_key]))
-        for header_name, header_value in self.headers.items():
-            if header_name not in sort_keys:
-                if header_value:
-                    lines.append('%s: %s' % (header_name, header_value))
-        lines.append('\r\n')
-        return '\r\n'.join(lines)
