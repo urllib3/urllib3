@@ -4,6 +4,12 @@ Changes
 dev (master branch)
 +++++++++++++++++++
 
+* ...
+
+
+1.7 (2013-08-14)
+++++++++++++++++
+
 * More exceptions are now pickle-able, with tests. (Issue #174)
 
 * Fixed redirecting with relative URLs in Location header. (Issue #178)
@@ -34,12 +40,10 @@ dev (master branch)
 
 * Raise ``urllib3.exceptions.ProxyError`` when connecting to proxy fails.
   (Issue #221)
-  
+
 * Use international headers when posting file names. (Issue #119)
 
 * Improved IPv6 support. (Issue #203)
-
-* ...
 
 
 1.6 (2013-04-25)
