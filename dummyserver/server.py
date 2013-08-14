@@ -90,7 +90,7 @@ class TornadoServerThread(threading.Thread):
             http_server = tornado.httpserver.HTTPServer(self.app)
 
         family = socket.AF_INET6 if ':' in self.host else socket.AF_INET
-        sock, = netutil.bind_sockets(0, address=self.host, family=family)
+        sock, = netutil.bind_sockets(None, address=self.host, family=family)
         self.port = sock.getsockname()[1]
         http_server.add_sockets([sock])
         return http_server
