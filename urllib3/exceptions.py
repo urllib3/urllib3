@@ -20,11 +20,27 @@ class PoolError(HTTPError):
 
     def __reduce__(self):
         # For pickling purposes.
-        return self.__class__, (None, self.url)
+        return self.__class__, (None, None)
+
+
+class RequestError(PoolError):
+    "Base exception for PoolErrors that have associated URLs."
+    def __init__(self, pool, url, message):
+        self.url = url
+        PoolError.__init__(self, pool, message)
+
+    def __reduce__(self):
+        # For pickling purposes.
+        return self.__class__, (None, self.url, None)
 
 
 class SSLError(HTTPError):
     "Raised when SSL certificate fails in an HTTPS connection."
+    pass
+
+
+class ProxyError(HTTPError):
+    "Raised when the connection to a proxy fails."
     pass
 
 
@@ -35,7 +51,7 @@ class DecodeError(HTTPError):
 
 ## Leaf Exceptions
 
-class MaxRetryError(PoolError):
+class MaxRetryError(RequestError):
     "Raised when the maximum number of retries is exceeded."
 
     def __init__(self, pool, url, reason=None):
@@ -47,22 +63,19 @@ class MaxRetryError(PoolError):
         else:
             message += " (Caused by redirect)"
 
-        PoolError.__init__(self, pool, message)
-        self.url = url
+        RequestError.__init__(self, pool, url, message)
 
 
-class HostChangedError(PoolError):
+class HostChangedError(RequestError):
     "Raised when an existing pool gets a request for a foreign host."
 
     def __init__(self, pool, url, retries=3):
         message = "Tried to open a foreign host with url: %s" % url
-        PoolError.__init__(self, pool, message)
-
-        self.url = url
+        RequestError.__init__(self, pool, url, message)
         self.retries = retries
 
 
-class TimeoutError(PoolError):
+class TimeoutError(RequestError):
     "Raised when a socket timeout occurs."
     pass
 

@@ -1,15 +1,18 @@
 import unittest
 import json
 
-from dummyserver.testcase import HTTPDummyServerTestCase
+from dummyserver.testcase import (HTTPDummyServerTestCase,
+                                  IPv6HTTPDummyServerTestCase)
 from urllib3.poolmanager import PoolManager
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError
 
 
 class TestPoolManager(HTTPDummyServerTestCase):
-    base_url = 'http://%s:%d' % (HTTPDummyServerTestCase.host, HTTPDummyServerTestCase.port)
-    base_url_alt = 'http://%s:%d' % (HTTPDummyServerTestCase.host_alt, HTTPDummyServerTestCase.port)
+
+    def setUp(self):
+        self.base_url = 'http://%s:%d' % (self.host, self.port)
+        self.base_url_alt = 'http://%s:%d' % (self.host_alt, self.port)
 
     def test_redirect(self):
         http = PoolManager()
@@ -37,6 +40,21 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         r = http.request('GET', '%s/redirect' % self.base_url,
                          fields={'target': '%s/redirect?target=%s/' % (self.base_url, self.base_url)})
+
+        self.assertEqual(r.status, 200)
+        self.assertEqual(r.data, b'Dummy server!')
+
+    def test_redirect_to_relative_url(self):
+        http = PoolManager()
+
+        r = http.request('GET', '%s/redirect' % self.base_url,
+                         fields = {'target': '/redirect'},
+                         redirect = False)
+
+        self.assertEqual(r.status, 303)
+
+        r = http.request('GET', '%s/redirect' % self.base_url,
+                         fields = {'target': '/redirect'})
 
         self.assertEqual(r.status, 200)
         self.assertEqual(r.data, b'Dummy server!')
@@ -105,6 +123,14 @@ class TestPoolManager(HTTPDummyServerTestCase):
         r = http.request('GET', 'http://%s:%s/' % (self.host, self.port))
         self.assertEqual(r.status, 200)
 
+
+class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
+    def setUp(self):
+        self.base_url = 'http://[%s]:%d' % (self.host, self.port)
+
+    def test_ipv6(self):
+        http = PoolManager()
+        http.request('GET', self.base_url)
 
 if __name__ == '__main__':
     unittest.main()

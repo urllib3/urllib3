@@ -1,3 +1,4 @@
+
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
 from urllib3.exceptions import MaxRetryError, TimeoutError, SSLError
@@ -7,6 +8,7 @@ from dummyserver.testcase import SocketDummyServerTestCase
 
 from nose.plugins.skip import SkipTest
 from threading import Event
+import socket
 
 
 class TestCookies(SocketDummyServerTestCase):
@@ -45,6 +47,7 @@ class TestSNI(SocketDummyServerTestCase):
 
             self.buf = sock.recv(65536) # We only accept one packet
             done_receiving.set()  # let the test know it can proceed
+            sock.close()
 
         self._start_server(socket_handler)
         pool = HTTPSConnectionPool(self.host, self.port)
@@ -99,10 +102,14 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
     def test_connection_refused(self):
         # Does the pool retry if there is no listener on the port?
-        # Note: Socket server is not started until after the test.
-        pool = HTTPConnectionPool(self.host, self.port)
+        # Get a free port on localhost, so a connection will be refused
+        s = socket.socket()
+        s.bind(('127.0.0.1', 0))
+        free_port = s.getsockname()[1]
+        s.close()
+
+        pool = HTTPConnectionPool(self.host, free_port)
         self.assertRaises(MaxRetryError, pool.request, 'GET', '/', retries=0)
-        self._start_server(lambda x: None)
 
     def test_connection_timeout(self):
         timed_out = Event()
@@ -122,9 +129,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
 class TestProxyManager(SocketDummyServerTestCase):
 
     def test_simple(self):
-        base_url = 'http://%s:%d' % (self.host, self.port)
-        proxy = proxy_from_url(base_url)
-
         def echo_socket_handler(listener):
             sock = listener.accept()[0]
 
@@ -137,8 +141,11 @@ class TestProxyManager(SocketDummyServerTestCase):
                       'Content-Length: %d\r\n'
                       '\r\n'
                       '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
+            sock.close()
 
         self._start_server(echo_socket_handler)
+        base_url = 'http://%s:%d' % (self.host, self.port)
+        proxy = proxy_from_url(base_url)
 
         r = proxy.request('GET', 'http://google.com/')
 

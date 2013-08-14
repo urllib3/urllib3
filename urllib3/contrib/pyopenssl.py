@@ -106,6 +106,9 @@ class WrappedSocket(object):
         self.connection = connection
         self.socket = socket
 
+    def fileno(self):
+        return self.socket.fileno()
+
     def makefile(self, mode, bufsize=-1):
         return _fileobject(self.connection, mode, bufsize)
 
@@ -114,6 +117,9 @@ class WrappedSocket(object):
 
     def sendall(self, data):
         return self.connection.sendall(data)
+
+    def close(self):
+        return self.connection.shutdown()
 
     def getpeercert(self, binary_form=False):
         x509 = self.connection.get_peer_certificate()

@@ -1,6 +1,45 @@
 Changes
 =======
 
+1.7 (2013-08-14)
+++++++++++++++++
+
+* More exceptions are now pickle-able, with tests. (Issue #174)
+
+* Fixed redirecting with relative URLs in Location header. (Issue #178)
+
+* Support for relative urls in ``Location: ...`` header. (Issue #179)
+
+* ``urllib3.response.HTTPResponse`` now inherits from ``io.IOBase`` for bonus
+  file-like functionality. (Issue #187)
+
+* Passing ``assert_hostname=False`` when creating a HTTPSConnectionPool will
+  skip hostname verification for SSL connections. (Issue #194)
+
+* New method ``urllib3.response.HTTPResponse.stream(...)`` which acts as a
+  generator wrapped around ``.read(...)``. (Issue #198)
+
+* IPv6 url parsing enforces brackets around the hostname. (Issue #199)
+
+* Fixed thread race condition in
+  ``urllib3.poolmanager.PoolManager.connection_from_host(...)`` (Issue #204)
+
+* ``ProxyManager`` requests now include non-default port in ``Host: ...``
+  header. (Issue #217)
+
+* Added HTTPS proxy support in ``ProxyManager``. (Issue #170 #139)
+
+* New ``RequestField`` object can be passed to the ``fields=...`` param which
+  can specify headers. (Issue #220)
+
+* Raise ``urllib3.exceptions.ProxyError`` when connecting to proxy fails.
+  (Issue #221)
+
+* Use international headers when posting file names. (Issue #119)
+
+* Improved IPv6 support. (Issue #203)
+
+
 1.6 (2013-04-25)
 ++++++++++++++++
 

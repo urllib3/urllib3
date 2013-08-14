@@ -1,14 +1,15 @@
 import unittest
-
-from threading import Lock
+import socket
+import threading
+from nose.plugins.skip import SkipTest
 
 from dummyserver.server import (
     TornadoServerThread, SocketServerThread,
     DEFAULT_CERTS,
+    ProxyServerThread,
 )
 
-
-# TODO: Change ports to auto-allocated?
+has_ipv6 = hasattr(socket, 'has_ipv6')
 
 
 class SocketDummyServerTestCase(unittest.TestCase):
@@ -18,19 +19,16 @@ class SocketDummyServerTestCase(unittest.TestCase):
     """
     scheme = 'http'
     host = 'localhost'
-    port = 18080
 
     @classmethod
     def _start_server(cls, socket_handler):
-        ready_lock = Lock()
-        ready_lock.acquire()
+        ready_event = threading.Event()
         cls.server_thread = SocketServerThread(socket_handler=socket_handler,
-                                               ready_lock=ready_lock,
-                                               host=cls.host, port=cls.port)
+                                               ready_event=ready_event,
+                                               host=cls.host)
         cls.server_thread.start()
-
-        # Lock gets released by thread above
-        ready_lock.acquire()
+        ready_event.wait()
+        cls.port = cls.server_thread.port
 
     @classmethod
     def tearDownClass(cls):
@@ -41,20 +39,19 @@ class SocketDummyServerTestCase(unittest.TestCase):
 class HTTPDummyServerTestCase(unittest.TestCase):
     scheme = 'http'
     host = 'localhost'
-    host_alt = '127.0.0.1' # Some tests need two hosts
-    port = 18081
+    host_alt = '127.0.0.1'  # Some tests need two hosts
     certs = DEFAULT_CERTS
 
     @classmethod
     def _start_server(cls):
-        cls.server_thread = TornadoServerThread(host=cls.host, port=cls.port,
+        ready_event = threading.Event()
+        cls.server_thread = TornadoServerThread(host=cls.host,
                                                 scheme=cls.scheme,
-                                                certs=cls.certs)
+                                                certs=cls.certs,
+                                                ready_event=ready_event)
         cls.server_thread.start()
-
-        # TODO: Loop-check here instead
-        import time
-        time.sleep(0.1)
+        ready_event.wait()
+        cls.port = cls.server_thread.port
 
     @classmethod
     def _stop_server(cls):
@@ -73,5 +70,52 @@ class HTTPDummyServerTestCase(unittest.TestCase):
 class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
     scheme = 'https'
     host = 'localhost'
-    port = 18082
     certs = DEFAULT_CERTS
+
+
+class HTTPDummyProxyTestCase(unittest.TestCase):
+
+    http_host = 'localhost'
+    http_host_alt = '127.0.0.1'
+
+    https_host = 'localhost'
+    https_host_alt = '127.0.0.1'
+    https_certs = DEFAULT_CERTS
+
+    proxy_host = 'localhost'
+    proxy_host_alt = '127.0.0.1'
+
+    @classmethod
+    def setUpClass(cls):
+        cls.http_thread = TornadoServerThread(host=cls.http_host,
+                                              scheme='http')
+        cls.http_thread._start_server()
+        cls.http_port = cls.http_thread.port
+
+        cls.https_thread = TornadoServerThread(
+            host=cls.https_host, scheme='https', certs=cls.https_certs)
+        cls.https_thread._start_server()
+        cls.https_port = cls.https_thread.port
+
+        ready_event = threading.Event()
+        cls.proxy_thread = ProxyServerThread(
+            host=cls.proxy_host, ready_event=ready_event)
+        cls.proxy_thread.start()
+        ready_event.wait()
+        cls.proxy_port = cls.proxy_thread.port
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.proxy_thread.stop()
+        cls.proxy_thread.join()
+
+
+class IPv6HTTPDummyServerTestCase(HTTPDummyServerTestCase):
+    host = '::1'
+
+    @classmethod
+    def setUpClass(cls):
+        if not has_ipv6:
+            raise SkipTest('IPv6 not available')
+        else:
+            super(IPv6HTTPDummyServerTestCase, cls).setUpClass()

@@ -60,5 +60,32 @@ In chronological order:
 * Marc Schlaich <marc.schlaich@gmail.com>
   * Various bugfixes and test improvements.
 
+* Bryce Boe <bbzbryce@gmail.com>
+  * Correct six.moves conflict
+  * Fixed pickle support of some exceptions
+
+* Boris Figovsky <boris.figovsky@ravellosystems.com>
+  * Allowed to skip SSL hostname verification
+
+* Cory Benfield <http://lukasa.co.uk/about/>
+  * Stream method for Response objects.
+  * Return native strings in header values.
+  * Generate 'Host' header when using proxies.
+
+* Jason Robinson <jaywink@basshero.org>
+  * Add missing WrappedSocket.fileno method in PyOpenSSL
+
+* Audrius Butkevicius <audrius.butkevicius@elastichosts.com>
+  * Fixed a race condition
+
+* Stanislav Vitkovskiy <stas.vitkovsky@gmail.com>
+  * Added HTTPS (CONNECT) proxy support
+
+* Stephen Holsapple <sholsapp@gmail.com>
+  * Added abstraction for granular control of request fields
+
+* Martin von Gagern <Martin.vGagern@gmx.net>
+  * Support for non-ASCII header parameters
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

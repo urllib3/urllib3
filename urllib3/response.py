@@ -7,9 +7,11 @@
 
 import logging
 import zlib
+import io
 
 from .exceptions import DecodeError
 from .packages.six import string_types as basestring, binary_type
+from .util import is_fp_closed
 
 
 log = logging.getLogger(__name__)
@@ -48,7 +50,7 @@ def _get_decoder(mode):
     return DeflateDecoder()
 
 
-class HTTPResponse(object):
+class HTTPResponse(io.IOBase):
     """
     HTTP Response container.
 
@@ -183,11 +185,13 @@ class HTTPResponse(object):
             try:
                 if decode_content and self._decoder:
                     data = self._decoder.decompress(data)
-            except (IOError, zlib.error):
-                raise DecodeError("Received response with content-encoding: %s, but "
-                                  "failed to decode it." % content_encoding)
+            except (IOError, zlib.error) as e:
+                raise DecodeError(
+                    "Received response with content-encoding: %s, but "
+                    "failed to decode it." % content_encoding,
+                    e)
 
-            if flush_decoder and self._decoder:
+            if flush_decoder and decode_content and self._decoder:
                 buf = self._decoder.decompress(binary_type())
                 data += buf + self._decoder.flush()
 
@@ -199,6 +203,29 @@ class HTTPResponse(object):
         finally:
             if self._original_response and self._original_response.isclosed():
                 self.release_conn()
+
+    def stream(self, amt=2**16, decode_content=None):
+        """
+        A generator wrapper for the read() method. A call will block until
+        ``amt`` bytes have been read from the connection or until the
+        connection is closed.
+
+        :param amt:
+            How much of the content to read. The generator will return up to
+            much data per iteration, but may return less. This is particularly
+            likely when using compressed data. However, the empty string will
+            never be returned.
+
+        :param decode_content:
+            If True, will attempt to decode the body based on the
+            'content-encoding' header.
+        """
+        while not is_fp_closed(self._fp):
+            data = self.read(amt=amt, decode_content=decode_content)
+
+            if data:
+                yield data
+
 
     @classmethod
     def from_httplib(ResponseCls, r, **response_kw):
@@ -239,3 +266,35 @@ class HTTPResponse(object):
 
     def getheader(self, name, default=None):
         return self.headers.get(name, default)
+
+    # Overrides from io.IOBase
+    def close(self):
+        if not self.closed:
+            self._fp.close()
+
+    @property
+    def closed(self):
+        if self._fp is None:
+            return True
+        elif hasattr(self._fp, 'closed'):
+            return self._fp.closed
+        elif hasattr(self._fp, 'isclosed'):  # Python 2
+            return self._fp.isclosed()
+        else:
+            return True
+
+    def fileno(self):
+        if self._fp is None:
+            raise IOError("HTTPResponse has no file to get a fileno from")
+        elif hasattr(self._fp, "fileno"):
+            return self._fp.fileno()
+        else:
+            raise IOError("The file-like object  this HTTPResponse is wrapped "
+                          "around has no file descriptor")
+
+    def flush(self):
+        if self._fp is not None and hasattr(self._fp, 'flush'):
+            return self._fp.flush()
+
+    def readable(self):
+        return True

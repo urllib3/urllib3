@@ -31,7 +31,6 @@ try:  # Test for SSL features
 except ImportError:
     pass
 
-
 from .packages import six
 from .exceptions import LocationParseError, SSLError
 
@@ -60,6 +59,13 @@ class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 
             uri += '?' + self.query
 
         return uri
+
+    @property
+    def netloc(self):
+        """Network location including host and port"""
+        if self.port:
+            return '%s:%d' % (self.host, self.port)
+        return self.host
 
 
 def split_first(s, delims):
@@ -114,7 +120,7 @@ def parse_url(url):
 
     # While this code has overlap with stdlib's urlparse, it is much
     # simplified for our needs and less annoying.
-    # Additionally, this imeplementations does silly things to be optimal
+    # Additionally, this implementations does silly things to be optimal
     # on CPython.
 
     scheme = None
@@ -143,7 +149,8 @@ def parse_url(url):
 
     # IPv6
     if url and url[0] == '[':
-        host, url = url[1:].split(']', 1)
+        host, url = url.split(']', 1)
+        host += ']'
 
     # Port
     if ':' in url:
@@ -340,6 +347,20 @@ def assert_fingerprint(cert, fingerprint):
         raise SSLError('Fingerprints did not match. Expected "{0}", got "{1}".'
                        .format(hexlify(fingerprint_bytes),
                                hexlify(cert_digest)))
+
+def is_fp_closed(obj):
+    """
+    Checks whether a given file-like object is closed.
+
+    :param obj:
+        The file-like object to check.
+    """
+    if hasattr(obj, 'fp'):
+        # Object is a container for another file-like object that gets released
+        # on exhaustion (e.g. HTTPResponse)
+        return obj.fp is None
+
+    return obj.closed
 
 
 if SSLContext is not None:  # Python 3.2+
