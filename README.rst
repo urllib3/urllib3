@@ -81,14 +81,18 @@ pools, you should look at
 Run the tests
 =============
 
-We use some external dependencies to run the urllib3 test suite. Easiest way to
-run the tests is thusly from the urllib3 source root: ::
+We use some external dependencies, multiple interpreters and code coverage
+analysis while running test suite. Easiest way to run the tests is thusly the
+``tox`` utility: ::
 
-  $ pip install -r test-requirements.txt
-  $ nosetests
-  .....................................................
+  $ tox
+  # [..]
+  py26: commands succeeded
+  py27: commands succeeded
+  py32: commands succeeded
+  py33: commands succeeded
 
-Success! You could also ``pip install coverage`` to get code coverage reporting.
+Note that code coverage less than 100% is regarded as a failing run.
 
 
 Contributing
