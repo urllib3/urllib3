@@ -22,6 +22,7 @@ try: # Python 3
     from queue import LifoQueue, Empty, Full
 except ImportError:
     from Queue import LifoQueue, Empty, Full
+    import Queue as _  # Platform-specific: Windows
 
 
 try: # Compiled with SSL?
