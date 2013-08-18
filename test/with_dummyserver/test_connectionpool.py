@@ -45,24 +45,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                                fields={'method': 'GET'})
         self.assertEqual(r.status, 200, r.data)
 
-    def test_enhanced_conn(self):
-        conn = self.pool._new_conn()
-        self.assertEqual(conn.__class__, EnhancedHTTPConnection)
-        self.assertEqual(conn.enhanced_timeout.__class__, util.Timeout)
-        self.assertEqual(conn.enhanced_timeout.request, None)
-        self.assertEqual(conn.enhanced_timeout.connect, util.DEFAULT_TIMEOUT)
-        self.assertEqual(conn.enhanced_timeout.total, util.DEFAULT_TIMEOUT)
-
-        conn = EnhancedHTTPConnection(self.host)
-        self.assertEqual(conn.timeout, util.DEFAULT_TIMEOUT)
-        self.assertEqual(conn.enhanced_timeout.request, util.DEFAULT_TIMEOUT)
-        self.assertEqual(conn.enhanced_timeout.connect, util.DEFAULT_TIMEOUT)
-
-        conn = EnhancedHTTPConnection(self.host, timeout=3)
-        self.assertEqual(conn.enhanced_timeout.request, 3)
-        self.assertEqual(conn.enhanced_timeout.connect, util.DEFAULT_TIMEOUT)
-        self.assertEqual(conn.timeout, 3)
-
     def test_post_url(self):
         r = self.pool.request('POST', '/specific_method',
                                fields={'method': 'POST'})

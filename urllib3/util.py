@@ -100,9 +100,9 @@ class Timeout(object):
             self.total is not DEFAULT_TIMEOUT and
             self.request is not None and
             self.request is not DEFAULT_TIMEOUT):
-            return min(self.total - time_elapsed, self.request)
+            return max(0, min(self.total - time_elapsed, self.request))
         elif self.total is not None and self.total is not DEFAULT_TIMEOUT:
-            return self.total - time_elapsed
+            return max(0, self.total - time_elapsed)
         else:
             return self.request
 

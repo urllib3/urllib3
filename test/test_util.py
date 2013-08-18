@@ -2,7 +2,15 @@ import unittest
 import logging
 
 from urllib3 import add_stderr_logger
-from urllib3.util import get_host, make_headers, split_first, parse_url, Url
+from urllib3.util import (
+    DEFAULT_TIMEOUT,
+    get_host,
+    make_headers,
+    split_first,
+    parse_url,
+    Timeout,
+    Url,
+)
 from urllib3.exceptions import LocationParseError
 
 
@@ -164,3 +172,22 @@ class TestUtil(unittest.TestCase):
 
         logger.debug('Testing add_stderr_logger')
         logger.removeHandler(handler)
+
+    def test_timeout(self):
+        timeout = Timeout(total=3)
+        self.assertEqual(timeout.get_request_timeout(0), 3)
+        self.assertEqual(timeout.get_request_timeout(1), 2)
+        self.assertEqual(timeout.get_connect_timeout(), 3)
+
+        timeout = Timeout(total=3, connect=2)
+        self.assertEqual(timeout.get_connect_timeout(), 2)
+
+        timeout = Timeout()
+        self.assertEqual(timeout.get_connect_timeout(), DEFAULT_TIMEOUT)
+
+        timeout = Timeout(total=10, request=7)
+        self.assertEqual(timeout.get_request_timeout(0), 7)
+        self.assertEqual(timeout.get_request_timeout(5), 5)
+        self.assertEqual(timeout.get_request_timeout(11), 0)
+
+

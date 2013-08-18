@@ -1,6 +1,10 @@
 import unittest
 
-from urllib3.connectionpool import connection_from_url, HTTPConnectionPool
+from urllib3.connectionpool import (
+    connection_from_url,
+    EnhancedHTTPConnection,
+    HTTPConnectionPool,
+)
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
     ClosedPoolError,
@@ -51,6 +55,26 @@ class TestConnectionPool(unittest.TestCase):
         for a, b in not_same_host:
             c = connection_from_url(a)
             self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
+
+
+    def test_enhanced_conn(self):
+        conn = self.pool._new_conn()
+        self.assertEqual(conn.__class__, EnhancedHTTPConnection)
+        self.assertEqual(conn.enhanced_timeout.__class__, util.Timeout)
+        self.assertEqual(conn.enhanced_timeout.request, None)
+        self.assertEqual(conn.enhanced_timeout.connect, util.DEFAULT_TIMEOUT)
+        self.assertEqual(conn.enhanced_timeout.total, util.DEFAULT_TIMEOUT)
+
+        conn = EnhancedHTTPConnection(self.host)
+        self.assertEqual(conn.timeout, util.DEFAULT_TIMEOUT)
+        self.assertEqual(conn.enhanced_timeout.request, util.DEFAULT_TIMEOUT)
+        self.assertEqual(conn.enhanced_timeout.connect, util.DEFAULT_TIMEOUT)
+
+        conn = EnhancedHTTPConnection(self.host, timeout=3)
+        self.assertEqual(conn.enhanced_timeout.request, 3)
+        self.assertEqual(conn.enhanced_timeout.connect, util.DEFAULT_TIMEOUT)
+        self.assertEqual(conn.timeout, 3)
+
 
     def test_max_connections(self):
         pool = HTTPConnectionPool(host='localhost', maxsize=1, block=True)
@@ -165,7 +189,6 @@ class TestConnectionPool(unittest.TestCase):
         self.assertRaises(ClosedPoolError, pool._get_conn)
 
         self.assertRaises(Empty, old_pool_queue.get, block=False)
-
 
 
 if __name__ == '__main__':
