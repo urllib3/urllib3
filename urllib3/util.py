@@ -50,11 +50,40 @@ class Timeout(object):
         succeed. This can be an int or a float. None will default
         the request timeout to the system default, probably
         :attribute:`socket._GLOBAL_DEFAULT_TIMEOUT`.
+
+    :param total:
+        The maximum amount of time to wait for an HTTP request to connect and
+        return. This combines the connect and request timeouts into one. In the
+        event that both are specified, the shorter timeout will be applied.
     """
 
-    def __init__(self, connect=None, request=None):
+
+    def __init__(self, connect=None, request=None, total=None):
         self.connect = connect
         self.request = request
+        self.total = total
+
+
+    def get_connect_timeout(self):
+        if self.total is not None:
+            return min(self.connect, self.total)
+        return self.connect
+
+
+    def get_request_timeout(self, time_elapsed):
+        """ Get the value for the request timeout.
+
+        This assumes some time has elapsed in the connection timeout and
+        computes the request timeout appropriately.
+
+        :param time_elapsed: The amount of time elapsed during the connection
+        """
+        if self.total is not None and self.request is not None:
+            return min(self.total - time_elapsed, self.request)
+        elif self.total is not None:
+            return self.total - time_elapsed
+        else:
+            return self.request
 
 
 class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment'])):

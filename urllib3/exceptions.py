@@ -76,7 +76,19 @@ class HostChangedError(RequestError):
 
 
 class TimeoutError(RequestError):
-    "Raised when a socket timeout occurs."
+    """ Raised when a socket error occurs. """
+    pass
+
+
+class RequestTimeoutError(TimeoutError):
+    "Raised when a socket timeout occurs while sending/receiving data from a server"
+    pass
+
+
+# This timeout error does not have a URL attached and needs to inherit from the
+# base HTTPError
+class ConnectTimeoutError(HTTPError):
+    "Raised when a socket timeout occurs while connecting to a server"
     pass
 
 

@@ -7,12 +7,17 @@ try:
 except:
     from urllib import urlencode
 
-from urllib3 import encode_multipart_formdata, HTTPConnectionPool
+from urllib3 import (
+    encode_multipart_formdata,
+    HTTPConnectionPool,
+)
+from urllib3.connectionpool import EnhancedHTTPConnection, _DEFAULT_TIMEOUT
 from urllib3.exceptions import (
+    ConnectTimeoutError,
     EmptyPoolError,
     DecodeError,
     MaxRetryError,
-    TimeoutError,
+    RequestTimeoutError,
 )
 from urllib3.packages.six import u
 from urllib3 import util
@@ -20,11 +25,15 @@ from socket import timeout as SocketTimeout
 
 from dummyserver.testcase import HTTPDummyServerTestCase
 
+from nose.tools import timed
 
 log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
+# We need a host that will not immediately close the connection with a TCP
+# Reset. SO suggests this hostname
+TARPIT_HOST = '10.255.255.1'
 
 class TestConnectionPool(HTTPDummyServerTestCase):
 
@@ -35,6 +44,23 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('GET', '/specific_method',
                                fields={'method': 'GET'})
         self.assertEqual(r.status, 200, r.data)
+
+    def test_enhanced_conn(self):
+        conn = self.pool._new_conn()
+        self.assertEqual(conn.__class__, EnhancedHTTPConnection)
+        self.assertEqual(conn.enhanced_timeout.__class__, util.Timeout)
+        self.assertEqual(conn.enhanced_timeout.request, None)
+        self.assertEqual(conn.enhanced_timeout.connect, None)
+        self.assertEqual(conn.enhanced_timeout.total, None)
+
+        conn = EnhancedHTTPConnection(self.host)
+        self.assertEqual(conn.timeout, _DEFAULT_TIMEOUT)
+        self.assertEqual(conn.enhanced_timeout.request, _DEFAULT_TIMEOUT)
+        self.assertEqual(conn.enhanced_timeout.connect, None)
+
+        conn = EnhancedHTTPConnection(self.host, timeout=3)
+        self.assertEqual(conn.enhanced_timeout.request, 3)
+        self.assertEqual(conn.timeout, 3)
 
     def test_post_url(self):
         r = self.pool.request('POST', '/specific_method',
@@ -102,7 +128,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         url = '/sleep?seconds=0.005'
         # Pool-global timeout
         pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
-        self.assertRaises(TimeoutError, pool.request, 'GET', url)
+        self.assertRaises(RequestTimeoutError, pool.request, 'GET', url)
 
     def test_timeout(self):
         url = '/sleep?seconds=0.005'
@@ -116,7 +142,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                           conn, 'GET', url)
         pool._put_conn(conn)
 
-        self.assertRaises(TimeoutError, pool.request, 'GET', url)
+        self.assertRaises(RequestTimeoutError, pool.request, 'GET', url)
 
         # Request-specific timeout
         pool = HTTPConnectionPool(self.host, self.port, timeout=0.5)
@@ -126,8 +152,44 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                           conn, 'GET', url, timeout=timeout)
         pool._put_conn(conn)
 
-        self.assertRaises(TimeoutError, pool.request,
+        self.assertRaises(RequestTimeoutError, pool.request,
                           'GET', url, timeout=timeout)
+
+    @timed(0.1)
+    def test_connect_timeout(self):
+        url = '/sleep'
+        timeout = util.Timeout(connect=0.001)
+
+        # Pool-global timeout
+        pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', url)
+        pool._put_conn(conn)
+        self.assertRaises(ConnectTimeoutError, pool.request, 'GET', url)
+
+        # Request-specific connection timeouts
+        big_timeout = util.Timeout(request=0.5, connect=0.5)
+        pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=big_timeout)
+        conn = pool._get_conn()
+        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET',
+                          url, timeout=timeout)
+
+        pool._put_conn(conn)
+        self.assertRaises(ConnectTimeoutError, pool.request, 'GET', url,
+                          timeout=timeout)
+
+
+    @timed(0.1)
+    def test_total_timeout(self):
+        url = '/sleep?seconds=0.005'
+        timeout = util.Timeout(connect=3, request=5, total=0.001)
+        pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', url)
+
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        self.assertRaises(SocketTimeout, pool._make_request, conn, 'GET', url)
 
     def test_redirect(self):
         r = self.pool.request('GET', '/redirect', fields={'target': '/'}, redirect=False)
