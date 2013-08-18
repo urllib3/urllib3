@@ -1,4 +1,4 @@
-.PHONY : venv clean install test
+.PHONY : venv clean install test docs
 
 venv:
 	virtualenv venv
@@ -12,3 +12,7 @@ install: venv
 
 test:
 	. venv/bin/activate; nosetests
+
+docs:
+	. venv/bin/activate; pip install sphinx
+	cd docs && make html
