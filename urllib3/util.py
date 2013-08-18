@@ -7,7 +7,7 @@
 
 from base64 import b64encode
 from collections import namedtuple
-from socket import error as SocketError
+from socket import error as SocketError, _GLOBAL_DEFAULT_TIMEOUT
 from hashlib import md5, sha1
 from binascii import hexlify, unhexlify
 
@@ -35,6 +35,12 @@ from .packages import six
 from .exceptions import LocationParseError, SSLError
 
 
+_Default = object()
+# The default timeout to use for socket connections. This is the attribute used
+# by httplib to define the default timeout
+DEFAULT_TIMEOUT = _GLOBAL_DEFAULT_TIMEOUT
+
+
 class Timeout(object):
     """
     Utility object for storing timeout values.
@@ -58,14 +64,24 @@ class Timeout(object):
     """
 
 
-    def __init__(self, connect=None, request=None, total=None):
-        self.connect = connect
-        self.request = request
-        self.total = total
+    def __init__(self, connect=_Default, request=_Default, total=_Default):
+        if connect is _Default:
+            self.connect = DEFAULT_TIMEOUT
+        else:
+            self.connect = connect
+        if request is _Default:
+            self.request = DEFAULT_TIMEOUT
+        else:
+            self.request = request
+
+        if total is _Default:
+            self.total = DEFAULT_TIMEOUT
+        else:
+            self.total = total
 
 
     def get_connect_timeout(self):
-        if self.total is not None:
+        if self.total is not None and self.total is not DEFAULT_TIMEOUT:
             return min(self.connect, self.total)
         return self.connect
 
@@ -78,9 +94,12 @@ class Timeout(object):
 
         :param time_elapsed: The amount of time elapsed during the connection
         """
-        if self.total is not None and self.request is not None:
+        if (self.total is not None and
+            self.total is not DEFAULT_TIMEOUT and
+            self.request is not None and
+            self.request is not DEFAULT_TIMEOUT):
             return min(self.total - time_elapsed, self.request)
-        elif self.total is not None:
+        elif self.total is not None and self.total is not DEFAULT_TIMEOUT:
             return self.total - time_elapsed
         else:
             return self.request

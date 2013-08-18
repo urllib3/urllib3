@@ -11,7 +11,7 @@ from urllib3 import (
     encode_multipart_formdata,
     HTTPConnectionPool,
 )
-from urllib3.connectionpool import EnhancedHTTPConnection, _DEFAULT_TIMEOUT
+from urllib3.connectionpool import EnhancedHTTPConnection
 from urllib3.exceptions import (
     ConnectTimeoutError,
     EmptyPoolError,
@@ -50,16 +50,17 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(conn.__class__, EnhancedHTTPConnection)
         self.assertEqual(conn.enhanced_timeout.__class__, util.Timeout)
         self.assertEqual(conn.enhanced_timeout.request, None)
-        self.assertEqual(conn.enhanced_timeout.connect, None)
-        self.assertEqual(conn.enhanced_timeout.total, None)
+        self.assertEqual(conn.enhanced_timeout.connect, util.DEFAULT_TIMEOUT)
+        self.assertEqual(conn.enhanced_timeout.total, util.DEFAULT_TIMEOUT)
 
         conn = EnhancedHTTPConnection(self.host)
-        self.assertEqual(conn.timeout, _DEFAULT_TIMEOUT)
-        self.assertEqual(conn.enhanced_timeout.request, _DEFAULT_TIMEOUT)
-        self.assertEqual(conn.enhanced_timeout.connect, None)
+        self.assertEqual(conn.timeout, util.DEFAULT_TIMEOUT)
+        self.assertEqual(conn.enhanced_timeout.request, util.DEFAULT_TIMEOUT)
+        self.assertEqual(conn.enhanced_timeout.connect, util.DEFAULT_TIMEOUT)
 
         conn = EnhancedHTTPConnection(self.host, timeout=3)
         self.assertEqual(conn.enhanced_timeout.request, 3)
+        self.assertEqual(conn.enhanced_timeout.connect, util.DEFAULT_TIMEOUT)
         self.assertEqual(conn.timeout, 3)
 
     def test_post_url(self):

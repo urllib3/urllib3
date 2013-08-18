@@ -10,7 +10,7 @@ import time
 
 from socket import error as SocketError, timeout as SocketTimeout
 from .util import (resolve_cert_reqs, resolve_ssl_version, assert_fingerprint,
-                   Timeout)
+                   DEFAULT_TIMEOUT, Timeout)
 
 try: # Python 3
     from http.client import HTTPConnection, HTTPException
@@ -71,7 +71,6 @@ log = logging.getLogger(__name__)
 _Default = object()
 # The default timeout to use for socket connections. This is the attribute used
 # by httplib to define the default timeout
-_DEFAULT_TIMEOUT = socket._GLOBAL_DEFAULT_TIMEOUT
 
 port_by_scheme = {
     'http': HTTP_PORT,
@@ -82,7 +81,7 @@ class EnhancedHTTPConnection(HTTPConnection):
     """ A :class:`httplib.HTTPConnection` that supports connection timeouts """
 
     def __init__(self, host, port=None, strict=None, source_address=None,
-                 timeout=_DEFAULT_TIMEOUT):
+                 timeout=DEFAULT_TIMEOUT):
         """ Create a new EnhancedHTTPConnection.
 
         This function is necessary to set our connect timeout value, otherwise
@@ -97,6 +96,7 @@ class EnhancedHTTPConnection(HTTPConnection):
                                     source_address=source_address,
                                     timeout=timeout.request)
         else:
+            # This branch is for backwards compatibility, can be removed later
             self.enhanced_timeout = Timeout(request=timeout)
             HTTPConnection.__init__(self, host, port=port, strict=strict,
                                     source_address=source_address,
@@ -256,7 +256,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         Socket timeout in seconds for each individual connection. This can
         be a float or integer , which sets the timeout for the HTTP request,
         or an instance of :class:`urllib3.util.Timeout` which gives you more
-        fine-grained control over request timeouts. None disables timeout.
+        fine-grained control over request timeouts.
 
     :param maxsize:
         Number of connections to save that can be reused. More than 1 is useful
@@ -293,6 +293,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         self.strict = strict
 
+        # This is for backwards compatibility and can be removed once a timeout
+        # can only be set to a Timeout object
         if not isinstance(timeout, Timeout):
             timeout = Timeout(request=timeout)
 
@@ -394,6 +396,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if timeout is _Default:
             timeout = self.timeout
 
+        # This is for backwards compatibility, can be removed later
         if isinstance(timeout, Timeout):
             conn.enhanced_timeout = timeout
 
@@ -497,7 +500,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         :param timeout:
             If specified, overrides the default timeout for this one request.
-            It may be a float (in seconds).
+            It may be a float (in seconds) or an instance of
+            :class:`urllib3.util.Timeout`.
 
         :param pool_timeout:
             If set and the pool is set to block=True, then this method will
@@ -527,6 +531,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if timeout is _Default:
             timeout = self.timeout
 
+        # This is for backwards compatibility, can be removed later
         if not isinstance(timeout, Timeout):
             timeout = Timeout(request=timeout)
 
