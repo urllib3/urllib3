@@ -7,8 +7,8 @@ clean:
 	rm -rf venv *.egg
 
 install: venv
-	. venv/bin/activate; python setup.py develop
 	. venv/bin/activate; pip install -r test-requirements.txt --use-mirrors
+	. venv/bin/activate; python setup.py develop
 
 test:
-	nosetests
+	. venv/bin/activate; nosetests
