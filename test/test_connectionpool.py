@@ -5,6 +5,7 @@ from urllib3.connectionpool import (
     EnhancedHTTPConnection,
     HTTPConnectionPool,
 )
+from urllib3.util import Timeout, DEFAULT_TIMEOUT
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
     ClosedPoolError,
@@ -58,21 +59,22 @@ class TestConnectionPool(unittest.TestCase):
 
 
     def test_enhanced_conn(self):
-        conn = self.pool._new_conn()
+        pool = HTTPConnectionPool(host='localhost')
+        conn = pool._new_conn()
         self.assertEqual(conn.__class__, EnhancedHTTPConnection)
-        self.assertEqual(conn.enhanced_timeout.__class__, util.Timeout)
+        self.assertEqual(conn.enhanced_timeout.__class__, Timeout)
         self.assertEqual(conn.enhanced_timeout.request, None)
-        self.assertEqual(conn.enhanced_timeout.connect, util.DEFAULT_TIMEOUT)
-        self.assertEqual(conn.enhanced_timeout.total, util.DEFAULT_TIMEOUT)
+        self.assertEqual(conn.enhanced_timeout.connect, DEFAULT_TIMEOUT)
+        self.assertEqual(conn.enhanced_timeout.total, DEFAULT_TIMEOUT)
 
-        conn = EnhancedHTTPConnection(self.host)
-        self.assertEqual(conn.timeout, util.DEFAULT_TIMEOUT)
-        self.assertEqual(conn.enhanced_timeout.request, util.DEFAULT_TIMEOUT)
-        self.assertEqual(conn.enhanced_timeout.connect, util.DEFAULT_TIMEOUT)
+        conn = EnhancedHTTPConnection(host='localhost')
+        self.assertEqual(conn.timeout, DEFAULT_TIMEOUT)
+        self.assertEqual(conn.enhanced_timeout.request, DEFAULT_TIMEOUT)
+        self.assertEqual(conn.enhanced_timeout.connect, DEFAULT_TIMEOUT)
 
-        conn = EnhancedHTTPConnection(self.host, timeout=3)
+        conn = EnhancedHTTPConnection(host='localhost', timeout=3)
         self.assertEqual(conn.enhanced_timeout.request, 3)
-        self.assertEqual(conn.enhanced_timeout.connect, util.DEFAULT_TIMEOUT)
+        self.assertEqual(conn.enhanced_timeout.connect, DEFAULT_TIMEOUT)
         self.assertEqual(conn.timeout, 3)
 
 

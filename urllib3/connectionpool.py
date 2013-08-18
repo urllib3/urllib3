@@ -80,8 +80,8 @@ port_by_scheme = {
 class EnhancedHTTPConnection(HTTPConnection):
     """ A :class:`httplib.HTTPConnection` that supports connection timeouts """
 
-    def __init__(self, host, port=None, strict=None, source_address=None,
-                 timeout=DEFAULT_TIMEOUT):
+    def __init__(self, host, port=None, strict=None, timeout=DEFAULT_TIMEOUT,
+                 source_address=None):
         """ Create a new EnhancedHTTPConnection.
 
         This function is necessary to set our connect timeout value, otherwise
@@ -106,7 +106,7 @@ class EnhancedHTTPConnection(HTTPConnection):
         """ Create a connection and return the timed request timeout """
         try:
             start = time.time()
-            self.sock = socket.create_connection(
+            sock = socket.create_connection(
                 (self.host, self.port),
                 self.enhanced_timeout.get_connect_timeout(),
                 self.source_address)
@@ -116,12 +116,12 @@ class EnhancedHTTPConnection(HTTPConnection):
                 self, "Connection to %s timed out. (connect timeout=%s)" %
                 (self.host, self.enhanced_timeout.connect))
 
-        return self.enhanced_timeout.get_request_timeout(elapsed)
+        return sock, self.enhanced_timeout.get_request_timeout(elapsed)
 
     def _untimed_connect(self):
         """ Create a connection and return the request timeout """
         try:
-            self.sock = socket.create_connection(
+            sock = socket.create_connection(
                 (self.host, self.port),
                 self.enhanced_timeout.get_connect_timeout(),
                 self.source_address)
@@ -130,7 +130,7 @@ class EnhancedHTTPConnection(HTTPConnection):
                 self, "Connection to %s timed out. (connect timeout=%s)" %
                 (self.host, self.enhanced_timeout.connect))
 
-        return self.request
+        return sock, self.request
 
 
     def connect(self):
@@ -142,16 +142,17 @@ class EnhancedHTTPConnection(HTTPConnection):
         to the new request timeout.
         """
         if self.enhanced_timeout.total is not None:
-            request_timeout = self._timed_connect()
+            self.sock, request_timeout = self._timed_connect()
         else:
-            request_timeout = self._untimed_connect()
+            self.sock, request_timeout = self._untimed_connect()
 
         try:
             self.sock.settimeout(request_timeout)
-        except TypeError:
+        except (TypeError, ValueError):
             # the _DEFAULT_TIMEOUT can be an object, which means setting the
             # timeout fails. in this case we did not mean to set the timeout to
-            # a specific value and we pass
+            # a specific value and we pass.
+            # If request_timeout is negative a ValueError is raised, ignore this
             pass
 
         if self._tunnel_host:
@@ -159,7 +160,49 @@ class EnhancedHTTPConnection(HTTPConnection):
 
 ## Connection objects (extension of httplib)
 
-class VerifiedHTTPSConnection(HTTPSConnection):
+class EnhancedHTTPSConnection(EnhancedHTTPConnection):
+    """ Like a :class:`httplib.HTTPSConnection`, but allowing the user to set
+    the timeout to a :class:`urllib.util.Timeout` object
+
+    :param timeout:
+        Socket timeout in seconds for each individual connection. This can
+        be a float or integer , which sets the timeout for the HTTP request,
+        or an instance of :class:`urllib3.util.Timeout` which gives you more
+        fine-grained control over request timeouts.
+    """
+    default_port = HTTPS_PORT
+
+    def __init__(self, host, port=None, key_file=None, cert_file=None,
+                 strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+                 source_address=None):
+        EnhancedHTTPConnection.__init__(self, host, port, strict, timeout,
+                                        source_address)
+        self.key_file = key_file
+        self.cert_file = cert_file
+
+    def connect(self):
+        "Connect to a host on a given (SSL) port."
+
+        if self.enhanced_timeout.total is not None:
+            sock, request_timeout = self._timed_connect()
+        else:
+            sock, request_timeout = self._untimed_connect()
+
+        try:
+            sock.settimeout(request_timeout)
+        except (TypeError, ValueError):
+            # the _DEFAULT_TIMEOUT can be an object, which means setting the
+            # timeout fails. in this case we did not mean to set the timeout to
+            # a specific value and we pass.
+            # If request_timeout is negative a ValueError is raised, ignore this
+            pass
+
+        if self._tunnel_host:
+            self.sock = sock
+            self._tunnel()
+        self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file)
+
+class VerifiedHTTPSConnection(EnhancedHTTPSConnection):
     """
     Based on httplib.HTTPSConnection but wraps the socket with
     SSL certification.
@@ -182,10 +225,21 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     def connect(self):
         # Add certificate verification
         try:
-            sock = socket.create_connection((self.host, self.port),
-                                            self.timeout)
+            if self.enhanced_timeout.total is not None:
+                sock, request_timeout = self._timed_connect()
+            else:
+                sock, request_timeout = self._untimed_connect()
         except SocketError as e:
             raise ProxyError('Cannot connect to proxy. Socket error: %s.' % e)
+
+        try:
+            sock.settimeout(request_timeout)
+        except (TypeError, ValueError):
+            # the _DEFAULT_TIMEOUT can be an object, which means setting the
+            # timeout fails. in this case we did not mean to set the timeout to
+            # a specific value and we pass.
+            # If request_timeout is negative a ValueError is raised, ignore this
+            pass
 
         resolved_cert_reqs = resolve_cert_reqs(self.cert_reqs)
         resolved_ssl_version = resolve_ssl_version(self.ssl_version)

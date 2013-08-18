@@ -11,7 +11,6 @@ from urllib3 import (
     encode_multipart_formdata,
     HTTPConnectionPool,
 )
-from urllib3.connectionpool import EnhancedHTTPConnection
 from urllib3.exceptions import (
     ConnectTimeoutError,
     EmptyPoolError,
