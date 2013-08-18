@@ -47,20 +47,22 @@ class Timeout(object):
 
     :param connect:
         The maximum amount of time to wait for a connection attempt to a server
-        to succeed. This can be an int or a float. None will default the
-        connection timeout to the system default, probably
+        to succeed. This can be an int or a float. Omitting the parameter
+        will default the request timeout to the system default, probably
         :attribute:`socket._GLOBAL_DEFAULT_TIMEOUT`.
 
     :param request:
         The maximum amount of time to wait for an HTTP request to
-        succeed. This can be an int or a float. None will default
-        the request timeout to the system default, probably
+        succeed. This can be an int or a float. Omitting the parameter
+        will default the request timeout to the system default, probably
         :attribute:`socket._GLOBAL_DEFAULT_TIMEOUT`.
 
     :param total:
         The maximum amount of time to wait for an HTTP request to connect and
-        return. This combines the connect and request timeouts into one. In the
-        event that both are specified, the shorter timeout will be applied.
+        return. This combines the connect and request timeouts into one. In
+        the event that both a connect timeout and a total are specified, or a
+        request timeout and a total are specified, the shorter timeout will be
+        applied.
     """
 
 
