@@ -35,6 +35,28 @@ from .packages import six
 from .exceptions import LocationParseError, SSLError
 
 
+class Timeout(object):
+    """
+    Utility object for storing timeout values.
+
+    :param connect:
+        The maximum amount of time to wait for a connection attempt to a server
+        to succeed. This can be an int or a float. None will default the
+        connection timeout to the system default, probably
+        :attribute:`socket._GLOBAL_DEFAULT_TIMEOUT`.
+
+    :param request:
+        The maximum amount of time to wait for an HTTP request to
+        succeed. This can be an int or a float. None will default
+        the request timeout to the system default, probably
+        :attribute:`socket._GLOBAL_DEFAULT_TIMEOUT`.
+    """
+
+    def __init__(self, connect=None, request=None):
+        self.connect = connect
+        self.request = request
+
+
 class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment'])):
     """
     Datastructure for representing an HTTP URL. Used as a return value for

@@ -119,7 +119,8 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
+        timeout = util.Timeout(request=0.001)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
 
         self.assertRaises(TimeoutError, pool.request, 'GET', '/', retries=0)
 

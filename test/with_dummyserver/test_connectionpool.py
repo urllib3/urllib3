@@ -15,6 +15,7 @@ from urllib3.exceptions import (
     TimeoutError,
 )
 from urllib3.packages.six import u
+from urllib3 import util
 from socket import timeout as SocketTimeout
 
 from dummyserver.testcase import HTTPDummyServerTestCase
@@ -97,9 +98,15 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('POST', '/upload', fields=fields)
         self.assertEqual(r.status, 200, r.data)
 
+    def test_timeout_float(self):
+        url = '/sleep?seconds=0.005'
+        # Pool-global timeout
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
+        self.assertRaises(TimeoutError, pool.request, 'GET', url)
+
     def test_timeout(self):
         url = '/sleep?seconds=0.005'
-        timeout = 0.001
+        timeout = util.Timeout(request=0.001)
 
         # Pool-global timeout
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)

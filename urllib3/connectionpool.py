@@ -6,10 +6,10 @@
 
 import logging
 import socket
-import errno
 
 from socket import error as SocketError, timeout as SocketTimeout
-from .util import resolve_cert_reqs, resolve_ssl_version, assert_fingerprint
+from .util import (resolve_cert_reqs, resolve_ssl_version, assert_fingerprint,
+                   Timeout)
 
 try: # Python 3
     from http.client import HTTPConnection, HTTPException
@@ -170,8 +170,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         :class:`httplib.HTTPConnection`.
 
     :param timeout:
-        Socket timeout in seconds for each individual connection, can be
-        a float. None disables timeout.
+        Socket timeout in seconds for each individual connection. This can
+        be a float or integer , which sets the timeout for the HTTP request,
+        or an instance of :class:`urllib3.util.Timeout` which gives you more
+        fine-grained control over request timeouts. None disables timeout.
 
     :param maxsize:
         Number of connections to save that can be reused. More than 1 is useful
@@ -207,7 +209,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         RequestMethods.__init__(self, headers)
 
         self.strict = strict
+
+        if not isinstance(timeout, Timeout):
+            timeout = Timeout(request=timeout)
+
         self.timeout = timeout
+
         self.pool = self.QueueCls(maxsize)
         self.block = block
 
@@ -305,13 +312,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if timeout is _Default:
             timeout = self.timeout
 
-        conn.timeout = timeout # This only does anything in Py26+
+        conn.timeout = timeout.request # This only does anything in Py26+
         conn.request(method, url, **httplib_request_kw)
 
         # Set timeout
         sock = getattr(conn, 'sock', False) # AppEngine doesn't have sock attr.
         if sock:
-            sock.settimeout(timeout)
+            sock.settimeout(timeout.request)
 
         try: # Python 2.7+, use buffering of HTTP responses
             httplib_response = conn.getresponse(buffering=True)
@@ -434,6 +441,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if timeout is _Default:
             timeout = self.timeout
+
+        if not isinstance(timeout, Timeout):
+            timeout = Timeout(request=timeout)
 
         if release_conn is None:
             release_conn = response_kw.get('preload_content', True)
