@@ -82,6 +82,13 @@ class Timeout(object):
             self.total = total
 
 
+    def __str__(self):
+        return '%s(connect=%r, request=%r, total=%r)' % (type(self).__name__,
+                                                         self.connect,
+                                                         self.request,
+                                                         self.total)
+
+
     def get_connect_timeout(self):
         if self.total is not None and self.total is not DEFAULT_TIMEOUT:
             return min(self.connect, self.total)
