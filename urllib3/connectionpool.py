@@ -149,7 +149,7 @@ class EnhancedHTTPConnection(HTTPConnection):
         try:
             self.sock.settimeout(request_timeout)
         except (TypeError, ValueError):
-            # the _DEFAULT_TIMEOUT can be an object, which means setting the
+            # the DEFAULT_TIMEOUT can be an object, which means setting the
             # timeout fails. in this case we did not mean to set the timeout to
             # a specific value and we pass.
             # If request_timeout is negative a ValueError is raised, ignore this
@@ -173,8 +173,7 @@ class EnhancedHTTPSConnection(EnhancedHTTPConnection):
     default_port = HTTPS_PORT
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
-                 strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-                 source_address=None):
+                 strict=None, timeout=DEFAULT_TIMEOUT, source_address=None):
         EnhancedHTTPConnection.__init__(self, host, port, strict, timeout,
                                         source_address)
         self.key_file = key_file
@@ -460,7 +459,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Set timeout
         sock = getattr(conn, 'sock', False) # AppEngine doesn't have sock attr.
         if sock:
-            sock.settimeout(timeout.get_request_timeout(0))
+            try:
+                sock.settimeout(timeout.get_request_timeout(0))
+            except (TypeError, ValueError):
+                # the _DEFAULT_TIMEOUT can be an object, which means setting the
+                # timeout fails. in this case we did not mean to set the timeout to
+                # a specific value and we pass.
+                # If request_timeout is negative a ValueError is raised, ignore this
+                pass
 
         try: # Python 2.7+, use buffering of HTTP responses
             httplib_response = conn.getresponse(buffering=True)
@@ -638,6 +644,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         except BaseSSLError as e:
             # SSL certificate error
+            if 'timed out' in str(e):
+                raise RequestTimeoutError(self, url,
+                                          "Request timed out. (timeout=%s)" %
+                                          timeout)
             raise SSLError(e)
 
         except CertificateError as e:
@@ -756,7 +766,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     def _new_conn(self):
         """
-        Return a fresh :class:`httplib.HTTPSConnection`.
+        Return a fresh :class:`urllib3.connectionpool.EnhancedHTTPSConnection`.
         """
         self.num_connections += 1
         log.info("Starting new HTTPS connection (%d): %s"
@@ -772,12 +782,12 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             if not HTTPSConnection or HTTPSConnection is object:
                 raise SSLError("Can't connect to HTTPS URL because the SSL "
                                "module is not available.")
-            connection_class = HTTPSConnection
+            connection_class = EnhancedHTTPSConnection
         else:
             connection_class = VerifiedHTTPSConnection
 
         connection = connection_class(host=actual_host, port=actual_port,
-                                      strict=self.strict)
+                                      strict=self.strict, timeout=self.timeout)
 
         return self._prepare_conn(connection)
 

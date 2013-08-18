@@ -190,4 +190,9 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(timeout.get_request_timeout(5), 5)
         self.assertEqual(timeout.get_request_timeout(11), 0)
 
+        timeout = Timeout(total=None, request=None, connect=None)
+        self.assertEqual(timeout.get_connect_timeout(), None)
+        self.assertEqual(timeout.get_request_timeout(0), None)
+        self.assertEqual(timeout.total, None)
+
 

@@ -173,6 +173,18 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         conn = pool._get_conn()
         self.assertRaises(SocketTimeout, pool._make_request, conn, 'GET', url)
 
+        timeout = util.Timeout(total=None, connect=0.001)
+        pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET',
+                          url)
+
+    def test_timeout_success(self):
+        timeout = util.Timeout(connect=3, request=5, total=None)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        pool.request('GET', '/')
+
+
     def test_redirect(self):
         r = self.pool.request('GET', '/redirect', fields={'target': '/'}, redirect=False)
         self.assertEqual(r.status, 303)
