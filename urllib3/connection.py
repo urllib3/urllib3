@@ -56,7 +56,7 @@ class HTTPConnection(_HTTPConnection):
         """Connect to the host and port specified in __init__ with connect_timeout instead of timeout."""
         try:
             self.sock = socket.create_connection((self.host, self.port), self.connect_timeout)
-        except SocketTimeout, err:
+        except SocketTimeout:
             raise InnerConnectionTimeoutError()
 
         if self.timeout is socket._GLOBAL_DEFAULT_TIMEOUT:
@@ -89,7 +89,7 @@ if ssl:
             """Connect to the host and port specified in __init__ with connect_timeout instead of timeout."""
             try:
                 sock = socket.create_connection((self.host, self.port), self.connect_timeout, self.source_address)
-            except SocketTimeout, err:
+            except SocketTimeout:
                 raise InnerConnectionTimeoutError()
 
             if self.timeout is socket._GLOBAL_DEFAULT_TIMEOUT:
