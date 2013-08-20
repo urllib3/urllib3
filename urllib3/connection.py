@@ -88,7 +88,7 @@ if ssl:
         def connect(self):
             """Connect to the host and port specified in __init__ with connect_timeout instead of timeout."""
             try:
-                sock = socket.create_connection((self.host, self.port), self.connect_timeout, self.source_address)
+                sock = socket.create_connection((self.host, self.port), self.connect_timeout)
             except SocketTimeout:
                 raise InnerConnectionTimeoutError()
 

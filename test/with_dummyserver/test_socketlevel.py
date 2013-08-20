@@ -126,7 +126,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 sock = socket.create_connection(("127.0.0.%d" % ipcnt, self.port), 0.001)
             except socket.error:
                 sock = None
-                continue
+                break
             finally:
                 if sock:
                     sock.close()
