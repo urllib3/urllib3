@@ -99,7 +99,7 @@ class EnhancedHTTPConnection(HTTPConnection):
         if isinstance(timeout, Timeout):
             # Call our timeout value enhanced_timeout to avoid type/assignment
             # errors with the parent class
-            self.enhanced_timeout = timeout
+            self.enhanced_timeout = timeout.clone()
             HTTPConnection.__init__(self, host, port=port, strict=strict,
                                     source_address=source_address,
                                     timeout=timeout.request)
@@ -220,15 +220,24 @@ class VerifiedHTTPSConnection(EnhancedHTTPSConnection):
     def connect(self):
         # Add certificate verification
         try:
-            if self.enhanced_timeout.total is not None:
-                sock, request_timeout = self._timed_connect()
-            else:
-                sock, request_timeout = self._untimed_connect()
+            self.enhanced_timeout.start()
+            sock = socket.create_connection(
+                (self.host, self.port),
+                self.enhanced_timeout.get_connect_timeout(),
+                self.source_address)
+            self.enhanced_timeout.stop()
         except SocketError as e:
+            if 'timed out' in str(e):
+                raise ConnectTimeoutError(
+                    self, "Connection to %s timed out. (connect timeout=%s)" %
+                    (self.host, self.enhanced_timeout.connect))
+            # XXX is this the correct error to raise in this case?
             raise ProxyError('Cannot connect to proxy. Socket error: %s.' % e)
 
         try:
-            sock.settimeout(request_timeout)
+            # We've connected, so set the timeout on the socket to the request
+            # timeout
+            sock.settimeout(self.enhanced_timeout.get_request_timeout())
         except (TypeError, ValueError):
             # the _DEFAULT_TIMEOUT can be an object, which means setting the
             # timeout fails. in this case we did not mean to set the timeout to
@@ -303,9 +312,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     :param timeout:
         Socket timeout in seconds for each individual connection. This can
-        be a float or integer , which sets the timeout for the HTTP request,
+        be a float or integer, which sets the timeout for the HTTP request,
         or an instance of :class:`urllib3.util.Timeout` which gives you more
-        fine-grained control over request timeouts.
+        fine-grained control over request timeouts. After the constructor has
+        been parsed, this is always a `urllib3.util.Timeout` object.
 
     :param maxsize:
         Number of connections to save that can be reused. More than 1 is useful
@@ -440,20 +450,27 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         Perform a request on a given httplib connection object taken from our
         pool.
+
+        :param timeout: an instance of :class:`urllib3.util.Timeout`, or an int
+        or float, to be applied to this request
         """
         self.num_requests += 1
 
+        # if unspecified, set the timeout for this connection to the pool
+        # timeout
         if timeout is _Default:
-            timeout = self.timeout.clone()
+            timeout = self.timeout
 
         # This is for backwards compatibility, can be removed later
         if isinstance(timeout, Timeout):
             conn.enhanced_timeout = timeout.clone()
+        else:
+            conn.enhanced_timeout = Timeout(request=timeout)
 
-        # fyi: this calls the httplib.request, not the request() in the
-        # request.py in this library
+        # NB: this calls httplib.request, not the request() in request.py in
+        # this library
         conn.request(method, url, **httplib_request_kw)
-        conn.timeout = timeout.get_request_timeout()
+        conn.timeout = conn.enhanced_timeout.get_request_timeout()
 
         # Set timeout
         sock = getattr(conn, 'sock', False) # AppEngine doesn't have sock attr.
