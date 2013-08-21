@@ -1,5 +1,7 @@
-import unittest
 import logging
+import unittest
+
+from mock import patch
 
 from urllib3 import add_stderr_logger
 from urllib3.util import (
@@ -13,6 +15,10 @@ from urllib3.util import (
 )
 from urllib3.exceptions import LocationParseError
 
+# This number represents a time in seconds, it doesn't mean anything in
+# isolation. Setting to a high-ish value to avoid conflicts with the smaller
+# numbers used for timeouts
+TIMEOUT_EPOCH = 1000
 
 class TestUtil(unittest.TestCase):
     def test_get_host(self):
@@ -173,10 +179,22 @@ class TestUtil(unittest.TestCase):
         logger.debug('Testing add_stderr_logger')
         logger.removeHandler(handler)
 
-    def test_timeout(self):
+    def _make_time_pass(self, seconds, timeout, time_mock):
+        """ Make some time pass for the timeout object """
+        time_mock.return_value = TIMEOUT_EPOCH
+        timeout.start()
+        time_mock.return_value = TIMEOUT_EPOCH + seconds
+        timeout.stop()
+        return timeout
+
+    @patch('urllib3.util.current_time')
+    def test_timeout(self, current_time):
         timeout = Timeout(total=3)
-        self.assertEqual(timeout.get_request_timeout(0), 3)
-        self.assertEqual(timeout.get_request_timeout(1), 2)
+
+        # make 'no time' elapse
+        timeout = self._make_time_pass(seconds=0, timeout=timeout,
+                                       time_mock=current_time)
+        self.assertEqual(timeout.get_request_timeout(), 3)
         self.assertEqual(timeout.get_connect_timeout(), 3)
 
         timeout = Timeout(total=3, connect=2)
@@ -185,14 +203,38 @@ class TestUtil(unittest.TestCase):
         timeout = Timeout()
         self.assertEqual(timeout.get_connect_timeout(), DEFAULT_TIMEOUT)
 
+        # Connect takes 5 seconds, leaving 5 seconds for request
         timeout = Timeout(total=10, request=7)
-        self.assertEqual(timeout.get_request_timeout(0), 7)
-        self.assertEqual(timeout.get_request_timeout(5), 5)
-        self.assertEqual(timeout.get_request_timeout(11), 0)
+        timeout = self._make_time_pass(seconds=5, timeout=timeout,
+                                       time_mock=current_time)
+        self.assertEqual(timeout.get_request_timeout(), 5)
+
+        # Connect takes 2 seconds, request timeout still 7 seconds
+        timeout = Timeout(total=10, request=7)
+        timeout = self._make_time_pass(seconds=2, timeout=timeout,
+                                       time_mock=current_time)
+        self.assertEqual(timeout.get_request_timeout(), 7)
 
         timeout = Timeout(total=None, request=None, connect=None)
         self.assertEqual(timeout.get_connect_timeout(), None)
-        self.assertEqual(timeout.get_request_timeout(0), None)
+        self.assertEqual(timeout.get_request_timeout(), None)
         self.assertEqual(timeout.total, None)
+
+
+    @patch('urllib3.util.current_time')
+    def test_timeout_elapsed(self, current_time):
+        current_time.return_value = TIMEOUT_EPOCH
+        timeout = Timeout(total=3)
+        self.assertRaises(ValueError, timeout.stop)
+        self.assertRaises(ValueError, timeout.get_elapsed)
+
+        timeout.start()
+        self.assertRaises(ValueError, timeout.start)
+
+        current_time.return_value = TIMEOUT_EPOCH + 2
+        self.assertEqual(timeout.get_elapsed(), 2)
+        current_time.return_value = TIMEOUT_EPOCH + 37
+        timeout.stop()
+        self.assertEqual(timeout.get_elapsed(), 37)
 
 

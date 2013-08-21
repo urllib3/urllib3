@@ -78,7 +78,15 @@ port_by_scheme = {
 }
 
 class EnhancedHTTPConnection(HTTPConnection):
-    """ A :class:`httplib.HTTPConnection` that supports connection timeouts """
+    """ A :class:`httplib.HTTPConnection` that supports connection timeouts
+
+    It would be nice not to have to override this class, however the default
+    httplib.py does not allow setting separate connection and request timeouts,
+    see http://hg.python.org/cpython/file/2.7/Lib/httplib.py#l769
+
+    The behavior of this class and httplib.py should differ mainly in the
+    connection timeout setting.
+    """
 
     def __init__(self, host, port=None, strict=None, timeout=DEFAULT_TIMEOUT,
                  source_address=None):
@@ -102,36 +110,6 @@ class EnhancedHTTPConnection(HTTPConnection):
                                     source_address=source_address,
                                     timeout=timeout)
 
-    def _timed_connect(self):
-        """ Create a connection and return the timed request timeout """
-        try:
-            start = time.time()
-            sock = socket.create_connection(
-                (self.host, self.port),
-                self.enhanced_timeout.get_connect_timeout(),
-                self.source_address)
-            elapsed = time.time() - start
-        except SocketTimeout:
-            raise ConnectTimeoutError(
-                self, "Connection to %s timed out. (connect timeout=%s)" %
-                (self.host, self.enhanced_timeout.connect))
-
-        return sock, self.enhanced_timeout.get_request_timeout(elapsed)
-
-    def _untimed_connect(self):
-        """ Create a connection and return the request timeout """
-        try:
-            sock = socket.create_connection(
-                (self.host, self.port),
-                self.enhanced_timeout.get_connect_timeout(),
-                self.source_address)
-        except SocketTimeout:
-            raise ConnectTimeoutError(
-                self, "Connection to %s timed out. (connect timeout=%s)" %
-                (self.host, self.enhanced_timeout.connect))
-
-        return sock, self.request
-
 
     def connect(self):
         """Connect to the host and port specified in __init__.
@@ -141,13 +119,22 @@ class EnhancedHTTPConnection(HTTPConnection):
         :class:`httplib.HTTPConnection`, and then set the timeout on the socket
         to the new request timeout.
         """
-        if self.enhanced_timeout.total is not None:
-            self.sock, request_timeout = self._timed_connect()
-        else:
-            self.sock, request_timeout = self._untimed_connect()
+        try:
+            self.enhanced_timeout.start()
+            self.sock = socket.create_connection(
+                (self.host, self.port),
+                self.enhanced_timeout.get_connect_timeout(),
+                self.source_address)
+            self.enhanced_timeout.stop()
+        except SocketTimeout:
+            raise ConnectTimeoutError(
+                self, "Connection to %s timed out. (connect timeout=%s)" %
+                (self.host, self.enhanced_timeout.connect))
 
         try:
-            self.sock.settimeout(request_timeout)
+            # We've connected, so set the timeout on the socket to the request
+            # timeout
+            self.sock.settimeout(self.enhanced_timeout.get_request_timeout())
         except (TypeError, ValueError):
             # the DEFAULT_TIMEOUT can be an object, which means setting the
             # timeout fails. in this case we did not mean to set the timeout to
@@ -182,13 +169,22 @@ class EnhancedHTTPSConnection(EnhancedHTTPConnection):
     def connect(self):
         "Connect to a host on a given (SSL) port."
 
-        if self.enhanced_timeout.total is not None:
-            sock, request_timeout = self._timed_connect()
-        else:
-            sock, request_timeout = self._untimed_connect()
+        try:
+            self.enhanced_timeout.start()
+            sock = socket.create_connection(
+                (self.host, self.port),
+                self.enhanced_timeout.get_connect_timeout(),
+                self.source_address)
+            self.enhanced_timeout.stop()
+        except SocketTimeout:
+            raise ConnectTimeoutError(
+                self, "Connection to %s timed out. (connect timeout=%s)" %
+                (self.host, self.enhanced_timeout.connect))
 
         try:
-            sock.settimeout(request_timeout)
+            # We've connected, so set the timeout on the socket to the request
+            # timeout
+            sock.settimeout(self.enhanced_timeout.get_request_timeout())
         except (TypeError, ValueError):
             # the _DEFAULT_TIMEOUT can be an object, which means setting the
             # timeout fails. in this case we did not mean to set the timeout to
@@ -374,8 +370,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.num_connections += 1
         log.info("Starting new HTTP connection (%d): %s" %
                  (self.num_connections, self.host))
+        timeout_copy = self.timeout.clone()
         return EnhancedHTTPConnection(host=self.host, port=self.port,
-                                      strict=self.strict, timeout=self.timeout)
+                                      strict=self.strict, timeout=timeout_copy)
 
     def _get_conn(self, timeout=None):
         """
@@ -447,20 +444,22 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.num_requests += 1
 
         if timeout is _Default:
-            timeout = self.timeout
+            timeout = self.timeout.clone()
 
         # This is for backwards compatibility, can be removed later
         if isinstance(timeout, Timeout):
-            conn.enhanced_timeout = timeout
+            conn.enhanced_timeout = timeout.clone()
 
-        conn.timeout = timeout.get_request_timeout(0)
+        # fyi: this calls the httplib.request, not the request() in the
+        # request.py in this library
         conn.request(method, url, **httplib_request_kw)
+        conn.timeout = timeout.get_request_timeout()
 
         # Set timeout
         sock = getattr(conn, 'sock', False) # AppEngine doesn't have sock attr.
         if sock:
             try:
-                sock.settimeout(timeout.get_request_timeout(0))
+                sock.settimeout(timeout.get_request_timeout())
             except (TypeError, ValueError):
                 # the _DEFAULT_TIMEOUT can be an object, which means setting the
                 # timeout fails. in this case we did not mean to set the timeout to
@@ -589,7 +588,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             raise MaxRetryError(self, url)
 
         if timeout is _Default:
-            timeout = self.timeout
+            timeout = self.timeout.clone()
 
         # This is for backwards compatibility, can be removed later
         if not isinstance(timeout, Timeout):

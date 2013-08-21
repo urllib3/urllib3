@@ -6,10 +6,12 @@
 
 
 from base64 import b64encode
-from collections import namedtuple
-from socket import error as SocketError, _GLOBAL_DEFAULT_TIMEOUT
-from hashlib import md5, sha1
 from binascii import hexlify, unhexlify
+from collections import namedtuple
+import copy
+from hashlib import md5, sha1
+from socket import error as SocketError, _GLOBAL_DEFAULT_TIMEOUT
+import time
 
 try:
     from select import poll, POLLIN
@@ -41,6 +43,10 @@ _Default = object()
 DEFAULT_TIMEOUT = _GLOBAL_DEFAULT_TIMEOUT
 
 
+def current_time():
+    """Retrieve the current time, this function is mocked out in unit testing"""
+    return time.time()
+
 class Timeout(object):
     """
     Utility object for storing timeout values.
@@ -67,19 +73,12 @@ class Timeout(object):
 
 
     def __init__(self, connect=_Default, request=_Default, total=_Default):
-        if connect is _Default:
-            self.connect = DEFAULT_TIMEOUT
-        else:
-            self.connect = connect
-        if request is _Default:
-            self.request = DEFAULT_TIMEOUT
-        else:
-            self.request = request
 
-        if total is _Default:
-            self.total = DEFAULT_TIMEOUT
-        else:
-            self.total = total
+        self.connect = DEFAULT_TIMEOUT if connect is _Default else connect
+        self.request = DEFAULT_TIMEOUT if request is _Default else request
+        self.total = DEFAULT_TIMEOUT if total is _Default else total
+        self.elapsed = None
+        self._start = None
 
 
     def __str__(self):
@@ -89,27 +88,62 @@ class Timeout(object):
                                                          self.total)
 
 
+    def clone(self):
+        """ Return a copy of the timeout object """
+        # We can't use copy.deepcopy because that will also create a new object
+        # for _GLOBAL_DEFAULT_TIMEOUT, which socket.py uses as a sentinel to
+        # detect the user default.
+        return Timeout(connect=self.connect, request=self.request,
+                       total=self.total)
+
+
+    def start(self):
+        """ Start the timeout clock """
+        if self._start is not None:
+            raise ValueError("timeout timer has already been started")
+        self._start = current_time()
+        return self._start
+
+
+    def get_elapsed(self):
+        """ Return the timeout amount so far """
+        if self._start is None:
+            raise ValueError("Can't get elapsed time for timer "
+                             "that has not started")
+        return current_time() - self._start
+
+
+    def stop(self):
+        """ Stop the timeout timer """
+        if self._start is None:
+            raise ValueError("Cannot stop a timeout that has not started")
+        self.elapsed = current_time() - self._start
+        return self.elapsed
+
+
     def get_connect_timeout(self):
         if self.total is not None and self.total is not DEFAULT_TIMEOUT:
             return min(self.connect, self.total)
         return self.connect
 
 
-    def get_request_timeout(self, time_elapsed):
+    def get_request_timeout(self):
         """ Get the value for the request timeout.
 
         This assumes some time has elapsed in the connection timeout and
         computes the request timeout appropriately.
 
-        :param time_elapsed: The amount of time elapsed during the connection
+        If self.total is set, the request timeout is dependent on the amount of
+        time taken by the connect timeout. If the connection time has not been
+        established, a ValueError will be raised.
         """
         if (self.total is not None and
             self.total is not DEFAULT_TIMEOUT and
             self.request is not None and
             self.request is not DEFAULT_TIMEOUT):
-            return max(0, min(self.total - time_elapsed, self.request))
+            return max(0, min(self.total - self.get_elapsed(), self.request))
         elif self.total is not None and self.total is not DEFAULT_TIMEOUT:
-            return max(0, self.total - time_elapsed)
+            return max(0, self.total - self.get_elapsed())
         else:
             return self.request
 
