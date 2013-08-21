@@ -3,6 +3,8 @@ import ssl
 import sys
 import unittest
 
+import mock
+
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
@@ -198,6 +200,24 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         url = '/sleep?seconds=0.005'
         self.assertRaises(RequestTimeoutError, https_pool.request, 'GET', url)
 
+        timeout = Timeout(total=None)
+        https_pool = HTTPSConnectionPool(self.host, self.port, timeout=timeout,
+                                         cert_reqs='CERT_NONE')
+        https_pool.request('GET', '/')
+
+
+    def test_tunnel(self):
+        """ test the _tunnel behavior """
+        timeout = Timeout(total=None)
+        https_pool = HTTPSConnectionPool(self.host, self.port, timeout=timeout,
+                                         cert_reqs='CERT_NONE')
+        conn = https_pool._new_conn()
+        conn.set_tunnel(self.host, self.port)
+        conn._tunnel = mock.Mock()
+        https_pool._make_request(conn, 'GET', '/')
+        conn._tunnel.assert_called_once_with()
+
+
     def test_enhanced_timeout(self):
         import urllib3.connectionpool
         OriginalHTTPSConnection = urllib3.connectionpool.HTTPSConnection
@@ -229,6 +249,19 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         conn = https_pool._new_conn()
         self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/',
                           timeout=Timeout(total=None, connect=0.001))
+
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         timeout=timeout,
+                                         cert_reqs='CERT_NONE')
+        conn = https_pool._new_conn()
+        conn.set_tunnel(self.host, self.port)
+        conn._tunnel = mock.Mock()
+        try:
+            https_pool._make_request(conn, 'GET', '/')
+        except AttributeError:
+            # wrap_socket unavailable when you mock out ssl
+            pass
+        conn._tunnel.assert_called_once_with()
 
         # Undo
         urllib3.HTTPSConnection = OriginalHTTPSConnection

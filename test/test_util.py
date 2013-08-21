@@ -187,6 +187,35 @@ class TestUtil(unittest.TestCase):
         timeout.stop()
         return timeout
 
+    def test_invalid_timeouts(self):
+        try:
+            Timeout(total=-1)
+            self.fail("negative value should throw exception")
+        except ValueError as e:
+            self.assertTrue('less than' in str(e))
+        try:
+            Timeout(connect=2, total=-1)
+            self.fail("negative value should throw exception")
+        except ValueError as e:
+            self.assertTrue('less than' in str(e))
+
+        try:
+            Timeout(request=-1)
+            self.fail("negative value should throw exception")
+        except ValueError as e:
+            self.assertTrue('less than' in str(e))
+
+        # Booleans are allowed also by socket.settimeout and converted to the
+        # equivalent float (1.0 for True, 0.0 for False)
+        Timeout(connect=False, request=True)
+
+        try:
+            Timeout(request="foo")
+            self.fail("string value should not be allowed")
+        except ValueError as e:
+            self.assertTrue('int or float' in str(e))
+
+
     @patch('urllib3.util.current_time')
     def test_timeout(self, current_time):
         timeout = Timeout(total=3)
@@ -194,30 +223,30 @@ class TestUtil(unittest.TestCase):
         # make 'no time' elapse
         timeout = self._make_time_pass(seconds=0, timeout=timeout,
                                        time_mock=current_time)
-        self.assertEqual(timeout.get_request_timeout(), 3)
-        self.assertEqual(timeout.get_connect_timeout(), 3)
+        self.assertEqual(timeout.request_timeout, 3)
+        self.assertEqual(timeout.connect_timeout, 3)
 
         timeout = Timeout(total=3, connect=2)
-        self.assertEqual(timeout.get_connect_timeout(), 2)
+        self.assertEqual(timeout.connect_timeout, 2)
 
         timeout = Timeout()
-        self.assertEqual(timeout.get_connect_timeout(), DEFAULT_TIMEOUT)
+        self.assertEqual(timeout.connect_timeout, DEFAULT_TIMEOUT)
 
         # Connect takes 5 seconds, leaving 5 seconds for request
         timeout = Timeout(total=10, request=7)
         timeout = self._make_time_pass(seconds=5, timeout=timeout,
                                        time_mock=current_time)
-        self.assertEqual(timeout.get_request_timeout(), 5)
+        self.assertEqual(timeout.request_timeout, 5)
 
         # Connect takes 2 seconds, request timeout still 7 seconds
         timeout = Timeout(total=10, request=7)
         timeout = self._make_time_pass(seconds=2, timeout=timeout,
                                        time_mock=current_time)
-        self.assertEqual(timeout.get_request_timeout(), 7)
+        self.assertEqual(timeout.request_timeout, 7)
 
         timeout = Timeout(total=None, request=None, connect=None)
-        self.assertEqual(timeout.get_connect_timeout(), None)
-        self.assertEqual(timeout.get_request_timeout(), None)
+        self.assertEqual(timeout.connect_timeout, None)
+        self.assertEqual(timeout.request_timeout, None)
         self.assertEqual(timeout.total, None)
 
 

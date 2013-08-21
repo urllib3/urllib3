@@ -124,7 +124,7 @@ class EnhancedHTTPConnection(HTTPConnection):
             self.enhanced_timeout.start()
             self.sock = socket.create_connection(
                 (self.host, self.port),
-                self.enhanced_timeout.get_connect_timeout(),
+                self.enhanced_timeout.connect_timeout,
                 self.source_address)
             self.enhanced_timeout.stop()
         except SocketTimeout:
@@ -133,9 +133,9 @@ class EnhancedHTTPConnection(HTTPConnection):
                 (self.host, self.enhanced_timeout.connect))
 
         try:
-            # We've connected, so set the timeout on the socket to the request
-            # timeout
-            self.sock.settimeout(self.enhanced_timeout.get_request_timeout())
+            # After the connection is established, set the timeout on the socket
+            # to the request timeout
+            self.sock.settimeout(self.enhanced_timeout.request_timeout)
         except (TypeError, ValueError):
             # the DEFAULT_TIMEOUT can be an object, which means setting the
             # timeout fails. in this case we did not mean to set the timeout to
@@ -174,7 +174,7 @@ class EnhancedHTTPSConnection(EnhancedHTTPConnection):
             self.enhanced_timeout.start()
             sock = socket.create_connection(
                 (self.host, self.port),
-                self.enhanced_timeout.get_connect_timeout(),
+                self.enhanced_timeout.connect_timeout,
                 self.source_address)
             self.enhanced_timeout.stop()
         except SocketTimeout:
@@ -185,7 +185,7 @@ class EnhancedHTTPSConnection(EnhancedHTTPConnection):
         try:
             # We've connected, so set the timeout on the socket to the request
             # timeout
-            sock.settimeout(self.enhanced_timeout.get_request_timeout())
+            sock.settimeout(self.enhanced_timeout.request_timeout)
         except (TypeError, ValueError):
             # the _DEFAULT_TIMEOUT can be an object, which means setting the
             # timeout fails. in this case we did not mean to set the timeout to
@@ -224,7 +224,7 @@ class VerifiedHTTPSConnection(EnhancedHTTPSConnection):
             self.enhanced_timeout.start()
             sock = socket.create_connection(
                 (self.host, self.port),
-                self.enhanced_timeout.get_connect_timeout(),
+                self.enhanced_timeout.connect_timeout,
                 self.source_address)
             self.enhanced_timeout.stop()
         except SocketError as e:
@@ -238,7 +238,7 @@ class VerifiedHTTPSConnection(EnhancedHTTPSConnection):
         try:
             # We've connected, so set the timeout on the socket to the request
             # timeout
-            sock.settimeout(self.enhanced_timeout.get_request_timeout())
+            sock.settimeout(self.enhanced_timeout.request_timeout)
         except (TypeError, ValueError):
             # the _DEFAULT_TIMEOUT can be an object, which means setting the
             # timeout fails. in this case we did not mean to set the timeout to
@@ -466,18 +466,20 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if isinstance(timeout, Timeout):
             conn.enhanced_timeout = timeout.clone()
         else:
+            # assume timeout is an int/float
             conn.enhanced_timeout = Timeout(request=timeout)
+            conn.timeout = timeout
 
         # NB: this calls httplib.request, not the request() in request.py in
         # this library
+        # this line connect()'s and sends the request
         conn.request(method, url, **httplib_request_kw)
-        conn.timeout = conn.enhanced_timeout.get_request_timeout()
 
         # Set timeout
         sock = getattr(conn, 'sock', False) # AppEngine doesn't have sock attr.
         if sock:
             try:
-                sock.settimeout(timeout.get_request_timeout())
+                sock.settimeout(conn.enhanced_timeout.request_timeout)
             except (TypeError, ValueError):
                 # the _DEFAULT_TIMEOUT can be an object, which means setting the
                 # timeout fails. in this case we did not mean to set the timeout to
@@ -485,6 +487,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 # If request_timeout is negative a ValueError is raised, ignore this
                 pass
 
+        # Receive the response from the server
         try: # Python 2.7+, use buffering of HTTP responses
             httplib_response = conn.getresponse(buffering=True)
         except TypeError: # Python 2.6 and older

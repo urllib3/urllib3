@@ -47,6 +47,7 @@ def current_time():
     """Retrieve the current time, this function is mocked out in unit testing"""
     return time.time()
 
+
 class Timeout(object):
     """
     Utility object for storing timeout values.
@@ -72,11 +73,36 @@ class Timeout(object):
     """
 
 
-    def __init__(self, connect=_Default, request=_Default, total=_Default):
+    @classmethod
+    def validate_timeout(cls, value, name):
+        """ Check that a timeout attribute is valid """
+        if value is None or value is DEFAULT_TIMEOUT:
+            return value
+        if value < 0:
+            raise ValueError("Cannot set %s timeout to a value less than 0" % name)
+        try:
+            float(value)
+        except:
+            raise ValueError("Timeout value %s must be an int or float" % name)
+        return value
 
-        self.connect = DEFAULT_TIMEOUT if connect is _Default else connect
-        self.request = DEFAULT_TIMEOUT if request is _Default else request
-        self.total = DEFAULT_TIMEOUT if total is _Default else total
+
+    def __init__(self, connect=_Default, request=_Default, total=_Default):
+        if connect is _Default:
+            self.connect = DEFAULT_TIMEOUT
+        else:
+            self.connect = Timeout.validate_timeout(connect, 'connect')
+
+        if request is _Default:
+            self.request = DEFAULT_TIMEOUT
+        else:
+            self.request = Timeout.validate_timeout(request, 'request')
+
+        if total is _Default:
+            self.total = DEFAULT_TIMEOUT
+        else:
+            self.total = Timeout.validate_timeout(total, 'total')
+
         self.elapsed = None
         self._start = None
 
@@ -121,13 +147,15 @@ class Timeout(object):
         return self.elapsed
 
 
-    def get_connect_timeout(self):
+    @property
+    def connect_timeout(self):
         if self.total is not None and self.total is not DEFAULT_TIMEOUT:
             return min(self.connect, self.total)
         return self.connect
 
 
-    def get_request_timeout(self):
+    @property
+    def request_timeout(self):
         """ Get the value for the request timeout.
 
         This assumes some time has elapsed in the connection timeout and

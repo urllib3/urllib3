@@ -2,6 +2,8 @@ import logging
 import sys
 import unittest
 
+import mock
+
 try:
     from urllib.parse import urlencode
 except:
@@ -120,22 +122,37 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
 
         conn = pool._get_conn()
+        # XXX why is this not a request timeout?
         self.assertRaises(SocketTimeout, pool._make_request,
                           conn, 'GET', url)
         pool._put_conn(conn)
 
         self.assertRaises(RequestTimeoutError, pool.request, 'GET', url)
 
-        # Request-specific timeout
+        # Request-specific timeouts should raise errors
         pool = HTTPConnectionPool(self.host, self.port, timeout=0.5)
 
         conn = pool._get_conn()
+        # XXX why is this not a request timeout?
         self.assertRaises(SocketTimeout, pool._make_request,
                           conn, 'GET', url, timeout=timeout)
         pool._put_conn(conn)
 
         self.assertRaises(RequestTimeoutError, pool.request,
                           'GET', url, timeout=timeout)
+
+        # Timeout int/float passed directly to request and _make_request should
+        # raise a request timeout
+        self.assertRaises(RequestTimeoutError, pool.request,
+                          'GET', url, timeout=0.001)
+        conn = pool._new_conn()
+        self.assertRaises(SocketTimeout, pool._make_request, conn,
+                          'GET', url, timeout=0.001)
+        pool._put_conn(conn)
+
+        # Timeout int/float passed directly to _make_request should not raise a
+        # request timeout if it's a high value
+        pool.request('GET', url, timeout=5)
 
     @timed(0.1)
     def test_connect_timeout(self):
@@ -183,6 +200,31 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         timeout = util.Timeout(connect=3, request=5, total=None)
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
         pool.request('GET', '/')
+
+        timeout = util.Timeout(total=None)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        pool.request('GET', '/')
+
+
+    def test_tunnel(self):
+        # note the actual httplib.py has no tests for this functionality
+        timeout = util.Timeout(total=None)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        conn.set_tunnel(self.host, self.port)
+
+        conn._tunnel = mock.Mock(return_value=None)
+        pool._make_request(conn, 'GET', '/')
+        conn._tunnel.assert_called_once_with()
+
+        # test that it's not called when tunnel is not set
+        timeout = util.Timeout(total=None)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        conn = pool._get_conn()
+
+        conn._tunnel = mock.Mock(return_value=None)
+        pool._make_request(conn, 'GET', '/')
+        self.assertEqual(conn._tunnel.called, False)
 
 
     def test_redirect(self):
