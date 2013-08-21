@@ -69,8 +69,6 @@ xrange = six.moves.xrange
 log = logging.getLogger(__name__)
 
 _Default = object()
-# The default timeout to use for socket connections. This is the attribute used
-# by httplib to define the default timeout
 
 port_by_scheme = {
     'http': HTTP_PORT,
