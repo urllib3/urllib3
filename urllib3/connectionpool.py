@@ -96,18 +96,21 @@ class EnhancedHTTPConnection(HTTPConnection):
         the interface should mirror the HTTPConnection.__init__ interface in
         httplib.py
         """
+
+        # source_address only added to httplib in python 2.7 - move this into
+        # the __init__ call below if python2.6 support is dropped.
+        self.source_address = source_address
+
         if isinstance(timeout, Timeout):
             # Call our timeout value enhanced_timeout to avoid type/assignment
             # errors with the parent class
             self.enhanced_timeout = timeout.clone()
             HTTPConnection.__init__(self, host, port=port, strict=strict,
-                                    source_address=source_address,
                                     timeout=timeout.request)
         else:
             # This branch is for backwards compatibility, can be removed later
             self.enhanced_timeout = Timeout(request=timeout)
             HTTPConnection.__init__(self, host, port=port, strict=strict,
-                                    source_address=source_address,
                                     timeout=timeout)
 
 
