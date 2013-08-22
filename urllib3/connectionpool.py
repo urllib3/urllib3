@@ -127,7 +127,7 @@ class EnhancedHTTPConnection(HTTPConnection):
                     address=(self.host, self.port),
                     timeout=self.enhanced_timeout.connect_timeout,
                     source_address=self.source_address)
-            except TypeError: # python 2.6
+            except TypeError: # Python 2.6
                 self.sock = socket.create_connection(
                     address=(self.host, self.port),
                     timeout=self.enhanced_timeout.connect_timeout)
@@ -182,7 +182,7 @@ class EnhancedHTTPSConnection(EnhancedHTTPConnection):
                     address=(self.host, self.port),
                     timeout=self.enhanced_timeout.connect_timeout,
                     source_address=self.source_address)
-            except TypeError: # python 2.6
+            except TypeError: # Python 2.6
                 sock = socket.create_connection(
                     address=(self.host, self.port),
                     timeout=self.enhanced_timeout.connect_timeout)
@@ -237,7 +237,7 @@ class VerifiedHTTPSConnection(EnhancedHTTPSConnection):
                     address=(self.host, self.port),
                     timeout=self.enhanced_timeout.connect_timeout,
                     source_address=self.source_address)
-            except TypeError: # python 2.6
+            except TypeError: # Python 2.6
                 sock = socket.create_connection(
                     address=(self.host, self.port),
                     timeout=self.enhanced_timeout.connect_timeout)
