@@ -9,7 +9,7 @@ from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from urllib3 import HTTPSConnectionPool
-from urllib3.connectionpool import (
+from urllib3.connection import (
     EnhancedHTTPSConnection,
     VerifiedHTTPSConnection,
 )
