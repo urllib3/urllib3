@@ -122,10 +122,15 @@ class EnhancedHTTPConnection(HTTPConnection):
         """
         try:
             self.enhanced_timeout.start()
-            self.sock = socket.create_connection(
-                (self.host, self.port),
-                self.enhanced_timeout.connect_timeout,
-                self.source_address)
+            try:
+                self.sock = socket.create_connection(
+                    address=(self.host, self.port),
+                    timeout=self.enhanced_timeout.connect_timeout,
+                    source_address=self.source_address)
+            except TypeError: # python 2.6
+                self.sock = socket.create_connection(
+                    address=(self.host, self.port),
+                    timeout=self.enhanced_timeout.connect_timeout)
             self.enhanced_timeout.stop()
         except SocketTimeout:
             raise ConnectTimeoutError(
@@ -172,10 +177,15 @@ class EnhancedHTTPSConnection(EnhancedHTTPConnection):
 
         try:
             self.enhanced_timeout.start()
-            sock = socket.create_connection(
-                (self.host, self.port),
-                self.enhanced_timeout.connect_timeout,
-                self.source_address)
+            try:
+                sock = socket.create_connection(
+                    address=(self.host, self.port),
+                    timeout=self.enhanced_timeout.connect_timeout,
+                    source_address=self.source_address)
+            except TypeError: # python 2.6
+                sock = socket.create_connection(
+                    address=(self.host, self.port),
+                    timeout=self.enhanced_timeout.connect_timeout)
             self.enhanced_timeout.stop()
         except SocketTimeout:
             raise ConnectTimeoutError(
@@ -222,10 +232,15 @@ class VerifiedHTTPSConnection(EnhancedHTTPSConnection):
         # Add certificate verification
         try:
             self.enhanced_timeout.start()
-            sock = socket.create_connection(
-                (self.host, self.port),
-                self.enhanced_timeout.connect_timeout,
-                self.source_address)
+            try:
+                sock = socket.create_connection(
+                    address=(self.host, self.port),
+                    timeout=self.enhanced_timeout.connect_timeout,
+                    source_address=self.source_address)
+            except TypeError: # python 2.6
+                sock = socket.create_connection(
+                    address=(self.host, self.port),
+                    timeout=self.enhanced_timeout.connect_timeout)
             self.enhanced_timeout.stop()
         except SocketError as e:
             if 'timed out' in str(e):

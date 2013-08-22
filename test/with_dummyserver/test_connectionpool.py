@@ -211,7 +211,10 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         timeout = util.Timeout(total=None)
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
         conn = pool._get_conn()
-        conn.set_tunnel(self.host, self.port)
+        try:
+            conn.set_tunnel(self.host, self.port)
+        except AttributeError: # python 2.6
+            conn._set_tunnel(self.host, self.port)
 
         conn._tunnel = mock.Mock(return_value=None)
         pool._make_request(conn, 'GET', '/')

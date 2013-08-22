@@ -212,7 +212,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool = HTTPSConnectionPool(self.host, self.port, timeout=timeout,
                                          cert_reqs='CERT_NONE')
         conn = https_pool._new_conn()
-        conn.set_tunnel(self.host, self.port)
+        try:
+            conn.set_tunnel(self.host, self.port)
+        except AttributeError: # python 2.6
+            conn._set_tunnel(self.host, self.port)
         conn._tunnel = mock.Mock()
         https_pool._make_request(conn, 'GET', '/')
         conn._tunnel.assert_called_once_with()
@@ -254,7 +257,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          timeout=timeout,
                                          cert_reqs='CERT_NONE')
         conn = https_pool._new_conn()
-        conn.set_tunnel(self.host, self.port)
+        try:
+            conn.set_tunnel(self.host, self.port)
+        except AttributeError: # python 2.6
+            conn._set_tunnel(self.host, self.port)
         conn._tunnel = mock.Mock()
         try:
             https_pool._make_request(conn, 'GET', '/')
