@@ -77,7 +77,12 @@ class Timeout(object):
 
     @classmethod
     def validate_timeout(cls, value, name):
-        """ Check that a timeout attribute is valid """
+        """ Check that a timeout attribute is valid
+
+        :param value: the timeout's value
+        :param name: the name of the timeout attribute to validate. used only
+            in error messages
+        """
         if value is None or value is DEFAULT_TIMEOUT:
             return value
 
@@ -93,6 +98,16 @@ class Timeout(object):
             raise ValueError("Timeout value %s must be an int or float" % name)
 
         return value
+
+    @classmethod
+    def from_legacy(cls, timeout):
+        """ create a new Timeout from a legacy timeout value.
+
+        The legacy timeout used by httplib.py would set the same timeout on the
+        connect(), sendall(), and recv() socket requests. This creates a Timeout
+        object that sets the timeouts to the same values.
+        """
+        return Timeout(request=timeout, connect=timeout)
 
 
     def __init__(self, connect=_Default, request=_Default, total=None):

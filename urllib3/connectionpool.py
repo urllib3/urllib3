@@ -107,7 +107,7 @@ class EnhancedHTTPConnection(HTTPConnection):
                                     timeout=timeout.request)
         else:
             # This branch is for backwards compatibility, can be removed later
-            self.enhanced_timeout = Timeout(request=timeout)
+            self.enhanced_timeout = Timeout.from_legacy(timeout)
             HTTPConnection.__init__(self, host, port=port, strict=strict,
                                     timeout=timeout)
 
@@ -361,8 +361,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     scheme = 'http'
 
-    def __init__(self, host, port=None, strict=False, timeout=None, maxsize=1,
-                 block=False, headers=None, _proxy=None, _proxy_headers=None):
+    def __init__(self, host, port=None, strict=False, timeout=DEFAULT_TIMEOUT,
+                 maxsize=1, block=False, headers=None, _proxy=None,
+                 _proxy_headers=None):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
 
@@ -371,7 +372,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # This is for backwards compatibility and can be removed once a timeout
         # can only be set to a Timeout object
         if not isinstance(timeout, Timeout):
-            timeout = Timeout(request=timeout)
+            timeout = Timeout.from_legacy(timeout)
 
         self.timeout = timeout
 
@@ -482,7 +483,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             conn.enhanced_timeout = timeout.clone()
         else:
             # assume timeout is an int/float
-            conn.enhanced_timeout = Timeout(request=timeout)
+            conn.enhanced_timeout = Timeout.from_legacy(timeout)
             conn.timeout = timeout
 
         # NB: this calls httplib.request, not the request() in request.py in
@@ -628,7 +629,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # This is for backwards compatibility, can be removed later
         if not isinstance(timeout, Timeout):
-            timeout = Timeout(request=timeout)
+            timeout = Timeout.from_legacy(timeout)
 
         if release_conn is None:
             release_conn = response_kw.get('preload_content', True)
