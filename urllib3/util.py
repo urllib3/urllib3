@@ -54,22 +54,24 @@ class Timeout(object):
 
     :param connect:
         The maximum amount of time to wait for a connection attempt to a server
-        to succeed. This can be an int or a float. Omitting the parameter
+        to succeed. This can be an int, a float, or None. Omitting the parameter
         will default the request timeout to the system default, probably
-        :attribute:`socket._GLOBAL_DEFAULT_TIMEOUT`.
+        :attribute:`socket._GLOBAL_DEFAULT_TIMEOUT`. None will set an infinite
+        timeout.
 
     :param request:
-        The maximum amount of time to wait for an HTTP request to
-        succeed. This can be an int or a float. Omitting the parameter
+        The maximum amount of time to wait for an HTTP request to succeed.
+        This can be an int, a float, or None. Omitting the parameter
         will default the request timeout to the system default, probably
-        :attribute:`socket._GLOBAL_DEFAULT_TIMEOUT`.
+        :attribute:`socket._GLOBAL_DEFAULT_TIMEOUT`. None will set an infinite
+        timeout.
 
     :param total:
         The maximum amount of time to wait for an HTTP request to connect and
         return. This combines the connect and request timeouts into one. In
         the event that both a connect timeout and a total are specified, or a
         request timeout and a total are specified, the shorter timeout will be
-        applied.
+        applied. Defaults to None.
     """
 
 
@@ -78,8 +80,12 @@ class Timeout(object):
         """ Check that a timeout attribute is valid """
         if value is None or value is DEFAULT_TIMEOUT:
             return value
-        if value < 0:
-            raise ValueError("Cannot set %s timeout to a value less than 0" % name)
+        try:
+            if value < 0:
+                raise ValueError("Cannot set %s timeout to a value less than 0" % name)
+        except TypeError: # Python 3
+            raise ValueError("Timeout value %s must be an int or float" % name)
+
         try:
             float(value)
         except:
@@ -87,7 +93,7 @@ class Timeout(object):
         return value
 
 
-    def __init__(self, connect=_Default, request=_Default, total=_Default):
+    def __init__(self, connect=_Default, request=_Default, total=None):
         if connect is _Default:
             self.connect = DEFAULT_TIMEOUT
         else:
@@ -98,10 +104,7 @@ class Timeout(object):
         else:
             self.request = Timeout.validate_timeout(request, 'request')
 
-        if total is _Default:
-            self.total = DEFAULT_TIMEOUT
-        else:
-            self.total = Timeout.validate_timeout(total, 'total')
+        self.total = Timeout.validate_timeout(total, 'total')
 
         self.elapsed = None
         self._start = None
@@ -149,10 +152,14 @@ class Timeout(object):
 
     @property
     def connect_timeout(self):
-        if self.total is not None and self.total is not DEFAULT_TIMEOUT:
-            return min(self.connect, self.total)
-        return self.connect
+        """ Get the value to use for the connection timeout """
+        if self.total is None:
+            return self.connect
 
+        if self.connect is None or self.connect is DEFAULT_TIMEOUT:
+            return self.total
+
+        return min(self.connect, self.total)
 
     @property
     def request_timeout(self):

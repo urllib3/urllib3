@@ -180,7 +180,7 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(conn.enhanced_timeout.__class__, Timeout)
         self.assertEqual(conn.enhanced_timeout.request, None)
         self.assertEqual(conn.enhanced_timeout.connect, DEFAULT_TIMEOUT)
-        self.assertEqual(conn.enhanced_timeout.total, DEFAULT_TIMEOUT)
+        self.assertEqual(conn.enhanced_timeout.total, None)
 
         conn = EnhancedHTTPConnection(host='localhost')
         self.assertEqual(conn.timeout, DEFAULT_TIMEOUT)
