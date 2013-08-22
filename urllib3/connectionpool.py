@@ -679,7 +679,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         except BaseSSLError as e:
             # SSL certificate error
-            if 'timed out' in str(e):
+            if 'timed out' in str(e): # Platform-specific: Python 2.6
                 raise RequestTimeoutError(self, url,
                                           "Request timed out. (timeout=%s)" %
                                           timeout)

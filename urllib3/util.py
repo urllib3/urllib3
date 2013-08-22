@@ -80,16 +80,18 @@ class Timeout(object):
         """ Check that a timeout attribute is valid """
         if value is None or value is DEFAULT_TIMEOUT:
             return value
+
+        try:
+            float(value)
+        except:
+            raise ValueError("Timeout value %s must be an int or float" % name)
+
         try:
             if value < 0:
                 raise ValueError("Cannot set %s timeout to a value less than 0" % name)
         except TypeError: # Python 3
             raise ValueError("Timeout value %s must be an int or float" % name)
 
-        try:
-            float(value)
-        except:
-            raise ValueError("Timeout value %s must be an int or float" % name)
         return value
 
 
