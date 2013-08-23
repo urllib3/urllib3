@@ -22,10 +22,10 @@ from .util import (
 )
 
 try: # Python 3
-    from http.client import HTTPConnection
+    from http.client import HTTPConnection as _HTTPConnection
     from http.client import HTTPS_PORT
 except ImportError:
-    from httplib import HTTPConnection
+    from httplib import HTTPConnection as _HTTPConnection
     from httplib import HTTPS_PORT
 
 try: # Compiled with SSL?
@@ -41,7 +41,8 @@ try: # Compiled with SSL?
 except (ImportError, AttributeError): # Platform-specific: No SSL.
     pass
 
-class EnhancedHTTPConnection(HTTPConnection):
+
+class HTTPConnection(_HTTPConnection):
     """ A :class:`httplib.HTTPConnection` that supports connection timeouts
 
     It would be nice not to have to override this class, however the default
@@ -76,7 +77,6 @@ class EnhancedHTTPConnection(HTTPConnection):
             self.enhanced_timeout = Timeout.from_legacy(timeout)
             HTTPConnection.__init__(self, host, port=port, strict=strict,
                                     timeout=timeout)
-
 
     def connect(self):
         """Connect to the host and port specified in __init__.
@@ -118,7 +118,7 @@ class EnhancedHTTPConnection(HTTPConnection):
             self._tunnel()
 
 
-class EnhancedHTTPSConnection(EnhancedHTTPConnection):
+class HTTPSConnection(HTTPConnection):
     """ Like a :class:`httplib.HTTPSConnection`, but allowing the user to set
     the timeout to a :class:`urllib.util.Timeout` object
 
@@ -132,14 +132,13 @@ class EnhancedHTTPSConnection(EnhancedHTTPConnection):
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  strict=None, timeout=DEFAULT_TIMEOUT, source_address=None):
-        EnhancedHTTPConnection.__init__(self, host, port, strict, timeout,
-                                        source_address)
+        HTTPConnection.__init__(self, host, port, strict, timeout,
+                                source_address)
         self.key_file = key_file
         self.cert_file = cert_file
 
     def connect(self):
-        "Connect to a host on a given (SSL) port."
-
+        """Connect to a host on a given (SSL) port."""
         try:
             self.enhanced_timeout.start()
             try:
@@ -173,7 +172,8 @@ class EnhancedHTTPSConnection(EnhancedHTTPConnection):
             self._tunnel()
         self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file)
 
-class VerifiedHTTPSConnection(EnhancedHTTPSConnection):
+
+class VerifiedHTTPSConnection(HTTPSConnection):
     """
     Based on httplib.HTTPSConnection but wraps the socket with
     SSL certification.
