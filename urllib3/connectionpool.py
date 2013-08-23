@@ -161,7 +161,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # This is for backwards compatibility and can be removed once a timeout
         # can only be set to a Timeout object
         if not isinstance(timeout, Timeout):
-            timeout = Timeout.from_legacy(timeout)
+            timeout = Timeout.from_float(timeout)
 
         self.timeout = timeout
 
@@ -272,7 +272,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             conn.enhanced_timeout = timeout.clone()
         else:
             # assume timeout is an int/float
-            conn.enhanced_timeout = Timeout.from_legacy(timeout)
+            conn.enhanced_timeout = Timeout.from_float(timeout)
             conn.timeout = timeout
 
         # NB: this calls httplib.request, not the request() in request.py in
@@ -418,7 +418,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # This is for backwards compatibility, can be removed later
         if not isinstance(timeout, Timeout):
-            timeout = Timeout.from_legacy(timeout)
+            timeout = Timeout.from_float(timeout)
 
         if release_conn is None:
             release_conn = response_kw.get('preload_content', True)

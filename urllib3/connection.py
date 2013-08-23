@@ -74,7 +74,7 @@ class HTTPConnection(_HTTPConnection):
                                     timeout=timeout.request)
         else:
             # This branch is for backwards compatibility, can be removed later
-            self.enhanced_timeout = Timeout.from_legacy(timeout)
+            self.enhanced_timeout = Timeout.from_float(timeout)
             _HTTPConnection.__init__(self, host, port=port, strict=strict,
                                     timeout=timeout)
 
