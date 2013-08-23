@@ -10,7 +10,7 @@ from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from urllib3 import HTTPSConnectionPool
 from urllib3.connection import (
-    EnhancedHTTPSConnection,
+    HTTPSConnection,
     VerifiedHTTPSConnection,
 )
 from urllib3.exceptions import SSLError, ConnectTimeoutError, RequestTimeoutError
@@ -233,7 +233,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          timeout=timeout,
                                          cert_reqs='CERT_REQUIRED')
         conn = https_pool._new_conn()
-        self.assertEqual(conn.__class__, EnhancedHTTPSConnection)
+        self.assertEqual(conn.__class__, HTTPSConnection)
         self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/')
         self.assertRaises(ConnectTimeoutError, https_pool._make_request, conn,
                           'GET', '/')
@@ -274,7 +274,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         urllib3.connectionpool.ssl = OriginalSSL
 
     def test_enhanced_ssl_connection(self):
-        conn = EnhancedHTTPSConnection(self.host, self.port)
+        conn = HTTPSConnection(self.host, self.port)
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          timeout=Timeout(total=None, connect=5),
                                          cert_reqs='CERT_REQUIRED')
