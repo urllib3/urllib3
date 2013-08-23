@@ -2,7 +2,7 @@ import unittest
 
 from urllib3.connectionpool import (
     connection_from_url,
-    EnhancedHTTPConnection,
+    HTTPConnection,
     HTTPConnectionPool,
 )
 from urllib3.util import Timeout, DEFAULT_TIMEOUT
@@ -176,18 +176,18 @@ class TestConnectionPool(unittest.TestCase):
     def test_enhanced_conn(self):
         pool = HTTPConnectionPool(host='localhost')
         conn = pool._new_conn()
-        self.assertEqual(conn.__class__, EnhancedHTTPConnection)
+        self.assertEqual(conn.__class__, HTTPConnection)
         self.assertEqual(conn.enhanced_timeout.__class__, Timeout)
         self.assertEqual(conn.enhanced_timeout.request, DEFAULT_TIMEOUT)
         self.assertEqual(conn.enhanced_timeout.connect, DEFAULT_TIMEOUT)
         self.assertEqual(conn.enhanced_timeout.total, None)
 
-        conn = EnhancedHTTPConnection(host='localhost')
+        conn = HTTPConnection(host='localhost')
         self.assertEqual(conn.timeout, DEFAULT_TIMEOUT)
         self.assertEqual(conn.enhanced_timeout.request, DEFAULT_TIMEOUT)
         self.assertEqual(conn.enhanced_timeout.connect, DEFAULT_TIMEOUT)
 
-        conn = EnhancedHTTPConnection(host='localhost', timeout=3)
+        conn = HTTPConnection(host='localhost', timeout=3)
         self.assertEqual(conn.enhanced_timeout.request, 3)
         self.assertEqual(conn.enhanced_timeout.connect, 3)
         self.assertEqual(conn.timeout, 3)
