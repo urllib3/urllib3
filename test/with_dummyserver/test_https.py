@@ -190,7 +190,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          cert_reqs='CERT_REQUIRED')
         self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/')
 
-        timeout = Timeout(request=0.001)
+        timeout = Timeout(read=0.001)
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          timeout=timeout,
                                          cert_reqs='CERT_REQUIRED')

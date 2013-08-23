@@ -46,7 +46,7 @@ class HTTPConnection(_HTTPConnection):
     """ A :class:`httplib.HTTPConnection` that supports connection timeouts
 
     It would be nice not to have to override this class, however the default
-    httplib.py does not allow setting separate connection and request timeouts,
+    httplib.py does not allow setting separate connection and read timeouts,
     see http://hg.python.org/cpython/file/2.7/Lib/httplib.py#l769
 
     The behavior of this class and httplib.py should differ mainly in the
@@ -71,7 +71,7 @@ class HTTPConnection(_HTTPConnection):
             # errors with the parent class
             self.enhanced_timeout = timeout.clone()
             _HTTPConnection.__init__(self, host, port=port, strict=strict,
-                                    timeout=timeout.request)
+                                    timeout=timeout.read)
         else:
             # This branch is for backwards compatibility, can be removed later
             self.enhanced_timeout = Timeout.from_float(timeout)
@@ -84,7 +84,7 @@ class HTTPConnection(_HTTPConnection):
         This should mirror the implementation in httplib except to insert our
         connect timeout, instead of the global timeout attribute specified by
         :class:`httplib.HTTPConnection`, and then set the timeout on the socket
-        to the new request timeout.
+        to the new read timeout.
         """
         try:
             self.enhanced_timeout.start()
@@ -105,13 +105,13 @@ class HTTPConnection(_HTTPConnection):
 
         try:
             # After the connection is established, set the timeout on the socket
-            # to the request timeout
-            self.sock.settimeout(self.enhanced_timeout.request_timeout)
+            # to the read timeout
+            self.sock.settimeout(self.enhanced_timeout.read_timeout)
         except (TypeError, ValueError):
             # the DEFAULT_TIMEOUT can be an object, which means setting the
             # timeout fails. in this case we did not mean to set the timeout to
             # a specific value and we pass.
-            # If request_timeout is negative a ValueError is raised, ignore this
+            # If read_timeout is negative a ValueError is raised, ignore this
             pass
 
         if self._tunnel_host:
@@ -123,10 +123,11 @@ class HTTPSConnection(HTTPConnection):
     the timeout to a :class:`urllib.util.Timeout` object
 
     :param timeout:
-        Socket timeout in seconds for each individual connection. This can
-        be a float or integer , which sets the timeout for the HTTP request,
-        or an instance of :class:`urllib3.util.Timeout` which gives you more
-        fine-grained control over request timeouts.
+        Socket timeout in seconds for each individual connection. This
+        can be a float or integer, which will set the same timeout value
+        for the socket connect and the socket read, or an instance of
+        :class:`urllib3.util.Timeout`, which gives you more fine-grained control
+        over your timeouts.
     """
     default_port = HTTPS_PORT
 
@@ -157,14 +158,14 @@ class HTTPSConnection(HTTPConnection):
                 (self.host, self.enhanced_timeout.connect))
 
         try:
-            # We've connected, so set the timeout on the socket to the request
+            # We've connected, so set the timeout on the socket to the read
             # timeout
-            sock.settimeout(self.enhanced_timeout.request_timeout)
+            sock.settimeout(self.enhanced_timeout.read_timeout)
         except (TypeError, ValueError):
             # the _DEFAULT_TIMEOUT can be an object, which means setting the
             # timeout fails. in this case we did not mean to set the timeout to
             # a specific value and we pass.
-            # If request_timeout is negative a ValueError is raised, ignore this
+            # If read_timeout is negative a ValueError is raised, ignore this
             pass
 
         if self._tunnel_host:
@@ -216,14 +217,14 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             raise ProxyError('Cannot connect to proxy. Socket error: %s.' % e)
 
         try:
-            # We've connected, so set the timeout on the socket to the request
+            # We've connected, so set the timeout on the socket to the read
             # timeout
-            sock.settimeout(self.enhanced_timeout.request_timeout)
+            sock.settimeout(self.enhanced_timeout.read_timeout)
         except (TypeError, ValueError):
             # the _DEFAULT_TIMEOUT can be an object, which means setting the
             # timeout fails. in this case we did not mean to set the timeout to
             # a specific value and we pass.
-            # If request_timeout is negative a ValueError is raised, ignore this
+            # If read_timeout is negative a ValueError is raised, ignore this
             pass
 
         resolved_cert_reqs = resolve_cert_reqs(self.cert_reqs)

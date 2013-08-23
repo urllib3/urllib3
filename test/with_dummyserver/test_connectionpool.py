@@ -116,7 +116,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_timeout(self):
         url = '/sleep?seconds=0.005'
-        timeout = util.Timeout(request=0.001)
+        timeout = util.Timeout(read=0.001)
 
         # Pool-global timeout
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
@@ -167,7 +167,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertRaises(ConnectTimeoutError, pool.request, 'GET', url)
 
         # Request-specific connection timeouts
-        big_timeout = util.Timeout(request=0.5, connect=0.5)
+        big_timeout = util.Timeout(read=0.5, connect=0.5)
         pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=big_timeout)
         conn = pool._get_conn()
         self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET',
@@ -181,7 +181,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     @timed(0.1)
     def test_total_timeout(self):
         url = '/sleep?seconds=0.005'
-        timeout = util.Timeout(connect=3, request=5, total=0.001)
+        timeout = util.Timeout(connect=3, read=5, total=0.001)
         pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)
         conn = pool._get_conn()
         self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', url)
@@ -197,7 +197,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                           url)
 
     def test_timeout_success(self):
-        timeout = util.Timeout(connect=3, request=5, total=None)
+        timeout = util.Timeout(connect=3, read=5, total=None)
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
         pool.request('GET', '/')
 

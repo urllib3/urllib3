@@ -257,8 +257,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         Perform a request on a given httplib connection object taken from our
         pool.
 
-        :param timeout: an instance of :class:`urllib3.util.Timeout`, or an int
-        or float, to be applied to this request
+        :param timeout:
+            Socket timeout in seconds for the request. This can be a
+            float or integer, which will set the same timeout value for
+            the socket connect and the socket read, or an instance of
+            :class:`urllib3.util.Timeout`, which gives you more fine-grained
+            control over your timeouts.
         """
         self.num_requests += 1
 
@@ -284,12 +288,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         sock = getattr(conn, 'sock', False) # AppEngine doesn't have sock attr.
         if sock:
             try:
-                sock.settimeout(conn.enhanced_timeout.request_timeout)
+                sock.settimeout(conn.enhanced_timeout.read_timeout)
             except (TypeError, ValueError):
                 # the _DEFAULT_TIMEOUT can be an object, which means setting the
                 # timeout fails. in this case we did not mean to set the timeout to
                 # a specific value and we pass.
-                # If request_timeout is negative a ValueError is raised, ignore this
+                # If read_timeout is negative a ValueError is raised, ignore this
                 pass
 
         # Receive the response from the server

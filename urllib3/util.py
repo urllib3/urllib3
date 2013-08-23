@@ -54,23 +54,23 @@ class Timeout(object):
     :param connect:
         The maximum amount of time to wait for a connection attempt to a server
         to succeed. This can be an int, a float, or None. Omitting the parameter
-        will default the request timeout to the system default, probably
+        will default the connect timeout to the system default, probably
         :attribute:`socket._GLOBAL_DEFAULT_TIMEOUT`. None will set an infinite
-        timeout.
+        timeout for connection attempts
 
-    :param request:
-        The maximum amount of time to wait for an HTTP request to succeed.
-        This can be an int, a float, or None. Omitting the parameter
-        will default the request timeout to the system default, probably
+    :param read:
+        The maximum amount of time to wait for the server to return a HTTP
+        response. This can be an int, a float, or None. Omitting the parameter
+        will default the read timeout to the system default, probably
         :attribute:`socket._GLOBAL_DEFAULT_TIMEOUT`. None will set an infinite
         timeout.
 
     :param total:
         The maximum amount of time to wait for an HTTP request to connect and
-        return. This combines the connect and request timeouts into one. In
-        the event that both a connect timeout and a total are specified, or a
-        request timeout and a total are specified, the shorter timeout will be
-        applied. Defaults to None.
+        return. This combines the connect and read timeouts into one. In the
+        event that both a connect timeout and a total are specified, or a read
+        timeout and a total are specified, the shorter timeout will be applied.
+        Defaults to None.
     """
 
 
@@ -106,19 +106,19 @@ class Timeout(object):
         connect(), sendall(), and recv() socket requests. This creates a Timeout
         object that sets the timeouts to the same values.
         """
-        return Timeout(request=timeout, connect=timeout)
+        return Timeout(read=timeout, connect=timeout)
 
 
-    def __init__(self, connect=_Default, request=_Default, total=None):
+    def __init__(self, connect=_Default, read=_Default, total=None):
         if connect is _Default:
             self.connect = DEFAULT_TIMEOUT
         else:
             self.connect = Timeout.validate_timeout(connect, 'connect')
 
-        if request is _Default:
-            self.request = DEFAULT_TIMEOUT
+        if read is _Default:
+            self.read = DEFAULT_TIMEOUT
         else:
-            self.request = Timeout.validate_timeout(request, 'request')
+            self.read = Timeout.validate_timeout(read, 'request')
 
         self.total = Timeout.validate_timeout(total, 'total')
 
@@ -127,9 +127,9 @@ class Timeout(object):
 
 
     def __str__(self):
-        return '%s(connect=%r, request=%r, total=%r)' % (type(self).__name__,
+        return '%s(connect=%r, read=%r, total=%r)' % (type(self).__name__,
                                                          self.connect,
-                                                         self.request,
+                                                         self.read,
                                                          self.total)
 
 
@@ -142,7 +142,7 @@ class Timeout(object):
         # We can't use copy.deepcopy because that will also create a new object
         # for _GLOBAL_DEFAULT_TIMEOUT, which socket.py uses as a sentinel to
         # detect the user default.
-        return Timeout(connect=self.connect, request=self.request,
+        return Timeout(connect=self.connect, read=self.read,
                        total=self.total)
 
 
@@ -187,25 +187,25 @@ class Timeout(object):
         return min(self.connect, self.total)
 
     @property
-    def request_timeout(self):
-        """ Get the value for the request timeout.
+    def read_timeout(self):
+        """ Get the value for the read timeout.
 
         This assumes some time has elapsed in the connection timeout and
-        computes the request timeout appropriately.
+        computes the read timeout appropriately.
 
-        If self.total is set, the request timeout is dependent on the amount of
+        If self.total is set, the read timeout is dependent on the amount of
         time taken by the connect timeout. If the connection time has not been
         established, a ValueError will be raised.
         """
         if (self.total is not None and
             self.total is not DEFAULT_TIMEOUT and
-            self.request is not None and
-            self.request is not DEFAULT_TIMEOUT):
-            return max(0, min(self.total - self.get_elapsed(), self.request))
+            self.read is not None and
+            self.read is not DEFAULT_TIMEOUT):
+            return max(0, min(self.total - self.get_elapsed(), self.read))
         elif self.total is not None and self.total is not DEFAULT_TIMEOUT:
             return max(0, self.total - self.get_elapsed())
         else:
-            return self.request
+            return self.read
 
 
 class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment'])):

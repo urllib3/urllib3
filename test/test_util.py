@@ -200,17 +200,17 @@ class TestUtil(unittest.TestCase):
             self.assertTrue('less than' in str(e))
 
         try:
-            Timeout(request=-1)
+            Timeout(read=-1)
             self.fail("negative value should throw exception")
         except ValueError as e:
             self.assertTrue('less than' in str(e))
 
         # Booleans are allowed also by socket.settimeout and converted to the
         # equivalent float (1.0 for True, 0.0 for False)
-        Timeout(connect=False, request=True)
+        Timeout(connect=False, read=True)
 
         try:
-            Timeout(request="foo")
+            Timeout(read="foo")
             self.fail("string value should not be allowed")
         except ValueError as e:
             self.assertTrue('int or float' in str(e))
@@ -223,7 +223,7 @@ class TestUtil(unittest.TestCase):
         # make 'no time' elapse
         timeout = self._make_time_pass(seconds=0, timeout=timeout,
                                        time_mock=current_time)
-        self.assertEqual(timeout.request_timeout, 3)
+        self.assertEqual(timeout.read_timeout, 3)
         self.assertEqual(timeout.connect_timeout, 3)
 
         timeout = Timeout(total=3, connect=2)
@@ -232,21 +232,21 @@ class TestUtil(unittest.TestCase):
         timeout = Timeout()
         self.assertEqual(timeout.connect_timeout, DEFAULT_TIMEOUT)
 
-        # Connect takes 5 seconds, leaving 5 seconds for request
-        timeout = Timeout(total=10, request=7)
+        # Connect takes 5 seconds, leaving 5 seconds for read
+        timeout = Timeout(total=10, read=7)
         timeout = self._make_time_pass(seconds=5, timeout=timeout,
                                        time_mock=current_time)
-        self.assertEqual(timeout.request_timeout, 5)
+        self.assertEqual(timeout.read_timeout, 5)
 
-        # Connect takes 2 seconds, request timeout still 7 seconds
-        timeout = Timeout(total=10, request=7)
+        # Connect takes 2 seconds, read timeout still 7 seconds
+        timeout = Timeout(total=10, read=7)
         timeout = self._make_time_pass(seconds=2, timeout=timeout,
                                        time_mock=current_time)
-        self.assertEqual(timeout.request_timeout, 7)
+        self.assertEqual(timeout.read_timeout, 7)
 
-        timeout = Timeout(total=None, request=None, connect=None)
+        timeout = Timeout(total=None, read=None, connect=None)
         self.assertEqual(timeout.connect_timeout, None)
-        self.assertEqual(timeout.request_timeout, None)
+        self.assertEqual(timeout.read_timeout, None)
         self.assertEqual(timeout.total, None)
 
 
