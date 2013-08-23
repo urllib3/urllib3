@@ -43,8 +43,8 @@ except (ImportError, AttributeError): # Platform-specific: No SSL.
 
 
 from .connection import (
-    EnhancedHTTPConnection,
-    EnhancedHTTPSConnection,
+    HTTPConnection,
+    HTTPSConnection,
     VerifiedHTTPSConnection,
 )
 from .request import RequestMethods
@@ -181,13 +181,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def _new_conn(self):
         """
-        Return a fresh :class:`urllib.connectionpool.EnhancedHTTPConnection`.
+        Return a fresh :class:`urllib.connectionpool.HTTPConnection`.
         """
         self.num_connections += 1
         log.info("Starting new HTTP connection (%d): %s" %
                  (self.num_connections, self.host))
         timeout_copy = self.timeout.clone()
-        return EnhancedHTTPConnection(host=self.host, port=self.port,
+        return HTTPConnection(host=self.host, port=self.port,
                                       strict=self.strict, timeout=timeout_copy)
 
     def _get_conn(self, timeout=None):
@@ -591,7 +591,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     def _new_conn(self):
         """
-        Return a fresh :class:`urllib3.connectionpool.EnhancedHTTPSConnection`.
+        Return a fresh :class:`urllib3.connectionpool.HTTPSConnection`.
         """
         self.num_connections += 1
         log.info("Starting new HTTPS connection (%d): %s"
@@ -607,7 +607,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             if not HTTPSConnection or HTTPSConnection is object:
                 raise SSLError("Can't connect to HTTPS URL because the SSL "
                                "module is not available.")
-            connection_class = EnhancedHTTPSConnection
+            connection_class = HTTPSConnection
         else:
             connection_class = VerifiedHTTPSConnection
 

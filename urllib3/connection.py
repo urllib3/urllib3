@@ -55,7 +55,7 @@ class HTTPConnection(_HTTPConnection):
 
     def __init__(self, host, port=None, strict=None, timeout=DEFAULT_TIMEOUT,
                  source_address=None):
-        """ Create a new EnhancedHTTPConnection.
+        """ Create a new HTTPConnection.
 
         This function is necessary to set our connect timeout value, otherwise
         the interface should mirror the HTTPConnection.__init__ interface in
