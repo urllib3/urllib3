@@ -75,6 +75,11 @@ class HostChangedError(RequestError):
         self.retries = retries
 
 
+class TimeoutStateError(HTTPError):
+    """ Raised when passing an invalid state to a timeout """
+    pass
+
+
 class TimeoutError(HTTPError):
     """ Raised when a socket error occurs. """
     pass

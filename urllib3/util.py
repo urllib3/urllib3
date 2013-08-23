@@ -8,7 +8,6 @@
 from base64 import b64encode
 from binascii import hexlify, unhexlify
 from collections import namedtuple
-import copy
 from hashlib import md5, sha1
 from socket import error as SocketError, _GLOBAL_DEFAULT_TIMEOUT
 import time
@@ -34,7 +33,7 @@ except ImportError:
     pass
 
 from .packages import six
-from .exceptions import LocationParseError, SSLError
+from .exceptions import LocationParseError, SSLError, TimeoutStateError
 
 
 _Default = object()
@@ -135,7 +134,11 @@ class Timeout(object):
 
 
     def clone(self):
-        """ Return a copy of the timeout object """
+        """ Return a copy of the timeout object
+
+        Timeout properties are stored per-pool but each request needs a fresh
+        Timeout object to ensure each one has its own start/stop configured.
+        """
         # We can't use copy.deepcopy because that will also create a new object
         # for _GLOBAL_DEFAULT_TIMEOUT, which socket.py uses as a sentinel to
         # detect the user default.
@@ -144,9 +147,13 @@ class Timeout(object):
 
 
     def start(self):
-        """ Start the timeout clock """
+        """ Start the timeout clock, used during a connect() attempt
+
+        Raises a :class:`urllib3.exceptions.TimeoutStateError` if you attempt
+        to start a timer that has been started already.
+        """
         if self._start is not None:
-            raise ValueError("timeout timer has already been started")
+            raise TimeoutStateError("Timeout timer has already been started.")
         self._start = current_time()
         return self._start
 
@@ -154,15 +161,16 @@ class Timeout(object):
     def get_elapsed(self):
         """ Return the timeout amount so far """
         if self._start is None:
-            raise ValueError("Can't get elapsed time for timer "
-                             "that has not started")
+            raise TimeoutStateError("Can't get elapsed time for timer "
+                                    "that has not started.")
         return current_time() - self._start
 
 
     def stop(self):
         """ Stop the timeout timer """
         if self._start is None:
-            raise ValueError("Cannot stop a timeout that has not started")
+            raise TimeoutStateError("Cannot stop a timeout timer "
+                                    "that has not started.")
         self.elapsed = current_time() - self._start
         return self.elapsed
 

@@ -13,7 +13,7 @@ from urllib3.util import (
     Timeout,
     Url,
 )
-from urllib3.exceptions import LocationParseError
+from urllib3.exceptions import LocationParseError, TimeoutStateError
 
 # This number represents a time in seconds, it doesn't mean anything in
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller
@@ -254,11 +254,11 @@ class TestUtil(unittest.TestCase):
     def test_timeout_elapsed(self, current_time):
         current_time.return_value = TIMEOUT_EPOCH
         timeout = Timeout(total=3)
-        self.assertRaises(ValueError, timeout.stop)
-        self.assertRaises(ValueError, timeout.get_elapsed)
+        self.assertRaises(TimeoutStateError, timeout.stop)
+        self.assertRaises(TimeoutStateError, timeout.get_elapsed)
 
         timeout.start()
-        self.assertRaises(ValueError, timeout.start)
+        self.assertRaises(TimeoutStateError, timeout.start)
 
         current_time.return_value = TIMEOUT_EPOCH + 2
         self.assertEqual(timeout.get_elapsed(), 2)
