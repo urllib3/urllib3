@@ -70,12 +70,12 @@ class HTTPConnection(_HTTPConnection):
             # Call our timeout value enhanced_timeout to avoid type/assignment
             # errors with the parent class
             self.enhanced_timeout = timeout.clone()
-            HTTPConnection.__init__(self, host, port=port, strict=strict,
+            _HTTPConnection.__init__(self, host, port=port, strict=strict,
                                     timeout=timeout.request)
         else:
             # This branch is for backwards compatibility, can be removed later
             self.enhanced_timeout = Timeout.from_legacy(timeout)
-            HTTPConnection.__init__(self, host, port=port, strict=strict,
+            _HTTPConnection.__init__(self, host, port=port, strict=strict,
                                     timeout=timeout)
 
     def connect(self):
