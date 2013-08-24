@@ -13,7 +13,7 @@ from urllib3.connection import (
     HTTPSConnection,
     VerifiedHTTPSConnection,
 )
-from urllib3.exceptions import SSLError, ConnectTimeoutError, RequestTimeoutError
+from urllib3.exceptions import SSLError, ConnectTimeoutError, ReadTimeoutError
 from urllib3.util import Timeout
 
 
@@ -198,7 +198,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
                                         '7A:F2:8A:D7:1E:07:33:67:DE'
         url = '/sleep?seconds=0.005'
-        self.assertRaises(RequestTimeoutError, https_pool.request, 'GET', url)
+        self.assertRaises(ReadTimeoutError, https_pool.request, 'GET', url)
 
         timeout = Timeout(total=None)
         https_pool = HTTPSConnectionPool(self.host, self.port, timeout=timeout,

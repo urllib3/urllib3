@@ -85,7 +85,7 @@ class TimeoutError(HTTPError):
     pass
 
 
-class RequestTimeoutError(TimeoutError, RequestError):
+class ReadTimeoutError(TimeoutError, RequestError):
     "Raised when a socket timeout occurs while receiving data from a server"
     pass
 

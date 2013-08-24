@@ -13,7 +13,7 @@ from urllib3.exceptions import (
     HostChangedError,
     MaxRetryError,
     SSLError,
-    RequestTimeoutError,
+    ReadTimeoutError,
 )
 
 from socket import error as SocketError, timeout as SocketTimeout
@@ -129,8 +129,8 @@ class TestConnectionPool(unittest.TestCase):
             self.assertEqual(pool.pool.qsize(), POOL_SIZE)
 
         #make sure that all of the exceptions return the connection to the pool
-        _test(Empty, RequestTimeoutError)
-        _test(SocketTimeout, RequestTimeoutError)
+        _test(Empty, ReadTimeoutError)
+        _test(SocketTimeout, ReadTimeoutError)
         _test(BaseSSLError, SSLError)
         _test(CertificateError, SSLError)
 

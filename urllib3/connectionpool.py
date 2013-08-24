@@ -56,7 +56,7 @@ from .exceptions import (
     HostChangedError,
     MaxRetryError,
     SSLError,
-    RequestTimeoutError,
+    ReadTimeoutError,
     ProxyError,
 )
 
@@ -303,7 +303,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             except TypeError: # Python 2.6 and older
                 httplib_response = conn.getresponse()
         except SocketTimeout:
-            raise RequestTimeoutError(self, url,
+            raise ReadTimeoutError(self, url,
                                       "Request timed out. (read timeout=%s)" %
                                       conn.enhanced_timeout.read_timeout)
 
@@ -466,20 +466,20 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         except Empty:
             # Timed out by queue
-            raise RequestTimeoutError(self, url,
+            raise ReadTimeoutError(self, url,
                                       "Request timed out. (pool_timeout=%s)" %
                                       pool_timeout)
 
         except SocketTimeout:
             # Timed out by socket
-            raise RequestTimeoutError(self, url,
+            raise ReadTimeoutError(self, url,
                                       "Request timed out. (read timeout=%s)" %
                                       timeout.read)
 
         except BaseSSLError as e:
             # SSL certificate error
             if 'timed out' in str(e): # Platform-specific: Python 2.6
-                raise RequestTimeoutError(self, url,
+                raise ReadTimeoutError(self, url,
                                           "Request timed out. (read timeout=%s)" %
                                           timeout.read)
             raise SSLError(e)
