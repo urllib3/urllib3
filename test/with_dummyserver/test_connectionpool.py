@@ -22,7 +22,6 @@ from urllib3.exceptions import (
 )
 from urllib3.packages.six import u
 from urllib3 import util
-from socket import timeout as SocketTimeout
 
 from dummyserver.testcase import HTTPDummyServerTestCase
 
@@ -123,7 +122,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         conn = pool._get_conn()
         # XXX why is this not a request timeout?
-        self.assertRaises(SocketTimeout, pool._make_request,
+        self.assertRaises(RequestTimeoutError, pool._make_request,
                           conn, 'GET', url)
         pool._put_conn(conn)
 
@@ -134,7 +133,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         conn = pool._get_conn()
         # XXX why is this not a request timeout?
-        self.assertRaises(SocketTimeout, pool._make_request,
+        self.assertRaises(RequestTimeoutError, pool._make_request,
                           conn, 'GET', url, timeout=timeout)
         pool._put_conn(conn)
 
@@ -146,7 +145,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertRaises(RequestTimeoutError, pool.request,
                           'GET', url, timeout=0.001)
         conn = pool._new_conn()
-        self.assertRaises(SocketTimeout, pool._make_request, conn,
+        self.assertRaises(RequestTimeoutError, pool._make_request, conn,
                           'GET', url, timeout=0.001)
         pool._put_conn(conn)
 
@@ -188,7 +187,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
         conn = pool._get_conn()
-        self.assertRaises(SocketTimeout, pool._make_request, conn, 'GET', url)
+        self.assertRaises(RequestTimeoutError, pool._make_request, conn, 'GET', url)
 
         timeout = util.Timeout(total=None, connect=0.001)
         pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)

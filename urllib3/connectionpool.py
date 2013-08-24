@@ -297,10 +297,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 pass
 
         # Receive the response from the server
-        try: # Python 2.7+, use buffering of HTTP responses
-            httplib_response = conn.getresponse(buffering=True)
-        except TypeError: # Python 2.6 and older
-            httplib_response = conn.getresponse()
+        try:
+            try: # Python 2.7+, use buffering of HTTP responses
+                httplib_response = conn.getresponse(buffering=True)
+            except TypeError: # Python 2.6 and older
+                httplib_response = conn.getresponse()
+        except SocketTimeout:
+            raise RequestTimeoutError(self, url,
+                                      "Request timed out. (read timeout=%s)" %
+                                      conn.enhanced_timeout.read_timeout)
 
         # AppEngine doesn't have a version attr.
         http_version = getattr(conn, '_http_vsn_str', 'HTTP/?')
@@ -468,15 +473,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         except SocketTimeout:
             # Timed out by socket
             raise RequestTimeoutError(self, url,
-                                      "Request timed out. (timeout=%s)" %
-                                      timeout)
+                                      "Request timed out. (read timeout=%s)" %
+                                      timeout.read)
 
         except BaseSSLError as e:
             # SSL certificate error
             if 'timed out' in str(e): # Platform-specific: Python 2.6
                 raise RequestTimeoutError(self, url,
-                                          "Request timed out. (timeout=%s)" %
-                                          timeout)
+                                          "Request timed out. (read timeout=%s)" %
+                                          timeout.read)
             raise SSLError(e)
 
         except CertificateError as e:
