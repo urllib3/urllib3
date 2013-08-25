@@ -297,7 +297,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             err = ReadTimeoutError(self, url,
                                    "Read timed out. (read timeout=%s)" %
                                    conn.enhanced_timeout.read_timeout)
-            raise err, None, sys.exc_info()[2]
+            raise err
 
         # AppEngine doesn't have a version attr.
         http_version = getattr(conn, '_http_vsn_str', 'HTTP/?')
@@ -460,14 +460,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Timed out by queue
             msg = "Read timed out, no pool connections are available."
             err = ReadTimeoutError(self, url, msg)
-            raise err, None, sys.exc_info()[2]
+            raise err
 
         except SocketTimeout:
             # Timed out by socket
             err = ReadTimeoutError(self, url,
                                    "Read timed out. (read timeout=%s)" %
                                    timeout.read_timeout)
-            raise err, None, sys.exc_info()[2]
+            raise err
 
         except BaseSSLError as e:
             # SSL certificate error
@@ -476,7 +476,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 err = ReadTimeoutError(self, url,
                                        "Read timed out. (read timeout=%s)" %
                                        timeout.read_timeout)
-                raise err, None, sys.exc_info()[2]
+                raise err
             raise SSLError(e)
 
         except CertificateError as e:
