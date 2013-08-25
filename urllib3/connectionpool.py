@@ -369,7 +369,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         log.debug("Setting read timeout to %s" % read_timeout)
         if (hasattr(conn, 'sock') and   # App Engine doesn't have a sock attr
             read_timeout is not None and
-            read_timeout is not socket._GLOBAL_DEFAULT_TIMEOUT):
+            read_timeout is not DEFAULT_TIMEOUT):
             conn.sock.settimeout(read_timeout)
 
         # Receive the response from the server
@@ -666,7 +666,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     def _new_conn(self):
         """
-        Return a fresh :class:`urllib3.connectionpool.HTTPSConnection`.
+        Return a fresh :class:`httplib.HTTPSConnection`.
         """
         self.num_connections += 1
         log.info("Starting new HTTPS connection (%d): %s"

@@ -201,7 +201,7 @@ class Timeout(object):
             self.total is not DEFAULT_TIMEOUT and
             self.read is not None and
             self.read is not DEFAULT_TIMEOUT):
-            # in case the timeout has not yet been set.
+            # in case the connect timeout has not yet been established.
             if self._start is None:
                 return self.read
             return max(0, min(self.total - self.get_elapsed(), self.read))
