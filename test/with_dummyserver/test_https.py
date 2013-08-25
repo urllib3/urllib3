@@ -1,3 +1,7 @@
+try: # Python 3
+    from http.client import HTTPSConnection
+except ImportError:
+    from httplib import HTTPSConnection
 import logging
 import ssl
 import sys
@@ -9,10 +13,7 @@ from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from urllib3 import HTTPSConnectionPool
-from urllib3.connection import (
-    HTTPSConnection,
-    VerifiedHTTPSConnection,
-)
+from urllib3.connectionpool import VerifiedHTTPSConnection
 from urllib3.exceptions import SSLError, ConnectTimeoutError, ReadTimeoutError
 from urllib3.util import Timeout
 
@@ -274,7 +275,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         urllib3.connectionpool.ssl = OriginalSSL
 
     def test_enhanced_ssl_connection(self):
-        conn = HTTPSConnection(self.host, self.port)
+        conn = VerifiedHTTPSConnection(self.host, self.port)
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          timeout=Timeout(total=None, connect=5),
                                          cert_reqs='CERT_REQUIRED')

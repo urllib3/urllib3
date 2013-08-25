@@ -173,33 +173,19 @@ class TestConnectionPool(unittest.TestCase):
         self.assertRaises(Empty, old_pool_queue.get, block=False)
 
 
-    def test_enhanced_conn(self):
+    def test_pool_timeouts(self):
         pool = HTTPConnectionPool(host='localhost')
         conn = pool._new_conn()
         self.assertEqual(conn.__class__, HTTPConnection)
-        self.assertEqual(conn.enhanced_timeout.__class__, Timeout)
-        self.assertEqual(conn.enhanced_timeout.read, DEFAULT_TIMEOUT)
-        self.assertEqual(conn.enhanced_timeout.connect, DEFAULT_TIMEOUT)
-        self.assertEqual(conn.enhanced_timeout.total, None)
+        self.assertEqual(pool.timeout.__class__, Timeout)
+        self.assertEqual(pool.timeout.read, DEFAULT_TIMEOUT)
+        self.assertEqual(pool.timeout.connect, DEFAULT_TIMEOUT)
+        self.assertEqual(pool.timeout.total, None)
 
-        conn = HTTPConnection(host='localhost')
-        self.assertEqual(conn.timeout, DEFAULT_TIMEOUT)
-        self.assertEqual(conn.enhanced_timeout.read, DEFAULT_TIMEOUT)
-        self.assertEqual(conn.enhanced_timeout.connect, DEFAULT_TIMEOUT)
-
-        conn = HTTPConnection(host='localhost', timeout=3)
-        self.assertEqual(conn.enhanced_timeout.read, 3)
-        self.assertEqual(conn.enhanced_timeout.connect, 3)
-        self.assertEqual(conn.timeout, 3)
-
-
-    def test_timeout_object_reuse(self):
-        """ Test that a new timeout object is created for each connection """
-        timeout = Timeout(connect=3)
-        pool = HTTPConnectionPool(host='localhost', timeout=timeout)
-        conn1 = pool._get_conn()
-        conn2 = pool._get_conn()
-        self.assertFalse(conn1.enhanced_timeout is conn2.enhanced_timeout)
+        pool = HTTPConnectionPool(host='localhost', timeout=3)
+        self.assertEqual(pool.timeout.read, 3)
+        self.assertEqual(pool.timeout.connect, 3)
+        self.assertEqual(pool.timeout.total, None)
 
 
 if __name__ == '__main__':

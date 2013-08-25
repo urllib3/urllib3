@@ -6,13 +6,13 @@
 
 import logging
 from socket import error as SocketError, timeout as SocketTimeout
-import sys
+import socket
 
 try: # Python 3
-    from http.client import HTTPException
+    from http.client import HTTPConnection, HTTPException
     from http.client import HTTP_PORT, HTTPS_PORT
 except ImportError:
-    from httplib import HTTPException
+    from httplib import HTTPConnection, HTTPException
     from httplib import HTTP_PORT, HTTPS_PORT
 
 try: # Python 3
@@ -42,16 +42,9 @@ except (ImportError, AttributeError): # Platform-specific: No SSL.
     pass
 
 
-from .connection import (
-    HTTPConnection,
-    HTTPSConnection,
-    VerifiedHTTPSConnection,
-)
-from .request import RequestMethods
-from .response import HTTPResponse
-from .util import DEFAULT_TIMEOUT, get_host, is_connection_dropped, Timeout
 from .exceptions import (
     ClosedPoolError,
+    ConnectTimeoutError,
     EmptyPoolError,
     HostChangedError,
     MaxRetryError,
@@ -59,9 +52,20 @@ from .exceptions import (
     ReadTimeoutError,
     ProxyError,
 )
-
-from .packages.ssl_match_hostname import CertificateError
+from .packages.ssl_match_hostname import CertificateError, match_hostname
 from .packages import six
+from .request import RequestMethods
+from .response import HTTPResponse
+from .util import (
+    assert_fingerprint,
+    DEFAULT_TIMEOUT,
+    get_host,
+    is_connection_dropped,
+    resolve_cert_reqs,
+    resolve_ssl_version,
+    ssl_wrap_socket,
+    Timeout,
+)
 
 
 xrange = six.moves.xrange
@@ -74,6 +78,69 @@ port_by_scheme = {
     'http': HTTP_PORT,
     'https': HTTPS_PORT,
 }
+
+
+## Connection objects (extension of httplib)
+
+class VerifiedHTTPSConnection(HTTPSConnection):
+    """
+    Based on httplib.HTTPSConnection but wraps the socket with
+    SSL certification.
+    """
+    cert_reqs = None
+    ca_certs = None
+    ssl_version = None
+
+    def set_cert(self, key_file=None, cert_file=None,
+                 cert_reqs=None, ca_certs=None,
+                 assert_hostname=None, assert_fingerprint=None):
+
+        self.key_file = key_file
+        self.cert_file = cert_file
+        self.cert_reqs = cert_reqs
+        self.ca_certs = ca_certs
+        self.assert_hostname = assert_hostname
+        self.assert_fingerprint = assert_fingerprint
+
+    def connect(self):
+        # Add certificate verification
+        try:
+            sock = socket.create_connection(
+                address=(self.host, self.port),
+                timeout=self.timeout)
+        except SocketError as e:
+            if 'timed out' in str(e):
+                raise ConnectTimeoutError(
+                    self, "Connection to %s timed out. (connect timeout=%s)" %
+                    (self.host, self.timeout))
+            # XXX is this the correct error to raise in this case?
+            raise ProxyError('Cannot connect to proxy. Socket error: %s.' % e)
+
+        resolved_cert_reqs = resolve_cert_reqs(self.cert_reqs)
+        resolved_ssl_version = resolve_ssl_version(self.ssl_version)
+
+        if self._tunnel_host:
+            self.sock = sock
+            # Calls self._set_hostport(), so self.host is
+            # self._tunnel_host below.
+            self._tunnel()
+
+        # Wrap socket using verification with the root certs in
+        # trusted_root_certs
+        self.sock = ssl_wrap_socket(sock, self.key_file, self.cert_file,
+                                    cert_reqs=resolved_cert_reqs,
+                                    ca_certs=self.ca_certs,
+                                    server_hostname=self.host,
+                                    ssl_version=resolved_ssl_version)
+
+        if resolved_cert_reqs != ssl.CERT_NONE:
+            if self.assert_fingerprint:
+                assert_fingerprint(self.sock.getpeercert(binary_form=True),
+                                   self.assert_fingerprint)
+            elif self.assert_hostname is not False:
+                match_hostname(self.sock.getpeercert(),
+                               self.assert_hostname or self.host)
+
 
 ## Pool objects
 
@@ -186,9 +253,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.num_connections += 1
         log.info("Starting new HTTP connection (%d): %s" %
                  (self.num_connections, self.host))
-        timeout_copy = self.timeout.clone()
         return HTTPConnection(host=self.host, port=self.port,
-                                      strict=self.strict, timeout=timeout_copy)
+                              strict=self.strict,
+                              timeout=self.timeout.connect_timeout)
 
     def _get_conn(self, timeout=None):
         """
@@ -251,6 +318,18 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Connection never got put back into the pool, close it.
         conn.close()
 
+    def _get_timeout(self, timeout):
+        """ Helper that always returns a :class:`urllib3.util.Timeout` """
+        if timeout is _Default:
+            return self.timeout.clone()
+
+        if isinstance(timeout, Timeout):
+            return timeout.clone()
+        else:
+            # User passed us an int/float. This is for backwards compatibility,
+            # can be removed later
+            return Timeout.from_float(timeout)
+
     def _make_request(self, conn, method, url, timeout=_Default,
                       **httplib_request_kw):
         """
@@ -269,23 +348,28 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         self.num_requests += 1
 
-        # if unspecified, set the timeout for this connection to the pool
-        # timeout
-        if timeout is _Default:
-            timeout = self.timeout
+        timeout_obj = self._get_timeout(timeout)
 
-        # This is for backwards compatibility, can be removed later
-        if isinstance(timeout, Timeout):
-            conn.enhanced_timeout = timeout.clone()
-        else:
-            # assume timeout is an int/float
-            conn.enhanced_timeout = Timeout.from_float(timeout)
-            conn.timeout = timeout
+        try:
+            timeout_obj.start()
+            # NB: this calls httplib.request, not the request() in request.py in
+            # this library. This also sends the connect() on the socket
+            conn.timeout = timeout_obj.connect_timeout
+            conn.request(method, url, **httplib_request_kw)
+            timeout_obj.stop()
+        except SocketError as e:
+            if 'timed out' in str(e):
+                raise ConnectTimeoutError(
+                    self, "Connection to %s timed out. (connect timeout=%s)" %
+                    (self.host, timeout_obj.connect_timeout))
+            raise
 
-        # NB: this calls httplib.request, not the request() in request.py in
-        # this library
-        # this line connect()'s and sends the request
-        conn.request(method, url, **httplib_request_kw)
+        # Reset the timeout for the recv() on the socket
+        read_timeout = timeout_obj.read_timeout
+        log.debug("Setting read timeout to %s" % read_timeout)
+        if (read_timeout is not None and
+            read_timeout is not socket._GLOBAL_DEFAULT_TIMEOUT):
+            conn.sock.settimeout(read_timeout)
 
         # Receive the response from the server
         try:
@@ -296,7 +380,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         except SocketTimeout:
             err = ReadTimeoutError(self, url,
                                    "Read timed out. (read timeout=%s)" %
-                                   conn.enhanced_timeout.read_timeout)
+                                   read_timeout)
             raise err
 
         # AppEngine doesn't have a version attr.
@@ -615,7 +699,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             connection_class = VerifiedHTTPSConnection
 
         connection = connection_class(host=actual_host, port=actual_port,
-                                      strict=self.strict, timeout=self.timeout)
+                                      strict=self.strict,
+                                      timeout=self.timeout.connect_timeout)
 
         return self._prepare_conn(connection)
 

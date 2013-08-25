@@ -199,6 +199,12 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         timeout = util.Timeout(connect=3, read=5, total=None)
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
         pool.request('GET', '/')
+        # This should not raise a "Timeout already started" error
+        pool.request('GET', '/')
+
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        # This should also not raise a "Timeout already started" error
+        pool.request('GET', '/')
 
         timeout = util.Timeout(total=None)
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
