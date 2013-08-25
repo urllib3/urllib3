@@ -248,7 +248,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def _new_conn(self):
         """
-        Return a fresh :class:`urllib.connectionpool.HTTPConnection`.
+        Return a fresh :class:`httplib.HTTPConnection`.
         """
         self.num_connections += 1
         log.info("Starting new HTTP connection (%d): %s" %
@@ -367,7 +367,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
         log.debug("Setting read timeout to %s" % read_timeout)
-        if (read_timeout is not None and
+        if (hasattr(conn, 'sock') and   # App Engine doesn't have a sock attr
+            read_timeout is not None and
             read_timeout is not socket._GLOBAL_DEFAULT_TIMEOUT):
             conn.sock.settimeout(read_timeout)
 
@@ -469,8 +470,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             use the pool on an HTTP proxy and request foreign hosts.
 
         :param timeout:
-            If specified, overrides the default timeout for this one request.
-            It may be a float (in seconds) or an instance of
+            If specified, overrides the default timeout for this one
+            request. It may be a float (in seconds) or an instance of
             :class:`urllib3.util.Timeout`.
 
         :param pool_timeout:
@@ -497,13 +498,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if retries < 0:
             raise MaxRetryError(self, url)
-
-        if timeout is _Default:
-            timeout = self.timeout.clone()
-
-        # This is for backwards compatibility, can be removed later
-        if not isinstance(timeout, Timeout):
-            timeout = Timeout.from_float(timeout)
 
         if release_conn is None:
             release_conn = response_kw.get('preload_content', True)
@@ -548,19 +542,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         except SocketTimeout:
             # Timed out by socket
-            err = ReadTimeoutError(self, url,
-                                   "Read timed out. (read timeout=%s)" %
-                                   timeout.read_timeout)
-            raise err
+            raise ReadTimeoutError(self, url, "Read timed out.")
 
         except BaseSSLError as e:
             # SSL certificate error
             if ('timed out' in str(e) or
                 'did not complete (read)' in str(e)): # Platform-specific: Python 2.6
-                err = ReadTimeoutError(self, url,
-                                       "Read timed out. (read timeout=%s)" %
-                                       timeout.read_timeout)
-                raise err
+                raise ReadTimeoutError(self, url, "Read timed out.")
             raise SSLError(e)
 
         except CertificateError as e:
