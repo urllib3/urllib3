@@ -201,6 +201,9 @@ class Timeout(object):
             self.total is not DEFAULT_TIMEOUT and
             self.read is not None and
             self.read is not DEFAULT_TIMEOUT):
+            # in case the timeout has not yet been set.
+            if self._start is None:
+                return self.read
             return max(0, min(self.total - self.get_elapsed(), self.read))
         elif self.total is not None and self.total is not DEFAULT_TIMEOUT:
             return max(0, self.total - self.get_elapsed())

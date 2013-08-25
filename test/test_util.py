@@ -244,10 +244,20 @@ class TestUtil(unittest.TestCase):
                                        time_mock=current_time)
         self.assertEqual(timeout.read_timeout, 7)
 
+        timeout = Timeout(total=10, read=7)
+        self.assertEqual(timeout.read_timeout, 7)
+
         timeout = Timeout(total=None, read=None, connect=None)
         self.assertEqual(timeout.connect_timeout, None)
         self.assertEqual(timeout.read_timeout, None)
         self.assertEqual(timeout.total, None)
+
+
+    def test_timeout_str(self):
+        timeout = Timeout(connect=1, read=2, total=3)
+        self.assertEqual(str(timeout), "Timeout(connect=1, read=2, total=3)")
+        timeout = Timeout(connect=1, read=None, total=3)
+        self.assertEqual(str(timeout), "Timeout(connect=1, read=None, total=3)")
 
 
     @patch('urllib3.util.current_time')

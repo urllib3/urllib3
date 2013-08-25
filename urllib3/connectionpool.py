@@ -6,7 +6,7 @@
 
 import logging
 from socket import error as SocketError, timeout as SocketTimeout
-
+import sys
 
 try: # Python 3
     from http.client import HTTPException
@@ -257,6 +257,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         Perform a request on a given httplib connection object taken from our
         pool.
 
+        :param conn:
+            a connection from one of our connection pools
+
         :param timeout:
             Socket timeout in seconds for the request. This can be a
             float or integer, which will set the same timeout value for
@@ -284,18 +287,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # this line connect()'s and sends the request
         conn.request(method, url, **httplib_request_kw)
 
-        # Set timeout
-        sock = getattr(conn, 'sock', False) # AppEngine doesn't have sock attr.
-        if sock:
-            try:
-                sock.settimeout(conn.enhanced_timeout.read_timeout)
-            except (TypeError, ValueError):
-                # the _DEFAULT_TIMEOUT can be an object, which means setting the
-                # timeout fails. in this case we did not mean to set the timeout to
-                # a specific value and we pass.
-                # If read_timeout is negative a ValueError is raised, ignore this
-                pass
-
         # Receive the response from the server
         try:
             try: # Python 2.7+, use buffering of HTTP responses
@@ -303,9 +294,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             except TypeError: # Python 2.6 and older
                 httplib_response = conn.getresponse()
         except SocketTimeout:
-            raise ReadTimeoutError(self, url,
-                                      "Request timed out. (read timeout=%s)" %
-                                      conn.enhanced_timeout.read_timeout)
+            err = ReadTimeoutError(self, url,
+                                   "Read timed out. (read timeout=%s)" %
+                                   conn.enhanced_timeout.read_timeout)
+            raise err, None, sys.exc_info()[2]
 
         # AppEngine doesn't have a version attr.
         http_version = getattr(conn, '_http_vsn_str', 'HTTP/?')
@@ -466,22 +458,25 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         except Empty:
             # Timed out by queue
-            raise ReadTimeoutError(self, url,
-                                      "Request timed out. (pool_timeout=%s)" %
-                                      pool_timeout)
+            msg = "Read timed out, no pool connections are available."
+            err = ReadTimeoutError(self, url, msg)
+            raise err, None, sys.exc_info()[2]
 
         except SocketTimeout:
             # Timed out by socket
-            raise ReadTimeoutError(self, url,
-                                      "Request timed out. (read timeout=%s)" %
-                                      timeout.read)
+            err = ReadTimeoutError(self, url,
+                                   "Read timed out. (read timeout=%s)" %
+                                   timeout.read_timeout)
+            raise err, None, sys.exc_info()[2]
 
         except BaseSSLError as e:
             # SSL certificate error
-            if 'timed out' in str(e): # Platform-specific: Python 2.6
-                raise ReadTimeoutError(self, url,
-                                          "Request timed out. (read timeout=%s)" %
-                                          timeout.read)
+            if ('timed out' in str(e) or
+                'did not complete (read)' in str(e)): # Platform-specific: Python 2.6
+                err = ReadTimeoutError(self, url,
+                                       "Read timed out. (read timeout=%s)" %
+                                       timeout.read_timeout)
+                raise err, None, sys.exc_info()[2]
             raise SSLError(e)
 
         except CertificateError as e:
@@ -559,8 +554,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  ca_certs=None, ssl_version=None,
                  assert_hostname=None, assert_fingerprint=None):
 
-        HTTPConnectionPool.__init__(self, host, port,
-                                    strict, timeout, maxsize,
+        HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
                                     block, headers, _proxy, _proxy_headers)
         self.key_file = key_file
         self.cert_file = cert_file

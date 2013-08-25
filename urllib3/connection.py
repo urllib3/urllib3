@@ -6,7 +6,7 @@
 
 # This class contains connection objects as extensions of the connection objects in
 # httplib.py. Generally they have to be overridden to set custom timeouts
-
+import logging
 import socket
 from socket import error as SocketError, timeout as SocketTimeout
 
@@ -41,6 +41,7 @@ try: # Compiled with SSL?
 except (ImportError, AttributeError): # Platform-specific: No SSL.
     pass
 
+log = logging.getLogger(__name__)
 
 class HTTPConnection(_HTTPConnection):
     """ A :class:`httplib.HTTPConnection` that supports connection timeouts
@@ -106,6 +107,8 @@ class HTTPConnection(_HTTPConnection):
         try:
             # After the connection is established, set the timeout on the socket
             # to the read timeout
+            log.debug("Setting read timeout to %s" %
+                      self.enhanced_timeout.read_timeout)
             self.sock.settimeout(self.enhanced_timeout.read_timeout)
         except (TypeError, ValueError):
             # the DEFAULT_TIMEOUT can be an object, which means setting the
@@ -160,6 +163,8 @@ class HTTPSConnection(HTTPConnection):
         try:
             # We've connected, so set the timeout on the socket to the read
             # timeout
+            log.debug("Setting read timeout to %s" %
+                      self.enhanced_timeout.read_timeout)
             sock.settimeout(self.enhanced_timeout.read_timeout)
         except (TypeError, ValueError):
             # the _DEFAULT_TIMEOUT can be an object, which means setting the
@@ -212,13 +217,15 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             if 'timed out' in str(e):
                 raise ConnectTimeoutError(
                     self, "Connection to %s timed out. (connect timeout=%s)" %
-                    (self.host, self.enhanced_timeout.connect))
+                    (self.host, self.enhanced_timeout.connect_timeout))
             # XXX is this the correct error to raise in this case?
             raise ProxyError('Cannot connect to proxy. Socket error: %s.' % e)
 
         try:
             # We've connected, so set the timeout on the socket to the read
             # timeout
+            log.debug("Setting read timeout to %s" %
+                      self.enhanced_timeout.read_timeout)
             sock.settimeout(self.enhanced_timeout.read_timeout)
         except (TypeError, ValueError):
             # the _DEFAULT_TIMEOUT can be an object, which means setting the
