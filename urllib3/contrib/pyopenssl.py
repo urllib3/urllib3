@@ -289,8 +289,9 @@ class WrappedSocket(object):
 
     def getpeercert(self, binary_form=False):
         x509 = self.connection.get_peer_certificate()
+
         if not x509:
-            raise ssl.SSLError('')
+            return x509
 
         if binary_form:
             return OpenSSL.crypto.dump_certificate(
