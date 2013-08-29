@@ -292,7 +292,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                         % self.host)
 
         # Connection never got put back into the pool, close it.
-        conn.close()
+        if conn:
+            conn.close()
 
     def _make_request(self, conn, method, url, timeout=_Default,
                       **httplib_request_kw):
