@@ -178,13 +178,13 @@ class TestConnectionPool(unittest.TestCase):
         conn = pool._new_conn()
         self.assertEqual(conn.__class__, HTTPConnection)
         self.assertEqual(pool.timeout.__class__, Timeout)
-        self.assertEqual(pool.timeout.read, Timeout.DEFAULT_TIMEOUT)
-        self.assertEqual(pool.timeout.connect, Timeout.DEFAULT_TIMEOUT)
+        self.assertEqual(pool.timeout._read, Timeout.DEFAULT_TIMEOUT)
+        self.assertEqual(pool.timeout._connect, Timeout.DEFAULT_TIMEOUT)
         self.assertEqual(pool.timeout.total, None)
 
         pool = HTTPConnectionPool(host='localhost', timeout=3)
-        self.assertEqual(pool.timeout.read, 3)
-        self.assertEqual(pool.timeout.connect, 3)
+        self.assertEqual(pool.timeout._read, 3)
+        self.assertEqual(pool.timeout._connect, 3)
         self.assertEqual(pool.timeout.total, None)
 
 

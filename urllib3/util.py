@@ -69,6 +69,12 @@ class Timeout(object):
         return. This combines the connect and read timeouts into one. In the
         event that both a connect timeout and a total are specified, or a read
         timeout and a total are specified, the shorter timeout will be applied.
+
+        Note that many factors can affect the total amount of time for urllib3
+        to return an HTTP response, including a misbehaving DNS server, high
+        load on the box, high swap, the program running at a low priority level,
+        etc.
+
         Defaults to None.
     """
 
@@ -82,19 +88,26 @@ class Timeout(object):
         :param name: the name of the timeout attribute to validate. used only
             in error messages
         """
+        if value is _Default:
+            return cls.DEFAULT_TIMEOUT
+
         if value is None or value is cls.DEFAULT_TIMEOUT:
             return value
 
         try:
             float(value)
-        except:
-            raise ValueError("Timeout value %s must be an int or float." % name)
+        except Exception:
+            raise ValueError("Timeout value %s was %s, but it must be an "
+                             "int or float." % (name, value))
 
         try:
             if value < 0:
-                raise ValueError("Cannot set %s timeout to a value less than 0." % name)
+                raise ValueError("Attempted to set %s timeout to %s, but the "
+                                 "timeout cannot be set to a value less "
+                                 "than 0." % (name, value))
         except TypeError: # Python 3
-            raise ValueError("Timeout value %s must be an int or float." % name)
+            raise ValueError("Timeout value %s was %s, but it must be an "
+                             "int or float." % (name, value))
 
         return value
 
@@ -110,25 +123,16 @@ class Timeout(object):
 
 
     def __init__(self, connect=_Default, read=_Default, total=None):
-        if connect is _Default:
-            self.connect = self.DEFAULT_TIMEOUT
-        else:
-            self.connect = Timeout.validate_timeout(connect, 'connect')
-
-        if read is _Default:
-            self.read = self.DEFAULT_TIMEOUT
-        else:
-            self.read = Timeout.validate_timeout(read, 'request')
-
-        self.total = Timeout.validate_timeout(total, 'total')
-
+        self._connect = self.validate_timeout(connect, 'connect')
+        self._read = self.validate_timeout(read, 'read')
+        self.total = self.validate_timeout(total, 'total')
         self._start_connect = None
 
 
     def __str__(self):
         return '%s(connect=%r, read=%r, total=%r)' % (type(self).__name__,
-                                                         self.connect,
-                                                         self.read,
+                                                         self._connect,
+                                                         self._read,
                                                          self.total)
 
 
@@ -141,7 +145,7 @@ class Timeout(object):
         # We can't use copy.deepcopy because that will also create a new object
         # for _GLOBAL_DEFAULT_TIMEOUT, which socket.py uses as a sentinel to
         # detect the user default.
-        return Timeout(connect=self.connect, read=self.read,
+        return Timeout(connect=self._connect, read=self._read,
                        total=self.total)
 
 
@@ -167,14 +171,18 @@ class Timeout(object):
 
     @property
     def connect_timeout(self):
-        """ Get the value to use for the connection timeout """
-        if self.total is None:
-            return self.connect
+        """ Get the value to use when setting a connection timeout.
 
-        if self.connect is None or self.connect is self.DEFAULT_TIMEOUT:
+        This will be a positive float or integer, the value None
+        (never timeout), or the default system timeout.
+        """
+        if self.total is None:
+            return self._connect
+
+        if self._connect is None or self._connect is self.DEFAULT_TIMEOUT:
             return self.total
 
-        return min(self.connect, self.total)
+        return min(self._connect, self.total)
 
     @property
     def read_timeout(self):
@@ -189,17 +197,17 @@ class Timeout(object):
         """
         if (self.total is not None and
             self.total is not self.DEFAULT_TIMEOUT and
-            self.read is not None and
-            self.read is not self.DEFAULT_TIMEOUT):
+            self._read is not None and
+            self._read is not self.DEFAULT_TIMEOUT):
             # in case the connect timeout has not yet been established.
             if self._start_connect is None:
-                return self.read
+                return self._read
             return max(0, min(self.total - self.get_connect_duration(),
-                              self.read))
+                              self._read))
         elif self.total is not None and self.total is not self.DEFAULT_TIMEOUT:
             return max(0, self.total - self.get_connect_duration())
         else:
-            return self.read
+            return self._read
 
 
 class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment'])):
