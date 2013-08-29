@@ -5,7 +5,6 @@ from mock import patch
 
 from urllib3 import add_stderr_logger
 from urllib3.util import (
-    DEFAULT_TIMEOUT,
     get_host,
     make_headers,
     split_first,
@@ -182,9 +181,8 @@ class TestUtil(unittest.TestCase):
     def _make_time_pass(self, seconds, timeout, time_mock):
         """ Make some time pass for the timeout object """
         time_mock.return_value = TIMEOUT_EPOCH
-        timeout.start()
+        timeout.start_connect()
         time_mock.return_value = TIMEOUT_EPOCH + seconds
-        timeout.stop()
         return timeout
 
     def test_invalid_timeouts(self):
@@ -230,7 +228,7 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(timeout.connect_timeout, 2)
 
         timeout = Timeout()
-        self.assertEqual(timeout.connect_timeout, DEFAULT_TIMEOUT)
+        self.assertEqual(timeout.connect_timeout, Timeout.DEFAULT_TIMEOUT)
 
         # Connect takes 5 seconds, leaving 5 seconds for read
         timeout = Timeout(total=10, read=7)
@@ -264,16 +262,14 @@ class TestUtil(unittest.TestCase):
     def test_timeout_elapsed(self, current_time):
         current_time.return_value = TIMEOUT_EPOCH
         timeout = Timeout(total=3)
-        self.assertRaises(TimeoutStateError, timeout.stop)
-        self.assertRaises(TimeoutStateError, timeout.get_elapsed)
+        self.assertRaises(TimeoutStateError, timeout.get_connect_duration)
 
-        timeout.start()
-        self.assertRaises(TimeoutStateError, timeout.start)
+        timeout.start_connect()
+        self.assertRaises(TimeoutStateError, timeout.start_connect)
 
         current_time.return_value = TIMEOUT_EPOCH + 2
-        self.assertEqual(timeout.get_elapsed(), 2)
+        self.assertEqual(timeout.get_connect_duration(), 2)
         current_time.return_value = TIMEOUT_EPOCH + 37
-        timeout.stop()
-        self.assertEqual(timeout.get_elapsed(), 37)
+        self.assertEqual(timeout.get_connect_duration(), 37)
 
 

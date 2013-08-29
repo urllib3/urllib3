@@ -39,7 +39,6 @@ from .exceptions import LocationParseError, SSLError, TimeoutStateError
 _Default = object()
 # The default timeout to use for socket connections. This is the attribute used
 # by httplib to define the default timeout
-DEFAULT_TIMEOUT = _GLOBAL_DEFAULT_TIMEOUT
 
 
 def current_time():
@@ -73,6 +72,7 @@ class Timeout(object):
         Defaults to None.
     """
 
+    DEFAULT_TIMEOUT = _GLOBAL_DEFAULT_TIMEOUT
 
     @classmethod
     def validate_timeout(cls, value, name):
@@ -82,7 +82,7 @@ class Timeout(object):
         :param name: the name of the timeout attribute to validate. used only
             in error messages
         """
-        if value is None or value is DEFAULT_TIMEOUT:
+        if value is None or value is cls.DEFAULT_TIMEOUT:
             return value
 
         try:
@@ -111,19 +111,18 @@ class Timeout(object):
 
     def __init__(self, connect=_Default, read=_Default, total=None):
         if connect is _Default:
-            self.connect = DEFAULT_TIMEOUT
+            self.connect = self.DEFAULT_TIMEOUT
         else:
             self.connect = Timeout.validate_timeout(connect, 'connect')
 
         if read is _Default:
-            self.read = DEFAULT_TIMEOUT
+            self.read = self.DEFAULT_TIMEOUT
         else:
             self.read = Timeout.validate_timeout(read, 'request')
 
         self.total = Timeout.validate_timeout(total, 'total')
 
-        self.elapsed = None
-        self._start = None
+        self._start_connect = None
 
 
     def __str__(self):
@@ -146,33 +145,24 @@ class Timeout(object):
                        total=self.total)
 
 
-    def start(self):
+    def start_connect(self):
         """ Start the timeout clock, used during a connect() attempt
 
         Raises a :class:`urllib3.exceptions.TimeoutStateError` if you attempt
         to start a timer that has been started already.
         """
-        if self._start is not None:
+        if self._start_connect is not None:
             raise TimeoutStateError("Timeout timer has already been started.")
-        self._start = current_time()
-        return self._start
+        self._start_connect = current_time()
+        return self._start_connect
 
 
-    def get_elapsed(self):
-        """ Return the timeout amount so far """
-        if self._start is None:
-            raise TimeoutStateError("Can't get elapsed time for timer "
+    def get_connect_duration(self):
+        """ Return the time elapsed by the connect() call """
+        if self._start_connect is None:
+            raise TimeoutStateError("Can't get connect duration for timer "
                                     "that has not started.")
-        return current_time() - self._start
-
-
-    def stop(self):
-        """ Stop the timeout timer """
-        if self._start is None:
-            raise TimeoutStateError("Cannot stop a timeout timer "
-                                    "that has not started.")
-        self.elapsed = current_time() - self._start
-        return self.elapsed
+        return current_time() - self._start_connect
 
 
     @property
@@ -181,7 +171,7 @@ class Timeout(object):
         if self.total is None:
             return self.connect
 
-        if self.connect is None or self.connect is DEFAULT_TIMEOUT:
+        if self.connect is None or self.connect is self.DEFAULT_TIMEOUT:
             return self.total
 
         return min(self.connect, self.total)
@@ -198,15 +188,16 @@ class Timeout(object):
         established, a ValueError will be raised.
         """
         if (self.total is not None and
-            self.total is not DEFAULT_TIMEOUT and
+            self.total is not self.DEFAULT_TIMEOUT and
             self.read is not None and
-            self.read is not DEFAULT_TIMEOUT):
+            self.read is not self.DEFAULT_TIMEOUT):
             # in case the connect timeout has not yet been established.
-            if self._start is None:
+            if self._start_connect is None:
                 return self.read
-            return max(0, min(self.total - self.get_elapsed(), self.read))
-        elif self.total is not None and self.total is not DEFAULT_TIMEOUT:
-            return max(0, self.total - self.get_elapsed())
+            return max(0, min(self.total - self.get_connect_duration(),
+                              self.read))
+        elif self.total is not None and self.total is not self.DEFAULT_TIMEOUT:
+            return max(0, self.total - self.get_connect_duration())
         else:
             return self.read
 

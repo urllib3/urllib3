@@ -58,7 +58,6 @@ from .request import RequestMethods
 from .response import HTTPResponse
 from .util import (
     assert_fingerprint,
-    DEFAULT_TIMEOUT,
     get_host,
     is_connection_dropped,
     resolve_cert_reqs,
@@ -66,7 +65,6 @@ from .util import (
     ssl_wrap_socket,
     Timeout,
 )
-
 
 xrange = six.moves.xrange
 
@@ -108,11 +106,11 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             sock = socket.create_connection(
                 address=(self.host, self.port),
                 timeout=self.timeout)
-        except SocketError as e:
-            if 'timed out' in str(e):
+        except SocketTimeout:
                 raise ConnectTimeoutError(
                     self, "Connection to %s timed out. (connect timeout=%s)" %
                     (self.host, self.timeout))
+        except SocketError as e:
             # XXX is this the correct error to raise in this case?
             raise ProxyError('Cannot connect to proxy. Socket error: %s.' % e)
 
@@ -217,9 +215,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     scheme = 'http'
 
-    def __init__(self, host, port=None, strict=False, timeout=DEFAULT_TIMEOUT,
-                 maxsize=1, block=False, headers=None, _proxy=None,
-                 _proxy_headers=None):
+    def __init__(self, host, port=None, strict=False,
+                 timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1, block=False,
+                 headers=None, _proxy=None, _proxy_headers=None):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
 
@@ -351,25 +349,22 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         timeout_obj = self._get_timeout(timeout)
 
         try:
-            timeout_obj.start()
+            timeout_obj.start_connect()
             # NB: this calls httplib.request, not the request() in request.py in
             # this library. This also sends the connect() on the socket
             conn.timeout = timeout_obj.connect_timeout
             conn.request(method, url, **httplib_request_kw)
-            timeout_obj.stop()
-        except SocketError as e:
-            if 'timed out' in str(e):
-                raise ConnectTimeoutError(
-                    self, "Connection to %s timed out. (connect timeout=%s)" %
-                    (self.host, timeout_obj.connect_timeout))
-            raise
+        except SocketTimeout:
+            raise ConnectTimeoutError(
+                self, "Connection to %s timed out. (connect timeout=%s)" %
+                (self.host, timeout_obj.connect_timeout))
 
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
         log.debug("Setting read timeout to %s" % read_timeout)
         if (hasattr(conn, 'sock') and   # App Engine doesn't have a sock attr
             read_timeout is not None and
-            read_timeout is not DEFAULT_TIMEOUT):
+            read_timeout is not Timeout.DEFAULT_TIMEOUT):
             conn.sock.settimeout(read_timeout)
 
         # Receive the response from the server

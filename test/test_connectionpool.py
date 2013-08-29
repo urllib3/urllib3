@@ -5,7 +5,7 @@ from urllib3.connectionpool import (
     HTTPConnection,
     HTTPConnectionPool,
 )
-from urllib3.util import Timeout, DEFAULT_TIMEOUT
+from urllib3.util import Timeout
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
     ClosedPoolError,
@@ -178,8 +178,8 @@ class TestConnectionPool(unittest.TestCase):
         conn = pool._new_conn()
         self.assertEqual(conn.__class__, HTTPConnection)
         self.assertEqual(pool.timeout.__class__, Timeout)
-        self.assertEqual(pool.timeout.read, DEFAULT_TIMEOUT)
-        self.assertEqual(pool.timeout.connect, DEFAULT_TIMEOUT)
+        self.assertEqual(pool.timeout.read, Timeout.DEFAULT_TIMEOUT)
+        self.assertEqual(pool.timeout.connect, Timeout.DEFAULT_TIMEOUT)
         self.assertEqual(pool.timeout.total, None)
 
         pool = HTTPConnectionPool(host='localhost', timeout=3)
