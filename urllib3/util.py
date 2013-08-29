@@ -73,7 +73,8 @@ class Timeout(object):
         Note that many factors can affect the total amount of time for urllib3
         to return an HTTP response, including a misbehaving DNS server, high
         load on the box, high swap, the program running at a low priority level,
-        etc.
+        or other behaviors, so the observed running time for urllib3 to return a
+        response may be greater than the value passed to `total`.
 
         Defaults to None.
     """
