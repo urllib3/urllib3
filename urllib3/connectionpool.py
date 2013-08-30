@@ -98,11 +98,8 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
     def connect(self):
         # Add certificate verification
-        try:
-            sock = socket.create_connection((self.host, self.port),
-                                            self.timeout)
-        except SocketError as e:
-            raise ProxyError('Cannot connect to proxy. Socket error: %s.' % e)
+        sock = socket.create_connection((self.host, self.port),
+                                        self.timeout)
 
         resolved_cert_reqs = resolve_cert_reqs(self.cert_reqs)
         resolved_ssl_version = resolve_ssl_version(self.ssl_version)
