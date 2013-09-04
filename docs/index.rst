@@ -131,10 +131,10 @@ When the :mod:`ssl` module is available, then
 :class:`~urllib3.connectionpool.HTTPSConnectionPool` objects can be configured
 to check SSL certificates against specific provided certificate authorities. ::
 
-    >>> conn = urllib3.connection_from_url('http://google.com')
-    >>> r1 = conn.request('GET', 'http://google.com/')
-    >>> r2 = conn.request('GET', '/mail')
-    >>> r3 = conn.request('GET', 'http://yahoo.com/')
+    >>> conn = urllib3.connection_from_url('http://www.google.com')
+    >>> r1 = conn.request('GET', 'http://www.google.com/')
+    >>> r2 = conn.request('GET', '/search')
+    >>> r3 = conn.request('GET', 'http://wwww.yahoo.com/')
     Traceback (most recent call last)
       ...
     HostChangedError: Connection pool with host 'http://google.com' tried to
