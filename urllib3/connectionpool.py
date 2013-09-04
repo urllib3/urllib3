@@ -6,7 +6,6 @@
 
 import logging
 import socket
-import errno
 
 from socket import error as SocketError, timeout as SocketTimeout
 from .util import resolve_cert_reqs, resolve_ssl_version, assert_fingerprint
@@ -166,6 +165,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         as a valid HTTP/1.0 or 1.1 status line, passed into
         :class:`httplib.HTTPConnection`.
 
+        .. note::
+           Only works in Python 2. This parameter is ignored in Python 3.
+
     :param timeout:
         Socket timeout in seconds for each individual connection, can be
         a float. None disables timeout.
@@ -226,9 +228,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.num_connections += 1
         log.info("Starting new HTTP connection (%d): %s" %
                  (self.num_connections, self.host))
-        return HTTPConnection(host=self.host,
-                              port=self.port,
-                              strict=self.strict)
+
+        extra_params = {}
+        if not six.PY3:  # Python 2
+            extra_params['strict'] = self.strict
+
+        return HTTPConnection(host=self.host, port=self.port, **extra_params)
 
     def _get_conn(self, timeout=None):
         """
@@ -620,10 +625,12 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         else:
             connection_class = VerifiedHTTPSConnection
 
-        connection = connection_class(host=actual_host, port=actual_port,
-                                      strict=self.strict)
+        extra_params = {}
+        if not six.PY3:  # Python 2
+            extra_params['strict'] = self.strict
 
-        return self._prepare_conn(connection)
+        conn = connection_class(host=actual_host, port=actual_port, **extra_params)
+        return self._prepare_conn(conn)
 
 
 def connection_from_url(url, **kw):
