@@ -68,11 +68,13 @@ class Timeout(object):
     :type connect: integer, float, or None
 
     :param read:
-        The maximum amount of time to wait for the server to return a HTTP
-        response. Omitting the parameter will default the read timeout to the
-        system default, probably `the global default timeout in socket.py
+        The maximum amount of time to wait between consecutive
+        read operations for a response from the server. Omitting
+        the parameter will default the read timeout to the system
+        default, probably `the global default timeout in socket.py
         <http://hg.python.org/cpython/file/603b4d593758/Lib/socket.py#l535>`_.
         None will set an infinite timeout.
+
     :type read: integer, float, or None
 
     :param total:
@@ -81,13 +83,22 @@ class Timeout(object):
         event that both a connect timeout and a total are specified, or a read
         timeout and a total are specified, the shorter timeout will be applied.
 
-        **Note:** many factors can affect the total amount of time for urllib3
-        to return an HTTP response, including a misbehaving DNS server, high
-        load on the box, high swap, the program running at a low priority level,
-        or other behaviors, so the observed running time for urllib3 to return a
-        response may be greater than the value passed to `total`.
-
         Defaults to None.
+
+    **Note:** many factors can affect the total amount of time for urllib3
+    to return an HTTP response, including a misbehaving DNS server, high
+    load on the box, high swap, the program running at a low priority level,
+    or other behaviors, so the observed running time for urllib3 to return a
+    response may be greater than the value passed to `total`.
+
+    In addition, the read and total timeouts only measure the time between read
+    operations on the socket connecting the client and the server, not the total
+    amount of time for the request to return a complete response. As an example,
+    you may want a request to return within 7 seconds or fail, so you set the
+    ``total`` timeout to 7 seconds. If the server sends one byte to you every 5
+    seconds, the request will **not** trigger time out. This case is admittedly
+    rare.
+
     :type total: integer, float, or None
     """
 
