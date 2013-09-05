@@ -52,17 +52,20 @@ class Timeout(object):
 
     :param connect:
         The maximum amount of time to wait for a connection attempt to a server
-        to succeed. This can be an int, a float, or None. Omitting the parameter
-        will default the connect timeout to the system default, probably
-        :attribute:`socket._GLOBAL_DEFAULT_TIMEOUT`. None will set an infinite
-        timeout for connection attempts
+        to succeed. Omitting the parameter will default the connect timeout to
+        the system default, probably `the global default timeout in socket.py
+        <http://hg.python.org/cpython/file/603b4d593758/Lib/socket.py#l535>`_.
+        None will set an infinite timeout for connection attempts.
+
+    :type connect: integer, float, or None
 
     :param read:
         The maximum amount of time to wait for the server to return a HTTP
-        response. This can be an int, a float, or None. Omitting the parameter
-        will default the read timeout to the system default, probably
-        :attribute:`socket._GLOBAL_DEFAULT_TIMEOUT`. None will set an infinite
-        timeout.
+        response. Omitting the parameter will default the read timeout to the
+        system default, probably `the global default timeout in socket.py
+        <http://hg.python.org/cpython/file/603b4d593758/Lib/socket.py#l535>`.
+        None will set an infinite timeout.
+    :type read: integer, float, or None
 
     :param total:
         The maximum amount of time to wait for an HTTP request to connect and
@@ -70,24 +73,29 @@ class Timeout(object):
         event that both a connect timeout and a total are specified, or a read
         timeout and a total are specified, the shorter timeout will be applied.
 
-        Note that many factors can affect the total amount of time for urllib3
+        **Note:** that many factors can affect the total amount of time for urllib3
         to return an HTTP response, including a misbehaving DNS server, high
         load on the box, high swap, the program running at a low priority level,
         or other behaviors, so the observed running time for urllib3 to return a
         response may be greater than the value passed to `total`.
 
         Defaults to None.
+    :type total: integer, float, or None
     """
 
+    #: A sentinel object representing the default timeout value
     DEFAULT_TIMEOUT = _GLOBAL_DEFAULT_TIMEOUT
 
     @classmethod
-    def validate_timeout(cls, value, name):
+    def _validate_timeout(cls, value, name):
         """ Check that a timeout attribute is valid
 
-        :param value: the timeout's value
-        :param name: the name of the timeout attribute to validate. used only
-            in error messages
+        :param value: The timeout value to validate
+        :param name: The name of the timeout attribute to validate. This is used
+            for clear error messages
+        :return: the value
+        :raises ValueError: if the type is not an integer or a float, or if it
+            is a numeric value less than zero
         """
         if value is _Default:
             return cls.DEFAULT_TIMEOUT
@@ -114,19 +122,25 @@ class Timeout(object):
 
     @classmethod
     def from_float(cls, timeout):
-        """ create a new Timeout from a legacy timeout value.
+        """ Create a new Timeout from a legacy timeout value.
 
-        The legacy timeout used by httplib.py would set the same timeout on the
-        connect(), sendall(), and recv() socket requests. This creates a Timeout
-        object that sets the timeouts to the same values.
+        The timeout value used by httplib.py sets the same timeout on the
+        connect(), and recv() socket requests. This creates a :class:Timeout
+        object that sets the individual timeouts to the ``timeout`` value passed
+        to this function.
+
+        :param timeout: The legacy timeout value
+        :type timeout: integer, float, sentinel default object, or None
+        :return: a Timeout object
+        :rtype: :class:`Timeout`
         """
         return Timeout(read=timeout, connect=timeout)
 
 
     def __init__(self, connect=_Default, read=_Default, total=None):
-        self._connect = self.validate_timeout(connect, 'connect')
-        self._read = self.validate_timeout(read, 'read')
-        self.total = self.validate_timeout(total, 'total')
+        self._connect = self._validate_timeout(connect, 'connect')
+        self._read = self._validate_timeout(read, 'read')
+        self.total = self._validate_timeout(total, 'total')
         self._start_connect = None
 
 
@@ -138,10 +152,13 @@ class Timeout(object):
 
 
     def clone(self):
-        """ Return a copy of the timeout object
+        """ Create a copy of the timeout object
 
         Timeout properties are stored per-pool but each request needs a fresh
         Timeout object to ensure each one has its own start/stop configured.
+
+        :return: a copy of the timeout object
+        :rtype: :class:`Timeout`
         """
         # We can't use copy.deepcopy because that will also create a new object
         # for _GLOBAL_DEFAULT_TIMEOUT, which socket.py uses as a sentinel to
@@ -153,8 +170,8 @@ class Timeout(object):
     def start_connect(self):
         """ Start the timeout clock, used during a connect() attempt
 
-        Raises a :class:`urllib3.exceptions.TimeoutStateError` if you attempt
-        to start a timer that has been started already.
+        :raises `urllib3.exceptions.TimeoutStateError`: if you attempt
+            to start a timer that has been started already.
         """
         if self._start_connect is not None:
             raise TimeoutStateError("Timeout timer has already been started.")
@@ -163,7 +180,13 @@ class Timeout(object):
 
 
     def get_connect_duration(self):
-        """ Return the time elapsed by the connect() call """
+        """ Gets the time elapsed since the call to start_connect().
+
+        :return: the elapsed time
+        :rtype: float
+        :raises `urllib3.exceptions.TimeoutStateError`: if you attempt
+            to get duration for a timer that hasn't been started.
+        """
         if self._start_connect is None:
             raise TimeoutStateError("Can't get connect duration for timer "
                                     "that has not started.")
@@ -176,6 +199,9 @@ class Timeout(object):
 
         This will be a positive float or integer, the value None
         (never timeout), or the default system timeout.
+
+        :return: the connect timeout
+        :rtype: int, float, :attr:`Timeout.DEFAULT_TIMEOUT` or None
         """
         if self.total is None:
             return self._connect
@@ -194,7 +220,13 @@ class Timeout(object):
 
         If self.total is set, the read timeout is dependent on the amount of
         time taken by the connect timeout. If the connection time has not been
-        established, a ValueError will be raised.
+        established, a :exc:`urllib3.exceptions.TimeoutStateError` will be
+        raised.
+
+        :return: the value to use for the read timeout
+        :rtype: int, float, :attr:`Timeout.DEFAULT_TIMEOUT` or None
+        :raises urllib3.exceptions.TimeoutStateError: If start_connect has not
+            yet been called on this object.
         """
         if (self.total is not None and
             self.total is not self.DEFAULT_TIMEOUT and

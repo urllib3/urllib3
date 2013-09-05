@@ -81,7 +81,11 @@ class TimeoutStateError(HTTPError):
 
 
 class TimeoutError(HTTPError):
-    """ Raised when a socket error occurs. """
+    """ Raised when a socket timeout error occurs.
+
+    Catching this error will catch both :exc:`ReadTimeoutErrors
+    <ReadTimeoutError>` and :exc:`ConnectTimeoutErrors <ConnectTimeoutError>`.
+    """
     pass
 
 
