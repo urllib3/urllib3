@@ -81,7 +81,7 @@ class Timeout(object):
         event that both a connect timeout and a total are specified, or a read
         timeout and a total are specified, the shorter timeout will be applied.
 
-        **Note:** that many factors can affect the total amount of time for urllib3
+        **Note:** many factors can affect the total amount of time for urllib3
         to return an HTTP response, including a misbehaving DNS server, high
         load on the box, high swap, the program running at a low priority level,
         or other behaviors, so the observed running time for urllib3 to return a
