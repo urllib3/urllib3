@@ -71,7 +71,7 @@ class Timeout(object):
         The maximum amount of time to wait for the server to return a HTTP
         response. Omitting the parameter will default the read timeout to the
         system default, probably `the global default timeout in socket.py
-        <http://hg.python.org/cpython/file/603b4d593758/Lib/socket.py#l535>`.
+        <http://hg.python.org/cpython/file/603b4d593758/Lib/socket.py#l535>`_.
         None will set an infinite timeout.
     :type read: integer, float, or None
 
