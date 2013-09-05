@@ -50,6 +50,14 @@ class Timeout(object):
     """
     Utility object for storing timeout values.
 
+    Example usage:
+
+    .. code-block:: python
+
+        timeout = util.Timeout(connect=2, read=7)
+        pool = HTTPConnectionPool('www.google.com', 80, timeout=timeout)
+        pool.request(...) # Etc, etc
+
     :param connect:
         The maximum amount of time to wait for a connection attempt to a server
         to succeed. Omitting the parameter will default the connect timeout to
