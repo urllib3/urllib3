@@ -5,6 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import logging
+
 from socket import error as SocketError, timeout as SocketTimeout
 import socket
 
@@ -180,6 +181,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         as a valid HTTP/1.0 or 1.1 status line, passed into
         :class:`httplib.HTTPConnection`.
 
+        .. note::
+           Only works in Python 2. This parameter is ignored in Python 3.
+
     :param timeout:
         Socket timeout in seconds for each individual connection. This can
         be a float or integer, which sets the timeout for the HTTP request,
@@ -251,9 +255,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.num_connections += 1
         log.info("Starting new HTTP connection (%d): %s" %
                  (self.num_connections, self.host))
+        extra_params = {}
+        if not six.PY3:  # Python 2
+            extra_params['strict'] = self.strict
+
         return HTTPConnection(host=self.host, port=self.port,
-                              strict=self.strict,
-                              timeout=self.timeout.connect_timeout)
+                              timeout=self.timeout.connect_timeout,
+                              **extra_params)
+
 
     def _get_conn(self, timeout=None):
         """
@@ -314,7 +323,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                         % self.host)
 
         # Connection never got put back into the pool, close it.
-        conn.close()
+        if conn:
+            conn.close()
 
     def _get_timeout(self, timeout):
         """ Helper that always returns a :class:`urllib3.util.Timeout` """
@@ -681,9 +691,12 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         else:
             connection_class = VerifiedHTTPSConnection
 
+        extra_params = {}
+        if not six.PY3:  # Python 2
+            extra_params['strict'] = self.strict
         connection = connection_class(host=actual_host, port=actual_port,
-                                      strict=self.strict,
-                                      timeout=self.timeout.connect_timeout)
+                                      timeout=self.timeout.connect_timeout,
+                                      **extra_params)
 
         return self._prepare_conn(connection)
 
