@@ -111,9 +111,6 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                 raise ConnectTimeoutError(
                     self, "Connection to %s timed out. (connect timeout=%s)" %
                     (self.host, self.timeout))
-        except SocketError as e:
-            # XXX is this the correct error to raise in this case?
-            raise ProxyError('Cannot connect to proxy. Socket error: %s.' % e)
 
         resolved_cert_reqs = resolve_cert_reqs(self.cert_reqs)
         resolved_ssl_version = resolve_ssl_version(self.ssl_version)
@@ -360,9 +357,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         try:
             timeout_obj.start_connect()
-            # NB: this calls httplib.request, not the request() in request.py in
-            # this library. This also sends the connect() on the socket
             conn.timeout = timeout_obj.connect_timeout
+            # conn.request() calls httplib.*.request, not the method in
+            # request.py. It also calls makefile (recv) on the socket
             conn.request(method, url, **httplib_request_kw)
         except SocketTimeout:
             raise ConnectTimeoutError(
@@ -372,9 +369,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
         log.debug("Setting read timeout to %s" % read_timeout)
-        if (hasattr(conn, 'sock') and   # App Engine doesn't have a sock attr
-            read_timeout is not None and
-            read_timeout is not Timeout.DEFAULT_TIMEOUT):
+        # App Engine doesn't have a sock attr
+        if hasattr(conn, 'sock') and \
+            read_timeout is not None and \
+            read_timeout is not Timeout.DEFAULT_TIMEOUT:
             conn.sock.settimeout(read_timeout)
 
         # Receive the response from the server
@@ -551,8 +549,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         except BaseSSLError as e:
             # SSL certificate error
-            if ('timed out' in str(e) or
-                'did not complete (read)' in str(e)): # Platform-specific: Python 2.6
+            if 'timed out' in str(e) or \
+               'did not complete (read)' in str(e): # Platform-specific: Python 2.6
                 raise ReadTimeoutError(self, url, "Read timed out.")
             raise SSLError(e)
 

@@ -85,21 +85,26 @@ class Timeout(object):
 
         Defaults to None.
 
-    **Note:** many factors can affect the total amount of time for urllib3
-    to return an HTTP response, including a misbehaving DNS server, high
-    load on the box, high swap, the program running at a low priority level,
-    or other behaviors, so the observed running time for urllib3 to return a
-    response may be greater than the value passed to `total`.
-
-    In addition, the read and total timeouts only measure the time between read
-    operations on the socket connecting the client and the server, not the total
-    amount of time for the request to return a complete response. As an example,
-    you may want a request to return within 7 seconds or fail, so you set the
-    ``total`` timeout to 7 seconds. If the server sends one byte to you every 5
-    seconds, the request will **not** trigger time out. This case is admittedly
-    rare.
 
     :type total: integer, float, or None
+
+    .. note::
+
+        Many factors can affect the total amount of time for urllib3 to return
+        an HTTP response. Specifically, Python's DNS resolver does not obey the
+        timeout specified on the socket. Other factors that can affect total
+        request time include high CPU load, high swap, the program running at a
+        low priority level, or other behaviors. The observed running time for
+        urllib3 to return a response may be greater than the value passed to
+        `total`.
+
+        In addition, the read and total timeouts only measure the time between
+        read operations on the socket connecting the client and the server, not
+        the total amount of time for the request to return a complete response.
+        As an example, you may want a request to return within 7 seconds or
+        fail, so you set the ``total`` timeout to 7 seconds. If the server
+        sends one byte to you every 5 seconds, the request will **not** trigger
+        time out. This case is admittedly rare.
     """
 
     #: A sentinel object representing the default timeout value
@@ -124,7 +129,7 @@ class Timeout(object):
 
         try:
             float(value)
-        except Exception:
+        except (TypeError, ValueError):
             raise ValueError("Timeout value %s was %s, but it must be an "
                              "int or float." % (name, value))
 
