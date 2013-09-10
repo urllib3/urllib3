@@ -121,7 +121,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
 
         conn = pool._get_conn()
-        # XXX why is this not a request timeout?
         self.assertRaises(ReadTimeoutError, pool._make_request,
                           conn, 'GET', url)
         pool._put_conn(conn)
@@ -132,7 +131,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, timeout=0.5)
 
         conn = pool._get_conn()
-        # XXX why is this not a request timeout?
         self.assertRaises(ReadTimeoutError, pool._make_request,
                           conn, 'GET', url, timeout=timeout)
         pool._put_conn(conn)
