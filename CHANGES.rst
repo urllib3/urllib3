@@ -4,7 +4,8 @@ Changes
 dev (master branch)
 +++++++++++++++++++
 
-* ...
+* Added granular timeout support with new `urllib3.util.Timeout` class.
+  (Issue #231)
 
 
 1.7 (2013-08-14)
