@@ -87,5 +87,8 @@ In chronological order:
 * Martin von Gagern <Martin.vGagern@gmx.net>
   * Support for non-ASCII header parameters
 
+* Kevin Burke <kev@inburke.com> and Pavel Kirichenko <juanych@yandex-team.ru>
+  * Support for separate connect and request timeouts
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
