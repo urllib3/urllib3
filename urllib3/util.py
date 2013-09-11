@@ -42,7 +42,9 @@ _Default = object()
 
 
 def current_time():
-    """Retrieve the current time, this function is mocked out in unit testing"""
+    """
+    Retrieve the current time, this function is mocked out in unit testing.
+    """
     return time.time()
 
 
@@ -54,7 +56,7 @@ class Timeout(object):
 
     .. code-block:: python
 
-        timeout = util.Timeout(connect=2, read=7)
+        timeout = urllib3.util.Timeout(connect=2.0, read=7.0)
         pool = HTTPConnectionPool('www.google.com', 80, timeout=timeout)
         pool.request(...) # Etc, etc
 
@@ -110,6 +112,17 @@ class Timeout(object):
     #: A sentinel object representing the default timeout value
     DEFAULT_TIMEOUT = _GLOBAL_DEFAULT_TIMEOUT
 
+    def __init__(self, connect=_Default, read=_Default, total=None):
+        self._connect = self._validate_timeout(connect, 'connect')
+        self._read = self._validate_timeout(read, 'read')
+        self.total = self._validate_timeout(total, 'total')
+        self._start_connect = None
+
+    def __str__(self):
+        return '%s(connect=%r, read=%r, total=%r)' % (
+            type(self).__name__, self._connect, self._read, self.total)
+
+
     @classmethod
     def _validate_timeout(cls, value, name):
         """ Check that a timeout attribute is valid
@@ -160,21 +173,6 @@ class Timeout(object):
         """
         return Timeout(read=timeout, connect=timeout)
 
-
-    def __init__(self, connect=_Default, read=_Default, total=None):
-        self._connect = self._validate_timeout(connect, 'connect')
-        self._read = self._validate_timeout(read, 'read')
-        self.total = self._validate_timeout(total, 'total')
-        self._start_connect = None
-
-
-    def __str__(self):
-        return '%s(connect=%r, read=%r, total=%r)' % (type(self).__name__,
-                                                         self._connect,
-                                                         self._read,
-                                                         self.total)
-
-
     def clone(self):
         """ Create a copy of the timeout object
 
@@ -190,7 +188,6 @@ class Timeout(object):
         return Timeout(connect=self._connect, read=self._read,
                        total=self.total)
 
-
     def start_connect(self):
         """ Start the timeout clock, used during a connect() attempt
 
@@ -201,7 +198,6 @@ class Timeout(object):
             raise TimeoutStateError("Timeout timer has already been started.")
         self._start_connect = current_time()
         return self._start_connect
-
 
     def get_connect_duration(self):
         """ Gets the time elapsed since the call to :meth:`start_connect`.
@@ -215,7 +211,6 @@ class Timeout(object):
             raise TimeoutStateError("Can't get connect duration for timer "
                                     "that has not started.")
         return current_time() - self._start_connect
-
 
     @property
     def connect_timeout(self):
