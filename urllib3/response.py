@@ -107,7 +107,7 @@ class HTTPResponse(io.IOBase):
             code and valid location. ``None`` if redirect status and no
             location. ``False`` if not a redirect status code.
         """
-        if self.status in [301, 302, 303, 307]:
+        if self.status in [301, 302, 303, 307, 308]:
             return self.headers.get('location')
 
         return False
