@@ -465,7 +465,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         :param redirect:
             If True, automatically handle redirects (status codes 301, 302,
-            303, 307). Each redirect counts as a retry.
+            303, 307, 308). Each redirect counts as a retry.
 
         :param assert_same_host:
             If ``True``, will make sure that the host of the pool requests is
