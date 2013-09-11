@@ -1,6 +1,11 @@
 import unittest
 
-from urllib3.connectionpool import connection_from_url, HTTPConnectionPool
+from urllib3.connectionpool import (
+    connection_from_url,
+    HTTPConnection,
+    HTTPConnectionPool,
+)
+from urllib3.util import Timeout
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
     ClosedPoolError,
@@ -8,7 +13,7 @@ from urllib3.exceptions import (
     HostChangedError,
     MaxRetryError,
     SSLError,
-    TimeoutError,
+    ReadTimeoutError,
 )
 
 from socket import error as SocketError, timeout as SocketTimeout
@@ -51,6 +56,7 @@ class TestConnectionPool(unittest.TestCase):
         for a, b in not_same_host:
             c = connection_from_url(a)
             self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
+
 
     def test_max_connections(self):
         pool = HTTPConnectionPool(host='localhost', maxsize=1, block=True)
@@ -108,6 +114,7 @@ class TestConnectionPool(unittest.TestCase):
             "Max retries exceeded with url: Test. "
             "(Caused by {0}: Test)".format(str(err.__class__)))
 
+
     def test_pool_size(self):
         POOL_SIZE = 1
         pool = HTTPConnectionPool(host='localhost', maxsize=POOL_SIZE, block=True)
@@ -122,8 +129,8 @@ class TestConnectionPool(unittest.TestCase):
             self.assertEqual(pool.pool.qsize(), POOL_SIZE)
 
         #make sure that all of the exceptions return the connection to the pool
-        _test(Empty, TimeoutError)
-        _test(SocketTimeout, TimeoutError)
+        _test(Empty, ReadTimeoutError)
+        _test(SocketTimeout, ReadTimeoutError)
         _test(BaseSSLError, SSLError)
         _test(CertificateError, SSLError)
 
@@ -165,6 +172,20 @@ class TestConnectionPool(unittest.TestCase):
 
         self.assertRaises(Empty, old_pool_queue.get, block=False)
 
+
+    def test_pool_timeouts(self):
+        pool = HTTPConnectionPool(host='localhost')
+        conn = pool._new_conn()
+        self.assertEqual(conn.__class__, HTTPConnection)
+        self.assertEqual(pool.timeout.__class__, Timeout)
+        self.assertEqual(pool.timeout._read, Timeout.DEFAULT_TIMEOUT)
+        self.assertEqual(pool.timeout._connect, Timeout.DEFAULT_TIMEOUT)
+        self.assertEqual(pool.timeout.total, None)
+
+        pool = HTTPConnectionPool(host='localhost', timeout=3)
+        self.assertEqual(pool.timeout._read, 3)
+        self.assertEqual(pool.timeout._connect, 3)
+        self.assertEqual(pool.timeout.total, None)
 
 
 if __name__ == '__main__':

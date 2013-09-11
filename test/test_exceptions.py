@@ -3,7 +3,8 @@ import pickle
 
 from urllib3.exceptions import (HTTPError, MaxRetryError, LocationParseError,
                                 ClosedPoolError, EmptyPoolError,
-                                HostChangedError, TimeoutError)
+                                HostChangedError, ReadTimeoutError,
+                                ConnectTimeoutError)
 from urllib3.connectionpool import HTTPConnectionPool
 
 
@@ -17,6 +18,7 @@ class TestPickle(unittest.TestCase):
         assert self.cycle(HTTPError(None))
         assert self.cycle(MaxRetryError(None, None, None))
         assert self.cycle(LocationParseError(None))
+        assert self.cycle(ConnectTimeoutError(None))
 
     def test_exceptions_with_objects(self):
         assert self.cycle(HTTPError('foo'))
@@ -29,5 +31,5 @@ class TestPickle(unittest.TestCase):
                                          None))
         assert self.cycle(HostChangedError(HTTPConnectionPool('localhost'),
                                            '/', None))
-        assert self.cycle(TimeoutError(HTTPConnectionPool('localhost'),
-                                       '/', None))
+        assert self.cycle(ReadTimeoutError(HTTPConnectionPool('localhost'),
+                                              '/', None))

@@ -2,28 +2,38 @@ import logging
 import sys
 import unittest
 
+import mock
+
 try:
     from urllib.parse import urlencode
 except:
     from urllib import urlencode
 
-from urllib3 import encode_multipart_formdata, HTTPConnectionPool
+from urllib3 import (
+    encode_multipart_formdata,
+    HTTPConnectionPool,
+)
 from urllib3.exceptions import (
+    ConnectTimeoutError,
     EmptyPoolError,
     DecodeError,
     MaxRetryError,
-    TimeoutError,
+    ReadTimeoutError,
 )
 from urllib3.packages.six import u
-from socket import timeout as SocketTimeout
+from urllib3 import util
 
 from dummyserver.testcase import HTTPDummyServerTestCase
 
+from nose.tools import timed
 
 log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
+# We need a host that will not immediately close the connection with a TCP
+# Reset. SO suggests this hostname
+TARPIT_HOST = '10.255.255.1'
 
 class TestConnectionPool(HTTPDummyServerTestCase):
 
@@ -97,30 +107,131 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('POST', '/upload', fields=fields)
         self.assertEqual(r.status, 200, r.data)
 
+    def test_timeout_float(self):
+        url = '/sleep?seconds=0.005'
+        # Pool-global timeout
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
+        self.assertRaises(ReadTimeoutError, pool.request, 'GET', url)
+
     def test_timeout(self):
         url = '/sleep?seconds=0.005'
-        timeout = 0.001
+        timeout = util.Timeout(read=0.001)
 
         # Pool-global timeout
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
 
         conn = pool._get_conn()
-        self.assertRaises(SocketTimeout, pool._make_request,
+        self.assertRaises(ReadTimeoutError, pool._make_request,
                           conn, 'GET', url)
         pool._put_conn(conn)
 
-        self.assertRaises(TimeoutError, pool.request, 'GET', url)
+        self.assertRaises(ReadTimeoutError, pool.request, 'GET', url)
 
-        # Request-specific timeout
+        # Request-specific timeouts should raise errors
         pool = HTTPConnectionPool(self.host, self.port, timeout=0.5)
 
         conn = pool._get_conn()
-        self.assertRaises(SocketTimeout, pool._make_request,
+        self.assertRaises(ReadTimeoutError, pool._make_request,
                           conn, 'GET', url, timeout=timeout)
         pool._put_conn(conn)
 
-        self.assertRaises(TimeoutError, pool.request,
+        self.assertRaises(ReadTimeoutError, pool.request,
                           'GET', url, timeout=timeout)
+
+        # Timeout int/float passed directly to request and _make_request should
+        # raise a request timeout
+        self.assertRaises(ReadTimeoutError, pool.request,
+                          'GET', url, timeout=0.001)
+        conn = pool._new_conn()
+        self.assertRaises(ReadTimeoutError, pool._make_request, conn,
+                          'GET', url, timeout=0.001)
+        pool._put_conn(conn)
+
+        # Timeout int/float passed directly to _make_request should not raise a
+        # request timeout if it's a high value
+        pool.request('GET', url, timeout=5)
+
+    @timed(0.1)
+    def test_connect_timeout(self):
+        url = '/sleep'
+        timeout = util.Timeout(connect=0.001)
+
+        # Pool-global timeout
+        pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', url)
+        pool._put_conn(conn)
+        self.assertRaises(ConnectTimeoutError, pool.request, 'GET', url)
+
+        # Request-specific connection timeouts
+        big_timeout = util.Timeout(read=0.5, connect=0.5)
+        pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=big_timeout)
+        conn = pool._get_conn()
+        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET',
+                          url, timeout=timeout)
+
+        pool._put_conn(conn)
+        self.assertRaises(ConnectTimeoutError, pool.request, 'GET', url,
+                          timeout=timeout)
+
+
+    @timed(0.1)
+    def test_total_timeout(self):
+        url = '/sleep?seconds=0.005'
+        timeout = util.Timeout(connect=3, read=5, total=0.001)
+        pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', url)
+
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', url)
+
+        timeout = util.Timeout(total=None, connect=0.001)
+        pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET',
+                          url)
+
+    def test_timeout_success(self):
+        timeout = util.Timeout(connect=3, read=5, total=None)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        pool.request('GET', '/')
+        # This should not raise a "Timeout already started" error
+        pool.request('GET', '/')
+
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        # This should also not raise a "Timeout already started" error
+        pool.request('GET', '/')
+
+        timeout = util.Timeout(total=None)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        pool.request('GET', '/')
+
+
+    def test_tunnel(self):
+        # note the actual httplib.py has no tests for this functionality
+        timeout = util.Timeout(total=None)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        try:
+            conn.set_tunnel(self.host, self.port)
+        except AttributeError: # python 2.6
+            conn._set_tunnel(self.host, self.port)
+
+        conn._tunnel = mock.Mock(return_value=None)
+        pool._make_request(conn, 'GET', '/')
+        conn._tunnel.assert_called_once_with()
+
+        # test that it's not called when tunnel is not set
+        timeout = util.Timeout(total=None)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        conn = pool._get_conn()
+
+        conn._tunnel = mock.Mock(return_value=None)
+        pool._make_request(conn, 'GET', '/')
+        self.assertEqual(conn._tunnel.called, False)
+
 
     def test_redirect(self):
         r = self.pool.request('GET', '/redirect', fields={'target': '/'}, redirect=False)
