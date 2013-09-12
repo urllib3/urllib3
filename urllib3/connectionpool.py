@@ -4,6 +4,7 @@
 # This module is part of urllib3 and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+import errno
 import logging
 
 from socket import error as SocketError, timeout as SocketTimeout
@@ -386,6 +387,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                    "Read timed out. (read timeout=%s)" %
                                    read_timeout)
             raise err
+        except SocketError as e:
+            if e.errno == errno.EAGAIN:
+                err = ReadTimeoutError(self, url,
+                                       "Read timed out. (read timeout=%s)" %
+                                       read_timeout)
+                raise err
+            raise
+
 
         # AppEngine doesn't have a version attr.
         http_version = getattr(conn, '_http_vsn_str', 'HTTP/?')
