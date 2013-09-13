@@ -382,10 +382,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # the exception and assuming all BadStatusLine exceptions are read
             # timeouts, check for a zero timeout before making the request.
             if read_timeout == 0:
-                err = ReadTimeoutError(self, url,
-                                       "Read timed out. (read timeout=%s)" %
-                                       read_timeout)
-                raise err
+                raise ReadTimeoutError(
+                    self, url,
+                    "Read timed out. (read timeout=%s)" % read_timeout)
             conn.sock.settimeout(read_timeout)
 
         # Receive the response from the server
@@ -395,19 +394,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             except TypeError: # Python 2.6 and older
                 httplib_response = conn.getresponse()
         except SocketTimeout:
-            err = ReadTimeoutError(self, url,
-                                   "Read timed out. (read timeout=%s)" %
-                                   read_timeout)
-            raise err
+            raise ReadTimeoutError(
+                self, url, "Read timed out. (read timeout=%s)" % read_timeout)
 
         except SocketError as e: # Platform-specific: Python 2
             # See the above comment about EAGAIN in Python 3. In Python 2 we
             # have to specifically catch it and throw the timeout error
             if e.errno in _blocking_errnos:
-                err = ReadTimeoutError(self, url,
-                                       "Read timed out. (read timeout=%s)" %
-                                       read_timeout)
-                raise err
+                raise ReadTimeoutError(
+                    self, url,
+                    "Read timed out. (read timeout=%s)" % read_timeout)
             raise
 
 
@@ -563,9 +559,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         except Empty:
             # Timed out by queue
-            msg = "Read timed out, no pool connections are available."
-            err = ReadTimeoutError(self, url, msg)
-            raise err
+            raise ReadTimeoutError(
+                self, url, "Read timed out, no pool connections are available.")
 
         except SocketTimeout:
             # Timed out by socket
