@@ -10,10 +10,10 @@ from socket import error as SocketError, timeout as SocketTimeout
 import socket
 
 try: # Python 3
-    from http.client import HTTPConnection, HTTPException
+    from http.client import HTTPConnection, HTTPException, BadStatusLine
     from http.client import HTTP_PORT, HTTPS_PORT
 except ImportError:
-    from httplib import HTTPConnection, HTTPException
+    from httplib import HTTPConnection, HTTPException, BadStatusLine
     from httplib import HTTP_PORT, HTTPS_PORT
 
 try: # Python 3
@@ -567,6 +567,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             conn = None
             # This is necessary so we can access e below
             err = e
+
+            if isinstance(e, BadStatusLine) and e.line == "''":
+                # Presumably, the server closed the connection before
+                # sending a valid response. Get a new one from the pool
+                # without shifting retries counter.
+                retries += 1
 
             if retries == 0:
                 raise MaxRetryError(self, url, e)
