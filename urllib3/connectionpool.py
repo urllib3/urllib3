@@ -161,6 +161,8 @@ class ConnectionPool(object):
         return '%s(host=%r, port=%r)' % (type(self).__name__,
                                          self.host, self.port)
 
+# This is taken from
+_blocking_errnos = { errno.EAGAIN, errno.EWOULDBLOCK }
 
 class HTTPConnectionPool(ConnectionPool, RequestMethods):
     """
@@ -372,8 +374,18 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         log.debug("Setting read timeout to %s" % read_timeout)
         # App Engine doesn't have a sock attr
         if hasattr(conn, 'sock') and \
-            read_timeout is not None and \
-            read_timeout is not Timeout.DEFAULT_TIMEOUT:
+           read_timeout is not None and \
+           read_timeout is not Timeout.DEFAULT_TIMEOUT:
+            # In Python 3 socket.py will catch EAGAIN and return None when you
+            # try and read into the file pointer created by http.client, which
+            # instead raises a BadStatusLine exception. Instead of catching
+            # the exception and assuming all BadStatusLine exceptions are read
+            # timeouts, check for a zero timeout before making the request.
+            if read_timeout == 0:
+                err = ReadTimeoutError(self, url,
+                                       "Read timed out. (read timeout=%s)" %
+                                       read_timeout)
+                raise err
             conn.sock.settimeout(read_timeout)
 
         # Receive the response from the server
@@ -387,8 +399,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                    "Read timed out. (read timeout=%s)" %
                                    read_timeout)
             raise err
-        except SocketError as e:
-            if e.errno == errno.EAGAIN:
+
+        except SocketError as e: # Platform-specific: Python 2
+            # See the above comment about EAGAIN in Python 3. In Python 2 we
+            # have to specifically catch it and throw the timeout error
+            if e.errno in _blocking_errnos:
                 err = ReadTimeoutError(self, url,
                                        "Read timed out. (read timeout=%s)" %
                                        read_timeout)
