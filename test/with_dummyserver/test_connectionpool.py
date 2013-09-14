@@ -35,6 +35,7 @@ log.addHandler(logging.StreamHandler(sys.stdout))
 # Reset. SO suggests this hostname
 TARPIT_HOST = '10.255.255.1'
 
+
 class TestConnectionPool(HTTPDummyServerTestCase):
 
     def setUp(self):
@@ -178,11 +179,20 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     @timed(0.1)
     def test_total_timeout(self):
         url = '/sleep?seconds=0.005'
+
         timeout = util.Timeout(connect=3, read=5, total=0.001)
         pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)
         conn = pool._get_conn()
         self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', url)
 
+        # This will get the socket to raise an EAGAIN on the read
+        timeout = util.Timeout(connect=3, read=0)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', url)
+
+        # The connect should succeed and this should hit the read timeout
+        timeout = util.Timeout(connect=3, read=5, total=0.002)
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
         conn = pool._get_conn()
         self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', url)
