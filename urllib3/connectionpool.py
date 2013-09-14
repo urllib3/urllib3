@@ -374,8 +374,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         log.debug("Setting read timeout to %s" % read_timeout)
         # App Engine doesn't have a sock attr
         if hasattr(conn, 'sock') and \
-           read_timeout is not None and \
-           read_timeout is not Timeout.DEFAULT_TIMEOUT:
+            read_timeout is not None and \
+            read_timeout is not Timeout.DEFAULT_TIMEOUT:
             # In Python 3 socket.py will catch EAGAIN and return None when you
             # try and read into the file pointer created by http.client, which
             # instead raises a BadStatusLine exception. Instead of catching
