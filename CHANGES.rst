@@ -1,11 +1,13 @@
 Changes
 =======
 
-1.7 (2013-08-14)
-++++++++++++++++
+1.7.1 (2013-09-25)
+++++++++++++++++++
 
 * Added granular timeout support with new `urllib3.util.Timeout` class.
   (Issue #231)
+
+* Fixed Python 3.4 support. (Issue #238)
 
 
 1.7 (2013-08-14)
