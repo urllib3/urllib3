@@ -1,7 +1,7 @@
 
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
-from urllib3.exceptions import MaxRetryError, TimeoutError, SSLError
+from urllib3.exceptions import MaxRetryError, ReadTimeoutError, SSLError
 from urllib3 import util
 
 from dummyserver.testcase import SocketDummyServerTestCase
@@ -121,7 +121,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         self._start_server(socket_handler)
         pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
 
-        self.assertRaises(TimeoutError, pool.request, 'GET', '/', retries=0)
+        self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/', retries=0)
 
         timed_out.set()
 

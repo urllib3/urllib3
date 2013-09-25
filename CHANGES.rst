@@ -4,6 +4,13 @@ Changes
 1.7 (2013-08-14)
 ++++++++++++++++
 
+* Added granular timeout support with new `urllib3.util.Timeout` class.
+  (Issue #231)
+
+
+1.7 (2013-08-14)
+++++++++++++++++
+
 * More exceptions are now pickle-able, with tests. (Issue #174)
 
 * Fixed redirecting with relative URLs in Location header. (Issue #178)

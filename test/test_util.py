@@ -1,10 +1,23 @@
-import unittest
 import logging
+import unittest
+
+from mock import patch
 
 from urllib3 import add_stderr_logger
-from urllib3.util import get_host, make_headers, split_first, parse_url, Url
-from urllib3.exceptions import LocationParseError
+from urllib3.util import (
+    get_host,
+    make_headers,
+    split_first,
+    parse_url,
+    Timeout,
+    Url,
+)
+from urllib3.exceptions import LocationParseError, TimeoutStateError
 
+# This number represents a time in seconds, it doesn't mean anything in
+# isolation. Setting to a high-ish value to avoid conflicts with the smaller
+# numbers used for timeouts
+TIMEOUT_EPOCH = 1000
 
 class TestUtil(unittest.TestCase):
     def test_get_host(self):
@@ -164,3 +177,99 @@ class TestUtil(unittest.TestCase):
 
         logger.debug('Testing add_stderr_logger')
         logger.removeHandler(handler)
+
+    def _make_time_pass(self, seconds, timeout, time_mock):
+        """ Make some time pass for the timeout object """
+        time_mock.return_value = TIMEOUT_EPOCH
+        timeout.start_connect()
+        time_mock.return_value = TIMEOUT_EPOCH + seconds
+        return timeout
+
+    def test_invalid_timeouts(self):
+        try:
+            Timeout(total=-1)
+            self.fail("negative value should throw exception")
+        except ValueError as e:
+            self.assertTrue('less than' in str(e))
+        try:
+            Timeout(connect=2, total=-1)
+            self.fail("negative value should throw exception")
+        except ValueError as e:
+            self.assertTrue('less than' in str(e))
+
+        try:
+            Timeout(read=-1)
+            self.fail("negative value should throw exception")
+        except ValueError as e:
+            self.assertTrue('less than' in str(e))
+
+        # Booleans are allowed also by socket.settimeout and converted to the
+        # equivalent float (1.0 for True, 0.0 for False)
+        Timeout(connect=False, read=True)
+
+        try:
+            Timeout(read="foo")
+            self.fail("string value should not be allowed")
+        except ValueError as e:
+            self.assertTrue('int or float' in str(e))
+
+
+    @patch('urllib3.util.current_time')
+    def test_timeout(self, current_time):
+        timeout = Timeout(total=3)
+
+        # make 'no time' elapse
+        timeout = self._make_time_pass(seconds=0, timeout=timeout,
+                                       time_mock=current_time)
+        self.assertEqual(timeout.read_timeout, 3)
+        self.assertEqual(timeout.connect_timeout, 3)
+
+        timeout = Timeout(total=3, connect=2)
+        self.assertEqual(timeout.connect_timeout, 2)
+
+        timeout = Timeout()
+        self.assertEqual(timeout.connect_timeout, Timeout.DEFAULT_TIMEOUT)
+
+        # Connect takes 5 seconds, leaving 5 seconds for read
+        timeout = Timeout(total=10, read=7)
+        timeout = self._make_time_pass(seconds=5, timeout=timeout,
+                                       time_mock=current_time)
+        self.assertEqual(timeout.read_timeout, 5)
+
+        # Connect takes 2 seconds, read timeout still 7 seconds
+        timeout = Timeout(total=10, read=7)
+        timeout = self._make_time_pass(seconds=2, timeout=timeout,
+                                       time_mock=current_time)
+        self.assertEqual(timeout.read_timeout, 7)
+
+        timeout = Timeout(total=10, read=7)
+        self.assertEqual(timeout.read_timeout, 7)
+
+        timeout = Timeout(total=None, read=None, connect=None)
+        self.assertEqual(timeout.connect_timeout, None)
+        self.assertEqual(timeout.read_timeout, None)
+        self.assertEqual(timeout.total, None)
+
+
+    def test_timeout_str(self):
+        timeout = Timeout(connect=1, read=2, total=3)
+        self.assertEqual(str(timeout), "Timeout(connect=1, read=2, total=3)")
+        timeout = Timeout(connect=1, read=None, total=3)
+        self.assertEqual(str(timeout), "Timeout(connect=1, read=None, total=3)")
+
+
+    @patch('urllib3.util.current_time')
+    def test_timeout_elapsed(self, current_time):
+        current_time.return_value = TIMEOUT_EPOCH
+        timeout = Timeout(total=3)
+        self.assertRaises(TimeoutStateError, timeout.get_connect_duration)
+
+        timeout.start_connect()
+        self.assertRaises(TimeoutStateError, timeout.start_connect)
+
+        current_time.return_value = TIMEOUT_EPOCH + 2
+        self.assertEqual(timeout.get_connect_duration(), 2)
+        current_time.return_value = TIMEOUT_EPOCH + 37
+        self.assertEqual(timeout.get_connect_duration(), 37)
+
+

@@ -1,20 +1,30 @@
+try: # Python 3
+    from http.client import HTTPSConnection
+except ImportError:
+    from httplib import HTTPSConnection
 import logging
 import ssl
 import sys
 import unittest
+
+import mock
 
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from urllib3 import HTTPSConnectionPool
 from urllib3.connectionpool import VerifiedHTTPSConnection
-from urllib3.exceptions import SSLError
+from urllib3.exceptions import SSLError, ConnectTimeoutError, ReadTimeoutError
+from urllib3.util import Timeout
 
 
 log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
+# We need a host that will not immediately close the connection with a TCP
+# Reset. SO suggests this hostname
+TARPIT_HOST = '10.255.255.1'
 
 class TestHTTPS(HTTPSDummyServerTestCase):
     def setUp(self):
@@ -168,6 +178,111 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_fingerprint = 'AA:A'
 
         self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+
+    def test_https_timeout(self):
+        timeout = Timeout(connect=0.001)
+        https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
+                                         timeout=timeout,
+                                         cert_reqs='CERT_REQUIRED')
+
+        timeout = Timeout(total=None, connect=0.001)
+        https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
+                                         timeout=timeout,
+                                         cert_reqs='CERT_REQUIRED')
+        self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/')
+
+        timeout = Timeout(read=0.001)
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         timeout=timeout,
+                                         cert_reqs='CERT_REQUIRED')
+        https_pool.ca_certs = DEFAULT_CA
+        https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
+                                        '7A:F2:8A:D7:1E:07:33:67:DE'
+        url = '/sleep?seconds=0.005'
+        self.assertRaises(ReadTimeoutError, https_pool.request, 'GET', url)
+
+        timeout = Timeout(total=None)
+        https_pool = HTTPSConnectionPool(self.host, self.port, timeout=timeout,
+                                         cert_reqs='CERT_NONE')
+        https_pool.request('GET', '/')
+
+
+    def test_tunnel(self):
+        """ test the _tunnel behavior """
+        timeout = Timeout(total=None)
+        https_pool = HTTPSConnectionPool(self.host, self.port, timeout=timeout,
+                                         cert_reqs='CERT_NONE')
+        conn = https_pool._new_conn()
+        try:
+            conn.set_tunnel(self.host, self.port)
+        except AttributeError: # python 2.6
+            conn._set_tunnel(self.host, self.port)
+        conn._tunnel = mock.Mock()
+        https_pool._make_request(conn, 'GET', '/')
+        conn._tunnel.assert_called_once_with()
+
+
+    def test_enhanced_timeout(self):
+        import urllib3.connectionpool
+        OriginalHTTPSConnection = urllib3.connectionpool.HTTPSConnection
+        OriginalSSL = urllib3.connectionpool.ssl
+
+        urllib3.connectionpool.ssl = None
+
+        timeout = Timeout(connect=0.001)
+        https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
+                                         timeout=timeout,
+                                         cert_reqs='CERT_REQUIRED')
+        conn = https_pool._new_conn()
+        self.assertEqual(conn.__class__, HTTPSConnection)
+        self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/')
+        self.assertRaises(ConnectTimeoutError, https_pool._make_request, conn,
+                          'GET', '/')
+
+        timeout = Timeout(connect=5)
+        https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
+                                         timeout=timeout,
+                                         cert_reqs='CERT_REQUIRED')
+        self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/',
+                          timeout=Timeout(connect=0.001))
+
+        timeout = Timeout(total=None)
+        https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
+                                         timeout=timeout,
+                                         cert_reqs='CERT_REQUIRED')
+        conn = https_pool._new_conn()
+        self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/',
+                          timeout=Timeout(total=None, connect=0.001))
+
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         timeout=timeout,
+                                         cert_reqs='CERT_NONE')
+        conn = https_pool._new_conn()
+        try:
+            conn.set_tunnel(self.host, self.port)
+        except AttributeError: # python 2.6
+            conn._set_tunnel(self.host, self.port)
+        conn._tunnel = mock.Mock()
+        try:
+            https_pool._make_request(conn, 'GET', '/')
+        except AttributeError:
+            # wrap_socket unavailable when you mock out ssl
+            pass
+        conn._tunnel.assert_called_once_with()
+
+        # Undo
+        urllib3.HTTPSConnection = OriginalHTTPSConnection
+        urllib3.connectionpool.ssl = OriginalSSL
+
+    def test_enhanced_ssl_connection(self):
+        conn = VerifiedHTTPSConnection(self.host, self.port)
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         timeout=Timeout(total=None, connect=5),
+                                         cert_reqs='CERT_REQUIRED')
+        https_pool.ca_certs = DEFAULT_CA
+        https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
+                                        '7A:F2:8A:D7:1E:07:33:67:DE'
+        https_pool._make_request(conn, 'GET', '/')
 
 
 class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):

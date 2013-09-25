@@ -75,8 +75,29 @@ class HostChangedError(RequestError):
         self.retries = retries
 
 
-class TimeoutError(RequestError):
-    "Raised when a socket timeout occurs."
+class TimeoutStateError(HTTPError):
+    """ Raised when passing an invalid state to a timeout """
+    pass
+
+
+class TimeoutError(HTTPError):
+    """ Raised when a socket timeout error occurs.
+
+    Catching this error will catch both :exc:`ReadTimeoutErrors
+    <ReadTimeoutError>` and :exc:`ConnectTimeoutErrors <ConnectTimeoutError>`.
+    """
+    pass
+
+
+class ReadTimeoutError(TimeoutError, RequestError):
+    "Raised when a socket timeout occurs while receiving data from a server"
+    pass
+
+
+# This timeout error does not have a URL attached and needs to inherit from the
+# base HTTPError
+class ConnectTimeoutError(TimeoutError):
+    "Raised when a socket timeout occurs while connecting to a server"
     pass
 
 
