@@ -589,7 +589,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             err = e
 
             if retries == 0:
-                raise MaxRetryError(self, url, e)
+                if isinstance(e, TimeoutError):
+                    raise
+                else:
+                    raise MaxRetryError(self, url, e)
 
         finally:
             if release_conn:
