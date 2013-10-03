@@ -51,6 +51,7 @@ from .exceptions import (
     HostChangedError,
     MaxRetryError,
     SSLError,
+    TimeoutError,
     ReadTimeoutError,
     ProxyError,
 )
@@ -577,7 +578,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Name mismatch
             raise SSLError(e)
 
-        except (HTTPException, SocketError) as e:
+        except (HTTPException, SocketError, TimeoutError) as e:
             if isinstance(e, SocketError) and self.proxy is not None:
                 raise ProxyError('Cannot connect to proxy. '
                                  'Socket error: %s.' % e)

@@ -9,6 +9,7 @@ from dummyserver.testcase import SocketDummyServerTestCase
 from nose.plugins.skip import SkipTest
 from threading import Event
 import socket
+import time
 
 
 class TestCookies(SocketDummyServerTestCase):
@@ -124,6 +125,52 @@ class TestSocketClosing(SocketDummyServerTestCase):
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/', retries=0)
 
         timed_out.set()
+
+    def test_timeout_errors_cause_retries(self):
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            # First request.
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            # Pause before responding so the first request times out.
+            time.sleep(0.001)
+            body = 'Response 1'
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                      'Content-Type: text/plain\r\n'
+                      'Content-Length: %d\r\n'
+                      '\r\n'
+                      '%s' % (len(body), body)).encode('utf-8'))
+
+            sock.close()
+
+            sock = listener.accept()[0]
+
+            # Second request.
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            # Now response immediately.
+            body = 'Response 2'
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                      'Content-Type: text/plain\r\n'
+                      'Content-Length: %d\r\n'
+                      '\r\n'
+                      '%s' % (len(body), body)).encode('utf-8'))
+
+            sock.close()  # Close the socket.
+
+        self._start_server(socket_handler)
+        t = util.Timeout(connect=0.0001, read=0.0001)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=t)
+
+        response = pool.request('GET', '/', retries=1)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.data, b'Response 2')
 
 
 class TestProxyManager(SocketDummyServerTestCase):

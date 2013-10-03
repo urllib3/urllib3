@@ -218,7 +218,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
         pool.request('GET', '/')
 
-
     def test_tunnel(self):
         # note the actual httplib.py has no tests for this functionality
         timeout = util.Timeout(total=None)
