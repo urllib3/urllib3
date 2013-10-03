@@ -130,14 +130,9 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         def socket_handler(listener):
             sock = listener.accept()[0]
-
             # First request.
-            buf = b''
-            while not buf.endswith(b'\r\n\r\n'):
-                buf += sock.recv(65536)
-
             # Pause before responding so the first request times out.
-            time.sleep(0.2)
+            time.sleep(0.002)
             sock.close()
 
             sock = listener.accept()[0]
@@ -158,7 +153,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.close()  # Close the socket.
 
         self._start_server(socket_handler)
-        t = util.Timeout(connect=0.1, read=0.1)
+        t = util.Timeout(connect=0.001, read=0.001)
         pool = HTTPConnectionPool(self.host, self.port, timeout=t)
 
         response = pool.request('GET', '/', retries=1)

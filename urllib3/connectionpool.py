@@ -590,9 +590,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
             if retries == 0:
                 if isinstance(e, TimeoutError):
-                    raise
-                else:
-                    raise MaxRetryError(self, url, e)
+                    raise  # Keep throwing Timeouts
+
+                raise MaxRetryError(self, url, e)
 
         finally:
             if release_conn:
