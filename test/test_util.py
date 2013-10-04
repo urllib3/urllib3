@@ -85,6 +85,8 @@ class TestUtil(unittest.TestCase):
             'http://google.com/': Url('http', host='google.com', path='/'),
             'http://google.com': Url('http', host='google.com'),
             'http://google.com?foo': Url('http', host='google.com', path='', query='foo'),
+
+            # Path/query/fragment
             '': Url(),
             '/': Url(path='/'),
             '?': Url(path='', query=''),
@@ -93,6 +95,18 @@ class TestUtil(unittest.TestCase):
             '/foo': Url(path='/foo'),
             '/foo?bar=baz': Url(path='/foo', query='bar=baz'),
             '/foo?bar=baz#banana?apple/orange': Url(path='/foo', query='bar=baz', fragment='banana?apple/orange'),
+
+            # Port
+            'http://google.com/': Url('http', host='google.com', path='/'),
+            'http://google.com:80/': Url('http', host='google.com', port=80, path='/'),
+            'http://google.com:/': Url('http', host='google.com', path='/'),
+            'http://google.com:80': Url('http', host='google.com', port=80),
+            'http://google.com:': Url('http', host='google.com'),
+
+            # Auth
+            'http://foo:bar@localhost/': Url('http', auth='foo:bar', host='localhost', path='/'),
+            'http://foo@localhost/': Url('http', auth='foo', host='localhost', path='/'),
+            'http://foo:bar@baz@localhost/': Url('http', auth='foo:bar@baz', host='localhost', path='/'),
         }
         for url, expected_url in url_host_map.items():
             returned_url = parse_url(url)

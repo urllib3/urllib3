@@ -372,7 +372,10 @@ def parse_url(url):
 
     # Auth
     if '@' in url:
-        auth, url = url.split('@', 1)
+        # Last '@' denotes end of auth part
+        parts = url.split('@')
+        url = parts[-1]
+        auth = '@'.join(parts[:-1])
 
     # IPv6
     if url and url[0] == '[':
@@ -386,10 +389,14 @@ def parse_url(url):
         if not host:
             host = _host
 
-        if not port.isdigit():
-            raise LocationParseError("Failed to parse: %s" % url)
-
-        port = int(port)
+        if port:
+            # If given, ports must be integers.
+            if not port.isdigit():
+                raise LocationParseError("Failed to parse: %s" % url)
+            port = int(port)
+        else:
+            # Blank ports are cool, too. (rfc3986#section-3.2.3)
+            port = None
 
     elif not host and url:
         host = url
