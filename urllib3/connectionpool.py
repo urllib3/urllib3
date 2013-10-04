@@ -658,33 +658,33 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
 
-    def _prepare_conn(self, connection):
+    def _prepare_conn(self, conn):
         """
         Prepare the ``connection`` for :meth:`urllib3.util.ssl_wrap_socket`
         and establish the tunnel if proxy is used.
         """
 
-        if isinstance(connection, VerifiedHTTPSConnection):
-            connection.set_cert(key_file=self.key_file,
-                                cert_file=self.cert_file,
-                                cert_reqs=self.cert_reqs,
-                                ca_certs=self.ca_certs,
-                                assert_hostname=self.assert_hostname,
-                                assert_fingerprint=self.assert_fingerprint)
-            connection.ssl_version = self.ssl_version
+        if isinstance(conn, VerifiedHTTPSConnection):
+            conn.set_cert(key_file=self.key_file,
+                          cert_file=self.cert_file,
+                          cert_reqs=self.cert_reqs,
+                          ca_certs=self.ca_certs,
+                          assert_hostname=self.assert_hostname,
+                          assert_fingerprint=self.assert_fingerprint)
+            conn.ssl_version = self.ssl_version
 
         if self.proxy is not None:
             # Python 2.7+
             try:
-                set_tunnel = connection.set_tunnel
+                set_tunnel = conn.set_tunnel
             except AttributeError:  # Platform-specific: Python 2.6
-                set_tunnel = connection._set_tunnel
+                set_tunnel = conn._set_tunnel
             set_tunnel(self.host, self.port, self.proxy_headers)
             # Establish tunnel connection early, because otherwise httplib
             # would improperly set Host: header to proxy's IP:port.
-            connection.connect()
+            conn.connect()
 
-        return connection
+        return conn
 
     def _new_conn(self):
         """
@@ -711,11 +711,11 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         extra_params = {}
         if not six.PY3:  # Python 2
             extra_params['strict'] = self.strict
-        connection = connection_class(host=actual_host, port=actual_port,
-                                      timeout=self.timeout.connect_timeout,
-                                      **extra_params)
+            conn = connection_class(host=actual_host, port=actual_port,
+                                    timeout=self.timeout.connect_timeout,
+                                    **extra_params)
 
-        return self._prepare_conn(connection)
+        return self._prepare_conn(conn)
 
 
 def connection_from_url(url, **kw):
