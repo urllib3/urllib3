@@ -711,9 +711,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         extra_params = {}
         if not six.PY3:  # Python 2
             extra_params['strict'] = self.strict
-            conn = connection_class(host=actual_host, port=actual_port,
-                                    timeout=self.timeout.connect_timeout,
-                                    **extra_params)
+        conn = connection_class(host=actual_host, port=actual_port,
+                                timeout=self.timeout.connect_timeout,
+                                **extra_params)
 
         return self._prepare_conn(conn)
 
