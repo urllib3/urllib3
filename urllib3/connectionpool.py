@@ -24,13 +24,16 @@ except ImportError:
     import Queue as _  # Platform-specific: Windows
 
 
+class DummyConnection(object):
+    "Used to detect a failed ConnectionCls import."
+    pass
+
 try: # Compiled with SSL?
-    HTTPSConnection = object
+    ssl = None
+    HTTPSConnection = DummyConnection
 
     class BaseSSLError(Exception):
         pass
-
-    ssl = None
 
     try: # Python 3
         from http.client import HTTPSConnection
@@ -218,6 +221,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     """
 
     scheme = 'http'
+    ConnectionCls = HTTPConnection
 
     def __init__(self, host, port=None, strict=False,
                  timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1, block=False,
@@ -259,9 +263,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if not six.PY3:  # Python 2
             extra_params['strict'] = self.strict
 
-        return HTTPConnection(host=self.host, port=self.port,
-                              timeout=self.timeout.connect_timeout,
-                              **extra_params)
+        return self.ConnectionCls(host=self.host, port=self.port,
+                                  timeout=self.timeout.connect_timeout,
+                                  **extra_params)
 
 
     def _get_conn(self, timeout=None):
@@ -362,7 +366,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             timeout_obj.start_connect()
             conn.timeout = timeout_obj.connect_timeout
             # conn.request() calls httplib.*.request, not the method in
-            # request.py. It also calls makefile (recv) on the socket
+            # urllib3.request. It also calls makefile (recv) on the socket.
             conn.request(method, url, **httplib_request_kw)
         except SocketTimeout:
             raise ConnectTimeoutError(
@@ -371,7 +375,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
-        log.debug("Setting read timeout to %s" % read_timeout)
+
         # App Engine doesn't have a sock attr
         if hasattr(conn, 'sock') and \
             read_timeout is not None and \
@@ -639,6 +643,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     """
 
     scheme = 'https'
+    ConnectionCls = HTTPSConnection
+    if ssl:
+        ConnectionCls = VerifiedHTTPSConnection
 
     def __init__(self, host, port=None,
                  strict=False, timeout=None, maxsize=1,
@@ -694,26 +701,24 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         log.info("Starting new HTTPS connection (%d): %s"
                  % (self.num_connections, self.host))
 
+        if not self.ConnectionCls or self.ConnectionCls is DummyConnection:
+            # Platform-specific: Python without ssl
+            raise SSLError("Can't connect to HTTPS URL because the SSL "
+                           "module is not available.")
+
         actual_host = self.host
         actual_port = self.port
         if self.proxy is not None:
             actual_host = self.proxy.host
             actual_port = self.proxy.port
 
-        if not ssl:  # Platform-specific: Python compiled without +ssl
-            if not HTTPSConnection or HTTPSConnection is object:
-                raise SSLError("Can't connect to HTTPS URL because the SSL "
-                               "module is not available.")
-            connection_class = HTTPSConnection
-        else:
-            connection_class = VerifiedHTTPSConnection
-
         extra_params = {}
         if not six.PY3:  # Python 2
             extra_params['strict'] = self.strict
-        conn = connection_class(host=actual_host, port=actual_port,
-                                timeout=self.timeout.connect_timeout,
-                                **extra_params)
+
+        conn = self.ConnectionCls(host=actual_host, port=actual_port,
+                                  timeout=self.timeout.connect_timeout,
+                                  **extra_params)
 
         return self._prepare_conn(conn)
 

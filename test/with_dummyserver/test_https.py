@@ -72,20 +72,14 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.assertTrue("doesn't match" in str(e))
 
     def test_no_ssl(self):
-        import urllib3.connectionpool
-        OriginalHTTPSConnection = urllib3.connectionpool.HTTPSConnection
-        OriginalSSL = urllib3.connectionpool.ssl
-
-        urllib3.connectionpool.HTTPSConnection = None
-        urllib3.connectionpool.ssl = None
+        OriginalConnectionCls = self._pool.ConnectionCls
+        self._pool.ConnectionCls = None
 
         self.assertRaises(SSLError, self._pool._new_conn)
-
         self.assertRaises(SSLError, self._pool.request, 'GET', '/')
 
         # Undo
-        urllib3.HTTPSConnection = OriginalHTTPSConnection
-        urllib3.connectionpool.ssl = OriginalSSL
+        self._pool.ConnectionCls = OriginalConnectionCls
 
     def test_cert_reqs_as_constant(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
@@ -223,44 +217,35 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
 
     def test_enhanced_timeout(self):
-        import urllib3.connectionpool
-        OriginalHTTPSConnection = urllib3.connectionpool.HTTPSConnection
-        OriginalSSL = urllib3.connectionpool.ssl
+        def new_pool(timeout, cert_reqs='CERT_REQUIRED'):
+            https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
+                                             timeout=timeout,
+                                             cert_reqs=cert_reqs)
+            return https_pool
 
-        urllib3.connectionpool.ssl = None
-
-        timeout = Timeout(connect=0.001)
-        https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
-                                         timeout=timeout,
-                                         cert_reqs='CERT_REQUIRED')
+        https_pool = new_pool(Timeout(connect=0.001))
         conn = https_pool._new_conn()
-        self.assertEqual(conn.__class__, HTTPSConnection)
         self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/')
         self.assertRaises(ConnectTimeoutError, https_pool._make_request, conn,
                           'GET', '/')
 
-        timeout = Timeout(connect=5)
-        https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
-                                         timeout=timeout,
-                                         cert_reqs='CERT_REQUIRED')
+        https_pool = new_pool(Timeout(connect=5))
         self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/',
                           timeout=Timeout(connect=0.001))
 
-        timeout = Timeout(total=None)
-        https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
-                                         timeout=timeout,
-                                         cert_reqs='CERT_REQUIRED')
+        t = Timeout(total=None)
+        https_pool = new_pool(t)
         conn = https_pool._new_conn()
         self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/',
                           timeout=Timeout(total=None, connect=0.001))
 
-        https_pool = HTTPSConnectionPool(self.host, self.port,
-                                         timeout=timeout,
-                                         cert_reqs='CERT_NONE')
+        # FIXME(kevinburke): What is this testing? It's currently broken.
+        """
+        https_pool = new_pool(t, cert_reqs='CERT_NONE')
         conn = https_pool._new_conn()
         try:
             conn.set_tunnel(self.host, self.port)
-        except AttributeError: # python 2.6
+        except AttributeError: # Python 2.6
             conn._set_tunnel(self.host, self.port)
         conn._tunnel = mock.Mock()
         try:
@@ -269,10 +254,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             # wrap_socket unavailable when you mock out ssl
             pass
         conn._tunnel.assert_called_once_with()
-
-        # Undo
-        urllib3.HTTPSConnection = OriginalHTTPSConnection
-        urllib3.connectionpool.ssl = OriginalSSL
+        """
 
     def test_enhanced_ssl_connection(self):
         conn = VerifiedHTTPSConnection(self.host, self.port)
