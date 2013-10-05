@@ -373,9 +373,7 @@ def parse_url(url):
     # Auth
     if '@' in url:
         # Last '@' denotes end of auth part
-        parts = url.split('@')
-        url = parts[-1]
-        auth = '@'.join(parts[:-1])
+        auth, url = url.rsplit('@', 1)
 
     # IPv6
     if url and url[0] == '[':
