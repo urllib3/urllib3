@@ -130,7 +130,6 @@ class TestConnectionPool(unittest.TestCase):
 
         #make sure that all of the exceptions return the connection to the pool
         _test(Empty, EmptyPoolError)
-        _test(SocketTimeout, ReadTimeoutError)
         _test(BaseSSLError, SSLError)
         _test(CertificateError, SSLError)
 

@@ -405,6 +405,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 raise ReadTimeoutError(
                     self, url,
                     "Read timed out. (read timeout=%s)" % read_timeout)
+
             raise
 
 
@@ -561,10 +562,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         except Empty:
             # Timed out by queue
             raise EmptyPoolError(self, "No pool connections are available.")
-
-        except SocketTimeout:
-            # Timed out by socket
-            raise ReadTimeoutError(self, url, "Read timed out.")
 
         except BaseSSLError as e:
             # SSL certificate error
