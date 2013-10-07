@@ -574,7 +574,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Name mismatch
             raise SSLError(e)
 
-        except (HTTPException, SocketError, TimeoutError) as e:
+        except TimeoutError as e:
+            # Connection broken, discard.
+            conn = None
+            # Save the error off for retry logic.
+            err = e
+
+            if retries == 0:
+                raise
+
+        except (HTTPException, SocketError) as e:
             if isinstance(e, SocketError) and self.proxy is not None:
                 raise ProxyError('Cannot connect to proxy. '
                                  'Socket error: %s.' % e)
@@ -585,9 +594,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             err = e
 
             if retries == 0:
-                if isinstance(e, TimeoutError):
-                    raise  # Keep throwing Timeouts
-
                 raise MaxRetryError(self, url, e)
 
         finally:
