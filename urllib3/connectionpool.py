@@ -560,8 +560,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         except Empty:
             # Timed out by queue
-            raise ReadTimeoutError(
-                self, url, "Read timed out, no pool connections are available.")
+            raise EmptyPoolError(self, "No pool connections are available.")
 
         except SocketTimeout:
             # Timed out by socket
