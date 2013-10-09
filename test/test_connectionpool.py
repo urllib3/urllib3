@@ -6,7 +6,6 @@ from urllib3.connectionpool import (
     HTTPConnectionPool,
 )
 from urllib3.util import Timeout
-from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
     ClosedPoolError,
     EmptyPoolError,
@@ -132,7 +131,6 @@ class TestConnectionPool(unittest.TestCase):
         _test(Empty, ReadTimeoutError)
         _test(SocketTimeout, ReadTimeoutError)
         _test(BaseSSLError, SSLError)
-        _test(CertificateError, SSLError)
 
         # The pool should never be empty, and with these two exceptions being raised,
         # a retry will be triggered, but that retry will fail, eventually raising
