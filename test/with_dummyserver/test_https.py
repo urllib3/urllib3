@@ -183,62 +183,52 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         verifier = peer_certificate_verifiers.BasePeerCertificateVerifier()
         self.assertRaises(NotImplementedError, verifier.verify, None)
 
-    def test_not_reject_cert_verifier(self):
+    def verify_cert_verifier_success(self, verifier):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_REQUIRED')
         https_pool.ca_certs = DEFAULT_CA
 
-        reject = peer_certificate_verifiers.Reject
-        https_pool.verifier = peer_certificate_verifiers.Not(reject)
+        https_pool.verifier = verifier
         https_pool.request('GET', '/')
+
+    def assert_cert_verifier_failure(self, verifier):
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_REQUIRED')
+        https_pool.ca_certs = DEFAULT_CA
+
+        https_pool.verifier = verifier
+        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+
+    def test_not_reject_cert_verifier(self):
+        reject = peer_certificate_verifiers.Reject
+        not_reject = peer_certificate_verifiers.Not(reject)
+        self.verify_cert_verifier_success(not_reject)
 
     def test_assert_not_accept_cert_verifier(self):
-
-        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
-                                         cert_reqs='CERT_REQUIRED')
-        https_pool.ca_certs = DEFAULT_CA
-
         accept = peer_certificate_verifiers.Accept
-        https_pool.verifier = peer_certificate_verifiers.Not(accept)
-        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+        not_accept = peer_certificate_verifiers.Not(accept)
+        self.assert_cert_verifier_failure(not_accept)
 
     def test_and_cert_verifier(self):
-        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
-                                         cert_reqs='CERT_REQUIRED')
-        https_pool.ca_certs = DEFAULT_CA
-
         accept = peer_certificate_verifiers.Accept
-        https_pool.verifier = peer_certificate_verifiers.And(accept)
-        https_pool.request('GET', '/')
+        verifier = peer_certificate_verifiers.And(accept)
+        self.verify_cert_verifier_success(verifier)
 
     def test_assert_and_cert_verifier(self):
-        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
-                                         cert_reqs='CERT_REQUIRED')
-        https_pool.ca_certs = DEFAULT_CA
-
         reject = peer_certificate_verifiers.Reject
-        https_pool.verifier = peer_certificate_verifiers.And(reject)
-        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+        verifier = peer_certificate_verifiers.And(reject)
+        self.assert_cert_verifier_failure(verifier)
 
     def test_or_cert_verifier(self):
-        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
-                                         cert_reqs='CERT_REQUIRED')
-        https_pool.ca_certs = DEFAULT_CA
-
         reject = peer_certificate_verifiers.Reject
         accept = peer_certificate_verifiers.Accept
-        https_pool.verifier = peer_certificate_verifiers.Or(reject,
-                                                            accept)
-        https_pool.request('GET', '/')
+        verifier = peer_certificate_verifiers.Or(reject, accept)
+        self.verify_cert_verifier_success(verifier)
 
     def test_assert_or_cert_verifier(self):
-        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
-                                         cert_reqs='CERT_REQUIRED')
-        https_pool.ca_certs = DEFAULT_CA
-
         reject = peer_certificate_verifiers.Reject
-        https_pool.verifier = peer_certificate_verifiers.Or(reject)
-        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+        verifier = peer_certificate_verifiers.Or(reject)
+        self.assert_cert_verifier_failure(verifier)
 
     def test_https_timeout(self):
         timeout = Timeout(connect=0.001)
