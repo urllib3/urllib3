@@ -1,4 +1,4 @@
-from .util import assert_fingerprint
+from .util import assert_fingerprint, singleton
 from .packages.ssl_match_hostname import CertificateError, match_hostname
 from .exceptions import SSLError
 
@@ -53,17 +53,17 @@ class Hostname(BasePeerCertificateVerifier):
     def verify(self, peer_cert):
         _match_hostname(peer_cert, self.hostname)
 
+@singleton
 class Accept(BasePeerCertificateVerifier):
     "Always accept the peer certificate"
     def verify(self, peer_cert):
         pass
-Accept = Accept()
 
+@singleton
 class Reject(BasePeerCertificateVerifier):
     "Always reject the peer certificate"
     def verify(self, peer_cert):
         raise SSLError('SSL certificate rejected')
-Reject = Reject()
 
 class Not(BasePeerCertificateVerifier):
     "Negate the decision of a verifier"
