@@ -181,7 +181,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def test_assert_base_cert_verifier(self):
         verifier = peer_certificate_verifiers.BasePeerCertificateVerifier()
-        self.assertRaises(NotImplementedError, verifier.verify, None)
+        self.assertRaises(NotImplementedError, verifier, None)
 
     def verify_cert_verifier_success(self, verifier):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,

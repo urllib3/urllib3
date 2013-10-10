@@ -29,7 +29,7 @@ class BasePeerCertificateVerifier(object):
     """All peer certificate verifiers should derive from this class,
     and implement the verify functions"""
 
-    def verify(self, peer_cert):
+    def __call__(self, peer_cert):
         raise NotImplementedError
 
 
@@ -40,7 +40,7 @@ class Fingerprint(BasePeerCertificateVerifier):
     def __init__(self, fingerprint):
         self.fingerprint = fingerprint
 
-    def verify(self, peer_cert):
+    def __call__(self, peer_cert):
         assert_fingerprint(peer_cert.as_binary, self.fingerprint)
 
 
@@ -58,14 +58,14 @@ class Hostname(BasePeerCertificateVerifier):
     def __init__(self, hostname):
         self.hostname = hostname
 
-    def verify(self, peer_cert):
+    def __call__(self, peer_cert):
         _match_hostname(peer_cert, self.hostname)
 
 @singleton
 class Accept(BasePeerCertificateVerifier):
     "Always accept the peer certificate"
 
-    def verify(self, peer_cert):
+    def __call__(self, peer_cert):
         pass
 
 
@@ -73,7 +73,7 @@ class Accept(BasePeerCertificateVerifier):
 class Reject(BasePeerCertificateVerifier):
     "Always reject the peer certificate"
 
-    def verify(self, peer_cert):
+    def __call__(self, peer_cert):
         raise SSLError('SSL certificate rejected')
 
 
@@ -83,9 +83,9 @@ class Not(BasePeerCertificateVerifier):
     def __init__(self, verifier):
         self.verifier = verifier
 
-    def verify(self, peer_cert):
+    def __call__(self, peer_cert):
         try:
-            self.verifier.verify(peer_cert)
+            self.verifier(peer_cert)
         except SSLError:
             return
         else:
@@ -102,9 +102,9 @@ class And(BasePeerCertificateVerifier):
     def __init__(self, *verifiers):
         self.verifiers = verifiers
 
-    def verify(self, peer_cert):
+    def __call__(self, peer_cert):
         for verifier in self.verifiers:
-            verifier.verify(peer_cert)
+            verifier(peer_cert)
 
 
 class Or(BasePeerCertificateVerifier):
@@ -117,11 +117,11 @@ class Or(BasePeerCertificateVerifier):
     def __init__(self, *verifiers):
         self.verifiers = verifiers
 
-    def verify(self, peer_cert):
+    def __call__(self, peer_cert):
         last_exception = None
         for verifier in self.verifiers:
             try:
-                verifier.verify(peer_cert)
+                verifier(peer_cert)
             except SSLError as e:
                 last_exception = e
             else:

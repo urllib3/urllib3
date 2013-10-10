@@ -147,7 +147,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             elif self.assert_hostname is not False:
                 verifier = Hostname(self.assert_hostname or self.host)
             if verifier is not None:
-                verifier.verify(PeerCertificate(self.sock))
+                verifier(PeerCertificate(self.sock))
 
 ## Pool objects
 
