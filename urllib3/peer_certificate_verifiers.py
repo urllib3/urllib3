@@ -102,7 +102,7 @@ class Or(BasePeerCertificateVerifier):
         for verifier in self.verifiers:
             try:
                 verifier.verify(peer_cert)
-            except SSLError, e:
+            except SSLError as e:
                 last_exception = e
             else:
                 return
