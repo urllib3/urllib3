@@ -16,7 +16,7 @@ from urllib3 import HTTPSConnectionPool
 from urllib3.connectionpool import VerifiedHTTPSConnection
 from urllib3.exceptions import SSLError, ConnectTimeoutError, ReadTimeoutError
 from urllib3.util import Timeout
-
+from urllib3 import peer_certificate_verifiers
 
 log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
@@ -178,6 +178,57 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_fingerprint = 'AA:A'
 
         self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+
+    def test_assert_base_cert_verifier(self):
+        verifier = peer_certificate_verifiers.BasePeerCertificateVerifier()
+        self.assertRaises(NotImplementedError, verifier, None)
+
+    def verify_cert_verifier_success(self, verifier):
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_REQUIRED')
+        https_pool.ca_certs = DEFAULT_CA
+
+        https_pool.verifier = verifier
+        https_pool.request('GET', '/')
+
+    def assert_cert_verifier_failure(self, verifier):
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_REQUIRED')
+        https_pool.ca_certs = DEFAULT_CA
+
+        https_pool.verifier = verifier
+        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+
+    def test_not_reject_cert_verifier(self):
+        reject = peer_certificate_verifiers.reject
+        not_reject = peer_certificate_verifiers.Not(reject)
+        self.verify_cert_verifier_success(not_reject)
+
+    def test_assert_not_accept_cert_verifier(self):
+        accept = peer_certificate_verifiers.accept
+        not_accept = peer_certificate_verifiers.Not(accept)
+        self.assert_cert_verifier_failure(not_accept)
+
+    def test_and_cert_verifier(self):
+        accept = peer_certificate_verifiers.accept
+        verifier = peer_certificate_verifiers.And(accept)
+        self.verify_cert_verifier_success(verifier)
+
+    def test_assert_and_cert_verifier(self):
+        reject = peer_certificate_verifiers.reject
+        verifier = peer_certificate_verifiers.And(reject)
+        self.assert_cert_verifier_failure(verifier)
+
+    def test_or_cert_verifier(self):
+        reject = peer_certificate_verifiers.reject
+        accept = peer_certificate_verifiers.accept
+        verifier = peer_certificate_verifiers.Or(reject, accept)
+        self.verify_cert_verifier_success(verifier)
+
+    def test_assert_or_cert_verifier(self):
+        reject = peer_certificate_verifiers.reject
+        verifier = peer_certificate_verifiers.Or(reject)
+        self.assert_cert_verifier_failure(verifier)
 
     def test_https_timeout(self):
         timeout = Timeout(connect=0.001)

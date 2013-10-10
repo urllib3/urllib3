@@ -90,5 +90,8 @@ In chronological order:
 * Kevin Burke <kev@inburke.com> and Pavel Kirichenko <juanych@yandex-team.ru>
   * Support for separate connect and request timeouts
 
+* Boris Figovsky <boris.figovsky@ravellosystems.com>
+  * Support for SSL peer certificates custom verifiers
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

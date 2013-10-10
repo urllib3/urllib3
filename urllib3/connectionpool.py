@@ -67,6 +67,12 @@ from .util import (
     ssl_wrap_socket,
     Timeout,
 )
+from .peer_certificate_verifiers import (
+    PeerCertificate,
+    Fingerprint,
+    Hostname,
+    And,
+)
 
 xrange = six.moves.xrange
 
@@ -93,12 +99,14 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None,
+                 verifier = None,
                  assert_hostname=None, assert_fingerprint=None):
 
         self.key_file = key_file
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
         self.ca_certs = ca_certs
+        self.verifier = verifier
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
 
@@ -131,13 +139,15 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                                     ssl_version=resolved_ssl_version)
 
         if resolved_cert_reqs != ssl.CERT_NONE:
-            if self.assert_fingerprint:
-                assert_fingerprint(self.sock.getpeercert(binary_form=True),
-                                   self.assert_fingerprint)
+            verifier = None
+            if self.verifier is not None:
+                verifier = self.verifier
+            elif self.assert_fingerprint:
+                verifier = Fingerprint(self.assert_fingerprint)
             elif self.assert_hostname is not False:
-                match_hostname(self.sock.getpeercert(),
-                               self.assert_hostname or self.host)
-
+                verifier = Hostname(self.assert_hostname or self.host)
+            if verifier is not None:
+                verifier(PeerCertificate(self.sock))
 
 ## Pool objects
 
@@ -573,10 +583,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 raise ReadTimeoutError(self, url, "Read timed out.")
             raise SSLError(e)
 
-        except CertificateError as e:
-            # Name mismatch
-            raise SSLError(e)
-
         except (HTTPException, SocketError) as e:
             if isinstance(e, SocketError) and self.proxy is not None:
                 raise ProxyError('Cannot connect to proxy. '
@@ -628,9 +634,12 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     :class:`.VerifiedHTTPSConnection` is used, which *can* verify certificates,
     instead of :class:`httplib.HTTPSConnection`.
 
-    :class:`.VerifiedHTTPSConnection` uses one of ``assert_fingerprint``,
+    :class:`.VerifiedHTTPSConnection` uses one of ``verifier``, ``assert_fingerprint``,
     ``assert_hostname`` and ``host`` in this order to verify connections.
-    If ``assert_hostname`` is False, no verification is done.
+    If ``verifier`` is not None, it is expected to a be peer certifcate verifier
+    (see peer_certificate_verifiers for more information).
+    If ``verifier`` is None and ``assert_hostname`` is False, no verification
+    is done.
 
     The ``key_file``, ``cert_file``, ``cert_reqs``, ``ca_certs`` and
     ``ssl_version`` are only used if :mod:`ssl` is available and are fed into
@@ -646,6 +655,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  _proxy=None, _proxy_headers=None,
                  key_file=None, cert_file=None, cert_reqs=None,
                  ca_certs=None, ssl_version=None,
+                 verifier=None,
                  assert_hostname=None, assert_fingerprint=None):
 
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
@@ -655,6 +665,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.cert_reqs = cert_reqs
         self.ca_certs = ca_certs
         self.ssl_version = ssl_version
+        self.verifier = verifier
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
 
@@ -669,6 +680,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           cert_file=self.cert_file,
                           cert_reqs=self.cert_reqs,
                           ca_certs=self.ca_certs,
+                          verifier=self.verifier,
                           assert_hostname=self.assert_hostname,
                           assert_fingerprint=self.assert_fingerprint)
             conn.ssl_version = self.ssl_version
