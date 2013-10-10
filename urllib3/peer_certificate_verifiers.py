@@ -24,20 +24,25 @@ class PeerCertificate(object):
             self._dict = self._ssl_sock.getpeercert(False)
         return self._dict
 
+
 class BasePeerCertificateVerifier(object):
     """All peer certificate verifiers should derive from this class,
     and implement the verify functions"""
+
     def verify(self, peer_cert):
         raise NotImplementedError
+
 
 class Fingerprint(BasePeerCertificateVerifier):
     """Verifies that the fingerprint of the peer certificate matches the given
     fingerprint"""
+
     def __init__(self, fingerprint):
         self.fingerprint = fingerprint
 
     def verify(self, peer_cert):
         assert_fingerprint(peer_cert.as_binary, self.fingerprint)
+
 
 def _match_hostname(peer_cert, hostname):
     try:
@@ -46,29 +51,38 @@ def _match_hostname(peer_cert, hostname):
         # Name mismatch
         raise SSLError(e)
 
+
 class Hostname(BasePeerCertificateVerifier):
     "Verifies that CN of the peer certificate matches the given hostname"
+
     def __init__(self, hostname):
         self.hostname = hostname
+
     def verify(self, peer_cert):
         _match_hostname(peer_cert, self.hostname)
 
 @singleton
 class Accept(BasePeerCertificateVerifier):
     "Always accept the peer certificate"
+
     def verify(self, peer_cert):
         pass
+
 
 @singleton
 class Reject(BasePeerCertificateVerifier):
     "Always reject the peer certificate"
+
     def verify(self, peer_cert):
         raise SSLError('SSL certificate rejected')
 
+
 class Not(BasePeerCertificateVerifier):
     "Negate the decision of a verifier"
+
     def __init__(self, verifier):
         self.verifier = verifier
+
     def verify(self, peer_cert):
         try:
             self.verifier.verify(peer_cert)
@@ -77,17 +91,21 @@ class Not(BasePeerCertificateVerifier):
         else:
             raise SSLError('SSL verification failed')
 
+
 class And(BasePeerCertificateVerifier):
     """Accepts the peer certificate if all sub verifiers accept it.
 
     Note 1: if a verifier rejects a certificate, no more verifiers are asked.
     Note 2: the raised exception comes the first rejecting verifier.
     """
+
     def __init__(self, *verifiers):
         self.verifiers = verifiers
+
     def verify(self, peer_cert):
         for verifier in self.verifiers:
             verifier.verify(peer_cert)
+
 
 class Or(BasePeerCertificateVerifier):
     """Accepts the peer certificate if at least one sub verifier accepts it.
@@ -95,8 +113,10 @@ class Or(BasePeerCertificateVerifier):
     Note 1: if a verifier accepts a certificate, no more verifiers are asked.
     Note 2: the raised exception comes the last rejecting verifier.
     """
+
     def __init__(self, *verifiers):
         self.verifiers = verifiers
+
     def verify(self, peer_cert):
         last_exception = None
         for verifier in self.verifiers:
