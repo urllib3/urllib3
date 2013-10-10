@@ -200,33 +200,33 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.assertRaises(SSLError, https_pool.request, 'GET', '/')
 
     def test_not_reject_cert_verifier(self):
-        reject = peer_certificate_verifiers.Reject
+        reject = peer_certificate_verifiers.reject
         not_reject = peer_certificate_verifiers.Not(reject)
         self.verify_cert_verifier_success(not_reject)
 
     def test_assert_not_accept_cert_verifier(self):
-        accept = peer_certificate_verifiers.Accept
+        accept = peer_certificate_verifiers.accept
         not_accept = peer_certificate_verifiers.Not(accept)
         self.assert_cert_verifier_failure(not_accept)
 
     def test_and_cert_verifier(self):
-        accept = peer_certificate_verifiers.Accept
+        accept = peer_certificate_verifiers.accept
         verifier = peer_certificate_verifiers.And(accept)
         self.verify_cert_verifier_success(verifier)
 
     def test_assert_and_cert_verifier(self):
-        reject = peer_certificate_verifiers.Reject
+        reject = peer_certificate_verifiers.reject
         verifier = peer_certificate_verifiers.And(reject)
         self.assert_cert_verifier_failure(verifier)
 
     def test_or_cert_verifier(self):
-        reject = peer_certificate_verifiers.Reject
-        accept = peer_certificate_verifiers.Accept
+        reject = peer_certificate_verifiers.reject
+        accept = peer_certificate_verifiers.accept
         verifier = peer_certificate_verifiers.Or(reject, accept)
         self.verify_cert_verifier_success(verifier)
 
     def test_assert_or_cert_verifier(self):
-        reject = peer_certificate_verifiers.Reject
+        reject = peer_certificate_verifiers.reject
         verifier = peer_certificate_verifiers.Or(reject)
         self.assert_cert_verifier_failure(verifier)
 
