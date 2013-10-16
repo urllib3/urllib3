@@ -239,23 +239,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/',
                           timeout=Timeout(total=None, connect=0.001))
 
-        # FIXME(kevinburke): What is this testing? It's currently broken.
-        """
-        https_pool = new_pool(t, cert_reqs='CERT_NONE')
-        conn = https_pool._new_conn()
-        try:
-            conn.set_tunnel(self.host, self.port)
-        except AttributeError: # Python 2.6
-            conn._set_tunnel(self.host, self.port)
-        conn._tunnel = mock.Mock()
-        try:
-            https_pool._make_request(conn, 'GET', '/')
-        except AttributeError:
-            # wrap_socket unavailable when you mock out ssl
-            pass
-        conn._tunnel.assert_called_once_with()
-        """
-
     def test_enhanced_ssl_connection(self):
         conn = VerifiedHTTPSConnection(self.host, self.port)
         https_pool = HTTPSConnectionPool(self.host, self.port,
