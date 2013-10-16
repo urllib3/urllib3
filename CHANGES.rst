@@ -10,6 +10,8 @@ dev (master)
 * New `urllib3.connection` module which contains all the HTTPConnection
   objects.
 
+* Disable Nagle's Algorithm on the socket for non-proxies. (Issue #254)
+
 * ...
 
 

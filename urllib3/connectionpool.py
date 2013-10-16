@@ -30,6 +30,7 @@ from .exceptions import (
 from .packages.ssl_match_hostname import CertificateError
 from .packages import six
 from .connection import (
+    port_by_scheme,
     DummyConnection,
     HTTPConnection, HTTPSConnection, VerifiedHTTPSConnection,
     HTTPException, BaseSSLError,
@@ -49,12 +50,6 @@ xrange = six.moves.xrange
 log = logging.getLogger(__name__)
 
 _Default = object()
-
-port_by_scheme = {
-    'http': 80,
-    'https': 443,
-}
-
 
 ## Pool objects
 
