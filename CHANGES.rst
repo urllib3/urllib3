@@ -7,6 +7,11 @@ dev (master)
 * Improved url parsing in ``urllib3.util.parse_url`` (properly parse '@' in
   username, and blank ports like 'hostname:').
 
+* New `urllib3.connection` module which contains all the HTTPConnection
+  objects.
+
+* ...
+
 
 1.7.1 (2013-09-25)
 ++++++++++++++++++
