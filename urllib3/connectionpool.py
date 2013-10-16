@@ -11,37 +11,10 @@ from socket import error as SocketError, timeout as SocketTimeout
 import socket
 
 try: # Python 3
-    from http.client import HTTPConnection, HTTPException
-    from http.client import HTTP_PORT, HTTPS_PORT
-except ImportError:
-    from httplib import HTTPConnection, HTTPException
-    from httplib import HTTP_PORT, HTTPS_PORT
-
-try: # Python 3
     from queue import LifoQueue, Empty, Full
 except ImportError:
     from Queue import LifoQueue, Empty, Full
     import Queue as _  # Platform-specific: Windows
-
-
-try: # Compiled with SSL?
-    HTTPSConnection = object
-
-    class BaseSSLError(Exception):
-        pass
-
-    ssl = None
-
-    try: # Python 3
-        from http.client import HTTPSConnection
-    except ImportError:
-        from httplib import HTTPSConnection
-
-    import ssl
-    BaseSSLError = ssl.SSLError
-
-except (ImportError, AttributeError): # Platform-specific: No SSL.
-    pass
 
 
 from .exceptions import (
@@ -54,19 +27,22 @@ from .exceptions import (
     ReadTimeoutError,
     ProxyError,
 )
-from .packages.ssl_match_hostname import CertificateError, match_hostname
+from .packages.ssl_match_hostname import CertificateError
 from .packages import six
+from .connection import (
+    DummyConnection,
+    HTTPConnection, HTTPSConnection, VerifiedHTTPSConnection,
+    HTTPException, BaseSSLError,
+)
 from .request import RequestMethods
 from .response import HTTPResponse
 from .util import (
     assert_fingerprint,
     get_host,
     is_connection_dropped,
-    resolve_cert_reqs,
-    resolve_ssl_version,
-    ssl_wrap_socket,
     Timeout,
 )
+
 
 xrange = six.moves.xrange
 
@@ -75,68 +51,9 @@ log = logging.getLogger(__name__)
 _Default = object()
 
 port_by_scheme = {
-    'http': HTTP_PORT,
-    'https': HTTPS_PORT,
+    'http': 80,
+    'https': 443,
 }
-
-
-## Connection objects (extension of httplib)
-
-class VerifiedHTTPSConnection(HTTPSConnection):
-    """
-    Based on httplib.HTTPSConnection but wraps the socket with
-    SSL certification.
-    """
-    cert_reqs = None
-    ca_certs = None
-    ssl_version = None
-
-    def set_cert(self, key_file=None, cert_file=None,
-                 cert_reqs=None, ca_certs=None,
-                 assert_hostname=None, assert_fingerprint=None):
-
-        self.key_file = key_file
-        self.cert_file = cert_file
-        self.cert_reqs = cert_reqs
-        self.ca_certs = ca_certs
-        self.assert_hostname = assert_hostname
-        self.assert_fingerprint = assert_fingerprint
-
-    def connect(self):
-        # Add certificate verification
-        try:
-            sock = socket.create_connection(
-                address=(self.host, self.port),
-                timeout=self.timeout)
-        except SocketTimeout:
-                raise ConnectTimeoutError(
-                    self, "Connection to %s timed out. (connect timeout=%s)" %
-                    (self.host, self.timeout))
-
-        resolved_cert_reqs = resolve_cert_reqs(self.cert_reqs)
-        resolved_ssl_version = resolve_ssl_version(self.ssl_version)
-
-        if self._tunnel_host:
-            self.sock = sock
-            # Calls self._set_hostport(), so self.host is
-            # self._tunnel_host below.
-            self._tunnel()
-
-        # Wrap socket using verification with the root certs in
-        # trusted_root_certs
-        self.sock = ssl_wrap_socket(sock, self.key_file, self.cert_file,
-                                    cert_reqs=resolved_cert_reqs,
-                                    ca_certs=self.ca_certs,
-                                    server_hostname=self.host,
-                                    ssl_version=resolved_ssl_version)
-
-        if resolved_cert_reqs != ssl.CERT_NONE:
-            if self.assert_fingerprint:
-                assert_fingerprint(self.sock.getpeercert(binary_form=True),
-                                   self.assert_fingerprint)
-            elif self.assert_hostname is not False:
-                match_hostname(self.sock.getpeercert(),
-                               self.assert_hostname or self.host)
 
 
 ## Pool objects
@@ -218,6 +135,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     """
 
     scheme = 'http'
+    ConnectionCls = HTTPConnection
 
     def __init__(self, host, port=None, strict=False,
                  timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1, block=False,
@@ -255,14 +173,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.num_connections += 1
         log.info("Starting new HTTP connection (%d): %s" %
                  (self.num_connections, self.host))
+
         extra_params = {}
         if not six.PY3:  # Python 2
             extra_params['strict'] = self.strict
 
-        return HTTPConnection(host=self.host, port=self.port,
-                              timeout=self.timeout.connect_timeout,
-                              **extra_params)
-
+        return self.ConnectionCls(host=self.host, port=self.port,
+                                  timeout=self.timeout.connect_timeout,
+                                  **extra_params)
 
     def _get_conn(self, timeout=None):
         """
@@ -362,7 +280,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             timeout_obj.start_connect()
             conn.timeout = timeout_obj.connect_timeout
             # conn.request() calls httplib.*.request, not the method in
-            # request.py. It also calls makefile (recv) on the socket
+            # urllib3.request. It also calls makefile (recv) on the socket.
             conn.request(method, url, **httplib_request_kw)
         except SocketTimeout:
             raise ConnectTimeoutError(
@@ -371,7 +289,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
-        log.debug("Setting read timeout to %s" % read_timeout)
+
         # App Engine doesn't have a sock attr
         if hasattr(conn, 'sock') and \
             read_timeout is not None and \
@@ -639,6 +557,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     """
 
     scheme = 'https'
+    ConnectionCls = HTTPSConnection
 
     def __init__(self, host, port=None,
                  strict=False, timeout=None, maxsize=1,
@@ -694,26 +613,24 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         log.info("Starting new HTTPS connection (%d): %s"
                  % (self.num_connections, self.host))
 
+        if not self.ConnectionCls or self.ConnectionCls is DummyConnection:
+            # Platform-specific: Python without ssl
+            raise SSLError("Can't connect to HTTPS URL because the SSL "
+                           "module is not available.")
+
         actual_host = self.host
         actual_port = self.port
         if self.proxy is not None:
             actual_host = self.proxy.host
             actual_port = self.proxy.port
 
-        if not ssl:  # Platform-specific: Python compiled without +ssl
-            if not HTTPSConnection or HTTPSConnection is object:
-                raise SSLError("Can't connect to HTTPS URL because the SSL "
-                               "module is not available.")
-            connection_class = HTTPSConnection
-        else:
-            connection_class = VerifiedHTTPSConnection
-
         extra_params = {}
         if not six.PY3:  # Python 2
             extra_params['strict'] = self.strict
-        conn = connection_class(host=actual_host, port=actual_port,
-                                timeout=self.timeout.connect_timeout,
-                                **extra_params)
+
+        conn = self.ConnectionCls(host=actual_host, port=actual_port,
+                                  timeout=self.timeout.connect_timeout,
+                                  **extra_params)
 
         return self._prepare_conn(conn)
 
