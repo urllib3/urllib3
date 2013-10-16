@@ -24,6 +24,7 @@ from .exceptions import (
     HostChangedError,
     MaxRetryError,
     SSLError,
+    TimeoutError,
     ReadTimeoutError,
     ProxyError,
 )
@@ -315,6 +316,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             raise ReadTimeoutError(
                 self, url, "Read timed out. (read timeout=%s)" % read_timeout)
 
+        except BaseSSLError as e:
+            # Catch possible read timeouts thrown as SSL errors. If not the
+            # case, rethrow the original. We need to do this because of:
+            # http://bugs.python.org/issue10272
+            if 'timed out' in str(e) or \
+               'did not complete (read)' in str(e):  # Python 2.6
+                raise ReadTimeoutError(self, url, "Read timed out.")
+
+            raise
+
         except SocketError as e: # Platform-specific: Python 2
             # See the above comment about EAGAIN in Python 3. In Python 2 we
             # have to specifically catch it and throw the timeout error
@@ -322,8 +333,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 raise ReadTimeoutError(
                     self, url,
                     "Read timed out. (read timeout=%s)" % read_timeout)
-            raise
 
+            raise
 
         # AppEngine doesn't have a version attr.
         http_version = getattr(conn, '_http_vsn_str', 'HTTP/?')
@@ -477,23 +488,23 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         except Empty:
             # Timed out by queue
-            raise ReadTimeoutError(
-                self, url, "Read timed out, no pool connections are available.")
-
-        except SocketTimeout:
-            # Timed out by socket
-            raise ReadTimeoutError(self, url, "Read timed out.")
+            raise EmptyPoolError(self, "No pool connections are available.")
 
         except BaseSSLError as e:
-            # SSL certificate error
-            if 'timed out' in str(e) or \
-               'did not complete (read)' in str(e): # Platform-specific: Python 2.6
-                raise ReadTimeoutError(self, url, "Read timed out.")
             raise SSLError(e)
 
         except CertificateError as e:
             # Name mismatch
             raise SSLError(e)
+
+        except TimeoutError as e:
+            # Connection broken, discard.
+            conn = None
+            # Save the error off for retry logic.
+            err = e
+
+            if retries == 0:
+                raise
 
         except (HTTPException, SocketError) as e:
             if isinstance(e, SocketError) and self.proxy is not None:
