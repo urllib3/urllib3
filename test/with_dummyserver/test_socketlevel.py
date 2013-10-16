@@ -142,7 +142,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             while not buf.endswith(b'\r\n\r\n'):
                 buf += sock.recv(65536)
 
-            # Now response immediately.
+            # Now respond immediately.
             body = 'Response 2'
             sock.send(('HTTP/1.1 200 OK\r\n'
                       'Content-Type: text/plain\r\n'
