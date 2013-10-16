@@ -400,7 +400,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         except BaseSSLError as e:
             # Catch possible read timeouts thrown as SSL errors. If not the
-            # case, rethrow the original.
+            # case, rethrow the original. We need to do this because of:
+            # http://bugs.python.org/issue10272
             if 'timed out' in str(e) or \
                'did not complete (read)' in str(e):  # Python 2.6
                 raise ReadTimeoutError(self, url, "Read timed out.")
