@@ -30,6 +30,17 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         r = http.request('GET', '%s/' % self.https_url)
         self.assertEqual(r.status, 200)
 
+    def test_nagle_proxy(self):
+        """ Test that proxy connections do not have TCP_NODELAY turned on """
+        http = proxy_from_url(self.proxy_url)
+        hc2 = http.connection_from_host(self.http_host, self.http_port)
+        conn = hc2._get_conn()
+        hc2._make_request(conn, 'GET', '/')
+        tcp_nodelay_setting = conn.sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
+        self.assertEqual(tcp_nodelay_setting, 0,
+                         ("Expected TCP_NODELAY for proxies to be set "
+                          "to zero, instead was %s" % tcp_nodelay_setting))
+
     def test_proxy_conn_fail(self):
         # Get a free port on localhost, so a connection will be refused
         s = socket.socket()

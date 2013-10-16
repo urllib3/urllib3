@@ -31,7 +31,12 @@ dev (master)
 * Fixed ``urllib3.poolmanager.ProxyManager`` not retrying on connect errors.
   (Issue #310)
 
+* Disable Nagle's Algorithm on the socket for non-proxies. A subset of requests
+  will send the entire HTTP request ~200 milliseconds faster; however, some of
+  the resulting TCP packets will be smaller. (Issue #254)
+
 * ... [Short description of non-trivial change.] (Issue #)
+
 
 
 1.7.1 (2013-09-25)

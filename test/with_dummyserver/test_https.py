@@ -13,7 +13,11 @@ from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from urllib3 import HTTPSConnectionPool
-from urllib3.connectionpool import VerifiedHTTPSConnection
+from urllib3.connection import (
+    HTTPSConnection,
+    VerifiedHTTPSConnection,
+    UnverifiedHTTPSConnection,
+)
 from urllib3.exceptions import SSLError, ConnectTimeoutError, ReadTimeoutError
 from urllib3.util import Timeout
 
@@ -78,6 +82,16 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
             self.assertRaises(SSLError, self._pool._new_conn)
             self.assertRaises(SSLError, self._pool.request, 'GET', '/')
+
+        finally:
+            self._pool.ConnectionCls = OriginalConnectionCls
+
+    def test_unverified_ssl(self):
+        """ Test that bare HTTPSConnection can connect, make requests """
+        try:
+            OriginalConnectionCls = self._pool.ConnectionCls
+            self._pool.ConnectionCls = UnverifiedHTTPSConnection
+            self._pool.request('GET', '/')
 
         finally:
             self._pool.ConnectionCls = OriginalConnectionCls
