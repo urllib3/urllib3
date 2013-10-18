@@ -179,11 +179,11 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_timeout_reset(self):
         """ If the read timeout isn't set, socket timeout should reset """
-        timeout = util.Timeout(connect=3)
+        url = '/sleep?seconds=0.005'
+        timeout = util.Timeout(connect=0.001)
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
         conn = pool._get_conn()
-        pool._make_request(conn, 'GET', '/')
-        self.assertEqual(conn.sock.gettimeout(), socket.getdefaulttimeout())
+        pool._make_request(conn, 'GET', url)
 
 
     @timed(0.1)
