@@ -1,7 +1,6 @@
 import logging
 import sys
 import unittest
-import socket
 
 import mock
 
