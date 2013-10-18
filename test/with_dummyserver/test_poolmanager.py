@@ -5,7 +5,7 @@ from dummyserver.testcase import (HTTPDummyServerTestCase,
                                   IPv6HTTPDummyServerTestCase)
 from urllib3.poolmanager import PoolManager
 from urllib3.connectionpool import port_by_scheme
-from urllib3.exceptions import MaxRetryError
+from urllib3.exceptions import MaxRetryError, SSLError
 
 
 class TestPoolManager(HTTPDummyServerTestCase):
@@ -122,6 +122,12 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         r = http.request('GET', 'http://%s:%s/' % (self.host, self.port))
         self.assertEqual(r.status, 200)
+
+    def test_bad_ssl(self):
+        http = PoolManager()
+
+        with self.assertRaises(SSLError):
+            http.request('GET', 'https://%s:%s' % (self.host, self.port), timeout=0.001, retries=0)
 
 
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
