@@ -292,9 +292,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         read_timeout = timeout_obj.read_timeout
 
         # App Engine doesn't have a sock attr
-        if hasattr(conn, 'sock') and \
-            read_timeout is not None and \
-            read_timeout is not Timeout.DEFAULT_TIMEOUT:
+        if hasattr(conn, 'sock'):
             # In Python 3 socket.py will catch EAGAIN and return None when you
             # try and read into the file pointer created by http.client, which
             # instead raises a BadStatusLine exception. Instead of catching
@@ -304,7 +302,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 raise ReadTimeoutError(
                     self, url,
                     "Read timed out. (read timeout=%s)" % read_timeout)
-            conn.sock.settimeout(read_timeout)
+            if read_timeout is Timeout.DEFAULT_TIMEOUT:
+                conn.sock.settimeout(socket.getdefaulttimeout())
+            else: # None or a value
+                conn.sock.settimeout(read_timeout)
 
         # Receive the response from the server
         try:
