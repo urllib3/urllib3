@@ -10,7 +10,9 @@ dev (master)
 * New ``urllib3.connection`` module which contains all the HTTPConnection
   objects.
 
-* ``TimeoutError`` now triggers a retry. (Issue #252)
+* Several ``urllib3.util.Timeout``-related fixes. Also changed constructor
+  signature to a more sensible order. [Backwards incompatible]
+  (Issues #252, #262, #263)
 
 * ...
 
@@ -18,7 +20,7 @@ dev (master)
 1.7.1 (2013-09-25)
 ++++++++++++++++++
 
-* Added granular timeout support with new `urllib3.util.Timeout` class.
+* Added granular timeout support with new ``urllib3.util.Timeout`` class.
   (Issue #231)
 
 * Fixed Python 3.4 support. (Issue #238)
