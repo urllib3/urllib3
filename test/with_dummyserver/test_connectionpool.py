@@ -1,6 +1,7 @@
 import logging
 import sys
 import unittest
+import socket
 
 import mock
 
@@ -174,6 +175,15 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool._put_conn(conn)
         self.assertRaises(ConnectTimeoutError, pool.request, 'GET', url,
                           timeout=timeout)
+
+
+    def test_timeout_reset(self):
+        """ If the read timeout isn't set, socket timeout should reset """
+        timeout = util.Timeout(connect=3)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        pool._make_request(conn, 'GET', '/')
+        self.assertEqual(conn.sock.gettimeout(), socket.getdefaulttimeout())
 
 
     @timed(0.1)
