@@ -80,13 +80,12 @@ class Timeout(object):
     :type read: integer, float, or None
 
     :param total:
-        The maximum amount of time to wait for an HTTP request to connect and
-        return. This combines the connect and read timeouts into one. In the
+        This combines the connect and read timeouts into one; the read timeout
+        will be set to the time leftover from the connect attempt. In the
         event that both a connect timeout and a total are specified, or a read
         timeout and a total are specified, the shorter timeout will be applied.
 
         Defaults to None.
-
 
     :type total: integer, float, or None
 
@@ -101,18 +100,23 @@ class Timeout(object):
         `total`.
 
         In addition, the read and total timeouts only measure the time between
-        read operations on the socket connecting the client and the server, not
-        the total amount of time for the request to return a complete response.
-        As an example, you may want a request to return within 7 seconds or
-        fail, so you set the ``total`` timeout to 7 seconds. If the server
-        sends one byte to you every 5 seconds, the request will **not** trigger
-        time out. This case is admittedly rare.
+        read operations on the socket connecting the client and the server,
+        not the total amount of time for the request to return a complete
+        response. For most requests, the timeout is raised because the server
+        has not sent the first byte in the specified time. This is not always
+        the case; if a server streams one byte every fifteen seconds, a timeout
+        of 20 seconds will not ever trigger, even though the request will
+        take several minutes to complete.
+
+        If your goal is to cut off any request after a set amount of wall clock
+        time, consider having a second "watcher" thread to cut off a slow
+        request.
     """
 
     #: A sentinel object representing the default timeout value
     DEFAULT_TIMEOUT = _GLOBAL_DEFAULT_TIMEOUT
 
-    def __init__(self, connect=_Default, read=_Default, total=None):
+    def __init__(self, total=None, connect=_Default, read=_Default):
         self._connect = self._validate_timeout(connect, 'connect')
         self._read = self._validate_timeout(read, 'read')
         self.total = self._validate_timeout(total, 'total')

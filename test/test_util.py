@@ -264,6 +264,9 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(timeout.read_timeout, None)
         self.assertEqual(timeout.total, None)
 
+        timeout = Timeout(5)
+        self.assertEqual(timeout.total, 5)
+
 
     def test_timeout_str(self):
         timeout = Timeout(connect=1, read=2, total=3)
