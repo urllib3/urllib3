@@ -16,6 +16,7 @@ from urllib3 import HTTPSConnectionPool
 from urllib3.connectionpool import VerifiedHTTPSConnection
 from urllib3.exceptions import SSLError, ConnectTimeoutError, ReadTimeoutError
 from urllib3.util import Timeout
+from urllib3.connection import BaseSSLError
 
 
 log = logging.getLogger('urllib3.connectionpool')
@@ -248,6 +249,16 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
                                         '7A:F2:8A:D7:1E:07:33:67:DE'
         https_pool._make_request(conn, 'GET', '/')
+
+    def test_ssl_errors_from_getresponse(self):
+        attrs = {'getresponse.side_effect': BaseSSLError}
+        conn = mock.Mock(**attrs)
+        pool = HTTPSConnectionPool(self.host, self.port,
+                                   timeout=Timeout(total=None, connect=5),
+                                   cert_reqs='CERT_REQUIRED')
+        self.assertRaises(BaseSSLError, pool._make_request, conn, 'GET', '/')
+
+
 
 
 class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
