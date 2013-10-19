@@ -5,11 +5,13 @@ from urllib3.exceptions import MaxRetryError, ReadTimeoutError, SSLError
 from urllib3 import util
 
 from dummyserver.testcase import SocketDummyServerTestCase
+from dummyserver.server import DEFAULT_CERTS, DEFAULT_CA
 
 from nose.plugins.skip import SkipTest
 from threading import Event
 import socket
 import time
+import ssl
 
 
 class TestCookies(SocketDummyServerTestCase):
@@ -197,3 +199,34 @@ class TestProxyManager(SocketDummyServerTestCase):
                              b'',
                              b'',
                          ]))
+
+
+class TestSSL(SocketDummyServerTestCase):
+
+    def test_ssl_failure_midway_through_conn(self):
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            sock2 = sock.dup()
+            ssl_sock = ssl.wrap_socket(sock,
+                                       server_side=True,
+                                       keyfile=DEFAULT_CERTS['keyfile'],
+                                       certfile=DEFAULT_CERTS['certfile'],
+                                       ca_certs=DEFAULT_CA)
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += ssl_sock.recv(65536)
+
+            # Deliberately send from the non-SSL socket.
+            sock2.send(('HTTP/1.1 200 OK\r\n'
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: 2\r\n'
+                       '\r\n'
+                       'Hi').encode('utf-8'))
+            sock2.close()
+            ssl_sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPSConnectionPool(self.host, self.port)
+
+        self.assertRaises(SSLError, pool.request, 'GET', '/', retries=0)
