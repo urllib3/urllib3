@@ -38,9 +38,9 @@ from .connection import (
 from .request import RequestMethods
 from .response import HTTPResponse
 from .util import (
-    assert_fingerprint,
     get_host,
     is_connection_dropped,
+    Retry,
     Timeout,
 )
 
@@ -377,7 +377,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         return (scheme, host, port) == (self.scheme, self.host, self.port)
 
-    def urlopen(self, method, url, body=None, headers=None, retries=3,
+    def urlopen(self, method, url, body=None, headers=None, retries=None,
                 redirect=True, assert_same_host=True, timeout=_Default,
                 pool_timeout=None, release_conn=None, **response_kw):
         """
@@ -449,15 +449,19 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if headers is None:
             headers = self.headers
 
-        if retries < 0:
-            raise MaxRetryError(self, url)
+        if not isinstance(retries, Retry):
+            retries = Retry.from_float(retries)
+
+        if retries.exhausted():
+            raise MaxRetryError(self, url, retries)
 
         if release_conn is None:
             release_conn = response_kw.get('preload_content', True)
 
         # Check host
         if assert_same_host and not self.is_same_host(url):
-            raise HostChangedError(self, url, retries - 1)
+            retries.increment()
+            raise HostChangedError(self, url, retries)
 
         conn = None
 
@@ -504,10 +508,21 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Save the error off for retry logic.
             err = e
 
-            if retries == 0:
+            retries.increment(error=e)
+            if retries.exhausted():
                 raise
 
-        except (HTTPException, SocketError) as e:
+        except HTTPException as e:
+            # Connection broken, discard.
+            conn = None
+            # Save the error off for retry logic.
+            err = e
+
+            retries.increment(error=e)
+            if retries.exhausted():
+                raise MaxRetryError(self, url, e)
+
+        except SocketError as e:
             if isinstance(e, SocketError) and self.proxy is not None:
                 raise ProxyError('Cannot connect to proxy. '
                                  'Socket error: %s.' % e)
@@ -517,7 +532,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # This is necessary so we can access e below
             err = e
 
-            if retries == 0:
+            retries.increment(error=e)
+            if retries.exhausted():
                 raise MaxRetryError(self, url, e)
 
         finally:
@@ -530,9 +546,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if not conn:
             # Try again
             log.warn("Retrying (%d attempts remain) after connection "
-                     "broken by '%r': %s" % (retries, err, url))
-            return self.urlopen(method, url, body, headers, retries - 1,
-                                redirect, assert_same_host,
+                     "broken by '%r': %s" % (retries._connect_error_count, err, url))
+            return self.urlopen(method, url, body, headers, retries=retries,
+                                redirect=redirect,
+                                assert_same_host=assert_same_host,
                                 timeout=timeout, pool_timeout=pool_timeout,
                                 release_conn=release_conn, **response_kw)
 
@@ -542,11 +559,20 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if response.status == 303:
                 method = 'GET'
             log.info("Redirecting %s -> %s" % (url, redirect_location))
+            retries.increment()
             return self.urlopen(method, redirect_location, body, headers,
-                                retries - 1, redirect, assert_same_host,
+                                retries, redirect, assert_same_host,
                                 timeout=timeout, pool_timeout=pool_timeout,
                                 release_conn=release_conn, **response_kw)
 
+        retries.increment(method=method, response=response)
+        if not retries.exhausted() and retries.is_retryable_response(method, response):
+            return self.urlopen(method=method, url=url, body=body,
+                                headers=headers, retries=retries,
+                                redirect=redirect,
+                                assert_same_host=assert_same_host,
+                                timeout=timeout, pool_timeout=pool_timeout,
+                                release_conn=release_conn, **response_kw)
         return response
 
 

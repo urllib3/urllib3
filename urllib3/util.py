@@ -12,6 +12,7 @@ import errno
 from hashlib import md5, sha1
 from socket import error as SocketError, _GLOBAL_DEFAULT_TIMEOUT
 import time
+import sys
 
 try:
     from select import poll, POLLIN
@@ -35,6 +36,7 @@ except ImportError:
 
 from .packages import six
 from .exceptions import (
+    ConnectTimeoutError,
     LocationParseError,
     ReadTimeoutError,
     SSLError,
@@ -278,14 +280,15 @@ class Retry(object):
     SERVER_ERROR_RESPONSE = xrange(500, 599)
     NON_200_RESPONSE = xrange(300, 599)
 
-    def __init__(self, total_errors=0, timeout_errors=0, connect_errors=0,
-                 read_errors=0, method_whitelist=DEFAULT_METHOD_WHITELIST,
+    def __init__(self, total_errors=sys.maxint, timeout_errors=0,
+                 connect_errors=3, read_errors=0,
+                 method_whitelist=DEFAULT_METHOD_WHITELIST,
                  codes_whitelist=None, backoff_factor=0):
         self.total_errors = total_errors
         self.timeout_errors = timeout_errors
         self.connect_errors = connect_errors
         self.read_errors = read_errors
-        self.codes_whitelist = codes_whitelist
+        self.codes_whitelist = codes_whitelist or []
         self.method_whitelist = method_whitelist
         self.backoff_factor = backoff_factor
 
@@ -296,10 +299,17 @@ class Retry(object):
 
 
     def _is_connection_error(self, err):
-        return err is not None and \
-                isinstance(err, SocketError) and \
-                hasattr(err, 'errno') and \
-                err.errno == errno.ECONNREFUSED
+        if err is None:
+            return False
+
+        if isinstance(err, SocketError) and \
+           hasattr(err, 'errno') and \
+           err.errno == errno.ECONNREFUSED:
+            return True
+        if isinstance(err, ConnectTimeoutError):
+            return True
+
+        return False
 
     def _is_error_response(self, meth, resp):
         return resp is not None and \
@@ -312,28 +322,58 @@ class Retry(object):
 
     def increment(self, method='GET', response=None, error=None):
         """ Increment the retry counters """
+        self._total_error_count += 1
 
         if self._is_connection_error(error):
             self._connect_error_count += 1
-            self._total_error_count += 1
 
         if self._is_error_response(method, response):
             self._read_error_count += 1
-            self._total_error_count += 1
 
         # XXX doesn't really make sense here to combine connect timeouts and
         # read timeouts.
         if self._is_read_timeout(error):
             self._timeout_error_count += 1
-            self._total_error_count += 1
+
+        print self
 
 
-    def should_retry(self, method='GET', response=None, error=None):
-        """ Determine whether a request should be retried """
-        if self._is_connection_error(error):
-            return self._connect_error_count < self.connect_errors and \
-                    self._total_error_count < self.total_errors
+    def is_retryable_response(self, method, response):
+        return self._is_error_response(method, response)
 
+
+    def exhausted(self):
+        """ Determine whether we're out of retries """
+        return self._connect_error_count > self.connect_errors or \
+                self._total_error_count > self.total_errors or \
+                self._read_error_count > self.read_errors or \
+                self._timeout_error_count > self.timeout_errors
+
+
+    @classmethod
+    def from_float(self, retry_float):
+        """ Create a Retries object from a float """
+        if retry_float is None:
+            return Retry()
+
+        else:
+            return Retry(total_errors=retry_float)
+
+    def __str__(self):
+        return ('{clsname} (connect={conn_count}/{conn_errors}, '
+                'read={read_count}/{read_errors}, '
+                'timeout={timeout_count}/{timeout_errors}, '
+                'total={total_count}/{total_errors})'.format(
+                    clsname=type(self).__name__,
+                    conn_count=self._connect_error_count,
+                    conn_errors=self.connect_errors,
+                    read_count=self._read_error_count,
+                    read_errors=self.read_errors,
+                    timeout_count=self._timeout_error_count,
+                    timeout_errors=self.timeout_errors,
+                    total_count=self._total_error_count,
+                    total_errors=self.total_errors,
+        ))
 
 
 class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment'])):
