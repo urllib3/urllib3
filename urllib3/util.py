@@ -266,6 +266,32 @@ class Timeout(object):
             return self._read
 
 
+class Retry(object):
+    DEFAULT_METHOD_WHITELIST = set(['HEAD', 'GET', 'PUT',
+                                    'DELETE', 'OPTIONS', 'TRACE'])
+    SERVER_ERROR_RESPONSE = xrange(500, 599)
+    NON_200_RESPONSE = xrange(300, 599)
+
+    def __init__(self, total_errors=0, timeout_errors=0, connect_errors=0,
+                 read_errors=0, method_whitelist=DEFAULT_METHOD_WHITELIST,
+                 codes_whitelist=None, backoff_factor=0):
+        self.total_errors = total_errors
+        self.timeout_errors = timeout_errors
+        self.connect_errors = connect_errors
+        self.read_errors = read_errors
+        self.codes_whitelist = codes_whitelist
+        self.method_whitelist = method_whitelist
+        self.backoff_factor = backoff_factor
+
+    def increment(self, method='GET', response=None, error=None):
+        """ Increment the retry counters """
+        pass
+
+    def should_retry(self, method='GET', response=None, error=None):
+        """ Determine whether a request should be retried """
+        pass
+
+
 class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment'])):
     """
     Datastructure for representing an HTTP URL. Used as a return value for
