@@ -26,14 +26,15 @@ try:  # Test for SSL features
     HAS_SNI = False
 
     import ssl
-    from ssl import wrap_socket, CERT_NONE, PROTOCOL_SSLv23
+    from ssl import CERT_NONE, PROTOCOL_SSLv23
     from ssl import SSLContext  # Modern SSL?
     from ssl import HAS_SNI  # Has SNI?
 except ImportError:
     pass
 
 from .packages import six
-from .exceptions import LocationParseError, SSLError, TimeoutStateError
+from .exceptions import (LocationParseError, SSLError, TimeoutStateError,
+                         SSLHandshakeError)
 
 
 _Default = object()
@@ -600,9 +601,9 @@ def is_fp_closed(obj):
 
 
 if SSLContext is not None:  # Python 3.2+
-    def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
-                        ca_certs=None, server_hostname=None,
-                        ssl_version=None):
+    def _ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
+                         ca_certs=None, server_hostname=None,
+                         ssl_version=None):
         """
         All arguments except `server_hostname` have the same meaning as for
         :func:`ssl.wrap_socket`
@@ -612,6 +613,12 @@ if SSLContext is not None:  # Python 3.2+
         """
         context = SSLContext(ssl_version)
         context.verify_mode = cert_reqs
+        kwargs = {
+            'do_handshake_on_connect': False
+        }
+        if HAS_SNI:  # Platform-specific: OpenSSL with enabled SNI
+            kwargs['server_hostname'] = server_hostname
+
         if ca_certs:
             try:
                 context.load_verify_locations(ca_certs)
@@ -622,14 +629,23 @@ if SSLContext is not None:  # Python 3.2+
         if certfile:
             # FIXME: This block needs a test.
             context.load_cert_chain(certfile, keyfile)
-        if HAS_SNI:  # Platform-specific: OpenSSL with enabled SNI
-            return context.wrap_socket(sock, server_hostname=server_hostname)
-        return context.wrap_socket(sock)
+        return context.wrap_socket(sock, **kwargs)
 
 else:  # Python 3.1 and earlier
-    def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
-                        ca_certs=None, server_hostname=None,
-                        ssl_version=None):
-        return wrap_socket(sock, keyfile=keyfile, certfile=certfile,
-                           ca_certs=ca_certs, cert_reqs=cert_reqs,
-                           ssl_version=ssl_version)
+    def _ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
+                         ca_certs=None, server_hostname=None,
+                         ssl_version=None):
+        return ssl.wrap_socket(sock, keyfile=keyfile, certfile=certfile,
+                               ca_certs=ca_certs, cert_reqs=cert_reqs,
+                               ssl_version=ssl_version,
+                               do_handshake_on_connect=False)
+
+
+def ssl_wrap_socket(*args, **kwargs):
+    s = _ssl_wrap_socket(*args, **kwargs)
+    try:
+        s.do_handshake()
+    except SocketError as e:
+        raise SSLHandshakeError(e)
+
+    return s
