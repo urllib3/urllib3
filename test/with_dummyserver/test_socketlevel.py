@@ -154,13 +154,23 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
             sock.close()  # Close the socket.
 
-        self._start_server(socket_handler)
-        t = util.Timeout(connect=0.001, read=0.001)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=t)
+        # In situations where the main thread throws an exception, the server
+        # thread can hang on an accept() call. This ensures everything times
+        # out within 3 seconds. This should be long enough for any socket
+        # operations in the test suite to complete
+        default_timeout = socket.getdefaulttimeout()
+        socket.setdefaulttimeout(1)
 
-        response = pool.request('GET', '/', retries=1)
-        self.assertEqual(response.status, 200)
-        self.assertEqual(response.data, b'Response 2')
+        try:
+            self._start_server(socket_handler)
+            t = util.Timeout(connect=0.001, read=0.001)
+            pool = HTTPConnectionPool(self.host, self.port, timeout=t)
+
+            response = pool.request('GET', '/', retries=1)
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.data, b'Response 2')
+        finally:
+            socket.setdefaulttimeout(default_timeout)
 
 
 class TestProxyManager(SocketDummyServerTestCase):

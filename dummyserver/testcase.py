@@ -10,11 +10,6 @@ from dummyserver.server import (
 )
 
 has_ipv6 = hasattr(socket, 'has_ipv6')
-# In situations where the main thread throws an exception, the server thread
-# can hang on an accept() call. This ensures everything times out within
-# 3 seconds. This should be long enough for any socket operations in the test
-# suite to complete
-socket.setdefaulttimeout(3)
 
 class SocketDummyServerTestCase(unittest.TestCase):
     """
