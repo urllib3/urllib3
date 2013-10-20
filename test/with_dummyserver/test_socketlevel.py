@@ -1,7 +1,8 @@
 
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
-from urllib3.exceptions import MaxRetryError, ReadTimeoutError, SSLError
+from urllib3.exceptions import (MaxRetryError, ReadTimeoutError, SSLError,
+                                SSLHandshakeError)
 from urllib3 import util
 
 from dummyserver.testcase import SocketDummyServerTestCase
@@ -230,3 +231,25 @@ class TestSSL(SocketDummyServerTestCase):
         pool = HTTPSConnectionPool(self.host, self.port)
 
         self.assertRaises(SSLError, pool.request, 'GET', '/', retries=0)
+
+    def test_ssl_handshake_error_random_data(self):
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            sock.send(b'some random garbage')
+
+        self._start_server(socket_handler)
+        pool = HTTPSConnectionPool(self.host, self.port)
+        self.assertRaises(SSLHandshakeError,
+                          pool.request, 'GET', '/', retries=0)
+
+    def test_ssl_handshake_error_closed_connection(self):
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPSConnectionPool(self.host, self.port)
+        self.assertRaises(SSLHandshakeError,
+                          pool.request, 'GET', '/', retries=0)
