@@ -8,6 +8,7 @@
 from base64 import b64encode
 from binascii import hexlify, unhexlify
 from collections import namedtuple
+import errno
 from hashlib import md5, sha1
 from socket import error as SocketError, _GLOBAL_DEFAULT_TIMEOUT
 import time
@@ -33,7 +34,12 @@ except ImportError:
     pass
 
 from .packages import six
-from .exceptions import LocationParseError, SSLError, TimeoutStateError
+from .exceptions import (
+    LocationParseError,
+    ReadTimeoutError,
+    SSLError,
+    TimeoutStateError,
+)
 
 
 _Default = object()
@@ -283,13 +289,51 @@ class Retry(object):
         self.method_whitelist = method_whitelist
         self.backoff_factor = backoff_factor
 
+        self._total_error_count = 0
+        self._timeout_error_count = 0
+        self._connect_error_count = 0
+        self._read_error_count = 0
+
+
+    def _is_connection_error(self, err):
+        return err is not None and \
+                isinstance(err, SocketError) and \
+                hasattr(err, 'errno') and \
+                err.errno == errno.ECONNREFUSED
+
+    def _is_error_response(self, meth, resp):
+        return resp is not None and \
+                meth in self.method_whitelist and \
+                resp.status in self.codes_whitelist
+
+    def _is_read_timeout(self, err):
+        return isinstance(err, ReadTimeoutError)
+
+
     def increment(self, method='GET', response=None, error=None):
         """ Increment the retry counters """
-        pass
+
+        if self._is_connection_error(error):
+            self._connect_error_count += 1
+            self._total_error_count += 1
+
+        if self._is_error_response(method, response):
+            self._read_error_count += 1
+            self._total_error_count += 1
+
+        # XXX doesn't really make sense here to combine connect timeouts and
+        # read timeouts.
+        if self._is_read_timeout(error):
+            self._timeout_error_count += 1
+            self._total_error_count += 1
+
 
     def should_retry(self, method='GET', response=None, error=None):
         """ Determine whether a request should be retried """
-        pass
+        if self._is_connection_error(error):
+            return self._connect_error_count < self.connect_errors and \
+                    self._total_error_count < self.total_errors
+
 
 
 class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment'])):
