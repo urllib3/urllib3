@@ -123,12 +123,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
         r = http.request('GET', 'http://%s:%s/' % (self.host, self.port))
         self.assertEqual(r.status, 200)
 
-    def test_bad_ssl(self):
-        http = PoolManager()
-
-        with self.assertRaises(SSLError):
-            http.request('GET', 'https://%s:%s' % (self.host, self.port), timeout=0.001, retries=0)
-
 
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
     def setUp(self):
