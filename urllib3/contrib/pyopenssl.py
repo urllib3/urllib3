@@ -31,6 +31,7 @@ from cStringIO import StringIO
 
 from .. import connectionpool
 from .. import util
+from .. import exceptions
 
 __all__ = ['inject_into_urllib3', 'extract_from_urllib3']
 
@@ -328,7 +329,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         try:
             ctx.load_verify_locations(ca_certs, None)
         except OpenSSL.SSL.Error as e:
-            raise ssl.SSLError('bad ca_certs: %r' % ca_certs, e)
+            raise exceptions.SSLError('bad ca_certs: %r' % ca_certs, e)
 
     cnx = OpenSSL.SSL.Connection(ctx, sock)
     cnx.set_tlsext_host_name(server_hostname)
@@ -340,7 +341,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
             select.select([sock], [], [])
             continue
         except OpenSSL.SSL.Error as e:
-            raise ssl.SSLError('bad handshake', e)
+            raise exceptions.SSLHandshakeError('bad handshake', e)
         break
 
     return WrappedSocket(cnx, sock)

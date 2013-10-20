@@ -1,4 +1,4 @@
-# urllib3/exceptions.py
+    # urllib3/exceptions.py
 # Copyright 2008-2013 Andrey Petrov and contributors (see CONTRIBUTORS.txt)
 #
 # This module is part of urllib3 and is released under
@@ -119,3 +119,8 @@ class LocationParseError(ValueError, HTTPError):
         HTTPError.__init__(self, message)
 
         self.location = location
+
+
+class SSLHandshakeError(SSLError):
+    "Raised when SSL handshake fails"
+    pass
