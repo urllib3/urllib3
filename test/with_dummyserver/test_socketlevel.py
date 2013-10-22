@@ -210,6 +210,38 @@ class TestProxyManager(SocketDummyServerTestCase):
                              b'',
                          ]))
 
+    def test_headers(self):
+        def echo_socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                      'Content-Type: text/plain\r\n'
+                      'Content-Length: %d\r\n'
+                      '\r\n'
+                      '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
+            sock.close()
+
+        self._start_server(echo_socket_handler)
+        base_url = 'http://%s:%d' % (self.host, self.port)
+
+        # Define some proxy headers.
+        proxy_headers = {'For The Proxy': 'YEAH!'}
+        proxy = proxy_from_url(base_url, proxy_headers=proxy_headers)
+
+        conn = proxy.connection_from_url('http://www.google.com/')
+
+        r = conn.urlopen('GET', 'http://www.google.com/', assert_same_host=False)
+
+        self.assertEqual(r.status, 200)
+        # FIXME: The order of the headers is not predictable right now. We
+        # should fix that someday (maybe when we migrate to
+        # OrderedDict/MultiDict).
+        self.assertTrue(b'For The Proxy: YEAH!\r\n' in r.data)
+
 
 class TestSSL(SocketDummyServerTestCase):
 
