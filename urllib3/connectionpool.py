@@ -461,6 +461,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         conn = None
 
+        # Merge the proxy headers. Only do this in HTTP.
+        if self.scheme == 'http':
+            headers.update(self.proxy_headers)
+
         try:
             # Request a connection from the queue
             conn = self._get_conn(timeout=pool_timeout)
