@@ -461,7 +461,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         conn = None
 
-        # Merge the proxy headers. Only do this in HTTP.
+        # Merge the proxy headers. Only do this in HTTP. For HTTPS via proxy,
+        # the proxy headers are handled by the ProxyManager, because they need
+        # to be sent only to the proxy.
         if self.scheme == 'http':
             headers.update(self.proxy_headers)
 
