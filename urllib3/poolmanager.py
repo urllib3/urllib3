@@ -247,7 +247,7 @@ class ProxyManager(PoolManager):
         if u.scheme == "http":
             # For proxied HTTPS requests, httplib sets the necessary headers
             # on the CONNECT to the proxy. For HTTP, we'll definitely
-            # need to set 'Host' at the very least.
+            # need to set 'Host' at the very least.
             kw['headers'] = self._set_proxy_headers(url, kw.get('headers',
                                                                 self.headers))
 
