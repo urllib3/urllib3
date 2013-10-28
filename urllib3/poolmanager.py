@@ -225,8 +225,33 @@ class ProxyManager(PoolManager):
         return super(ProxyManager, self).connection_from_host(
             self.proxy.host, self.proxy.port, self.proxy.scheme)
 
+    def _set_proxy_headers(self, url, headers=None):
+        """
+        Sets headers needed by proxies: specifically, the Accept and Host
+        headers. Only sets headers not provided by the user.
+        """
+        headers_ = {'Accept': '*/*'}
+
+        netloc = parse_url(url).netloc
+        if netloc:
+            headers_['Host'] = netloc
+
+        if headers:
+            headers_.update(headers)
+        return headers_
+
     def urlopen(self, method, url, redirect=True, **kw):
         "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
+        u = parse_url(url)
+
+        if u.scheme == "http":
+            # It's too late to set proxy headers on per-request basis for
+            # tunnelled HTTPS connections, should use
+            # constructor's proxy_headers instead.
+            kw['headers'] = self._set_proxy_headers(url, kw.get('headers',
+                                                                self.headers))
+            kw['headers'].update(self.proxy_headers)
+
         return super(ProxyManager, self).urlopen(method, url, redirect, **kw)
 
 
