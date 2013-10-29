@@ -205,6 +205,7 @@ class TestProxyManager(SocketDummyServerTestCase):
                              b'GET http://google.com/ HTTP/1.1',
                              b'Host: google.com',
                              b'Accept-Encoding: identity',
+                             b'Accept: */*',
                              b'',
                              b'',
                          ]))
