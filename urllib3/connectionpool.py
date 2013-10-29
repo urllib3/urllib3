@@ -28,7 +28,7 @@ from .exceptions import (
     ReadTimeoutError,
     ProxyError,
 )
-from .packages.ssl_match_hostname import match_hostname
+from .packages.ssl_match_hostname import CertificateError
 from .packages import six
 from .connection import (
     DummyConnection,
