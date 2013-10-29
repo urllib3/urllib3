@@ -14,6 +14,8 @@ dev (master)
   signature to a more sensible order. [Backwards incompatible]
   (Issues #252, #262, #263)
 
+* Use ``backports.ssl_match_hostname`` if it's installed. (Issue #274)
+
 * ...
 
 
