@@ -28,7 +28,16 @@ from .exceptions import (
     ReadTimeoutError,
     ProxyError,
 )
-from .packages.ssl_match_hostname import CertificateError
+try:
+    # Python 3.2+
+    from ssl import match_hostname
+except ImportError:
+    try:
+        # backport of the function from pypi
+        from backports.ssl_match_hostname import match_hostname
+    except ImportError:
+        # Vendored package
+        from .packages.ssl_match_hostname import match_hostname
 from .packages import six
 from .connection import (
     DummyConnection,

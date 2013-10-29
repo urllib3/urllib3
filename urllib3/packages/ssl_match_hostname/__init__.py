@@ -1,11 +1,12 @@
-"""The match_hostname() function from Python 3.2, essential when using SSL."""
+"""The match_hostname() function from Python 3.3.3, essential when using SSL."""
 
 import re
 
-__version__ = '3.2.2'
+__version__ = '3.4.0.2'
 
 class CertificateError(ValueError):
     pass
+
 
 def _dnsname_match(dn, hostname, max_wildcards=1):
     """Matching according to RFC 6125, section 6.4.3
@@ -16,13 +17,16 @@ def _dnsname_match(dn, hostname, max_wildcards=1):
     if not dn:
         return False
 
+    # Ported from python3-syntax:
+    # leftmost, *remainder = dn.split(r'.')
     parts = dn.split(r'.')
     leftmost = parts[0]
+    remainder = parts[1:]
 
     wildcards = leftmost.count('*')
     if wildcards > max_wildcards:
         # Issue #17980: avoid denials of service by refusing more
-        # than one wildcard per fragment.  A survery of established
+        # than one wildcard per fragment.  A survey of established
         # policy among SSL implementations showed it to be a
         # reasonable choice.
         raise CertificateError(
@@ -50,7 +54,7 @@ def _dnsname_match(dn, hostname, max_wildcards=1):
         pats.append(re.escape(leftmost).replace(r'\*', '[^.]*'))
 
     # add the remaining fragments, ignore any wildcards
-    for frag in parts[1:]:
+    for frag in remainder:
         pats.append(re.escape(frag))
 
     pat = re.compile(r'\A' + r'\.'.join(pats) + r'\Z', re.IGNORECASE)

@@ -37,7 +37,16 @@ except (ImportError, AttributeError): # Platform-specific: No SSL.
 from .exceptions import (
     ConnectTimeoutError,
 )
-from .packages.ssl_match_hostname import match_hostname
+try:
+    # Python 3.2+
+    from ssl import match_hostname
+except ImportError:
+    try:
+        # backport of the function from pypi
+        from backports.ssl_match_hostname import match_hostname
+    except ImportError:
+        # Vendored package
+        from .packages.ssl_match_hostname import match_hostname
 from .util import (
     assert_fingerprint,
     resolve_cert_reqs,
