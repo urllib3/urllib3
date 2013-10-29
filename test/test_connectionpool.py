@@ -6,13 +6,7 @@ from urllib3.connectionpool import (
     HTTPConnectionPool,
 )
 from urllib3.util import Timeout
-try:
-    from ssl import CertificateError
-except ImportError:
-    try:
-        from backports.ssl_match_hostname import CertificateError
-    except ImportError:
-        from urllib3.packages.ssl_match_hostname import CertificateError
+from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
     ClosedPoolError,
     EmptyPoolError,
