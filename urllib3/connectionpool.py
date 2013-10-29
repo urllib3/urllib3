@@ -30,14 +30,14 @@ from .exceptions import (
 )
 try:
     # Python 3.2+
-    from ssl import match_hostname
+    from ssl import CertificateError
 except ImportError:
     try:
         # backport of the function from pypi
-        from backports.ssl_match_hostname import match_hostname
+        from backports.ssl_match_hostname import CertificateError
     except ImportError:
         # Vendored package
-        from .packages.ssl_match_hostname import match_hostname
+        from .packages.ssl_match_hostname import CertificateError
 from .packages import six
 from .connection import (
     DummyConnection,
