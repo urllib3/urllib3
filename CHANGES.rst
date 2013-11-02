@@ -16,6 +16,9 @@ dev (master)
 
 * Use ``backports.ssl_match_hostname`` if it's installed. (Issue #274)
 
+* Added ``.tell()`` method to ``urllib3.response.HTTPResponse`` which
+  returns the number of bytes read so far. (Issue #277)
+
 * ...
 
 
