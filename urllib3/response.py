@@ -90,7 +90,7 @@ class HTTPResponse(io.IOBase):
         self._body = body if body and isinstance(body, basestring) else None
         self._fp = None
         self._original_response = original_response
-        self._wire_bytes_read = 0
+        self._fp_bytes_read = 0
 
         self._pool = pool
         self._connection = connection
@@ -136,7 +136,7 @@ class HTTPResponse(io.IOBase):
         content returned by :meth:``HTTPResponse.read`` if bytes are encoded on the wire
         (e.g, compressed).
         """
-        return self._wire_bytes_read
+        return self._fp_bytes_read
 
     def read(self, amt=None, decode_content=None, cache_content=False):
         """
@@ -192,7 +192,7 @@ class HTTPResponse(io.IOBase):
                     self._fp.close()
                     flush_decoder = True
 
-            self._wire_bytes_read += len(data)
+            self._fp_bytes_read += len(data)
 
             try:
                 if decode_content and self._decoder:
