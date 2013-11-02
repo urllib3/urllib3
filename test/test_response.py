@@ -6,11 +6,13 @@ from urllib3.response import HTTPResponse
 from urllib3.exceptions import DecodeError
 
 
+from base64 import b64decode
+
 # A known random (i.e, not-too-compressible) payload generated with:
 #    "".join(random.choice(string.printable) for i in xrange(512))
 #    .encode("zlib").encode("base64")
 # Randomness in tests == bad, and fixing a seed may not be sufficient.
-ZLIB_PAYLOAD = """\
+ZLIB_PAYLOAD = b64decode(b"""\
 eJwFweuaoQAAANDfineQhiKLUiaiCzvuTEmNNlJGiL5QhnGpZ99z8luQfe1AHoMioB+QSWHQu/L+
 lzd7W5CipqYmeVTBjdgSATdg4l4Z2zhikbuF+EKn69Q0DTpdmNJz8S33odfJoVEexw/l2SS9nFdi
 pis7KOwXzfSqarSo9uJYgbDGrs1VNnQpT9f8zAorhYCEZronZQF9DuDFfNK3Hecc+WHLnZLQptwk
@@ -19,7 +21,7 @@ Khe5TF36JbnKVjdcL1EUNpwrWVfQpFYJ/WWm2b74qNeSZeQv5/xBhRdOmKTJFYgO96PwrHBlsnLn
 a3l0LwJsloWpMbzByU5WLbRE6X5INFqjQOtIwYz5BAlhkn+kVqJvWM5vBlfrwP42ifonM5yF4ciJ
 auHVks62997mNGOsM7WXNG3P98dBHPo2NhbTvHleL0BI5dus2JY81MUOnK3SGWLH8HeWPa1t5KcW
 S5moAj5HexY/g/F8TctpxwsvyZp38dXeLDjSQvEQIkF7XR3YXbeZgKk3V34KGCPOAeeuQDIgyVhV
-nP4HF2uWHA==""".decode("base64")
+nP4HF2uWHA==""")
 
 
 class TestLegacyResponse(unittest.TestCase):
@@ -239,6 +241,7 @@ class TestResponse(unittest.TestCase):
     def test_deflate_streaming_tell_intermediate_point(self):
         # Ensure that ``tell()`` returns the correct number of bytes when
         # part-way through streaming compressed content.
+        import zlib
 
         NUMBER_OF_READS = 10
 
@@ -251,17 +254,17 @@ class TestResponse(unittest.TestCase):
             def __init__(self, payload, payload_part_size):
                 self.payloads = [
                     payload[i*payload_part_size:(i+1)*payload_part_size]
-                    for i in xrange(NUMBER_OF_READS+1)]
+                    for i in range(NUMBER_OF_READS+1)]
 
-                assert "".join(self.payloads) == payload
+                assert b"".join(self.payloads) == payload
 
             def read(self, _):
                 # Amount is unused.
                 if len(self.payloads) > 0:
                     return self.payloads.pop(0)
-                return ""
+                return b""
 
-        uncompressed_data = ZLIB_PAYLOAD.decode("zlib")
+        uncompressed_data = zlib.decompress(ZLIB_PAYLOAD)
 
         payload_part_size = len(ZLIB_PAYLOAD) // NUMBER_OF_READS
         fp = MockCompressedDataReading(ZLIB_PAYLOAD, payload_part_size)
@@ -277,11 +280,11 @@ class TestResponse(unittest.TestCase):
         parts, positions = zip(*parts_positions)
 
         # Check that the payload is equal to the uncompressed data
-        payload = "".join(parts)
+        payload = b"".join(parts)
         self.assertEqual(uncompressed_data, payload)
 
         # Check that the positions in the stream are correct
-        expected = [(i+1)*payload_part_size for i in xrange(NUMBER_OF_READS)]
+        expected = [(i+1)*payload_part_size for i in range(NUMBER_OF_READS)]
         self.assertEqual(expected, list(positions))
 
         # Check that the end of the stream is in the correct place
