@@ -171,6 +171,9 @@ class TestUtil(unittest.TestCase):
             make_headers(basic_auth='foo:bar'),
             {'authorization': 'Basic Zm9vOmJhcg=='})
 
+        self.assertEqual(
+            make_headers(proxy_basic_auth='foo:bar'),
+            {'proxy-authorization': 'Basic Zm9vOmJhcg=='})
 
     def test_split_first(self):
         test_cases = {
