@@ -93,5 +93,8 @@ In chronological order:
 * Peter Waller <p@pwaller.net>
   * HTTPResponse.tell() for determining amount received over the wire
 
+* Judson D Neer <judson.neer@gmail.com>
+  * Set an explicit log level
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
