@@ -11,7 +11,6 @@ from dummyserver.server import (
 
 has_ipv6 = hasattr(socket, 'has_ipv6')
 
-
 class SocketDummyServerTestCase(unittest.TestCase):
     """
     A simple socket-based server is created for this class that is good for
@@ -33,7 +32,7 @@ class SocketDummyServerTestCase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         if hasattr(cls, 'server_thread'):
-            cls.server_thread.join()
+            cls.server_thread.join(0.1)
 
 
 class HTTPDummyServerTestCase(unittest.TestCase):

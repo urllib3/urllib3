@@ -26,6 +26,7 @@ from urllib3 import util
 from dummyserver.testcase import HTTPDummyServerTestCase
 
 from nose.tools import timed
+from nose.plugins.skip import SkipTest
 
 log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
@@ -176,6 +177,18 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                           timeout=timeout)
 
 
+    def test_timeout_reset(self):
+        """ If the read timeout isn't set, socket timeout should reset """
+        url = '/sleep?seconds=0.005'
+        timeout = util.Timeout(connect=0.001)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        try:
+            pool._make_request(conn, 'GET', url)
+        except ReadTimeoutError:
+            self.fail("This request shouldn't trigger a read timeout.")
+
+
     @timed(0.1)
     def test_total_timeout(self):
         url = '/sleep?seconds=0.005'
@@ -217,7 +230,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         timeout = util.Timeout(total=None)
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
         pool.request('GET', '/')
-
 
     def test_tunnel(self):
         # note the actual httplib.py has no tests for this functionality
@@ -483,12 +495,11 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool.request('GET', '/', release_conn=False, preload_content=False)
         self.assertEqual(pool.pool.qsize(), MAXSIZE-1)
 
-    ## FIXME: This borks on OSX because sockets on invalid hosts refuse to timeout. :(
-    #def test_dns_error(self):
-    #    pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
-    #
-    #    with self.assertRaises(MaxRetryError):
-    #        pool.request('GET', '/test', retries=2)
+    @SkipTest
+    def test_dns_error(self):
+        # This fails on everything except Py27. Not sure why...
+        pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
+        self.assertRaises(MaxRetryError, pool.request, 'GET', '/test', retries=2)
 
 
 if __name__ == '__main__':

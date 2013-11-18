@@ -128,9 +128,8 @@ class TestConnectionPool(unittest.TestCase):
 
             self.assertEqual(pool.pool.qsize(), POOL_SIZE)
 
-        #make sure that all of the exceptions return the connection to the pool
-        _test(Empty, ReadTimeoutError)
-        _test(SocketTimeout, ReadTimeoutError)
+        # Make sure that all of the exceptions return the connection to the pool
+        _test(Empty, EmptyPoolError)
         _test(BaseSSLError, SSLError)
         _test(CertificateError, SSLError)
 

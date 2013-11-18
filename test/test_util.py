@@ -171,6 +171,9 @@ class TestUtil(unittest.TestCase):
             make_headers(basic_auth='foo:bar'),
             {'authorization': 'Basic Zm9vOmJhcg=='})
 
+        self.assertEqual(
+            make_headers(proxy_basic_auth='foo:bar'),
+            {'proxy-authorization': 'Basic Zm9vOmJhcg=='})
 
     def test_split_first(self):
         test_cases = {
@@ -263,6 +266,9 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(timeout.connect_timeout, None)
         self.assertEqual(timeout.read_timeout, None)
         self.assertEqual(timeout.total, None)
+
+        timeout = Timeout(5)
+        self.assertEqual(timeout.total, 5)
 
 
     def test_timeout_str(self):
