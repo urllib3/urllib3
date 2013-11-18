@@ -161,4 +161,6 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
 
 if ssl:
+    # make a copy for testing.
+    UnverifiedHTTPSConnection = HTTPSConnection
     HTTPSConnection = VerifiedHTTPSConnection
