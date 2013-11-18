@@ -52,15 +52,21 @@ port_by_scheme = {
 }
 
 
-class HTTPConnection(object, _HTTPConnection):
+class HTTPConnection(_HTTPConnection, object):
     default_port = port_by_scheme['http']
 
     def _new_conn(self):
-        conn = socket.create_connection(
-            (self.host,self.port),
-            self.timeout,
-            self.source_address, # XXX: Support Py26 without source_address
-        )
+        try:
+            conn = socket.create_connection(
+                (self.host,self.port),
+                self.timeout,
+                self.source_address,
+            )
+        except AttributeError: # Python 2.6
+            conn = socket.create_connection(
+                (self.host,self.port),
+                self.timeout,
+            )
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         return conn
 
@@ -81,8 +87,10 @@ class HTTPSConnection(HTTPConnection):
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                  source_address=None):
-        super(HTTPSConnection, self).__init__(
-            self, host, port, strict, timeout, source_address)
+        try:
+            HTTPConnection.__init__(self, host, port, strict, timeout, source_address)
+        except TypeError: # Python 2.6
+            HTTPConnection.__init__(self, host, port, strict, timeout)
         self.key_file = key_file
         self.cert_file = cert_file
 
@@ -153,4 +161,6 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
 
 if ssl:
+    # make a copy for testing.
+    UnverifiedHTTPSConnection = HTTPSConnection
     HTTPSConnection = VerifiedHTTPSConnection

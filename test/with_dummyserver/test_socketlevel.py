@@ -5,10 +5,13 @@ from urllib3.exceptions import MaxRetryError, ReadTimeoutError, SSLError
 from urllib3 import util
 
 from dummyserver.testcase import SocketDummyServerTestCase
+from dummyserver.server import DEFAULT_CERTS, DEFAULT_CA
 
 from nose.plugins.skip import SkipTest
 from threading import Event
 import socket
+import time
+import ssl
 
 
 class TestCookies(SocketDummyServerTestCase):
@@ -125,6 +128,50 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         timed_out.set()
 
+    def test_timeout_errors_cause_retries(self):
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            # First request.
+            # Pause before responding so the first request times out.
+            time.sleep(0.002)
+            sock.close()
+
+            sock = listener.accept()[0]
+
+            # Second request.
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            # Now respond immediately.
+            body = 'Response 2'
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                      'Content-Type: text/plain\r\n'
+                      'Content-Length: %d\r\n'
+                      '\r\n'
+                      '%s' % (len(body), body)).encode('utf-8'))
+
+            sock.close()  # Close the socket.
+
+        # In situations where the main thread throws an exception, the server
+        # thread can hang on an accept() call. This ensures everything times
+        # out within 3 seconds. This should be long enough for any socket
+        # operations in the test suite to complete
+        default_timeout = socket.getdefaulttimeout()
+        socket.setdefaulttimeout(1)
+
+        try:
+            self._start_server(socket_handler)
+            t = util.Timeout(connect=0.001, read=0.001)
+            pool = HTTPConnectionPool(self.host, self.port, timeout=t)
+
+            response = pool.request('GET', '/', retries=1)
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.data, b'Response 2')
+        finally:
+            socket.setdefaulttimeout(default_timeout)
+
 
 class TestProxyManager(SocketDummyServerTestCase):
 
@@ -162,3 +209,66 @@ class TestProxyManager(SocketDummyServerTestCase):
                              b'',
                              b'',
                          ]))
+
+    def test_headers(self):
+        def echo_socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                      'Content-Type: text/plain\r\n'
+                      'Content-Length: %d\r\n'
+                      '\r\n'
+                      '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
+            sock.close()
+
+        self._start_server(echo_socket_handler)
+        base_url = 'http://%s:%d' % (self.host, self.port)
+
+        # Define some proxy headers.
+        proxy_headers = {'For The Proxy': 'YEAH!'}
+        proxy = proxy_from_url(base_url, proxy_headers=proxy_headers)
+
+        conn = proxy.connection_from_url('http://www.google.com/')
+
+        r = conn.urlopen('GET', 'http://www.google.com/', assert_same_host=False)
+
+        self.assertEqual(r.status, 200)
+        # FIXME: The order of the headers is not predictable right now. We
+        # should fix that someday (maybe when we migrate to
+        # OrderedDict/MultiDict).
+        self.assertTrue(b'For The Proxy: YEAH!\r\n' in r.data)
+
+
+class TestSSL(SocketDummyServerTestCase):
+
+    def test_ssl_failure_midway_through_conn(self):
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            sock2 = sock.dup()
+            ssl_sock = ssl.wrap_socket(sock,
+                                       server_side=True,
+                                       keyfile=DEFAULT_CERTS['keyfile'],
+                                       certfile=DEFAULT_CERTS['certfile'],
+                                       ca_certs=DEFAULT_CA)
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += ssl_sock.recv(65536)
+
+            # Deliberately send from the non-SSL socket.
+            sock2.send(('HTTP/1.1 200 OK\r\n'
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: 2\r\n'
+                       '\r\n'
+                       'Hi').encode('utf-8'))
+            sock2.close()
+            ssl_sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPSConnectionPool(self.host, self.port)
+
+        self.assertRaises(SSLError, pool.request, 'GET', '/', retries=0)

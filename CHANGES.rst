@@ -7,10 +7,19 @@ dev (master)
 * Improved url parsing in ``urllib3.util.parse_url`` (properly parse '@' in
   username, and blank ports like 'hostname:').
 
-* New `urllib3.connection` module which contains all the HTTPConnection
+* New ``urllib3.connection`` module which contains all the HTTPConnection
   objects.
 
 * Disable Nagle's Algorithm on the socket for non-proxies. (Issue #254)
+
+* Several ``urllib3.util.Timeout``-related fixes. Also changed constructor
+  signature to a more sensible order. [Backwards incompatible]
+  (Issues #252, #262, #263)
+
+* Use ``backports.ssl_match_hostname`` if it's installed. (Issue #274)
+
+* Added ``.tell()`` method to ``urllib3.response.HTTPResponse`` which
+  returns the number of bytes read so far. (Issue #277)
 
 * ...
 
@@ -18,7 +27,7 @@ dev (master)
 1.7.1 (2013-09-25)
 ++++++++++++++++++
 
-* Added granular timeout support with new `urllib3.util.Timeout` class.
+* Added granular timeout support with new ``urllib3.util.Timeout`` class.
   (Issue #231)
 
 * Fixed Python 3.4 support. (Issue #238)
