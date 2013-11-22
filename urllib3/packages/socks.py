@@ -39,7 +39,7 @@ mainly to merge bug fixes found in Sourceforge
 
 Modifications made by Anorov (https://github.com/Anorov)
 -Forked and renamed to PySocks
--Fixed issue with HTTP proxy failure checking (same bug that was in the old __recvall() method)
+-Fixed issue with HTTP proxy failure checking (same bug that was in the old ___recvall() method)
 -Included SocksiPyHandler (sockshandler.py), to be used as a urllib2 handler, 
  courtesy of e000 (https://github.com/e000): https://gist.github.com/869791#file_socksipyhandler.py
 -Re-styled code to make it readable
@@ -166,12 +166,12 @@ class socksocket(socket.socket):
         self.proxy_sockname = None
         self.proxy_peername = None
 
-    def recvall(self, count):
+    def _recvall(self, count):
         """
         Receive EXACTLY the number of bytes requested from the socket.
         Blocks until the required number of bytes have been received.
         """
-        data = self.recv(count)
+        data = b""
         while len(data) < count:
             d = self.recv(count - len(data))
             if not d:
@@ -248,7 +248,7 @@ class socksocket(socket.socket):
         
         # We'll receive the server's response to determine which
         # method was selected
-        chosen_auth = self.recvall(2)
+        chosen_auth = self._recvall(2)
 
         if chosen_auth[0:1] != b"\x05":
             # Note: string[i:i+1] is used because indexing of a bytestring 
@@ -265,7 +265,7 @@ class socksocket(socket.socket):
                          + username
                          + chr(len(password)).encode()
                          + password)
-            auth_status = self.recvall(2)
+            auth_status = self._recvall(2)
             if auth_status[0:1] != b"\x01":
                 # Bad response
                 self.close()
@@ -308,7 +308,7 @@ class socksocket(socket.socket):
         self.sendall(req)
         
         # Get the response
-        resp = self.recvall(4)
+        resp = self._recvall(4)
         if resp[0:1] != b"\x05":
             self.close()
             raise GeneralProxyError("SOCKS5 proxy server sent invalid data")
@@ -322,15 +322,15 @@ class socksocket(socket.socket):
         
         # Get the bound address/port
         if resp[3:4] == b"\x01":
-            bound_addr = self.recvall(4)
+            bound_addr = self._recvall(4)
         elif resp[3:4] == b"\x03":
             resp += self.recv(1)
-            bound_addr = self.recvall(ord(resp[4:5]))
+            bound_addr = self._recvall(ord(resp[4:5]))
         else:
             self.close()
             raise GeneralProxyError("SOCKS5 proxy server sent invalid data")
         
-        bound_port = struct.unpack(">H", self.recvall(2))[0]
+        bound_port = struct.unpack(">H", self._recvall(2))[0]
         self.proxy_sockname = bound_addr, bound_port
         if addr_bytes:
             self.proxy_peername = socket.inet_ntoa(addr_bytes), dest_port
@@ -371,7 +371,7 @@ class socksocket(socket.socket):
         self.sendall(req)
 
         # Get the response from the server
-        resp = self.recvall(8)
+        resp = self._recvall(8)
         if resp[0:1] != b"\x00":
             # Bad data
             self.close()
