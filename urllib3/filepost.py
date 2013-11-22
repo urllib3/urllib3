@@ -38,10 +38,10 @@ def iter_field_objects(fields):
         i = iter(fields)
 
     for field in i:
-      if isinstance(field, RequestField):
-        yield field
-      else:
-        yield RequestField.from_tuples(*field)
+        if isinstance(field, RequestField):
+            yield field
+        else:
+            yield RequestField.from_tuples(*field)
 
 
 def iter_fields(fields):

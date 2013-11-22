@@ -9,6 +9,7 @@ import logging
 import os
 import sys
 import threading
+import multiprocessing
 import socket
 
 from tornado import netutil
@@ -18,8 +19,9 @@ import tornado.ioloop
 import tornado.web
 
 from dummyserver.handlers import TestingApp
-from dummyserver.proxy import ProxyHandler
-
+from dummyserver.httpproxy import HTTPProxyHandler
+from dummyserver.socks4proxy import run_socks4_proxy
+from dummyserver.socks5proxy import run_socks5_proxy
 
 log = logging.getLogger(__name__)
 
@@ -107,9 +109,24 @@ class TornadoServerThread(threading.Thread):
         self.ioloop.add_callback(self.ioloop.stop)
 
 
-class ProxyServerThread(TornadoServerThread):
-    app = tornado.web.Application([(r'.*', ProxyHandler)])
+def run_tornado(host, scheme, certs):
+    def start_server(sock):
+        if self.scheme == 'https':
+            http_server = tornado.httpserver.HTTPServer(self.app,
+                                                        ssl_options=self.certs)
+        else:
+            http_server = tornado.httpserver.HTTPServer(self.app)
 
+        http_server.add_sockets([sock])
+        ioloop = tornado.ioloop.IOLoop.instance()
+        ioloop.start()
+
+    family = socket.AF_INET6 if ':' in self.host else socket.AF_INET
+    sock, = netutil.bind_sockets(None, address=host, family=family)
+    self.port = sock.getsockname()[1]
+
+class HTTPProxyServerThread(TornadoServerThread):
+    app = tornado.web.Application([(r'.*', HTTPProxyHandler)])
 
 if __name__ == '__main__':
     log.setLevel(logging.DEBUG)
@@ -123,6 +140,6 @@ if __name__ == '__main__':
 
     print("Starting WSGI server at: %s" % url)
 
-    scheme, host, port = get_host(url)
-    t = TornadoServerThread(scheme=scheme, host=host, port=port)
+    scheme, host, _ = get_host(url)
+    t = TornadoServerThread(scheme=scheme, host=host)
     t.start()

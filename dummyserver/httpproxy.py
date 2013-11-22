@@ -37,7 +37,7 @@ import tornado.httpclient
 __all__ = ['ProxyHandler', 'run_proxy']
 
 
-class ProxyHandler(tornado.web.RequestHandler):
+class HTTPProxyHandler(tornado.web.RequestHandler):
     SUPPORTED_METHODS = ['GET', 'POST', 'CONNECT']
 
     @tornado.web.asynchronous

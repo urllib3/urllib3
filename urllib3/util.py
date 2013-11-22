@@ -122,7 +122,7 @@ class Timeout(object):
         self.total = self._validate_timeout(total, 'total')
         self._start_connect = None
 
-    def __str__(self):
+    def __repr__(self):
         return '%s(connect=%r, read=%r, total=%r)' % (
             type(self).__name__, self._connect, self._read, self.total)
 
@@ -605,7 +605,6 @@ def is_fp_closed(obj):
         return obj.fp is None
 
     return obj.closed
-
 
 if SSLContext is not None:  # Python 3.2+
     def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,

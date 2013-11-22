@@ -30,9 +30,13 @@ from .exceptions import (
 )
 from .packages.ssl_match_hostname import CertificateError
 from .packages import six
+from .packages import socks
 from .connection import (
     DummyConnection,
-    HTTPConnection, HTTPSConnection, VerifiedHTTPSConnection,
+    HTTPConnection, HTTPSConnection,
+    VerifiedHTTPSConnection,
+    SOCKSHTTPConnection,
+    SOCKSHTTPSConnection,
     HTTPException, BaseSSLError,
 )
 from .request import RequestMethods
@@ -54,8 +58,9 @@ _Default = object()
 port_by_scheme = {
     'http': 80,
     'https': 443,
+    'socks4': 1080,
+    'socks5': 1080,
 }
-
 
 ## Pool objects
 
@@ -75,7 +80,7 @@ class ConnectionPool(object):
         self.host = host
         self.port = port
 
-    def __str__(self):
+    def __repr__(self):
         return '%s(host=%r, port=%r)' % (type(self).__name__,
                                          self.host, self.port)
 
@@ -128,11 +133,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     :param _proxy:
         Parsed proxy URL, should not be used directly, instead, see
-        :class:`urllib3.connectionpool.ProxyManager`"
+        :class:`urllib3.poolmanager.ProxyManager`"
 
     :param _proxy_headers:
         A dictionary with proxy headers, should not be used directly,
-        instead, see :class:`urllib3.connectionpool.ProxyManager`"
+        instead, see :class:`urllib3.poolmanager.ProxyManager`"
     """
 
     scheme = 'http'
@@ -156,8 +161,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.pool = self.QueueCls(maxsize)
         self.block = block
 
+        if _proxy is not None and _proxy._is_socks:
+            self.ConnectionCls = SOCKSHTTPConnection
+
         self.proxy = _proxy
         self.proxy_headers = _proxy_headers or {}
+
 
         # Fill the queue up so that doing get() on it will block properly
         for _ in xrange(maxsize):
@@ -169,7 +178,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def _new_conn(self):
         """
-        Return a fresh :class:`httplib.HTTPConnection`.
+        Return a fresh :class:`httplib.HTTPConnection`, or subclass, instance.
         """
         self.num_connections += 1
         log.info("Starting new HTTP connection (%d): %s" %
@@ -178,6 +187,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         extra_params = {}
         if not six.PY3:  # Python 2
             extra_params['strict'] = self.strict
+        
+        if self.proxy is not None and self.proxy._is_socks:
+            # SOCKSHTTPConnection takes one extra parameter: the proxy URL
+            extra_params['proxy'] = self.proxy
 
         return self.ConnectionCls(host=self.host, port=self.port,
                                   timeout=self.timeout.connect_timeout,
@@ -246,7 +259,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             conn.close()
 
     def _get_timeout(self, timeout):
-        """ Helper that always returns a :class:`urllib3.util.Timeout` """
+        """
+        Helper that always returns a :class:`urllib3.util.Timeout`
+        """
         if timeout is _Default:
             return self.timeout.clone()
 
@@ -516,8 +531,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         except (HTTPException, SocketError) as e:
             if isinstance(e, SocketError) and self.proxy is not None:
-                raise ProxyError('Cannot connect to proxy. '
-                                 'Socket error: %s.' % e)
+                raise ProxyError('Cannot connect to proxy.\n'
+                                 'Socket error: %s' % e)
 
             # Connection broken, discard. It will be replaced next _get_conn().
             conn = None
@@ -596,12 +611,14 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
 
+        if _proxy is not None and _proxy._is_socks:
+            self.ConnectionCls = SOCKSHTTPSConnection
+
     def _prepare_conn(self, conn):
         """
         Prepare the ``connection`` for :meth:`urllib3.util.ssl_wrap_socket`
         and establish the tunnel if proxy is used.
         """
-
         if isinstance(conn, VerifiedHTTPSConnection):
             conn.set_cert(key_file=self.key_file,
                           cert_file=self.cert_file,
@@ -611,7 +628,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           assert_fingerprint=self.assert_fingerprint)
             conn.ssl_version = self.ssl_version
 
-        if self.proxy is not None:
+        if self.proxy is not None and not self.proxy._is_socks:
             # Python 2.7+
             try:
                 set_tunnel = conn.set_tunnel
@@ -626,7 +643,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     def _new_conn(self):
         """
-        Return a fresh :class:`httplib.HTTPSConnection`.
+        Return a fresh :class:`httplib.HTTPSConnection`, or subclass, instance.
         """
         self.num_connections += 1
         log.info("Starting new HTTPS connection (%d): %s"
@@ -637,15 +654,20 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             raise SSLError("Can't connect to HTTPS URL because the SSL "
                            "module is not available.")
 
-        actual_host = self.host
-        actual_port = self.port
-        if self.proxy is not None:
-            actual_host = self.proxy.host
-            actual_port = self.proxy.port
-
         extra_params = {}
         if not six.PY3:  # Python 2
             extra_params['strict'] = self.strict
+
+        actual_host = self.host
+        actual_port = self.port
+
+        if self.proxy is not None:
+            if self.proxy._is_socks:
+                # SOCKSHTTPSConnection takes one extra parameter: the proxy URL
+                extra_params['proxy'] = self.proxy
+            else:
+                actual_host = self.proxy.host
+                actual_port = self.proxy.port
 
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
                                   timeout=self.timeout.connect_timeout,

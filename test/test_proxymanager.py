@@ -1,9 +1,9 @@
 import unittest
 
 from urllib3.poolmanager import ProxyManager
+from urllib3.exceptions import ProxyError
 
-
-class TestProxyManager(unittest.TestCase):
+class TestProxyManagerParsing(unittest.TestCase):
     def test_proxy_headers(self):
         p = ProxyManager('http://something:1234')
         url = 'http://pypi.python.org/test'
@@ -37,6 +37,12 @@ class TestProxyManager(unittest.TestCase):
         self.assertEqual(p.proxy.port, 80)
         p = ProxyManager('https://something')
         self.assertEqual(p.proxy.port, 443)
+
+    def test_proxy_scheme(self):
+        for t in ("http", "https", "socks4", "socks5"):
+            url = "%s://localhost" % t
+            self.assertIsNotNone(ProxyManager(url))
+        self.assertRaises(ProxyError, ProxyManager, "invalid://localhost")
 
 
 if __name__ == '__main__':

@@ -16,6 +16,7 @@ from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
 from .request import RequestMethods
 from .util import parse_url
+from .exceptions import ProxyError
 
 
 __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
@@ -176,7 +177,7 @@ class ProxyManager(PoolManager):
     Behaves just like :class:`PoolManager`, but sends all requests through
     the defined proxy, using the CONNECT method for HTTPS URLs.
 
-    :param poxy_url:
+    :param proxy_url:
         The URL of the proxy to be used.
 
     :param proxy_headers:
@@ -195,7 +196,6 @@ class ProxyManager(PoolManager):
         >>> r4 = proxy.request('GET', 'https://twitter.com/')
         >>> len(proxy.pools)
         3
-
     """
 
     def __init__(self, proxy_url, num_pools=10, headers=None,
@@ -208,17 +208,22 @@ class ProxyManager(PoolManager):
         if not proxy.port:
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
+
+        if proxy.scheme not in ("http", "https", "socks4", "socks5"):
+            raise ProxyError("Unsupported proxy scheme '%s'" % proxy.scheme)
+
+        proxy._is_socks = (proxy is not None
+                           and proxy.scheme.startswith("socks"))
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
-        assert self.proxy.scheme in ("http", "https"), \
-            'Not supported proxy scheme %s' % self.proxy.scheme
+        
         connection_pool_kw['_proxy'] = self.proxy
         connection_pool_kw['_proxy_headers'] = self.proxy_headers
         super(ProxyManager, self).__init__(
             num_pools, headers, **connection_pool_kw)
 
     def connection_from_host(self, host, port=None, scheme='http'):
-        if scheme == "https":
+        if scheme == "https" or self.proxy._is_socks:
             return super(ProxyManager, self).connection_from_host(
                 host, port, scheme)
 
@@ -241,7 +246,9 @@ class ProxyManager(PoolManager):
         return headers_
 
     def urlopen(self, method, url, redirect=True, **kw):
-        "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
+        """
+        Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute.
+        """
         u = parse_url(url)
 
         if u.scheme == "http":
@@ -250,7 +257,6 @@ class ProxyManager(PoolManager):
             # need to set 'Host' at the very least.
             kw['headers'] = self._set_proxy_headers(url, kw.get('headers',
                                                                 self.headers))
-
         return super(ProxyManager, self).urlopen(method, url, redirect, **kw)
 
 

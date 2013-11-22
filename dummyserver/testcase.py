@@ -1,12 +1,17 @@
 import unittest
 import socket
 import threading
+import multiprocessing
+import time
 from nose.plugins.skip import SkipTest
 
 from dummyserver.server import (
-    TornadoServerThread, SocketServerThread,
-    DEFAULT_CERTS,
-    ProxyServerThread,
+    TornadoServerThread,
+    SocketServerThread,
+    HTTPProxyServerThread,
+    run_socks4_proxy,
+    run_socks5_proxy,
+    DEFAULT_CERTS
 )
 
 has_ipv6 = hasattr(socket, 'has_ipv6')
@@ -72,8 +77,7 @@ class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
     certs = DEFAULT_CERTS
 
 
-class HTTPDummyProxyTestCase(unittest.TestCase):
-
+class DummyProxyTestCase(unittest.TestCase):
     http_host = 'localhost'
     http_host_alt = '127.0.0.1'
 
@@ -85,29 +89,79 @@ class HTTPDummyProxyTestCase(unittest.TestCase):
     proxy_host_alt = '127.0.0.1'
 
     @classmethod
-    def setUpClass(cls):
-        cls.http_thread = TornadoServerThread(host=cls.http_host,
-                                              scheme='http')
-        cls.http_thread._start_server()
+    def _start_http_servers(cls):
+        ready_event = threading.Event()
+        cls.http_thread = TornadoServerThread(
+            host=cls.http_host, scheme='http',
+            ready_event=ready_event)
+        cls.http_thread.start()
+        ready_event.wait()
         cls.http_port = cls.http_thread.port
 
+        ready_event = threading.Event()
         cls.https_thread = TornadoServerThread(
-            host=cls.https_host, scheme='https', certs=cls.https_certs)
-        cls.https_thread._start_server()
+            host=cls.https_host, scheme='https',
+            certs=cls.https_certs,
+            ready_event=ready_event)
+        cls.https_thread.start()
+        ready_event.wait()
         cls.https_port = cls.https_thread.port
 
+    @classmethod
+    def _stop_http_servers(cls):
+        cls.http_thread.stop()
+        cls.https_thread.stop()
+
+class DummyHTTPProxyTestCase(DummyProxyTestCase):
+    @classmethod
+    def setUpClass(cls):
+        raise SkipTest()
+        cls._start_http_servers()
         ready_event = threading.Event()
-        cls.proxy_thread = ProxyServerThread(
+        cls.proxy_thread = HTTPProxyServerThread(
             host=cls.proxy_host, ready_event=ready_event)
         cls.proxy_thread.start()
         ready_event.wait()
         cls.proxy_port = cls.proxy_thread.port
+        
 
     @classmethod
     def tearDownClass(cls):
+        cls._stop_http_servers()
         cls.proxy_thread.stop()
         cls.proxy_thread.join()
 
+
+class DummySOCKS4ProxyTestCase(DummyProxyTestCase):
+    proxy_port = 1080
+
+    @classmethod
+    def setUpClass(cls):
+        #raise SkipTest()
+        cls._start_http_servers()
+        # Twisted doesn't play along well with multithreading
+        cls.proxy_process = multiprocessing.Process(target=run_socks4_proxy, args=(cls.proxy_host, cls.proxy_port))
+        cls.proxy_process.start()
+        time.sleep(2)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._stop_http_servers()
+        cls.proxy_process.terminate()
+
+class DummySOCKS5ProxyTestCase(DummyProxyTestCase):
+    proxy_port = 1081
+
+    @classmethod
+    def setUpClass(cls):
+        raise SkipTest()
+        cls._start_http_servers()
+        cls.proxy_process = multiprocessing.Process(target=run_socks5_proxy, args=(cls.proxy_host, cls.proxy_port))
+        cls.proxy_process.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.proxy_process.terminate()
 
 class IPv6HTTPDummyServerTestCase(HTTPDummyServerTestCase):
     host = '::1'
