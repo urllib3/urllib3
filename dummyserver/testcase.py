@@ -9,10 +9,12 @@ from dummyserver.server import (
     TornadoServerThread,
     SocketServerThread,
     HTTPProxyServerThread,
-    run_socks4_proxy,
-    run_socks5_proxy,
     DEFAULT_CERTS
 )
+
+from dummyserver.httpproxy import HTTPProxyHandler
+from dummyserver.socks4proxy import run_socks4_proxy
+from dummyserver.socks5proxy import run_socks5_proxy
 
 has_ipv6 = hasattr(socket, 'has_ipv6')
 
@@ -115,7 +117,7 @@ class DummyProxyTestCase(unittest.TestCase):
 class DummyHTTPProxyTestCase(DummyProxyTestCase):
     @classmethod
     def setUpClass(cls):
-        raise SkipTest()
+        #raise SkipTest()
         cls._start_http_servers()
         ready_event = threading.Event()
         cls.proxy_thread = HTTPProxyServerThread(

@@ -20,8 +20,6 @@ import tornado.web
 
 from dummyserver.handlers import TestingApp
 from dummyserver.httpproxy import HTTPProxyHandler
-from dummyserver.socks4proxy import run_socks4_proxy
-from dummyserver.socks5proxy import run_socks5_proxy
 
 log = logging.getLogger(__name__)
 
@@ -35,7 +33,6 @@ DEFAULT_CA_BAD = os.path.join(CERTS_PATH, 'client_bad.pem')
 
 
 # Different types of servers we have:
-
 
 class SocketServerThread(threading.Thread):
     """
@@ -107,23 +104,6 @@ class TornadoServerThread(threading.Thread):
     def stop(self):
         self.ioloop.add_callback(self.server.stop)
         self.ioloop.add_callback(self.ioloop.stop)
-
-
-def run_tornado(host, scheme, certs):
-    def start_server(sock):
-        if self.scheme == 'https':
-            http_server = tornado.httpserver.HTTPServer(self.app,
-                                                        ssl_options=self.certs)
-        else:
-            http_server = tornado.httpserver.HTTPServer(self.app)
-
-        http_server.add_sockets([sock])
-        ioloop = tornado.ioloop.IOLoop.instance()
-        ioloop.start()
-
-    family = socket.AF_INET6 if ':' in self.host else socket.AF_INET
-    sock, = netutil.bind_sockets(None, address=host, family=family)
-    self.port = sock.getsockname()[1]
 
 class HTTPProxyServerThread(TornadoServerThread):
     app = tornado.web.Application([(r'.*', HTTPProxyHandler)])
