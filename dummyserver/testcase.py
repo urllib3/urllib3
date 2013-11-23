@@ -137,7 +137,7 @@ class DummySOCKS4ProxyTestCase(DummyProxyTestCase):
 
     @classmethod
     def setUpClass(cls):
-        #raise SkipTest()
+        raise SkipTest()
         cls._start_http_servers()
         # Twisted doesn't play along well with multithreading
         cls.proxy_process = multiprocessing.Process(target=run_socks4_proxy, args=(cls.proxy_host, cls.proxy_port))

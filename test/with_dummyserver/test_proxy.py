@@ -37,7 +37,6 @@ class ProxyManagerTester(object):
         self.proxy_url = '%s://%s:%d' % (self.proxy_type, self.proxy_host, self.proxy_port)
 
     def test_basic_proxy(self):
-        #raise SkipTest
         http = proxy_from_url(self.proxy_url)
         r = http.request('GET', '%s/' % self.http_url, timeout=1)
         self.assertEqual(r.status, 200)
@@ -59,7 +58,6 @@ class ProxyManagerTester(object):
                           '%s/' % self.http_url)
 
     def test_oldapi(self):
-        raise SkipTest()
         http = ProxyManager(connection_from_url(self.proxy_url))
         r = http.request('GET', '%s/' % self.http_url)
         self.assertEqual(r.status, 200)
