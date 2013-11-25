@@ -188,8 +188,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         except ReadTimeoutError:
             self.fail("This request shouldn't trigger a read timeout.")
 
-
-    @timed(0.1)
+    @timed(2.0)
     def test_total_timeout(self):
         url = '/sleep?seconds=0.005'
 
