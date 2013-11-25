@@ -17,9 +17,6 @@ import tornado.httpserver
 import tornado.ioloop
 import tornado.web
 
-from dummyserver.handlers import TestingApp
-from dummyserver.proxy import ProxyHandler
-
 
 log = logging.getLogger(__name__)
 
@@ -70,59 +67,21 @@ class SocketServerThread(threading.Thread):
         self.server = self._start_server()
 
 
-class TornadoServerThread(threading.Thread):
-    app = tornado.wsgi.WSGIContainer(TestingApp())
+def run_tornado_app(app, io_loop, certs, scheme, host):
+    if scheme == 'https':
+        http_server = tornado.httpserver.HTTPServer(app, ssl_options=certs,
+                                                    io_loop=io_loop)
+    else:
+        http_server = tornado.httpserver.HTTPServer(app, io_loop=io_loop)
 
-    def __init__(self, host='localhost', scheme='http', certs=None,
-                 ready_event=None):
-        threading.Thread.__init__(self)
-
-        self.host = host
-        self.scheme = scheme
-        self.certs = certs
-        self.ready_event = ready_event
-
-    def _start_server(self):
-        if self.scheme == 'https':
-            http_server = tornado.httpserver.HTTPServer(self.app,
-                                                        ssl_options=self.certs)
-        else:
-            http_server = tornado.httpserver.HTTPServer(self.app)
-
-        family = socket.AF_INET6 if ':' in self.host else socket.AF_INET
-        sock, = netutil.bind_sockets(None, address=self.host, family=family)
-        self.port = sock.getsockname()[1]
-        http_server.add_sockets([sock])
-        return http_server
-
-    def run(self):
-        self.ioloop = tornado.ioloop.IOLoop.instance()
-        self.server = self._start_server()
-        if self.ready_event:
-            self.ready_event.set()
-        self.ioloop.start()
-
-    def stop(self):
-        self.ioloop.add_callback(self.server.stop)
-        self.ioloop.add_callback(self.ioloop.stop)
+    family = socket.AF_INET6 if ':' in host else socket.AF_INET
+    sock, = netutil.bind_sockets(None, address=host, family=family)
+    port = sock.getsockname()[1]
+    http_server.add_sockets([sock])
+    return http_server, port
 
 
-class ProxyServerThread(TornadoServerThread):
-    app = tornado.web.Application([(r'.*', ProxyHandler)])
-
-
-if __name__ == '__main__':
-    log.setLevel(logging.DEBUG)
-    log.addHandler(logging.StreamHandler(sys.stderr))
-
-    from urllib3 import get_host
-
-    url = "http://localhost:8081"
-    if len(sys.argv) > 1:
-        url = sys.argv[1]
-
-    print("Starting WSGI server at: %s" % url)
-
-    scheme, host, port = get_host(url)
-    t = TornadoServerThread(scheme=scheme, host=host, port=port)
+def run_loop_in_thread(io_loop):
+    t = threading.Thread(target=io_loop.start)
     t.start()
+    return t

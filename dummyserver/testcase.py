@@ -2,14 +2,19 @@ import unittest
 import socket
 import threading
 from nose.plugins.skip import SkipTest
+from tornado import ioloop, web, wsgi
 
 from dummyserver.server import (
-    TornadoServerThread, SocketServerThread,
+    SocketServerThread,
+    run_tornado_app,
+    run_loop_in_thread,
     DEFAULT_CERTS,
-    ProxyServerThread,
 )
+from dummyserver.handlers import TestingApp
+from dummyserver.proxy import ProxyHandler
 
 has_ipv6 = hasattr(socket, 'has_ipv6')
+
 
 class SocketDummyServerTestCase(unittest.TestCase):
     """
@@ -43,18 +48,16 @@ class HTTPDummyServerTestCase(unittest.TestCase):
 
     @classmethod
     def _start_server(cls):
-        ready_event = threading.Event()
-        cls.server_thread = TornadoServerThread(host=cls.host,
-                                                scheme=cls.scheme,
-                                                certs=cls.certs,
-                                                ready_event=ready_event)
-        cls.server_thread.start()
-        ready_event.wait()
-        cls.port = cls.server_thread.port
+        cls.io_loop = ioloop.IOLoop()
+        app = wsgi.WSGIContainer(TestingApp())
+        cls.server, cls.port = run_tornado_app(app, cls.io_loop, cls.certs,
+                                               cls.scheme, cls.host)
+        cls.server_thread = run_loop_in_thread(cls.io_loop)
 
     @classmethod
     def _stop_server(cls):
-        cls.server_thread.stop()
+        cls.io_loop.add_callback(cls.server.stop)
+        cls.io_loop.add_callback(cls.io_loop.stop)
         cls.server_thread.join()
 
     @classmethod
@@ -86,27 +89,29 @@ class HTTPDummyProxyTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.http_thread = TornadoServerThread(host=cls.http_host,
-                                              scheme='http')
-        cls.http_thread._start_server()
-        cls.http_port = cls.http_thread.port
+        cls.io_loop = ioloop.IOLoop()
 
-        cls.https_thread = TornadoServerThread(
-            host=cls.https_host, scheme='https', certs=cls.https_certs)
-        cls.https_thread._start_server()
-        cls.https_port = cls.https_thread.port
+        app = wsgi.WSGIContainer(TestingApp())
+        cls.http_server, cls.http_port = run_tornado_app(
+            app, cls.io_loop, None, 'http', cls.http_host)
 
-        ready_event = threading.Event()
-        cls.proxy_thread = ProxyServerThread(
-            host=cls.proxy_host, ready_event=ready_event)
-        cls.proxy_thread.start()
-        ready_event.wait()
-        cls.proxy_port = cls.proxy_thread.port
+        app = wsgi.WSGIContainer(TestingApp())
+        cls.https_server, cls.https_port = run_tornado_app(
+            app, cls.io_loop, cls.https_certs, 'https', cls.http_host)
+
+        app = web.Application([(r'.*', ProxyHandler)])
+        cls.proxy_server, cls.proxy_port = run_tornado_app(
+            app, cls.io_loop, None, 'http', cls.proxy_host)
+
+        cls.server_thread = run_loop_in_thread(cls.io_loop)
 
     @classmethod
     def tearDownClass(cls):
-        cls.proxy_thread.stop()
-        cls.proxy_thread.join()
+        cls.io_loop.add_callback(cls.http_server.stop)
+        cls.io_loop.add_callback(cls.https_server.stop)
+        cls.io_loop.add_callback(cls.proxy_server.stop)
+        cls.io_loop.add_callback(cls.io_loop.stop)
+        cls.server_thread.join()
 
 
 class IPv6HTTPDummyServerTestCase(HTTPDummyServerTestCase):
