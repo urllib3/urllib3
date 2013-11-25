@@ -9,7 +9,6 @@ from dummyserver.server import (
     ProxyServerThread,
 )
 
-has_ipv6 = hasattr(socket, 'has_ipv6')
 
 class SocketDummyServerTestCase(unittest.TestCase):
     """
@@ -114,7 +113,7 @@ class IPv6HTTPDummyServerTestCase(HTTPDummyServerTestCase):
 
     @classmethod
     def setUpClass(cls):
-        if not has_ipv6:
+        if not socket.has_ipv6:
             raise SkipTest('IPv6 not available')
         else:
             super(IPv6HTTPDummyServerTestCase, cls).setUpClass()
