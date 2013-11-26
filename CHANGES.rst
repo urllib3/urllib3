@@ -19,6 +19,8 @@ dev (master)
 * Added ``.tell()`` method to ``urllib3.response.HTTPResponse`` which
   returns the number of bytes read so far. (Issue #277)
 
+* Support for platforms without threading. (Issue #289)
+
 * ...
 
 
