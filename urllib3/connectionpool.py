@@ -584,7 +584,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  _proxy=None, _proxy_headers=None,
                  key_file=None, cert_file=None, cert_reqs=None,
                  ca_certs=None, ssl_version=None,
-                 assert_hostname=None, assert_fingerprint=None):
+                 assert_hostname=None, assert_fingerprint=None,
+                 verify_callback=None):
 
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
                                     block, headers, _proxy, _proxy_headers)
@@ -595,6 +596,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.ssl_version = ssl_version
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
+        self.verify_callback = verify_callback
 
     def _prepare_conn(self, conn):
         """
@@ -608,7 +610,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           cert_reqs=self.cert_reqs,
                           ca_certs=self.ca_certs,
                           assert_hostname=self.assert_hostname,
-                          assert_fingerprint=self.assert_fingerprint)
+                          assert_fingerprint=self.assert_fingerprint,
+                          verify_callback=self.verify_callback)
             conn.ssl_version = self.ssl_version
 
         if self.proxy is not None:

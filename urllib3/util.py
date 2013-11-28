@@ -610,7 +610,7 @@ def is_fp_closed(obj):
 if SSLContext is not None:  # Python 3.2+
     def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                         ca_certs=None, server_hostname=None,
-                        ssl_version=None):
+                        ssl_version=None, verify_callback=None):
         """
         All arguments except `server_hostname` have the same meaning as for
         :func:`ssl.wrap_socket`
@@ -637,7 +637,7 @@ if SSLContext is not None:  # Python 3.2+
 else:  # Python 3.1 and earlier
     def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                         ca_certs=None, server_hostname=None,
-                        ssl_version=None):
+                        ssl_version=None, verify_callback=None):
         return wrap_socket(sock, keyfile=keyfile, certfile=certfile,
                            ca_certs=ca_certs, cert_reqs=cert_reqs,
                            ssl_version=ssl_version)
