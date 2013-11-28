@@ -316,14 +316,18 @@ def _verify_callback(cnx, x509, err_no, err_depth, return_code):
 
 def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                     ca_certs=None, server_hostname=None,
-                    ssl_version=None):
+                    ssl_version=None, verify_callback=None):
     ctx = OpenSSL.SSL.Context(_openssl_versions[ssl_version])
     if certfile:
         ctx.use_certificate_file(certfile)
     if keyfile:
         ctx.use_privatekey_file(keyfile)
     if cert_reqs != ssl.CERT_NONE:
-        ctx.set_verify(_openssl_verify[cert_reqs], _verify_callback)
+        if verify_callback is None:
+            callback = _verify_callback
+        else:
+            callback = verify_callback
+        ctx.set_verify(_openssl_verify[cert_reqs], callback)
     if ca_certs:
         try:
             ctx.load_verify_locations(ca_certs, None)

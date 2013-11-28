@@ -53,10 +53,12 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     cert_reqs = None
     ca_certs = None
     ssl_version = None
+    verify_callback = None
 
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None,
-                 assert_hostname=None, assert_fingerprint=None):
+                 assert_hostname=None, assert_fingerprint=None,
+                 verify_callback=None):
 
         self.key_file = key_file
         self.cert_file = cert_file
@@ -64,6 +66,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         self.ca_certs = ca_certs
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
+        self.verify_callback = verify_callback
 
     def connect(self):
         # Add certificate verification
@@ -92,7 +95,8 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                                     cert_reqs=resolved_cert_reqs,
                                     ca_certs=self.ca_certs,
                                     server_hostname=self.host,
-                                    ssl_version=resolved_ssl_version)
+                                    ssl_version=resolved_ssl_version,
+                                    verify_callback=self.verify_callback)
 
         if resolved_cert_reqs != ssl.CERT_NONE:
             if self.assert_fingerprint:
