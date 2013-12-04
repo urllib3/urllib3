@@ -167,9 +167,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.num_connections = 0
         self.num_requests = 0
 
-    def __del__(self):
-        self.close()
-
     def _new_conn(self):
         """
         Return a fresh :class:`httplib.HTTPConnection`.
