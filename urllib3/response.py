@@ -172,7 +172,7 @@ class HTTPResponse(io.IOBase):
             return
 
         flush_decoder = False
-        data = None
+
         try:
             if amt is None:
                 # cStringIO doesn't like amt=None
