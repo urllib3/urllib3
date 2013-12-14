@@ -9,10 +9,10 @@ import logging
 import zlib
 import io
 
-from .exceptions import DecodeError
+from .exceptions import DecodeError, ConnectTimeoutError
 from .packages.six import string_types as basestring, binary_type
 from .util import is_fp_closed
-
+from socket import timeout as SocketTimeout
 
 log = logging.getLogger(__name__)
 
@@ -180,7 +180,10 @@ class HTTPResponse(io.IOBase):
                 flush_decoder = True
             else:
                 cache_content = False
-                data = self._fp.read(amt)
+                try:
+                    data = self._fp.read(amt)
+                except SocketTimeout:
+                    raise ConnectTimeoutError
                 if amt != 0 and not data:  # Platform-specific: Buggy versions of Python.
                     # Close the connection when no data is returned
                     #
@@ -191,11 +194,11 @@ class HTTPResponse(io.IOBase):
                     # in redundantly calling close.
                     self._fp.close()
                     flush_decoder = True
-
-            self._fp_bytes_read += len(data)
+            if data:
+                self._fp_bytes_read += len(data)
 
             try:
-                if decode_content and self._decoder:
+                if decode_content and self._decoder and data:
                     data = self._decoder.decompress(data)
             except (IOError, zlib.error) as e:
                 raise DecodeError(
@@ -203,7 +206,7 @@ class HTTPResponse(io.IOBase):
                     "failed to decode it." % content_encoding,
                     e)
 
-            if flush_decoder and decode_content and self._decoder:
+            if flush_decoder and decode_content and self._decoder and data:
                 buf = self._decoder.decompress(binary_type())
                 data += buf + self._decoder.flush()
 
