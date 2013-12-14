@@ -1,7 +1,7 @@
 
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
-from urllib3.exceptions import MaxRetryError, ReadTimeoutError, SSLError
+from urllib3.exceptions import MaxRetryError, ReadTimeoutError, SSLError, ConnectTimeoutError
 from urllib3 import util
 
 from dummyserver.testcase import SocketDummyServerTestCase
@@ -18,6 +18,7 @@ class TestCookies(SocketDummyServerTestCase):
 
     def test_multi_setcookie(self):
         def multicookie_response_handler(listener):
+            # from nose.tools import set_trace; set_trace()
             sock = listener.accept()[0]
 
             buf = b''
@@ -272,3 +273,23 @@ class TestSSL(SocketDummyServerTestCase):
         pool = HTTPSConnectionPool(self.host, self.port)
 
         self.assertRaises(SSLError, pool.request, 'GET', '/', retries=0)
+
+
+class TestSocketStreamNotProperlyEnded(SocketDummyServerTestCase):
+
+    def test_socket(self):
+        def server_error_handler(listener):
+            sock = listener.accept()[0]
+            buf = ''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+            sock.send(b'HTTP/1.1 200 OK\r\n'
+                      b'Content-Type: text/plain\r\n'
+                      b'Content-Length: %d\r\n'
+                      b'\r\n' % (65000))
+            sock.close()
+        self._start_server(server_error_handler)
+        # from nose.tools import set_trace; set_trace()
+        pool = HTTPConnectionPool(self.host, self.port)
+        r = pool.request('GET', '/', retries=0)
+        self.assertRaises(ConnectTimeoutError, pool.request, 'GET', '/', retries=0)
