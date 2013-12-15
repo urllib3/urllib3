@@ -10,7 +10,7 @@ import zlib
 import io
 from urllib3.exceptions import ReadTimeoutError
 
-from .exceptions import DecodeError, ConnectTimeoutError
+from .exceptions import DecodeError
 from .packages.six import string_types as basestring, binary_type
 from .util import is_fp_closed
 from socket import timeout as SocketTimeout
