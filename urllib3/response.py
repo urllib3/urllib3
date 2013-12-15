@@ -8,6 +8,7 @@
 import logging
 import zlib
 import io
+from urllib3.exceptions import ReadTimeoutError
 
 from .exceptions import DecodeError, ConnectTimeoutError
 from .packages.six import string_types as basestring, binary_type
@@ -183,7 +184,7 @@ class HTTPResponse(io.IOBase):
                 try:
                     data = self._fp.read(amt)
                 except SocketTimeout:
-                    raise ConnectTimeoutError
+                    raise ReadTimeoutError
                 if amt != 0 and not data:  # Platform-specific: Buggy versions of Python.
                     # Close the connection when no data is returned
                     #
