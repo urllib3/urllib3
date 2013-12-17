@@ -3,17 +3,17 @@ from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
 from urllib3.exceptions import MaxRetryError, ReadTimeoutError, SSLError, ConnectTimeoutError
 from urllib3 import util
-
+from os import getcwd
 from dummyserver.testcase import SocketDummyServerTestCase
 from dummyserver.server import DEFAULT_CERTS, DEFAULT_CA
-
+from logging import getLogger
 from nose.plugins.skip import SkipTest
 from threading import Event
 import socket
 import time
 import ssl
 
-
+logger = getLogger(__file__)
 class TestCookies(SocketDummyServerTestCase):
 
     def test_multi_setcookie(self):
@@ -275,21 +275,56 @@ class TestSSL(SocketDummyServerTestCase):
         self.assertRaises(SSLError, pool.request, 'GET', '/', retries=0)
 
 
-class TestSocketStreamNotProperlyEnded(SocketDummyServerTestCase):
+class TestSocketTimeout(SocketDummyServerTestCase):
 
-    def test_socket(self):
-        def server_error_handler(listener):
+    def test_socket_timeout(self):
+        def timeout_socket_handler(listener):
             sock = listener.accept()[0]
-            buf = ''
+
+            buf = b''
             while not buf.endswith(b'\r\n\r\n'):
                 buf += sock.recv(65536)
-            sock.send(b'HTTP/1.1 200 OK\r\n'
-                      b'Content-Type: text/plain\r\n'
-                      b'Content-Length: %d\r\n'
-                      b'\r\n' % (65000))
+            # huge_content_part = 'bra' * 99999
+            fp = open('/home/hackawaye/vivi/camtasia.exe', 'rb')
+            content = fp.read()
+            # idx = 0
+            # file_list = []
+            # while content:
+            #     part = content[idx:idx+1024]
+            #     file_list.append(part)
+            logger.info(getcwd())
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                      'Content-Type: application/octet-stream\r\n'
+                      'Content-Length: %d\r\n'
+                      '\r\n' % len(content)))
+            # time.sleep(1)
+            idx = 0
+            del content
+            fp.seek(idx)
+            part = fp.read(1024)
+            while part:
+                sock.send((
+                      '%s' % (part)))
+                idx += 1024
+                fp.seek(idx)
+                time.sleep(0.5)
+                part = fp.read(1024)
+                
+            # time.sleep(1)
+            # sock.send((
+            #           '%s' % (huge_content_part.decode('utf-8'))).encode('utf-8'))
             sock.close()
-        self._start_server(server_error_handler)
+
+        self._start_server(timeout_socket_handler)
         # from nose.tools import set_trace; set_trace()
         pool = HTTPConnectionPool(self.host, self.port)
-        r = pool.request('GET', '/', retries=0)
-        self.assertRaises(ConnectTimeoutError, pool.request, 'GET', '/', retries=0)
+        # r = pool.request('GET', '/sublime-text_build-3047_amd64.deb', retries=0, timeout=0.001)
+        # logger.info(r.data)
+        self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/camtasia.exe', timeout=1.0)
+
+        # base_url = 'http://%s:%d' % (self.host, self.port)
+        # proxy = proxy_from_url(base_url)
+        # with patch('httplib.HTTPResponse.read') as mock:
+        #     mock.side_effect = timeout
+        #     r = proxy.request('GET', 'http://google.com/')
+
