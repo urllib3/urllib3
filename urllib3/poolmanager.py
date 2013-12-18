@@ -11,7 +11,7 @@ try:  # Python 3
 except ImportError:
     from urlparse import urljoin
 
-from ._collections import RecentlyUsedContainer
+from .collections_ import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
 from .request import RequestMethods
