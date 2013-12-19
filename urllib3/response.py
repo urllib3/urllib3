@@ -176,6 +176,12 @@ class HTTPResponse(io.IOBase):
         flush_decoder = False
 
         try:
+            # the try...except after this is required
+            # the case of preload_content=False
+            # wasn't considered. This moves the
+            # socket.timeout exception from the try..except block in urlopen()
+            # to the read() call in HTTPResponse, which isn't covered by
+            # a try...except.
             try:
                 if amt is None:
                     # cStringIO doesn't like amt=None
