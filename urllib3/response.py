@@ -102,6 +102,7 @@ class HTTPResponse(io.IOBase):
         if preload_content and not self._body:
             self._body = self.read(decode_content=decode_content)
 
+
     def get_redirect_location(self):
         """
         Should we redirect and where to?
@@ -175,26 +176,31 @@ class HTTPResponse(io.IOBase):
         flush_decoder = False
 
         try:
-            if amt is None:
-                # cStringIO doesn't like amt=None
-                data = self._fp.read()
-                flush_decoder = True
-            else:
-                cache_content = False
-                try:
-                    data = self._fp.read(amt)
-                except SocketTimeout:
-                    raise ReadTimeoutError
-                if amt != 0 and not data:  # Platform-specific: Buggy versions of Python.
-                    # Close the connection when no data is returned
-                    #
-                    # This is redundant to what httplib/http.client _should_
-                    # already do.  However, versions of python released before
-                    # December 15, 2012 (http://bugs.python.org/issue16298) do not
-                    # properly close the connection in all cases. There is no harm
-                    # in redundantly calling close.
-                    self._fp.close()
+            try:
+                if amt is None:
+                    # cStringIO doesn't like amt=None
+
+                    data = self._fp.read()
+
                     flush_decoder = True
+                else:
+                    cache_content = False
+
+                    data = self._fp.read(amt)
+
+                    if amt != 0 and not data:  # Platform-specific: Buggy versions of Python.
+                        # Close the connection when no data is returned
+                        #
+                        # This is redundant to what httplib/http.client _should_
+                        # already do.  However, versions of python released before
+                        # December 15, 2012 (http://bugs.python.org/issue16298) do not
+                        # properly close the connection in all cases. There is no harm
+                        # in redundantly calling close.
+                        self._fp.close()
+                        flush_decoder = True
+            except SocketTimeout:
+                        raise ReadTimeoutError(self, "Connection closed by server",
+                                               "Read timed out")
             if data:
                 self._fp_bytes_read += len(data)
 

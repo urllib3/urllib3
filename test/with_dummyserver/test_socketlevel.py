@@ -12,7 +12,7 @@ from threading import Event
 import socket
 import time
 import ssl
-#TODO: Need to revert if i am asked to push
+
 logger = getLogger(__file__)
 class TestCookies(SocketDummyServerTestCase):
 
@@ -274,57 +274,31 @@ class TestSSL(SocketDummyServerTestCase):
 
         self.assertRaises(SSLError, pool.request, 'GET', '/', retries=0)
 
+from urllib3 import Timeout
+class TestMidwaySocketTimeout(SocketDummyServerTestCase):
 
-class TestSocketTimeout(SocketDummyServerTestCase):
-
-    def test_socket_timeout(self):
-        def timeout_socket_handler(listener):
+    def test_timeout_midway_through_read(self):
+        def socket_handler(listener):
             sock = listener.accept()[0]
 
             buf = b''
             while not buf.endswith(b'\r\n\r\n'):
-                buf += sock.recv(65536)
-            # huge_content_part = 'bra' * 99999
-            fp = open('/home/hackawaye/vivi/camtasia.exe', 'rb')
-            content = fp.read()
-            # idx = 0
-            # file_list = []
-            # while content:
-            #     part = content[idx:idx+1024]
-            #     file_list.append(part)
-            logger.info(getcwd())
+                buf = sock.recv(65536)
+
+            body = 'Test Data'
             sock.send(('HTTP/1.1 200 OK\r\n'
-                      'Content-Type: application/octet-stream\r\n'
+                      'Content-Type: text/plain\r\n'
                       'Content-Length: %d\r\n'
-                      '\r\n' % len(content)))
-            # time.sleep(1)
-            idx = 0
-            del content
-            fp.seek(idx)
-            part = fp.read(1024)
-            while part:
-                sock.send((
-                      '%s' % (part)))
-                idx += 1024
-                fp.seek(idx)
-                time.sleep(0.5)
-                part = fp.read(1024)
-                
-            # time.sleep(1)
-            # sock.send((
-            #           '%s' % (huge_content_part.decode('utf-8'))).encode('utf-8'))
+                      '\r\n' % len(body)).encode('utf-8'))
+
+            # Wait for the read timeout.
+            time.sleep(0.002)
+
+            sock.send(body.encode('utf-8'))
             sock.close()
 
-        self._start_server(timeout_socket_handler)
-        # from nose.tools import set_trace; set_trace()
+        self._start_server(socket_handler)
         pool = HTTPConnectionPool(self.host, self.port)
-        # r = pool.request('GET', '/sublime-text_build-3047_amd64.deb', retries=0, timeout=0.001)
-        # logger.info(r.data)
-        self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/camtasia.exe', timeout=1.0)
 
-        # base_url = 'http://%s:%d' % (self.host, self.port)
-        # proxy = proxy_from_url(base_url)
-        # with patch('httplib.HTTPResponse.read') as mock:
-        #     mock.side_effect = timeout
-        #     r = proxy.request('GET', 'http://google.com/')
-
+        response = pool.urlopen('GET', '/', retries=0, preload_content=False, timeout=Timeout(connect=1, read=0.001))
+        self.assertRaises(ReadTimeoutError, response.read, '') # Should throw our exception.
