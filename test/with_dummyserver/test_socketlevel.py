@@ -1,24 +1,20 @@
 
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
-from urllib3.exceptions import MaxRetryError, ReadTimeoutError, SSLError, ConnectTimeoutError
-from urllib3 import util
-from os import getcwd
+from urllib3.exceptions import MaxRetryError, ReadTimeoutError, SSLError
+from urllib3 import util, Timeout
 from dummyserver.testcase import SocketDummyServerTestCase
 from dummyserver.server import DEFAULT_CERTS, DEFAULT_CA
-from logging import getLogger
 from nose.plugins.skip import SkipTest
 from threading import Event
 import socket
 import time
 import ssl
 
-logger = getLogger(__file__)
 class TestCookies(SocketDummyServerTestCase):
 
     def test_multi_setcookie(self):
         def multicookie_response_handler(listener):
-            # from nose.tools import set_trace; set_trace()
             sock = listener.accept()[0]
 
             buf = b''
@@ -274,7 +270,7 @@ class TestSSL(SocketDummyServerTestCase):
 
         self.assertRaises(SSLError, pool.request, 'GET', '/', retries=0)
 
-from urllib3 import Timeout
+
 class TestMidwaySocketTimeout(SocketDummyServerTestCase):
 
     def test_timeout_midway_through_read(self):

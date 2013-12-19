@@ -15,7 +15,6 @@ from .packages.six import string_types as basestring, binary_type
 from .util import is_fp_closed
 from socket import timeout as SocketTimeout
 
-log = logging.getLogger(__name__)
 
 
 class DeflateDecoder(object):
@@ -176,12 +175,9 @@ class HTTPResponse(io.IOBase):
         flush_decoder = False
 
         try:
-            # the try...except after this is required
-            # the case of preload_content=False
-            # wasn't considered. This moves the
-            # socket.timeout exception from the try..except block in urlopen()
-            # to the read() call in HTTPResponse, which wasn't covered by
-            # a try...except.
+            # the try...except after this is required to catch
+            # a socket.timeout that was not caught in the urlopen
+            # and propagated here
             try:
                 if amt is None:
                     # cStringIO doesn't like amt=None
@@ -205,7 +201,7 @@ class HTTPResponse(io.IOBase):
                         self._fp.close()
                         flush_decoder = True
             except SocketTimeout:
-                        raise ReadTimeoutError(self, "Connection closed by server",
+                raise ReadTimeoutError(self, "Connection closed by server",
                                                "Read timed out")
             if data:
                 self._fp_bytes_read += len(data)
