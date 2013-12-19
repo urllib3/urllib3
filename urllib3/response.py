@@ -180,7 +180,7 @@ class HTTPResponse(io.IOBase):
             # the case of preload_content=False
             # wasn't considered. This moves the
             # socket.timeout exception from the try..except block in urlopen()
-            # to the read() call in HTTPResponse, which isn't covered by
+            # to the read() call in HTTPResponse, which wasn't covered by
             # a try...except.
             try:
                 if amt is None:
