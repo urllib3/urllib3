@@ -298,4 +298,4 @@ class TestMidwaySocketTimeout(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port)
 
         response = pool.urlopen('GET', '/', retries=0, preload_content=False, timeout=Timeout(connect=1, read=0.001))
-        self.assertRaises(ReadTimeoutError, response.read, '') # Should throw our exception.
+        self.assertRaises(ReadTimeoutError, response.read) # Should throw our exception.
