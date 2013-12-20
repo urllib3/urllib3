@@ -10,6 +10,8 @@ from threading import Event
 import socket
 import time
 import ssl
+import sys
+from urllib3 import HTTPResponse
 
 
 class TestCookies(SocketDummyServerTestCase):
@@ -298,4 +300,9 @@ class TestMidwaySocketTimeout(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port)
 
         response = pool.urlopen('GET', '/', retries=0, preload_content=False, timeout=Timeout(connect=1, read=0.001))
-        self.assertRaises(ReadTimeoutError, response.read) # Should throw our exception.
+        if sys.version_info > (2, 7):
+            from mock import patch
+            with patch.object(HTTPResponse, 'read', side_effect=ReadTimeoutError(response, "Connection closed by server.", "Read timed out.")):
+                self.assertRaises(ReadTimeoutError, response.read)
+        else:
+            self.assertRaises(ReadTimeoutError, response.read) # Should throw our exception.
