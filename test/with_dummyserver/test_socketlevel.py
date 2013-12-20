@@ -10,6 +10,7 @@ from threading import Event
 import socket
 import time
 import ssl
+import sys
 
 
 class TestCookies(SocketDummyServerTestCase):
@@ -293,9 +294,12 @@ class TestMidwaySocketTimeout(SocketDummyServerTestCase):
 
             sock.send(body.encode('utf-8'))
             sock.close()
-
         self._start_server(socket_handler)
         pool = HTTPConnectionPool(self.host, self.port)
-
         response = pool.urlopen('GET', '/', retries=0, preload_content=False, timeout=Timeout(connect=1, read=0.001))
-        self.assertRaises(ReadTimeoutError, response.read) # Should throw our exception.
+        if sys.version_info > (2, 7):
+            from mock import Mock
+            response._fp.read = Mock(side_effect=socket.timeout)
+            self.assertRaises(ReadTimeoutError, response.read)
+        else:
+            self.assertRaises(ReadTimeoutError, response.read) # Should throw our exception.
