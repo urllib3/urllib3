@@ -294,8 +294,10 @@ class TestMidwaySocketTimeout(SocketDummyServerTestCase):
 
             sock.send(body.encode('utf-8'))
             sock.close()
+
         self._start_server(socket_handler)
         pool = HTTPConnectionPool(self.host, self.port)
+
         response = pool.urlopen('GET', '/', retries=0, preload_content=False, timeout=Timeout(connect=1, read=0.001))
         if sys.version_info > (2, 7):
             from mock import Mock
