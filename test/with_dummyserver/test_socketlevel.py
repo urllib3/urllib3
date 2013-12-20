@@ -11,6 +11,7 @@ import socket
 import time
 import ssl
 
+
 class TestCookies(SocketDummyServerTestCase):
 
     def test_multi_setcookie(self):

@@ -175,39 +175,32 @@ class HTTPResponse(io.IOBase):
         flush_decoder = False
 
         try:
-            # the try...except after this is required to catch
-            # a socket.timeout that was not caught in the urlopen
-            # and propagated here
-            try:
-                if amt is None:
-                    # cStringIO doesn't like amt=None
+            if amt is None:
+                # cStringIO doesn't like amt=None
 
-                    data = self._fp.read()
+                data = self._fp.read()
 
+                flush_decoder = True
+            else:
+                cache_content = False
+
+                data = self._fp.read(amt)
+
+                if amt != 0 and not data:  # Platform-specific: Buggy versions of Python.
+                    # Close the connection when no data is returned
+                    #
+                    # This is redundant to what httplib/http.client _should_
+                    # already do.  However, versions of python released before
+                    # December 15, 2012 (http://bugs.python.org/issue16298) do not
+                    # properly close the connection in all cases. There is no harm
+                    # in redundantly calling close.
+                    self._fp.close()
                     flush_decoder = True
-                else:
-                    cache_content = False
 
-                    data = self._fp.read(amt)
-
-                    if amt != 0 and not data:  # Platform-specific: Buggy versions of Python.
-                        # Close the connection when no data is returned
-                        #
-                        # This is redundant to what httplib/http.client _should_
-                        # already do.  However, versions of python released before
-                        # December 15, 2012 (http://bugs.python.org/issue16298) do not
-                        # properly close the connection in all cases. There is no harm
-                        # in redundantly calling close.
-                        self._fp.close()
-                        flush_decoder = True
-            except SocketTimeout:
-                raise ReadTimeoutError(self, "Connection closed by server",
-                                               "Read timed out")
-            if data:
-                self._fp_bytes_read += len(data)
+            self._fp_bytes_read += len(data)
 
             try:
-                if decode_content and self._decoder and data:
+                if decode_content and self._decoder:
                     data = self._decoder.decompress(data)
             except (IOError, zlib.error) as e:
                 raise DecodeError(
@@ -215,7 +208,7 @@ class HTTPResponse(io.IOBase):
                     "failed to decode it." % content_encoding,
                     e)
 
-            if flush_decoder and decode_content and self._decoder and data:
+            if flush_decoder and decode_content and self._decoder:
                 buf = self._decoder.decompress(binary_type())
                 data += buf + self._decoder.flush()
 
@@ -223,7 +216,11 @@ class HTTPResponse(io.IOBase):
                 self._body = data
 
             return data
-
+        except SocketTimeout:
+            # This will happen when a socket.timeout is thrown
+            # from urlopen and propagates here
+            raise ReadTimeoutError(self, "Connection closed by server",
+                                               "Read timed out")
         finally:
             if self._original_response and self._original_response.isclosed():
                 self.release_conn()
