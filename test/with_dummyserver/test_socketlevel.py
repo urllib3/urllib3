@@ -300,7 +300,7 @@ class TestMidwaySocketTimeout(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port)
 
         response = pool.urlopen('GET', '/', retries=0, preload_content=False, timeout=Timeout(connect=1, read=0.001))
-        if sys.version_info > (2, 7):
+        if sys.version_info >= (3, 0):
             from mock import patch
             with patch.object(HTTPResponse, 'read', side_effect=ReadTimeoutError(response, "Connection closed by server.", "Read timed out.")):
                 self.assertRaises(ReadTimeoutError, response.read)

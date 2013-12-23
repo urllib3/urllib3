@@ -219,8 +219,8 @@ class HTTPResponse(io.IOBase):
         except SocketTimeout:
             # This will happen when a socket.timeout is thrown
             # from urlopen and propagates here
-            raise ReadTimeoutError(self, "Connection closed by server.",
-                                               "Read timed out.")
+            raise ReadTimeoutError(self, self._connection.host,
+                                   "Remote connection closed. Read timed out.")
         finally:
             if self._original_response and self._original_response.isclosed():
                 self.release_conn()
