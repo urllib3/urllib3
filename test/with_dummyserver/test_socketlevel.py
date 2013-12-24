@@ -270,9 +270,6 @@ class TestSSL(SocketDummyServerTestCase):
 
 class TestMidwaySocketTimeout(SocketDummyServerTestCase):
     def test_timeout_midway_through_read(self):
-        if sys.version_info >= (3, 0):
-            raise SkipTest("Not reproducible for python version greater than 3.0")
-
         def socket_handler(listener):
             sock = listener.accept()[0]
             buf = b''
@@ -293,4 +290,9 @@ class TestMidwaySocketTimeout(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port)
 
         response = pool.urlopen('GET', '/', retries=0, preload_content=False, timeout=Timeout(connect=1, read=0.001))
-        self.assertRaises(ReadTimeoutError, response.read) # Should throw our exception.
+        if sys.version_info >= (3, 0):
+            from mock import Mock
+            response._fp.read = Mock(side_effect=socket.timeout)
+            self.assertRaises(ReadTimeoutError, response.read)
+        else:
+            self.assertRaises(ReadTimeoutError, response.read) # Should throw our exception.
