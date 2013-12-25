@@ -4,6 +4,7 @@ from urllib3.exceptions import MaxRetryError, ReadTimeoutError, SSLError
 from urllib3 import util, Timeout
 from dummyserver.testcase import SocketDummyServerTestCase
 from dummyserver.server import DEFAULT_CERTS, DEFAULT_CA
+
 from nose.plugins.skip import SkipTest
 from threading import Event
 import socket
@@ -13,6 +14,7 @@ import sys
 
 
 class TestCookies(SocketDummyServerTestCase):
+
     def test_multi_setcookie(self):
         def multicookie_response_handler(listener):
             sock = listener.accept()[0]
@@ -34,6 +36,7 @@ class TestCookies(SocketDummyServerTestCase):
 
 
 class TestSNI(SocketDummyServerTestCase):
+
     def test_hostname_in_first_request_packet(self):
         if not util.HAS_SNI:
             raise SkipTest('SNI-support not available')
@@ -60,6 +63,7 @@ class TestSNI(SocketDummyServerTestCase):
 
 
 class TestSocketClosing(SocketDummyServerTestCase):
+
     def test_recovery_when_server_closes_connection(self):
         # Does the pool work seamlessly if an open connection in the
         # connection pool gets hung up on by the server, then reaches
@@ -170,6 +174,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
 
 class TestProxyManager(SocketDummyServerTestCase):
+
     def test_simple(self):
         def echo_socket_handler(listener):
             sock = listener.accept()[0]
@@ -239,6 +244,7 @@ class TestProxyManager(SocketDummyServerTestCase):
 
 
 class TestSSL(SocketDummyServerTestCase):
+
     def test_ssl_failure_midway_through_conn(self):
         def socket_handler(listener):
             sock = listener.accept()[0]
@@ -269,6 +275,7 @@ class TestSSL(SocketDummyServerTestCase):
 
 
 class TestMidwaySocketTimeout(SocketDummyServerTestCase):
+
     def test_timeout_midway_through_read(self):
         def socket_handler(listener):
             sock = listener.accept()[0]
