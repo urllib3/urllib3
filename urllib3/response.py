@@ -8,13 +8,13 @@
 import logging
 import zlib
 import io
+from urllib3.exceptions import ReadTimeoutError
 
 from .exceptions import DecodeError
 from .packages.six import string_types as basestring, binary_type
 from .util import is_fp_closed
+from socket import timeout as SocketTimeout
 
-
-log = logging.getLogger(__name__)
 
 
 class DeflateDecoder(object):
@@ -101,6 +101,7 @@ class HTTPResponse(io.IOBase):
         if preload_content and not self._body:
             self._body = self.read(decode_content=decode_content)
 
+
     def get_redirect_location(self):
         """
         Should we redirect and where to?
@@ -176,11 +177,15 @@ class HTTPResponse(io.IOBase):
         try:
             if amt is None:
                 # cStringIO doesn't like amt=None
+
                 data = self._fp.read()
+
                 flush_decoder = True
             else:
                 cache_content = False
+
                 data = self._fp.read(amt)
+
                 if amt != 0 and not data:  # Platform-specific: Buggy versions of Python.
                     # Close the connection when no data is returned
                     #
@@ -211,7 +216,11 @@ class HTTPResponse(io.IOBase):
                 self._body = data
 
             return data
-
+        except SocketTimeout:
+            # This will happen when a socket.timeout is thrown
+            # from urlopen and propagates here
+            raise ReadTimeoutError(self, self._connection.host,
+                                   "Remote connection closed. Read timed out.")
         finally:
             if self._original_response and self._original_response.isclosed():
                 self.release_conn()

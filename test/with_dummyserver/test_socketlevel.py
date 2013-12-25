@@ -1,9 +1,7 @@
-
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
 from urllib3.exceptions import MaxRetryError, ReadTimeoutError, SSLError
-from urllib3 import util
-
+from urllib3 import util, Timeout
 from dummyserver.testcase import SocketDummyServerTestCase
 from dummyserver.server import DEFAULT_CERTS, DEFAULT_CA
 
@@ -12,6 +10,7 @@ from threading import Event
 import socket
 import time
 import ssl
+import sys
 
 
 class TestCookies(SocketDummyServerTestCase):
@@ -82,10 +81,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
                 body = 'Response %d' % i
                 sock.send(('HTTP/1.1 200 OK\r\n'
-                          'Content-Type: text/plain\r\n'
-                          'Content-Length: %d\r\n'
-                          '\r\n'
-                          '%s' % (len(body), body)).encode('utf-8'))
+                           'Content-Type: text/plain\r\n'
+                           'Content-Length: %d\r\n'
+                           '\r\n'
+                           '%s' % (len(body), body)).encode('utf-8'))
 
                 sock.close()  # simulate a server timing out, closing socket
                 done_closing.set()  # let the test know it can proceed
@@ -116,6 +115,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
     def test_connection_timeout(self):
         timed_out = Event()
+
         def socket_handler(listener):
             timed_out.wait()
             sock = listener.accept()[0]
@@ -147,10 +147,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # Now respond immediately.
             body = 'Response 2'
             sock.send(('HTTP/1.1 200 OK\r\n'
-                      'Content-Type: text/plain\r\n'
-                      'Content-Length: %d\r\n'
-                      '\r\n'
-                      '%s' % (len(body), body)).encode('utf-8'))
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n'
+                       '%s' % (len(body), body)).encode('utf-8'))
 
             sock.close()  # Close the socket.
 
@@ -184,10 +184,10 @@ class TestProxyManager(SocketDummyServerTestCase):
                 buf += sock.recv(65536)
 
             sock.send(('HTTP/1.1 200 OK\r\n'
-                      'Content-Type: text/plain\r\n'
-                      'Content-Length: %d\r\n'
-                      '\r\n'
-                      '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n'
+                       '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
             sock.close()
 
         self._start_server(echo_socket_handler)
@@ -219,10 +219,10 @@ class TestProxyManager(SocketDummyServerTestCase):
                 buf += sock.recv(65536)
 
             sock.send(('HTTP/1.1 200 OK\r\n'
-                      'Content-Type: text/plain\r\n'
-                      'Content-Length: %d\r\n'
-                      '\r\n'
-                      '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n'
+                       '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
             sock.close()
 
         self._start_server(echo_socket_handler)
@@ -261,10 +261,10 @@ class TestSSL(SocketDummyServerTestCase):
 
             # Deliberately send from the non-SSL socket.
             sock2.send(('HTTP/1.1 200 OK\r\n'
-                       'Content-Type: text/plain\r\n'
-                       'Content-Length: 2\r\n'
-                       '\r\n'
-                       'Hi').encode('utf-8'))
+                        'Content-Type: text/plain\r\n'
+                        'Content-Length: 2\r\n'
+                        '\r\n'
+                        'Hi').encode('utf-8'))
             sock2.close()
             ssl_sock.close()
 
@@ -272,3 +272,34 @@ class TestSSL(SocketDummyServerTestCase):
         pool = HTTPSConnectionPool(self.host, self.port)
 
         self.assertRaises(SSLError, pool.request, 'GET', '/', retries=0)
+
+
+class TestMidwaySocketTimeout(SocketDummyServerTestCase):
+
+    def test_timeout_midway_through_read(self):
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf = sock.recv(65536)
+            body = 'Test Data'
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n' % len(body)).encode('utf-8'))
+            # Wait for the read timeout.
+            time.sleep(0.002)
+
+            sock.send(body.encode('utf-8'))
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port)
+
+        response = pool.urlopen('GET', '/', retries=0, preload_content=False, timeout=Timeout(connect=1, read=0.001))
+        if sys.version_info >= (3, 0):
+            from mock import Mock
+            response._fp.read = Mock(side_effect=socket.timeout)
+            self.assertRaises(ReadTimeoutError, response.read)
+        else:
+            self.assertRaises(ReadTimeoutError, response.read) # Should throw our exception.
