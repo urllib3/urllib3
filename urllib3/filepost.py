@@ -63,7 +63,7 @@ def iter_fields(fields):
     return ((k, v) for k, v in fields)
 
 
-def encode_multipart_formdata(fields, boundary=None):
+def encode_multipart_formdata(fields, boundary=None, request=None):
     """
     Encode a dictionary of ``fields`` using the multipart/form-data MIME format.
 
@@ -78,17 +78,23 @@ def encode_multipart_formdata(fields, boundary=None):
     if boundary is None:
         boundary = choose_boundary()
 
+    encoding = getattr(request, 'form_data_encoding', 'utf-8')
+    factory = codecs.lookup(encoding)[3]
+    writer = factory(body, errors='xmlcharrefreplace') # as per HTML 5 draft
+
     for field in iter_field_objects(fields):
         body.write(b('--%s\r\n' % (boundary)))
 
-        writer(body).write(field.render_headers())
+        writer.write(field.render_headers(request=request, encoding=encoding))
+        writer.reset() # flush
         data = field.data
 
         if isinstance(data, int):
             data = str(data)  # Backwards compatibility
 
         if isinstance(data, six.text_type):
-            writer(body).write(data)
+            writer.write(data)
+            writer.reset() # flush
         else:
             body.write(data)
 

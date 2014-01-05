@@ -127,7 +127,8 @@ class RequestMethods(object):
         """
         if encode_multipart:
             body, content_type = encode_multipart_formdata(fields or {},
-                                    boundary=multipart_boundary)
+                                    boundary=multipart_boundary,
+                                    request=self)
         else:
             body, content_type = (urlencode(fields or {}),
                                     'application/x-www-form-urlencoded')

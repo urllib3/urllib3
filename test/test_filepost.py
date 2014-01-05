@@ -120,14 +120,15 @@ class TestMultipartEncoding(unittest.TestCase):
             'multipart/form-data; boundary=' + str(BOUNDARY))
 
     def test_request_fields(self):
-      fields = [RequestField('k', b'v', filename='somefile.txt', headers={'Content-Type': 'image/jpeg'})]
+        fields = [RequestField('k', b'v', filename='somefile.txt', headers={'Content-Type': 'image/jpeg'})]
 
-      encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
 
-      self.assertEquals(encoded,
-          b'--' + b(BOUNDARY) + b'\r\n'
-          b'Content-Type: image/jpeg\r\n'
-          b'\r\n'
-          b'v\r\n'
-          b'--' + b(BOUNDARY) + b'--\r\n'
-          )
+        self.assertEquals(encoded,
+            b'--' + b(BOUNDARY) + b'\r\n'
+            b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
+            b'Content-Type: image/jpeg\r\n'
+            b'\r\n'
+            b'v\r\n'
+            b'--' + b(BOUNDARY) + b'--\r\n'
+            )

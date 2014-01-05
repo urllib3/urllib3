@@ -15,14 +15,19 @@ class TestRequestField(unittest.TestCase):
 
     def test_create(self):
         simple_field = RequestField('somename', 'data')
-        self.assertEqual(simple_field.render_headers(), '\r\n')
+        self.assertEqual(simple_field.render_headers(),
+            'Content-Disposition: form-data; name="somename"\r\n\r\n')
         filename_field = RequestField('somename', 'data',
                                       filename='somefile.txt')
-        self.assertEqual(filename_field.render_headers(), '\r\n')
+        self.assertEqual(filename_field.render_headers(),
+            'Content-Disposition: form-data; name="somename"; filename="somefile.txt"\r\n'
+            'Content-Type: text/plain\r\n'
+            '\r\n')
         headers_field = RequestField('somename', 'data',
                                      headers={'Content-Length': 4})
-        self.assertEqual(
-            headers_field.render_headers(), 'Content-Length: 4\r\n\r\n')
+        self.assertEqual(headers_field.render_headers(),
+            'Content-Disposition: form-data; name="somename"\r\n'
+            'Content-Length: 4\r\n\r\n')
 
     def test_make_multipart(self):
         field = RequestField('somename', 'data')
@@ -37,6 +42,7 @@ class TestRequestField(unittest.TestCase):
 
     def test_render_parts(self):
         field = RequestField('somename', 'data')
+        field.style = 'HTML5'
         parts = field._render_parts({'name': 'value', 'filename': 'value'})
         self.assertTrue('name="value"' in parts)
         self.assertTrue('filename="value"' in parts)
@@ -45,5 +51,11 @@ class TestRequestField(unittest.TestCase):
 
     def test_render_part(self):
         field = RequestField('somename', 'data')
+        field.style = 'RFC2231'
+        param = field._render_part('filename', u('name'))
+        self.assertEqual(param, 'filename="name"')
         param = field._render_part('filename', u('n\u00e4me'))
         self.assertEqual(param, "filename*=utf-8''n%C3%A4me")
+        field.style = 'ThereIsNoSuchStyle'
+        self.assertRaises(NotImplementedError,
+            field._render_part, 'filename', u('name'))
