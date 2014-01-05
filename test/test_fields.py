@@ -49,13 +49,28 @@ class TestRequestField(unittest.TestCase):
         parts = field._render_parts([('name', 'value'), ('filename', 'value')])
         self.assertEqual(parts, 'name="value"; filename="value"')
 
-    def test_render_part(self):
+    def test_render_part_html5(self):
+        field = RequestField('somename', 'data')
+        field.style = 'HTML5'
+        param = field._render_part('filename', u('name'))
+        self.assertEqual(param, 'filename="name"')
+        param = field._render_part('filename', u('n\u00e4me'))
+        self.assertEqual(param, u('filename="n\u00e4me"'))
+        param = field._render_part('filename', 'some"really\nbad\\name')
+        self.assertEqual(param, 'filename="some\\"really bad\\\\name"')
+
+    def test_render_part_rfc2231(self):
         field = RequestField('somename', 'data')
         field.style = 'RFC2231'
         param = field._render_part('filename', u('name'))
         self.assertEqual(param, 'filename="name"')
         param = field._render_part('filename', u('n\u00e4me'))
         self.assertEqual(param, "filename*=utf-8''n%C3%A4me")
+        param = field._render_part('filename', 'some"really\nbad\\name')
+        self.assertEqual(param, u("filename*=utf-8''some%22really%0Abad%5Cname"))
+
+    def test_render_part_invalid_style(self):
+        field = RequestField('somename', 'data')
         field.style = 'ThereIsNoSuchStyle'
         self.assertRaises(NotImplementedError,
             field._render_part, 'filename', u('name'))
