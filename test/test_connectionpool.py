@@ -13,10 +13,9 @@ from urllib3.exceptions import (
     HostChangedError,
     MaxRetryError,
     SSLError,
-    ReadTimeoutError,
 )
 
-from socket import error as SocketError, timeout as SocketTimeout
+from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 
 try:   # Python 3
