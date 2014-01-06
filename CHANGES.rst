@@ -21,6 +21,10 @@ dev (master)
 
 * Support for platforms without threading. (Issue #289)
 
+* Expand default-port comparison in ``HTTPConnectionPool.is_same_host``
+  to allow a pool with no specified port to be considered equal to to an
+  HTTP/HTTPS url with port 80/443 explicitly provided
+
 * ...
 
 

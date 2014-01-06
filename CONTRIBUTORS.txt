@@ -93,5 +93,8 @@ In chronological order:
 * Peter Waller <p@pwaller.net>
   * HTTPResponse.tell() for determining amount received over the wire
 
+* Nipunn Koorapati <nipunn1313@gmail.com>
+  * Ignore default ports when comparing hosts for equality
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
