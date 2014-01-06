@@ -80,8 +80,9 @@ class HTTPMessage:
 
     def addcontinue(self, name, more):
         raw_header = self.headers.raw_header(name)
-        extra = '\n ' + more
-        raw_header[-1][1] += extra
+        key, oldval = raw_header[-1]
+        val = oldval + '\n ' + more
+        raw_header[-1] = (key, val)
         del self.headers[name]
         for key, value in raw_header:
             self.headers.append(key, value)
