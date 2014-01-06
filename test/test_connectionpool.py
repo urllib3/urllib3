@@ -39,6 +39,11 @@ class TestConnectionPool(unittest.TestCase):
             ('http://google.com/', 'http://google.com'),
             ('http://google.com/', 'http://google.com/abra/cadabra'),
             ('http://google.com:42/', 'http://google.com:42/abracadabra'),
+            # Test comparison using default ports
+            ('http://google.com:80/', 'http://google.com/abracadabra'),
+            ('http://google.com/', 'http://google.com:80/abracadabra'),
+            ('https://google.com:443/', 'https://google.com/abracadabra'),
+            ('https://google.com/', 'https://google.com:443/abracadabra'),
         ]
 
         for a, b in same_host:
@@ -51,11 +56,22 @@ class TestConnectionPool(unittest.TestCase):
             ('http://yahoo.com/', 'http://google.com/'),
             ('http://google.com:42', 'https://google.com/abracadabra'),
             ('http://google.com', 'https://google.net/'),
+            # Test comparison with default ports
+            ('http://google.com:42', 'http://google.com'),
+            ('https://google.com:42', 'https://google.com'),
+            ('http://google.com:443', 'http://google.com'),
+            ('https://google.com:80', 'https://google.com'),
+            ('http://google.com:443', 'https://google.com'),
+            ('https://google.com:80', 'http://google.com'),
+            ('https://google.com:443', 'http://google.com'),
+            ('http://google.com:80', 'https://google.com'),
         ]
 
         for a, b in not_same_host:
             c = connection_from_url(a)
             self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
+            c = connection_from_url(b)
+            self.assertFalse(c.is_same_host(a), "%s =? %s" % (b, a))
 
 
     def test_max_connections(self):
