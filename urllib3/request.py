@@ -47,6 +47,9 @@ class RequestMethods(object):
     _encode_url_methods = set(['DELETE', 'GET', 'HEAD', 'OPTIONS'])
     _encode_body_methods = set(['PATCH', 'POST', 'PUT', 'TRACE'])
 
+    form_data_encoding = None # Default set in filepost.
+    field_encoding_style = None # Default set in fields.
+
     def __init__(self, headers=None):
         self.headers = headers or {}
 
@@ -126,9 +129,11 @@ class RequestMethods(object):
         string can be explicitly set with the ``multipart_boundary`` parameter.
         """
         if encode_multipart:
-            body, content_type = encode_multipart_formdata(fields or {},
-                                    boundary=multipart_boundary,
-                                    request=self)
+            body, content_type = encode_multipart_formdata(
+                fields or {},
+                boundary=multipart_boundary,
+                form_data_encoding=self.form_data_encoding,
+                field_encoding_style=self.field_encoding_style)
         else:
             body, content_type = (urlencode(fields or {}),
                                     'application/x-www-form-urlencoded')

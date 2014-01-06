@@ -4,6 +4,9 @@
 # This module is part of urllib3 and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+import email.utils
+import mimetypes
+
 from .packages import six
 
 
@@ -17,7 +20,6 @@ def guess_content_type(filename, default='application/octet-stream'):
         If no "Content-Type" can be guessed, default to `default`.
     """
     if filename:
-        import mimetypes
         return mimetypes.guess_type(filename)[0] or default
     return default
 
@@ -63,7 +65,6 @@ def format_header_param_rfc2231(name, value):
             return result
     if not six.PY3:  # Python 2:
         value = value.encode('utf-8')
-    import email.utils
     value = email.utils.encode_rfc2231(value, 'utf-8')
     value = '%s*=%s' % (name, value)
     return value
@@ -172,7 +173,7 @@ class RequestField(object):
         """
         return self._filename or self.headers.get('Content-Type')
 
-    def _fixup_headers(self, encoding):
+    def _fixup_headers(self):
         """
         Adjust headers depending on configuration of the request object.
         """
@@ -187,12 +188,12 @@ class RequestField(object):
                 ct = guess_content_type(self._filename)
                 self.headers['Content-Type'] = ct
 
-    def render_headers(self, request=None, encoding=None):
+    def render_headers(self, field_encoding_style=None):
         """
         Renders the headers for this request field.
         """
-        self.style = getattr(request, 'field_encoding_style', 'HTML5')
-        self._fixup_headers(encoding)
+        self.style = field_encoding_style or 'HTML5'
+        self._fixup_headers()
 
         lines = []
 

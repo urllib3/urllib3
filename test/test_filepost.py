@@ -8,11 +8,6 @@ from urllib3.packages.six import b, u
 BOUNDARY = '!! test boundary !!'
 
 
-class SimpleNamespace(object):
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
-
-
 class TestIterfields(unittest.TestCase):
 
     def test_dict(self):
@@ -139,10 +134,9 @@ class TestMultipartEncoding(unittest.TestCase):
             )
 
     def test_control_encoding(self):
-        request = SimpleNamespace(form_data_encoding = 'iso-8859-1')
         fields = [(u('n\u00e4me\u011b'), u('va\u0142u\u00ea'))]
         encoded, content_type = encode_multipart_formdata(
-            fields, boundary=BOUNDARY, request=request)
+            fields, boundary=BOUNDARY, form_data_encoding = 'iso-8859-1')
         self.assertEquals(encoded,
             b'--' + b(BOUNDARY) + b'\r\n'
             b'Content-Disposition: form-data; name="n\xe4me&#283;"\r\n'
@@ -152,10 +146,9 @@ class TestMultipartEncoding(unittest.TestCase):
             )
 
     def test_control_style(self):
-        request = SimpleNamespace(field_encoding_style = 'RFC2231')
         fields = [(u('n\u00e4me\u011b'), u('va\u0142u\u00ea'))]
         encoded, content_type = encode_multipart_formdata(
-            fields, boundary=BOUNDARY, request=request)
+            fields, boundary=BOUNDARY, field_encoding_style = 'RFC2231')
         self.assertEquals(encoded,
             b'--' + b(BOUNDARY) + b'\r\n'
             b"Content-Disposition: form-data; name*=utf-8''n%C3%A4me%C4%9B\r\n"
