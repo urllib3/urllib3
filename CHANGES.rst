@@ -23,9 +23,9 @@ dev (master)
 
 * Expand default-port comparison in ``HTTPConnectionPool.is_same_host``
   to allow a pool with no specified port to be considered equal to to an
-  HTTP/HTTPS url with port 80/443 explicitly provided
+  HTTP/HTTPS url with port 80/443 explicitly provided. (Issue #305)
 
-* ...
+* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.7.1 (2013-09-25)
