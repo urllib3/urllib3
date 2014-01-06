@@ -21,33 +21,12 @@ class HTTPMessage:
 
     def __init__(self, fp, _seekable=None): # _seekable for backwards compat
         self.fp = fp
-        self.seekable = None
         self.headers = HTTPHeaderDict()
-        self._set_seekable(fp)
         self.readheaders()
-
-    def _set_seekable(self, fp):
-        try:
-            fp.tell()
-        except (AttributeError, IOError):
-            self.seekable = False
-        else:
-            self.seekable = True
 
     def readheaders(self):
         headerseen = ''
-        startofline = unread = tell = None
-        if hasattr(self.fp, 'unread'):
-            unread = self.fp.unread
-        elif self.seekable:
-            tell = self.fp.tell
         while True:
-            if tell:
-                try:
-                    startofline = tell()
-                except IOError:
-                    startofline = tell = None
-                    self.seekable = False
             line = self.fp.readline()
             if not line:
                 break
@@ -62,11 +41,6 @@ class HTTPMessage:
                 self.addheader(headerseen, line[len(headerseen)+1:].strip())
                 continue
             else:
-                # Try to undo the read.
-                if unread:
-                    unread(line)
-                elif tell:
-                    self.fp.seek(startofline)
                 break
 
     def isheader(self, line):
