@@ -83,7 +83,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         # the _tunnel_host attribute was added in python 2.6.3 (via
         # http://hg.python.org/cpython/rev/0f57b30a152f) so pythons 2.6(0-2) do
         # not have them.
-        if hasattr(self, '_tunnel_host') and self._tunnel_host:
+        if getattr(self, '_tunnel_host', None):
             self.sock = sock
             # Calls self._set_hostport(), so self.host is
             # self._tunnel_host below.
