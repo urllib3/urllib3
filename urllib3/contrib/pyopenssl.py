@@ -330,6 +330,10 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError('bad ca_certs: %r' % ca_certs, e)
 
+    # Disable TLS compression to migitate CRIME attack (issue #309)
+    OP_NO_COMPRESSION = 0x20000
+    ctx.set_options(OP_NO_COMPRESSION)
+
     cnx = OpenSSL.SSL.Connection(ctx, sock)
     cnx.set_tlsext_host_name(server_hostname)
     cnx.set_connect_state()

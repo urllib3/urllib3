@@ -622,7 +622,7 @@ if SSLContext is not None:  # Python 3.2+
         context.verify_mode = cert_reqs
 
         # Disable TLS compression to migitate CRIME attack (issue #309)
-        OP_NO_COMPRESSION = 131072
+        OP_NO_COMPRESSION = 0x20000
         context.options |= OP_NO_COMPRESSION
 
         if ca_certs:
