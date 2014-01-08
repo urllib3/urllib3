@@ -40,8 +40,7 @@ class HTTPMessage:
             if headerseen:
                 self.addheader(headerseen, line[len(headerseen)+1:].strip())
                 continue
-            else:
-                break
+            break
 
     def isheader(self, line):
         i = line.find(':')
@@ -180,7 +179,7 @@ else:
         def __init__(self, host, port=None, key_file=None, cert_file=None,
                      strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                      source_address=None):
-            if isPY26:
+            if isPY26: # Python 2.6
                 HTTPConnection.__init__(self, host, port, strict, timeout)
             else:
                 HTTPConnection.__init__(self, host, port, strict, timeout,

@@ -8,10 +8,11 @@ if six.PY3:
 
 from StringIO import StringIO
 from urllib3._httplib import HTTPMessage
+from urllib3.collections_ import HTTPHeaderDict
 
 class TestHTTPMessage(unittest.TestCase):
     def setUp(self):
-        lines = 'Server: FooServer\r\nKey: ValueA\r\n'
+        lines = 'Server: FooServer\r\nKey: ValueA\r\n\r\n'
         self.msg = HTTPMessage(StringIO(lines))
 
     def test_no_header_in_line(self):
@@ -40,3 +41,16 @@ class TestHTTPMessage(unittest.TestCase):
     def test_items(self):
         values = [('Key', 'ValueA'), ('Server', 'FooServer')]
         self.assertEqual(self.msg.items(), values)
+
+    def test_simple(self):
+        lines = 'Server: FooServer\r\nKey: Value\r\n\r\n'
+        msg = HTTPMessage(StringIO(lines))
+        headers = HTTPHeaderDict({'Server': 'FooServer', 'Key': 'Value'})
+        self.assertEqual(msg.headers, headers)
+
+    def test_with_continue(self):
+        lines = 'Server: FooServer\r\nKey: ValueA\r\n\tValueB\r\n\r\n'
+        msg = HTTPMessage(StringIO(lines))
+        headers = HTTPHeaderDict({'Server': 'FooServer',
+                                  'Key': 'ValueA\n ValueB'})
+        self.assertEqual(msg.headers, headers)
