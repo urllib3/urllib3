@@ -1,7 +1,12 @@
 
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
-from urllib3.exceptions import MaxRetryError, ReadTimeoutError, SSLError
+from urllib3.exceptions import (
+        MaxRetryError,
+        ProxyError,
+        ReadTimeoutError,
+        SSLError,
+)
 from urllib3 import util
 
 from dummyserver.testcase import SocketDummyServerTestCase
@@ -241,6 +246,40 @@ class TestProxyManager(SocketDummyServerTestCase):
         # should fix that someday (maybe when we migrate to
         # OrderedDict/MultiDict).
         self.assertTrue(b'For The Proxy: YEAH!\r\n' in r.data)
+
+    def test_retries(self):
+        def echo_socket_handler(listener):
+            sock = listener.accept()[0]
+            # First request, which should fail
+            sock.close()
+
+            # Second request
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                      'Content-Type: text/plain\r\n'
+                      'Content-Length: %d\r\n'
+                      '\r\n'
+                      '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
+            sock.close()
+
+        self._start_server(echo_socket_handler)
+        base_url = 'http://%s:%d' % (self.host, self.port)
+
+        proxy = proxy_from_url(base_url)
+        conn = proxy.connection_from_url('http://www.google.com')
+
+        r = conn.urlopen('GET', 'http://www.google.com',
+                         assert_same_host=False, retries=1)
+        self.assertEqual(r.status, 200)
+
+        self.assertRaises(ProxyError, conn.urlopen, 'GET',
+                'http://www.google.com',
+                assert_same_host=False, retries=0)
 
 
 class TestSSL(SocketDummyServerTestCase):
