@@ -50,6 +50,13 @@ _openssl_verify = {
                        + OpenSSL.SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
 }
 
+# Default SSL/TLS cipher list.
+# Recommendation by https://community.qualys.com/blogs/securitylabs/2013/08/05/
+# configuring-apache-nginx-and-openssl-for-forward-secrecy
+DEFAULT_SSL_CIPHER_LIST = 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM ' + \
+        'EECDH+ECDSA+SHA256 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EDH+aRSA ' + \
+        'EECDH RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS'
+
 
 orig_util_HAS_SNI = util.HAS_SNI
 orig_connection_ssl_wrap_socket = connection.ssl_wrap_socket
@@ -334,13 +341,8 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
     OP_NO_COMPRESSION = 0x20000
     ctx.set_options(OP_NO_COMPRESSION)
 
-    # Set list of supported ciphersuites. Recommendation by
-    # https://community.qualys.com/blogs/securitylabs/2013/08/05/
-    # configuring-apache-nginx-and-openssl-for-forward-secrecy
-    ctx.set_cipher_list('EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM ' +
-            'EECDH+ECDSA+SHA256 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 ' +
-            'EDH+aRSA EECDH RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP ' +
-            '!PSK !SRP !DSS')
+    # Set list of supported ciphersuites.
+    ctx.set_cipher_list(DEFAULT_SSL_CIPHER_LIST)
 
     cnx = OpenSSL.SSL.Connection(ctx, sock)
     cnx.set_tlsext_host_name(server_hostname)
