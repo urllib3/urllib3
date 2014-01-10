@@ -177,6 +177,17 @@ prime time.
 
    contrib
 
+Notes
+=====
+
+- SSL/TLS compression is disabled by default on Python 3.2+ to migitate the
+  `CRIME attack`_. You can disable compression on Python 2 by using the
+  :ref:`pyopenssl contrib module <pyopenssl>`, although this requires additional
+  dependencies and might have undesired side effects due to the nature of
+  PyOpenSSL.
+
+.. _crime attack: https://en.wikipedia.org/wiki/CRIME_(security_exploit)
+
 Contributing
 ============
 

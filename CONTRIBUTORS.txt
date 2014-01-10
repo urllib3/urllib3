@@ -96,5 +96,10 @@ In chronological order:
 * Nipunn Koorapati <nipunn1313@gmail.com>
   * Ignore default ports when comparing hosts for equality
 
+* Danilo @dbrgn <http://dbrgn.ch/>
+  * Disabled TLS compression by default on Python 3.2+
+  * Disabled TLS compression in pyopenssl contrib module
+  * Configurable cipher suites in pyopenssl contrib module
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
