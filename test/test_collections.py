@@ -171,11 +171,6 @@ class TestHTTPHeaderDict(unittest.TestCase):
         c = [('a', 'foo, bar')]
         self.assertNotEqual(self.d, c)
 
-    def test_bool(self):
-        self.assertTrue(self.d)
-        del self.d['a']
-        self.assertFalse(self.d)
-
     def test_len(self):
         self.assertEqual(len(self.d), 1)
 

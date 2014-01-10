@@ -135,9 +135,6 @@ class HTTPHeaderDict(MutableMapping):
         return dict((k1, self[k1]) for k1 in self._data) == \
                 dict((k2, other[k2]) for k2 in other._data)
 
-    def __nonzero__(self):
-        return bool(self._data)
-
     def __getitem__(self, key):
         values = self._data[key.lower()]
         return ', '.join(value[1] for value in values)
