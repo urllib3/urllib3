@@ -517,17 +517,17 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 raise
 
         except (HTTPException, SocketError) as e:
-            if isinstance(e, SocketError) and self.proxy is not None:
-                raise ProxyError('Cannot connect to proxy. '
-                                 'Socket error: %s.' % e)
-
             # Connection broken, discard. It will be replaced next _get_conn().
             conn = None
             # This is necessary so we can access e below
             err = e
 
             if retries == 0:
-                raise MaxRetryError(self, url, e)
+                if isinstance(e, SocketError) and self.proxy is not None:
+                    raise ProxyError('Cannot connect to proxy. '
+                                     'Socket error: %s.' % e)
+                else:
+                    raise MaxRetryError(self, url, e)
 
         finally:
             if release_conn:

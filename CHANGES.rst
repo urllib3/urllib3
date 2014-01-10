@@ -28,6 +28,9 @@ dev (master)
 * Improved default SSL/TLS settings to avoid vulnerabilities.
   (Issue #309)
 
+* Fix retires when using proxy: do not fail immediately on proxy errors,
+  but continue until we exceed retry limit. (Issue #310)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
