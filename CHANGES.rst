@@ -25,6 +25,9 @@ dev (master)
   to allow a pool with no specified port to be considered equal to to an
   HTTP/HTTPS url with port 80/443 explicitly provided. (Issue #305)
 
+* Improved default SSL/TLS settings to avoid vulnerabilities.
+  (Issue #309)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
