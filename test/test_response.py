@@ -352,6 +352,11 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(next(stream), b'o')
         self.assertRaises(StopIteration, next, stream)
 
+    def test_get_case_insensitive_headers(self):
+        headers = {'host': 'example.com'}
+        r = HTTPResponse(headers=headers)
+        self.assertEqual(r.headers.get('host'), 'example.com')
+        self.assertEqual(r.headers.get('Host'), 'example.com')
 
 if __name__ == '__main__':
     unittest.main()
