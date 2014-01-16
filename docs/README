@@ -11,4 +11,4 @@ Install pyopenssl dependencies, to avoid some build errors. (Optional)
 
 Then build: 
 
-    make html
+    cd docs && make html
