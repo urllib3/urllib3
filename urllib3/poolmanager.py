@@ -176,7 +176,7 @@ class ProxyManager(PoolManager):
     Behaves just like :class:`PoolManager`, but sends all requests through
     the defined proxy, using the CONNECT method for HTTPS URLs.
 
-    :param poxy_url:
+    :param proxy_url:
         The URL of the proxy to be used.
 
     :param proxy_headers:
