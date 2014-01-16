@@ -31,6 +31,7 @@ from .exceptions import (
 from .packages.ssl_match_hostname import CertificateError
 from .packages import six
 from .connection import (
+    port_by_scheme,
     DummyConnection,
     HTTPConnection, HTTPSConnection, VerifiedHTTPSConnection,
     HTTPException, BaseSSLError,
@@ -50,12 +51,6 @@ xrange = six.moves.xrange
 log = logging.getLogger(__name__)
 
 _Default = object()
-
-port_by_scheme = {
-    'http': 80,
-    'https': 443,
-}
-
 
 ## Pool objects
 
@@ -179,9 +174,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if not six.PY3:  # Python 2
             extra_params['strict'] = self.strict
 
-        return self.ConnectionCls(host=self.host, port=self.port,
+        conn = self.ConnectionCls(host=self.host, port=self.port,
                                   timeout=self.timeout.connect_timeout,
                                   **extra_params)
+        if self.proxy is not None:
+            # Enable Nagle's algorithm for proxies, to avoid packet
+            # fragmentation.
+            conn.tcp_nodelay = 0
+        return conn
 
     def _get_conn(self, timeout=None):
         """
@@ -652,6 +652,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
                                   timeout=self.timeout.connect_timeout,
                                   **extra_params)
+        if self.proxy is not None:
+            # Enable Nagle's algorithm for proxies, to avoid packet
+            # fragmentation.
+            conn.tcp_nodelay = 0
 
         return self._prepare_conn(conn)
 

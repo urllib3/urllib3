@@ -1,4 +1,5 @@
 import logging
+import socket
 import sys
 import unittest
 
@@ -114,6 +115,17 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # Pool-global timeout
         pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', url)
+
+    def test_nagle(self):
+        """ Test that connections have TCP_NODELAY turned on """
+        pool = HTTPConnectionPool(self.host, self.port)
+        conn = pool._get_conn()
+        pool._make_request(conn, 'GET', '/')
+        tcp_nodelay_setting = conn.sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
+        self.assertGreater(tcp_nodelay_setting, 0,
+                           ("Expected TCP_NODELAY to be set on the socket "
+                            "(with value greater than 0) but instead was %s" %
+                            tcp_nodelay_setting))
 
     def test_timeout(self):
         url = '/sleep?seconds=0.005'
