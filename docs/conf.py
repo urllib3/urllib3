@@ -11,7 +11,9 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+from datetime import date
+import os
+import sys
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -33,6 +35,7 @@ import urllib3
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
+    'sphinx.ext.intersphinx',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -49,7 +52,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'urllib3'
-copyright = u'2013, Andrey Petrov'
+copyright = u'{year}, Andrey Petrov'.format(year=date.today().year)
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -128,7 +131,7 @@ html_theme = 'nature'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+#html_static_path = ['_static']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
@@ -222,3 +225,5 @@ man_pages = [
     ('index', 'urllib3', u'urllib3 Documentation',
      [u'Andrey Petrov'], 1)
 ]
+
+intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None)}
