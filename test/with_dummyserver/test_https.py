@@ -72,8 +72,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.assertTrue("doesn't match" in str(e))
 
     def test_no_ssl(self):
+        OriginalConnectionCls = self._pool.ConnectionCls
         try:
-            OriginalConnectionCls = self._pool.ConnectionCls
             self._pool.ConnectionCls = None
 
             self.assertRaises(SSLError, self._pool._new_conn)
