@@ -226,4 +226,4 @@ man_pages = [
      [u'Andrey Petrov'], 1)
 ]
 
-intersphinx_mapping = {'python': ('http://docs.python.org/3', None)}
+intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None)}
