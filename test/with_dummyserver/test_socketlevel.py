@@ -8,7 +8,9 @@ from urllib3.exceptions import (
         ReadTimeoutError,
         SSLError,
 )
-from urllib3 import util
+from urllib3.util.ssl_ import HAS_SNI
+from urllib3.util.timeout import Timeout
+from urllib3.util.retry import Retry
 
 from dummyserver.testcase import SocketDummyServerTestCase
 from dummyserver.server import (
@@ -45,7 +47,7 @@ class TestCookies(SocketDummyServerTestCase):
 class TestSNI(SocketDummyServerTestCase):
 
     def test_hostname_in_first_request_packet(self):
-        if not util.HAS_SNI:
+        if not HAS_SNI:
             raise SkipTest('SNI-support not available')
 
         done_receiving = Event()
@@ -151,18 +153,18 @@ class TestSocketClosing(SocketDummyServerTestCase):
                       '\r\n'
                       '%s' % (len(body), body)).encode('utf-8'))
 
-            sock.close()  # Close the socket.
+            sock.close()
 
         # In situations where the main thread throws an exception, the server
         # thread can hang on an accept() call. This ensures everything times
-        # out within 3 seconds. This should be long enough for any socket
+        # out within 1 second. This should be long enough for any socket
         # operations in the test suite to complete
         default_timeout = socket.getdefaulttimeout()
         socket.setdefaulttimeout(1)
 
         try:
             self._start_server(socket_handler)
-            t = util.Timeout(connect=0.001, read=0.001)
+            t = Timeout(connect=0.001, read=0.001)
             pool = HTTPConnectionPool(self.host, self.port, timeout=t)
 
             response = pool.request('GET', '/', retries=1)
@@ -226,6 +228,48 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         response = pool.request('GET', '/', retries=0, preload_content=False)
         self.assertRaises(ConnectionError, response.read)
+
+    def test_retry_weird_http_version(self):
+        """ Retry class should handle httplib.BadStatusLine errors properly """
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            # First request.
+            # Pause before responding so the first request times out.
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            # send unknown http protocol
+            body = "bad http 0.5 response"
+            sock.send(('HTTP/0.5 200 OK\r\n'
+                      'Content-Type: text/plain\r\n'
+                      'Content-Length: %d\r\n'
+                      '\r\n'
+                      '%s' % (len(body), body)).encode('utf-8'))
+            sock.close()
+
+            # Second request.
+            sock = listener.accept()[0]
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            # Now respond immediately.
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                      'Content-Type: text/plain\r\n'
+                      'Content-Length: %d\r\n'
+                      '\r\n'
+                      'foo' % (len('foo'))).encode('utf-8'))
+
+            sock.close()  # Close the socket.
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port)
+        retry = Retry(read=1)
+        response = pool.request('GET', '/', retries=retry)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.data, b'foo')
 
 
 

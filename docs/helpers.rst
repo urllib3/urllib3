@@ -5,8 +5,26 @@ Useful methods for working with :mod:`httplib`, completely decoupled from
 code specific to **urllib3**.
 
 
-Utilities
----------
+Timeouts
+--------
+
+.. automodule:: urllib3.util.timeout
+   :members:
+
+Retries
+-------
+
+.. automodule:: urllib3.util.retry
+   :members:
+
+URL Helpers
+-----------
+
+.. automodule:: urllib3.util.url
+    :members:
+
+SSL Utilities
+-------------
 
 .. automodule:: urllib3.util.connection
    :members:

@@ -40,11 +40,11 @@ from .connection import (
 )
 from .request import RequestMethods
 from .response import HTTPResponse
-from .util import (
-    get_host,
-    is_connection_dropped,
-    Timeout,
-)
+
+from .util.connection import is_connection_dropped
+from .util.retry import Retry
+from .util.timeout import Timeout
+from .util.url import get_host
 
 
 xrange = six.moves.xrange
@@ -386,7 +386,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         return (scheme, host, port) == (self.scheme, self.host, self.port)
 
-    def urlopen(self, method, url, body=None, headers=None, retries=3,
+    def urlopen(self, method, url, body=None, headers=None, retries=_Default,
                 redirect=True, assert_same_host=True, timeout=_Default,
                 pool_timeout=None, release_conn=None, **response_kw):
         """
@@ -421,8 +421,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         :param retries:
             Number of retries to allow before raising a MaxRetryError exception.
+            Pass `None` to retry until you receive a response. Pass a
+            :class:`~urllib3.util.retry.Retry` object for fine grained control
+            over retries. Passing an integer number will retry connection errors
+            three times, but no other types of errors. Pass zero to never retry.
+
             If `False`, then retries are disabled and any exception is raised
-            immediately.
+            immediately. Also, instead of raising a MaxRetryError on redirects,
+            the redirect response will be returned.
+
+        :type retries: :class:`~urllib3.util.retry.Retry`, False, or an int
 
         :param redirect:
             If True, automatically handle redirects (status codes 301, 302,
@@ -461,15 +469,24 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if headers is None:
             headers = self.headers
 
-        if retries < 0 and retries is not False:
-            raise MaxRetryError(self, url)
+        if retries is _Default:
+            retries = Retry()
+        elif retries is False:
+            retries = Retry(redirects=0, raise_on_redirect=False)
+        elif not isinstance(retries, Retry):
+            retries = Retry(total=retries, read=retries, connect=retries,
+                            redirects=retries)
+
+        if retries.is_exhausted():
+            raise MaxRetryError(self, url, str(retries))
 
         if release_conn is None:
             release_conn = response_kw.get('preload_content', True)
 
         # Check host
         if assert_same_host and not self.is_same_host(url):
-            raise HostChangedError(self, url, retries - 1)
+            retries = retries.increment()
+            raise HostChangedError(self, url, retries)
 
         conn = None
 
@@ -520,31 +537,47 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             release_conn = True
             raise SSLError(e)
 
-        except (TimeoutError, HTTPException, SocketError) as e:
+        except TimeoutError as e:
+            # This is necessary so we can access e below
+            err = e
             if conn:
                 # Discard the connection for these exceptions. It will be
                 # be replaced during the next _get_conn() call.
                 conn.close()
                 conn = None
 
-            if not retries:
-                if isinstance(e, TimeoutError):
-                    # TimeoutError is exempt from MaxRetryError-wrapping.
-                    # FIXME: ... Not sure why. Add a reason here.
-                    raise
+            retries = retries.increment(error=e)
+            if retries.is_exhausted():
+                raise
+            retries.sleep()
 
+        except HTTPException as e:
+            # Connection broken, discard. It will be replaced next _get_conn().
+            conn = None
+            # This is necessary so we can access e below
+            err = e
+
+            retries = retries.increment(error=e)
+            if retries.is_exhausted():
+                raise MaxRetryError(self, url, e)
+            retries.sleep()
+
+        except SocketError as e:
+            # Connection broken, discard. It will be replaced next _get_conn().
+            conn = None
+            # This is necessary so we can access e below
+            err = e
+
+            retries = retries.increment(error=e)
+            if retries.is_exhausted():
                 # Wrap unexpected exceptions with the most appropriate
                 # module-level exception and re-raise.
-                if isinstance(e, SocketError) and self.proxy:
-                    raise ProxyError('Cannot connect to proxy.', e)
-
-                if retries is False:
-                    raise ConnectionError('Connection failed.', e)
-
-                raise MaxRetryError(self, url, e)
-
-            # Keep track of the error for the retry warning.
-            err = e
+                if isinstance(e, SocketError) and self.proxy is not None:
+                    raise ProxyError('Cannot connect to proxy. '
+                                     'Socket error: %s.' % e)
+                else:
+                    raise MaxRetryError(self, url, e)
+            retries.sleep()
 
         finally:
             if release_conn:
@@ -555,23 +588,39 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if not conn:
             # Try again
-            log.warning("Retrying (%d attempts remain) after connection "
-                        "broken by '%r': %s" % (retries, err, url))
-            return self.urlopen(method, url, body, headers, retries - 1,
+            log.warning("Retrying (%s retries) after connection "
+                     "broken by '%r': %s" % (retries, err, url))
+            return self.urlopen(method, url, body, headers, retries,
                                 redirect, assert_same_host,
                                 timeout=timeout, pool_timeout=pool_timeout,
                                 release_conn=release_conn, **response_kw)
 
         # Handle redirect?
         redirect_location = redirect and response.get_redirect_location()
-        if redirect_location and retries is not False:
+        if redirect_location:
             if response.status == 303:
                 method = 'GET'
             log.info("Redirecting %s -> %s" % (url, redirect_location))
-            return self.urlopen(method, redirect_location, body, headers,
-                                retries - 1, redirect, assert_same_host,
-                                timeout=timeout, pool_timeout=pool_timeout,
-                                release_conn=release_conn, **response_kw)
+            retries = retries.increment(response=response)
+            if retries.is_exhausted():
+                if retries.raise_on_redirect:
+                    raise MaxRetryError(self, url)
+                else:
+                    return response
+            else:
+                return self.urlopen(method, redirect_location, body, headers,
+                                    retries, redirect, assert_same_host,
+                                    timeout=timeout, pool_timeout=pool_timeout,
+                                    release_conn=release_conn, **response_kw)
+
+        # Check if we should retry the HTTP response.
+        retries = retries.increment(response=response)
+        if (not retries.is_exhausted() and
+            retries.retry_callable(method, response)):
+            retries.sleep()
+            return self.urlopen(method, url, body, headers, retries, redirect,
+                                assert_same_host, timeout, pool_timeout,
+                                release_conn, **response_kw)
 
         return response
 

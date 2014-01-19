@@ -1,19 +1,19 @@
+# The default socket timeout, used by httplib to indicate that no timeout was
+# specified by the user
 from socket import _GLOBAL_DEFAULT_TIMEOUT
 import time
 
 from ..exceptions import TimeoutStateError
 
+# A sentinel value to indicate that no timeout was specified by the user in
+# urllib3
+_Default = object()
 
 def current_time():
     """
-    Retrieve the current time, this function is mocked out in unit testing.
+    Retrieve the current time. This function is mocked out in unit testing.
     """
     return time.time()
-
-
-_Default = object()
-# The default timeout to use for socket connections. This is the attribute used
-# by httplib to define the default timeout
 
 
 class Timeout(object):

@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import collections
 import gzip
 import json
 import logging
@@ -41,11 +42,12 @@ class TestingApp(WSGIHandler):
     Simple app that performs various operations, useful for testing an HTTP
     library.
 
-    Given any path, it will attempt to convert it will load a corresponding
-    local method if it exists. Status code 200 indicates success, 400 indicates
-    failure. Each method has its own conditions for success/failure.
+    Given any path, it will attempt to load a corresponding local method if
+    it exists. Status code 200 indicates success, 400 indicates failure. Each
+    method has its own conditions for success/failure.
     """
     def __call__(self, environ, start_response):
+        """ Call the correct method in this class based on the incoming URI """
         req = HTTPRequest(environ)
 
         req.params = {}
@@ -172,6 +174,25 @@ class TestingApp(WSGIHandler):
     def headers(self, request):
         return Response(json.dumps(request.headers))
 
+    def successful_retry(self, request):
+        """ Handler which will return an error and then success
+
+        It's not currently very flexible as the number of retries is hard-coded.
+        """
+        test_name = request.headers.get('test-name', None)
+        if not test_name:
+            return Response("test-name header not set",
+                            status="400 Bad Request")
+
+        if not hasattr(self, 'retry_test_names'):
+            self.retry_test_names = collections.defaultdict(int)
+        self.retry_test_names[test_name] += 1
+
+        if self.retry_test_names[test_name] >= 2:
+            return Response("Retry successful!")
+        else:
+            return Response("need to keep retrying!", status="418 I'm A Teapot")
+
     def shutdown(self, request):
         sys.exit()
 
@@ -207,7 +228,6 @@ def _parse_header(line):
     params.pop(0) # get rid of the dummy again
     pdict = {}
     for name, value in params:
-        print(repr(value))
         value = email.utils.collapse_rfc2231_value(value)
         if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
             value = value[1:-1]

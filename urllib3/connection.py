@@ -35,11 +35,12 @@ from .exceptions import (
 )
 from .packages.ssl_match_hostname import match_hostname
 from .packages import six
-from .util import (
-    assert_fingerprint,
+
+from .util.ssl_ import (
     resolve_cert_reqs,
     resolve_ssl_version,
     ssl_wrap_socket,
+    assert_fingerprint,
 )
 
 

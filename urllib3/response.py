@@ -12,8 +12,9 @@ from socket import timeout as SocketTimeout
 from ._collections import HTTPHeaderDict
 from .exceptions import ConnectionError, DecodeError, ReadTimeoutError
 from .packages.six import string_types as basestring, binary_type
-from .util import is_fp_closed
 from .connection import HTTPException, BaseSSLError
+from .util.response import is_fp_closed
+
 
 
 class DeflateDecoder(object):

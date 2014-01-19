@@ -2,6 +2,7 @@ from collections import namedtuple
 
 from ..exceptions import LocationParseError
 
+
 url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
 
 

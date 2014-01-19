@@ -1,13 +1,31 @@
+# urllib3/util/response.py
+# Copyright 2008-2014 Andrey Petrov and contributors (see CONTRIBUTORS.txt)
+#
+# This module is part of urllib3 and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
+
 from base64 import b64encode
 
 from ..packages import six
 
 
-ACCEPT_ENCODING = 'gzip,deflate'
+def is_fp_closed(obj):
+    """
+    Checks whether a given file-like object is closed.
+
+    :param obj:
+        The file-like object to check.
+    """
+    if hasattr(obj, 'fp'):
+        # Object is a container for another file-like object that gets released
+        # on exhaustion (e.g. HTTPResponse)
+        return obj.fp is None
+
+    return obj.closed
 
 
 def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
-                 basic_auth=None, proxy_basic_auth=None, disable_cache=None):
+                 basic_auth=None, proxy_basic_auth=None):
     """
     Shortcuts for generating request headers.
 
@@ -29,11 +47,8 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
         auth header.
 
     :param proxy_basic_auth:
-        Colon-separated username:password string for
-        'proxy-authorization: basic ...' auth header.
-
-    :param disable_cache:
-        If ``True``, adds 'cache-control: no-cache' header.
+        Colon-separated username:password string for 'proxy-authorization: basic ...'
+        auth header.
 
     Example: ::
 
@@ -49,7 +64,7 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
         elif isinstance(accept_encoding, list):
             accept_encoding = ','.join(accept_encoding)
         else:
-            accept_encoding = ACCEPT_ENCODING
+            accept_encoding = 'gzip,deflate'
         headers['accept-encoding'] = accept_encoding
 
     if user_agent:
@@ -65,8 +80,5 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
     if proxy_basic_auth:
         headers['proxy-authorization'] = 'Basic ' + \
             b64encode(six.b(proxy_basic_auth)).decode('utf-8')
-
-    if disable_cache:
-        headers['cache-control'] = 'no-cache'
 
     return headers

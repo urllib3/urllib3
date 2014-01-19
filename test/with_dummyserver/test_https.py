@@ -13,14 +13,13 @@ from test import (
     onlyPy26OrOlder, requires_network, TARPIT_HOST
     )
 from urllib3 import HTTPSConnectionPool
-import urllib3.connection
 from urllib3.connection import (
     VerifiedHTTPSConnection,
     UnverifiedHTTPSConnection,
 )
 from urllib3.exceptions import (
     SSLError, MaxRetryError, ReadTimeoutError, ConnectTimeoutError)
-from urllib3.util import Timeout
+from urllib3.util.timeout import Timeout
 
 
 log = logging.getLogger('urllib3.connectionpool')

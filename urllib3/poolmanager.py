@@ -16,7 +16,7 @@ from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
 from .exceptions import LocationValueError
 from .request import RequestMethods
-from .util import parse_url
+from .util.url import parse_url
 
 
 __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
