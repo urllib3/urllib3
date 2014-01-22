@@ -35,6 +35,9 @@ dev (master)
   will send the entire HTTP request ~200 milliseconds faster; however, some of
   the resulting TCP packets will be smaller. (Issue #254)
 
+* Increased maximum number of SubjectAltNames in ``urllib3.contrib.pyopenssl``
+  from the default 64 to 1024 in a single certificate. (Issue #318)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
