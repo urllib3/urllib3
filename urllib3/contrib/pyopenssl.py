@@ -39,9 +39,10 @@ Module Variables
 '''
 
 from ndg.httpsclient.ssl_peer_verification import SUBJ_ALT_NAME_SUPPORT
-from ndg.httpsclient.subj_alt_name import SubjectAltName
+from ndg.httpsclient.subj_alt_name import SubjectAltName as BaseSubjectAltName
 import OpenSSL.SSL
 from pyasn1.codec.der import decoder as der_decoder
+from pyasn1.type import univ, constraint
 from socket import _fileobject
 import ssl
 import select
@@ -92,6 +93,17 @@ def extract_from_urllib3():
 
     connection.ssl_wrap_socket = orig_connection_ssl_wrap_socket
     util.HAS_SNI = orig_util_HAS_SNI
+
+
+### Note: This is a slightly bug-fixed version of same from ndg-httpsclient.
+class SubjectAltName(BaseSubjectAltName):
+    '''ASN.1 implementation for subjectAltNames support'''
+
+    # There is no limit to how many SAN certificates a certificate may have,
+    #   however this needs to have some limit so we'll set an arbitrarily high
+    #   limit.
+    sizeSpec = univ.SequenceOf.sizeSpec + \
+        constraint.ValueSizeConstraint(1, 1024)
 
 
 ### Note: This is a slightly bug-fixed version of same from ndg-httpsclient.
