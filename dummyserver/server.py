@@ -49,7 +49,7 @@ class SocketServerThread(threading.Thread):
         self.ready_event = ready_event
 
     def _start_server(self):
-        sock = socket.socket()
+        sock = socket.socket(socket.AF_INET6)
         if sys.platform != 'win32':
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind((self.host, 0))
