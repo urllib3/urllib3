@@ -10,7 +10,8 @@ from urllib3.exceptions import (
 from urllib3 import util
 
 from dummyserver.testcase import SocketDummyServerTestCase
-from dummyserver.server import DEFAULT_CERTS, DEFAULT_CA
+from dummyserver.server import (
+    DEFAULT_CERTS, DEFAULT_CA, get_unreachable_address)
 
 from nose.plugins.skip import SkipTest
 from threading import Event
@@ -110,13 +111,8 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
     def test_connection_refused(self):
         # Does the pool retry if there is no listener on the port?
-        # Get a free port on localhost, so a connection will be refused
-        s = socket.socket()
-        s.bind(('127.0.0.1', 0))
-        free_port = s.getsockname()[1]
-        s.close()
-
-        pool = HTTPConnectionPool(self.host, free_port)
+        host, port = get_unreachable_address()
+        pool = HTTPConnectionPool(host, port)
         self.assertRaises(MaxRetryError, pool.request, 'GET', '/', retries=0)
 
     def test_connection_timeout(self):

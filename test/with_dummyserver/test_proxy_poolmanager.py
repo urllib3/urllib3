@@ -3,7 +3,8 @@ import json
 import socket
 
 from dummyserver.testcase import HTTPDummyProxyTestCase
-from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD
+from dummyserver.server import (
+    DEFAULT_CA, DEFAULT_CA_BAD, get_unreachable_address)
 
 from urllib3.poolmanager import proxy_from_url, ProxyManager
 from urllib3.exceptions import MaxRetryError, SSLError, ProxyError
@@ -42,13 +43,8 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                           "to zero, instead was %s" % tcp_nodelay_setting))
 
     def test_proxy_conn_fail(self):
-        # Get a free port on localhost, so a connection will be refused
-        s = socket.socket()
-        s.bind(('127.0.0.1', 0))
-        free_port = s.getsockname()[1]
-        s.close()
-
-        http = proxy_from_url('http://127.0.0.1:%s/' % free_port)
+        host, port = get_unreachable_address()
+        http = proxy_from_url('http://%s:%s/' % (host, port))
         self.assertRaises(ProxyError, http.request, 'GET',
                           '%s/' % self.https_url)
         self.assertRaises(ProxyError, http.request, 'GET',
