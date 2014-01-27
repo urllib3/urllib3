@@ -1,3 +1,5 @@
+import errno
+import functools
 import logging
 import socket
 import sys
@@ -10,6 +12,7 @@ try:
 except:
     from urllib import urlencode
 
+from test import requires_network
 from urllib3 import (
     encode_multipart_formdata,
     HTTPConnectionPool,
@@ -27,7 +30,6 @@ from urllib3 import util
 from dummyserver.testcase import HTTPDummyServerTestCase
 
 from nose.tools import timed
-from nose.plugins.skip import SkipTest
 
 log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
@@ -165,6 +167,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # request timeout if it's a high value
         pool.request('GET', url, timeout=5)
 
+    @requires_network
     @timed(0.1)
     def test_connect_timeout(self):
         url = '/sleep'
@@ -200,6 +203,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         except ReadTimeoutError:
             self.fail("This request shouldn't trigger a read timeout.")
 
+    @requires_network
     @timed(2.0)
     def test_total_timeout(self):
         url = '/sleep?seconds=0.005'
