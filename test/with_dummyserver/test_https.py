@@ -1,7 +1,3 @@
-try: # Python 3
-    from http.client import HTTPSConnection
-except ImportError:
-    from httplib import HTTPSConnection
 import logging
 import ssl
 import sys
@@ -12,9 +8,9 @@ import mock
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
+from test import requires_network
 from urllib3 import HTTPSConnectionPool
 from urllib3.connection import (
-    HTTPSConnection,
     VerifiedHTTPSConnection,
     UnverifiedHTTPSConnection,
 )
@@ -188,6 +184,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         self.assertRaises(SSLError, https_pool.request, 'GET', '/')
 
+    @requires_network
     def test_https_timeout(self):
         timeout = Timeout(connect=0.001)
         https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
@@ -243,6 +240,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self._pool._make_request(conn, 'GET', '/')
 
 
+    @requires_network
     def test_enhanced_timeout(self):
         def new_pool(timeout, cert_reqs='CERT_REQUIRED'):
             https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
