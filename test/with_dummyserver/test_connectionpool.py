@@ -506,9 +506,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool.request('GET', '/', release_conn=False, preload_content=False)
         self.assertEqual(pool.pool.qsize(), MAXSIZE-1)
 
-    @SkipTest
     def test_dns_error(self):
-        # This fails on everything except Py27. Not sure why...
         pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
         self.assertRaises(MaxRetryError, pool.request, 'GET', '/test', retries=2)
 
