@@ -77,7 +77,7 @@ PoolManager
 The highest level is the :doc:`PoolManager(...) <managers>`.
 
 The :class:`~urllib3.poolmanagers.PoolManager` will take care of reusing
-connections for you whenever you request the same host. this should cover most
+connections for you whenever you request the same host. This should cover most
 scenarios without significant loss of efficiency, but you can always drop down
 to a lower level component for more granular control.
 
