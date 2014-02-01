@@ -10,7 +10,7 @@ try:
 except:
     from urllib import urlencode
 
-from test import requires_network
+from test import requires_network, onlyPY3
 from urllib3 import (
     encode_multipart_formdata,
     HTTPConnectionPool,
@@ -25,6 +25,7 @@ from urllib3.exceptions import (
 from urllib3.packages.six import u
 from urllib3 import util
 
+import tornado
 from dummyserver.testcase import HTTPDummyServerTestCase
 
 from nose.tools import timed
@@ -512,6 +513,13 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
         self.assertRaises(MaxRetryError, pool.request, 'GET', '/test', retries=2)
 
+    @onlyPY3
+    def test_httplib_headers_case_insensitive(self):
+        HEADERS = {'Content-Length': '0', 'Content-Type': 'text/plain',
+                    'Server': 'TornadoServer/%s' % tornado.version}
+        r = self.pool.request('GET', '/specific_method',
+                               fields={'method': 'GET'})
+        self.assertEqual(HEADERS, r.headers.get_all())
 
 if __name__ == '__main__':
     unittest.main()
