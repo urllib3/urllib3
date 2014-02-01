@@ -130,26 +130,19 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.d = HTTPHeaderDict(A='foo')
         self.d.append('a', 'bar')
 
-    def test_setitem_and_getitem(self):
+    def test_overwriting_with_setitem_replaces(self):
         d = HTTPHeaderDict()
 
         d['A'] = 'foo'
-        d['a'] = 'bar'
+        self.assertEqual(d['a'], 'foo')
 
-        self.assertEqual(d['a'], 'bar')
+        d['a'] = 'bar'
         self.assertEqual(d['A'], 'bar')
 
     def test_copy(self):
         h = self.d.copy()
         self.assertTrue(self.d is not h)
-        self.assertEqual(h.get_all(), {'A': 'foo, bar'})
-
-    def test_raw_header(self):
-        self.assertEqual(self.d.raw_header('a'), [('A', 'foo'), ('a', 'bar')])
-        self.assertEqual(self.d.raw_header('A'), [('A', 'foo'), ('a', 'bar')])
-
-    def test_get_all(self):
-        self.assertEqual(self.d.get_all(), {'A': 'foo, bar'})
+        self.assertEqual(self.d, h)
 
     def test_append(self):
         d = HTTPHeaderDict()
@@ -173,10 +166,6 @@ class TestHTTPHeaderDict(unittest.TestCase):
 
     def test_len(self):
         self.assertEqual(len(self.d), 1)
-
-    def test_iter(self):
-        i = list(iter(self.d))
-        self.assertEqual(i, ['A'])
 
     def test_repr(self):
         rep = "HTTPHeaderDict({'A': 'foo, bar'})"
