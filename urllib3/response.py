@@ -184,7 +184,10 @@ class HTTPResponse(io.IOBase):
                 flush_decoder = True
             else:
                 cache_content = False
-                data = self._fp.read(amt)
+                try:
+                    data = self._fp.read(amt)
+                except httplib.IncompleteRead as e:
+                    data = e.partial
                 if amt != 0 and not data:  # Platform-specific: Buggy versions of Python.
                     # Close the connection when no data is returned
                     #
