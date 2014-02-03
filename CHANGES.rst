@@ -38,6 +38,10 @@ dev (master)
 * Increased maximum number of SubjectAltNames in ``urllib3.contrib.pyopenssl``
   from the default 64 to 1024 in a single certificate. (Issue #318)
 
+* Headers are now passed and stored as a custom
+  ``urllib3.collections_.HTTPHeaderDict`` object rather than a plain ``dict``.
+  (Issue #329)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
