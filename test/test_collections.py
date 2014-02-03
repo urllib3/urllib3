@@ -1,6 +1,9 @@
 import unittest
 
-from urllib3._collections import RecentlyUsedContainer as Container
+from urllib3._collections import (
+    HTTPHeaderDict,
+    RecentlyUsedContainer as Container
+)
 from urllib3.packages import six
 xrange = six.moves.xrange
 
@@ -120,6 +123,53 @@ class TestLRUContainer(unittest.TestCase):
         d = Container()
 
         self.assertRaises(NotImplementedError, d.__iter__)
+
+
+class TestHTTPHeaderDict(unittest.TestCase):
+    def setUp(self):
+        self.d = HTTPHeaderDict(A='foo')
+        self.d.append('a', 'bar')
+
+    def test_overwriting_with_setitem_replaces(self):
+        d = HTTPHeaderDict()
+
+        d['A'] = 'foo'
+        self.assertEqual(d['a'], 'foo')
+
+        d['a'] = 'bar'
+        self.assertEqual(d['A'], 'bar')
+
+    def test_copy(self):
+        h = self.d.copy()
+        self.assertTrue(self.d is not h)
+        self.assertEqual(self.d, h)
+
+    def test_append(self):
+        d = HTTPHeaderDict()
+
+        d['A'] = 'foo'
+        d.append('a', 'bar')
+
+        self.assertEqual(d['a'], 'foo, bar')
+        self.assertEqual(d['A'], 'foo, bar')
+
+    def test_delitem(self):
+        del self.d['a']
+        self.assertFalse('a' in self.d)
+        self.assertFalse('A' in self.d)
+
+    def test_equal(self):
+        b = HTTPHeaderDict({'a': 'foo, bar'})
+        self.assertEqual(self.d, b)
+        c = [('a', 'foo, bar')]
+        self.assertNotEqual(self.d, c)
+
+    def test_len(self):
+        self.assertEqual(len(self.d), 1)
+
+    def test_repr(self):
+        rep = "HTTPHeaderDict({'A': 'foo, bar'})"
+        self.assertEqual(repr(self.d), rep)
 
 if __name__ == '__main__':
     unittest.main()

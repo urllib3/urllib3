@@ -4,7 +4,7 @@
 # This module is part of urllib3 and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from collections import MutableMapping
+from collections import Mapping, MutableMapping
 try:
     from threading import RLock
 except ImportError: # Platform-specific: No threads available
@@ -20,9 +20,10 @@ try: # Python 2.7+
     from collections import OrderedDict
 except ImportError:
     from .packages.ordered_dict import OrderedDict
+from .packages.six import itervalues
 
 
-__all__ = ['RecentlyUsedContainer']
+__all__ = ['RecentlyUsedContainer', 'HTTPHeaderDict']
 
 
 _Null = object()
@@ -101,3 +102,55 @@ class RecentlyUsedContainer(MutableMapping):
     def keys(self):
         with self.lock:
             return self._container.keys()
+
+
+class HTTPHeaderDict(MutableMapping):
+
+    def __init__(self, headers=None, **kwargs):
+        self._data = {}
+        if headers is None:
+            headers = {}
+        self.update(headers, **kwargs)
+
+    def raw_header(self, key):
+        return self._data[key.lower()]
+
+    def append(self, key, value):
+        self._data.setdefault(key.lower(), []).append((key, value))
+
+    def get_all(self):
+        return dict(self.items())
+
+    def copy(self):
+        h = HTTPHeaderDict()
+        for key in self:
+            for rawkey, value in self.raw_header(key):
+                h.append(rawkey, value)
+        return h
+
+    def __eq__(self, other):
+        if not isinstance(other, Mapping):
+            return False
+        other = HTTPHeaderDict(other)
+        return dict((k1, self[k1]) for k1 in self._data) == \
+                dict((k2, other[k2]) for k2 in other._data)
+
+    def __getitem__(self, key):
+        values = self._data[key.lower()]
+        return ', '.join(value[1] for value in values)
+
+    def __setitem__(self, key, value):
+        self._data[key.lower()] = [(key, value)]
+
+    def __delitem__(self, key):
+        del self._data[key.lower()]
+
+    def __len__(self):
+        return len(self._data)
+
+    def __iter__(self):
+        for headers in itervalues(self._data):
+            yield headers[0][0]
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.get_all())

@@ -5,7 +5,17 @@ import socket
 from nose.plugins.skip import SkipTest
 
 from urllib3.exceptions import MaxRetryError
+from urllib3.packages import six
 
+def onlyPY3(test):
+    """Skips this test unless you are on Python3.x"""
+
+    @functools.wraps(test)
+    def wrapper(*args, **kwargs):
+        msg = "{name} requires Python3.x to run".format(name=test.__name__)
+        if not six.PY3:
+            raise SkipTest(msg)
+        return test(*args, **kwargs)
 
 def requires_network(test):
     """Helps you skip tests that require the network"""
