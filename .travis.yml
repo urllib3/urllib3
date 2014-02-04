@@ -6,6 +6,6 @@ python:
   - 3.3
 script: nosetests
 install:
-  - pip install -r test-requirements.txt --use-mirrors
+  - pip install -r test-requirements.txt
 notifications:
   email: false
