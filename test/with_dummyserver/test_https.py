@@ -4,12 +4,15 @@ import sys
 import unittest
 
 import mock
+from nose.plugins.skip import SkipTest
 
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from test import requires_network
+
 from urllib3 import HTTPSConnectionPool
+import urllib3.connection
 from urllib3.connection import (
     VerifiedHTTPSConnection,
     UnverifiedHTTPSConnection,
@@ -114,6 +117,32 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         https_pool.ca_certs = DEFAULT_CA_BAD
         https_pool.request('GET', '/')
+
+    @requires_network
+    def test_ssl_verified_with_platform_ca_certs(self):
+        """
+        This test check that whe rely on platform CA file to validate
+        authenticity of SSL certificate. Since this file is used by many
+        components of the OS, such as curl, apt-get, etc., we decided to not
+        touch it, in order to not compromise the security of the OS
+        running the test suite (typically urllib3 developer's OS).
+
+        This test assume that travis-ci.org use a certificate signed
+        by a well known Certificate Authority.
+        """
+        try:
+            import urllib3.contrib.pyopenssl
+        except ImportError:
+            raise SkipTest('This test needs pyopenssl support')
+        if (urllib3.connection.ssl_wrap_socket is
+                urllib3.contrib.pyopenssl.orig_connection_ssl_wrap_socket):
+            # Not patched
+            raise SkipTest('This test needs pyopenssl support')
+
+        https_pool = HTTPSConnectionPool('travis-ci.org', 443,
+                                         cert_reqs=ssl.CERT_REQUIRED)
+
+        https_pool.request('HEAD', '/')
 
     def test_verified_without_ca_certs(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
