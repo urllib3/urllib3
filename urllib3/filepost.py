@@ -62,7 +62,8 @@ def iter_fields(fields):
     return ((k, v) for k, v in fields)
 
 
-def encode_multipart_formdata(fields, boundary=None):
+def encode_multipart_formdata(fields, boundary=None, form_data_encoding=None,
+                              field_encoding_style=None):
     """
     Encode a dictionary of ``fields`` using the multipart/form-data MIME format.
 
@@ -72,22 +73,45 @@ def encode_multipart_formdata(fields, boundary=None):
     :param boundary:
         If not specified, then a random boundary will be generated using
         :func:`mimetools.choose_boundary`.
+
+    :param form_data_encoding:
+        Encoding used to format the request body, i.e. the content of
+        text fields for which unicode strings have been provided,
+        and the content of header fields for file names and field names.
+        The correct choice might depend on some HTML form for which the
+        current request is an answer.
+
+    :param field_encoding_style: Method of header field generation.
+        Possible values are ``HTML5`` and ``RFC2231``, the former being
+        the default. Both standards give conflicting instructions on
+        how to encode non-ASCII file names. Depending on the server
+        implementation, one choice might work while the other might not.
     """
     body = BytesIO()
     if boundary is None:
         boundary = choose_boundary()
 
+    if form_data_encoding is None:
+        form_data_encoding = 'utf-8'
+    factory = codecs.lookup(form_data_encoding)[3]
+    # HTML 5 draft requires use of xmlcharrefreplace:
+    # http://www.w3.org/TR/html51/forms.html#multipart-form-data
+    writer = factory(body, errors='xmlcharrefreplace')
+
     for field in iter_field_objects(fields):
         body.write(b('--%s\r\n' % (boundary)))
 
-        writer(body).write(field.render_headers())
+        writer.write(field.render_headers(
+            field_encoding_style=field_encoding_style))
+        writer.reset() # flush
         data = field.data
 
         if isinstance(data, int):
             data = str(data)  # Backwards compatibility
 
         if isinstance(data, six.text_type):
-            writer(body).write(data)
+            writer.write(data)
+            writer.reset() # flush
         else:
             body.write(data)
 

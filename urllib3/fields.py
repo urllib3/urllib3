@@ -24,7 +24,25 @@ def guess_content_type(filename, default='application/octet-stream'):
     return default
 
 
-def format_header_param(name, value):
+def format_header_param_html5(name, value):
+    """
+    Helper function to format and quote a single header parameter.
+
+    Particularly useful for header parameters which might contain
+    non-ASCII values, like file names. This follows the HTML 5 draft
+    (version 20130528) which explicitely forbids the use of RFC2231.
+
+    :param name:
+        The name of the parameter, a string expected to be ASCII only.
+    :param value:
+        The value of the parameter, provided as a unicode string.
+    """
+    value = value.replace('\\', '\\\\').replace('"', '\\"')
+    value = value.replace('\r', ' ').replace('\n', ' ')
+    return '%s="%s"' % (name, value)
+
+
+def format_header_param_rfc2231(name, value):
     """
     Helper function to format and quote a single header parameter.
 
@@ -52,6 +70,9 @@ def format_header_param(name, value):
     return value
 
 
+format_header_param = format_header_param_html5 # Backwards compatibility
+
+
 class RequestField(object):
     """
     A data container for request body parameters.
@@ -76,10 +97,12 @@ class RequestField(object):
     @classmethod
     def from_tuples(cls, fieldname, value):
         """
-        A :class:`~urllib3.fields.RequestField` factory from old-style tuple parameters.
+        A :class:`~urllib3.fields.RequestField` factory
+        from old-style tuple parameters.
 
-        Supports constructing :class:`~urllib3.fields.RequestField` from parameter
-        of key/value strings AND key/filetuple. A filetuple is a (filename, data, MIME type)
+        Supports constructing :class:`~urllib3.fields.RequestField`
+        from parameter of key/value strings AND key/filetuple.
+        A filetuple is a (filename, data, MIME type)
         tuple where the MIME type is optional. For example: ::
 
             'foo': 'bar',
@@ -95,7 +118,7 @@ class RequestField(object):
                 filename, data, content_type = value
             else:
                 filename, data = value
-                content_type = guess_content_type(filename)
+                content_type = None
         else:
             filename = None
             content_type = None
@@ -115,7 +138,12 @@ class RequestField(object):
         :param value:
             The value of the parameter, provided as a unicode string.
         """
-        return format_header_param(name, value)
+        if self.style == 'HTML5':
+            return format_header_param_html5(name, value)
+        elif self.style == 'RFC2231':
+            return format_header_param_rfc2231(name, value)
+        else:
+            raise NotImplementedError('Configured encoding style not supported')
 
     def _render_parts(self, header_parts):
         """
@@ -125,8 +153,8 @@ class RequestField(object):
         'Content-Disposition' fields.
 
         :param header_parts:
-            A sequence of (k, v) typles or a :class:`dict` of (k, v) to format as
-            `k1="v1"; k2="v2"; ...`.
+            A sequence of (k, v) typles or a :class:`dict` of (k, v)
+            to format as `k1="v1"; k2="v2"; ...`.
         """
         parts = []
         iterable = header_parts
@@ -139,10 +167,34 @@ class RequestField(object):
 
         return '; '.join(parts)
 
-    def render_headers(self):
+    def is_file(self):
+        """
+        Determine whether this field is a file or a non-file form field.
+        """
+        return self._filename or self.headers.get('Content-Type')
+
+    def _fixup_headers(self):
+        """
+        Adjust headers depending on configuration of the request object.
+        """
+        cd = self.headers.get('Content-Disposition', 'form-data')
+        self.headers['Content-Disposition'] = (
+            cd + '; ' + self._render_parts(
+                (('name', self._name),
+                 ('filename', self._filename))))
+        ct = self.headers.get('Content-Type')
+        if self.is_file():
+            if not ct:
+                ct = guess_content_type(self._filename)
+                self.headers['Content-Type'] = ct
+
+    def render_headers(self, field_encoding_style=None):
         """
         Renders the headers for this request field.
         """
+        self.style = field_encoding_style or 'HTML5'
+        self._fixup_headers()
+
         lines = []
 
         sort_keys = ['Content-Disposition', 'Content-Type', 'Content-Location']
@@ -158,7 +210,10 @@ class RequestField(object):
         lines.append('\r\n')
         return '\r\n'.join(lines)
 
-    def make_multipart(self, content_disposition=None, content_type=None, content_location=None):
+    def make_multipart(self,
+                       content_disposition=None,
+                       content_type=None,
+                       content_location=None):
         """
         Makes this request field into a multipart request field.
 
@@ -172,6 +227,7 @@ class RequestField(object):
 
         """
         self.headers['Content-Disposition'] = content_disposition or 'form-data'
-        self.headers['Content-Disposition'] += '; '.join(['', self._render_parts((('name', self._name), ('filename', self._filename)))])
+        # Adding of Content-Disposition parameters deferred
+        # till we know our request
         self.headers['Content-Type'] = content_type
         self.headers['Content-Location'] = content_location

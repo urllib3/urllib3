@@ -120,14 +120,39 @@ class TestMultipartEncoding(unittest.TestCase):
             'multipart/form-data; boundary=' + str(BOUNDARY))
 
     def test_request_fields(self):
-      fields = [RequestField('k', b'v', filename='somefile.txt', headers={'Content-Type': 'image/jpeg'})]
+        fields = [RequestField('k', b'v', filename='somefile.txt', headers={'Content-Type': 'image/jpeg'})]
 
-      encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
 
-      self.assertEquals(encoded,
-          b'--' + b(BOUNDARY) + b'\r\n'
-          b'Content-Type: image/jpeg\r\n'
-          b'\r\n'
-          b'v\r\n'
-          b'--' + b(BOUNDARY) + b'--\r\n'
-          )
+        self.assertEquals(encoded,
+            b'--' + b(BOUNDARY) + b'\r\n'
+            b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
+            b'Content-Type: image/jpeg\r\n'
+            b'\r\n'
+            b'v\r\n'
+            b'--' + b(BOUNDARY) + b'--\r\n'
+            )
+
+    def test_control_encoding(self):
+        fields = [(u('n\u00e4me\u011b'), u('va\u0142u\u00ea'))]
+        encoded, content_type = encode_multipart_formdata(
+            fields, boundary=BOUNDARY, form_data_encoding = 'iso-8859-1')
+        self.assertEquals(encoded,
+            b'--' + b(BOUNDARY) + b'\r\n'
+            b'Content-Disposition: form-data; name="n\xe4me&#283;"\r\n'
+            b'\r\n'
+            b'va&#322;u\xea\r\n'
+            b'--' + b(BOUNDARY) + b'--\r\n'
+            )
+
+    def test_control_style(self):
+        fields = [(u('n\u00e4me\u011b'), u('va\u0142u\u00ea'))]
+        encoded, content_type = encode_multipart_formdata(
+            fields, boundary=BOUNDARY, field_encoding_style = 'RFC2231')
+        self.assertEquals(encoded,
+            b'--' + b(BOUNDARY) + b'\r\n'
+            b"Content-Disposition: form-data; name*=utf-8''n%C3%A4me%C4%9B\r\n"
+            b'\r\n'
+            b'va\xc5\x82u\xc3\xaa\r\n'
+            b'--' + b(BOUNDARY) + b'--\r\n'
+            )
