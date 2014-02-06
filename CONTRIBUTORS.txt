@@ -104,5 +104,8 @@ In chronological order:
 * Roman Bogorodskiy <roman.bogorodskiy@ericsson.com>
   * Account retries on proxy errors
 
+* Nicolas Delaby <nicolas.delaby@ezeep.com>
+  * Use the platform-specific CA certificate locations
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

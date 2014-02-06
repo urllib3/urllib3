@@ -375,6 +375,8 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
             ctx.load_verify_locations(ca_certs, None)
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError('bad ca_certs: %r' % ca_certs, e)
+    else:
+        ctx.set_default_verify_paths()
 
     # Disable TLS compression to migitate CRIME attack (issue #309)
     OP_NO_COMPRESSION = 0x20000
