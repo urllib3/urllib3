@@ -42,6 +42,9 @@ dev (master)
   ``urllib3.collections_.HTTPHeaderDict`` object rather than a plain ``dict``.
   (Issue #329)
 
+* ``urllib3.contrib.pyopenssl`` now uses the operating system's default CA
+  certificates on inject. (Issue #332)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
