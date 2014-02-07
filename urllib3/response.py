@@ -253,10 +253,9 @@ class HTTPResponse(io.IOBase):
         with ``original_response=r``.
         """
 
-        _headers = HTTPHeaderDict()
+        headers = HTTPHeaderDict()
         for k, v in r.getheaders():
-            _headers.append(k, v)
-        headers = _headers.get_all()
+            headers.add(k, v)
 
         # HTTPResponse objects in Python 3 don't have a .strict attribute
         strict = getattr(r, 'strict', 0)

@@ -8,3 +8,6 @@ components in a decoupled and application-agnostic design.
 
     .. autoclass:: RecentlyUsedContainer
        :members:
+
+    .. autoclass:: HTTPHeaderDict
+       :members:
