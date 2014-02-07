@@ -127,7 +127,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         touch it, in order to not compromise the security of the OS
         running the test suite (typically urllib3 developer's OS).
 
-        This test assume that travis-ci.org use a certificate signed
+        This test assume that httpbin.org use a certificate signed
         by a well known Certificate Authority.
         """
         try:
@@ -139,7 +139,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             # Not patched
             raise SkipTest('This test needs pyopenssl support')
 
-        https_pool = HTTPSConnectionPool('travis-ci.org', 443,
+        https_pool = HTTPSConnectionPool('httpbin.org', 443,
                                          cert_reqs=ssl.CERT_REQUIRED)
 
         https_pool.request('HEAD', '/')
