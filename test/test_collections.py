@@ -128,7 +128,7 @@ class TestLRUContainer(unittest.TestCase):
 class TestHTTPHeaderDict(unittest.TestCase):
     def setUp(self):
         self.d = HTTPHeaderDict(A='foo')
-        self.d.append('a', 'bar')
+        self.d.add('a', 'bar')
 
     def test_overwriting_with_setitem_replaces(self):
         d = HTTPHeaderDict()
@@ -144,14 +144,19 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertTrue(self.d is not h)
         self.assertEqual(self.d, h)
 
-    def test_append(self):
+    def test_add(self):
         d = HTTPHeaderDict()
 
         d['A'] = 'foo'
-        d.append('a', 'bar')
+        d.add('a', 'bar')
 
         self.assertEqual(d['a'], 'foo, bar')
         self.assertEqual(d['A'], 'foo, bar')
+
+    def test_getlist(self):
+        self.assertEqual(self.d.getlist('a'), ['foo', 'bar'])
+        self.assertEqual(self.d.getlist('A'), ['foo', 'bar'])
+        self.assertEqual(self.d.getlist('b'), [])
 
     def test_delitem(self):
         del self.d['a']
