@@ -40,7 +40,9 @@ dev (master)
 
 * Headers are now passed and stored as a custom
   ``urllib3.collections_.HTTPHeaderDict`` object rather than a plain ``dict``.
-  (Issue #329, #333). Headers no longer lose their case on Python3 (Issue #236)
+  (Issue #329, #333)
+
+* Headers no longer lose their case on Python 3. (Issue #236)
 
 * ``urllib3.contrib.pyopenssl`` now uses the operating system's default CA
   certificates on inject. (Issue #332)
