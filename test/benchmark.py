@@ -46,10 +46,10 @@ def urllib_get(url_list):
 
 def pool_get(url_list):
     assert url_list
-    pool = urllib3.connection_from_url(url_list[0])
+    pool = urllib3.PoolManager()
     for url in url_list:
         now = time.time()
-        r = pool.get_url(url)
+        r = pool.request('GET', url, assert_same_host=False)
         elapsed = time.time() - now
         print("Got in %0.3fs: %s" % (elapsed, url))
 
