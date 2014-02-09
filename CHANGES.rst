@@ -47,6 +47,9 @@ dev (master)
 * ``urllib3.contrib.pyopenssl`` now uses the operating system's default CA
   certificates on inject. (Issue #332)
 
+* Allow a minimum of functionality for Python 3 compiled without ``ssl``.
+  (Issue #320)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

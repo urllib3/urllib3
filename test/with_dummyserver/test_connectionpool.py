@@ -515,11 +515,11 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     @onlyPY3
     def test_httplib_headers_case_insensitive(self):
-        HEADERS = {'Content-Length': '0', 'Content-Type': 'text/plain',
+        HEADERS = {'Content-Length': '0', 'Content-type': 'text/plain',
                     'Server': 'TornadoServer/%s' % tornado.version}
         r = self.pool.request('GET', '/specific_method',
                                fields={'method': 'GET'})
-        self.assertEqual(HEADERS, r.headers.get_all())
+        self.assertEqual(HEADERS, dict(r.headers.items())) # to preserve case sensitivity
 
 if __name__ == '__main__':
     unittest.main()
