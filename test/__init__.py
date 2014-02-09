@@ -16,6 +16,7 @@ def onlyPY3(test):
         if not six.PY3:
             raise SkipTest(msg)
         return test(*args, **kwargs)
+    return wrapper
 
 def requires_network(test):
     """Helps you skip tests that require the network"""
