@@ -42,7 +42,7 @@ from ndg.httpsclient.subj_alt_name import SubjectAltName as BaseSubjectAltName
 import OpenSSL.SSL
 from pyasn1.codec.der import decoder as der_decoder
 from pyasn1.type import univ, constraint
-from socket import _fileobject
+from socket import _fileobject, timeout
 import ssl
 import select
 from cStringIO import StringIO
@@ -148,6 +148,13 @@ def get_subj_alt_name(peer_cert):
 
 class fileobject(_fileobject):
 
+    def _wait_for_sock(self):
+        rd, wd, ed = select.select([self._sock], [], [],
+                                   self._sock.gettimeout())
+        if not rd:
+            raise timeout()
+
+
     def read(self, size=-1):
         # Use max, disallow tiny reads in a loop as they are very inefficient.
         # We never leave read() with any leftover data from a new recv() call
@@ -165,6 +172,7 @@ class fileobject(_fileobject):
                 try:
                     data = self._sock.recv(rbufsize)
                 except OpenSSL.SSL.WantReadError:
+                    self._wait_for_sock()
                     continue
                 if not data:
                     break
@@ -192,6 +200,7 @@ class fileobject(_fileobject):
                 try:
                     data = self._sock.recv(left)
                 except OpenSSL.SSL.WantReadError:
+                    self._wait_for_sock()
                     continue
                 if not data:
                     break
@@ -243,6 +252,7 @@ class fileobject(_fileobject):
                                 break
                             buffers.append(data)
                     except OpenSSL.SSL.WantReadError:
+                        self._wait_for_sock()
                         continue
                     break
                 return "".join(buffers)
@@ -253,6 +263,7 @@ class fileobject(_fileobject):
                 try:
                     data = self._sock.recv(self._rbufsize)
                 except OpenSSL.SSL.WantReadError:
+                    self._wait_for_sock()
                     continue
                 if not data:
                     break
@@ -280,7 +291,8 @@ class fileobject(_fileobject):
                 try:
                     data = self._sock.recv(self._rbufsize)
                 except OpenSSL.SSL.WantReadError:
-                        continue
+                    self._wait_for_sock()
+                    continue
                 if not data:
                     break
                 left = size - buf_len
