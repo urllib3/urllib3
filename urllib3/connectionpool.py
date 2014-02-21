@@ -170,13 +170,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         log.info("Starting new HTTP connection (%d): %s" %
                  (self.num_connections, self.host))
 
-        extra_params = {}
-        if not six.PY3:  # Python 2
-            extra_params['strict'] = self.strict
-
         conn = self.ConnectionCls(host=self.host, port=self.port,
                                   timeout=self.timeout.connect_timeout,
-                                  **extra_params)
+                                  strict=self.strict)
         if self.proxy is not None:
             # Enable Nagle's algorithm for proxies, to avoid packet
             # fragmentation.
