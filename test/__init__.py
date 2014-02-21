@@ -7,6 +7,7 @@ from nose.plugins.skip import SkipTest
 from urllib3.exceptions import MaxRetryError
 from urllib3.packages import six
 
+
 def onlyPY3(test):
     """Skips this test unless you are on Python3.x"""
 
