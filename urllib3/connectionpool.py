@@ -234,8 +234,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             pass
         except Full:
             # This should never happen if self.block == True
-            log.warning("HttpConnectionPool is full, discarding connection: %s"
-                        % self.host)
+            log.warn("HttpConnectionPool is full, discarding connection: %s" %
+                     self.host)
 
         # Connection never got put back into the pool, close it.
         if conn:
