@@ -170,13 +170,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         log.info("Starting new HTTP connection (%d): %s" %
                  (self.num_connections, self.host))
 
-        extra_params = {}
-        if not six.PY3:  # Python 2
-            extra_params['strict'] = self.strict
-
         conn = self.ConnectionCls(host=self.host, port=self.port,
                                   timeout=self.timeout.connect_timeout,
-                                  **extra_params)
+                                  strict=self.strict)
         if self.proxy is not None:
             # Enable Nagle's algorithm for proxies, to avoid packet
             # fragmentation.
@@ -238,8 +234,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             pass
         except Full:
             # This should never happen if self.block == True
-            log.warning("HttpConnectionPool is full, discarding connection: %s"
-                        % self.host)
+            log.warning(
+                "Connection pool is full, discarding connection: %s" %
+                self.host)
 
         # Connection never got put back into the pool, close it.
         if conn:
@@ -538,8 +535,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if not conn:
             # Try again
-            log.warn("Retrying (%d attempts remain) after connection "
-                     "broken by '%r': %s" % (retries, err, url))
+            log.warning("Retrying (%d attempts remain) after connection "
+                        "broken by '%r': %s" % (retries, err, url))
             return self.urlopen(method, url, body, headers, retries - 1,
                                 redirect, assert_same_host,
                                 timeout=timeout, pool_timeout=pool_timeout,

@@ -64,7 +64,7 @@ class TestUtil(unittest.TestCase):
         }
         for url, expected_host in url_host_map.items():
             returned_host = get_host(url)
-            self.assertEquals(returned_host, expected_host)
+            self.assertEqual(returned_host, expected_host)
 
     def test_invalid_host(self):
         # TODO: Add more tests
@@ -110,7 +110,7 @@ class TestUtil(unittest.TestCase):
         }
         for url, expected_url in url_host_map.items():
             returned_url = parse_url(url)
-            self.assertEquals(returned_url, expected_url)
+            self.assertEqual(returned_url, expected_url)
 
     def test_parse_url_invalid_IPv6(self):
         self.assertRaises(ValueError, parse_url, '[::1')
@@ -129,7 +129,7 @@ class TestUtil(unittest.TestCase):
         }
         for url, expected_request_uri in url_host_map.items():
             returned_url = parse_url(url)
-            self.assertEquals(returned_url.request_uri, expected_request_uri)
+            self.assertEqual(returned_url.request_uri, expected_request_uri)
 
     def test_netloc(self):
         url_netloc_map = {
@@ -140,7 +140,7 @@ class TestUtil(unittest.TestCase):
         }
 
         for url, expected_netloc in url_netloc_map.items():
-            self.assertEquals(parse_url(url).netloc, expected_netloc)
+            self.assertEqual(parse_url(url).netloc, expected_netloc)
 
     def test_make_headers(self):
         self.assertEqual(
