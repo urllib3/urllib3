@@ -234,8 +234,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             pass
         except Full:
             # This should never happen if self.block == True
-            log.warn("HttpConnectionPool is full, discarding connection: %s" %
-                     self.host)
+            log.warning(
+                "Connection pool is full, discarding connection: %s" %
+                self.host)
 
         # Connection never got put back into the pool, close it.
         if conn:
@@ -534,8 +535,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if not conn:
             # Try again
-            log.warn("Retrying (%d attempts remain) after connection "
-                     "broken by '%r': %s" % (retries, err, url))
+            log.warning("Retrying (%d attempts remain) after connection "
+                        "broken by '%r': %s" % (retries, err, url))
             return self.urlopen(method, url, body, headers, retries - 1,
                                 redirect, assert_same_host,
                                 timeout=timeout, pool_timeout=pool_timeout,

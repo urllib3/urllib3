@@ -9,4 +9,4 @@ install:
   - pip install -r test-requirements.txt
 notifications:
   email: false
-env: PYTHONWARNINGS=always
+env: PYTHONWARNINGS=always::DeprecationWarning
