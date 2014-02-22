@@ -124,7 +124,7 @@ class TestMultipartEncoding(unittest.TestCase):
 
       encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
 
-      self.assertEquals(encoded,
+      self.assertEqual(encoded,
           b'--' + b(BOUNDARY) + b'\r\n'
           b'Content-Type: image/jpeg\r\n'
           b'\r\n'
