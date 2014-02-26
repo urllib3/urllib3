@@ -498,15 +498,21 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             raise EmptyPoolError(self, "No pool connections are available.")
 
         except BaseSSLError as e:
+            # Release connection unconditionally because there is no way to close it externally in case of exception
+            release_conn = True
             raise SSLError(e)
 
         except CertificateError as e:
+            # Release connection unconditionally because there is no way to close it externally in case of exception
+            release_conn = True
             # Name mismatch
             raise SSLError(e)
 
         except TimeoutError as e:
             # Connection broken, discard.
-            conn = None
+            if conn:
+                conn.close()    # Try to close it if still valid
+                conn = None
             # Save the error off for retry logic.
             err = e
 
@@ -515,7 +521,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         except (HTTPException, SocketError) as e:
             # Connection broken, discard. It will be replaced next _get_conn().
-            conn = None
+            if conn:
+                conn.close()    # Try to close it if still valid
+                conn = None
             # This is necessary so we can access e below
             err = e
 
