@@ -117,6 +117,19 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', url)
 
+    def test_conn_closed(self):
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
+        conn = pool._get_conn()
+        pool._put_conn(conn)
+        try:
+            url = '/sleep?seconds=0.005'
+            pool.urlopen('GET', url)
+            self.fail("The request should fail with a timeout error.")
+        except ReadTimeoutError:
+            self.assertRaises(socket.error, conn.sock.recv, 1024)
+        finally:
+            pool._put_conn(conn)
+
     def test_nagle(self):
         """ Test that connections have TCP_NODELAY turned on """
         pool = HTTPConnectionPool(self.host, self.port)
