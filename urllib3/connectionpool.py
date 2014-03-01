@@ -538,10 +538,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 # fresh connection during _get_conn.
                 self._put_conn(conn)
 
-        if e and retries is False:
-            # Retries disabled, raise any exception.
-            raise e
-
         if not conn:
             # Try again
             log.warning("Retrying (%d attempts remain) after connection "
