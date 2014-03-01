@@ -19,6 +19,7 @@ except ImportError:
 
 from .exceptions import (
     ClosedPoolError,
+    ConnectionError,
     ConnectTimeoutError,
     EmptyPoolError,
     HostChangedError,
@@ -411,10 +412,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         :param retries:
             Number of retries to allow before raising a MaxRetryError exception.
+            If `False`, then retries are disabled and any exception is raised
+            immediately.
 
         :param redirect:
             If True, automatically handle redirects (status codes 301, 302,
-            303, 307, 308). Each redirect counts as a retry.
+            303, 307, 308). Each redirect counts as a retry. Disabling retries
+            will disable redirect, too.
 
         :param assert_same_host:
             If ``True``, will make sure that the host of the pool requests is
@@ -448,7 +452,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if headers is None:
             headers = self.headers
 
-        if retries < 0:
+        if retries < 0 and retries is not False:
             raise MaxRetryError(self, url)
 
         if release_conn is None:
@@ -466,6 +470,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if self.scheme == 'http':
             headers = headers.copy()
             headers.update(self.proxy_headers)
+
+        # Keep track of exceptions raised during request
+        e = None
 
         try:
             # Request a connection from the queue
@@ -494,57 +501,51 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             #     ``response.read()``)
 
         except Empty:
-            # Timed out by queue
+            # Timed out by queue.
             raise EmptyPoolError(self, "No pool connections are available.")
 
-        except BaseSSLError as e:
-            # Release connection unconditionally because there is no way to close it externally in case of exception
+        except (BaseSSLError, CertificateError) as e:
+            # Release connection unconditionally because there is no way to
+            # close it externally in case of exception.
             release_conn = True
-            raise SSLError(e)
-
-        except CertificateError as e:
-            # Release connection unconditionally because there is no way to close it externally in case of exception
-            release_conn = True
-            # Name mismatch
             raise SSLError(e)
 
         except TimeoutError as e:
-            # Connection broken, discard.
-            if conn:
-                conn.close()    # Try to close it if still valid
-                conn = None
-            # Save the error off for retry logic.
-            err = e
-
             if retries == 0:
                 raise
 
         except (HTTPException, SocketError) as e:
-            # Connection broken, discard. It will be replaced next _get_conn().
-            if conn:
-                conn.close()    # Try to close it if still valid
-                conn = None
-            # This is necessary so we can access e below
-            err = e
-
-            if retries == 0:
-                if isinstance(e, SocketError) and self.proxy is not None:
-                    raise ProxyError('Cannot connect to proxy. '
-                                     'Socket error: %s.' % e)
+            # Most unexpected exceptions fall under these. We wrap them with the
+            # most appropriate module-level exception.
+            if not retries:
+                if isinstance(e, SocketError) and self.proxy:
+                    raise ProxyError('Cannot connect to proxy.', e)
+                elif retries is False:
+                    raise ConnectionError('Connection failed.', e)
                 else:
                     raise MaxRetryError(self, url, e)
 
         finally:
+            if conn and isinstance(e, (HTTPException, SocketError, TimeoutError)):
+                # Discard the connection for these exceptions. It will be
+                # be replaced during the next _get_conn() call.
+                conn.close()
+                conn = None
+
             if release_conn:
                 # Put the connection back to be reused. If the connection is
                 # expired then it will be None, which will get replaced with a
                 # fresh connection during _get_conn.
                 self._put_conn(conn)
 
+        if e and retries is False:
+            # Retries disabled, raise any exception.
+            raise e
+
         if not conn:
             # Try again
             log.warning("Retrying (%d attempts remain) after connection "
-                        "broken by '%r': %s" % (retries, err, url))
+                        "broken by '%r': %s" % (retries, e, url))
             return self.urlopen(method, url, body, headers, retries - 1,
                                 redirect, assert_same_host,
                                 timeout=timeout, pool_timeout=pool_timeout,
@@ -552,7 +553,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Handle redirect?
         redirect_location = redirect and response.get_redirect_location()
-        if redirect_location:
+        if redirect_location and retries is not False:
             if response.status == 303:
                 method = 'GET'
             log.info("Redirecting %s -> %s" % (url, redirect_location))
