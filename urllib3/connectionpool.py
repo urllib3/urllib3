@@ -520,8 +520,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
             if not retries:
                 if isinstance(e, TimeoutError):
-                    # FIXME: TimeoutError is exempt from MaxRetryError-wrapping.
-                    # Not sure why. Add a reason here.
+                    # TimeoutError is exempt from MaxRetryError-wrapping.
+                    # FIXME: ... Not sure why. Add a reason here.
                     raise
 
                 # Wrap unexpected exceptions with the most appropriate
