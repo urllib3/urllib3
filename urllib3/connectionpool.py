@@ -471,8 +471,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             headers = headers.copy()
             headers.update(self.proxy_headers)
 
-        # Keep track of exceptions raised during request
-        e = None
+        # Must keep the exception bound to a separate variable or else Python 3
+        # complains about UnboundLocalError.
+        err = None
 
         try:
             # Request a connection from the queue
@@ -510,28 +511,33 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             release_conn = True
             raise SSLError(e)
 
-        except TimeoutError as e:
-            if retries == 0:
-                raise
-
-        except (HTTPException, SocketError) as e:
-            # Most unexpected exceptions fall under these. We wrap them with the
-            # most appropriate module-level exception.
-            if not retries:
-                if isinstance(e, SocketError) and self.proxy:
-                    raise ProxyError('Cannot connect to proxy.', e)
-                elif retries is False:
-                    raise ConnectionError('Connection failed.', e)
-                else:
-                    raise MaxRetryError(self, url, e)
-
-        finally:
-            if conn and isinstance(e, (HTTPException, SocketError, TimeoutError)):
+        except (TimeoutError, HTTPException, SocketError) as e:
+            if conn:
                 # Discard the connection for these exceptions. It will be
                 # be replaced during the next _get_conn() call.
                 conn.close()
                 conn = None
 
+            if not retries:
+                if isinstance(e, TimeoutError):
+                    # FIXME: TimeoutError is exempt from MaxRetryError-wrapping.
+                    # Not sure why. Add a reason here.
+                    raise
+
+                # Wrap unexpected exceptions with the most appropriate
+                # module-level exception and re-raise.
+                if isinstance(e, SocketError) and self.proxy:
+                    raise ProxyError('Cannot connect to proxy.', e)
+
+                if retries is False:
+                    raise ConnectionError('Connection failed.', e)
+
+                raise MaxRetryError(self, url, e)
+
+            # Keep track of the error for the retry warning.
+            err = e
+
+        finally:
             if release_conn:
                 # Put the connection back to be reused. If the connection is
                 # expired then it will be None, which will get replaced with a
@@ -541,7 +547,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if not conn:
             # Try again
             log.warning("Retrying (%d attempts remain) after connection "
-                        "broken by '%r': %s" % (retries, e, url))
+                        "broken by '%r': %s" % (retries, err, url))
             return self.urlopen(method, url, body, headers, retries - 1,
                                 redirect, assert_same_host,
                                 timeout=timeout, pool_timeout=pool_timeout,
