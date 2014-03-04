@@ -17,6 +17,7 @@ from urllib3 import (
 )
 from urllib3.exceptions import (
     ConnectTimeoutError,
+    ConnectionError,
     EmptyPoolError,
     DecodeError,
     MaxRetryError,
@@ -116,6 +117,20 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # Pool-global timeout
         pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', url)
+
+    def test_conn_closed(self):
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
+        conn = pool._get_conn()
+        pool._put_conn(conn)
+        try:
+            url = '/sleep?seconds=0.005'
+            pool.urlopen('GET', url)
+            self.fail("The request should fail with a timeout error.")
+        except ReadTimeoutError:
+            if conn.sock:
+                self.assertRaises(socket.error, conn.sock.recv, 1024)
+        finally:
+            pool._put_conn(conn)
 
     def test_nagle(self):
         """ Test that connections have TCP_NODELAY turned on """
@@ -277,14 +292,25 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(r.status, 200)
         self.assertEqual(r.data, b'Dummy server!')
 
-    def test_maxretry(self):
+    def test_max_retry(self):
         try:
             self.pool.request('GET', '/redirect',
-                                   fields={'target': '/'},
-                                   retries=0)
+                              fields={'target': '/'},
+                              retries=0)
             self.fail("Failed to raise MaxRetryError exception")
         except MaxRetryError:
             pass
+
+    def test_disabled_retry(self):
+        # Disabled retries will disable redirect handling:
+        r = self.pool.request('GET', '/redirect',
+                              fields={'target': '/'},
+                              retries=False)
+        self.assertEqual(r.status, 303)
+
+        pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
+        self.assertRaises(ConnectionError, pool.request, 'GET', '/test', retries=False)
+
 
     def test_keepalive(self):
         pool = HTTPConnectionPool(self.host, self.port, block=True, maxsize=1)
@@ -297,9 +323,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(pool.num_requests, 2)
 
     def test_keepalive_close(self):
-        # NOTE: This used to run against apache.org but it made the test suite
-        # really slow and fail half the time. Setting it to skip until we can
-        # make this run better locally.
         pool = HTTPConnectionPool(self.host, self.port,
                                   block=True, maxsize=1, timeout=2)
 

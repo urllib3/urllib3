@@ -47,6 +47,11 @@ dev (master)
 * ``urllib3.contrib.pyopenssl`` now uses the operating system's default CA
   certificates on inject. (Issue #332)
 
+* Requests with ``retries=False`` will immediately raise any exceptions without
+  wrapping them in ``MaxRetryError``. (Issue #348)
+
+* Fixed open socket leak with SSL-related failures. (Issue #344, #348)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
