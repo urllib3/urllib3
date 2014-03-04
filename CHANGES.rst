@@ -1,8 +1,8 @@
 Changes
 =======
 
-dev (master)
-++++++++++++
+1.8 (2014-03-04)
+++++++++++++++++
 
 * Improved url parsing in ``urllib3.util.parse_url`` (properly parse '@' in
   username, and blank ports like 'hostname:').
@@ -51,9 +51,6 @@ dev (master)
   wrapping them in ``MaxRetryError``. (Issue #348)
 
 * Fixed open socket leak with SSL-related failures. (Issue #344, #348)
-
-* ... [Short description of non-trivial change.] (Issue #)
-
 
 
 1.7.1 (2013-09-25)
