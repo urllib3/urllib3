@@ -35,6 +35,8 @@ except ImportError:
 from .packages import six
 from .exceptions import LocationParseError, SSLError, TimeoutStateError
 
+ACCEPT_ENCODING = 'gzip,deflate'
+
 
 _Default = object()
 # The default timeout to use for socket connections. This is the attribute used
@@ -465,7 +467,7 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
         elif isinstance(accept_encoding, list):
             accept_encoding = ','.join(accept_encoding)
         else:
-            accept_encoding = 'gzip,deflate'
+            accept_encoding = ACCEPT_ENCODING
         headers['accept-encoding'] = accept_encoding
 
     if user_agent:
