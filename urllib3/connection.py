@@ -71,6 +71,7 @@ class HTTPConnection(_HTTPConnection, object):
 
         if sys.version_info < (2, 7):  # Python 2.6 and earlier
             kw.pop('source_address', None)
+            self.source_address = None
 
         _HTTPConnection.__init__(self, *args, **kw)
 
