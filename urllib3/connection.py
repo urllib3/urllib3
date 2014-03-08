@@ -82,7 +82,10 @@ class HTTPConnection(_HTTPConnection, object):
         """
         extra_args = []
         if self.source_address:  # Python 2.7+
-            extra_args.append((self.source_address, 0))
+            if type(self.source_address) is tuple:
+                extra_args.append(self.source_address)
+            else:
+                extra_args.append((self.source_address, 0))
 
         conn = socket.create_connection(
             (self.host, self.port),
