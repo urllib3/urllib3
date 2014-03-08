@@ -80,7 +80,7 @@ class HTTPResponse(io.IOBase):
     def __init__(self, body='', headers=None, status=0, version=0, reason=None,
                  strict=0, preload_content=True, decode_content=True,
                  original_response=None, pool=None, connection=None,
-                 source_address=None):
+                 **kwargs):
 
         self.headers = HTTPHeaderDict()
         if headers:

@@ -71,7 +71,6 @@ class HTTPConnection(_HTTPConnection, object):
 
         if sys.version_info < (2, 7):  # Python 2.6 and earlier
             kw.pop('source_address', None)
-            self.source_address = None
 
         _HTTPConnection.__init__(self, *args, **kw)
 
@@ -82,10 +81,7 @@ class HTTPConnection(_HTTPConnection, object):
         """
         extra_args = []
         if self.source_address:  # Python 2.7+
-            if type(self.source_address) is tuple:
-                extra_args.append(self.source_address)
-            else:
-                extra_args.append((self.source_address, 0))
+            extra_args.append(self.source_address)
 
         conn = socket.create_connection(
             (self.host, self.port),
@@ -112,12 +108,11 @@ class HTTPSConnection(HTTPConnection):
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-                 source_address=None):
+                 **kwargs):
 
         HTTPConnection.__init__(self, host, port,
                                 strict=strict,
-                                timeout=timeout,
-                                source_address=source_address)
+                                timeout=timeout, **kwargs)
 
         self.key_file = key_file
         self.cert_file = cert_file

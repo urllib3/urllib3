@@ -137,7 +137,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     def __init__(self, host, port=None, strict=False,
                  timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1, block=False,
                  headers=None, _proxy=None, _proxy_headers=None,
-                 source_address=None):
+                 **conn_kw):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
 
@@ -156,8 +156,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.proxy = _proxy
         self.proxy_headers = _proxy_headers or {}
 
-        self.source_address = source_address
-
         # Fill the queue up so that doing get() on it will block properly
         for _ in xrange(maxsize):
             self.pool.put(None)
@@ -165,6 +163,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # These are mostly for testing and debugging purposes.
         self.num_connections = 0
         self.num_requests = 0
+
+        self.conn_kw = conn_kw
 
     def _new_conn(self):
         """
@@ -176,8 +176,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         conn = self.ConnectionCls(host=self.host, port=self.port,
                                   timeout=self.timeout.connect_timeout,
-                                  strict=self.strict,
-                                  source_address=self.source_address)
+                                  strict=self.strict, **self.conn_kw)
         if self.proxy is not None:
             # Enable Nagle's algorithm for proxies, to avoid packet
             # fragmentation.
@@ -599,7 +598,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  key_file=None, cert_file=None, cert_reqs=None,
                  ca_certs=None, ssl_version=None,
                  assert_hostname=None, assert_fingerprint=None,
-                 source_address=None):
+                 **conn_kw):
 
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
                                     block, headers, _proxy, _proxy_headers)
@@ -610,7 +609,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.ssl_version = ssl_version
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
-        self.source_address = source_address
+
+        self.conn_kw = conn_kw
 
     def _prepare_conn(self, conn):
         """
@@ -659,7 +659,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             actual_host = self.proxy.host
             actual_port = self.proxy.port
 
-        extra_params = {}
+        extra_params = self.conn_kw
         if not six.PY3:  # Python 2
             extra_params['strict'] = self.strict
 
