@@ -275,7 +275,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             control over your timeouts.
         """
         self.num_requests += 1
-        conn.conn_kw = self.conn_kw
 
         timeout_obj = self._get_timeout(timeout)
 
