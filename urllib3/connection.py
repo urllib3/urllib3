@@ -109,11 +109,12 @@ class HTTPSConnection(HTTPConnection):
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-                 source_address=None):
+                 **conn_kw):
 
         HTTPConnection.__init__(self, host, port,
                                 strict=strict,
-                                timeout=timeout)
+                                timeout=timeout,
+                                **conn_kw)
 
         self.key_file = key_file
         self.cert_file = cert_file
@@ -135,7 +136,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None,
-                 assert_hostname=None, assert_fingerprint=None, **conn_kw):
+                 assert_hostname=None, assert_fingerprint=None):
 
         self.key_file = key_file
         self.cert_file = cert_file
@@ -143,7 +144,6 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         self.ca_certs = ca_certs
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
-        self.conn_kw = conn_kw
 
     def connect(self):
         # Add certificate verification

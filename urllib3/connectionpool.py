@@ -275,6 +275,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             control over your timeouts.
         """
         self.num_requests += 1
+        conn.conn_kw = self.conn_kw
 
         timeout_obj = self._get_timeout(timeout)
 
@@ -623,7 +624,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           cert_reqs=self.cert_reqs,
                           ca_certs=self.ca_certs,
                           assert_hostname=self.assert_hostname,
-                          assert_fingerprint=self.assert_fingerprint, **self.conn_kw)
+                          assert_fingerprint=self.assert_fingerprint)
             conn.ssl_version = self.ssl_version
 
         if self.proxy is not None:
