@@ -601,7 +601,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  **conn_kw):
 
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
-                                    block, headers, _proxy, _proxy_headers)
+                                    block, headers, _proxy, _proxy_headers, **conn_kw)
         self.key_file = key_file
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
@@ -609,7 +609,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.ssl_version = ssl_version
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
-
         self.conn_kw = conn_kw
 
     def _prepare_conn(self, conn):
@@ -624,7 +623,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           cert_reqs=self.cert_reqs,
                           ca_certs=self.ca_certs,
                           assert_hostname=self.assert_hostname,
-                          assert_fingerprint=self.assert_fingerprint)
+                          assert_fingerprint=self.assert_fingerprint, **self.conn_kw)
             conn.ssl_version = self.ssl_version
 
         if self.proxy is not None:
@@ -659,9 +658,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             actual_host = self.proxy.host
             actual_port = self.proxy.port
 
-        extra_params = self.conn_kw
+        extra_params = {}
         if not six.PY3:  # Python 2
             extra_params['strict'] = self.strict
+        extra_params.update(self.conn_kw)
 
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
                                   timeout=self.timeout.connect_timeout,
