@@ -83,7 +83,7 @@ def encode_multipart_formdata(fields, boundary=None):
         writer(body).write(field.render_headers())
         data = field.data
 
-        if isinstance(data, int) or isinstance(data, long):
+        if isinstance(data, six.integer_types):
             data = str(data)  # Backwards compatibility
 
         if isinstance(data, six.text_type):
