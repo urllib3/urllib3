@@ -625,7 +625,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           assert_hostname=self.assert_hostname,
                           assert_fingerprint=self.assert_fingerprint)
             conn.ssl_version = self.ssl_version
-            conn.conn_kw = self.conn_kw
+            conn.source_address = self.conn_kw['source_address']
 
         if self.proxy is not None:
             # Python 2.7+

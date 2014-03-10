@@ -109,12 +109,12 @@ class HTTPSConnection(HTTPConnection):
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-                 **conn_kw):
+                 source_address=None):
 
         HTTPConnection.__init__(self, host, port,
                                 strict=strict,
                                 timeout=timeout,
-                                **conn_kw)
+                                source_address=None)
 
         self.key_file = key_file
         self.cert_file = cert_file
@@ -152,7 +152,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             sock = socket.create_connection(
                 address=(self.host, self.port),
                 timeout=self.timeout,
-                **self.conn_kw
+                source_address=self.source_address
             )
         except SocketTimeout:
             raise ConnectTimeoutError(
