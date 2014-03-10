@@ -133,6 +133,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     cert_reqs = None
     ca_certs = None
     ssl_version = None
+    conn_kw = None
 
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None,
@@ -152,7 +153,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             sock = socket.create_connection(
                 address=(self.host, self.port),
                 timeout=self.timeout,
-                source_address=self.source_address
+                **self.conn_kw
             )
         except SocketTimeout:
             raise ConnectTimeoutError(
