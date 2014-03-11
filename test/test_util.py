@@ -231,7 +231,7 @@ class TestUtil(unittest.TestCase):
             self.assertTrue('int or float' in str(e))
 
 
-    @patch('urllib3.util.current_time')
+    @patch('urllib3.util.timeout.current_time')
     def test_timeout(self, current_time):
         timeout = Timeout(total=3)
 
@@ -278,7 +278,7 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(str(timeout), "Timeout(connect=1, read=None, total=3)")
 
 
-    @patch('urllib3.util.current_time')
+    @patch('urllib3.util.timeout.current_time')
     def test_timeout_elapsed(self, current_time):
         current_time.return_value = TIMEOUT_EPOCH
         timeout = Timeout(total=3)
