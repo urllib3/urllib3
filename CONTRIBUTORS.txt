@@ -104,5 +104,8 @@ In chronological order:
 * Roman Bogorodskiy <roman.bogorodskiy@ericsson.com>
   * Account retries on proxy errors
 
+* Tahia Khan <http://tahia.tk/>
+  * Added Timeout examples in docs
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
