@@ -155,29 +155,31 @@ of :class:`httplib.HTTPConnection` objects.
 Timeout
 -------
 
-A timeout can be set to abort socket operations on individual connections after 
-a specified duration. This can be done with a float or integer, which sets the 
-timeout for the entire HTTP request, or an instance of :class:`~urllib3.util.Timeout` 
-which will give you more granular control over how much time is given to different 
-stages of the request. 
+A timeout can be set to abort socket operations on individual connections
+after the specified duration. The timeout can be defined as a float or an instance of 
+:class:`~urllib3.util.Timeout` which gives more granular configuration over how
+much time is allowed for different stages of the request. This can be set for
+the entire pool or per-request.
 
 ::
+    >>> from urllib3 import PoolManager, Timeout
 
-    >>> # Timeout on pool with 7.0 for both connect and read.
-    >>> pool = HTTPConnectionPool('ajax.googleapis.com', timeout=7.0) 
-    >>> pool.request(...) 
+    >>> # Manager with 3 seconds combined timeout.
+    >>> http = PoolManager(timeout=3.0)
+    >>> r = http.request('GET', 'http://httpbin.org/delay/1')
 
-    >>> # Timeout object on pool with infinite timeout for connections and 5 for read.
-    >>> pool = HTTPConnectionPool('ajax.googleapis.com', timeout=urllib3.util.Timeout(read=5)) 
-    >>> pool.request(...) 
+    >>> # Manager with 2 second timeout for the read phase, no limit for the rest.
+    >>> http = PoolManager(timeout=Timeout(read=2.0)) 
+    >>> r = http.request('GET', 'http://httpbin.org/delay/1')
 
-    >>> # Timeout object on request with 3 for connect and 5 for read.
-    >>> pool = HTTPConnectionPool('ajax.googleapis.com', maxsize=1)
-    >>> r = pool.request('GET', '/ajax/services/search/web', timeout=urllib3.util.Timeout(connect=3, read=5))
+    >>> # Manager with no timeout but a request with a timeout of 1 seconds for
+    >>> # the connect phase and 2 seconds for the read phase.
+    >>> http = PoolManager()
+    >>> r = http.request('GET', 'http://httpbin.org/delay/1', timeout=Timeout(connect=1.0, read=2.0))
 
-    >>> # Timeout object on request with 7.5 for read and connect combined.
-    >>> pool = HTTPConnectionPool('ajax.googleapis.com', maxsize=1)
-    >>> r = pool.request('GET', '/ajax/services/search/web', timeout=urllib3.util.Timeout(total=7.5))
+    >>> # Same Manager but request with a 5 second total timeout.
+    >>> r = http.request('GET', 'http://httpbin.org/delay/1', timeout=Timeout(total=5.0))
+
 
 Foundation
 ----------
