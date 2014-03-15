@@ -152,6 +152,33 @@ should use a :class:`~urllib3.poolmanager.PoolManager`.
 A :class:`~urllib3.connectionpool.ConnectionPool` is composed of a collection
 of :class:`httplib.HTTPConnection` objects.
 
+Timeout
+-------
+
+A timeout can be set to abort socket operations on individual connections after 
+a specified duration. This can be done with a float or integer, which sets the 
+timeout for the entire HTTP request, or an instance of :class:`~urllib3.util.Timeout` 
+which will give you more granular control over how much time is given to different 
+stages of the request. 
+
+::
+
+    >>> # Timeout on pool with 7.0 for both connect and read.
+    >>> pool = HTTPConnectionPool('ajax.googleapis.com', timeout=7.0) 
+    >>> pool.request(...) 
+
+    >>> # Timeout object on pool with infinite timeout for connections and 5 for read.
+    >>> pool = HTTPConnectionPool('ajax.googleapis.com', timeout=urllib3.util.Timeout(read=5)) 
+    >>> pool.request(...) 
+
+    >>> # Timeout object on request with 3 for connect and 5 for read.
+    >>> pool = HTTPConnectionPool('ajax.googleapis.com', maxsize=1)
+    >>> r = pool.request('GET', '/ajax/services/search/web', timeout=urllib3.util.Timeout(connect=3, read=5))
+
+    >>> # Timeout object on request with 7.5 for read and connect combined.
+    >>> pool = HTTPConnectionPool('ajax.googleapis.com', maxsize=1)
+    >>> r = pool.request('GET', '/ajax/services/search/web', timeout=urllib3.util.Timeout(total=7.5))
+
 Foundation
 ----------
 

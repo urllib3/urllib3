@@ -111,5 +111,8 @@ In chronological order:
   * HTTPHeaderDict and associated tests and docs
   * Bugfixes, docs, test coverage
 
+* Tahia Khan <http://tahia.tk/>
+  * Added Timeout examples in docs
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
