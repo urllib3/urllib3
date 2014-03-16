@@ -2,7 +2,10 @@ import unittest
 
 from urllib3.poolmanager import PoolManager
 from urllib3 import connection_from_url
-from urllib3.exceptions import ClosedPoolError
+from urllib3.exceptions import (
+    ClosedPoolError,
+    LocationParseError,
+)
 
 
 class TestPoolManager(unittest.TestCase):
@@ -63,6 +66,9 @@ class TestPoolManager(unittest.TestCase):
         self.assertEqual(len(p.pools), 0)
 
 
+    def test_nohost(self):
+        p = PoolManager(5)
+        self.assertRaises(LocationParseError, p.connection_from_url, 'http://@')
 
 
 if __name__ == '__main__':

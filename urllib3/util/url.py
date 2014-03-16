@@ -131,7 +131,7 @@ def parse_url(url):
         if port:
             # If given, ports must be integers.
             if not port.isdigit():
-                raise LocationParseError("Failed to parse: %s" % url)
+                raise LocationParseError(url)
             port = int(port)
         else:
             # Blank ports are cool, too. (rfc3986#section-3.2.3)

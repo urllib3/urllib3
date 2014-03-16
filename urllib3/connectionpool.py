@@ -23,6 +23,7 @@ from .exceptions import (
     ConnectTimeoutError,
     EmptyPoolError,
     HostChangedError,
+    LocationParseError,
     MaxRetryError,
     SSLError,
     TimeoutError,
@@ -40,7 +41,6 @@ from .connection import (
 from .request import RequestMethods
 from .response import HTTPResponse
 from .util import (
-    assert_fingerprint,
     get_host,
     is_connection_dropped,
     Timeout,
@@ -65,6 +65,10 @@ class ConnectionPool(object):
     QueueCls = LifoQueue
 
     def __init__(self, host, port=None):
+
+        if host is None:
+            raise LocationParseError(host)
+
         # httplib doesn't like it when we include brackets in ipv6 addresses
         host = host.strip('[]')
 

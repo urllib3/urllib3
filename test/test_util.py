@@ -77,6 +77,7 @@ class TestUtil(unittest.TestCase):
         for location in invalid_host:
             self.assertRaises(LocationParseError, get_host, location)
 
+
     def test_parse_url(self):
         url_host_map = {
             'http://google.com/mail': Url('http', host='google.com', path='/mail'),
@@ -107,6 +108,7 @@ class TestUtil(unittest.TestCase):
             'http://foo:bar@localhost/': Url('http', auth='foo:bar', host='localhost', path='/'),
             'http://foo@localhost/': Url('http', auth='foo', host='localhost', path='/'),
             'http://foo:bar@baz@localhost/': Url('http', auth='foo:bar@baz', host='localhost', path='/'),
+            'http://@': Url('http', host=None, auth='')
         }
         for url, expected_url in url_host_map.items():
             returned_url = parse_url(url)
