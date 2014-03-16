@@ -155,11 +155,11 @@ of :class:`httplib.HTTPConnection` objects.
 Timeout
 -------
 
-A timeout can be set to abort socket operations on individual connections
-after the specified duration. The timeout can be defined as a float or an instance of 
-:class:`~urllib3.util.Timeout` which gives more granular configuration over how
-much time is allowed for different stages of the request. This can be set for
-the entire pool or per-request.
+A timeout can be set to abort socket operations on individual connections after
+the specified duration. The timeout can be defined as a float or an instance of
+:class:`~urllib3.util.timeout.Timeout` which gives more granular configuration
+over how much time is allowed for different stages of the request. This can be
+set for the entire pool or per-request.
 
 ::
     >>> from urllib3 import PoolManager, Timeout
