@@ -4,6 +4,8 @@ Changes
 dev (master)
 ++++++++++++
 
+* Fix AppEngine bug of HTTPS requests going out as HTTP. (Issue #356)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

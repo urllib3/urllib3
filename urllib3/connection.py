@@ -119,6 +119,10 @@ class HTTPSConnection(HTTPConnection):
         self.key_file = key_file
         self.cert_file = cert_file
 
+        # Required property for Google AppEngine 1.9.0 which otherwise causes
+        # HTTPS requests to go out as HTTP. (See Issue #356)
+        self._protocol = 'https'
+
     def connect(self):
         conn = self._new_conn()
         self._prepare_conn(conn)
