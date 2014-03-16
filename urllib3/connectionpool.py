@@ -65,7 +65,6 @@ class ConnectionPool(object):
     QueueCls = LifoQueue
 
     def __init__(self, host, port=None):
-
         if host is None:
             raise LocationParseError(host)
 
