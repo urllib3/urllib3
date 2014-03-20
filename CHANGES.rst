@@ -6,6 +6,9 @@ dev (master)
 
 * Fix AppEngine bug of HTTPS requests going out as HTTP. (Issue #356)
 
+* Don't install `dummyserver` into `site-packages` as it's only needed
+  for the test suite. (Issue #362)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
