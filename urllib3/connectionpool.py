@@ -420,17 +420,19 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             these headers completely replace any pool-specific headers.
 
         :param retries:
-            Number of retries to allow before raising a MaxRetryError exception.
+            Configure the number of retries to allow before raising a
+            :class:`~urllib3.exceptions.MaxRetryError` exception.
             Pass `None` to retry until you receive a response. Pass a
-            :class:`~urllib3.util.retry.Retry` object for fine grained control
-            over retries. Passing an integer number will retry connection errors
-            three times, but no other types of errors. Pass zero to never retry.
+            :class:`~urllib3.util.retry.Retry` object for fine-grained control
+            over different types of retries.
+            Pass an integer number to retry connection errors that many times,
+            but no other types of errors. Pass zero to never retry.
 
             If `False`, then retries are disabled and any exception is raised
             immediately. Also, instead of raising a MaxRetryError on redirects,
             the redirect response will be returned.
 
-        :type retries: :class:`~urllib3.util.retry.Retry`, False, or an int
+        :type retries: :class:`~urllib3.util.retry.Retry`, False, or an int.
 
         :param redirect:
             If True, automatically handle redirects (status codes 301, 302,
