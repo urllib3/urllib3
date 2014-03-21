@@ -51,7 +51,7 @@ class TestMultipartEncoding(unittest.TestCase):
             encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
 
             self.assertEqual(encoded,
-                b'--' + b(BOUNDARY) + b'\r\n'
+                b'\r\n--' + b(BOUNDARY) + b'\r\n'
                 b'Content-Disposition: form-data; name="k"\r\n'
                 b'\r\n'
                 b'v\r\n'
@@ -72,7 +72,7 @@ class TestMultipartEncoding(unittest.TestCase):
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
 
         self.assertEqual(encoded,
-            b'--' + b(BOUNDARY) + b'\r\n'
+            b'\r\n--' + b(BOUNDARY) + b'\r\n'
             b'Content-Disposition: form-data; name="k"; filename="somename"\r\n'
             b'Content-Type: application/octet-stream\r\n'
             b'\r\n'
@@ -90,7 +90,7 @@ class TestMultipartEncoding(unittest.TestCase):
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
 
         self.assertEqual(encoded,
-            b'--' + b(BOUNDARY) + b'\r\n'
+            b'\r\n--' + b(BOUNDARY) + b'\r\n'
             b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
             b'Content-Type: text/plain\r\n'
             b'\r\n'
@@ -108,7 +108,7 @@ class TestMultipartEncoding(unittest.TestCase):
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
 
         self.assertEqual(encoded,
-            b'--' + b(BOUNDARY) + b'\r\n'
+            b'\r\n--' + b(BOUNDARY) + b'\r\n'
             b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
             b'Content-Type: image/jpeg\r\n'
             b'\r\n'
@@ -125,7 +125,7 @@ class TestMultipartEncoding(unittest.TestCase):
       encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
 
       self.assertEqual(encoded,
-          b'--' + b(BOUNDARY) + b'\r\n'
+          b'\r\n--' + b(BOUNDARY) + b'\r\n'
           b'Content-Type: image/jpeg\r\n'
           b'\r\n'
           b'v\r\n'
