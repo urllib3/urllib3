@@ -114,5 +114,8 @@ In chronological order:
 * Tahia Khan <http://tahia.tk/>
   * Added Timeout examples in docs
 
+* Jay De Lanoy <jay@delanoy.co>
+  * Made initial boundary of multipart form data encoding RFC 1521 compliant
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

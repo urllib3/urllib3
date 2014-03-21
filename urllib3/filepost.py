@@ -78,7 +78,7 @@ def encode_multipart_formdata(fields, boundary=None):
         boundary = choose_boundary()
 
     for field in iter_field_objects(fields):
-        body.write(b('--%s\r\n' % (boundary)))
+        body.write(b('\r\n--%s\r\n' % (boundary)))
 
         writer(body).write(field.render_headers())
         data = field.data
@@ -91,9 +91,7 @@ def encode_multipart_formdata(fields, boundary=None):
         else:
             body.write(data)
 
-        body.write(b'\r\n')
-
-    body.write(b('--%s--\r\n' % (boundary)))
+    body.write(b('\r\n--%s--\r\n' % (boundary)))
 
     content_type = str('multipart/form-data; boundary=%s' % boundary)
 
