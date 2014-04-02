@@ -19,14 +19,13 @@ def is_connection_dropped(conn):  # Platform-specific
     let the platform handle connection recycling transparently for us.
     """
     sock = getattr(conn, 'sock', False)
-    if sock is False: # Platform-specific: AppEngine
+    if sock is False:  # Platform-specific: AppEngine
         return False
-
-    if sock is None: # Connection already closed by e.g. httplib.
+    if sock is None:  # Connection already closed (such as by httplib).
         return False
 
     if not poll:
-        if not select: # Platform-specific: AppEngine
+        if not select:  # Platform-specific: AppEngine
             return False
 
         try:
