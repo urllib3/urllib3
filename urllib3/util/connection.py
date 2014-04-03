@@ -22,7 +22,7 @@ def is_connection_dropped(conn):  # Platform-specific
     if sock is False:  # Platform-specific: AppEngine
         return False
     if sock is None:  # Connection already closed (such as by httplib).
-        return False
+        return True
 
     if not poll:
         if not select:  # Platform-specific: AppEngine
