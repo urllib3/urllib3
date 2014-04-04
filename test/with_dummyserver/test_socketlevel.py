@@ -277,6 +277,59 @@ class TestProxyManager(SocketDummyServerTestCase):
                 'http://www.google.com',
                 assert_same_host=False, retries=0)
 
+    def test_connect_reconn(self):
+        def proxy_ssl_one(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+            s = buf.decode('utf-8')
+            if not s.startswith('CONNECT '):
+                sock.send(('HTTP/1.1 405 Method not allowed\r\n'
+                           'Allow: CONNECT\r\n\r\n').encode('utf-8'))
+                sock.close()
+                return
+
+            if not s.startswith('CONNECT %s:443' % (self.host,)):
+                sock.send(('HTTP/1.1 403 Forbidden\r\n\r\n').encode('utf-8'))
+                sock.close()
+                return
+
+            sock.send(('HTTP/1.1 200 Connection Established\r\n\r\n').encode('utf-8'))
+            ssl_sock = ssl.wrap_socket(sock,
+                                       server_side=True,
+                                       keyfile=DEFAULT_CERTS['keyfile'],
+                                       certfile=DEFAULT_CERTS['certfile'],
+                                       ca_certs=DEFAULT_CA)
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += ssl_sock.recv(65536)
+
+            ssl_sock.send(('HTTP/1.1 200 OK\r\n'
+                           'Content-Type: text/plain\r\n'
+                           'Content-Length: 2\r\n'
+                           'Connection: close\r\n'
+                           '\r\n'
+                           'Hi').encode('utf-8'))
+            ssl_sock.close()
+        def echo_socket_handler(listener):
+            proxy_ssl_one(listener)
+            proxy_ssl_one(listener)
+
+        self._start_server(echo_socket_handler)
+        base_url = 'http://%s:%d' % (self.host, self.port)
+
+        proxy = proxy_from_url(base_url)
+
+        url = 'https://{0}'.format(self.host)
+        conn = proxy.connection_from_url(url)
+        r = conn.urlopen('GET', url, retries=0)
+        self.assertEqual(r.status, 200)
+        r = conn.urlopen('GET', url, retries=0)
+        self.assertEqual(r.status, 200)
+
 
 class TestSSL(SocketDummyServerTestCase):
 
