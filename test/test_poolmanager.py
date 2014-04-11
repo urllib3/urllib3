@@ -1,5 +1,7 @@
 import unittest
 
+from test import multi_ssl
+
 from urllib3.poolmanager import PoolManager
 from urllib3 import connection_from_url
 from urllib3.exceptions import (
@@ -8,16 +10,17 @@ from urllib3.exceptions import (
 )
 
 
+@multi_ssl()
 class TestPoolManager(unittest.TestCase):
     def test_same_url(self):
         # Convince ourselves that normally we don't get the same object
-        conn1 = connection_from_url('http://localhost:8081/foo')
-        conn2 = connection_from_url('http://localhost:8081/bar')
+        conn1 = connection_from_url('http://localhost:8081/foo', ssl=self.ssl)
+        conn2 = connection_from_url('http://localhost:8081/bar', ssl=self.ssl)
 
         self.assertNotEqual(conn1, conn2)
 
         # Now try again using the PoolManager
-        p = PoolManager(1)
+        p = PoolManager(1, ssl=self.ssl)
 
         conn1 = p.connection_from_url('http://localhost:8081/foo')
         conn2 = p.connection_from_url('http://localhost:8081/bar')
@@ -38,7 +41,7 @@ class TestPoolManager(unittest.TestCase):
 
         connections = set()
 
-        p = PoolManager(10)
+        p = PoolManager(10, ssl=self.ssl)
 
         for url in urls:
             conn = p.connection_from_url(url)
@@ -47,7 +50,7 @@ class TestPoolManager(unittest.TestCase):
         self.assertEqual(len(connections), 5)
 
     def test_manager_clear(self):
-        p = PoolManager(5)
+        p = PoolManager(5, ssl=self.ssl)
 
         conn_pool = p.connection_from_url('http://google.com')
         self.assertEqual(len(p.pools), 1)
@@ -67,8 +70,12 @@ class TestPoolManager(unittest.TestCase):
 
 
     def test_nohost(self):
-        p = PoolManager(5)
+        p = PoolManager(5, ssl=self.ssl)
         self.assertRaises(LocationParseError, p.connection_from_url, 'http://@')
+
+
+TestPoolManager_BaseSSL, TestPoolManager_BackportsSSL = \
+    TestPoolManager.ssl_impls
 
 
 if __name__ == '__main__':

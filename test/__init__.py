@@ -1,12 +1,40 @@
 import errno
 import functools
 import socket
+import unittest
 
 from nose.plugins.skip import SkipTest
 
 from urllib3.exceptions import MaxRetryError
 from urllib3.packages import six
+from urllib3.util import base_ssl
 
+try:
+    import backports.ssl as backports_ssl
+except ImportError:
+    backports_ssl = None
+
+
+def multi_ssl():
+    def inner(cls):
+        cls.__test__ = False
+
+        def get_impl(name, impl):
+            # TODO skip if missing
+            class TestImpl(cls):
+                __test__ = True
+                ssl = impl
+            TestImpl.__name__ = '%s_%s' % (cls.__name__, name)
+            if impl is None:
+                TestImpl = unittest.skip('SSL implementation unavailable')(TestImpl)
+            return TestImpl
+
+        cls.ssl_impls = [
+            get_impl('BaseSSL', base_ssl),
+            get_impl('BackportsSSL', backports_ssl),
+        ]
+        return cls
+    return inner
 
 def onlyPY3(test):
     """Skips this test unless you are on Python3.x"""

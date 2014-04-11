@@ -1,12 +1,16 @@
 import unittest
 
+from nose.plugins.skip import SkipTest
+
+from test import multi_ssl
+
 from urllib3.connectionpool import (
     connection_from_url,
     HTTPConnection,
     HTTPConnectionPool,
+    HTTPSConnectionPool,
 )
 from urllib3.util import Timeout
-from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
     ClosedPoolError,
     EmptyPoolError,
@@ -16,7 +20,6 @@ from urllib3.exceptions import (
 )
 
 from socket import error as SocketError
-from ssl import SSLError as BaseSSLError
 
 try:   # Python 3
     from queue import Empty
@@ -26,6 +29,7 @@ except ImportError:
     from httplib import HTTPException
 
 
+@multi_ssl()
 class TestConnectionPool(unittest.TestCase):
     """
     Tests in this suite should exercise the ConnectionPool functionality
@@ -46,7 +50,7 @@ class TestConnectionPool(unittest.TestCase):
         ]
 
         for a, b in same_host:
-            c = connection_from_url(a)
+            c = connection_from_url(a, ssl=self.ssl)
             self.assertTrue(c.is_same_host(b), "%s =? %s" % (a, b))
 
         not_same_host = [
@@ -67,9 +71,9 @@ class TestConnectionPool(unittest.TestCase):
         ]
 
         for a, b in not_same_host:
-            c = connection_from_url(a)
+            c = connection_from_url(a, ssl=self.ssl)
             self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
-            c = connection_from_url(b)
+            c = connection_from_url(b, ssl=self.ssl)
             self.assertFalse(c.is_same_host(a), "%s =? %s" % (b, a))
 
 
@@ -130,23 +134,19 @@ class TestConnectionPool(unittest.TestCase):
             "(Caused by {0}: Test)".format(str(err.__class__)))
 
 
-    def test_pool_size(self):
+    def pool_size(self, exception, expect):
         POOL_SIZE = 1
-        pool = HTTPConnectionPool(host='localhost', maxsize=POOL_SIZE, block=True)
+        pool = HTTPSConnectionPool(host='localhost', maxsize=POOL_SIZE,
+                                   block=True, ssl=self.ssl)
 
         def _raise(ex):
             raise ex()
 
-        def _test(exception, expect):
-            pool._make_request = lambda *args, **kwargs: _raise(exception)
-            self.assertRaises(expect, pool.request, 'GET', '/')
+        # Make sure that the exception returns the connection to the pool
+        pool._make_request = lambda *args, **kwargs: _raise(exception)
+        self.assertRaises(expect, pool.request, 'GET', '/')
 
-            self.assertEqual(pool.pool.qsize(), POOL_SIZE)
-
-        # Make sure that all of the exceptions return the connection to the pool
-        _test(Empty, EmptyPoolError)
-        _test(BaseSSLError, SSLError)
-        _test(CertificateError, SSLError)
+        self.assertEqual(pool.pool.qsize(), POOL_SIZE)
 
         # The pool should never be empty, and with these two exceptions being raised,
         # a retry will be triggered, but that retry will fail, eventually raising
@@ -157,14 +157,26 @@ class TestConnectionPool(unittest.TestCase):
                           'GET', '/', retries=1, pool_timeout=0.01)
         self.assertEqual(pool.pool.qsize(), POOL_SIZE)
 
+    def test_pool_size_empty(self):
+        self.pool_size(Empty, EmptyPoolError)
+
+    def test_pool_size_ssl_error(self):
+        self.pool_size(self.ssl.SSLError, SSLError)
+
+    def test_pool_size_certificate_error(self):
+        CertificateError = getattr(self.ssl, 'CertificateError', None)
+        if CertificateError is None:
+            raise SkipTest('CertificateError not found in SSL implementation')
+        self.pool_size(self.ssl.CertificateError, SSLError)
+
     def test_assert_same_host(self):
-        c = connection_from_url('http://google.com:80')
+        c = connection_from_url('http://google.com:80', ssl=self.ssl)
 
         self.assertRaises(HostChangedError, c.request,
                           'GET', 'http://yahoo.com:80', assert_same_host=True)
 
     def test_pool_close(self):
-        pool = connection_from_url('http://google.com:80')
+        pool = connection_from_url('http://google.com:80', ssl=self.ssl)
 
         # Populate with some connections
         conn1 = pool._get_conn()
@@ -200,6 +212,10 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(pool.timeout._read, 3)
         self.assertEqual(pool.timeout._connect, 3)
         self.assertEqual(pool.timeout.total, None)
+
+
+TestConnectionPool_BaseSSL, TestConnectionPool_BackportsSSL = \
+    TestConnectionPool.ssl_impls
 
 
 if __name__ == '__main__':
