@@ -2,15 +2,20 @@ import unittest
 import json
 import socket
 
+from nose.plugins.skip import SkipTest
+
 from dummyserver.testcase import HTTPDummyProxyTestCase
 from dummyserver.server import (
     DEFAULT_CA, DEFAULT_CA_BAD, get_unreachable_address)
+
+from test import multi_ssl
 
 from urllib3.poolmanager import proxy_from_url, ProxyManager
 from urllib3.exceptions import MaxRetryError, SSLError, ProxyError
 from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
 
 
+@multi_ssl()
 class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def setUp(self):
@@ -23,7 +28,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.proxy_url = 'http://%s:%d' % (self.proxy_host, self.proxy_port)
 
     def test_basic_proxy(self):
-        http = proxy_from_url(self.proxy_url)
+        http = proxy_from_url(self.proxy_url, ssl=self.ssl)
 
         r = http.request('GET', '%s/' % self.http_url)
         self.assertEqual(r.status, 200)
@@ -33,7 +38,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_nagle_proxy(self):
         """ Test that proxy connections do not have TCP_NODELAY turned on """
-        http = proxy_from_url(self.proxy_url)
+        http = proxy_from_url(self.proxy_url, ssl=self.ssl)
         hc2 = http.connection_from_host(self.http_host, self.http_port)
         conn = hc2._get_conn()
         hc2._make_request(conn, 'GET', '/')
@@ -42,16 +47,17 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                          ("Expected TCP_NODELAY for proxies to be set "
                           "to zero, instead was %s" % tcp_nodelay_setting))
 
+    # FIXME requires_network? - doesn't work on idle mobile hotspot
     def test_proxy_conn_fail(self):
         host, port = get_unreachable_address()
-        http = proxy_from_url('http://%s:%s/' % (host, port))
+        http = proxy_from_url('http://%s:%s/' % (host, port), ssl=self.ssl)
         self.assertRaises(ProxyError, http.request, 'GET',
                           '%s/' % self.https_url)
         self.assertRaises(ProxyError, http.request, 'GET',
                           '%s/' % self.http_url)
 
     def test_oldapi(self):
-        http = ProxyManager(connection_from_url(self.proxy_url))
+        http = ProxyManager(connection_from_url(self.proxy_url, ssl=self.ssl))
 
         r = http.request('GET', '%s/' % self.http_url)
         self.assertEqual(r.status, 200)
@@ -60,8 +66,11 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertEqual(r.status, 200)
 
     def test_proxy_verified(self):
+        if not hasattr(self.ssl, 'match_hostname'):
+            raise SkipTest('match_hostname() not found in SSL implementation')
+
         http = proxy_from_url(self.proxy_url, cert_reqs='REQUIRED',
-                              ca_certs=DEFAULT_CA_BAD)
+                              ca_certs=DEFAULT_CA_BAD, ssl=self.ssl)
         https_pool = http._new_pool('https', self.https_host,
                                     self.https_port)
         try:
@@ -73,7 +82,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                             "instead got: %r" % e)
 
         http = proxy_from_url(self.proxy_url, cert_reqs='REQUIRED',
-                              ca_certs=DEFAULT_CA)
+                              ca_certs=DEFAULT_CA, ssl=self.ssl)
         https_pool = http._new_pool('https', self.https_host,
                                     self.https_port)
 
@@ -82,7 +91,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         https_pool.request('GET', '/')  # Should succeed without exceptions.
 
         http = proxy_from_url(self.proxy_url, cert_reqs='REQUIRED',
-                              ca_certs=DEFAULT_CA)
+                              ca_certs=DEFAULT_CA, ssl=self.ssl)
         https_fail_pool = http._new_pool('https', '127.0.0.1', self.https_port)
 
         try:
@@ -92,7 +101,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             self.assertTrue("doesn't match" in str(e))
 
     def test_redirect(self):
-        http = proxy_from_url(self.proxy_url)
+        http = proxy_from_url(self.proxy_url, ssl=self.ssl)
 
         r = http.request('GET', '%s/redirect' % self.http_url,
                          fields={'target': '%s/' % self.http_url},
@@ -107,7 +116,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertEqual(r.data, b'Dummy server!')
 
     def test_cross_host_redirect(self):
-        http = proxy_from_url(self.proxy_url)
+        http = proxy_from_url(self.proxy_url, ssl=self.ssl)
 
         cross_host_location = '%s/echo?a=b' % self.http_url_alt
         try:
@@ -125,7 +134,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertNotEqual(r._pool.host, self.http_host_alt)
 
     def test_cross_protocol_redirect(self):
-        http = proxy_from_url(self.proxy_url)
+        http = proxy_from_url(self.proxy_url, ssl=self.ssl)
 
         cross_protocol_location = '%s/echo?a=b' % self.https_url
         try:
@@ -144,7 +153,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_headers(self):
         http = proxy_from_url(self.proxy_url,headers={'Foo': 'bar'},
-                proxy_headers={'Hickory': 'dickory'})
+                proxy_headers={'Hickory': 'dickory'}, ssl=self.ssl)
 
         r = http.request_encode_url('GET', '%s/headers' % self.http_url)
         returned_headers = json.loads(r.data.decode())
@@ -214,7 +223,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                 '%s:%s'%(self.https_host,self.https_port))
 
     def test_proxy_pooling(self):
-        http = proxy_from_url(self.proxy_url)
+        http = proxy_from_url(self.proxy_url, ssl=self.ssl)
 
         for x in range(2):
             r = http.urlopen('GET', self.http_url)
@@ -233,7 +242,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertEqual(len(http.pools), 3)
 
     def test_proxy_pooling_ext(self):
-        http = proxy_from_url(self.proxy_url)
+        http = proxy_from_url(self.proxy_url, ssl=self.ssl)
         hc1 = http.connection_from_url(self.http_url)
         hc2 = http.connection_from_host(self.http_host, self.http_port)
         hc3 = http.connection_from_url(self.http_url_alt)
@@ -251,6 +260,10 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertEqual(sc1,sc2)
         self.assertNotEqual(sc2,sc3)
         self.assertEqual(sc3,sc4)
+
+
+TestHTTPProxyManager_BaseSSL, TestHTTPProxyManager_BackportsSSL = \
+    TestHTTPProxyManager.ssl_impls
 
 
 if __name__ == '__main__':

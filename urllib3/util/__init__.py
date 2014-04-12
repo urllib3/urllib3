@@ -8,9 +8,8 @@ from .connection import is_connection_dropped
 from .request import make_headers
 from .response import is_fp_closed
 from .ssl_ import (
-    SSLContext,
-    HAS_SNI,
     assert_fingerprint,
+    base_ssl,
     resolve_cert_reqs,
     resolve_ssl_version,
     ssl_wrap_socket,
