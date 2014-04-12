@@ -73,7 +73,7 @@ class HTTPConnection(_HTTPConnection, object):
 
         if isinstance(kw.get('source_address'), six.string_types):
             kw['source_address'] = (kw['source_address'], 0)
-        self.source_address = kw.get('source_address') # Python 2.6 and earlier.
+        self.source_address = kw.get('source_address') # For Py2.6 and earlier.
 
         # _HTTPConnection.__init__() sets self.source_address in Python 2.7+.
         _HTTPConnection.__init__(self, *args, **kw)  
