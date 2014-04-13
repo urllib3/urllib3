@@ -536,7 +536,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     @onlyPy26OrEarlier
     def test_source_address_ignored(self):
-        # source_address is ignored in Python 2.6 and earlier.
+        # source_address is ignored in Python 2.6 and older.
         for addr in INVALID_SOURCE_ADDRESSES:
             pool = HTTPConnectionPool(
                 self.host, self.port, source_address=addr)
@@ -549,8 +549,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             pool = HTTPConnectionPool(
                 self.host, self.port, source_address=addr)
             r = pool.request('GET', '/source_address')
-            addr_bytes = b(addr if isinstance(addr, string_types) else addr[0])
-            assert r.data == addr_bytes
+            assert r.data == b(addr[0])
 
     @onlyPy27OrLater
     def test_source_address_error(self):

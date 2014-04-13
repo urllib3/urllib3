@@ -321,8 +321,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 source_address=addr)
             https_pool.ca_certs = DEFAULT_CA
             r = https_pool.request('GET', '/source_address')
-            addr_bytes = b(addr if isinstance(addr, string_types) else addr[0])
-            assert r.data == addr_bytes
+            assert r.data == b(addr[0])
     
     @onlyPy27OrLater
     def test_source_address_error(self):
