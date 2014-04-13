@@ -4,6 +4,7 @@
 # This module is part of urllib3 and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+import sys
 import errno
 import logging
 
@@ -136,8 +137,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def __init__(self, host, port=None, strict=False,
                  timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1, block=False,
-                 headers=None, _proxy=None, _proxy_headers=None,
-                 **conn_kw):
+                 headers=None, _proxy=None, _proxy_headers=None, **conn_kw):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
 
@@ -164,6 +164,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.num_connections = 0
         self.num_requests = 0
 
+        if sys.version_info < (2, 7):  # Python 2.6 and earlier.
+            conn_kw.pop('source_address', None)
         self.conn_kw = conn_kw
 
     def _new_conn(self):
@@ -599,6 +601,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  ca_certs=None, ssl_version=None,
                  assert_hostname=None, assert_fingerprint=None,
                  **conn_kw):
+
+        if sys.version_info < (2, 7):  # Python 2.6 and earlier.
+            conn_kw.pop('source_address', None)
 
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
                                     block, headers, _proxy, _proxy_headers, **conn_kw)

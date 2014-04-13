@@ -9,15 +9,18 @@ from nose.plugins.skip import SkipTest
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
-from test import requires_network
-
+from test import (
+    onlyPy3, onlyPy27OrLater, onlyPy26OrEarlier, requires_network, TARPIT_HOST,
+    VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES)
 from urllib3 import HTTPSConnectionPool
+from urllib3.packages.six import b, string_types
 import urllib3.connection
 from urllib3.connection import (
     VerifiedHTTPSConnection,
     UnverifiedHTTPSConnection,
 )
-from urllib3.exceptions import SSLError, ConnectTimeoutError, ReadTimeoutError
+from urllib3.exceptions import (
+    SSLError, MaxRetryError, ReadTimeoutError, ConnectTimeoutError)
 from urllib3.util import Timeout
 
 
@@ -25,9 +28,6 @@ log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
-# We need a host that will not immediately close the connection with a TCP
-# Reset. SO suggests this hostname
-TARPIT_HOST = '10.255.255.1'
 
 class TestHTTPS(HTTPSDummyServerTestCase):
     def setUp(self):
@@ -268,7 +268,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         del conn._tunnel_host
         self._pool._make_request(conn, 'GET', '/')
 
-
     @requires_network
     def test_enhanced_timeout(self):
         def new_pool(timeout, cert_reqs='CERT_REQUIRED'):
@@ -302,6 +301,38 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
                                         '7A:F2:8A:D7:1E:07:33:67:DE'
         https_pool._make_request(conn, 'GET', '/')
+
+    @onlyPy26OrEarlier
+    def test_source_address_ignored(self):
+        # source_address is ignored in Python 2.6 and earlier.
+        for addr in INVALID_SOURCE_ADDRESSES:
+            https_pool = HTTPSConnectionPool(
+                self.host, self.port, cert_reqs='CERT_REQUIRED',
+                source_address=addr)
+            https_pool.ca_certs = DEFAULT_CA
+            r = https_pool.request('GET', '/source_address')
+            assert r.status == 200
+
+    @onlyPy27OrLater
+    def test_source_address(self):
+        for addr in VALID_SOURCE_ADDRESSES:
+            https_pool = HTTPSConnectionPool(
+                self.host, self.port, cert_reqs='CERT_REQUIRED',
+                source_address=addr)
+            https_pool.ca_certs = DEFAULT_CA
+            r = https_pool.request('GET', '/source_address')
+            addr_bytes = b(addr if isinstance(addr, string_types) else addr[0])
+            assert r.data == addr_bytes
+    
+    @onlyPy27OrLater
+    def test_source_address_error(self):
+        for addr in INVALID_SOURCE_ADDRESSES:
+            https_pool = HTTPSConnectionPool(
+                self.host, self.port, cert_reqs='CERT_REQUIRED',
+                source_address=addr)
+            https_pool.ca_certs = DEFAULT_CA
+            self.assertRaises(
+                MaxRetryError, https_pool.request, 'GET', '/source_address')
 
 
 class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):

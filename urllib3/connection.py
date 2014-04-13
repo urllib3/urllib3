@@ -66,29 +66,26 @@ class HTTPConnection(_HTTPConnection, object):
     tcp_nodelay = 1
 
     def __init__(self, *args, **kw):
-        if six.PY3:  # Python 3
+        if six.PY3:  # Python 3.
             kw.pop('strict', None)
-
-        if sys.version_info < (2, 7):  # Python 2.6 and earlier
+        if sys.version_info < (2, 7):  # Python 2.6 and earlier.
             kw.pop('source_address', None)
-            self.source_address = None
 
-        _HTTPConnection.__init__(self, *args, **kw)
+        if isinstance(kw.get('source_address'), six.string_types):  # Py2.7+.
+            kw['source_address'] = (kw['source_address'], 0)
+        self.source_address = kw.get('source_address')  # For Py2.6 and earlier.
+
+        # _HTTPConnection.__init__() sets self.source_address in Python 2.7+.
+        _HTTPConnection.__init__(self, *args, **kw)  
 
     def _new_conn(self):
         """ Establish a socket connection and set nodelay settings on it
 
         :return: a new socket connection
         """
-        extra_args = []
-        if self.source_address:  # Python 2.7+
-            extra_args.append(self.source_address)
-
+        args = [] if self.source_address is None else [self.source_address]
         conn = socket.create_connection(
-            (self.host, self.port),
-            self.timeout,
-            *extra_args
-        )
+            (self.host, self.port), self.timeout, *args)
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY,
                         self.tcp_nodelay)
         return conn
@@ -108,13 +105,10 @@ class HTTPSConnection(HTTPConnection):
     default_port = port_by_scheme['https']
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
-                 strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-                 source_address=None):
+                 strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, **kw):
 
-        HTTPConnection.__init__(self, host, port,
-                                strict=strict,
-                                timeout=timeout,
-                                source_address=None)
+        HTTPConnection.__init__(self, host, port, strict=strict,
+                                timeout=timeout, **kw)
 
         self.key_file = key_file
         self.cert_file = cert_file
@@ -149,12 +143,12 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     def connect(self):
         # Add certificate verification
 
+        kw = dict(self.conn_kw)
+        if isinstance(kw.get('source_address'), six.string_types):  # Py2.7+.
+            kw['source_address'] = (kw['source_address'], 0)
         try:
             sock = socket.create_connection(
-                address=(self.host, self.port),
-                timeout=self.timeout,
-                **self.conn_kw
-            )
+                address=(self.host, self.port), timeout=self.timeout, **kw)
         except SocketTimeout:
             raise ConnectTimeoutError(
                 self, "Connection to %s timed out. (connect timeout=%s)" %
