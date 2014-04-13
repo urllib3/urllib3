@@ -68,10 +68,10 @@ class HTTPConnection(_HTTPConnection, object):
     def __init__(self, *args, **kw):
         if six.PY3:  # Python 3
             kw.pop('strict', None)
-        if sys.version_info < (2, 7):  # Python 2.6 and earlier
+        if sys.version_info < (2, 7):  # Python 2.6 and older
             kw.pop('source_address', None)
 
-        self.source_address = kw.get('source_address')  # For Py2.6 and earlier.
+        self.source_address = kw.get('source_address')  # For Py2.6 and older.
 
         # _HTTPConnection.__init__() sets self.source_address in Python 2.7+.
         _HTTPConnection.__init__(self, *args, **kw)  
