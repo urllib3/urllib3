@@ -10,7 +10,7 @@ from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from test import (
-    onlyPy3, onlyPy27OrLater, onlyPy26OrEarlier, requires_network, TARPIT_HOST,
+    onlyPy3, onlyPy27OrNewer, onlyPy26OrOlder, requires_network, TARPIT_HOST,
     VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES)
 from urllib3 import HTTPSConnectionPool
 from urllib3.packages.six import b, string_types
@@ -302,7 +302,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                         '7A:F2:8A:D7:1E:07:33:67:DE'
         https_pool._make_request(conn, 'GET', '/')
 
-    @onlyPy26OrEarlier
+    @onlyPy26OrOlder
     def test_source_address_ignored(self):
         # source_address is ignored in Python 2.6 and earlier.
         for addr in INVALID_SOURCE_ADDRESSES:
@@ -313,7 +313,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             r = https_pool.request('GET', '/source_address')
             assert r.status == 200
 
-    @onlyPy27OrLater
+    @onlyPy27OrNewer
     def test_source_address(self):
         for addr in VALID_SOURCE_ADDRESSES:
             https_pool = HTTPSConnectionPool(
@@ -323,7 +323,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             r = https_pool.request('GET', '/source_address')
             assert r.data == b(addr[0])
     
-    @onlyPy27OrLater
+    @onlyPy27OrNewer
     def test_source_address_error(self):
         for addr in INVALID_SOURCE_ADDRESSES:
             https_pool = HTTPSConnectionPool(

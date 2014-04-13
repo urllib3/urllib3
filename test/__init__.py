@@ -19,7 +19,7 @@ VALID_SOURCE_ADDRESSES = [('::1', 0), ('127.0.0.1', 0)]
 INVALID_SOURCE_ADDRESSES = [('192.0.2.255', 0), ('2001:db8::1', 0)]
 
 
-def onlyPy26OrEarlier(test):
+def onlyPy26OrOlder(test):
     """Skips this test unless you are on Python2.6.x or earlier."""
 
     @functools.wraps(test)
@@ -30,7 +30,7 @@ def onlyPy26OrEarlier(test):
         return test(*args, **kwargs)
     return wrapper
 
-def onlyPy27OrLater(test):
+def onlyPy27OrNewer(test):
     """Skips this test unless you are on Python2.7.x or later."""
 
     @functools.wraps(test)

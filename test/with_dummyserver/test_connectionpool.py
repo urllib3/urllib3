@@ -11,7 +11,7 @@ except:
     from urllib import urlencode
 
 from test import (
-    onlyPy3, onlyPy27OrLater, onlyPy26OrEarlier, requires_network, TARPIT_HOST,
+    onlyPy3, onlyPy27OrNewer, onlyPy26OrOlder, requires_network, TARPIT_HOST,
     VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES)
 from urllib3 import (
     encode_multipart_formdata,
@@ -534,7 +534,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
         self.assertRaises(MaxRetryError, pool.request, 'GET', '/test', retries=2)
 
-    @onlyPy26OrEarlier
+    @onlyPy26OrOlder
     def test_source_address_ignored(self):
         # source_address is ignored in Python 2.6 and older.
         for addr in INVALID_SOURCE_ADDRESSES:
@@ -543,7 +543,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             r = pool.request('GET', '/source_address')
             assert r.status == 200
 
-    @onlyPy27OrLater
+    @onlyPy27OrNewer
     def test_source_address(self):
         for addr in VALID_SOURCE_ADDRESSES:
             pool = HTTPConnectionPool(
@@ -551,7 +551,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             r = pool.request('GET', '/source_address')
             assert r.data == b(addr[0])
 
-    @onlyPy27OrLater
+    @onlyPy27OrNewer
     def test_source_address_error(self):
         for addr in INVALID_SOURCE_ADDRESSES:
             pool = HTTPConnectionPool(
