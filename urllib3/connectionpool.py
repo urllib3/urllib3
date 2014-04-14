@@ -164,7 +164,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.num_connections = 0
         self.num_requests = 0
 
-        if sys.version_info < (2, 7):  # Python 2.6 and earlier.
+        if sys.version_info < (2, 7):  # Python 2.6 and older
             conn_kw.pop('source_address', None)
         self.conn_kw = conn_kw
 
@@ -602,7 +602,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  assert_hostname=None, assert_fingerprint=None,
                  **conn_kw):
 
-        if sys.version_info < (2, 7):  # Python 2.6 and earlier.
+        if sys.version_info < (2, 7):  # Python 2.6 or older
             conn_kw.pop('source_address', None)
 
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
