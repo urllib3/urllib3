@@ -4,6 +4,7 @@
 # This module is part of urllib3 and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+import sys
 import errno
 import logging
 
@@ -139,7 +140,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def __init__(self, host, port=None, strict=False,
                  timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1, block=False,
-                 headers=None, _proxy=None, _proxy_headers=None):
+                 headers=None, _proxy=None, _proxy_headers=None, **conn_kw):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
 
@@ -166,6 +167,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.num_connections = 0
         self.num_requests = 0
 
+        if sys.version_info < (2, 7):  # Python 2.6 and older
+            conn_kw.pop('source_address', None)
+        self.conn_kw = conn_kw
+
     def _new_conn(self):
         """
         Return a fresh :class:`HTTPConnection`.
@@ -176,7 +181,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         conn = self.ConnectionCls(host=self.host, port=self.port,
                                   timeout=self.timeout.connect_timeout,
-                                  strict=self.strict)
+                                  strict=self.strict, **self.conn_kw)
         if self.proxy is not None:
             # Enable Nagle's algorithm for proxies, to avoid packet
             # fragmentation.
@@ -597,10 +602,14 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  _proxy=None, _proxy_headers=None,
                  key_file=None, cert_file=None, cert_reqs=None,
                  ca_certs=None, ssl_version=None,
-                 assert_hostname=None, assert_fingerprint=None):
+                 assert_hostname=None, assert_fingerprint=None,
+                 **conn_kw):
+
+        if sys.version_info < (2, 7):  # Python 2.6 or older
+            conn_kw.pop('source_address', None)
 
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
-                                    block, headers, _proxy, _proxy_headers)
+                                    block, headers, _proxy, _proxy_headers, **conn_kw)
         self.key_file = key_file
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
@@ -608,6 +617,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.ssl_version = ssl_version
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
+        self.conn_kw = conn_kw
 
     def _prepare_conn(self, conn):
         """
@@ -623,6 +633,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           assert_hostname=self.assert_hostname,
                           assert_fingerprint=self.assert_fingerprint)
             conn.ssl_version = self.ssl_version
+            conn.conn_kw = self.conn_kw
 
         if self.proxy is not None:
             # Python 2.7+
@@ -659,6 +670,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         extra_params = {}
         if not six.PY3:  # Python 2
             extra_params['strict'] = self.strict
+        extra_params.update(self.conn_kw)
 
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
                                   timeout=self.timeout.connect_timeout,
