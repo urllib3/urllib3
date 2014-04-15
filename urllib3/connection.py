@@ -71,21 +71,26 @@ class HTTPConnection(_HTTPConnection, object):
         if sys.version_info < (2, 7):  # Python 2.6 and older
             kw.pop('source_address', None)
 
-        self.source_address = kw.get('source_address')  # For Py2.6 and older.
+        # Pre-set source_address in case we have an older Python like 2.6.
+        self.source_address = kw.get('source_address')
 
-        # _HTTPConnection.__init__() sets self.source_address in Python 2.7+.
+        # Superclass also sets self.source_address in Python 2.7+.
         _HTTPConnection.__init__(self, *args, **kw)  
 
     def _new_conn(self):
-        """ Establish a socket connection and set nodelay settings on it
+        """ Establish a socket connection and set nodelay settings on it.
 
         :return: a new socket connection
         """
-        args = [] if self.source_address is None else [self.source_address]
+        extra_args = []
+        if self.source_address:
+            extra_args.append(self.source_address)
+
         conn = socket.create_connection(
-            (self.host, self.port), self.timeout, *args)
-        conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY,
-                        self.tcp_nodelay)
+            (self.host, self.port), self.timeout, *extra_args)
+        conn.setsockopt(
+            socket.IPPROTO_TCP, socket.TCP_NODELAY, self.tcp_nodelay)
+
         return conn
 
     def _prepare_conn(self, conn):
