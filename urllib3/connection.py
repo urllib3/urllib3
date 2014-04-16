@@ -83,7 +83,7 @@ class HTTPConnection(_HTTPConnection, object):
         :return: a new socket connection
         """
         extra_args = []
-        if self.source_address:
+        if self.source_address:  # Python 2.7+
             extra_args.append(self.source_address)
 
         conn = socket.create_connection(
