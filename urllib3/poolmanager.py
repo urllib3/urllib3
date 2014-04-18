@@ -1,3 +1,4 @@
+import sys
 import logging
 
 try:  # Python 3
@@ -64,7 +65,7 @@ class PoolManager(RequestMethods):
         self.pools = RecentlyUsedContainer(num_pools,
                                            dispose_func=lambda p: p.close())
 
-    def _new_pool(self, scheme, host, port):
+    def _new_pool(self, scheme, host, port, source_address=None):
         """
         Create a new :class:`ConnectionPool` based on host, port and scheme.
 
@@ -74,6 +75,7 @@ class PoolManager(RequestMethods):
         """
         pool_cls = pool_classes_by_scheme[scheme]
         kwargs = self.connection_pool_kw
+        kwargs['source_address'] = source_address
         if scheme == 'http':
             kwargs = self.connection_pool_kw.copy()
             for kw in SSL_KEYWORDS:
@@ -90,21 +92,35 @@ class PoolManager(RequestMethods):
         """
         self.pools.clear()
 
-    def connection_from_host(self, host, port=None, scheme='http'):
+    def connection_from_host(self, host, port=None, scheme='http',
+                             source_address=None):
         """
-        Get a :class:`ConnectionPool` based on the host, port, and scheme.
+        Get a :class:`ConnectionPool` based on the host, port, scheme, and source_address.
 
         If ``port`` isn't given, it will be derived from the ``scheme`` using
         ``urllib3.connectionpool.port_by_scheme``.
-        """
 
+        An omitted ``source_address`` (``source_address`` is None) counts as a
+        unique source_address; it's currently beyond the scope of urllib3 to
+        determine the OS's chosen default interface and port every time
+        ``source_address`` is omitted.
+
+        For example, if the OS's default interface is '127.0.0.1', an
+        HTTPConnectionPool could potentially be shared between the explicit
+        ``source_address`` ('127.0.0.1', <port>) and an omitted
+        ``source_address``, which would default to '127.0.0.1' anyhow. This
+        optimization isn't made at this time.
+        """
         if not host:
             raise LocationValueError("No host specified.")
 
         scheme = scheme or 'http'
         port = port or port_by_scheme.get(scheme, 80)
-        pool_key = (scheme, host, port)
 
+        if source_address and sys.version_info < (2, 7):  # Python 2.6 and older
+            source_address = None
+
+        pool_key = (scheme, host, port, source_address)
         with self.pools.lock:
             # If the scheme, host, or port doesn't match existing open
             # connections, open a new ConnectionPool.
@@ -113,12 +129,12 @@ class PoolManager(RequestMethods):
                 return pool
 
             # Make a fresh ConnectionPool of the desired type
-            pool = self._new_pool(scheme, host, port)
+            pool = self._new_pool(scheme, host, port, source_address)
             self.pools[pool_key] = pool
 
         return pool
 
-    def connection_from_url(self, url):
+    def connection_from_url(self, url, source_address=None):
         """
         Similar to :func:`urllib3.connectionpool.connection_from_url` but
         doesn't pass any additional parameters to the
@@ -127,8 +143,12 @@ class PoolManager(RequestMethods):
         Additional parameters are taken from the :class:`.PoolManager`
         constructor.
         """
+        if source_address and sys.version_info < (2, 7):  # Python 2.6 and older
+            source_address = None
+
         u = parse_url(url)
-        return self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
+        return self.connection_from_host(
+            u.host, u.port, u.scheme, source_address)
 
     def urlopen(self, method, url, redirect=True, **kw):
         """
@@ -139,8 +159,15 @@ class PoolManager(RequestMethods):
         The given ``url`` parameter must be absolute, such that an appropriate
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
+        source_address = kw.get('source_address')
+        if source_address and sys.version_info < (2, 7):  # Python 2.6 and older
+            source_address = None
+            kw.pop('source_address', None)
+        kw.pop('source_address', None)
+
         u = parse_url(url)
-        conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
+        conn = self.connection_from_host(
+            u.host, u.port, u.scheme, source_address)
 
         kw['assert_same_host'] = False
         kw['redirect'] = False
@@ -224,13 +251,15 @@ class ProxyManager(PoolManager):
         super(ProxyManager, self).__init__(
             num_pools, headers, **connection_pool_kw)
 
-    def connection_from_host(self, host, port=None, scheme='http'):
+    def connection_from_host(self, host, port=None, scheme='http',
+                             source_address=None):
         if scheme == "https":
             return super(ProxyManager, self).connection_from_host(
-                host, port, scheme)
+                host, port, scheme, source_address)
 
         return super(ProxyManager, self).connection_from_host(
-            self.proxy.host, self.proxy.port, self.proxy.scheme)
+            self.proxy.host, self.proxy.port, self.proxy.scheme,
+            source_address)
 
     def _set_proxy_headers(self, url, headers=None):
         """
