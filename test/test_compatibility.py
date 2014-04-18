@@ -14,10 +14,3 @@ class TestVersionCompatibility(unittest.TestCase):
 
             if w:
                 self.fail('HTTPConnection raised warning on strict=True: %r' % w[0].message)
-
-    def test_connection_source_address(self):
-        try:
-            # source_address does not exist in Py26-
-            conn = HTTPConnection('localhost', 12345, source_address='127.0.0.1')
-        except TypeError as e:
-            self.fail('HTTPConnection raised TypeError on source_adddress: %r' % e)
