@@ -157,9 +157,10 @@ def get_subj_alt_name(peer_cert):
 class WrappedSocket(object):
     '''API-compatibility wrapper for Python OpenSSL's Connection-class.'''
 
-    def __init__(self, connection, socket):
+    def __init__(self, connection, socket, suppress_ragged_eofs=True):
         self.connection = connection
         self.socket = socket
+        self.suppress_ragged_eofs = suppress_ragged_eofs
 
     def fileno(self):
         return self.socket.fileno()
@@ -170,6 +171,11 @@ class WrappedSocket(object):
     def recv(self, *args, **kwargs):
         try:
             data = self.connection.recv(*args, **kwargs)
+        except OpenSSL.SSL.SysCallError as e:
+            if self.suppress_ragged_eofs and e.args == (-1, 'Unexpected EOF'):
+                return b''
+            else:
+                raise
         except OpenSSL.SSL.WantReadError:
             rd, wd, ed = select.select(
                 [self.socket], [], [], self.socket.gettimeout())
