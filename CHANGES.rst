@@ -7,6 +7,12 @@ dev (master)
 * ... [Short description of non-trivial change.] (Issue #)
 
 
+1.8.2 (2014-04-17)
+++++++++++++++++++
+
+* Fix ``urllib3.util`` not being included in the package.
+
+
 1.8.1 (2014-04-17)
 ++++++++++++++++++
 
