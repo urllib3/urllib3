@@ -4,6 +4,18 @@ Changes
 1.8.1 (2014-04-17)
 ++++++++++++++++++
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.8.2 (2014-04-17)
+++++++++++++++++++
+
+* Fix ``urllib3.util`` not being included in the package.
+
+
+1.8.1 (2014-04-17)
+++++++++++++++++++
+
 * Fix AppEngine bug of HTTPS requests going out as HTTP. (Issue #356)
 
 * Don't install ``dummyserver`` into ``site-packages`` as it's only needed
