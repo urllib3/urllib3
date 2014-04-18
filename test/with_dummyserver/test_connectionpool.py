@@ -4,6 +4,7 @@ import socket
 import sys
 import unittest
 import time
+import warnings
 
 import mock
 
@@ -29,6 +30,7 @@ from urllib3.exceptions import (
     MaxRetryError,
     ReadTimeoutError,
     ProtocolError,
+    PythonVersionWarning,
 )
 from urllib3.packages.six import b, u
 from urllib3.util.retry import Retry
@@ -590,10 +592,28 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
         self.assertRaises(MaxRetryError, pool.request, 'GET', '/test', retries=2)
 
+    @onlyPy26OrOlder
+    def test_source_address_ignored(self):
+        # No warning is issued if source_address is omitted.
+        with warnings.catch_warnings(record=True) as w:
+            pool = HTTPConnectionPool(self.host, self.port)
+            assert pool.request('GET', '/source_address').status == 200
+            assert (
+                not w or not issubclass(w[-1].category, PythonVersionWarning))
+
+        # source_address is ignored in Python 2.6 and older. Warning issued.
+        with warnings.catch_warnings(record=True) as w:
+            for addr in INVALID_SOURCE_ADDRESSES:
+                pool = HTTPConnectionPool(
+                    self.host, self.port, source_address=addr)
+                assert pool.request('GET', '/source_address').status == 200
+            assert issubclass(w[-1].category, PythonVersionWarning)
+
+    @onlyPy27OrNewer
     def test_source_address(self):
         for addr in VALID_SOURCE_ADDRESSES:
             pool = HTTPConnectionPool(self.host, self.port,
-                    source_address=addr, retries=False)
+                                      source_address=addr, retries=False)
             r = pool.request('GET', '/source_address')
             assert r.data == b(addr[0]), (
                 "expected the response to contain the source address {addr}, "
@@ -602,9 +622,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     def test_source_address_error(self):
         for addr in INVALID_SOURCE_ADDRESSES:
             pool = HTTPConnectionPool(self.host, self.port,
-                    source_address=addr, retries=False)
+                                      source_address=addr, retries=False)
             self.assertRaises(ProtocolError,
-                    pool.request, 'GET', '/source_address')
+                              pool.request, 'GET', '/source_address')
 
     @onlyPy3
     def test_httplib_headers_case_insensitive(self):

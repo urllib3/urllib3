@@ -1,4 +1,3 @@
-
 ## Base Exceptions
 
 class HTTPError(Exception):
@@ -153,4 +152,18 @@ class InsecureRequestWarning(SecurityWarning):
 
 class SystemTimeWarning(SecurityWarning):
     "Warned when system time is suspected to be wrong"
+
+## Warnings
+
+SOURCE_ADDRESS_WARNING = (
+    "source_address support was added to Python in 2.7 and is unavailable in "
+    "Python 2.6. Your operating system's default socket behavior will be used "
+    "instead.")
+
+
+class PythonVersionWarning(UserWarning):
+    """
+    Raised when attempted functionality isn't supported by the user's Python
+    version.
+    """
     pass

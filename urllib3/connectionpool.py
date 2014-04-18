@@ -25,6 +25,8 @@ from .exceptions import (
     SSLError,
     TimeoutError,
     InsecureRequestWarning,
+    PythonVersionWarning,
+    SOURCE_ADDRESS_WARNING,
 )
 from .packages.ssl_match_hostname import CertificateError
 from .packages import six
@@ -171,6 +173,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # These are mostly for testing and debugging purposes.
         self.num_connections = 0
         self.num_requests = 0
+
+        if sys.version_info < (2, 7):  # Python 2.6 and older
+            if conn_kw.pop('source_address', None):
+                warnings.warn(SOURCE_ADDRESS_WARNING, PythonVersionWarning)
+
         self.conn_kw = conn_kw
 
         if self.proxy:
@@ -641,6 +648,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  ca_certs=None, ssl_version=None,
                  assert_hostname=None, assert_fingerprint=None,
                  **conn_kw):
+
+        if sys.version_info < (2, 7):  # Python 2.6 or older
+            if conn_kw.pop('source_address', None):
+                warnings.warn(SOURCE_ADDRESS_WARNING, PythonVersionWarning)
 
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
                                     block, headers, retries, _proxy, _proxy_headers,

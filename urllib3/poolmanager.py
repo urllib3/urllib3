@@ -1,5 +1,6 @@
 import sys
 import logging
+import warnings
 
 try:  # Python 3
     from urllib.parse import urljoin
@@ -13,6 +14,7 @@ from .exceptions import LocationValueError
 from .request import RequestMethods
 from .util.url import parse_url
 from .util.retry import Retry
+from .exceptions import PythonVersionWarning, SOURCE_ADDRESS_WARNING
 
 
 __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
@@ -119,6 +121,7 @@ class PoolManager(RequestMethods):
 
         if source_address and sys.version_info < (2, 7):  # Python 2.6 and older
             source_address = None
+            warnings.warn(SOURCE_ADDRESS_WARNING, PythonVersionWarning)
 
         pool_key = (scheme, host, port, source_address)
         with self.pools.lock:
@@ -145,6 +148,7 @@ class PoolManager(RequestMethods):
         """
         if source_address and sys.version_info < (2, 7):  # Python 2.6 and older
             source_address = None
+            warnings.warn(SOURCE_ADDRESS_WARNING, PythonVersionWarning)
 
         u = parse_url(url)
         return self.connection_from_host(
@@ -163,6 +167,8 @@ class PoolManager(RequestMethods):
         if source_address and sys.version_info < (2, 7):  # Python 2.6 and older
             source_address = None
             kw.pop('source_address', None)
+            warnings.warn(SOURCE_ADDRESS_WARNING, PythonVersionWarning)
+
         kw.pop('source_address', None)
 
         u = parse_url(url)
