@@ -6,6 +6,7 @@
 
 import sys
 import logging
+import warnings
 
 try:  # Python 3
     from urllib.parse import urljoin
@@ -17,6 +18,7 @@ from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
 from .request import RequestMethods
 from .util import parse_url
+from .exceptions import PythonVersionWarning, SOURCE_ADDRESS_WARNING
 
 
 __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
@@ -120,6 +122,7 @@ class PoolManager(RequestMethods):
         port = port or port_by_scheme.get(scheme, 80)
         if source_address and sys.version_info < (2, 7):  # Python 2.6 and older
             source_address = None
+            warnings.warn(SOURCE_ADDRESS_WARNING, PythonVersionWarning)
 
         pool_key = (scheme, host, port, source_address)
         with self.pools.lock:
@@ -145,6 +148,7 @@ class PoolManager(RequestMethods):
         """
         if source_address and sys.version_info < (2, 7):  # Python 2.6 and older
             source_address = None
+            warnings.warn(SOURCE_ADDRESS_WARNING, PythonVersionWarning)
 
         u = parse_url(url)
         return self.connection_from_host(
@@ -162,7 +166,7 @@ class PoolManager(RequestMethods):
         source_address = kw.get('source_address')
         if source_address and sys.version_info < (2, 7):  # Python 2.6 and older
             source_address = None
-            conn_kw.pop('source_address', None)
+            warnings.warn(SOURCE_ADDRESS_WARNING, PythonVersionWarning)
         kw.pop('source_address', None)
 
         u = parse_url(url)

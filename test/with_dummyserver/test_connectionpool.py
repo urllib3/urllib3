@@ -2,6 +2,7 @@ import logging
 import socket
 import sys
 import unittest
+import warnings
 
 import mock
 
@@ -24,6 +25,7 @@ from urllib3.exceptions import (
     DecodeError,
     MaxRetryError,
     ReadTimeoutError,
+    PythonVersionWarning,
 )
 from urllib3.packages.six import b, u, string_types
 from urllib3 import util
@@ -536,12 +538,20 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     @onlyPy26OrOlder
     def test_source_address_ignored(self):
-        # source_address is ignored in Python 2.6 and older.
-        for addr in INVALID_SOURCE_ADDRESSES:
-            pool = HTTPConnectionPool(
-                self.host, self.port, source_address=addr)
-            r = pool.request('GET', '/source_address')
-            assert r.status == 200
+        # No warning is issued if source_address is omitted.
+        with warnings.catch_warnings(record=True) as w:
+            pool = HTTPConnectionPool(self.host, self.port)
+            assert pool.request('GET', '/source_address').status == 200
+            assert (
+                not w or not issubclass(w[-1].category, PythonVersionWarning))
+
+        # source_address is ignored in Python 2.6 and older. Warning issued.
+        with warnings.catch_warnings(record=True) as w:
+            for addr in INVALID_SOURCE_ADDRESSES:
+                pool = HTTPConnectionPool(
+                    self.host, self.port, source_address=addr)
+                assert pool.request('GET', '/source_address').status == 200
+            assert issubclass(w[-1].category, PythonVersionWarning)
 
     @onlyPy27OrNewer
     def test_source_address(self):
