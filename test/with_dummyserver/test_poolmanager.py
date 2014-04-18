@@ -1,12 +1,15 @@
 import unittest
 import json
 
+from urllib3.packages.six import b
 from dummyserver.testcase import (HTTPDummyServerTestCase,
                                   IPv6HTTPDummyServerTestCase)
 from urllib3.poolmanager import PoolManager
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError, SSLError
-
+from test import (
+    onlyPy27OrNewer, onlyPy26OrOlder, VALID_SOURCE_ADDRESSES,
+    INVALID_SOURCE_ADDRESSES)
 
 class TestPoolManager(HTTPDummyServerTestCase):
 
@@ -122,6 +125,29 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         r = http.request('GET', 'http://%s:%s/' % (self.host, self.port))
         self.assertEqual(r.status, 200)
+
+    @onlyPy26OrOlder
+    def test_source_address_ignored(self):
+        # source_address is ignored in Python 2.6 and older.
+        http = PoolManager()
+        for addr in INVALID_SOURCE_ADDRESSES:
+            assert http.request('GET', '/source_address').status == 200
+        assert len(http.pools) == 1
+
+    @onlyPy27OrNewer
+    def test_source_address(self):
+        http = PoolManager()
+        url = 'http://%s:%s/source_address' % (self.host, self.port)
+        for addr in VALID_SOURCE_ADDRESSES:
+            r = http.request('GET', url, source_address=addr)
+            assert r.data == b(addr[0])
+
+        num_pools = len(http.pools)
+        assert num_pools == len(VALID_SOURCE_ADDRESSES)
+        
+        # An omitted source_address counts as a unique source_address.
+        http.request('GET', url)
+        assert len(http.pools) == num_pools + 1
 
 
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
