@@ -4,6 +4,19 @@ Changes
 1.8 (2014-03-04)
 ++++++++++++++++
 
+* Fix AppEngine bug of HTTPS requests going out as HTTP. (Issue #356)
+
+* Don't install ``dummyserver`` into ``site-packages`` as it's only needed
+  for the test suite. (Issue #362)
+
+* Added support for specifying ``source_address``. (Issue #352)
+
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.8 (2014-03-04)
+++++++++++++++++
+
 * Improved url parsing in ``urllib3.util.parse_url`` (properly parse '@' in
   username, and blank ports like 'hostname:').
 

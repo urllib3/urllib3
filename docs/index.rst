@@ -152,6 +152,35 @@ should use a :class:`~urllib3.poolmanager.PoolManager`.
 A :class:`~urllib3.connectionpool.ConnectionPool` is composed of a collection
 of :class:`httplib.HTTPConnection` objects.
 
+Timeout
+-------
+
+A timeout can be set to abort socket operations on individual connections after
+the specified duration. The timeout can be defined as a float or an instance of
+:class:`~urllib3.util.timeout.Timeout` which gives more granular configuration
+over how much time is allowed for different stages of the request. This can be
+set for the entire pool or per-request.
+
+::
+    >>> from urllib3 import PoolManager, Timeout
+
+    >>> # Manager with 3 seconds combined timeout.
+    >>> http = PoolManager(timeout=3.0)
+    >>> r = http.request('GET', 'http://httpbin.org/delay/1')
+
+    >>> # Manager with 2 second timeout for the read phase, no limit for the rest.
+    >>> http = PoolManager(timeout=Timeout(read=2.0)) 
+    >>> r = http.request('GET', 'http://httpbin.org/delay/1')
+
+    >>> # Manager with no timeout but a request with a timeout of 1 seconds for
+    >>> # the connect phase and 2 seconds for the read phase.
+    >>> http = PoolManager()
+    >>> r = http.request('GET', 'http://httpbin.org/delay/1', timeout=Timeout(connect=1.0, read=2.0))
+
+    >>> # Same Manager but request with a 5 second total timeout.
+    >>> r = http.request('GET', 'http://httpbin.org/delay/1', timeout=Timeout(total=5.0))
+
+
 Foundation
 ----------
 

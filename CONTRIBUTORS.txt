@@ -111,5 +111,11 @@ In chronological order:
   * HTTPHeaderDict and associated tests and docs
   * Bugfixes, docs, test coverage
 
+* Tahia Khan <http://tahia.tk/>
+  * Added Timeout examples in docs
+
+* Arthur Grunseid <http://grunseid.com>
+  * source_address support and tests (with https://github.com/bui)
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

@@ -77,6 +77,7 @@ class TestUtil(unittest.TestCase):
         for location in invalid_host:
             self.assertRaises(LocationParseError, get_host, location)
 
+
     def test_parse_url(self):
         url_host_map = {
             'http://google.com/mail': Url('http', host='google.com', path='/mail'),
@@ -107,6 +108,7 @@ class TestUtil(unittest.TestCase):
             'http://foo:bar@localhost/': Url('http', auth='foo:bar', host='localhost', path='/'),
             'http://foo@localhost/': Url('http', auth='foo', host='localhost', path='/'),
             'http://foo:bar@baz@localhost/': Url('http', auth='foo:bar@baz', host='localhost', path='/'),
+            'http://@': Url('http', host=None, auth='')
         }
         for url, expected_url in url_host_map.items():
             returned_url = parse_url(url)
@@ -231,7 +233,7 @@ class TestUtil(unittest.TestCase):
             self.assertTrue('int or float' in str(e))
 
 
-    @patch('urllib3.util.current_time')
+    @patch('urllib3.util.timeout.current_time')
     def test_timeout(self, current_time):
         timeout = Timeout(total=3)
 
@@ -278,7 +280,7 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(str(timeout), "Timeout(connect=1, read=None, total=3)")
 
 
-    @patch('urllib3.util.current_time')
+    @patch('urllib3.util.timeout.current_time')
     def test_timeout_elapsed(self, current_time):
         current_time.return_value = TIMEOUT_EPOCH
         timeout = Timeout(total=3)

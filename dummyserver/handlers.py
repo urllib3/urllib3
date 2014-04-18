@@ -70,6 +70,10 @@ class TestingApp(WSGIHandler):
         "Render simple message"
         return Response("Dummy server!")
 
+    def source_address(self, request):
+        """Return the requester's IP address."""
+        return Response(request.remote_ip)
+
     def set_up(self, request):
         test_type = request.params.get('test_type')
         test_id = request.params.get('test_id')

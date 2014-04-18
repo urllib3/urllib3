@@ -10,7 +10,9 @@ try:
 except:
     from urllib import urlencode
 
-from test import requires_network, onlyPY3
+from test import (
+    onlyPy3, onlyPy27OrNewer, onlyPy26OrOlder, requires_network, TARPIT_HOST,
+    VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES)
 from urllib3 import (
     encode_multipart_formdata,
     HTTPConnectionPool,
@@ -23,7 +25,7 @@ from urllib3.exceptions import (
     MaxRetryError,
     ReadTimeoutError,
 )
-from urllib3.packages.six import u
+from urllib3.packages.six import b, u, string_types
 from urllib3 import util
 
 import tornado
@@ -34,10 +36,6 @@ from nose.tools import timed
 log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
-
-# We need a host that will not immediately close the connection with a TCP
-# Reset. SO suggests this hostname
-TARPIT_HOST = '10.255.255.1'
 
 
 class TestConnectionPool(HTTPDummyServerTestCase):
@@ -536,7 +534,32 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
         self.assertRaises(MaxRetryError, pool.request, 'GET', '/test', retries=2)
 
-    @onlyPY3
+    @onlyPy26OrOlder
+    def test_source_address_ignored(self):
+        # source_address is ignored in Python 2.6 and older.
+        for addr in INVALID_SOURCE_ADDRESSES:
+            pool = HTTPConnectionPool(
+                self.host, self.port, source_address=addr)
+            r = pool.request('GET', '/source_address')
+            assert r.status == 200
+
+    @onlyPy27OrNewer
+    def test_source_address(self):
+        for addr in VALID_SOURCE_ADDRESSES:
+            pool = HTTPConnectionPool(
+                self.host, self.port, source_address=addr)
+            r = pool.request('GET', '/source_address')
+            assert r.data == b(addr[0])
+
+    @onlyPy27OrNewer
+    def test_source_address_error(self):
+        for addr in INVALID_SOURCE_ADDRESSES:
+            pool = HTTPConnectionPool(
+                self.host, self.port, source_address=addr)
+            self.assertRaises(
+                MaxRetryError, pool.request, 'GET', '/source_address')
+
+    @onlyPy3
     def test_httplib_headers_case_insensitive(self):
         HEADERS = {'Content-Length': '0', 'Content-type': 'text/plain',
                     'Server': 'TornadoServer/%s' % tornado.version}
