@@ -33,11 +33,11 @@ def setUp():
 
 
 def onlyPy26OrOlder(test):
-    """Skips this test unless you are on Python2.6.x or earlier."""
+    """Skips this test unless you are on Python 2.6.x or earlier."""
 
     @functools.wraps(test)
     def wrapper(*args, **kwargs):
-        msg = "{name} only runs on Python2.6.x or older".format(name=test.__name__)
+        msg = "{name} requires Python2.7.x+ to run".format(name=test.__name__)
         if sys.version_info >= (2, 7):
             raise SkipTest(msg)
         return test(*args, **kwargs)
