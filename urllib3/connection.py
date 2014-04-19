@@ -8,6 +8,8 @@ import sys
 import socket
 from socket import timeout as SocketTimeout
 
+import backports.ssl as backports_ssl
+
 try: # Python 3
     from http.client import HTTPConnection as _HTTPConnection, HTTPException
 except ImportError:
@@ -185,8 +187,11 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                 assert_fingerprint(self.sock.getpeercert(binary_form=True),
                                    self.assert_fingerprint)
             elif self.assert_hostname is not False:
-                self._ssl.match_hostname(self.sock.getpeercert(),
-                                         self.assert_hostname or self.host)
+                # If the current SSL implementation doesn't provide
+                # match_hostname(), use backports.ssl's.
+                match_hostname = getattr(self._ssl, 'match_hostname', backports_ssl.match_hostname)
+                match_hostname(self.sock.getpeercert(),
+                               self.assert_hostname or self.host)
 
 
 # Make a copy for testing.

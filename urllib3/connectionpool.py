@@ -16,6 +16,7 @@ except ImportError:
     from Queue import LifoQueue, Empty, Full
     import Queue as _  # Platform-specific: Windows
 
+import backports.ssl as backports_ssl
 
 from .exceptions import (
     ClosedPoolError,
@@ -468,14 +469,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # complains about UnboundLocalError.
         err = None
 
-        # Bit of a hack here; moving SSLError handling into a subclass proved
-        # quite difficult
-        ssl_errors = []
-        for name in ('SSLError', 'CertificateError'):
-            error = None
-            if hasattr(self, 'ssl'):
-                error = getattr(self.ssl, name, None)
-            ssl_errors.append(error)
+        # Get the SSL exception classes.
+        ssl_errors = ()
+        if hasattr(self, 'ssl'):
+            ssl_errors = (
+                self.ssl.SSLError,
+                getattr(self.ssl, 'CertificateError', backports_ssl.CertificateError),
+            )
 
         try:
             # Request a connection from the queue
@@ -507,7 +507,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Timed out by queue.
             raise EmptyPoolError(self, "No pool connections are available.")
 
-        except tuple(filter(None, ssl_errors)) as e:
+        except ssl_errors as e:
             # Release connection unconditionally because there is no way to
             # close it externally in case of exception.
             release_conn = True

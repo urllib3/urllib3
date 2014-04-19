@@ -290,10 +290,10 @@ class TestSSL(SocketDummyServerTestCase):
             sock = listener.accept()[0]
             sock2 = sock.dup()
             ssl_sock = self.ssl.wrap_socket(sock,
-                                       server_side=True,
-                                       keyfile=DEFAULT_CERTS['keyfile'],
-                                       certfile=DEFAULT_CERTS['certfile'],
-                                       ca_certs=DEFAULT_CA)
+                                            server_side=True,
+                                            keyfile=DEFAULT_CERTS['keyfile'],
+                                            certfile=DEFAULT_CERTS['certfile'],
+                                            ca_certs=DEFAULT_CA)
 
             buf = b''
             while not buf.endswith(b'\r\n\r\n'):

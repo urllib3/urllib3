@@ -9,10 +9,7 @@ from urllib3.exceptions import MaxRetryError
 from urllib3.packages import six
 from urllib3.util import base_ssl
 
-try:
-    import backports.ssl as backports_ssl
-except ImportError:
-    backports_ssl = None
+import backports.ssl as backports_ssl # this will be vendored soon
 
 
 def multi_ssl():
