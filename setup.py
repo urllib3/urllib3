@@ -4,6 +4,7 @@ from distutils.core import setup
 
 import os
 import re
+import sys
 
 try:
     import setuptools
@@ -23,6 +24,24 @@ version = VERSION
 
 requirements = []
 tests_requirements = requirements + open('test-requirements.txt').readlines()
+
+extras_require = dict(
+    ssl=[],
+    modern_ssl=[],
+)
+
+try:
+    import ssl
+except ImportError:
+    extras_require.update(
+        ssl=['pyOpenSSL'],
+        modern_ssl=['pyOpenSSL'],
+    )
+else:
+    if sys.version_info[0] < (3,4):
+        extras_require.update(
+            modern_ssl=['pyOpenSSL'],
+        )
 
 setup(name='urllib3',
       version=version,
@@ -48,4 +67,5 @@ setup(name='urllib3',
       requires=requirements,
       tests_require=tests_requirements,
       test_suite='test',
+      extras_require=extras_require,
       )
