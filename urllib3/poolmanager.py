@@ -13,7 +13,7 @@ except ImportError:
 
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
-from .connectionpool import port_by_scheme
+from .connectionpool import pop_ssl_kwargs, port_by_scheme
 from .request import RequestMethods
 from .util import parse_url
 
@@ -27,9 +27,6 @@ pool_classes_by_scheme = {
 }
 
 log = logging.getLogger(__name__)
-
-SSL_KEYWORDS = ('key_file', 'cert_file', 'cert_reqs', 'ca_certs',
-                'ssl_version', 'ssl')
 
 
 class PoolManager(RequestMethods):
@@ -80,8 +77,7 @@ class PoolManager(RequestMethods):
         kwargs = self.connection_pool_kw
         if scheme == 'http':
             kwargs = self.connection_pool_kw.copy()
-            for kw in SSL_KEYWORDS:
-                kwargs.pop(kw, None)
+            pop_ssl_kwargs(kwargs)
 
         return pool_cls(host, port, **kwargs)
 

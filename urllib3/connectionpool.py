@@ -692,6 +692,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 SSL_KEYWORDS = ('key_file', 'cert_file', 'cert_reqs', 'ca_certs',
                 'assert_hostname', 'assert_fingerprint', 'ssl_version', 'ssl')
 
+def pop_ssl_kwargs(kwargs):
+    for kw in SSL_KEYWORDS:
+        kwargs.pop(kw, None)
+
 def connection_from_url(url, **kwargs):
     """
     Given a url, return an :class:`.ConnectionPool` instance of its host.
@@ -716,6 +720,5 @@ def connection_from_url(url, **kwargs):
     if scheme == 'https':
         return HTTPSConnectionPool(host, port=port, **kwargs)
     else:
-        for kw in SSL_KEYWORDS:
-            kwargs.pop(kw, None)
+        pop_ssl_kwargs(kwargs)
         return HTTPConnectionPool(host, port=port, **kwargs)
