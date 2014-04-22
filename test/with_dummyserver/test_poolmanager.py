@@ -149,8 +149,15 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert issubclass(w[-1].category, PythonVersionWarning)
         assert len(http.pools) == 1
 
+        with warnings.catch_warnings(record=True) as w:
+            http = PoolManager(source_address=INVALID_SOURCE_ADDRESSES[0])
+            r = http.request(
+                'GET', self.source_address_url, source_address=addr)
+            assert r.status == 200
+            assert issubclass(w[-1].category, PythonVersionWarning)
+
     @onlyPy27OrNewer
-    def test_source_address(self):
+    def test_request_source_address(self):
         http = PoolManager()
         for addr in VALID_SOURCE_ADDRESSES:
             r = http.request(
@@ -160,7 +167,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
         num_pools = len(http.pools)
         assert num_pools == len(VALID_SOURCE_ADDRESSES)
         
-        # ConnectionPools reused.
+        # ConnectionPools are reused.
         pool1 = http.connection_from_url(
             self.source_address_url, source_address=VALID_SOURCE_ADDRESSES[0])
         pool2 = http.connection_from_url(
@@ -172,6 +179,23 @@ class TestPoolManager(HTTPDummyServerTestCase):
         # An omitted source_address counts as a unique source_address.
         r = http.request('GET', self.source_address_url)
         assert r.status == 200 and len(http.pools) == num_pools + 1
+
+    @onlyPy27OrNewer
+    def test_constructor_source_address(self):
+        # Requests default to the constructor's optional source_address.
+        for addr in VALID_SOURCE_ADDRESSES:
+            http = PoolManager(source_address=addr)
+            
+            r = http.request('GET', self.source_address_url)
+            assert r.data == b(addr[0])
+            
+            remaining = list(VALID_SOURCE_ADDRESSES)
+            remaining.remove(addr)
+            for remaddr in remaining:
+                r = http.request(
+                    'GET', self.source_address_url, source_address=remaddr)
+                assert r.data == b(remaddr[0])
+            assert len(http.pools) == len(VALID_SOURCE_ADDRESSES)
 
 
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
