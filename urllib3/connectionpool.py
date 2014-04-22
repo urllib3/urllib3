@@ -7,6 +7,7 @@
 import sys
 import errno
 import logging
+import warnings
 
 from socket import error as SocketError, timeout as SocketTimeout
 import socket
@@ -30,6 +31,8 @@ from .exceptions import (
     TimeoutError,
     ReadTimeoutError,
     ProxyError,
+    PythonVersionWarning,
+    SOURCE_ADDRESS_WARNING,
 )
 from .packages.ssl_match_hostname import CertificateError
 from .packages import six
@@ -168,7 +171,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.num_requests = 0
 
         if sys.version_info < (2, 7):  # Python 2.6 and older
-            conn_kw.pop('source_address', None)
+            if conn_kw.pop('source_address', None):
+                warnings.warn(SOURCE_ADDRESS_WARNING, PythonVersionWarning)
         self.conn_kw = conn_kw
 
     def _new_conn(self):
@@ -606,7 +610,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  **conn_kw):
 
         if sys.version_info < (2, 7):  # Python 2.6 or older
-            conn_kw.pop('source_address', None)
+            if conn_kw.pop('source_address', None):
+                warnings.warn(SOURCE_ADDRESS_WARNING, PythonVersionWarning)
 
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
                                     block, headers, _proxy, _proxy_headers, **conn_kw)

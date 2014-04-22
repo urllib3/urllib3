@@ -20,18 +20,18 @@ INVALID_SOURCE_ADDRESSES = [('192.0.2.255', 0), ('2001:db8::1', 0)]
 
 
 def onlyPy26OrOlder(test):
-    """Skips this test unless you are on Python2.6.x or earlier."""
+    """Skips this test unless you are on Python 2.6.x or earlier."""
 
     @functools.wraps(test)
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python2.7.x+ to run".format(name=test.__name__)
-        if sys.version_info > (2, 6):
+        if sys.version_info >= (2, 7):
             raise SkipTest(msg)
         return test(*args, **kwargs)
     return wrapper
 
 def onlyPy27OrNewer(test):
-    """Skips this test unless you are on Python2.7.x or later."""
+    """Skips this test unless you are on Python 2.7.x or later."""
 
     @functools.wraps(test)
     def wrapper(*args, **kwargs):

@@ -1,18 +1,24 @@
 import unittest
 import json
+import warnings
 
+from urllib3.packages.six import b
 from dummyserver.testcase import (HTTPDummyServerTestCase,
                                   IPv6HTTPDummyServerTestCase)
 from urllib3.poolmanager import PoolManager
 from urllib3.connectionpool import port_by_scheme
-from urllib3.exceptions import MaxRetryError, SSLError
-
+from urllib3.exceptions import  SSLError, MaxRetryError, PythonVersionWarning
+from test import (
+    onlyPy27OrNewer, onlyPy26OrOlder, VALID_SOURCE_ADDRESSES,
+    INVALID_SOURCE_ADDRESSES)
 
 class TestPoolManager(HTTPDummyServerTestCase):
 
     def setUp(self):
         self.base_url = 'http://%s:%d' % (self.host, self.port)
         self.base_url_alt = 'http://%s:%d' % (self.host_alt, self.port)
+        self.source_address_url = (
+            'http://%s:%s/source_address' % (self.host, self.port))
 
     def test_redirect(self):
         http = PoolManager()
@@ -122,6 +128,74 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         r = http.request('GET', 'http://%s:%s/' % (self.host, self.port))
         self.assertEqual(r.status, 200)
+
+    @onlyPy26OrOlder
+    def test_source_address_ignored(self):
+        # No warning is issued if source_address is omitted.
+        http = PoolManager()
+        with warnings.catch_warnings(record=True) as w:
+            r = http.request('GET', self.source_address_url)
+            assert r.status == 200
+            assert (
+                not w or not issubclass(w[-1].category, PythonVersionWarning))
+
+        # source_address is ignored in Python 2.6 and older. Warning issued.
+        http = PoolManager()
+        with warnings.catch_warnings(record=True) as w:
+            for addr in INVALID_SOURCE_ADDRESSES:
+                r = http.request(
+                    'GET', self.source_address_url, source_address=addr)
+                assert r.status == 200
+            assert issubclass(w[-1].category, PythonVersionWarning)
+        assert len(http.pools) == 1
+
+        with warnings.catch_warnings(record=True) as w:
+            http = PoolManager(source_address=INVALID_SOURCE_ADDRESSES[0])
+            r = http.request(
+                'GET', self.source_address_url, source_address=addr)
+            assert r.status == 200
+            assert issubclass(w[-1].category, PythonVersionWarning)
+
+    @onlyPy27OrNewer
+    def test_request_source_address(self):
+        http = PoolManager()
+        for addr in VALID_SOURCE_ADDRESSES:
+            r = http.request(
+                'GET', self.source_address_url, source_address=addr)
+            assert r.data == b(addr[0])
+
+        num_pools = len(http.pools)
+        assert num_pools == len(VALID_SOURCE_ADDRESSES)
+        
+        # ConnectionPools are reused.
+        pool1 = http.connection_from_url(
+            self.source_address_url, source_address=VALID_SOURCE_ADDRESSES[0])
+        pool2 = http.connection_from_url(
+            self.source_address_url, source_address=VALID_SOURCE_ADDRESSES[0])
+        pool3 = http.connection_from_url(
+            self.source_address_url, source_address=VALID_SOURCE_ADDRESSES[1])
+        assert pool1 == pool2 and pool2 != pool3
+
+        # An omitted source_address counts as a unique source_address.
+        r = http.request('GET', self.source_address_url)
+        assert r.status == 200 and len(http.pools) == num_pools + 1
+
+    @onlyPy27OrNewer
+    def test_constructor_source_address(self):
+        # Requests default to the constructor's optional source_address.
+        for addr in VALID_SOURCE_ADDRESSES:
+            http = PoolManager(source_address=addr)
+            
+            r = http.request('GET', self.source_address_url)
+            assert r.data == b(addr[0])
+            
+            remaining = list(VALID_SOURCE_ADDRESSES)
+            remaining.remove(addr)
+            for remaddr in remaining:
+                r = http.request(
+                    'GET', self.source_address_url, source_address=remaddr)
+                assert r.data == b(remaddr[0])
+            assert len(http.pools) == len(VALID_SOURCE_ADDRESSES)
 
 
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):

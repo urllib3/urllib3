@@ -124,3 +124,18 @@ class LocationParseError(ValueError, HTTPError):
         HTTPError.__init__(self, message)
 
         self.location = location
+
+
+## Warnings
+
+SOURCE_ADDRESS_WARNING = (
+    "source_address was added to Python in 2.7 and is unavailable in earlier "
+    "versions. Your operating system's default socket behavior will be used "
+    "instead.")
+
+class PythonVersionWarning(UserWarning):
+    """
+    Raised when attempted functionality isn't supported by the user's Python
+    version.
+    """
+    pass
