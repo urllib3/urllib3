@@ -67,23 +67,30 @@ class PoolManager(RequestMethods):
 
     def __init__(self, num_pools=10, headers=None, **connection_pool_kw):
         RequestMethods.__init__(self, headers)
+
+        source_address = connection_pool_kw.get('source_address')
+        if source_address and sys.version_info < (2, 7):  # Python 2.6 and older
+            connection_pool_kw.pop('source_address', None)
+            warnings.warn(SOURCE_ADDRESS_WARNING, PythonVersionWarning)
+
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools,
                                            dispose_func=lambda p: p.close())
 
     def _new_pool(self, scheme, host, port, source_address=None):
         """
-        Create a new :class:`ConnectionPool` based on host, port and scheme.
+        Create a new :class:`ConnectionPool` based on host, port, scheme, and
+        source_address.
 
         This method is used to actually create the connection pools handed out
         by :meth:`connection_from_url` and companion methods. It is intended
         to be overridden for customization.
         """
         pool_cls = pool_classes_by_scheme[scheme]
-        kwargs = self.connection_pool_kw
+
+        kwargs = dict(self.connection_pool_kw)
         kwargs['source_address'] = source_address
         if scheme == 'http':
-            kwargs = self.connection_pool_kw.copy()
             for kw in SSL_KEYWORDS:
                 kwargs.pop(kw, None)
 
@@ -108,18 +115,22 @@ class PoolManager(RequestMethods):
         ``urllib3.connectionpool.port_by_scheme``.
 
         An omitted ``source_address`` (``source_address`` is None) counts as a
-        unique source_address; it's currently beyond the scope of urllib3 to
-        determine the OS's chosen default interface and port every time
+        unique source_address. It's currently beyond the scope of urllib3 to
+        determine the OS's chosen interface and port every time
         ``source_address`` is omitted.
 
         For example, if the OS's default interface is '127.0.0.1', an
         HTTPConnectionPool could potentially be shared between the explicit
         ``source_address`` ('127.0.0.1', <port>) and an omitted
         ``source_address``, which would default to '127.0.0.1' anyhow. This
-        optimization isn't made at this time.
+        optimization isn't made at this time. Also, the OS's default interface
+        can change at any time.
         """
         scheme = scheme or 'http'
         port = port or port_by_scheme.get(scheme, 80)
+        source_address = (
+            source_address or self.connection_pool_kw.get('source_address'))
+
         if source_address and sys.version_info < (2, 7):  # Python 2.6 and older
             source_address = None
             warnings.warn(SOURCE_ADDRESS_WARNING, PythonVersionWarning)
@@ -146,6 +157,8 @@ class PoolManager(RequestMethods):
         Additional parameters are taken from the :class:`.PoolManager`
         constructor.
         """
+        source_address = (
+            source_address or self.connection_pool_kw.get('source_address'))
         if source_address and sys.version_info < (2, 7):  # Python 2.6 and older
             source_address = None
             warnings.warn(SOURCE_ADDRESS_WARNING, PythonVersionWarning)
@@ -163,7 +176,8 @@ class PoolManager(RequestMethods):
         The given ``url`` parameter must be absolute, such that an appropriate
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
-        source_address = kw.get('source_address')
+        source_address = (kw.get('source_address') or
+                          self.connection_pool_kw.get('source_address'))
         if source_address and sys.version_info < (2, 7):  # Python 2.6 and older
             source_address = None
             warnings.warn(SOURCE_ADDRESS_WARNING, PythonVersionWarning)
