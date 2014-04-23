@@ -8,7 +8,7 @@ from nose.plugins.skip import SkipTest
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
-from test import multi_ssl, requires_network
+from test import base_ssl, multi_ssl, requires_network
 
 from urllib3 import HTTPSConnectionPool
 import urllib3.connection
@@ -347,7 +347,7 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
 
     def setUp(self):
         self._pool = HTTPSConnectionPool(self.host, self.port, ssl=self.ssl)
-        self.certs['ssl_version'] = self.ssl.PROTOCOL_TLSv1
+        self.certs['ssl_version'] = base_ssl.PROTOCOL_TLSv1
 
     def test_set_ssl_version_to_sslv3(self):
         self._pool.ssl_version = self.ssl.PROTOCOL_SSLv3
@@ -365,7 +365,6 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
 TestHTTPS_TLSv1_BaseSSL, TestHTTPS_TLSv1_BackportsSSL = \
     TestHTTPS_TLSv1.ssl_impls
 
-TestHTTPS_TLSv1_BackportsSSL = None # FIXME
 
 if __name__ == '__main__':
     unittest.main()
