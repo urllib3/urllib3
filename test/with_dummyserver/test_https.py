@@ -8,7 +8,7 @@ from nose.plugins.skip import SkipTest
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
-from test import base_ssl, multi_ssl, requires_network
+from test import base_ssl, backports_ssl, multi_ssl, requires_network
 
 from urllib3 import HTTPSConnectionPool
 import urllib3.connection
@@ -133,34 +133,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         https_pool.ca_certs = DEFAULT_CA_BAD
         https_pool.request('GET', '/')
-
-    @requires_network
-    def test_ssl_verified_with_platform_ca_certs(self):
-        """
-        We should rely on the platform CA file to validate authenticity of SSL
-        certificates. Since this file is used by many components of the OS,
-        such as curl, apt-get, etc., we decided to not touch it, in order to
-        not compromise the security of the OS running the test suite (typically
-        urllib3 developer's OS).
-
-        This test assumes that httpbin.org uses a certificate signed by a well
-        known Certificate Authority.
-        """
-        try:
-            import urllib3.contrib.pyopenssl
-        except ImportError:
-            raise SkipTest('This test needs pyopenssl support')
-        if (urllib3.connection.ssl_wrap_socket is
-                urllib3.contrib.pyopenssl.orig_connection_ssl_wrap_socket):
-            # Not patched
-            raise SkipTest('This test should only be run after pyopenssl '
-                           'monkey patching')
-
-        https_pool = HTTPSConnectionPool('httpbin.org', 443,
-                                         cert_reqs=self.ssl.CERT_REQUIRED,
-                                         ssl=self.ssl)
-
-        https_pool.request('HEAD', '/')
 
     def test_verified_without_ca_certs(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
@@ -340,6 +312,30 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
 
 TestHTTPS_BaseSSL, TestHTTPS_BackportsSSL = TestHTTPS.ssl_impls
+
+
+class TestHTTPS_PlatformCerts(HTTPSDummyServerTestCase):
+    @requires_network
+    def test_ssl_verified_with_platform_ca_certs(self):
+        """
+        We should rely on the platform CA file to validate authenticity of SSL
+        certificates. Since this file is used by many components of the OS,
+        such as curl, apt-get, etc., we decided to not touch it, in order to
+        not compromise the security of the OS running the test suite (typically
+        urllib3 developer's OS).
+
+        This test assumes that httpbin.org uses a certificate signed by a well
+        known Certificate Authority.
+        """
+        if not hasattr(backports_ssl, 'wrap_socket'):
+            raise SkipTest('SSL implementation unavailable')
+
+        https_pool = HTTPSConnectionPool('httpbin.org', 443,
+                                         cert_reqs=backports_ssl.CERT_REQUIRED,
+                                         ssl=backports_ssl)
+
+        https_pool.request('HEAD', '/')
+
 
 @multi_ssl()
 class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
