@@ -35,12 +35,12 @@ try:
 except ImportError:
     extras_require.update(
         ssl=['pyOpenSSL'],
-        modern_ssl=['pyOpenSSL'],
+        modern_ssl=['pyOpenSSL', 'pyasn1'],
     )
 else:
     if sys.version_info[0] < (3,4):
         extras_require.update(
-            modern_ssl=['pyOpenSSL'],
+            modern_ssl=['pyOpenSSL', 'pyasn1'],
         )
 
 setup(name='urllib3',
