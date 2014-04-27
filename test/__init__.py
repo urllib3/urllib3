@@ -17,12 +17,11 @@ def multi_ssl():
         cls.__test__ = False
 
         def get_impl(name, impl):
-            # TODO skip if missing
             class TestImpl(cls):
                 __test__ = True
                 ssl = impl
             TestImpl.__name__ = '%s_%s' % (cls.__name__, name)
-            if impl is None:
+            if not hasattr(impl, 'wrap_socket'):
                 TestImpl = unittest.skip('SSL implementation unavailable')(TestImpl)
             return TestImpl
 
