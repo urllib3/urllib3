@@ -99,9 +99,8 @@ class HTTPConnection(_HTTPConnection, object):
         # http://hg.python.org/cpython/rev/0f57b30a152f) so pythons 2.6(0-2) do
         # not have them.
         if getattr(self, '_tunnel_host', None):
-            if self._tunnel_host:
-                # TODO: Fix tunnel so it doesn't depend on self.sock state.
-                self._tunnel()
+            # TODO: Fix tunnel so it doesn't depend on self.sock state.
+            self._tunnel()
 
     def connect(self):
         conn = self._new_conn()
