@@ -91,6 +91,7 @@ analysis while running test suite. Easiest way to run the tests is thusly the
   py27: commands succeeded
   py32: commands succeeded
   py33: commands succeeded
+  py34: commands succeeded
 
 Note that code coverage less than 100% is regarded as a failing run.
 
