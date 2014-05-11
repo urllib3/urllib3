@@ -619,11 +619,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.assert_fingerprint = assert_fingerprint
         self.conn_kw = conn_kw
 
-    def _prepare_conn(self, conn):
-        """
-        Prepare the ``connection`` for :meth:`urllib3.util.ssl_wrap_socket`
-        and establish the tunnel if proxy is used.
-        """
+    def _get_conn(self, timeout=None):
+
+        conn = super(HTTPSConnectionPool, self)._get_conn(timeout)
 
         if isinstance(conn, VerifiedHTTPSConnection):
             conn.set_cert(key_file=self.key_file,
@@ -680,7 +678,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             # fragmentation.
             conn.tcp_nodelay = 0
 
-        return self._prepare_conn(conn)
+        return conn
 
 
 def connection_from_url(url, **kw):
