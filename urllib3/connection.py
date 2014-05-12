@@ -177,12 +177,17 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             # self._tunnel_host below.
             self._tunnel()
 
+            # The name of the host we're requesting data from.
+            actual_host = self._tunnel_host
+        else:
+            actual_host = self.host
+
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
         self.sock = ssl_wrap_socket(sock, self.key_file, self.cert_file,
                                     cert_reqs=resolved_cert_reqs,
                                     ca_certs=self.ca_certs,
-                                    server_hostname=self.host,
+                                    server_hostname=actual_host,
                                     ssl_version=resolved_ssl_version)
 
         if resolved_cert_reqs != ssl.CERT_NONE:
@@ -191,7 +196,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                                    self.assert_fingerprint)
             elif self.assert_hostname is not False:
                 match_hostname(self.sock.getpeercert(),
-                               self.assert_hostname or self.host)
+                               self.assert_hostname or actual_host)
 
 
 if ssl:
