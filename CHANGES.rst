@@ -4,6 +4,8 @@ Changes
 dev (master)
 ++++++++++++
 
+* Fix TLS verification when using a proxy in Python 3.4.1. (Issue #385)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
