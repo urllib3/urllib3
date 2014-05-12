@@ -168,26 +168,25 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         resolved_cert_reqs = resolve_cert_reqs(self.cert_reqs)
         resolved_ssl_version = resolve_ssl_version(self.ssl_version)
 
-        # the _tunnel_host attribute was added in python 2.6.3 (via
-        # http://hg.python.org/cpython/rev/0f57b30a152f) so pythons 2.6(0-2) do
-        # not have them.
+        hostname = self.host
         if getattr(self, '_tunnel_host', None):
+            # _tunnel_host was added in Python 2.6.3
+            # (See: http://hg.python.org/cpython/rev/0f57b30a152f)
+
             self.sock = sock
             # Calls self._set_hostport(), so self.host is
             # self._tunnel_host below.
             self._tunnel()
 
-            # The name of the host we're requesting data from.
-            actual_host = self._tunnel_host
-        else:
-            actual_host = self.host
+            # Override the host with the one we're requesting data from.
+            hostname = self._tunnel_host
 
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
         self.sock = ssl_wrap_socket(sock, self.key_file, self.cert_file,
                                     cert_reqs=resolved_cert_reqs,
                                     ca_certs=self.ca_certs,
-                                    server_hostname=actual_host,
+                                    server_hostname=hostname,
                                     ssl_version=resolved_ssl_version)
 
         if resolved_cert_reqs != ssl.CERT_NONE:
@@ -196,7 +195,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                                    self.assert_fingerprint)
             elif self.assert_hostname is not False:
                 match_hostname(self.sock.getpeercert(),
-                               self.assert_hostname or actual_host)
+                               self.assert_hostname or hostname)
 
 
 if ssl:
