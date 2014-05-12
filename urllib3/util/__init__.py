@@ -14,6 +14,7 @@ from .ssl_ import (
     resolve_cert_reqs,
     resolve_ssl_version,
     ssl_wrap_socket,
+    _ssl_backend,
 )
 from .timeout import (
     current_time,
