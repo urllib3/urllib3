@@ -96,6 +96,7 @@ DEFAULT_SSL_CIPHER_LIST = "ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:" + \
 
 
 orig_util_HAS_SNI = util.HAS_SNI
+orig_ssl_backend = util._ssl_backend
 orig_connection_ssl_wrap_socket = connection.ssl_wrap_socket
 
 
@@ -104,6 +105,7 @@ def inject_into_urllib3():
 
     connection.ssl_wrap_socket = ssl_wrap_socket
     util.HAS_SNI = HAS_SNI
+    util._ssl_backend = 'PyOpenSSL'
 
 
 def extract_from_urllib3():
@@ -111,6 +113,7 @@ def extract_from_urllib3():
 
     connection.ssl_wrap_socket = orig_connection_ssl_wrap_socket
     util.HAS_SNI = orig_util_HAS_SNI
+    util._ssl_backend = orig_ssl_backend
 
 
 ### Note: This is a slightly bug-fixed version of same from ndg-httpsclient.

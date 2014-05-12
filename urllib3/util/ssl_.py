@@ -7,13 +7,14 @@ from ..exceptions import SSLError
 try:  # Test for SSL features
     SSLContext = None
     HAS_SNI = False
+    _ssl_backend = 'stdlib'
 
     import ssl
     from ssl import wrap_socket, CERT_NONE, PROTOCOL_SSLv23
     from ssl import SSLContext  # Modern SSL?
     from ssl import HAS_SNI  # Has SNI?
 except ImportError:
-    pass
+    _ssl_backend = 'none'
 
 
 def assert_fingerprint(cert, fingerprint):
