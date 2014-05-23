@@ -35,6 +35,12 @@ class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 
             return '%s:%d' % (self.host, self.port)
         return self.host
 
+    @property
+    def url(self):
+        """
+        An (RFC equivalent) URL. Gives the same thing as :func:`.unparse_url`.
+        """
+        return unparse_url(self)
 
 def split_first(s, delims):
     """
