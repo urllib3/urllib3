@@ -130,6 +130,7 @@ class TestUtil(unittest.TestCase):
         for url, expected_Url in self.parse_url_host_map.items():
             returned_url = unparse_url(expected_Url)
             self.assertEqual(url, returned_url)
+            self.assertEqual(returned_url, expected_Url.url)
 
     def test_parse_url_invalid_IPv6(self):
         self.assertRaises(ValueError, parse_url, '[::1')
