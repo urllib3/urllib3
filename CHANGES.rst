@@ -6,6 +6,8 @@ dev (master)
 
 * Fix TLS verification when using a proxy in Python 3.4.1. (Issue #385)
 
+* Add ``disable_cache`` option to ``urllib3.util.make_headers``. (Issue #393)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

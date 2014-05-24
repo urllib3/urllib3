@@ -7,7 +7,7 @@ ACCEPT_ENCODING = 'gzip,deflate'
 
 
 def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
-                 basic_auth=None, proxy_basic_auth=None):
+                 basic_auth=None, proxy_basic_auth=None, disable_cache=None):
     """
     Shortcuts for generating request headers.
 
@@ -31,6 +31,9 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
     :param proxy_basic_auth:
         Colon-separated username:password string for 'proxy-authorization: basic ...'
         auth header.
+
+    :param disable_cache:
+        If ``True``, adds 'cache-control: no-cache' header.
 
     Example: ::
 
@@ -62,6 +65,9 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
     if proxy_basic_auth:
         headers['proxy-authorization'] = 'Basic ' + \
             b64encode(six.b(proxy_basic_auth)).decode('utf-8')
+
+    if disable_cache:
+        headers['cache-control'] = 'no-cache'
 
     return headers
 

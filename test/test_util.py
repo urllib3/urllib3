@@ -179,6 +179,10 @@ class TestUtil(unittest.TestCase):
             make_headers(proxy_basic_auth='foo:bar'),
             {'proxy-authorization': 'Basic Zm9vOmJhcg=='})
 
+        self.assertEqual(
+            make_headers(disable_cache=True),
+            {'cache-control': 'no-cache'})
+
     def test_split_first(self):
         test_cases = {
             ('abcd', 'b'): ('a', 'cd', 'b'),
