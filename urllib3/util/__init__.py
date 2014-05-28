@@ -24,5 +24,4 @@ from .url import (
     parse_url,
     split_first,
     Url,
-    unparse_url,
 )
