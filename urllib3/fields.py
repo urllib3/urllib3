@@ -159,7 +159,8 @@ class RequestField(object):
         lines.append('\r\n')
         return '\r\n'.join(lines)
 
-    def make_multipart(self, content_disposition=None, content_type=None, content_location=None):
+    def make_multipart(self, content_disposition=None, content_type=None,
+                       content_location=None):
         """
         Makes this request field into a multipart request field.
 
