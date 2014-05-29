@@ -94,14 +94,13 @@ class Timeout(object):
         return '%s(connect=%r, read=%r, total=%r)' % (
             type(self).__name__, self._connect, self._read, self.total)
 
-
     @classmethod
     def _validate_timeout(cls, value, name):
         """ Check that a timeout attribute is valid
 
         :param value: The timeout value to validate
-        :param name: The name of the timeout attribute to validate. This is used
-            for clear error messages
+        :param name: The name of the timeout attribute to validate. This is
+            used for clear error messages
         :return: the value
         :raises ValueError: if the type is not an integer or a float, or if it
             is a numeric value less than zero
@@ -123,7 +122,7 @@ class Timeout(object):
                 raise ValueError("Attempted to set %s timeout to %s, but the "
                                  "timeout cannot be set to a value less "
                                  "than 0." % (name, value))
-        except TypeError: # Python 3
+        except TypeError:  # Python 3
             raise ValueError("Timeout value %s was %s, but it must be an "
                              "int or float." % (name, value))
 
@@ -135,8 +134,8 @@ class Timeout(object):
 
         The timeout value used by httplib.py sets the same timeout on the
         connect(), and recv() socket requests. This creates a :class:`Timeout`
-        object that sets the individual timeouts to the ``timeout`` value passed
-        to this function.
+        object that sets the individual timeouts to the ``timeout`` value
+        passed to this function.
 
         :param timeout: The legacy timeout value
         :type timeout: integer, float, sentinel default object, or None
@@ -220,9 +219,9 @@ class Timeout(object):
             has not yet been called on this object.
         """
         if (self.total is not None and
-            self.total is not self.DEFAULT_TIMEOUT and
-            self._read is not None and
-            self._read is not self.DEFAULT_TIMEOUT):
+                self.total is not self.DEFAULT_TIMEOUT and
+                self._read is not None and
+                self._read is not self.DEFAULT_TIMEOUT):
             # in case the connect timeout has not yet been established.
             if self._start_connect is None:
                 return self._read
