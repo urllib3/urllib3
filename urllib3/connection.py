@@ -23,9 +23,9 @@ try:  # Compiled with SSL?
     HTTPSConnection = DummyConnection
     import ssl
     BaseSSLError = ssl.SSLError
-except ImportError:  # Platform-specific: No SSL.
+except (ImportError, AttributeError):  # Platform-specific: No SSL.
     ssl = None
-except AttributeError:
+
     class BaseSSLError(BaseException):
         pass
 
