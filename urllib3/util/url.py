@@ -2,16 +2,20 @@ from collections import namedtuple
 
 from ..exceptions import LocationParseError
 
+url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
 
-class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment'])):
+
+class Url(namedtuple('Url', url_attrs)):
     """
     Datastructure for representing an HTTP URL. Used as a return value for
     :func:`parse_url`.
     """
     slots = ()
 
-    def __new__(cls, scheme=None, auth=None, host=None, port=None, path=None, query=None, fragment=None):
-        return super(Url, cls).__new__(cls, scheme, auth, host, port, path, query, fragment)
+    def __new__(cls, scheme=None, auth=None, host=None, port=None, path=None,
+                query=None, fragment=None):
+        return super(Url, cls).__new__(cls, scheme, auth, host, port, path,
+                                       query, fragment)
 
     @property
     def hostname(self):
