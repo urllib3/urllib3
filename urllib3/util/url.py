@@ -59,7 +59,7 @@ class Url(namedtuple('Url', ['scheme', 'auth', 'host', 'port', 'path', 'query', 
 
         # We use "is not None" we want things to happen with empty strings (or 0 port)
         if scheme is not None:
-            url = scheme + '://'
+            url += scheme + '://'
         if auth is not None:
             url += auth + '@'
         if host is not None:
