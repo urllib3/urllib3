@@ -60,6 +60,10 @@ class HTTPConnection(_HTTPConnection, object):
     # By default, disable Nagle's Algorithm.
     tcp_nodelay = 1
 
+    default_socket_options = [
+        (socket.IPPROTO_TCP, socket.TCP_NODELAY, tcp_nodelay)
+        ]
+
     def __init__(self, *args, **kw):
         if six.PY3:  # Python 3
             kw.pop('strict', None)
@@ -68,6 +72,10 @@ class HTTPConnection(_HTTPConnection, object):
 
         # Pre-set source_address in case we have an older Python like 2.6.
         self.source_address = kw.get('source_address')
+
+        # Save socket options provided by the user
+        self.socket_options = (kw.get('socket_options', [])
+                               + self.default_socket_options)
 
         # Superclass also sets self.source_address in Python 2.7+.
         _HTTPConnection.__init__(self, *args, **kw)
@@ -89,8 +97,10 @@ class HTTPConnection(_HTTPConnection, object):
             raise ConnectTimeoutError(
                 self, "Connection to %s timed out. (connect timeout=%s)" %
                 (self.host, self.timeout))
-        conn.setsockopt(
-            socket.IPPROTO_TCP, socket.TCP_NODELAY, self.tcp_nodelay)
+
+        # Set options on the socket
+        for opt in self.socket_options:
+            conn.setsockopt(*opt)
 
         return conn
 
