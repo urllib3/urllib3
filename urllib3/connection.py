@@ -8,32 +8,27 @@ import sys
 import socket
 from socket import timeout as SocketTimeout
 
-try: # Python 3
+try:  # Python 3
     from http.client import HTTPConnection as _HTTPConnection, HTTPException
 except ImportError:
     from httplib import HTTPConnection as _HTTPConnection, HTTPException
+
 
 class DummyConnection(object):
     "Used to detect a failed ConnectionCls import."
     pass
 
-try: # Compiled with SSL?
-    ssl = None
-    HTTPSConnection = DummyConnection
 
+try:  # Compiled with SSL?
+    HTTPSConnection = DummyConnection
+    import ssl
+    BaseSSLError = ssl.SSLError
+except ImportError:  # Platform-specific: No SSL.
+    ssl = None
+except AttributeError:
     class BaseSSLError(BaseException):
         pass
 
-    try: # Python 3
-        from http.client import HTTPSConnection as _HTTPSConnection
-    except ImportError:
-        from httplib import HTTPSConnection as _HTTPSConnection
-
-    import ssl
-    BaseSSLError = ssl.SSLError
-
-except (ImportError, AttributeError): # Platform-specific: No SSL.
-    pass
 
 from .exceptions import (
     ConnectTimeoutError,
@@ -75,7 +70,7 @@ class HTTPConnection(_HTTPConnection, object):
         self.source_address = kw.get('source_address')
 
         # Superclass also sets self.source_address in Python 2.7+.
-        _HTTPConnection.__init__(self, *args, **kw)  
+        _HTTPConnection.__init__(self, *args, **kw)
 
     def _new_conn(self):
         """ Establish a socket connection and set nodelay settings on it.
