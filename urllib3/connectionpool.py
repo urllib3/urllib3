@@ -11,7 +11,7 @@ import logging
 from socket import error as SocketError, timeout as SocketTimeout
 import socket
 
-try: # Python 3
+try:  # Python 3
     from queue import LifoQueue, Empty, Full
 except ImportError:
     from Queue import LifoQueue, Empty, Full
@@ -54,8 +54,8 @@ log = logging.getLogger(__name__)
 
 _Default = object()
 
-## Pool objects
 
+## Pool objects
 class ConnectionPool(object):
     """
     Base class for all connection pools, such as
@@ -81,6 +81,7 @@ class ConnectionPool(object):
 
 # This is taken from http://hg.python.org/cpython/file/7aaba721ebc0/Lib/socket.py#l252
 _blocking_errnos = set([errno.EAGAIN, errno.EWOULDBLOCK])
+
 
 class HTTPConnectionPool(ConnectionPool, RequestMethods):
     """
@@ -204,7 +205,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         try:
             conn = self.pool.get(block=self.block, timeout=timeout)
 
-        except AttributeError: # self.pool is None
+        except AttributeError:  # self.pool is None
             raise ClosedPoolError(self, "Pool is closed.")
 
         except Empty:
@@ -237,7 +238,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         try:
             self.pool.put(conn, block=False)
-            return # Everything is dandy, done.
+            return  # Everything is dandy, done.
         except AttributeError:
             # self.pool is None.
             pass
@@ -310,14 +311,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     "Read timed out. (read timeout=%s)" % read_timeout)
             if read_timeout is Timeout.DEFAULT_TIMEOUT:
                 conn.sock.settimeout(socket.getdefaulttimeout())
-            else: # None or a value
+            else:  # None or a value
                 conn.sock.settimeout(read_timeout)
 
         # Receive the response from the server
         try:
-            try: # Python 2.7+, use buffering of HTTP responses
+            try:  # Python 2.7+, use buffering of HTTP responses
                 httplib_response = conn.getresponse(buffering=True)
-            except TypeError: # Python 2.6 and older
+            except TypeError:  # Python 2.6 and older
                 httplib_response = conn.getresponse()
         except SocketTimeout:
             raise ReadTimeoutError(
@@ -333,7 +334,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
             raise
 
-        except SocketError as e: # Platform-specific: Python 2
+        except SocketError as e:  # Platform-specific: Python 2
             # See the above comment about EAGAIN in Python 3. In Python 2 we
             # have to specifically catch it and throw the timeout error
             if e.errno in _blocking_errnos:
@@ -364,7 +365,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     conn.close()
 
         except Empty:
-            pass # Done.
+            pass  # Done.
 
     def is_same_host(self, url):
         """
@@ -609,7 +610,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             conn_kw.pop('source_address', None)
 
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
-                                    block, headers, _proxy, _proxy_headers, **conn_kw)
+                                    block, headers, _proxy, _proxy_headers,
+                                    **conn_kw)
         self.key_file = key_file
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
