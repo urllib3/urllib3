@@ -5,17 +5,14 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import logging
 import zlib
 import io
+from socket import timeout as SocketTimeout
 
 from ._collections import HTTPHeaderDict
-from .exceptions import DecodeError
+from .exceptions import DecodeError, ReadTimeoutError
 from .packages.six import string_types as basestring, binary_type
 from .util import is_fp_closed
-
-
-log = logging.getLogger(__name__)
 
 
 class DeflateDecoder(object):
@@ -79,7 +76,8 @@ class HTTPResponse(io.IOBase):
 
     def __init__(self, body='', headers=None, status=0, version=0, reason=None,
                  strict=0, preload_content=True, decode_content=True,
-                 original_response=None, pool=None, connection=None):
+                 original_response=None, pool=None, connection=None,
+                 request_url=None):
 
         self.headers = HTTPHeaderDict()
         if headers:
@@ -98,6 +96,7 @@ class HTTPResponse(io.IOBase):
 
         self._pool = pool
         self._connection = connection
+        self._url = request_url
 
         if hasattr(body, 'read'):
             self._fp = body
@@ -178,23 +177,26 @@ class HTTPResponse(io.IOBase):
         flush_decoder = False
 
         try:
-            if amt is None:
-                # cStringIO doesn't like amt=None
-                data = self._fp.read()
-                flush_decoder = True
-            else:
-                cache_content = False
-                data = self._fp.read(amt)
-                if amt != 0 and not data:  # Platform-specific: Buggy versions of Python.
-                    # Close the connection when no data is returned
-                    #
-                    # This is redundant to what httplib/http.client _should_
-                    # already do.  However, versions of python released before
-                    # December 15, 2012 (http://bugs.python.org/issue16298) do
-                    # not properly close the connection in all cases. There is
-                    # no harm in redundantly calling close.
-                    self._fp.close()
+            try:
+                if amt is None:
+                    # cStringIO doesn't like amt=None
+                    data = self._fp.read()
                     flush_decoder = True
+                else:
+                    cache_content = False
+                    data = self._fp.read(amt)
+                    if amt != 0 and not data:  # Platform-specific: Buggy versions of Python.
+                        # Close the connection when no data is returned
+                        #
+                        # This is redundant to what httplib/http.client _should_
+                        # already do.  However, versions of python released before
+                        # December 15, 2012 (http://bugs.python.org/issue16298) do
+                        #not properly close the connection in all cases. There is
+                        #no harm in redundantly calling close.
+                        self._fp.close()
+                        flush_decoder = True
+            except SocketTimeout:
+                raise ReadTimeoutError(self._pool, self._url, 'Read timed out.')
 
             self._fp_bytes_read += len(data)
 
@@ -296,7 +298,7 @@ class HTTPResponse(io.IOBase):
         elif hasattr(self._fp, "fileno"):
             return self._fp.fileno()
         else:
-            raise IOError("The file-like object  this HTTPResponse is wrapped "
+            raise IOError("The file-like object this HTTPResponse is wrapped "
                           "around has no file descriptor")
 
     def flush(self):
