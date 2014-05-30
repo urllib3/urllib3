@@ -177,7 +177,7 @@ class RequestField(object):
         self.headers['Content-Disposition'] += '; '.join([
             '', self._render_parts(
                 (('name', self._name), ('filename', self._filename))
-                )
-            ])
+            )
+        ])
         self.headers['Content-Type'] = content_type
         self.headers['Content-Location'] = content_location
