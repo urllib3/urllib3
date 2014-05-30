@@ -181,9 +181,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                   timeout=self.timeout.connect_timeout,
                                   strict=self.strict, **self.conn_kw)
         if self.proxy is not None:
-            # Enable Nagle's algorithm for proxies, to avoid packet
-            # fragmentation.
-            conn.tcp_nodelay = 0
+            # Enable Nagle's algorithm for proxies, to avoid packet fragmentation.
+            # We cannot know if the user has added default socket options, so we cannot replace the
+            # list
+            conn.default_socket_options.append((socket.IPPROTO_TCP, socket.TCP_NODELAY, 0))
         return conn
 
     def _get_conn(self, timeout=None):

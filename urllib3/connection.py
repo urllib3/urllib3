@@ -57,8 +57,8 @@ class HTTPConnection(_HTTPConnection, object):
 
     default_port = port_by_scheme['http']
 
-    # By default, disable Nagle's Algorithm.
-    tcp_nodelay = 1
+    # Disable Nagle's algorithm by default
+    default_socket_options = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
 
     def __init__(self, *args, **kw):
         if six.PY3:  # Python 3
@@ -69,14 +69,8 @@ class HTTPConnection(_HTTPConnection, object):
         # Pre-set source_address in case we have an older Python like 2.6.
         self.source_address = kw.get('source_address')
 
-        # Set up a connection's default socket options.
-        self.default_socket_options = [
-            (socket.IPPROTO_TCP, socket.TCP_NODELAY, self.tcp_nodelay)
-        ]
-
         # Save socket options provided by the user
-        self.socket_options = (kw.get('socket_options', [])
-                               + self.default_socket_options)
+        self.socket_options = kw.get('socket_options', [])
 
         # Superclass also sets self.source_address in Python 2.7+.
         _HTTPConnection.__init__(self, *args, **kw)
@@ -100,8 +94,7 @@ class HTTPConnection(_HTTPConnection, object):
                 (self.host, self.timeout))
 
         # Set options on the socket
-        for opt in self.socket_options:
-            conn.setsockopt(*opt)
+        self._set_options_on(conn)
 
         return conn
 
@@ -115,6 +108,10 @@ class HTTPConnection(_HTTPConnection, object):
             self._tunnel()
             # Mark this connection as not reusable
             self.auto_open = 0
+
+    def _set_options_on(self, conn):
+        for opt in (self.default_socket_options + self.socket_options):
+            conn.setsockopt(*opt)
 
     def connect(self):
         conn = self._new_conn()
