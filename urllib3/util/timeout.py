@@ -96,14 +96,14 @@ class Timeout(object):
 
     @classmethod
     def _validate_timeout(cls, value, name):
-        """ Check that a timeout attribute is valid
+        """ Check that a timeout attribute is valid.
 
         :param value: The timeout value to validate
         :param name: The name of the timeout attribute to validate. This is
-            used for clear error messages
-        :return: the value
-        :raises ValueError: if the type is not an integer or a float, or if it
-            is a numeric value less than zero
+            used to specify in error messages.
+        :return: The validated and casted version of the given value.
+        :raises ValueError: If the type is not an integer or a float, or if it
+            is a numeric value less than zero.
         """
         if value is _Default:
             return cls.DEFAULT_TIMEOUT
@@ -137,9 +137,9 @@ class Timeout(object):
         object that sets the individual timeouts to the ``timeout`` value
         passed to this function.
 
-        :param timeout: The legacy timeout value
+        :param timeout: The legacy timeout value.
         :type timeout: integer, float, sentinel default object, or None
-        :return: a Timeout object
+        :return: Timeout object
         :rtype: :class:`Timeout`
         """
         return Timeout(read=timeout, connect=timeout)
@@ -173,7 +173,7 @@ class Timeout(object):
     def get_connect_duration(self):
         """ Gets the time elapsed since the call to :meth:`start_connect`.
 
-        :return: the elapsed time
+        :return: Elapsed time.
         :rtype: float
         :raises urllib3.exceptions.TimeoutStateError: if you attempt
             to get duration for a timer that hasn't been started.
@@ -190,7 +190,7 @@ class Timeout(object):
         This will be a positive float or integer, the value None
         (never timeout), or the default system timeout.
 
-        :return: the connect timeout
+        :return: Connect timeout.
         :rtype: int, float, :attr:`Timeout.DEFAULT_TIMEOUT` or None
         """
         if self.total is None:
@@ -213,7 +213,7 @@ class Timeout(object):
         established, a :exc:`~urllib3.exceptions.TimeoutStateError` will be
         raised.
 
-        :return: the value to use for the read timeout
+        :return: Value to use for the read timeout.
         :rtype: int, float, :attr:`Timeout.DEFAULT_TIMEOUT` or None
         :raises urllib3.exceptions.TimeoutStateError: If :meth:`start_connect`
             has not yet been called on this object.
