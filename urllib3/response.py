@@ -190,9 +190,9 @@ class HTTPResponse(io.IOBase):
                     #
                     # This is redundant to what httplib/http.client _should_
                     # already do.  However, versions of python released before
-                    # December 15, 2012 (http://bugs.python.org/issue16298) do not
-                    # properly close the connection in all cases. There is no harm
-                    # in redundantly calling close.
+                    # December 15, 2012 (http://bugs.python.org/issue16298) do
+                    # not properly close the connection in all cases. There is
+                    # no harm in redundantly calling close.
                     self._fp.close()
                     flush_decoder = True
 
@@ -241,7 +241,6 @@ class HTTPResponse(io.IOBase):
 
             if data:
                 yield data
-
 
     @classmethod
     def from_httplib(ResponseCls, r, **response_kw):

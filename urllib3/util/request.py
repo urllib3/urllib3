@@ -29,8 +29,8 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
         auth header.
 
     :param proxy_basic_auth:
-        Colon-separated username:password string for 'proxy-authorization: basic ...'
-        auth header.
+        Colon-separated username:password string for
+        'proxy-authorization: basic ...' auth header.
 
     :param disable_cache:
         If ``True``, adds 'cache-control: no-cache' header.
@@ -70,5 +70,3 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
         headers['cache-control'] = 'no-cache'
 
     return headers
-
-
