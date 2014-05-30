@@ -503,7 +503,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             response = HTTPResponse.from_httplib(httplib_response,
                                                  pool=self,
                                                  connection=response_conn,
-                                                 request_url=url,
                                                  **response_kw)
 
             # else:

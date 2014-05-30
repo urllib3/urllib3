@@ -76,8 +76,7 @@ class HTTPResponse(io.IOBase):
 
     def __init__(self, body='', headers=None, status=0, version=0, reason=None,
                  strict=0, preload_content=True, decode_content=True,
-                 original_response=None, pool=None, connection=None,
-                 request_url=None):
+                 original_response=None, pool=None, connection=None):
 
         self.headers = HTTPHeaderDict()
         if headers:
@@ -96,7 +95,6 @@ class HTTPResponse(io.IOBase):
 
         self._pool = pool
         self._connection = connection
-        self._url = request_url
 
         if hasattr(body, 'read'):
             self._fp = body
@@ -196,7 +194,7 @@ class HTTPResponse(io.IOBase):
                         self._fp.close()
                         flush_decoder = True
             except SocketTimeout:
-                raise ReadTimeoutError(self._pool, self._url, 'Read timed out.')
+                raise ReadTimeoutError(self._pool, None, 'Read timed out.')
 
             self._fp_bytes_read += len(data)
 
