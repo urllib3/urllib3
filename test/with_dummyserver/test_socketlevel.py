@@ -173,20 +173,21 @@ class TestSocketClosing(SocketDummyServerTestCase):
         finally:
             socket.setdefaulttimeout(default_timeout)
 
-    def test_timeout_midway_through_read(self):
+    def test_delayed_body_read_timeout(self):
+        timed_out = Event()
+
         def socket_handler(listener):
             sock = listener.accept()[0]
             buf = b''
+            body = 'Hi'
             while not buf.endswith(b'\r\n\r\n'):
                 buf = sock.recv(65536)
-            body = 'Hi'
             sock.send(('HTTP/1.1 200 OK\r\n'
-                      'Content-Type: text/plain\r\n'
-                      'Content-Length: %d\r\n'
-                      '\r\n' % len(body)).encode('utf-8'))
-            # Wait for the read to timeout
-            time.sleep(0.002)
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n' % len(body)).encode('utf-8'))
 
+            timed_out.wait(timeout=0.5)
             sock.send(body.encode('utf-8'))
             sock.close()
 
@@ -196,6 +197,8 @@ class TestSocketClosing(SocketDummyServerTestCase):
         response = pool.urlopen('GET', '/', retries=0, preload_content=False,
                                 timeout=util.Timeout(connect=1, read=0.001))
         self.assertRaises(ReadTimeoutError, response.read)
+        timed_out.set()
+
 
 class TestProxyManager(SocketDummyServerTestCase):
 
