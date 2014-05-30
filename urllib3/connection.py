@@ -69,13 +69,14 @@ class HTTPConnection(_HTTPConnection, object):
         # Pre-set source_address in case we have an older Python like 2.6.
         self.source_address = kw.get('source_address')
 
-        # Save socket options provided by the user
-        self.socket_options = (kw.get('socket_options', [])
-                               + self.default_socket_options)
-
+        # Set up a connection's default socket options.
         self.default_socket_options = [
             (socket.IPPROTO_TCP, socket.TCP_NODELAY, self.tcp_nodelay)
         ]
+
+        # Save socket options provided by the user
+        self.socket_options = (kw.get('socket_options', [])
+                               + self.default_socket_options)
 
         # Superclass also sets self.source_address in Python 2.7+.
         _HTTPConnection.__init__(self, *args, **kw)
