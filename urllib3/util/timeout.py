@@ -219,10 +219,10 @@ class Timeout(object):
             has not yet been called on this object.
         """
         if (self.total is not None and
-                self.total is not self.DEFAULT_TIMEOUT and
-                self._read is not None and
-                self._read is not self.DEFAULT_TIMEOUT):
-            # in case the connect timeout has not yet been established.
+            self.total is not self.DEFAULT_TIMEOUT and
+            self._read is not None and
+            self._read is not self.DEFAULT_TIMEOUT):
+            # In case the connect timeout has not yet been established.
             if self._start_connect is None:
                 return self._read
             return max(0, min(self.total - self.get_connect_duration(),
