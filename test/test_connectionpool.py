@@ -15,6 +15,7 @@ from urllib3.exceptions import (
     SSLError,
 )
 
+import socket
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 
@@ -200,6 +201,18 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(pool.timeout._read, 3)
         self.assertEqual(pool.timeout._connect, 3)
         self.assertEqual(pool.timeout.total, None)
+
+    def test_socket_options(self):
+        pool = HTTPConnectionPool(host=None, socket_options=[
+            (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        ])
+        conn = pool._new_conn()  # Get an HTTPConnection instance
+        s = conn._new_conn()  # Get the socket
+        nagle_off = s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) == 0
+        assert nagle_off, "Expected Nagle's algorithm to be disabled, but it was enabled"
+
+        using_keepalive = s.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE) > 0
+        assert using_keepalive, "Expected TCP keep alive to be enabled, but it was disabled"
 
 
 if __name__ == '__main__':
