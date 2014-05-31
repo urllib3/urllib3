@@ -70,7 +70,7 @@ class HTTPConnection(_HTTPConnection, object):
         self.source_address = kw.get('source_address')
 
         # Save socket options provided by the user
-        self.socket_options = kw.pop('socket_options', [])
+        self.socket_options = kw.pop('socket_options', self.default_socket_options)
 
         # Superclass also sets self.source_address in Python 2.7+.
         _HTTPConnection.__init__(self, *args, **kw)
@@ -114,7 +114,7 @@ class HTTPConnection(_HTTPConnection, object):
         if self.socket_options is None:
             return
 
-        for opt in (self.default_socket_options + self.socket_options):
+        for opt in self.socket_options:
             conn.setsockopt(*opt)
 
     def connect(self):
