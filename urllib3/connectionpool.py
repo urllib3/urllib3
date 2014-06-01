@@ -666,10 +666,18 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
                                   timeout=self.timeout.connect_timeout,
                                   strict=self.strict, **self.conn_kw)
+
         if self.proxy is not None:
             # Enable Nagle's algorithm for proxies, to avoid packet
             # fragmentation.
-            conn.tcp_nodelay = 0
+            socket_options = extra_params.get('socket_options', [])
+            extra_params['socket_options'] = socket_options + [
+                (socket.IPPROTO_TCP, socket.TCP_NODELAY, 0)
+            ]
+
+        conn = self.ConnectionCls(host=actual_host, port=actual_port,
+                                  timeout=self.timeout.connect_timeout,
+                                  **extra_params)
 
         return self._prepare_conn(conn)
 
