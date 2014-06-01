@@ -8,6 +8,9 @@ dev (master)
 
 * Add ``disable_cache`` option to ``urllib3.util.make_headers``. (Issue #393)
 
+* Wrap ``socket.timeout`` exception with
+  ``urllib3.exceptions.ReadTimeoutError``. (Issue #399)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
