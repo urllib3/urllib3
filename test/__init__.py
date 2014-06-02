@@ -25,7 +25,7 @@ def onlyPy26OrOlder(test):
     @functools.wraps(test)
     def wrapper(*args, **kwargs):
         msg = "{name} only runs on Python2.6.x or older".format(name=test.__name__)
-        if sys.version_info > (2, 6):
+        if sys.version_info >= (2, 7):
             raise SkipTest(msg)
         return test(*args, **kwargs)
     return wrapper
