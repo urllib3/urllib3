@@ -246,6 +246,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         conn._tunnel.assert_called_once_with()
 
 
+    @onlyPy26OrOlder
     def test_tunnel_old_python(self):
         """HTTPSConnection can still make connections if _tunnel_host isn't set
 
