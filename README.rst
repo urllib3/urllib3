@@ -20,12 +20,12 @@ Highlights
 - Tested on Python 2.6+ and Python 3.2+, 100% unit test coverage.
 - Small and easy to understand codebase perfect for extending and building upon.
   For a more comprehensive solution, have a look at
-  `Requests <http://python-requests.org/>`_ which is also powered by urllib3.
+  `Requests <http://python-requests.org/>`_ which is also powered by ``urllib3``.
   
 You might already be using urllib3!
 ===================================
 
-urllib3 powers `many great Python libraries <https://sourcegraph.com/search?q=package+urllib3>`_,
+``urllib3`` powers `many great Python libraries <https://sourcegraph.com/search?q=package+urllib3>`_,
 including ``pip`` and ``requests``.
 
 
