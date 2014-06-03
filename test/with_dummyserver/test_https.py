@@ -10,10 +10,9 @@ from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from test import (
-    onlyPy3, onlyPy27OrNewer, onlyPy26OrOlder, requires_network, TARPIT_HOST,
-    VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES)
+    onlyPy26OrOlder, requires_network, TARPIT_HOST
+    )
 from urllib3 import HTTPSConnectionPool
-from urllib3.packages.six import b, string_types
 import urllib3.connection
 from urllib3.connection import (
     VerifiedHTTPSConnection,
@@ -291,37 +290,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
                                         '7A:F2:8A:D7:1E:07:33:67:DE'
         https_pool._make_request(conn, 'GET', '/')
-
-    @onlyPy26OrOlder
-    def test_source_address_ignored(self):
-        # source_address is ignored in Python 2.6 and earlier.
-        for addr in INVALID_SOURCE_ADDRESSES:
-            https_pool = HTTPSConnectionPool(
-                self.host, self.port, cert_reqs='CERT_REQUIRED',
-                source_address=addr)
-            https_pool.ca_certs = DEFAULT_CA
-            r = https_pool.request('GET', '/source_address')
-            assert r.status == 200
-
-    @onlyPy27OrNewer
-    def test_source_address(self):
-        for addr in VALID_SOURCE_ADDRESSES:
-            https_pool = HTTPSConnectionPool(
-                self.host, self.port, cert_reqs='CERT_REQUIRED',
-                source_address=addr)
-            https_pool.ca_certs = DEFAULT_CA
-            r = https_pool.request('GET', '/source_address')
-            assert r.data == b(addr[0])
-    
-    @onlyPy27OrNewer
-    def test_source_address_error(self):
-        for addr in INVALID_SOURCE_ADDRESSES:
-            https_pool = HTTPSConnectionPool(
-                self.host, self.port, cert_reqs='CERT_REQUIRED',
-                source_address=addr)
-            https_pool.ca_certs = DEFAULT_CA
-            self.assertRaises(
-                MaxRetryError, https_pool.request, 'GET', '/source_address')
 
 
 class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
