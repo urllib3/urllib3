@@ -96,6 +96,8 @@ class HTTPConnection(_HTTPConnection, object):
         if getattr(self, '_tunnel_host', None):
             # TODO: Fix tunnel so it doesn't depend on self.sock state.
             self._tunnel()
+            # Mark this connection as not reusable
+            self.auto_open = 0
 
     def connect(self):
         conn = self._new_conn()
@@ -172,6 +174,8 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             # Calls self._set_hostport(), so self.host is
             # self._tunnel_host below.
             self._tunnel()
+            # Mark this connection as not reusable
+            self.auto_open = 0
 
             # Override the host with the one we're requesting data from.
             hostname = self._tunnel_host
