@@ -133,6 +133,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     :param _proxy_headers:
         A dictionary with proxy headers, should not be used directly,
         instead, see :class:`urllib3.connectionpool.ProxyManager`"
+
+    :param \**conn_kw:
+        Additional parameters are used to create fresh :class:`urllib3.connection.HTTPConnection`,
+        :class:`urllib3.connection.HTTPSConnection` instances.
     """
 
     scheme = 'http'

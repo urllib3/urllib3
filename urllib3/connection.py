@@ -53,11 +53,29 @@ class HTTPConnection(_HTTPConnection, object):
     """
     Based on httplib.HTTPConnection but provides an extra constructor
     backwards-compatibility layer between older and newer Pythons.
+
+    :param \*args:
+        Parameters used to initialize an HTTPConnection
+
+    :param \**kw:
+        Additional parameters are used to configure attributes of the connection.
+        Accepted parameters include:
+
+          - ``strict`` (only used on Python 3)
+          - ``source_address`` (only supported for Python 2.7 and onward) - Set the source address
+            for the current connection.
+          - ``socket_options`` - Used to set specific options on the underlying socket. The
+            defaults turn off Nagle's algorithm. For example, if you wish to enable TCP Keep Alive
+            and keep Nagle's algorithm disabled, you might pass::
+
+                HTTPConnection.default_socket_options + [
+                    (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+                ]
     """
 
     default_port = port_by_scheme['http']
 
-    # Disable Nagle's algorithm by default
+    #: Disable Nagle's algorithm by default
     default_socket_options = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
 
     def __init__(self, *args, **kw):
@@ -69,7 +87,7 @@ class HTTPConnection(_HTTPConnection, object):
         # Pre-set source_address in case we have an older Python like 2.6.
         self.source_address = kw.get('source_address')
 
-        # Save socket options provided by the user
+        #: Save socket options provided by the user
         self.socket_options = kw.pop('socket_options', self.default_socket_options)
 
         # Superclass also sets self.source_address in Python 2.7+.
