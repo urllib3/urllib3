@@ -55,21 +55,23 @@ class HTTPConnection(_HTTPConnection, object):
     backwards-compatibility layer between older and newer Pythons.
 
     :param \*args:
-        Parameters used to initialize an HTTPConnection
+        Parameters used to initialize an ``httplib.HTTPConnection``.
 
     :param \**kw:
         Additional parameters are used to configure attributes of the connection.
         Accepted parameters include:
 
-          - ``strict`` (only used on Python 3)
-          - ``source_address`` (only supported for Python 2.7 and onward) - Set the source address
-            for the current connection.
-          - ``socket_options`` - Used to set specific options on the underlying socket. The
-            defaults turn off Nagle's algorithm. For example, if you wish to enable TCP Keep Alive
-            and keep Nagle's algorithm disabled, you might pass::
+          - ``strict``: (Only Python 3)
+          - ``source_address``: Set the source address for the current connection. (Only Python 2.7+)
+          - ``socket_options``: Set specific options on the underlying socket. If not specified, then
+            defaults are loaded from ``HTTPConnection.default_socket_options`` which includes disabling
+            Nagle's algorithm (sets TCP_NODELAY to 1).
+            
+            For example, if you wish to enable TCP Keep Alive in addition to the defaults,
+            you might pass::
 
                 HTTPConnection.default_socket_options + [
-                    (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+                    (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),
                 ]
     """
 
@@ -96,7 +98,7 @@ class HTTPConnection(_HTTPConnection, object):
     def _new_conn(self):
         """ Establish a socket connection and set nodelay settings on it.
 
-        :return: a new socket connection
+        :return: Newew socket connection.
         """
         extra_args = []
         if self.source_address:  # Python 2.7+
