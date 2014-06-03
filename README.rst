@@ -21,6 +21,13 @@ Highlights
 - Small and easy to understand codebase perfect for extending and building upon.
   For a more comprehensive solution, have a look at
   `Requests <http://python-requests.org/>`_ which is also powered by urllib3.
+  
+You might already be using urllib3!
+===================================
+
+urllib3 powers `many great Python libraries <https://sourcegraph.com/search?q=package+urllib3>`_,
+including ``pip`` and ``requests``.
+
 
 What's wrong with urllib and urllib2?
 =====================================
