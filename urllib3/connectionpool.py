@@ -21,7 +21,6 @@ except ImportError:
 from .exceptions import (
     ClosedPoolError,
     ConnectionError,
-    ConnectTimeoutError,
     EmptyPoolError,
     HostChangedError,
     LocationParseError,
@@ -287,16 +286,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         timeout_obj = self._get_timeout(timeout)
 
-        try:
-            timeout_obj.start_connect()
-            conn.timeout = timeout_obj.connect_timeout
-            # conn.request() calls httplib.*.request, not the method in
-            # urllib3.request. It also calls makefile (recv) on the socket.
-            conn.request(method, url, **httplib_request_kw)
-        except SocketTimeout:
-            raise ConnectTimeoutError(
-                self, "Connection to %s timed out. (connect timeout=%s)" %
-                (self.host, timeout_obj.connect_timeout))
+        timeout_obj.start_connect()
+        conn.timeout = timeout_obj.connect_timeout
+        # conn.request() calls httplib.*.request, not the method in
+        # urllib3.request. It also calls makefile (recv) on the socket.
+        conn.request(method, url, **httplib_request_kw)
 
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
