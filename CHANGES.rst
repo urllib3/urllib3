@@ -11,6 +11,9 @@ dev (master)
 * Wrap ``socket.timeout`` exception with
   ``urllib3.exceptions.ReadTimeoutError``. (Issue #399)
 
+* Fixed proxy-related bug where connections were being reused incorrectly.
+  (Issues #366, #369)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
