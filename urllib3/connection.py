@@ -65,7 +65,7 @@ class HTTPConnection(_HTTPConnection, object):
           - ``source_address``: Set the source address for the current connection. (Only Python 2.7+)
           - ``socket_options``: Set specific options on the underlying socket. If not specified, then
             defaults are loaded from ``HTTPConnection.default_socket_options`` which includes disabling
-            Nagle's algorithm (sets TCP_NODELAY to 1).
+            Nagle's algorithm (sets TCP_NODELAY to 1) unless the connection is behind a proxy.
             
             For example, if you wish to enable TCP Keep Alive in addition to the defaults,
             you might pass::
