@@ -168,8 +168,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.num_connections = 0
         self.num_requests = 0
 
-        if sys.version_info < (2, 7):  # Python 2.6 and older
-            conn_kw.pop('source_address', None)
         self.conn_kw = conn_kw
 
     def _new_conn(self):
@@ -611,9 +609,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  assert_hostname=None, assert_fingerprint=None,
                  **conn_kw):
 
-        if sys.version_info < (2, 7):  # Python 2.6 or older
-            conn_kw.pop('source_address', None)
-
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
                                     block, headers, _proxy, _proxy_headers,
                                     **conn_kw)
@@ -640,7 +635,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           assert_hostname=self.assert_hostname,
                           assert_fingerprint=self.assert_fingerprint)
             conn.ssl_version = self.ssl_version
-            conn.conn_kw = self.conn_kw
 
         if self.proxy is not None:
             # Python 2.7+
