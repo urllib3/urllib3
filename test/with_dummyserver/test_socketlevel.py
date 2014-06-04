@@ -187,7 +187,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
                        'Content-Length: %d\r\n'
                        '\r\n' % len(body)).encode('utf-8'))
 
-            timed_out.wait(timeout=0.5)
+            timed_out.wait(timeout=0.05)
             sock.send(body.encode('utf-8'))
             sock.close()
 

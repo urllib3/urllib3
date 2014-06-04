@@ -21,7 +21,6 @@ except ImportError:
 from .exceptions import (
     ClosedPoolError,
     ConnectionError,
-    ConnectTimeoutError,
     EmptyPoolError,
     HostChangedError,
     LocationParseError,
@@ -168,8 +167,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.num_connections = 0
         self.num_requests = 0
 
-        if sys.version_info < (2, 7):  # Python 2.6 and older
-            conn_kw.pop('source_address', None)
         self.conn_kw = conn_kw
 
     def _new_conn(self):
@@ -289,16 +286,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         timeout_obj = self._get_timeout(timeout)
 
-        try:
-            timeout_obj.start_connect()
-            conn.timeout = timeout_obj.connect_timeout
-            # conn.request() calls httplib.*.request, not the method in
-            # urllib3.request. It also calls makefile (recv) on the socket.
-            conn.request(method, url, **httplib_request_kw)
-        except SocketTimeout:
-            raise ConnectTimeoutError(
-                self, "Connection to %s timed out. (connect timeout=%s)" %
-                (self.host, timeout_obj.connect_timeout))
+        timeout_obj.start_connect()
+        conn.timeout = timeout_obj.connect_timeout
+        # conn.request() calls httplib.*.request, not the method in
+        # urllib3.request. It also calls makefile (recv) on the socket.
+        conn.request(method, url, **httplib_request_kw)
 
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
@@ -611,9 +603,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  assert_hostname=None, assert_fingerprint=None,
                  **conn_kw):
 
-        if sys.version_info < (2, 7):  # Python 2.6 or older
-            conn_kw.pop('source_address', None)
-
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
                                     block, headers, _proxy, _proxy_headers,
                                     **conn_kw)
@@ -640,7 +629,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           assert_hostname=self.assert_hostname,
                           assert_fingerprint=self.assert_fingerprint)
             conn.ssl_version = self.ssl_version
-            conn.conn_kw = self.conn_kw
 
         if self.proxy is not None:
             # Python 2.7+
@@ -674,14 +662,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             actual_host = self.proxy.host
             actual_port = self.proxy.port
 
-        extra_params = {}
-        if not six.PY3:  # Python 2
-            extra_params['strict'] = self.strict
-        extra_params.update(self.conn_kw)
-
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
                                   timeout=self.timeout.connect_timeout,
-                                  **extra_params)
+                                  strict=self.strict, **self.conn_kw)
         if self.proxy is not None:
             # Enable Nagle's algorithm for proxies, to avoid packet
             # fragmentation.

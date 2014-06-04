@@ -81,8 +81,14 @@ class HTTPConnection(_HTTPConnection, object):
         if self.source_address:  # Python 2.7+
             extra_args.append(self.source_address)
 
-        conn = socket.create_connection(
-            (self.host, self.port), self.timeout, *extra_args)
+        try:
+            conn = socket.create_connection(
+                (self.host, self.port), self.timeout, *extra_args)
+
+        except SocketTimeout:
+            raise ConnectTimeoutError(
+                self, "Connection to %s timed out. (connect timeout=%s)" %
+                (self.host, self.timeout))
         conn.setsockopt(
             socket.IPPROTO_TCP, socket.TCP_NODELAY, self.tcp_nodelay)
 
@@ -134,7 +140,6 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     cert_reqs = None
     ca_certs = None
     ssl_version = None
-    conn_kw = {}
 
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None,
@@ -149,18 +154,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
     def connect(self):
         # Add certificate verification
-
-        try:
-            sock = socket.create_connection(
-                address=(self.host, self.port), timeout=self.timeout,
-                **self.conn_kw)
-        except SocketTimeout:
-            raise ConnectTimeoutError(
-                self, "Connection to %s timed out. (connect timeout=%s)" %
-                (self.host, self.timeout))
-
-        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY,
-                        self.tcp_nodelay)
+        conn = self._new_conn()
 
         resolved_cert_reqs = resolve_cert_reqs(self.cert_reqs)
         resolved_ssl_version = resolve_ssl_version(self.ssl_version)
@@ -170,7 +164,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             # _tunnel_host was added in Python 2.6.3
             # (See: http://hg.python.org/cpython/rev/0f57b30a152f)
 
-            self.sock = sock
+            self.sock = conn
             # Calls self._set_hostport(), so self.host is
             # self._tunnel_host below.
             self._tunnel()
@@ -182,7 +176,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
-        self.sock = ssl_wrap_socket(sock, self.key_file, self.cert_file,
+        self.sock = ssl_wrap_socket(conn, self.key_file, self.cert_file,
                                     cert_reqs=resolved_cert_reqs,
                                     ca_certs=self.ca_certs,
                                     server_hostname=hostname,
