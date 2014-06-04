@@ -157,8 +157,7 @@ def requires_network(test):
     """Helps you skip tests that require the network"""
 
     def _is_unreachable_err(err):
-        return getattr(err, 'errno', None) in (errno.ENOEXEC,
-                                               errno.ENETUNREACH,
+        return getattr(err, 'errno', None) in (errno.ENETUNREACH,
                                                errno.EHOSTUNREACH) # For OSX
 
     @functools.wraps(test)

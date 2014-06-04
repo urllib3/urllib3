@@ -18,7 +18,7 @@ from urllib3.connection import (
     UnverifiedHTTPSConnection,
 )
 from urllib3.exceptions import (
-    SSLError, MaxRetryError, ReadTimeoutError, ConnectTimeoutError)
+    SSLError, ReadTimeoutError, ConnectTimeoutError)
 from urllib3.util.timeout import Timeout
 
 
