@@ -15,7 +15,6 @@ from urllib3.exceptions import (
     SSLError,
 )
 
-import socket
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 
