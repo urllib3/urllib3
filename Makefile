@@ -7,14 +7,14 @@ clean:
 install: 
 	python setup.py develop
 
-test-install: venv install
+test-install: install
 	pip install -r test-requirements.txt
 	pip install tox
 
 test:
 	tox
 
-docs-install: venv
+docs-install: 
 	pip install sphinx
 
 docs:

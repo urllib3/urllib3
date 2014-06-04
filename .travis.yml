@@ -4,8 +4,8 @@ python:
   - 2.7
   - 3.2
   - 3.3
-script: nosetests
+script: make test
 install:
-  - pip install -r test-requirements.txt --use-mirrors
+  - make install
 notifications:
   email: false
