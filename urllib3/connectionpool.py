@@ -188,7 +188,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Enable Nagle's algorithm for proxies, to avoid packet fragmentation.
             # We cannot know if the user has added default socket options, so we cannot replace the
             # list.
-            conn.default_socket_options.append((socket.IPPROTO_TCP, socket.TCP_NODELAY, 0))
+            conn.socket_options += [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 0)]
         return conn
 
     def _get_conn(self, timeout=None):

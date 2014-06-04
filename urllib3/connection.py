@@ -61,7 +61,7 @@ class HTTPConnection(_HTTPConnection, object):
         Additional parameters are used to configure attributes of the connection.
         Accepted parameters include:
 
-          - ``strict``: (Only Python 3)
+          - ``strict``: Restrict the connection to HTTP/1.1. (Only Python 2)
           - ``source_address``: Set the source address for the current connection. (Only Python 2.7+)
           - ``socket_options``: Set specific options on the underlying socket. If not specified, then
             defaults are loaded from ``HTTPConnection.default_socket_options`` which includes disabling
@@ -73,6 +73,8 @@ class HTTPConnection(_HTTPConnection, object):
                 HTTPConnection.default_socket_options + [
                     (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),
                 ]
+
+            Or you may want to disable the defaults by passing an empty list (e.g., ``[]``).
     """
 
     default_port = port_by_scheme['http']
