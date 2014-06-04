@@ -662,14 +662,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             actual_host = self.proxy.host
             actual_port = self.proxy.port
 
-        extra_params = {}
-        if not six.PY3:  # Python 2
-            extra_params['strict'] = self.strict
-        extra_params.update(self.conn_kw)
-
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
                                   timeout=self.timeout.connect_timeout,
-                                  **extra_params)
+                                  strict=self.strict, **self.conn_kw)
         if self.proxy is not None:
             # Enable Nagle's algorithm for proxies, to avoid packet
             # fragmentation.
