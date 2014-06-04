@@ -6,6 +6,6 @@ python:
   - 3.3
 script: make test
 install:
-  - make install
+    - make install && make test-install
 notifications:
   email: false
