@@ -12,6 +12,9 @@ test-install: install
 	pip install tox
 
 test:
+	nosetests
+
+test-all:
 	tox
 
 docs-install: 
