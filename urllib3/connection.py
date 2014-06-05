@@ -54,32 +54,32 @@ class HTTPConnection(_HTTPConnection, object):
     Based on httplib.HTTPConnection but provides an extra constructor
     backwards-compatibility layer between older and newer Pythons.
 
-    :param \*args:
-        Parameters used to initialize an ``httplib.HTTPConnection``.
+    Additional keyword parameters are used to configure attributes of the connection.
+    Accepted parameters include:
 
-    :param \**kw:
-        Additional parameters are used to configure attributes of the connection.
-        Accepted parameters include:
+      - ``strict``: See the documentation on :class:`urllib3.connectionpool.HTTPConnectionPool`
+      - ``source_address``: Set the source address for the current connection.
 
-          - ``strict``: Restrict the connection to HTTP/1.1. (Only Python 2)
-          - ``source_address``: Set the source address for the current connection. (Only Python 2.7+)
-          - ``socket_options``: Set specific options on the underlying socket. If not specified, then
-            defaults are loaded from ``HTTPConnection.default_socket_options`` which includes disabling
-            Nagle's algorithm (sets TCP_NODELAY to 1) unless the connection is behind a proxy.
-            
-            For example, if you wish to enable TCP Keep Alive in addition to the defaults,
-            you might pass::
+        .. note:: This is ignored for Python 2.6. It is only applied for 2.7 and 3.x
 
-                HTTPConnection.default_socket_options + [
-                    (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),
-                ]
+      - ``socket_options``: Set specific options on the underlying socket. If not specified, then
+        defaults are loaded from ``HTTPConnection.default_socket_options`` which includes disabling
+        Nagle's algorithm (sets TCP_NODELAY to 1) unless the connection is behind a proxy.
 
-            Or you may want to disable the defaults by passing an empty list (e.g., ``[]``).
+        For example, if you wish to enable TCP Keep Alive in addition to the defaults,
+        you might pass::
+
+            HTTPConnection.default_socket_options + [
+                (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),
+            ]
+
+        Or you may want to disable the defaults by passing an empty list (e.g., ``[]``).
     """
 
     default_port = port_by_scheme['http']
 
     #: Disable Nagle's algorithm by default.
+    #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
     default_socket_options = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
 
     def __init__(self, *args, **kw):
@@ -91,7 +91,8 @@ class HTTPConnection(_HTTPConnection, object):
         # Pre-set source_address in case we have an older Python like 2.6.
         self.source_address = kw.get('source_address')
 
-        #: Save socket options provided by the user.
+        #: The socket options provided by the user. If no options are
+        #: provided, we use the default options.
         self.socket_options = kw.pop('socket_options', self.default_socket_options)
 
         # Superclass also sets self.source_address in Python 2.7+.

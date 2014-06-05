@@ -56,3 +56,14 @@ API
 All of these pools inherit from a common base class:
 
     .. autoclass:: ConnectionPool
+
+.. module:: urllib3.connection
+
+Related Classes
+---------------
+
+urllib3 implements its own :class:`HTTPConnection` object to allow for more
+flexibility than the standard library's implementation.
+
+.. autoclass:: HTTPConnection
+    :members:
