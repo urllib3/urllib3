@@ -107,7 +107,6 @@ class HTTPConnection(_HTTPConnection, object):
         if self.source_address:  # Python 2.7+
             extra_args.append(self.source_address)
 
-<<<<<<< HEAD
         try:
             conn = socket.create_connection(
                 (self.host, self.port), self.timeout, *extra_args)

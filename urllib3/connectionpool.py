@@ -171,7 +171,18 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.num_connections = 0
         self.num_requests = 0
 
-        self.conn_kw = conn_kw
+        if sys.version_info < (2, 7):  # Python 2.6 and older
+            conn_kw.pop('source_address', None)
+
+        opt_kw = {}
+        if self.proxy:
+            # Enable Nagle's algorithm for proxies, to avoid packet fragmentation.
+            # We cannot know if the user has added default socket options, so we cannot replace the
+            # list.
+            opt_kw['socket_options'] = []
+
+        opt_kw.update(conn_kw)
+        self.conn_kw = opt_kw
 
     def _new_conn(self):
         """
@@ -184,11 +195,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn = self.ConnectionCls(host=self.host, port=self.port,
                                   timeout=self.timeout.connect_timeout,
                                   strict=self.strict, **self.conn_kw)
-        if self.proxy is not None:
-            # Enable Nagle's algorithm for proxies, to avoid packet fragmentation.
-            # We cannot know if the user has added default socket options, so we cannot replace the
-            # list.
-            conn.socket_options += [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 0)]
         return conn
 
     def _get_conn(self, timeout=None):
@@ -618,7 +624,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.ssl_version = ssl_version
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
-        self.conn_kw = conn_kw
 
     def _prepare_conn(self, conn):
         """
@@ -670,14 +675,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
                                   timeout=self.timeout.connect_timeout,
                                   strict=self.strict, **self.conn_kw)
-
-        if self.proxy is not None:
-            # Enable Nagle's algorithm for proxies, to avoid packet
-            # fragmentation.
-            socket_options = extra_params.get('socket_options', [])
-            extra_params['socket_options'] = socket_options + [
-                (socket.IPPROTO_TCP, socket.TCP_NODELAY, 0)
-            ]
 
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
                                   timeout=self.timeout.connect_timeout,
