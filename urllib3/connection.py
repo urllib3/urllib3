@@ -8,9 +8,11 @@ import sys
 import socket
 from socket import timeout as SocketTimeout
 
-try:  # Python 3
+from .packages import six
+
+if six.PY3:
     from http.client import HTTPConnection as _HTTPConnection, HTTPException
-except ImportError:
+else:
     from httplib import HTTPConnection as _HTTPConnection, HTTPException
 
 
@@ -34,7 +36,6 @@ from .exceptions import (
     ConnectTimeoutError,
 )
 from .packages.ssl_match_hostname import match_hostname
-from .packages import six
 from .util import (
     assert_fingerprint,
     resolve_cert_reqs,

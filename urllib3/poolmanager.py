@@ -6,9 +6,11 @@
 
 import logging
 
-try:  # Python 3
+from .packages import six
+
+if six.PY3:
     from urllib.parse import urljoin
-except ImportError:
+else:
     from urlparse import urljoin
 
 from ._collections import RecentlyUsedContainer
