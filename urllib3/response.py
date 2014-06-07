@@ -160,8 +160,8 @@ class HTTPResponse(io.IOBase):
             after having ``.read()`` the file object. (Overridden if ``amt`` is
             set.)
         """
-        # Note: content-encoding value should be case-insensitive, per RFC 2616
-        # Section 3.5
+        # Note: content-encoding value should be case-insensitive, per RFC 7230
+        # Section 3.2
         content_encoding = self.headers.get('content-encoding', '').lower()
         if self._decoder is None:
             if content_encoding in self.CONTENT_DECODERS:
