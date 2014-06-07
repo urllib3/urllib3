@@ -11,9 +11,11 @@ import logging
 from socket import error as SocketError, timeout as SocketTimeout
 import socket
 
-try:  # Python 3
+from .packages.six import PY3
+
+if PY3:
     from queue import LifoQueue, Empty, Full
-except ImportError:
+else:
     from Queue import LifoQueue, Empty, Full
     import Queue as _  # Platform-specific: Windows
 
