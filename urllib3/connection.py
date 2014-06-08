@@ -117,8 +117,6 @@ class HTTPConnection(_HTTPConnection, object):
                 (self.host, self.timeout))
 
         # Set options on the socket.
-        conn = socket.create_connection(
-            (self.host, self.port), self.timeout, *extra_args)
         self._set_options_on(conn)
 
         return conn

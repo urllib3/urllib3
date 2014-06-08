@@ -170,19 +170,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # These are mostly for testing and debugging purposes.
         self.num_connections = 0
         self.num_requests = 0
+        self.conn_kw = conn_kw
 
-        if sys.version_info < (2, 7):  # Python 2.6 and older
-            conn_kw.pop('source_address', None)
-
-        opt_kw = {}
         if self.proxy:
             # Enable Nagle's algorithm for proxies, to avoid packet fragmentation.
             # We cannot know if the user has added default socket options, so we cannot replace the
             # list.
-            opt_kw['socket_options'] = []
-
-        opt_kw.update(conn_kw)
-        self.conn_kw = opt_kw
+            self.conn_kw.setdefault('socket_options', [])
 
     def _new_conn(self):
         """
@@ -675,10 +669,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
                                   timeout=self.timeout.connect_timeout,
                                   strict=self.strict, **self.conn_kw)
-
-        conn = self.ConnectionCls(host=actual_host, port=actual_port,
-                                  timeout=self.timeout.connect_timeout,
-                                  **extra_params)
 
         return self._prepare_conn(conn)
 
