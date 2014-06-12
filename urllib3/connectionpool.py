@@ -133,6 +133,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     :param _proxy_headers:
         A dictionary with proxy headers, should not be used directly,
         instead, see :class:`urllib3.connectionpool.ProxyManager`"
+
+    :param \**conn_kw:
+        Additional parameters are used to create fresh :class:`urllib3.connection.HTTPConnection`,
+        :class:`urllib3.connection.HTTPSConnection` instances.
     """
 
     scheme = 'http'
@@ -166,8 +170,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # These are mostly for testing and debugging purposes.
         self.num_connections = 0
         self.num_requests = 0
-
         self.conn_kw = conn_kw
+
+        if self.proxy:
+            # Enable Nagle's algorithm for proxies, to avoid packet fragmentation.
+            # We cannot know if the user has added default socket options, so we cannot replace the
+            # list.
+            self.conn_kw.setdefault('socket_options', [])
 
     def _new_conn(self):
         """
@@ -180,10 +189,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn = self.ConnectionCls(host=self.host, port=self.port,
                                   timeout=self.timeout.connect_timeout,
                                   strict=self.strict, **self.conn_kw)
-        if self.proxy is not None:
-            # Enable Nagle's algorithm for proxies, to avoid packet
-            # fragmentation.
-            conn.tcp_nodelay = 0
         return conn
 
     def _get_conn(self, timeout=None):
@@ -613,7 +618,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.ssl_version = ssl_version
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
-        self.conn_kw = conn_kw
 
     def _prepare_conn(self, conn):
         """
@@ -665,10 +669,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
                                   timeout=self.timeout.connect_timeout,
                                   strict=self.strict, **self.conn_kw)
-        if self.proxy is not None:
-            # Enable Nagle's algorithm for proxies, to avoid packet
-            # fragmentation.
-            conn.tcp_nodelay = 0
 
         return self._prepare_conn(conn)
 
