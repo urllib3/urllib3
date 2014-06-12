@@ -14,6 +14,12 @@ dev (master)
 * Fixed proxy-related bug where connections were being reused incorrectly.
   (Issues #366, #369)
 
+* Added ``socket_options`` keyword parameter which allows to define
+  ``setsockopt`` configuration of new sockets. (Issue #397)
+
+* Removed ``HTTPConnection.tcp_nodelay`` in favor of
+  ``HTTPConnection.default_socket_options``. (Issue #397)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
