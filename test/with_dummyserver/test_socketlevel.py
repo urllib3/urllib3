@@ -135,7 +135,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock = listener.accept()[0]
             # First request.
             # Pause before responding so the first request times out.
-            time.sleep(0.002)
+            time.sleep(0.005) # FIXME: Convert this to use Event.
             sock.close()
 
             sock = listener.accept()[0]
