@@ -221,7 +221,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     @requires_network
     @timed(0.1)
     def test_connect_timeout(self):
-        url = '/sleep'
+        url = '/sleep?seconds=0.005'
         timeout = util.Timeout(connect=0.001)
 
         # Pool-global timeout
