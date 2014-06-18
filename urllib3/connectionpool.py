@@ -640,13 +640,12 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                 set_tunnel = conn.set_tunnel
             except AttributeError:  # Platform-specific: Python 2.6
                 set_tunnel = conn._set_tunnel
-            try:    
-                set_tunnel(self.host, self.port, self.proxy_headers)
-            except TypeError:  # Python <= 2.6.4 does not accept the third parameter
-                if not self.proxy_headers:
-                    set_tunnel(self.host, self.port)
-                else:
-                    raise
+                
+            if sys.version_info <= (2, 6, 4) and not self.proxy_headers:   # Python 2.6.4 and older
+                set_tunnel(self.host, self.port)
+            else:
+                set_tunnel(self.host, self.port, self.proxy_headers):    
+
             # Establish tunnel connection early, because otherwise httplib
             # would improperly set Host: header to proxy's IP:port.
             conn.connect()
