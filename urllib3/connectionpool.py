@@ -644,7 +644,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             if sys.version_info <= (2, 6, 4) and not self.proxy_headers:   # Python 2.6.4 and older
                 set_tunnel(self.host, self.port)
             else:
-                set_tunnel(self.host, self.port, self.proxy_headers):    
+                set_tunnel(self.host, self.port, self.proxy_headers)
 
             # Establish tunnel connection early, because otherwise httplib
             # would improperly set Host: header to proxy's IP:port.
