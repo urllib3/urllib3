@@ -4,6 +4,12 @@ Changes
 dev (master)
 ++++++++++++
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.8.3 (2014-06-23)
+++++++++++++++++++
+
 * Fix TLS verification when using a proxy in Python 3.4.1. (Issue #385)
 
 * Add ``disable_cache`` option to ``urllib3.util.make_headers``. (Issue #393)
@@ -21,8 +27,6 @@ dev (master)
   ``HTTPConnection.default_socket_options``. (Issue #397)
 
 * Fixed ``TypeError`` bug in Python 2.6.4. (Issue #411)
-
-* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.8.2 (2014-04-17)
