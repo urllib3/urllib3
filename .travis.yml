@@ -5,9 +5,7 @@ python:
   - 3.2
   - 3.3
   - 3.4
-script: nosetests
-install:
-  - pip install -r dev-requirements.txt
+script: make test
 notifications:
   email: false
 env: PYTHONWARNINGS=always::DeprecationWarning
