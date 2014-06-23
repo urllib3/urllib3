@@ -8,7 +8,15 @@ code specific to **urllib3**.
 Utilities
 ---------
 
-.. automodule:: urllib3.util
+.. automodule:: urllib3.util.connection
+   :members:
+.. automodule:: urllib3.util.request
+   :members:
+.. automodule:: urllib3.util.response
+   :members:
+.. automodule:: urllib3.util.ssl_
+   :members:
+.. automodule:: urllib3.util.url
    :members:
 
 Filepost

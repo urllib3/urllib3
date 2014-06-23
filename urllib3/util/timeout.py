@@ -94,17 +94,16 @@ class Timeout(object):
         return '%s(connect=%r, read=%r, total=%r)' % (
             type(self).__name__, self._connect, self._read, self.total)
 
-
     @classmethod
     def _validate_timeout(cls, value, name):
-        """ Check that a timeout attribute is valid
+        """ Check that a timeout attribute is valid.
 
         :param value: The timeout value to validate
-        :param name: The name of the timeout attribute to validate. This is used
-            for clear error messages
-        :return: the value
-        :raises ValueError: if the type is not an integer or a float, or if it
-            is a numeric value less than zero
+        :param name: The name of the timeout attribute to validate. This is
+            used to specify in error messages.
+        :return: The validated and casted version of the given value.
+        :raises ValueError: If the type is not an integer or a float, or if it
+            is a numeric value less than zero.
         """
         if value is _Default:
             return cls.DEFAULT_TIMEOUT
@@ -123,7 +122,7 @@ class Timeout(object):
                 raise ValueError("Attempted to set %s timeout to %s, but the "
                                  "timeout cannot be set to a value less "
                                  "than 0." % (name, value))
-        except TypeError: # Python 3
+        except TypeError:  # Python 3
             raise ValueError("Timeout value %s was %s, but it must be an "
                              "int or float." % (name, value))
 
@@ -135,12 +134,12 @@ class Timeout(object):
 
         The timeout value used by httplib.py sets the same timeout on the
         connect(), and recv() socket requests. This creates a :class:`Timeout`
-        object that sets the individual timeouts to the ``timeout`` value passed
-        to this function.
+        object that sets the individual timeouts to the ``timeout`` value
+        passed to this function.
 
-        :param timeout: The legacy timeout value
+        :param timeout: The legacy timeout value.
         :type timeout: integer, float, sentinel default object, or None
-        :return: a Timeout object
+        :return: Timeout object
         :rtype: :class:`Timeout`
         """
         return Timeout(read=timeout, connect=timeout)
@@ -174,7 +173,7 @@ class Timeout(object):
     def get_connect_duration(self):
         """ Gets the time elapsed since the call to :meth:`start_connect`.
 
-        :return: the elapsed time
+        :return: Elapsed time.
         :rtype: float
         :raises urllib3.exceptions.TimeoutStateError: if you attempt
             to get duration for a timer that hasn't been started.
@@ -191,7 +190,7 @@ class Timeout(object):
         This will be a positive float or integer, the value None
         (never timeout), or the default system timeout.
 
-        :return: the connect timeout
+        :return: Connect timeout.
         :rtype: int, float, :attr:`Timeout.DEFAULT_TIMEOUT` or None
         """
         if self.total is None:
@@ -214,7 +213,7 @@ class Timeout(object):
         established, a :exc:`~urllib3.exceptions.TimeoutStateError` will be
         raised.
 
-        :return: the value to use for the read timeout
+        :return: Value to use for the read timeout.
         :rtype: int, float, :attr:`Timeout.DEFAULT_TIMEOUT` or None
         :raises urllib3.exceptions.TimeoutStateError: If :meth:`start_connect`
             has not yet been called on this object.
@@ -223,7 +222,7 @@ class Timeout(object):
             self.total is not self.DEFAULT_TIMEOUT and
             self._read is not None and
             self._read is not self.DEFAULT_TIMEOUT):
-            # in case the connect timeout has not yet been established.
+            # In case the connect timeout has not yet been established.
             if self._start_connect is None:
                 return self._read
             return max(0, min(self.total - self.get_connect_duration(),

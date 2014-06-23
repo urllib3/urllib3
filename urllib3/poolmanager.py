@@ -161,7 +161,7 @@ class PoolManager(RequestMethods):
         # Support relative URLs for redirecting.
         redirect_location = urljoin(url, redirect_location)
 
-        # RFC 2616, Section 10.3.4
+        # RFC 7231, Section 6.4.4
         if response.status == 303:
             method = 'GET'
 

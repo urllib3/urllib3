@@ -132,6 +132,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_nagle(self):
         """ Test that connections have TCP_NODELAY turned on """
+        # This test needs to be here in order to be run. socket.create_connection actually tries to
+        # connect to the host provided so we need a dummyserver to be running.
         pool = HTTPConnectionPool(self.host, self.port)
         conn = pool._get_conn()
         pool._make_request(conn, 'GET', '/')
@@ -140,6 +142,43 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                                          "socket (with value greater than 0) "
                                          "but instead was %s" %
                                          tcp_nodelay_setting)
+
+    def test_socket_options(self):
+        """Test that connections accept socket options."""
+        # This test needs to be here in order to be run. socket.create_connection actually tries to
+        # connect to the host provided so we need a dummyserver to be running.
+        pool = HTTPConnectionPool(self.host, self.port, socket_options=[
+            (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        ])
+        s = pool._new_conn()._new_conn()  # Get the socket
+        using_keepalive = s.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE) > 0
+        self.assertTrue(using_keepalive)
+        s.close()
+
+    def test_disable_default_socket_options(self):
+        """Test that passing None disables all socket options."""
+        # This test needs to be here in order to be run. socket.create_connection actually tries to
+        # connect to the host provided so we need a dummyserver to be running.
+        pool = HTTPConnectionPool(self.host, self.port, socket_options=None)
+        s = pool._new_conn()._new_conn()
+        using_nagle = s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) == 0
+        self.assertTrue(using_nagle)
+        s.close()
+
+    def test_defaults_are_applied(self):
+        """Test that modifying the default socket options works."""
+        # This test needs to be here in order to be run. socket.create_connection actually tries to
+        # connect to the host provided so we need a dummyserver to be running.
+        pool = HTTPConnectionPool(self.host, self.port)
+        # Get the HTTPConnection instance
+        conn = pool._new_conn()
+        # Update the default socket options
+        conn.default_socket_options += [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
+        s = conn._new_conn()
+        nagle_disabled = s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) > 0
+        using_keepalive = s.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE) > 0
+        self.assertTrue(nagle_disabled)
+        self.assertTrue(using_keepalive)
 
     def test_timeout(self):
         url = '/sleep?seconds=0.005'
@@ -182,7 +221,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     @requires_network
     @timed(0.1)
     def test_connect_timeout(self):
-        url = '/sleep'
+        url = '/sleep?seconds=0.005'
         timeout = util.Timeout(connect=0.001)
 
         # Pool-global timeout

@@ -116,7 +116,7 @@ class HTTPHeaderDict(MutableMapping):
     A ``dict`` like container for storing HTTP Headers.
 
     Field names are stored and compared case-insensitively in compliance with
-    RFC 2616. Iteration provides the first case-sensitive key seen for each
+    RFC 7230. Iteration provides the first case-sensitive key seen for each
     case-insensitive pair.
 
     Using ``__setitem__`` syntax overwrites fields that compare equal

@@ -10,10 +10,9 @@ from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from test import (
-    onlyPy3, onlyPy27OrNewer, onlyPy26OrOlder, requires_network, TARPIT_HOST,
-    VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES)
+    onlyPy26OrOlder, requires_network, TARPIT_HOST
+    )
 from urllib3 import HTTPSConnectionPool
-from urllib3.packages.six import b, string_types
 import urllib3.connection
 from urllib3.connection import (
     VerifiedHTTPSConnection,
@@ -44,35 +43,54 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def test_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
-                                         cert_reqs='CERT_REQUIRED')
+                                         cert_reqs='CERT_REQUIRED',
+                                         ca_certs=DEFAULT_CA)
 
         conn = https_pool._new_conn()
         self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
 
-        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+        https_pool.request('GET', '/')  # Should succeed without exceptions.
 
-        https_pool.ca_certs = DEFAULT_CA_BAD
+    def test_invalid_common_name(self):
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_REQUIRED',
+                                         ca_certs=DEFAULT_CA)
+        try:
+            https_pool.request('GET', '/')
+            self.fail("Didn't raise SSL invalid common name")
+        except SSLError as e:
+            self.assertTrue("doesn't match" in str(e))
+
+    def test_verified_with_bad_ca_certs(self):
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_reqs='CERT_REQUIRED',
+                                         ca_certs=DEFAULT_CA_BAD)
 
         try:
             https_pool.request('GET', '/')
-            self.fail("Didn't raise SSL error with wrong CA")
+            self.fail("Didn't raise SSL error with bad CA certs")
         except SSLError as e:
             self.assertTrue('certificate verify failed' in str(e),
                             "Expected 'certificate verify failed',"
                             "instead got: %r" % e)
 
-        https_pool.ca_certs = DEFAULT_CA
-        https_pool.request('GET', '/')  # Should succeed without exceptions.
-
-        https_fail_pool = HTTPSConnectionPool('127.0.0.1', self.port,
-                                              cert_reqs='CERT_REQUIRED')
-        https_fail_pool.ca_certs = DEFAULT_CA
+    def test_verified_without_ca_certs(self):
+        # default is cert_reqs=None which is ssl.CERT_NONE
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_reqs='CERT_REQUIRED')
 
         try:
-            https_fail_pool.request('GET', '/')
-            self.fail("Didn't raise SSL invalid common name")
+            https_pool.request('GET', '/')
+            self.fail("Didn't raise SSL error with no CA certs when"
+                      "CERT_REQUIRED is set")
         except SSLError as e:
-            self.assertTrue("doesn't match" in str(e))
+            # there is a different error message depending on whether or
+            # not pyopenssl is injected
+            self.assertTrue('No root certificates specified' in str(e) or
+                            'certificate verify failed' in str(e),
+                            "Expected 'No root certificates specified' or "
+                            "'certificate verify failed', "
+                            "instead got: %r" % e)
 
     def test_no_ssl(self):
         OriginalConnectionCls = self._pool.ConnectionCls
@@ -94,22 +112,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         finally:
             self._pool.ConnectionCls = OriginalConnectionCls
-
-    def test_cert_reqs_as_constant(self):
-        https_pool = HTTPSConnectionPool(self.host, self.port,
-                                         cert_reqs=ssl.CERT_REQUIRED)
-
-        https_pool.ca_certs = DEFAULT_CA_BAD
-        # if we pass in an invalid value it defaults to CERT_NONE
-        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
-
-    def test_cert_reqs_as_short_string(self):
-        https_pool = HTTPSConnectionPool(self.host, self.port,
-                                         cert_reqs='REQUIRED')
-
-        https_pool.ca_certs = DEFAULT_CA_BAD
-        # if we pass in an invalid value it defaults to CERT_NONE
-        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
 
     def test_ssl_unverified_with_ca_certs(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
@@ -144,21 +146,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          cert_reqs=ssl.CERT_REQUIRED)
 
         https_pool.request('HEAD', '/')
-
-    def test_verified_without_ca_certs(self):
-        https_pool = HTTPSConnectionPool(self.host, self.port,
-                                         cert_reqs='CERT_REQUIRED')
-
-        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
-
-    def test_invalid_ca_certs(self):
-        https_pool = HTTPSConnectionPool(self.host, self.port,
-                                         cert_reqs='CERT_REQUIRED')
-
-        # Empty string won't throw on py2
-        https_pool.ca_certs = '/no_valid_path_to_ca_certs'
-
-        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
 
     def test_assert_hostname_false(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
@@ -258,6 +245,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         conn._tunnel.assert_called_once_with()
 
 
+    @onlyPy26OrOlder
     def test_tunnel_old_python(self):
         """HTTPSConnection can still make connections if _tunnel_host isn't set
 
@@ -302,37 +290,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
                                         '7A:F2:8A:D7:1E:07:33:67:DE'
         https_pool._make_request(conn, 'GET', '/')
-
-    @onlyPy26OrOlder
-    def test_source_address_ignored(self):
-        # source_address is ignored in Python 2.6 and earlier.
-        for addr in INVALID_SOURCE_ADDRESSES:
-            https_pool = HTTPSConnectionPool(
-                self.host, self.port, cert_reqs='CERT_REQUIRED',
-                source_address=addr)
-            https_pool.ca_certs = DEFAULT_CA
-            r = https_pool.request('GET', '/source_address')
-            assert r.status == 200
-
-    @onlyPy27OrNewer
-    def test_source_address(self):
-        for addr in VALID_SOURCE_ADDRESSES:
-            https_pool = HTTPSConnectionPool(
-                self.host, self.port, cert_reqs='CERT_REQUIRED',
-                source_address=addr)
-            https_pool.ca_certs = DEFAULT_CA
-            r = https_pool.request('GET', '/source_address')
-            assert r.data == b(addr[0])
-    
-    @onlyPy27OrNewer
-    def test_source_address_error(self):
-        for addr in INVALID_SOURCE_ADDRESSES:
-            https_pool = HTTPSConnectionPool(
-                self.host, self.port, cert_reqs='CERT_REQUIRED',
-                source_address=addr)
-            https_pool.ca_certs = DEFAULT_CA
-            self.assertRaises(
-                MaxRetryError, https_pool.request, 'GET', '/source_address')
 
 
 class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):

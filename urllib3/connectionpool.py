@@ -11,7 +11,7 @@ import logging
 from socket import error as SocketError, timeout as SocketTimeout
 import socket
 
-try: # Python 3
+try:  # Python 3
     from queue import LifoQueue, Empty, Full
 except ImportError:
     from Queue import LifoQueue, Empty, Full
@@ -21,7 +21,6 @@ except ImportError:
 from .exceptions import (
     ClosedPoolError,
     ConnectionError,
-    ConnectTimeoutError,
     EmptyPoolError,
     HostChangedError,
     LocationParseError,
@@ -54,8 +53,8 @@ log = logging.getLogger(__name__)
 
 _Default = object()
 
-## Pool objects
 
+## Pool objects
 class ConnectionPool(object):
     """
     Base class for all connection pools, such as
@@ -81,6 +80,7 @@ class ConnectionPool(object):
 
 # This is taken from http://hg.python.org/cpython/file/7aaba721ebc0/Lib/socket.py#l252
 _blocking_errnos = set([errno.EAGAIN, errno.EWOULDBLOCK])
+
 
 class HTTPConnectionPool(ConnectionPool, RequestMethods):
     """
@@ -133,6 +133,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     :param _proxy_headers:
         A dictionary with proxy headers, should not be used directly,
         instead, see :class:`urllib3.connectionpool.ProxyManager`"
+
+    :param \**conn_kw:
+        Additional parameters are used to create fresh :class:`urllib3.connection.HTTPConnection`,
+        :class:`urllib3.connection.HTTPSConnection` instances.
     """
 
     scheme = 'http'
@@ -166,10 +170,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # These are mostly for testing and debugging purposes.
         self.num_connections = 0
         self.num_requests = 0
-
-        if sys.version_info < (2, 7):  # Python 2.6 and older
-            conn_kw.pop('source_address', None)
         self.conn_kw = conn_kw
+
+        if self.proxy:
+            # Enable Nagle's algorithm for proxies, to avoid packet fragmentation.
+            # We cannot know if the user has added default socket options, so we cannot replace the
+            # list.
+            self.conn_kw.setdefault('socket_options', [])
 
     def _new_conn(self):
         """
@@ -182,10 +189,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn = self.ConnectionCls(host=self.host, port=self.port,
                                   timeout=self.timeout.connect_timeout,
                                   strict=self.strict, **self.conn_kw)
-        if self.proxy is not None:
-            # Enable Nagle's algorithm for proxies, to avoid packet
-            # fragmentation.
-            conn.tcp_nodelay = 0
         return conn
 
     def _get_conn(self, timeout=None):
@@ -204,7 +207,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         try:
             conn = self.pool.get(block=self.block, timeout=timeout)
 
-        except AttributeError: # self.pool is None
+        except AttributeError:  # self.pool is None
             raise ClosedPoolError(self, "Pool is closed.")
 
         except Empty:
@@ -218,6 +221,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if conn and is_connection_dropped(conn):
             log.info("Resetting dropped connection: %s" % self.host)
             conn.close()
+            if getattr(conn, 'auto_open', 1) == 0:
+                # This is a proxied connection that has been mutated by
+                # httplib._tunnel() and cannot be reused (since it would
+                # attempt to bypass the proxy)
+                conn = None
 
         return conn or self._new_conn()
 
@@ -237,7 +245,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         try:
             self.pool.put(conn, block=False)
-            return # Everything is dandy, done.
+            return  # Everything is dandy, done.
         except AttributeError:
             # self.pool is None.
             pass
@@ -283,16 +291,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         timeout_obj = self._get_timeout(timeout)
 
-        try:
-            timeout_obj.start_connect()
-            conn.timeout = timeout_obj.connect_timeout
-            # conn.request() calls httplib.*.request, not the method in
-            # urllib3.request. It also calls makefile (recv) on the socket.
-            conn.request(method, url, **httplib_request_kw)
-        except SocketTimeout:
-            raise ConnectTimeoutError(
-                self, "Connection to %s timed out. (connect timeout=%s)" %
-                (self.host, timeout_obj.connect_timeout))
+        timeout_obj.start_connect()
+        conn.timeout = timeout_obj.connect_timeout
+        # conn.request() calls httplib.*.request, not the method in
+        # urllib3.request. It also calls makefile (recv) on the socket.
+        conn.request(method, url, **httplib_request_kw)
 
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
@@ -310,14 +313,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     "Read timed out. (read timeout=%s)" % read_timeout)
             if read_timeout is Timeout.DEFAULT_TIMEOUT:
                 conn.sock.settimeout(socket.getdefaulttimeout())
-            else: # None or a value
+            else:  # None or a value
                 conn.sock.settimeout(read_timeout)
 
         # Receive the response from the server
         try:
-            try: # Python 2.7+, use buffering of HTTP responses
+            try:  # Python 2.7+, use buffering of HTTP responses
                 httplib_response = conn.getresponse(buffering=True)
-            except TypeError: # Python 2.6 and older
+            except TypeError:  # Python 2.6 and older
                 httplib_response = conn.getresponse()
         except SocketTimeout:
             raise ReadTimeoutError(
@@ -333,7 +336,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
             raise
 
-        except SocketError as e: # Platform-specific: Python 2
+        except SocketError as e:  # Platform-specific: Python 2
             # See the above comment about EAGAIN in Python 3. In Python 2 we
             # have to specifically catch it and throw the timeout error
             if e.errno in _blocking_errnos:
@@ -364,7 +367,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     conn.close()
 
         except Empty:
-            pass # Done.
+            pass  # Done.
 
     def is_same_host(self, url):
         """
@@ -605,11 +608,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  assert_hostname=None, assert_fingerprint=None,
                  **conn_kw):
 
-        if sys.version_info < (2, 7):  # Python 2.6 or older
-            conn_kw.pop('source_address', None)
-
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
-                                    block, headers, _proxy, _proxy_headers, **conn_kw)
+                                    block, headers, _proxy, _proxy_headers,
+                                    **conn_kw)
         self.key_file = key_file
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
@@ -617,7 +618,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.ssl_version = ssl_version
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
-        self.conn_kw = conn_kw
 
     def _prepare_conn(self, conn):
         """
@@ -633,7 +633,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           assert_hostname=self.assert_hostname,
                           assert_fingerprint=self.assert_fingerprint)
             conn.ssl_version = self.ssl_version
-            conn.conn_kw = self.conn_kw
 
         if self.proxy is not None:
             # Python 2.7+
@@ -641,7 +640,12 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                 set_tunnel = conn.set_tunnel
             except AttributeError:  # Platform-specific: Python 2.6
                 set_tunnel = conn._set_tunnel
-            set_tunnel(self.host, self.port, self.proxy_headers)
+                
+            if sys.version_info <= (2, 6, 4) and not self.proxy_headers:   # Python 2.6.4 and older
+                set_tunnel(self.host, self.port)
+            else:
+                set_tunnel(self.host, self.port, self.proxy_headers)
+
             # Establish tunnel connection early, because otherwise httplib
             # would improperly set Host: header to proxy's IP:port.
             conn.connect()
@@ -667,18 +671,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             actual_host = self.proxy.host
             actual_port = self.proxy.port
 
-        extra_params = {}
-        if not six.PY3:  # Python 2
-            extra_params['strict'] = self.strict
-        extra_params.update(self.conn_kw)
-
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
                                   timeout=self.timeout.connect_timeout,
-                                  **extra_params)
-        if self.proxy is not None:
-            # Enable Nagle's algorithm for proxies, to avoid packet
-            # fragmentation.
-            conn.tcp_nodelay = 0
+                                  strict=self.strict, **self.conn_kw)
 
         return self._prepare_conn(conn)
 

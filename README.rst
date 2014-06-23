@@ -20,7 +20,14 @@ Highlights
 - Tested on Python 2.6+ and Python 3.2+, 100% unit test coverage.
 - Small and easy to understand codebase perfect for extending and building upon.
   For a more comprehensive solution, have a look at
-  `Requests <http://python-requests.org/>`_ which is also powered by urllib3.
+  `Requests <http://python-requests.org/>`_ which is also powered by ``urllib3``.
+  
+You might already be using urllib3!
+===================================
+
+``urllib3`` powers `many great Python libraries <https://sourcegraph.com/search?q=package+urllib3>`_,
+including ``pip`` and ``requests``.
+
 
 What's wrong with urllib and urllib2?
 =====================================
@@ -91,6 +98,7 @@ analysis while running test suite. Easiest way to run the tests is thusly the
   py27: commands succeeded
   py32: commands succeeded
   py33: commands succeeded
+  py34: commands succeeded
 
 Note that code coverage less than 100% is regarded as a failing run.
 

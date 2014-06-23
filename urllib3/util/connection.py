@@ -8,6 +8,7 @@ except ImportError:  # `poll` doesn't exist on OSX and other platforms
     except ImportError:  # `select` doesn't exist on AppEngine.
         select = False
 
+
 def is_connection_dropped(conn):  # Platform-specific
     """
     Returns True if the connection is dropped and should be closed.
@@ -22,7 +23,7 @@ def is_connection_dropped(conn):  # Platform-specific
     if sock is False:  # Platform-specific: AppEngine
         return False
     if sock is None:  # Connection already closed (such as by httplib).
-        return False
+        return True
 
     if not poll:
         if not select:  # Platform-specific: AppEngine
@@ -40,6 +41,3 @@ def is_connection_dropped(conn):  # Platform-specific
         if fno == sock.fileno():
             # Either data is buffered (bad), or the connection is dropped.
             return True
-
-
-

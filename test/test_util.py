@@ -1,5 +1,6 @@
 import logging
 import unittest
+import ssl
 
 from mock import patch
 
@@ -11,6 +12,7 @@ from urllib3.util import (
     parse_url,
     Timeout,
     Url,
+    resolve_cert_reqs,
 )
 from urllib3.exceptions import LocationParseError, TimeoutStateError
 
@@ -177,6 +179,10 @@ class TestUtil(unittest.TestCase):
             make_headers(proxy_basic_auth='foo:bar'),
             {'proxy-authorization': 'Basic Zm9vOmJhcg=='})
 
+        self.assertEqual(
+            make_headers(disable_cache=True),
+            {'cache-control': 'no-cache'})
+
     def test_split_first(self):
         test_cases = {
             ('abcd', 'b'): ('a', 'cd', 'b'),
@@ -294,4 +300,11 @@ class TestUtil(unittest.TestCase):
         current_time.return_value = TIMEOUT_EPOCH + 37
         self.assertEqual(timeout.get_connect_duration(), 37)
 
+    def test_resolve_cert_reqs(self):
+        self.assertEqual(resolve_cert_reqs(None), ssl.CERT_NONE)
+        self.assertEqual(resolve_cert_reqs(ssl.CERT_NONE), ssl.CERT_NONE)
+
+        self.assertEqual(resolve_cert_reqs(ssl.CERT_REQUIRED), ssl.CERT_REQUIRED)
+        self.assertEqual(resolve_cert_reqs('REQUIRED'), ssl.CERT_REQUIRED)
+        self.assertEqual(resolve_cert_reqs('CERT_REQUIRED'), ssl.CERT_REQUIRED)
 

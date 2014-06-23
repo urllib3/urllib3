@@ -1,6 +1,28 @@
 Changes
 =======
 
+1.8.3 (2014-06-23)
+++++++++++++++++++
+
+* Fix TLS verification when using a proxy in Python 3.4.1. (Issue #385)
+
+* Add ``disable_cache`` option to ``urllib3.util.make_headers``. (Issue #393)
+
+* Wrap ``socket.timeout`` exception with
+  ``urllib3.exceptions.ReadTimeoutError``. (Issue #399)
+
+* Fixed proxy-related bug where connections were being reused incorrectly.
+  (Issues #366, #369)
+
+* Added ``socket_options`` keyword parameter which allows to define
+  ``setsockopt`` configuration of new sockets. (Issue #397)
+
+* Removed ``HTTPConnection.tcp_nodelay`` in favor of
+  ``HTTPConnection.default_socket_options``. (Issue #397)
+
+* Fixed ``TypeError`` bug in Python 2.6.4. (Issue #411)
+
+
 1.8.2 (2014-04-17)
 ++++++++++++++++++
 

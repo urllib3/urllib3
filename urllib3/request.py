@@ -26,8 +26,8 @@ class RequestMethods(object):
 
     Specifically,
 
-    :meth:`.request_encode_url` is for sending requests whose fields are encoded
-    in the URL (such as GET, HEAD, DELETE).
+    :meth:`.request_encode_url` is for sending requests whose fields are
+    encoded in the URL (such as GET, HEAD, DELETE).
 
     :meth:`.request_encode_body` is for sending requests whose fields are
     encoded in the *body* of the request using multipart or www-form-urlencoded
@@ -51,7 +51,7 @@ class RequestMethods(object):
 
     def urlopen(self, method, url, body=None, headers=None,
                 encode_multipart=True, multipart_boundary=None,
-                **kw): # Abstract
+                **kw):  # Abstract
         raise NotImplemented("Classes extending RequestMethods must implement "
                              "their own ``urlopen`` method.")
 
@@ -61,8 +61,8 @@ class RequestMethods(object):
         ``fields`` based on the ``method`` used.
 
         This is a convenience method that requires the least amount of manual
-        effort. It can be used in most situations, while still having the option
-        to drop down to more specific methods when necessary, such as
+        effort. It can be used in most situations, while still having the
+        option to drop down to more specific methods when necessary, such as
         :meth:`request_encode_url`, :meth:`request_encode_body`,
         or even the lowest level :meth:`urlopen`.
         """
@@ -70,12 +70,12 @@ class RequestMethods(object):
 
         if method in self._encode_url_methods:
             return self.request_encode_url(method, url, fields=fields,
-                                            headers=headers,
-                                            **urlopen_kw)
+                                           headers=headers,
+                                           **urlopen_kw)
         else:
             return self.request_encode_body(method, url, fields=fields,
-                                             headers=headers,
-                                             **urlopen_kw)
+                                            headers=headers,
+                                            **urlopen_kw)
 
     def request_encode_url(self, method, url, fields=None, **urlopen_kw):
         """
@@ -94,14 +94,14 @@ class RequestMethods(object):
         the body. This is useful for request methods like POST, PUT, PATCH, etc.
 
         When ``encode_multipart=True`` (default), then
-        :meth:`urllib3.filepost.encode_multipart_formdata` is used to encode the
-        payload with the appropriate content type. Otherwise
+        :meth:`urllib3.filepost.encode_multipart_formdata` is used to encode
+        the payload with the appropriate content type. Otherwise
         :meth:`urllib.urlencode` is used with the
         'application/x-www-form-urlencoded' content type.
 
         Multipart encoding must be used when posting files, and it's reasonably
-        safe to use it in other times too. However, it may break request signing,
-        such as with OAuth.
+        safe to use it in other times too. However, it may break request
+        signing, such as with OAuth.
 
         Supports an optional ``fields`` parameter of key/value strings AND
         key/filetuple. A filetuple is a (filename, data, MIME type) tuple where
@@ -119,17 +119,17 @@ class RequestMethods(object):
         When uploading a file, providing a filename (the first parameter of the
         tuple) is optional but recommended to best mimick behavior of browsers.
 
-        Note that if ``headers`` are supplied, the 'Content-Type' header will be
-        overwritten because it depends on the dynamic random boundary string
+        Note that if ``headers`` are supplied, the 'Content-Type' header will
+        be overwritten because it depends on the dynamic random boundary string
         which is used to compose the body of the request. The random boundary
         string can be explicitly set with the ``multipart_boundary`` parameter.
         """
         if encode_multipart:
-            body, content_type = encode_multipart_formdata(fields or {},
-                                    boundary=multipart_boundary)
+            body, content_type = encode_multipart_formdata(
+                fields or {}, boundary=multipart_boundary)
         else:
             body, content_type = (urlencode(fields or {}),
-                                    'application/x-www-form-urlencoded')
+                                  'application/x-www-form-urlencoded')
 
         if headers is None:
             headers = self.headers
