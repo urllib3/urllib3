@@ -349,8 +349,21 @@ class WrappedSocket(object):
     def settimeout(self, timeout):
         return self.socket.settimeout(timeout)
 
+    def _send_until_done(self, data):
+        while True:
+            try:
+                return self.connection.send(data)
+            except OpenSSL.SSL.WantWriteError:
+                _, wlist, _ = select.select([], [self.socket], [],
+                                            self.socket.gettimeout())
+                if not wlist:
+                    raise timeout()
+                continue
+
     def sendall(self, data):
-        return self.connection.sendall(data)
+        while len(data):
+            sent = self._send_until_done(data)
+            data = data[sent:]
 
     def close(self):
         return self.connection.shutdown()
