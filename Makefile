@@ -39,5 +39,5 @@ test-all: setup requirements
 docs: setup requirements
 	cd docs && make html
 
-release: test-all clean
+release:
 	./release.sh
