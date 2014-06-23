@@ -38,15 +38,3 @@ test-all: setup requirements
 
 docs: setup requirements
 	cd docs && make html
-
-
-
-VERSION_FILE=urllib3/__init__.py
-
-release: clean
-ifneq ($(shell git rev-parse --abbrev-ref HEAD),makefile)
-	$(error Must be on the release branch before releasing)
-endif
-	@echo "New version (current: $$(grep '__version__' $(VERSION_FILE) | cut -b15-)): "
-	@read version; perl -p -i -e "s/__version__.*/__version__ = '$$version'/" "$(VERSION_FILE)"
-	python setup.py sdist
