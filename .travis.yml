@@ -6,6 +6,8 @@ python:
   - 3.3
   - 3.4
 script: make test
+install:
+  - make
 notifications:
   email: false
 env: PYTHONWARNINGS=always::DeprecationWarning
