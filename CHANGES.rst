@@ -20,6 +20,8 @@ dev (master)
 * Removed ``HTTPConnection.tcp_nodelay`` in favor of
   ``HTTPConnection.default_socket_options``. (Issue #397)
 
+* Fixed ``TypeError`` bug in Python 2.6.4. (Issue #411)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
