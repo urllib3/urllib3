@@ -10,6 +10,7 @@ if [ "$(git rev-parse --abbrev-ref HEAD)" != "release" ]; then
     exit 1
 fi
 
+# Merge master
 git merge master --no-commit
 git checkout master -- CHANGES.rst
 
@@ -19,17 +20,23 @@ version="$(grep -m1 -B1 '+++++' "${CHANGES_FILE}" | head -n1 | cut -d' ' -f1)"
 perl -p -i -e "s/__version__.*/__version__ = '${version}'/" "${VERSION_FILE}"
 git diff
 
+# Confirm
 read -n1 -p "Good? [Y/n] " r
-if ! [[ $r =~ ^([yY])$ ]]; then
+if ! [[ $r =~ ^([yY]*)$ ]]; then
     echo "Stopped."
     exit 2
 fi
 
+# Prepare commit
 git commit -a -m 'Merging new release version: ${version}'
 git tag ${version}
+
+# Build package
+make clean
 python setup.py sdist
+
+# TODO: Shove a unicorn in here, or something.
 
 echo "Release is ready. Publish it when ready:"
 echo "git push origin"
 echo "python setup.py sdist upload"
-
