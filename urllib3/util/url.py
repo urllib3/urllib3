@@ -95,6 +95,10 @@ def parse_url(url):
     # Additionally, this implementations does silly things to be optimal
     # on CPython.
 
+    if not url:
+        # Empty
+        return Url()
+
     scheme = None
     auth = None
     host = None

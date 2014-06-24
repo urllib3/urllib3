@@ -4,7 +4,7 @@ from urllib3.poolmanager import PoolManager
 from urllib3 import connection_from_url
 from urllib3.exceptions import (
     ClosedPoolError,
-    LocationParseError,
+    LocationValueError,
 )
 
 
@@ -68,7 +68,8 @@ class TestPoolManager(unittest.TestCase):
 
     def test_nohost(self):
         p = PoolManager(5)
-        self.assertRaises(LocationParseError, p.connection_from_url, 'http://@')
+        self.assertRaises(LocationValueError, p.connection_from_url, 'http://@')
+        self.assertRaises(LocationValueError, p.connection_from_url, None)
 
 
 if __name__ == '__main__':

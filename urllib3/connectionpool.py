@@ -23,12 +23,12 @@ from .exceptions import (
     ConnectionError,
     EmptyPoolError,
     HostChangedError,
-    LocationParseError,
+    LocationValueError,
     MaxRetryError,
+    ProxyError,
+    ReadTimeoutError,
     SSLError,
     TimeoutError,
-    ReadTimeoutError,
-    ProxyError,
 )
 from .packages.ssl_match_hostname import CertificateError
 from .packages import six
@@ -65,13 +65,11 @@ class ConnectionPool(object):
     QueueCls = LifoQueue
 
     def __init__(self, host, port=None):
-        if host is None:
-            raise LocationParseError(host)
+        if not host:
+            raise LocationValueError("No host specified.")
 
         # httplib doesn't like it when we include brackets in ipv6 addresses
-        host = host.strip('[]')
-
-        self.host = host
+        self.host = host.strip('[]')
         self.port = port
 
     def __str__(self):

@@ -11,6 +11,7 @@ from urllib3.exceptions import (
     ClosedPoolError,
     EmptyPoolError,
     HostChangedError,
+    LocationValueError,
     MaxRetryError,
     SSLError,
 )
@@ -186,7 +187,6 @@ class TestConnectionPool(unittest.TestCase):
 
         self.assertRaises(Empty, old_pool_queue.get, block=False)
 
-
     def test_pool_timeouts(self):
         pool = HTTPConnectionPool(host='localhost')
         conn = pool._new_conn()
@@ -200,6 +200,9 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(pool.timeout._read, 3)
         self.assertEqual(pool.timeout._connect, 3)
         self.assertEqual(pool.timeout.total, None)
+
+    def test_no_host(self):
+        self.assertRaises(LocationValueError, HTTPConnectionPool, None)
 
 
 if __name__ == '__main__':

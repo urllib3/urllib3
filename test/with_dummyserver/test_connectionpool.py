@@ -596,7 +596,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             pool = HTTPConnectionPool(
                 self.host, self.port, source_address=addr)
             self.assertRaises(
-                MaxRetryError, pool.request, 'GET', '/source_address')
+                MaxRetryError, pool.request, 'GET', '/source_address', retries=1)
 
     @onlyPy3
     def test_httplib_headers_case_insensitive(self):

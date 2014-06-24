@@ -7,6 +7,9 @@ dev (master)
 * Shuffled around development-related files. If you're maintaining a distro
   package of urllib3, you may need to tweak things. (Issue #415)
 
+* Requesting an empty host will raise a LocationValueError exception.
+  (Issue #417)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
