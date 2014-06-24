@@ -14,6 +14,7 @@ except ImportError:
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
+from .exceptions import LocationValueError
 from .request import RequestMethods
 from .util import parse_url
 
@@ -102,10 +103,11 @@ class PoolManager(RequestMethods):
         ``urllib3.connectionpool.port_by_scheme``.
         """
 
+        if not host:
+            raise LocationValueError("No host specified.")
+
         scheme = scheme or 'http'
-
         port = port or port_by_scheme.get(scheme, 80)
-
         pool_key = (scheme, host, port)
 
         with self.pools.lock:
@@ -118,6 +120,7 @@ class PoolManager(RequestMethods):
             # Make a fresh ConnectionPool of the desired type
             pool = self._new_pool(scheme, host, port)
             self.pools[pool_key] = pool
+
         return pool
 
     def connection_from_url(self, url):

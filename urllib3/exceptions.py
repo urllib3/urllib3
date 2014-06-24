@@ -116,7 +116,12 @@ class ClosedPoolError(PoolError):
     pass
 
 
-class LocationParseError(ValueError, HTTPError):
+class LocationValueError(ValueError, HTTPError):
+    "Raised when there is something wrong with a given URL input."
+    pass
+
+
+class LocationParseError(LocationValueError):
     "Raised when get_host or similar fails to parse the URL input."
 
     def __init__(self, location):
