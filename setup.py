@@ -21,9 +21,6 @@ fp.close()
 
 version = VERSION
 
-requirements = []
-tests_requirements = requirements + open('dev-requirements.txt').readlines()
-
 setup(name='urllib3',
       version=version,
       description="HTTP library with thread-safe connection pooling, file post, and more.",
@@ -48,7 +45,13 @@ setup(name='urllib3',
                 'urllib3.packages', 'urllib3.packages.ssl_match_hostname',
                 'urllib3.contrib', 'urllib3.util',
                 ],
-      requires=requirements,
-      tests_require=tests_requirements,
+      requires=[],
+      tests_require=[
+          # These are a less-specific subset of dev-requirements.txt, for the
+          # convenience of distro package maintainers.
+          'nose',
+          'mock',
+          'tornado',
+      ],
       test_suite='test',
       )
