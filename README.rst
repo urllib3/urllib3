@@ -96,7 +96,7 @@ We use some external dependencies, multiple interpreters and code coverage
 analysis while running test suite.
 
 We created a ``Makefile`` which handles much of this for you as long as you're
-running it inside of `a virtualenv
+running it `inside of a virtualenv
 <http://docs.python-guide.org/en/latest/dev/virtualenvs/>`_: ::
 
   $ make test
@@ -105,11 +105,11 @@ running it inside of `a virtualenv
 
   OK (SKIP=6)
 
-Note that code coverage less than 100% is regarded as a failing run.
+Note that code coverage less than 100% is regarded as a failing run. Some
+platform-specific tests are skipped unless run in that platform.
 
-Some platform-specific tests are skipped unless run in that platform. To make
-sure the code works in all of urllib3's supported platforms, you can run our
-``tox`` suite: ::
+To make sure the code works in all of urllib3's supported platforms, you can
+run our ``tox`` suite: ::
 
   $ make test-all
   [...]
@@ -119,9 +119,8 @@ sure the code works in all of urllib3's supported platforms, you can run our
   py33: commands succeeded
   py34: commands succeeded
 
-Additionally, we continuously run
-`tests on TravisCI <https://travis-ci.org/shazow/urllib3>`_ with every pull
-request.
+Our test suite `runs continuously on Travis CI
+<https://travis-ci.org/shazow/urllib3>`_ with every pull request.
 
 
 Contributing
