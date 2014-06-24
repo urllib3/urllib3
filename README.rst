@@ -21,12 +21,14 @@ Highlights
 - Small and easy to understand codebase perfect for extending and building upon.
   For a more comprehensive solution, have a look at
   `Requests <http://python-requests.org/>`_ which is also powered by ``urllib3``.
-  
+
+
 You might already be using urllib3!
 ===================================
 
-``urllib3`` powers `many great Python libraries <https://sourcegraph.com/search?q=package+urllib3>`_,
-including ``pip`` and ``requests``.
+``urllib3`` powers `many great Python libraries
+<https://sourcegraph.com/search?q=package+urllib3>`_, including ``pip`` and
+``requests``.
 
 
 What's wrong with urllib and urllib2?
@@ -41,6 +43,7 @@ The Python standard libraries ``urllib`` and ``urllib2`` have little to do
 with each other. They were designed to be independent and standalone, each
 solving a different scope of problems, and ``urllib3`` follows in a similar
 vein.
+
 
 Why do I want to reuse connections?
 ===================================
@@ -63,6 +66,7 @@ This library is perfect for:
   retrying is useful. It's relatively lightweight, so it can be used for
   anything!
 
+
 Examples
 ========
 
@@ -81,26 +85,43 @@ But, long story short::
 
 The ``PoolManager`` will take care of reusing connections for you whenever
 you request the same host. For more fine-grained control of your connection
-pools, you should look at
-`ConnectionPool <http://urllib3.readthedocs.org/#connectionpool>`_.
+pools, you should look at `ConnectionPool
+<http://urllib3.readthedocs.org/#connectionpool>`_.
 
 
 Run the tests
 =============
 
 We use some external dependencies, multiple interpreters and code coverage
-analysis while running test suite. Easiest way to run the tests is thusly the
-``tox`` utility: ::
+analysis while running test suite.
 
-  $ tox
-  # [..]
+We created a ``Makefile`` which handles much of this for you as long as you're
+running it inside of `a virtualenv
+<http://docs.python-guide.org/en/latest/dev/virtualenvs/>`_: ::
+
+  $ make test
+  [...]
+  Ran 182 tests in 1.633s
+
+  OK (SKIP=6)
+
+Note that code coverage less than 100% is regarded as a failing run.
+
+Some platform-specific tests are skipped unless run in that platform. To make
+sure the code works in all of urllib3's supported platforms, you can run our
+``tox`` suite: ::
+
+  $ make test-all
+  [...]
   py26: commands succeeded
   py27: commands succeeded
   py32: commands succeeded
   py33: commands succeeded
   py34: commands succeeded
 
-Note that code coverage less than 100% is regarded as a failing run.
+Additionally, we continuously run
+`tests on TravisCI <https://travis-ci.org/shazow/urllib3>`_ with every pull
+request.
 
 
 Contributing
