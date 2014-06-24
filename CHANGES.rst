@@ -4,6 +4,9 @@ Changes
 dev (master)
 ++++++++++++
 
+* Shuffled around development-related files. If you're maintaining a distro
+  package of urllib3, you may need to tweak things. (Issue #415)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
