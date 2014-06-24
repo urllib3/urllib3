@@ -98,7 +98,7 @@ you as long as you're running it `inside of a virtualenv
 <http://docs.python-guide.org/en/latest/dev/virtualenvs/>`_: ::
 
   $ make test
-  [...]
+  [... magically installs dependencies and runs tests on your virtualenv]
   Ran 182 tests in 1.633s
 
   OK (SKIP=6)
@@ -109,7 +109,7 @@ the code works in all of urllib3's supported platforms, you can run our ``tox``
 suite: ::
 
   $ make test-all
-  [...]
+  [... tox creates a virtualenv for every platform and runs tests inside of each]
   py26: commands succeeded
   py27: commands succeeded
   py32: commands succeeded
