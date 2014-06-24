@@ -18,7 +18,8 @@ $(SETUP_OUT): setup.py setup.cfg
 
 requirements: setup $(REQUIREMENTS_OUT)
 
-piprot: requirements
+piprot: setup
+	pip install piprot
 	piprot -x $(REQUIREMENTS_FILE)
 
 $(REQUIREMENTS_OUT): $(REQUIREMENTS_FILE)
@@ -36,8 +37,11 @@ test: requirements
 test-all: requirements
 	tox
 
-docs: requirements
-	cd docs && make html
+docs:
+	cd docs && pip install -r doc-requirements.txt && make html
 
 release:
 	./release.sh
+
+
+.PHONY: docs
