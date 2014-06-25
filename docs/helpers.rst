@@ -30,7 +30,7 @@ SSL Utilities
    :members:
 .. automodule:: urllib3.util.request
    :members:
-.. automodule:: urllib3.util.response
+.. automodule:: urllib3.util.request
    :members:
 .. automodule:: urllib3.util.ssl_
    :members:

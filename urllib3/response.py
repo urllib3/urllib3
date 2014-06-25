@@ -4,7 +4,6 @@
 # This module is part of urllib3 and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-
 import zlib
 import io
 from socket import timeout as SocketTimeout

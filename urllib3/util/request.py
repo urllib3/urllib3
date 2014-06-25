@@ -1,4 +1,4 @@
-# urllib3/util/response.py
+# urllib3/util.request.py
 # Copyright 2008-2014 Andrey Petrov and contributors (see CONTRIBUTORS.txt)
 #
 # This module is part of urllib3 and is released under

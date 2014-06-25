@@ -12,8 +12,10 @@ except:
     from urllib import urlencode
 
 from test import (
-    onlyPy3, onlyPy27OrNewer, onlyPy26OrOlder, requires_network, TARPIT_HOST,
-    VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES)
+    requires_network, find_unused_port,
+    onlyPy3, onlyPy27OrNewer, onlyPy26OrOlder,
+    TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES,
+)
 from urllib3 import (
     encode_multipart_formdata,
     HTTPConnectionPool,

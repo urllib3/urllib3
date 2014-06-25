@@ -5,15 +5,15 @@ import ssl
 from mock import patch
 
 from urllib3 import add_stderr_logger
-from urllib3.util.response import make_headers
+from urllib3.util.request import make_headers
 from urllib3.util.timeout import Timeout
 from urllib3.util.url import (
     get_host,
     parse_url,
     split_first,
     Url,
-    resolve_cert_reqs,
 )
+from urllib3.util.ssl_ import resolve_cert_reqs
 from urllib3.exceptions import LocationParseError, TimeoutStateError
 
 # This number represents a time in seconds, it doesn't mean anything in

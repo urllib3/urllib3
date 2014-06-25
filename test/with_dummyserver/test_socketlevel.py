@@ -195,7 +195,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port)
 
         response = pool.urlopen('GET', '/', retries=0, preload_content=False,
-                                timeout=util.Timeout(connect=1, read=0.001))
+                                timeout=Timeout(connect=1, read=0.001))
         try:
             self.assertRaises(ReadTimeoutError, response.read)
         finally:

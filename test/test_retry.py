@@ -93,7 +93,3 @@ class RetryTest(unittest.TestCase):
         # sleep a very small amount of time so our code coverage is happy
         retry = Retry(backoff_factor=0.0001)
         retry.sleep()
-
-    def test_connection_error(self):
-        port = find_unused_port()
-

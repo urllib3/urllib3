@@ -23,7 +23,7 @@ from . import exceptions
 from .filepost import encode_multipart_formdata
 from .poolmanager import PoolManager, ProxyManager, proxy_from_url
 from .response import HTTPResponse
-from .util.response import make_headers
+from .util.request import make_headers
 from .util.url import get_host
 from .util.timeout import Timeout
 
