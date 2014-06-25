@@ -131,6 +131,11 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(r.read(1), b'f')
         self.assertEqual(r.read(2), b'oo')
 
+    def test_body_blob(self):
+        resp = HTTPResponse(b'foo')
+        self.assertEqual(resp.data, b'foo')
+        self.assertTrue(resp.closed)
+
     def test_io(self):
         import socket
         try:
