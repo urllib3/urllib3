@@ -74,20 +74,20 @@ class RetryTest(unittest.TestCase):
     def test_backoff(self):
         """ Backoff is computed correctly """
         retry = Retry(backoff_factor=3)
-        self.assertEqual(retry._compute_backoff(), 3)
+        self.assertEqual(retry.get_backoff_time(), 3)
         retry = retry.increment()
-        self.assertEqual(retry._compute_backoff(), 3)
+        self.assertEqual(retry.get_backoff_time(), 3)
         retry = retry.increment()
-        self.assertEqual(retry._compute_backoff(), 6)
+        self.assertEqual(retry.get_backoff_time(), 6)
         retry = retry.increment()
-        self.assertEqual(retry._compute_backoff(), 12)
+        self.assertEqual(retry.get_backoff_time(), 12)
 
     def test_zero_backoff(self):
         retry = Retry()
-        self.assertEqual(retry._compute_backoff(), 0)
+        self.assertEqual(retry.get_backoff_time(), 0)
         retry = retry.increment()
         retry = retry.increment()
-        self.assertEqual(retry._compute_backoff(), 0)
+        self.assertEqual(retry.get_backoff_time(), 0)
 
     def test_sleep(self):
         # sleep a very small amount of time so our code coverage is happy

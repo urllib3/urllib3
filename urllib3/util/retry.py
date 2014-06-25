@@ -137,8 +137,8 @@ class Retry(object):
         used to compute the backoff time and other factors.
     """
 
-    DEFAULT_METHOD_WHITELIST = frozenset(['HEAD', 'GET', 'PUT', 'DELETE',
-                                          'OPTIONS', 'TRACE'])
+    DEFAULT_METHOD_WHITELIST = frozenset([
+        'HEAD', 'GET', 'PUT', 'DELETE', 'OPTIONS', 'TRACE'])
     SERVER_ERROR_RESPONSE = frozenset(xrange(500, 599))
     NON_200_RESPONSE = frozenset(xrange(300, 599))
 
@@ -155,8 +155,6 @@ class Retry(object):
     # the the remote server accepted the request. The server may have begun
     # processing the request and performed some side effects (wrote data to a
     # database, sent a message, etc).
-    #
-    # This makes more sense as a frozenset, but isinstance only accepts a tuple.
     READ_EXCEPTIONS = (BadStatusLine, IncompleteRead,
                        ResponseNotReady, UnknownProtocol, ReadTimeoutError)
 
@@ -165,9 +163,7 @@ class Retry(object):
                  codes_whitelist=None, backoff_factor=0,
                  raise_on_redirect=True, retry_callable=None):
 
-        # If it's None, the bottleneck becomes the specified sub-limits.
         self.total = total
-
         self.connect = connect
         self.read = read
         self.redirects = redirects
@@ -177,16 +173,15 @@ class Retry(object):
         self.raise_on_redirect = raise_on_redirect
         self.observed_errors = observed_errors
 
+        self.retry_callable = retry_callable
         if retry_callable is None:
             def default_retry(method, response=None):
                 return (method in self.method_whitelist
                         and response
                         and response.status in self.codes_whitelist)
             self.retry_callable = default_retry
-        else:
-            self.retry_callable = retry_callable
 
-    def _compute_backoff(self):
+    def get_backoff_time(self):
         """ Formula for computing the current backoff
 
         :rtype: float
@@ -199,7 +194,7 @@ class Retry(object):
         By default, the backoff factor is 0 and this method will return
         immediately.
         """
-        backoff = self._compute_backoff()
+        backoff = self.get_backoff_time()
         if backoff <= 0:
             return
         time.sleep(backoff)
