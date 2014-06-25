@@ -125,9 +125,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
         self._start_server(socket_handler)
         pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
 
-        self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/', retries=0)
-
-        timed_out.set()
+        try:
+            self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/', retries=0)
+        finally:
+            timed_out.set()
 
     def test_timeout_errors_cause_retries(self):
         def socket_handler(listener):
@@ -193,8 +194,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         response = pool.urlopen('GET', '/', retries=0, preload_content=False,
                                 timeout=util.Timeout(connect=1, read=0.001))
-        self.assertRaises(ReadTimeoutError, response.read)
-        timed_out.set()
+        try:
+            self.assertRaises(ReadTimeoutError, response.read)
+        finally:
+            timed_out.set()
 
     def test_incomplete_response(self):
         body = 'Response'
@@ -400,11 +403,12 @@ class TestSSL(SocketDummyServerTestCase):
                 buf += ssl_sock.recv(65536)
 
             # Deliberately send from the non-SSL socket.
-            sock2.send(('HTTP/1.1 200 OK\r\n'
-                       'Content-Type: text/plain\r\n'
-                       'Content-Length: 2\r\n'
-                       '\r\n'
-                       'Hi').encode('utf-8'))
+            sock2.send((
+                'HTTP/1.1 200 OK\r\n'
+                'Content-Type: text/plain\r\n'
+                'Content-Length: 2\r\n'
+                '\r\n'
+                'Hi').encode('utf-8'))
             sock2.close()
             ssl_sock.close()
 
@@ -412,3 +416,40 @@ class TestSSL(SocketDummyServerTestCase):
         pool = HTTPSConnectionPool(self.host, self.port)
 
         self.assertRaises(SSLError, pool.request, 'GET', '/', retries=0)
+
+    def test_ssl_read_timeout(self):
+        timed_out = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            ssl_sock = ssl.wrap_socket(sock,
+                                       server_side=True,
+                                       keyfile=DEFAULT_CERTS['keyfile'],
+                                       certfile=DEFAULT_CERTS['certfile'],
+                                       ca_certs=DEFAULT_CA)
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += ssl_sock.recv(65536)
+
+            # Send incomplete message (note Content-Length)
+            ssl_sock.send((
+                'HTTP/1.1 200 OK\r\n'
+                'Content-Type: text/plain\r\n'
+                'Content-Length: 10\r\n'
+                '\r\n'
+                'Hi-').encode('utf-8'))
+            timed_out.wait()
+
+            sock.close()
+            ssl_sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPSConnectionPool(self.host, self.port)
+
+        response = pool.urlopen('GET', '/', retries=0, preload_content=False,
+                                timeout=util.Timeout(connect=1, read=0.001))
+        try:
+            self.assertRaises(ReadTimeoutError, response.read)
+        finally:
+            timed_out.set()
