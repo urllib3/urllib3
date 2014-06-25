@@ -184,7 +184,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
                        'Content-Length: %d\r\n'
                        '\r\n' % len(body)).encode('utf-8'))
 
-            timed_out.wait(timeout=0.05)
+            timed_out.wait()
             sock.send(body.encode('utf-8'))
             sock.close()
 
@@ -223,6 +223,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         response = pool.request('GET', '/', retries=0, preload_content=False)
         self.assertRaises(ConnectionError, response.read)
+
 
 
 class TestProxyManager(SocketDummyServerTestCase):
