@@ -219,7 +219,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool.request('GET', url, timeout=5)
 
     @requires_network
-    @timed(0.1)
+    @timed(0.5)
     def test_connect_timeout(self):
         url = '/sleep?seconds=0.005'
         timeout = util.Timeout(connect=0.001)

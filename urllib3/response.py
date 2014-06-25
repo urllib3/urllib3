@@ -13,7 +13,7 @@ from ._collections import HTTPHeaderDict
 from .exceptions import ConnectionError, DecodeError, ReadTimeoutError
 from .packages.six import string_types as basestring, binary_type
 from .util import is_fp_closed
-from .connection import HTTPException
+from .connection import HTTPException, BaseSSLError
 
 
 class DeflateDecoder(object):
@@ -201,6 +201,15 @@ class HTTPResponse(io.IOBase):
             except SocketTimeout:
                 # FIXME: Ideally we'd like to include the url in the ReadTimeoutError but
                 # there is yet no clean way to get at it from this context.
+                raise ReadTimeoutError(self._pool, None, 'Read timed out.')
+
+            except BaseSSLError as e:
+                # FIXME: Is there a better way to differentiate between SSLErrors?
+                if not 'read operation timed out' in str(e):  # Defensive:
+                    # This shouldn't happen but just in case we're missing an edge
+                    # case, let's avoid swallowing SSL errors.
+                    raise
+
                 raise ReadTimeoutError(self._pool, None, 'Read timed out.')
 
             except HTTPException as e:

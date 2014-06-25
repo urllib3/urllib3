@@ -13,6 +13,9 @@ dev (master)
 * Errors during response read (such as IncompleteRead) are now wrapped in
   ``urllib3.exceptions.ConnectionError``. (Issue #418)
 
+* Catch read timeouts over SSL connections as
+  ``urllib3.exceptions.ReadTimeoutError``. (Issue #419)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
