@@ -135,11 +135,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         try:
             import urllib3.contrib.pyopenssl
         except ImportError:
-            raise SkipTest('This test needs pyopenssl support')
+            raise SkipTest('Test requires PyOpenSSL')
         if (urllib3.connection.ssl_wrap_socket is
                 urllib3.contrib.pyopenssl.orig_connection_ssl_wrap_socket):
             # Not patched
-            raise SkipTest('This test should only be run after pyopenssl '
+            raise SkipTest('Test should only be run after PyOpenSSL '
                            'monkey patching')
 
         https_pool = HTTPSConnectionPool('httpbin.org', 443,

@@ -10,9 +10,10 @@ import io
 from socket import timeout as SocketTimeout
 
 from ._collections import HTTPHeaderDict
-from .exceptions import DecodeError, ReadTimeoutError
+from .exceptions import ConnectionError, DecodeError, ReadTimeoutError
 from .packages.six import string_types as basestring, binary_type
 from .util import is_fp_closed
+from .connection import HTTPException
 
 
 class DeflateDecoder(object):
@@ -201,6 +202,10 @@ class HTTPResponse(io.IOBase):
                 # FIXME: Ideally we'd like to include the url in the ReadTimeoutError but
                 # there is yet no clean way to get at it from this context.
                 raise ReadTimeoutError(self._pool, None, 'Read timed out.')
+
+            except HTTPException as e:
+                # This includes IncompleteRead.
+                raise ConnectionError('Connection failed: %r' % e, e)
 
             self._fp_bytes_read += len(data)
 
