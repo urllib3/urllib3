@@ -2,6 +2,7 @@
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
 from urllib3.exceptions import (
+        ConnectionError,
         MaxRetryError,
         ProxyError,
         ReadTimeoutError,
@@ -16,7 +17,6 @@ from dummyserver.server import (
 from nose.plugins.skip import SkipTest
 from threading import Event
 import socket
-import time
 import ssl
 
 
@@ -195,6 +195,34 @@ class TestSocketClosing(SocketDummyServerTestCase):
                                 timeout=util.Timeout(connect=1, read=0.001))
         self.assertRaises(ReadTimeoutError, response.read)
         timed_out.set()
+
+    def test_incomplete_response(self):
+        body = 'Response'
+        partial_body = body[:2]
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            # Consume request
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf = sock.recv(65536)
+
+            # Send partial response and close socket.
+            sock.send((
+                'HTTP/1.1 200 OK\r\n'
+                'Content-Type: text/plain\r\n'
+                'Content-Length: %d\r\n'
+                '\r\n'
+                '%s' % (len(body), partial_body)).encode('utf-8')
+            )
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port)
+
+        response = pool.request('GET', '/', retries=0, preload_content=False)
+        self.assertRaises(ConnectionError, response.read)
 
 
 class TestProxyManager(SocketDummyServerTestCase):

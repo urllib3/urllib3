@@ -10,6 +10,9 @@ dev (master)
 * Requesting an empty host will raise a LocationValueError exception.
   (Issue #417)
 
+* Errors during response read (such as IncompleteRead) are now wrapped in
+  ``urllib3.exceptions.ConnectionError``. (Issue #418)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
