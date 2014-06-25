@@ -130,15 +130,12 @@ class TestSocketClosing(SocketDummyServerTestCase):
         timed_out.set()
 
     def test_timeout_errors_cause_retries(self):
-
         def socket_handler(listener):
-            sock = listener.accept()[0]
-            # First request.
-            # Pause before responding so the first request times out.
-            time.sleep(0.001) # FIXME: Convert this to use Event.
-            sock.close()
+            sock_timeout = listener.accept()[0]
 
+            # Wait for a second request before closing the first socket.
             sock = listener.accept()[0]
+            sock_timeout.close()
 
             # Second request.
             buf = b''
