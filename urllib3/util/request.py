@@ -6,26 +6,13 @@
 
 from base64 import b64encode
 
-from ..packages import six
+from ..packages.six import b
 
-
-def is_fp_closed(obj):
-    """
-    Checks whether a given file-like object is closed.
-
-    :param obj:
-        The file-like object to check.
-    """
-    if hasattr(obj, 'fp'):
-        # Object is a container for another file-like object that gets released
-        # on exhaustion (e.g. HTTPResponse)
-        return obj.fp is None
-
-    return obj.closed
+ACCEPT_ENCODING = 'gzip,deflate'
 
 
 def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
-                 basic_auth=None, proxy_basic_auth=None):
+                 basic_auth=None, proxy_basic_auth=None, disable_cache=None):
     """
     Shortcuts for generating request headers.
 
@@ -50,6 +37,9 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
         Colon-separated username:password string for 'proxy-authorization: basic ...'
         auth header.
 
+    :param disable_cache:
+        If ``True``, adds 'cache-control: no-cache' header.
+
     Example: ::
 
         >>> make_headers(keep_alive=True, user_agent="Batman/1.0")
@@ -64,7 +54,7 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
         elif isinstance(accept_encoding, list):
             accept_encoding = ','.join(accept_encoding)
         else:
-            accept_encoding = 'gzip,deflate'
+            accept_encoding = ACCEPT_ENCODING
         headers['accept-encoding'] = accept_encoding
 
     if user_agent:
@@ -75,10 +65,13 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
 
     if basic_auth:
         headers['authorization'] = 'Basic ' + \
-            b64encode(six.b(basic_auth)).decode('utf-8')
+            b64encode(b(basic_auth)).decode('utf-8')
 
     if proxy_basic_auth:
         headers['proxy-authorization'] = 'Basic ' + \
-            b64encode(six.b(proxy_basic_auth)).decode('utf-8')
+            b64encode(b(proxy_basic_auth)).decode('utf-8')
+
+    if disable_cache:
+        headers['cache-control'] = 'no-cache'
 
     return headers

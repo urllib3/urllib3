@@ -6,7 +6,8 @@
 
 # For backwards compatibility, provide imports that used to be here.
 from .connection import is_connection_dropped
-from .request import is_fp_closed, make_headers
+from .request import make_headers
+from .response import is_fp_closed
 from .ssl_ import (
     SSLContext,
     HAS_SNI,
