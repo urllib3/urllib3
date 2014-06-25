@@ -205,7 +205,7 @@ class HTTPResponse(io.IOBase):
 
             except BaseSSLError as e:
                 # FIXME: Is there a better way to differentiate between SSLErrors?
-                if not 'read operation timed out' in e.message:  # Defensive
+                if not 'read operation timed out' in e.message:  # Defensive:
                     # This shouldn't happen but just in case we're missing an edge
                     # case, let's avoid swallowing SSL errors.
                     raise
