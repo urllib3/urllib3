@@ -11,11 +11,12 @@ try:
 except:
     from urllib import urlencode
 
-from test import (
-    requires_network, find_unused_port,
+from .. import (
+    requires_network,
     onlyPy3, onlyPy27OrNewer, onlyPy26OrOlder,
     TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES,
 )
+from ..port_helpers import find_unused_port
 from urllib3 import (
     encode_multipart_formdata,
     HTTPConnectionPool,
@@ -183,7 +184,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertTrue(nagle_disabled)
         self.assertTrue(using_keepalive)
 
-    @timed(0.2)
+    @timed(0.5)
     def test_timeout(self):
         """ Requests should time out when expected """
         url = '/sleep?seconds=0.005'
@@ -200,7 +201,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', url)
 
         # Request-specific timeouts should raise errors
-        pool = HTTPConnectionPool(self.host, self.port, timeout=0.5)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.1)
 
         conn = pool._get_conn()
         self.assertRaises(ReadTimeoutError, pool._make_request,
@@ -221,7 +222,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         # Timeout int/float passed directly to _make_request should not raise a
         # request timeout if it's a high value
-        pool.request('GET', url, timeout=5)
+        pool.request('GET', url, timeout=1)
 
     @requires_network
     @timed(0.5)
@@ -240,7 +241,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                           retries=retry)
 
         # Request-specific connection timeouts
-        big_timeout = Timeout(read=0.5, connect=0.5)
+        big_timeout = Timeout(read=0.2, connect=0.2)
         pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=big_timeout)
         conn = pool._get_conn()
         self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET',
@@ -275,7 +276,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             self.fail("This request shouldn't trigger a read timeout.")
 
     @requires_network
-    @timed(2.0)
+    @timed(5.0)
     def test_total_timeout(self):
         url = '/sleep?seconds=0.005'
 
