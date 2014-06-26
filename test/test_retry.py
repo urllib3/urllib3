@@ -9,10 +9,10 @@ class RetryTest(unittest.TestCase):
     def test_string(self):
         """ Retry string representation looks the way we expect """
         retry = Retry()
-        self.assertEqual(str(retry), 'Retry (count=0)')
+        self.assertEqual(str(retry), 'Retry(count=0)')
         for _ in range(3):
             retry = retry.increment()
-        self.assertEqual(str(retry), 'Retry (count=3)')
+        self.assertEqual(str(retry), 'Retry(count=3)')
 
     def test_retry_both_specified(self):
         """Total can win if it's lower than the connect value"""

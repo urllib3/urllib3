@@ -617,8 +617,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Check if we should retry the HTTP response.
         retries = retries.increment(response=response)
-        if (not retries.is_exhausted() and
-            retries.retry_callable(method, response)):
+        if retries.is_retryable(method, response):
             retries.sleep()
             return self.urlopen(method, url, body, headers, retries, redirect,
                                 assert_same_host, timeout, pool_timeout,
