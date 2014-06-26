@@ -3,6 +3,8 @@ import unittest
 from urllib3.exceptions import ConnectTimeoutError, ReadTimeoutError
 from urllib3.util.retry import Retry
 
+from urllib3.packages.six.moves import xrange
+
 
 class RetryTest(unittest.TestCase):
 

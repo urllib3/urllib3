@@ -228,7 +228,7 @@ class Retry(object):
         if self.total is not None and self.total < 0:
             return True
 
-        retry_counts = filter(None, (self.connect, self.read, self.redirects))
+        retry_counts = list(filter(None, (self.connect, self.read, self.redirects)))
         if not retry_counts:
             return False
 
