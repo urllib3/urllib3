@@ -51,9 +51,11 @@ class Retry(object):
     :param int total:
         Total number of retries to allow. Takes precedence over other counts.
 
-        Setting total to ``None`` will remove this constraint and fall back on
-        other counts. It's a good idea to set this to some sensibly-high value
-        to account for unexpected edge cases and avoid infinite retry loops.
+        Set to ``None`` to remove this constraint and fall back on other
+        counts. It's a good idea to set this to some sensibly-high value to
+        account for unexpected edge cases and avoid infinite retry loops.
+
+        Set to ``0`` to fail on the first retry.
 
     :param int connect:
         How many connection-related errors to retry on.
@@ -61,13 +63,15 @@ class Retry(object):
         These are errors raised before the request is sent to the remote server,
         which we assume has not triggered the server to process the request.
 
+        Set to ``0`` to fail on the first retry of this type.
+
     :param int read:
         How many times to retry on read errors.
 
         These errors are raised after the request was sent to the server, so the
         request may have side-effects.
 
-        By default, we don't retry on any of these errors.
+        Set to ``0`` to fail on the first retry of this type.
 
     :param int redirects:
         How many redirects to perform. Limit this to avoid infinite redirect
@@ -75,6 +79,8 @@ class Retry(object):
 
         A redirect is a HTTP response with a status code 301, 302, 303, 307 or
         308.
+
+        Set to ``0`` to fail on the first retry of this type.
 
     :param iterable method_whitelist:
         Set of HTTP method verbs that we should retry on.
@@ -131,7 +137,7 @@ class Retry(object):
     #: Maximum backoff value.
     BACKOFF_MAX = 120
 
-    def __init__(self, total=None, connect=None, read=0, redirects=None,
+    def __init__(self, total=None, connect=None, read=None, redirects=None,
                  observed_errors=0,
                  method_whitelist=DEFAULT_METHOD_WHITELIST, codes_whitelist=None,
                  backoff_factor=0, raise_on_redirect=True):
@@ -140,6 +146,7 @@ class Retry(object):
         self.connect = connect
         self.read = read
         self.redirects = redirects # XXX: singular?
+
         self.codes_whitelist = codes_whitelist or set()
         self.method_whitelist = method_whitelist
         self.backoff_factor = backoff_factor
@@ -211,7 +218,12 @@ class Retry(object):
         """
         if self.total is not None and self.total < 0:
             return True
-        return min(c for c in (self.connect, self.read, self.redirects) if c is not None) < 0
+
+        retry_counts = filter(None, (self.connect, self.read, self.redirects))
+        if not retry_counts:
+            return False
+
+        return min(retry_counts) < 0
 
     def increment(self, method='GET', response=None, error=None):
         """ Return a new Retry object with incremented retry counters.

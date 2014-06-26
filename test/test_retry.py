@@ -56,7 +56,7 @@ class RetryTest(unittest.TestCase):
         retry = Retry()
         self.assertEqual(retry.total, None)
         self.assertEqual(retry.connect, None)
-        self.assertEqual(retry.read, 0)
+        self.assertEqual(retry.read, None)
         self.assertEqual(retry.redirects, None)
 
         err = ConnectTimeoutError()
@@ -75,7 +75,7 @@ class RetryTest(unittest.TestCase):
     def test_retry_read_zero(self):
         """ No second chances on read timeouts, by default """
         err = ReadTimeoutError(None, "/", "read timed out")
-        retry = Retry()
+        retry = Retry(read=0)
         retry = retry.increment(error=err)
         self.assertTrue(retry.is_exhausted())
 
@@ -96,7 +96,6 @@ class RetryTest(unittest.TestCase):
             retry = retry.increment()
 
         self.assertEqual(retry.get_backoff_time(), 120)
-
 
     def test_zero_backoff(self):
         retry = Retry()
