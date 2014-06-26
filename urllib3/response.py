@@ -15,6 +15,7 @@ from .packages.six import string_types as basestring, binary_type
 from .util import is_fp_closed
 from .connection import HTTPException, BaseSSLError
 
+IRON = sys.platform == 'cli'
 
 class DeflateDecoder(object):
 
@@ -44,7 +45,13 @@ class DeflateDecoder(object):
 
 def _get_decoder(mode):
     if mode == 'gzip':
-        return zlib.decompressobj(16 + zlib.MAX_WBITS)
+        if not IRON:
+            return zlib.decompressobj(16 + zlib.MAX_WBITS)
+        else:
+            # the zlib library is based on version 1.1.13 of zlib
+            # which does not support gzip wrapper
+            # https://ironpython.codeplex.com/workitem/35295
+            return zlib.decompressobj(-zlib.MAX_WBITS)
 
     return DeflateDecoder()
 
@@ -220,7 +227,14 @@ class HTTPResponse(io.IOBase):
 
             try:
                 if decode_content and self._decoder:
-                    data = self._decoder.decompress(data)
+                    if not IRON:
+                        data = self._decoder.decompress(data)
+                    else:
+                        # strip manually gzip header
+                        # if served by webserver, it appears to have a
+                        # constant size of 10
+                        # https://ironpython.codeplex.com/workitem/35295
+                        data = self._decoder.decompress(data[10:])
             except (IOError, zlib.error) as e:
                 raise DecodeError(
                     "Received response with content-encoding: %s, but "
