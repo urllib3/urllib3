@@ -474,7 +474,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if retries is _Default:
             retries = Retry(3)
         elif retries is False:
-            retries = Retry(redirects=0, raise_on_redirect=False)
+            retries = Retry(0, redirects=0, raise_on_redirect=False)
         elif not isinstance(retries, Retry):
             retries = Retry(total=retries)
 

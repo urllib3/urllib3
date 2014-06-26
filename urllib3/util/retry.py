@@ -208,10 +208,10 @@ class Retry(object):
         if method not in self.method_whitelist:
             return False
 
-        if not response or not self.codes_whitelist:
+        if not response:
             return True
 
-        return response.status in self.codes_whitelist
+        return self.codes_whitelist and response.status in self.codes_whitelist
 
     def is_exhausted(self):
         """ Are we out of retries?
