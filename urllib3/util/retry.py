@@ -82,7 +82,7 @@ class Retry(object):
 
         Set to ``0`` to fail on the first retry of this type.
 
-        ``False`` implies ``raise_on_redirect=False``.
+        Set to ``False`` to disable and imply ``raise_on_redirect=False``.
 
     :param iterable method_whitelist:
         Set of uppercased HTTP method verbs that we should retry on.
