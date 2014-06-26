@@ -163,6 +163,9 @@ class PoolManager(RequestMethods):
 
         # Support relative URLs for redirecting.
         redirect_location = urljoin(url, redirect_location)
+        redirect_history = kw.get('redirect_history', [])
+        redirect_history.append((response.status, redirect_location))
+        kw['redirect_history'] = redirect_history
 
         # RFC 7231, Section 6.4.4
         if response.status == 303:

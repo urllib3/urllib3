@@ -125,6 +125,17 @@ class TestingApp(WSGIHandler):
         headers = [('Location', target)]
         return Response(status='303 See Other', headers=headers)
 
+    def multi_redirect(self, request):
+        "Performs a redirect chain based on ``redirect_codes``"
+        codes = request.params.get('redirect_codes', '200').decode('utf-8')
+        codes = codes.split(',')
+        head, tail = codes[0], codes[1:]
+        if not tail:
+            return Response("Done redirecting", status=head)
+
+        headers = [('Location', '/multi_redirect?redirect_codes=%s' % ','.join(tail))]
+        return Response(status=head, headers=headers)
+
     def keepalive(self, request):
         if request.params.get('close', b'0') == b'1':
             headers = [('Connection', 'close')]
