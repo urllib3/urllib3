@@ -472,12 +472,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             headers = self.headers
 
         if retries is _Default:
-            retries = Retry()
+            retries = Retry(3)
         elif retries is False:
             retries = Retry(redirects=0, raise_on_redirect=False)
         elif not isinstance(retries, Retry):
-            retries = Retry(total=retries, read=retries, connect=retries,
-                            redirects=retries)
+            retries = Retry(total=retries)
 
         if retries.is_exhausted():
             raise MaxRetryError(self, url, str(retries))

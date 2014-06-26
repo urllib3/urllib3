@@ -53,16 +53,24 @@ class RetryTest(unittest.TestCase):
 
     def test_retry_default_exhausted(self):
         """ If no value is specified, should retry connects 3 times """
-        err = ConnectTimeoutError()
         retry = Retry()
-        for _ in range(4):
-            retry = retry.increment(error=err)
-        self.assertTrue(retry.is_exhausted())
+        self.assertEqual(retry.total, None)
+        self.assertEqual(retry.connect, None)
+        self.assertEqual(retry.read, 0)
+        self.assertEqual(retry.redirects, None)
 
-        retry = Retry()
-        for _ in range(3):
+        err = ConnectTimeoutError()
+
+        retry = Retry(connect=1)
+        for _ in range(2):
             retry = retry.increment(error=err)
-        self.assertFalse(retry.is_exhausted())
+        self.assertTrue(retry.is_exhausted(), '%r should be exhausted.' % retry)
+
+        retry = Retry(connect=1)
+        for _ in range(1):
+            retry = retry.increment(error=err)
+
+        self.assertFalse(retry.is_exhausted(), '%r should not be exhausted.' % retry)
 
     def test_retry_read_zero(self):
         """ No second chances on read timeouts, by default """
@@ -73,14 +81,22 @@ class RetryTest(unittest.TestCase):
 
     def test_backoff(self):
         """ Backoff is computed correctly """
-        retry = Retry(backoff_factor=3)
-        self.assertEqual(retry.get_backoff_time(), 3)
+        retry = Retry(backoff_factor=0.2)
+        self.assertEqual(retry.get_backoff_time(), 0)
         retry = retry.increment()
-        self.assertEqual(retry.get_backoff_time(), 3)
+        self.assertEqual(retry.get_backoff_time(), 0)
         retry = retry.increment()
-        self.assertEqual(retry.get_backoff_time(), 6)
+        self.assertEqual(retry.get_backoff_time(), 0.4)
         retry = retry.increment()
-        self.assertEqual(retry.get_backoff_time(), 12)
+        self.assertEqual(retry.get_backoff_time(), 0.8)
+        retry = retry.increment()
+        self.assertEqual(retry.get_backoff_time(), 1.6)
+
+        for i in xrange(10):
+            retry = retry.increment()
+
+        self.assertEqual(retry.get_backoff_time(), 120)
+
 
     def test_zero_backoff(self):
         retry = Retry()
