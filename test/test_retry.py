@@ -54,7 +54,7 @@ class RetryTest(unittest.TestCase):
     def test_retry_default_exhausted(self):
         """ If no value is specified, should retry connects 3 times """
         retry = Retry()
-        self.assertEqual(retry.total, None)
+        self.assertEqual(retry.total, 10)
         self.assertEqual(retry.connect, None)
         self.assertEqual(retry.read, None)
         self.assertEqual(retry.redirects, None)
@@ -108,3 +108,13 @@ class RetryTest(unittest.TestCase):
         # sleep a very small amount of time so our code coverage is happy
         retry = Retry(backoff_factor=0.0001)
         retry.sleep()
+
+    def test_status_forcelist(self):
+        retry = Retry(status_forcelist=xrange(500,600))
+        self.assertFalse(retry.is_retryable('GET', status_code=200))
+        self.assertFalse(retry.is_retryable('GET', status_code=400))
+        self.assertTrue(retry.is_retryable('GET', status_code=500))
+
+        retry = Retry(total=1, status_forcelist=[418])
+        self.assertFalse(retry.is_retryable('GET', status_code=400))
+        self.assertTrue(retry.is_retryable('GET', status_code=418))

@@ -44,7 +44,7 @@ class Retry(object):
     Example usage::
 
         retries = urllib3.util.Retry(connect=5, read=2,
-            codes_whitelist=[429, 500, 503])
+            status_forcelist=[429, 500, 503])
         pool = HTTPConnectionPool('www.google.com', 80)
         pool.request(retries=retries)
 
@@ -83,14 +83,14 @@ class Retry(object):
         Set to ``0`` to fail on the first retry of this type.
 
     :param iterable method_whitelist:
-        Set of HTTP method verbs that we should retry on.
+        Set of uppercased HTTP method verbs that we should retry on.
 
         By default, we only retry on methods which are considered to be
         indempotent (multiple requests with the same parameters end with the
         same state). See :attr:`Retry.DEFAULT_METHOD_WHITELIST`.
 
-    :param iterable codes_whitelist:
-        A set of HTTP status codes that we should retry on.
+    :param iterable status_forcelist:
+        A set of HTTP status codes that we should force a retry on. 
 
         By default, this is disabled with ``None``.
 
@@ -137,9 +137,9 @@ class Retry(object):
     #: Maximum backoff value.
     BACKOFF_MAX = 120
 
-    def __init__(self, total=None, connect=None, read=None, redirects=None,
+    def __init__(self, total=10, connect=None, read=None, redirects=None,
                  observed_errors=0,
-                 method_whitelist=DEFAULT_METHOD_WHITELIST, codes_whitelist=None,
+                 method_whitelist=DEFAULT_METHOD_WHITELIST, status_forcelist=None,
                  backoff_factor=0, raise_on_redirect=True):
 
         self.total = total
@@ -147,7 +147,7 @@ class Retry(object):
         self.read = read
         self.redirects = redirects # XXX: singular?
 
-        self.codes_whitelist = codes_whitelist or set()
+        self.status_forcelist = status_forcelist or set()
         self.method_whitelist = method_whitelist
         self.backoff_factor = backoff_factor
         self.raise_on_redirect = raise_on_redirect
@@ -196,22 +196,26 @@ class Retry(object):
 
         return False
 
-    def is_retryable(self, method, response=None, error=None):
+    def is_retryable(self, method, status_code=None, response=None, error=None):
         """ Is this method/response retryable? (Based on method/codes whitelists)
         """
         if self.is_exhausted():
             return False
 
+        status_code = status_code or response and response.status
+        if self.status_forcelist and status_code in self.status_forcelist:
+            return True
+
+        if self.method_whitelist and method.upper() not in self.method_whitelist:
+            return False
+
         if isinstance(error, self.READ_EXCEPTIONS):
             return True
 
-        if method not in self.method_whitelist:
-            return False
-
         if not response:
-            return True
+            return status_code is None
 
-        return self.codes_whitelist and response.status in self.codes_whitelist
+        return bool(response.get_redirect_location())
 
     def is_exhausted(self):
         """ Are we out of retries?

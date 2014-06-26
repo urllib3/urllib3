@@ -472,9 +472,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             headers = self.headers
 
         if retries is _Default:
-            retries = Retry(3)
+            retries = Retry(total=3)
         elif retries is False:
-            retries = Retry(0, redirects=0, raise_on_redirect=False)
+            retries = Retry(total=0, redirects=0, raise_on_redirect=False)
         elif not isinstance(retries, Retry):
             retries = Retry(total=retries)
 
@@ -601,21 +601,21 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if redirect_location:
             if response.status == 303:
                 method = 'GET'
-            log.info("Redirecting %s -> %s" % (url, redirect_location))
-            retries = retries.increment(response=response)
+
+            retries = retries.increment(method=method, response=response)
             if retries.is_exhausted():
                 if retries.raise_on_redirect:
                     raise MaxRetryError(self, url)
-                else:
-                    return response
-            else:
-                return self.urlopen(method, redirect_location, body, headers,
-                                    retries, redirect, assert_same_host,
-                                    timeout=timeout, pool_timeout=pool_timeout,
-                                    release_conn=release_conn, **response_kw)
+                return response
+
+            log.info("Redirecting %s -> %s" % (url, redirect_location))
+            return self.urlopen(method, redirect_location, body, headers,
+                                retries, redirect, assert_same_host,
+                                timeout=timeout, pool_timeout=pool_timeout,
+                                release_conn=release_conn, **response_kw)
 
         # Check if we should retry the HTTP response.
-        retries = retries.increment(response=response)
+        retries = retries.increment(method=method, response=response)
         if retries.is_retryable(method, response):
             retries.sleep()
             return self.urlopen(method, url, body, headers, retries, redirect,
