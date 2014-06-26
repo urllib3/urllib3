@@ -638,12 +638,17 @@ class TestRetry(HTTPDummyServerTestCase):
                               retries=False)
         self.assertEqual(r.status, 303)
 
+        r = self.pool.request('GET', '/redirect',
+                              fields={'target': '/'},
+                              retries=Retry(redirects=False))
+        self.assertEqual(r.status, 303)
+
         pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
         self.assertRaises(MaxRetryError, pool.request, 'GET', '/test', retries=False)
 
     def test_read_retries(self):
         """ Should retry for status codes in the whitelist """
-        retry = Retry(total=1, status_forcelist=[418])
+        retry = Retry(read=1, status_forcelist=[418])
         resp = self.pool.request('GET', '/successful_retry',
                                  headers={'test-name': 'test_read_retries'},
                                  retries=retry)

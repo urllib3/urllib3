@@ -82,6 +82,8 @@ class Retry(object):
 
         Set to ``0`` to fail on the first retry of this type.
 
+        ``False`` implies ``raise_on_redirect=False``.
+
     :param iterable method_whitelist:
         Set of uppercased HTTP method verbs that we should retry on.
 
@@ -147,6 +149,10 @@ class Retry(object):
         self.read = read
         self.redirects = redirects # XXX: singular?
 
+        if redirects is False:
+            self.redirects = 0
+            raise_on_redirect = False
+
         self.status_forcelist = status_forcelist or set()
         self.method_whitelist = method_whitelist
         self.backoff_factor = backoff_factor
@@ -157,8 +163,10 @@ class Retry(object):
         return type(self)(
             total=total,
             connect=connect, read=read, redirects=redirects,
-            backoff_factor=self.backoff_factor,
             observed_errors=observed_errors,
+            method_whitelist=self.method_whitelist,
+            status_forcelist=self.status_forcelist,
+            backoff_factor=self.backoff_factor,
             raise_on_redirect=self.raise_on_redirect,
         )
 
@@ -185,16 +193,16 @@ class Retry(object):
         time.sleep(backoff)
 
     def _is_connection_error(self, err):
-        """ Determine whether an error was a connection error """
-        if (isinstance(err, SocketError)
-            and hasattr(err, 'errno')
-            and (err.errno in SOCKET_CONNECT_EXCEPTIONS)):
-            return True
-
         if isinstance(err, self.CONNECT_EXCEPTIONS):
             return True
 
-        return False
+        if not isinstance(err, SocketError):
+            return False
+
+        return getattr(err, 'errno') in SOCKET_CONNECT_EXCEPTIONS
+
+    def _is_read_error(self, err):
+        return isinstance(err, self.READ_EXCEPTIONS)
 
     def is_retryable(self, method, status_code=None, response=None, error=None):
         """ Is this method/response retryable? (Based on method/codes whitelists)
@@ -202,14 +210,14 @@ class Retry(object):
         if self.is_exhausted():
             return False
 
+        if self.method_whitelist and method.upper() not in self.method_whitelist:
+            return False
+
         status_code = status_code or response and response.status
         if self.status_forcelist and status_code in self.status_forcelist:
             return True
 
-        if self.method_whitelist and method.upper() not in self.method_whitelist:
-            return False
-
-        if isinstance(error, self.READ_EXCEPTIONS):
+        if error:
             return True
 
         if not response:
@@ -255,7 +263,7 @@ class Retry(object):
             if connect is not None:
                 connect -= 1
 
-        elif self.is_retryable(method, response=response, error=error):
+        elif self._is_read_error(error):
             # Read retry?
             observed_errors += 1
             if read is not None:
@@ -265,6 +273,7 @@ class Retry(object):
             # Redirect retry?
             if redirects is not None:
                 redirects -= 1
+
         else:
             # FIXME: Nothing changed, scenario doesn't make sense.
             observed_errors += 1
