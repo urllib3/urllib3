@@ -7,6 +7,7 @@
 
 import zlib
 import io
+import sys
 from socket import timeout as SocketTimeout
 
 from ._collections import HTTPHeaderDict
