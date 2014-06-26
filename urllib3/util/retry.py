@@ -204,7 +204,7 @@ class Retry(object):
     def _is_read_error(self, err):
         return isinstance(err, self.READ_EXCEPTIONS)
 
-    def is_retryable(self, method, status_code=None, response=None, error=None):
+    def is_retryable(self, method, status_code=None, response=None):
         """ Is this method/response retryable? (Based on method/codes whitelists)
         """
         if self.is_exhausted():
@@ -215,9 +215,6 @@ class Retry(object):
 
         status_code = status_code or response and response.status
         if self.status_forcelist and status_code in self.status_forcelist:
-            return True
-
-        if error:
             return True
 
         if not response:

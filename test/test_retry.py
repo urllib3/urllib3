@@ -82,11 +82,11 @@ class RetryTest(unittest.TestCase):
     def test_backoff(self):
         """ Backoff is computed correctly """
         retry = Retry(backoff_factor=0.2)
-        self.assertEqual(retry.get_backoff_time(), 0)
+        self.assertEqual(retry.get_backoff_time(), 0) # First request
         retry = retry.increment()
-        self.assertEqual(retry.get_backoff_time(), 0)
+        self.assertEqual(retry.get_backoff_time(), 0) # First retry
         retry = retry.increment()
-        self.assertEqual(retry.get_backoff_time(), 0.4)
+        self.assertEqual(retry.get_backoff_time(), 0.4) # Start backoff
         retry = retry.increment()
         self.assertEqual(retry.get_backoff_time(), 0.8)
         retry = retry.increment()
@@ -107,6 +107,8 @@ class RetryTest(unittest.TestCase):
     def test_sleep(self):
         # sleep a very small amount of time so our code coverage is happy
         retry = Retry(backoff_factor=0.0001)
+        retry = retry.increment()
+        retry = retry.increment()
         retry.sleep()
 
     def test_status_forcelist(self):
