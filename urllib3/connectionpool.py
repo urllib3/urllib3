@@ -288,9 +288,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.num_requests += 1
 
         timeout_obj = self._get_timeout(timeout)
-
         timeout_obj.start_connect()
         conn.timeout = timeout_obj.connect_timeout
+
         # conn.request() calls httplib.*.request, not the method in
         # urllib3.request. It also calls makefile (recv) on the socket.
         conn.request(method, url, **httplib_request_kw)
@@ -307,8 +307,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # timeouts, check for a zero timeout before making the request.
             if read_timeout == 0:
                 raise ReadTimeoutError(
-                    self, url,
-                    "Read timed out. (read timeout=%s)" % read_timeout)
+                    self, url, "Read timed out. (read timeout=%s)" % read_timeout)
             if read_timeout is Timeout.DEFAULT_TIMEOUT:
                 conn.sock.settimeout(socket.getdefaulttimeout())
             else:  # None or a value
@@ -339,8 +338,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # have to specifically catch it and throw the timeout error
             if e.errno in _blocking_errnos:
                 raise ReadTimeoutError(
-                    self, url,
-                    "Read timed out. (read timeout=%s)" % read_timeout)
+                    self, url, "Read timed out. (read timeout=%s)" % read_timeout)
 
             raise
 
@@ -538,9 +536,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             release_conn = True
             raise SSLError(e)
 
-        except TimeoutError as e:
-            # This is necessary so we can access e below
-            err = e
+        except (TimeoutError, HTTPException, SocketError) as e:
             if conn:
                 # Discard the connection for these exceptions. It will be
                 # be replaced during the next _get_conn() call.
@@ -549,36 +545,24 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
             retries = retries.increment(error=e)
             if retries.is_exhausted():
-                raise
-            retries.sleep()
+                if isinstance(e, TimeoutError):
+                    # TimeoutError is exempt from MaxRetryError-wrapping.
+                    # FIXME: ... Not sure why. Add a reason here.
+                    raise
 
-        except HTTPException as e:
-            # Connection broken, discard. It will be replaced next _get_conn().
-            conn = None
-            # This is necessary so we can access e below
-            err = e
-
-            retries = retries.increment(error=e)
-            if retries.is_exhausted():
-                raise MaxRetryError(self, url, e)
-            retries.sleep()
-
-        except SocketError as e:
-            # Connection broken, discard. It will be replaced next _get_conn().
-            conn = None
-            # This is necessary so we can access e below
-            err = e
-
-            retries = retries.increment(error=e)
-            if retries.is_exhausted():
                 # Wrap unexpected exceptions with the most appropriate
                 # module-level exception and re-raise.
-                if isinstance(e, SocketError) and self.proxy is not None:
-                    raise ProxyError('Cannot connect to proxy. '
-                                     'Socket error: %s.' % e)
-                else:
-                    raise MaxRetryError(self, url, e)
+                if isinstance(e, SocketError) and self.proxy:
+                    raise ProxyError('Cannot connect to proxy.', e)
+
+                if retries is False:
+                    raise ConnectionError('Connection failed.', e)
+
+                raise MaxRetryError(self, url, e)
+
             retries.sleep()
+            # Keep track of the error for the retry warning.
+            err = e
 
         finally:
             if release_conn:
@@ -590,7 +574,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if not conn:
             # Try again
             log.warning("Retrying (%s retries) after connection "
-                     "broken by '%r': %s" % (retries, err, url))
+                        "broken by '%r': %s" % (retries, err, url))
             return self.urlopen(method, url, body, headers, retries,
                                 redirect, assert_same_host,
                                 timeout=timeout, pool_timeout=pool_timeout,
