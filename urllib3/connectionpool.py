@@ -474,7 +474,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if retries is _Default:
             retries = Retry(total=3)
         elif retries is False:
-            retries = Retry(total=0, redirects=0, raise_on_redirect=False)
+            retries = Retry(total=0, redirect=0, raise_on_redirect=False)
         elif not isinstance(retries, Retry):
             retries = Retry(total=retries)
 
@@ -620,8 +620,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             retries.sleep()
             log.info("Forced retry: %s" % url)
             return self.urlopen(method, url, body, headers, retries, redirect,
-                                assert_same_host, timeout, pool_timeout,
-                                release_conn, **response_kw)
+                                assert_same_host,
+                                timeout=timeout, pool_timeout=pool_timeout,
+                                release_conn=release_conn, **response_kw)
 
         return response
 

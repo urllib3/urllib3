@@ -1,35 +1,28 @@
+import time
 import errno
+from socket import error as SocketError
+
 try: # Python 3
     from http.client import (
         BadStatusLine,
-        CannotSendRequest,
+        ImproperConnectionState,
         IncompleteRead,
         InvalidURL,
-        NotConnected,
-        ResponseNotReady,
         UnknownProtocol,
     )
 except ImportError:
     from httplib import (
         BadStatusLine,
-        CannotSendRequest,
+        ImproperConnectionState,
         IncompleteRead,
         InvalidURL,
-        NotConnected,
-        ResponseNotReady,
         UnknownProtocol,
     )
-from socket import error as SocketError
-import time
-
-from ..packages import six
 
 from ..exceptions import (
     ConnectTimeoutError,
     ReadTimeoutError,
 )
-
-xrange = six.moves.xrange
 
 
 SOCKET_CONNECT_EXCEPTIONS = frozenset([errno.ENETUNREACH, errno.ECONNREFUSED])
@@ -73,7 +66,7 @@ class Retry(object):
 
         Set to ``0`` to fail on the first retry of this type.
 
-    :param int redirects:
+    :param int redirect:
         How many redirects to perform. Limit this to avoid infinite redirect
         loops.
 
@@ -124,7 +117,7 @@ class Retry(object):
     # is handled in the read section below. Connection errors in general are
     # retryable because the remote server hasn't received any data.
     CONNECT_EXCEPTIONS = (
-            CannotSendRequest, NotConnected, InvalidURL, ConnectTimeoutError)
+            ImproperConnectionState, InvalidURL, ConnectTimeoutError)
 
     # Even though we didn't get a response back from the server, these
     # exceptions are different than connection errors, because they imply
@@ -132,14 +125,13 @@ class Retry(object):
     # processing the request and performed some side effects (wrote data to a
     # database, sent a message, etc).
     READ_EXCEPTIONS = (
-            BadStatusLine, IncompleteRead, ResponseNotReady, UnknownProtocol,
-            ReadTimeoutError)
+            BadStatusLine, IncompleteRead, UnknownProtocol, ReadTimeoutError)
 
 
     #: Maximum backoff value.
     BACKOFF_MAX = 120
 
-    def __init__(self, total=10, connect=None, read=None, redirects=None,
+    def __init__(self, total=10, connect=None, read=None, redirect=None,
                  observed_errors=0,
                  method_whitelist=DEFAULT_METHOD_WHITELIST, status_forcelist=None,
                  backoff_factor=0, raise_on_redirect=True):
@@ -147,10 +139,10 @@ class Retry(object):
         self.total = total
         self.connect = connect
         self.read = read
-        self.redirects = redirects # XXX: singular?
+        self.redirect = redirect # XXX: singular?
 
-        if redirects is False:
-            self.redirects = 0
+        if redirect is False:
+            self.redirect = 0
             raise_on_redirect = False
 
         self.status_forcelist = status_forcelist or set()
@@ -159,10 +151,10 @@ class Retry(object):
         self.raise_on_redirect = raise_on_redirect
         self.observed_errors = observed_errors # XXX: use .history instead?
 
-    def new(self, total=None, connect=3, read=0, redirects=3, observed_errors=0):
+    def new(self, total=None, connect=3, read=0, redirect=3, observed_errors=0):
         return type(self)(
             total=total,
-            connect=connect, read=read, redirects=redirects,
+            connect=connect, read=read, redirect=redirect,
             observed_errors=observed_errors,
             method_whitelist=self.method_whitelist,
             status_forcelist=self.status_forcelist,
@@ -228,7 +220,7 @@ class Retry(object):
         if self.total is not None and self.total < 0:
             return True
 
-        retry_counts = list(filter(None, (self.connect, self.read, self.redirects)))
+        retry_counts = list(filter(None, (self.connect, self.read, self.redirect)))
         if not retry_counts:
             return False
 
@@ -252,7 +244,7 @@ class Retry(object):
         observed_errors = self.observed_errors
         connect = self.connect
         read = self.read
-        redirects = self.redirects
+        redirect = self.redirect
 
         if self._is_connection_error(error):
             # Connect retry?
@@ -268,8 +260,8 @@ class Retry(object):
 
         elif response and response.get_redirect_location():
             # Redirect retry?
-            if redirects is not None:
-                redirects -= 1
+            if redirect is not None:
+                redirect -= 1
 
         else:
             # FIXME: Nothing changed, scenario doesn't make sense.
@@ -277,13 +269,13 @@ class Retry(object):
 
         return self.new(
             total=total,
-            connect=connect, read=read, redirects=redirects,
+            connect=connect, read=read, redirect=redirect,
             observed_errors=observed_errors)
 
 
     def __repr__(self):
         return ('{cls.__name__}(total={self.total}, connect={self.connect}, '
-                'read={self.read}, redirects={self.redirects})').format(
+                'read={self.read}, redirect={self.redirect})').format(
                     cls=type(self), self=self)
 
     def __str__(self):

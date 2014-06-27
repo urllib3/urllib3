@@ -59,7 +59,7 @@ class RetryTest(unittest.TestCase):
         self.assertEqual(retry.total, 10)
         self.assertEqual(retry.connect, None)
         self.assertEqual(retry.read, None)
-        self.assertEqual(retry.redirects, None)
+        self.assertEqual(retry.redirect, None)
 
         err = ConnectTimeoutError()
 

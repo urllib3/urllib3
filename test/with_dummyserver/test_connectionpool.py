@@ -640,7 +640,7 @@ class TestRetry(HTTPDummyServerTestCase):
 
         r = self.pool.request('GET', '/redirect',
                               fields={'target': '/'},
-                              retries=Retry(redirects=False))
+                              retries=Retry(redirect=False))
         self.assertEqual(r.status, 303)
 
         pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
