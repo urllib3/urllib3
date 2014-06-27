@@ -204,18 +204,18 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     def test_https_timeout(self):
         timeout = Timeout(connect=0.001)
         https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
-                                         timeout=timeout,
+                                         timeout=timeout, retries=False,
                                          cert_reqs='CERT_REQUIRED')
 
         timeout = Timeout(total=None, connect=0.001)
         https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
-                                         timeout=timeout,
+                                         timeout=timeout, retries=False,
                                          cert_reqs='CERT_REQUIRED')
         self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/')
 
         timeout = Timeout(read=0.001)
         https_pool = HTTPSConnectionPool(self.host, self.port,
-                                         timeout=timeout,
+                                         timeout=timeout, retries=False,
                                          cert_reqs='CERT_REQUIRED')
         https_pool.ca_certs = DEFAULT_CA
         https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
@@ -261,6 +261,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         def new_pool(timeout, cert_reqs='CERT_REQUIRED'):
             https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
                                              timeout=timeout,
+                                             retries=False,
                                              cert_reqs=cert_reqs)
             return https_pool
 

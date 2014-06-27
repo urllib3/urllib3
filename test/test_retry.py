@@ -1,9 +1,12 @@
 import unittest
 
-from urllib3.exceptions import ConnectTimeoutError, ReadTimeoutError
-from urllib3.util.retry import Retry
-
 from urllib3.packages.six.moves import xrange
+from urllib3.util.retry import Retry
+from urllib3.exceptions import (
+    ConnectTimeoutError,
+    ReadTimeoutError,
+    MaxRetryError
+)
 
 
 class RetryTest(unittest.TestCase):
@@ -11,49 +14,51 @@ class RetryTest(unittest.TestCase):
     def test_string(self):
         """ Retry string representation looks the way we expect """
         retry = Retry()
-        self.assertEqual(str(retry), 'Retry(total=10, count=0)')
+        self.assertEqual(str(retry), 'Retry(count=0)')
         for _ in range(3):
             retry = retry.increment()
-        self.assertEqual(str(retry), 'Retry(total=10, count=3)')
+        self.assertEqual(str(retry), 'Retry(count=3)')
 
     def test_retry_both_specified(self):
         """Total can win if it's lower than the connect value"""
-        retry = Retry(connect=5, total=3)
-        for _ in range(4):
-            retry = retry.increment(error=ConnectTimeoutError())
-        self.assertTrue(retry.is_exhausted())
+        error = ConnectTimeoutError()
+        retry = Retry(connect=3, total=2)
+        retry = retry.increment(error=error)
+        retry = retry.increment(error=error)
+        self.assertRaises(ConnectTimeoutError, retry.increment, error=error)
 
     def test_retry_higher_total_loses(self):
         """ A lower connect timeout than the total is honored """
-        retry = Retry(connect=3, total=5)
-        for _ in range(4):
-            retry = retry.increment(error=ConnectTimeoutError())
-        self.assertTrue(retry.is_exhausted())
+        error = ConnectTimeoutError()
+        retry = Retry(connect=2, total=3)
+        retry = retry.increment(error=error)
+        retry = retry.increment(error=error)
+        self.assertRaises(ConnectTimeoutError, retry.increment, error=error)
 
     def test_retry_higher_total_loses_vs_read(self):
         """ A lower read timeout than the total is honored """
-        err = ReadTimeoutError(None, "/", "read timed out")
-        retry = Retry(read=3, total=5)
-        for _ in range(4):
-            retry = retry.increment(error=err)
-        self.assertTrue(retry.is_exhausted())
-
-    def test_retry_lower_amount_should_not_exhaust_counter(self):
-        """ Retries should not be exhausted if there are fewer requests """
-        err = ReadTimeoutError(None, "/", "read timed out")
-        retry = Retry(read=3, total=5)
-        for _ in range(2):
-            retry = retry.increment(error=err)
-        self.assertFalse(retry.is_exhausted())
+        error = ReadTimeoutError(None, "/", "read timed out")
+        retry = Retry(read=2, total=3)
+        retry = retry.increment(error=error)
+        retry = retry.increment(error=error)
+        self.assertRaises(ReadTimeoutError, retry.increment, error=error)
 
     def test_retry_total_none(self):
         """ if Total is none, connect error should take precedence """
-        retry = Retry(connect=3, total=None)
-        for _ in range(4):
-            retry = retry.increment(error=ConnectTimeoutError())
-        self.assertTrue(retry.is_exhausted())
+        error = ConnectTimeoutError()
+        retry = Retry(connect=2, total=None)
+        retry = retry.increment(error=error)
+        retry = retry.increment(error=error)
+        self.assertRaises(ConnectTimeoutError, retry.increment, error=error)
 
-    def test_retry_default_exhausted(self):
+        error = ReadTimeoutError(None, "/", "read timed out")
+        retry = Retry(connect=2, total=None)
+        retry = retry.increment(error=error)
+        retry = retry.increment(error=error)
+        retry = retry.increment(error=error)
+        self.assertFalse(retry.is_exhausted())
+
+    def test_retry_default(self):
         """ If no value is specified, should retry connects 3 times """
         retry = Retry()
         self.assertEqual(retry.total, 10)
@@ -61,43 +66,57 @@ class RetryTest(unittest.TestCase):
         self.assertEqual(retry.read, None)
         self.assertEqual(retry.redirect, None)
 
-        err = ConnectTimeoutError()
+        error = ConnectTimeoutError()
+        retry = Retry(connect=1)
+        retry = retry.increment(error=error)
+        self.assertRaises(ConnectTimeoutError, retry.increment, error=error)
 
         retry = Retry(connect=1)
-        for _ in range(2):
-            retry = retry.increment(error=err)
-        self.assertTrue(retry.is_exhausted(), '%r should be exhausted.' % retry)
+        retry = retry.increment(error=error)
+        self.assertFalse(retry.is_exhausted())
 
-        retry = Retry(connect=1)
-        for _ in range(1):
-            retry = retry.increment(error=err)
-
-        self.assertFalse(retry.is_exhausted(), '%r should not be exhausted.' % retry)
+        self.assertTrue(Retry(0).raise_on_redirect)
+        self.assertFalse(Retry(False).raise_on_redirect)
 
     def test_retry_read_zero(self):
         """ No second chances on read timeouts, by default """
-        err = ReadTimeoutError(None, "/", "read timed out")
+        error = ReadTimeoutError(None, "/", "read timed out")
         retry = Retry(read=0)
-        retry = retry.increment(error=err)
-        self.assertTrue(retry.is_exhausted())
+        self.assertRaises(ReadTimeoutError, retry.increment, error=error)
+
+    def test_count(self):
+        retry = Retry()
+        self.assertEqual(retry.count, 0)
+        retry = retry.increment()
+        self.assertEqual(retry.count, 1)
+        retry = retry.increment()
+        self.assertEqual(retry.count, 2)
 
     def test_backoff(self):
         """ Backoff is computed correctly """
-        retry = Retry(backoff_factor=0.2)
+        max_backoff = Retry.BACKOFF_MAX
+
+        retry = Retry(total=None, backoff_factor=0.2)
         self.assertEqual(retry.get_backoff_time(), 0) # First request
+
         retry = retry.increment()
         self.assertEqual(retry.get_backoff_time(), 0) # First retry
+
         retry = retry.increment()
+        self.assertEqual(retry.backoff_factor, 0.2)
+        self.assertEqual(retry.count, 2)
         self.assertEqual(retry.get_backoff_time(), 0.4) # Start backoff
+
         retry = retry.increment()
         self.assertEqual(retry.get_backoff_time(), 0.8)
+
         retry = retry.increment()
         self.assertEqual(retry.get_backoff_time(), 1.6)
 
         for i in xrange(10):
             retry = retry.increment()
 
-        self.assertEqual(retry.get_backoff_time(), 120)
+        self.assertEqual(retry.get_backoff_time(), max_backoff)
 
     def test_zero_backoff(self):
         retry = Retry()
@@ -122,3 +141,12 @@ class RetryTest(unittest.TestCase):
         retry = Retry(total=1, status_forcelist=[418])
         self.assertFalse(retry.is_retryable('GET', status_code=400))
         self.assertTrue(retry.is_retryable('GET', status_code=418))
+
+    def test_exhausted(self):
+        self.assertFalse(Retry(0).is_exhausted())
+        self.assertTrue(Retry(-1).is_exhausted())
+        self.assertEqual(Retry(1).increment().total, 0)
+
+    def test_disabled(self):
+        self.assertRaises(MaxRetryError, Retry(-1).increment)
+        self.assertRaises(MaxRetryError, Retry(0).increment)

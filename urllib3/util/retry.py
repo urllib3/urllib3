@@ -1,5 +1,6 @@
 import time
 import errno
+import logging
 from socket import error as SocketError
 
 try: # Python 3
@@ -22,8 +23,12 @@ except ImportError:
 from ..exceptions import (
     ConnectTimeoutError,
     ReadTimeoutError,
+    MaxRetryError,
+    TimeoutError,
 )
 
+
+log = logging.getLogger(__name__)
 
 SOCKET_CONNECT_EXCEPTIONS = frozenset([errno.ENETUNREACH, errno.ECONNREFUSED])
 
@@ -49,6 +54,8 @@ class Retry(object):
         account for unexpected edge cases and avoid infinite retry loops.
 
         Set to ``0`` to fail on the first retry.
+
+        Set to ``False`` to disable and imply ``raise_on_redirect=False``.
 
     :param int connect:
         How many connection-related errors to retry on.
@@ -139,12 +146,12 @@ class Retry(object):
         self.total = total
         self.connect = connect
         self.read = read
-        self.redirect = redirect # XXX: singular?
 
-        if redirect is False:
-            self.redirect = 0
+        if redirect is False or total is False:
+            redirect = 0
             raise_on_redirect = False
 
+        self.redirect = redirect
         self.status_forcelist = status_forcelist or set()
         self.method_whitelist = method_whitelist
         self.backoff_factor = backoff_factor
@@ -156,16 +163,18 @@ class Retry(object):
         # XXX: This is wrong right now.
         return self.observed_errors
 
-    def new(self, total=None, connect=3, read=0, redirect=3, observed_errors=0):
-        return type(self)(
-            total=total,
-            connect=connect, read=read, redirect=redirect,
-            observed_errors=observed_errors,
+    def new(self, **kw):
+        params = dict(
+            total=self.total,
+            connect=self.connect, read=self.read, redirect=self.redirect,
+            observed_errors=self.observed_errors,
             method_whitelist=self.method_whitelist,
             status_forcelist=self.status_forcelist,
             backoff_factor=self.backoff_factor,
             raise_on_redirect=self.raise_on_redirect,
         )
+        params.update(kw)
+        return type(self)(**params)
 
     def get_backoff_time(self):
         """ Formula for computing the current backoff
@@ -214,24 +223,19 @@ class Retry(object):
         if self.status_forcelist and status_code in self.status_forcelist:
             return True
 
-        if not response:
-            return status_code is None
-
-        return bool(response.get_redirect_location())
+        return status_code is None
 
     def is_exhausted(self):
         """ Are we out of retries?
         """
-        if self.total is not None and self.total < 0:
-            return True
-
-        retry_counts = list(filter(None, (self.connect, self.read, self.redirect)))
+        retry_counts = (self.total, self.connect, self.read, self.redirect)
+        retry_counts = list(filter(None, retry_counts))
         if not retry_counts:
             return False
 
         return min(retry_counts) < 0
 
-    def increment(self, method='GET', response=None, error=None):
+    def increment(self, method=None, url=None, response=None, error=None, _pool=None):
         """ Return a new Retry object with incremented retry counters.
 
         :param response: A response object, or None, if the server did not
@@ -242,6 +246,10 @@ class Retry(object):
 
         :return: A new Retry object.
         """
+        if self.total is False and error:
+            # Disabled, raise original error
+            raise error
+
         total = self.total
         if total is not None:
             total -= 1
@@ -251,13 +259,13 @@ class Retry(object):
         read = self.read
         redirect = self.redirect
 
-        if self._is_connection_error(error):
+        if error and self._is_connection_error(error):
             # Connect retry?
             observed_errors += 1
             if connect is not None:
                 connect -= 1
 
-        elif self._is_read_error(error):
+        elif error and self._is_read_error(error):
             # Read retry?
             observed_errors += 1
             if read is not None:
@@ -272,10 +280,22 @@ class Retry(object):
             # FIXME: Nothing changed, scenario doesn't make sense.
             observed_errors += 1
 
-        return self.new(
+        new_retry = self.new(
             total=total,
             connect=connect, read=read, redirect=redirect,
             observed_errors=observed_errors)
+
+        if new_retry.is_exhausted():
+            if isinstance(error, TimeoutError):
+                # TimeoutError is exempt from MaxRetryError-wrapping.
+                # XXX: ... Not sure why. Add a reason here.
+                raise error
+
+            raise MaxRetryError(_pool, url, error)
+
+        log.debug("Incremented Retry for (url='%s'): %r" % (url, new_retry))
+
+        return new_retry
 
 
     def __repr__(self):
@@ -284,5 +304,9 @@ class Retry(object):
                     cls=type(self), self=self)
 
     def __str__(self):
-        return '{cls.__name__}(total={total}, count={count})'.format(
-                    cls=type(self), total=self.total+self.count, count=self.count)
+        return '{cls.__name__}(count={count})'.format(
+                    cls=type(self), count=self.count)
+
+
+# For backwards compatibility:
+Retry.DEFAULT = Retry(3)

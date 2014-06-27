@@ -46,7 +46,6 @@ class ProxyError(HTTPError):
 
 class ConnectionError(HTTPError):
     "Raised when a normal connection fails."
-    pass
 
 
 class DecodeError(HTTPError):
@@ -64,7 +63,7 @@ class MaxRetryError(RequestError):
 
         message = "Max retries exceeded with url: %s" % url
         if reason:
-            message += " (Caused by %s: %s)" % (type(reason), reason)
+            message += " (Caused by %r)" % reason
         else:
             message += " (Caused by redirect)"
 

@@ -7,6 +7,12 @@ dev (master)
 * Shuffled around development-related files. If you're maintaining a distro
   package of urllib3, you may need to tweak things. (Issue #415)
 
+* New retry logic and ``urllib3.util.retry.Retry`` configuration object.
+  (Issue #)
+
+* All raised exceptions should now be wrapped in a
+  ``urllib3.exceptions.HTTPException``-extending exception. (Issue #)
+
 * Requesting an empty host will raise a LocationValueError exception.
   (Issue #417)
 

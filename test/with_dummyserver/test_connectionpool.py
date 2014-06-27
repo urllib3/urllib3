@@ -27,6 +27,7 @@ from urllib3.exceptions import (
     DecodeError,
     MaxRetryError,
     ReadTimeoutError,
+    ConnectionError,
 )
 from urllib3.packages.six import b, u
 from urllib3.util.retry import Retry
@@ -260,9 +261,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             pool.request('GET', '/', retries=Retry(connect=3))
             self.fail("Should have failed with a connection error.")
         except MaxRetryError as e:
-            self.assertTrue(isinstance(e.reason, socket.error))
-            self.assertEqual(e.reason.errno, errno.ECONNREFUSED)
-
+            self.assertTrue(isinstance(e.reason, ConnectionError))
+            self.assertEqual(e.reason.args[1].errno, errno.ECONNREFUSED)
 
     def test_timeout_reset(self):
         """ If the read timeout isn't set, socket timeout should reset """
@@ -358,7 +358,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             pool.request('GET', '/', retries=5)
             self.fail("should raise timeout exception here")
         except MaxRetryError as e:
-            self.assertTrue(isinstance(e.reason, socket.error))
+            self.assertTrue(isinstance(e.reason, ConnectionError), e.reason)
 
     def test_keepalive(self):
         pool = HTTPConnectionPool(self.host, self.port, block=True, maxsize=1)
@@ -624,10 +624,10 @@ class TestRetry(HTTPDummyServerTestCase):
 
     def test_max_retry(self):
         try:
-            self.pool.request('GET', '/redirect',
+            r = self.pool.request('GET', '/redirect',
                               fields={'target': '/'},
                               retries=0)
-            self.fail("Failed to raise MaxRetryError exception")
+            self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
         except MaxRetryError:
             pass
 
@@ -644,7 +644,7 @@ class TestRetry(HTTPDummyServerTestCase):
         self.assertEqual(r.status, 303)
 
         pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
-        self.assertRaises(MaxRetryError, pool.request, 'GET', '/test', retries=False)
+        self.assertRaises(ConnectionError, pool.request, 'GET', '/test', retries=False)
 
     def test_read_retries(self):
         """ Should retry for status codes in the whitelist """
