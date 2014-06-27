@@ -573,7 +573,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if not conn:
             # Try again
-            log.warning("Retrying (%s retries) after connection "
+            log.warning("Retrying (%s) after connection "
                         "broken by '%r': %s" % (retries, err, url))
             return self.urlopen(method, url, body, headers, retries,
                                 redirect, assert_same_host,

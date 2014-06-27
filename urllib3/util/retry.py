@@ -151,6 +151,11 @@ class Retry(object):
         self.raise_on_redirect = raise_on_redirect
         self.observed_errors = observed_errors # XXX: use .history instead?
 
+    @property
+    def count(self):
+        # XXX: This is wrong right now.
+        return self.observed_errors
+
     def new(self, total=None, connect=3, read=0, redirect=3, observed_errors=0):
         return type(self)(
             total=total,
@@ -279,5 +284,5 @@ class Retry(object):
                     cls=type(self), self=self)
 
     def __str__(self):
-        return '{cls.__name__}(count={count})'.format(
-                    cls=type(self), count=self.observed_errors)
+        return '{cls.__name__}(total={total}, count={count})'.format(
+                    cls=type(self), total=self.total+self.count, count=self.count)
