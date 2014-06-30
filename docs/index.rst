@@ -162,6 +162,7 @@ over how much time is allowed for different stages of the request. This can be
 set for the entire pool or per-request.
 
 ::
+
     >>> from urllib3 import PoolManager, Timeout
 
     >>> # Manager with 3 seconds combined timeout.
