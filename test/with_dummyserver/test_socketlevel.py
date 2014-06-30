@@ -374,7 +374,7 @@ class TestProxyManager(SocketDummyServerTestCase):
 
         self.assertRaises(ProxyError, conn.urlopen, 'GET',
                 'http://www.google.com',
-                assert_same_host=False, retries=0)
+                assert_same_host=False, retries=False)
 
     def test_connect_reconn(self):
         def proxy_ssl_one(listener):
