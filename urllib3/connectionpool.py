@@ -477,14 +477,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if headers is None:
             headers = self.headers
 
-        if retries is None:
-            retries = self.retries
-
         if not isinstance(retries, Retry):
-            retry_redirect = bool(redirect) and None
-            legacy_retries = retries
-            retries = Retry(retries, redirect=retry_redirect)
-            log.debug("Converted legacy retries value: %r -> %r" % (legacy_retries, retries))
+            retries = Retry.from_int(retries, redirect=redirect, default=self.retries)
 
         if release_conn is None:
             release_conn = response_kw.get('preload_content', True)

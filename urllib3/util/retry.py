@@ -176,6 +176,20 @@ class Retry(object):
         params.update(kw)
         return type(self)(**params)
 
+    @classmethod
+    def from_int(cls, retries, redirect=True, default=None):
+        """ Backwards-compatibility for the old retries format."""
+        if retries is None:
+            retries = default if default is not None else cls.DEFAULT
+
+        if isinstance(retries, Retry):
+            return retries
+
+        redirect = bool(redirect) and None
+        new_retries = cls(retries, redirect=redirect)
+        log.debug("Converted retries value: %r -> %r" % (retries, new_retries))
+        return new_retries
+
     def get_backoff_time(self):
         """ Formula for computing the current backoff
 
@@ -308,5 +322,5 @@ class Retry(object):
                     cls=type(self), count=self.count)
 
 
-# For backwards compatibility:
+# For backwards compatibility (equivalent to pre-v1.9):
 Retry.DEFAULT = Retry(3)

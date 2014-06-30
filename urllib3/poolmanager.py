@@ -169,9 +169,10 @@ class PoolManager(RequestMethods):
         if response.status == 303:
             method = 'GET'
 
-        # XXX: This is broken, retry state does not persist between same-host
-        # and cross-host requests.
-        retries = kw.get('retries') or Retry.DEFAULT
+        retries = kw.get('retries')
+        if not isinstance(retries, Retry):
+            retries = Retry.from_int(retries, redirect=redirect)
+
         kw['retries'] = retries.increment(method, redirect_location)
         kw['redirect'] = redirect
 
@@ -260,8 +261,8 @@ class ProxyManager(PoolManager):
             # For proxied HTTPS requests, httplib sets the necessary headers
             # on the CONNECT to the proxy. For HTTP, we'll definitely
             # need to set 'Host' at the very least.
-            kw['headers'] = self._set_proxy_headers(url, kw.get('headers',
-                                                                self.headers))
+            headers = kw.get('headers', self.headers)
+            kw['headers'] = self._set_proxy_headers(url, headers)
 
         return super(ProxyManager, self).urlopen(method, url, redirect=redirect, **kw)
 
