@@ -134,13 +134,13 @@ class RetryTest(unittest.TestCase):
 
     def test_status_forcelist(self):
         retry = Retry(status_forcelist=xrange(500,600))
-        self.assertFalse(retry.is_retryable('GET', status_code=200))
-        self.assertFalse(retry.is_retryable('GET', status_code=400))
-        self.assertTrue(retry.is_retryable('GET', status_code=500))
+        self.assertFalse(retry.is_forced_retry('GET', status_code=200))
+        self.assertFalse(retry.is_forced_retry('GET', status_code=400))
+        self.assertTrue(retry.is_forced_retry('GET', status_code=500))
 
         retry = Retry(total=1, status_forcelist=[418])
-        self.assertFalse(retry.is_retryable('GET', status_code=400))
-        self.assertTrue(retry.is_retryable('GET', status_code=418))
+        self.assertFalse(retry.is_forced_retry('GET', status_code=400))
+        self.assertTrue(retry.is_forced_retry('GET', status_code=418))
 
     def test_exhausted(self):
         self.assertFalse(Retry(0).is_exhausted())

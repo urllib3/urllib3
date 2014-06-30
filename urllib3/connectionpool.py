@@ -591,7 +591,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     release_conn=release_conn, **response_kw)
 
         # Check if we should retry the HTTP response.
-        if retries.is_retryable(method, response=response):
+        if retries.is_forced_retry(method, status_code=response.status):
             retries = retries.increment(method, url, response=response, _pool=self)
             retries.sleep()
             log.info("Forced retry: %s" % url)

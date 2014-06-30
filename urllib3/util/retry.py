@@ -224,20 +224,13 @@ class Retry(object):
     def _is_read_error(self, err):
         return isinstance(err, self.READ_EXCEPTIONS)
 
-    def is_retryable(self, method, status_code=None, response=None):
+    def is_forced_retry(self, method, status_code):
         """ Is this method/response retryable? (Based on method/codes whitelists)
         """
-        if self.is_exhausted():
-            return False
-
         if self.method_whitelist and method.upper() not in self.method_whitelist:
             return False
 
-        status_code = status_code or response and response.status
-        if self.status_forcelist and status_code in self.status_forcelist:
-            return True
-
-        return status_code is None
+        return self.status_forcelist and status_code in self.status_forcelist
 
     def is_exhausted(self):
         """ Are we out of retries?
