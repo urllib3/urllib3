@@ -25,7 +25,11 @@ class RetryTest(unittest.TestCase):
         retry = Retry(connect=3, total=2)
         retry = retry.increment(error=error)
         retry = retry.increment(error=error)
-        self.assertRaises(ConnectTimeoutError, retry.increment, error=error)
+        try:
+            retry.increment(error=error)
+            self.fail("Failed to raise error.")
+        except MaxRetryError as e:
+            self.assertEqual(e.reason, error)
 
     def test_retry_higher_total_loses(self):
         """ A lower connect timeout than the total is honored """
@@ -33,7 +37,7 @@ class RetryTest(unittest.TestCase):
         retry = Retry(connect=2, total=3)
         retry = retry.increment(error=error)
         retry = retry.increment(error=error)
-        self.assertRaises(ConnectTimeoutError, retry.increment, error=error)
+        self.assertRaises(MaxRetryError, retry.increment, error=error)
 
     def test_retry_higher_total_loses_vs_read(self):
         """ A lower read timeout than the total is honored """
@@ -41,7 +45,7 @@ class RetryTest(unittest.TestCase):
         retry = Retry(read=2, total=3)
         retry = retry.increment(error=error)
         retry = retry.increment(error=error)
-        self.assertRaises(ReadTimeoutError, retry.increment, error=error)
+        self.assertRaises(MaxRetryError, retry.increment, error=error)
 
     def test_retry_total_none(self):
         """ if Total is none, connect error should take precedence """
@@ -49,7 +53,11 @@ class RetryTest(unittest.TestCase):
         retry = Retry(connect=2, total=None)
         retry = retry.increment(error=error)
         retry = retry.increment(error=error)
-        self.assertRaises(ConnectTimeoutError, retry.increment, error=error)
+        try:
+            retry.increment(error=error)
+            self.fail("Failed to raise error.")
+        except MaxRetryError as e:
+            self.assertEqual(e.reason, error)
 
         error = ReadTimeoutError(None, "/", "read timed out")
         retry = Retry(connect=2, total=None)
@@ -69,7 +77,7 @@ class RetryTest(unittest.TestCase):
         error = ConnectTimeoutError()
         retry = Retry(connect=1)
         retry = retry.increment(error=error)
-        self.assertRaises(ConnectTimeoutError, retry.increment, error=error)
+        self.assertRaises(MaxRetryError, retry.increment, error=error)
 
         retry = Retry(connect=1)
         retry = retry.increment(error=error)
@@ -82,7 +90,11 @@ class RetryTest(unittest.TestCase):
         """ No second chances on read timeouts, by default """
         error = ReadTimeoutError(None, "/", "read timed out")
         retry = Retry(read=0)
-        self.assertRaises(ReadTimeoutError, retry.increment, error=error)
+        try:
+            retry.increment(error=error)
+            self.fail("Failed to raise error.")
+        except MaxRetryError as e:
+            self.assertEqual(e.reason, error)
 
     def test_count(self):
         retry = Retry()

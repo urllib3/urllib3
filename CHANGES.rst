@@ -10,10 +10,15 @@ dev (master)
 * New retry logic and ``urllib3.util.retry.Retry`` configuration object.
   (Issue #)
 
-* All raised exceptions should now be wrapped in a
+* All raised exceptions should now wrapped in a
   ``urllib3.exceptions.HTTPException``-extending exception. (Issue #)
 
-* Requesting an empty host will raise a LocationValueError exception.
+* All errors during a retry-enabled request should be wrapped in
+  ``urllib3.exceptions.MaxRetryError``, including timeout-related exceptions
+  which were previously exempt. Underlying error is accessible from the
+  ``.reason`` propery. (Issue #)
+
+* Requesting an empty host will raise ``urllib3.exceptions.LocationValueError``.
   (Issue #417)
 
 * Errors during response read (such as IncompleteRead) are now wrapped in

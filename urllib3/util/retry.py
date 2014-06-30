@@ -281,11 +281,6 @@ class Retry(object):
             _observed_errors=_observed_errors)
 
         if new_retry.is_exhausted():
-            if isinstance(error, TimeoutError):
-                # TimeoutError is exempt from MaxRetryError-wrapping.
-                # XXX: ... Not sure why. Add a reason here.
-                raise error
-
             raise MaxRetryError(_pool, url, error)
 
         log.debug("Incremented Retry for (url='%s'): %r" % (url, new_retry))
