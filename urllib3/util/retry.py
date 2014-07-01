@@ -115,12 +115,7 @@ class Retry(object):
         self.method_whitelist = method_whitelist
         self.backoff_factor = backoff_factor
         self.raise_on_redirect = raise_on_redirect
-        self._observed_errors = _observed_errors # XXX: use .history instead?
-
-    @property
-    def count(self):
-        # XXX: This is wrong right now.
-        return self._observed_errors
+        self._observed_errors = _observed_errors # TODO: use .history instead?
 
     def new(self, **kw):
         params = dict(
@@ -267,10 +262,6 @@ class Retry(object):
         return ('{cls.__name__}(total={self.total}, connect={self.connect}, '
                 'read={self.read}, redirect={self.redirect})').format(
                     cls=type(self), self=self)
-
-    def __str__(self):
-        return '{cls.__name__}(count={count})'.format(
-                    cls=type(self), count=self.count)
 
 
 # For backwards compatibility (equivalent to pre-v1.9):

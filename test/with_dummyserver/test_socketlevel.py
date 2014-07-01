@@ -504,11 +504,16 @@ class TestSSL(SocketDummyServerTestCase):
             timed_out.set()
 
 
+def consume_socket(sock, chunks=65536):
+    while not sock.recv(chunks).endswith(b'\r\n\r\n'):
+        pass
+
+
 def create_response_handler(response, num=1):
     def socket_handler(listener):
-        for _ in xrange(num):
+        for _ in range(num):
             sock = listener.accept()[0]
-            all(buf for buf in sock.recv(65536) if not buf.endswith(b'\r\n\r\n'))
+            consume_socket(sock)
 
             sock.send(response)
             sock.close()
@@ -526,11 +531,7 @@ class TestErrorWrapping(SocketDummyServerTestCase):
         )
         self._start_server(handler)
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        try:
-            r = pool.request('GET', '/')
-            self.fail("Failed to raise exception: %r" % r)
-        except ProtocolError as e:
-            self.assertEqual(type(e.args[1]).__name__, 'BadStatusLine')
+        self.assertRaises(ProtocolError, pool.request, 'GET', '/')
 
     def test_unknown_protocol(self):
         handler = create_response_handler(
@@ -540,8 +541,4 @@ class TestErrorWrapping(SocketDummyServerTestCase):
         )
         self._start_server(handler)
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        try:
-            r = pool.request('GET', '/')
-            self.fail("Failed to raise exception: %r" % r)
-        except ProtocolError as e:
-            self.assertEqual(type(e.args[1]).__name__, 'UnknownProtocol')
+        self.assertRaises(ProtocolError, pool.request, 'GET', '/')

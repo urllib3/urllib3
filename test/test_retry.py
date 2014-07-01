@@ -14,10 +14,10 @@ class RetryTest(unittest.TestCase):
     def test_string(self):
         """ Retry string representation looks the way we expect """
         retry = Retry()
-        self.assertEqual(str(retry), 'Retry(count=0)')
+        self.assertEqual(str(retry), 'Retry(total=10, connect=None, read=None, redirect=None)')
         for _ in range(3):
             retry = retry.increment()
-        self.assertEqual(str(retry), 'Retry(count=3)')
+        self.assertEqual(str(retry), 'Retry(total=7, connect=None, read=None, redirect=None)')
 
     def test_retry_both_specified(self):
         """Total can win if it's lower than the connect value"""
@@ -96,19 +96,11 @@ class RetryTest(unittest.TestCase):
         except MaxRetryError as e:
             self.assertEqual(e.reason, error)
 
-    def test_count(self):
-        retry = Retry()
-        self.assertEqual(retry.count, 0)
-        retry = retry.increment()
-        self.assertEqual(retry.count, 1)
-        retry = retry.increment()
-        self.assertEqual(retry.count, 2)
-
     def test_backoff(self):
         """ Backoff is computed correctly """
         max_backoff = Retry.BACKOFF_MAX
 
-        retry = Retry(total=None, backoff_factor=0.2)
+        retry = Retry(total=100, backoff_factor=0.2)
         self.assertEqual(retry.get_backoff_time(), 0) # First request
 
         retry = retry.increment()
@@ -116,7 +108,7 @@ class RetryTest(unittest.TestCase):
 
         retry = retry.increment()
         self.assertEqual(retry.backoff_factor, 0.2)
-        self.assertEqual(retry.count, 2)
+        self.assertEqual(retry.total, 98)
         self.assertEqual(retry.get_backoff_time(), 0.4) # Start backoff
 
         retry = retry.increment()
