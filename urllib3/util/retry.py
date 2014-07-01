@@ -1,192 +1,197 @@
-import errno
+import time
+import logging
+
 try: # Python 3
     from http.client import (
         BadStatusLine,
-        CannotSendRequest,
+        ImproperConnectionState,
         IncompleteRead,
         InvalidURL,
-        NotConnected,
-        ResponseNotReady,
         UnknownProtocol,
     )
 except ImportError:
     from httplib import (
         BadStatusLine,
-        CannotSendRequest,
+        ImproperConnectionState,
         IncompleteRead,
         InvalidURL,
-        NotConnected,
-        ResponseNotReady,
         UnknownProtocol,
     )
-from socket import error as SocketError
-import time
-
-from ..packages import six
 
 from ..exceptions import (
     ConnectTimeoutError,
     ReadTimeoutError,
+    MaxRetryError,
 )
+from ..packages import six
 
-xrange = six.moves.xrange
 
-# How many retries we should set for "total" if you do not specify a total. This
-# limit only applies if you set ``connect`` and ``read`` to higher values than
-# this. In any event, it may be an academic exercise since Python's recursion
-# limit will probably be reached before this one. Users can "edit" this value by
-# passing a ``total`` value to the Retry object.
-MAX_SANE_RETRY = 1000
-SOCKET_CONNECT_EXCEPTIONS = frozenset([errno.ENETUNREACH, errno.ECONNREFUSED])
+log = logging.getLogger(__name__)
 
 
 class Retry(object):
-    """ Utility object for storing information about retry attempts
+    """ Granular retry configuration.
+
+    This object should be treated as immutable. Each retry creates a new Retry
+    object with updated values.
 
     Example usage::
 
-        retries = urllib3.util.Retry(connect=10, read=2,
-            codes_whitelist=[429, 500, 503])
-        pool = HTTPConnectionPool('www.google.com', 80)
-        pool.request(retries=retries)
+        retries = Retry(connect=5, read=2, redirect=5)
+        http = PoolManager()
+        response = http.request('GET', '/', retries=retries)
 
-    :param total:
-        The total number of errors to allow. Omitting the parameter means the
-        bottleneck becomes the specified number of errors for each sub-type
-        (connect, read, redirect).
+    :param int total:
+        Total number of retries to allow. Takes precedence over other counts.
 
-        If ``total`` is specified and is greater than any specific limit
-        (``connect``, ``read``, ``redirect``), the ``total`` value will take
-        precedence. If the total is specified and is lower than any specific
-        limit (``connect``, ``read``, ``redirect``), the specific limit will take
-        precedence.
+        Set to ``None`` to remove this constraint and fall back on other
+        counts. It's a good idea to set this to some sensibly-high value to
+        account for unexpected edge cases and avoid infinite retry loops.
 
-    :type total: An integer number of retries, or None to specify that
-        you'd like to use urllib3's defaults for specific limits.
+        Set to ``0`` to fail on the first retry.
+
+        Set to ``False`` to disable and imply ``raise_on_redirect=False``.
 
     :param int connect:
-        How many times to retry on connection errors.
+        How many connection-related errors to retry on.
 
-        A connection error is one that is raised before the request is sent
-        to the remote server. Once it has been sent to the remote server,
-        the server may begin processing the request, which can lead to bad
-        consequences and is handled in the read section below. Connection errors
-        in general are good candidates for retries because the remote server
-        hasn't received any data.
+        These are errors raised before the request is sent to the remote server,
+        which we assume has not triggered the server to process the request.
+
+        Set to ``0`` to fail on the first retry of this type.
 
     :param int read:
         How many times to retry on read errors.
 
-        A read error is one that is raised after the request has been sent to
-        the server. Even though we didn't get a response back from the server,
-        these exceptions are different than connection errors, because they
-        imply the the remote server accepted the request. The server may have
-        begun processing the request and performed some side effects (wrote
-        data to a database, sent a message, etc).
+        These errors are raised after the request was sent to the server, so the
+        request may have side-effects.
 
-    :param int redirects:
-        How many times to retry on redirect responses.
+        Set to ``0`` to fail on the first retry of this type.
+
+    :param int redirect:
+        How many redirects to perform. Limit this to avoid infinite redirect
+        loops.
 
         A redirect is a HTTP response with a status code 301, 302, 303, 307 or
-        308. Specify this parameter to instruct urllib3 to follow redirects, up
-        to this many times.
+        308.
 
-    :param frozenset method_whitelist:
-        A list of HTTP methods that we should retry on.
+        Set to ``0`` to fail on the first retry of this type.
 
-        Some HTTP methods are `idempotent`: a request is idempotent if the
-        world ends up in the same state whether you try the request once or
-        a hundred times. For example, consider making a POST request to send
-        a message. The recipient may receive a new copy of the same message
-        for each time you send the request, meaning that another retry is not
-        `safe`. By contrast, if the server accepts a PUT request to send a
-        message, this implies that the server can detect whether the message
-        has been sent already, and ensure that only one copy makes it to the
-        recipient.
+        Set to ``False`` to disable and imply ``raise_on_redirect=False``.
 
-        The method_whitelist defaults to the subset of HTTP methods that are
-        idempotent, and good candidates for retries.
+    :param iterable method_whitelist:
+        Set of uppercased HTTP method verbs that we should retry on.
 
-    :param set codes_whitelist:
-        A set of HTTP status codes that we should retry on.
+        By default, we only retry on methods which are considered to be
+        indempotent (multiple requests with the same parameters end with the
+        same state). See :attr:`Retry.DEFAULT_METHOD_WHITELIST`.
 
-        By default, the ``codes_whitelist`` is empty. urllib3 provides
-        the following convenience values that you can specify.
-        ``SERVER_ERROR_RESPONSE`` will retry any 5xx status code.
-        ``NON_200_RESPONSE`` will retry any non-200 level response. You may
-        want to pass a custom set of codes here depending on the logic in your
-        server.
+    :param iterable status_forcelist:
+        A set of HTTP status codes that we should force a retry on. 
+
+        By default, this is disabled with ``None``.
 
     :param float backoff_factor:
         A backoff factor to apply between attempts. urllib3 will sleep for::
 
-            (backoff factor * (2 ^ (number of total retries - 1))
+            {backoff factor} * (2 ^ ({number of total retries} - 1))
 
-        seconds. So if the backoff factor is 1, urllib3 will sleep 1, 2, 4,
-        8... seconds between retries. If the backoff factor is 0.5, urllib3
-        will sleep 0.5, 1, 2, 4... seconds between retries.
+        seconds. If the backoff_factor is 0.1, then :func:`.sleep` will sleep
+        for [0.1s, 0.2s, 0.4s, ...] between retries. It will never be longer
+        than :attr:`Retry.MAX_BACKOFF`.
 
-        By default, the backoff factor is 0, which means that urllib3 will not
-        sleep between retry attempts.
+        By default, backoff is disabled (set to 0).
 
     :param bool raise_on_redirect: Whether, if the number of redirects is
         exhausted, to raise a MaxRetryError, or to return a response with a
         response code in the 3xx range.
-
-    :param int observed_errors: The number of errors observed so far. This is
-        used to compute the backoff time and other factors.
     """
 
     DEFAULT_METHOD_WHITELIST = frozenset([
         'HEAD', 'GET', 'PUT', 'DELETE', 'OPTIONS', 'TRACE'])
-    SERVER_ERROR_RESPONSE = frozenset(xrange(500, 599))
-    NON_200_RESPONSE = frozenset(xrange(300, 599))
 
     # A connection error is one that is raised before the request is sent to
     # the remote server. Once it has been sent to the remote server, the server
     # may begin processing the request, which can lead to bad consequences and
     # is handled in the read section below. Connection errors in general are
     # retryable because the remote server hasn't received any data.
-    CONNECT_EXCEPTIONS = (CannotSendRequest, NotConnected, InvalidURL,
-                          ConnectTimeoutError)
+    CONNECT_EXCEPTIONS = (
+            ImproperConnectionState, InvalidURL, ConnectTimeoutError)
 
     # Even though we didn't get a response back from the server, these
     # exceptions are different than connection errors, because they imply
     # the the remote server accepted the request. The server may have begun
     # processing the request and performed some side effects (wrote data to a
     # database, sent a message, etc).
-    READ_EXCEPTIONS = (BadStatusLine, IncompleteRead,
-                       ResponseNotReady, UnknownProtocol, ReadTimeoutError)
+    READ_EXCEPTIONS = (
+            BadStatusLine, IncompleteRead, UnknownProtocol, ReadTimeoutError)
 
-    def __init__(self, total=None, connect=3, read=0, redirects=3,
-                 observed_errors=0, method_whitelist=DEFAULT_METHOD_WHITELIST,
-                 codes_whitelist=None, backoff_factor=0,
-                 raise_on_redirect=True, retry_callable=None):
+
+    #: Maximum backoff value.
+    BACKOFF_MAX = 120
+
+    def __init__(self, total=10, connect=None, read=None, redirect=None,
+                 _observed_errors=0,
+                 method_whitelist=DEFAULT_METHOD_WHITELIST, status_forcelist=None,
+                 backoff_factor=0, raise_on_redirect=True):
 
         self.total = total
         self.connect = connect
         self.read = read
-        self.redirects = redirects
-        self.codes_whitelist = codes_whitelist or set()
+
+        if redirect is False or total is False:
+            redirect = 0
+            raise_on_redirect = False
+
+        self.redirect = redirect
+        self.status_forcelist = status_forcelist or set()
         self.method_whitelist = method_whitelist
         self.backoff_factor = backoff_factor
         self.raise_on_redirect = raise_on_redirect
-        self.observed_errors = observed_errors
+        self._observed_errors = _observed_errors # XXX: use .history instead?
 
-        self.retry_callable = retry_callable
-        if retry_callable is None:
-            def default_retry(method, response=None):
-                return (method in self.method_whitelist
-                        and response
-                        and response.status in self.codes_whitelist)
-            self.retry_callable = default_retry
+    @property
+    def count(self):
+        # XXX: This is wrong right now.
+        return self._observed_errors
+
+    def new(self, **kw):
+        params = dict(
+            total=self.total,
+            connect=self.connect, read=self.read, redirect=self.redirect,
+            _observed_errors=self._observed_errors,
+            method_whitelist=self.method_whitelist,
+            status_forcelist=self.status_forcelist,
+            backoff_factor=self.backoff_factor,
+            raise_on_redirect=self.raise_on_redirect,
+        )
+        params.update(kw)
+        return type(self)(**params)
+
+    @classmethod
+    def from_int(cls, retries, redirect=True, default=None):
+        """ Backwards-compatibility for the old retries format."""
+        if retries is None:
+            retries = default if default is not None else cls.DEFAULT
+
+        if isinstance(retries, Retry):
+            return retries
+
+        redirect = bool(redirect) and None
+        new_retries = cls(retries, redirect=redirect)
+        log.debug("Converted retries value: %r -> %r" % (retries, new_retries))
+        return new_retries
 
     def get_backoff_time(self):
         """ Formula for computing the current backoff
 
         :rtype: float
         """
-        return self.backoff_factor * (2 ** max(self.observed_errors - 1, 0))
+        if self._observed_errors <= 1:
+            return 0
+
+        backoff_value = self.backoff_factor * (2 ** (self._observed_errors - 1))
+        return min(self.BACKOFF_MAX, backoff_value)
 
     def sleep(self):
         """ Sleep between retry attempts using an exponential backoff.
@@ -200,19 +205,30 @@ class Retry(object):
         time.sleep(backoff)
 
     def _is_connection_error(self, err):
-        """ Determine whether an error was a connection error """
-        if err is None:
+        return isinstance(err, self.CONNECT_EXCEPTIONS)
+
+    def _is_read_error(self, err):
+        return isinstance(err, self.READ_EXCEPTIONS)
+
+    def is_forced_retry(self, method, status_code):
+        """ Is this method/response retryable? (Based on method/codes whitelists)
+        """
+        if self.method_whitelist and method.upper() not in self.method_whitelist:
             return False
 
-        if (isinstance(err, SocketError)
-            and hasattr(err, 'errno')
-            and (err.errno in SOCKET_CONNECT_EXCEPTIONS)):
-            return True
-        if isinstance(err, self.CONNECT_EXCEPTIONS):
-            return True
-        return False
+        return self.status_forcelist and status_code in self.status_forcelist
 
-    def increment(self, method='GET', response=None, error=None):
+    def is_exhausted(self):
+        """ Are we out of retries?
+        """
+        retry_counts = (self.total, self.connect, self.read, self.redirect)
+        retry_counts = list(filter(None, retry_counts))
+        if not retry_counts:
+            return False
+
+        return min(retry_counts) < 0
+
+    def increment(self, method=None, url=None, response=None, error=None, _pool=None, _stacktrace=None):
         """ Return a new Retry object with incremented retry counters.
 
         :param response: A response object, or None, if the server did not
@@ -221,70 +237,68 @@ class Retry(object):
         :param Exception error: An error encountered during the request, or
             None if the response was received successfully.
 
-        :return: A new Retry object.
+        :return: A new ``Retry`` object.
         """
-        # The idea behind this is that a Retry object should be immutable. Once
-        # counts are created for the object, they shouldn't be changed. Retries
-        # are incremented by creating new objects.
-        if self.total is not None:
-            self.total -= 1
+        if self.total is False and error:
+            # Disabled, indicate to re-raise the error.
+            raise six.reraise(type(error), error, _stacktrace)
 
-        # In the event of an unanticipated error, we want to ensure we
-        # increment *something.* Otherwise you can get into an infinite loop, if
-        # we keep catching errors but never incrementing a counter.
-        incremented = False
+        total = self.total
+        if total is not None:
+            total -= 1
 
-        # Create a helper variable to keep track of observed_errors (used to
-        # compute the backoff factor). It would be simpler to increment this
-        # everywhere, because we don't want to inflate the sleep counter in the
-        # event of redirects.
-        observed_errors = self.observed_errors
+        _observed_errors = self._observed_errors
+        connect = self.connect
+        read = self.read
+        redirect = self.redirect
 
-        if self._is_connection_error(error):
-            connect = self.connect - 1
-            incremented = True
-            observed_errors = self.observed_errors + 1
+        if error and self._is_connection_error(error):
+            # Connect retry?
+            if connect is False:
+                raise six.reraise(type(error), error, _stacktrace)
+            elif connect is not None:
+                connect -= 1
+            _observed_errors += 1
+
+        elif error and self._is_read_error(error):
+            # Read retry?
+            if read is False:
+                raise six.reraise(type(error), error, _stacktrace)
+            elif read is not None:
+                read -= 1
+            _observed_errors += 1
+
+        elif response and response.get_redirect_location():
+            # Redirect retry?
+            if redirect is not None:
+                redirect -= 1
+
         else:
-            connect = self.connect
+            # FIXME: Nothing changed, scenario doesn't make sense.
+            _observed_errors += 1
 
-        if response and response.get_redirect_location():
-            redirects = self.redirects - 1
-            incremented = True
-        else:
-            redirects = self.redirects
+        new_retry = self.new(
+            total=total,
+            connect=connect, read=read, redirect=redirect,
+            _observed_errors=_observed_errors)
 
-        if (isinstance(error, self.READ_EXCEPTIONS)
-            or self.retry_callable(method, response)
-            or not incremented):
-            read = self.read - 1
-            observed_errors = self.observed_errors + 1
-        else:
-            read = self.read
+        if new_retry.is_exhausted():
+            raise MaxRetryError(_pool, url, error)
 
-        return Retry(
-            total=self.total, connect=connect, read=read,
-            redirects=redirects, retry_callable=self.retry_callable,
-            backoff_factor=self.backoff_factor,
-            observed_errors=observed_errors,
-            raise_on_redirect=self.raise_on_redirect,
-        )
+        log.debug("Incremented Retry for (url='%s'): %r" % (url, new_retry))
 
-    def is_exhausted(self):
-        """ Determine whether we're out of retry attempts
+        return new_retry
 
-        For each of connection errors, read errors (timeouts or bad status
-        codes), and redirects, compute the maximum of the specified number of
-        errors and the total allowable number of errors (if it was specified),
-        and check it against the number of errors we've seen so far.
 
-        :rtype: bool
-        """
-        if self.total is not None and self.total < 0:
-            return True
-        return min(self.connect, self.read, self.redirects) < 0
+    def __repr__(self):
+        return ('{cls.__name__}(total={self.total}, connect={self.connect}, '
+                'read={self.read}, redirect={self.redirect})').format(
+                    cls=type(self), self=self)
 
     def __str__(self):
-        return ('{clsname} (count={total_errors})'.format(
-            clsname=type(self).__name__,
-            total_errors=self.observed_errors,
-        ))
+        return '{cls.__name__}(count={count})'.format(
+                    cls=type(self), count=self.count)
+
+
+# For backwards compatibility (equivalent to pre-v1.9):
+Retry.DEFAULT = Retry(3)

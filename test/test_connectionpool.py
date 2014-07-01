@@ -128,7 +128,7 @@ class TestConnectionPool(unittest.TestCase):
                 HTTPConnectionPool(host='localhost'), "Test.", err)),
             "HTTPConnectionPool(host='localhost', port=None): "
             "Max retries exceeded with url: Test. "
-            "(Caused by {0}: Test)".format(str(err.__class__)))
+            "(Caused by %r)" % err)
 
 
     def test_pool_size(self):

@@ -6,6 +6,7 @@ from urllib3.exceptions import (
         MaxRetryError,
         ProxyError,
         ReadTimeoutError,
+        ConnectTimeoutError,
         SSLError,
 )
 from urllib3.util.ssl_ import HAS_SNI
@@ -117,18 +118,21 @@ class TestSocketClosing(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(host, port)
         self.assertRaises(MaxRetryError, pool.request, 'GET', '/', retries=0)
 
-    def test_connection_timeout(self):
+    def test_connection_read_timeout(self):
         timed_out = Event()
         def socket_handler(listener):
-            timed_out.wait()
             sock = listener.accept()[0]
+            while not sock.recv(65536).endswith(b'\r\n\r\n'):
+                pass
+
+            timed_out.wait()
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001, retries=False)
 
         try:
-            self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/', retries=0)
+            self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/')
         finally:
             timed_out.set()
 
@@ -374,7 +378,7 @@ class TestProxyManager(SocketDummyServerTestCase):
 
         self.assertRaises(ProxyError, conn.urlopen, 'GET',
                 'http://www.google.com',
-                assert_same_host=False, retries=0)
+                assert_same_host=False, retries=False)
 
     def test_connect_reconn(self):
         def proxy_ssl_one(listener):

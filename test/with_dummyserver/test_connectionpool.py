@@ -3,6 +3,7 @@ import logging
 import socket
 import sys
 import unittest
+import time
 
 import mock
 
@@ -27,6 +28,7 @@ from urllib3.exceptions import (
     DecodeError,
     MaxRetryError,
     ReadTimeoutError,
+    ConnectionError,
 )
 from urllib3.packages.six import b, u
 from urllib3.util.retry import Retry
@@ -117,11 +119,11 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     def test_timeout_float(self):
         url = '/sleep?seconds=0.005'
         # Pool-global timeout
-        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001, retries=False)
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', url)
 
     def test_conn_closed(self):
-        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001, retries=False)
         conn = pool._get_conn()
         pool._put_conn(conn)
         try:
@@ -191,22 +193,26 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         timeout = Timeout(read=0.001)
 
         # Pool-global timeout
-        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout, retries=False)
 
         conn = pool._get_conn()
         self.assertRaises(ReadTimeoutError, pool._make_request,
                           conn, 'GET', url)
         pool._put_conn(conn)
 
+        time.sleep(0.02) # Wait for server to start receiving again. :(
+
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', url)
 
         # Request-specific timeouts should raise errors
-        pool = HTTPConnectionPool(self.host, self.port, timeout=0.1)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.1, retries=False)
 
         conn = pool._get_conn()
         self.assertRaises(ReadTimeoutError, pool._make_request,
                           conn, 'GET', url, timeout=timeout)
         pool._put_conn(conn)
+
+        time.sleep(0.02) # Wait for server to start receiving again. :(
 
         self.assertRaises(ReadTimeoutError, pool.request,
                           'GET', url, timeout=timeout)
@@ -235,14 +241,15 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         conn = pool._get_conn()
         self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', url)
 
-        # Timeouts
-        retry = Retry(connect=0)
-        self.assertRaises(ConnectTimeoutError, pool.request, 'GET', url,
-                          retries=retry)
+        # Retries
+        retries = Retry(connect=0)
+        self.assertRaises(MaxRetryError, pool.request, 'GET', url,
+                          retries=retries)
 
         # Request-specific connection timeouts
         big_timeout = Timeout(read=0.2, connect=0.2)
-        pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=big_timeout)
+        pool = HTTPConnectionPool(TARPIT_HOST, self.port,
+                                  timeout=big_timeout, retries=False)
         conn = pool._get_conn()
         self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET',
                           url, timeout=timeout)
@@ -260,9 +267,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             pool.request('GET', '/', retries=Retry(connect=3))
             self.fail("Should have failed with a connection error.")
         except MaxRetryError as e:
-            self.assertTrue(isinstance(e.reason, socket.error))
-            self.assertEqual(e.reason.errno, errno.ECONNREFUSED)
-
+            self.assertTrue(isinstance(e.reason, ConnectionError))
+            self.assertEqual(e.reason.args[1].errno, errno.ECONNREFUSED)
 
     def test_timeout_reset(self):
         """ If the read timeout isn't set, socket timeout should reset """
@@ -344,7 +350,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool._make_request(conn, 'GET', '/')
         self.assertEqual(conn._tunnel.called, False)
 
-
     def test_redirect(self):
         r = self.pool.request('GET', '/redirect', fields={'target': '/'}, redirect=False)
         self.assertEqual(r.status, 303)
@@ -353,90 +358,13 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(r.status, 200)
         self.assertEqual(r.data, b'Dummy server!')
 
-    def test_max_retry(self):
-        try:
-            self.pool.request('GET', '/redirect',
-                              fields={'target': '/'},
-                              retries=0)
-            self.fail("Failed to raise MaxRetryError exception")
-        except MaxRetryError:
-            pass
-
-    def test_disabled_retry(self):
-        """ Disabled retries should disable redirect handling. """
-        r = self.pool.request('GET', '/redirect',
-                              fields={'target': '/'},
-                              retries=False)
-        self.assertEqual(r.status, 303)
-
-        pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
-        self.assertRaises(MaxRetryError, pool.request, 'GET', '/test', retries=False)
-
-    def test_read_retries(self):
-        """ Should retry for status codes in the whitelist """
-        retry = Retry(read=3, connect=0, codes_whitelist=[418])
-        resp = self.pool.request('GET', '/successful_retry',
-                                 headers={'test-name': 'test_read_retries'},
-                                 retries=retry)
-        self.assertEqual(resp.status, 200)
-
-    def test_read_total_retries(self):
-        """ HTTP response w/ status code in the whitelist should be retried """
-        headers = {'test-name': 'test_read_total_retries'}
-        retry = Retry(read=3, connect=0, total=3, codes_whitelist=[418])
-        resp = self.pool.request('GET', '/successful_retry',
-                                 headers=headers, retries=retry)
-        self.assertEqual(resp.status, 200)
-
-    def test_retries_wrong_whitelist(self):
-        """HTTP response w/ status code not in whitelist shouldn't be retried"""
-        retry = Retry(read=3, connect=0, codes_whitelist=[202])
-        resp = self.pool.request('GET', '/successful_retry',
-                                 headers={'test-name': 'test_wrong_whitelist'},
-                                 retries=retry)
-        self.assertEqual(resp.status, 418)
-
-    def test_default_method_whitelist_retried(self):
-        """ urllib3 should retry methods in the method whitelist """
-        retry = Retry(read=3, connect=0, codes_whitelist=[418])
-        resp = self.pool.request('OPTIONS', '/successful_retry',
-                                 headers={'test-name': 'test_default_whitelist'},
-                                 retries=retry)
-        self.assertEqual(resp.status, 200)
-
-    def test_retries_wrong_method_list(self):
-        """Method not in our whitelist should not be retried, even if code matches"""
-        headers = {'test-name': 'test_wrong_method_whitelist'}
-        retry = Retry(read=3, connect=0, codes_whitelist=[418],
-                      method_whitelist=['POST'])
-        resp = self.pool.request('GET', '/successful_retry',
-                                 headers=headers, retries=retry)
-        self.assertEqual(resp.status, 418)
-
-    def test_read_retries_unsuccessful(self):
-        headers = {'test-name': 'test_read_retries_unsuccessful'}
-        resp = self.pool.request('GET', '/successful_retry',
-                                 headers=headers, retries=1)
-        self.assertEqual(resp.status, 418)
-
-    def test_retry_reuse_safe(self):
-        """ It should be possible to reuse a Retry object across requests """
-        headers = {'test-name': 'test_retry_safe'}
-        retry = Retry(read=1, codes_whitelist=set([418]))
-        resp = self.pool.request('GET', '/successful_retry',
-                                 headers=headers, retries=retry)
-        self.assertEqual(resp.status, 200)
-        resp = self.pool.request('GET', '/successful_retry',
-                                 headers=headers, retries=retry)
-        self.assertEqual(resp.status, 200)
-
     def test_bad_connect(self):
         pool = HTTPConnectionPool('badhost.invalid', self.port)
         try:
             pool.request('GET', '/', retries=5)
             self.fail("should raise timeout exception here")
         except MaxRetryError as e:
-            self.assertTrue(isinstance(e.reason, socket.error))
+            self.assertTrue(isinstance(e.reason, ConnectionError), e.reason)
 
     def test_keepalive(self):
         pool = HTTPConnectionPool(self.host, self.port, block=True, maxsize=1)
@@ -666,26 +594,26 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     def test_source_address_ignored(self):
         # source_address is ignored in Python 2.6 and older.
         for addr in INVALID_SOURCE_ADDRESSES:
-            pool = HTTPConnectionPool(
-                self.host, self.port, source_address=addr)
+            pool = HTTPConnectionPool(self.host, self.port,
+                    source_address=addr, retries=False)
             r = pool.request('GET', '/source_address')
             assert r.status == 200
 
     @onlyPy27OrNewer
     def test_source_address(self):
         for addr in VALID_SOURCE_ADDRESSES:
-            pool = HTTPConnectionPool(
-                self.host, self.port, source_address=addr)
+            pool = HTTPConnectionPool(self.host, self.port,
+                    source_address=addr, retries=False)
             r = pool.request('GET', '/source_address')
             assert r.data == b(addr[0])
 
     @onlyPy27OrNewer
     def test_source_address_error(self):
         for addr in INVALID_SOURCE_ADDRESSES:
-            pool = HTTPConnectionPool(
-                self.host, self.port, source_address=addr)
-            self.assertRaises(
-                MaxRetryError, pool.request, 'GET', '/source_address', retries=1)
+            pool = HTTPConnectionPool(self.host, self.port,
+                    source_address=addr, retries=False)
+            self.assertRaises(ConnectionError,
+                    pool.request, 'GET', '/source_address')
 
     @onlyPy3
     def test_httplib_headers_case_insensitive(self):
@@ -694,6 +622,94 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('GET', '/specific_method',
                                fields={'method': 'GET'})
         self.assertEqual(HEADERS, dict(r.headers.items())) # to preserve case sensitivity
+
+
+class TestRetry(HTTPDummyServerTestCase):
+    def setUp(self):
+        self.pool = HTTPConnectionPool(self.host, self.port)
+
+    def test_max_retry(self):
+        try:
+            r = self.pool.request('GET', '/redirect',
+                              fields={'target': '/'},
+                              retries=0)
+            self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
+        except MaxRetryError:
+            pass
+
+    def test_disabled_retry(self):
+        """ Disabled retries should disable redirect handling. """
+        r = self.pool.request('GET', '/redirect',
+                              fields={'target': '/'},
+                              retries=False)
+        self.assertEqual(r.status, 303)
+
+        r = self.pool.request('GET', '/redirect',
+                              fields={'target': '/'},
+                              retries=Retry(redirect=False))
+        self.assertEqual(r.status, 303)
+
+        pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
+        self.assertRaises(ConnectionError, pool.request, 'GET', '/test', retries=False)
+
+    def test_read_retries(self):
+        """ Should retry for status codes in the whitelist """
+        retry = Retry(read=1, status_forcelist=[418])
+        resp = self.pool.request('GET', '/successful_retry',
+                                 headers={'test-name': 'test_read_retries'},
+                                 retries=retry)
+        self.assertEqual(resp.status, 200)
+
+    def test_read_total_retries(self):
+        """ HTTP response w/ status code in the whitelist should be retried """
+        headers = {'test-name': 'test_read_total_retries'}
+        retry = Retry(total=1, status_forcelist=[418])
+        resp = self.pool.request('GET', '/successful_retry',
+                                 headers=headers, retries=retry)
+        self.assertEqual(resp.status, 200)
+
+    def test_retries_wrong_whitelist(self):
+        """HTTP response w/ status code not in whitelist shouldn't be retried"""
+        retry = Retry(total=1, status_forcelist=[202])
+        resp = self.pool.request('GET', '/successful_retry',
+                                 headers={'test-name': 'test_wrong_whitelist'},
+                                 retries=retry)
+        self.assertEqual(resp.status, 418)
+
+    def test_default_method_whitelist_retried(self):
+        """ urllib3 should retry methods in the default method whitelist """
+        retry = Retry(total=1, status_forcelist=[418])
+        resp = self.pool.request('OPTIONS', '/successful_retry',
+                                 headers={'test-name': 'test_default_whitelist'},
+                                 retries=retry)
+        self.assertEqual(resp.status, 200)
+
+    def test_retries_wrong_method_list(self):
+        """Method not in our whitelist should not be retried, even if code matches"""
+        headers = {'test-name': 'test_wrong_method_whitelist'}
+        retry = Retry(total=1, status_forcelist=[418],
+                      method_whitelist=['POST'])
+        resp = self.pool.request('GET', '/successful_retry',
+                                 headers=headers, retries=retry)
+        self.assertEqual(resp.status, 418)
+
+    def test_read_retries_unsuccessful(self):
+        headers = {'test-name': 'test_read_retries_unsuccessful'}
+        resp = self.pool.request('GET', '/successful_retry',
+                                 headers=headers, retries=1)
+        self.assertEqual(resp.status, 418)
+
+    def test_retry_reuse_safe(self):
+        """ It should be possible to reuse a Retry object across requests """
+        headers = {'test-name': 'test_retry_safe'}
+        retry = Retry(total=1, status_forcelist=[418])
+        resp = self.pool.request('GET', '/successful_retry',
+                                 headers=headers, retries=retry)
+        self.assertEqual(resp.status, 200)
+        resp = self.pool.request('GET', '/successful_retry',
+                                 headers=headers, retries=retry)
+        self.assertEqual(resp.status, 200)
+
 
 if __name__ == '__main__':
     unittest.main()
