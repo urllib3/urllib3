@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 
 class Retry(object):
-    """ Granular retry configuration.
+    """ Retry configuration.
 
     This object should be treated as immutable. Each retry creates a new Retry
     object with updated values.

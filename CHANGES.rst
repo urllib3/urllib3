@@ -11,15 +11,15 @@ dev (master)
   (Issue #)
 
 * All raised exceptions should now wrapped in a
-  ``urllib3.exceptions.HTTPException``-extending exception. (Issue #)
+  ``urllib3.exceptions.HTTPException``-extending exception. (Issue #326)
 
 * All errors during a retry-enabled request should be wrapped in
   ``urllib3.exceptions.MaxRetryError``, including timeout-related exceptions
   which were previously exempt. Underlying error is accessible from the
-  ``.reason`` propery. (Issue #)
+  ``.reason`` propery. (Issue #326)
 
 * ``urllib3.exceptions.ConnectionError`` renamed to
-  ``urllib3.exceptions.ProtocolError``. (Issue #)
+  ``urllib3.exceptions.ProtocolError``. (Issue #326)
 
 * Errors during response read (such as IncompleteRead) are now wrapped in
   ``urllib3.exceptions.ProtocolError``. (Issue #418)
