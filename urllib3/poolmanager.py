@@ -51,7 +51,7 @@ class PoolManager(RequestMethods):
         Additional parameters are used to create fresh
         :class:`urllib3.connectionpool.ConnectionPool` instances.
 
-    Example: ::
+    Example::
 
         >>> manager = PoolManager(num_pools=2)
         >>> r = manager.request('GET', 'http://google.com/')

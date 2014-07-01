@@ -48,7 +48,7 @@ def split_first(s, delims):
 
     If not found, then the first part is the full input string.
 
-    Example: ::
+    Example::
 
         >>> split_first('foo/bar?baz', '?/=')
         ('foo', 'bar?baz', '/')
@@ -81,7 +81,7 @@ def parse_url(url):
 
     Partly backwards-compatible with :mod:`urlparse`.
 
-    Example: ::
+    Example::
 
         >>> parse_url('http://google.com/mail/')
         Url(scheme='http', host='google.com', port=None, path='/', ...)

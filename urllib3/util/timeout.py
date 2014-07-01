@@ -19,17 +19,17 @@ def current_time():
 class Timeout(object):
     """ Timeout configuration.
 
-    Timeouts can be defined as a default for a pool: ::
+    Timeouts can be defined as a default for a pool::
 
         timeout = Timeout(connect=2.0, read=7.0)
         http = PoolManager(timeout=timeout)
         response = http.request('GET', 'http://example.com/')
 
-    Or per-request (which overrides the default for the pool): ::
+    Or per-request (which overrides the default for the pool)::
 
         response = http.request('GET', 'http://example.com/', timeout=Timeout(10))
 
-    Timeouts can be disabled by setting all the parameters to ``None``: ::
+    Timeouts can be disabled by setting all the parameters to ``None``::
 
         no_timeout = Timeout(connect=None, read=None)
         response = http.request('GET', 'http://example.com/, timeout=no_timeout)

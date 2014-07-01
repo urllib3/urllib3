@@ -722,7 +722,7 @@ def connection_from_url(url, **kw):
         :class:`.ConnectionPool`. Useful for specifying things like
         timeout, maxsize, headers, etc.
 
-    Example: ::
+    Example::
 
         >>> conn = connection_from_url('http://google.com/')
         >>> r = conn.request('GET', '/')

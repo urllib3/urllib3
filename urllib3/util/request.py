@@ -40,7 +40,7 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
     :param disable_cache:
         If ``True``, adds 'cache-control: no-cache' header.
 
-    Example: ::
+    Example::
 
         >>> make_headers(keep_alive=True, user_agent="Batman/1.0")
         {'connection': 'keep-alive', 'user-agent': 'Batman/1.0'}
