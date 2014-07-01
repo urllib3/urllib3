@@ -29,7 +29,7 @@ class Retry(object):
 
         response = http.request('GET', 'http://example.com/', retries=Retry(10))
 
-    Retries can be disabled by passing ``False``:
+    Retries can be disabled by passing ``False``: ::
 
         response = http.request('GET', 'http://example.com/', retries=False)
 
