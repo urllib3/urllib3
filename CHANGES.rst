@@ -8,7 +8,7 @@ dev (master)
   package of urllib3, you may need to tweak things. (Issue #415)
 
 * New retry logic and ``urllib3.util.retry.Retry`` configuration object.
-  (Issue #)
+  (Issue #326)
 
 * All raised exceptions should now wrapped in a
   ``urllib3.exceptions.HTTPException``-extending exception. (Issue #326)
