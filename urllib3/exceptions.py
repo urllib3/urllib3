@@ -44,13 +44,18 @@ class ProxyError(HTTPError):
     pass
 
 
-class ConnectionError(HTTPError):
-    "Raised when a normal connection fails."
-
-
 class DecodeError(HTTPError):
     "Raised when automatic decoding based on Content-Type fails."
     pass
+
+
+class ProtocolError(HTTPError):
+    "Raised when something unexpected happens mid-request/response."
+    pass
+
+
+#: Renamed to ProtocolError but aliased for backwards compatibility.
+ConnectionError = ProtocolError
 
 
 ## Leaf Exceptions

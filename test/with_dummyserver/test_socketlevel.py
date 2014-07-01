@@ -1,13 +1,14 @@
+# TODO: Break this module up into pieces. Maybe group by functionality tested
+# rather than the socket level-ness of it.
 
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
 from urllib3.exceptions import (
-        ConnectionError,
         MaxRetryError,
         ProxyError,
         ReadTimeoutError,
-        ConnectTimeoutError,
         SSLError,
+        ProtocolError,
 )
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util.timeout import Timeout
@@ -231,7 +232,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port)
 
         response = pool.request('GET', '/', retries=0, preload_content=False)
-        self.assertRaises(ConnectionError, response.read)
+        self.assertRaises(ProtocolError, response.read)
 
     def test_retry_weird_http_version(self):
         """ Retry class should handle httplib.BadStatusLine errors properly """
@@ -501,3 +502,46 @@ class TestSSL(SocketDummyServerTestCase):
             self.assertRaises(ReadTimeoutError, response.read)
         finally:
             timed_out.set()
+
+
+def create_response_handler(response, num=1):
+    def socket_handler(listener):
+        for _ in xrange(num):
+            sock = listener.accept()[0]
+            all(buf for buf in sock.recv(65536) if not buf.endswith(b'\r\n\r\n'))
+
+            sock.send(response)
+            sock.close()
+
+    return socket_handler
+
+
+class TestErrorWrapping(SocketDummyServerTestCase):
+
+    def test_bad_statusline(self):
+        handler = create_response_handler(
+           b'HTTP/1.1 Omg What Is This?\r\n'
+           b'Content-Length: 0\r\n'
+           b'\r\n'
+        )
+        self._start_server(handler)
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        try:
+            r = pool.request('GET', '/')
+            self.fail("Failed to raise exception: %r" % r)
+        except ProtocolError as e:
+            self.assertEqual(type(e.args[1]).__name__, 'BadStatusLine')
+
+    def test_unknown_protocol(self):
+        handler = create_response_handler(
+           b'HTTP/1000 200 OK\r\n'
+           b'Content-Length: 0\r\n'
+           b'\r\n'
+        )
+        self._start_server(handler)
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        try:
+            r = pool.request('GET', '/')
+            self.fail("Failed to raise exception: %r" % r)
+        except ProtocolError as e:
+            self.assertEqual(type(e.args[1]).__name__, 'UnknownProtocol')

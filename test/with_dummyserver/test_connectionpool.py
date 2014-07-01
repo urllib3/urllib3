@@ -28,7 +28,7 @@ from urllib3.exceptions import (
     DecodeError,
     MaxRetryError,
     ReadTimeoutError,
-    ConnectionError,
+    ProtocolError,
 )
 from urllib3.packages.six import b, u
 from urllib3.util.retry import Retry
@@ -267,7 +267,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             pool.request('GET', '/', retries=Retry(connect=3))
             self.fail("Should have failed with a connection error.")
         except MaxRetryError as e:
-            self.assertTrue(isinstance(e.reason, ConnectionError))
+            self.assertTrue(isinstance(e.reason, ProtocolError))
             self.assertEqual(e.reason.args[1].errno, errno.ECONNREFUSED)
 
     def test_timeout_reset(self):
@@ -364,7 +364,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             pool.request('GET', '/', retries=5)
             self.fail("should raise timeout exception here")
         except MaxRetryError as e:
-            self.assertTrue(isinstance(e.reason, ConnectionError), e.reason)
+            self.assertTrue(isinstance(e.reason, ProtocolError), e.reason)
 
     def test_keepalive(self):
         pool = HTTPConnectionPool(self.host, self.port, block=True, maxsize=1)
@@ -612,7 +612,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         for addr in INVALID_SOURCE_ADDRESSES:
             pool = HTTPConnectionPool(self.host, self.port,
                     source_address=addr, retries=False)
-            self.assertRaises(ConnectionError,
+            self.assertRaises(ProtocolError,
                     pool.request, 'GET', '/source_address')
 
     @onlyPy3
@@ -650,7 +650,7 @@ class TestRetry(HTTPDummyServerTestCase):
         self.assertEqual(r.status, 303)
 
         pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
-        self.assertRaises(ConnectionError, pool.request, 'GET', '/test', retries=False)
+        self.assertRaises(ProtocolError, pool.request, 'GET', '/test', retries=False)
 
     def test_read_retries(self):
         """ Should retry for status codes in the whitelist """

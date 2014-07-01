@@ -1,24 +1,8 @@
 import time
 import logging
 
-try: # Python 3
-    from http.client import (
-        BadStatusLine,
-        ImproperConnectionState,
-        IncompleteRead,
-        InvalidURL,
-        UnknownProtocol,
-    )
-except ImportError:
-    from httplib import (
-        BadStatusLine,
-        ImproperConnectionState,
-        IncompleteRead,
-        InvalidURL,
-        UnknownProtocol,
-    )
-
 from ..exceptions import (
+    ProtocolError,
     ConnectTimeoutError,
     ReadTimeoutError,
     MaxRetryError,
@@ -110,24 +94,7 @@ class Retry(object):
     DEFAULT_METHOD_WHITELIST = frozenset([
         'HEAD', 'GET', 'PUT', 'DELETE', 'OPTIONS', 'TRACE'])
 
-    # A connection error is one that is raised before the request is sent to
-    # the remote server. Once it has been sent to the remote server, the server
-    # may begin processing the request, which can lead to bad consequences and
-    # is handled in the read section below. Connection errors in general are
-    # retryable because the remote server hasn't received any data.
-    CONNECT_EXCEPTIONS = (
-            ImproperConnectionState, InvalidURL, ConnectTimeoutError)
-
-    # Even though we didn't get a response back from the server, these
-    # exceptions are different than connection errors, because they imply
-    # the the remote server accepted the request. The server may have begun
-    # processing the request and performed some side effects (wrote data to a
-    # database, sent a message, etc).
-    READ_EXCEPTIONS = (
-            BadStatusLine, IncompleteRead, UnknownProtocol, ReadTimeoutError)
-
-
-    #: Maximum backoff value.
+    #: Maximum backoff time.
     BACKOFF_MAX = 120
 
     def __init__(self, total=10, connect=None, read=None, redirect=None,
@@ -205,10 +172,16 @@ class Retry(object):
         time.sleep(backoff)
 
     def _is_connection_error(self, err):
-        return isinstance(err, self.CONNECT_EXCEPTIONS)
+        """ Errors when we're fairly sure that the server did not receive the
+        request, so it should be safe to retry.
+        """
+        return isinstance(err, ConnectTimeoutError)
 
     def _is_read_error(self, err):
-        return isinstance(err, self.READ_EXCEPTIONS)
+        """ Errors that occur after the request has been started, so we can't
+        assume that the server did not process any of it.
+        """
+        return isinstance(err, (ReadTimeoutError, ProtocolError))
 
     def is_forced_retry(self, method, status_code):
         """ Is this method/response retryable? (Based on method/codes whitelists)

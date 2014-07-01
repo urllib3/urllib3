@@ -9,7 +9,7 @@ import io
 from socket import timeout as SocketTimeout
 
 from ._collections import HTTPHeaderDict
-from .exceptions import ConnectionError, DecodeError, ReadTimeoutError
+from .exceptions import ProtocolError, DecodeError, ReadTimeoutError
 from .packages.six import string_types as basestring, binary_type
 from .connection import HTTPException, BaseSSLError
 from .util.response import is_fp_closed
@@ -214,7 +214,7 @@ class HTTPResponse(io.IOBase):
 
             except HTTPException as e:
                 # This includes IncompleteRead.
-                raise ConnectionError('Connection failed: %r' % e, e)
+                raise ProtocolError('Connection broken: %r' % e, e)
 
             self._fp_bytes_read += len(data)
 

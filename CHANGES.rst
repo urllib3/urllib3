@@ -18,11 +18,14 @@ dev (master)
   which were previously exempt. Underlying error is accessible from the
   ``.reason`` propery. (Issue #)
 
-* Requesting an empty host will raise ``urllib3.exceptions.LocationValueError``.
-  (Issue #417)
+* ``urllib3.exceptions.ConnectionError`` renamed to
+  ``urllib3.exceptions.ProtocolError``. (Issue #)
 
 * Errors during response read (such as IncompleteRead) are now wrapped in
-  ``urllib3.exceptions.ConnectionError``. (Issue #418)
+  ``urllib3.exceptions.ProtocolError``. (Issue #418)
+
+* Requesting an empty host will raise ``urllib3.exceptions.LocationValueError``.
+  (Issue #417)
 
 * Catch read timeouts over SSL connections as
   ``urllib3.exceptions.ReadTimeoutError``. (Issue #419)

@@ -20,7 +20,7 @@ except ImportError:
 
 from .exceptions import (
     ClosedPoolError,
-    ConnectionError,
+    ProtocolError,
     EmptyPoolError,
     HostChangedError,
     LocationValueError,
@@ -548,7 +548,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if isinstance(e, SocketError) and self.proxy:
                 e = ProxyError('Cannot connect to proxy.', e)
             elif isinstance(e, (SocketError, HTTPException)):
-                e = ConnectionError('Connection failed.', e)
+                e = ProtocolError('Connection aborted.', e)
 
             retries = retries.increment(method, url, error=e,
                                         _pool=self, _stacktrace=stacktrace)

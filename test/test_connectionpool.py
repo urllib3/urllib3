@@ -13,6 +13,7 @@ from urllib3.exceptions import (
     HostChangedError,
     LocationValueError,
     MaxRetryError,
+    ProtocolError,
     SSLError,
 )
 
@@ -203,6 +204,7 @@ class TestConnectionPool(unittest.TestCase):
 
     def test_no_host(self):
         self.assertRaises(LocationValueError, HTTPConnectionPool, None)
+
 
 
 if __name__ == '__main__':
