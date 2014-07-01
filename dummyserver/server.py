@@ -58,7 +58,7 @@ class SocketServerThread(threading.Thread):
         self.port = sock.getsockname()[1]
 
         # Once listen() returns, the server socket is ready
-        sock.listen(1)
+        sock.listen(0)
 
         if self.ready_event:
             self.ready_event.set()

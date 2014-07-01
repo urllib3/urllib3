@@ -594,26 +594,26 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     def test_source_address_ignored(self):
         # source_address is ignored in Python 2.6 and older.
         for addr in INVALID_SOURCE_ADDRESSES:
-            pool = HTTPConnectionPool(
-                self.host, self.port, source_address=addr)
+            pool = HTTPConnectionPool(self.host, self.port,
+                    source_address=addr, retries=False)
             r = pool.request('GET', '/source_address')
             assert r.status == 200
 
     @onlyPy27OrNewer
     def test_source_address(self):
         for addr in VALID_SOURCE_ADDRESSES:
-            pool = HTTPConnectionPool(
-                self.host, self.port, source_address=addr)
+            pool = HTTPConnectionPool(self.host, self.port,
+                    source_address=addr, retries=False)
             r = pool.request('GET', '/source_address')
             assert r.data == b(addr[0])
 
     @onlyPy27OrNewer
     def test_source_address_error(self):
         for addr in INVALID_SOURCE_ADDRESSES:
-            pool = HTTPConnectionPool(
-                self.host, self.port, source_address=addr)
-            self.assertRaises(
-                MaxRetryError, pool.request, 'GET', '/source_address', retries=1)
+            pool = HTTPConnectionPool(self.host, self.port,
+                    source_address=addr, retries=False)
+            self.assertRaises(ConnectionError,
+                    pool.request, 'GET', '/source_address')
 
     @onlyPy3
     def test_httplib_headers_case_insensitive(self):

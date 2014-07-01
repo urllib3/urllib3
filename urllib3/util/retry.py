@@ -1,7 +1,5 @@
 import time
-import errno
 import logging
-from socket import error as SocketError
 
 try: # Python 3
     from http.client import (
@@ -24,8 +22,8 @@ from ..exceptions import (
     ConnectTimeoutError,
     ReadTimeoutError,
     MaxRetryError,
-    TimeoutError,
 )
+from ..packages import six
 
 
 log = logging.getLogger(__name__)
@@ -230,7 +228,7 @@ class Retry(object):
 
         return min(retry_counts) < 0
 
-    def increment(self, method=None, url=None, response=None, error=None, _pool=None):
+    def increment(self, method=None, url=None, response=None, error=None, _pool=None, _stacktrace=None):
         """ Return a new Retry object with incremented retry counters.
 
         :param response: A response object, or None, if the server did not
@@ -239,11 +237,11 @@ class Retry(object):
         :param Exception error: An error encountered during the request, or
             None if the response was received successfully.
 
-        :return: A new Retry object.
+        :return: A new ``Retry`` object.
         """
         if self.total is False and error:
-            # Disabled, raise original error
-            raise error
+            # Disabled, indicate to re-raise the error.
+            raise six.reraise(type(error), error, _stacktrace)
 
         total = self.total
         if total is not None:
@@ -256,15 +254,19 @@ class Retry(object):
 
         if error and self._is_connection_error(error):
             # Connect retry?
-            _observed_errors += 1
-            if connect is not None:
+            if connect is False:
+                raise six.reraise(type(error), error, _stacktrace)
+            elif connect is not None:
                 connect -= 1
+            _observed_errors += 1
 
         elif error and self._is_read_error(error):
             # Read retry?
-            _observed_errors += 1
-            if read is not None:
+            if read is False:
+                raise six.reraise(type(error), error, _stacktrace)
+            elif read is not None:
                 read -= 1
+            _observed_errors += 1
 
         elif response and response.get_redirect_location():
             # Redirect retry?

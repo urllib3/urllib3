@@ -6,6 +6,7 @@ from urllib3.exceptions import (
         MaxRetryError,
         ProxyError,
         ReadTimeoutError,
+        ConnectTimeoutError,
         SSLError,
 )
 from urllib3.util.ssl_ import HAS_SNI
@@ -134,10 +135,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
             self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/')
         finally:
             timed_out.set()
-
-    def test_connect_timeout(self):
-        # TODO:
-        pass
 
     def test_timeout_errors_cause_retries(self):
         def socket_handler(listener):

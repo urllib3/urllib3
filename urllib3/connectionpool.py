@@ -336,7 +336,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # http://bugs.python.org/issue10272
             if 'timed out' in str(e) or \
                'did not complete (read)' in str(e):  # Python 2.6
-                raise ReadTimeoutError(self, url, "Read timed out.")
+                raise ReadTimeoutError(
+                        self, url, "Read timed out. (read timeout=%s)" % read_timeout)
 
             raise
 
@@ -543,12 +544,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 conn.close()
                 conn = None
 
+            stacktrace = sys.exc_info()[2]
             if isinstance(e, SocketError) and self.proxy:
                 e = ProxyError('Cannot connect to proxy.', e)
             elif isinstance(e, (SocketError, HTTPException)):
                 e = ConnectionError('Connection failed.', e)
 
-            retries = retries.increment(method, url, error=e, _pool=self)
+            retries = retries.increment(method, url, error=e,
+                                        _pool=self, _stacktrace=stacktrace)
             retries.sleep()
 
             # Keep track of the error for the retry warning.
