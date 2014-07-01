@@ -16,8 +16,8 @@ log = logging.getLogger(__name__)
 class Retry(object):
     """ Retry configuration.
 
-    This object should be treated as immutable. Each retry creates a new Retry
-    object with updated values.
+    Each retry attempt will create a new Retry object with updated values, so
+    they can be safely reused.
 
     Retries can be defined as a default for a pool: ::
 
@@ -25,7 +25,7 @@ class Retry(object):
         http = PoolManager(retries=retries)
         response = http.request('GET', 'http://example.com/')
 
-    Or on a per-request basis (which overrides the default for the pool): ::
+    Or per-request (which overrides the default for the pool): ::
 
         response = http.request('GET', 'http://example.com/', retries=Retry(10))
 
@@ -110,9 +110,8 @@ class Retry(object):
     BACKOFF_MAX = 120
 
     def __init__(self, total=10, connect=None, read=None, redirect=None,
-                 _observed_errors=0,
                  method_whitelist=DEFAULT_METHOD_WHITELIST, status_forcelist=None,
-                 backoff_factor=0, raise_on_redirect=True):
+                 backoff_factor=0, raise_on_redirect=True, _observed_errors=0):
 
         self.total = total
         self.connect = connect
@@ -133,11 +132,11 @@ class Retry(object):
         params = dict(
             total=self.total,
             connect=self.connect, read=self.read, redirect=self.redirect,
-            _observed_errors=self._observed_errors,
             method_whitelist=self.method_whitelist,
             status_forcelist=self.status_forcelist,
             backoff_factor=self.backoff_factor,
             raise_on_redirect=self.raise_on_redirect,
+            _observed_errors=self._observed_errors,
         )
         params.update(kw)
         return type(self)(**params)

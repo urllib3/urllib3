@@ -26,6 +26,7 @@ from .response import HTTPResponse
 from .util.request import make_headers
 from .util.url import get_host
 from .util.timeout import Timeout
+from .util.retry import Retry
 
 
 # Set default logging handler to avoid "No handler found" warnings.

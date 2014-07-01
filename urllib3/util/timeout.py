@@ -19,11 +19,31 @@ def current_time():
 class Timeout(object):
     """ Timeout configuration.
 
-    Example usage: ::
+    Timeouts can be defined as a default for a pool: ::
 
-        timeout = urllib3.util.Timeout(connect=2.0, read=7.0)
+        timeout = Timeout(connect=2.0, read=7.0)
         http = PoolManager(timeout=timeout)
-        response = http.request('GET', 'http://example.com')
+        response = http.request('GET', 'http://example.com/')
+
+    Or per-request (which overrides the default for the pool): ::
+
+        response = http.request('GET', 'http://example.com/', timeout=Timeout(10))
+
+    Timeouts can be disabled by setting all the parameters to ``None``: ::
+
+        no_timeout = Timeout(connect=None, read=None)
+        response = http.request('GET', 'http://example.com/, timeout=no_timeout)
+
+
+    :param total:
+        This combines the connect and read timeouts into one; the read timeout
+        will be set to the time leftover from the connect attempt. In the
+        event that both a connect timeout and a total are specified, or a read
+        timeout and a total are specified, the shorter timeout will be applied.
+
+        Defaults to None.
+
+    :type total: integer, float, or None
 
     :param connect:
         The maximum amount of time to wait for a connection attempt to a server
@@ -43,16 +63,6 @@ class Timeout(object):
         None will set an infinite timeout.
 
     :type read: integer, float, or None
-
-    :param total:
-        This combines the connect and read timeouts into one; the read timeout
-        will be set to the time leftover from the connect attempt. In the
-        event that both a connect timeout and a total are specified, or a read
-        timeout and a total are specified, the shorter timeout will be applied.
-
-        Defaults to None.
-
-    :type total: integer, float, or None
 
     .. note::
 

@@ -152,6 +152,7 @@ should use a :class:`~urllib3.poolmanager.PoolManager`.
 A :class:`~urllib3.connectionpool.ConnectionPool` is composed of a collection
 of :class:`httplib.HTTPConnection` objects.
 
+
 Timeout
 -------
 
@@ -181,6 +182,41 @@ set for the entire pool or per-request.
     >>> # Same Manager but request with a 5 second total timeout.
     >>> r = http.request('GET', 'http://httpbin.org/delay/1', timeout=Timeout(total=5.0))
 
+See the :class:`~urllib3.util.timeout.Timeout` definition for more details.
+
+
+Retry
+-----
+
+Retries can be configured by passing an instance of
+:class:`~urllib3.util.retry.Retry`, or disabled by passing ``False``, to the
+``retries`` parameter.
+
+Redirects are also considered to be a subset of retries but can be configured or
+disabled individually.
+
+::
+
+    >>> from urllib3 import PoolManager, Retry
+
+    >>> # Allow 3 retries total for all requests in this pool. These are the same:
+    >>> http = PoolManager(retries=3)
+    >>> http = PoolManager(retries=Retry(3))
+    >>> http = PoolManager(retries=Retry(total=3))
+
+    >>> r = http.request('GET', 'http://httpbin.org/redirect/2')
+    >>> # r.status -> 200
+
+    >>> # Disable redirects for this request.
+    >>> r = http.request('GET', 'http://httpbin.org/redirect/2', retries=Retry(3, redirect=False))
+    >>> # r.status -> 302
+
+    >>> # No total limit, but only do 5 connect retries, for this request.
+    >>> r = http.request('GET', 'http://httpbin.org/', retries=Retry(connect=5))
+
+
+See the :class:`~urllib3.util.retry.Retry` definition for more details.
+
 
 Foundation
 ----------
@@ -196,6 +232,7 @@ but can also be used independently.
 .. toctree::
 
    helpers
+   exceptions
 
 Contrib Modules
 ---------------
