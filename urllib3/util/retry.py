@@ -19,11 +19,23 @@ class Retry(object):
     This object should be treated as immutable. Each retry creates a new Retry
     object with updated values.
 
-    Example usage::
+    Retries can be defined as a default for a pool: ::
 
         retries = Retry(connect=5, read=2, redirect=5)
-        http = PoolManager()
-        response = http.request('GET', '/', retries=retries)
+        http = PoolManager(retries=retries)
+        response = http.request('GET', 'http://example.com/')
+
+    Or on a per-request basis (which overrides the default for the pool): ::
+
+        response = http.request('GET', 'http://example.com/', retries=Retry(10))
+
+    Retries can be disabled by passing ``False``:
+
+        response = http.request('GET', 'http://example.com/', retries=False)
+
+    Errors will be wrapped in :class:`~urllib3.exceptions.MaxRetryError` unless
+    retries are disabled, in which case the causing exception will be raised.
+
 
     :param int total:
         Total number of retries to allow. Takes precedence over other counts.

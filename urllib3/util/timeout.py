@@ -17,16 +17,13 @@ def current_time():
 
 
 class Timeout(object):
-    """
-    Utility object for storing timeout values.
+    """ Timeout configuration.
 
-    Example usage:
-
-    .. code-block:: python
+    Example usage: ::
 
         timeout = urllib3.util.Timeout(connect=2.0, read=7.0)
-        pool = HTTPConnectionPool('www.google.com', 80, timeout=timeout)
-        pool.request(...) # Etc, etc
+        http = PoolManager(timeout=timeout)
+        response = http.request('GET', 'http://example.com')
 
     :param connect:
         The maximum amount of time to wait for a connection attempt to a server
@@ -60,12 +57,12 @@ class Timeout(object):
     .. note::
 
         Many factors can affect the total amount of time for urllib3 to return
-        an HTTP response. Specifically, Python's DNS resolver does not obey the
-        timeout specified on the socket. Other factors that can affect total
-        request time include high CPU load, high swap, the program running at a
-        low priority level, or other behaviors. The observed running time for
-        urllib3 to return a response may be greater than the value passed to
-        `total`.
+        an HTTP response.
+
+        For example, Python's DNS resolver does not obey the timeout specified
+        on the socket. Other factors that can affect total request time include
+        high CPU load, high swap, the program running at a low priority level,
+        or other behaviors.
 
         In addition, the read and total timeouts only measure the time between
         read operations on the socket connecting the client and the server,
@@ -73,8 +70,8 @@ class Timeout(object):
         response. For most requests, the timeout is raised because the server
         has not sent the first byte in the specified time. This is not always
         the case; if a server streams one byte every fifteen seconds, a timeout
-        of 20 seconds will not ever trigger, even though the request will
-        take several minutes to complete.
+        of 20 seconds will not trigger, even though the request will take
+        several minutes to complete.
 
         If your goal is to cut off any request after a set amount of wall clock
         time, consider having a second "watcher" thread to cut off a slow
