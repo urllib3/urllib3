@@ -7,6 +7,7 @@ urllib3 Documentation
 
    pools
    managers
+   security
    helpers
    collections
    contrib
@@ -64,12 +65,29 @@ Usage
     >>> r.data
     ...
 
+
+**By default, urllib3 does not verify your HTTPS requests**.
+You'll need to supply a root certificate bundle, or use `certifi
+<https://certifi.io/>`_::
+
+    >>> import urllib3, certifi
+    >>> http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
+    >>> r = http.request('GET', 'https://insecure.com/')
+    Traceback (most recent call last):
+      ...
+    SSLError: hostname 'insecure.com' doesn't match 'svn.nmap.org'
+
+For more on making secure SSL/TLS HTTPS requests, read the :ref:`Security
+section <security>`.
+
+
 Components
 ==========
 
 :mod:`urllib3` tries to strike a fine balance between power, extendability, and
 sanity. To achieve this, the codebase is a collection of small reusable
 utilities and abstractions composed together in a few helpful layers.
+
 
 PoolManager
 -----------
@@ -95,6 +113,7 @@ A :class:`~urllib3.poolmanagers.PoolManager` is a proxy for a collection of
 :class:`~urllib3.request.RequestMethods` to make sure that their API is
 similar, so that instances of either can be passed around interchangeably.
 
+
 ProxyManager
 ------------
 
@@ -116,6 +135,7 @@ HTTPS connections:
     >>> r4 = proxy.request('GET', 'https://twitter.com/')
     >>> len(proxy.pools)
     3
+
 
 ConnectionPool
 --------------
