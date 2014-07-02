@@ -59,3 +59,8 @@ def add_stderr_logger(level=logging.DEBUG):
 
 # ... Clean up.
 del NullHandler
+
+
+# Set security warning to only go off once by default.
+import warnings
+warnings.simplefilter('once', exceptions.InsecureRequestWarning)
