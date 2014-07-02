@@ -719,7 +719,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                 'Unverified HTTPS request being made: "%s"\n'
                 'Adding certificate verification is strongly advised. See: '
                 'https://urllib3.readthedocs.org/en/latest/security.html\n'
-                '(This warning will only appear once.)') % url,
+                '(This warning will only appear once by default.)') % url,
                 InsecureRequestWarning)
 
         return super(type(self), self)._make_request(conn, method, url,
