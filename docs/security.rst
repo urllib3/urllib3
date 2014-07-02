@@ -9,7 +9,7 @@ The historic reason for this is that we rely on ``httplib`` for some of the
 HTTP protocol implementation, and ``httplib`` does not verify requests out of
 the box. This is not a good reason, but here we are.
 
-Luckily, it's not too hard to enable verified HTTPs requests and there are a
+Luckily, it's not too hard to enable verified HTTPS requests and there are a
 few ways to do it.
 
 
@@ -47,9 +47,9 @@ certificates.
 Using your system's root certificates
 -------------------------------------
 
-Your system's root certificates will probably be more up-to-date than
-maintaining your own, but the trick is finding where they live. Different
-operating systems have them in different places.
+Your system's root certificates may be more up-to-date than maintaining your
+own, but the trick is finding where they live. Different operating systems have
+them in different places.
 
 For example, on most Linux distributions they're at
 ``/etc/ssl/certs/ca-certificates.crt``. On Windows and OS X? `It's not so simple
