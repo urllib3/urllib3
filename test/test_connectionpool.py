@@ -5,7 +5,7 @@ from urllib3.connectionpool import (
     HTTPConnection,
     HTTPConnectionPool,
 )
-from urllib3.util import Timeout
+from urllib3.util.timeout import Timeout
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
     ClosedPoolError,
@@ -13,6 +13,7 @@ from urllib3.exceptions import (
     HostChangedError,
     LocationValueError,
     MaxRetryError,
+    ProtocolError,
     SSLError,
 )
 
@@ -128,7 +129,7 @@ class TestConnectionPool(unittest.TestCase):
                 HTTPConnectionPool(host='localhost'), "Test.", err)),
             "HTTPConnectionPool(host='localhost', port=None): "
             "Max retries exceeded with url: Test. "
-            "(Caused by {0}: Test)".format(str(err.__class__)))
+            "(Caused by %r)" % err)
 
 
     def test_pool_size(self):
@@ -203,6 +204,7 @@ class TestConnectionPool(unittest.TestCase):
 
     def test_no_host(self):
         self.assertRaises(LocationValueError, HTTPConnectionPool, None)
+
 
 
 if __name__ == '__main__':

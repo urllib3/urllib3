@@ -1,32 +1,49 @@
+# The default socket timeout, used by httplib to indicate that no timeout was
+# specified by the user
 from socket import _GLOBAL_DEFAULT_TIMEOUT
 import time
 
 from ..exceptions import TimeoutStateError
 
+# A sentinel value to indicate that no timeout was specified by the user in
+# urllib3
+_Default = object()
 
 def current_time():
     """
-    Retrieve the current time, this function is mocked out in unit testing.
+    Retrieve the current time. This function is mocked out in unit testing.
     """
     return time.time()
 
 
-_Default = object()
-# The default timeout to use for socket connections. This is the attribute used
-# by httplib to define the default timeout
-
-
 class Timeout(object):
-    """
-    Utility object for storing timeout values.
+    """ Timeout configuration.
 
-    Example usage:
+    Timeouts can be defined as a default for a pool::
 
-    .. code-block:: python
+        timeout = Timeout(connect=2.0, read=7.0)
+        http = PoolManager(timeout=timeout)
+        response = http.request('GET', 'http://example.com/')
 
-        timeout = urllib3.util.Timeout(connect=2.0, read=7.0)
-        pool = HTTPConnectionPool('www.google.com', 80, timeout=timeout)
-        pool.request(...) # Etc, etc
+    Or per-request (which overrides the default for the pool)::
+
+        response = http.request('GET', 'http://example.com/', timeout=Timeout(10))
+
+    Timeouts can be disabled by setting all the parameters to ``None``::
+
+        no_timeout = Timeout(connect=None, read=None)
+        response = http.request('GET', 'http://example.com/, timeout=no_timeout)
+
+
+    :param total:
+        This combines the connect and read timeouts into one; the read timeout
+        will be set to the time leftover from the connect attempt. In the
+        event that both a connect timeout and a total are specified, or a read
+        timeout and a total are specified, the shorter timeout will be applied.
+
+        Defaults to None.
+
+    :type total: integer, float, or None
 
     :param connect:
         The maximum amount of time to wait for a connection attempt to a server
@@ -47,25 +64,15 @@ class Timeout(object):
 
     :type read: integer, float, or None
 
-    :param total:
-        This combines the connect and read timeouts into one; the read timeout
-        will be set to the time leftover from the connect attempt. In the
-        event that both a connect timeout and a total are specified, or a read
-        timeout and a total are specified, the shorter timeout will be applied.
-
-        Defaults to None.
-
-    :type total: integer, float, or None
-
     .. note::
 
         Many factors can affect the total amount of time for urllib3 to return
-        an HTTP response. Specifically, Python's DNS resolver does not obey the
-        timeout specified on the socket. Other factors that can affect total
-        request time include high CPU load, high swap, the program running at a
-        low priority level, or other behaviors. The observed running time for
-        urllib3 to return a response may be greater than the value passed to
-        `total`.
+        an HTTP response.
+
+        For example, Python's DNS resolver does not obey the timeout specified
+        on the socket. Other factors that can affect total request time include
+        high CPU load, high swap, the program running at a low priority level,
+        or other behaviors.
 
         In addition, the read and total timeouts only measure the time between
         read operations on the socket connecting the client and the server,
@@ -73,8 +80,8 @@ class Timeout(object):
         response. For most requests, the timeout is raised because the server
         has not sent the first byte in the specified time. This is not always
         the case; if a server streams one byte every fifteen seconds, a timeout
-        of 20 seconds will not ever trigger, even though the request will
-        take several minutes to complete.
+        of 20 seconds will not trigger, even though the request will take
+        several minutes to complete.
 
         If your goal is to cut off any request after a set amount of wall clock
         time, consider having a second "watcher" thread to cut off a slow

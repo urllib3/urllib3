@@ -1,7 +1,12 @@
+# urllib3/util.request.py
+# Copyright 2008-2014 Andrey Petrov and contributors (see CONTRIBUTORS.txt)
+#
+# This module is part of urllib3 and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
+
 from base64 import b64encode
 
-from ..packages import six
-
+from ..packages.six import b
 
 ACCEPT_ENCODING = 'gzip,deflate'
 
@@ -29,13 +34,13 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
         auth header.
 
     :param proxy_basic_auth:
-        Colon-separated username:password string for
-        'proxy-authorization: basic ...' auth header.
+        Colon-separated username:password string for 'proxy-authorization: basic ...'
+        auth header.
 
     :param disable_cache:
         If ``True``, adds 'cache-control: no-cache' header.
 
-    Example: ::
+    Example::
 
         >>> make_headers(keep_alive=True, user_agent="Batman/1.0")
         {'connection': 'keep-alive', 'user-agent': 'Batman/1.0'}
@@ -60,11 +65,11 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
 
     if basic_auth:
         headers['authorization'] = 'Basic ' + \
-            b64encode(six.b(basic_auth)).decode('utf-8')
+            b64encode(b(basic_auth)).decode('utf-8')
 
     if proxy_basic_auth:
         headers['proxy-authorization'] = 'Basic ' + \
-            b64encode(six.b(proxy_basic_auth)).decode('utf-8')
+            b64encode(b(proxy_basic_auth)).decode('utf-8')
 
     if disable_cache:
         headers['cache-control'] = 'no-cache'

@@ -7,11 +7,25 @@ dev (master)
 * Shuffled around development-related files. If you're maintaining a distro
   package of urllib3, you may need to tweak things. (Issue #415)
 
-* Requesting an empty host will raise a LocationValueError exception.
-  (Issue #417)
+* New retry logic and ``urllib3.util.retry.Retry`` configuration object.
+  (Issue #326)
+
+* All raised exceptions should now wrapped in a
+  ``urllib3.exceptions.HTTPException``-extending exception. (Issue #326)
+
+* All errors during a retry-enabled request should be wrapped in
+  ``urllib3.exceptions.MaxRetryError``, including timeout-related exceptions
+  which were previously exempt. Underlying error is accessible from the
+  ``.reason`` propery. (Issue #326)
+
+* ``urllib3.exceptions.ConnectionError`` renamed to
+  ``urllib3.exceptions.ProtocolError``. (Issue #326)
 
 * Errors during response read (such as IncompleteRead) are now wrapped in
-  ``urllib3.exceptions.ConnectionError``. (Issue #418)
+  ``urllib3.exceptions.ProtocolError``. (Issue #418)
+
+* Requesting an empty host will raise ``urllib3.exceptions.LocationValueError``.
+  (Issue #417)
 
 * Catch read timeouts over SSL connections as
   ``urllib3.exceptions.ReadTimeoutError``. (Issue #419)

@@ -8,7 +8,6 @@ from nose.plugins.skip import SkipTest
 from urllib3.exceptions import MaxRetryError
 from urllib3.packages import six
 
-
 # We need a host that will not immediately close the connection with a TCP
 # Reset. SO suggests this hostname
 TARPIT_HOST = '10.255.255.1'
@@ -73,8 +72,7 @@ def requires_network(test):
                 raise SkipTest(msg)
             raise
         except MaxRetryError as e:
-            if (isinstance(e.reason, socket.error) and
-                _is_unreachable_err(e.reason)):
+            if _is_unreachable_err(e.reason):
                 raise SkipTest(msg)
             raise
     return wrapper

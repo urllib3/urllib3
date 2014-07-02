@@ -105,7 +105,7 @@ class RequestMethods(object):
 
         Supports an optional ``fields`` parameter of key/value strings AND
         key/filetuple. A filetuple is a (filename, data, MIME type) tuple where
-        the MIME type is optional. For example: ::
+        the MIME type is optional. For example::
 
             fields = {
                 'foo': 'bar',

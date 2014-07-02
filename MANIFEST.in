@@ -1,3 +1,2 @@
 include README.rst CHANGES.rst LICENSE.txt CONTRIBUTORS.txt dev-requirements.txt Makefile
 recursive-include dummyserver *.*
-prune *.pyc *.log

@@ -40,6 +40,13 @@ class SocketDummyServerTestCase(unittest.TestCase):
 
 
 class HTTPDummyServerTestCase(unittest.TestCase):
+    """ A simple HTTP server that runs when your test class runs
+
+    Have your unittest class inherit from this one, and then a simple server
+    will start when your tests run, and automatically shut down when they
+    complete. For examples of what test requests you can send to the server,
+    see the TestingApp in dummyserver/handlers.py.
+    """
     scheme = 'http'
     host = 'localhost'
     host_alt = '127.0.0.1'  # Some tests need two hosts

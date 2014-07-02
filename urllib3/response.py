@@ -4,16 +4,16 @@
 # This module is part of urllib3 and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-
 import zlib
 import io
 from socket import timeout as SocketTimeout
 
 from ._collections import HTTPHeaderDict
-from .exceptions import ConnectionError, DecodeError, ReadTimeoutError
+from .exceptions import ProtocolError, DecodeError, ReadTimeoutError
 from .packages.six import string_types as basestring, binary_type
-from .util import is_fp_closed
 from .connection import HTTPException, BaseSSLError
+from .util.response import is_fp_closed
+
 
 
 class DeflateDecoder(object):
@@ -214,7 +214,7 @@ class HTTPResponse(io.IOBase):
 
             except HTTPException as e:
                 # This includes IncompleteRead.
-                raise ConnectionError('Connection failed: %r' % e, e)
+                raise ProtocolError('Connection broken: %r' % e, e)
 
             self._fp_bytes_read += len(data)
 

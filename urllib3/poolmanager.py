@@ -16,7 +16,8 @@ from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
 from .exceptions import LocationValueError
 from .request import RequestMethods
-from .util import parse_url
+from .util.url import parse_url
+from .util.retry import Retry
 
 
 __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
@@ -50,7 +51,7 @@ class PoolManager(RequestMethods):
         Additional parameters are used to create fresh
         :class:`urllib3.connectionpool.ConnectionPool` instances.
 
-    Example: ::
+    Example::
 
         >>> manager = PoolManager(num_pools=2)
         >>> r = manager.request('GET', 'http://google.com/')
@@ -168,9 +169,14 @@ class PoolManager(RequestMethods):
         if response.status == 303:
             method = 'GET'
 
-        log.info("Redirecting %s -> %s" % (url, redirect_location))
-        kw['retries'] = kw.get('retries', 3) - 1  # Persist retries countdown
+        retries = kw.get('retries')
+        if not isinstance(retries, Retry):
+            retries = Retry.from_int(retries, redirect=redirect)
+
+        kw['retries'] = retries.increment(method, redirect_location)
         kw['redirect'] = redirect
+
+        log.info("Redirecting %s -> %s" % (url, redirect_location))
         return self.urlopen(method, redirect_location, **kw)
 
 
@@ -211,12 +217,16 @@ class ProxyManager(PoolManager):
         if not proxy.port:
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
+
+        assert proxy.scheme in ("http", "https"), \
+            'Not supported proxy scheme %s' % proxy.scheme
+
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
-        assert self.proxy.scheme in ("http", "https"), \
-            'Not supported proxy scheme %s' % self.proxy.scheme
+
         connection_pool_kw['_proxy'] = self.proxy
         connection_pool_kw['_proxy_headers'] = self.proxy_headers
+
         super(ProxyManager, self).__init__(
             num_pools, headers, **connection_pool_kw)
 
@@ -251,10 +261,10 @@ class ProxyManager(PoolManager):
             # For proxied HTTPS requests, httplib sets the necessary headers
             # on the CONNECT to the proxy. For HTTP, we'll definitely
             # need to set 'Host' at the very least.
-            kw['headers'] = self._set_proxy_headers(url, kw.get('headers',
-                                                                self.headers))
+            headers = kw.get('headers', self.headers)
+            kw['headers'] = self._set_proxy_headers(url, headers)
 
-        return super(ProxyManager, self).urlopen(method, url, redirect, **kw)
+        return super(ProxyManager, self).urlopen(method, url, redirect=redirect, **kw)
 
 
 def proxy_from_url(url, **kw):
