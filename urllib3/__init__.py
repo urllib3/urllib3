@@ -63,4 +63,10 @@ del NullHandler
 
 # Set security warning to only go off once by default.
 import warnings
-warnings.simplefilter('once', exceptions.InsecureRequestWarning)
+warnings.simplefilter('module', exceptions.InsecureRequestWarning)
+
+def disable_warnings():
+    """
+    Helper for quickly disabling all urllib3 warnings.
+    """
+    warnings.simplefilter('ignore', exceptions.HTTPWarning)
