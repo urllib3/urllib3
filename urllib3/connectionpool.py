@@ -4,9 +4,10 @@
 # This module is part of urllib3 and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import sys
 import errno
 import logging
+import sys
+import warnings
 
 from socket import error as SocketError, timeout as SocketTimeout
 import socket
@@ -29,6 +30,7 @@ from .exceptions import (
     ReadTimeoutError,
     SSLError,
     TimeoutError,
+    InsecureRequestWarning,
 )
 from .packages.ssl_match_hostname import CertificateError
 from .packages import six
@@ -705,6 +707,22 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                                   strict=self.strict, **self.conn_kw)
 
         return self._prepare_conn(conn)
+
+    def _make_request(self, conn, method, url, timeout=_Default,
+                      **httplib_request_kw):
+        """
+        Same as :func:`HTTPConnectionPool._make_request` but adds a warning when
+        an insecure request is being made.
+        """
+        if not conn.is_verified:
+            warnings.warn((
+                'Unverified HTTPS request being made: "%s"\n'
+                'Adding certificate verification is strongly advised. See: '
+                'https://urllib3.readthedocs.org/en/latest/security.html') % url,
+                InsecureRequestWarning)
+
+        return super(type(self), self)._make_request(conn, method, url,
+                timeout=timeout, **httplib_request_kw)
 
 
 def connection_from_url(url, **kw):

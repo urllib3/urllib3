@@ -282,13 +282,13 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                           timeout=Timeout(total=None, connect=0.001))
 
     def test_enhanced_ssl_connection(self):
+        fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:7A:F2:8A:D7:1E:07:33:67:DE'
+
         conn = VerifiedHTTPSConnection(self.host, self.port)
         https_pool = HTTPSConnectionPool(self.host, self.port,
-                                         timeout=Timeout(total=None, connect=5),
-                                         cert_reqs='CERT_REQUIRED')
-        https_pool.ca_certs = DEFAULT_CA
-        https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
-                                        '7A:F2:8A:D7:1E:07:33:67:DE'
+                cert_reqs='CERT_REQUIRED', ca_certs=DEFAULT_CA,
+                assert_fingerprint=fingerprint)
+
         https_pool._make_request(conn, 'GET', '/')
 
 
