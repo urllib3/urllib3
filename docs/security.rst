@@ -120,4 +120,4 @@ you can use :func:`~urllib3.disable_warnings`::
     import urllib3
     urllib3.disable_warnings()
 
-Making unverified HTTPS requests is strongly discouraged.
+Making unverified HTTPS requests is strongly discouraged. ˙ ͜ʟ˙
