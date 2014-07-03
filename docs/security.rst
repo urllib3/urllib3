@@ -13,6 +13,8 @@ Luckily, it's not too hard to enable verified HTTPS requests and there are a
 few ways to do it.
 
 
+.. _certifi-with-urllib3:
+
 Using Certifi with urllib3
 --------------------------
 
@@ -109,8 +111,13 @@ Unverified HTTPS requests will trigger a warning::
     See: https://urllib3.readthedocs.org/en/latest/security.html
     (This warning will only appear once by default.)
 
+This would be a great time to enable HTTPS verification:
+:ref:`certifi-with-urllib3`.
+
 If you know what you're doing and would like to disable this and other warnings,
 you can use :func:`~urllib3.disable_warnings`::
 
     import urllib3
     urllib3.disable_warnings()
+
+Making unverified HTTPS requests is strongly discouraged.
