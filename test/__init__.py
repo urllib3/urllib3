@@ -1,3 +1,4 @@
+import warnings
 import sys
 import errno
 import functools
@@ -5,7 +6,7 @@ import socket
 
 from nose.plugins.skip import SkipTest
 
-from urllib3.exceptions import MaxRetryError
+from urllib3.exceptions import MaxRetryError, HTTPWarning
 from urllib3.packages import six
 
 # We need a host that will not immediately close the connection with a TCP
@@ -16,6 +17,19 @@ VALID_SOURCE_ADDRESSES = [('::1', 0), ('127.0.0.1', 0)]
 # RFC 5737: 192.0.2.0/24 is for testing only.
 # RFC 3849: 2001:db8::/32 is for documentation only.
 INVALID_SOURCE_ADDRESSES = [('192.0.2.255', 0), ('2001:db8::1', 0)]
+
+
+def clear_warnings(cls=HTTPWarning):
+    new_filters = []
+    for f in warnings.filters:
+        if issubclass(f[2], cls):
+            continue
+        new_filters.append(f)
+    warnings.filters[:] = new_filters
+
+def setUp():
+    clear_warnings()
+    warnings.simplefilter('ignore', HTTPWarning)
 
 
 def onlyPy26OrOlder(test):

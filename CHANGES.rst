@@ -7,6 +7,11 @@ dev (master)
 * Shuffled around development-related files. If you're maintaining a distro
   package of urllib3, you may need to tweak things. (Issue #415)
 
+* Unverified HTTPS requests will trigger a warning on the first request. See
+  our new `security documentation
+  <https://urllib3.readthedocs.org/en/latest/security.html>`_ for details.
+  (Issue #426)
+
 * New retry logic and ``urllib3.util.retry.Retry`` configuration object.
   (Issue #326)
 

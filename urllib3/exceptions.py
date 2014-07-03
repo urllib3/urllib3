@@ -11,6 +11,11 @@ class HTTPError(Exception):
     "Base exception used by this module."
     pass
 
+class HTTPWarning(Warning):
+    "Base warning used by this module."
+    pass
+
+
 
 class PoolError(HTTPError):
     "Base exception for errors caused within a pool."
@@ -133,3 +138,8 @@ class LocationParseError(LocationValueError):
         HTTPError.__init__(self, message)
 
         self.location = location
+
+
+class InsecureRequestWarning(HTTPWarning):
+    "Warned when making an unverified HTTPS request."
+    pass

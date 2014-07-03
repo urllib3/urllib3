@@ -59,3 +59,14 @@ def add_stderr_logger(level=logging.DEBUG):
 
 # ... Clean up.
 del NullHandler
+
+
+# Set security warning to only go off once by default.
+import warnings
+warnings.simplefilter('module', exceptions.InsecureRequestWarning)
+
+def disable_warnings(category=exceptions.HTTPWarning):
+    """
+    Helper for quickly disabling all urllib3 warnings.
+    """
+    warnings.simplefilter('ignore', category)

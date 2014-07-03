@@ -83,6 +83,9 @@ class HTTPConnection(_HTTPConnection, object):
     #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
     default_socket_options = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
 
+    #: Whether this connection verifies the host's certificate.
+    is_verified = False
+
     def __init__(self, *args, **kw):
         if six.PY3:  # Python 3
             kw.pop('strict', None)
@@ -225,6 +228,8 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             elif self.assert_hostname is not False:
                 match_hostname(self.sock.getpeercert(),
                                self.assert_hostname or hostname)
+
+        self.is_verified = resolved_cert_reqs == ssl.CERT_REQUIRED
 
 
 if ssl:

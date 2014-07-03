@@ -1,10 +1,11 @@
+import warnings
 import logging
 import unittest
 import ssl
 
 from mock import patch
 
-from urllib3 import add_stderr_logger
+from urllib3 import add_stderr_logger, disable_warnings
 from urllib3.util.request import make_headers
 from urllib3.util.timeout import Timeout
 from urllib3.util.url import (
@@ -14,7 +15,13 @@ from urllib3.util.url import (
     Url,
 )
 from urllib3.util.ssl_ import resolve_cert_reqs
-from urllib3.exceptions import LocationParseError, TimeoutStateError
+from urllib3.exceptions import (
+    LocationParseError,
+    TimeoutStateError,
+    InsecureRequestWarning,
+)
+
+from . import clear_warnings
 
 # This number represents a time in seconds, it doesn't mean anything in
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller
@@ -202,6 +209,15 @@ class TestUtil(unittest.TestCase):
 
         logger.debug('Testing add_stderr_logger')
         logger.removeHandler(handler)
+
+    def test_disable_warnings(self):
+        with warnings.catch_warnings(record=True) as w:
+            clear_warnings()
+            warnings.warn('This is a test.', InsecureRequestWarning)
+            self.assertEqual(len(w), 1)
+            disable_warnings()
+            warnings.warn('This is a test.', InsecureRequestWarning)
+            self.assertEqual(len(w), 1)
 
     def _make_time_pass(self, seconds, timeout, time_mock):
         """ Make some time pass for the timeout object """
