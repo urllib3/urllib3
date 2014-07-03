@@ -100,13 +100,14 @@ For more details, check the :mod:`~urllib3.contrib.pyopenssl` module.
 InsecureRequestWarning
 ----------------------
 
-As of v1.9, urllib3 will trigger a warning for the first unverified HTTPS
-request::
+.. versionadded:: 1.9
+
+Unverified HTTPS requests will trigger a warning::
 
     urllib3/connectionpool.py:736: InsecureRequestWarning: Unverified HTTPS
     request is being made. Adding certificate verification is strongly advised.
-    See: https://urllib3.readthedocs.org/en/latest/security.html (This warning
-    will only appear once by default.)
+    See: https://urllib3.readthedocs.org/en/latest/security.html
+    (This warning will only appear once by default.)
 
 If you know what you're doing and would like to disable this and other warnings,
 you can use :func:`~urllib3.disable_warnings`::
