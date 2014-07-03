@@ -1,9 +1,3 @@
-# urllib3/request.py
-# Copyright 2008-2013 Andrey Petrov and contributors (see CONTRIBUTORS.txt)
-#
-# This module is part of urllib3 and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
-
 try:
     from urllib.parse import urlencode
 except ImportError:

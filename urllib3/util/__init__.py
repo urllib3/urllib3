@@ -1,9 +1,3 @@
-# urllib3/util/__init__.py
-# Copyright 2008-2014 Andrey Petrov and contributors (see CONTRIBUTORS.txt)
-#
-# This module is part of urllib3 and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
-
 # For backwards compatibility, provide imports that used to be here.
 from .connection import is_connection_dropped
 from .request import make_headers

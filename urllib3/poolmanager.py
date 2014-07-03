@@ -1,9 +1,3 @@
-# urllib3/poolmanager.py
-# Copyright 2008-2014 Andrey Petrov and contributors (see CONTRIBUTORS.txt)
-#
-# This module is part of urllib3 and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
-
 import logging
 
 try:  # Python 3
