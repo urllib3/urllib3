@@ -94,3 +94,22 @@ to PyOpenSSL with :func:`~urllib3.contrib.pyopenssl.inject_into_urllib3`::
 Now you can continue using urllib3 as you normally would.
 
 For more details, check the :mod:`~urllib3.contrib.pyopenssl` module.
+
+
+
+InsecureRequestWarning
+----------------------
+
+As of v1.9, urllib3 will trigger a warning for the first unverified HTTPS
+request::
+
+    urllib3/connectionpool.py:736: InsecureRequestWarning: Unverified HTTPS
+    request is being made. Adding certificate verification is strongly advised.
+    See: https://urllib3.readthedocs.org/en/latest/security.html (This warning
+    will only appear once by default.)
+
+If you know what you're doing and would like to disable this and other warnings,
+you can use :func:`~urllib3.disable_warnings`::
+
+    import urllib3
+    urllib3.disable_warnings()
