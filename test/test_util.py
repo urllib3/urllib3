@@ -21,6 +21,8 @@ from urllib3.exceptions import (
     InsecureRequestWarning,
 )
 
+from . import clear_warnings
+
 # This number represents a time in seconds, it doesn't mean anything in
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller
 # numbers used for timeouts
@@ -210,6 +212,7 @@ class TestUtil(unittest.TestCase):
 
     def test_disable_warnings(self):
         with warnings.catch_warnings(record=True) as w:
+            clear_warnings()
             warnings.warn('This is a test.', InsecureRequestWarning)
             self.assertEqual(len(w), 1)
             disable_warnings()

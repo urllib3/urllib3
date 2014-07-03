@@ -266,6 +266,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if conn:
             conn.close()
 
+    def _validate_conn(self, conn, url):
+        """
+        Called right before a request is made, after the socket is created.
+        """
+        pass
+
     def _get_timeout(self, timeout):
         """ Helper that always returns a :class:`urllib3.util.Timeout` """
         if timeout is _Default:
@@ -299,6 +305,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         timeout_obj = self._get_timeout(timeout)
         timeout_obj.start_connect()
         conn.timeout = timeout_obj.connect_timeout
+
+        # Force connect early to allow us to validate the connection.
+        if not conn.sock:
+            conn.connect()
+
+        # Trigger any extra validation we need to do.
+        self._validate_conn(conn, url)
 
         # conn.request() calls httplib.*.request, not the method in
         # urllib3.request. It also calls makefile (recv) on the socket.
@@ -504,10 +517,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         err = None
 
         try:
-            # Request a connection from the queue
+            # Request a connection from the queue.
             conn = self._get_conn(timeout=pool_timeout)
 
-            # Make the request on the httplib connection object
+            # Make the request on the httplib connection object.
             httplib_response = self._make_request(conn, method, url,
                                                   timeout=timeout,
                                                   body=body, headers=headers)
@@ -708,12 +721,12 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
         return self._prepare_conn(conn)
 
-    def _make_request(self, conn, method, url, timeout=_Default,
-                      **httplib_request_kw):
+    def _validate_conn(self, conn, url):
         """
-        Same as :func:`HTTPConnectionPool._make_request` but adds a warning when
-        an insecure request is being made.
+        Called right before a request is made, after the socket is created.
         """
+        super(HTTPSConnectionPool, self)._validate_conn(conn, url)
+
         if not conn.is_verified:
             warnings.warn((
                 'Unverified HTTPS request being made: "%s"\n'
@@ -721,9 +734,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                 'https://urllib3.readthedocs.org/en/latest/security.html\n'
                 '(This warning will only appear once by default.)') % url,
                 InsecureRequestWarning)
-
-        return super(type(self), self)._make_request(conn, method, url,
-                timeout=timeout, **httplib_request_kw)
 
 
 def connection_from_url(url, **kw):

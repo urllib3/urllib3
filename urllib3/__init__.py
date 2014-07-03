@@ -65,8 +65,8 @@ del NullHandler
 import warnings
 warnings.simplefilter('module', exceptions.InsecureRequestWarning)
 
-def disable_warnings():
+def disable_warnings(category=exceptions.HTTPWarning):
     """
     Helper for quickly disabling all urllib3 warnings.
     """
-    warnings.simplefilter('ignore', exceptions.HTTPWarning)
+    warnings.simplefilter('ignore', category)
