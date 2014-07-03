@@ -266,7 +266,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if conn:
             conn.close()
 
-    def _validate_conn(self, conn, url):
+    def _validate_conn(self, conn):
         """
         Called right before a request is made, after the socket is created.
         """
@@ -306,12 +306,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         timeout_obj.start_connect()
         conn.timeout = timeout_obj.connect_timeout
 
-        # Force connect early to allow us to validate the connection.
-        if not conn.sock:
-            conn.connect()
-
         # Trigger any extra validation we need to do.
-        self._validate_conn(conn, url)
+        self._validate_conn(conn)
 
         # conn.request() calls httplib.*.request, not the method in
         # urllib3.request. It also calls makefile (recv) on the socket.
@@ -721,18 +717,22 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
         return self._prepare_conn(conn)
 
-    def _validate_conn(self, conn, url):
+    def _validate_conn(self, conn):
         """
         Called right before a request is made, after the socket is created.
         """
-        super(HTTPSConnectionPool, self)._validate_conn(conn, url)
+        super(HTTPSConnectionPool, self)._validate_conn(conn)
+
+        # Force connect early to allow us to validate the connection.
+        if not conn.sock:
+            conn.connect()
 
         if not conn.is_verified:
             warnings.warn((
-                'Unverified HTTPS request being made: "%s"\n'
+                'Unverified HTTPS request is being made. '
                 'Adding certificate verification is strongly advised. See: '
                 'https://urllib3.readthedocs.org/en/latest/security.html\n'
-                '(This warning will only appear once by default.)') % url,
+                '(This warning will only appear once by default.)'),
                 InsecureRequestWarning)
 
 
