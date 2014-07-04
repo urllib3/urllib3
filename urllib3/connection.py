@@ -37,6 +37,8 @@ from .util.ssl_ import (
     assert_fingerprint,
 )
 
+from .util import connection
+
 
 port_by_scheme = {
     'http': 80,
@@ -83,11 +85,16 @@ class HTTPConnection(_HTTPConnection, object):
     def __init__(self, *args, **kw):
         if six.PY3:  # Python 3
             kw.pop('strict', None)
-        if sys.version_info < (2, 7):  # Python 2.6 and older
-            kw.pop('source_address', None)
 
         # Pre-set source_address in case we have an older Python like 2.6.
         self.source_address = kw.get('source_address')
+
+        if sys.version_info < (2, 7):  # Python 2.6
+            # _HTTPConnection on Python 2.6 will balk at this keyword arg, but
+            # not newer versions. We can still use it when creating a
+            # connection though, so we pop it *after* we have saved it as
+            # self.source_address.
+            kw.pop('source_address', None)
 
         #: The socket options provided by the user. If no options are
         #: provided, we use the default options.
@@ -101,21 +108,21 @@ class HTTPConnection(_HTTPConnection, object):
 
         :return: New socket connection.
         """
-        extra_args = []
-        if self.source_address:  # Python 2.7+
-            extra_args.append(self.source_address)
+        extra_kw = {}
+        if self.source_address:
+            extra_kw['source_address'] = self.source_address
+
+        if self.socket_options:
+            extra_kw['socket_options'] = self.socket_options
 
         try:
-            conn = socket.create_connection(
-                (self.host, self.port), self.timeout, *extra_args)
+            conn = connection.create_connection(
+                (self.host, self.port), self.timeout, **extra_kw)
 
         except SocketTimeout:
             raise ConnectTimeoutError(
                 self, "Connection to %s timed out. (connect timeout=%s)" %
                 (self.host, self.timeout))
-
-        # Set options on the socket.
-        self._set_options_on(conn)
 
         return conn
 
@@ -129,14 +136,6 @@ class HTTPConnection(_HTTPConnection, object):
             self._tunnel()
             # Mark this connection as not reusable
             self.auto_open = 0
-
-    def _set_options_on(self, conn):
-        # Disable all socket options if the user passes ``socket_options=None``
-        if self.socket_options is None:
-            return
-
-        for opt in self.socket_options:
-            conn.setsockopt(*opt)
 
     def connect(self):
         conn = self._new_conn()
