@@ -590,15 +590,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
         self.assertRaises(MaxRetryError, pool.request, 'GET', '/test', retries=2)
 
-    @onlyPy26OrOlder
-    def test_source_address_ignored(self):
-        # source_address is ignored in Python 2.6 and older.
-        for addr in INVALID_SOURCE_ADDRESSES:
-            pool = HTTPConnectionPool(self.host, self.port,
-                    source_address=addr, retries=False)
-            r = pool.request('GET', '/source_address')
-            assert r.status == 200
-
     @onlyPy27OrNewer
     def test_source_address(self):
         for addr in VALID_SOURCE_ADDRESSES:

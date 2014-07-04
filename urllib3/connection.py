@@ -89,6 +89,13 @@ class HTTPConnection(_HTTPConnection, object):
         # Pre-set source_address in case we have an older Python like 2.6.
         self.source_address = kw.get('source_address')
 
+        if sys.version_info < (2, 7):  # Python 2.6
+            # _HTTPConnection on Python 2.6 will balk at this keyword arg, but
+            # not newer versions. We can still use it when creating a
+            # connection though, so we pop it *after* we have saved it as
+            # self.source_address.
+            kw.pop('source_address', None)
+
         #: The socket options provided by the user. If no options are
         #: provided, we use the default options.
         self.socket_options = kw.pop('socket_options', self.default_socket_options)
