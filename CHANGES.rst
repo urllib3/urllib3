@@ -41,6 +41,8 @@ dev (master)
 * Catch read timeouts over SSL connections as
   ``urllib3.exceptions.ReadTimeoutError``. (Issue #419)
 
+* Apply socket arguments before connecting. (Issue #427)
+
 
 1.8.3 (2014-06-23)
 ++++++++++++++++++
