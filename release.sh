@@ -28,7 +28,7 @@ if ! [[ $r =~ ^([yY]*)$ ]]; then
 fi
 
 # Prepare commit
-git commit -a -m 'Merging new release version: ${version}'
+git commit -a -m "Merging new release version: ${version}"
 git tag ${version}
 
 # Build package
