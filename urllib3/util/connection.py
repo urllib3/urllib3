@@ -70,7 +70,8 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                 sock.settimeout(timeout)
             if source_address:
                 sock.bind(source_address)
-            # If provided, set socket level options before connecting
+            # If provided, set socket level options before connecting.
+            # This is the only addition urllib3 makes to this function.
             _set_socket_options(sock, socket_options)
             sock.connect(sa)
             return sock
@@ -91,4 +92,4 @@ def _set_socket_options(sock, options):
         return
 
     for opt in options:
-        sock.setsocketopt(*opt)
+        sock.setsockopt(*opt)
