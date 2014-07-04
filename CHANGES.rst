@@ -4,6 +4,12 @@ Changes
 dev (master)
 ++++++++++++
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.9 (2014-07-04)
+++++++++++++++++
+
 * Shuffled around development-related files. If you're maintaining a distro
   package of urllib3, you may need to tweak things. (Issue #415)
 
@@ -34,8 +40,6 @@ dev (master)
 
 * Catch read timeouts over SSL connections as
   ``urllib3.exceptions.ReadTimeoutError``. (Issue #419)
-
-* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.8.3 (2014-06-23)
