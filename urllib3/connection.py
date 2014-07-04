@@ -101,16 +101,16 @@ class HTTPConnection(_HTTPConnection, object):
 
         :return: New socket connection.
         """
-        extra_args = []
-        if self.source_address:  # Python 2.7+
-            extra_args.append(self.source_address)
+        extra_kw = {}
+        if self.source_address:
+            extra_kw['source_address'] = self.source_address
 
         if self.socket_options:
-            extra_args.append(self.socket_options)
+            extra_kw['socket_options'] = self.socket_options
 
         try:
             conn = connection.create_connection(
-                (self.host, self.port), self.timeout, *extra_args)
+                (self.host, self.port), self.timeout, **extra_kw)
 
         except SocketTimeout:
             raise ConnectTimeoutError(
