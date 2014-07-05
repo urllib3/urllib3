@@ -8,21 +8,23 @@ A pool manager is an abstraction for a collection of
 
 If you need to make requests to multiple hosts, then you can use a
 :class:`.PoolManager`, which takes care of maintaining your pools
-so you don't have to. ::
+so you don't have to.
+
+.. doctest ::
 
     >>> from urllib3 import PoolManager
     >>> manager = PoolManager(10)
-    >>> r = manager.request('GET', 'http://google.com/')
+    >>> r = manager.request('GET', 'http://www.youtube.com/')
     >>> r.headers['server']
-    'gws'
-    >>> r = manager.request('GET', 'http://yahoo.com/')
+    'gwiseguy/2.0'
+    >>> r = manager.request('GET', 'http://www.ustream.tv/')
     >>> r.headers['server']
-    'YTS/1.20.0'
-    >>> r = manager.request('POST', 'http://google.com/mail')
-    >>> r = manager.request('HEAD', 'http://google.com/calendar')
+    'ustream/web'
+    >>> r = manager.request('POST', 'http://www.ustream.tv/explore/all')
+    >>> r = manager.request('HEAD', 'http://www.ustream.tv/explore/technology')
     >>> len(manager.pools)
     2
-    >>> conn = manager.connection_from_host('google.com')
+    >>> conn = manager.connection_from_host('www.ustream.tv')
     >>> conn.num_requests
     3
 

@@ -53,22 +53,24 @@ Installing
 Usage
 -----
 
-::
+.. doctest ::
 
     >>> import urllib3
     >>> http = urllib3.PoolManager()
-    >>> r = http.request('GET', 'http://google.com/')
+    >>> r = http.request('GET', 'http://www.youtube.com/')
     >>> r.status
     200
     >>> r.headers['server']
-    'gws'
-    >>> r.data
-    ...
+    'gwiseguy/2.0'
+    >>> 'data: ' + r.data
+    'data: ...'
 
 
 **By default, urllib3 does not verify your HTTPS requests**.
 You'll need to supply a root certificate bundle, or use `certifi
-<https://certifi.io/>`_::
+<https://certifi.io/>`_
+
+.. doctest ::
 
     >>> import urllib3, certifi
     >>> http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
@@ -99,12 +101,13 @@ connections for you whenever you request the same host. This should cover most
 scenarios without significant loss of efficiency, but you can always drop down
 to a lower level component for more granular control.
 
-::
+.. doctest ::
 
+    >>> import urllib3
     >>> http = urllib3.PoolManager(10)
-    >>> r1 = http.request('GET', 'http://google.com/')
-    >>> r2 = http.request('GET', 'http://google.com/mail')
-    >>> r3 = http.request('GET', 'http://yahoo.com/')
+    >>> r1 = http.request('GET', 'http://www.youtube.com/')
+    >>> r2 = http.request('GET', 'http://www.ustream.tv/explore/all')
+    >>> r3 = http.request('GET', 'http://www.ustream.tv/')
     >>> len(http.pools)
     2
 
@@ -149,16 +152,18 @@ pool with automatic **connection reusing** and **thread safety**.
 
 When the :mod:`ssl` module is available, then
 :class:`~urllib3.connectionpool.HTTPSConnectionPool` objects can be configured
-to check SSL certificates against specific provided certificate authorities. ::
+to check SSL certificates against specific provided certificate authorities.
 
-    >>> conn = urllib3.connection_from_url('http://www.google.com')
-    >>> r1 = conn.request('GET', 'http://www.google.com/')
+.. doctest ::
+
+    >>> import urllib3
+    >>> conn = urllib3.connection_from_url('http://www.youtube.com/')
+    >>> r1 = conn.request('GET', 'http://www.youtube.com/')
     >>> r2 = conn.request('GET', '/search')
-    >>> r3 = conn.request('GET', 'http://wwww.yahoo.com/')
-    Traceback (most recent call last)
+    >>> r3 = conn.request('GET', 'http://wwww.ustream.tv/')
+    Traceback (most recent call last):
       ...
-    HostChangedError: Connection pool with host 'http://google.com' tried to
-    open a foreign host: http://yahoo.com/
+    urllib3.exceptions.HostChangedError: HTTPConnectionPool(host='www.youtube.com', port=None): Tried to open a foreign host with url: http://wwww.ustream.tv/
 
 Again, a ConnectionPool is a pool of connections to a specific host. Trying to
 access a different host through the same pool will raise a ``HostChangedError``
@@ -182,7 +187,7 @@ the specified duration. The timeout can be defined as a float or an instance of
 over how much time is allowed for different stages of the request. This can be
 set for the entire pool or per-request.
 
-::
+.. doctest ::
 
     >>> from urllib3 import PoolManager, Timeout
 
