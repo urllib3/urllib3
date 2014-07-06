@@ -9,3 +9,4 @@ six==1.7.2
 cffi==0.8.2
 docutils==0.11
 pycparser==2.10
+certifi==14.05.14
