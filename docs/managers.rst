@@ -14,17 +14,17 @@ so you don't have to.
 
     >>> from urllib3 import PoolManager
     >>> manager = PoolManager(10)
-    >>> r = manager.request('GET', 'http://www.youtube.com/')
+    >>> r = manager.request('GET', 'http://example.com')
     >>> r.headers['server']
-    'gwiseguy/2.0'
-    >>> r = manager.request('GET', 'http://www.ustream.tv/')
+    'ECS (iad/182A)'
+    >>> r = manager.request('GET', 'http://httpbin.org/')
     >>> r.headers['server']
-    'ustream/web'
-    >>> r = manager.request('POST', 'http://www.ustream.tv/explore/all')
-    >>> r = manager.request('HEAD', 'http://www.ustream.tv/explore/technology')
+    'gunicorn/18.0'
+    >>> r = manager.request('POST', 'http://httpbin.org/headers')
+    >>> r = manager.request('HEAD', 'http://httpbin.org/cookies')
     >>> len(manager.pools)
     2
-    >>> conn = manager.connection_from_host('www.ustream.tv')
+    >>> conn = manager.connection_from_host('httpbin.org')
     >>> conn.num_requests
     3
 
