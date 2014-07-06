@@ -29,7 +29,7 @@ $(REQUIREMENTS_OUT): $(REQUIREMENTS_FILE)
 clean:
 	find . -name "*.py[oc]" -delete
 	find . -name "__pycache__" -delete
-	rm $(REQUIREMENTS_OUT)
+	rm -f $(REQUIREMENTS_OUT)
 
 test: requirements
 	nosetests
