@@ -79,11 +79,15 @@ Once you find your root certificate file::
 OpenSSL / PyOpenSSL
 -------------------
 
-By default, we use the standard library's ``ssl`` module. Unfortunately, it
-doesn't support all features like SNI.
+By default, we use the standard library's ``ssl`` module. Unfortunately, there
+are several limitations which are addressed by PyOpenSSL:
 
-If you'd prefer to use the Python OpenSSL bindings instead, you'll need to
-install the required packages::
+- (Python 2.x) SNI support.
+- (Python 2.x-3.2) Disabling compression to mitigate `CRIME attack
+  <https://en.wikipedia.org/wiki/CRIME_(security_exploit)>`_.
+
+To use the Python OpenSSL bindings instead, you'll need to install the required
+packages::
 
     $ pip install pyopenssl ndg-httpsclient pyasn1
 
@@ -121,3 +125,4 @@ you can use :func:`~urllib3.disable_warnings`::
     urllib3.disable_warnings()
 
 Making unverified HTTPS requests is strongly discouraged. ˙ ͜ʟ˙
+
