@@ -57,11 +57,11 @@ Usage
 
     >>> import urllib3
     >>> http = urllib3.PoolManager()
-    >>> r = http.request('GET', 'http://www.youtube.com/')
+    >>> r = http.request('GET', 'http://example.com/')
     >>> r.status
     200
     >>> r.headers['server']
-    'gwiseguy/2.0'
+    'ECS (iad/182A)'
     >>> 'data: ' + r.data
     'data: ...'
 
@@ -105,9 +105,9 @@ to a lower level component for more granular control.
 
     >>> import urllib3
     >>> http = urllib3.PoolManager(10)
-    >>> r1 = http.request('GET', 'http://www.youtube.com/')
-    >>> r2 = http.request('GET', 'http://www.ustream.tv/explore/all')
-    >>> r3 = http.request('GET', 'http://www.ustream.tv/')
+    >>> r1 = http.request('GET', 'http://example.com/')
+    >>> r2 = http.request('GET', 'http://httpbin.org/')
+    >>> r3 = http.request('GET', 'http://httpbin.org/get')
     >>> len(http.pools)
     2
 
@@ -157,13 +157,13 @@ to check SSL certificates against specific provided certificate authorities.
 .. doctest ::
 
     >>> import urllib3
-    >>> conn = urllib3.connection_from_url('http://www.youtube.com/')
-    >>> r1 = conn.request('GET', 'http://www.youtube.com/')
-    >>> r2 = conn.request('GET', '/search')
-    >>> r3 = conn.request('GET', 'http://wwww.ustream.tv/')
+    >>> conn = urllib3.connection_from_url('http://httpbin.org/')
+    >>> r1 = conn.request('GET', 'http://httpbin.org/')
+    >>> r2 = conn.request('GET', '/user-agent')
+    >>> r3 = conn.request('GET', 'http://example.com')
     Traceback (most recent call last):
       ...
-    urllib3.exceptions.HostChangedError: HTTPConnectionPool(host='www.youtube.com', port=None): Tried to open a foreign host with url: http://wwww.ustream.tv/
+    urllib3.exceptions.HostChangedError: HTTPConnectionPool(host='httpbin.org', port=None): Tried to open a foreign host with url: http://example.com
 
 Again, a ConnectionPool is a pool of connections to a specific host. Trying to
 access a different host through the same pool will raise a ``HostChangedError``
