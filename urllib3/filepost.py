@@ -1,9 +1,3 @@
-# urllib3/filepost.py
-# Copyright 2008-2013 Andrey Petrov and contributors (see CONTRIBUTORS.txt)
-#
-# This module is part of urllib3 and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
-
 import codecs
 
 from uuid import uuid4

@@ -1,3 +1,5 @@
+# TODO: Break this module up into pieces. Maybe group by functionality tested
+# rather than the socket level-ness of it.
 
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
@@ -6,8 +8,11 @@ from urllib3.exceptions import (
         ProxyError,
         ReadTimeoutError,
         SSLError,
+        ProtocolError,
 )
-from urllib3 import util
+from urllib3.util.ssl_ import HAS_SNI
+from urllib3.util.timeout import Timeout
+from urllib3.util.retry import Retry
 
 from dummyserver.testcase import SocketDummyServerTestCase
 from dummyserver.server import (
@@ -16,7 +21,6 @@ from dummyserver.server import (
 from nose.plugins.skip import SkipTest
 from threading import Event
 import socket
-import time
 import ssl
 
 
@@ -45,7 +49,7 @@ class TestCookies(SocketDummyServerTestCase):
 class TestSNI(SocketDummyServerTestCase):
 
     def test_hostname_in_first_request_packet(self):
-        if not util.HAS_SNI:
+        if not HAS_SNI:
             raise SkipTest('SNI-support not available')
 
         done_receiving = Event()
@@ -115,30 +119,31 @@ class TestSocketClosing(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(host, port)
         self.assertRaises(MaxRetryError, pool.request, 'GET', '/', retries=0)
 
-    def test_connection_timeout(self):
+    def test_connection_read_timeout(self):
         timed_out = Event()
         def socket_handler(listener):
-            timed_out.wait()
             sock = listener.accept()[0]
+            while not sock.recv(65536).endswith(b'\r\n\r\n'):
+                pass
+
+            timed_out.wait()
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001, retries=False)
 
-        self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/', retries=0)
-
-        timed_out.set()
+        try:
+            self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/')
+        finally:
+            timed_out.set()
 
     def test_timeout_errors_cause_retries(self):
-
         def socket_handler(listener):
-            sock = listener.accept()[0]
-            # First request.
-            # Pause before responding so the first request times out.
-            time.sleep(0.001) # FIXME: Convert this to use Event.
-            sock.close()
+            sock_timeout = listener.accept()[0]
 
+            # Wait for a second request before closing the first socket.
             sock = listener.accept()[0]
+            sock_timeout.close()
 
             # Second request.
             buf = b''
@@ -153,18 +158,18 @@ class TestSocketClosing(SocketDummyServerTestCase):
                       '\r\n'
                       '%s' % (len(body), body)).encode('utf-8'))
 
-            sock.close()  # Close the socket.
+            sock.close()
 
         # In situations where the main thread throws an exception, the server
         # thread can hang on an accept() call. This ensures everything times
-        # out within 3 seconds. This should be long enough for any socket
+        # out within 1 second. This should be long enough for any socket
         # operations in the test suite to complete
         default_timeout = socket.getdefaulttimeout()
         socket.setdefaulttimeout(1)
 
         try:
             self._start_server(socket_handler)
-            t = util.Timeout(connect=0.001, read=0.001)
+            t = Timeout(connect=0.001, read=0.001)
             pool = HTTPConnectionPool(self.host, self.port, timeout=t)
 
             response = pool.request('GET', '/', retries=1)
@@ -187,7 +192,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
                        'Content-Length: %d\r\n'
                        '\r\n' % len(body)).encode('utf-8'))
 
-            timed_out.wait(timeout=0.05)
+            timed_out.wait()
             sock.send(body.encode('utf-8'))
             sock.close()
 
@@ -195,9 +200,82 @@ class TestSocketClosing(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port)
 
         response = pool.urlopen('GET', '/', retries=0, preload_content=False,
-                                timeout=util.Timeout(connect=1, read=0.001))
-        self.assertRaises(ReadTimeoutError, response.read)
-        timed_out.set()
+                                timeout=Timeout(connect=1, read=0.001))
+        try:
+            self.assertRaises(ReadTimeoutError, response.read)
+        finally:
+            timed_out.set()
+
+    def test_incomplete_response(self):
+        body = 'Response'
+        partial_body = body[:2]
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            # Consume request
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf = sock.recv(65536)
+
+            # Send partial response and close socket.
+            sock.send((
+                'HTTP/1.1 200 OK\r\n'
+                'Content-Type: text/plain\r\n'
+                'Content-Length: %d\r\n'
+                '\r\n'
+                '%s' % (len(body), partial_body)).encode('utf-8')
+            )
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port)
+
+        response = pool.request('GET', '/', retries=0, preload_content=False)
+        self.assertRaises(ProtocolError, response.read)
+
+    def test_retry_weird_http_version(self):
+        """ Retry class should handle httplib.BadStatusLine errors properly """
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            # First request.
+            # Pause before responding so the first request times out.
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            # send unknown http protocol
+            body = "bad http 0.5 response"
+            sock.send(('HTTP/0.5 200 OK\r\n'
+                      'Content-Type: text/plain\r\n'
+                      'Content-Length: %d\r\n'
+                      '\r\n'
+                      '%s' % (len(body), body)).encode('utf-8'))
+            sock.close()
+
+            # Second request.
+            sock = listener.accept()[0]
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            # Now respond immediately.
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                      'Content-Type: text/plain\r\n'
+                      'Content-Length: %d\r\n'
+                      '\r\n'
+                      'foo' % (len('foo'))).encode('utf-8'))
+
+            sock.close()  # Close the socket.
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port)
+        retry = Retry(read=1)
+        response = pool.request('GET', '/', retries=retry)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.data, b'foo')
+
 
 
 class TestProxyManager(SocketDummyServerTestCase):
@@ -301,7 +379,7 @@ class TestProxyManager(SocketDummyServerTestCase):
 
         self.assertRaises(ProxyError, conn.urlopen, 'GET',
                 'http://www.google.com',
-                assert_same_host=False, retries=0)
+                assert_same_host=False, retries=False)
 
     def test_connect_reconn(self):
         def proxy_ssl_one(listener):
@@ -374,11 +452,12 @@ class TestSSL(SocketDummyServerTestCase):
                 buf += ssl_sock.recv(65536)
 
             # Deliberately send from the non-SSL socket.
-            sock2.send(('HTTP/1.1 200 OK\r\n'
-                       'Content-Type: text/plain\r\n'
-                       'Content-Length: 2\r\n'
-                       '\r\n'
-                       'Hi').encode('utf-8'))
+            sock2.send((
+                'HTTP/1.1 200 OK\r\n'
+                'Content-Type: text/plain\r\n'
+                'Content-Length: 2\r\n'
+                '\r\n'
+                'Hi').encode('utf-8'))
             sock2.close()
             ssl_sock.close()
 
@@ -386,3 +465,80 @@ class TestSSL(SocketDummyServerTestCase):
         pool = HTTPSConnectionPool(self.host, self.port)
 
         self.assertRaises(SSLError, pool.request, 'GET', '/', retries=0)
+
+    def test_ssl_read_timeout(self):
+        timed_out = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            ssl_sock = ssl.wrap_socket(sock,
+                                       server_side=True,
+                                       keyfile=DEFAULT_CERTS['keyfile'],
+                                       certfile=DEFAULT_CERTS['certfile'],
+                                       ca_certs=DEFAULT_CA)
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += ssl_sock.recv(65536)
+
+            # Send incomplete message (note Content-Length)
+            ssl_sock.send((
+                'HTTP/1.1 200 OK\r\n'
+                'Content-Type: text/plain\r\n'
+                'Content-Length: 10\r\n'
+                '\r\n'
+                'Hi-').encode('utf-8'))
+            timed_out.wait()
+
+            sock.close()
+            ssl_sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPSConnectionPool(self.host, self.port)
+
+        response = pool.urlopen('GET', '/', retries=0, preload_content=False,
+                                timeout=Timeout(connect=1, read=0.001))
+        try:
+            self.assertRaises(ReadTimeoutError, response.read)
+        finally:
+            timed_out.set()
+
+
+def consume_socket(sock, chunks=65536):
+    while not sock.recv(chunks).endswith(b'\r\n\r\n'):
+        pass
+
+
+def create_response_handler(response, num=1):
+    def socket_handler(listener):
+        for _ in range(num):
+            sock = listener.accept()[0]
+            consume_socket(sock)
+
+            sock.send(response)
+            sock.close()
+
+    return socket_handler
+
+
+class TestErrorWrapping(SocketDummyServerTestCase):
+
+    def test_bad_statusline(self):
+        handler = create_response_handler(
+           b'HTTP/1.1 Omg What Is This?\r\n'
+           b'Content-Length: 0\r\n'
+           b'\r\n'
+        )
+        self._start_server(handler)
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        self.assertRaises(ProtocolError, pool.request, 'GET', '/')
+
+    def test_unknown_protocol(self):
+        handler = create_response_handler(
+           b'HTTP/1000 200 OK\r\n'
+           b'Content-Length: 0\r\n'
+           b'\r\n'
+        )
+        self._start_server(handler)
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        self.assertRaises(ProtocolError, pool.request, 'GET', '/')

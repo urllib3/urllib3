@@ -1,18 +1,13 @@
-# urllib3/response.py
-# Copyright 2008-2013 Andrey Petrov and contributors (see CONTRIBUTORS.txt)
-#
-# This module is part of urllib3 and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
-
-
 import zlib
 import io
 from socket import timeout as SocketTimeout
 
 from ._collections import HTTPHeaderDict
-from .exceptions import DecodeError, ReadTimeoutError
+from .exceptions import ProtocolError, DecodeError, ReadTimeoutError
 from .packages.six import string_types as basestring, binary_type
-from .util import is_fp_closed
+from .connection import HTTPException, BaseSSLError
+from .util.response import is_fp_closed
+
 
 
 class DeflateDecoder(object):
@@ -88,10 +83,13 @@ class HTTPResponse(io.IOBase):
         self.decode_content = decode_content
 
         self._decoder = None
-        self._body = body if body and isinstance(body, basestring) else None
+        self._body = None
         self._fp = None
         self._original_response = original_response
         self._fp_bytes_read = 0
+
+        if body and isinstance(body, (basestring, binary_type)):
+            self._body = body
 
         self._pool = pool
         self._connection = connection
@@ -198,6 +196,19 @@ class HTTPResponse(io.IOBase):
                 # FIXME: Ideally we'd like to include the url in the ReadTimeoutError but
                 # there is yet no clean way to get at it from this context.
                 raise ReadTimeoutError(self._pool, None, 'Read timed out.')
+
+            except BaseSSLError as e:
+                # FIXME: Is there a better way to differentiate between SSLErrors?
+                if not 'read operation timed out' in str(e):  # Defensive:
+                    # This shouldn't happen but just in case we're missing an edge
+                    # case, let's avoid swallowing SSL errors.
+                    raise
+
+                raise ReadTimeoutError(self._pool, None, 'Read timed out.')
+
+            except HTTPException as e:
+                # This includes IncompleteRead.
+                raise ProtocolError('Connection broken: %r' % e, e)
 
             self._fp_bytes_read += len(data)
 

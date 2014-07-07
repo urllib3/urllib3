@@ -1,9 +1,3 @@
-# urllib3/fields.py
-# Copyright 2008-2013 Andrey Petrov and contributors (see CONTRIBUTORS.txt)
-#
-# This module is part of urllib3 and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
-
 import email.utils
 import mimetypes
 
@@ -81,7 +75,7 @@ class RequestField(object):
         Supports constructing :class:`~urllib3.fields.RequestField` from
         parameter of key/value strings AND key/filetuple. A filetuple is a
         (filename, data, MIME type) tuple where the MIME type is optional.
-        For example: ::
+        For example::
 
             'foo': 'bar',
             'fakefile': ('foofile.txt', 'contents of foofile'),

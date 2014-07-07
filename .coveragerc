@@ -1,11 +1,15 @@
 [run]
-omit = urllib3/packages/*
+omit =
+    urllib3/packages/*
+    urllib3/contrib/*
 
 [report]
 exclude_lines =
-    .* # Platform-specific.*
     except ImportError:
-    .*:.* # Python \d.*
     pass
-    .* # Abstract
     import
+    raise
+    .* # Platform-specific.*
+    .*:.* # Python \d.*
+    .* # Abstract
+    .* # Defensive:
