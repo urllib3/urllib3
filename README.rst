@@ -133,3 +133,10 @@ Contributing
    as expected.
 #. Send a pull request and bug the maintainer until it gets merged and published.
    :) Make sure to add yourself to ``CONTRIBUTORS.txt``.
+
+
+Sponsorship
+===========
+
+If your company benefits from this library, please consider `sponsoring its
+development <http://urllib3.readthedocs.org/en/latest/#sponsorship>`_.
