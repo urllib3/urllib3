@@ -4,6 +4,8 @@ Changes
 dev (master)
 ++++++++++++
 
+* Apply socket arguments before binding. (Issue #427)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
