@@ -1,3 +1,4 @@
+import logging
 import socket
 try:
     from select import poll, POLLIN
@@ -7,6 +8,9 @@ except ImportError:  # `poll` doesn't exist on OSX and other platforms
         from select import select
     except ImportError:  # `select` doesn't exist on AppEngine.
         select = False
+
+
+log = logging.getLogger(__name__)
 
 
 def is_connection_dropped(conn):  # Platform-specific
@@ -76,6 +80,11 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
             if source_address:
                 sock.bind(source_address)
             sock.connect(sa)
+
+            if log.isEnabledFor(logging.DEBUG):
+                local_addr = sock.getsockname()
+                log.debug("Connected to %s:%s from %s:%s",
+                          sa[0], sa[1], local_addr[0], local_addr[1])
             return sock
 
         except socket.error as _:
