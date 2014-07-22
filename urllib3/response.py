@@ -48,7 +48,10 @@ class HTTPResponse(io.IOBase):
     HTTP Response container.
 
     Backwards-compatible to httplib's HTTPResponse but the response ``body`` is
-    loaded and decoded on-demand when the ``data`` property is accessed.
+    loaded and decoded on-demand when the ``data`` property is accessed.  This
+    class is also compatible with the Python standard library's `io` module,
+    and can hence be treated as a readable object in the context of that
+    framework.
 
     Extra parameters for behaviour not present in httplib.HTTPResponse:
 
