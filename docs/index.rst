@@ -34,7 +34,7 @@ Highlights
 
 - Tested on Python 2.6+ and Python 3.2+, 100% unit test coverage.
 
-- Works with AppEngine, gevent, and eventlib.
+- Works with AppEngine, gevent, eventlib, and the standard library `io` module.
 
 - Small and easy to understand codebase perfect for extending and building upon.
   For a more comprehensive solution, have a look at
@@ -81,6 +81,20 @@ You'll need to supply a root certificate bundle, or use `certifi
 
 For more on making secure SSL/TLS HTTPS requests, read the :ref:`Security
 section <security>`.
+
+
+urllib3's responses respect the `io` framework from Python's standard
+library, allowing use of these standard objects for purposes like
+buffering:
+
+.. doctest ::
+
+    >>> http = urllib3.PoolManager()
+    >>> r = http.urlopen('GET','http://example.com/', preload_content=False)
+    >>> b = io.BufferedReader(r, 2048)
+    >>> firstpart = b.read(100)
+    >>> # ... your internet connection fails momentarily ...
+    >>> secondpart = b.read()
 
 
 Components
@@ -196,7 +210,7 @@ set for the entire pool or per-request.
     >>> r = http.request('GET', 'http://httpbin.org/delay/1')
 
     >>> # Manager with 2 second timeout for the read phase, no limit for the rest.
-    >>> http = PoolManager(timeout=Timeout(read=2.0)) 
+    >>> http = PoolManager(timeout=Timeout(read=2.0))
     >>> r = http.request('GET', 'http://httpbin.org/delay/1')
 
     >>> # Manager with no timeout but a request with a timeout of 1 seconds for
@@ -296,7 +310,7 @@ benefits from this library.
   biggest impact for progress. Periods of  3 to 10 days allow a contributor to
   tackle substantial complex issues which are otherwise left to linger until
   somebody can't afford to not fix them.
-  
+
   Contact `@shazow <https://github.com/shazow>`_ to arrange a grant for a core
   contributor.
 
