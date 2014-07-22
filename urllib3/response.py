@@ -320,4 +320,15 @@ class HTTPResponse(io.IOBase):
             return self._fp.flush()
 
     def readable(self):
+        #required for `io` module compatibility
         return True
+
+    def readinto(self, b):
+        #required for `io` module compatibility
+        temp = self.read(len(b))
+        if len(temp) == 0:
+            return None
+        else:
+            b[:len(temp)] = temp
+            return len(temp)
+
