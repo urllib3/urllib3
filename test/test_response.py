@@ -182,6 +182,14 @@ class TestResponse(unittest.TestCase):
         br.close()
         self.assertEqual(resp.closed, True)
 
+        b = b'fooandahalf'
+        fp = BytesIO(bytes(b))
+        resp = HTTPResponse(fp, preload_content=False)
+        br = BufferedReader(resp, 5)
+
+        br.read(1)  # sets up the buffer, reading 5
+        self.assertEqual(len(fp.read()), len(b) - 5)
+
     def test_streaming(self):
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)
