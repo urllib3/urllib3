@@ -34,7 +34,7 @@ Highlights
 
 - Tested on Python 2.6+ and Python 3.2+, 100% unit test coverage.
 
-- Works with AppEngine, gevent, eventlib, and the standard library `io` module.
+- Works with AppEngine, gevent, eventlib, and the standard library :mod:`io` module.
 
 - Small and easy to understand codebase perfect for extending and building upon.
   For a more comprehensive solution, have a look at

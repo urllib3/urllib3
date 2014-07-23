@@ -183,7 +183,7 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(resp.closed, True)
 
         b = b'fooandahalf'
-        fp = BytesIO(bytes(b))
+        fp = BytesIO(b)
         resp = HTTPResponse(fp, preload_content=False)
         br = BufferedReader(resp, 5)
 
