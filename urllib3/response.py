@@ -331,4 +331,3 @@ class HTTPResponse(io.IOBase):
         else:
             b[:len(temp)] = temp
             return len(temp)
-
