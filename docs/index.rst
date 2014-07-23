@@ -83,9 +83,9 @@ For more on making secure SSL/TLS HTTPS requests, read the :ref:`Security
 section <security>`.
 
 
-urllib3's responses respect the `io` framework from Python's standard
-library, allowing use of these standard objects for purposes like
-buffering:
+urllib3's responses respect the :mod:`io` framework from Python's
+standard library, allowing use of these standard objects for purposes
+like buffering:
 
 .. doctest ::
 
