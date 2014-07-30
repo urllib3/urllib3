@@ -21,6 +21,8 @@ from urllib3.exceptions import (
     InsecureRequestWarning,
 )
 
+from urllib3.util import is_fp_closed
+
 from . import clear_warnings
 
 # This number represents a time in seconds, it doesn't mean anything in
@@ -324,3 +326,32 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(resolve_cert_reqs('REQUIRED'), ssl.CERT_REQUIRED)
         self.assertEqual(resolve_cert_reqs('CERT_REQUIRED'), ssl.CERT_REQUIRED)
 
+    def test_is_fp_closed_object_supports_closed(self):
+        class ClosedFile(object):
+            @property
+            def closed(self):
+                return True
+
+        self.assertTrue(is_fp_closed(ClosedFile()))
+ 
+    def test_is_fp_closed_object_has_none_fp(self):
+        class NoneFpFile(object):
+            @property
+            def fp(self):
+                return None
+
+        self.assertTrue(is_fp_closed(NoneFpFile()))
+
+    def test_is_fp_closed_object_has_fp(self):
+        class FpFile(object):
+            @property
+            def fp(self):
+                return True
+
+        self.assertTrue(not is_fp_closed(FpFile()))
+
+    def test_is_fp_closed_object_has_neither_fp_nor_closed(self):
+        class NotReallyAFile(object):
+            pass
+
+        self.assertRaises(ValueError, is_fp_closed, NotReallyAFile())
