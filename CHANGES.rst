@@ -6,6 +6,8 @@ dev (master)
 
 * Apply socket arguments before binding. (Issue #427)
 
+* More careful checks if fp-like object is closed. (Issue #435)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
