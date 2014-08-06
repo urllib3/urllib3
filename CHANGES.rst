@@ -8,6 +8,9 @@ dev (master)
 
 * More careful checks if fp-like object is closed. (Issue #435)
 
+* Fixed packaging issues of some development-related files not
+  getting included. (Issue #440)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
