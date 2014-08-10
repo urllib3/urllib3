@@ -120,7 +120,6 @@ In chronological order:
 * Ian Cordasco <graffatcolmingov@gmail.com>
   * PEP8 Compliance and Linting
   * Add ability to pass socket options to an HTTP Connection
-  * Add my name to CONTRIBUTORS
 
 * Erik Tollerud <erik.tollerud@gmail.com>
   * Support for standard library io module.
