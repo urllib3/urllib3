@@ -123,7 +123,7 @@ In chronological order:
   * Add my name to CONTRIBUTORS
 
 * Erik Tollerud <erik.tollerud@gmail.com>
-  * Support for standard library ``io`` module.
+  * Support for standard library io module.
 
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
