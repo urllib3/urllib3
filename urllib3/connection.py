@@ -3,6 +3,7 @@ import sys
 import socket
 from socket import timeout as SocketTimeout
 import warnings
+from .packages import six
 
 try:  # Python 3
     from http.client import HTTPConnection as _HTTPConnection, HTTPException
@@ -38,7 +39,6 @@ from .exceptions import (
     SystemTimeWarning,
 )
 from .packages.ssl_match_hostname import match_hostname
-from .packages import six
 
 from .util.ssl_ import (
     resolve_cert_reqs,
