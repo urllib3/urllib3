@@ -26,6 +26,13 @@ except (ImportError, AttributeError):  # Platform-specific: No SSL.
         pass
 
 
+if six.PY3:  # Python 3:
+    ConnectionError = ConnectionError
+else:  # Python 2:
+    class ConnectionError(Exception):
+        pass
+
+
 from .exceptions import (
     ConnectTimeoutError,
     SystemTimeWarning,
@@ -40,8 +47,8 @@ from .util.ssl_ import (
     assert_fingerprint,
 )
 
-from .util import connection
 
+from .util import connection
 
 port_by_scheme = {
     'http': 80,
