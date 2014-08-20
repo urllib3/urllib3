@@ -10,6 +10,8 @@ dev (master)
 
 * Fixed packaging issues of some development-related files not
   getting included. (Issue #440)
+  
+* Allow performing *only* fingerprint verification. (Issue #444)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
