@@ -218,6 +218,23 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_fingerprint = 'AA'
         self.assertRaises(SSLError, https_pool.request, 'GET', '/')
 
+    def test_verify_none_and_bad_fingerprint(self):
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_NONE',
+                                         ca_certs=DEFAULT_CA_BAD)
+
+        https_pool.assert_fingerprint = 'AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:' \
+                                        'AA:AA:AA:AA:AA:AA:AA:AA:AA'
+        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+
+    def test_verify_none_and_good_fingerprint(self):
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_NONE',
+                                         ca_certs=DEFAULT_CA_BAD)
+
+        https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
+                                        '7A:F2:8A:D7:1E:07:33:67:DE'
+        https_pool.request('GET', '/')
 
     @requires_network
     def test_https_timeout(self):

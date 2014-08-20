@@ -172,6 +172,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     cert_reqs = None
     ca_certs = None
     ssl_version = None
+    assert_fingerprint = None
 
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None,
@@ -214,15 +215,16 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                                     server_hostname=hostname,
                                     ssl_version=resolved_ssl_version)
 
-        if resolved_cert_reqs != ssl.CERT_NONE:
-            if self.assert_fingerprint:
-                assert_fingerprint(self.sock.getpeercert(binary_form=True),
-                                   self.assert_fingerprint)
-            elif self.assert_hostname is not False:
-                match_hostname(self.sock.getpeercert(),
-                               self.assert_hostname or hostname)
+        if self.assert_fingerprint:
+            assert_fingerprint(self.sock.getpeercert(binary_form=True),
+                               self.assert_fingerprint)
+        elif resolved_cert_reqs != ssl.CERT_NONE \
+                and self.assert_hostname is not False:
+            match_hostname(self.sock.getpeercert(),
+                           self.assert_hostname or hostname)
 
-        self.is_verified = resolved_cert_reqs == ssl.CERT_REQUIRED
+        self.is_verified = (resolved_cert_reqs == ssl.CERT_REQUIRED
+                            or self.assert_fingerprint is not None)
 
 
 if ssl:
