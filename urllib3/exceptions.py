@@ -137,3 +137,8 @@ class LocationParseError(LocationValueError):
 class InsecureRequestWarning(HTTPWarning):
     "Warned when making an unverified HTTPS request."
     pass
+
+
+class TimeOutOfSyncWarning(HTTPWarning):
+    "Warned when system time is suspected to be wrong"
+    pass

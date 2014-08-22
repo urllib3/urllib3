@@ -1,6 +1,8 @@
+import datetime
 import sys
 import socket
 from socket import timeout as SocketTimeout
+import warnings
 
 try:  # Python 3
     from http.client import HTTPConnection as _HTTPConnection, HTTPException
@@ -26,6 +28,7 @@ except (ImportError, AttributeError):  # Platform-specific: No SSL.
 
 from .exceptions import (
     ConnectTimeoutError,
+    TimeOutOfSyncWarning,
 )
 from .packages.ssl_match_hostname import match_hostname
 from .packages import six
@@ -207,6 +210,13 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             # Override the host with the one we're requesting data from.
             hostname = self._tunnel_host
 
+        if self.time_is_off:
+            warnings.warn((
+                'The system time is way off. This will probably lead to '
+                'SSL verification errors'),
+                TimeOutOfSyncWarning
+            )
+
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
         self.sock = ssl_wrap_socket(conn, self.key_file, self.cert_file,
@@ -225,6 +235,10 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
         self.is_verified = (resolved_cert_reqs == ssl.CERT_REQUIRED
                             or self.assert_fingerprint is not None)
+
+    @property
+    def time_is_off(self):
+        return datetime.date.today().year < 1971
 
 
 if ssl:
