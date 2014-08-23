@@ -134,11 +134,16 @@ class LocationParseError(LocationValueError):
         self.location = location
 
 
-class InsecureRequestWarning(HTTPWarning):
+class SecurityWarning(HTTPWarning):
+    "Warned when perfoming security reducing actions"
+    pass
+
+
+class InsecureRequestWarning(SecurityWarning):
     "Warned when making an unverified HTTPS request."
     pass
 
 
-class SystemTimeWarning(HTTPWarning):
+class SystemTimeWarning(SecurityWarning):
     "Warned when system time is suspected to be wrong"
     pass
