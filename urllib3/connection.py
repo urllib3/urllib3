@@ -215,8 +215,8 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         is_time_off = datetime.date.today() < RECENT_DATE
         if is_time_off:
             warnings.warn((
-                'System time is way off (before {}). This will probably lead to '
-                'SSL verification errors').format(RECENT_DATE),
+                'System time is way off (before {0}). This will probably'
+                'lead to SSL verification errors').format(RECENT_DATE),
                 SystemTimeWarning
             )
 
