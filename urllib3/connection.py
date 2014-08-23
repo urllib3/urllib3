@@ -48,6 +48,8 @@ port_by_scheme = {
     'https': 443,
 }
 
+RECENT_DATE = datetime.date(2014, 1, 1)
+
 
 class HTTPConnection(_HTTPConnection, object):
     """
@@ -210,10 +212,11 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             # Override the host with the one we're requesting data from.
             hostname = self._tunnel_host
 
-        if self.time_is_off:
+        is_time_off = datetime.date.today() < RECENT_DATE
+        if is_time_off:
             warnings.warn((
-                'The system time is way off. This will probably lead to '
-                'SSL verification errors'),
+                'System time is way off (before {}). This will probably lead to '
+                'SSL verification errors').format(RECENT_DATE),
                 SystemTimeWarning
             )
 
@@ -235,10 +238,6 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
         self.is_verified = (resolved_cert_reqs == ssl.CERT_REQUIRED
                             or self.assert_fingerprint is not None)
-
-    @property
-    def time_is_off(self):
-        return datetime.date.today().year < 1971
 
 
 if ssl:
