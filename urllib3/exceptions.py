@@ -139,6 +139,6 @@ class InsecureRequestWarning(HTTPWarning):
     pass
 
 
-class TimeOutOfSyncWarning(HTTPWarning):
+class SystemTimeWarning(HTTPWarning):
     "Warned when system time is suspected to be wrong"
     pass

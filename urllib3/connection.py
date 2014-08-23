@@ -28,7 +28,7 @@ except (ImportError, AttributeError):  # Platform-specific: No SSL.
 
 from .exceptions import (
     ConnectTimeoutError,
-    TimeOutOfSyncWarning,
+    SystemTimeWarning,
 )
 from .packages.ssl_match_hostname import match_hostname
 from .packages import six
@@ -214,7 +214,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             warnings.warn((
                 'The system time is way off. This will probably lead to '
                 'SSL verification errors'),
-                TimeOutOfSyncWarning
+                SystemTimeWarning
             )
 
         # Wrap socket using verification with the root certs in
