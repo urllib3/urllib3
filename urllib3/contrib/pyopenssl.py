@@ -161,12 +161,13 @@ class WrappedSocket(object):
         self.connection = connection
         self.socket = socket
         self.suppress_ragged_eofs = suppress_ragged_eofs
+        self._makefile_refs = 0
 
     def fileno(self):
         return self.socket.fileno()
 
     def makefile(self, mode, bufsize=-1):
-        return _fileobject(self, mode, bufsize)
+        return _fileobject(self, mode, bufsize, close=True)
 
     def recv(self, *args, **kwargs):
         try:
@@ -193,7 +194,12 @@ class WrappedSocket(object):
         return self.connection.sendall(data)
 
     def close(self):
-        return self.connection.shutdown()
+        if self._makefile_refs < 1:
+            res = self.connection.shutdown()
+            self.connection = None
+            return res
+        else:
+            self._makefile_refs -= 1
 
     def getpeercert(self, binary_form=False):
         x509 = self.connection.get_peer_certificate()
@@ -215,6 +221,15 @@ class WrappedSocket(object):
                 for value in get_subj_alt_name(x509)
             ]
         }
+
+    def _reuse(self):
+        self._makefile_refs += 1
+
+    def _drop(self):
+        if self._makefile_refs < 1:
+            self.close()
+        else:
+            self._makefile_refs -= 1
 
 
 def _verify_callback(cnx, x509, err_no, err_depth, return_code):
