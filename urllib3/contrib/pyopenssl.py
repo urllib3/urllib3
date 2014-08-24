@@ -49,7 +49,7 @@ Module Variables
 try:
     from ndg.httpsclient.ssl_peer_verification import SUBJ_ALT_NAME_SUPPORT
     from ndg.httpsclient.subj_alt_name import SubjectAltName as BaseSubjectAltName
-except SyntaxError as e:
+except SyntaxError as e:  # Python 3
     raise ImportError(e)
 
 import OpenSSL.SSL
@@ -131,7 +131,7 @@ class SubjectAltName(BaseSubjectAltName):
 def get_subj_alt_name(peer_cert):
     # Search through extensions
     dns_name = []
-    if not SUBJ_ALT_NAME_SUPPORT:
+    if not SUBJ_ALT_NAME_SUPPORT:  # Platform-specific
         return dns_name
 
     general_names = SubjectAltName()
