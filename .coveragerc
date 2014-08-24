@@ -1,7 +1,7 @@
 [run]
 omit =
     urllib3/packages/*
-    urllib3/contrib/*
+    urllib3/contrib/ntlmpool.py
 
 [report]
 exclude_lines =
