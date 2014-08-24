@@ -167,6 +167,7 @@ class WrappedSocket(object):
         return self.socket.fileno()
 
     def makefile(self, mode, bufsize=-1):
+        self._makefile_refs += 1
         return _fileobject(self, mode, bufsize, close=True)
 
     def recv(self, *args, **kwargs):
@@ -195,9 +196,7 @@ class WrappedSocket(object):
 
     def close(self):
         if self._makefile_refs < 1:
-            res = self.connection.shutdown()
-            self.connection = None
-            return res
+            return self.connection.shutdown()
         else:
             self._makefile_refs -= 1
 
