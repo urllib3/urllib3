@@ -184,7 +184,7 @@ class WrappedSocket(object):
             rd, wd, ed = select.select(
                 [self.socket], [], [], self.socket.gettimeout())
             if not rd:
-                raise timeout()
+                raise timeout('The read operation timed out')
             else:
                 return self.recv(*args, **kwargs)
         else:
