@@ -6,6 +6,7 @@ tox==1.7.1
 # Tornado 3.2.2 makes our tests flaky, so we stick with 3.1
 tornado==3.1.1
 
+# We don't use those on python3, but it easier to install them always
 ndg-httpsclient==0.3.2
 pyOpenSSL==0.14
 pyasn1==0.1.7
