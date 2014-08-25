@@ -595,7 +595,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             pool = HTTPConnectionPool(self.host, self.port,
                     source_address=addr, retries=False)
             r = pool.request('GET', '/source_address')
-            assert r.data == b(addr[0])
+            assert r.data == b(addr[0]), (
+                "expected the response to contain the source address {addr}, "
+                "but was {data}".format(data=r.data, addr=b(addr[0])))
 
     def test_source_address_error(self):
         for addr in INVALID_SOURCE_ADDRESSES:
