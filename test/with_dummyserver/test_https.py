@@ -12,10 +12,9 @@ from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from test import (
+    mocked_socket_module,
     onlyPy26OrOlder,
     requires_network,
-    TARPIT_HOST,
-    clear_warnings,
 )
 from urllib3 import HTTPSConnectionPool
 from urllib3.connection import (
@@ -241,16 +240,18 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @requires_network
     def test_https_timeout(self):
-        timeout = Timeout(connect=0.001)
-        https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
-                                         timeout=timeout, retries=False,
-                                         cert_reqs='CERT_REQUIRED')
+        with mocked_socket_module():
+            timeout = Timeout(connect=0.001)
+            https_pool = HTTPSConnectionPool(self.host, self.port,
+                                             timeout=timeout, retries=False,
+                                             cert_reqs='CERT_REQUIRED')
+            self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/')
 
-        timeout = Timeout(total=None, connect=0.001)
-        https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
-                                         timeout=timeout, retries=False,
-                                         cert_reqs='CERT_REQUIRED')
-        self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/')
+            timeout = Timeout(total=None, connect=0.001)
+            https_pool = HTTPSConnectionPool(self.host, self.port,
+                                             timeout=timeout, retries=False,
+                                             cert_reqs='CERT_REQUIRED')
+            self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/')
 
         timeout = Timeout(read=0.001)
         https_pool = HTTPSConnectionPool(self.host, self.port,
@@ -296,27 +297,28 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     @requires_network
     def test_enhanced_timeout(self):
         def new_pool(timeout, cert_reqs='CERT_REQUIRED'):
-            https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
+            https_pool = HTTPSConnectionPool(self.host, self.port,
                                              timeout=timeout,
                                              retries=False,
                                              cert_reqs=cert_reqs)
             return https_pool
 
-        https_pool = new_pool(Timeout(connect=0.001))
-        conn = https_pool._new_conn()
-        self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/')
-        self.assertRaises(ConnectTimeoutError, https_pool._make_request, conn,
-                          'GET', '/')
+        with mocked_socket_module():
+            https_pool = new_pool(Timeout(connect=0.001))
+            conn = https_pool._new_conn()
+            self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/')
+            self.assertRaises(ConnectTimeoutError, https_pool._make_request, conn,
+                              'GET', '/')
 
-        https_pool = new_pool(Timeout(connect=5))
-        self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/',
-                          timeout=Timeout(connect=0.001))
+            https_pool = new_pool(Timeout(connect=5))
+            self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/',
+                              timeout=Timeout(connect=0.001))
 
-        t = Timeout(total=None)
-        https_pool = new_pool(t)
-        conn = https_pool._new_conn()
-        self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/',
-                          timeout=Timeout(total=None, connect=0.001))
+            t = Timeout(total=None)
+            https_pool = new_pool(t)
+            conn = https_pool._new_conn()
+            self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/',
+                              timeout=Timeout(total=None, connect=0.001))
 
     def test_enhanced_ssl_connection(self):
         fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:7A:F2:8A:D7:1E:07:33:67:DE'
