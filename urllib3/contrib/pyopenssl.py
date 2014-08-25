@@ -46,8 +46,12 @@ Module Variables
 
 '''
 
-from ndg.httpsclient.ssl_peer_verification import SUBJ_ALT_NAME_SUPPORT
-from ndg.httpsclient.subj_alt_name import SubjectAltName as BaseSubjectAltName
+try:
+    from ndg.httpsclient.ssl_peer_verification import SUBJ_ALT_NAME_SUPPORT
+    from ndg.httpsclient.subj_alt_name import SubjectAltName as BaseSubjectAltName
+except SyntaxError as e:
+    raise ImportError(e)
+
 import OpenSSL.SSL
 from pyasn1.codec.der import decoder as der_decoder
 from pyasn1.type import univ, constraint
@@ -186,7 +190,7 @@ class WrappedSocket(object):
             rd, wd, ed = select.select(
                 [self.socket], [], [], self.socket.gettimeout())
             if not rd:
-                raise timeout()
+                raise timeout('The read operation timed out')
             else:
                 return self.recv(*args, **kwargs)
         else:
