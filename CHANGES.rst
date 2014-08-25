@@ -15,6 +15,8 @@ dev (master)
 
 * Emit ``SecurityWarning`` if system clock is waaay off. (Issue #445)
 
+* Fixed PyOpenSSL compatibility with PyPy. (Issue #450)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
