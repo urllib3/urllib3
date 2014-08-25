@@ -33,7 +33,7 @@ clean:
 	rm -rf docs/_build
 
 test: requirements
-	nosetests
+	nosetests test
 
 test-all: requirements
 	tox
