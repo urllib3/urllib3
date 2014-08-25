@@ -13,6 +13,8 @@ dev (master)
   
 * Allow performing *only* fingerprint verification. (Issue #444)
 
+* Emit ``SecurityWarning`` if system clock is waaay off. (Issue #445)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

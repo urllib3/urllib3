@@ -1,3 +1,4 @@
+import datetime
 import logging
 import ssl
 import sys
@@ -20,12 +21,14 @@ from urllib3 import HTTPSConnectionPool
 from urllib3.connection import (
     VerifiedHTTPSConnection,
     UnverifiedHTTPSConnection,
+    RECENT_DATE,
 )
 from urllib3.exceptions import (
     SSLError,
     ReadTimeoutError,
     ConnectTimeoutError,
     InsecureRequestWarning,
+    SystemTimeWarning,
 )
 from urllib3.util.timeout import Timeout
 
@@ -324,6 +327,27 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 assert_fingerprint=fingerprint)
 
         https_pool._make_request(conn, 'GET', '/')
+
+    def test_ssl_correct_system_time(self):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            self._pool.request('GET', '/')
+
+        self.assertEqual([], w)
+
+    def test_ssl_wrong_system_time(self):
+        with mock.patch('urllib3.connection.datetime') as mock_date:
+            mock_date.date.today.return_value = datetime.date(1970, 1, 1)
+
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter('always')
+                self._pool.request('GET', '/')
+
+            self.assertEqual(len(w), 1)
+            warning = w[0]
+
+            self.assertEqual(SystemTimeWarning, warning.category)
+            self.assertTrue(str(RECENT_DATE) in warning.message.args[0])
 
 
 class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
