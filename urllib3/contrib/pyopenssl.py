@@ -155,7 +155,11 @@ def get_subj_alt_name(peer_cert):
 
 
 class WrappedSocket(object):
-    '''API-compatibility wrapper for Python OpenSSL's Connection-class.'''
+    '''API-compatibility wrapper for Python OpenSSL's Connection-class.
+
+    Note: _makefile_refs, _drop() and _reuse() are needed for the garbage
+    collector of pypy.
+    '''
 
     def __init__(self, connection, socket, suppress_ragged_eofs=True):
         self.connection = connection
