@@ -27,10 +27,10 @@ except (ImportError, AttributeError):  # Platform-specific: No SSL.
         pass
 
 
-if six.PY3:  # Python 3:
+try:  # Python 3:
     # Not a no-op, we're adding this to the namespace so it can be imported.
     ConnectionError = ConnectionError
-else:  # Python 2:
+except NameError:  # Python 2:
     class ConnectionError(Exception):
         pass
 
