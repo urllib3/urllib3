@@ -17,6 +17,9 @@ dev (master)
 
 * Fixed PyOpenSSL compatibility with PyPy. (Issue #450)
 
+* Fixed ``BrokenPipeError`` and ``ConnectionError`` handling in Py3.
+  (Issue #443)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
