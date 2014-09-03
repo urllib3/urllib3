@@ -134,8 +134,8 @@ By Default, GAE does not allow to make http/https connection to another
 application like api.twitter.com, so to make this library working properly in
 your GAE application you will have to enable the billing information in your
 application and you should to include the ssl library in your application yaml
-file as well. e.g:
+file as well. e.g::
 
     libraries:
     - name: ssl
-      version: latest
+       version: latest
