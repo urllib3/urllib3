@@ -124,7 +124,7 @@ Our test suite `runs continuously on Travis CI
 
 
 
-Google App Engine Requirements
+Works with [Google App Engine]
 ==============================
 
 By Default, GAE does not allow you to make https connection to other
