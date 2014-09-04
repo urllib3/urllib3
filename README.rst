@@ -123,6 +123,22 @@ Our test suite `runs continuously on Travis CI
 <https://travis-ci.org/shazow/urllib3>`_ with every pull request.
 
 
+
+Google App Engine Requirements
+==============================
+
+By Default, GAE does not allow you to make https connection to other
+applications like `api.twitter.com`, so in order to make this library working
+properly in your GAE application you have to enable the billing information in
+your application setting and include the ssl library in your application yaml
+file as well. e.g::
+
+    libraries:
+    - name: ssl
+      version: latest
+
+
+
 Contributing
 ============
 
