@@ -123,7 +123,6 @@ Our test suite `runs continuously on Travis CI
 <https://travis-ci.org/shazow/urllib3>`_ with every pull request.
 
 
-
 Contributing
 ============
 
