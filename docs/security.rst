@@ -29,7 +29,7 @@ and you'll need to re-install it. Read
 `this StackOverflow thread <https://stackoverflow.com/questions/5128845/importerror-no-module-named-ssl>`_
 for details.
 
-Otherwise, we're ready to setup our certificates:
+Otherwise, if ``ssl`` imported cleanly, then we're ready to setup our certificates:
 :ref:`certifi-with-urllib3`.
 
 
