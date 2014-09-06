@@ -26,8 +26,12 @@ way to check is to simply open a Python shell and type `import ssl`::
 
 If you got an `ImportError`, then your Python is not compiled with SSL support
 and you'll need to re-install it. Read
-[this StackOverflow thread](https://stackoverflow.com/questions/5128845/importerror-no-module-named-ssl)
+`this StackOverflow thread <https://stackoverflow.com/questions/5128845/importerror-no-module-named-ssl>`_
 for details.
+
+Otherwise, we're ready to setup our certificates:
+:ref:`certifi-with-urllib3`.
+
 
 Enabling SSL on Google AppEngine
 ++++++++++++++++++++++++++++++++
