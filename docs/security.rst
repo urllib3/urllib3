@@ -24,7 +24,7 @@ way to check is to simply open a Python shell and type `import ssl`::
       ...
     ImportError: No module named _ssl
 
-If you got an `ImportError`, then your Python is not compiled with SSL support
+If you got an ``ImportError``, then your Python is not compiled with SSL support
 and you'll need to re-install it. Read
 `this StackOverflow thread <https://stackoverflow.com/questions/5128845/importerror-no-module-named-ssl>`_
 for details.
