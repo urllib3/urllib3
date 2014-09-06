@@ -124,5 +124,8 @@ In chronological order:
 * Erik Tollerud <erik.tollerud@gmail.com>
   * Support for standard library io module.
 
+* Krishna Prasad <kprasad.iitd@gmail.com>
+  * Google App Engine documentation (https://github.com/krishnaiitd)
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
