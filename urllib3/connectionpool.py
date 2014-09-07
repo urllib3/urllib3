@@ -551,7 +551,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
             stacktrace = sys.exc_info()[2]
             if isinstance(e, SocketError) and self.proxy:
-                e = ProxyError('Cannot connect to proxy.', e)
+                e = ProtocolError('Connection aborted, may be due to Proxy.', e)
             elif isinstance(e, (SocketError, HTTPException)):
                 e = ProtocolError('Connection aborted.', e)
 
