@@ -36,14 +36,16 @@ Otherwise, if ``ssl`` imported cleanly, then we're ready to setup our certificat
 Enabling SSL on Google AppEngine
 ++++++++++++++++++++++++++++++++
 
-If you're using Google App Engine, you'll need to add `ssl` as a library
+If you're using Google App Engine, you'll need to add ``ssl`` as a library
 dependency to your yaml file, like this::
 
     libraries:
     - name: ssl
       version: latest
 
-If it's still not working, you may need to enable billing on your account.
+If it's still not working, you may need to enable billing on your account
+to `enable using sockets
+<https://developers.google.com/appengine/docs/python/sockets/>`_.
 
 
 .. _certifi-with-urllib3:
