@@ -12,6 +12,7 @@ from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from test import (
+    mock_socket,
     mocked_socket_module,
     onlyPy26OrOlder,
     requires_network,
@@ -295,6 +296,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self._pool._make_request(conn, 'GET', '/')
 
     @requires_network
+    @mock_socket
     def test_enhanced_timeout(self):
         def new_pool(timeout, cert_reqs='CERT_REQUIRED'):
             https_pool = HTTPSConnectionPool(self.host, self.port,
@@ -303,22 +305,21 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                              cert_reqs=cert_reqs)
             return https_pool
 
-        with mocked_socket_module():
-            https_pool = new_pool(Timeout(connect=0.001))
-            conn = https_pool._new_conn()
-            self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/')
-            self.assertRaises(ConnectTimeoutError, https_pool._make_request, conn,
-                              'GET', '/')
+        https_pool = new_pool(Timeout(connect=0.001))
+        conn = https_pool._new_conn()
+        self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/')
+        self.assertRaises(ConnectTimeoutError, https_pool._make_request, conn,
+                          'GET', '/')
 
-            https_pool = new_pool(Timeout(connect=5))
-            self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/',
-                              timeout=Timeout(connect=0.001))
+        https_pool = new_pool(Timeout(connect=5))
+        self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/',
+                          timeout=Timeout(connect=0.001))
 
-            t = Timeout(total=None)
-            https_pool = new_pool(t)
-            conn = https_pool._new_conn()
-            self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/',
-                              timeout=Timeout(total=None, connect=0.001))
+        t = Timeout(total=None)
+        https_pool = new_pool(t)
+        conn = https_pool._new_conn()
+        self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/',
+                          timeout=Timeout(total=None, connect=0.001))
 
     def test_enhanced_ssl_connection(self):
         fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:7A:F2:8A:D7:1E:07:33:67:DE'

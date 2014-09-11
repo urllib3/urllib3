@@ -13,7 +13,7 @@ except:
     from urllib import urlencode
 
 from .. import (
-    mocked_socket_module, requires_network, onlyPy3,
+    mock_socket, mocked_socket_module, requires_network, onlyPy3,
     VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES,
 )
 from ..port_helpers import find_unused_port
@@ -231,32 +231,32 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     @requires_network
     @timed(0.5)
+    @mock_socket
     def test_connect_timeout(self):
-        with mocked_socket_module():
-            url = '/sleep?seconds=0.005'
-            timeout = Timeout(connect=0.001)
+        url = '/sleep?seconds=0.005'
+        timeout = Timeout(connect=0.001)
 
-            # Pool-global timeout
-            pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
-            conn = pool._get_conn()
-            self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', url)
+        # Pool-global timeout
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', url)
 
-            # Retries
-            retries = Retry(connect=0)
-            self.assertRaises(MaxRetryError, pool.request, 'GET', url,
-                              retries=retries)
+        # Retries
+        retries = Retry(connect=0)
+        self.assertRaises(MaxRetryError, pool.request, 'GET', url,
+                          retries=retries)
 
-            # Request-specific connection timeouts
-            big_timeout = Timeout(read=0.2, connect=0.2)
-            pool = HTTPConnectionPool(self.host, self.port,
-                                      timeout=big_timeout, retries=False)
-            conn = pool._get_conn()
-            self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET',
-                              url, timeout=timeout)
+        # Request-specific connection timeouts
+        big_timeout = Timeout(read=0.2, connect=0.2)
+        pool = HTTPConnectionPool(self.host, self.port,
+                                  timeout=big_timeout, retries=False)
+        conn = pool._get_conn()
+        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET',
+                          url, timeout=timeout)
 
-            pool._put_conn(conn)
-            self.assertRaises(ConnectTimeoutError, pool.request, 'GET', url,
-                              timeout=timeout)
+        pool._put_conn(conn)
+        self.assertRaises(ConnectTimeoutError, pool.request, 'GET', url,
+                          timeout=timeout)
 
 
     def test_connection_error_retries(self):
@@ -305,14 +305,14 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', url)
 
     @requires_network
+    @mock_socket
     def test_none_total_applies_connect(self):
-        with mocked_socket_module():
-            url = '/sleep?seconds=0.005'
-            timeout = Timeout(total=None, connect=0.001)
-            pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
-            conn = pool._get_conn()
-            self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET',
-                              url)
+        url = '/sleep?seconds=0.005'
+        timeout = Timeout(total=None, connect=0.001)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET',
+                          url)
 
     def test_timeout_success(self):
         timeout = Timeout(connect=3, read=5, total=None)
