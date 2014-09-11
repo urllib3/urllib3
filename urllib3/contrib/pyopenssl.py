@@ -29,7 +29,7 @@ Now you can use :mod:`urllib3` as you normally would, and it will support SNI
 when the required modules are installed.
 
 Activating this module also has the positive side effect of disabling SSL/TLS
-encryption in Python 2 (see `CRIME attack`_).
+compression in Python 2 (see `CRIME attack`_).
 
 If you want to configure the default list of supported cipher suites, you can
 set the ``urllib3.contrib.pyopenssl.DEFAULT_SSL_CIPHER_LIST`` variable.
