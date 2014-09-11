@@ -118,7 +118,7 @@ class TestConnectionPool(unittest.TestCase):
             str(MaxRetryError(
                 HTTPConnectionPool(host='localhost'), "Test.", None)),
             "HTTPConnectionPool(host='localhost', port=None): "
-            "Max retries exceeded with url: Test. (Caused by redirect)")
+            "Max retries exceeded with url: Test. (Caused by None)")
 
         err = SocketError("Test")
 

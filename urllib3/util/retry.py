@@ -36,7 +36,6 @@ class Retry(object):
     Errors will be wrapped in :class:`~urllib3.exceptions.MaxRetryError` unless
     retries are disabled, in which case the causing exception will be raised.
 
-
     :param int total:
         Total number of retries to allow. Takes precedence over other counts.
 
@@ -184,8 +183,8 @@ class Retry(object):
         return isinstance(err, ConnectTimeoutError)
 
     def _is_read_error(self, err):
-        """ Errors that occur after the request has been started, so we can't
-        assume that the server did not process any of it.
+        """ Errors that occur after the request has been started, so we should
+        assume that the server began processing it.
         """
         return isinstance(err, (ReadTimeoutError, ProtocolError))
 
@@ -198,8 +197,7 @@ class Retry(object):
         return self.status_forcelist and status_code in self.status_forcelist
 
     def is_exhausted(self):
-        """ Are we out of retries?
-        """
+        """ Are we out of retries? """
         retry_counts = (self.total, self.connect, self.read, self.redirect)
         retry_counts = list(filter(None, retry_counts))
         if not retry_counts:
@@ -230,6 +228,7 @@ class Retry(object):
         connect = self.connect
         read = self.read
         redirect = self.redirect
+        cause = 'unknown'
 
         if error and self._is_connection_error(error):
             # Connect retry?
@@ -251,10 +250,16 @@ class Retry(object):
             # Redirect retry?
             if redirect is not None:
                 redirect -= 1
+            cause = 'too many redirects'
 
         else:
-            # FIXME: Nothing changed, scenario doesn't make sense.
+            # Incrementing because of a server error like a 500 in
+            # status_forcelist and a the given method is in the whitelist
             _observed_errors += 1
+            try:
+                cause = 'received %s server error too many times' % response.status
+            except Exception:
+                cause = 'received erroneous response too many times'
 
         new_retry = self.new(
             total=total,
@@ -262,7 +267,7 @@ class Retry(object):
             _observed_errors=_observed_errors)
 
         if new_retry.is_exhausted():
-            raise MaxRetryError(_pool, url, error)
+            raise MaxRetryError(_pool, url, error or cause)
 
         log.debug("Incremented Retry for (url='%s'): %r" % (url, new_retry))
 
