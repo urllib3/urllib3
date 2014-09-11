@@ -13,7 +13,7 @@ except:
     from urllib import urlencode
 
 from .. import (
-    mock_socket, mocked_socket_module, requires_network, onlyPy3,
+    mocked_socket_module, requires_network, onlyPy3,
     VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES,
 )
 from ..port_helpers import find_unused_port
@@ -231,7 +231,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     @requires_network
     @timed(0.5)
-    @mock_socket
+    @mocked_socket_module
     def test_connect_timeout(self):
         url = '/sleep?seconds=0.005'
         timeout = Timeout(connect=0.001)
@@ -305,7 +305,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', url)
 
     @requires_network
-    @mock_socket
+    @mocked_socket_module
     def test_none_total_applies_connect(self):
         url = '/sleep?seconds=0.005'
         timeout = Timeout(total=None, connect=0.001)

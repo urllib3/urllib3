@@ -12,7 +12,6 @@ from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from test import (
-    mock_socket,
     mocked_socket_module,
     onlyPy26OrOlder,
     requires_network,
@@ -296,7 +295,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self._pool._make_request(conn, 'GET', '/')
 
     @requires_network
-    @mock_socket
+    @mocked_socket_module
     def test_enhanced_timeout(self):
         def new_pool(timeout, cert_reqs='CERT_REQUIRED'):
             https_pool = HTTPSConnectionPool(self.host, self.port,

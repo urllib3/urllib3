@@ -92,29 +92,22 @@ class MockSocket(socket.socket):
     def connect(self, *args):
         raise socket.timeout('timed out')
 
-def mock_socket(test):
-    """Decorator that mocks the socket module for the duration of a test"""
-    @functools.wraps(test)
-    def wrapper(*args, **kwargs):
+@contextlib.contextmanager
+def mocked_socket_module(func=None):
+    """Return a socket which times out on connect."""
+    @functools.wraps(func)
+    def replaced_test(*args, **kwargs):
         old_socket = socket.socket
         socket.socket = MockSocket
         try:
-            return test(*args, **kwargs)
+            if func is not None:
+                func(*args, **kwargs)
+            else:
+                yield
         finally:
             socket.socket = old_socket
 
-    return wrapper
-
-@contextlib.contextmanager
-def mocked_socket_module():
-    """Return a socket which times out on connect.
-
-    This is borrowed from test_socket in the CPython standard library. Use this
-    to mock a connection that times out.
-    """
-    old_socket = socket.socket
-    socket.socket = MockSocket
-    try:
-        yield
-    finally:
-        socket.socket = old_socket
+    if func is None:
+        replaced_test()
+    else:
+        return replaced_test
