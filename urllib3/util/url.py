@@ -80,6 +80,9 @@ class Url(namedtuple('Url', url_attrs)):
 
         return url
 
+    def __str__(self):
+        return self.url
+
 def split_first(s, delims):
     """
     Given a string and an iterable of delimiters, split on the first found

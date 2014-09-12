@@ -141,6 +141,10 @@ class TestUtil(unittest.TestCase):
     def test_parse_url_invalid_IPv6(self):
         self.assertRaises(ValueError, parse_url, '[::1')
 
+    def test_Url_str(self):
+        U = Url('http', host='google.com')
+        self.assertEqual(str(U), U.url)
+
     def test_request_uri(self):
         url_host_map = {
             'http://google.com/mail': '/mail',
@@ -346,7 +350,7 @@ class TestUtil(unittest.TestCase):
                 return True
 
         self.assertTrue(is_fp_closed(ClosedFile()))
- 
+
     def test_is_fp_closed_object_has_none_fp(self):
         class NoneFpFile(object):
             @property
