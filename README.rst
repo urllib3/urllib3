@@ -5,6 +5,9 @@ urllib3
 .. image:: https://travis-ci.org/shazow/urllib3.png?branch=master
         :target: https://travis-ci.org/shazow/urllib3
 
+.. image:: https://www.bountysource.com/badge/tracker?tracker_id=192525
+        :target: https://www.bountysource.com/trackers/192525-urllib3?utm_source=192525&utm_medium=shield&utm_campaign=TRACKER_BADGE
+
 
 Highlights
 ==========
@@ -17,10 +20,19 @@ Highlights
 - Supports gzip and deflate decoding.
 - Thread-safe and sanity-safe.
 - Works with AppEngine, gevent, and eventlib.
-- Tested on Python 2.6+ and Python 3.2+, 100% unit test coverage.
+- Tested on Python 2.6+, Python 3.2+, and PyPy, with 100% unit test coverage.
 - Small and easy to understand codebase perfect for extending and building upon.
   For a more comprehensive solution, have a look at
-  `Requests <http://python-requests.org/>`_ which is also powered by urllib3.
+  `Requests <http://python-requests.org/>`_ which is also powered by ``urllib3``.
+
+
+You might already be using urllib3!
+===================================
+
+``urllib3`` powers `many great Python libraries
+<https://sourcegraph.com/search?q=package+urllib3>`_, including ``pip`` and
+``requests``.
+
 
 What's wrong with urllib and urllib2?
 =====================================
@@ -34,6 +46,7 @@ The Python standard libraries ``urllib`` and ``urllib2`` have little to do
 with each other. They were designed to be independent and standalone, each
 solving a different scope of problems, and ``urllib3`` follows in a similar
 vein.
+
 
 Why do I want to reuse connections?
 ===================================
@@ -56,6 +69,7 @@ This library is perfect for:
   retrying is useful. It's relatively lightweight, so it can be used for
   anything!
 
+
 Examples
 ========
 
@@ -74,26 +88,39 @@ But, long story short::
 
 The ``PoolManager`` will take care of reusing connections for you whenever
 you request the same host. For more fine-grained control of your connection
-pools, you should look at
-`ConnectionPool <http://urllib3.readthedocs.org/#connectionpool>`_.
+pools, you should look at `ConnectionPool
+<http://urllib3.readthedocs.org/#connectionpool>`_.
 
 
 Run the tests
 =============
 
 We use some external dependencies, multiple interpreters and code coverage
-analysis while running test suite. Easiest way to run the tests is thusly the
-``tox`` utility: ::
+analysis while running test suite. Our ``Makefile`` handles much of this for
+you as long as you're running it `inside of a virtualenv
+<http://docs.python-guide.org/en/latest/dev/virtualenvs/>`_::
 
-  $ tox
-  # [..]
+  $ make test
+  [... magically installs dependencies and runs tests on your virtualenv]
+  Ran 182 tests in 1.633s
+
+  OK (SKIP=6)
+
+Note that code coverage less than 100% is regarded as a failing run. Some
+platform-specific tests are skipped unless run in that platform.  To make sure
+the code works in all of urllib3's supported platforms, you can run our ``tox``
+suite::
+
+  $ make test-all
+  [... tox creates a virtualenv for every platform and runs tests inside of each]
   py26: commands succeeded
   py27: commands succeeded
   py32: commands succeeded
   py33: commands succeeded
   py34: commands succeeded
 
-Note that code coverage less than 100% is regarded as a failing run.
+Our test suite `runs continuously on Travis CI
+<https://travis-ci.org/shazow/urllib3>`_ with every pull request.
 
 
 Contributing
@@ -109,3 +136,10 @@ Contributing
    as expected.
 #. Send a pull request and bug the maintainer until it gets merged and published.
    :) Make sure to add yourself to ``CONTRIBUTORS.txt``.
+
+
+Sponsorship
+===========
+
+If your company benefits from this library, please consider `sponsoring its
+development <http://urllib3.readthedocs.org/en/latest/#sponsorship>`_.

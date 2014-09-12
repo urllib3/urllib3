@@ -4,9 +4,82 @@ Changes
 dev (master)
 ++++++++++++
 
-* Fix TLS verification when using a proxy in Python 3.4.1. (Issue #385)
+* Apply socket arguments before binding. (Issue #427)
+
+* More careful checks if fp-like object is closed. (Issue #435)
+
+* Fixed packaging issues of some development-related files not
+  getting included. (Issue #440)
+  
+* Allow performing *only* fingerprint verification. (Issue #444)
+
+* Emit ``SecurityWarning`` if system clock is waaay off. (Issue #445)
+
+* Fixed PyOpenSSL compatibility with PyPy. (Issue #450)
+
+* Fixed ``BrokenPipeError`` and ``ConnectionError`` handling in Py3.
+  (Issue #443)
 
 * ... [Short description of non-trivial change.] (Issue #)
+
+
+1.9 (2014-07-04)
+++++++++++++++++
+
+* Shuffled around development-related files. If you're maintaining a distro
+  package of urllib3, you may need to tweak things. (Issue #415)
+
+* Unverified HTTPS requests will trigger a warning on the first request. See
+  our new `security documentation
+  <https://urllib3.readthedocs.org/en/latest/security.html>`_ for details.
+  (Issue #426)
+
+* New retry logic and ``urllib3.util.retry.Retry`` configuration object.
+  (Issue #326)
+
+* All raised exceptions should now wrapped in a
+  ``urllib3.exceptions.HTTPException``-extending exception. (Issue #326)
+
+* All errors during a retry-enabled request should be wrapped in
+  ``urllib3.exceptions.MaxRetryError``, including timeout-related exceptions
+  which were previously exempt. Underlying error is accessible from the
+  ``.reason`` propery. (Issue #326)
+
+* ``urllib3.exceptions.ConnectionError`` renamed to
+  ``urllib3.exceptions.ProtocolError``. (Issue #326)
+
+* Errors during response read (such as IncompleteRead) are now wrapped in
+  ``urllib3.exceptions.ProtocolError``. (Issue #418)
+
+* Requesting an empty host will raise ``urllib3.exceptions.LocationValueError``.
+  (Issue #417)
+
+* Catch read timeouts over SSL connections as
+  ``urllib3.exceptions.ReadTimeoutError``. (Issue #419)
+
+* Apply socket arguments before connecting. (Issue #427)
+
+
+1.8.3 (2014-06-23)
+++++++++++++++++++
+
+* Fix TLS verification when using a proxy in Python 3.4.1. (Issue #385)
+
+* Add ``disable_cache`` option to ``urllib3.util.make_headers``. (Issue #393)
+
+* Wrap ``socket.timeout`` exception with
+  ``urllib3.exceptions.ReadTimeoutError``. (Issue #399)
+
+* Fixed proxy-related bug where connections were being reused incorrectly.
+  (Issues #366, #369)
+
+* Added ``socket_options`` keyword parameter which allows to define
+  ``setsockopt`` configuration of new sockets. (Issue #397)
+
+* Removed ``HTTPConnection.tcp_nodelay`` in favor of
+  ``HTTPConnection.default_socket_options``. (Issue #397)
+
+* Fixed ``TypeError`` bug in Python 2.6.4. (Issue #411)
 
 
 1.8.2 (2014-04-17)

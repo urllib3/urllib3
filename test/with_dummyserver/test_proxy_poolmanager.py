@@ -44,11 +44,17 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_proxy_conn_fail(self):
         host, port = get_unreachable_address()
-        http = proxy_from_url('http://%s:%s/' % (host, port))
-        self.assertRaises(ProxyError, http.request, 'GET',
+        http = proxy_from_url('http://%s:%s/' % (host, port), retries=1)
+        self.assertRaises(MaxRetryError, http.request, 'GET',
                           '%s/' % self.https_url)
-        self.assertRaises(ProxyError, http.request, 'GET',
+        self.assertRaises(MaxRetryError, http.request, 'GET',
                           '%s/' % self.http_url)
+
+        try:
+            http.request('GET', '%s/' % self.http_url)
+            self.fail("Failed to raise retry error.")
+        except MaxRetryError as e:
+            self.assertEqual(type(e.reason), ProxyError)
 
     def test_oldapi(self):
         http = ProxyManager(connection_from_url(self.proxy_url))

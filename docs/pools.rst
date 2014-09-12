@@ -7,7 +7,9 @@ A connection pool is a container for a collection of connections to a specific
 host.
 
 If you need to make requests to the same host repeatedly, then you should use a
-:class:`.HTTPConnectionPool`. ::
+:class:`.HTTPConnectionPool`.
+
+.. doctest ::
 
     >>> from urllib3 import HTTPConnectionPool
     >>> pool = HTTPConnectionPool('ajax.googleapis.com', maxsize=1)
@@ -17,12 +19,12 @@ If you need to make requests to the same host repeatedly, then you should use a
     200
     >>> r.headers['content-type']
     'text/javascript; charset=utf-8'
-    >>> len(r.data) # Content of the response
-    3318
+    >>> 'data: ' + r.data # Content of the response
+    'data: ...'
     >>> r = pool.request('GET', '/ajax/services/search/web',
     ...                  fields={'q': 'python', 'v': '1.0'})
-    >>> len(r.data) # Content of the response
-    2960
+    >>> 'data: ' + r.data # Content of the response
+    'data: ...'
     >>> pool.num_connections
     1
     >>> pool.num_requests
@@ -56,3 +58,14 @@ API
 All of these pools inherit from a common base class:
 
     .. autoclass:: ConnectionPool
+
+.. module:: urllib3.connection
+
+Related Classes
+---------------
+
+urllib3 implements its own :class:`HTTPConnection` object to allow for more
+flexibility than the standard library's implementation.
+
+.. autoclass:: HTTPConnection
+    :members:

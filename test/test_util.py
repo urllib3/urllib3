@@ -1,3 +1,4 @@
+import warnings
 import logging
 import unittest
 import ssl
@@ -5,17 +6,25 @@ from itertools import chain
 
 from mock import patch
 
-from urllib3 import add_stderr_logger
-from urllib3.util import (
+from urllib3 import add_stderr_logger, disable_warnings
+from urllib3.util.request import make_headers
+from urllib3.util.timeout import Timeout
+from urllib3.util.url import (
     get_host,
-    make_headers,
-    split_first,
     parse_url,
-    Timeout,
+    split_first,
     Url,
-    resolve_cert_reqs,
 )
-from urllib3.exceptions import LocationParseError, TimeoutStateError
+from urllib3.util.ssl_ import resolve_cert_reqs
+from urllib3.exceptions import (
+    LocationParseError,
+    TimeoutStateError,
+    InsecureRequestWarning,
+)
+
+from urllib3.util import is_fp_closed
+
+from . import clear_warnings
 
 # This number represents a time in seconds, it doesn't mean anything in
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller
@@ -192,6 +201,10 @@ class TestUtil(unittest.TestCase):
             make_headers(proxy_basic_auth='foo:bar'),
             {'proxy-authorization': 'Basic Zm9vOmJhcg=='})
 
+        self.assertEqual(
+            make_headers(disable_cache=True),
+            {'cache-control': 'no-cache'})
+
     def test_split_first(self):
         test_cases = {
             ('abcd', 'b'): ('a', 'cd', 'b'),
@@ -211,6 +224,15 @@ class TestUtil(unittest.TestCase):
 
         logger.debug('Testing add_stderr_logger')
         logger.removeHandler(handler)
+
+    def test_disable_warnings(self):
+        with warnings.catch_warnings(record=True) as w:
+            clear_warnings()
+            warnings.warn('This is a test.', InsecureRequestWarning)
+            self.assertEqual(len(w), 1)
+            disable_warnings()
+            warnings.warn('This is a test.', InsecureRequestWarning)
+            self.assertEqual(len(w), 1)
 
     def _make_time_pass(self, seconds, timeout, time_mock):
         """ Make some time pass for the timeout object """
@@ -316,3 +338,33 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(resolve_cert_reqs(ssl.CERT_REQUIRED), ssl.CERT_REQUIRED)
         self.assertEqual(resolve_cert_reqs('REQUIRED'), ssl.CERT_REQUIRED)
         self.assertEqual(resolve_cert_reqs('CERT_REQUIRED'), ssl.CERT_REQUIRED)
+
+    def test_is_fp_closed_object_supports_closed(self):
+        class ClosedFile(object):
+            @property
+            def closed(self):
+                return True
+
+        self.assertTrue(is_fp_closed(ClosedFile()))
+ 
+    def test_is_fp_closed_object_has_none_fp(self):
+        class NoneFpFile(object):
+            @property
+            def fp(self):
+                return None
+
+        self.assertTrue(is_fp_closed(NoneFpFile()))
+
+    def test_is_fp_closed_object_has_fp(self):
+        class FpFile(object):
+            @property
+            def fp(self):
+                return True
+
+        self.assertTrue(not is_fp_closed(FpFile()))
+
+    def test_is_fp_closed_object_has_neither_fp_nor_closed(self):
+        class NotReallyAFile(object):
+            pass
+
+        self.assertRaises(ValueError, is_fp_closed, NotReallyAFile())
