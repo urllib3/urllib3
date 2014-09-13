@@ -6,6 +6,8 @@ dev (master)
 
 * Add Url.url property to return the composed url string. (Issue #394)
 
+* Fixed PyOpenSSL + gevent ``WantWriteError``. (Issue #412)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
