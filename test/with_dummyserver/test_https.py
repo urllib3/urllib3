@@ -1,3 +1,4 @@
+import datetime
 import logging
 import ssl
 import sys
@@ -20,12 +21,14 @@ from urllib3 import HTTPSConnectionPool
 from urllib3.connection import (
     VerifiedHTTPSConnection,
     UnverifiedHTTPSConnection,
+    RECENT_DATE,
 )
 from urllib3.exceptions import (
     SSLError,
     ReadTimeoutError,
     ConnectTimeoutError,
     InsecureRequestWarning,
+    SystemTimeWarning,
 )
 from urllib3.util.timeout import Timeout
 
@@ -218,6 +221,23 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_fingerprint = 'AA'
         self.assertRaises(SSLError, https_pool.request, 'GET', '/')
 
+    def test_verify_none_and_bad_fingerprint(self):
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_NONE',
+                                         ca_certs=DEFAULT_CA_BAD)
+
+        https_pool.assert_fingerprint = 'AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:' \
+                                        'AA:AA:AA:AA:AA:AA:AA:AA:AA'
+        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+
+    def test_verify_none_and_good_fingerprint(self):
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_NONE',
+                                         ca_certs=DEFAULT_CA_BAD)
+
+        https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
+                                        '7A:F2:8A:D7:1E:07:33:67:DE'
+        https_pool.request('GET', '/')
 
     @requires_network
     def test_https_timeout(self):
@@ -307,6 +327,27 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 assert_fingerprint=fingerprint)
 
         https_pool._make_request(conn, 'GET', '/')
+
+    def test_ssl_correct_system_time(self):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            self._pool.request('GET', '/')
+
+        self.assertEqual([], w)
+
+    def test_ssl_wrong_system_time(self):
+        with mock.patch('urllib3.connection.datetime') as mock_date:
+            mock_date.date.today.return_value = datetime.date(1970, 1, 1)
+
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter('always')
+                self._pool.request('GET', '/')
+
+            self.assertEqual(len(w), 1)
+            warning = w[0]
+
+            self.assertEqual(SystemTimeWarning, warning.category)
+            self.assertTrue(str(RECENT_DATE) in warning.message.args[0])
 
 
 class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):

@@ -13,6 +13,41 @@ Luckily, it's not too hard to enable verified HTTPS requests and there are a
 few ways to do it.
 
 
+Python with SSL enabled
+-----------------------
+
+First we need to make sure your Python installation has SSL enabled. Easiest
+way to check is to simply open a Python shell and type `import ssl`::
+
+    >>> import ssl
+    Traceback (most recent call last):
+      ...
+    ImportError: No module named _ssl
+
+If you got an ``ImportError``, then your Python is not compiled with SSL support
+and you'll need to re-install it. Read
+`this StackOverflow thread <https://stackoverflow.com/questions/5128845/importerror-no-module-named-ssl>`_
+for details.
+
+Otherwise, if ``ssl`` imported cleanly, then we're ready to setup our certificates:
+:ref:`certifi-with-urllib3`.
+
+
+Enabling SSL on Google AppEngine
+++++++++++++++++++++++++++++++++
+
+If you're using Google App Engine, you'll need to add ``ssl`` as a library
+dependency to your yaml file, like this::
+
+    libraries:
+    - name: ssl
+      version: latest
+
+If it's still not working, you may need to enable billing on your account
+to `enable using sockets
+<https://developers.google.com/appengine/docs/python/sockets/>`_.
+
+
 .. _certifi-with-urllib3:
 
 Using Certifi with urllib3
@@ -102,7 +137,6 @@ Now you can continue using urllib3 as you normally would.
 For more details, check the :mod:`~urllib3.contrib.pyopenssl` module.
 
 
-
 InsecureRequestWarning
 ----------------------
 
@@ -125,4 +159,3 @@ you can use :func:`~urllib3.disable_warnings`::
     urllib3.disable_warnings()
 
 Making unverified HTTPS requests is strongly discouraged. ˙ ͜ʟ˙
-

@@ -5,6 +5,9 @@ urllib3
 .. image:: https://travis-ci.org/shazow/urllib3.png?branch=master
         :target: https://travis-ci.org/shazow/urllib3
 
+.. image:: https://www.bountysource.com/badge/tracker?tracker_id=192525
+        :target: https://www.bountysource.com/trackers/192525-urllib3?utm_source=192525&utm_medium=shield&utm_campaign=TRACKER_BADGE
+
 
 Highlights
 ==========

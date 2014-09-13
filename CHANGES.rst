@@ -1,6 +1,27 @@
 Changes
 =======
 
+1.9.1 (2014-09-13)
+++++++++++++++++++
+
+* Apply socket arguments before binding. (Issue #427)
+
+* More careful checks if fp-like object is closed. (Issue #435)
+
+* Fixed packaging issues of some development-related files not
+  getting included. (Issue #440)
+  
+* Allow performing *only* fingerprint verification. (Issue #444)
+
+* Emit ``SecurityWarning`` if system clock is waaay off. (Issue #445)
+
+* Fixed PyOpenSSL compatibility with PyPy. (Issue #450)
+
+* Fixed ``BrokenPipeError`` and ``ConnectionError`` handling in Py3.
+  (Issue #443)
+
+
+
 1.9 (2014-07-04)
 ++++++++++++++++
 

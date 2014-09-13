@@ -30,6 +30,7 @@ clean:
 	find . -name "*.py[oc]" -delete
 	find . -name "__pycache__" -delete
 	rm -f $(REQUIREMENTS_OUT)
+	rm -rf docs/_build
 
 test: requirements
 	nosetests
