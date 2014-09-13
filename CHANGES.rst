@@ -4,6 +4,8 @@ Changes
 dev (master)
 ++++++++++++
 
+* Add Url.url property to return the composed url string. (Issue #394)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
