@@ -127,5 +127,8 @@ In chronological order:
 * Krishna Prasad <kprasad.iitd@gmail.com>
   * Google App Engine documentation
 
+* Aaron Meurer <asmeurer@gmail.com>
+  * Added Url.url, which unparses a Url
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
