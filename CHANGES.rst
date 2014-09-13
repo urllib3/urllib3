@@ -4,6 +4,12 @@ Changes
 dev (master)
 ++++++++++++
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.9.1 (2014-09-13)
+++++++++++++++++++
+
 * Apply socket arguments before binding. (Issue #427)
 
 * More careful checks if fp-like object is closed. (Issue #435)
@@ -20,7 +26,6 @@ dev (master)
 * Fixed ``BrokenPipeError`` and ``ConnectionError`` handling in Py3.
   (Issue #443)
 
-* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.9 (2014-07-04)
