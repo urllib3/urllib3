@@ -1,17 +1,14 @@
-import warnings
-import sys
+import contextlib
 import errno
 import functools
 import socket
+import sys
+import warnings
 
 from nose.plugins.skip import SkipTest
 
 from urllib3.exceptions import MaxRetryError, HTTPWarning
 from urllib3.packages import six
-
-# We need a host that will not immediately close the connection with a TCP
-# Reset. SO suggests this hostname
-TARPIT_HOST = '10.255.255.1'
 
 VALID_SOURCE_ADDRESSES = [('::1', 0), ('127.0.0.1', 0)]
 # RFC 5737: 192.0.2.0/24 is for testing only.
@@ -90,3 +87,27 @@ def requires_network(test):
                 raise SkipTest(msg)
             raise
     return wrapper
+
+class MockSocket(socket.socket):
+    def connect(self, *args):
+        raise socket.timeout('timed out')
+
+@contextlib.contextmanager
+def mocked_socket_module(func=None):
+    """Return a socket which times out on connect."""
+    @functools.wraps(func)
+    def replaced_test(*args, **kwargs):
+        old_socket = socket.socket
+        socket.socket = MockSocket
+        try:
+            if func is not None:
+                func(*args, **kwargs)
+            else:
+                yield
+        finally:
+            socket.socket = old_socket
+
+    if func is None:
+        replaced_test()
+    else:
+        return replaced_test

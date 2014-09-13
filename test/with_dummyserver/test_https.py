@@ -12,10 +12,9 @@ from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from test import (
+    mocked_socket_module,
     onlyPy26OrOlder,
     requires_network,
-    TARPIT_HOST,
-    clear_warnings,
 )
 from urllib3 import HTTPSConnectionPool
 from urllib3.connection import (
@@ -241,16 +240,18 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @requires_network
     def test_https_timeout(self):
-        timeout = Timeout(connect=0.001)
-        https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
-                                         timeout=timeout, retries=False,
-                                         cert_reqs='CERT_REQUIRED')
+        with mocked_socket_module():
+            timeout = Timeout(connect=0.001)
+            https_pool = HTTPSConnectionPool(self.host, self.port,
+                                             timeout=timeout, retries=False,
+                                             cert_reqs='CERT_REQUIRED')
+            self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/')
 
-        timeout = Timeout(total=None, connect=0.001)
-        https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
-                                         timeout=timeout, retries=False,
-                                         cert_reqs='CERT_REQUIRED')
-        self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/')
+            timeout = Timeout(total=None, connect=0.001)
+            https_pool = HTTPSConnectionPool(self.host, self.port,
+                                             timeout=timeout, retries=False,
+                                             cert_reqs='CERT_REQUIRED')
+            self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/')
 
         timeout = Timeout(read=0.001)
         https_pool = HTTPSConnectionPool(self.host, self.port,
@@ -294,9 +295,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self._pool._make_request(conn, 'GET', '/')
 
     @requires_network
+    @mocked_socket_module
     def test_enhanced_timeout(self):
         def new_pool(timeout, cert_reqs='CERT_REQUIRED'):
-            https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
+            https_pool = HTTPSConnectionPool(self.host, self.port,
                                              timeout=timeout,
                                              retries=False,
                                              cert_reqs=cert_reqs)
