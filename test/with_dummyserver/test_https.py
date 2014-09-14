@@ -13,8 +13,11 @@ from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from test import (
     onlyPy26OrOlder,
+    onlyPy27OrNewer,
     requires_network,
+    INVALID_SOURCE_ADDRESSES,
     TARPIT_HOST,
+    VALID_SOURCE_ADDRESSES,
     clear_warnings,
 )
 from urllib3 import HTTPSConnectionPool
@@ -30,8 +33,10 @@ from urllib3.exceptions import (
     InsecureRequestWarning,
     SystemTimeWarning,
     PythonVersionWarning,
+    MaxRetryError,
 )
 from urllib3.util.timeout import Timeout
+from urllib3.packages import six
 
 
 log = logging.getLogger('urllib3.connectionpool')
@@ -380,7 +385,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 source_address=addr)
             https_pool.ca_certs = DEFAULT_CA
             r = https_pool.request('GET', '/source_address')
-            assert r.data == b(addr[0])
+            assert r.data == six.b(addr[0])
 
     @onlyPy27OrNewer
     def test_source_address_error(self):
