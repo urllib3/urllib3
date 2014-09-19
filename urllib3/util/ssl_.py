@@ -4,14 +4,17 @@ from hashlib import md5, sha1
 from ..exceptions import SSLError
 
 
-try:  # Test for SSL features
-    SSLContext = None
-    HAS_SNI = False
+SSLContext = None
+HAS_SNI = False
+create_default_context = None
 
-    import ssl
+import ssl
+
+try:  # Test for SSL features
     from ssl import wrap_socket, CERT_NONE, PROTOCOL_SSLv23
     from ssl import SSLContext  # Modern SSL?
     from ssl import HAS_SNI  # Has SNI?
+    from ssl import create_default_context
 except ImportError:
     pass
 
@@ -102,12 +105,18 @@ if SSLContext is not None:  # Python 3.2+
         :param server_hostname:
             Hostname of the expected certificate
         """
-        context = SSLContext(ssl_version)
-        context.verify_mode = cert_reqs
+        if create_default_context is None:
+            context = SSLContext(ssl_version)
+            # Disable TLS compression to migitate CRIME attack (issue #309)
+            OP_NO_COMPRESSION = 0x20000
+            context.options |= OP_NO_COMPRESSION
+        else:  # Python 3.4+
+            context = create_default_context()
+            # This is a really bad idea
+            context.protocol = ssl_version
+            # Python 3.4 automatically turns off compression so we don't need to.
 
-        # Disable TLS compression to migitate CRIME attack (issue #309)
-        OP_NO_COMPRESSION = 0x20000
-        context.options |= OP_NO_COMPRESSION
+        context.verify_mode = cert_reqs
 
         if ca_certs:
             try:
