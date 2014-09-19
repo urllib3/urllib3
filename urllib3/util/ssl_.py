@@ -111,9 +111,11 @@ if SSLContext is not None:  # Python 3.2+
             OP_NO_COMPRESSION = 0x20000
             context.options |= OP_NO_COMPRESSION
         else:  # Python 3.4+
-            context = create_default_context()
-            # This is a really bad idea
-            context.protocol = ssl_version
+            if cert_reqs == CERT_NONE:
+                # If we don't pass None, we can't set verify_mode to CERT_NONE
+                context = create_default_context(None)
+            else:
+                context = create_default_context()
             # Python 3.4 automatically turns off compression so we don't need to.
 
         context.verify_mode = cert_reqs
