@@ -177,7 +177,8 @@ class PoolManager(RequestMethods):
 class ProxyManager(PoolManager):
     """
     Behaves just like :class:`PoolManager`, but sends all requests through
-    the defined proxy, using the CONNECT method for HTTPS URLs.
+    the defined proxy. If the proxy is HTTP the CONNECT method is used for
+    HTTPS URLs.
 
     :param proxy_url:
         The URL of the proxy to be used.
@@ -220,6 +221,11 @@ class ProxyManager(PoolManager):
 
         connection_pool_kw['_proxy'] = self.proxy
         connection_pool_kw['_proxy_headers'] = self.proxy_headers
+
+        # Disable tunneling for HTTP URLs through HTTPS proxy so behavior is
+        # the same as HTTP URLs through HTTP proxy. In future we may want to
+        # support HTTPS URLs through HTTPS proxy.
+        connection_pool_kw['_proxy_disable_tunnel'] = proxy.scheme == 'https'
 
         super(ProxyManager, self).__init__(
             num_pools, headers, **connection_pool_kw)

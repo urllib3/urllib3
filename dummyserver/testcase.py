@@ -93,6 +93,10 @@ class HTTPDummyProxyTestCase(unittest.TestCase):
     proxy_host = 'localhost'
     proxy_host_alt = '127.0.0.1'
 
+    proxys_host = 'localhost'
+    proxys_host_alt = '127.0.0.1'
+    proxys_certs = DEFAULT_CERTS
+
     @classmethod
     def setUpClass(cls):
         cls.io_loop = ioloop.IOLoop()
@@ -108,6 +112,10 @@ class HTTPDummyProxyTestCase(unittest.TestCase):
         app = web.Application([(r'.*', ProxyHandler)])
         cls.proxy_server, cls.proxy_port = run_tornado_app(
             app, cls.io_loop, None, 'http', cls.proxy_host)
+
+        app = web.Application([(r'.*', ProxyHandler)])
+        cls.proxys_server, cls.proxys_port = run_tornado_app(
+            app, cls.io_loop, cls.proxys_certs, 'https', cls.proxy_host)
 
         cls.server_thread = run_loop_in_thread(cls.io_loop)
 

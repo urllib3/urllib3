@@ -125,11 +125,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     :param _proxy:
         Parsed proxy URL, should not be used directly, instead, see
-        :class:`urllib3.connectionpool.ProxyManager`"
+        :class:`urllib3.connectionpool.ProxyManager`.
 
     :param _proxy_headers:
         A dictionary with proxy headers, should not be used directly,
-        instead, see :class:`urllib3.connectionpool.ProxyManager`"
+        instead, see :class:`urllib3.connectionpool.ProxyManager`.
+
+    :param _proxy_disable_tunnel:
+        If set to True, connections are *not* tunneled. Should not be used
+        directly, instead, see :class:`urllib3.connectionpool.ProxyManager`.
 
     :param \**conn_kw:
         Additional parameters are used to create fresh :class:`urllib3.connection.HTTPConnection`,
@@ -142,7 +146,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     def __init__(self, host, port=None, strict=False,
                  timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1, block=False,
                  headers=None, retries=None,
-                 _proxy=None, _proxy_headers=None,
+                 _proxy=None, _proxy_headers=None, _proxy_disable_tunnel=False,
                  **conn_kw):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
@@ -163,6 +167,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         self.proxy = _proxy
         self.proxy_headers = _proxy_headers or {}
+        self.proxy_disable_tunnel = _proxy_disable_tunnel
 
         # Fill the queue up so that doing get() on it will block properly
         for _ in xrange(maxsize):
@@ -498,7 +503,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Merge the proxy headers. Only do this in HTTP. We have to copy the
         # headers dict so we can safely change it without those changes being
         # reflected in anyone else's copy.
-        if self.scheme == 'http':
+        if self.scheme == 'http' or self.proxy_disable_tunnel:
             headers = headers.copy()
             headers.update(self.proxy_headers)
 
@@ -668,7 +673,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           assert_fingerprint=self.assert_fingerprint)
             conn.ssl_version = self.ssl_version
 
-        if self.proxy is not None:
+        if self.proxy is not None and not self.proxy_disable_tunnel:
             # Python 2.7+
             try:
                 set_tunnel = conn.set_tunnel
