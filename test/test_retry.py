@@ -4,7 +4,6 @@ from urllib3.response import HTTPResponse
 from urllib3.packages.six.moves import xrange
 from urllib3.util.retry import Retry
 from urllib3.exceptions import (
-    ConnectionError,
     ConnectTimeoutError,
     ReadTimeoutError,
     MaxRetryError
@@ -191,6 +190,5 @@ class RetryTest(unittest.TestCase):
             retry = retry.increment(error=ConnectTimeoutError('conntimeout'))
             raise AssertionError("Should have raised a MaxRetryError")
         except MaxRetryError as e:
-            print e
             assert 'Caused by redirect' not in str(e)
             self.assertEqual(str(e.reason), 'conntimeout')
