@@ -143,3 +143,4 @@ Sponsorship
 
 If your company benefits from this library, please consider `sponsoring its
 development <http://urllib3.readthedocs.org/en/latest/#sponsorship>`_.
+
