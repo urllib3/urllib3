@@ -13,8 +13,7 @@ except:
     from urllib import urlencode
 
 from .. import (
-    requires_network,
-    onlyPy3, onlyPy27OrNewer, onlyPy26OrOlder,
+    requires_network, onlyPy3, onlyPy26OrOlder,
     TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES,
 )
 from ..port_helpers import find_unused_port

@@ -72,11 +72,8 @@ class MaxRetryError(RequestError):
     def __init__(self, pool, url, reason=None):
         self.reason = reason
 
-        message = "Max retries exceeded with url: %s" % url
-        if reason:
-            message += " (Caused by %r)" % reason
-        else:
-            message += " (Caused by redirect)"
+        message = "Max retries exceeded with url: %s (Caused by %r)" % (
+            url, reason)
 
         RequestError.__init__(self, pool, url, message)
 

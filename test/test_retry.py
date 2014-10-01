@@ -1,5 +1,6 @@
 import unittest
 
+from urllib3.response import HTTPResponse
 from urllib3.packages.six.moves import xrange
 from urllib3.util.retry import Retry
 from urllib3.exceptions import (
@@ -154,3 +155,40 @@ class RetryTest(unittest.TestCase):
     def test_disabled(self):
         self.assertRaises(MaxRetryError, Retry(-1).increment)
         self.assertRaises(MaxRetryError, Retry(0).increment)
+
+    def test_error_message(self):
+        retry = Retry(total=0)
+        try:
+            retry = retry.increment(error=ReadTimeoutError(None, "/", "read timed out"))
+            raise AssertionError("Should have raised a MaxRetryError")
+        except MaxRetryError as e:
+            assert 'Caused by redirect' not in str(e)
+            self.assertEqual(str(e.reason), 'None: read timed out')
+
+        retry = Retry(total=1)
+        try:
+            retry = retry.increment('POST', '/')
+            retry = retry.increment('POST', '/')
+            raise AssertionError("Should have raised a MaxRetryError")
+        except MaxRetryError as e:
+            assert 'Caused by redirect' not in str(e)
+            self.assertEqual(str(e.reason), 'received erroneous response too many times')
+
+        retry = Retry(total=1)
+        try:
+            response = HTTPResponse(status=500)
+            retry = retry.increment('POST', '/', response=response)
+            retry = retry.increment('POST', '/', response=response)
+            raise AssertionError("Should have raised a MaxRetryError")
+        except MaxRetryError as e:
+            assert 'Caused by redirect' not in str(e)
+            self.assertEqual(str(e.reason), 'received 500 server error too many times')
+
+        retry = Retry(connect=1)
+        try:
+            retry = retry.increment(error=ConnectTimeoutError('conntimeout'))
+            retry = retry.increment(error=ConnectTimeoutError('conntimeout'))
+            raise AssertionError("Should have raised a MaxRetryError")
+        except MaxRetryError as e:
+            assert 'Caused by redirect' not in str(e)
+            self.assertEqual(str(e.reason), 'conntimeout')
