@@ -2,10 +2,11 @@ import time
 import logging
 
 from ..exceptions import (
-    ProtocolError,
     ConnectTimeoutError,
-    ReadTimeoutError,
     MaxRetryError,
+    ProtocolError,
+    ReadTimeoutError,
+    ResponseError,
 )
 from ..packages import six
 
@@ -266,7 +267,7 @@ class Retry(object):
             _observed_errors=_observed_errors)
 
         if new_retry.is_exhausted():
-            raise MaxRetryError(_pool, url, error or cause)
+            raise MaxRetryError(_pool, url, error or ResponseError(cause))
 
         log.debug("Incremented Retry for (url='%s'): %r" % (url, new_retry))
 

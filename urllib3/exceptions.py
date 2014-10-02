@@ -138,6 +138,11 @@ class LocationParseError(LocationValueError):
         self.location = location
 
 
+class ResponseError(HTTPError):
+    "Raised when an error is present after a HTTP response has been downloaded"
+    pass
+
+
 class SecurityWarning(HTTPWarning):
     "Warned when perfoming security reducing actions"
     pass
