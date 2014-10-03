@@ -138,6 +138,11 @@ class LocationParseError(LocationValueError):
         self.location = location
 
 
+class ResponseError(HTTPError):
+    "Used as a container for an error reason supplied in a MaxRetryError."
+    pass
+
+
 class SecurityWarning(HTTPWarning):
     "Warned when perfoming security reducing actions"
     pass
