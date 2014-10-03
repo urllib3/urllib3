@@ -8,6 +8,9 @@ dev (master)
 
 * Fixed PyOpenSSL + gevent ``WantWriteError``. (Issue #412)
 
+* ``MaxRetryError.reason`` will always be an exception, not string.
+  (Issue #481)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
