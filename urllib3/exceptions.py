@@ -139,7 +139,7 @@ class LocationParseError(LocationValueError):
 
 
 class ResponseError(HTTPError):
-    "Raised when an error is present after a HTTP response has been downloaded"
+    "Used as a container for an error reason supplied in a MaxRetryError."
     pass
 
 
