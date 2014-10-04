@@ -257,9 +257,9 @@ class Retry(object):
             # Incrementing because of a server error like a 500 in
             # status_forcelist and a the given method is in the whitelist
             _observed_errors += 1
-            cause = 'received an error too many times from the server'
+            cause = 'too many error responses'
             if response and response.status:
-                cause = 'received %s server error too many times' % response.status
+                cause = 'too many %s error responses' % response.status
 
         new_retry = self.new(
             total=total,
