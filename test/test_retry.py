@@ -176,7 +176,7 @@ class RetryTest(unittest.TestCase):
             self.assertTrue(isinstance(e.reason, ResponseError),
                             "%s should be a ResponseError" % e.reason)
             self.assertEqual(str(e.reason),
-                             'received erroneous response too many times')
+                             'received an error too many times from the server')
 
         retry = Retry(total=1)
         try:
