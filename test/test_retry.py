@@ -5,6 +5,7 @@ from urllib3.packages.six.moves import xrange
 from urllib3.util.retry import Retry
 from urllib3.exceptions import (
     ConnectTimeoutError,
+    GENERIC_RESPONSE_ERROR,
     MaxRetryError,
     ReadTimeoutError,
     ResponseError,
@@ -175,8 +176,7 @@ class RetryTest(unittest.TestCase):
             assert 'Caused by redirect' not in str(e)
             self.assertTrue(isinstance(e.reason, ResponseError),
                             "%s should be a ResponseError" % e.reason)
-            self.assertEqual(str(e.reason),
-                             'received an error too many times from the server')
+            self.assertEqual(str(e.reason), GENERIC_RESPONSE_ERROR)
 
         retry = Retry(total=1)
         try:
@@ -186,7 +186,7 @@ class RetryTest(unittest.TestCase):
             raise AssertionError("Should have raised a MaxRetryError")
         except MaxRetryError as e:
             assert 'Caused by redirect' not in str(e)
-            self.assertEqual(str(e.reason), 'received 500 server error too many times')
+            self.assertEqual(str(e.reason), 'too many 500 error responses')
 
         retry = Retry(connect=1)
         try:
