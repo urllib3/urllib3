@@ -3,7 +3,6 @@ import logging
 
 from ..exceptions import (
     ConnectTimeoutError,
-    GENERIC_RESPONSE_ERROR,
     MaxRetryError,
     ProtocolError,
     ReadTimeoutError,
@@ -258,7 +257,7 @@ class Retry(object):
             # Incrementing because of a server error like a 500 in
             # status_forcelist and a the given method is in the whitelist
             _observed_errors += 1
-            cause = GENERIC_RESPONSE_ERROR
+            cause = ResponseError.GENERIC_RESPONSE_ERROR
             if response and response.status:
                 cause = 'too many %s error responses' % response.status
 

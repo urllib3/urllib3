@@ -138,12 +138,9 @@ class LocationParseError(LocationValueError):
         self.location = location
 
 
-GENERIC_RESPONSE_ERROR = 'too many error responses'
-
-
 class ResponseError(HTTPError):
     "Used as a container for an error reason supplied in a MaxRetryError."
-    pass
+    GENERIC_RESPONSE_ERROR = 'too many error responses'
 
 
 class SecurityWarning(HTTPWarning):
