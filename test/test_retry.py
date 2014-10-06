@@ -175,7 +175,7 @@ class RetryTest(unittest.TestCase):
             assert 'Caused by redirect' not in str(e)
             self.assertTrue(isinstance(e.reason, ResponseError),
                             "%s should be a ResponseError" % e.reason)
-            self.assertEqual(str(e.reason), ResponseError.GENERIC_RESPONSE_ERROR)
+            self.assertEqual(str(e.reason), ResponseError.GENERIC_ERROR)
 
         retry = Retry(total=1)
         try:
@@ -185,7 +185,8 @@ class RetryTest(unittest.TestCase):
             raise AssertionError("Should have raised a MaxRetryError")
         except MaxRetryError as e:
             assert 'Caused by redirect' not in str(e)
-            self.assertEqual(str(e.reason), 'too many 500 error responses')
+            msg = ResponseError.SPECIFIC_ERROR.format(status_code=500)
+            self.assertEqual(str(e.reason), msg)
 
         retry = Retry(connect=1)
         try:
