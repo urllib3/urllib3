@@ -140,7 +140,8 @@ class LocationParseError(LocationValueError):
 
 class ResponseError(HTTPError):
     "Used as a container for an error reason supplied in a MaxRetryError."
-    pass
+    GENERIC_ERROR = 'too many error responses'
+    SPECIFIC_ERROR = 'too many {status_code} error responses'
 
 
 class SecurityWarning(HTTPWarning):
