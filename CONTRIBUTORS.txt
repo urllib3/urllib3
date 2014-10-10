@@ -130,5 +130,8 @@ In chronological order:
 * Aaron Meurer <asmeurer@gmail.com>
   * Added Url.url, which unparses a Url
 
+* Evgeny Kapun <abacabadabacaba@gmail.com>
+  * Bugfixes
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
