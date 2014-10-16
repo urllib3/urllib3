@@ -16,6 +16,12 @@ except ImportError:
     pass
 
 
+try:
+    from ssl import OP_NO_SSLv2, OP_NO_SSLv3
+except ImportError:
+    OP_NO_SSLv2, OP_NO_SSLv3 = 0x1000000, 0x2000000
+
+
 def assert_fingerprint(cert, fingerprint):
     """
     Checks if given fingerprint matches the supplied certificate.
@@ -108,6 +114,9 @@ if SSLContext is not None:  # Python 3.2+
         # Disable TLS compression to migitate CRIME attack (issue #309)
         OP_NO_COMPRESSION = 0x20000
         context.options |= OP_NO_COMPRESSION
+        # Disable SSLv2 and SSLv3. Both are terrible (issues #471, #487)
+        context.options |= OP_NO_SSLv2
+        context.options |= OP_NO_SSLv3
 
         if ca_certs:
             try:
