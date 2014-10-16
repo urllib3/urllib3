@@ -22,6 +22,47 @@ except ImportError:
     OP_NO_SSLv2, OP_NO_SSLv3 = 0x1000000, 0x2000000
 
 
+class TLSOptions(object):
+    """Provide one way of specifying what TLS options you want urllib3 to use.
+
+    This allows the user to pass one item instead of several options for
+    enabling and disabling TLS specific features. For example::
+
+        opts = TLSOptions(allow_sslv3=True)
+
+    .. attribute:: allow_compression
+
+        Default: ``False``.
+
+    .. attribute:: ciphers
+
+        Default: 'TLS_ECDHE_RSA_AES_GCM_SHA_256'
+
+    .. attribute:: versions
+
+        Default: ['TLSv1_1', 'TLSv1_2']
+
+    .. attribute:: allow_sslv3
+
+        Default: False
+
+    """
+
+    def __init__(self, **kwargs):
+        # Default options: (option_name, default)
+        options = (('allow_compression', False),
+                   ('allow_sslv3', False),
+                   ('ciphers', 'TLS_ECDHE_RSA_AES_GCM_SHA_256'),
+                   ('versions', ['TLSv1_1', 'TLSv1_2']),
+                   )
+        _setattr = super(TLSOptions, self).__setattr__
+        for option, default in options:
+            _setattr(option, kwargs.get(option, default))
+
+    def __setattr__(self, attr, value):
+        return TypeError('Attribute "{0}" is not mutable'.format(attr))
+
+
 def assert_fingerprint(cert, fingerprint):
     """
     Checks if given fingerprint matches the supplied certificate.
