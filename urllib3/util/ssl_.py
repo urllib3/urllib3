@@ -19,6 +19,22 @@ except ImportError:
     pass
 
 
+try:
+    from ssl import OP_NO_SSLv2, OP_NO_SSLv3, OP_NO_COMPRESSION
+except ImportError:
+    OP_NO_SSLv2, OP_NO_SSLv3 = 0x1000000, 0x2000000
+    OP_NO_COMPRESSION = 0x20000
+
+try:
+    from ssl import _RESTRICTED_SERVER_CIPHERS
+except ImportError:
+    _RESTRICTED_SERVER_CIPHERS = (
+        'ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+HIGH:'
+        'DH+HIGH:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+HIGH:RSA+3DES:!aNULL:'
+        '!eNULL:!MD5:!DSS:!RC4'
+    )
+
+
 def assert_fingerprint(cert, fingerprint):
     """
     Checks if given fingerprint matches the supplied certificate.
@@ -94,28 +110,76 @@ def resolve_ssl_version(candidate):
     return candidate
 
 
+def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
+                           options=None, ciphers=None):
+    """All arguments have the same meaning as ``ssl_wrap_socket``.
+
+    By default, this function does a lot of the same work that
+    ``ssl.create_default_context`` does on Python 3.4+. It:
+
+    - Disables SSLv2, SSLv3, and compression
+    - Sets a restricted set of server ciphers
+
+    If you wish to enable SSLv3, you can do::
+
+        from urllib3.util import ssl_
+        context = ssl_.create_urllib3_context()
+        context.options &= ~ssl_.OP_NO_SSLv3
+
+    You can do the same to enable compression (substituting ``COMPRESSION``
+    for ``SSLv3`` in the last line above).
+
+    :param ssl_version:
+        The desired protocol version to use. This will default to
+        PROTOCOL_SSLv23 which will negotiate the highest protocol that both
+        the server and your installation of OpenSSL support.
+    :param cert_reqs:
+        Whether to require the certificate verification. This defaults to
+        ``ssl.CERT_REQUIRED``.
+    :param options:
+        Specific OpenSSL options. These default to ``ssl.OP_NO_SSLv2``,
+        ``ssl.OP_NO_SSLv3``, ``ssl.OP_NO_COMPRESSION``.
+    :param ciphers:
+        Which cipher suites to allow the server to select.
+    :returns:
+        Constructed SSLContext object with specified options
+    :rtype: SSLContext
+    """
+    context = SSLContext(ssl_version or ssl.PROTOCOL_SSLv23)
+    if options is None:
+        options = 0
+        # SSLv2 is considered harmful and dangerous
+        options |= OP_NO_SSLv2
+        # SSLv3 has several problems and is now dangerous
+        options |= OP_NO_SSLv3
+        # Disable compression to prevent CRIME attacks for OpenSSL 1.0+
+        # (issue #309)
+        options |= OP_NO_COMPRESSION
+
+    context.options |= options
+
+    context.set_ciphers(ciphers or _RESTRICTED_SERVER_CIPHERS)
+
+    context.verify_mode = cert_reqs
+    context.check_hostname = (context.verify_mode == ssl.CERT_REQUIRED)
+
+
 if SSLContext is not None:  # Python 3.2+
     def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                         ca_certs=None, server_hostname=None,
-                        ssl_version=None):
+                        ssl_version=None, ssl_context=None):
         """
         All arguments except `server_hostname` have the same meaning as for
         :func:`ssl.wrap_socket`
 
         :param server_hostname:
             Hostname of the expected certificate
+        :param ssl_context:
+            User-constructed SSLContext object
         """
-        if create_default_context is None:
-            context = SSLContext(ssl_version)
-            # Disable TLS compression to migitate CRIME attack (issue #309)
-            OP_NO_COMPRESSION = 0x20000
-            context.options |= OP_NO_COMPRESSION
-        else:  # Python 3.4+
-            context = create_default_context()
-            if cert_reqs == CERT_NONE:
-                context.check_hostname = False
-
-        context.verify_mode = cert_reqs
+        context = ssl_context
+        if context is None:
+            context = create_urllib3_context(ssl_version, cert_reqs)
 
         if ca_certs:
             try:
@@ -134,7 +198,14 @@ if SSLContext is not None:  # Python 3.2+
 else:  # Python 3.1 and earlier
     def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                         ca_certs=None, server_hostname=None,
-                        ssl_version=None):
+                        ssl_version=None, ssl_context=None):
+        if ssl_context and hasattr(ssl_context, 'wrap_socket'):
+            wrap = ssl_context.wrap_socket
+            try:
+                return wrap(sock, server_hostname=server_hostname)
+            except TypeError:
+                return wrap(sock)
+
         return wrap_socket(sock, keyfile=keyfile, certfile=certfile,
                            ca_certs=ca_certs, cert_reqs=cert_reqs,
                            ssl_version=ssl_version)
