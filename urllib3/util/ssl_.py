@@ -12,9 +12,7 @@ import ssl
 
 try:  # Test for SSL features
     from ssl import wrap_socket, CERT_NONE, PROTOCOL_SSLv23
-    from ssl import SSLContext  # Modern SSL?
     from ssl import HAS_SNI  # Has SNI?
-    from ssl import create_default_context
 except ImportError:
     pass
 
@@ -33,6 +31,37 @@ except ImportError:
         'DH+HIGH:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+HIGH:RSA+3DES:!aNULL:'
         '!eNULL:!MD5:!DSS:!RC4'
     )
+
+try:
+    from ssl import SSLContext  # Modern SSL?
+except ImportError:
+    class FakeSSLContext(object):
+        def __init__(self, protocol_version):
+            self.protocol_version = protocol_version
+            # Use default values from a real SSLContext
+            self.check_hostname = False
+            self.verify_mode = ssl.CERT_NONE
+            self.ca_certs = None
+            self.options = 0
+            self.certfile = None
+            self.keyfile = None
+
+        def load_cert_chain(self, certfile, keyfile):
+            self.certfile = certfile
+            self.keyfile = keyfile
+
+        def load_verify_locations(self, location):
+            self.ca_certs = location
+
+        def set_ciphers(self, cipher_suite):
+            pass
+
+        def wrap_socket(self, socket, server_hostname=None):
+            return wrap_socket(socket, keyfile=self.keyfile,
+                               certfile=self.certfile,
+                               ca_certs=self.ca_certs,
+                               cert_reqs=self.verify_mode,
+                               ssl_version=self.protocol_version)
 
 
 def assert_fingerprint(cert, fingerprint):
@@ -145,7 +174,10 @@ def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
         Constructed SSLContext object with specified options
     :rtype: SSLContext
     """
-    context = SSLContext(ssl_version or ssl.PROTOCOL_SSLv23)
+    try:
+        context = SSLContext(ssl_version or ssl.PROTOCOL_SSLv23)
+    except (NameError, TypeError):
+        context = FakeSSLContext(ssl_version or ssl.PROTOCOL_SSLv23)
     if options is None:
         options = 0
         # SSLv2 is considered harmful and dangerous
@@ -162,10 +194,11 @@ def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
 
     context.verify_mode = cert_reqs
     context.check_hostname = (context.verify_mode == ssl.CERT_REQUIRED)
+    return context
 
 
 if SSLContext is not None:  # Python 3.2+
-    def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
+    def ssl_wrap_socket_v1(sock, keyfile=None, certfile=None, cert_reqs=None,
                         ca_certs=None, server_hostname=None,
                         ssl_version=None, ssl_context=None):
         """
@@ -196,7 +229,7 @@ if SSLContext is not None:  # Python 3.2+
         return context.wrap_socket(sock)
 
 else:  # Python 3.1 and earlier
-    def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
+    def ssl_wrap_socket_v1(sock, keyfile=None, certfile=None, cert_reqs=None,
                         ca_certs=None, server_hostname=None,
                         ssl_version=None, ssl_context=None):
         if ssl_context and hasattr(ssl_context, 'wrap_socket'):
@@ -209,3 +242,24 @@ else:  # Python 3.1 and earlier
         return wrap_socket(sock, keyfile=keyfile, certfile=certfile,
                            ca_certs=ca_certs, cert_reqs=cert_reqs,
                            ssl_version=ssl_version)
+
+def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
+                    ca_certs=None, server_hostname=None,
+                    ssl_version=None, ssl_context=None):
+    context = ssl_context
+    if context is None:
+        context = create_urllib3_context(ssl_version, cert_reqs)
+
+    if ca_certs:
+        try:
+            context.load_verify_locations(ca_certs)
+        # Py32 raises IOError
+        # Py33 raises FileNotFoundError
+        except Exception as e:  # Reraise as SSLError
+            raise SSLError(e)
+    if certfile:
+        # FIXME: This block needs a test.
+        context.load_cert_chain(certfile, keyfile)
+    if HAS_SNI:  # Platform-specific: OpenSSL with enabled SNI
+        return context.wrap_socket(sock, server_hostname=server_hostname)
+    return context.wrap_socket(sock)
