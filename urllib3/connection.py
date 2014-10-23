@@ -4,11 +4,12 @@ import socket
 from socket import timeout as SocketTimeout
 import warnings
 from .packages import six
+from .packages import socks
 
 try:  # Python 3
     from http.client import HTTPConnection as _HTTPConnection, HTTPException
 except ImportError:
-    from httplib import HTTPConnection as _HTTPConnection, HTTPException
+    from httplib import HTTPConnection as _HTTPConnection, HTTPException  # noqa
 
 
 class DummyConnection(object):
@@ -54,9 +55,57 @@ from .util import connection
 port_by_scheme = {
     'http': 80,
     'https': 443,
+    'socks4': 1080,
+    'socks5': 1080
 }
 
 RECENT_DATE = datetime.date(2014, 1, 1)
+
+
+def socks_connection_from_url(proxy_url, address, timeout=None):
+    """
+    Convenience function for connecting to a SOCKS proxy, tunneling
+    to the destination, and returning the connected socket object
+    based on a parsed proxy URL and a destination host and port.
+    """
+    proxy = proxy_url
+    proxy_type = socks.SOCKS5 if proxy.scheme == "socks5" else socks.SOCKS4
+
+    username = password = None
+    if proxy_type == socks.SOCKS5 and proxy.auth is not None:
+        username, password = proxy.auth.split(":")
+
+    return socks.create_connection(
+        dest_pair=address, proxy_type=proxy_type, proxy_addr=proxy.host,
+        proxy_port=proxy.port, proxy_username=username,
+        proxy_password=password, timeout=timeout)
+
+
+class SOCKSHTTPConnection(_HTTPConnection):
+    """
+    An HTTPConnection that tunnels through a SOCKS proxy.
+    """
+
+    def __init__(self, proxy, *args, **kwargs):
+        # A SOCKS proxy parsed as a Url object must be passed in
+        self.proxy = proxy
+        HTTPConnection.__init__(self, *args, **kwargs)
+
+    def connect(self):
+        self.sock = socks_connection_from_url(proxy_url=self.proxy,
+                                              address=(self.host, self.port),
+                                              timeout=self.timeout)
+
+
+class SOCKSHTTPSConnection(HTTPSConnection):
+    def __init__(self, proxy, *args, **kwargs):
+        self.proxy = proxy
+        HTTPSConnection.__init__(self, *args, **kwargs)
+
+    def connect(self):
+        sock = socks_connection_from_url(self.proxy, self.host,
+                                         self.port, self.timeout)
+        self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file)
 
 
 class HTTPConnection(_HTTPConnection, object):
@@ -64,26 +113,32 @@ class HTTPConnection(_HTTPConnection, object):
     Based on httplib.HTTPConnection but provides an extra constructor
     backwards-compatibility layer between older and newer Pythons.
 
-    Additional keyword parameters are used to configure attributes of the connection.
+    Additional keyword parameters are used to configure attributes of the
+    connection.
     Accepted parameters include:
 
-      - ``strict``: See the documentation on :class:`urllib3.connectionpool.HTTPConnectionPool`
+      - ``strict``: See the documentation on
+        :class:`urllib3.connectionpool.HTTPConnectionPool`
       - ``source_address``: Set the source address for the current connection.
 
-        .. note:: This is ignored for Python 2.6. It is only applied for 2.7 and 3.x
+        .. note:: This is ignored for Python 2.6. It is only applied for 2.7
+                  and 3.x
 
-      - ``socket_options``: Set specific options on the underlying socket. If not specified, then
-        defaults are loaded from ``HTTPConnection.default_socket_options`` which includes disabling
-        Nagle's algorithm (sets TCP_NODELAY to 1) unless the connection is behind a proxy.
+      - ``socket_options``: Set specific options on the underlying socket.
+        If not specified, then defaults are loaded from
+        ``HTTPConnection.default_socket_options`` which includes disabling
+        Nagle's algorithm (sets TCP_NODELAY to 1) unless the connection is
+        behind a proxy.
 
-        For example, if you wish to enable TCP Keep Alive in addition to the defaults,
-        you might pass::
+        For example, if you wish to enable TCP Keep Alive in addition to the
+        defaults, you might pass::
 
             HTTPConnection.default_socket_options + [
                 (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),
             ]
 
-        Or you may want to disable the defaults by passing an empty list (e.g., ``[]``).
+        Or you may want to disable the defaults by passing an empty
+        list (e.g., ``[]``).
     """
 
     default_port = port_by_scheme['http']
@@ -111,7 +166,8 @@ class HTTPConnection(_HTTPConnection, object):
 
         #: The socket options provided by the user. If no options are
         #: provided, we use the default options.
-        self.socket_options = kw.pop('socket_options', self.default_socket_options)
+        self.socket_options = kw.pop('socket_options',
+                                     self.default_socket_options)
 
         # Superclass also sets self.source_address in Python 2.7+.
         _HTTPConnection.__init__(self, *args, **kw)
@@ -248,7 +304,18 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                             or self.assert_fingerprint is not None)
 
 
+class SOCKSVerifiedHTTPSConnection(VerifiedHTTPSConnection):
+    def __init__(self, proxy, *args, **kwargs):
+        self.proxy = proxy
+        VerifiedHTTPSConnection.__init__(self, *args, **kwargs)
+
+    def _new_conn(self):
+        return socks_connection_from_url(proxy_url=self.proxy,
+                                         address=(self.host, self.port),
+                                         timeout=self.timeout)
+
 if ssl:
     # Make a copy for testing.
     UnverifiedHTTPSConnection = HTTPSConnection
     HTTPSConnection = VerifiedHTTPSConnection
+    SOCKSHTTPSConnection = SOCKSVerifiedHTTPSConnection  # noqa

@@ -8,7 +8,7 @@ except ImportError:
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
-from .exceptions import LocationValueError
+from .exceptions import LocationValueError, ProxyError
 from .request import RequestMethods
 from .util.url import parse_url
 from .util.retry import Retry
@@ -212,8 +212,11 @@ class ProxyManager(PoolManager):
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
 
-        assert proxy.scheme in ("http", "https"), \
-            'Not supported proxy scheme %s' % proxy.scheme
+        if proxy.scheme not in ("http", "https", "socks4", "socks5"):
+            raise ProxyError("Unsupported proxy scheme '%s'" % proxy.scheme)
+
+        proxy._is_socks = (proxy is not None
+                           and proxy.scheme.startswith("socks"))
 
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
@@ -225,7 +228,7 @@ class ProxyManager(PoolManager):
             num_pools, headers, **connection_pool_kw)
 
     def connection_from_host(self, host, port=None, scheme='http'):
-        if scheme == "https":
+        if scheme == "https" or self.proxy._is_socks:
             return super(ProxyManager, self).connection_from_host(
                 host, port, scheme)
 
@@ -258,7 +261,8 @@ class ProxyManager(PoolManager):
             headers = kw.get('headers', self.headers)
             kw['headers'] = self._set_proxy_headers(url, headers)
 
-        return super(ProxyManager, self).urlopen(method, url, redirect=redirect, **kw)
+        return super(ProxyManager, self).urlopen(method, url,
+                                                 redirect=redirect, **kw)
 
 
 def proxy_from_url(url, **kw):
