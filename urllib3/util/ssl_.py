@@ -35,7 +35,7 @@ except ImportError:
 try:
     from ssl import SSLContext  # Modern SSL?
 except ImportError:
-    class FakeSSLContext(object):
+    class FakeSSLContext(object):  # Platform-specific: Python 2 & 3.1
         def __init__(self, protocol_version):
             self.protocol_version = protocol_version
             # Use default values from a real SSLContext
@@ -193,55 +193,10 @@ def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
     context.set_ciphers(ciphers or _RESTRICTED_SERVER_CIPHERS)
 
     context.verify_mode = cert_reqs
-    context.check_hostname = (context.verify_mode == ssl.CERT_REQUIRED)
+    if getattr(context, 'check_hostname', None) is not None:  # Platform-specific: Python 3.2
+        context.check_hostname = (context.verify_mode == ssl.CERT_REQUIRED)
     return context
 
-
-if SSLContext is not None:  # Python 3.2+
-    def ssl_wrap_socket_v1(sock, keyfile=None, certfile=None, cert_reqs=None,
-                        ca_certs=None, server_hostname=None,
-                        ssl_version=None, ssl_context=None):
-        """
-        All arguments except `server_hostname` have the same meaning as for
-        :func:`ssl.wrap_socket`
-
-        :param server_hostname:
-            Hostname of the expected certificate
-        :param ssl_context:
-            User-constructed SSLContext object
-        """
-        context = ssl_context
-        if context is None:
-            context = create_urllib3_context(ssl_version, cert_reqs)
-
-        if ca_certs:
-            try:
-                context.load_verify_locations(ca_certs)
-            # Py32 raises IOError
-            # Py33 raises FileNotFoundError
-            except Exception as e:  # Reraise as SSLError
-                raise SSLError(e)
-        if certfile:
-            # FIXME: This block needs a test.
-            context.load_cert_chain(certfile, keyfile)
-        if HAS_SNI:  # Platform-specific: OpenSSL with enabled SNI
-            return context.wrap_socket(sock, server_hostname=server_hostname)
-        return context.wrap_socket(sock)
-
-else:  # Python 3.1 and earlier
-    def ssl_wrap_socket_v1(sock, keyfile=None, certfile=None, cert_reqs=None,
-                        ca_certs=None, server_hostname=None,
-                        ssl_version=None, ssl_context=None):
-        if ssl_context and hasattr(ssl_context, 'wrap_socket'):
-            wrap = ssl_context.wrap_socket
-            try:
-                return wrap(sock, server_hostname=server_hostname)
-            except TypeError:
-                return wrap(sock)
-
-        return wrap_socket(sock, keyfile=keyfile, certfile=certfile,
-                           ca_certs=ca_certs, cert_reqs=cert_reqs,
-                           ssl_version=ssl_version)
 
 def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                     ca_certs=None, server_hostname=None,
