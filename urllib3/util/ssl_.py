@@ -176,7 +176,7 @@ def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
     """
     try:
         context = SSLContext(ssl_version or ssl.PROTOCOL_SSLv23)
-    except (NameError, TypeError):
+    except (NameError, TypeError):  # Platform-specific: Python 3.1, 2.7 or 2.6
         context = FakeSSLContext(ssl_version or ssl.PROTOCOL_SSLv23)
     if options is None:
         options = 0
