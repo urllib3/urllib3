@@ -22,7 +22,7 @@ from urllib3.exceptions import (
     InsecureRequestWarning,
 )
 
-from urllib3.util import is_fp_closed
+from urllib3.util import is_fp_closed, ssl_
 
 from . import clear_warnings
 
@@ -389,3 +389,13 @@ class TestUtil(unittest.TestCase):
                         sock=socket)
         mock_context.load_verify_locations.assert_called_once_with(
             '/path/to/pem')
+
+    def test_ssl_wrap_socket_with_no_sni(self):
+        socket = object()
+        mock_context = Mock()
+        # Ugly preservation of original value
+        HAS_SNI = ssl_.HAS_SNI
+        ssl_.HAS_SNI = False
+        ssl_wrap_socket(ssl_context=mock_context, sock=socket)
+        mock_context.wrap_socket.assert_called_once_with(socket)
+        ssl_.HAS_SNI = HAS_SNI

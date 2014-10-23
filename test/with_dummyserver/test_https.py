@@ -168,7 +168,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.request('HEAD', '/')
 
     def test_assert_hostname_false(self):
-        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+        https_pool = HTTPSConnectionPool('localhost', self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
 
@@ -176,7 +176,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.request('GET', '/')
 
     def test_assert_specific_hostname(self):
-        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+        https_pool = HTTPSConnectionPool('localhost', self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
 
@@ -184,7 +184,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.request('GET', '/')
 
     def test_assert_fingerprint_md5(self):
-        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+        https_pool = HTTPSConnectionPool('localhost', self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
 
@@ -193,7 +193,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.request('GET', '/')
 
     def test_assert_fingerprint_sha1(self):
-        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+        https_pool = HTTPSConnectionPool('localhost', self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
 
