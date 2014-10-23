@@ -268,7 +268,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.request('GET', '/')
 
     def test_tunnel(self):
-        """ test the _tunnel behavior """
+        """test the _tunnel behaviour"""
         timeout = Timeout(total=None)
         https_pool = HTTPSConnectionPool(self.host, self.port, timeout=timeout,
                                          cert_reqs='CERT_NONE')

@@ -118,7 +118,7 @@ class HTTPHeaderDict(MutableMapping):
     in a loop.
 
     If multiple fields that are equal case-insensitively are passed to the
-    constructor or ``.update``, the behavior is undefined and some will be
+    constructor or ``.update``, the behaviour is undefined and some will be
     lost.
 
     >>> headers = HTTPHeaderDict()
