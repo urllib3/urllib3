@@ -35,8 +35,10 @@ except ImportError:
 try:
     from ssl import SSLContext  # Modern SSL?
 except ImportError:
+    import sys
+
     class SSLContext(object):  # Platform-specific: Python 2 & 3.1
-        supports_set_ciphers = False
+        supports_set_ciphers = sys.version_info >= (2, 7)
 
         def __init__(self, protocol_version):
             self.protocol = protocol_version
@@ -47,6 +49,7 @@ except ImportError:
             self.options = 0
             self.certfile = None
             self.keyfile = None
+            self.ciphers = None
 
         def load_cert_chain(self, certfile, keyfile):
             self.certfile = certfile
@@ -56,16 +59,26 @@ except ImportError:
             self.ca_certs = location
 
         def set_ciphers(self, cipher_suite):
-            raise TypeError('Your version of Python does not support setting '
-                            'a custom cipher suite. Please upgrade to Python '
-                            '3.2 or later if you need this functionality.')
+            if not self.supports_set_ciphers:
+                raise TypeError(
+                    'Your version of Python does not support setting '
+                    'a custom cipher suite. Please upgrade to Python '
+                    '3.2 or later if you need this functionality.'
+                )
+            self.ciphers = cipher_suite
 
         def wrap_socket(self, socket, server_hostname=None):
-            return wrap_socket(socket, keyfile=self.keyfile,
-                               certfile=self.certfile,
-                               ca_certs=self.ca_certs,
-                               cert_reqs=self.verify_mode,
-                               ssl_version=self.protocol)
+            kwargs = {
+                'keyfile': self.keyfile,
+                'certfile': self.certfile,
+                'ca_certs': self.ca_certs,
+                'cert_reqs': self.verify_mode,
+                'ssl_version': self.protocol,
+            }
+            if self.supports_set_ciphers:  # Platform-specific: Python 2.7+
+                return wrap_socket(socket, ciphers=self.ciphers, **kwargs)
+            else:  # Platform-specific: Python 2.6
+                return wrap_socket(socket, **kwargs)
 
 
 def assert_fingerprint(cert, fingerprint):
@@ -182,7 +195,7 @@ def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
 
     if options is None:
         options = 0
-        # SSLv2 is considered harmful and dangerous
+        # SSLv2 is easily broken and is considered harmful and dangerous
         options |= OP_NO_SSLv2
         # SSLv3 has several problems and is now dangerous
         options |= OP_NO_SSLv3
