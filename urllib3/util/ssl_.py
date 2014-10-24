@@ -35,9 +35,11 @@ except ImportError:
 try:
     from ssl import SSLContext  # Modern SSL?
 except ImportError:
-    class FakeSSLContext(object):  # Platform-specific: Python 2 & 3.1
+    class SSLContext(object):  # Platform-specific: Python 2 & 3.1
+        supports_set_ciphers = False
+
         def __init__(self, protocol_version):
-            self.protocol_version = protocol_version
+            self.protocol = protocol_version
             # Use default values from a real SSLContext
             self.check_hostname = False
             self.verify_mode = ssl.CERT_NONE
@@ -54,14 +56,16 @@ except ImportError:
             self.ca_certs = location
 
         def set_ciphers(self, cipher_suite):
-            pass
+            raise TypeError('Your version of Python does not support setting '
+                            'a custom cipher suite. Please upgrade to Python '
+                            '3.2 or later if you need this functionality.')
 
         def wrap_socket(self, socket, server_hostname=None):
             return wrap_socket(socket, keyfile=self.keyfile,
                                certfile=self.certfile,
                                ca_certs=self.ca_certs,
                                cert_reqs=self.verify_mode,
-                               ssl_version=self.protocol_version)
+                               ssl_version=self.protocol)
 
 
 def assert_fingerprint(cert, fingerprint):
@@ -174,10 +178,8 @@ def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
         Constructed SSLContext object with specified options
     :rtype: SSLContext
     """
-    try:
-        context = SSLContext(ssl_version or ssl.PROTOCOL_SSLv23)
-    except (NameError, TypeError):  # Platform-specific: Python 3.1, 2.7 or 2.6
-        context = FakeSSLContext(ssl_version or ssl.PROTOCOL_SSLv23)
+    context = SSLContext(ssl_version or ssl.PROTOCOL_SSLv23)
+
     if options is None:
         options = 0
         # SSLv2 is considered harmful and dangerous
@@ -190,7 +192,8 @@ def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
 
     context.options |= options
 
-    context.set_ciphers(ciphers or _DEFAULT_CIPHERS)
+    if getattr(context, 'supports_set_ciphers', True):  # Platform-specific: Python 2 & 3.1
+        context.set_ciphers(ciphers or _DEFAULT_CIPHERS)
 
     context.verify_mode = cert_reqs
     if getattr(context, 'check_hostname', None) is not None:  # Platform-specific: Python 3.2
