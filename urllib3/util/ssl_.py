@@ -24,12 +24,12 @@ except ImportError:
     OP_NO_COMPRESSION = 0x20000
 
 try:
-    from ssl import _RESTRICTED_SERVER_CIPHERS
+    from ssl import _DEFAULT_CIPHERS
 except ImportError:
-    _RESTRICTED_SERVER_CIPHERS = (
+    _DEFAULT_CIPHERS = (
         'ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+HIGH:'
-        'DH+HIGH:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+HIGH:RSA+3DES:!aNULL:'
-        '!eNULL:!MD5:!DSS:!RC4'
+        'DH+HIGH:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+HIGH:RSA+3DES:ECDH+RC4:'
+        'DH+RC4:RSA+RC4:!aNULL:!eNULL:!MD5'
     )
 
 try:
@@ -190,7 +190,7 @@ def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
 
     context.options |= options
 
-    context.set_ciphers(ciphers or _RESTRICTED_SERVER_CIPHERS)
+    context.set_ciphers(ciphers or _DEFAULT_CIPHERS)
 
     context.verify_mode = cert_reqs
     if getattr(context, 'check_hostname', None) is not None:  # Platform-specific: Python 3.2
