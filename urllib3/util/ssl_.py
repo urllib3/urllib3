@@ -205,7 +205,7 @@ def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
 
     context.options |= options
 
-    if getattr(context, 'supports_set_ciphers', True):  # Platform-specific: Python 2 & 3.1
+    if getattr(context, 'supports_set_ciphers', True):  # Platform-specific: Python 2.6
         context.set_ciphers(ciphers or _DEFAULT_CIPHERS)
 
     context.verify_mode = cert_reqs
@@ -216,10 +216,11 @@ def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
 
 def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                     ca_certs=None, server_hostname=None,
-                    ssl_version=None, ssl_context=None):
+                    ssl_version=None, ciphers=None, ssl_context=None):
     context = ssl_context
     if context is None:
-        context = create_urllib3_context(ssl_version, cert_reqs)
+        context = create_urllib3_context(ssl_version, cert_reqs,
+                                         ciphers=ciphers)
 
     if ca_certs:
         try:
