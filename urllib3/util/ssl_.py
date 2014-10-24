@@ -63,7 +63,7 @@ except ImportError:
                 raise TypeError(
                     'Your version of Python does not support setting '
                     'a custom cipher suite. Please upgrade to Python '
-                    '3.2 or later if you need this functionality.'
+                    '2.7, 3.2, or later if you need this functionality.'
                 )
             self.ciphers = cipher_suite
 
