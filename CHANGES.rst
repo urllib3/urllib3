@@ -10,6 +10,8 @@ dev (master)
 
 * ``MaxRetryError.reason`` will always be an exception, not string.
   (Issue #481)
+  
+* Fixed SSL-related timeouts not being detected as timeouts. (Issue #492)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
