@@ -324,7 +324,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Trigger any extra validation we need to do.
         try:
             self._validate_conn(conn)
-        except BaseSSLError as e:
+        # Python2 raises this as a BaseSSLError. Python3 raises it as socket
+        # timeout.
+        except (SocketTimeout, BaseSSLError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
             raise
 
