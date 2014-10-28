@@ -32,11 +32,17 @@ from urllib3.exceptions import (
 )
 from urllib3.util.timeout import Timeout
 
+import traceback
+def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
+    traceback.print_stack()
+    log = file if hasattr(file,'write') else sys.stderr
+    log.write(warnings.formatwarning(message, category, filename, lineno, line))
+
+warnings.showwarnings = warn_with_traceback
 
 log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
-
 
 
 class TestHTTPS(HTTPSDummyServerTestCase):

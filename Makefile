@@ -33,7 +33,8 @@ clean:
 	rm -rf docs/_build
 
 test: requirements
-	nosetests
+	cat virtualenv/python3.4.1/lib/python3.4/site-packages/tornado/netutil.py || true
+	PYTHONWARNINGS=always::DeprecationWarning,error::ResourceWarning nosetests
 
 test-all: requirements
 	tox
