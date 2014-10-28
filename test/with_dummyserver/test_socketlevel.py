@@ -24,6 +24,25 @@ import socket
 import ssl
 
 
+def retry_socket_handler(listener):
+    sock = listener.accept()[0]
+    # First request, which should fail
+    sock.close()
+
+    # Second request
+    sock = listener.accept()[0]
+
+    buf = b''
+    while not buf.endswith(b'\r\n\r\n'):
+        buf += sock.recv(65536)
+
+    sock.send(('HTTP/1.1 200 OK\r\n'
+              'Content-Type: text/plain\r\n'
+              'Content-Length: %d\r\n'
+              '\r\n'
+              '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
+    sock.close()
+
 class TestCookies(SocketDummyServerTestCase):
 
     def test_multi_setcookie(self):
@@ -366,26 +385,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         self.assertTrue(b'For The Proxy: YEAH!\r\n' in r.data)
 
     def test_retries(self):
-        def echo_socket_handler(listener):
-            sock = listener.accept()[0]
-            # First request, which should fail
-            sock.close()
-
-            # Second request
-            sock = listener.accept()[0]
-
-            buf = b''
-            while not buf.endswith(b'\r\n\r\n'):
-                buf += sock.recv(65536)
-
-            sock.send(('HTTP/1.1 200 OK\r\n'
-                      'Content-Type: text/plain\r\n'
-                      'Content-Length: %d\r\n'
-                      '\r\n'
-                      '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
-            sock.close()
-
-        self._start_server(echo_socket_handler)
+        self._start_server(retry_socket_handler)
         base_url = 'http://%s:%d' % (self.host, self.port)
 
         proxy = proxy_from_url(base_url)
@@ -395,9 +395,17 @@ class TestProxyManager(SocketDummyServerTestCase):
                          assert_same_host=False, retries=1)
         self.assertEqual(r.status, 200)
 
+    def test_proxy_no_retries(self):
+        self._start_server(retry_socket_handler)
+        base_url = 'http://%s:%d' % (self.host, self.port)
+
+        proxy = proxy_from_url(base_url)
+        conn = proxy.connection_from_url('http://www.google.com')
+
         self.assertRaises(ProxyError, conn.urlopen, 'GET',
                 'http://www.google.com',
                 assert_same_host=False, retries=False)
+
 
     def test_connect_reconn(self):
         def proxy_ssl_one(listener):
