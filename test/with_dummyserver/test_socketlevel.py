@@ -142,7 +142,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         timed_out = Event()
         def socket_handler(listener):
             sock = listener.accept()[0]
-            while not sock.recv(65536).endswith(b'\r\n\r\n'):
+            while not sock.recv(65536):
                 pass
 
             timed_out.wait()
