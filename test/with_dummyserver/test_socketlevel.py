@@ -396,6 +396,10 @@ class TestProxyManager(SocketDummyServerTestCase):
         self.assertEqual(r.status, 200)
 
     def test_proxy_no_retries(self):
+        def retry_socket_handler(listener):
+            sock = listener.accept()[0]
+            # First request, which should fail
+            sock.close()
         self._start_server(retry_socket_handler)
         base_url = 'http://%s:%d' % (self.host, self.port)
 
