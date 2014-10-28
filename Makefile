@@ -34,7 +34,7 @@ clean:
 
 test: requirements
 	cat virtualenv/python3.4.1/lib/python3.4/site-packages/tornado/netutil.py || true
-	PYTHONWARNINGS=always::DeprecationWarning,error=ResourceWarning nosetests
+	PYTHONWARNINGS=always::DeprecationWarning,error::ResourceWarning nosetests
 
 test-all: requirements
 	tox
