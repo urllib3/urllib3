@@ -67,13 +67,16 @@ class HTTPResponse(io.IOBase):
         When this HTTPResponse wrapper is generated from an httplib.HTTPResponse
         object, it's convenient to include the original for debug purposes. It's
         otherwise unused.
+
+    .. versionchanged:: 1.10
+       ``preload_content`` became ``False`` by default.
     """
 
     CONTENT_DECODERS = ['gzip', 'deflate']
     REDIRECT_STATUSES = [301, 302, 303, 307, 308]
 
     def __init__(self, body='', headers=None, status=0, version=0, reason=None,
-                 strict=0, preload_content=True, decode_content=True,
+                 strict=0, preload_content=False, decode_content=True,
                  original_response=None, pool=None, connection=None):
 
         self.headers = HTTPHeaderDict()

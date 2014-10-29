@@ -4,6 +4,9 @@ Changes
 dev (master)
 ++++++++++++
 
+* Changed default response reading to not consume the content
+  until it is explicitly read. (Issue #468)
+
 * Add Url.url property to return the composed url string. (Issue #394)
 
 * Fixed PyOpenSSL + gevent ``WantWriteError``. (Issue #412)
