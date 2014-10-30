@@ -13,8 +13,11 @@ from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
 
 from test import (
     onlyPy26OrOlder,
+    onlyPy27OrNewer,
     requires_network,
+    INVALID_SOURCE_ADDRESSES,
     TARPIT_HOST,
+    VALID_SOURCE_ADDRESSES,
     clear_warnings,
 )
 from urllib3 import HTTPSConnectionPool
@@ -29,8 +32,11 @@ from urllib3.exceptions import (
     ConnectTimeoutError,
     InsecureRequestWarning,
     SystemTimeWarning,
+    PythonVersionWarning,
+    MaxRetryError,
 )
 from urllib3.util.timeout import Timeout
+from urllib3.packages import six
 
 
 log = logging.getLogger('urllib3.connectionpool')
@@ -348,6 +354,48 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
             self.assertEqual(SystemTimeWarning, warning.category)
             self.assertTrue(str(RECENT_DATE) in warning.message.args[0])
+
+    @onlyPy26OrOlder
+    def test_source_address_ignored(self):
+        # No warning is issued if source_address is omitted.
+        with warnings.catch_warnings(record=True) as w:
+            https_pool = HTTPSConnectionPool(
+                self.host, self.port, cert_reqs='CERT_REQUIRED')
+            https_pool.ca_certs = DEFAULT_CA
+            assert https_pool.request('GET', '/source_address').status == 200
+            assert (
+                not w or not issubclass(w[-1].category, PythonVersionWarning))
+
+        # source_address is ignored in Python 2.6 and earlier. Warning issued.
+        with warnings.catch_warnings(record=True) as w:
+            for addr in INVALID_SOURCE_ADDRESSES:
+                https_pool = HTTPSConnectionPool(
+                    self.host, self.port, cert_reqs='CERT_REQUIRED',
+                    source_address=addr)
+                https_pool.ca_certs = DEFAULT_CA
+                r = https_pool.request('GET', '/source_address')
+                assert r.status == 200
+            assert issubclass(w[-1].category, PythonVersionWarning)
+
+    @onlyPy27OrNewer
+    def test_source_address(self):
+        for addr in VALID_SOURCE_ADDRESSES:
+            https_pool = HTTPSConnectionPool(
+                self.host, self.port, cert_reqs='CERT_REQUIRED',
+                source_address=addr)
+            https_pool.ca_certs = DEFAULT_CA
+            r = https_pool.request('GET', '/source_address')
+            assert r.data == six.b(addr[0])
+
+    @onlyPy27OrNewer
+    def test_source_address_error(self):
+        for addr in INVALID_SOURCE_ADDRESSES:
+            https_pool = HTTPSConnectionPool(
+                self.host, self.port, cert_reqs='CERT_REQUIRED',
+                source_address=addr)
+            https_pool.ca_certs = DEFAULT_CA
+            self.assertRaises(
+                MaxRetryError, https_pool.request, 'GET', '/source_address')
 
 
 class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):

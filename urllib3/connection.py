@@ -1,8 +1,8 @@
 import datetime
 import sys
 import socket
-from socket import timeout as SocketTimeout
 import warnings
+from socket import timeout as SocketTimeout
 from .packages import six
 
 try:  # Python 3
@@ -38,6 +38,8 @@ except NameError:  # Python 2:
 from .exceptions import (
     ConnectTimeoutError,
     SystemTimeWarning,
+    PythonVersionWarning,
+    SOURCE_ADDRESS_WARNING,
 )
 from .packages.ssl_match_hostname import match_hostname
 
@@ -98,6 +100,10 @@ class HTTPConnection(_HTTPConnection, object):
     def __init__(self, *args, **kw):
         if six.PY3:  # Python 3
             kw.pop('strict', None)
+
+        if sys.version_info < (2, 7):  # Python 2.6 and older
+            if kw.pop('source_address', None):
+                warnings.warn(SOURCE_ADDRESS_WARNING, PythonVersionWarning)
 
         # Pre-set source_address in case we have an older Python like 2.6.
         self.source_address = kw.get('source_address')
