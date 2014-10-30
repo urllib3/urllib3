@@ -8,6 +8,7 @@ SSLContext = None
 HAS_SNI = False
 create_default_context = None
 
+import errno
 import ssl
 
 try:  # Test for SSL features
@@ -238,12 +239,15 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
     if ca_certs:
         try:
             context.load_verify_locations(ca_certs)
-        # Py32 raises IOError
-        # Py33 raises FileNotFoundError
-        except Exception as e:  # Reraise as SSLError
+        except IOError as e:  # Platform-specific: Python 2.6, 2.7, 3.2
             raise SSLError(e)
+        # Py33 raises FileNotFoundError which subclasses OSError
+        # These are not equivalent unless we check the errno attribute
+        except OSError as e:  # Platform-specific: Python 3.3 and beyond
+            if e.errno == errno.ENOENT:
+                raise SSLError(e)
+            raise
     if certfile:
-        # FIXME: This block needs a test.
         context.load_cert_chain(certfile, keyfile)
     if HAS_SNI:  # Platform-specific: OpenSSL with enabled SNI
         return context.wrap_socket(sock, server_hostname=server_hostname)
