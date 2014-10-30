@@ -17,6 +17,9 @@ dev (master)
 
 * Py3: Use ``ssl.create_default_context()`` when available. (Issue #473)
 
+* Emit ``InsecureRequestWarning`` for *every* insecure HTTPS request.
+  (Issue #496)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
