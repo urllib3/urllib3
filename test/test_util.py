@@ -391,12 +391,6 @@ class TestUtil(unittest.TestCase):
         mock_context.load_verify_locations.assert_called_once_with(
             '/path/to/pem')
 
-    def test_ssl_wrap_socket_nonexistant_file(self):
-        socket = object()
-        mock_context = Mock()
-        self.assertRaises(SSLError, ssl_wrap_socket, ssl_context=mock_context,
-                          ca_certs='/wut/lol/sorry', sock=socket)
-
     def test_ssl_wrap_socket_with_no_sni(self):
         socket = object()
         mock_context = Mock()
