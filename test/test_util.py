@@ -4,7 +4,7 @@ import unittest
 import ssl
 from itertools import chain
 
-from mock import patch
+from mock import patch, Mock
 
 from urllib3 import add_stderr_logger, disable_warnings
 from urllib3.util.request import make_headers
@@ -15,14 +15,15 @@ from urllib3.util.url import (
     split_first,
     Url,
 )
-from urllib3.util.ssl_ import resolve_cert_reqs
+from urllib3.util.ssl_ import resolve_cert_reqs, ssl_wrap_socket
 from urllib3.exceptions import (
     LocationParseError,
     TimeoutStateError,
     InsecureRequestWarning,
+    SSLError,
 )
 
-from urllib3.util import is_fp_closed
+from urllib3.util import is_fp_closed, ssl_
 
 from . import clear_warnings
 
@@ -372,3 +373,30 @@ class TestUtil(unittest.TestCase):
             pass
 
         self.assertRaises(ValueError, is_fp_closed, NotReallyAFile())
+
+    def test_ssl_wrap_socket_loads_the_cert_chain(self):
+        socket = object()
+        mock_context = Mock()
+        ssl_wrap_socket(ssl_context=mock_context, sock=socket,
+                        certfile='/path/to/certfile')
+
+        mock_context.load_cert_chain.assert_called_once_with(
+            '/path/to/certfile', None)
+
+    def test_ssl_wrap_socket_loads_verify_locations(self):
+        socket = object()
+        mock_context = Mock()
+        ssl_wrap_socket(ssl_context=mock_context, ca_certs='/path/to/pem',
+                        sock=socket)
+        mock_context.load_verify_locations.assert_called_once_with(
+            '/path/to/pem')
+
+    def test_ssl_wrap_socket_with_no_sni(self):
+        socket = object()
+        mock_context = Mock()
+        # Ugly preservation of original value
+        HAS_SNI = ssl_.HAS_SNI
+        ssl_.HAS_SNI = False
+        ssl_wrap_socket(ssl_context=mock_context, sock=socket)
+        mock_context.wrap_socket.assert_called_once_with(socket)
+        ssl_.HAS_SNI = HAS_SNI
