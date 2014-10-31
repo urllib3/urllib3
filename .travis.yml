@@ -6,6 +6,7 @@ python:
   - "3.3"
   - "3.4"
   - "pypy"
+  - "pypy3"
 script: make test
 install:
   - make
