@@ -19,6 +19,9 @@ dev (master)
 
 * Emit ``InsecureRequestWarning`` for *every* insecure HTTPS request.
   (Issue #496)
+  
+* Emit ``SecurityWarning`` when certificate has no ``subjectAltName``.
+  (Issue #499)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
