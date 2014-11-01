@@ -245,8 +245,8 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             cert = self.sock.getpeercert()
             if not cert.get('subjectAltName', ()):
                 warnings.warn((
-                    'Certificate has no `subjectAltName`. Falling back to check for a `commonName`. '
-                    'This is a feature that is being removed by major browsers and required by RFC 2818. '
+                    'Certificate has no `subjectAltName`, falling back to check for a `commonName` for now. '
+                    'This feature is being removed by major browsers and required by RFC 2818. '
                     '(See https://github.com/shazow/urllib3/issues/497 for details.)'),
                     SecurityWarning
                 )
