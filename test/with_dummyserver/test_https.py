@@ -9,7 +9,8 @@ import mock
 from nose.plugins.skip import SkipTest
 
 from dummyserver.testcase import HTTPSDummyServerTestCase
-from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
+from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
+                                NO_SAN_CERTS, NO_SAN_CA)
 
 from test import (
     onlyPy26OrOlder,
@@ -368,6 +369,21 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
     def test_ssl_version_as_short_string(self):
         self._pool.ssl_version = 'SSLv3'
         self.assertRaises(SSLError, self._pool.request, 'GET', '/')
+
+
+class TestHTTPS_NoSAN(HTTPSDummyServerTestCase):
+    certs = NO_SAN_CERTS
+
+    def test_warning_for_certs_without_a_san(self):
+        """Ensure that a warning is raised when the cert from the server has
+        no Subject Alternative Name."""
+        with mock.patch('warnings.warn') as warn:
+            https_pool = HTTPSConnectionPool(self.host, self.port,
+                                             cert_reqs='CERT_REQUIRED',
+                                             ca_certs=NO_SAN_CA)
+            r = https_pool.request('GET', '/')
+            self.assertEqual(r.status, 200)
+            self.assertTrue(warn.called)
 
 
 if __name__ == '__main__':
