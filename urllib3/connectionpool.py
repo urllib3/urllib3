@@ -541,7 +541,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         except (BaseSSLError, CertificateError) as e:
             # Release connection unconditionally because there is no way to
             # close it externally in case of exception.
-            release_conn = True
+            if conn:
+                conn.close()
+                conn = None
             raise SSLError(e)
 
         except (TimeoutError, HTTPException, SocketError, ConnectionError) as e:
