@@ -1,5 +1,5 @@
-Creating a new CRT
-------------------
+Creating a new SAN-less CRT
+---------------------------
 
 (Instructions lifted from Heroku_)
 
