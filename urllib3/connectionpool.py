@@ -539,9 +539,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             raise EmptyPoolError(self, "No pool connections are available.")
 
         except (BaseSSLError, CertificateError) as e:
-            # Release connection unconditionally because there is no way to
-            # close it externally in case of exception.
-            release_conn = True
+            # Close the connection. If a connection is reused on which there
+            # was a Certificate error, the next request will certainly raise
+            # another Certificate error.
+            if conn:
+                conn.close()
+                conn = None
             raise SSLError(e)
 
         except (TimeoutError, HTTPException, SocketError, ConnectionError) as e:

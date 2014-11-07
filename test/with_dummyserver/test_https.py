@@ -330,6 +330,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool._make_request(conn, 'GET', '/')
 
     def test_ssl_correct_system_time(self):
+        self._pool.cert_reqs = 'CERT_REQUIRED'
+        self._pool.ca_certs = DEFAULT_CA
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('always')
             self._pool.request('GET', '/')
@@ -337,6 +339,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.assertEqual([], w)
 
     def test_ssl_wrong_system_time(self):
+        self._pool.cert_reqs = 'CERT_REQUIRED'
+        self._pool.ca_certs = DEFAULT_CA
         with mock.patch('urllib3.connection.datetime') as mock_date:
             mock_date.date.today.return_value = datetime.date(1970, 1, 1)
 
@@ -369,6 +373,12 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
     def test_ssl_version_as_short_string(self):
         self._pool.ssl_version = 'SSLv3'
         self.assertRaises(SSLError, self._pool.request, 'GET', '/')
+
+    def test_discards_connection_on_sslerror(self):
+        self._pool.cert_reqs = 'CERT_REQUIRED'
+        self.assertRaises(SSLError, self._pool.request, 'GET', '/')
+        self._pool.ca_certs = DEFAULT_CA
+        self._pool.request('GET', '/')
 
 
 class TestHTTPS_NoSAN(HTTPSDummyServerTestCase):
