@@ -22,6 +22,9 @@ dev (master)
   
 * Emit ``SecurityWarning`` when certificate has no ``subjectAltName``.
   (Issue #499)
+  
+* Close and discard sockets which experienced SSL-related errors.
+  (Issue #501)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
