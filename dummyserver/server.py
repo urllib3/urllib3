@@ -184,3 +184,17 @@ def get_unreachable_address():
             return sockaddr
         else:
             s.close()
+
+
+if __name__ == '__main__':
+    # For debugging dummyserver itself - python -m dummyserver.server
+    from .testcase import TestingApp
+    host = '127.0.0.1'
+
+    io_loop = tornado.ioloop.IOLoop()
+    app = tornado.wsgi.WSGIContainer(TestingApp())
+    server, port = run_tornado_app(app, io_loop, None,
+                                   'http', host)
+    server_thread = run_loop_in_thread(io_loop)
+
+    print("Listening on http://{host}:{port}".format(host=host, port=port))
