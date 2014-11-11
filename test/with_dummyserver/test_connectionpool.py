@@ -1,4 +1,5 @@
 import errno
+import io
 import logging
 import socket
 import sys
@@ -698,6 +699,26 @@ class TestRetry(HTTPDummyServerTestCase):
         self.assertEqual(resp.status, 200)
         resp = self.pool.request('GET', '/successful_retry',
                                  headers=headers, retries=retry)
+        self.assertEqual(resp.status, 200)
+
+
+class TestRetryWithTimeout(HTTPDummyServerTestCase):
+    def setUp(self):
+        self.pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
+
+    def test_retries_put_filehandle(self):
+        """HTTP PUT retry with a file-like object should not timeout"""
+        retry = Retry(total=3, status_forcelist=[418])
+        # httplib reads in 8k chunks; use a larger content length
+        content_length = 65535
+        uploaded_file = io.BytesIO(b'A' * content_length)
+        headers = {'test-name': 'test_put_fileobj',
+                   'Content-Length': str(content_length)}
+        resp = self.pool.urlopen('PUT', '/successful_retry',
+                                 headers=headers,
+                                 retries=retry,
+                                 body=uploaded_file,
+                                 assert_same_host=False, redirect=False)
         self.assertEqual(resp.status, 200)
 
 
