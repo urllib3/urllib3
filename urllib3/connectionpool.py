@@ -504,6 +504,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             headers = headers.copy()
             headers.update(self.proxy_headers)
 
+        # If body is a file-like object, record position for possible retries
+        try:
+            body_pos = body.tell()
+            log.critical("Body pos={pos}".format(pos=body_pos))
+        except AttributeError:
+            body_pos = None
+
         # Must keep the exception bound to a separate variable or else Python 3
         # complains about UnboundLocalError.
         err = None
@@ -605,6 +612,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Check if we should retry the HTTP response.
         if retries.is_forced_retry(method, status_code=response.status):
+            # Restore original body position for retry.
+            # Without this we would not send the complete body in the retry!
+            if body_pos is not None:
+                body.seek(body_pos)
+
             retries = retries.increment(method, url, response=response, _pool=self)
             retries.sleep()
             log.info("Forced retry: %s" % url)
