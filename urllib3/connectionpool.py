@@ -188,7 +188,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                  (self.num_connections, self.host))
 
         conn = self.ConnectionCls(host=self.host, port=self.port,
-                                  timeout=self.timeout.connect_timeout,
+                                  timeout=timeout,
                                   strict=self.strict, **self.conn_kw)
         return conn
 
@@ -714,7 +714,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
                                   timeout=timeout, strict=self.strict,
                                   **self.conn_kw)
-        conn.timeout = timeout
 
         return self._prepare_conn(conn)
 

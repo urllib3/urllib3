@@ -267,11 +267,21 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     def test_https_proxy_timeout(self):
         https = proxy_from_url('https://{host}'.format(host=TARPIT_HOST))
         try:
-            https.request('GET', self.http_url, timeout=0.1)
+            https.request('GET', self.http_url, timeout=0.001)
             self.fail("Failed to raise retry error.")
         except MaxRetryError as e:
             assert isinstance(e.reason, ConnectTimeoutError)
 
+
+    @timed(0.5)
+    def test_https_proxy_pool_timeout(self):
+        https = proxy_from_url('https://{host}'.format(host=TARPIT_HOST),
+                               timeout=0.001)
+        try:
+            https.request('GET', self.http_url)
+            self.fail("Failed to raise retry error.")
+        except MaxRetryError as e:
+            assert isinstance(e.reason, ConnectTimeoutError)
 
 if __name__ == '__main__':
     unittest.main()
