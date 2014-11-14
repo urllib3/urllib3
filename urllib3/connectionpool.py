@@ -179,7 +179,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # list.
             self.conn_kw.setdefault('socket_options', [])
 
-    def _new_conn(self):
+    def _new_conn(self, timeout=None):
         """
         Return a fresh :class:`HTTPConnection`.
         """
@@ -192,7 +192,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                   strict=self.strict, **self.conn_kw)
         return conn
 
-    def _get_conn(self, timeout=None):
+    def _get_conn(self, timeout=None, connect_timeout=None):
         """
         Get a connection. Will return a pooled connection if one is available.
 
@@ -203,6 +203,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             Seconds to wait before giving up and raising
             :class:`urllib3.exceptions.EmptyPoolError` if the pool is empty and
             :prop:`.block` is ``True``.
+        :param connect_timeout: The connection timeout to use when establishing
+            a connection
         """
         conn = None
         try:
@@ -228,7 +230,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 # attempt to bypass the proxy)
                 conn = None
 
-        return conn or self._new_conn()
+        return conn or self._new_conn(timeout=connect_timeout)
 
     def _put_conn(self, conn):
         """
@@ -510,11 +512,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         try:
             # Request a connection from the queue.
-            conn = self._get_conn(timeout=pool_timeout)
+            timeout_obj = self._get_timeout(timeout)
+            conn = self._get_conn(timeout=pool_timeout,
+                                  connect_timeout=timeout_obj.connect_timeout)
 
             # Make the request on the httplib connection object.
             httplib_response = self._make_request(conn, method, url,
-                                                  timeout=timeout,
+                                                  timeout=timeout_obj,
                                                   body=body, headers=headers)
 
             # If we're going to release the connection in ``finally:``, then
@@ -688,7 +692,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
         return conn
 
-    def _new_conn(self):
+    def _new_conn(self, timeout=None):
         """
         Return a fresh :class:`httplib.HTTPSConnection`.
         """
@@ -708,8 +712,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             actual_port = self.proxy.port
 
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
-                                  timeout=self.timeout.connect_timeout,
-                                  strict=self.strict, **self.conn_kw)
+                                  timeout=timeout, strict=self.strict,
+                                  **self.conn_kw)
+        conn.timeout = timeout
 
         return self._prepare_conn(conn)
 
