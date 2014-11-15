@@ -873,7 +873,7 @@ class TestRetryAfter(HTTPDummyServerTestCase):
 
 class TestRetryWithTimeout(HTTPDummyServerTestCase):
     def setUp(self):
-        self.pool = HTTPConnectionPool(self.host, self.port, timeout=0.001)
+        self.pool = HTTPConnectionPool(self.host, self.port, timeout=0.1)
 
     def test_retries_put_filehandle(self):
         """HTTP PUT retry with a file-like object should not timeout"""
