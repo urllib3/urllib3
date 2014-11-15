@@ -507,7 +507,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # If body is a file-like object, record position for possible retries
         try:
             body_pos = body.tell()
-            log.critical("Body pos={pos}".format(pos=body_pos))
         except AttributeError:
             body_pos = None
 
