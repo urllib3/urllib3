@@ -584,6 +584,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Try again
             log.warning("Retrying (%r) after connection "
                         "broken by '%r': %s" % (retries, err, url))
+
+            # Without this we would not send the complete body in the retry!
+            if body_pos is not None:
+               body.seek(body_pos)
+
             return self.urlopen(method, url, body, headers, retries,
                                 redirect, assert_same_host,
                                 timeout=timeout, pool_timeout=pool_timeout,
@@ -603,6 +608,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 return response
 
             log.info("Redirecting %s -> %s" % (url, redirect_location))
+            # Without this we would not send the complete body in the retry!
+            if body_pos is not None:
+               body.seek(body_pos)
+
             return self.urlopen(method, redirect_location, body, headers,
                     retries=retries, redirect=redirect,
                     assert_same_host=assert_same_host,
@@ -611,14 +620,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Check if we should retry the HTTP response.
         if retries.is_forced_retry(method, status_code=response.status):
-            # Restore original body position for retry.
-            # Without this we would not send the complete body in the retry!
-            if body_pos is not None:
-                body.seek(body_pos)
-
             retries = retries.increment(method, url, response=response, _pool=self)
             retries.sleep()
             log.info("Forced retry: %s" % url)
+
+            # Without this we would not send the complete body in the retry!
+            if body_pos is not None:
+               body.seek(body_pos)
+
             return self.urlopen(method, url, body, headers,
                     retries=retries, redirect=redirect,
                     assert_same_host=assert_same_host,
