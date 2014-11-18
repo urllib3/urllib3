@@ -179,7 +179,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # list.
             self.conn_kw.setdefault('socket_options', [])
 
-    def _new_conn(self, timeout=None):
+    def _new_conn(self):
         """
         Return a fresh :class:`HTTPConnection`.
         """
@@ -188,11 +188,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                  (self.num_connections, self.host))
 
         conn = self.ConnectionCls(host=self.host, port=self.port,
-                                  timeout=timeout,
+                                  timeout=self.timeout.connect_timeout,
                                   strict=self.strict, **self.conn_kw)
         return conn
 
-    def _get_conn(self, timeout=None, connect_timeout=None):
+    def _get_conn(self, timeout=None):
         """
         Get a connection. Will return a pooled connection if one is available.
 
@@ -203,8 +203,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             Seconds to wait before giving up and raising
             :class:`urllib3.exceptions.EmptyPoolError` if the pool is empty and
             :prop:`.block` is ``True``.
-        :param connect_timeout: The connection timeout to use when establishing
-            a connection
         """
         conn = None
         try:
@@ -230,7 +228,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 # attempt to bypass the proxy)
                 conn = None
 
-        return conn or self._new_conn(timeout=connect_timeout)
+        return conn or self._new_conn()
 
     def _put_conn(self, conn):
         """
@@ -266,6 +264,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         Called right before a request is made, after the socket is created.
         """
+        pass
+
+    def _connect_proxy_early(self, conn):
+        # Nothing to do for HTTP connections.
         pass
 
     def _get_timeout(self, timeout):
@@ -513,8 +515,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         try:
             # Request a connection from the queue.
             timeout_obj = self._get_timeout(timeout)
-            conn = self._get_conn(timeout=pool_timeout,
-                                  connect_timeout=timeout_obj.connect_timeout)
+            conn = self._get_conn(timeout=pool_timeout)
+
+            conn.timeout = timeout_obj.connect_timeout
+
+            def _is_new_proxy_conn(pool):
+                return pool.proxy is not None and not getattr(conn, 'sock', None)
+
+            if _is_new_proxy_conn(self):
+                self._connect_proxy_early(conn)
 
             # Make the request on the httplib connection object.
             httplib_response = self._make_request(conn, method, url,
@@ -674,25 +683,27 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           assert_fingerprint=self.assert_fingerprint)
             conn.ssl_version = self.ssl_version
 
-        if self.proxy is not None:
-            # Python 2.7+
-            try:
-                set_tunnel = conn.set_tunnel
-            except AttributeError:  # Platform-specific: Python 2.6
-                set_tunnel = conn._set_tunnel
-
-            if sys.version_info <= (2, 6, 4) and not self.proxy_headers:   # Python 2.6.4 and older
-                set_tunnel(self.host, self.port)
-            else:
-                set_tunnel(self.host, self.port, self.proxy_headers)
-
-            # Establish tunnel connection early, because otherwise httplib
-            # would improperly set Host: header to proxy's IP:port.
-            conn.connect()
-
         return conn
 
-    def _new_conn(self, timeout=None):
+    def _connect_proxy_early(self, conn):
+        """
+        Establish tunnel connection early, because otherwise httplib
+        would improperly set Host: header to proxy's IP:port.
+        """
+        # Python 2.7+
+        try:
+            set_tunnel = conn.set_tunnel
+        except AttributeError:  # Platform-specific: Python 2.6
+            set_tunnel = conn._set_tunnel
+
+        if sys.version_info <= (2, 6, 4) and not self.proxy_headers:   # Python 2.6.4 and older
+            set_tunnel(self.host, self.port)
+        else:
+            set_tunnel(self.host, self.port, self.proxy_headers)
+
+        conn.connect()
+
+    def _new_conn(self):
         """
         Return a fresh :class:`httplib.HTTPSConnection`.
         """
@@ -712,8 +723,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             actual_port = self.proxy.port
 
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
-                                  timeout=timeout, strict=self.strict,
-                                  **self.conn_kw)
+                                  timeout=self.timeout.connect_timeout,
+                                  strict=self.strict, **self.conn_kw)
 
         return self._prepare_conn(conn)
 
