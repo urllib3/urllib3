@@ -519,9 +519,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
             conn.timeout = timeout_obj.connect_timeout
 
-            _is_new_proxy_conn = (self.proxy is not None and
-                                  not getattr(conn, 'sock', None))
-            if _is_new_proxy_conn:
+            is_new_proxy_conn = self.proxy is not None and not getattr(conn, 'sock', None)
+            if is_new_proxy_conn:
                 self._prepare_proxy(conn)
 
             # Make the request on the httplib connection object.
