@@ -266,7 +266,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         pass
 
-    def _connect_proxy_early(self, conn):
+    def _prepare_proxy(self, conn):
         # Nothing to do for HTTP connections.
         pass
 
@@ -519,11 +519,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
             conn.timeout = timeout_obj.connect_timeout
 
-            def _is_new_proxy_conn(pool):
-                return pool.proxy is not None and not getattr(conn, 'sock', None)
-
-            if _is_new_proxy_conn(self):
-                self._connect_proxy_early(conn)
+            _is_new_proxy_conn = (self.proxy is not None and
+                                  not getattr(conn, 'sock', None))
+            if _is_new_proxy_conn:
+                self._prepare_proxy(conn)
 
             # Make the request on the httplib connection object.
             httplib_response = self._make_request(conn, method, url,
@@ -685,7 +684,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
         return conn
 
-    def _connect_proxy_early(self, conn):
+    def _prepare_proxy(self, conn):
         """
         Establish tunnel connection early, because otherwise httplib
         would improperly set Host: header to proxy's IP:port.
