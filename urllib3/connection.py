@@ -169,6 +169,10 @@ class HTTPSConnection(HTTPConnection):
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, **kw):
 
+        # Remove the ssl_context keyword argument before passking the keyword
+        # arguments to HTTPConnection's initializer.
+        self.ssl_context = kw.pop('ssl_context', None)
+
         HTTPConnection.__init__(self, host, port, strict=strict,
                                 timeout=timeout, **kw)
 
@@ -249,7 +253,8 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                                     ca_certs=self.ca_certs,
                                     ca_cert_dir=self.ca_cert_dir,
                                     server_hostname=hostname,
-                                    ssl_version=resolved_ssl_version)
+                                    ssl_version=resolved_ssl_version,
+                                    ssl_context=self.ssl_context)
 
         if self.assert_fingerprint:
             assert_fingerprint(self.sock.getpeercert(binary_form=True),
