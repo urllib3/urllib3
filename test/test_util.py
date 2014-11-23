@@ -344,12 +344,11 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(timeout.get_connect_duration(), 37)
 
     def test_resolve_cert_reqs(self):
-        self.assertEqual(resolve_cert_reqs(None), ssl.CERT_NONE)
-        self.assertEqual(resolve_cert_reqs(ssl.CERT_NONE), ssl.CERT_NONE)
-
-        self.assertEqual(resolve_cert_reqs(ssl.CERT_REQUIRED), ssl.CERT_REQUIRED)
-        self.assertEqual(resolve_cert_reqs('REQUIRED'), ssl.CERT_REQUIRED)
-        self.assertEqual(resolve_cert_reqs('CERT_REQUIRED'), ssl.CERT_REQUIRED)
+        self.assertEqual(resolve_cert_reqs(None, None), ssl.CERT_NONE)
+        self.assertEqual(resolve_cert_reqs(ssl.CERT_NONE, None), ssl.CERT_NONE)
+        self.assertEqual(resolve_cert_reqs(ssl.CERT_REQUIRED, None), ssl.CERT_REQUIRED)
+        self.assertEqual(resolve_cert_reqs('REQUIRED', None), ssl.CERT_REQUIRED)
+        self.assertEqual(resolve_cert_reqs('CERT_REQUIRED', None), ssl.CERT_REQUIRED)
 
     def test_is_fp_closed_object_supports_closed(self):
         class ClosedFile(object):
