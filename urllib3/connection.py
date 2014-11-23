@@ -167,17 +167,15 @@ class HTTPSConnection(HTTPConnection):
     default_port = port_by_scheme['https']
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
-                 strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, **kw):
-
-        # Remove the ssl_context keyword argument before passking the keyword
-        # arguments to HTTPConnection's initializer.
-        self.ssl_context = kw.pop('ssl_context', None)
+                 strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+                 ssl_context=None, **kw):
 
         HTTPConnection.__init__(self, host, port, strict=strict,
                                 timeout=timeout, **kw)
 
         self.key_file = key_file
         self.cert_file = cert_file
+        self.ssl_context = ssl_context
 
         # Required property for Google AppEngine 1.9.0 which otherwise causes
         # HTTPS requests to go out as HTTP. (See Issue #356)
@@ -220,8 +218,10 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         # Add certificate verification
         conn = self._new_conn()
 
-        resolved_cert_reqs = resolve_cert_reqs(self.cert_reqs)
-        resolved_ssl_version = resolve_ssl_version(self.ssl_version)
+        resolved_cert_reqs = resolve_cert_reqs(self.cert_reqs,
+                                               self.ssl_context)
+        resolved_ssl_version = resolve_ssl_version(self.ssl_version,
+                                                   self.ssl_context)
 
         hostname = self.host
         if getattr(self, '_tunnel_host', None):

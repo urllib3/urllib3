@@ -159,7 +159,7 @@ def assert_fingerprint(cert, fingerprint):
                        .format(fingerprint, hexlify(cert_digest)))
 
 
-def resolve_cert_reqs(candidate):
+def resolve_cert_reqs(candidate, ssl_context):
     """
     Resolves the argument to a numeric constant, which can be passed to
     the wrap_socket function/method from the ssl module.
@@ -170,8 +170,11 @@ def resolve_cert_reqs(candidate):
     If it's neither `None` nor a string we assume it is already the numeric
     constant which can directly be passed to wrap_socket.
     """
-    if candidate is None:
+    if candidate is None and ssl_context is None:
         return CERT_NONE
+
+    if ssl_context:
+        return ssl_context.verify_mode
 
     if isinstance(candidate, str):
         res = getattr(ssl, candidate, None)
@@ -182,12 +185,15 @@ def resolve_cert_reqs(candidate):
     return candidate
 
 
-def resolve_ssl_version(candidate):
+def resolve_ssl_version(candidate, ssl_context):
     """
     like resolve_cert_reqs
     """
-    if candidate is None:
+    if candidate is None and ssl_context is None:
         return PROTOCOL_SSLv23
+
+    if ssl_context:
+        return ssl_context.protocol
 
     if isinstance(candidate, str):
         res = getattr(ssl, candidate, None)
