@@ -82,6 +82,7 @@ class RequestMethods(object):
 
     def request_encode_body(self, method, url, fields=None, headers=None,
                             encode_multipart=True, multipart_boundary=None,
+                            connection_keep_alive=True,
                             **urlopen_kw):
         """
         Make a request using :meth:`urlopen` with the ``fields`` encoded in
@@ -129,6 +130,8 @@ class RequestMethods(object):
             headers = self.headers
 
         headers_ = {'Content-Type': content_type}
+        if connection_keep_alive:
+            headers['Connection'] = 'keep-alive'
         headers_.update(headers)
 
         return self.urlopen(method, url, body=body, headers=headers_,
