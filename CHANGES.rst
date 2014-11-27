@@ -26,6 +26,8 @@ dev (master)
 * Close and discard sockets which experienced SSL-related errors.
   (Issue #501)
 
+* Handle ``body`` param in ``.request(...)``. (Issue #513)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

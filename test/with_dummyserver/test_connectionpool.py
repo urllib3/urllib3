@@ -98,6 +98,13 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('POST', '/echo', fields=fields)
         self.assertEqual(r.data.count(b'name="foo"'), 2)
 
+    def test_request_method_body(self):
+        body = b'hi'
+        r = self.pool.request('POST', '/echo', body=body)
+        self.assertEqual(r.data, body)
+
+        fields = [('hi', 'hello')]
+        self.assertRaises(TypeError, self.pool.request, 'POST', '/echo', body=body, fields=fields)
 
     def test_unicode_upload(self):
         fieldname = u('myfile')
