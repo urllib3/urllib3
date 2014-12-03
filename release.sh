@@ -33,10 +33,10 @@ git tag ${version}
 
 # Build package
 make clean
-python setup.py sdist
+python setup.py sdist bdist_wheel
 
 # TODO: Shove a unicorn in here, or something.
 
 echo "Release is ready. Publish it when ready:"
 echo "git push origin"
-echo "python setup.py sdist upload"
+echo "twine upload dist/*"

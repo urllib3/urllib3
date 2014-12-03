@@ -147,7 +147,6 @@ Unverified HTTPS requests will trigger a warning::
     urllib3/connectionpool.py:736: InsecureRequestWarning: Unverified HTTPS
     request is being made. Adding certificate verification is strongly advised.
     See: https://urllib3.readthedocs.org/en/latest/security.html
-    (This warning will only appear once by default.)
 
 This would be a great time to enable HTTPS verification:
 :ref:`certifi-with-urllib3`.

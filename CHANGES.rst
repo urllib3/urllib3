@@ -4,7 +4,9 @@ Changes
 dev (master)
 ++++++++++++
 
-* Add Url.url property to return the composed url string. (Issue #394)
+* Disabled SSLv3. (Issue #473)
+
+* Add ``Url.url`` property to return the composed url string. (Issue #394)
 
 * Fixed PyOpenSSL + gevent ``WantWriteError``. (Issue #412)
 
@@ -12,6 +14,19 @@ dev (master)
   (Issue #481)
   
 * Fixed SSL-related timeouts not being detected as timeouts. (Issue #492)
+
+* Py3: Use ``ssl.create_default_context()`` when available. (Issue #473)
+
+* Emit ``InsecureRequestWarning`` for *every* insecure HTTPS request.
+  (Issue #496)
+  
+* Emit ``SecurityWarning`` when certificate has no ``subjectAltName``.
+  (Issue #499)
+  
+* Close and discard sockets which experienced SSL-related errors.
+  (Issue #501)
+
+* Handle ``body`` param in ``.request(...)``. (Issue #513)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
