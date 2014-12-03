@@ -5,18 +5,18 @@ Creating a new SAN-less CRT
 
 1. Generate a new CSR::
    
-   openssl req -new -key server.key -out server.new.csr
+       openssl req -new -key server.key -out server.new.csr -nodes -days 10957
 
-1. Generate a new CRT::
+2. Generate a new CRT::
 
-   openssl x509 -req -in server.new.csr -signkey server.key -out server.new.crt
+       openssl x509 -req -in server.new.csr -signkey server.key -out server.new.crt -days 10957
 
 Creating a new PEM file with your new CRT
 -----------------------------------------
 
 1. Concatenate the ``crt`` and ``key`` files into one::
 
-   cat server.new.crt server.key > cacert.new.pem
+       cat server.new.crt server.key > cacert.new.pem
 
 
 :Last Modified: 1 Nov 2014
