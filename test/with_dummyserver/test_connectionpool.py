@@ -195,7 +195,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     @timed(0.5)
     def test_timeout(self):
         """ Requests should time out when expected """
-        url = '/sleep?seconds=0.002'
+        url = '/sleep?seconds=0.003'
         timeout = Timeout(read=0.001)
 
         # Pool-global timeout
