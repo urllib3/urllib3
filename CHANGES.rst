@@ -28,6 +28,8 @@ dev (master)
 
 * Handle ``body`` param in ``.request(...)``. (Issue #513)
 
+* Respect timeout with HTTPS proxy. (Issue #505)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
