@@ -1,13 +1,17 @@
-import unittest
 import json
 import socket
+import unittest
+
+from nose.tools import timed
 
 from dummyserver.testcase import HTTPDummyProxyTestCase
 from dummyserver.server import (
     DEFAULT_CA, DEFAULT_CA_BAD, get_unreachable_address)
+from .. import TARPIT_HOST
 
 from urllib3.poolmanager import proxy_from_url, ProxyManager
-from urllib3.exceptions import MaxRetryError, SSLError, ProxyError
+from urllib3.exceptions import (
+    MaxRetryError, SSLError, ProxyError, ConnectTimeoutError)
 from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
 
 
@@ -258,6 +262,26 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertNotEqual(sc2,sc3)
         self.assertEqual(sc3,sc4)
 
+
+    @timed(0.5)
+    def test_https_proxy_timeout(self):
+        https = proxy_from_url('https://{host}'.format(host=TARPIT_HOST))
+        try:
+            https.request('GET', self.http_url, timeout=0.001)
+            self.fail("Failed to raise retry error.")
+        except MaxRetryError as e:
+            assert isinstance(e.reason, ConnectTimeoutError)
+
+
+    @timed(0.5)
+    def test_https_proxy_pool_timeout(self):
+        https = proxy_from_url('https://{host}'.format(host=TARPIT_HOST),
+                               timeout=0.001)
+        try:
+            https.request('GET', self.http_url)
+            self.fail("Failed to raise retry error.")
+        except MaxRetryError as e:
+            assert isinstance(e.reason, ConnectTimeoutError)
 
 if __name__ == '__main__':
     unittest.main()
