@@ -192,7 +192,10 @@ class WrappedSocket(object):
             else:
                 raise
         except OpenSSL.SSL.ZeroReturnError as e:
-            return b''
+            if self.connection.get_shutdown() == OpenSSL.SSL.RECEIVED_SHUTDOWN:
+                return b''
+            else:
+                raise
         except OpenSSL.SSL.WantReadError:
             rd, wd, ed = select.select(
                 [self.socket], [], [], self.socket.gettimeout())
