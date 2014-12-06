@@ -30,6 +30,8 @@ dev (master)
 
 * Respect timeout with HTTPS proxy. (Issue #505)
 
+* PyOpenSSL: Handle ZeroReturnError exception. (Issue #520)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
