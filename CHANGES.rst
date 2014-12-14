@@ -1,6 +1,38 @@
 Changes
 =======
 
+1.10 (2014-12-14)
++++++++++++++++++
+
+* Disabled SSLv3. (Issue #473)
+
+* Add ``Url.url`` property to return the composed url string. (Issue #394)
+
+* Fixed PyOpenSSL + gevent ``WantWriteError``. (Issue #412)
+
+* ``MaxRetryError.reason`` will always be an exception, not string.
+  (Issue #481)
+
+* Fixed SSL-related timeouts not being detected as timeouts. (Issue #492)
+
+* Py3: Use ``ssl.create_default_context()`` when available. (Issue #473)
+
+* Emit ``InsecureRequestWarning`` for *every* insecure HTTPS request.
+  (Issue #496)
+
+* Emit ``SecurityWarning`` when certificate has no ``subjectAltName``.
+  (Issue #499)
+
+* Close and discard sockets which experienced SSL-related errors.
+  (Issue #501)
+
+* Handle ``body`` param in ``.request(...)``. (Issue #513)
+
+* Respect timeout with HTTPS proxy. (Issue #505)
+
+* PyOpenSSL: Handle ZeroReturnError exception. (Issue #520)
+
+
 1.9.1 (2014-09-13)
 ++++++++++++++++++
 

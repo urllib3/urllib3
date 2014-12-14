@@ -9,7 +9,8 @@ import mock
 from nose.plugins.skip import SkipTest
 
 from dummyserver.testcase import HTTPSDummyServerTestCase
-from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS
+from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
+                                NO_SAN_CERTS, NO_SAN_CA)
 
 from test import (
     onlyPy26OrOlder,
@@ -168,7 +169,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.request('HEAD', '/')
 
     def test_assert_hostname_false(self):
-        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+        https_pool = HTTPSConnectionPool('localhost', self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
 
@@ -176,7 +177,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.request('GET', '/')
 
     def test_assert_specific_hostname(self):
-        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+        https_pool = HTTPSConnectionPool('localhost', self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
 
@@ -184,7 +185,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.request('GET', '/')
 
     def test_assert_fingerprint_md5(self):
-        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+        https_pool = HTTPSConnectionPool('localhost', self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
 
@@ -193,7 +194,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.request('GET', '/')
 
     def test_assert_fingerprint_sha1(self):
-        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+        https_pool = HTTPSConnectionPool('localhost', self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
 
@@ -329,6 +330,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool._make_request(conn, 'GET', '/')
 
     def test_ssl_correct_system_time(self):
+        self._pool.cert_reqs = 'CERT_REQUIRED'
+        self._pool.ca_certs = DEFAULT_CA
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('always')
             self._pool.request('GET', '/')
@@ -336,6 +339,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.assertEqual([], w)
 
     def test_ssl_wrong_system_time(self):
+        self._pool.cert_reqs = 'CERT_REQUIRED'
+        self._pool.ca_certs = DEFAULT_CA
         with mock.patch('urllib3.connection.datetime') as mock_date:
             mock_date.date.today.return_value = datetime.date(1970, 1, 1)
 
@@ -368,6 +373,27 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
     def test_ssl_version_as_short_string(self):
         self._pool.ssl_version = 'SSLv3'
         self.assertRaises(SSLError, self._pool.request, 'GET', '/')
+
+    def test_discards_connection_on_sslerror(self):
+        self._pool.cert_reqs = 'CERT_REQUIRED'
+        self.assertRaises(SSLError, self._pool.request, 'GET', '/')
+        self._pool.ca_certs = DEFAULT_CA
+        self._pool.request('GET', '/')
+
+
+class TestHTTPS_NoSAN(HTTPSDummyServerTestCase):
+    certs = NO_SAN_CERTS
+
+    def test_warning_for_certs_without_a_san(self):
+        """Ensure that a warning is raised when the cert from the server has
+        no Subject Alternative Name."""
+        with mock.patch('warnings.warn') as warn:
+            https_pool = HTTPSConnectionPool(self.host, self.port,
+                                             cert_reqs='CERT_REQUIRED',
+                                             ca_certs=NO_SAN_CA)
+            r = https_pool.request('GET', '/')
+            self.assertEqual(r.status, 200)
+            self.assertTrue(warn.called)
 
 
 if __name__ == '__main__':

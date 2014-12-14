@@ -38,6 +38,7 @@ except NameError:  # Python 2:
 from .exceptions import (
     ConnectTimeoutError,
     SystemTimeWarning,
+    SecurityWarning,
 )
 from .packages.ssl_match_hostname import match_hostname
 
@@ -241,8 +242,15 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                                self.assert_fingerprint)
         elif resolved_cert_reqs != ssl.CERT_NONE \
                 and self.assert_hostname is not False:
-            match_hostname(self.sock.getpeercert(),
-                           self.assert_hostname or hostname)
+            cert = self.sock.getpeercert()
+            if not cert.get('subjectAltName', ()):
+                warnings.warn((
+                    'Certificate has no `subjectAltName`, falling back to check for a `commonName` for now. '
+                    'This feature is being removed by major browsers and deprecated by RFC 2818. '
+                    '(See https://github.com/shazow/urllib3/issues/497 for details.)'),
+                    SecurityWarning
+                )
+            match_hostname(cert, self.assert_hostname or hostname)
 
         self.is_verified = (resolved_cert_reqs == ssl.CERT_REQUIRED
                             or self.assert_fingerprint is not None)

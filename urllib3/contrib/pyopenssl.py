@@ -70,9 +70,14 @@ HAS_SNI = SUBJ_ALT_NAME_SUPPORT
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
 _openssl_versions = {
     ssl.PROTOCOL_SSLv23: OpenSSL.SSL.SSLv23_METHOD,
-    ssl.PROTOCOL_SSLv3: OpenSSL.SSL.SSLv3_METHOD,
     ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
 }
+
+try:
+    _openssl_versions.update({ssl.PROTOCOL_SSLv3: OpenSSL.SSL.SSLv3_METHOD})
+except AttributeError:
+    pass
+
 _openssl_verify = {
     ssl.CERT_NONE: OpenSSL.SSL.VERIFY_NONE,
     ssl.CERT_OPTIONAL: OpenSSL.SSL.VERIFY_PEER,
@@ -186,6 +191,11 @@ class WrappedSocket(object):
                 return b''
             else:
                 raise
+        except OpenSSL.SSL.ZeroReturnError as e:
+            if self.connection.get_shutdown() == OpenSSL.SSL.RECEIVED_SHUTDOWN:
+                return b''
+            else:
+                raise
         except OpenSSL.SSL.WantReadError:
             rd, wd, ed = select.select(
                 [self.socket], [], [], self.socket.gettimeout())
@@ -199,8 +209,21 @@ class WrappedSocket(object):
     def settimeout(self, timeout):
         return self.socket.settimeout(timeout)
 
+    def _send_until_done(self, data):
+        while True:
+            try:
+                return self.connection.send(data)
+            except OpenSSL.SSL.WantWriteError:
+                _, wlist, _ = select.select([], [self.socket], [],
+                                            self.socket.gettimeout())
+                if not wlist:
+                    raise timeout()
+                continue
+
     def sendall(self, data):
-        return self.connection.sendall(data)
+        while len(data):
+            sent = self._send_until_done(data)
+            data = data[sent:]
 
     def close(self):
         if self._makefile_refs < 1:
@@ -248,6 +271,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                     ssl_version=None):
     ctx = OpenSSL.SSL.Context(_openssl_versions[ssl_version])
     if certfile:
+        keyfile = keyfile or certfile  # Match behaviour of the normal python ssl library
         ctx.use_certificate_file(certfile)
     if keyfile:
         ctx.use_privatekey_file(keyfile)

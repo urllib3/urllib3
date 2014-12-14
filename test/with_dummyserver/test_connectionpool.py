@@ -13,8 +13,7 @@ except:
     from urllib import urlencode
 
 from .. import (
-    requires_network,
-    onlyPy3, onlyPy27OrNewer, onlyPy26OrOlder,
+    requires_network, onlyPy3, onlyPy26OrOlder,
     TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES,
 )
 from ..port_helpers import find_unused_port
@@ -99,6 +98,13 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('POST', '/echo', fields=fields)
         self.assertEqual(r.data.count(b'name="foo"'), 2)
 
+    def test_request_method_body(self):
+        body = b'hi'
+        r = self.pool.request('POST', '/echo', body=body)
+        self.assertEqual(r.data, body)
+
+        fields = [('hi', 'hello')]
+        self.assertRaises(TypeError, self.pool.request, 'POST', '/echo', body=body, fields=fields)
 
     def test_unicode_upload(self):
         fieldname = u('myfile')
@@ -189,7 +195,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     @timed(0.5)
     def test_timeout(self):
         """ Requests should time out when expected """
-        url = '/sleep?seconds=0.002'
+        url = '/sleep?seconds=0.003'
         timeout = Timeout(read=0.001)
 
         # Pool-global timeout

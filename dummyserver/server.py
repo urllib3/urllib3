@@ -28,8 +28,13 @@ DEFAULT_CERTS = {
     'certfile': os.path.join(CERTS_PATH, 'server.crt'),
     'keyfile': os.path.join(CERTS_PATH, 'server.key'),
 }
+NO_SAN_CERTS = {
+    'certfile': os.path.join(CERTS_PATH, 'server.no_san.crt'),
+    'keyfile': DEFAULT_CERTS['keyfile']
+}
 DEFAULT_CA = os.path.join(CERTS_PATH, 'cacert.pem')
 DEFAULT_CA_BAD = os.path.join(CERTS_PATH, 'client_bad.pem')
+NO_SAN_CA = os.path.join(CERTS_PATH, 'cacert.no_san.pem')
 
 
 # Different types of servers we have:
@@ -179,3 +184,17 @@ def get_unreachable_address():
             return sockaddr
         else:
             s.close()
+
+
+if __name__ == '__main__':
+    # For debugging dummyserver itself - python -m dummyserver.server
+    from .testcase import TestingApp
+    host = '127.0.0.1'
+
+    io_loop = tornado.ioloop.IOLoop()
+    app = tornado.wsgi.WSGIContainer(TestingApp())
+    server, port = run_tornado_app(app, io_loop, None,
+                                   'http', host)
+    server_thread = run_loop_in_thread(io_loop)
+
+    print("Listening on http://{host}:{port}".format(host=host, port=port))

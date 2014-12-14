@@ -266,6 +266,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         pass
 
+    def _prepare_proxy(self, conn):
+        # Nothing to do for HTTP connections.
+        pass
+
     def _get_timeout(self, timeout):
         """ Helper that always returns a :class:`urllib3.util.Timeout` """
         if timeout is _Default:
@@ -277,6 +281,23 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # User passed us an int/float. This is for backwards compatibility,
             # can be removed later
             return Timeout.from_float(timeout)
+
+    def _raise_timeout(self, err, url, timeout_value):
+        """Is the error actually a timeout? Will raise a ReadTimeout or pass"""
+
+        if isinstance(err, SocketTimeout):
+            raise ReadTimeoutError(self, url, "Read timed out. (read timeout=%s)" % timeout_value)
+
+        # See the above comment about EAGAIN in Python 3. In Python 2 we have
+        # to specifically catch it and throw the timeout error
+        if hasattr(err, 'errno') and err.errno in _blocking_errnos:
+            raise ReadTimeoutError(self, url, "Read timed out. (read timeout=%s)" % timeout_value)
+
+        # Catch possible read timeouts thrown as SSL errors. If not the
+        # case, rethrow the original. We need to do this because of:
+        # http://bugs.python.org/issue10272
+        if 'timed out' in str(err) or 'did not complete (read)' in str(err):  # Python 2.6
+            raise ReadTimeoutError(self, url, "Read timed out. (read timeout=%s)" % timeout_value)
 
     def _make_request(self, conn, method, url, timeout=_Default,
                       **httplib_request_kw):
@@ -301,7 +322,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn.timeout = timeout_obj.connect_timeout
 
         # Trigger any extra validation we need to do.
-        self._validate_conn(conn)
+        try:
+            self._validate_conn(conn)
+        except (SocketTimeout, BaseSSLError) as e:
+            # Py2 raises this as a BaseSSLError, Py3 raises it as socket timeout.
+            self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
+            raise
 
         # conn.request() calls httplib.*.request, not the method in
         # urllib3.request. It also calls makefile (recv) on the socket.
@@ -331,28 +357,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 httplib_response = conn.getresponse(buffering=True)
             except TypeError:  # Python 2.6 and older
                 httplib_response = conn.getresponse()
-        except SocketTimeout:
-            raise ReadTimeoutError(
-                self, url, "Read timed out. (read timeout=%s)" % read_timeout)
-
-        except BaseSSLError as e:
-            # Catch possible read timeouts thrown as SSL errors. If not the
-            # case, rethrow the original. We need to do this because of:
-            # http://bugs.python.org/issue10272
-            if 'timed out' in str(e) or \
-               'did not complete (read)' in str(e):  # Python 2.6
-                raise ReadTimeoutError(
-                        self, url, "Read timed out. (read timeout=%s)" % read_timeout)
-
-            raise
-
-        except SocketError as e:  # Platform-specific: Python 2
-            # See the above comment about EAGAIN in Python 3. In Python 2 we
-            # have to specifically catch it and throw the timeout error
-            if e.errno in _blocking_errnos:
-                raise ReadTimeoutError(
-                    self, url, "Read timed out. (read timeout=%s)" % read_timeout)
-
+        except (SocketTimeout, BaseSSLError, SocketError) as e:
+            self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
 
         # AppEngine doesn't have a version attr.
@@ -508,11 +514,18 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         try:
             # Request a connection from the queue.
+            timeout_obj = self._get_timeout(timeout)
             conn = self._get_conn(timeout=pool_timeout)
+
+            conn.timeout = timeout_obj.connect_timeout
+
+            is_new_proxy_conn = self.proxy is not None and not getattr(conn, 'sock', None)
+            if is_new_proxy_conn:
+                self._prepare_proxy(conn)
 
             # Make the request on the httplib connection object.
             httplib_response = self._make_request(conn, method, url,
-                                                  timeout=timeout,
+                                                  timeout=timeout_obj,
                                                   body=body, headers=headers)
 
             # If we're going to release the connection in ``finally:``, then
@@ -537,9 +550,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             raise EmptyPoolError(self, "No pool connections are available.")
 
         except (BaseSSLError, CertificateError) as e:
-            # Release connection unconditionally because there is no way to
-            # close it externally in case of exception.
-            release_conn = True
+            # Close the connection. If a connection is reused on which there
+            # was a Certificate error, the next request will certainly raise
+            # another Certificate error.
+            if conn:
+                conn.close()
+                conn = None
             raise SSLError(e)
 
         except (TimeoutError, HTTPException, SocketError, ConnectionError) as e:
@@ -668,23 +684,25 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           assert_fingerprint=self.assert_fingerprint)
             conn.ssl_version = self.ssl_version
 
-        if self.proxy is not None:
-            # Python 2.7+
-            try:
-                set_tunnel = conn.set_tunnel
-            except AttributeError:  # Platform-specific: Python 2.6
-                set_tunnel = conn._set_tunnel
-
-            if sys.version_info <= (2, 6, 4) and not self.proxy_headers:   # Python 2.6.4 and older
-                set_tunnel(self.host, self.port)
-            else:
-                set_tunnel(self.host, self.port, self.proxy_headers)
-
-            # Establish tunnel connection early, because otherwise httplib
-            # would improperly set Host: header to proxy's IP:port.
-            conn.connect()
-
         return conn
+
+    def _prepare_proxy(self, conn):
+        """
+        Establish tunnel connection early, because otherwise httplib
+        would improperly set Host: header to proxy's IP:port.
+        """
+        # Python 2.7+
+        try:
+            set_tunnel = conn.set_tunnel
+        except AttributeError:  # Platform-specific: Python 2.6
+            set_tunnel = conn._set_tunnel
+
+        if sys.version_info <= (2, 6, 4) and not self.proxy_headers:   # Python 2.6.4 and older
+            set_tunnel(self.host, self.port)
+        else:
+            set_tunnel(self.host, self.port, self.proxy_headers)
+
+        conn.connect()
 
     def _new_conn(self):
         """
@@ -725,8 +743,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             warnings.warn((
                 'Unverified HTTPS request is being made. '
                 'Adding certificate verification is strongly advised. See: '
-                'https://urllib3.readthedocs.org/en/latest/security.html '
-                '(This warning will only appear once by default.)'),
+                'https://urllib3.readthedocs.org/en/latest/security.html'),
                 InsecureRequestWarning)
 
 
