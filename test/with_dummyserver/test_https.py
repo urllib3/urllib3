@@ -240,6 +240,15 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                         '7A:F2:8A:D7:1E:07:33:67:DE'
         https_pool.request('GET', '/')
 
+    def test_good_fingerprint_and_hostname_mismatch(self):
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_REQUIRED',
+                                         ca_certs=DEFAULT_CA)
+
+        https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
+                                        '7A:F2:8A:D7:1E:07:33:67:DE'
+        https_pool.request('GET', '/')
+
     @requires_network
     def test_https_timeout(self):
         timeout = Timeout(connect=0.001)
