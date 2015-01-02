@@ -142,7 +142,7 @@ InsecureRequestWarning
 
 .. versionadded:: 1.9
 
-Unverified HTTPS requests will trigger a warning via Python's `warnings` module::
+Unverified HTTPS requests will trigger a warning via Python's ``warnings`` module::
 
     urllib3/connectionpool.py:736: InsecureRequestWarning: Unverified HTTPS
     request is being made. Adding certificate verification is strongly advised.
@@ -159,7 +159,7 @@ you can use :func:`~urllib3.disable_warnings`::
 
 Making unverified HTTPS requests is strongly discouraged. ˙ ͜ʟ˙
 
-Alternatively, if you are using Python's `logging` module, you can capture the
+Alternatively, if you are using Python's ``logging`` module, you can capture the
 warnings to your own log::
 
 	logging.captureWarnings(True)
