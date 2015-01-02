@@ -133,5 +133,8 @@ In chronological order:
 * Evgeny Kapun <abacabadabacaba@gmail.com>
   * Bugfixes
 
+* Benjamen Meyer <bm_witness@yahoo.com>
+  * Security Warning Documentation update for proper capture
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
