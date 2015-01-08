@@ -105,6 +105,7 @@ being saved in memory.
 
     >>> import urllib3
     >>> import shutil
+    >>> filename = '/path/to/local/file'
     >>> url = 'http://example.com/big.file'
     >>> http = urllib3.PoolManager()
     >>> with http.request('GET', url, preload_content=False) as r, open(filename, 'wb') as f_out:
