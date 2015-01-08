@@ -97,6 +97,20 @@ like buffering:
     >>> secondpart = b.read()
 
 
+The response can be treated as a file-like object.
+A file can be downloaded directory to a local file in a context without
+being saved in memory.
+
+.. doctest ::
+
+    >>> import urllib3
+    >>> import shutil
+    >>> url = 'http://example.com/big.file'
+    >>> http = urllib3.PoolManager()
+    >>> with http.request('GET', url, preload_content=False) as r, open(filename, 'wb') as f_out:
+    >>> ....    shutil.copyfileobj(r, f_out)
+
+
 Components
 ==========
 
