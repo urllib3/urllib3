@@ -103,13 +103,10 @@ being saved in memory.
 
 .. doctest ::
 
-    >>> import urllib3
-    >>> import shutil
-    >>> filename = '/path/to/local/file'
-    >>> url = 'http://example.com/big.file'
+    >>> url = 'http://example.com/file'
     >>> http = urllib3.PoolManager()
-    >>> with http.request('GET', url, preload_content=False) as r, open(filename, 'wb') as f_out:
-    >>> ....    shutil.copyfileobj(r, f_out)
+    >>> with http.request('GET', url, preload_content=False) as r, open('filename', 'wb') as fp:
+    >>> ....    shutil.copyfileobj(r, fp)
 
 
 Components
