@@ -558,6 +558,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 conn = None
             raise SSLError(e)
 
+        except SSLError:
+            # Treat SSLError separately from BaseSSLError to preserve
+            # traceback.
+            if conn:
+                conn.close()
+                conn = None
+            raise
+
         except (TimeoutError, HTTPException, SocketError, ConnectionError) as e:
             if conn:
                 # Discard the connection for these exceptions. It will be
