@@ -287,7 +287,11 @@ class HTTPResponse(io.IOBase):
 
         headers = HTTPHeaderDict()
         for k, v in r.getheaders():
-            headers.add(k, v)
+            if k != 'set-cookie':
+                headers.add(k, v)
+
+        for cookie in r.msg.getheaders('set-cookie'):
+            headers.add('set-cookie', cookie)
 
         # HTTPResponse objects in Python 3 don't have a .strict attribute
         strict = getattr(r, 'strict', 0)

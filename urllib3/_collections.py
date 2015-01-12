@@ -161,7 +161,7 @@ class HTTPHeaderDict(MutableMapping):
     def getlist(self, key):
         """Returns a list of all the values for the named field. Returns an
         empty list if the key doesn't exist."""
-        return self[key].split(', ') if key in self else []
+        return [v for k, v in self._data.get(key.lower(), [])]
 
     def copy(self):
         h = HTTPHeaderDict()
@@ -196,3 +196,12 @@ class HTTPHeaderDict(MutableMapping):
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, dict(self.items()))
+
+    def update(self, *args, **kwds):
+        headers = args[0]
+        if isinstance(headers, HTTPHeaderDict):
+            for key in headers:
+                for value in headers.getlist(key):
+                    self.add(key, value)
+        else:
+            super(HTTPHeaderDict, self).update(*args, **kwds)
