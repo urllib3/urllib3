@@ -73,6 +73,15 @@ class TestResponse(unittest.TestCase):
             'content-encoding': 'deflate'
         })
 
+    def test_reference_read(self):
+        fp = BytesIO(b'foo')
+        r = HTTPResponse(fp, preload_content=False)
+
+        self.assertEqual(r.read(1), b'f')
+        self.assertEqual(r.read(2), b'oo')
+        self.assertEqual(r.read(), b'')
+        self.assertEqual(r.read(), b'')
+
     def test_decode_deflate(self):
         import zlib
         data = zlib.compress(b'foo')
@@ -102,6 +111,9 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(r.read(3), b'')
         self.assertEqual(r.read(1), b'f')
         self.assertEqual(r.read(2), b'oo')
+        self.assertEqual(r.read(), b'')
+        self.assertEqual(r.read(), b'')
+
 
     def test_chunked_decoding_deflate2(self):
         import zlib
@@ -116,6 +128,9 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(r.read(1), b'')
         self.assertEqual(r.read(1), b'f')
         self.assertEqual(r.read(2), b'oo')
+        self.assertEqual(r.read(), b'')
+        self.assertEqual(r.read(), b'')
+
 
     def test_chunked_decoding_gzip(self):
         import zlib
@@ -130,6 +145,9 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(r.read(11), b'')
         self.assertEqual(r.read(1), b'f')
         self.assertEqual(r.read(2), b'oo')
+        self.assertEqual(r.read(), b'')
+        self.assertEqual(r.read(), b'')
+
 
     def test_body_blob(self):
         resp = HTTPResponse(b'foo')
