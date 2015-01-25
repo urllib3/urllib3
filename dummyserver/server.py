@@ -50,6 +50,7 @@ class SocketServerThread(threading.Thread):
     def __init__(self, socket_handler, host='localhost', port=8081,
                  ready_event=None):
         threading.Thread.__init__(self)
+        self.daemon = True
 
         self.socket_handler = socket_handler
         self.host = host
