@@ -4,6 +4,8 @@ Changes
 dev (master)
 ++++++++++++
 
+* Don't re-use connections which experienced an SSLError. (Issue #529)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
