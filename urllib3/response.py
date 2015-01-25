@@ -21,6 +21,9 @@ class DeflateDecoder(object):
         return getattr(self._obj, name)
 
     def decompress(self, data):
+        if not data:
+            return data
+
         if not self._first_try:
             return self._obj.decompress(data)
 
@@ -36,9 +39,23 @@ class DeflateDecoder(object):
                 self._data = None
 
 
+class GzipDecoder(object):
+
+    def __init__(self):
+        self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
+
+    def __getattr__(self, name):
+        return getattr(self._obj, name)
+
+    def decompress(self, data):
+        if not data:
+            return data
+        return self._obj.decompress(data)
+
+
 def _get_decoder(mode):
     if mode == 'gzip':
-        return zlib.decompressobj(16 + zlib.MAX_WBITS)
+        return GzipDecoder()
 
     return DeflateDecoder()
 
@@ -216,14 +233,14 @@ class HTTPResponse(io.IOBase):
             self._fp_bytes_read += len(data)
 
             try:
-                if data and decode_content and self._decoder:
+                if decode_content and self._decoder:
                     data = self._decoder.decompress(data)
             except (IOError, zlib.error) as e:
                 raise DecodeError(
                     "Received response with content-encoding: %s, but "
                     "failed to decode it." % content_encoding, e)
 
-            if data and flush_decoder and decode_content and self._decoder:
+            if flush_decoder and decode_content and self._decoder:
                 buf = self._decoder.decompress(binary_type())
                 data += buf + self._decoder.flush()
 
