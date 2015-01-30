@@ -353,7 +353,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Receive the response from the server
         try:
-            try:  # Python 2.7+, use buffering of HTTP responses
+            try:  # Python 2.7, use buffering of HTTP responses
                 httplib_response = conn.getresponse(buffering=True)
             except TypeError:  # Python 2.6 and older
                 httplib_response = conn.getresponse()
