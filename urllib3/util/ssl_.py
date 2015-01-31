@@ -1,5 +1,5 @@
 from binascii import hexlify, unhexlify
-from hashlib import md5, sha1
+from hashlib import md5, sha1, sha256
 
 from ..exceptions import SSLError
 
@@ -96,7 +96,8 @@ def assert_fingerprint(cert, fingerprint):
     # this digest.
     hashfunc_map = {
         16: md5,
-        20: sha1
+        20: sha1,
+        32: sha256,
     }
 
     fingerprint = fingerprint.replace(':', '').lower()
