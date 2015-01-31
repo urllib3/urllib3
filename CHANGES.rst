@@ -8,6 +8,8 @@ dev (master)
 
 * Don't fail when gzip decoding an empty stream. (Issue #535)
 
+* Add sha256 support for fingerprint verification. (Issue #540)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
