@@ -97,7 +97,13 @@ class RecentlyUsedContainer(MutableMapping):
             return list(iterkeys(self._container))
 
 
-class HTTPHeaderDict(MutableMapping):
+_dict_setitem = dict.__setitem__
+_dict_getitem = dict.__getitem__
+_dict_delitem = dict.__delitem__
+_dict_contains = dict.__contains__
+
+
+class HTTPHeaderDict(dict):
     """
     :param headers:
         An iterable of field-value pairs. Must not contain multiple field names
@@ -129,25 +135,47 @@ class HTTPHeaderDict(MutableMapping):
     'foo=bar, baz=quxx'
     >>> headers['Content-Length']
     '7'
-
-    If you want to access the raw headers with their original casing
-    for debugging purposes you can access the private ``._data`` attribute
-    which is a normal python ``dict`` that maps the case-insensitive key to a
-    list of tuples stored as (case-sensitive-original-name, value). Using the
-    structure from above as our example:
-
-    >>> headers._data
-    {'set-cookie': [('Set-Cookie', 'foo=bar'), ('set-cookie', 'baz=quxx')],
-    'content-length': [('content-length', '7')]}
     """
 
     def __init__(self, headers=None, **kwargs):
-        self._data = {}
-        if headers is None:
-            headers = {}
-        self.update(headers, **kwargs)
+        dict.__init__(self)
+        if headers is not None:
+            self.update(headers)
+        if kwargs:
+            self.update(kwargs)
 
-    def add(self, key, value):
+    def __setitem__(self, key, val):
+        return _dict_setitem(self, key.lower(), val)
+
+    def __getitem__(self, key):
+        val = _dict_getitem(self, key.lower())
+        if isinstance(val, list):
+            return ', '.join(val)
+        else:
+            return val
+
+    def __delitem__(self, key):
+        return _dict_delitem(self, key.lower())
+
+    def __contains__(self, key):
+        return _dict_contains(self, key.lower())
+
+    def __eq__(self, other):
+        if not isinstance(other, Mapping):
+            return False
+        if not isinstance(other, type(self)):
+            other = type(self)(other)
+        return dict((k1, self[k1]) for k1 in self) == dict((k2, other[k2]) for k2 in other)
+
+    itervalues = MutableMapping.itervalues
+    iteritems = MutableMapping.iteritems
+    items = MutableMapping.items
+    values = MutableMapping.values
+    get = MutableMapping.get
+    pop = MutableMapping.pop
+    update = MutableMapping.update
+
+    def add(self, key, val):
         """Adds a (name, value) pair, doesn't overwrite the value if it already
         exists.
 
@@ -156,43 +184,84 @@ class HTTPHeaderDict(MutableMapping):
         >>> headers['foo']
         'bar, baz'
         """
-        self._data.setdefault(key.lower(), []).append((key, value))
+        key = key.lower()
+        # Use lower only once and then stick with inbuilt functions for speed
+        if not _dict_contains(self, key):
+            _dict_setitem(self, key, val)
+        else:
+            item = _dict_getitem(self, key)
+            if isinstance(item, list):
+                item.append(val)
+            else:
+                _dict_setitem(self, key, [item, val])
+
+    def update_add(*args, **kwds):
+        """Adapted version of MutableMapping.update in order to insert items
+        with self.add instead of self.__setitem__
+        """
+        if len(args) > 2:
+            raise TypeError("update() takes at most 2 positional "
+                            "arguments ({} given)".format(len(args)))
+        elif not args:
+            raise TypeError("update() takes at least 1 argument (0 given)")
+        self = args[0]
+        other = args[1] if len(args) >= 2 else ()
+        
+        if isinstance(other, Mapping):
+            for key in other:
+                self.add(key, other[key])
+        elif hasattr(other, "keys"):
+            for key in other.keys():
+                self.add(key, other[key])
+        else:
+            for key, value in other:
+                self.add(key, value)
+
+        for key, value in kwds.items():
+            self.add(key, value)
 
     def getlist(self, key):
         """Returns a list of all the values for the named field. Returns an
         empty list if the key doesn't exist."""
-        return self[key].split(', ') if key in self else []
+        try:
+            ret = _dict_getitem(self, key.lower())
+        except KeyError:
+            return []
+        else:
+            if isinstance(ret, list):
+                return ret
+            else:
+                return [ret]
 
-    def copy(self):
-        h = HTTPHeaderDict()
-        for key in self._data:
-            for rawkey, value in self._data[key]:
-                h.add(rawkey, value)
-        return h
-
-    def __eq__(self, other):
-        if not isinstance(other, Mapping):
-            return False
-        other = HTTPHeaderDict(other)
-        return dict((k1, self[k1]) for k1 in self._data) == \
-                dict((k2, other[k2]) for k2 in other._data)
-
-    def __getitem__(self, key):
-        values = self._data[key.lower()]
-        return ', '.join(value[1] for value in values)
-
-    def __setitem__(self, key, value):
-        self._data[key.lower()] = [(key, value)]
-
-    def __delitem__(self, key):
-        del self._data[key.lower()]
-
-    def __len__(self):
-        return len(self._data)
-
-    def __iter__(self):
-        for headers in itervalues(self._data):
-            yield headers[0][0]
+    # Backwards compatibility for httplib
+    getheaders = getlist
+    getallmatchingheaders = getlist
+    iget = getlist
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, dict(self.items()))
+        return "%s(%s)" % (type(self).__name__, self.compatible_dict())
+
+    def copy(self):
+        clone = type(self)()
+        for key in self:
+            val = _dict_getitem(self, key)
+            if isinstance(val, list):
+                # Need to create a copy instead of a reference
+                val = list(val)
+            _dict_setitem(clone, key, val)
+        return clone
+
+    @staticmethod
+    def _format_field(field):
+        return '-'.join(field_pt.capitalize() for field_pt in field.split('-'))
+
+    def compatible_dict(self):
+        """
+        If the client performing the request is not adjusted for this class, this function
+        can create a backwards and standards compatible version containing comma joined
+        strings instead of lists for multiple headers.
+        """
+        ret = dict()
+        for key in self:
+            ret[self._format_field(key)] = self[key]
+        return ret
