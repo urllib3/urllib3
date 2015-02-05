@@ -2,6 +2,7 @@ import zlib
 import io
 from socket import timeout as SocketTimeout
 
+from .packages import six
 from ._collections import HTTPHeaderDict
 from .exceptions import ProtocolError, DecodeError, ReadTimeoutError
 from .packages.six import string_types as basestring, binary_type
@@ -289,7 +290,12 @@ class HTTPResponse(io.IOBase):
             if k.lower() != 'set-cookie':
                 headers.add(k, v)
 
-        for cookie in r.msg.getheaders('set-cookie'):
+        if six.PY3:  # Python 3:
+            cookies = r.msg.get_all('set-cookie') or tuple()
+        else:  # Python 2:
+            cookies = r.msg.getheaders('set-cookie')
+
+        for cookie in cookies:
             headers.add('set-cookie', cookie)
 
         # HTTPResponse objects in Python 3 don't have a .strict attribute
