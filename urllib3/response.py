@@ -286,7 +286,7 @@ class HTTPResponse(io.IOBase):
 
         headers = HTTPHeaderDict()
         for k, v in r.getheaders():
-            if k != 'set-cookie':
+            if k.lower() != 'set-cookie':
                 headers.add(k, v)
 
         for cookie in r.msg.getheaders('set-cookie'):
