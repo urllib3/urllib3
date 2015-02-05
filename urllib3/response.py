@@ -93,9 +93,10 @@ class HTTPResponse(io.IOBase):
                  strict=0, preload_content=True, decode_content=True,
                  original_response=None, pool=None, connection=None):
 
-        self.headers = HTTPHeaderDict()
-        if headers:
-            self.headers.update(headers)
+        if isinstance(headers, HTTPHeaderDict):
+            self.headers = headers
+        else:
+            self.headers = HTTPHeaderDict(headers)
         self.status = status
         self.version = version
         self.reason = reason
@@ -285,13 +286,18 @@ class HTTPResponse(io.IOBase):
         with ``original_response=r``.
         """
 
-        headers = HTTPHeaderDict()
-        for k, v in r.getheaders():
-            headers.add(k, v)
+        httplib_headers = r.getheaders()
+        if isinstance(httplib_headers, HTTPHeaderDict):
+            headers = httplib_headers
+        else:
+            headers = HTTPHeaderDict()
+            # Should be done by the update
+            for k, v in httplib_headers:
+                headers.add(k, v)
 
         # HTTPResponse objects in Python 3 don't have a .strict attribute
         strict = getattr(r, 'strict', 0)
-        return ResponseCls(body=r,
+        resp = ResponseCls(body=r,
                            headers=headers,
                            status=r.status,
                            version=r.version,
@@ -299,6 +305,7 @@ class HTTPResponse(io.IOBase):
                            strict=strict,
                            original_response=r,
                            **response_kw)
+        return resp
 
     # Backwards-compatibility methods for httplib.HTTPResponse
     def getheaders(self):
