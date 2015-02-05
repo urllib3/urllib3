@@ -9,7 +9,6 @@ from .connection import HTTPException, BaseSSLError
 from .util.response import is_fp_closed
 
 
-
 class DeflateDecoder(object):
 
     def __init__(self):
@@ -219,7 +218,7 @@ class HTTPResponse(io.IOBase):
 
             except BaseSSLError as e:
                 # FIXME: Is there a better way to differentiate between SSLErrors?
-                if not 'read operation timed out' in str(e):  # Defensive:
+                if 'read operation timed out' not in str(e):  # Defensive:
                     # This shouldn't happen but just in case we're missing an edge
                     # case, let's avoid swallowing SSL errors.
                     raise
