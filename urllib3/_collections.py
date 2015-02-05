@@ -196,7 +196,8 @@ class HTTPHeaderDict(dict):
                 _dict_setitem(self, key, [item, val])
 
     def update_add(*args, **kwds):
-        """Adapted version of MutableMapping.update in order to insert items
+        """Generic import function for any type of header-like object.
+        Adapted version of MutableMapping.update in order to insert items
         with self.add instead of self.__setitem__
         """
         if len(args) > 2:

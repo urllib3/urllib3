@@ -153,10 +153,37 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertEqual(d['a'], 'foo, bar')
         self.assertEqual(d['A'], 'foo, bar')
 
+        d.add('a', 'asdf')
+        self.assertEqual(d['a'], 'foo, bar, asdf')
+        
+    def test_update_add(self):
+        self.d.update_add([('c', '100'), ('c', '200'), ('c', '300')], c='400')
+        self.assertEqual(self.d['c'], '100, 200, 300, 400')
+
+        self.d.update_add(dict(a='asdf'))
+        self.assertEqual(self.d['a'], 'foo, bar, asdf')
+        
+        class NonMappingHeaderContainer(object):
+            def __init__(self, **kwargs):
+                self._data = {}
+                self._data.update(kwargs)
+
+            def keys(self):
+                return self._data.keys()
+            
+            def __getitem__(self, key):
+                return self._data[key]
+
+        header_object = NonMappingHeaderContainer(e='foofoo')
+        self.d.update_add(header_object)
+        self.assertEqual(self.d['e'], 'foofoo')
+
     def test_getlist(self):
         self.assertEqual(self.d.getlist('a'), ['foo', 'bar'])
         self.assertEqual(self.d.getlist('A'), ['foo', 'bar'])
         self.assertEqual(self.d.getlist('b'), [])
+        self.d.add('b', 'asdf')
+        self.assertEqual(self.d.getlist('b'), ['asdf'])
 
     def test_delitem(self):
         del self.d['a']
@@ -168,6 +195,10 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertEqual(self.d, b)
         c = [('a', 'foo, bar')]
         self.assertNotEqual(self.d, c)
+        
+        # For some reason, the test above doesn't run into the __eq__ function,
+        # lacking test coverage for line 165, so comparing directly here
+        self.assertFalse(self.d == 2)
 
     def test_len(self):
         self.assertEqual(len(self.d), 1)
