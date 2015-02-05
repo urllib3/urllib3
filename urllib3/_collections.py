@@ -14,7 +14,7 @@ try:  # Python 2.7+
     from collections import OrderedDict
 except ImportError:
     from .packages.ordered_dict import OrderedDict
-from .packages.six import iterkeys, itervalues, PY3
+from .packages.six import iterkeys, itervalues, _iterkeys, _itervalues, _iteritems
 
 
 __all__ = ['RecentlyUsedContainer', 'HTTPHeaderDict']
@@ -172,11 +172,10 @@ class HTTPHeaderDict(dict):
     get = MutableMapping.get
     pop = MutableMapping.pop
     update = MutableMapping.update
-
-    if not PY3:
-        itervalues = MutableMapping.itervalues
-        iteritems = MutableMapping.iteritems
-
+    
+    iterkeys = getattr(MutableMapping, _iterkeys)
+    itervalues = getattr(MutableMapping, _itervalues)
+    iteritems = getattr(MutableMapping, _iteritems)
 
     def add(self, key, val):
         """Adds a (name, value) pair, doesn't overwrite the value if it already
@@ -268,4 +267,10 @@ class HTTPHeaderDict(dict):
         ret = dict()
         for key in self:
             ret[self._format_field(key)] = self[key]
+        return ret
+    
+    @classmethod
+    def from_httplib(cls, headers):
+        ret = cls()
+        ret.update_add(headers)
         return ret
