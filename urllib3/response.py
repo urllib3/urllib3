@@ -2,7 +2,6 @@ import zlib
 import io
 from socket import timeout as SocketTimeout
 
-from .packages import six
 from ._collections import HTTPHeaderDict
 from .exceptions import ProtocolError, DecodeError, ReadTimeoutError
 from .packages.six import string_types as basestring, binary_type
@@ -93,9 +92,10 @@ class HTTPResponse(io.IOBase):
                  strict=0, preload_content=True, decode_content=True,
                  original_response=None, pool=None, connection=None):
 
-        self.headers = HTTPHeaderDict()
-        if headers:
-            self.headers.update(headers)
+        if isinstance(headers, HTTPHeaderDict):
+            self.headers = headers
+        else:
+            self.headers = HTTPHeaderDict(headers)
         self.status = status
         self.version = version
         self.reason = reason
@@ -284,23 +284,21 @@ class HTTPResponse(io.IOBase):
         Remaining parameters are passed to the HTTPResponse constructor, along
         with ``original_response=r``.
         """
-
-        headers = HTTPHeaderDict()
-        for k, v in r.getheaders():
-            if k.lower() != 'set-cookie':
+        # HTTPResponse.getheaders() returns a list with tuples of name, value for PY2 as well as PY3
+        # No ambiguation for PY3 required, PY3 automatically contains duplicate headers
+        # No special handling of cookie headers required
+        httplib_headers = r.getheaders()
+        if isinstance(httplib_headers, HTTPHeaderDict):
+            headers = httplib_headers
+        else:
+            headers = HTTPHeaderDict()
+            # Should be done by the update
+            for k, v in httplib_headers:
                 headers.add(k, v)
-
-        if six.PY3:  # Python 3:
-            cookies = r.msg.get_all('set-cookie') or tuple()
-        else:  # Python 2:
-            cookies = r.msg.getheaders('set-cookie')
-
-        for cookie in cookies:
-            headers.add('set-cookie', cookie)
 
         # HTTPResponse objects in Python 3 don't have a .strict attribute
         strict = getattr(r, 'strict', 0)
-        return ResponseCls(body=r,
+        resp = ResponseCls(body=r,
                            headers=headers,
                            status=r.status,
                            version=r.version,
@@ -308,6 +306,7 @@ class HTTPResponse(io.IOBase):
                            strict=strict,
                            original_response=r,
                            **response_kw)
+        return resp
 
     # Backwards-compatibility methods for httplib.HTTPResponse
     def getheaders(self):
