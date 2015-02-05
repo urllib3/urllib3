@@ -286,14 +286,9 @@ class HTTPResponse(io.IOBase):
         with ``original_response=r``.
         """
 
-        httplib_headers = r.getheaders()
-        if isinstance(httplib_headers, HTTPHeaderDict):
-            headers = httplib_headers
-        else:
-            headers = HTTPHeaderDict()
-            # Should be done by the update
-            for k, v in httplib_headers:
-                headers.add(k, v)
+        headers = r.getheaders()
+        if not isinstance(headers, HTTPHeaderDict):
+            headers = HTTPHeaderDict.from_httplib(headers)
 
         # HTTPResponse objects in Python 3 don't have a .strict attribute
         strict = getattr(r, 'strict', 0)
