@@ -1,7 +1,7 @@
 from collections import Mapping, MutableMapping
 try:
     from threading import RLock
-except ImportError: # Platform-specific: No threads available
+except ImportError:  # Platform-specific: No threads available
     class RLock:
         def __enter__(self):
             pass
@@ -10,7 +10,7 @@ except ImportError: # Platform-specific: No threads available
             pass
 
 
-try: # Python 2.7+
+try:  # Python 2.7+
     from collections import OrderedDict
 except ImportError:
     from .packages.ordered_dict import OrderedDict
@@ -200,8 +200,7 @@ class HTTPHeaderDict(MutableMapping):
     def update(self, *args, **kwds):
         headers = args[0]
         if isinstance(headers, HTTPHeaderDict):
-            for key in headers:
-                for value in headers.getlist(key):
-                    self.add(key, value)
+            for key in iterkeys(headers._data):
+                self._data.setdefault(key.lower(), []).extend(headers._data[key])
         else:
             super(HTTPHeaderDict, self).update(*args, **kwds)
