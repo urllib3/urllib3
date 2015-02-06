@@ -69,6 +69,7 @@ class PoolManager(RequestMethods):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.clear()
+        # Return False to re-raise any potential exceptions
         return False
 
     def _new_pool(self, scheme, host, port):

@@ -77,6 +77,7 @@ class ConnectionPool(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+        # Return False to re-raise any potential exceptions
         return False
 
     def close():
