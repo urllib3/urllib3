@@ -205,6 +205,26 @@ class TestConnectionPool(unittest.TestCase):
     def test_no_host(self):
         self.assertRaises(LocationValueError, HTTPConnectionPool, None)
 
+    def test_contextmanager(self):
+        with connection_from_url('http://google.com:80') as pool:
+            # Populate with some connections
+            conn1 = pool._get_conn()
+            conn2 = pool._get_conn()
+            conn3 = pool._get_conn()
+            pool._put_conn(conn1)
+            pool._put_conn(conn2)
+
+            old_pool_queue = pool.pool
+
+        self.assertEqual(pool.pool, None)
+
+        self.assertRaises(ClosedPoolError, pool._get_conn)
+
+        pool._put_conn(conn3)
+
+        self.assertRaises(ClosedPoolError, pool._get_conn)
+
+        self.assertRaises(Empty, old_pool_queue.get, block=False)
 
 
 if __name__ == '__main__':

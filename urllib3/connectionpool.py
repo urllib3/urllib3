@@ -179,6 +179,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # list.
             self.conn_kw.setdefault('socket_options', [])
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
+
     def _new_conn(self):
         """
         Return a fresh :class:`HTTPConnection`.
