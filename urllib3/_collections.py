@@ -165,7 +165,6 @@ class HTTPHeaderDict(dict):
             other = type(self)(other)
         return dict((k1, self[k1]) for k1 in self) == dict((k2, other[k2]) for k2 in other)
 
-    items = MutableMapping.items
     values = MutableMapping.values
     get = MutableMapping.get
     pop = MutableMapping.pop
@@ -174,7 +173,6 @@ class HTTPHeaderDict(dict):
     if not PY3: # Python 2:
         iterkeys = MutableMapping.iterkeys
         itervalues = MutableMapping.itervalues
-        iteritems = MutableMapping.iteritems
 
     def add(self, key, val):
         """Adds a (name, value) pair, doesn't overwrite the value if it already
@@ -254,6 +252,15 @@ class HTTPHeaderDict(dict):
                 val = list(val)
             _dict_setitem(clone, key, val)
         return clone
+    
+    def iteritems(self):
+        # Extration of the original headers
+        for key in self:
+            val = _dict_getitem(self, key)
+            yield val[0], ', '.join(val[1:])
+
+    def items(self):
+        return list(self.iteritems())
 
     def compatible_dict(self):
         """
@@ -261,11 +268,7 @@ class HTTPHeaderDict(dict):
         can create a backwards and standards compatible version containing comma joined
         strings instead of lists for multiple headers.
         """
-        ret = dict()
-        for key in self:
-            val = _dict_getitem(self, key)
-            ret[val[0]] = ', '.join(val[1:])
-        return ret
+        return dict(self.iteritems())
     
     @classmethod
     def from_httplib(cls, headers):
