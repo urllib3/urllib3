@@ -72,6 +72,20 @@ class ConnectionPool(object):
         return '%s(host=%r, port=%r)' % (type(self).__name__,
                                          self.host, self.port)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
+
+    def close():
+        """
+        Close all pooled connections and disable the pool.
+        """
+        pass
+
+
 # This is taken from http://hg.python.org/cpython/file/7aaba721ebc0/Lib/socket.py#l252
 _blocking_errnos = set([errno.EAGAIN, errno.EWOULDBLOCK])
 
@@ -178,13 +192,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # We cannot know if the user has added default socket options, so we cannot replace the
             # list.
             self.conn_kw.setdefault('socket_options', [])
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-        return False
 
     def _new_conn(self):
         """
