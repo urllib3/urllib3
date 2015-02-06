@@ -213,5 +213,12 @@ class TestHTTPHeaderDict(unittest.TestCase):
         rep = "HTTPHeaderDict({'A': 'foo, bar'})"
         self.assertEqual(repr(self.d), rep)
 
+    def test_items_preserving_case(self):
+        # Should not be tested only in connectionpool
+        HEADERS = {'Content-Length': '0', 'Content-type': 'text/plain',
+                    'Server': 'TornadoServer/1.2.3'}
+        h = dict(HTTPHeaderDict(HEADERS).items())
+        self.assertEqual(HEADERS, h) # to preserve case sensitivity        
+
 if __name__ == '__main__':
     unittest.main()
