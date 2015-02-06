@@ -14,7 +14,7 @@ try:  # Python 2.7+
     from collections import OrderedDict
 except ImportError:
     from .packages.ordered_dict import OrderedDict
-from .packages.six import iterkeys, itervalues, _iterkeys, _itervalues, _iteritems
+from .packages.six import iterkeys, itervalues, PY3
 
 
 __all__ = ['RecentlyUsedContainer', 'HTTPHeaderDict']
@@ -101,6 +101,7 @@ _dict_setitem = dict.__setitem__
 _dict_getitem = dict.__getitem__
 _dict_delitem = dict.__delitem__
 _dict_contains = dict.__contains__
+_dict_setdefault = dict.setdefault
 
 
 class HTTPHeaderDict(dict):
@@ -145,14 +146,11 @@ class HTTPHeaderDict(dict):
             self.update(kwargs)
 
     def __setitem__(self, key, val):
-        return _dict_setitem(self, key.lower(), val)
+        return _dict_setitem(self, key.lower(), (key, val))
 
     def __getitem__(self, key):
         val = _dict_getitem(self, key.lower())
-        if isinstance(val, list):
-            return ', '.join(val)
-        else:
-            return val
+        return ', '.join(val[1:])
 
     def __delitem__(self, key):
         return _dict_delitem(self, key.lower())
@@ -173,9 +171,10 @@ class HTTPHeaderDict(dict):
     pop = MutableMapping.pop
     update = MutableMapping.update
     
-    iterkeys = getattr(MutableMapping, _iterkeys)
-    itervalues = getattr(MutableMapping, _itervalues)
-    iteritems = getattr(MutableMapping, _iteritems)
+    if not PY3: # Python 2:
+        iterkeys = MutableMapping.iterkeys
+        itervalues = MutableMapping.itervalues
+        iteritems = MutableMapping.iteritems
 
     def add(self, key, val):
         """Adds a (name, value) pair, doesn't overwrite the value if it already
@@ -186,16 +185,18 @@ class HTTPHeaderDict(dict):
         >>> headers['foo']
         'bar, baz'
         """
-        key = key.lower()
-        # Use lower only once and then stick with inbuilt functions for speed
-        if not _dict_contains(self, key):
-            _dict_setitem(self, key, val)
-        else:
-            item = _dict_getitem(self, key)
-            if isinstance(item, list):
-                item.append(val)
+        key_lower = key.lower()
+        new_vals = key, val
+        # Keep the common case aka no item present as fast as possible
+        vals = _dict_setdefault(self, key_lower, new_vals)
+        if new_vals is not vals:
+            # The item was not inserted, as there was a previous one
+            if isinstance(vals, list):
+                # If already several items got inserted, we have a list
+                vals.append(val)
             else:
-                _dict_setitem(self, key, [item, val])
+                # Only one item so far, need to convert the tuple to list
+                _dict_setitem(self, key_lower, [vals[0], vals[1], val])
 
     def update_add(*args, **kwds):
         """Generic import function for any type of header-like object.
@@ -227,14 +228,14 @@ class HTTPHeaderDict(dict):
         """Returns a list of all the values for the named field. Returns an
         empty list if the key doesn't exist."""
         try:
-            ret = _dict_getitem(self, key.lower())
+            vals = _dict_getitem(self, key.lower())
         except KeyError:
             return []
         else:
-            if isinstance(ret, list):
-                return ret
+            if isinstance(vals, tuple):
+                return [vals[1]]
             else:
-                return [ret]
+                return vals[1:]
 
     # Backwards compatibility for httplib
     getheaders = getlist
@@ -249,14 +250,10 @@ class HTTPHeaderDict(dict):
         for key in self:
             val = _dict_getitem(self, key)
             if isinstance(val, list):
-                # Need to create a copy instead of a reference
+                # Don't need to convert tuples
                 val = list(val)
             _dict_setitem(clone, key, val)
         return clone
-
-    @staticmethod
-    def _format_field(field):
-        return '-'.join(field_pt.capitalize() for field_pt in field.split('-'))
 
     def compatible_dict(self):
         """
@@ -266,7 +263,8 @@ class HTTPHeaderDict(dict):
         """
         ret = dict()
         for key in self:
-            ret[self._format_field(key)] = self[key]
+            val = _dict_getitem(self, key)
+            ret[val[0]] = ', '.join(val[1:])
         return ret
     
     @classmethod
