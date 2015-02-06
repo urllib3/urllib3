@@ -136,5 +136,8 @@ In chronological order:
 * Benjamen Meyer <bm_witness@yahoo.com>
   * Security Warning Documentation update for proper capture
 
+* Shivan Sornarajah <github@sornars.com>
+  * Support for using ConnectionPool and PoolManager as context managers.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
