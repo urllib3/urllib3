@@ -165,6 +165,9 @@ class HTTPHeaderDict(dict):
             other = type(self)(other)
         return dict((k1, self[k1]) for k1 in self) == dict((k2, other[k2]) for k2 in other)
 
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     values = MutableMapping.values
     get = MutableMapping.get
     pop = MutableMapping.pop
@@ -196,7 +199,7 @@ class HTTPHeaderDict(dict):
                 # Only one item so far, need to convert the tuple to list
                 _dict_setitem(self, key_lower, [vals[0], vals[1], val])
 
-    def update_add(*args, **kwds):
+    def extend(*args, **kwds):
         """Generic import function for any type of header-like object.
         Adapted version of MutableMapping.update in order to insert items
         with self.add instead of self.__setitem__
@@ -273,5 +276,5 @@ class HTTPHeaderDict(dict):
     @classmethod
     def from_httplib(cls, headers):
         ret = cls()
-        ret.update_add(headers)
+        ret.extend(headers)
         return ret
