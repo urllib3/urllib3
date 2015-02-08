@@ -127,43 +127,48 @@ class TestLRUContainer(unittest.TestCase):
 
 class TestHTTPHeaderDict(unittest.TestCase):
     def setUp(self):
-        self.d = HTTPHeaderDict(A='foo')
-        self.d.add('a', 'bar')
+        self.d = HTTPHeaderDict(Cookie='foo')
+        self.d.add('cookie', 'bar')
 
     def test_overwriting_with_setitem_replaces(self):
         d = HTTPHeaderDict()
 
-        d['A'] = 'foo'
-        self.assertEqual(d['a'], 'foo')
+        d['Cookie'] = 'foo'
+        self.assertEqual(d['cookie'], 'foo')
 
-        d['a'] = 'bar'
-        self.assertEqual(d['A'], 'bar')
+        d['cookie'] = 'bar'
+        self.assertEqual(d['Cookie'], 'bar')
 
     def test_copy(self):
         h = self.d.copy()
         self.assertTrue(self.d is not h)
         self.assertEqual(self.d, h)
 
-    def test_add(self):
+    def test_add_multiple_allowed(self):
         d = HTTPHeaderDict()
+        d['Cookie'] = 'foo'
+        d.add('cookie', 'bar')
 
-        d['A'] = 'foo'
-        d.add('a', 'bar')
+        self.assertEqual(d['cookie'], 'foo, bar')
+        self.assertEqual(d['Cookie'], 'foo, bar')
 
-        self.assertEqual(d['a'], 'foo, bar')
-        self.assertEqual(d['A'], 'foo, bar')
+        d.add('cookie', 'asdf')
+        self.assertEqual(d['cookie'], 'foo, bar, asdf')
 
-        d.add('a', 'asdf')
-        self.assertEqual(d['a'], 'foo, bar, asdf')
+    def test_add_multiple_not_allowed(self):
+        self.d.add('notmulti', 'should be overwritten on next add call')
+        self.d.add('notmulti', 'new val')
+        self.assertEqual(self.d['notmulti'], 'new val')
         
     def test_extend(self):
-        self.d.extend([('c', '100'), ('c', '200'), ('c', '300')], c='400')
-        self.assertEqual(self.d['c'], '100, 200, 300, 400')
+        self.d.extend([('set-cookie', '100'), ('set-cookie', '200'), ('set-cookie', '300')])
+        self.assertEqual(self.d['set-cookie'], '100, 200, 300')
 
-        self.d.extend(dict(a='asdf'))
-        self.assertEqual(self.d['a'], 'foo, bar, asdf')
-        self.d.add('a', 'with, comma')
-        self.assertEqual(self.d.getlist('a'), ['foo', 'bar', 'asdf', 'with, comma'])
+        self.d.extend(dict(cookie='asdf'), b='100')
+        self.assertEqual(self.d['cookie'], 'foo, bar, asdf')
+        self.assertEqual(self.d['b'], '100')
+        self.d.add('cookie', 'with, comma')
+        self.assertEqual(self.d.getlist('cookie'), ['foo', 'bar', 'asdf', 'with, comma'])
         
         class NonMappingHeaderContainer(object):
             def __init__(self, **kwargs):
@@ -181,37 +186,37 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertEqual(self.d['e'], 'foofoo')
 
     def test_getlist(self):
-        self.assertEqual(self.d.getlist('a'), ['foo', 'bar'])
-        self.assertEqual(self.d.getlist('A'), ['foo', 'bar'])
+        self.assertEqual(self.d.getlist('cookie'), ['foo', 'bar'])
+        self.assertEqual(self.d.getlist('Cookie'), ['foo', 'bar'])
         self.assertEqual(self.d.getlist('b'), [])
         self.d.add('b', 'asdf')
         self.assertEqual(self.d.getlist('b'), ['asdf'])
 
     def test_update(self):
-        self.d.update(dict(a='asdf'))
-        self.assertEqual(self.d.getlist('a'), ['asdf'])
+        self.d.update(dict(cookie='asdf'))
+        self.assertEqual(self.d.getlist('cookie'), ['asdf'])
 
     def test_delitem(self):
-        del self.d['a']
-        self.assertFalse('a' in self.d)
-        self.assertFalse('A' in self.d)
+        del self.d['cookie']
+        self.assertFalse('cookie' in self.d)
+        self.assertFalse('COOKIE' in self.d)
 
     def test_equal(self):
-        b = HTTPHeaderDict({'a': 'foo, bar'})
+        b = HTTPHeaderDict({'cookie': 'foo, bar'})
         self.assertEqual(self.d, b)
         self.assertFalse(self.d == 2)
 
     def test_not_equal(self):
-        b = HTTPHeaderDict({'a': 'foo, bar'})
+        b = HTTPHeaderDict({'cookie': 'foo, bar'})
         self.assertFalse(self.d != b)
-        c = [('a', 'foo, bar')]
+        c = [('cookie', 'foo, bar')]
         self.assertNotEqual(self.d, c)
 
     def test_len(self):
         self.assertEqual(len(self.d), 1)
 
     def test_repr(self):
-        rep = "HTTPHeaderDict({'A': 'foo, bar'})"
+        rep = "HTTPHeaderDict({'Cookie': 'foo, bar'})"
         self.assertEqual(repr(self.d), rep)
 
     def test_items_preserving_case(self):
