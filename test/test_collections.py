@@ -162,6 +162,8 @@ class TestHTTPHeaderDict(unittest.TestCase):
 
         self.d.extend(dict(a='asdf'))
         self.assertEqual(self.d['a'], 'foo, bar, asdf')
+        self.d.add('a', 'with, comma')
+        self.assertEqual(self.d.getlist('a'), ['foo', 'bar', 'asdf', 'with, comma'])
         
         class NonMappingHeaderContainer(object):
             def __init__(self, **kwargs):
@@ -184,6 +186,10 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertEqual(self.d.getlist('b'), [])
         self.d.add('b', 'asdf')
         self.assertEqual(self.d.getlist('b'), ['asdf'])
+
+    def test_update(self):
+        self.d.update(dict(a='asdf'))
+        self.assertEqual(self.d.getlist('a'), ['asdf'])
 
     def test_delitem(self):
         del self.d['a']
