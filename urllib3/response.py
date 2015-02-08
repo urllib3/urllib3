@@ -289,7 +289,7 @@ class HTTPResponse(io.IOBase):
         # No special handling of cookie headers required
         headers = r.getheaders()
         if not isinstance(headers, HTTPHeaderDict):
-            headers = HTTPHeaderDict.from_httplib(headers)
+            headers = HTTPHeaderDict(headers)
 
         # HTTPResponse objects in Python 3 don't have a .strict attribute
         strict = getattr(r, 'strict', 0)

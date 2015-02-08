@@ -141,9 +141,9 @@ class HTTPHeaderDict(dict):
     def __init__(self, headers=None, **kwargs):
         dict.__init__(self)
         if headers is not None:
-            self.update(headers)
+            self.extend(headers)
         if kwargs:
-            self.update(kwargs)
+            self.extend(kwargs)
 
     def __setitem__(self, key, val):
         return _dict_setitem(self, key.lower(), (key, val))
@@ -199,7 +199,7 @@ class HTTPHeaderDict(dict):
                 # Only one item so far, need to convert the tuple to list
                 _dict_setitem(self, key_lower, [vals[0], vals[1], val])
 
-    def extend(*args, **kwds):
+    def extend(*args, **kwargs):
         """Generic import function for any type of header-like object.
         Adapted version of MutableMapping.update in order to insert items
         with self.add instead of self.__setitem__
@@ -222,7 +222,7 @@ class HTTPHeaderDict(dict):
             for key, value in other:
                 self.add(key, value)
 
-        for key, value in kwds.items():
+        for key, value in kwargs.items():
             self.add(key, value)
 
     def getlist(self, key):
@@ -272,9 +272,3 @@ class HTTPHeaderDict(dict):
         strings instead of lists for multiple headers.
         """
         return dict(self.iteritems())
-    
-    @classmethod
-    def from_httplib(cls, headers):
-        ret = cls()
-        ret.extend(headers)
-        return ret
