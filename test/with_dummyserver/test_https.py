@@ -202,6 +202,16 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                         '7A:F2:8A:D7:1E:07:33:67:DE'
         https_pool.request('GET', '/')
 
+    def test_assert_fingerprint_sha256(self):
+        https_pool = HTTPSConnectionPool('localhost', self.port,
+                                         cert_reqs='CERT_REQUIRED',
+                                         ca_certs=DEFAULT_CA)
+
+        https_pool.assert_fingerprint = ('9A:29:9D:4F:47:85:1C:51:23:F5:9A:A3:'
+                                         '0F:5A:EF:96:F9:2E:3C:22:2E:FC:E8:BC:'
+                                         '0E:73:90:37:ED:3B:AA:AB')
+        https_pool.request('GET', '/')
+
     def test_assert_invalid_fingerprint(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_REQUIRED',
@@ -235,6 +245,15 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_NONE',
                                          ca_certs=DEFAULT_CA_BAD)
+
+        https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
+                                        '7A:F2:8A:D7:1E:07:33:67:DE'
+        https_pool.request('GET', '/')
+
+    def test_good_fingerprint_and_hostname_mismatch(self):
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_REQUIRED',
+                                         ca_certs=DEFAULT_CA)
 
         https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
                                         '7A:F2:8A:D7:1E:07:33:67:DE'

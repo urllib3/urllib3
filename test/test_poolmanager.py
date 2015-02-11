@@ -71,6 +71,22 @@ class TestPoolManager(unittest.TestCase):
         self.assertRaises(LocationValueError, p.connection_from_url, 'http://@')
         self.assertRaises(LocationValueError, p.connection_from_url, None)
 
+    def test_contextmanager(self):
+        with PoolManager(1) as p:
+            conn_pool = p.connection_from_url('http://google.com')
+            self.assertEqual(len(p.pools), 1)
+            conn = conn_pool._get_conn()
+
+        self.assertEqual(len(p.pools), 0)
+
+        self.assertRaises(ClosedPoolError, conn_pool._get_conn)
+
+        conn_pool._put_conn(conn)
+
+        self.assertRaises(ClosedPoolError, conn_pool._get_conn)
+
+        self.assertEqual(len(p.pools), 0)
+
 
 if __name__ == '__main__':
     unittest.main()

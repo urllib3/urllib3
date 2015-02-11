@@ -36,9 +36,23 @@ pools. That is, if you set the PoolManager ``num_pools`` to 10, then after
 making requests to 11 or more different hosts, the least recently used pools
 will be cleaned up eventually.
 
-Cleanup of stale pools does not happen immediately. You can read more about the
-implementation and the various adjustable variables within
-:class:`~urllib3._collections.RecentlyUsedContainer`.
+Cleanup of stale pools does not happen immediately but can be forced when used 
+as a context manager.
+
+.. doctest ::
+    
+    >>> from urllib3 import PoolManager
+    >>> with PoolManager(10) as manager:
+    ...     r = manager.request('GET', 'http://example.com')
+    ...     r = manager.request('GET', 'http://httpbin.org/')
+    ...     len(manager.pools)
+    ...
+    2
+    >>> len(manager.pools)
+    0
+
+You can read more about the implementation and the various adjustable variables 
+within :class:`~urllib3._collections.RecentlyUsedContainer`.
 
 API
 ---

@@ -158,6 +158,12 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertEqual(self.d.getlist('A'), ['foo', 'bar'])
         self.assertEqual(self.d.getlist('b'), [])
 
+    def test_update(self):
+        d = HTTPHeaderDict()
+        d.update(self.d)
+        d.add('a', 'with, comma')
+        self.assertEqual(d.getlist('a'), ['foo', 'bar', 'with, comma'])
+
     def test_delitem(self):
         del self.d['a']
         self.assertFalse('a' in self.d)

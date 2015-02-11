@@ -1,6 +1,20 @@
 Changes
 =======
 
+1.10.1 (2015-02-10)
++++++++++++++++++++
+
+* Pools can be used as context managers. (Issue #545)
+
+* Don't re-use connections which experienced an SSLError. (Issue #529)
+
+* Don't fail when gzip decoding an empty stream. (Issue #535)
+
+* Add sha256 support for fingerprint verification. (Issue #540)
+
+* Fixed handling of header values containing commas. (Issue #533)
+
+
 1.10 (2014-12-14)
 +++++++++++++++++
 
