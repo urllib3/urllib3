@@ -12,6 +12,8 @@ dev (master)
 
 * Add sha256 support for fingerprint verification. (Issue #540)
 
+* Fixed handling of header values containing commas. (Issue #533)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
