@@ -239,6 +239,14 @@ class TestHTTPHeaderDict(unittest.TestCase):
         rep = "HTTPHeaderDict({'Cookie': 'foo, bar'})"
         self.assertEqual(repr(self.d), rep)
 
+    def test_items(self):
+        items = self.d.items()
+        self.assertEqual(len(items), 2)
+        self.assertEqual(items[0][0], 'Cookie')
+        self.assertEqual(items[0][1], 'foo')
+        self.assertEqual(items[1][0], 'Cookie')
+        self.assertEqual(items[1][1], 'bar')
+
     def test_items_preserving_case(self):
         # Should not be tested only in connectionpool
         HEADERS = {'Content-Length': '0', 'Content-type': 'text/plain',

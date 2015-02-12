@@ -174,7 +174,7 @@ class HTTPHeaderDict(dict):
     get = MutableMapping.get
     update = MutableMapping.update
     
-    if not PY3: # Python 2:
+    if not PY3: # Python 2
         iterkeys = MutableMapping.iterkeys
         itervalues = MutableMapping.itervalues
 
@@ -274,7 +274,7 @@ class HTTPHeaderDict(dict):
     iget = getlist
 
     def __repr__(self):
-        return "%s(%s)" % (type(self).__name__, dict(self.iteritems()))
+        return "%s(%s)" % (type(self).__name__, dict(self.itermerged()))
 
     def copy(self):
         clone = type(self)()
@@ -287,6 +287,13 @@ class HTTPHeaderDict(dict):
         return clone
 
     def iteritems(self):
+        """Iterate over all header lines, including duplicate ones."""
+        for key in self:
+            vals = _dict_getitem(self, key)
+            for val in vals[1:]:
+                yield vals[0], val
+
+    def itermerged(self):
         """Iterate over all headers, merging duplicate ones together."""
         for key in self:
             val = _dict_getitem(self, key)
