@@ -270,7 +270,7 @@ Set-Cookie: bb_lastactivity=0; expires=Sat, 21-Sep-2013 18:49:35 GMT; path=/
 
 """
         msg = HTTPMessage(StringIO(msg.lstrip().replace('\n', '\r\n')))
-        d = HTTPHeaderDict.from_rfc822(msg)
+        d = HTTPHeaderDict.from_httplib(msg)
         self.assertEqual(d['server'], 'nginx')
         cookies = d.getlist('set-cookie')
         self.assertEqual(len(cookies), 2)
