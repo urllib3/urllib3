@@ -125,6 +125,18 @@ class TestLRUContainer(unittest.TestCase):
         self.assertRaises(NotImplementedError, d.__iter__)
 
 
+class NonMappingHeaderContainer(object):
+    def __init__(self, **kwargs):
+        self._data = {}
+        self._data.update(kwargs)
+
+    def keys(self):
+        return self._data.keys()
+
+    def __getitem__(self, key):
+        return self._data[key]
+
+
 class TestHTTPHeaderDict(unittest.TestCase):
     def setUp(self):
         self.d = HTTPHeaderDict(Cookie='foo')
@@ -170,17 +182,6 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.d.add('cookie', 'with, comma')
         self.assertEqual(self.d.getlist('cookie'), ['foo', 'bar', 'asdf', 'with, comma'])
         
-        class NonMappingHeaderContainer(object):
-            def __init__(self, **kwargs):
-                self._data = {}
-                self._data.update(kwargs)
-
-            def keys(self):
-                return self._data.keys()
-            
-            def __getitem__(self, key):
-                return self._data[key]
-
         header_object = NonMappingHeaderContainer(e='foofoo')
         self.d.extend(header_object)
         self.assertEqual(self.d['e'], 'foofoo')
@@ -202,15 +203,34 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertFalse('COOKIE' in self.d)
 
     def test_equal(self):
-        b = HTTPHeaderDict({'cookie': 'foo, bar'})
+        b = HTTPHeaderDict(cookie='foo, bar')
+        c = NonMappingHeaderContainer(cookie='foo, bar')
         self.assertEqual(self.d, b)
-        self.assertFalse(self.d == 2)
+        self.assertEqual(self.d, c)
+        self.assertNotEqual(self.d, 2)
 
     def test_not_equal(self):
-        b = HTTPHeaderDict({'cookie': 'foo, bar'})
+        b = HTTPHeaderDict(cookie='foo, bar')
+        c = NonMappingHeaderContainer(cookie='foo, bar')
         self.assertFalse(self.d != b)
-        c = [('cookie', 'foo, bar')]
-        self.assertNotEqual(self.d, c)
+        self.assertFalse(self.d != c)
+        self.assertNotEqual(self.d, 2)
+
+    def test_pop(self):
+        key = 'Cookie'
+        a = self.d[key]
+        b = self.d.pop(key)
+        self.assertEqual(a, b)
+        self.assertNotIn(key, self.d)
+        with self.assertRaises(KeyError):
+            self.d.pop(key)
+        dummy = object()
+        self.assertIs(dummy, self.d.pop(key, dummy))
+
+    def test_discard(self):
+        self.d.discard('cookie')
+        self.assertNotIn('cookie', self.d)
+        self.d.discard('cookie')
 
     def test_len(self):
         self.assertEqual(len(self.d), 1)
@@ -225,6 +245,27 @@ class TestHTTPHeaderDict(unittest.TestCase):
                     'Server': 'TornadoServer/1.2.3'}
         h = dict(HTTPHeaderDict(HEADERS).items())
         self.assertEqual(HEADERS, h) # to preserve case sensitivity        
+
+    @unittest.skipIf(six.PY3, "PY2 only")
+    def test_from_rfc822(self):
+        from httplib import HTTPMessage
+        from StringIO import StringIO
+
+        msg = """
+Server: nginx
+Content-Type: text/html; charset=windows-1251
+Connection: keep-alive
+Set-Cookie: bb_lastvisit=1348253375; expires=Sat, 21-Sep-2013 18:49:35 GMT; path=/
+Set-Cookie: bb_lastactivity=0; expires=Sat, 21-Sep-2013 18:49:35 GMT; path=/
+
+"""
+        msg = HTTPMessage(StringIO(msg.lstrip().replace('\n', '\r\n')))
+        d = HTTPHeaderDict.from_rfc822(msg)
+        self.assertEqual(d['server'], 'nginx')
+        cookies = d.getlist('set-cookie')
+        self.assertEqual(len(cookies), 2)
+        self.assertTrue(cookies[0].startswith("bb_lastvisit"))
+        self.assertTrue(cookies[1].startswith("bb_lastactivity"))
 
 if __name__ == '__main__':
     unittest.main()

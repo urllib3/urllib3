@@ -4,7 +4,7 @@ from socket import timeout as SocketTimeout
 
 from ._collections import HTTPHeaderDict
 from .exceptions import ProtocolError, DecodeError, ReadTimeoutError
-from .packages.six import string_types as basestring, binary_type
+from .packages.six import string_types as basestring, binary_type, PY3
 from .connection import HTTPException, BaseSSLError
 from .util.response import is_fp_closed
 
@@ -284,12 +284,12 @@ class HTTPResponse(io.IOBase):
         Remaining parameters are passed to the HTTPResponse constructor, along
         with ``original_response=r``.
         """
-        # HTTPResponse.getheaders() returns a list with tuples of name, value for PY2 as well as PY3
-        # No ambiguation for PY3 required, PY3 automatically contains duplicate headers
-        # No special handling of cookie headers required
-        headers = r.getheaders()
+        headers = r.msg
         if not isinstance(headers, HTTPHeaderDict):
-            headers = HTTPHeaderDict(headers)
+            if PY3: # Python 3
+                headers = HTTPHeaderDict(headers.items())
+            else: # Python 2
+                headers = HTTPHeaderDict.from_rfc822(headers)
 
         # HTTPResponse objects in Python 3 don't have a .strict attribute
         strict = getattr(r, 'strict', 0)

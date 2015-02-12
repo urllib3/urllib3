@@ -161,7 +161,7 @@ class HTTPHeaderDict(dict):
         return _dict_contains(self, key.lower())
 
     def __eq__(self, other):
-        if not isinstance(other, Mapping):
+        if not isinstance(other, Mapping) and not hasattr(other, 'keys'):
             return False
         if not isinstance(other, type(self)):
             other = type(self)(other)
@@ -172,12 +172,36 @@ class HTTPHeaderDict(dict):
 
     values = MutableMapping.values
     get = MutableMapping.get
-    pop = MutableMapping.pop
     update = MutableMapping.update
     
     if not PY3: # Python 2:
         iterkeys = MutableMapping.iterkeys
         itervalues = MutableMapping.itervalues
+
+    __marker = object()
+
+    def pop(self, key, default=__marker):
+        '''D.pop(k[,d]) -> v, remove specified key and return the corresponding value.
+          If key is not found, d is returned if given, otherwise KeyError is raised.
+        '''
+        # Using the MutableMapping function directly fails due to the private marker.
+        # Using ordinary dict.pop would expose the internal structures.
+        # So let's reinvent the wheel.
+        try:
+            value = self[key]
+        except KeyError:
+            if default is self.__marker:
+                raise
+            return default
+        else:
+            del self[key]
+            return value
+
+    def discard(self, key):
+        try:
+            del self[key]
+        except KeyError:
+            pass
 
     def add(self, key, val):
         """Adds a (name, value) pair, doesn't overwrite the value if it already
@@ -250,7 +274,7 @@ class HTTPHeaderDict(dict):
     iget = getlist
 
     def __repr__(self):
-        return "%s(%s)" % (type(self).__name__, self.compatible_dict())
+        return "%s(%s)" % (type(self).__name__, dict(self.iteritems()))
 
     def copy(self):
         clone = type(self)()
@@ -261,9 +285,9 @@ class HTTPHeaderDict(dict):
                 val = list(val)
             _dict_setitem(clone, key, val)
         return clone
-    
+
     def iteritems(self):
-        # Extration of the original headers
+        """Iterate over all headers, merging duplicate ones together."""
         for key in self:
             val = _dict_getitem(self, key)
             yield val[0], ', '.join(val[1:])
@@ -271,10 +295,17 @@ class HTTPHeaderDict(dict):
     def items(self):
         return list(self.iteritems())
 
-    def compatible_dict(self):
-        """
-        If the client performing the request is not adjusted for this class, this function
-        can create a backwards and standards compatible version containing comma joined
-        strings instead of lists for multiple headers.
-        """
-        return dict(self.iteritems())
+    @classmethod
+    def from_rfc822(cls, message, duplicates=('set-cookie',)): # Python 2
+        """Read headers from a Python 2 message object."""
+        ret = cls(message.items())
+        # ret now contains only the last header line for each duplicate.
+        # Parsing this with duplicates would be nice, but this would
+        # mean to repeat most parsing already done, when the message
+        # object was created. Extracting only the headers of interest 
+        # separately - the cookies - should be faster.
+        for key in duplicates:
+            ret.discard(key)
+            for header in message.getheaders(key):
+                ret.add(key, header)
+            return ret
