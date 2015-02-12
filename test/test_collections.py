@@ -7,6 +7,7 @@ from urllib3._collections import (
 from urllib3.packages import six
 xrange = six.moves.xrange
 
+from nose.plugins.skip import SkipTest
 
 class TestLRUContainer(unittest.TestCase):
     def test_maxsize(self):
@@ -254,8 +255,9 @@ class TestHTTPHeaderDict(unittest.TestCase):
         h = dict(HTTPHeaderDict(HEADERS).items())
         self.assertEqual(HEADERS, h) # to preserve case sensitivity        
 
-    @unittest.skipIf(six.PY3, "PY2 only")
-    def test_from_rfc822(self):
+    def test_from_httplib(self):
+        if six.PY3:
+            raise SkipTest()
         from httplib import HTTPMessage
         from StringIO import StringIO
 

@@ -289,7 +289,7 @@ class HTTPResponse(io.IOBase):
             if PY3: # Python 3
                 headers = HTTPHeaderDict(headers.items())
             else: # Python 2
-                headers = HTTPHeaderDict.from_rfc822(headers)
+                headers = HTTPHeaderDict.from_httplib(headers)
 
         # HTTPResponse objects in Python 3 don't have a .strict attribute
         strict = getattr(r, 'strict', 0)
