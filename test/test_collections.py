@@ -222,7 +222,7 @@ class TestHTTPHeaderDict(unittest.TestCase):
         a = self.d[key]
         b = self.d.pop(key)
         self.assertEqual(a, b)
-        self.assertNotIn(key, self.d)
+        self.assertFalse(key in self.d)
         with self.assertRaises(KeyError):
             self.d.pop(key)
         dummy = object()
@@ -230,7 +230,7 @@ class TestHTTPHeaderDict(unittest.TestCase):
 
     def test_discard(self):
         self.d.discard('cookie')
-        self.assertNotIn('cookie', self.d)
+        self.assertFalse('cookie' in self.d)
         self.d.discard('cookie')
 
     def test_len(self):
