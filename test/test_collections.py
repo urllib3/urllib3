@@ -223,10 +223,9 @@ class TestHTTPHeaderDict(unittest.TestCase):
         b = self.d.pop(key)
         self.assertEqual(a, b)
         self.assertFalse(key in self.d)
-        with self.assertRaises(KeyError):
-            self.d.pop(key)
+        self.assertRaises(KeyError, self.d.pop, key)
         dummy = object()
-        self.assertIs(dummy, self.d.pop(key, dummy))
+        self.assertTrue(dummy is self.d.pop(key, dummy))
 
     def test_discard(self):
         self.d.discard('cookie')
