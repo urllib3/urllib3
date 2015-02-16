@@ -4,6 +4,8 @@ Changes
 dev (master)
 ++++++++++++
 
+* Fix file descriptor leakage on retries. (Issue #548)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
