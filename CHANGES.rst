@@ -4,7 +4,15 @@ Changes
 dev (master)
 ++++++++++++
 
-* Pools can used as context managers. (Issue #545)
+* Fix file descriptor leakage on retries. (Issue #548)
+
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.10.1 (2015-02-10)
++++++++++++++++++++
+
+* Pools can be used as context managers. (Issue #545)
 
 * Don't re-use connections which experienced an SSLError. (Issue #529)
 
@@ -13,8 +21,6 @@ dev (master)
 * Add sha256 support for fingerprint verification. (Issue #540)
 
 * Fixed handling of header values containing commas. (Issue #533)
-
-* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.10 (2014-12-14)
