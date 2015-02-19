@@ -139,5 +139,8 @@ In chronological order:
 * Shivan Sornarajah <github@sornars.com>
   * Support for using ConnectionPool and PoolManager as context managers.
 
+* Alex Gaynor <alex.gaynor@gmail.com>
+  * Updates to the default SSL configuration
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
