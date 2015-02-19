@@ -6,6 +6,8 @@ dev (master)
 
 * Fix file descriptor leakage on retries. (Issue #548)
 
+* Removed RC4 from default cipher list. (Issue #551)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
