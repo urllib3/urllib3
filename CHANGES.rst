@@ -8,6 +8,8 @@ dev (master)
 
 * Removed RC4 from default cipher list. (Issue #551)
 
+* Header performance improvements. (Issue #544)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
