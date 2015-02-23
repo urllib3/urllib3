@@ -6,6 +6,7 @@ from dummyserver.testcase import (HTTPDummyServerTestCase,
 from urllib3.poolmanager import PoolManager
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError, SSLError
+from urllib3.util.retry import Retry
 
 
 class TestPoolManager(HTTPDummyServerTestCase):
@@ -77,6 +78,34 @@ class TestPoolManager(HTTPDummyServerTestCase):
                          timeout=0.01, retries=1)
 
         self.assertEqual(r._pool.host, self.host_alt)
+
+    def test_too_many_redirects(self):
+        http = PoolManager()
+
+        try:
+            r = http.request('GET', '%s/redirect' % self.base_url,
+                             fields={'target': '%s/redirect?target=%s/' % (self.base_url, self.base_url)},
+                             retries=1)
+            self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
+        except MaxRetryError:
+            pass
+
+        try:
+            r = http.request('GET', '%s/redirect' % self.base_url,
+                             fields={'target': '%s/redirect?target=%s/' % (self.base_url, self.base_url)},
+                             retries=Retry(total=None, redirect=1))
+            self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
+        except MaxRetryError:
+            pass
+
+    def test_raise_on_redirect(self):
+        http = PoolManager()
+
+        r = http.request('GET', '%s/redirect' % self.base_url,
+                         fields={'target': '%s/redirect?target=%s/' % (self.base_url, self.base_url)},
+                         retries=Retry(total=None, redirect=1, raise_on_redirect=False))
+
+        self.assertEqual(r.status, 303)
 
     def test_missing_port(self):
         # Can a URL that lacks an explicit port like ':80' succeed, or
