@@ -10,6 +10,8 @@ dev (master)
 
 * Header performance improvements. (Issue #544)
 
+* Fix PoolManager not obeying redirect retry settings. (Issue #553)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
