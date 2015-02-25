@@ -1,6 +1,18 @@
 Changes
 =======
 
+1.10.2 (2015-02-25)
++++++++++++++++++++
+
+* Fix file descriptor leakage on retries. (Issue #548)
+
+* Removed RC4 from default cipher list. (Issue #551)
+
+* Header performance improvements. (Issue #544)
+
+* Fix PoolManager not obeying redirect retry settings. (Issue #553)
+
+
 1.10.1 (2015-02-10)
 +++++++++++++++++++
 
