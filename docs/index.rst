@@ -98,7 +98,7 @@ like buffering:
 
 
 The response can be treated as a file-like object.
-A file can be downloaded directory to a local file in a context without
+A file can be downloaded directly to a local file in a context without
 being saved in memory.
 
 .. doctest ::
