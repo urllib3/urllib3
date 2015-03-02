@@ -73,9 +73,9 @@ except ImportError:
         def wrap_socket(self, socket, server_hostname=None):
             warnings.warn(
                 'A true SSLContext object is not available. This prevents '
-                'urllib3 from configuring SSL appropriately. This may cause '
+                'urllib3 from configuring SSL appropriately and may cause '
                 'certain SSL connections to fail. For more information, see '
-                'http://urllib3.readthedocs.org/en/latest/security.html'
+                'https://urllib3.readthedocs.org/en/latest/security.html'
                 '#sslconfigurationwarning.',
                 SSLConfigurationWarning
             )
