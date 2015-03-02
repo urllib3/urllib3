@@ -18,14 +18,12 @@ from urllib3.util.url import (
 from urllib3.util.ssl_ import (
     resolve_cert_reqs,
     ssl_wrap_socket,
-    create_urllib3_context,
 )
 from urllib3.exceptions import (
     LocationParseError,
     TimeoutStateError,
     InsecureRequestWarning,
     SSLError,
-    SSLConfigurationWarning,
 )
 
 from urllib3.util import is_fp_closed, ssl_
@@ -378,24 +376,6 @@ class TestUtil(unittest.TestCase):
             pass
 
         self.assertRaises(ValueError, is_fp_closed, NotReallyAFile())
-
-    @patch('warnings.warn')
-    @patch('urllib3.util.ssl_.SSLContext')
-    def test_ssl_configuration_warnings(self, context, warn):
-        # The mock context will have the urllib3 attribute that fires the
-        # warning we want.
-        mock_context = Mock()
-        context.return_value = mock_context
-
-        # We need to allow options to be ORed in
-        mock_context.options = 0
-
-        create_urllib3_context()
-        self.assertTrue(warn.called)
-        call, = warn.call_args_list
-        category = call[0][1]
-        self.assertEqual(category, SSLConfigurationWarning)
-
 
     def test_ssl_wrap_socket_loads_the_cert_chain(self):
         socket = object()

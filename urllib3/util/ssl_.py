@@ -71,6 +71,14 @@ except ImportError:
             self.ciphers = cipher_suite
 
         def wrap_socket(self, socket, server_hostname=None):
+            warnings.warn(
+                'A true SSLContext object is not available. This prevents '
+                'urllib3 from configuring SSL appropriately. This may cause '
+                'certain SSL connections to fail. For more information, see '
+                'http://urllib3.readthedocs.org/en/latest/security.html'
+                '#sslconfigurationwarning.',
+                SSLConfigurationWarning
+            )
             kwargs = {
                 'keyfile': self.keyfile,
                 'certfile': self.certfile,
@@ -196,16 +204,6 @@ def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
     :rtype: SSLContext
     """
     context = SSLContext(ssl_version or ssl.PROTOCOL_SSLv23)
-
-    if hasattr(context, 'urllib3_wrapper_context'):
-        warnings.warn(
-            'A true SSLContext object is not available. This prevents urllib3 '
-            'from configuring SSL appropriately. This may cause certain SSL '
-            'connections to fail. For more information, see '
-            'http://urllib3.readthedocs.org/en/latest/security.html'
-            '#sslconfigurationwarning.',
-            SSLConfigurationWarning
-        )
 
     if options is None:
         options = 0
