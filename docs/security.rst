@@ -111,6 +111,8 @@ Once you find your root certificate file::
         ...
 
 
+.. _pyopenssl:
+
 OpenSSL / PyOpenSSL
 -------------------
 
@@ -136,6 +138,8 @@ Now you can continue using urllib3 as you normally would.
 
 For more details, check the :mod:`~urllib3.contrib.pyopenssl` module.
 
+
+.. _insecurerequestwarning:
 
 InsecureRequestWarning
 ----------------------
@@ -166,3 +170,20 @@ warnings to your own log::
 
 Capturing the warnings to your own log is much preferred over simply disabling
 the warnings.
+
+SSLConfigurationWarning
+-----------------------
+
+.. versionadded:: 1.11
+
+Certain Python platforms have limitations in their ``ssl`` module that limits
+the configuration that ``urllib3`` can apply. In particular, this can cause
+HTTPS requests that would succeed on more featureful platforms to fail.
+
+If you encounter this warning, it is strongly recommended you upgrade to a
+newer Python version, or that you use pyOpenSSL as described in the
+:ref:`pyopenssl` section.
+
+If you know what you are doing and would like to disable this and other
+warnings, please consult the :ref:`insecurerequestwarning` section for
+instructions on how to handle the warnings.

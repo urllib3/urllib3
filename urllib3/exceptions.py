@@ -144,6 +144,11 @@ class ResponseError(HTTPError):
     SPECIFIC_ERROR = 'too many {status_code} error responses'
 
 
+class SSLConfigurationWarning(HTTPWarning):
+    "Warned when certain SSL configuration is not available."
+    pass
+
+
 class SecurityWarning(HTTPWarning):
     "Warned when perfoming security reducing actions"
     pass

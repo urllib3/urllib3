@@ -1,7 +1,7 @@
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
-from ..exceptions import SSLError
+from ..exceptions import SSLError, SSLConfigurationWarning
 
 
 SSLContext = None
@@ -10,6 +10,7 @@ create_default_context = None
 
 import errno
 import ssl
+import warnings
 
 try:  # Test for SSL features
     from ssl import wrap_socket, CERT_NONE, PROTOCOL_SSLv23
@@ -40,6 +41,7 @@ except ImportError:
 
     class SSLContext(object):  # Platform-specific: Python 2 & 3.1
         supports_set_ciphers = sys.version_info >= (2, 7)
+        urllib3_wrapper_context = True
 
         def __init__(self, protocol_version):
             self.protocol = protocol_version
@@ -194,6 +196,16 @@ def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
     :rtype: SSLContext
     """
     context = SSLContext(ssl_version or ssl.PROTOCOL_SSLv23)
+
+    if hasattr(context, 'urllib3_wrapper_context'):
+        warnings.warn(
+            'A true SSLContext object is not available. This prevents urllib3 '
+            'from configuring SSL appropriately. This may cause certain SSL '
+            'connections to fail. For more information, see '
+            'http://urllib3.readthedocs.org/en/latest/security.html'
+            '#sslconfigurationwarning.',
+            SSLConfigurationWarning
+        )
 
     if options is None:
         options = 0
