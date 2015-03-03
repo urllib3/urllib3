@@ -4,6 +4,9 @@ Changes
 dev (master)
 ++++++++++++
 
+* Emit ``InsecurePlatformWarning`` when SSLContext object is missing.
+  (Issue #558)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
