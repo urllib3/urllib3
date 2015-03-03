@@ -30,6 +30,7 @@ from urllib3.exceptions import (
     ConnectTimeoutError,
     InsecureRequestWarning,
     SystemTimeWarning,
+    InsecurePlatformWarning,
 )
 from urllib3.util.timeout import Timeout
 
@@ -64,7 +65,14 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with mock.patch('warnings.warn') as warn:
             r = https_pool.request('GET', '/')
             self.assertEqual(r.status, 200)
-            self.assertFalse(warn.called, warn.call_args_list)
+
+            if sys.version_info >= (2, 7, 9):
+                self.assertFalse(warn.called, warn.call_args_list)
+            else:
+                self.assertTrue(warn.called)
+                call, = warn.call_args_list
+                error = call[0][1]
+                self.assertEqual(error, InsecurePlatformWarning)
 
     def test_invalid_common_name(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
@@ -137,8 +145,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.assertEqual(r.status, 200)
             self.assertTrue(warn.called)
 
-            call, = warn.call_args_list
-            category = call[0][1]
+            calls = warn.call_args_list
+            if sys.version_info >= (2, 7, 9):
+                category = calls[0][0][1]
+            else:
+                category = calls[1][0][1]
             self.assertEqual(category, InsecureRequestWarning)
 
     @requires_network
