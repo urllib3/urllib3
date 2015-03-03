@@ -15,7 +15,10 @@ from urllib3.util.url import (
     split_first,
     Url,
 )
-from urllib3.util.ssl_ import resolve_cert_reqs, ssl_wrap_socket
+from urllib3.util.ssl_ import (
+    resolve_cert_reqs,
+    ssl_wrap_socket,
+)
 from urllib3.exceptions import (
     LocationParseError,
     TimeoutStateError,
