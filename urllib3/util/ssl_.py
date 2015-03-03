@@ -1,7 +1,7 @@
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
-from ..exceptions import SSLError, SSLConfigurationWarning
+from ..exceptions import SSLError, InsecurePlatformWarning
 
 
 SSLContext = None
@@ -76,8 +76,8 @@ except ImportError:
                 'urllib3 from configuring SSL appropriately and may cause '
                 'certain SSL connections to fail. For more information, see '
                 'https://urllib3.readthedocs.org/en/latest/security.html'
-                '#sslconfigurationwarning.',
-                SSLConfigurationWarning
+                '#insecureplatformwarning.',
+                InsecurePlatformWarning
             )
             kwargs = {
                 'keyfile': self.keyfile,

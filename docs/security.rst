@@ -171,7 +171,7 @@ warnings to your own log::
 Capturing the warnings to your own log is much preferred over simply disabling
 the warnings.
 
-SSLConfigurationWarning
+InsecurePlatformWarning
 -----------------------
 
 .. versionadded:: 1.11
@@ -179,7 +179,8 @@ SSLConfigurationWarning
 Certain Python platforms (specifically, versions of Python earlier than 2.7.9)
 have restrictions in their ``ssl`` module that limit the configuration that
 ``urllib3`` can apply. In particular, this can cause HTTPS requests that would
-succeed on more featureful platforms to fail.
+succeed on more featureful platforms to fail, and can cause certain security
+features to be unavailable.
 
 If you encounter this warning, it is strongly recommended you upgrade to a
 newer Python version, or that you use pyOpenSSL as described in the

@@ -30,7 +30,7 @@ from urllib3.exceptions import (
     ConnectTimeoutError,
     InsecureRequestWarning,
     SystemTimeWarning,
-    SSLConfigurationWarning,
+    InsecurePlatformWarning,
 )
 from urllib3.util.timeout import Timeout
 
@@ -72,7 +72,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 self.assertTrue(warn.called)
                 call, = warn.call_args_list
                 error = call[0][1]
-                self.assertEqual(error, SSLConfigurationWarning)
+                self.assertEqual(error, InsecurePlatformWarning)
 
     def test_invalid_common_name(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
