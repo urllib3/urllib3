@@ -41,7 +41,6 @@ except ImportError:
 
     class SSLContext(object):  # Platform-specific: Python 2 & 3.1
         supports_set_ciphers = sys.version_info >= (2, 7)
-        urllib3_wrapper_context = True
 
         def __init__(self, protocol_version):
             self.protocol = protocol_version
