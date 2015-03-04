@@ -20,7 +20,8 @@ from .packages.six import iterkeys, itervalues, PY3
 __all__ = ['RecentlyUsedContainer', 'HTTPHeaderDict']
 
 
-MULTIPLE_HEADERS_ALLOWED = frozenset(['cookie', 'set-cookie', 'set-cookie2'])
+SPECIAL_CASE_MULTIPLE_HEADERS = frozenset(['cookie', 'set-cookie',
+                                           'set-cookie2'])
 
 _Null = object()
 
@@ -148,11 +149,17 @@ class HTTPHeaderDict(dict):
             self.extend(kwargs)
 
     def __setitem__(self, key, val):
-        return _dict_setitem(self, key.lower(), (key, val))
+        if key in self:
+            del self[key]
+        self.add(key, val)
+        return val
 
     def __getitem__(self, key):
-        val = _dict_getitem(self, key.lower())
-        return ', '.join(val[1:])
+        header, values = _dict_getitem(self, key.lower())
+        if header in SPECIAL_CASE_MULTIPLE_HEADERS:
+            # NOTE(sigmavirus24): Should we return something else?
+            return values[0]
+        return ', '.join(values)
 
     def __delitem__(self, key):
         return _dict_delitem(self, key.lower())
@@ -173,8 +180,8 @@ class HTTPHeaderDict(dict):
     values = MutableMapping.values
     get = MutableMapping.get
     update = MutableMapping.update
-    
-    if not PY3: # Python 2
+
+    if not PY3:  # Python 2
         iterkeys = MutableMapping.iterkeys
         itervalues = MutableMapping.itervalues
 
@@ -213,21 +220,12 @@ class HTTPHeaderDict(dict):
         'bar, baz'
         """
         key_lower = key.lower()
-        new_vals = key, val
+        new_vals = key, [val]
         # Keep the common case aka no item present as fast as possible
         vals = _dict_setdefault(self, key_lower, new_vals)
         if new_vals is not vals:
-            # new_vals was not inserted, as there was a previous one
-            if isinstance(vals, list):
-                # If already several items got inserted, we have a list
-                vals.append(val)
-            else:
-                # vals should be a tuple then, i.e. only one item so far
-                if key_lower in MULTIPLE_HEADERS_ALLOWED:
-                    # Need to convert the tuple to list for further extension
-                    _dict_setitem(self, key_lower, [vals[0], vals[1], val])
-                else:
-                    _dict_setitem(self, key_lower, new_vals)
+            # If already several items got inserted, we have a list
+            vals[1].append(val)
 
     def extend(*args, **kwargs):
         """Generic import function for any type of header-like object.
@@ -241,7 +239,7 @@ class HTTPHeaderDict(dict):
             raise TypeError("update() takes at least 1 argument (0 given)")
         self = args[0]
         other = args[1] if len(args) >= 2 else ()
-        
+
         if isinstance(other, Mapping):
             for key in other:
                 self.add(key, other[key])
@@ -263,10 +261,8 @@ class HTTPHeaderDict(dict):
         except KeyError:
             return []
         else:
-            if isinstance(vals, tuple):
-                return [vals[1]]
-            else:
-                return vals[1:]
+            # Return a copy so users do not accidentally modify our copy
+            return list(vals[1])
 
     # Backwards compatibility for httplib
     getheaders = getlist
@@ -279,37 +275,39 @@ class HTTPHeaderDict(dict):
     def copy(self):
         clone = type(self)()
         for key in self:
-            val = _dict_getitem(self, key)
-            if isinstance(val, list):
-                # Don't need to convert tuples
-                val = list(val)
-            _dict_setitem(clone, key, val)
+            header, values = _dict_getitem(self, key)
+            # Create a new list of values so we can append/extend
+            _dict_setitem(clone, key, (header, list(values)))
         return clone
 
     def iteritems(self):
         """Iterate over all header lines, including duplicate ones."""
         for key in self:
-            vals = _dict_getitem(self, key)
-            for val in vals[1:]:
-                yield vals[0], val
+            header, values = _dict_getitem(self, key)
+            for val in values:
+                yield header, val
 
     def itermerged(self):
         """Iterate over all headers, merging duplicate ones together."""
         for key in self:
-            val = _dict_getitem(self, key)
-            yield val[0], ', '.join(val[1:])
+            header, values = _dict_getitem(self, key)
+            if header in SPECIAL_CASE_MULTIPLE_HEADERS:
+                for cookie in values:
+                    yield header, cookie
+            else:
+                yield header, ', '.join(values)
 
     def items(self):
         return list(self.iteritems())
 
     @classmethod
-    def from_httplib(cls, message, duplicates=('set-cookie',)): # Python 2
+    def from_httplib(cls, message, duplicates=('set-cookie',)):  # Python 2
         """Read headers from a Python 2 httplib message object."""
         ret = cls(message.items())
         # ret now contains only the last header line for each duplicate.
         # Importing with all duplicates would be nice, but this would
         # mean to repeat most of the raw parsing already done, when the
-        # message object was created. Extracting only the headers of interest 
+        # message object was created. Extracting only the headers of interest
         # separately, the cookies, should be faster and requires less
         # extra code.
         for key in duplicates:
