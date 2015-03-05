@@ -20,8 +20,6 @@ from .packages.six import iterkeys, itervalues, PY3
 __all__ = ['RecentlyUsedContainer', 'HTTPHeaderDict']
 
 
-MULTIPLE_HEADERS_ALLOWED = frozenset(['cookie', 'set-cookie', 'set-cookie2'])
-
 _Null = object()
 
 
@@ -223,11 +221,8 @@ class HTTPHeaderDict(dict):
                 vals.append(val)
             else:
                 # vals should be a tuple then, i.e. only one item so far
-                if key_lower in MULTIPLE_HEADERS_ALLOWED:
-                    # Need to convert the tuple to list for further extension
-                    _dict_setitem(self, key_lower, [vals[0], vals[1], val])
-                else:
-                    _dict_setitem(self, key_lower, new_vals)
+                # Need to convert the tuple to list for further extension
+                _dict_setitem(self, key_lower, [vals[0], vals[1], val])
 
     def extend(*args, **kwargs):
         """Generic import function for any type of header-like object.

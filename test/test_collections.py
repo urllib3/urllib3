@@ -157,7 +157,7 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertTrue(self.d is not h)
         self.assertEqual(self.d, h)
 
-    def test_add_multiple_allowed(self):
+    def test_add_multiple_header(self):
         d = HTTPHeaderDict()
         d['Cookie'] = 'foo'
         d.add('cookie', 'bar')
@@ -168,11 +168,6 @@ class TestHTTPHeaderDict(unittest.TestCase):
         d.add('cookie', 'asdf')
         self.assertEqual(d['cookie'], 'foo, bar, asdf')
 
-    def test_add_multiple_not_allowed(self):
-        self.d.add('notmulti', 'should be overwritten on next add call')
-        self.d.add('notmulti', 'new val')
-        self.assertEqual(self.d['notmulti'], 'new val')
-        
     def test_extend(self):
         self.d.extend([('set-cookie', '100'), ('set-cookie', '200'), ('set-cookie', '300')])
         self.assertEqual(self.d['set-cookie'], '100, 200, 300')
