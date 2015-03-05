@@ -201,6 +201,11 @@ class TestHTTPHeaderDict(unittest.TestCase):
         d2 = HTTPHeaderDict(d)
         self.assertEqual(d.getlist('set-cookie'), d2.getlist('set-cookie'))
 
+    def test_add_multi(self):
+        d = HTTPHeaderDict({'x-my-header': 'foo'})
+        d.add_multi('x-my-header', ['biz', 'baz'])
+        self.assertEqual(['foo', 'biz', 'baz'], d.getlist('x-my-header'))
+
     def test_update(self):
         self.d.update(dict(cookie='with, comma'))
         self.assertEqual(self.d.getlist('cookie'), ['with, comma'])

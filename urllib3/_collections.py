@@ -20,8 +20,9 @@ from .packages.six import iterkeys, itervalues, PY3
 __all__ = ['RecentlyUsedContainer', 'HTTPHeaderDict']
 
 
-SPECIAL_CASE_MULTIPLE_HEADERS = frozenset(['cookie', 'set-cookie',
-                                           'set-cookie2'])
+NON_JOINABLE_HEADERS = frozenset(['set-cookie', 'set-cookie2'])
+SEMICOLON_JOINABLE = frozenset(['cookie'])
+SPECIAL_CASE_MULTIPLE_HEADERS = NON_JOINABLE_HEADERS.union(SEMICOLON_JOINABLE)
 
 _Null = object()
 
@@ -158,8 +159,11 @@ class HTTPHeaderDict(dict):
         key_lower = key.lower()
         _, values = _dict_getitem(self, key_lower)
         if key_lower in SPECIAL_CASE_MULTIPLE_HEADERS:
-            # NOTE(sigmavirus24): Should we return something else?
-            return values[0]
+            if key_lower in SEMICOLON_JOINABLE:
+                return '; '.join(values)
+            else:
+                # NOTE(sigmavirus24): Should we return something else?
+                return values[0]
         return ', '.join(values)
 
     def __delitem__(self, key):
@@ -231,27 +235,60 @@ class HTTPHeaderDict(dict):
             # If already several items got inserted, we have a list
             vals[1].append(val)
 
-    def extend(*args, **kwargs):
+    def add_multi(self, key, values):
+        """Add multiple header values at once for a key.
+
+        >>> headers = HTTPHeaderDict(foo='bar')
+        >>> headers.add_multi('foo', ['biz', 'baz'])
+        >>> headers['foo']
+        'bar, biz, baz'
+        >>> headers.add('my-header', ['my-value0', 'my-value1'])
+        >>> headers['my-header']
+        'my-value0, my-value1'
+        """
+        if not isinstance(values, (tuple, list)):
+            raise ValueError('Header values must be a list or tuple')
+        key_lower = key.lower()
+        new_vals = key, values
+        vals = _dict_setdefault(self, key_lower, new_vals)
+        if new_vals is not vals:
+            # If it's already set, merely extend the existing list
+            vals[1].extend(values)
+
+    def extend(self, *args, **kwargs):
         """Generic import function for any type of header-like object.
         Adapted version of MutableMapping.update in order to insert items
         with self.add instead of self.__setitem__
         """
-        if len(args) > 2:
+        if len(args) > 1:
             raise TypeError("update() takes at most 2 positional "
                             "arguments ({} given)".format(len(args)))
-        elif not args:
-            raise TypeError("update() takes at least 1 argument (0 given)")
-        self = args[0]
-        other = args[1] if len(args) >= 2 else ()
+        # NOTE(sigmavirus24): A kwarg might be named "other", so we use *args
+        # to avoid name collisions. This probably looks very suspect, but this
+        # allows greater freedom in the use of kwargs when updating with
+        # extend.
+        other = args[0] if args else ()
 
-        if isinstance(other, Mapping):
-            for key in other:
-                self.add(key, other[key])
-        elif hasattr(other, "keys"):
-            for key in other.keys():
-                self.add(key, other[key])
-        else:
-            for key, value in other:
+        # NOTE(sigmavirus24): Abstract how we iterate over "other" to keep the
+        # logic for updating self simple below.
+        def _iter_values(other_dict):
+            if hasattr(other_dict, 'getlist'):
+                for key in other_dict:
+                    yield key, other_dict.getlist(key)
+            elif isinstance(other_dict, Mapping):
+                for key in other_dict:
+                    yield key, other_dict[key]
+            elif hasattr(other_dict, 'keys'):
+                for key in other_dict.keys():
+                    yield key, other_dict[key]
+            else:  # List or tuple of 2-tuples
+                for key, value in other_dict:
+                    yield key, value
+
+        for key, value in _iter_values(other):
+            if isinstance(value, list):
+                self.add_multi(key, value)
+            else:
                 self.add(key, value)
 
         for key, value in kwargs.items():
@@ -296,8 +333,11 @@ class HTTPHeaderDict(dict):
         for key in self:
             header, values = _dict_getitem(self, key)
             if header in SPECIAL_CASE_MULTIPLE_HEADERS:
-                for cookie in values:
-                    yield header, cookie
+                if header in SEMICOLON_JOINABLE:
+                    yield header, '; '.join(values)
+                else:
+                    for cookie in values:
+                        yield header, cookie
             else:
                 yield header, ', '.join(values)
 
