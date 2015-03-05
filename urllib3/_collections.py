@@ -141,7 +141,7 @@ class HTTPHeaderDict(dict):
     def __init__(self, headers=None, **kwargs):
         dict.__init__(self)
         if headers is not None:
-            if isinstance(headers, type(self)):
+            if isinstance(headers, HTTPHeaderDict):
                 self._copy_from(headers)
             else:
                 self.extend(headers)
