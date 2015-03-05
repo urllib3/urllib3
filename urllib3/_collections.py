@@ -20,7 +20,9 @@ from .packages.six import iterkeys, itervalues, PY3
 __all__ = ['RecentlyUsedContainer', 'HTTPHeaderDict']
 
 
-MULTIPLE_HEADERS_ALLOWED = frozenset(['cookie', 'set-cookie', 'set-cookie2'])
+NON_JOINABLE_HEADERS = frozenset(['set-cookie', 'set-cookie2'])
+SEMICOLON_JOINABLE = frozenset(['cookie'])
+SPECIAL_CASE_MULTIPLE_HEADERS = NON_JOINABLE_HEADERS.union(SEMICOLON_JOINABLE)
 
 _Null = object()
 
@@ -148,11 +150,21 @@ class HTTPHeaderDict(dict):
             self.extend(kwargs)
 
     def __setitem__(self, key, val):
-        return _dict_setitem(self, key.lower(), (key, val))
+        if key in self:
+            del self[key]
+        self.add(key, val)
+        return val
 
     def __getitem__(self, key):
-        val = _dict_getitem(self, key.lower())
-        return ', '.join(val[1:])
+        key_lower = key.lower()
+        _, values = _dict_getitem(self, key_lower)
+        if key_lower in SPECIAL_CASE_MULTIPLE_HEADERS:
+            if key_lower in SEMICOLON_JOINABLE:
+                return '; '.join(values)
+            else:
+                # NOTE(sigmavirus24): Should we return something else?
+                return values[0]
+        return ', '.join(values)
 
     def __delitem__(self, key):
         return _dict_delitem(self, key.lower())
@@ -165,16 +177,19 @@ class HTTPHeaderDict(dict):
             return False
         if not isinstance(other, type(self)):
             other = type(self)(other)
-        return dict((k1, self[k1]) for k1 in self) == dict((k2, other[k2]) for k2 in other)
+        getlist = self.getlist
+        otherlist = other.getlist
+        return (dict((k1.lower(), getlist(k1)) for k1 in self) ==
+                dict((k2.lower(), otherlist(k2)) for k2 in other))
 
     def __ne__(self, other):
-        return not self.__eq__(other)
+        return not (self == other)
 
     values = MutableMapping.values
     get = MutableMapping.get
     update = MutableMapping.update
-    
-    if not PY3: # Python 2
+
+    if not PY3:  # Python 2
         iterkeys = MutableMapping.iterkeys
         itervalues = MutableMapping.itervalues
 
@@ -213,43 +228,67 @@ class HTTPHeaderDict(dict):
         'bar, baz'
         """
         key_lower = key.lower()
-        new_vals = key, val
+        new_vals = key, [val]
         # Keep the common case aka no item present as fast as possible
         vals = _dict_setdefault(self, key_lower, new_vals)
         if new_vals is not vals:
-            # new_vals was not inserted, as there was a previous one
-            if isinstance(vals, list):
-                # If already several items got inserted, we have a list
-                vals.append(val)
-            else:
-                # vals should be a tuple then, i.e. only one item so far
-                if key_lower in MULTIPLE_HEADERS_ALLOWED:
-                    # Need to convert the tuple to list for further extension
-                    _dict_setitem(self, key_lower, [vals[0], vals[1], val])
-                else:
-                    _dict_setitem(self, key_lower, new_vals)
+            # If already several items got inserted, we have a list
+            vals[1].append(val)
 
-    def extend(*args, **kwargs):
+    def add_multi(self, key, values):
+        """Add multiple header values at once for a key.
+
+        >>> headers = HTTPHeaderDict(foo='bar')
+        >>> headers.add_multi('foo', ['biz', 'baz'])
+        >>> headers['foo']
+        'bar, biz, baz'
+        >>> headers.add('my-header', ['my-value0', 'my-value1'])
+        >>> headers['my-header']
+        'my-value0, my-value1'
+        """
+        if not isinstance(values, (tuple, list)):
+            raise ValueError('Header values must be a list or tuple')
+        key_lower = key.lower()
+        new_vals = key, values
+        vals = _dict_setdefault(self, key_lower, new_vals)
+        if new_vals is not vals:
+            # If it's already set, merely extend the existing list
+            vals[1].extend(values)
+
+    def extend(self, *args, **kwargs):
         """Generic import function for any type of header-like object.
         Adapted version of MutableMapping.update in order to insert items
         with self.add instead of self.__setitem__
         """
-        if len(args) > 2:
+        if len(args) > 1:
             raise TypeError("update() takes at most 2 positional "
                             "arguments ({} given)".format(len(args)))
-        elif not args:
-            raise TypeError("update() takes at least 1 argument (0 given)")
-        self = args[0]
-        other = args[1] if len(args) >= 2 else ()
-        
-        if isinstance(other, Mapping):
-            for key in other:
-                self.add(key, other[key])
-        elif hasattr(other, "keys"):
-            for key in other.keys():
-                self.add(key, other[key])
-        else:
-            for key, value in other:
+        # NOTE(sigmavirus24): A kwarg might be named "other", so we use *args
+        # to avoid name collisions. This probably looks very suspect, but this
+        # allows greater freedom in the use of kwargs when updating with
+        # extend.
+        other = args[0] if args else ()
+
+        # NOTE(sigmavirus24): Abstract how we iterate over "other" to keep the
+        # logic for updating self simple below.
+        def _iter_values(other_dict):
+            if hasattr(other_dict, 'getlist'):
+                for key in other_dict:
+                    yield key, other_dict.getlist(key)
+            elif isinstance(other_dict, Mapping):
+                for key in other_dict:
+                    yield key, other_dict[key]
+            elif hasattr(other_dict, 'keys'):
+                for key in other_dict.keys():
+                    yield key, other_dict[key]
+            else:  # List or tuple of 2-tuples
+                for key, value in other_dict:
+                    yield key, value
+
+        for key, value in _iter_values(other):
+            if isinstance(value, list):
+                self.add_multi(key, value)
+            else:
                 self.add(key, value)
 
         for key, value in kwargs.items():
@@ -263,10 +302,8 @@ class HTTPHeaderDict(dict):
         except KeyError:
             return []
         else:
-            if isinstance(vals, tuple):
-                return [vals[1]]
-            else:
-                return vals[1:]
+            # Return a copy so users do not accidentally modify our copy
+            return list(vals[1])
 
     # Backwards compatibility for httplib
     getheaders = getlist
@@ -279,37 +316,42 @@ class HTTPHeaderDict(dict):
     def copy(self):
         clone = type(self)()
         for key in self:
-            val = _dict_getitem(self, key)
-            if isinstance(val, list):
-                # Don't need to convert tuples
-                val = list(val)
-            _dict_setitem(clone, key, val)
+            header, values = _dict_getitem(self, key)
+            # Create a new list of values so we can append/extend
+            _dict_setitem(clone, key, (header, list(values)))
         return clone
 
     def iteritems(self):
         """Iterate over all header lines, including duplicate ones."""
         for key in self:
-            vals = _dict_getitem(self, key)
-            for val in vals[1:]:
-                yield vals[0], val
+            header, values = _dict_getitem(self, key)
+            for val in values:
+                yield header, val
 
     def itermerged(self):
         """Iterate over all headers, merging duplicate ones together."""
         for key in self:
-            val = _dict_getitem(self, key)
-            yield val[0], ', '.join(val[1:])
+            header, values = _dict_getitem(self, key)
+            if header in SPECIAL_CASE_MULTIPLE_HEADERS:
+                if header in SEMICOLON_JOINABLE:
+                    yield header, '; '.join(values)
+                else:
+                    for cookie in values:
+                        yield header, cookie
+            else:
+                yield header, ', '.join(values)
 
     def items(self):
         return list(self.iteritems())
 
     @classmethod
-    def from_httplib(cls, message, duplicates=('set-cookie',)): # Python 2
+    def from_httplib(cls, message, duplicates=('set-cookie',)):  # Python 2
         """Read headers from a Python 2 httplib message object."""
         ret = cls(message.items())
         # ret now contains only the last header line for each duplicate.
         # Importing with all duplicates would be nice, but this would
         # mean to repeat most of the raw parsing already done, when the
-        # message object was created. Extracting only the headers of interest 
+        # message object was created. Extracting only the headers of interest
         # separately, the cookies, should be faster and requires less
         # extra code.
         for key in duplicates:
