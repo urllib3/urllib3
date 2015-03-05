@@ -43,7 +43,6 @@ class TestCookies(SocketDummyServerTestCase):
         self._start_server(multicookie_response_handler)
         pool = HTTPConnectionPool(self.host, self.port)
         r = pool.request('GET', '/', retries=0)
-        self.assertEqual(r.headers, {'set-cookie': 'foo=1, bar=1'})
         self.assertEqual(r.headers.getlist('set-cookie'), ['foo=1', 'bar=1'])
 
 

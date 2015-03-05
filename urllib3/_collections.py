@@ -155,8 +155,9 @@ class HTTPHeaderDict(dict):
         return val
 
     def __getitem__(self, key):
-        header, values = _dict_getitem(self, key.lower())
-        if header in SPECIAL_CASE_MULTIPLE_HEADERS:
+        key_lower = key.lower()
+        _, values = _dict_getitem(self, key_lower)
+        if key_lower in SPECIAL_CASE_MULTIPLE_HEADERS:
             # NOTE(sigmavirus24): Should we return something else?
             return values[0]
         return ', '.join(values)
@@ -172,10 +173,13 @@ class HTTPHeaderDict(dict):
             return False
         if not isinstance(other, type(self)):
             other = type(self)(other)
-        return dict((k1, self[k1]) for k1 in self) == dict((k2, other[k2]) for k2 in other)
+        getlist = self.getlist
+        otherlist = other.getlist
+        return (dict((k1.lower(), getlist(k1)) for k1 in self) ==
+                dict((k2.lower(), otherlist(k2)) for k2 in other))
 
     def __ne__(self, other):
-        return not self.__eq__(other)
+        return not (self == other)
 
     values = MutableMapping.values
     get = MutableMapping.get

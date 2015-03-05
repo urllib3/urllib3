@@ -157,32 +157,33 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertTrue(self.d is not h)
         self.assertEqual(self.d, h)
 
-    def test_add_multiple_allowed(self):
+    def test_add_multiple_cookies_special_cased(self):
         d = HTTPHeaderDict()
         d['Cookie'] = 'foo'
         d.add('cookie', 'bar')
 
-        self.assertEqual(d['cookie'], 'foo, bar')
-        self.assertEqual(d['Cookie'], 'foo, bar')
+        self.assertEqual(d['cookie'], 'foo')
+        self.assertEqual(d['Cookie'], 'foo')
 
         d.add('cookie', 'asdf')
-        self.assertEqual(d['cookie'], 'foo, bar, asdf')
+        self.assertEqual(d['cookie'], 'foo')
 
-    def test_add_multiple_not_allowed(self):
-        self.d.add('notmulti', 'should be overwritten on next add call')
-        self.d.add('notmulti', 'new val')
-        self.assertEqual(self.d['notmulti'], 'new val')
-        
+    def test_add_multiple_allowed(self):
+        self.d.add('multi', 'should not be overwritten')
+        self.d.add('multi', 'new val')
+        self.assertEqual(self.d['multi'],
+                         'should not be overwritten, new val')
+
     def test_extend(self):
         self.d.extend([('set-cookie', '100'), ('set-cookie', '200'), ('set-cookie', '300')])
-        self.assertEqual(self.d['set-cookie'], '100, 200, 300')
+        self.assertEqual(self.d['set-cookie'], '100')
 
         self.d.extend(dict(cookie='asdf'), b='100')
-        self.assertEqual(self.d['cookie'], 'foo, bar, asdf')
+        self.assertEqual(self.d['cookie'], 'foo')
         self.assertEqual(self.d['b'], '100')
         self.d.add('cookie', 'with, comma')
         self.assertEqual(self.d.getlist('cookie'), ['foo', 'bar', 'asdf', 'with, comma'])
-        
+
         header_object = NonMappingHeaderContainer(e='foofoo')
         self.d.extend(header_object)
         self.assertEqual(self.d['e'], 'foofoo')
@@ -204,17 +205,16 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertFalse('COOKIE' in self.d)
 
     def test_equal(self):
-        b = HTTPHeaderDict(cookie='foo, bar')
-        c = NonMappingHeaderContainer(cookie='foo, bar')
-        self.assertEqual(self.d, b)
-        self.assertEqual(self.d, c)
+        b = HTTPHeaderDict({'Transfer-Encoding': 'foo, bar'})
+        c = NonMappingHeaderContainer(**{'Transfer-Encoding': 'foo, bar'})
+        self.assertEqual(c, b)
         self.assertNotEqual(self.d, 2)
 
     def test_not_equal(self):
         b = HTTPHeaderDict(cookie='foo, bar')
         c = NonMappingHeaderContainer(cookie='foo, bar')
-        self.assertFalse(self.d != b)
-        self.assertFalse(self.d != c)
+        self.assertNotEqual(self.d, b)
+        self.assertNotEqual(self.d, c)
         self.assertNotEqual(self.d, 2)
 
     def test_pop(self):
