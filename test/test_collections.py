@@ -156,6 +156,12 @@ class TestHTTPHeaderDict(unittest.TestCase):
         h = self.d.copy()
         self.assertTrue(self.d is not h)
         self.assertEqual(self.d, h)
+        
+    def test_getlist_after_copy(self):
+        d = HTTPHeaderDict({'set-cookie': 'foo'})
+        d.add('set-cookie', 'bar')
+        d2 = HTTPHeaderDict(d)
+        self.assertEqual(d.getlist('set-cookie'), d2.getlist('set-cookie'))
 
     def test_add_multiple_header(self):
         d = HTTPHeaderDict()

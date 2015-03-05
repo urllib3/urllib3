@@ -141,7 +141,10 @@ class HTTPHeaderDict(dict):
     def __init__(self, headers=None, **kwargs):
         dict.__init__(self)
         if headers is not None:
-            self.extend(headers)
+            if isinstance(headers, type(self)):
+                self._copy_from(headers)
+            else:
+                self.extend(headers)
         if kwargs:
             self.extend(kwargs)
 
@@ -271,14 +274,17 @@ class HTTPHeaderDict(dict):
     def __repr__(self):
         return "%s(%s)" % (type(self).__name__, dict(self.itermerged()))
 
-    def copy(self):
-        clone = type(self)()
-        for key in self:
-            val = _dict_getitem(self, key)
+    def _copy_from(self, other):
+        for key in other:
+            val = _dict_getitem(other, key)
             if isinstance(val, list):
                 # Don't need to convert tuples
                 val = list(val)
-            _dict_setitem(clone, key, val)
+            _dict_setitem(self, key, val)
+
+    def copy(self):
+        clone = type(self)()
+        clone._copy_from(self)
         return clone
 
     def iteritems(self):
