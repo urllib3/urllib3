@@ -6,6 +6,9 @@ dev (master)
 
 * Emit ``InsecurePlatformWarning`` when SSLContext object is missing.
   (Issue #558)
+  
+* Fix regression of duplicate header keys being discarded.
+  (Issue #563)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
