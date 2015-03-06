@@ -144,13 +144,11 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.d.add('cookie', 'bar')
 
     def test_overwriting_with_setitem_replaces(self):
-        d = HTTPHeaderDict()
+        self.d['Cookie'] = 'foo'
+        self.assertEqual(self.d['cookie'], 'foo')
 
-        d['Cookie'] = 'foo'
-        self.assertEqual(d['cookie'], 'foo')
-
-        d['cookie'] = 'bar'
-        self.assertEqual(d['Cookie'], 'bar')
+        self.d['cookie'] = 'bar'
+        self.assertEqual(self.d['Cookie'], 'bar')
 
     def test_copy(self):
         h = self.d.copy()
@@ -158,21 +156,19 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertEqual(self.d, h)
         
     def test_getlist_after_copy(self):
-        d = HTTPHeaderDict({'set-cookie': 'foo'})
-        d.add('set-cookie', 'bar')
-        d2 = HTTPHeaderDict(d)
-        self.assertEqual(d.getlist('set-cookie'), d2.getlist('set-cookie'))
+        self.assertEqual(self.d.getlist('cookie'), HTTPHeaderDict(self.d).getlist('cookie'))
 
-    def test_add_multiple_header(self):
-        d = HTTPHeaderDict()
-        d['Cookie'] = 'foo'
-        d.add('cookie', 'bar')
+    def test_add_well_known_multiheader(self):
+        self.d.add('COOKIE', 'asdf')
+        self.assertEqual(self.d.getlist('cookie'), ['foo', 'bar', 'asdf'])
+        self.assertEqual(self.d['cookie'], 'foo, bar, asdf')
 
-        self.assertEqual(d['cookie'], 'foo, bar')
-        self.assertEqual(d['Cookie'], 'foo, bar')
-
-        d.add('cookie', 'asdf')
-        self.assertEqual(d['cookie'], 'foo, bar, asdf')
+    def test_add_comma_separated_multiheader(self):
+        self.d.add('bar', 'foo')
+        self.d.add('BAR', 'bar')
+        self.d.add('Bar', 'asdf')
+        self.assertEqual(self.d.getlist('bar'), ['foo', 'bar', 'asdf'])
+        self.assertEqual(self.d['bar'], 'foo, bar, asdf')
 
     def test_extend(self):
         self.d.extend([('set-cookie', '100'), ('set-cookie', '200'), ('set-cookie', '300')])
