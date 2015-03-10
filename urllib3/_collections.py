@@ -306,6 +306,9 @@ class HTTPHeaderDict(dict):
     @classmethod
     def from_httplib(cls, message): # Python 2
         """Read headers from a Python 2 httplib message object."""
+        # python2.7 does not expose a proper API for exporting multiheaders
+        # efficiently. This function re-reads raw lines from the message 
+        # object and extracts the multiheaders properly.
         headers = []
          
         for line in message.headers:
