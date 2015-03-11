@@ -9,6 +9,7 @@ xrange = six.moves.xrange
 
 from nose.plugins.skip import SkipTest
 
+
 class TestLRUContainer(unittest.TestCase):
     def test_maxsize(self):
         d = Container(5)
@@ -143,20 +144,58 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.d = HTTPHeaderDict(Cookie='foo')
         self.d.add('cookie', 'bar')
 
-    def test_overwriting_with_setitem_replaces(self):
+    def test_create_from_kwargs(self):
+        h = HTTPHeaderDict(ab=1, cd=2, ef=3, gh=4)
+        self.assertEqual(len(h), 4)
+        self.assertTrue('ab' in h)
+    
+    def test_create_from_dict(self):
+        h = HTTPHeaderDict(dict(ab=1, cd=2, ef=3, gh=4))
+        self.assertEqual(len(h), 4)
+        self.assertTrue('ab' in h)
+    
+    def test_create_from_iterator(self):
+        teststr = 'urllib3ontherocks'
+        h = HTTPHeaderDict((c, c*5) for c in teststr)
+        self.assertEqual(len(h), len(set(teststr)))
+        
+    def test_create_from_list(self):
+        h = HTTPHeaderDict([('ab', 'A'), ('cd', 'B'), ('cookie', 'C'), ('cookie', 'D'), ('cookie', 'E')])
+        self.assertEqual(len(h), 3)
+        self.assertTrue('ab' in h)
+        clist = h.getlist('cookie')
+        self.assertEqual(len(clist), 3)
+        self.assertEqual(clist[0], 'C')
+        self.assertEqual(clist[-1], 'E')
+
+    def test_create_from_headerdict(self):
+        org = HTTPHeaderDict([('ab', 'A'), ('cd', 'B'), ('cookie', 'C'), ('cookie', 'D'), ('cookie', 'E')])
+        h = HTTPHeaderDict(org)
+        self.assertEqual(len(h), 3)
+        self.assertTrue('ab' in h)
+        clist = h.getlist('cookie')
+        self.assertEqual(len(clist), 3)
+        self.assertEqual(clist[0], 'C')
+        self.assertEqual(clist[-1], 'E')
+        self.assertFalse(h is org)
+        self.assertEqual(h, org)
+
+    def test_setitem(self):
         self.d['Cookie'] = 'foo'
         self.assertEqual(self.d['cookie'], 'foo')
+        self.d['cookie'] = 'with, comma'
+        self.assertEqual(self.d.getlist('cookie'), ['with, comma'])
 
-        self.d['cookie'] = 'bar'
-        self.assertEqual(self.d['Cookie'], 'bar')
+    def test_update(self):
+        self.d.update(dict(Cookie='foo'))
+        self.assertEqual(self.d['cookie'], 'foo')
+        self.d.update(dict(cookie='with, comma'))
+        self.assertEqual(self.d.getlist('cookie'), ['with, comma'])
 
-    def test_copy(self):
-        h = self.d.copy()
-        self.assertTrue(self.d is not h)
-        self.assertEqual(self.d, h)
-        
-    def test_getlist_after_copy(self):
-        self.assertEqual(self.d.getlist('cookie'), HTTPHeaderDict(self.d).getlist('cookie'))
+    def test_delitem(self):
+        del self.d['cookie']
+        self.assertFalse('cookie' in self.d)
+        self.assertFalse('COOKIE' in self.d)
 
     def test_add_well_known_multiheader(self):
         self.d.add('COOKIE', 'asdf')
@@ -170,19 +209,35 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertEqual(self.d.getlist('bar'), ['foo', 'bar', 'asdf'])
         self.assertEqual(self.d['bar'], 'foo, bar, asdf')
 
-    def test_extend(self):
+    def test_extend_from_list(self):
         self.d.extend([('set-cookie', '100'), ('set-cookie', '200'), ('set-cookie', '300')])
         self.assertEqual(self.d['set-cookie'], '100, 200, 300')
 
+    def test_extend_from_dict(self):
         self.d.extend(dict(cookie='asdf'), b='100')
         self.assertEqual(self.d['cookie'], 'foo, bar, asdf')
         self.assertEqual(self.d['b'], '100')
         self.d.add('cookie', 'with, comma')
         self.assertEqual(self.d.getlist('cookie'), ['foo', 'bar', 'asdf', 'with, comma'])
         
-        header_object = NonMappingHeaderContainer(e='foofoo')
-        self.d.extend(header_object)
+    def test_extend_from_container(self):
+        h = NonMappingHeaderContainer(Cookie='foo', e='foofoo')
+        self.d.extend(h)
+        self.assertEqual(self.d['cookie'], 'foo, bar, foo')
         self.assertEqual(self.d['e'], 'foofoo')
+        self.assertEqual(len(self.d), 2)
+
+    def test_extend_from_headerdict(self):
+        h = HTTPHeaderDict(Cookie='foo', e='foofoo')
+        self.d.extend(h)
+        self.assertEqual(self.d['cookie'], 'foo, bar, foo')
+        self.assertEqual(self.d['e'], 'foofoo')
+        self.assertEqual(len(self.d), 2)
+
+    def test_copy(self):
+        h = self.d.copy()
+        self.assertTrue(self.d is not h)
+        self.assertEqual(self.d, h)        
 
     def test_getlist(self):
         self.assertEqual(self.d.getlist('cookie'), ['foo', 'bar'])
@@ -191,14 +246,8 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.d.add('b', 'asdf')
         self.assertEqual(self.d.getlist('b'), ['asdf'])
 
-    def test_update(self):
-        self.d.update(dict(cookie='with, comma'))
-        self.assertEqual(self.d.getlist('cookie'), ['with, comma'])
-
-    def test_delitem(self):
-        del self.d['cookie']
-        self.assertFalse('cookie' in self.d)
-        self.assertFalse('COOKIE' in self.d)
+    def test_getlist_after_copy(self):
+        self.assertEqual(self.d.getlist('cookie'), HTTPHeaderDict(self.d).getlist('cookie'))
 
     def test_equal(self):
         b = HTTPHeaderDict(cookie='foo, bar')
@@ -231,6 +280,10 @@ class TestHTTPHeaderDict(unittest.TestCase):
 
     def test_len(self):
         self.assertEqual(len(self.d), 1)
+        self.d.add('cookie', 'bla')
+        self.d.add('asdf', 'foo')
+        # len determined by unique fieldnames
+        self.assertEqual(len(self.d), 2)
 
     def test_repr(self):
         rep = "HTTPHeaderDict({'Cookie': 'foo, bar'})"
@@ -244,34 +297,46 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertEqual(items[1][0], 'Cookie')
         self.assertEqual(items[1][1], 'bar')
 
-    def test_items_preserving_case(self):
-        # Should not be tested only in connectionpool
-        HEADERS = {'Content-Length': '0', 'Content-type': 'text/plain',
-                    'Server': 'TornadoServer/1.2.3'}
-        h = dict(HTTPHeaderDict(HEADERS).items())
-        self.assertEqual(HEADERS, h) # to preserve case sensitivity        
+    def test_dict_conversion(self):
+        # Also tested in connectionpool, needs to preserve case
+        hdict = {'Content-Length': '0', 'Content-type': 'text/plain', 'Server': 'TornadoServer/1.2.3'}
+        h = dict(HTTPHeaderDict(hdict).items())
+        self.assertEqual(hdict, h)
 
-    def test_from_httplib(self):
+    def test_string_enforcement(self):
+        # This currently throws AttributeError on key.lower(), should probably be something nicer
+        self.assertRaises(Exception, self.d.__setitem__, 3, 5)
+        self.assertRaises(Exception, self.d.add, 3, 4)
+        self.assertRaises(Exception, self.d.__delitem__, 3)
+        self.assertRaises(Exception, HTTPHeaderDict, {3: 3})
+
+    def test_from_httplib_py2(self):
         if six.PY3:
-            raise SkipTest()
-        from httplib import HTTPMessage
-        from StringIO import StringIO
-
+            raise SkipTest("python3 has a different internal header implementation")
         msg = """
 Server: nginx
 Content-Type: text/html; charset=windows-1251
 Connection: keep-alive
+X-Some-Multiline: asdf
+ asdf
+ asdf
 Set-Cookie: bb_lastvisit=1348253375; expires=Sat, 21-Sep-2013 18:49:35 GMT; path=/
 Set-Cookie: bb_lastactivity=0; expires=Sat, 21-Sep-2013 18:49:35 GMT; path=/
+www-authenticate: asdf
+www-authenticate: bla
 
 """
-        msg = HTTPMessage(StringIO(msg.lstrip().replace('\n', '\r\n')))
+        buffer = six.moves.StringIO(msg.lstrip().replace('\n', '\r\n'))
+        msg = six.moves.http_client.HTTPMessage(buffer)
         d = HTTPHeaderDict.from_httplib(msg)
         self.assertEqual(d['server'], 'nginx')
         cookies = d.getlist('set-cookie')
         self.assertEqual(len(cookies), 2)
         self.assertTrue(cookies[0].startswith("bb_lastvisit"))
         self.assertTrue(cookies[1].startswith("bb_lastactivity"))
+        self.assertEqual(d['x-some-multiline'].split(), ['asdf', 'asdf', 'asdf'])
+        self.assertEqual(d['www-authenticate'], 'asdf, bla')
+        self.assertEqual(d.getlist('www-authenticate'), ['asdf', 'bla'])
 
 if __name__ == '__main__':
     unittest.main()
