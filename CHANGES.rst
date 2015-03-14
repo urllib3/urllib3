@@ -9,6 +9,9 @@ dev (master)
   
 * Fix regression of duplicate header keys being discarded.
   (Issue #563)
+  
+* ``Response.stream()`` returns a generator for chunked responses.
+  (Issue #560)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
