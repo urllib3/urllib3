@@ -266,25 +266,25 @@ You may also stream your response and get data as they come (e.g. when using
 
 ::
 
-    >>> import urllib3, datetime
+    >>> from urllib3 import PoolManager
     >>> http = urllib3.PoolManager()
 
-    >>> # https://gist.github.com/josiahcarlson/3250376
-    >>> # server which responds with chunked encoding responses and
-    >>> # generates chunks every second
-    >>> r = http.request("GET", "http://localhost:8080/")
-
+    >>> r = http.request("GET", "http://httpbin.org/stream/3")
     >>> r.getheader("transfer-encoding")
     'chunked'
 
-    >>> for chunk in http.request("GET", "http://localhost:8080/").stream():
-          print "[%s] %s" % (datetime.datetime.now().strftime("%H:%M:%S.%f"), chunk)
-    [10:57:35.650812] this is chunk: 0
-    [10:57:36.652022] this is chunk: 1
-    [10:57:37.653238] this is chunk: 2
-    [10:57:38.654431] this is chunk: 3
-    [10:57:39.655601] this is chunk: 4
+    >>> for chunk in r.stream():
+    ... print chunk
+    {"url": "http://httpbin.org/stream/3", ..., "id": 0, ...}
+    {"url": "http://httpbin.org/stream/3", ..., "id": 1, ...}
+    {"url": "http://httpbin.org/stream/3", ..., "id": 2, ...}
+    >>> r.closed
+    True
 
+Completely consuming the stream will auto-close the response and release
+the connection back to the pool. If you're only partially consuming the
+consuming a stream, make sure to manually call ``r.close()`` on the
+response.
 
 Foundation
 ----------
