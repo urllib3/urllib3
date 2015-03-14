@@ -257,6 +257,35 @@ disabled individually.
 See the :class:`~urllib3.util.retry.Retry` definition for more details.
 
 
+Stream
+------
+
+You may also stream your response and get data as they come (e.g. when using
+``transfer-encoding: chunked``). In this case, method
+:func:`~urllib3.response.HTTPResponse.stream` will return generator.
+
+::
+
+    >>> import urllib3, datetime
+    >>> http = urllib3.PoolManager()
+
+    >>> # https://gist.github.com/josiahcarlson/3250376
+    >>> # server which responds with chunked encoding responses and
+    >>> # generates chunks every second
+    >>> r = http.request("GET", "http://localhost:8080/")
+
+    >>> r.getheader("transfer-encoding")
+    'chunked'
+
+    >>> for chunk in http.request("GET", "http://localhost:8080/").stream():
+          print "[%s] %s" % (datetime.datetime.now().strftime("%H:%M:%S.%f"), chunk)
+    [10:57:35.650812] this is chunk: 0
+    [10:57:36.652022] this is chunk: 1
+    [10:57:37.653238] this is chunk: 2
+    [10:57:38.654431] this is chunk: 3
+    [10:57:39.655601] this is chunk: 4
+
+
 Foundation
 ----------
 
