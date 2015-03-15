@@ -40,7 +40,8 @@ except ImportError:
     import sys
 
     class SSLContext(object):  # Platform-specific: Python 2 & 3.1
-        supports_set_ciphers = sys.version_info >= (2, 7)
+        supports_set_ciphers = (2, 7) <= sys.version_info < (3,) or \
+                               (3, 2) <= sys.version_info
 
         def __init__(self, protocol_version):
             self.protocol = protocol_version
