@@ -13,6 +13,9 @@ import string
 import sys
 import threading
 import socket
+import warnings
+
+from urllib3.exceptions import HTTPWarning
 
 from tornado.platform.auto import set_close_exec
 import tornado.wsgi
@@ -40,6 +43,11 @@ NO_SAN_CA = os.path.join(CERTS_PATH, 'cacert.no_san.pem')
 # Different types of servers we have:
 
 
+class NoIPv6Warning(HTTPWarning):
+    "IPv6 is not available"
+    pass
+
+
 class SocketServerThread(threading.Thread):
     """
     :param socket_handler: Callable which receives a socket argument for one
@@ -57,7 +65,12 @@ class SocketServerThread(threading.Thread):
         self.ready_event = ready_event
 
     def _start_server(self):
-        sock = socket.socket(socket.AF_INET6)
+        if socket.has_ipv6:
+            sock = socket.socket(socket.AF_INET6)
+        else:
+            warnings.warn("No IPv6 support. Falling back to IPv4.",
+                          NoIPv6Warning)
+            sock = socket.socket(socket.AF_INET)
         if sys.platform != 'win32':
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind((self.host, 0))

@@ -13,7 +13,8 @@ from urllib3.packages import six
 # Reset. SO suggests this hostname
 TARPIT_HOST = '10.255.255.1'
 
-VALID_SOURCE_ADDRESSES = [('::1', 0), ('127.0.0.1', 0)]
+# (Arguments for socket, is it IPv6 address?)
+VALID_SOURCE_ADDRESSES = [(('::1', 0), True), (('127.0.0.1', 0), False)]
 # RFC 5737: 192.0.2.0/24 is for testing only.
 # RFC 3849: 2001:db8::/32 is for documentation only.
 INVALID_SOURCE_ADDRESSES = [('192.0.2.255', 0), ('2001:db8::1', 0)]
