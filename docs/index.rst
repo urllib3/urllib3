@@ -11,6 +11,7 @@ urllib3 Documentation
    helpers
    collections
    contrib
+   security
 
 
 Highlights
