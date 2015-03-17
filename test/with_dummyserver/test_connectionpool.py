@@ -4,6 +4,7 @@ import socket
 import sys
 import unittest
 import time
+import warnings
 
 import mock
 
@@ -35,6 +36,7 @@ from urllib3.util.timeout import Timeout
 
 import tornado
 from dummyserver.testcase import HTTPDummyServerTestCase
+from dummyserver.server import NoIPv6Warning
 
 from nose.tools import timed
 
@@ -597,7 +599,11 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertRaises(MaxRetryError, pool.request, 'GET', '/test', retries=2)
 
     def test_source_address(self):
-        for addr in VALID_SOURCE_ADDRESSES:
+        for addr, is_ipv6 in VALID_SOURCE_ADDRESSES:
+            if is_ipv6 and not socket.has_ipv6:
+                warnings.warn("No IPv6 support: skipping.",
+                              NoIPv6Warning)
+                continue
             pool = HTTPConnectionPool(self.host, self.port,
                     source_address=addr, retries=False)
             r = pool.request('GET', '/source_address')
