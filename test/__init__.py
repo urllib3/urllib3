@@ -1,3 +1,9 @@
+import os
+if os.environ.get('USE_GEVENT', False):
+    import gevent
+    from gevent import monkey
+    monkey.patch_all()
+
 import warnings
 import sys
 import errno
