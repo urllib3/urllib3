@@ -9,10 +9,10 @@ from dummyserver.server import (
     DEFAULT_CA, DEFAULT_CA_BAD, get_unreachable_address)
 from .. import TARPIT_HOST
 
-from urllib3.poolmanager import proxy_from_url, ProxyManager
-from urllib3.exceptions import (
+from urllib4.poolmanager import proxy_from_url, ProxyManager
+from urllib4.exceptions import (
     MaxRetryError, SSLError, ProxyError, ConnectTimeoutError)
-from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
+from urllib4.connectionpool import connection_from_url, VerifiedHTTPSConnection
 
 
 class TestHTTPProxyManager(HTTPDummyProxyTestCase):

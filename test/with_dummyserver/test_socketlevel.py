@@ -1,18 +1,18 @@
 # TODO: Break this module up into pieces. Maybe group by functionality tested
 # rather than the socket level-ness of it.
 
-from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
-from urllib3.poolmanager import proxy_from_url
-from urllib3.exceptions import (
+from urllib4 import HTTPConnectionPool, HTTPSConnectionPool
+from urllib4.poolmanager import proxy_from_url
+from urllib4.exceptions import (
         MaxRetryError,
         ProxyError,
         ReadTimeoutError,
         SSLError,
         ProtocolError,
 )
-from urllib3.util.ssl_ import HAS_SNI
-from urllib3.util.timeout import Timeout
-from urllib3.util.retry import Retry
+from urllib4.util.ssl_ import HAS_SNI
+from urllib4.util.timeout import Timeout
+from urllib4.util.retry import Retry
 
 from dummyserver.testcase import SocketDummyServerTestCase
 from dummyserver.server import (
@@ -556,7 +556,7 @@ class TestSSL(SocketDummyServerTestCase):
                 pool.close()
 
         self.assertRaises(SSLError, request)
-        # Should not hang, see https://github.com/shazow/urllib3/issues/529
+        # Should not hang, see https://github.com/shazow/urllib4/issues/529
         self.assertRaises(SSLError, request)
 
 

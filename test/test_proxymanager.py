@@ -1,6 +1,6 @@
 import unittest
 
-from urllib3.poolmanager import ProxyManager
+from urllib4.poolmanager import ProxyManager
 
 
 class TestProxyManager(unittest.TestCase):

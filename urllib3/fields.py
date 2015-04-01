@@ -70,9 +70,9 @@ class RequestField(object):
     @classmethod
     def from_tuples(cls, fieldname, value):
         """
-        A :class:`~urllib3.fields.RequestField` factory from old-style tuple parameters.
+        A :class:`~urllib4.fields.RequestField` factory from old-style tuple parameters.
 
-        Supports constructing :class:`~urllib3.fields.RequestField` from
+        Supports constructing :class:`~urllib4.fields.RequestField` from
         parameter of key/value strings AND key/filetuple. A filetuple is a
         (filename, data, MIME type) tuple where the MIME type is optional.
         For example::

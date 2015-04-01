@@ -15,7 +15,7 @@ import threading
 import socket
 import warnings
 
-from urllib3.exceptions import HTTPWarning
+from urllib4.exceptions import HTTPWarning
 
 from tornado.platform.auto import set_close_exec
 import tornado.wsgi

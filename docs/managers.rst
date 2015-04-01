@@ -1,7 +1,7 @@
 PoolManager
 ===========
 
-.. automodule:: urllib3.poolmanager
+.. automodule:: urllib4.poolmanager
 
 A pool manager is an abstraction for a collection of
 :doc:`ConnectionPools <pools>`.
@@ -12,7 +12,7 @@ so you don't have to.
 
 .. doctest ::
 
-    >>> from urllib3 import PoolManager
+    >>> from urllib4 import PoolManager
     >>> manager = PoolManager(10)
     >>> r = manager.request('GET', 'http://example.com')
     >>> r.headers['server']
@@ -41,7 +41,7 @@ as a context manager.
 
 .. doctest ::
     
-    >>> from urllib3 import PoolManager
+    >>> from urllib4 import PoolManager
     >>> with PoolManager(10) as manager:
     ...     r = manager.request('GET', 'http://example.com')
     ...     r = manager.request('GET', 'http://httpbin.org/')
@@ -52,7 +52,7 @@ as a context manager.
     0
 
 You can read more about the implementation and the various adjustable variables 
-within :class:`~urllib3._collections.RecentlyUsedContainer`.
+within :class:`~urllib4._collections.RecentlyUsedContainer`.
 
 API
 ---
@@ -65,9 +65,9 @@ ProxyManager
 
 :class:`.ProxyManager` is an HTTP proxy-aware subclass of :class:`.PoolManager`.
 It produces a single
-:class:`~urllib3.connectionpool.HTTPConnectionPool` instance for all HTTP
+:class:`~urllib4.connectionpool.HTTPConnectionPool` instance for all HTTP
 connections and individual per-server:port
-:class:`~urllib3.connectionpool.HTTPSConnectionPool` instances for tunnelled
+:class:`~urllib4.connectionpool.HTTPSConnectionPool` instances for tunnelled
 HTTPS connections.
 
 API

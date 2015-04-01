@@ -6,8 +6,8 @@ import socket
 
 from nose.plugins.skip import SkipTest
 
-from urllib3.exceptions import MaxRetryError, HTTPWarning
-from urllib3.packages import six
+from urllib4.exceptions import MaxRetryError, HTTPWarning
+from urllib4.packages import six
 
 # We need a host that will not immediately close the connection with a TCP
 # Reset. SO suggests this hostname

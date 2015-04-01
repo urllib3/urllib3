@@ -14,25 +14,25 @@ You can install them with the following command:
     pip install pyopenssl ndg-httpsclient pyasn1
 
 To activate certificate checking, call
-:func:`~urllib3.contrib.pyopenssl.inject_into_urllib3` from your Python code
+:func:`~urllib4.contrib.pyopenssl.inject_into_urllib4` from your Python code
 before you begin making HTTP requests. This can be done in a ``sitecustomize``
-module, or at any other time before your application begins using ``urllib3``,
+module, or at any other time before your application begins using ``urllib4``,
 like this::
 
     try:
-        import urllib3.contrib.pyopenssl
-        urllib3.contrib.pyopenssl.inject_into_urllib3()
+        import urllib4.contrib.pyopenssl
+        urllib4.contrib.pyopenssl.inject_into_urllib4()
     except ImportError:
         pass
 
-Now you can use :mod:`urllib3` as you normally would, and it will support SNI
+Now you can use :mod:`urllib4` as you normally would, and it will support SNI
 when the required modules are installed.
 
 Activating this module also has the positive side effect of disabling SSL/TLS
 compression in Python 2 (see `CRIME attack`_).
 
 If you want to configure the default list of supported cipher suites, you can
-set the ``urllib3.contrib.pyopenssl.DEFAULT_SSL_CIPHER_LIST`` variable.
+set the ``urllib4.contrib.pyopenssl.DEFAULT_SSL_CIPHER_LIST`` variable.
 
 Module Variables
 ----------------
@@ -62,12 +62,12 @@ import select
 from .. import connection
 from .. import util
 
-__all__ = ['inject_into_urllib3', 'extract_from_urllib3']
+__all__ = ['inject_into_urllib4', 'extract_from_urllib4']
 
 # SNI only *really* works if we can read the subjectAltName of certificates.
 HAS_SNI = SUBJ_ALT_NAME_SUPPORT
 
-# Map from urllib3 to PyOpenSSL compatible parameter-values.
+# Map from urllib4 to PyOpenSSL compatible parameter-values.
 _openssl_versions = {
     ssl.PROTOCOL_SSLv23: OpenSSL.SSL.SSLv23_METHOD,
     ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
@@ -107,15 +107,15 @@ orig_util_HAS_SNI = util.HAS_SNI
 orig_connection_ssl_wrap_socket = connection.ssl_wrap_socket
 
 
-def inject_into_urllib3():
-    'Monkey-patch urllib3 with PyOpenSSL-backed SSL-support.'
+def inject_into_urllib4():
+    'Monkey-patch urllib4 with PyOpenSSL-backed SSL-support.'
 
     connection.ssl_wrap_socket = ssl_wrap_socket
     util.HAS_SNI = HAS_SNI
 
 
-def extract_from_urllib3():
-    'Undo monkey-patching by :func:`inject_into_urllib3`.'
+def extract_from_urllib4():
+    'Undo monkey-patching by :func:`inject_into_urllib4`.'
 
     connection.ssl_wrap_socket = orig_connection_ssl_wrap_socket
     util.HAS_SNI = orig_util_HAS_SNI

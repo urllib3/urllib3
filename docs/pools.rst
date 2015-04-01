@@ -1,7 +1,7 @@
 ConnectionPools
 ===============
 
-.. automodule:: urllib3.connectionpool
+.. automodule:: urllib4.connectionpool
 
 A connection pool is a container for a collection of connections to a specific
 host.
@@ -11,10 +11,10 @@ If you need to make requests to the same host repeatedly, then you should use a
 
 .. doctest ::
 
-    >>> from urllib3 import HTTPConnectionPool
+    >>> from urllib4 import HTTPConnectionPool
     >>> pool = HTTPConnectionPool('ajax.googleapis.com', maxsize=1)
     >>> r = pool.request('GET', '/ajax/services/search/web',
-    ...                  fields={'q': 'urllib3', 'v': '1.0'})
+    ...                  fields={'q': 'urllib4', 'v': '1.0'})
     >>> r.status
     200
     >>> r.headers['content-type']
@@ -40,10 +40,10 @@ pool after usage.
 
 .. doctest ::
 
-    >>> from urllib3 import HTTPConnectionPool
+    >>> from urllib4 import HTTPConnectionPool
     >>> with HTTPConnectionPool('ajax.googleapis.com', maxsize=1) as pool:
     ...     r = pool.request('GET', '/ajax/services/search/web',
-    ...                      fields={'q': 'urllib3', 'v': '1.0'})
+    ...                      fields={'q': 'urllib4', 'v': '1.0'})
     ...     print(pool.pool)
     ... 
     <queue.LifoQueue object at 0x7f67367dfcf8>
@@ -61,7 +61,7 @@ ConnectionPools more easily:
 API
 ---
 
-:mod:`urllib3.connectionpool` comes with two connection pools:
+:mod:`urllib4.connectionpool` comes with two connection pools:
 
     .. autoclass:: HTTPConnectionPool
        :members:
@@ -74,12 +74,12 @@ All of these pools inherit from a common base class:
 
     .. autoclass:: ConnectionPool
 
-.. module:: urllib3.connection
+.. module:: urllib4.connection
 
 Related Classes
 ---------------
 
-urllib3 implements its own :class:`HTTPConnection` object to allow for more
+urllib4 implements its own :class:`HTTPConnection` object to allow for more
 flexibility than the standard library's implementation.
 
 .. autoclass:: HTTPConnection

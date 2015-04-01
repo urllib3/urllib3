@@ -1,9 +1,9 @@
 import unittest
 
-from urllib3.response import HTTPResponse
-from urllib3.packages.six.moves import xrange
-from urllib3.util.retry import Retry
-from urllib3.exceptions import (
+from urllib4.response import HTTPResponse
+from urllib4.packages.six.moves import xrange
+from urllib4.util.retry import Retry
+from urllib4.exceptions import (
     ConnectTimeoutError,
     MaxRetryError,
     ReadTimeoutError,

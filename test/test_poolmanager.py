@@ -1,8 +1,8 @@
 import unittest
 
-from urllib3.poolmanager import PoolManager
-from urllib3 import connection_from_url
-from urllib3.exceptions import (
+from urllib4.poolmanager import PoolManager
+from urllib4 import connection_from_url
+from urllib4.exceptions import (
     ClosedPoolError,
     LocationValueError,
 )

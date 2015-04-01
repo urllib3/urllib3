@@ -1,5 +1,5 @@
 =======
-urllib3
+urllib4
 =======
 
 .. image:: https://travis-ci.org/shazow/urllib3.png?branch=master
@@ -23,13 +23,13 @@ Highlights
 - Tested on Python 2.6+, Python 3.2+, and PyPy, with 100% unit test coverage.
 - Small and easy to understand codebase perfect for extending and building upon.
   For a more comprehensive solution, have a look at
-  `Requests <http://python-requests.org/>`_ which is also powered by ``urllib3``.
+  `Requests <http://python-requests.org/>`_ which is also powered by ``urllib4``.
 
 
-You might already be using urllib3!
+You might already be using urllib4!
 ===================================
 
-``urllib3`` powers `many great Python libraries
+``urllib4`` powers `many great Python libraries
 <https://sourcegraph.com/search?q=package+urllib3>`_, including ``pip`` and
 ``requests``.
 
@@ -44,7 +44,7 @@ did the work for you.
 
 The Python standard libraries ``urllib`` and ``urllib2`` have little to do
 with each other. They were designed to be independent and standalone, each
-solving a different scope of problems, and ``urllib3`` follows in a similar
+solving a different scope of problems, and ``urllib4`` follows in a similar
 vein.
 
 
@@ -78,9 +78,9 @@ for more nice syntax-highlighted examples.
 
 But, long story short::
 
-  import urllib3
+  import urllib4
 
-  http = urllib3.PoolManager()
+  http = urllib4.PoolManager()
 
   r = http.request('GET', 'http://google.com/')
 
@@ -108,7 +108,7 @@ you as long as you're running it `inside of a virtualenv
 
 Note that code coverage less than 100% is regarded as a failing run. Some
 platform-specific tests are skipped unless run in that platform.  To make sure
-the code works in all of urllib3's supported platforms, you can run our ``tox``
+the code works in all of urllib4's supported platforms, you can run our ``tox``
 suite::
 
   $ make test-all
@@ -130,7 +130,7 @@ Contributing
    a fresh issue to start a discussion around a feature idea or a bug. There is
    a *Contributor Friendly* tag for issues that should be ideal for people who
    are not very familiar with the codebase yet.
-#. Fork the `urllib3 repository on Github <https://github.com/shazow/urllib3>`_
+#. Fork the `urllib4 repository on Github <https://github.com/shazow/urllib3>`_
    to start making your changes.
 #. Write a test which shows that the bug was fixed or that the feature works
    as expected.

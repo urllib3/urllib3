@@ -43,7 +43,7 @@ class PoolManager(RequestMethods):
 
     :param \**connection_pool_kw:
         Additional parameters are used to create fresh
-        :class:`urllib3.connectionpool.ConnectionPool` instances.
+        :class:`urllib4.connectionpool.ConnectionPool` instances.
 
     Example::
 
@@ -103,7 +103,7 @@ class PoolManager(RequestMethods):
         Get a :class:`ConnectionPool` based on the host, port, and scheme.
 
         If ``port`` isn't given, it will be derived from the ``scheme`` using
-        ``urllib3.connectionpool.port_by_scheme``.
+        ``urllib4.connectionpool.port_by_scheme``.
         """
 
         if not host:
@@ -128,9 +128,9 @@ class PoolManager(RequestMethods):
 
     def connection_from_url(self, url):
         """
-        Similar to :func:`urllib3.connectionpool.connection_from_url` but
+        Similar to :func:`urllib4.connectionpool.connection_from_url` but
         doesn't pass any additional parameters to the
-        :class:`urllib3.connectionpool.ConnectionPool` constructor.
+        :class:`urllib4.connectionpool.ConnectionPool` constructor.
 
         Additional parameters are taken from the :class:`.PoolManager`
         constructor.
@@ -140,12 +140,12 @@ class PoolManager(RequestMethods):
 
     def urlopen(self, method, url, redirect=True, **kw):
         """
-        Same as :meth:`urllib3.connectionpool.HTTPConnectionPool.urlopen`
+        Same as :meth:`urllib4.connectionpool.HTTPConnectionPool.urlopen`
         with custom cross-host redirect logic and only sends the request-uri
         portion of the ``url``.
 
         The given ``url`` parameter must be absolute, such that an appropriate
-        :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
+        :class:`urllib4.connectionpool.ConnectionPool` can be chosen for it.
         """
         u = parse_url(url)
         conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
@@ -204,7 +204,7 @@ class ProxyManager(PoolManager):
         authentication.
 
     Example:
-        >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
+        >>> proxy = urllib4.ProxyManager('http://localhost:3128/')
         >>> r1 = proxy.request('GET', 'http://google.com/')
         >>> r2 = proxy.request('GET', 'http://httpbin.org/')
         >>> len(proxy.pools)

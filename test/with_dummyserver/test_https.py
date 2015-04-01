@@ -18,13 +18,13 @@ from test import (
     TARPIT_HOST,
     clear_warnings,
 )
-from urllib3 import HTTPSConnectionPool
-from urllib3.connection import (
+from urllib4 import HTTPSConnectionPool
+from urllib4.connection import (
     VerifiedHTTPSConnection,
     UnverifiedHTTPSConnection,
     RECENT_DATE,
 )
-from urllib3.exceptions import (
+from urllib4.exceptions import (
     SSLError,
     ReadTimeoutError,
     ConnectTimeoutError,
@@ -32,10 +32,10 @@ from urllib3.exceptions import (
     SystemTimeWarning,
     InsecurePlatformWarning,
 )
-from urllib3.util.timeout import Timeout
+from urllib4.util.timeout import Timeout
 
 
-log = logging.getLogger('urllib3.connectionpool')
+log = logging.getLogger('urllib4.connectionpool')
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
@@ -159,17 +159,17 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         certificates. Since this file is used by many components of the OS,
         such as curl, apt-get, etc., we decided to not touch it, in order to
         not compromise the security of the OS running the test suite (typically
-        urllib3 developer's OS).
+        urllib4 developer's OS).
 
         This test assumes that httpbin.org uses a certificate signed by a well
         known Certificate Authority.
         """
         try:
-            import urllib3.contrib.pyopenssl
+            import urllib4.contrib.pyopenssl
         except ImportError:
             raise SkipTest('Test requires PyOpenSSL')
-        if (urllib3.connection.ssl_wrap_socket is
-                urllib3.contrib.pyopenssl.orig_connection_ssl_wrap_socket):
+        if (urllib4.connection.ssl_wrap_socket is
+                urllib4.contrib.pyopenssl.orig_connection_ssl_wrap_socket):
             # Not patched
             raise SkipTest('Test should only be run after PyOpenSSL '
                            'monkey patching')
@@ -371,7 +371,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     def test_ssl_wrong_system_time(self):
         self._pool.cert_reqs = 'CERT_REQUIRED'
         self._pool.ca_certs = DEFAULT_CA
-        with mock.patch('urllib3.connection.datetime') as mock_date:
+        with mock.patch('urllib4.connection.datetime') as mock_date:
             mock_date.date.today.return_value = datetime.date(1970, 1, 1)
 
             with warnings.catch_warnings(record=True) as w:

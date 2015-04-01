@@ -13,7 +13,7 @@ except ImportError:
 base_path = os.path.dirname(__file__)
 
 # Get the version (borrowed from SQLAlchemy)
-fp = open(os.path.join(base_path, 'urllib3', '__init__.py'))
+fp = open(os.path.join(base_path, 'urllib4', '__init__.py'))
 VERSION = re.compile(r".*__version__ = '(.*?)'",
                      re.S).match(fp.read()).group(1)
 fp.close()
@@ -21,7 +21,7 @@ fp.close()
 
 version = VERSION
 
-setup(name='urllib3',
+setup(name='urllib4',
       version=version,
       description="HTTP library with thread-safe connection pooling, file post, and more.",
       long_description=open('README.rst').read() + '\n\n' + open('CHANGES.rst').read(),
@@ -39,11 +39,11 @@ setup(name='urllib3',
       keywords='urllib httplib threadsafe filepost http https ssl pooling',
       author='Andrey Petrov',
       author_email='andrey.petrov@shazow.net',
-      url='http://urllib3.readthedocs.org/',
+      url='http://urllib4.readthedocs.org/',
       license='MIT',
-      packages=['urllib3',
-                'urllib3.packages', 'urllib3.packages.ssl_match_hostname',
-                'urllib3.contrib', 'urllib3.util',
+      packages=['urllib4',
+                'urllib4.packages', 'urllib4.packages.ssl_match_hostname',
+                'urllib4.contrib', 'urllib4.util',
                 ],
       requires=[],
       tests_require=[

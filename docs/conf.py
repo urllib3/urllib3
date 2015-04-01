@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# urllib3 documentation build configuration file, created by
+# urllib4 documentation build configuration file, created by
 # sphinx-quickstart on Wed Oct  5 13:15:40 2011.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -22,7 +22,7 @@ import sys
 root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, root_path)
 
-import urllib3
+import urllib4
 
 
 # -- General configuration -----------------------------------------------------
@@ -54,7 +54,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'urllib3'
+project = u'urllib4'
 copyright = u'{year}, Andrey Petrov'.format(year=date.today().year)
 
 # The version info for the project you're documenting, acts as replacement for
@@ -62,7 +62,7 @@ copyright = u'{year}, Andrey Petrov'.format(year=date.today().year)
 # built documents.
 #
 # The short X.Y version.
-version = urllib3.__version__
+version = urllib4.__version__
 # The full version, including alpha/beta/rc tags.
 release = version
 
@@ -178,7 +178,7 @@ html_theme = 'nature'
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'urllib3doc'
+htmlhelp_basename = 'urllib4doc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -192,7 +192,7 @@ htmlhelp_basename = 'urllib3doc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'urllib3.tex', u'urllib3 Documentation',
+  ('index', 'urllib4.tex', u'urllib4 Documentation',
    u'Andrey Petrov', 'manual'),
 ]
 
@@ -225,7 +225,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'urllib3', u'urllib3 Documentation',
+    ('index', 'urllib4', u'urllib4 Documentation',
      [u'Andrey Petrov'], 1)
 ]
 

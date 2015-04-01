@@ -6,8 +6,8 @@ try:
     import http.client as httplib
 except ImportError:
     import httplib
-from urllib3.response import HTTPResponse
-from urllib3.exceptions import DecodeError, ResponseNotChunked
+from urllib4.response import HTTPResponse
+from urllib4.exceptions import DecodeError, ResponseNotChunked
 
 
 from base64 import b64decode
@@ -380,7 +380,7 @@ class TestResponse(unittest.TestCase):
         self.assertRaises(StopIteration, next, stream)
 
     def test_mock_httpresponse_stream(self):
-        # Mock out a HTTP Request that does enough to make it through urllib3's
+        # Mock out a HTTP Request that does enough to make it through urllib4's
         # read() and close() calls, and also exhausts and underlying file
         # object.
         class MockHTTPRequest(object):

@@ -68,7 +68,7 @@ class HTTPConnection(_HTTPConnection, object):
     Additional keyword parameters are used to configure attributes of the connection.
     Accepted parameters include:
 
-      - ``strict``: See the documentation on :class:`urllib3.connectionpool.HTTPConnectionPool`
+      - ``strict``: See the documentation on :class:`urllib4.connectionpool.HTTPConnectionPool`
       - ``source_address``: Set the source address for the current connection.
 
         .. note:: This is ignored for Python 2.6. It is only applied for 2.7 and 3.x
@@ -247,7 +247,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                 warnings.warn((
                     'Certificate has no `subjectAltName`, falling back to check for a `commonName` for now. '
                     'This feature is being removed by major browsers and deprecated by RFC 2818. '
-                    '(See https://github.com/shazow/urllib3/issues/497 for details.)'),
+                    '(See https://github.com/shazow/urllib4/issues/497 for details.)'),
                     SecurityWarning
                 )
             match_hostname(cert, self.assert_hostname or hostname)

@@ -1,10 +1,10 @@
 Collections
 ===========
 
-These datastructures are used to implement the behaviour of various urllib3
+These datastructures are used to implement the behaviour of various urllib4
 components in a decoupled and application-agnostic design.
 
-.. automodule:: urllib3._collections
+.. automodule:: urllib4._collections
 
     .. autoclass:: RecentlyUsedContainer
        :members:

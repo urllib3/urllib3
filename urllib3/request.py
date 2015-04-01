@@ -12,8 +12,8 @@ __all__ = ['RequestMethods']
 class RequestMethods(object):
     """
     Convenience mixin for classes who implement a :meth:`urlopen` method, such
-    as :class:`~urllib3.connectionpool.HTTPConnectionPool` and
-    :class:`~urllib3.poolmanager.PoolManager`.
+    as :class:`~urllib4.connectionpool.HTTPConnectionPool` and
+    :class:`~urllib4.poolmanager.PoolManager`.
 
     Provides behavior for making common types of HTTP request methods and
     decides which type of request field encoding to use.
@@ -88,7 +88,7 @@ class RequestMethods(object):
         the body. This is useful for request methods like POST, PUT, PATCH, etc.
 
         When ``encode_multipart=True`` (default), then
-        :meth:`urllib3.filepost.encode_multipart_formdata` is used to encode
+        :meth:`urllib4.filepost.encode_multipart_formdata` is used to encode
         the payload with the appropriate content type. Otherwise
         :meth:`urllib.urlencode` is used with the
         'application/x-www-form-urlencoded' content type.
