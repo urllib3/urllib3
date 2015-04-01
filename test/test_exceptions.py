@@ -1,11 +1,11 @@
 import unittest
 import pickle
 
-from urllib3.exceptions import (HTTPError, MaxRetryError, LocationParseError,
+from urllib4.exceptions import (HTTPError, MaxRetryError, LocationParseError,
                                 ClosedPoolError, EmptyPoolError,
                                 HostChangedError, ReadTimeoutError,
                                 ConnectTimeoutError)
-from urllib3.connectionpool import HTTPConnectionPool
+from urllib4.connectionpool import HTTPConnectionPool
 
 
 

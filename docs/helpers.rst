@@ -2,54 +2,54 @@ Helpers
 =======
 
 Useful methods for working with :mod:`httplib`, completely decoupled from
-code specific to **urllib3**.
+code specific to **urllib4**.
 
 
 Timeouts
 --------
 
-.. automodule:: urllib3.util.timeout
+.. automodule:: urllib4.util.timeout
    :members:
 
 Retries
 -------
 
-.. automodule:: urllib3.util.retry
+.. automodule:: urllib4.util.retry
    :members:
 
 URL Helpers
 -----------
 
-.. automodule:: urllib3.util.url
+.. automodule:: urllib4.util.url
     :members:
 
 Filepost
 --------
 
-.. automodule:: urllib3.filepost
+.. automodule:: urllib4.filepost
    :members:
 
-.. automodule:: urllib3.fields
+.. automodule:: urllib4.fields
    :members:
 
 Request
 -------
 
-.. automodule:: urllib3.request
+.. automodule:: urllib4.request
    :members:
 
-.. automodule:: urllib3.util.request
+.. automodule:: urllib4.util.request
    :members:
 
 Response
 --------
 
-.. automodule:: urllib3.response
+.. automodule:: urllib4.response
    :members:
    :undoc-members:
 
 SSL/TLS Helpers
 ---------------
 
-.. automodule:: urllib3.util.ssl_
+.. automodule:: urllib4.util.ssl_
    :members:

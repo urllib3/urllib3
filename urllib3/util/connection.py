@@ -68,7 +68,7 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
             sock = socket.socket(af, socktype, proto)
 
             # If provided, set socket level options before connecting.
-            # This is the only addition urllib3 makes to this function.
+            # This is the only addition urllib4 makes to this function.
             _set_socket_options(sock, socket_options)
 
             if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:

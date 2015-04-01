@@ -157,7 +157,7 @@ class HTTPResponse(io.IOBase):
 
     @property
     def data(self):
-        # For backwords-compat with earlier urllib3 0.4 and earlier.
+        # For backwords-compat with earlier urllib4 0.4 and earlier.
         if self._body:
             return self._body
 
@@ -298,7 +298,7 @@ class HTTPResponse(io.IOBase):
     def from_httplib(ResponseCls, r, **response_kw):
         """
         Given an :class:`httplib.HTTPResponse` instance ``r``, return a
-        corresponding :class:`urllib3.response.HTTPResponse` object.
+        corresponding :class:`urllib4.response.HTTPResponse` object.
 
         Remaining parameters are passed to the HTTPResponse constructor, along
         with ``original_response=r``.

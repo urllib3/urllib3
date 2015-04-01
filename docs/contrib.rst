@@ -11,4 +11,4 @@ prime time.
 SNI-support for Python 2
 ------------------------
 
-.. automodule:: urllib3.contrib.pyopenssl
+.. automodule:: urllib4.contrib.pyopenssl

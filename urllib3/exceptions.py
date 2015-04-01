@@ -63,7 +63,7 @@ class MaxRetryError(RequestError):
     """Raised when the maximum number of retries is exceeded.
 
     :param pool: The connection pool
-    :type pool: :class:`~urllib3.connectionpool.HTTPConnectionPool`
+    :type pool: :class:`~urllib4.connectionpool.HTTPConnectionPool`
     :param string url: The requested Url
     :param exceptions.Exception reason: The underlying error
 

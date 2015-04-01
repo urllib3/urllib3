@@ -1,10 +1,10 @@
 import unittest
 
-from urllib3._collections import (
+from urllib4._collections import (
     HTTPHeaderDict,
     RecentlyUsedContainer as Container
 )
-from urllib3.packages import six
+from urllib4.packages import six
 xrange = six.moves.xrange
 
 from nose.plugins.skip import SkipTest
@@ -155,7 +155,7 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertTrue('ab' in h)
     
     def test_create_from_iterator(self):
-        teststr = 'urllib3ontherocks'
+        teststr = 'urllib4ontherocks'
         h = HTTPHeaderDict((c, c*5) for c in teststr)
         self.assertEqual(len(h), len(set(teststr)))
         

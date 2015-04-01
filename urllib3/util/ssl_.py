@@ -73,9 +73,9 @@ except ImportError:
         def wrap_socket(self, socket, server_hostname=None):
             warnings.warn(
                 'A true SSLContext object is not available. This prevents '
-                'urllib3 from configuring SSL appropriately and may cause '
+                'urllib4 from configuring SSL appropriately and may cause '
                 'certain SSL connections to fail. For more information, see '
-                'https://urllib3.readthedocs.org/en/latest/security.html'
+                'https://urllib4.readthedocs.org/en/latest/security.html'
                 '#insecureplatformwarning.',
                 InsecurePlatformWarning
             )
@@ -168,7 +168,7 @@ def resolve_ssl_version(candidate):
     return candidate
 
 
-def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
+def create_urllib4_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
                            options=None, ciphers=None):
     """All arguments have the same meaning as ``ssl_wrap_socket``.
 
@@ -180,8 +180,8 @@ def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
 
     If you wish to enable SSLv3, you can do::
 
-        from urllib3.util import ssl_
-        context = ssl_.create_urllib3_context()
+        from urllib4.util import ssl_
+        context = ssl_.create_urllib4_context()
         context.options &= ~ssl_.OP_NO_SSLv3
 
     You can do the same to enable compression (substituting ``COMPRESSION``
@@ -239,14 +239,14 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         When SNI is supported, the expected hostname of the certificate
     :param ssl_context:
         A pre-made :class:`SSLContext` object. If none is provided, one will
-        be created using :func:`create_urllib3_context`.
+        be created using :func:`create_urllib4_context`.
     :param ciphers:
         A string of ciphers we wish the client to support. This is not
         supported on Python 2.6 as the ssl module does not support it.
     """
     context = ssl_context
     if context is None:
-        context = create_urllib3_context(ssl_version, cert_reqs,
+        context = create_urllib4_context(ssl_version, cert_reqs,
                                          ciphers=ciphers)
 
     if ca_certs:

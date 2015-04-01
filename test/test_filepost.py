@@ -1,8 +1,8 @@
 import unittest
 
-from urllib3.filepost import encode_multipart_formdata, iter_fields
-from urllib3.fields import RequestField
-from urllib3.packages.six import b, u
+from urllib4.filepost import encode_multipart_formdata, iter_fields
+from urllib4.fields import RequestField
+from urllib4.packages.six import b, u
 
 
 BOUNDARY = '!! test boundary !!'

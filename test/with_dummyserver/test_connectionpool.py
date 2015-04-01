@@ -18,11 +18,11 @@ from .. import (
     TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES,
 )
 from ..port_helpers import find_unused_port
-from urllib3 import (
+from urllib4 import (
     encode_multipart_formdata,
     HTTPConnectionPool,
 )
-from urllib3.exceptions import (
+from urllib4.exceptions import (
     ConnectTimeoutError,
     EmptyPoolError,
     DecodeError,
@@ -30,9 +30,9 @@ from urllib3.exceptions import (
     ReadTimeoutError,
     ProtocolError,
 )
-from urllib3.packages.six import b, u
-from urllib3.util.retry import Retry
-from urllib3.util.timeout import Timeout
+from urllib4.packages.six import b, u
+from urllib4.util.retry import Retry
+from urllib4.util.timeout import Timeout
 
 import tornado
 from dummyserver.testcase import HTTPDummyServerTestCase
@@ -40,7 +40,7 @@ from dummyserver.server import NoIPv6Warning
 
 from nose.tools import timed
 
-log = logging.getLogger('urllib3.connectionpool')
+log = logging.getLogger('urllib4.connectionpool')
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
@@ -680,7 +680,7 @@ class TestRetry(HTTPDummyServerTestCase):
         self.assertEqual(resp.status, 418)
 
     def test_default_method_whitelist_retried(self):
-        """ urllib3 should retry methods in the default method whitelist """
+        """ urllib4 should retry methods in the default method whitelist """
         retry = Retry(total=1, status_forcelist=[418])
         resp = self.pool.request('OPTIONS', '/successful_retry',
                                  headers={'test-name': 'test_default_whitelist'},

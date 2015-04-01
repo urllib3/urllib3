@@ -1,7 +1,7 @@
 import unittest
 import warnings
 
-from urllib3.connection import HTTPConnection
+from urllib4.connection import HTTPConnection
 
 
 class TestVersionCompatibility(unittest.TestCase):

@@ -1,13 +1,13 @@
 import unittest
 
-from urllib3.connectionpool import (
+from urllib4.connectionpool import (
     connection_from_url,
     HTTPConnection,
     HTTPConnectionPool,
 )
-from urllib3.util.timeout import Timeout
-from urllib3.packages.ssl_match_hostname import CertificateError
-from urllib3.exceptions import (
+from urllib4.util.timeout import Timeout
+from urllib4.packages.ssl_match_hostname import CertificateError
+from urllib4.exceptions import (
     ClosedPoolError,
     EmptyPoolError,
     HostChangedError,
@@ -153,7 +153,7 @@ class TestConnectionPool(unittest.TestCase):
         # The pool should never be empty, and with these two exceptions being raised,
         # a retry will be triggered, but that retry will fail, eventually raising
         # MaxRetryError, not EmptyPoolError
-        # See: https://github.com/shazow/urllib3/issues/76
+        # See: https://github.com/shazow/urllib4/issues/76
         pool._make_request = lambda *args, **kwargs: _raise(HTTPException)
         self.assertRaises(MaxRetryError, pool.request,
                           'GET', '/', retries=1, pool_timeout=0.01)

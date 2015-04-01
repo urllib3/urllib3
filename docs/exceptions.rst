@@ -1,7 +1,7 @@
 Exceptions
 ==========
 
-Custom exceptions defined by urllib3
+Custom exceptions defined by urllib4
 
-.. automodule:: urllib3.exceptions
+.. automodule:: urllib4.exceptions
     :members:

@@ -3,7 +3,7 @@
 Security: Verified HTTPS with SSL/TLS
 =====================================
 
-Very important fact: **By default, urllib3 does not verify HTTPS requests.**
+Very important fact: **By default, urllib4 does not verify HTTPS requests.**
 
 The historic reason for this is that we rely on ``httplib`` for some of the
 HTTP protocol implementation, and ``httplib`` does not verify requests out of
@@ -30,7 +30,7 @@ and you'll need to re-install it. Read
 for details.
 
 Otherwise, if ``ssl`` imported cleanly, then we're ready to setup our certificates:
-:ref:`certifi-with-urllib3`.
+:ref:`certifi-with-urllib4`.
 
 
 Enabling SSL on Google AppEngine
@@ -48,9 +48,9 @@ to `enable using sockets
 <https://developers.google.com/appengine/docs/python/sockets/>`_.
 
 
-.. _certifi-with-urllib3:
+.. _certifi-with-urllib4:
 
-Using Certifi with urllib3
+Using Certifi with urllib4
 --------------------------
 
 `Certifi <http://certifi.io/>`_ is a package which ships with Mozilla's root
@@ -62,10 +62,10 @@ certificates for easy programmatic access.
 
 2. Setup your pool to require a certificate and provide the certifi bundle::
 
-    import urllib3
+    import urllib4
     import certifi
 
-    http = urllib3.PoolManager(
+    http = urllib4.PoolManager(
         cert_reqs='CERT_REQUIRED', # Force certificate check.
         ca_certs=certifi.where(),  # Path to the Certifi bundle.
     )
@@ -73,7 +73,7 @@ certificates for easy programmatic access.
     # You're ready to make verified HTTPS requests.
     try:
         r = http.request('GET', 'https://example.com/')
-    except urllib3.exceptions.SSLError as e:
+    except urllib4.exceptions.SSLError as e:
         # Handle incorrect certificate error.
         ...
 
@@ -94,11 +94,11 @@ For example, on most Linux distributions they're at
 
 Once you find your root certificate file::
 
-    import urllib3
+    import urllib4
 
     ca_certs = "/etc/ssl/certs/ca-certificates.crt"  # Or wherever it lives.
 
-    http = urllib3.PoolManager(
+    http = urllib4.PoolManager(
         cert_reqs='CERT_REQUIRED', # Force certificate check.
         ca_certs=ca_certs,         # Path to your certificate bundle.
     )
@@ -106,7 +106,7 @@ Once you find your root certificate file::
     # You're ready to make verified HTTPS requests.
     try:
         r = http.request('GET', 'https://example.com/')
-    except urllib3.exceptions.SSLError as e:
+    except urllib4.exceptions.SSLError as e:
         # Handle incorrect certificate error.
         ...
 
@@ -128,15 +128,15 @@ packages::
 
     $ pip install pyopenssl ndg-httpsclient pyasn1
 
-Once the packages are installed, you can tell urllib3 to switch the ssl backend
-to PyOpenSSL with :func:`~urllib3.contrib.pyopenssl.inject_into_urllib3`::
+Once the packages are installed, you can tell urllib4 to switch the ssl backend
+to PyOpenSSL with :func:`~urllib4.contrib.pyopenssl.inject_into_urllib4`::
 
-    import urllib3.contrib.pyopenssl
-    urllib3.contrib.pyopenssl.inject_into_urllib3()
+    import urllib4.contrib.pyopenssl
+    urllib4.contrib.pyopenssl.inject_into_urllib4()
 
-Now you can continue using urllib3 as you normally would.
+Now you can continue using urllib4 as you normally would.
 
-For more details, check the :mod:`~urllib3.contrib.pyopenssl` module.
+For more details, check the :mod:`~urllib4.contrib.pyopenssl` module.
 
 
 .. _insecurerequestwarning:
@@ -148,18 +148,18 @@ InsecureRequestWarning
 
 Unverified HTTPS requests will trigger a warning via Python's ``warnings`` module::
 
-    urllib3/connectionpool.py:736: InsecureRequestWarning: Unverified HTTPS
+    urllib4/connectionpool.py:736: InsecureRequestWarning: Unverified HTTPS
     request is being made. Adding certificate verification is strongly advised.
-    See: https://urllib3.readthedocs.org/en/latest/security.html
+    See: https://urllib4.readthedocs.org/en/latest/security.html
 
 This would be a great time to enable HTTPS verification:
-:ref:`certifi-with-urllib3`.
+:ref:`certifi-with-urllib4`.
 
 If you know what you're doing and would like to disable this and other warnings,
-you can use :func:`~urllib3.disable_warnings`::
+you can use :func:`~urllib4.disable_warnings`::
 
-    import urllib3
-    urllib3.disable_warnings()
+    import urllib4
+    urllib4.disable_warnings()
 
 Making unverified HTTPS requests is strongly discouraged. ˙ ͜ʟ˙
 
@@ -178,7 +178,7 @@ InsecurePlatformWarning
 
 Certain Python platforms (specifically, versions of Python earlier than 2.7.9)
 have restrictions in their ``ssl`` module that limit the configuration that
-``urllib3`` can apply. In particular, this can cause HTTPS requests that would
+``urllib4`` can apply. In particular, this can cause HTTPS requests that would
 succeed on more featureful platforms to fail, and can cause certain security
 features to be unavailable.
 

@@ -1,7 +1,7 @@
 """
 NTLM authenticating pool, contributed by erikcederstran
 
-Issue #10, see: http://code.google.com/p/urllib3/issues/detail?id=10
+Issue #10, see: http://code.google.com/p/urllib4/issues/detail?id=10
 """
 
 try:
@@ -11,7 +11,7 @@ except ImportError:
 from logging import getLogger
 from ntlm import ntlm
 
-from urllib3 import HTTPSConnectionPool
+from urllib4 import HTTPSConnectionPool
 
 
 log = getLogger(__name__)
@@ -19,7 +19,7 @@ log = getLogger(__name__)
 
 class NTLMConnectionPool(HTTPSConnectionPool):
     """
-    Implements an NTLM authentication version of an urllib3 connection pool
+    Implements an NTLM authentication version of an urllib4 connection pool
     """
 
     scheme = 'https'

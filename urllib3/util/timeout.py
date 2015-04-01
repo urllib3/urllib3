@@ -6,7 +6,7 @@ import time
 from ..exceptions import TimeoutStateError
 
 # A sentinel value to indicate that no timeout was specified by the user in
-# urllib3
+# urllib4
 _Default = object()
 
 def current_time():
@@ -66,7 +66,7 @@ class Timeout(object):
 
     .. note::
 
-        Many factors can affect the total amount of time for urllib3 to return
+        Many factors can affect the total amount of time for urllib4 to return
         an HTTP response.
 
         For example, Python's DNS resolver does not obey the timeout specified
@@ -169,7 +169,7 @@ class Timeout(object):
     def start_connect(self):
         """ Start the timeout clock, used during a connect() attempt
 
-        :raises urllib3.exceptions.TimeoutStateError: if you attempt
+        :raises urllib4.exceptions.TimeoutStateError: if you attempt
             to start a timer that has been started already.
         """
         if self._start_connect is not None:
@@ -182,7 +182,7 @@ class Timeout(object):
 
         :return: Elapsed time.
         :rtype: float
-        :raises urllib3.exceptions.TimeoutStateError: if you attempt
+        :raises urllib4.exceptions.TimeoutStateError: if you attempt
             to get duration for a timer that hasn't been started.
         """
         if self._start_connect is None:
@@ -217,12 +217,12 @@ class Timeout(object):
 
         If self.total is set, the read timeout is dependent on the amount of
         time taken by the connect timeout. If the connection time has not been
-        established, a :exc:`~urllib3.exceptions.TimeoutStateError` will be
+        established, a :exc:`~urllib4.exceptions.TimeoutStateError` will be
         raised.
 
         :return: Value to use for the read timeout.
         :rtype: int, float, :attr:`Timeout.DEFAULT_TIMEOUT` or None
-        :raises urllib3.exceptions.TimeoutStateError: If :meth:`start_connect`
+        :raises urllib4.exceptions.TimeoutStateError: If :meth:`start_connect`
             has not yet been called on this object.
         """
         if (self.total is not None and

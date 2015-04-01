@@ -6,27 +6,27 @@ from itertools import chain
 
 from mock import patch, Mock
 
-from urllib3 import add_stderr_logger, disable_warnings
-from urllib3.util.request import make_headers
-from urllib3.util.timeout import Timeout
-from urllib3.util.url import (
+from urllib4 import add_stderr_logger, disable_warnings
+from urllib4.util.request import make_headers
+from urllib4.util.timeout import Timeout
+from urllib4.util.url import (
     get_host,
     parse_url,
     split_first,
     Url,
 )
-from urllib3.util.ssl_ import (
+from urllib4.util.ssl_ import (
     resolve_cert_reqs,
     ssl_wrap_socket,
 )
-from urllib3.exceptions import (
+from urllib4.exceptions import (
     LocationParseError,
     TimeoutStateError,
     InsecureRequestWarning,
     SSLError,
 )
 
-from urllib3.util import is_fp_closed, ssl_
+from urllib4.util import is_fp_closed, ssl_
 
 from . import clear_warnings
 
@@ -227,7 +227,7 @@ class TestUtil(unittest.TestCase):
 
     def test_add_stderr_logger(self):
         handler = add_stderr_logger(level=logging.INFO) # Don't actually print debug
-        logger = logging.getLogger('urllib3')
+        logger = logging.getLogger('urllib4')
         self.assertTrue(handler in logger.handlers)
 
         logger.debug('Testing add_stderr_logger')
@@ -278,7 +278,7 @@ class TestUtil(unittest.TestCase):
             self.assertTrue('int or float' in str(e))
 
 
-    @patch('urllib3.util.timeout.current_time')
+    @patch('urllib4.util.timeout.current_time')
     def test_timeout(self, current_time):
         timeout = Timeout(total=3)
 
@@ -325,7 +325,7 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(str(timeout), "Timeout(connect=1, read=None, total=3)")
 
 
-    @patch('urllib3.util.timeout.current_time')
+    @patch('urllib4.util.timeout.current_time')
     def test_timeout_elapsed(self, current_time):
         current_time.return_value = TIMEOUT_EPOCH
         timeout = Timeout(total=3)

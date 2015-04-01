@@ -211,7 +211,7 @@ def _parse_header(line):
     """
     import tornado.httputil
     import email.utils
-    from urllib3.packages import six
+    from urllib4.packages import six
     if not six.PY3:
         line = line.encode('utf-8')
     parts = tornado.httputil._parseparam(';' + line)

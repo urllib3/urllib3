@@ -1,8 +1,10 @@
 Changes
 =======
 
-dev (master)
-++++++++++++
+2.0.0 (2015-04-01)
+++++++++++++++++++
+
+* Renamed module to urllib4.
 
 * Emit ``InsecurePlatformWarning`` when SSLContext object is missing.
   (Issue #558)
@@ -12,8 +14,6 @@ dev (master)
   
 * ``Response.stream()`` returns a generator for chunked responses.
   (Issue #560)
-
-* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.10.2 (2015-02-25)

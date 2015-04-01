@@ -114,9 +114,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     :param timeout:
         Socket timeout in seconds for each individual connection. This can
         be a float or integer, which sets the timeout for the HTTP request,
-        or an instance of :class:`urllib3.util.Timeout` which gives you more
+        or an instance of :class:`urllib4.util.Timeout` which gives you more
         fine-grained control over request timeouts. After the constructor has
-        been parsed, this is always a `urllib3.util.Timeout` object.
+        been parsed, this is always a `urllib4.util.Timeout` object.
 
     :param maxsize:
         Number of connections to save that can be reused. More than 1 is useful
@@ -140,15 +140,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     :param _proxy:
         Parsed proxy URL, should not be used directly, instead, see
-        :class:`urllib3.connectionpool.ProxyManager`"
+        :class:`urllib4.connectionpool.ProxyManager`"
 
     :param _proxy_headers:
         A dictionary with proxy headers, should not be used directly,
-        instead, see :class:`urllib3.connectionpool.ProxyManager`"
+        instead, see :class:`urllib4.connectionpool.ProxyManager`"
 
     :param \**conn_kw:
-        Additional parameters are used to create fresh :class:`urllib3.connection.HTTPConnection`,
-        :class:`urllib3.connection.HTTPSConnection` instances.
+        Additional parameters are used to create fresh :class:`urllib4.connection.HTTPConnection`,
+        :class:`urllib4.connection.HTTPSConnection` instances.
     """
 
     scheme = 'http'
@@ -216,7 +216,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         :param timeout:
             Seconds to wait before giving up and raising
-            :class:`urllib3.exceptions.EmptyPoolError` if the pool is empty and
+            :class:`urllib4.exceptions.EmptyPoolError` if the pool is empty and
             :prop:`.block` is ``True``.
         """
         conn = None
@@ -286,7 +286,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         pass
 
     def _get_timeout(self, timeout):
-        """ Helper that always returns a :class:`urllib3.util.Timeout` """
+        """ Helper that always returns a :class:`urllib4.util.Timeout` """
         if timeout is _Default:
             return self.timeout.clone()
 
@@ -327,7 +327,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             Socket timeout in seconds for the request. This can be a
             float or integer, which will set the same timeout value for
             the socket connect and the socket read, or an instance of
-            :class:`urllib3.util.Timeout`, which gives you more fine-grained
+            :class:`urllib4.util.Timeout`, which gives you more fine-grained
             control over your timeouts.
         """
         self.num_requests += 1
@@ -345,7 +345,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             raise
 
         # conn.request() calls httplib.*.request, not the method in
-        # urllib3.request. It also calls makefile (recv) on the socket.
+        # urllib4.request. It also calls makefile (recv) on the socket.
         conn.request(method, url, **httplib_request_kw)
 
         # Reset the timeout for the recv() on the socket
@@ -453,10 +453,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         :param retries:
             Configure the number of retries to allow before raising a
-            :class:`~urllib3.exceptions.MaxRetryError` exception.
+            :class:`~urllib4.exceptions.MaxRetryError` exception.
 
             Pass ``None`` to retry until you receive a response. Pass a
-            :class:`~urllib3.util.retry.Retry` object for fine-grained control
+            :class:`~urllib4.util.retry.Retry` object for fine-grained control
             over different types of retries.
             Pass an integer number to retry connection errors that many times,
             but no other types of errors. Pass zero to never retry.
@@ -465,7 +465,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             immediately. Also, instead of raising a MaxRetryError on redirects,
             the redirect response will be returned.
 
-        :type retries: :class:`~urllib3.util.retry.Retry`, False, or an int.
+        :type retries: :class:`~urllib4.util.retry.Retry`, False, or an int.
 
         :param redirect:
             If True, automatically handle redirects (status codes 301, 302,
@@ -480,7 +480,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         :param timeout:
             If specified, overrides the default timeout for this one
             request. It may be a float (in seconds) or an instance of
-            :class:`urllib3.util.Timeout`.
+            :class:`urllib4.util.Timeout`.
 
         :param pool_timeout:
             If set and the pool is set to block=True, then this method will
@@ -499,7 +499,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         :param \**response_kw:
             Additional parameters are passed to
-            :meth:`urllib3.response.HTTPResponse.from_httplib`
+            :meth:`urllib4.response.HTTPResponse.from_httplib`
         """
         if headers is None:
             headers = self.headers
@@ -664,7 +664,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     The ``key_file``, ``cert_file``, ``cert_reqs``, ``ca_certs`` and
     ``ssl_version`` are only used if :mod:`ssl` is available and are fed into
-    :meth:`urllib3.util.ssl_wrap_socket` to upgrade the connection socket
+    :meth:`urllib4.util.ssl_wrap_socket` to upgrade the connection socket
     into an SSL socket.
     """
 
@@ -693,7 +693,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     def _prepare_conn(self, conn):
         """
-        Prepare the ``connection`` for :meth:`urllib3.util.ssl_wrap_socket`
+        Prepare the ``connection`` for :meth:`urllib4.util.ssl_wrap_socket`
         and establish the tunnel if proxy is used.
         """
 
@@ -765,7 +765,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             warnings.warn((
                 'Unverified HTTPS request is being made. '
                 'Adding certificate verification is strongly advised. See: '
-                'https://urllib3.readthedocs.org/en/latest/security.html'),
+                'https://urllib4.readthedocs.org/en/latest/security.html'),
                 InsecureRequestWarning)
 
 
