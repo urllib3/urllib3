@@ -593,6 +593,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 e = ProxyError('Cannot connect to proxy.', e)
             elif isinstance(e, (SocketError, HTTPException)):
                 if hasattr(e, 'errno'):
+                    # Some error codes are shared by socket connect/write. In
+                    # those cases, assume the write failed, since that happens
+                    # later.
                     if e.errno in SocketWriteError.ERROR_CODES:
                         e = SocketWriteError('Connection aborted.', e)
                     else:
