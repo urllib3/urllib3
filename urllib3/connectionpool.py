@@ -314,7 +314,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if 'timed out' in str(err) or 'did not complete (read)' in str(err):  # Python 2.6
             raise ReadTimeoutError(self, url, "Read timed out. (read timeout=%s)" % timeout_value)
 
-    def _make_request(self, conn, method, url, timeout=_Default,
+    def _make_connect(self, conn, method, url, timeout=_Default,
                       **httplib_request_kw):
         """
         Perform a request on a given urllib connection object taken from our
@@ -347,9 +347,29 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # conn.request() calls httplib.*.request, not the method in
         # urllib3.request. It also calls makefile (recv) on the socket.
         conn.request(method, url, **httplib_request_kw)
+        return conn
 
+
+    def _make_request(self, conn, method, url, timeout=_Default,
+                      **httplib_request_kw):
+        """
+        Perform a request on a given urllib connection object taken from our
+        pool.
+
+        :param conn:
+            a connection from one of our connection pools
+
+        :param timeout:
+            Socket timeout in seconds for the request. This can be a
+            float or integer, which will set the same timeout value for
+            the socket connect and the socket read, or an instance of
+            :class:`urllib3.util.Timeout`, which gives you more fine-grained
+            control over your timeouts.
+        """
         # Reset the timeout for the recv() on the socket
-        read_timeout = timeout_obj.read_timeout
+        if not isinstance(timeout, Timeout):
+            timeout = self._get_timeout(timeout)
+        read_timeout = timeout.read_timeout
 
         # App Engine doesn't have a sock attr
         if getattr(conn, 'sock', None):
@@ -538,6 +558,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if is_new_proxy_conn:
                 self._prepare_proxy(conn)
 
+            conn = self._make_connect(conn, method, url, timeout=timeout_obj,
+                                      body=body, headers=headers)
         except Empty:
             # Timed out by queue.
             raise EmptyPoolError(self, "No pool connections are available.")
@@ -548,7 +570,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 # be replaced during the next _get_conn() call.
                 conn.close()
                 conn = None
-
             if isinstance(e, SocketError) and self.proxy:
                 e = ProxyError('Cannot connect to proxy.', e)
             elif isinstance(e, (SocketError, HTTPException)):
@@ -559,20 +580,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             retries.sleep()
             err = e
 
-        finally:
-            if release_conn:
-                # Put the connection back to be reused. If the connection is
-                # expired then it will be None, which will get replaced with a
-                # fresh connection during _get_conn.
-                self._put_conn(conn)
-
         if err is None:
             try:
-
                 # Make the request on the httplib connection object.
                 httplib_response = self._make_request(conn, method, url,
-                                                      timeout=timeout_obj,
-                                                      body=body, headers=headers)
+                                                      timeout=timeout_obj)
 
                 # If we're going to release the connection in ``finally:``, then
                 # the request doesn't need to know about the connection. Otherwise
