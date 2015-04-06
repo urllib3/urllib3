@@ -564,6 +564,23 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Timed out by queue.
             raise EmptyPoolError(self, "No pool connections are available.")
 
+        except (BaseSSLError, CertificateError) as e:
+            # Close the connection. If a connection is reused on which there
+            # was a Certificate error, the next request will certainly raise
+            # another Certificate error.
+            if conn:
+                conn.close()
+                conn = None
+            raise SSLError(e)
+
+        except SSLError:
+            # Treat SSLError separately from BaseSSLError to preserve
+            # traceback.
+            if conn:
+                conn.close()
+                conn = None
+            raise
+
         except (TimeoutError, HTTPException, SocketError, ConnectionError) as e:
             if conn:
                 # Discard the connection for these exceptions. It will be
@@ -626,6 +643,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     # be replaced during the next _get_conn() call.
                     conn.close()
                     conn = None
+
+                if isinstance(e, (SocketError, HTTPException)):
+                    e = ProtocolError('Connection aborted.', e)
 
                 retries = retries.increment(method, url, error=e, _pool=self,
                                             _stacktrace=sys.exc_info()[2])

@@ -309,6 +309,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         except AttributeError: # python 2.6
             conn._set_tunnel(self.host, self.port)
         conn._tunnel = mock.Mock()
+        conn = https_pool._make_connect(conn, 'GET', '/')
         https_pool._make_request(conn, 'GET', '/')
         conn._tunnel.assert_called_once_with()
 
