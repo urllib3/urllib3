@@ -372,6 +372,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             pool.request('GET', '/', retries=5)
             self.fail("should raise timeout exception here")
         except MaxRetryError as e:
+            print e
+            print e.reason
+            print type(e)
             self.assertTrue(isinstance(e.reason, ProtocolError), e.reason)
 
     def test_keepalive(self):

@@ -538,48 +538,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if is_new_proxy_conn:
                 self._prepare_proxy(conn)
 
-            # Make the request on the httplib connection object.
-            httplib_response = self._make_request(conn, method, url,
-                                                  timeout=timeout_obj,
-                                                  body=body, headers=headers)
-
-            # If we're going to release the connection in ``finally:``, then
-            # the request doesn't need to know about the connection. Otherwise
-            # it will also try to release it and we'll have a double-release
-            # mess.
-            response_conn = not release_conn and conn
-
-            # Import httplib's response into our own wrapper object
-            response = HTTPResponse.from_httplib(httplib_response,
-                                                 pool=self,
-                                                 connection=response_conn,
-                                                 **response_kw)
-
-            # else:
-            #     The connection will be put back into the pool when
-            #     ``response.release_conn()`` is called (implicitly by
-            #     ``response.read()``)
-
         except Empty:
             # Timed out by queue.
             raise EmptyPoolError(self, "No pool connections are available.")
-
-        except (BaseSSLError, CertificateError) as e:
-            # Close the connection. If a connection is reused on which there
-            # was a Certificate error, the next request will certainly raise
-            # another Certificate error.
-            if conn:
-                conn.close()
-                conn = None
-            raise SSLError(e)
-
-        except SSLError:
-            # Treat SSLError separately from BaseSSLError to preserve
-            # traceback.
-            if conn:
-                conn.close()
-                conn = None
-            raise
 
         except (TimeoutError, HTTPException, SocketError, ConnectionError) as e:
             if conn:
@@ -596,8 +557,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             retries = retries.increment(method, url, error=e, _pool=self,
                                         _stacktrace=sys.exc_info()[2])
             retries.sleep()
-
-            # Keep track of the error for the retry warning.
             err = e
 
         finally:
@@ -606,6 +565,69 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 # expired then it will be None, which will get replaced with a
                 # fresh connection during _get_conn.
                 self._put_conn(conn)
+
+        if err is None:
+            try:
+
+                # Make the request on the httplib connection object.
+                httplib_response = self._make_request(conn, method, url,
+                                                      timeout=timeout_obj,
+                                                      body=body, headers=headers)
+
+                # If we're going to release the connection in ``finally:``, then
+                # the request doesn't need to know about the connection. Otherwise
+                # it will also try to release it and we'll have a double-release
+                # mess.
+                response_conn = not release_conn and conn
+
+                # Import httplib's response into our own wrapper object
+                response = HTTPResponse.from_httplib(httplib_response,
+                                                     pool=self,
+                                                     connection=response_conn,
+                                                     **response_kw)
+
+                # else:
+                #     The connection will be put back into the pool when
+                #     ``response.release_conn()`` is called (implicitly by
+                #     ``response.read()``)
+
+            except (BaseSSLError, CertificateError) as e:
+                # Close the connection. If a connection is reused on which there
+                # was a Certificate error, the next request will certainly raise
+                # another Certificate error.
+                if conn:
+                    conn.close()
+                    conn = None
+                raise SSLError(e)
+
+            except SSLError:
+                # Treat SSLError separately from BaseSSLError to preserve
+                # traceback.
+                if conn:
+                    conn.close()
+                    conn = None
+                raise
+
+            except (TimeoutError, HTTPException, SocketError, ConnectionError) as e:
+                if conn:
+                    # Discard the connection for these exceptions. It will be
+                    # be replaced during the next _get_conn() call.
+                    conn.close()
+                    conn = None
+
+                retries = retries.increment(method, url, error=e, _pool=self,
+                                            _stacktrace=sys.exc_info()[2])
+                retries.sleep()
+
+                # Keep track of the error for the retry warning.
+                err = e
+
+            finally:
+                if release_conn:
+                    # Put the connection back to be reused. If the connection is
+                    # expired then it will be None, which will get replaced with a
+                    # fresh connection during _get_conn.
+                    self._put_conn(conn)
 
         if not conn:
             # Try again
