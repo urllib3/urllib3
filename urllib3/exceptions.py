@@ -1,3 +1,4 @@
+import errno
 
 ## Base Exceptions
 
@@ -52,6 +53,47 @@ class ProtocolError(HTTPError):
     "Raised when something unexpected happens mid-request/response."
     pass
 
+class SocketConnectError(ProtocolError):
+    "Raised when a socket connect() call fails"
+    # Via http://linux.die.net/man/2/connect
+    ERROR_CODES = [
+        errno.EACCES,
+        errno.EPERM,
+        errno.EADDRINUSE,
+        errno.EAFNOSUPPORT,
+        errno.EAGAIN,
+        errno.EALREADY,
+        errno.EBADF,
+        errno.ECONNREFUSED,
+        errno.EFAULT,
+        errno.EINPROGRESS,
+        errno.EINTR,
+        errno.EISCONN,
+        errno.ENETUNREACH,
+        errno.ENOTSOCK,
+        errno.ETIMEDOUT,
+    ]
+
+class SocketWriteError(ProtocolError):
+    "Raised when a socket write() call fails"
+    # Via http://linux.die.net/man/2/write
+    ERROR_CODES = [
+        errno.EAGAIN,
+        errno.EBADF,
+        errno.EDESTADDRREQ,
+        errno.EDQUOT,
+        errno.EFAULT,
+        errno.EFBIG,
+        errno.EINTR,
+        errno.EINVAL,
+        errno.EIO,
+        errno.ENOSPC,
+        errno.EPIPE,
+    ]
+
+class SocketReadError(ProtocolError):
+    "Raised when a socket read() call fails"
+    pass
 
 #: Renamed to ProtocolError but aliased for backwards compatibility.
 ConnectionError = ProtocolError

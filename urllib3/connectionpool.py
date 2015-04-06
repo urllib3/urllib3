@@ -22,6 +22,8 @@ from .exceptions import (
     MaxRetryError,
     ProxyError,
     ReadTimeoutError,
+    SocketConnectError,
+    SocketWriteError,
     SSLError,
     TimeoutError,
     InsecureRequestWarning,
@@ -590,7 +592,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if isinstance(e, SocketError) and self.proxy:
                 e = ProxyError('Cannot connect to proxy.', e)
             elif isinstance(e, (SocketError, HTTPException)):
-                e = ProtocolError('Connection aborted.', e)
+                if hasattr(e, 'errno'):
+                    if e.errno in SocketWriteError.ERROR_CODES:
+                        e = SocketWriteError('Connection aborted.', e)
+                    else:
+                        e = SocketConnectError('Connection aborted.', e)
+                else:
+                    e = ProtocolError('Connection aborted.', e)
 
             retries = retries.increment(method, url, error=e, _pool=self,
                                         _stacktrace=sys.exc_info()[2])
