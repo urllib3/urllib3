@@ -24,11 +24,12 @@ from urllib3 import (
 )
 from urllib3.exceptions import (
     ConnectTimeoutError,
-    EmptyPoolError,
     DecodeError,
+    EmptyPoolError,
     MaxRetryError,
-    ReadTimeoutError,
     ProtocolError,
+    ReadTimeoutError,
+    SocketConnectError,
 )
 from urllib3.packages.six import b, u
 from urllib3.util.retry import Retry
@@ -377,9 +378,18 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool('badhost.invalid', self.port)
         try:
             pool.request('GET', '/', retries=5)
-            self.fail("should raise timeout exception here")
+            self.fail("should raise connect exception here")
         except MaxRetryError as e:
-            self.assertTrue(isinstance(e.reason, ProtocolError), e.reason)
+            self.assertTrue(isinstance(e.reason, SocketConnectError), e.reason)
+
+    def test_bad_connect_object(self):
+        pool = HTTPConnectionPool('badhost.invalid', self.port)
+        try:
+            r = Retry(connect=3, read=0)
+            pool.request('GET', '/', retries=r)
+            self.fail("should raise connect exception here")
+        except MaxRetryError as e:
+            self.assertTrue(isinstance(e.reason, SocketConnectError), e.reason)
 
     def test_keepalive(self):
         pool = HTTPConnectionPool(self.host, self.port, block=True, maxsize=1)
