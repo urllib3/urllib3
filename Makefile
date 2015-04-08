@@ -35,6 +35,9 @@ clean:
 test: requirements
 	nosetests
 
+test-nossl: requirements
+	BLOCK_SSL=yes nosetests test/
+
 test-all: requirements
 	tox
 
