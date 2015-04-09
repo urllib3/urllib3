@@ -3,6 +3,12 @@ Test what happens if Python was built without SSL
 
 * Everything that does not involve HTTPS should still work
 * HTTPS requests must fail with an error that points at the ssl module
+
+NOTE:
+
+    This file is intentionally named to be sorted *last*.
+    We mess with the import machinery which breaks mock, so we want to run
+    after mock has done its stuff
 """
 
 import sys
@@ -37,6 +43,13 @@ class TestWithoutSSL(unittest.TestCase):
     def setUpClass(cls):
         sys.modules.pop('ssl', None)
         sys.modules.pop('_ssl', None)
+
+        sys.modules.pop('urllib3', None)
+
+        for module in list(sys.modules.keys()):
+            if module.startswith('urllib3.'):
+                sys.modules.pop(module)
+
         sys.meta_path.insert(0, ssl_blocker)
 
     @classmethod
