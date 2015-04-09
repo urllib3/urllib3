@@ -30,7 +30,7 @@ class ImportBlocker(object):
 
 class ModuleStash(object):
     """
-    Stashes avail previously imported modules
+    Stashes away previously imported modules
 
     If we reimport a module the data from coverage is lost, so we reuse the old
     modules
