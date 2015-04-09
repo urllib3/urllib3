@@ -1,3 +1,7 @@
+import os
+if 'BLOCK_SSL' in os.environ:
+    import ssl_blocker
+
 import warnings
 import sys
 import errno
