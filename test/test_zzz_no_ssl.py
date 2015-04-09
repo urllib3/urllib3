@@ -34,7 +34,36 @@ class ImportBlocker(object):
         raise ImportError('import of {0} is blocked'.format(fullname))
 
 
+class ModuleStash(object):
+    """
+    Stashes avail previously imported modules
+
+    If we reimport a module the data from coverage is lost, so we reuse the old
+    modules
+    """
+
+    def __init__(self, namespace, modules=sys.modules):
+        self.namespace = namespace
+        self.modules = modules
+        self._data = {}
+
+    def stash(self):
+        self._data[self.namespace] = self.modules.pop(self.namespace, None)
+
+        for module in list(self.modules.keys()):
+            if module.startswith(self.namespace + '.'):
+                self._data[module] = self.modules.pop(module)
+
+    def pop(self):
+        for module in list(self.modules.keys()):
+            if module.startswith(self.namespace + '.'):
+                self.modules.pop(module)
+
+        self.modules.update(self._data)
+
+
 ssl_blocker = ImportBlocker('ssl', '_ssl')
+module_stash = ModuleStash('urllib3')
 
 
 class TestWithoutSSL(unittest.TestCase):
@@ -44,17 +73,13 @@ class TestWithoutSSL(unittest.TestCase):
         sys.modules.pop('ssl', None)
         sys.modules.pop('_ssl', None)
 
-        sys.modules.pop('urllib3', None)
-
-        for module in list(sys.modules.keys()):
-            if module.startswith('urllib3.'):
-                sys.modules.pop(module)
-
+        module_stash.stash()
         sys.meta_path.insert(0, ssl_blocker)
 
     @classmethod
     def tearDownClass(cls):
         assert sys.meta_path.pop(0) == ssl_blocker
+        module_stash.pop()
 
     def test_cannot_import_ssl(self):
         # python26 has neither contextmanagers (for assertRaises) nor
