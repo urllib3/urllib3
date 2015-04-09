@@ -49,7 +49,7 @@ class ModuleStash(object):
                 self._data[module] = self.modules.pop(module)
 
     def pop(self):
-        self.modules.pop(self.namespace)
+        self.modules.pop(self.namespace, None)
 
         for module in list(self.modules.keys()):
             if module.startswith(self.namespace + '.'):
