@@ -9,10 +9,10 @@ HAS_SNI = False
 create_default_context = None
 
 import errno
-import ssl
 import warnings
 
 try:  # Test for SSL features
+    import ssl
     from ssl import wrap_socket, CERT_NONE, PROTOCOL_SSLv23
     from ssl import HAS_SNI  # Has SNI?
 except ImportError:
@@ -168,7 +168,7 @@ def resolve_ssl_version(candidate):
     return candidate
 
 
-def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
+def create_urllib3_context(ssl_version=None, cert_reqs=None,
                            options=None, ciphers=None):
     """All arguments have the same meaning as ``ssl_wrap_socket``.
 
@@ -204,6 +204,9 @@ def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
     :rtype: SSLContext
     """
     context = SSLContext(ssl_version or ssl.PROTOCOL_SSLv23)
+
+    # Setting the default here, as we may have no ssl module on import
+    cert_reqs = ssl.CERT_REQUIRED if cert_reqs is None else cert_reqs
 
     if options is None:
         options = 0
