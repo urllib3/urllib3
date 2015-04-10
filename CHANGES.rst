@@ -12,6 +12,9 @@ dev (master)
   
 * ``Response.stream()`` returns a generator for chunked responses.
   (Issue #560)
+  
+* Set upper-bound timeout when waiting for a socket in PyOpenSSL.
+  (Issue #585)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
