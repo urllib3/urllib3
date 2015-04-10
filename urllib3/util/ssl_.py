@@ -25,7 +25,7 @@ except ImportError:
     OP_NO_SSLv2, OP_NO_SSLv3 = 0x1000000, 0x2000000
     OP_NO_COMPRESSION = 0x20000
 
-_DEFAULT_CIPHERS = (
+DEFAULT_CIPHERS = (
     'ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+HIGH:'
     'DH+HIGH:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+HIGH:RSA+3DES:!aNULL:'
     '!eNULL:!MD5'
@@ -215,7 +215,7 @@ def create_urllib3_context(ssl_version=None, cert_reqs=ssl.CERT_REQUIRED,
     context.options |= options
 
     if getattr(context, 'supports_set_ciphers', True):  # Platform-specific: Python 2.6
-        context.set_ciphers(ciphers or _DEFAULT_CIPHERS)
+        context.set_ciphers(ciphers or DEFAULT_CIPHERS)
 
     context.verify_mode = cert_reqs
     if getattr(context, 'check_hostname', None) is not None:  # Platform-specific: Python 3.2
