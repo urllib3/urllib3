@@ -74,6 +74,8 @@ class TestWithoutSSL(unittest.TestCase):
         assert sys.meta_path.pop(0) == ssl_blocker
         module_stash.pop()
 
+
+class TestImportWithoutSSL(TestWithoutSSL):
     def test_cannot_import_ssl(self):
         # python26 has neither contextmanagers (for assertRaises) nor
         # importlib.
