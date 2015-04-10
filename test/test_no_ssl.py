@@ -63,17 +63,14 @@ module_stash = ModuleStash('urllib3')
 
 
 class TestWithoutSSL(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
         sys.modules.pop('ssl', None)
         sys.modules.pop('_ssl', None)
 
         module_stash.stash()
         sys.meta_path.insert(0, ssl_blocker)
 
-    @classmethod
-    def tearDownClass(cls):
+    def tearDown(self):
         assert sys.meta_path.pop(0) == ssl_blocker
         module_stash.pop()
 
