@@ -15,6 +15,9 @@ dev (master)
   
 * Set upper-bound timeout when waiting for a socket in PyOpenSSL.
   (Issue #585)
+  
+* Work on platforms without `ssl` module for plain HTTP requests.
+  (Issue #587)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
