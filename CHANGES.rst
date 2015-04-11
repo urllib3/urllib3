@@ -19,6 +19,8 @@ dev (master)
 * Work on platforms without `ssl` module for plain HTTP requests.
   (Issue #587)
 
+* Stop relying on the stdlib's default cipher list. (Issue #588)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
