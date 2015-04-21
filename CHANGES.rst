@@ -1,12 +1,6 @@
 Changes
 =======
 
-dev (master)
-++++++++++++
-
-* ... [Short description of non-trivial change.] (Issue #)
-
-
 1.10.3 (2015-04-21)
 +++++++++++++++++++
 
