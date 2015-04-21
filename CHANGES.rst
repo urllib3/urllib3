@@ -4,6 +4,12 @@ Changes
 dev (master)
 ++++++++++++
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.10.3 (2015-04-21)
++++++++++++++++++++
+
 * Emit ``InsecurePlatformWarning`` when SSLContext object is missing.
   (Issue #558)
   
@@ -20,8 +26,6 @@ dev (master)
   (Issue #587)
 
 * Stop relying on the stdlib's default cipher list. (Issue #588)
-
-* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.10.2 (2015-02-25)
