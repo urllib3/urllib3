@@ -30,7 +30,8 @@ class SocketDummyServerTestCase(unittest.TestCase):
                                                ready_event=ready_event,
                                                host=cls.host)
         cls.server_thread.start()
-        ready_event.wait()
+        if not ready_event.wait(5):
+            raise Exception("most likely failed to start server")
         cls.port = cls.server_thread.port
 
     @classmethod
