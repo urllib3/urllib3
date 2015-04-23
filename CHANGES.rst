@@ -4,6 +4,10 @@ Changes
 dev (master)
 ++++++++++++
 
+* Fix streaming decoding regression. (Issue #595)
+
+* Migrate tests to Tornado 4. (Issue #594)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
