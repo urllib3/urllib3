@@ -2,7 +2,7 @@ import unittest
 import socket
 import threading
 from nose.plugins.skip import SkipTest
-from tornado import ioloop, web, wsgi
+from tornado import ioloop, web
 
 from dummyserver.server import (
     SocketServerThread,
@@ -55,7 +55,7 @@ class HTTPDummyServerTestCase(unittest.TestCase):
     @classmethod
     def _start_server(cls):
         cls.io_loop = ioloop.IOLoop()
-        app = wsgi.WSGIContainer(TestingApp())
+        app = web.Application([(r".*", TestingApp)])
         cls.server, cls.port = run_tornado_app(app, cls.io_loop, cls.certs,
                                                cls.scheme, cls.host)
         cls.server_thread = run_loop_in_thread(cls.io_loop)
@@ -97,11 +97,11 @@ class HTTPDummyProxyTestCase(unittest.TestCase):
     def setUpClass(cls):
         cls.io_loop = ioloop.IOLoop()
 
-        app = wsgi.WSGIContainer(TestingApp())
+        app = web.Application([(r'.*', TestingApp)])
         cls.http_server, cls.http_port = run_tornado_app(
             app, cls.io_loop, None, 'http', cls.http_host)
 
-        app = wsgi.WSGIContainer(TestingApp())
+        app = web.Application([(r'.*', TestingApp)])
         cls.https_server, cls.https_port = run_tornado_app(
             app, cls.io_loop, cls.https_certs, 'https', cls.http_host)
 
