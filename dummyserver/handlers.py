@@ -9,7 +9,7 @@ import time
 import zlib
 
 from io import BytesIO
-from tornado.wsgi import HTTPRequest
+from tornado.web import RequestHandler
 
 try:
     from urllib.parse import urlsplit
@@ -28,16 +28,17 @@ class Response(object):
         self.status = status
         self.headers = headers or [("Content-type", "text/plain")]
 
-    def __call__(self, environ, start_response):
-        start_response(self.status, self.headers)
-        return [self.body]
+    def __call__(self, request_handler):
+        status, reason = self.status.split(' ', 1)
+        request_handler.set_status(int(status), reason)
+        for header,value in self.headers:
+            request_handler.add_header(header,value)
 
+        request_handler.write(self.body)
 
-class WSGIHandler(object):
-    pass
+RETRY_TEST_NAMES = collections.defaultdict(int)
 
-
-class TestingApp(WSGIHandler):
+class TestingApp(RequestHandler):
     """
     Simple app that performs various operations, useful for testing an HTTP
     library.
@@ -46,10 +47,25 @@ class TestingApp(WSGIHandler):
     it exists. Status code 200 indicates success, 400 indicates failure. Each
     method has its own conditions for success/failure.
     """
-    def __call__(self, environ, start_response):
-        """ Call the correct method in this class based on the incoming URI """
-        req = HTTPRequest(environ)
+    def get(self):
+        """ Handle GET requests """
+        self._call_method()
 
+    def post(self):
+        """ Handle POST requests """
+        self._call_method()
+
+    def put(self):
+        """ Handle PUT requests """
+        self._call_method()
+
+    def options(self):
+        """ Handle OPTIONS requests """
+        self._call_method()
+
+    def _call_method(self):
+        """ Call the correct method in this class based on the incoming URI """
+        req = self.request
         req.params = {}
         for k, v in req.arguments.items():
             req.params[k] = next(iter(v))
@@ -60,13 +76,14 @@ class TestingApp(WSGIHandler):
 
         target = path[1:].replace('/', '_')
         method = getattr(self, target, self.index)
+
         resp = method(req)
 
         if dict(resp.headers).get('Connection') == 'close':
             # FIXME: Can we kill the connection somehow?
             pass
 
-        return resp(environ, start_response)
+        resp(self)
 
     def index(self, _request):
         "Render simple message"
@@ -184,11 +201,9 @@ class TestingApp(WSGIHandler):
             return Response("test-name header not set",
                             status="400 Bad Request")
 
-        if not hasattr(self, 'retry_test_names'):
-            self.retry_test_names = collections.defaultdict(int)
-        self.retry_test_names[test_name] += 1
+        RETRY_TEST_NAMES[test_name] += 1
 
-        if self.retry_test_names[test_name] >= 2:
+        if RETRY_TEST_NAMES[test_name] >= 2:
             return Response("Retry successful!")
         else:
             return Response("need to keep retrying!", status="418 I'm A Teapot")

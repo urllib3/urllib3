@@ -618,14 +618,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             self.assertRaises(ProtocolError,
                     pool.request, 'GET', '/source_address')
 
-    @onlyPy3
-    def test_httplib_headers_case_insensitive(self):
-        HEADERS = {'Content-Length': '0', 'Content-type': 'text/plain',
-                    'Server': 'TornadoServer/%s' % tornado.version}
-        r = self.pool.request('GET', '/specific_method',
-                               fields={'method': 'GET'})
-        self.assertEqual(HEADERS, dict(r.headers.items())) # to preserve case sensitivity
-
 
 class TestRetry(HTTPDummyServerTestCase):
     def setUp(self):

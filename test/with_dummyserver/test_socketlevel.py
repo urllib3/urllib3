@@ -18,6 +18,8 @@ from dummyserver.testcase import SocketDummyServerTestCase
 from dummyserver.server import (
     DEFAULT_CERTS, DEFAULT_CA, get_unreachable_address)
 
+from .. import onlyPy3
+
 from nose.plugins.skip import SkipTest
 from threading import Event
 import socket
@@ -598,3 +600,19 @@ class TestErrorWrapping(SocketDummyServerTestCase):
         self._start_server(handler)
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         self.assertRaises(ProtocolError, pool.request, 'GET', '/')
+
+class TestHeaders(SocketDummyServerTestCase):
+
+    @onlyPy3
+    def test_httplib_headers_case_insensitive(self):
+        handler = create_response_handler(
+           b'HTTP/1.1 200 OK\r\n'
+           b'Content-Length: 0\r\n'
+           b'Content-type: text/plain\r\n'
+           b'\r\n'
+        )
+        self._start_server(handler)
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        HEADERS = {'Content-Length': '0', 'Content-type': 'text/plain'}
+        r = pool.request('GET', '/')
+        self.assertEqual(HEADERS, dict(r.headers.items())) # to preserve case sensitivity

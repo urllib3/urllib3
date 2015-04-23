@@ -18,7 +18,6 @@ import warnings
 from urllib3.exceptions import HTTPWarning
 
 from tornado.platform.auto import set_close_exec
-import tornado.wsgi
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
@@ -206,7 +205,7 @@ if __name__ == '__main__':
     host = '127.0.0.1'
 
     io_loop = tornado.ioloop.IOLoop()
-    app = tornado.wsgi.WSGIContainer(TestingApp())
+    app = tornado.web.Application([(r".*", TestingApp)])
     server, port = run_tornado_app(app, io_loop, None,
                                    'http', host)
     server_thread = run_loop_in_thread(io_loop)
