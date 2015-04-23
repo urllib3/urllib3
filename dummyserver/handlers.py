@@ -32,7 +32,7 @@ class Response(object):
         status, reason = self.status.split(' ', 1)
         request_handler.set_status(int(status), reason)
         for header,value in self.headers:
-            request_handler.add_header(header,value.decode('utf8'))
+            request_handler.add_header(header,value)
 
         request_handler.write(self.body)
 
