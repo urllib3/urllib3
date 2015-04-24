@@ -126,8 +126,8 @@ class HTTPResponse(io.IOBase):
         # Are we using the chunked-style of transfer encoding?
         self.chunked = False
         self.chunk_left = None
-        tr_enc = self.headers.get('transfer-encoding', '')
-        if tr_enc.lower() == "chunked":
+        tr_enc = self.headers.get('transfer-encoding', '').lower()
+        if "chunked" in set(tr_enc.split(", ")):
             self.chunked = True
 
         # We certainly don't want to preload content when the response is chunked.
