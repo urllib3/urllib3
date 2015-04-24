@@ -401,7 +401,7 @@ class HTTPResponse(io.IOBase):
             except ValueError:
                 # Invalid chunked protocol response, abort.
                 self.close()
-                raise httplib.IncompleteRead(''.join(line))
+                raise httplib.IncompleteRead(line)
 
     def _handle_chunk(self, amt):
         returned_chunk = None
