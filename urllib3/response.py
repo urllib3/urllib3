@@ -389,19 +389,16 @@ class HTTPResponse(io.IOBase):
     def _get_next_chunk(self):
         # First, we'll figure out length of a chunk and then
         # we'll try to read it from socket.
-        if self.chunk_left is None:
-            line = self._fp.fp.readline()
-            line = line.decode()
-            # See RFC 7230: Chunked Transfer Coding.
-            i = line.find(';')
-            if i >= 0:
-                line = line[:i]  # Strip chunk-extensions.
-            try:
-                self.chunk_left = int(line, 16)
-            except ValueError:
-                # Invalid chunked protocol response, abort.
-                self.close()
-                raise httplib.IncompleteRead(line)
+        if self.chunk_left is not None:
+            return
+        line = self._fp.fp.readline()
+        line = line.split(b';', 1)[0]
+        try:
+            self.chunk_left = int(line, 16)
+        except ValueError:
+            # Invalid chunked protocol response, abort.
+            self.close()
+            raise httplib.IncompleteRead(line)
 
     def _handle_chunk(self, amt):
         returned_chunk = None
