@@ -386,7 +386,7 @@ class HTTPResponse(io.IOBase):
             b[:len(temp)] = temp
             return len(temp)
 
-    def _get_next_chunk(self):
+    def _update_chunk_length(self):
         # First, we'll figure out length of a chunk and then
         # we'll try to read it from socket.
         if self.chunk_left is not None:
@@ -438,7 +438,7 @@ class HTTPResponse(io.IOBase):
             raise ResponseNotChunked("Response is not chunked. "
                 "Header 'transfer-encoding: chunked' is missing.")
         while True:
-            self._get_next_chunk()
+            self._update_chunk_length()
             if self.chunk_left == 0:
                 break
             chunk = self._handle_chunk(amt)
