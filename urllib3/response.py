@@ -299,10 +299,9 @@ class HTTPResponse(io.IOBase):
             If True, will attempt to decode the body based on the
             'content-encoding' header.
         """
-        self._init_decoder()
         if self.chunked:
-            for line in self.read_chunked(amt):
-                yield self._decode(line, decode_content, True)
+            for line in self.read_chunked(amt, decode_content=decode_content):
+                yield line
         else:
             while not is_fp_closed(self._fp):
                 data = self.read(amt=amt, decode_content=decode_content)
@@ -387,48 +386,67 @@ class HTTPResponse(io.IOBase):
             b[:len(temp)] = temp
             return len(temp)
 
-    def read_chunked(self, amt=None):
+    def _get_next_chunk(self):
+        # First, we'll figure out length of a chunk and then
+        # we'll try to read it from socket.
+        if self.chunk_left is None:
+            line = self._fp.fp.readline()
+            line = line.decode()
+            # See RFC 7230: Chunked Transfer Coding.
+            i = line.find(';')
+            if i >= 0:
+                line = line[:i]  # Strip chunk-extensions.
+            try:
+                self.chunk_left = int(line, 16)
+            except ValueError:
+                # Invalid chunked protocol response, abort.
+                self.close()
+                raise httplib.IncompleteRead(''.join(line))
+
+    def _handle_chunk(self, amt):
+        returned_chunk = None
+        if amt is None:
+            chunk = self._fp._safe_read(self.chunk_left)
+            returned_chunk = chunk
+            self._fp._safe_read(2)  # Toss the CRLF at the end of the chunk.
+            self.chunk_left = None
+        elif amt < self.chunk_left:
+            value = self._fp._safe_read(amt)
+            self.chunk_left = self.chunk_left - amt
+            returned_chunk = value
+        elif amt == self.chunk_left:
+            value = self._fp._safe_read(amt)
+            self._fp._safe_read(2)  # Toss the CRLF at the end of the chunk.
+            self.chunk_left = None
+            returned_chunk = value
+        else:  # amt > self.chunk_left
+            returned_chunk = self._fp._safe_read(self.chunk_left)
+            self._fp._safe_read(2)  # Toss the CRLF at the end of the chunk.
+            self.chunk_left = None
+        return returned_chunk
+
+    def read_chunked(self, amt=None, decode_content=None):
+        """
+        Similar to :meth:`HTTPResponse.read`, but with an additional
+        parameter: ``decode_content``.
+
+        :param decode_content:
+            If True, will attempt to decode the body based on the
+            'content-encoding' header.
+        """
+        self._init_decoder()
         # FIXME: Rewrite this method and make it a class with
         #        a better structured logic.
         if not self.chunked:
             raise ResponseNotChunked("Response is not chunked. "
                 "Header 'transfer-encoding: chunked' is missing.")
         while True:
-            # First, we'll figure out length of a chunk and then
-            # we'll try to read it from socket.
-            if self.chunk_left is None:
-                line = self._fp.fp.readline()
-                line = line.decode()
-                # See RFC 7230: Chunked Transfer Coding.
-                i = line.find(';')
-                if i >= 0:
-                    line = line[:i]  # Strip chunk-extensions.
-                try:
-                    self.chunk_left = int(line, 16)
-                except ValueError:
-                    # Invalid chunked protocol response, abort.
-                    self.close()
-                    raise httplib.IncompleteRead(''.join(line))
-                if self.chunk_left == 0:
-                    break
-            if amt is None:
-                chunk = self._fp._safe_read(self.chunk_left)
-                yield chunk
-                self._fp._safe_read(2)  # Toss the CRLF at the end of the chunk.
-                self.chunk_left = None
-            elif amt < self.chunk_left:
-                value = self._fp._safe_read(amt)
-                self.chunk_left = self.chunk_left - amt
-                yield value
-            elif amt == self.chunk_left:
-                value = self._fp._safe_read(amt)
-                self._fp._safe_read(2)  # Toss the CRLF at the end of the chunk.
-                self.chunk_left = None
-                yield value
-            else:  # amt > self.chunk_left
-                yield self._fp._safe_read(self.chunk_left)
-                self._fp._safe_read(2)  # Toss the CRLF at the end of the chunk.
-                self.chunk_left = None
+            self._get_next_chunk()
+            if self.chunk_left == 0:
+                break
+            chunk = self._handle_chunk(amt)
+            yield self._decode(chunk, decode_content=decode_content,
+                               flush_decoder=True)
 
         # Chunk content ends with \r\n: discard it.
         while True:
@@ -441,4 +459,3 @@ class HTTPResponse(io.IOBase):
 
         # We read everything; close the "file".
         self.release_conn()
-
