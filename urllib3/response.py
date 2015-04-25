@@ -133,9 +133,8 @@ class HTTPResponse(io.IOBase):
             self.chunked = True
 
         # We certainly don't want to preload content when the response is chunked.
-        if not self.chunked:
-            if preload_content and not self._body:
-                self._body = self.read(decode_content=decode_content)
+        if not self.chunked and preload_content and not self._body:
+            self._body = self.read(decode_content=decode_content)
 
     def get_redirect_location(self):
         """
@@ -181,9 +180,8 @@ class HTTPResponse(io.IOBase):
         # Note: content-encoding value should be case-insensitive, per RFC 7230
         # Section 3.2
         content_encoding = self.headers.get('content-encoding', '').lower()
-        if self._decoder is None:
-            if content_encoding in self.CONTENT_DECODERS:
-                self._decoder = _get_decoder(content_encoding)
+        if self._decoder is None and content_encoding in self.CONTENT_DECODERS:
+            self._decoder = _get_decoder(content_encoding)
 
     def _decode(self, data, decode_content, flush_decoder):
         """
