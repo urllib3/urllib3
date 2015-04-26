@@ -618,6 +618,25 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             self.assertRaises(ProtocolError,
                     pool.request, 'GET', '/source_address')
 
+    def test_stream_keepalive(self):
+        x = 2
+
+        for _ in range(x):
+            response = self.pool.request(
+                    'GET',
+                    '/chunked',
+                    headers={
+                        'Connection': 'keep-alive',
+                        },
+                    preload_content=False,
+                    retries=0,
+                    )
+            for chunk in response.stream():
+                self.assertEqual(chunk, b'123')
+
+        self.assertEqual(self.pool.num_connections, 1)
+        self.assertEqual(self.pool.num_requests, x)
+
 
 class TestRetry(HTTPDummyServerTestCase):
     def setUp(self):
