@@ -455,4 +455,6 @@ class HTTPResponse(io.IOBase):
                 break
 
         # We read everything; close the "file".
+        if self._original_response:
+            self._original_response.close()
         self.release_conn()

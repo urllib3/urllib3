@@ -21,9 +21,6 @@ log = logging.getLogger(__name__)
 
 class Response(object):
     def __init__(self, body='', status='200 OK', headers=None):
-        if not isinstance(body, bytes):
-            body = body.encode('utf8')
-
         self.body = body
         self.status = status
         self.headers = headers or [("Content-type", "text/plain")]
@@ -34,7 +31,20 @@ class Response(object):
         for header,value in self.headers:
             request_handler.add_header(header,value)
 
-        request_handler.write(self.body)
+        # chunked
+        if isinstance(self.body, list):
+            for item in self.body:
+                if not isinstance(item, bytes):
+                    item = item.encode('utf8')
+                request_handler.write(item)
+                request_handler.flush()
+        else:
+            body = self.body
+            if not isinstance(body, bytes):
+                body = body.encode('utf8')
+
+            request_handler.write(body)
+
 
 RETRY_TEST_NAMES = collections.defaultdict(int)
 
@@ -207,6 +217,9 @@ class TestingApp(RequestHandler):
             return Response("Retry successful!")
         else:
             return Response("need to keep retrying!", status="418 I'm A Teapot")
+
+    def chunked(self, request):
+        return Response(['123'] * 4)
 
     def shutdown(self, request):
         sys.exit()
