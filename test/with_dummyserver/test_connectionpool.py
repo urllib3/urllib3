@@ -629,7 +629,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                         'Connection': 'keep-alive',
                         },
                     preload_content=False,
-                    retries=0,
+                    retries=False,
                     )
             for chunk in response.stream():
                 self.assertEqual(chunk, b'123')
