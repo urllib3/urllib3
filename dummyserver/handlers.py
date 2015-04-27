@@ -36,8 +36,8 @@ class Response(object):
             for item in self.body:
                 if not isinstance(item, bytes):
                     item = item.encode('utf8')
-            request_handler.write(item)
-            request_handler.flush()
+                request_handler.write(item)
+                request_handler.flush()
         else:
             body = self.body
             if not isinstance(body, bytes):
