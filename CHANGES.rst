@@ -6,6 +6,9 @@ dev (master)
 
 * Fix streaming decoding regression. (Issue #595)
 
+* Fix chunked requests losing state across keep-alive connections.
+  (Issue #599)
+
 * Migrate tests to Tornado 4. (Issue #594)
 
 * ... [Short description of non-trivial change.] (Issue #)
