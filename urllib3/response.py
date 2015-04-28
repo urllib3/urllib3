@@ -437,6 +437,12 @@ class HTTPResponse(io.IOBase):
         if not self.chunked:
             raise ResponseNotChunked("Response is not chunked. "
                 "Header 'transfer-encoding: chunked' is missing.")
+
+        if (self._original_response and
+                self._original_response._method.upper() == 'HEAD'):
+            self._original_response.close()
+            return
+
         while True:
             self._update_chunk_length()
             if self.chunk_left == 0:
