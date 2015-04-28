@@ -13,6 +13,8 @@ dev (master)
 
 * Append default warning configuration rather than overwrite.
   (Issue #603)
+  
+* Fix hanging when HEAD response has no body. (Issue #605)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
