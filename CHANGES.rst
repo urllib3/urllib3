@@ -11,6 +11,9 @@ dev (master)
 
 * Migrate tests to Tornado 4. (Issue #594)
 
+* Append default warning configuration rather than overwrite.
+  (Issue #603)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
