@@ -145,6 +145,9 @@ In chronological order:
 * Tomas Tomecek <ttomecek@redhat.com>
   * Implemented generator for getting chunks from chunked responses.
 
+* tlynn <https://github.com/tlynn>
+  * Respect the warning preferences at import.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
 
