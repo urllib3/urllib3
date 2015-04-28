@@ -432,11 +432,17 @@ class HTTPResponse(io.IOBase):
             'content-encoding' header.
         """
         self._init_decoder()
-        # FIXME: Rewrite this method and make it a class with
-        #        a better structured logic.
+        # FIXME: Rewrite this method and make it a class with a better structured logic.
         if not self.chunked:
             raise ResponseNotChunked("Response is not chunked. "
                 "Header 'transfer-encoding: chunked' is missing.")
+
+        if self._original_response and self._original_response._method.upper() == 'HEAD':
+            # Don't bother reading the body of a HEAD request.
+            # FIXME: Can we do this somehow without accessing private httplib _method?
+            self._original_response.close()
+            return
+
         while True:
             self._update_chunk_length()
             if self.chunk_left == 0:
