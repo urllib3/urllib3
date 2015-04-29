@@ -637,6 +637,16 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(self.pool.num_connections, 1)
         self.assertEqual(self.pool.num_requests, x)
 
+    def test_chunked_gzip(self):
+        response = self.pool.request(
+                'GET',
+                '/chunked_gzip',
+                preload_content=False,
+                decode_content=True,
+                )
+
+        self.assertEqual(b'123' * 4, response.read())
+
 
 class TestRetry(HTTPDummyServerTestCase):
     def setUp(self):
