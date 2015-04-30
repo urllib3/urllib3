@@ -221,6 +221,17 @@ class TestingApp(RequestHandler):
     def chunked(self, request):
         return Response(['123'] * 4)
 
+    def chunked_gzip(self, request):
+        chunks = []
+        compressor = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+
+        for uncompressed in [b'123'] * 4:
+            chunks.append(compressor.compress(uncompressed))
+
+        chunks.append(compressor.flush())
+
+        return Response(chunks, headers=[('Content-Encoding', 'gzip')])
+
     def shutdown(self, request):
         sys.exit()
 
