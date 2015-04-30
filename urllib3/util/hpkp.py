@@ -157,6 +157,10 @@ class HPKPManager(object):
         Locates the most specific valid ``KnownPinnedHost`` for a given domain.
 
         If none of the owned hosts are valid for this domain, returns ``None``.
+
+        :param domain: The domain being validated.
+        :param hosts: A list of ``KnownPinnedHost`` objects whose domains are
+            either the same as ``domain``, or are parent domains of ``domain``.
         """
         for host in hosts:
             # First, check whether this host is still valid. If it's not, throw
