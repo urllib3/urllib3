@@ -25,19 +25,25 @@ class HSTSRecord(object):
         now = _now or datetime.now()
         return self.end < now
 
-    def matches(self, domain):
-        for i, d in zip_longest(split_domain(self.issuer),
-                                split_domain(domain)):
-            if i != d:
-                return False
+    def matches(self, other):
+        return match_domains(other, self.domain, self.include_subdomains)
 
-            if d is None:
-                return False
 
-            if i is None:
-                return self.include_subdomains
+def match_domains(sub, sup, include_subdomains):
+    for p, b in zip_longest(
+            reversed(split_domain(sup)),
+            reversed(split_domain(sub))):
 
-        return True
+        if b is None:
+            return False
+
+        if p is None:
+            return include_subdomains
+
+        if p != b:
+            return False
+
+    return True
 
 
 class HSTSStore(object):
@@ -76,23 +82,22 @@ class HSTSManager(object):
         if not domain or is_ipaddress(domain):
             return False
 
-        for record in self.db.iter_records():
-            if record.is_expired:
+        for record in list(self.db.iter_records()):
+            if record.is_expired():
                 self.db.invalidate_record(record.domain)
             elif record.matches(domain):
                 return True
         return False
 
     @staticmethod
-    def scheme_and_port(self, scheme, port):
+    def translate_port(port):
         if port == 80:
             port = 443
 
-        return 'https', port
+        return port
 
     def rewrite_url(self, url):
-        new_scheme, new_port = self.scheme_and_port(url.scheme, url.port)
-        return url._replace(scheme=new_scheme, port=new_port)
+        return url._replace(scheme='https', port=self.translate_port(url.port))
 
     def process_response(self, domain, scheme, response):
         sts = response.getheader('strict-transport-security')
