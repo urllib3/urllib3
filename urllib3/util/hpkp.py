@@ -27,10 +27,11 @@ class HPKPDatabase(object):
         """
         raise NotImplementedError("Must be overridden.")
 
-    def invalidate_host(self, known_host):
+    def invalidate_host(self, domain):
         """
-        Invalidate a single ``KnownPinnedHost`` object. This object should be
-        removed from whatever storage medium is being used.
+        Invalidate a single ``KnownPinnedHost`` object, for the given domain.
+        This object should be removed from whatever storage medium is being
+        used.
         """
         raise NotImplementedError("Must be overridden.")
 
@@ -88,13 +89,16 @@ class EphemeralHPKPDatabase(HPKPDatabase):
     is better than nothing.
     """
     def __init__(self):
-        self.hosts = []
+        self.hosts = {}
 
     def store_host(self, known_host):
-        self.hosts.append(known_host)
+        self.hosts[known_host.domain] = known_host
+
+    def invalidate_host(self, domain):
+        del self.hosts[domain]
 
     def iter_hosts(self):
-        return self.hosts
+        return self.hosts.values()
 
 
 class HPKPManager(object):
@@ -158,7 +162,7 @@ class HPKPManager(object):
             # First, check whether this host is still valid. If it's not, throw
             # it away and move on.
             if (host.start_date + host.max_age) > time.time():
-                self.db.invalidate_host(host)
+                self.db.invalidate_host(host.domain)
                 continue
 
             # Now, check whether this KnownPinnedHost applies to this
