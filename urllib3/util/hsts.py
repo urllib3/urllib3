@@ -73,6 +73,9 @@ class HSTSManager(object):
         self.db = database
 
     def must_rewrite(self, domain):
+        if not domain or is_ipaddress(domain):
+            return False
+
         for record in self.db.iter_records():
             if record.is_expired:
                 self.db.invalidate_record(record.domain)
@@ -143,3 +146,17 @@ def parse_hsts_header(header, domain):
 # FIXME idna?
 def split_domain(domain):
     return domain.split('.')
+
+
+# FIXME this is dirty
+def is_ipaddress(domain):
+    # assume v6
+    if ':' in domain:
+        return True
+
+    try:
+        int(domain.replace('.', ''))
+    except ValueError:
+        return False
+
+    return True
