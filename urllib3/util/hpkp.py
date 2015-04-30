@@ -2,7 +2,7 @@
 import collections
 import time
 
-from urllib3.exceptions import HPKPError
+from ..exceptions import HPKPError
 
 
 class HPKPDatabase(object):
