@@ -147,10 +147,32 @@ class HPKPManager(object):
         connection against the HPKP header, confirming that it does pass at
         this stage.
         """
-        # TODO: Actually do this!
-        # Some notes here: This should handle the case that the domain is an
-        # IP address, where we should not add a pin.
-        pass
+        # TODO: Handle ip address domains.
+        # If no PKP header is provided, then no action is required.
+        pkp = response.getheader('public-key-pins')
+        if not pkp:
+            return
+
+        # Try to get the pins out. If this fails for any reason, abort the
+        # pinning process.
+        try:
+            pin = parse_public_key_pins(pkp, domain)
+        except HPKPError:
+            return
+
+        # Quick check: if the max-age is 0, or the expiry date is after now,
+        # we should invalidate any pin we already have for this domain and
+        # exit.
+        if not pin.max_age or (pin.max_age + pin.start_date <= time.time()):
+            self.db.invalidate_host(domain)
+            return
+
+        # Otherwise, we can store off this pin.
+        self.db.store_host(pin)
+
+        # TODO: Check if the RFC wants us to immediately validate the
+        # connection: if it does, do it.
+        return
 
     def _find_valid_pinned_host(self, domain, hosts):
         """
