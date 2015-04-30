@@ -42,6 +42,7 @@ from .request import RequestMethods
 from .response import HTTPResponse
 
 from .util.connection import is_connection_dropped
+from .util.hpkp import HPKPManager, EphemeralHPKPDatabase
 from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.timeout import Timeout
@@ -142,6 +143,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     :param retries:
         Retry configuration to use by default with requests in this pool.
 
+    :param hpkp_manager:
+        A HPKP Manager class, for performing HPKP on connections.
+
     :param _proxy:
         Parsed proxy URL, should not be used directly, instead, see
         :class:`urllib3.connectionpool.ProxyManager`"
@@ -160,7 +164,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def __init__(self, host, port=None, strict=False,
                  timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1, block=False,
-                 headers=None, retries=None,
+                 headers=None, retries=None, hpkp_manager=None,
                  _proxy=None, _proxy_headers=None,
                  **conn_kw):
         ConnectionPool.__init__(self, host, port)
@@ -182,6 +186,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         self.proxy = _proxy
         self.proxy_headers = _proxy_headers or {}
+
+        self.hpkp_manager = hpkp_manager
+        if self.hpkp_manager is None:
+            self.hpkp_manager = HPKPManager(EphemeralHPKPDatabase())
 
         # Fill the queue up so that doing get() on it will block properly
         for _ in xrange(maxsize):
@@ -208,7 +216,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         conn = self.ConnectionCls(host=self.host, port=self.port,
                                   timeout=self.timeout.connect_timeout,
-                                  strict=self.strict, **self.conn_kw)
+                                  strict=self.strict,
+                                  hpkp_manager=self.hpkp_manager,
+                                  **self.conn_kw)
         return conn
 
     def _get_conn(self, timeout=None):
@@ -568,6 +578,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                                  pool=self,
                                                  connection=response_conn,
                                                  **response_kw)
+
+            # Check HPKP.
+            self.hpkp_manager.process_response(self.host, response)
 
             # else:
             #     The connection will be put back into the pool when

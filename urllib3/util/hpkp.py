@@ -5,19 +5,186 @@ import time
 from urllib3.exceptions import HPKPError
 
 
+class HPKPDatabase(object):
+    """
+    An ABC defining the interface required to be a HPKP Database. Databases
+    with custom functionality *must* implement all of this interface, as
+    urllib3 requires it. They *may* optionally implement other features.
+
+    This interface is a simple storage interface, it does not implement any
+    security-critical HPKP logic. That logic is entirely implemented in the
+    :class:`HPKPManager <urllib3.util.hpkp.HPKPManager>` object. Thus, this
+    object is not required to perform any validation of the objects passed to
+    it.
+    """
+    def store_host(self, known_host):
+        """
+        Store a single known pinned host. Any host passed to this function is
+        guaranteed to be valid for at least some time in the future, and so
+        may be safely stored.
+
+        :param known_host: A single ``KnownPinnedHost`` object.
+        """
+        raise NotImplementedError("Must be overridden.")
+
+    def invalidate_host(self, known_host):
+        """
+        Invalidate a single ``KnownPinnedHost`` object. This object should be
+        removed from whatever storage medium is being used.
+        """
+        raise NotImplementedError("Must be overridden.")
+
+    def iter_hosts(self):
+        """
+        Return an iterable of ``KnownPinnedHost`` objects.
+        """
+        raise NotImplementedError("Must be overridden.")
+
+    def get_hosts_by_domain(self, domain):
+        """
+        Return any stored ``KnownPinnedHost`` object for which ``domain`` is
+        a subdomain.
+
+        A default implementation exists for anything that implements
+        ``iter_hosts``.
+
+        :returns: A list of ``KnownPinnedHost`` objects, sorted by the length
+            of their domain, from longest to shortest.
+        """
+        hosts = []
+        split_domain = reversed(domain.split('.'))
+        split_domain_part_count = len(split_domain)
+
+        for host in self.iter_hosts():
+            if host.domain == domain:
+                hosts.append(host)
+                continue
+
+            # Check if this KnownPinnedHost is a parent domain of domain. For
+            # that to be true, the KnownPinnedHost domain must be made of
+            # fewer parts than the domain, and the higher order parts must
+            # be equal.
+            split_host = reversed(host.domain.split('.'))
+            part_count = len(split_host)
+
+            if part_count >= split_domain_part_count:
+                # Too many parts, cannot be a parent domain.
+                continue
+
+            if split_host == split_domain[:part_count]:
+                # Parent domain!
+                hosts.append(host)
+
+        # Sort by domain length, longest first.
+        hosts.sort(key=lambda h: len(h.domain), reverse=True)
+
+        return hosts
+
+
+class EphemeralHPKPDatabase(HPKPDatabase):
+    """
+    The default, in-memory HPKP database. This provides ephemeral HPKP storage,
+    in-memory. It is not recommended for high-security production use, but it
+    is better than nothing.
+    """
+    def __init__(self):
+        self.hosts = []
+
+    def store_host(self, known_host):
+        self.hosts.append(known_host)
+
+    def iter_hosts(self):
+        return self.hosts
+
+
+class HPKPManager(object):
+    """
+    An object that manages HPKP for urllib3.
+
+    This object is responsible for validating HPKP for HTTPS connections. It
+    employs a :class:`HPKPDatabase <urllib3.util.hpkp.HPKPDatabase>` object to
+    manage the actual storage, but the logic is contained in this class.
+    """
+    def __init__(self, database):
+        self.db = database
+
+    def validate_connection(self, domain, socket):
+        """
+        For a given connection, confirm that it passes HPKP validation.
+
+        This checks whether there are any ``KnownPinnedHost``s for the given
+        connection. If they are, validates that the presented certificate
+        actually matches the pin.
+        """
+        hosts = self.db.get_hosts_by_domain(domain)
+        if not hosts:
+            # This connection has not previously done any key pinning, so
+            # there's no validation to do.
+            return
+
+        host = self._find_valid_pinned_host(domain, hosts)
+        if host is None:
+            # Again, no previous pinning was done on this connection, so
+            # there's no validation to do.
+            return
+
+        # If we got this far, we have a KnownPinnedHost in hand that applies to
+        # this connection. Get the certificate and check it matches one of the
+        # pins.
+        # TODO: Actually do this!
+        return
+
+    def process_response(self, domain, response):
+        """
+        Processes a HTTPS response for HPKP.
+
+        This method checks whether the PKP header is present on the request,
+        and if it is updates its store of key pins. It also validates the
+        connection against the HPKP header, confirming that it does pass at
+        this stage.
+        """
+        # TODO: Actually do this!
+        # Some notes here: This should handle the case that the domain is an
+        # IP address, where we should not add a pin.
+        pass
+
+    def _find_valid_pinned_host(self, domain, hosts):
+        """
+        Locates the most specific valid ``KnownPinnedHost`` for a given domain.
+
+        If none of the owned hosts are valid for this domain, returns ``None``.
+        """
+        for host in hosts:
+            # First, check whether this host is still valid. If it's not, throw
+            # it away and move on.
+            if (host.start_date + host.max_age) > time.time():
+                self.db.invalidate_host(host)
+                continue
+
+            # Now, check whether this KnownPinnedHost applies to this
+            # connection. It does if the domain either exactly matches the KPH
+            # domain, or if the KPH has include_subdomains set to True.
+            if domain == host.domain or host.include_subdomains:
+                return host
+
+
 # An object that holds information about a KnownPinnedHost. This object
 # basically just stores string data, so there's no real need to do anything
 # clever here.
 KnownPinnedHost = collections.namedtuple(
     'KnownPinnedHost',
-    ['pins', 'max_age', 'include_subdomains', 'report_uri', 'start_date']
+    ['domain', 'pins', 'max_age', 'include_subdomains', 'report_uri', 'start_date']
 )
 
 
-def parse_public_key_pins(header):
+def parse_public_key_pins(header, domain):
     """
     Parses a Public-Key-Pins header, returning a KnownPinnedHost. Invalid
     headers cause exceptions to be thrown.
+
+    :param header: The PKP header value.
+    :param domain: The domain name used in the request. Must not be an IP
+        address.
     """
     # TODO: This method is super complicated, refactor.
     # Parse the directives. Split any OWS, and then split the directives.
@@ -61,7 +228,7 @@ def parse_public_key_pins(header):
 
     # LUKASA: Is the use of time.time() safe here? Probably not.
     return KnownPinnedHost(
-        pin_directives, max_age, include_subdomains, report_uri, time.time()
+        domain, pin_directives, max_age, include_subdomains, report_uri, time.time()
     )
 
 
