@@ -235,6 +235,10 @@ class TestingApp(RequestHandler):
     def shutdown(self, request):
         sys.exit()
 
+    def hsts(self, request):
+        return Response('HSTS!', headers=[
+            ('Strict-Transport-Security', 'max-age=100000')])
+
 
 # RFC2231-aware replacement of internal tornado function
 def _parse_header(line):

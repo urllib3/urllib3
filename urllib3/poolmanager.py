@@ -12,6 +12,7 @@ from .exceptions import LocationValueError, MaxRetryError
 from .request import RequestMethods
 from .util.url import parse_url
 from .util.retry import Retry
+from .util.hsts import HSTSStore
 
 
 __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
@@ -63,6 +64,7 @@ class PoolManager(RequestMethods):
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools,
                                            dispose_func=lambda p: p.close())
+        self.hsts_store = HSTSStore()
 
     def __enter__(self):
         return self
@@ -148,6 +150,11 @@ class PoolManager(RequestMethods):
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
         u = parse_url(url)
+
+        if self.hsts_store.should_enable_hsts(u.host):
+            # FIXME make errors fatal
+            u = self.hsts_store.rewrite_url(u)
+
         conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
         kw['assert_same_host'] = False
@@ -159,6 +166,12 @@ class PoolManager(RequestMethods):
             response = conn.urlopen(method, url, **kw)
         else:
             response = conn.urlopen(method, u.request_uri, **kw)
+
+        hsts_header = response.headers.get('strict-transport-security')
+        # As only this method follows redirects we know that
+        # response.scheme == request.scheme
+        if u.scheme == 'https' and hsts_header is not None:
+            self.hsts_store.add_header(u.host, hsts_header)
 
         redirect_location = redirect and response.get_redirect_location()
         if not redirect_location:
