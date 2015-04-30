@@ -24,4 +24,4 @@ class HSTSTestCase(HTTPDummyProxyTestCase):
                 else:
                     hsts_entries = 0
 
-                self.assertEqual(len(pool.hsts_store), hsts_entries)
+                self.assertEqual(len(pool.hsts_manager.db), hsts_entries)

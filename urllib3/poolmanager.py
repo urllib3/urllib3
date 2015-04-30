@@ -12,7 +12,7 @@ from .exceptions import LocationValueError, MaxRetryError
 from .request import RequestMethods
 from .util.url import parse_url
 from .util.retry import Retry
-from .util.hsts import HSTSStore
+from .util.hsts import EphemeralHSTSStore, HSTSManager
 
 
 __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
@@ -64,7 +64,7 @@ class PoolManager(RequestMethods):
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools,
                                            dispose_func=lambda p: p.close())
-        self.hsts_store = HSTSStore()
+        self.hsts_manager = HSTSManager(EphemeralHSTSStore())
 
     def __enter__(self):
         return self
@@ -151,9 +151,9 @@ class PoolManager(RequestMethods):
         """
         u = parse_url(url)
 
-        if self.hsts_store.should_enable_hsts(u.host):
+        if self.hsts_manager and self.hsts_manager.must_rewrite(u.host):
             # FIXME make errors fatal
-            u = self.hsts_store.rewrite_url(u)
+            u = self.hsts_manager.rewrite_url(u)
 
         conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
@@ -167,11 +167,10 @@ class PoolManager(RequestMethods):
         else:
             response = conn.urlopen(method, u.request_uri, **kw)
 
-        hsts_header = response.headers.get('strict-transport-security')
-        # As only this method follows redirects we know that
-        # response.scheme == request.scheme
-        if u.scheme == 'https' and hsts_header is not None:
-            self.hsts_store.add_header(u.host, hsts_header)
+        if self.hsts_manager:
+            # As only PoolManager.urlopen follows redirects we know that
+            # response.scheme == request.scheme
+            self.hsts_manager.process_response(u.host, u.scheme, response)
 
         redirect_location = redirect and response.get_redirect_location()
         if not redirect_location:
