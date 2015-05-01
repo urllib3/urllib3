@@ -82,7 +82,7 @@ class HPKPDatabase(object):
         return hosts
 
 
-class EphemeralHPKPDatabase(HPKPDatabase):
+class MemoryHPKPDatabase(HPKPDatabase):
     """
     The default, in-memory HPKP database. This provides ephemeral HPKP storage,
     in-memory. It is not recommended for high-security production use, but it

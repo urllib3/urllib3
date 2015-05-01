@@ -42,7 +42,7 @@ from .request import RequestMethods
 from .response import HTTPResponse
 
 from .util.connection import is_connection_dropped
-from .util.hpkp import HPKPManager, EphemeralHPKPDatabase
+from .util.hpkp import HPKPManager, MemoryHPKPDatabase
 from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.timeout import Timeout
@@ -189,7 +189,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         self.hpkp_manager = hpkp_manager
         if self.hpkp_manager is None:
-            self.hpkp_manager = HPKPManager(EphemeralHPKPDatabase())
+            self.hpkp_manager = HPKPManager(MemoryHPKPDatabase())
 
         # Fill the queue up so that doing get() on it will block properly
         for _ in xrange(maxsize):
