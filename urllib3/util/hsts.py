@@ -112,8 +112,8 @@ class HSTSManager(object):
 
         if not record.max_age or record.is_expired():
             self.db.invalidate_record(domain)
-
-        self.db.store_record(record)
+        else:
+            self.db.store_record(record)
 
 
 def parse_hsts_header(header, domain):
