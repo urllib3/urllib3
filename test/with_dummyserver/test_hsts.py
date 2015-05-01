@@ -5,8 +5,8 @@ import mock
 
 from urllib3 import PoolManager
 from urllib3.exceptions import MaxRetryError
-from urllib3.util.url import Url
-from urllib3.hsts import match_domains
+from urllib3.util.url import Url, parse_url
+from urllib3.hsts import match_domains, HSTSManager
 
 # proxy testcase has http and https servers
 from dummyserver.testcase import HTTPDummyProxyTestCase
@@ -81,3 +81,18 @@ class HSTSTestCase2(unittest.TestCase):
             self.assertEqual(match_domains(sub, sup, include_subdomain), match,
                              "{0} == {1} (subdomains: {2})".format(
                                 sub, sup, include_subdomain))
+
+    def test_rewrite_url(self):
+        hsts_manager = HSTSManager(None)
+
+        data = [
+            # original, rewritten
+            ('http://example.com/', 'https://example.com/'),
+            ('http://example.com:80/', 'https://example.com:443/'),
+            ('http://example.com:123/', 'https://example.com:123/'),
+        ]
+
+        for original, rewritten in data:
+            self.assertEqual(
+                    rewritten,
+                    hsts_manager.rewrite_url(parse_url(original)).url)
