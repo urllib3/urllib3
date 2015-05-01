@@ -135,7 +135,7 @@ def parse_hsts_header(header, domain):
         k = k.lower()
 
         if k in seen_directives:
-            continue
+            return None
 
         if k == 'max-age':
             try:
