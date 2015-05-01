@@ -109,7 +109,7 @@ class HSTSManager(object):
     def process_response(self, domain, scheme, response):
         sts = response.getheader('strict-transport-security')
 
-        if not sts or scheme != 'https':
+        if not sts or scheme != 'https' or is_ipaddress(domain):
             return
 
         record = parse_hsts_header(sts, domain)
