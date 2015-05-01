@@ -97,6 +97,7 @@ class TestUtil(unittest.TestCase):
     parse_url_host_map = {
         'http://google.com/mail': Url('http', host='google.com', path='/mail'),
         'http://google.com/mail/': Url('http', host='google.com', path='/mail/'),
+        'http://google.com/mail': Url('http', host='google.com', path='mail'),
         'google.com/mail': Url(host='google.com', path='/mail'),
         'http://google.com/': Url('http', host='google.com', path='/'),
         'http://google.com': Url('http', host='google.com'),
