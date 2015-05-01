@@ -56,8 +56,15 @@ class HSTSStore(object):
     def iter_records(self):
         raise NotImplementedError("Must be overridden.")
 
+    def valid_records(self):
+        for record in list(self.iter_records()):
+            if record.is_expired():
+                self.invalidate_record(record.domain)
+            else:
+                yield record
+
     def __len__(self):
-        return len(self.iter_records())
+        return len(list(self.valid_records()))
 
 
 class EphemeralHSTSStore(HSTSStore):
@@ -82,10 +89,8 @@ class HSTSManager(object):
         if not domain or is_ipaddress(domain):
             return False
 
-        for record in list(self.db.iter_records()):
-            if record.is_expired():
-                self.db.invalidate_record(record.domain)
-            elif record.matches(domain):
+        for record in list(self.db.valid_records()):
+            if record.matches(domain):
                 return True
         return False
 

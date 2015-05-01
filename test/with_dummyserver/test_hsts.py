@@ -1,6 +1,10 @@
+from datetime import datetime, timedelta
 import unittest
 
+import mock
+
 from urllib3 import PoolManager
+from urllib3.exceptions import MaxRetryError
 from urllib3.util.url import Url
 from urllib3.hsts import match_domains
 
@@ -30,13 +34,33 @@ class HSTSTestCase(HTTPDummyProxyTestCase):
                 self.assertEqual(len(pool.hsts_manager.db), hsts_entries)
 
     def test_hsts(self):
-        pool = PoolManager()
+        pool = PoolManager(retries=0)
         url = Url(scheme='https', host=self.https_host,
                   port=self.https_port, path='/hsts')
 
         pool.urlopen('GET', url.url)
         url = url._replace(scheme='http')
         pool.urlopen('GET', url.url)
+        url = url._replace(query='max-age=0')
+        pool.urlopen('GET', url.url)
+
+        # we now try to connect of plain http to a htts server
+        self.assertRaises(MaxRetryError, pool.urlopen, 'GET', url.url)
+        self.assertEqual(len(pool.hsts_manager.db), 0)
+
+    def test_hsts_expiration(self):
+        max_age = 10000
+        pool = PoolManager(retries=0)
+        url = Url(scheme='https', host=self.https_host,
+                  port=self.https_port, path='/hsts',
+                  query='max-age={}'.format(max_age))
+
+        pool.urlopen('GET', url.url)
+
+        with mock.patch('urllib3.hsts.datetime') as mock_datetime:
+            mock_datetime.now.return_value = datetime.now() + timedelta(max_age + 1)
+
+            self.assertEqual(len(pool.hsts_manager.db), 0)
 
 
 class HSTSTestCase2(unittest.TestCase):
