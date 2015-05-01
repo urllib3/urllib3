@@ -130,20 +130,21 @@ def parse_hsts_header(header, domain):
         k = k.lower()
 
         if k in seen_directives:
-            return
-        else:
-            seen_directives.add(k)
+            continue
 
         if k == 'max-age':
             try:
                 max_age = int(v)
             except ValueError:
-                return
+                continue
+
         elif k == 'includesubdomains':
-            if v is None:
                 include_subdomains = True
-            else:
-                return
+
+        seen_directives.add(k)
+
+    if max_age is None:
+        return None
 
     return HSTSRecord(domain, max_age, include_subdomains)
 
