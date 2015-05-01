@@ -19,7 +19,7 @@ class HSTSRecord(object):
 
     @property
     def end(self):
-        return self.timestamp + timedelta(self.max_age)
+        return self.timestamp + timedelta(seconds=self.max_age)
 
     def is_expired(self, _now=None):
         now = _now or datetime.now()

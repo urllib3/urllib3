@@ -58,7 +58,8 @@ class HSTSTestCase(HTTPDummyProxyTestCase):
         pool.urlopen('GET', url.url)
 
         with mock.patch('urllib3.hsts.datetime') as mock_datetime:
-            mock_datetime.now.return_value = datetime.now() + timedelta(max_age + 1)
+            mock_datetime.now.return_value = \
+                    datetime.now() + timedelta(seconds=max_age + 1)
 
             self.assertEqual(len(pool.hsts_manager.db), 0)
 
