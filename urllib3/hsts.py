@@ -3,6 +3,8 @@ try:
     from itertools import zip_longest
 except ImportError:
     from itertools import izip_longest as zip_longest
+# FIXME will this break on appengine?
+import socket
 
 from urllib3.packages import six
 
@@ -159,15 +161,24 @@ def split_domain(domain):
     return domain.split('.')
 
 
-# FIXME this is dirty
+# FIXME move somewhere else
 def is_ipaddress(domain):
-    # assume v6
-    if ':' in domain:
-        return True
+    return is_v4address(domain) or is_v6address(domain)
 
+
+def is_v6address(domain):
     try:
-        int(domain.replace('.', ''))
-    except ValueError:
+        socket.inet_pton(socket.AF_INET6, domain)
+    except socket.error:
+        return False
+
+    return True
+
+
+def is_v4address(domain):
+    try:
+        socket.inet_pton(socket.AF_INET, domain)
+    except socket.error:
         return False
 
     return True
