@@ -12,7 +12,7 @@ from .exceptions import LocationValueError, MaxRetryError
 from .request import RequestMethods
 from .util.url import parse_url
 from .util.retry import Retry
-from .util.hsts import EphemeralHSTSStore, HSTSManager
+from .hsts import EphemeralHSTSStore, HSTSManager
 
 
 __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']

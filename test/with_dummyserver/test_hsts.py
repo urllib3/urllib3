@@ -2,7 +2,7 @@ import unittest
 
 from urllib3 import PoolManager
 from urllib3.util.url import Url
-from urllib3.util.hsts import match_domains
+from urllib3.hsts import match_domains
 
 # proxy testcase has http and https servers
 from dummyserver.testcase import HTTPDummyProxyTestCase
