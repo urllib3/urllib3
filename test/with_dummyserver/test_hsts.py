@@ -62,6 +62,15 @@ class HSTSTestCase(HTTPDummyProxyTestCase):
 
             self.assertEqual(len(pool.hsts_manager.db), 0)
 
+    def test_invalid_hsts_header(self):
+        pool = PoolManager(retries=0)
+        url = Url(scheme='https', host=self.https_host,
+                  port=self.https_port, path='/hsts',
+                  query='max-age=invalid')
+
+        pool.urlopen('GET', url.url)
+        self.assertEqual(len(pool.hsts_manager.db), 0)
+
 
 class HSTSTestCase2(unittest.TestCase):
     def test_hsts_record_match(self):
