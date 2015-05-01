@@ -154,6 +154,7 @@ class PoolManager(RequestMethods):
         if self.hsts_manager and self.hsts_manager.must_rewrite(u.host):
             # FIXME make errors fatal
             u = self.hsts_manager.rewrite_url(u)
+            log.info("HSTS rewrite %s -> %s" % (url, u.url))
 
         conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
