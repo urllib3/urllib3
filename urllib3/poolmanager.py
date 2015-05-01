@@ -9,10 +9,10 @@ from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
 from .exceptions import LocationValueError, MaxRetryError
+from .hsts import EphemeralHSTSStore, HSTSManager
 from .request import RequestMethods
 from .util.url import parse_url
 from .util.retry import Retry
-from .hsts import EphemeralHSTSStore, HSTSManager
 
 
 __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']

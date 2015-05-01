@@ -167,3 +167,16 @@ class InsecurePlatformWarning(SecurityWarning):
 class ResponseNotChunked(ProtocolError, ValueError):
     "Response needs to be chunked in order to read it as chunks."
     pass
+
+
+class PolicyViolation(Exception):
+    """
+    Raised when an explicit security policy has been violated
+    Intentionally *no* subclass of HTTPError or SSLError.
+    """
+    pass
+
+
+class HSTSViolation(PolicyViolation):
+    "Raised when an SSL exception to an HSTS protected site occurs."
+    pass
