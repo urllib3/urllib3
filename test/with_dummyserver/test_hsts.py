@@ -6,7 +6,7 @@ import mock
 from urllib3 import PoolManager
 from urllib3.exceptions import MaxRetryError
 from urllib3.util.url import Url, parse_url
-from urllib3.hsts import match_domains, HSTSManager
+from urllib3.hsts import HSTSManager, match_domains, parse_hsts_header
 
 # proxy testcase has http and https servers
 from dummyserver.testcase import HTTPDummyProxyTestCase
@@ -53,7 +53,7 @@ class HSTSTestCase(HTTPDummyProxyTestCase):
         pool = PoolManager(retries=0)
         url = Url(scheme='https', host=self.https_host,
                   port=self.https_port, path='/hsts',
-                  query='max-age={}'.format(max_age))
+                  query='max-age={0}'.format(max_age))
 
         pool.urlopen('GET', url.url)
 
@@ -105,3 +105,31 @@ class HSTSTestCase2(unittest.TestCase):
             self.assertEqual(
                     rewritten,
                     hsts_manager.rewrite_url(parse_url(original)).url)
+
+    def test_parse_hsts_header(self):
+        domain = 'example.com'
+
+        data = [
+                # raw, max_age, include_subdomains
+                ('max-age=15', 15, False),
+                ('MAX-AGE=15', 15, False),
+                ('Max-Age=15', 15, False),
+                ('max-age=15; includeSubdomains', 15, True),
+                ('includeSubdomains; max-age=15', 15, True),
+                ('max-age=15; INCLUDESUBDOMAINS', 15, True),
+        ]
+
+        for raw, max_age, include_subdomains in data:
+            record = parse_hsts_header(raw, domain)
+
+            self.assertEqual(record.max_age, max_age)
+            self.assertEqual(record.include_subdomains, include_subdomains)
+
+    def test_invalid_hsts_headers(self):
+        domain = 'example.com'
+        data = [
+                ('max-age=15; max-age=4'),
+        ]
+
+        for raw in data:
+            self.assertEqual(parse_hsts_header(raw, domain), None)
