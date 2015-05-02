@@ -12,7 +12,13 @@ from urllib3.packages import six
 split_header_words = six.moves.http_cookiejar.split_header_words
 
 
+__all__ = ['HSTSManager', 'HSTSStore', 'MemoryHSTSStore']
+
+
 class HSTSRecord(object):
+    """
+    A single HSTS record.
+    """
     def __init__(self, domain, max_age, include_subdomains, _timestamp=None):
         self.domain = domain
         self.max_age = max_age
@@ -49,16 +55,42 @@ def match_domains(sub, sup, include_subdomains):
 
 
 class HSTSStore(object):
+    """
+    Abstract baseclass to store :class:`HSTSRecords <.HSTSRecord>`.
+    """
     def store_record(self, record):
+        """
+        :note: Implement in subclasses.
+
+        :param record:
+        :type record: .HSTSRecord
+        """
         raise NotImplementedError("Must be overridden.")
 
     def invalidate_record(self, domain):
+        """
+        :note: Implement in subclasses.
+
+        :param domain:
+        :type domain: str
+        """
         raise NotImplementedError("Must be overridden.")
 
     def iter_records(self):
+        """
+        :note: Implement in subclasses.
+
+        :rtype: iterable over :class:`HSTSRecords <.HSTSRecord>`.
+        """
         raise NotImplementedError("Must be overridden.")
 
     def valid_records(self):
+        """
+        Yields all valid :class:`HSTSRecords <.HSTSRecord>` in the store,
+        explicitly deleting expired entries as it encounters them.
+
+        :rtype: iterable over :class:`HSTSRecords <.HSTSRecord>`.
+        """
         for record in list(self.iter_records()):
             if record.is_expired():
                 self.invalidate_record(record.domain)
@@ -70,6 +102,14 @@ class HSTSStore(object):
 
 
 class MemoryHSTSStore(HSTSStore):
+    """
+    The default, in-memory HSTS store.
+
+    :warning:
+       This does not persist any records, so its usefulnet is only limited.
+       You are strongly encouraged to provide use your own, persistent
+       :class:`.HSTSStore`.
+    """
     def __init__(self):
         self._records = {}
 
@@ -84,10 +124,23 @@ class MemoryHSTSStore(HSTSStore):
 
 
 class HSTSManager(object):
+    """
+    :param database: The backend to store all records.
+    :type database: :class:`.HSTSStore`
+    """
     def __init__(self, database):
         self.db = database
 
     def must_rewrite(self, domain):
+        """
+        Test if we have to rewrite requests to a domain against our database.
+
+        :param url: The domain to check.
+        :type url: str
+
+        :returns: Wether we have to rewrite requests to this domain.
+        :rtype: bool
+        """
         if not domain or is_ipaddress(domain):
             return False
 
@@ -96,17 +149,36 @@ class HSTSManager(object):
                 return True
         return False
 
-    @staticmethod
-    def translate_port(port):
-        if port == 80:
-            port = 443
-
-        return port
-
     def rewrite_url(self, url):
-        return url._replace(scheme='https', port=self.translate_port(url.port))
+        """
+        Rewrites an URL in compliance with HSTS
+
+        :param url: The original URL.
+        :type header: str
+
+        :returns: The rewritten URL.
+        :rtype: str
+        """
+        return url._replace(scheme='https', port=translate_port(url.port))
 
     def process_header(self, domain, scheme, header):
+        """ Processes a ``Strict-Transport-Security`` header
+
+        This checks wether the scheme is corrent and the header is present.
+        If so it adds a new record to the database.
+
+        :param domain: The domain of the response was received from.
+        :type domain: str
+
+        :param scheme: The protocol scheme the response was received over.
+        :type scheme: str
+
+        :param header: The contents of a ``Strict-Transport-Security`` header.
+        :type header: str
+
+        :returns: Wether a new record has been added to the database.
+        :rtype: bool
+        """
         if not header or scheme != 'https' or is_ipaddress(domain):
             return False
 
@@ -123,12 +195,32 @@ class HSTSManager(object):
         return True
 
     def process_response(self, domain, scheme, response):
+        """
+        Processes a HTTPS response for HSTS
+
+        Performs the same checks as :meth:`.process_header`.
+
+        :param domain: See :meth:`.process_header`
+        :param scheme: See :meth:`.process_header`
+
+        :param response: The response received.
+        :type response: :class:`httplib.HTTPResponse` or
+                        :class:`urllib3.response.HTTPResponse`
+
+        :returns: See :meth:`.process_header`.
+        """
         sts = response.getheader('strict-transport-security')
 
         if not sts:
             return False
 
         return self.process_header(domain, scheme, sts)
+
+
+def translate_port(port):
+    if port == 80:
+        return 443
+    return port
 
 
 def split_header_word(header):
