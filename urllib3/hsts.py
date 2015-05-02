@@ -106,21 +106,29 @@ class HSTSManager(object):
     def rewrite_url(self, url):
         return url._replace(scheme='https', port=self.translate_port(url.port))
 
-    def process_response(self, domain, scheme, response):
-        sts = response.getheader('strict-transport-security')
+    def process_header(self, domain, scheme, header):
+        if not header or scheme != 'https' or is_ipaddress(domain):
+            return False
 
-        if not sts or scheme != 'https' or is_ipaddress(domain):
-            return
-
-        record = parse_hsts_header(sts, domain)
+        record = parse_hsts_header(header, domain)
 
         if record is None:
-            return
+            return False
 
         if not record.max_age or record.is_expired():
             self.db.invalidate_record(domain)
         else:
             self.db.store_record(record)
+
+        return True
+
+    def process_response(self, domain, scheme, response):
+        sts = response.getheader('strict-transport-security')
+
+        if not sts:
+            return False
+
+        return self.process_header(domain, scheme, sts)
 
 
 def parse_hsts_header(header, domain):
