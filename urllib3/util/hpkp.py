@@ -241,7 +241,7 @@ def parse_public_key_pins(header, domain):
         # Strip any OWS, then split into name and value. All directives have
         # names, but frustratingly they don't all have values.
         directive = directive.strip().split('=', 1)
-        name = directive[0]
+        name = directive[0].lower()
         try:
             value = directive[1]
         except IndexError:
@@ -257,7 +257,7 @@ def parse_public_key_pins(header, domain):
                 raise HPKPError("Multiple max-age directives in PKP header")
 
             max_age = int(unquote_string(value))
-        elif name == 'includeSubDomains':
+        elif name == 'includesubdomains':
             include_subdomains = True
         elif name == 'report-uri':
             if report_uri:
