@@ -9,7 +9,7 @@ from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
 from .exceptions import LocationValueError, MaxRetryError
-from .hsts import EphemeralHSTSStore, HSTSManager
+from .hsts import MemoryHSTSStore, HSTSManager
 from .request import RequestMethods
 from .util.url import parse_url
 from .util.retry import Retry
@@ -64,7 +64,7 @@ class PoolManager(RequestMethods):
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools,
                                            dispose_func=lambda p: p.close())
-        self.hsts_manager = HSTSManager(EphemeralHSTSStore())
+        self.hsts_manager = HSTSManager(MemoryHSTSStore())
 
     def __enter__(self):
         return self

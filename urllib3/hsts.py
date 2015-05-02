@@ -69,7 +69,7 @@ class HSTSStore(object):
         return len(list(self.valid_records()))
 
 
-class EphemeralHSTSStore(HSTSStore):
+class MemoryHSTSStore(HSTSStore):
     def __init__(self):
         self._records = {}
 
