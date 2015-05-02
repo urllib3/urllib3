@@ -141,9 +141,8 @@ class HPKPManager(object):
 
         # If we got this far, we have a KnownPinnedHost in hand that applies to
         # this connection. Get the certificate and check it matches one of the
-        # pins.
-        # TODO: Actually do this!
-        return
+        # pins. If it doesn't we'll blow up here.
+        return self._validate_connection(socket, host)
 
     def process_response(self, domain, response):
         """
