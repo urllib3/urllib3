@@ -257,6 +257,8 @@ def parse_public_key_pins(header, domain):
                 raise HPKPError("Multiple max-age directives in PKP header")
 
             max_age = int(unquote_string(value))
+            if max_age < 0:
+                raise HPKPError("max-age must be positive")
         elif name == 'includesubdomains':
             include_subdomains = True
         elif name == 'report-uri':
