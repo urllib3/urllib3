@@ -252,6 +252,20 @@ class WrappedSocket(object):
             ]
         }
 
+    def get_peer_cert_chain(self):
+        # This is currently an experimental function in the stdlib, not yet
+        # merged. For now, we'll try to keep the API the same as the stdlib.
+        x509_list = self.connection.get_peer_cert_chain()
+        if x509_list is None:
+            return x509_list
+
+        for cert in x509_list:
+            yield OpenSSL.crypto.dump_certificate(
+                OpenSSL.crypto.FILETYPE_ASN1,
+                x509
+            )
+
+
     def _reuse(self):
         self._makefile_refs += 1
 
