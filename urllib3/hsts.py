@@ -15,15 +15,10 @@ split_header_words = six.moves.http_cookiejar.split_header_words
 __all__ = ['HSTSManager', 'HSTSStore', 'MemoryHSTSStore']
 
 
-class HSTSRecord(object):
-    """
-    A single HSTS record.
-    """
-    def __init__(self, domain, max_age, include_subdomains, _timestamp=None):
-        self.domain = domain
-        self.max_age = max_age
-        self.include_subdomains = include_subdomains
+class ExpiringRecord(object):
+    def __init__(self, max_age, _timestamp):
         self.timestamp = _timestamp or datetime.now()
+        self.max_age = max_age
 
     @property
     def end(self):
@@ -32,6 +27,17 @@ class HSTSRecord(object):
     def is_expired(self, _now=None):
         now = _now or datetime.now()
         return self.end < now
+
+
+class HSTSRecord(ExpiringRecord):
+    """
+    A single HSTS record.
+    """
+    def __init__(self, domain, max_age, include_subdomains, _timestamp=None):
+        super(HSTSRecord, self).__init__(
+                max_age=max_age, _timestamp=_timestamp)
+        self.domain = domain
+        self.include_subdomains = include_subdomains
 
     def matches(self, other):
         return match_domains(other, self.domain, self.include_subdomains)
