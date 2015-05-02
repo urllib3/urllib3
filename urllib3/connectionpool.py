@@ -567,6 +567,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                                   timeout=timeout_obj,
                                                   body=body, headers=headers)
 
+            # Check HPKP.
+            self.hpkp_manager.process_response(self.host, httplib_response)
+
             # If we're going to release the connection in ``finally:``, then
             # the request doesn't need to know about the connection. Otherwise
             # it will also try to release it and we'll have a double-release
@@ -578,9 +581,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                                  pool=self,
                                                  connection=response_conn,
                                                  **response_kw)
-
-            # Check HPKP.
-            self.hpkp_manager.process_response(self.host, response)
 
             # else:
             #     The connection will be put back into the pool when
