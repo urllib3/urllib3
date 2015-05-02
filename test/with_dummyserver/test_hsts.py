@@ -6,7 +6,8 @@ import mock
 from urllib3 import PoolManager
 from urllib3.exceptions import MaxRetryError
 from urllib3.util.url import Url, parse_url
-from urllib3.hsts import HSTSManager, match_domains, parse_hsts_header
+from urllib3.hsts import (HSTSManager, match_domains, parse_hsts_header,
+                          is_ipaddress)
 
 # proxy testcase has http and https servers
 from dummyserver.testcase import HTTPDummyProxyTestCase
@@ -134,3 +135,18 @@ class HSTSTestCase2(unittest.TestCase):
 
         for raw in data:
             self.assertEqual(parse_hsts_header(raw, domain), None)
+
+    def test_is_ipaddress(self):
+        valid = [
+                '1.1.1.1',
+                '::1',
+        ]
+        invalid = [
+                'foobar'
+        ]
+
+        for address in valid:
+            self.assertTrue(is_ipaddress(address))
+
+        for address in invalid:
+            self.assertFalse(is_ipaddress(address))
