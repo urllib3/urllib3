@@ -44,7 +44,7 @@ class HSTSStore(object):
         """
         :note: Implement in subclasses.
 
-        :rtype: iterable over :class:`HSTSRecords <.HSTSRecord>`.
+        :rtype: Iterable over :class:`HSTSRecords <.HSTSRecord>`.
         """
         raise NotImplementedError("Must be overridden.")
 
@@ -53,7 +53,7 @@ class HSTSStore(object):
         Yields all valid :class:`HSTSRecords <.HSTSRecord>` in the store,
         explicitly deleting expired entries as it encounters them.
 
-        :rtype: iterable over :class:`HSTSRecords <.HSTSRecord>`.
+        :rtype: Iterable over :class:`HSTSRecords <.HSTSRecord>`.
         """
         for record in list(self.iter_records()):
             if record.is_expired():
