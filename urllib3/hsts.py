@@ -1,10 +1,5 @@
-try:
-    from itertools import zip_longest
-except ImportError:
-    from itertools import izip_longest as zip_longest
-
-from .util.hsts import (ExpiringRecord, split_domain, is_ipaddress,
-                        parse_max_age, parse_directives_header)
+from .util.hsts import (ExpiringRecord, is_ipaddress, parse_max_age,
+                        parse_directives_header, match_domains)
 
 __all__ = ['HSTSManager', 'HSTSStore', 'MemoryHSTSStore']
 
@@ -21,23 +16,6 @@ class HSTSRecord(ExpiringRecord):
 
     def matches(self, other):
         return match_domains(other, self.domain, self.include_subdomains)
-
-
-def match_domains(sub, sup, include_subdomains):
-    for p, b in zip_longest(
-            reversed(split_domain(sup)),
-            reversed(split_domain(sub))):
-
-        if b is None:
-            return False
-
-        if p is None:
-            return include_subdomains
-
-        if p != b:
-            return False
-
-    return True
 
 
 class HSTSStore(object):

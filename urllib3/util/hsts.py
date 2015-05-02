@@ -1,4 +1,8 @@
 from datetime import datetime, timedelta
+try:
+    from itertools import zip_longest
+except ImportError:
+    from itertools import izip_longest as zip_longest
 # FIXME will this break on appengine?
 import socket
 
@@ -62,6 +66,23 @@ def parse_directives_header(header):
 # FIXME idna?
 def split_domain(domain):
     return domain.split('.')
+
+
+def match_domains(sub, sup, include_subdomains):
+    for p, b in zip_longest(
+            reversed(split_domain(sup)),
+            reversed(split_domain(sub))):
+
+        if b is None:
+            return False
+
+        if p is None:
+            return include_subdomains
+
+        if p != b:
+            return False
+
+    return True
 
 
 def is_ipaddress(domain):
