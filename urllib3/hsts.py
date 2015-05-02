@@ -131,17 +131,17 @@ class HSTSManager(object):
         return self.process_header(domain, scheme, sts)
 
 
+def split_header_word(header):
+    return split_header_words([header])[0]
+
+
 def parse_hsts_header(header, domain):
     max_age = None
     include_subdomains = False
 
     seen_directives = set()
 
-    # split_header_words needs it argument wrapped in a list and returns a
-    # list of list
-
-    result = split_header_words([header])
-    for k, v in result[0]:
+    for k, v in split_header_word(header):
         k = k.lower()
 
         if k in seen_directives:
