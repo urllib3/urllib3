@@ -227,6 +227,21 @@ def split_header_word(header):
     return split_header_words([header])[0]
 
 
+def parse_max_age(string):
+    if string is None:
+        return None
+
+    try:
+        max_age = int(string)
+    except ValueError:
+        return None
+
+    if max_age < 0:
+        return None
+
+    return max_age
+
+
 def parse_hsts_header(header, domain):
     max_age = None
     include_subdomains = False
@@ -239,16 +254,17 @@ def parse_hsts_header(header, domain):
         if k in seen_directives:
             return None
 
+        seen_directives.add(k)
+
         if k == 'max-age':
-            try:
-                max_age = int(v)
-            except ValueError:
+            m = parse_max_age(v)
+            if m is None:
                 continue
+            else:
+                max_age = m
 
         elif k == 'includesubdomains':
-                include_subdomains = True
-
-        seen_directives.add(k)
+            include_subdomains = True
 
     if max_age is None:
         return None

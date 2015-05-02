@@ -130,10 +130,15 @@ class HSTSTestCase2(unittest.TestCase):
     def test_invalid_hsts_headers(self):
         domain = 'example.com'
         data = [
-                ('max-age=15; max-age=4'),
+                'max-age=15; max-age=4',
+                'max-age',
+                'max-age=xxx',
+                'max-age=-4',
+                'some crap',
         ]
 
         for raw in data:
+            print(raw)
             self.assertEqual(parse_hsts_header(raw, domain), None)
 
     def test_is_ipaddress(self):
