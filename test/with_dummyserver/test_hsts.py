@@ -114,6 +114,7 @@ class HSTSTestCase2(unittest.TestCase):
         data = [
                 # raw, max_age, include_subdomains
                 ('max-age=15', 15, False),
+                ('max-age="15"', 15, False),
                 ('MAX-AGE=15', 15, False),
                 ('Max-Age=15', 15, False),
                 ('max-age=15; includeSubdomains', 15, True),
