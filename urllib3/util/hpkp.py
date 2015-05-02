@@ -166,6 +166,17 @@ class HPKPManager(object):
         except HPKPError:
             return
 
+        # Having found pins, we should check whether the pin is valid for this
+        # connection. If it isn't, we simply don't trust the header: it's not a
+        # full blown security violation.
+        try:
+            valid = validate_connection(response._connection, pin)
+        except HPKPError:
+            return
+        else:
+            if not valid:
+                return
+
         # Quick check: if the max-age is 0, or the expiry date is after now,
         # we should invalidate any pin we already have for this domain and
         # exit.
@@ -173,12 +184,8 @@ class HPKPManager(object):
             self.db.invalidate_host(domain)
             return
 
-        # Otherwise, we can store off this pin.
+        # Otherwise, we can store off this pin. Hooray, we're done!
         self.db.store_host(pin)
-
-        # TODO: Check if the RFC wants us to immediately validate the
-        # connection: if it does, do it.
-        return
 
     def _find_valid_pinned_host(self, domain, hosts):
         """
@@ -202,7 +209,6 @@ class HPKPManager(object):
             # domain, or if the KPH has include_subdomains set to True.
             if domain == host.domain or host.include_subdomains:
                 return host
-
 
 # An object that holds information about a KnownPinnedHost. This object
 # basically just stores string data, so there's no real need to do anything
