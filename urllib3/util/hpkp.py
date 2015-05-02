@@ -142,7 +142,7 @@ class HPKPManager(object):
         # If we got this far, we have a KnownPinnedHost in hand that applies to
         # this connection. Get the certificate and check it matches one of the
         # pins. If it doesn't we'll blow up here.
-        return self._validate_connection(socket, host)
+        return _validate_pin(socket, host)
 
     def process_response(self, domain, response):
         """
@@ -170,7 +170,7 @@ class HPKPManager(object):
         # connection. If it isn't, we simply don't trust the header: it's not a
         # full blown security violation.
         try:
-            valid = validate_connection(response._connection, pin)
+            valid = _validate_pin(response.fp, pin)
         except HPKPError:
             return
         else:
@@ -276,9 +276,9 @@ def parse_public_key_pins(header, domain):
     )
 
 
-def validate_connection(connection, host, shortcut=True):
+def _validate_pin(connection, host, shortcut=True):
     """
-    Validates that a TLS connection is valid for the given host.
+    Validates that a TLS connection matches a specific pin.
 
     If shortcut is ``True``, returns as soon as a matching cert is found: do
     not use the return value in this case.
@@ -296,7 +296,7 @@ def validate_connection(connection, host, shortcut=True):
     for binary_certificate in certificates:
         # For each cert in the chain, get a base64-encoded form of the
         # SHA256 of the public key and check whether it's in the pin list.
-        if certificate_in_pins(binary_certificate, host):
+        if _certificate_in_pins(binary_certificate, host):
             if shortcut:
                 return True
 
@@ -310,7 +310,7 @@ def validate_connection(connection, host, shortcut=True):
     return match and non_match
 
 
-def certificate_in_pins(der_certificate, host):
+def _certificate_in_pins(der_certificate, host):
     """
     For a single DER certificate, check whether the KnownPinnedHost has
     pinned it.
