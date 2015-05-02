@@ -218,6 +218,7 @@ class HSTSManager(object):
 
 
 def translate_port(port):
+    ":rfc:`6797#section-8.3`"
     if port == 80:
         return 443
     return port
