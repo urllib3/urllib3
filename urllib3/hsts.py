@@ -154,10 +154,10 @@ class HSTSManager(object):
         Rewrites an URL in compliance with HSTS
 
         :param url: The original URL.
-        :type header: str
+        :type url: urllib3.util.url.Url
 
         :returns: The rewritten URL.
-        :rtype: str
+        :rtype: urllib3.util.url.Url
         """
         return url._replace(scheme='https', port=translate_port(url.port))
 
