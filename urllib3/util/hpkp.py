@@ -323,10 +323,10 @@ def certificate_in_pins(der_certificate, host):
                                   PublicFormat.SubjectPublicKeyInfo)
     public_key_base64 = ''.join(public_key.split("\n")[1:-2])
     public_key_raw = base64.b64decode(public_key_base64)
-    public_key_sha265 = hashlib.sha256(public_key_raw).digest()
-    public_key_sha265_base64 = base64.b64encode(public_key_sha265)
+    public_key_sha256 = hashlib.sha256(public_key_raw).digest()
+    public_key_sha256_base64 = base64.b64encode(public_key_sha256)
 
-    return public_key_sha265_base64 in host.pins
+    return public_key_sha256_base64 in host.pins
 
 
 def unquote_string(string):
