@@ -6,8 +6,8 @@ import mock
 from urllib3 import PoolManager
 from urllib3.exceptions import MaxRetryError
 from urllib3.util.url import Url, parse_url
-from urllib3.hsts import (HSTSManager, match_domains, parse_hsts_header,
-                          is_ipaddress)
+from urllib3.hsts import (HSTSManager, MemoryHSTSStore, match_domains,
+                          parse_hsts_header, is_ipaddress)
 
 # proxy testcase has http and https servers
 from dummyserver.testcase import HTTPDummyProxyTestCase
@@ -155,3 +155,15 @@ class HSTSTestCase2(unittest.TestCase):
 
         for address in invalid:
             self.assertFalse(is_ipaddress(address))
+
+    def test_hsts_manager_must_rewrite(self):
+        m = HSTSManager(MemoryHSTSStore())
+        m.process_header('example.com', 'https', 'max-age=15')
+        self.assertTrue(m.must_rewrite('example.com'))
+        self.assertFalse(m.must_rewrite('google.com'))
+
+        m.process_header('google.com', 'https', 'max-age=15; includeSubdomains')
+        self.assertTrue(m.must_rewrite('example.com'))
+        self.assertTrue(m.must_rewrite('google.com'))
+        self.assertTrue(m.must_rewrite('www.google.com'))
+        self.assertFalse(m.must_rewrite('yahoo.com'))
