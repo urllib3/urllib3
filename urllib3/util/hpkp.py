@@ -276,7 +276,7 @@ def parse_public_key_pins(header, domain):
     )
 
 
-def validate_connection(self, connection, host, shortcut=True):
+def validate_connection(connection, host, shortcut=True):
     """
     Validates that a TLS connection is valid for the given host.
 
@@ -310,7 +310,7 @@ def validate_connection(self, connection, host, shortcut=True):
     return match and non_match
 
 
-def certificate_in_pins(self, der_certificate, host):
+def certificate_in_pins(der_certificate, host):
     """
     For a single DER certificate, check whether the KnownPinnedHost has
     pinned it.
