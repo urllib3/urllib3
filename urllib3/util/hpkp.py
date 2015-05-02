@@ -1,8 +1,15 @@
 # -*- coding: utf-8 -*-
+import base64
 import collections
+import hashlib
 import time
 
 from ..exceptions import HPKPError
+
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.serialization import Encoding
+from cryptography.hazmat.primitives.serialization import PublicFormat
 
 
 class HPKPDatabase(object):
@@ -260,6 +267,59 @@ def parse_public_key_pins(header, domain):
     return KnownPinnedHost(
         domain, pin_directives, max_age, include_subdomains, report_uri, time.time()
     )
+
+
+def validate_connection(self, connection, host, shortcut=True):
+    """
+    Validates that a TLS connection is valid for the given host.
+
+    If shortcut is ``True``, returns as soon as a matching cert is found: do
+    not use the return value in this case.
+
+    Returns True if the pin contains at least one key *not* used in this
+    certificate chain. Returns False if the pin only contains certificates in
+    the chain.
+    """
+    match = False
+    non_match = False
+
+    # We ideally want to grab the whole cert chain here.
+    certificates = connection.sock.get_peer_cert_chain()
+
+    for binary_certificate in certificates:
+        # For each cert in the chain, get a base64-encoded form of the
+        # SHA256 of the public key and check whether it's in the pin list.
+        if certificate_in_pins(binary_certificate, host):
+            if shortcut:
+                return True
+
+            match = True
+        else:
+            non_match = True
+
+    if not match:
+        raise HPKPError("Failed to validate trust chain with HPKP!")
+
+    return match and non_match
+
+
+def certificate_in_pins(self, der_certificate, host):
+    """
+    For a single DER certificate, check whether the KnownPinnedHost has
+    pinned it.
+    """
+    cert = x509.load_der_x509_certificate(
+        der_certificate, default_backend()
+    )
+    key = cert.public_key()
+    public_key = key.public_bytes(Encoding.PEM,
+                                  PublicFormat.SubjectPublicKeyInfo)
+    public_key_base64 = ''.join(public_key.split("\n")[1:-2])
+    public_key_raw = base64.b64decode(public_key_base64)
+    public_key_sha265 = hashlib.sha256(public_key_raw).digest()
+    public_key_sha265_base64 = base64.b64encode(public_key_sha265)
+
+    return public_key_sha265_base64 in host.pins
 
 
 def unquote_string(string):
