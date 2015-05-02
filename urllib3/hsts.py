@@ -293,19 +293,18 @@ def is_ipaddress(domain):
     return is_v4address(domain) or is_v6address(domain)
 
 
-def is_v6address(domain):
+def check_inet_pton(family, domain):
     try:
-        socket.inet_pton(socket.AF_INET6, domain)
+        socket.inet_pton(family, domain)
     except socket.error:
         return False
 
     return True
+
+
+def is_v6address(domain):
+    return check_inet_pton(socket.AF_INET6, domain)
 
 
 def is_v4address(domain):
-    try:
-        socket.inet_pton(socket.AF_INET, domain)
-    except socket.error:
-        return False
-
-    return True
+    return check_inet_pton(socket.AF_INET, domain)
