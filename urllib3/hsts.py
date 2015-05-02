@@ -187,7 +187,7 @@ class HSTSManager(object):
         if record is None:
             return False
 
-        if not record.max_age or record.is_expired():
+        if record.max_age == 0:
             self.db.invalidate_record(domain)
         else:
             self.db.store_record(record)
