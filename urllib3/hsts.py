@@ -192,11 +192,15 @@ def parse_hsts_header(header, domain):
     max_age = None
     include_subdomains = False
 
+    seen_directives = set()
+
     for k, v in parse_directives_header(header):
-        if k is None:
+        if k in seen_directives:
             return None
 
-        elif k == 'max-age':
+        seen_directives.add(k)
+
+        if k == 'max-age':
             max_age = parse_max_age(v)
 
         elif k == 'includesubdomains':

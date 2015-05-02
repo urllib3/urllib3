@@ -89,24 +89,16 @@ def parse_directives_header(header):
     """
     Parses a header with directives to `(key, value)` tuples.
     The `value` part may be `None`.
-    If `key` is None for any one result the header was invalid.
+    `Keys` re normalized to lowercase.
 
     :param header:
     :type header: string
 
     :rtype: Iterable over :class:`tuple`(:class:`str`, :class:`str`).
     """
-    seen_directives = set()
 
     for k, v in _split_header_word(header):
-        k = k.lower()
-
-        if k in seen_directives:
-            yield None, None
-
-        seen_directives.add(k)
-
-        yield k, v
+        yield k.lower(), v
 
 
 # FIXME idna?
