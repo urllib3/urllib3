@@ -257,12 +257,12 @@ class WrappedSocket(object):
         # merged. For now, we'll try to keep the API the same as the stdlib.
         x509_list = self.connection.get_peer_cert_chain()
         if x509_list is None:
-            return x509_list
+            return
 
         for cert in x509_list:
             yield OpenSSL.crypto.dump_certificate(
                 OpenSSL.crypto.FILETYPE_ASN1,
-                x509
+                cert
             )
 
 
