@@ -618,13 +618,34 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             self.assertRaises(ProtocolError,
                     pool.request, 'GET', '/source_address')
 
-    @onlyPy3
-    def test_httplib_headers_case_insensitive(self):
-        HEADERS = {'Content-Length': '0', 'Content-type': 'text/plain',
-                    'Server': 'TornadoServer/%s' % tornado.version}
-        r = self.pool.request('GET', '/specific_method',
-                               fields={'method': 'GET'})
-        self.assertEqual(HEADERS, dict(r.headers.items())) # to preserve case sensitivity
+    def test_stream_keepalive(self):
+        x = 2
+
+        for _ in range(x):
+            response = self.pool.request(
+                    'GET',
+                    '/chunked',
+                    headers={
+                        'Connection': 'keep-alive',
+                        },
+                    preload_content=False,
+                    retries=False,
+                    )
+            for chunk in response.stream():
+                self.assertEqual(chunk, b'123')
+
+        self.assertEqual(self.pool.num_connections, 1)
+        self.assertEqual(self.pool.num_requests, x)
+
+    def test_chunked_gzip(self):
+        response = self.pool.request(
+                'GET',
+                '/chunked_gzip',
+                preload_content=False,
+                decode_content=True,
+                )
+
+        self.assertEqual(b'123' * 4, response.read())
 
 
 class TestRetry(HTTPDummyServerTestCase):

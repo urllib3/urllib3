@@ -31,6 +31,7 @@ clean:
 	find . -name "__pycache__" -delete
 	rm -f $(REQUIREMENTS_OUT)
 	rm -rf docs/_build
+	rm -rf build/
 
 test: requirements
 	nosetests

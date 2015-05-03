@@ -7,6 +7,8 @@ python:
   - "3.4"
   - "pypy"
 script: make test
+before_install:
+  - openssl version
 install:
   - make
 notifications:

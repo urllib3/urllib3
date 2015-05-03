@@ -418,6 +418,29 @@ class TestResponse(unittest.TestCase):
             self.assertEqual(c, stream[i])
             i += 1
 
+    def test_mock_gzipped_transfer_encoding_chunked_decoded(self):
+        """Show that we can decode the gizpped and chunked body."""
+        def stream():
+            # Set up a generator to chunk the gzipped body
+            import zlib
+            compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+            data = compress.compress(b'foobar')
+            data += compress.flush()
+            for i in range(0, len(data), 2):
+                yield data[i:i+2]
+
+        fp = MockChunkedEncodingResponse(list(stream()))
+        r = httplib.HTTPResponse(MockSock)
+        r.fp = fp
+        headers = {'transfer-encoding': 'chunked', 'content-encoding': 'gzip'}
+        resp = HTTPResponse(r, preload_content=False, headers=headers)
+
+        data = b''
+        for c in resp.stream(decode_content=True):
+            data += c
+
+        self.assertEqual(b'foobar', data)
+
     def test_mock_transfer_encoding_chunked_custom_read(self):
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedEncodingResponse(stream)
@@ -517,7 +540,9 @@ class MockChunkedEncodingResponse(object):
 
     @staticmethod
     def _encode_chunk(chunk):
-        return '%X\r\n%s\r\n' % (len(chunk), chunk.decode())
+        # In the general case, we can't decode the chunk to unicode
+        length = '%X\r\n' % len(chunk)
+        return length.encode() + chunk + b'\r\n'
 
     def _pop_new_chunk(self):
         if self.chunks_exhausted:
@@ -529,8 +554,10 @@ class MockChunkedEncodingResponse(object):
             self.chunks_exhausted = True
         else:
             self.index += 1
-        encoded_chunk = self._encode_chunk(chunk)
-        return encoded_chunk.encode()
+        chunk = self._encode_chunk(chunk)
+        if not isinstance(chunk, bytes):
+            chunk = chunk.encode()
+        return chunk
 
     def pop_current_chunk(self, amt=-1, till_crlf=False):
         if amt > 0 and till_crlf:

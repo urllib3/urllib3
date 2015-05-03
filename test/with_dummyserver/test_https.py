@@ -32,7 +32,13 @@ from urllib3.exceptions import (
     SystemTimeWarning,
     InsecurePlatformWarning,
 )
+from urllib3.packages import six
 from urllib3.util.timeout import Timeout
+
+
+ResourceWarning = getattr(
+        six.moves.builtins,
+        'ResourceWarning', type('ResourceWarning', (), {}))
 
 
 log = logging.getLogger('urllib3.connectionpool')
@@ -362,10 +368,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     def test_ssl_correct_system_time(self):
         self._pool.cert_reqs = 'CERT_REQUIRED'
         self._pool.ca_certs = DEFAULT_CA
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter('always')
-            self._pool.request('GET', '/')
 
+        w = self._request_without_resource_warnings('GET', '/')
         self.assertEqual([], w)
 
     def test_ssl_wrong_system_time(self):
@@ -374,15 +378,20 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with mock.patch('urllib3.connection.datetime') as mock_date:
             mock_date.date.today.return_value = datetime.date(1970, 1, 1)
 
-            with warnings.catch_warnings(record=True) as w:
-                warnings.simplefilter('always')
-                self._pool.request('GET', '/')
+            w = self._request_without_resource_warnings('GET', '/')
 
             self.assertEqual(len(w), 1)
             warning = w[0]
 
             self.assertEqual(SystemTimeWarning, warning.category)
             self.assertTrue(str(RECENT_DATE) in warning.message.args[0])
+
+    def _request_without_resource_warnings(self, method, url):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            self._pool.request(method, url)
+
+        return [x for x in w if not isinstance(x.message, ResourceWarning)]
 
 
 class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
