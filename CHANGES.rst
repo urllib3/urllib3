@@ -4,19 +4,23 @@ Changes
 dev (master)
 ++++++++++++
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.10.4 (2015-05-03)
++++++++++++++++++++
+
 * Migrate tests to Tornado 4. (Issue #594)
 
 * Append default warning configuration rather than overwrite.
   (Issue #603)
-  
+
 * Fix streaming decoding regression. (Issue #595)
 
 * Fix chunked requests losing state across keep-alive connections.
   (Issue #599)
-  
-* Fix hanging when chunked HEAD response has no body. (Issue #605)
 
-* ... [Short description of non-trivial change.] (Issue #)
+* Fix hanging when chunked HEAD response has no body. (Issue #605)
 
 
 1.10.3 (2015-04-21)
@@ -24,16 +28,16 @@ dev (master)
 
 * Emit ``InsecurePlatformWarning`` when SSLContext object is missing.
   (Issue #558)
-  
+
 * Fix regression of duplicate header keys being discarded.
   (Issue #563)
-  
+
 * ``Response.stream()`` returns a generator for chunked responses.
   (Issue #560)
-  
+
 * Set upper-bound timeout when waiting for a socket in PyOpenSSL.
   (Issue #585)
-  
+
 * Work on platforms without `ssl` module for plain HTTP requests.
   (Issue #587)
 
@@ -107,7 +111,7 @@ dev (master)
 
 * Fixed packaging issues of some development-related files not
   getting included. (Issue #440)
-  
+
 * Allow performing *only* fingerprint verification. (Issue #444)
 
 * Emit ``SecurityWarning`` if system clock is waaay off. (Issue #445)
