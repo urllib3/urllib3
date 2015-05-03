@@ -4,15 +4,15 @@ Changes
 dev (master)
 ++++++++++++
 
-* Fix streaming decoding regression. (Issue #595)
-
-* Fix chunked requests losing state across keep-alive connections.
-  (Issue #599)
-
 * Migrate tests to Tornado 4. (Issue #594)
 
 * Append default warning configuration rather than overwrite.
   (Issue #603)
+  
+* Fix streaming decoding regression. (Issue #595)
+
+* Fix chunked requests losing state across keep-alive connections.
+  (Issue #599)
   
 * Fix hanging when chunked HEAD response has no body. (Issue #605)
 
