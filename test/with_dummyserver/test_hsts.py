@@ -7,7 +7,8 @@ from urllib3.exceptions import MaxRetryError
 from urllib3.util.url import Url
 
 # proxy testcase has http and https servers
-from dummyserver.testcase import HTTPDummyProxyTestCase
+from dummyserver.testcase import (HTTPDummyProxyTestCase,
+                                  SocketDummyServerTestCase)
 
 
 class HSTSTestCase(HTTPDummyProxyTestCase):
