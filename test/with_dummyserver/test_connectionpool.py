@@ -36,7 +36,7 @@ from urllib3.util.timeout import Timeout
 
 import tornado
 from dummyserver.testcase import HTTPDummyServerTestCase
-from dummyserver.server import NoIPv6Warning
+from dummyserver.server import NoIPv6Warning, HAS_IPV6_AND_DNS
 
 from nose.tools import timed
 
@@ -600,7 +600,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_source_address(self):
         for addr, is_ipv6 in VALID_SOURCE_ADDRESSES:
-            if is_ipv6 and not socket.has_ipv6:
+            if is_ipv6 and not HAS_IPV6_AND_DNS:
                 warnings.warn("No IPv6 support: skipping.",
                               NoIPv6Warning)
                 continue
