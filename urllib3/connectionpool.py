@@ -40,7 +40,7 @@ from .response import HTTPResponse
 from .util.connection import is_connection_dropped
 from .util.retry import Retry
 from .util.timeout import Timeout
-from .util.url import get_host
+from .util.url import get_host, parse_url
 
 
 xrange = six.moves.xrange
@@ -418,6 +418,20 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         return (scheme, host, port) == (self.scheme, self.host, self.port)
 
+    def _full_url(self, path_or_url):
+        u = parse_url(path_or_url)
+
+        if u.scheme is None:
+            u = u._replace(scheme=self.scheme)
+
+        if u.host is None:
+            u = u._replace(host=self.host)
+
+        if u.port is None and not self.port == port_by_scheme.get(u.scheme):
+            u = u._replace(host=self.host)
+
+        return u.url
+
     def urlopen(self, method, url, body=None, headers=None, retries=None,
                 redirect=True, assert_same_host=True, timeout=_Default,
                 pool_timeout=None, release_conn=None, **response_kw):
@@ -553,6 +567,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             response = HTTPResponse.from_httplib(httplib_response,
                                                  pool=self,
                                                  connection=response_conn,
+                                                 url=self._full_url(url),
                                                  **response_kw)
 
             # else:

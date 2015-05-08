@@ -178,9 +178,8 @@ class PoolManager(RequestMethods):
                 raise
 
         if self.hsts_manager:
-            # As only PoolManager.urlopen follows redirects we know that
-            # response.scheme == request.scheme
-            self.hsts_manager.process_response(u.host, u.scheme, response)
+            ru = parse_url(response.url)
+            self.hsts_manager.process_response(ru.host, ru.scheme, response)
 
         redirect_location = redirect and response.get_redirect_location()
         if not redirect_location:
