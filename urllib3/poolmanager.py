@@ -66,6 +66,7 @@ class PoolManager(RequestMethods):
         self.pools = RecentlyUsedContainer(num_pools,
                                            dispose_func=lambda p: p.close())
         self.hsts_manager = HSTSManager(MemoryHSTSStore())
+        self.connection_pool_kw['hsts_manager'] = self.hsts_manager
 
     def __enter__(self):
         return self

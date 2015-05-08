@@ -69,3 +69,11 @@ class HSTSTestCase(HTTPDummyProxyTestCase):
 
         pool.urlopen('GET', url.url)
         self.assertEqual(len(pool.hsts_manager.db), 0)
+
+    def test_warning_http(self):
+        manager = HSTSManager(MemoryHSTSStore())
+        pool = HTTPConnectionPool(self.http_host, self.http_port,
+                                  hsts_manager=manager)
+        manager.process_header(self.http_host, 'https', 'max-age=1500')
+        # FIXME actually capture logs
+        pool.request('GET', '/')

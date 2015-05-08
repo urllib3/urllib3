@@ -1,4 +1,5 @@
 import datetime
+import logging
 import sys
 import socket
 from socket import timeout as SocketTimeout
@@ -58,6 +59,7 @@ port_by_scheme = {
 }
 
 RECENT_DATE = datetime.date(2014, 1, 1)
+log = logging.getLogger(__name__)
 
 
 class HTTPConnection(_HTTPConnection, object):
@@ -113,6 +115,7 @@ class HTTPConnection(_HTTPConnection, object):
         #: The socket options provided by the user. If no options are
         #: provided, we use the default options.
         self.socket_options = kw.pop('socket_options', self.default_socket_options)
+        self.hsts_manager = kw.pop('hsts_manager', None)
 
         # Superclass also sets self.source_address in Python 2.7+.
         _HTTPConnection.__init__(self, *args, **kw)
@@ -128,6 +131,8 @@ class HTTPConnection(_HTTPConnection, object):
 
         if self.socket_options:
             extra_kw['socket_options'] = self.socket_options
+
+        self._check_hsts_rewrite()
 
         try:
             conn = connection.create_connection(
@@ -154,6 +159,12 @@ class HTTPConnection(_HTTPConnection, object):
     def connect(self):
         conn = self._new_conn()
         self._prepare_conn(conn)
+
+    def _check_hsts_rewrite(self):
+        result = self.hsts_manager and self.hsts_manager.check_domain(self.host)
+        if result:
+            log.warning('Ignoring HSTS for %s', self.host)
+        return result
 
 
 class HTTPSConnection(HTTPConnection):
@@ -254,6 +265,9 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
         self.is_verified = (resolved_cert_reqs == ssl.CERT_REQUIRED
                             or self.assert_fingerprint is not None)
+
+    def _check_hsts_rewrite(self):
+        return False
 
 
 if ssl:
