@@ -91,11 +91,11 @@ class HSTSTestCase(unittest.TestCase):
     def test_hsts_manager_must_rewrite(self):
         m = HSTSManager(MemoryHSTSStore())
         m.process_header('example.com', 'https', 'max-age=15')
-        self.assertTrue(m.must_rewrite('example.com'))
-        self.assertFalse(m.must_rewrite('google.com'))
+        self.assertTrue(m.check_domain('example.com'))
+        self.assertFalse(m.check_domain('google.com'))
 
         m.process_header('google.com', 'https', 'max-age=15; includeSubdomains')
-        self.assertTrue(m.must_rewrite('example.com'))
-        self.assertTrue(m.must_rewrite('google.com'))
-        self.assertTrue(m.must_rewrite('www.google.com'))
-        self.assertFalse(m.must_rewrite('yahoo.com'))
+        self.assertTrue(m.check_domain('example.com'))
+        self.assertTrue(m.check_domain('google.com'))
+        self.assertTrue(m.check_domain('www.google.com'))
+        self.assertFalse(m.check_domain('yahoo.com'))

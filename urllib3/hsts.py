@@ -95,7 +95,7 @@ class HSTSManager(object):
     def __init__(self, database):
         self.db = database
 
-    def must_rewrite(self, domain):
+    def check_domain(self, domain):
         """
         Test if we have to rewrite requests to a domain against our database.
 

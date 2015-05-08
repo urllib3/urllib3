@@ -154,7 +154,7 @@ class PoolManager(RequestMethods):
         u = parse_url(url)
 
         hsts_active = (self.hsts_manager and
-                       self.hsts_manager.must_rewrite(u.host))
+                       self.hsts_manager.check_domain(u.host))
 
         if hsts_active:
             u = self.hsts_manager.rewrite_url(u)

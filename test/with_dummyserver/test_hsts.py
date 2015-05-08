@@ -2,8 +2,9 @@ from datetime import datetime, timedelta
 
 import mock
 
-from urllib3 import PoolManager
+from urllib3 import PoolManager, HTTPSConnectionPool, HTTPConnectionPool
 from urllib3.exceptions import MaxRetryError
+from urllib3.hsts import HSTSManager, MemoryHSTSStore
 from urllib3.util.url import Url
 
 # proxy testcase has http and https servers
