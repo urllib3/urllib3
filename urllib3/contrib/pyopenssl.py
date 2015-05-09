@@ -208,9 +208,13 @@ class WrappedSocket(object):
             sent = self._send_until_done(data)
             data = data[sent:]
 
+    def shutdown(self):
+        # FIXME rethrow compatible exceptions should we ever use this
+        self.connection.shutdown()
+
     def close(self):
         if self._makefile_refs < 1:
-            return self.connection.shutdown()
+            return self.connection.close()
         else:
             self._makefile_refs -= 1
 
