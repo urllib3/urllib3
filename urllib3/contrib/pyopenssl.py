@@ -54,6 +54,7 @@ import OpenSSL.SSL
 from pyasn1.codec.der import decoder as der_decoder
 from pyasn1.type import univ, constraint
 from socket import _fileobject, timeout
+import errno
 import ssl
 import select
 
@@ -210,7 +211,14 @@ class WrappedSocket(object):
 
     def close(self):
         if self._makefile_refs < 1:
-            return self.connection.shutdown()
+            # Shutdown may need to write data to the socket: if the remote end
+            # has already closed it, this will fail with EPIPE. That's ok,
+            # catch it.
+            try:
+                return self.connection.shutdown()
+            except OpenSSL.SSL.SysCallError as e:
+                if e.args[0] != errno.EPIPE:
+                    raise
         else:
             self._makefile_refs -= 1
 
