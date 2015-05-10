@@ -291,7 +291,7 @@ def _validate_pin(connection, host, shortcut=True):
     non_match = False
 
     # We ideally want to grab the whole cert chain here.
-    certificates = connection.sock.get_peer_cert_chain()
+    certificates = connection._sock.connection.certs
 
     for binary_certificate in certificates:
         # For each cert in the chain, get a base64-encoded form of the
@@ -310,14 +310,11 @@ def _validate_pin(connection, host, shortcut=True):
     return match and non_match
 
 
-def _certificate_in_pins(der_certificate, host):
+def _certificate_in_pins(cert, host):
     """
     For a single DER certificate, check whether the KnownPinnedHost has
     pinned it.
     """
-    cert = x509.load_der_x509_certificate(
-        der_certificate, default_backend()
-    )
     key = cert.public_key()
     public_key = key.public_bytes(Encoding.PEM,
                                   PublicFormat.SubjectPublicKeyInfo)
