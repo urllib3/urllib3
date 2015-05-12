@@ -424,8 +424,8 @@ class HTTPResponse(io.IOBase):
         return returned_chunk
 
     @staticmethod
-    def _is_response_to_head(self, response):
-        # FIXME: Can we do this somehow without accessing private httplib _method?[m
+    def _is_response_to_head(response):
+        # FIXME: Can we do this somehow without accessing private httplib _method?
         if response is None:
             return False
 
