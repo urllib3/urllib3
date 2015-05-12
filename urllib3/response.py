@@ -423,6 +423,18 @@ class HTTPResponse(io.IOBase):
             self.chunk_left = None
         return returned_chunk
 
+    @staticmethod
+    def _is_response_to_head(self, response):
+        # FIXME: Can we do this somehow without accessing private httplib _method?[m
+        if response is None:
+            return False
+
+        method = response._method
+        if isinstance(method, int):  # Platform-specific: Appengine
+            return method == 3
+        else:
+            return method.upper() == 'HEAD'
+
     def read_chunked(self, amt=None, decode_content=None):
         """
         Similar to :meth:`HTTPResponse.read`, but with an additional
@@ -438,7 +450,7 @@ class HTTPResponse(io.IOBase):
             raise ResponseNotChunked("Response is not chunked. "
                 "Header 'transfer-encoding: chunked' is missing.")
 
-        if self._original_response and self._original_response._method.upper() == 'HEAD':
+        if self._is_response_to_head(self._original_response):
             # Don't bother reading the body of a HEAD request.
             # FIXME: Can we do this somehow without accessing private httplib _method?
             self._original_response.close()
