@@ -59,3 +59,21 @@ def assert_header_parsing(headers):
 
     if defects or unparsed_data:
         raise HeaderParsingError(defects=defects, unparsed_data=unparsed_data)
+
+
+def is_response_to_head(response):
+    """
+    Checks, wether a the request of a response has been a HEAD-request.
+    Handles the quirks of AppEngine.
+
+    :param conn:
+    :type conn: :class:`httplib.HTTPResponse`
+    """
+    # FIXME: Can we do this somehow without accessing private httplib _method?
+    if response is None:
+        return False
+
+    method = response._method
+    if isinstance(method, int):  # Platform-specific: Appengine
+        return method == 3
+    return method.upper() == 'HEAD'

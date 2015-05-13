@@ -12,7 +12,7 @@ from .exceptions import (
 )
 from .packages.six import string_types as basestring, binary_type, PY3
 from .connection import HTTPException, BaseSSLError
-from .util.response import is_fp_closed
+from .util.response import is_fp_closed, is_response_to_head
 
 
 class DeflateDecoder(object):
@@ -423,17 +423,6 @@ class HTTPResponse(io.IOBase):
             self.chunk_left = None
         return returned_chunk
 
-    @staticmethod
-    def _is_response_to_head(response):
-        # FIXME: Can we do this somehow without accessing private httplib _method?
-        if response is None:
-            return False
-
-        method = response._method
-        if isinstance(method, int):  # Platform-specific: Appengine
-            return method == 3
-        return method.upper() == 'HEAD'
-
     def read_chunked(self, amt=None, decode_content=None):
         """
         Similar to :meth:`HTTPResponse.read`, but with an additional
@@ -450,7 +439,7 @@ class HTTPResponse(io.IOBase):
                 "Header 'transfer-encoding: chunked' is missing.")
 
         # Don't bother reading the body of a HEAD request.
-        if self._is_response_to_head(self._original_response):
+        if is_response_to_head(self._original_response):
             self._original_response.close()
             return
 
