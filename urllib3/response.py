@@ -439,7 +439,7 @@ class HTTPResponse(io.IOBase):
                 "Header 'transfer-encoding: chunked' is missing.")
 
         # Don't bother reading the body of a HEAD request.
-        if is_response_to_head(self._original_response):
+        if self._original_response and is_response_to_head(self._original_response):
             self._original_response.close()
             return
 
