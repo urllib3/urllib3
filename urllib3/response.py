@@ -432,8 +432,7 @@ class HTTPResponse(io.IOBase):
         method = response._method
         if isinstance(method, int):  # Platform-specific: Appengine
             return method == 3
-        else:
-            return method.upper() == 'HEAD'
+        return method.upper() == 'HEAD'
 
     def read_chunked(self, amt=None, decode_content=None):
         """
