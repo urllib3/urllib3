@@ -291,7 +291,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                 raise timeout('select timed out')
             continue
         except OpenSSL.SSL.Error as e:
-            raise ssl.SSLError('bad handshake', e)
+            raise ssl.SSLError('bad handshake: %r' % e)
         break
 
     return WrappedSocket(cnx, sock)
