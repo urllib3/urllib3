@@ -450,9 +450,8 @@ class HTTPResponse(io.IOBase):
             raise ResponseNotChunked("Response is not chunked. "
                 "Header 'transfer-encoding: chunked' is missing.")
 
+        # Don't bother reading the body of a HEAD request.
         if self._is_response_to_head(self._original_response):
-            # Don't bother reading the body of a HEAD request.
-            # FIXME: Can we do this somehow without accessing private httplib _method?
             self._original_response.close()
             return
 
