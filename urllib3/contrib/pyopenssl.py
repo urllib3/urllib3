@@ -204,9 +204,11 @@ class WrappedSocket(object):
                 continue
 
     def sendall(self, data):
-        while len(data):
-            sent = self._send_until_done(data)
-            data = data[sent:]
+        total_sent = 0
+        while total_sent < len(data):
+            # OpenSSL will only write 16K at once
+            sent = self._send_until_done(data[total_sent:total_sent+16384])
+            total_sent += sent
 
     def shutdown(self):
         # FIXME rethrow compatible exceptions should we ever use this
