@@ -10,9 +10,9 @@ create_default_context = None
 
 # Maps the length of a digest to a possible hash function producing this digest
 HASHFUNC_MAP = {
-    16: md5,
-    20: sha1,
-    32: sha256,
+    32: md5,
+    40: sha1,
+    64: sha256,
 }
 
 import errno
@@ -120,15 +120,13 @@ def assert_fingerprint(cert, fingerprint):
     """
 
     fingerprint = fingerprint.replace(':', '').lower()
-    digest_length, odd = divmod(len(fingerprint), 2)
-
-    if odd or digest_length not in HASHFUNC_MAP:
+    digest_length = len(fingerprint)
+    hashfunc = HASHFUNC_MAP.get(digest_length)
+    if not hashfunc:
         raise SSLError('Fingerprint is of invalid length.')
 
     # We need encode() here for py32; works on py2 and p33.
     fingerprint_bytes = unhexlify(fingerprint.encode())
-
-    hashfunc = HASHFUNC_MAP[digest_length]
 
     cert_digest = hashfunc(cert).digest()
 
