@@ -166,18 +166,17 @@ class HTTPConnection(_HTTPConnection, object):
 
 class HTTPSConnection(HTTPConnection):
     default_port = port_by_scheme['https']
-    ssl_version = None
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-                 ssl_context=None, **kw):
+                 ssl_context=None, ssl_version=None, **kw):
 
         HTTPConnection.__init__(self, host, port, strict=strict,
                                 timeout=timeout, **kw)
 
         if ssl_context is None:
             ssl_context = create_urllib3_context(
-                ssl_version=resolve_ssl_version(self.ssl_version),
+                ssl_version=resolve_ssl_version(ssl_version),
                 cert_reqs=ssl.CERT_NONE,
             )
 
