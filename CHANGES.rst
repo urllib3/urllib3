@@ -4,6 +4,8 @@ Changes
 dev (master)
 ++++++++++++
 
+* Fix performance regression when using PyOpenSSL. (Issue #626)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
