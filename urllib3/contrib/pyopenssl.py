@@ -56,6 +56,7 @@ from pyasn1.type import univ, constraint
 from socket import _fileobject, timeout
 import ssl
 import select
+import sys
 
 from .. import connection
 from .. import util
@@ -206,6 +207,9 @@ class WrappedSocket(object):
                 continue
 
     def sendall(self, data):
+        if sys.version_info >= (2, 7) and not isinstance(data, memoryview):
+            data = memoryview(data)
+
         total_sent = 0
         while total_sent < len(data):
             sent = self._send_until_done(data[total_sent:total_sent+SSL_WRITE_BLOCKSIZE])
