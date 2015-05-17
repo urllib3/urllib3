@@ -85,6 +85,8 @@ _openssl_verify = {
 
 DEFAULT_SSL_CIPHER_LIST = util.ssl_.DEFAULT_CIPHERS
 
+# OpenSSL will only write 16K at a time
+SSL_WRITE_BLOCKSIZE = 16384
 
 orig_util_HAS_SNI = util.HAS_SNI
 orig_connection_ssl_wrap_socket = connection.ssl_wrap_socket
@@ -206,8 +208,7 @@ class WrappedSocket(object):
     def sendall(self, data):
         total_sent = 0
         while total_sent < len(data):
-            # OpenSSL will only write 16K at once
-            sent = self._send_until_done(data[total_sent:total_sent+16384])
+            sent = self._send_until_done(data[total_sent:total_sent+SSL_WRITE_BLOCKSIZE])
             total_sent += sent
 
     def shutdown(self):
