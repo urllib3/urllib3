@@ -56,7 +56,6 @@ from pyasn1.type import univ, constraint
 from socket import _fileobject, timeout
 import ssl
 import select
-import sys
 
 from .. import connection
 from .. import util
@@ -88,6 +87,12 @@ DEFAULT_SSL_CIPHER_LIST = util.ssl_.DEFAULT_CIPHERS
 
 # OpenSSL will only write 16K at a time
 SSL_WRITE_BLOCKSIZE = 16384
+
+try:
+    _ = memoryview
+    has_memoryview = True
+except NameError:
+    has_memoryview = False
 
 orig_util_HAS_SNI = util.HAS_SNI
 orig_connection_ssl_wrap_socket = connection.ssl_wrap_socket
@@ -207,7 +212,7 @@ class WrappedSocket(object):
                 continue
 
     def sendall(self, data):
-        if sys.version_info >= (2, 7) and not isinstance(data, memoryview):
+        if has_memoryview and not isinstance(data, memoryview):
             data = memoryview(data)
 
         total_sent = 0
