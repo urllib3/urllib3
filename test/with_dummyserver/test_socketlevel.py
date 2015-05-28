@@ -13,6 +13,7 @@ from urllib3.exceptions import (
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util.timeout import Timeout
 from urllib3.util.retry import Retry
+from urllib3._collections import HTTPHeaderDict
 
 from dummyserver.testcase import SocketDummyServerTestCase
 from dummyserver.server import (
@@ -355,7 +356,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         base_url = 'http://%s:%d' % (self.host, self.port)
 
         # Define some proxy headers.
-        proxy_headers = {'For The Proxy': 'YEAH!'}
+        proxy_headers = HTTPHeaderDict({'For The Proxy': 'YEAH!'})
         proxy = proxy_from_url(base_url, proxy_headers=proxy_headers)
 
         conn = proxy.connection_from_url('http://www.google.com/')
