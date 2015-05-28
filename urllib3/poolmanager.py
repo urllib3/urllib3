@@ -227,8 +227,8 @@ class ProxyManager(PoolManager):
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
 
-        assert proxy.scheme in ("http", "https"), \
-            'Not supported proxy scheme %s' % proxy.scheme
+        if proxy.scheme not in ("http", "https"):
+            raise ValueError('Not supported proxy scheme %s' % proxy.scheme)
 
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
