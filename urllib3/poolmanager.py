@@ -8,7 +8,9 @@ except ImportError:
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
-from .exceptions import LocationValueError, MaxRetryError
+from .exceptions import (LocationValueError, MaxRetryError, SSLError,
+                         HSTSViolation)
+from .hsts import MemoryHSTSStore, HSTSManager
 from .request import RequestMethods
 from .util.url import parse_url
 from .util.retry import Retry
@@ -63,6 +65,8 @@ class PoolManager(RequestMethods):
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools,
                                            dispose_func=lambda p: p.close())
+        self.hsts_manager = HSTSManager(MemoryHSTSStore())
+        self.connection_pool_kw['hsts_manager'] = self.hsts_manager
 
     def __enter__(self):
         return self
@@ -148,6 +152,14 @@ class PoolManager(RequestMethods):
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
         u = parse_url(url)
+
+        hsts_active = (self.hsts_manager and
+                       self.hsts_manager.check_domain(u.host))
+
+        if hsts_active:
+            u = self.hsts_manager.rewrite_url(u)
+            log.info("HSTS rewrite %s -> %s" % (url, u.url))
+
         conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
         kw['assert_same_host'] = False
@@ -155,10 +167,20 @@ class PoolManager(RequestMethods):
         if 'headers' not in kw:
             kw['headers'] = self.headers
 
-        if self.proxy is not None and u.scheme == "http":
-            response = conn.urlopen(method, url, **kw)
-        else:
-            response = conn.urlopen(method, u.request_uri, **kw)
+        try:
+            if self.proxy is not None and u.scheme == "http":
+                response = conn.urlopen(method, url, **kw)
+            else:
+                response = conn.urlopen(method, u.request_uri, **kw)
+        except SSLError as e:
+            if hsts_active:
+                raise HSTSViolation(e)
+            else:
+                raise
+
+        if self.hsts_manager:
+            ru = parse_url(response.url)
+            self.hsts_manager.process_response(ru.host, ru.scheme, response)
 
         redirect_location = redirect and response.get_redirect_location()
         if not redirect_location:

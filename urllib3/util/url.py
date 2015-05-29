@@ -1,6 +1,7 @@
 from collections import namedtuple
 
 from ..exceptions import LocationParseError
+from .hsts import is_v6address
 
 
 url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
@@ -70,6 +71,8 @@ class Url(namedtuple('Url', url_attrs)):
         if auth is not None:
             url += auth + '@'
         if host is not None:
+            if is_v6address(host):
+                host = '[' + host + ']'
             url += host
         if port is not None:
             url += ':' + str(port)

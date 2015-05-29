@@ -34,6 +34,10 @@ NO_SAN_CERTS = {
     'certfile': os.path.join(CERTS_PATH, 'server.no_san.crt'),
     'keyfile': DEFAULT_CERTS['keyfile']
 }
+UNSIGNED_CERTS = {
+    'certfile': os.path.join(CERTS_PATH, 'server.unsigned.crt'),
+    'keyfile': DEFAULT_CERTS['keyfile']
+}
 DEFAULT_CA = os.path.join(CERTS_PATH, 'cacert.pem')
 DEFAULT_CA_BAD = os.path.join(CERTS_PATH, 'client_bad.pem')
 NO_SAN_CA = os.path.join(CERTS_PATH, 'cacert.no_san.pem')

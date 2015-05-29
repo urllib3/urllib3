@@ -235,6 +235,11 @@ class TestingApp(RequestHandler):
     def shutdown(self, request):
         sys.exit()
 
+    def hsts(self, request):
+        max_age = request.params.get('max-age', b'100000')
+        return Response('HSTS!', headers=[
+            ('Strict-Transport-Security', b'max-age=' + max_age)])
+
 
 # RFC2231-aware replacement of internal tornado function
 def _parse_header(line):

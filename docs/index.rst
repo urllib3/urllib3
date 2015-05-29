@@ -12,6 +12,7 @@ urllib3 Documentation
    collections
    contrib
    security
+   policy
 
 
 Highlights
