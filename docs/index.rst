@@ -98,6 +98,27 @@ like buffering:
     >>> secondpart = b.read()
 
 
+Upgrading & Versioning
+----------------------
+
+urllib3 uses a compatibility-based versioning scheme (let's call it
+*compatver*). For the user, they indicate the required decision for upgrading.
+
+Given a version ``A.B.C``:
+
+``C.`` Strictly backwards-compatible, usually a bug-fix. **Always upgrade.**
+
+``B.`` Possibly partially incompatible, usually a new feature or a minor API
+improvement. **Read the changelog and upgrade when ready.**
+
+``A.`` Major rewrite and possibly breaks everything. Not really an upgrade,
+basically a new library under the same namespace, decide if you want to switch.
+
+For example, when going from urllib3 v1.2.3 to v1.2.4, you should always
+upgrade without hesitation. When going from v1.2 to v1.3, you should read the
+changes to make sure they're not going to affect you.
+
+
 Components
 ==========
 
