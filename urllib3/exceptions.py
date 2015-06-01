@@ -167,3 +167,12 @@ class InsecurePlatformWarning(SecurityWarning):
 class ResponseNotChunked(ProtocolError, ValueError):
     "Response needs to be chunked in order to read it as chunks."
     pass
+
+
+class ProxySchemeUnknown(AssertionError, ValueError):
+    "ProxyManager does not support the supplied scheme"
+    # TODO(t-8ch): Stop inheriting from AssertionError in v2.0.
+
+    def __init__(self, scheme):
+        message = "Not supported proxy scheme %s" % scheme
+        super(ProxySchemeUnknown, self).__init__(self, message)
