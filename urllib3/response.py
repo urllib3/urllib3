@@ -12,7 +12,7 @@ from .exceptions import (
 )
 from .packages.six import string_types as basestring, binary_type, PY3
 from .connection import HTTPException, BaseSSLError
-from .util.response import is_fp_closed
+from .util.response import is_fp_closed, validate_headers
 
 
 class DeflateDecoder(object):
@@ -319,6 +319,8 @@ class HTTPResponse(io.IOBase):
         with ``original_response=r``.
         """
         headers = r.msg
+        validate_headers(headers)
+
         if not isinstance(headers, HTTPHeaderDict):
             if PY3: # Python 3
                 headers = HTTPHeaderDict(headers.items())
