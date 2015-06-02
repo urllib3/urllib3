@@ -175,4 +175,4 @@ class ProxySchemeUnknown(AssertionError, ValueError):
 
     def __init__(self, scheme):
         message = "Not supported proxy scheme %s" % scheme
-        super(ProxySchemeUnknown, self).__init__(self, message)
+        super(ProxySchemeUnknown, self).__init__(message)
