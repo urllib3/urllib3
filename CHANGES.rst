@@ -6,6 +6,8 @@ dev (master)
 
 * Fix performance regression when using PyOpenSSL. (Issue #626)
 
+* Dev: Added test suite for AppEngine. (Issue #631)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
