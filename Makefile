@@ -39,6 +39,9 @@ test: requirements
 test-all: requirements
 	tox
 
+test-gae: requirements
+	tox -e gae
+
 docs:
 	cd docs && pip install -r doc-requirements.txt && make html
 

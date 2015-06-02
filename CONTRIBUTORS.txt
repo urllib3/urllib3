@@ -151,6 +151,9 @@ In chronological order:
 * David D. Riddle <ddriddle@illinois.edu>
   * IPv6 bugfixes in testsuite
 
+* Jon Wayne Parrott <jonwayne@google.com>
+  * App Engine environment tests.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
 

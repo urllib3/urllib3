@@ -71,7 +71,7 @@ class TestWithoutSSL(unittest.TestCase):
         sys.meta_path.insert(0, ssl_blocker)
 
     def tearDown(self):
-        assert sys.meta_path.pop(0) == ssl_blocker
+        sys.meta_path.remove(ssl_blocker)
         module_stash.pop()
 
 
