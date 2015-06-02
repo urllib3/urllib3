@@ -8,6 +8,10 @@ dev (master)
 
 * Dev: Added test suite for AppEngine. (Issue #631)
 
+* Passing incorrect scheme (e.g. ``foo://``) will raise
+  ``ValueError`` instead of ``AssertionError`` (backwards
+  compatible for now, but please migrate). (Issue #640)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
