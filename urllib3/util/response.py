@@ -1,22 +1,9 @@
-from collections import namedtuple
 try:
     import http.client as httplib
 except ImportError:
     import httplib
 
-
-class HeaderParsingErrors(
-        namedtuple('_HeaderParsingErrors', ['defects', 'unparsed_data'])):
-
-    def __bool__(self):
-        return bool(self.defects or self.unparsed_data)
-
-    def __nonzero__(self):  # Platform-specific: Python 2.
-        return self.__bool__()
-
-    def __str__(self):
-        return '"%s" unparsed data: "%r"' % (
-                    self.defects or 'Unknown', self.unparsed_data)
+from ..exceptions import HeaderParsingErrors
 
 
 def is_fp_closed(obj):
@@ -43,18 +30,18 @@ def is_fp_closed(obj):
     raise ValueError("Unable to determine whether fp is closed.")
 
 
-def extract_parsing_errors(headers):
+def assert_header_parsing(headers):
     """
+    Asserts whether all headers have been successfully parsed.
     Extracts encountered errors from the result of parsing headers.
 
     Only works on Python 3.
 
-    :param headers: Headers to extract errors from.
+    :param headers: Headers to verify.
     :type headers: `httplib.HTTPMessage`.
 
-    :returns: Defects encountered while parsing headers and unparsed header
-              data.
-    :rtype: HeaderParsingErrors
+    :raises urllib3.exceptions.HeaderParsingErrors:
+        If parsing errors are found.
     """
 
     # This will fail silently if we pass in the wrong kind of parameter.
@@ -70,4 +57,5 @@ def extract_parsing_errors(headers):
     if get_payload:  # Platform-specific: Python 3.
         unparsed_data = get_payload()
 
-    return HeaderParsingErrors(defects=defects, unparsed_data=unparsed_data)
+    if defects or unparsed_data:
+        raise HeaderParsingErrors(defects=defects, unparsed_data=unparsed_data)

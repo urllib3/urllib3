@@ -17,6 +17,7 @@ from .exceptions import (
     ClosedPoolError,
     ProtocolError,
     EmptyPoolError,
+    HeaderParsingErrors,
     HostChangedError,
     LocationValueError,
     MaxRetryError,
@@ -38,7 +39,7 @@ from .request import RequestMethods
 from .response import HTTPResponse
 
 from .util.connection import is_connection_dropped
-from .util.response import extract_parsing_errors
+from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import get_host, Url
@@ -383,11 +384,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                           httplib_response.status,
                                           httplib_response.length))
 
-        header_parsing_errors = extract_parsing_errors(httplib_response.msg)
-        if header_parsing_errors:  # Platform-specific: Python 3.
-            logging.warning(
-                'Failed to completely parse headers for %s: %s' %
-                (self._absolute_url(url).url, header_parsing_errors))
+        try:
+            assert_header_parsing(httplib_response.msg)
+        except HeaderParsingErrors as hpe:  # Platform-specific: Python 3
+            log.warning(
+                'Failed to parse headers (url=%s): %s',
+                self._absolute_url(url).url, hpe, exc_info=True)
 
         return httplib_response
 

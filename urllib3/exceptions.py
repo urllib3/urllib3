@@ -176,3 +176,20 @@ class ProxySchemeUnknown(AssertionError, ValueError):
     def __init__(self, scheme):
         message = "Not supported proxy scheme %s" % scheme
         super(ProxySchemeUnknown, self).__init__(message)
+
+
+class HeaderParsingErrors(HTTPError):
+    def __init__(self, defects, unparsed_data):
+        super(HeaderParsingErrors, self).__init__(defects, unparsed_data)
+
+    def __str__(self):
+        return '%s, unparsed data: %r' % (
+                    self.defects or 'Unknown', self.unparsed_data)
+
+    @property
+    def defects(self):
+        return self.args[0]
+
+    @property
+    def unparsed_data(self):
+        return self.args[1]
