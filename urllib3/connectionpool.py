@@ -40,7 +40,7 @@ from .response import HTTPResponse
 from .util.connection import is_connection_dropped
 from .util.retry import Retry
 from .util.timeout import Timeout
-from .util.url import get_host
+from .util.url import get_host, Url
 
 
 xrange = six.moves.xrange
@@ -382,6 +382,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                           httplib_response.status,
                                           httplib_response.length))
         return httplib_response
+
+    def _full_url(self, path):
+        return Url(
+                scheme=self.scheme, host=self.host, port=self.port, path=path)
 
     def close(self):
         """
