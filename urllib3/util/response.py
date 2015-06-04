@@ -43,7 +43,7 @@ def extract_parsing_errors(headers):
     """
     Extracts encountered errors from the result of parsing headers.
 
-    Only works on Python 3 (and PyPy 2).
+    Only works on Python 3.
 
     :param headers: Headers to extract errors from.
     :type headers: `httplib.HTTPMessage`.
@@ -62,9 +62,8 @@ def extract_parsing_errors(headers):
     defects = getattr(headers, 'defects', None)
     get_payload = getattr(headers, 'get_payload', None)
 
-    if get_payload:  # Platform-specific: Implementation dependent.
+    unparsed_data = None
+    if get_payload:  # Platform-specific: Python 3.
         unparsed_data = get_payload()
-    else:  # Platform-specific
-        unparsed_data = None
 
     return HeaderParsingErrors(defects=defects, unparsed_data=unparsed_data)

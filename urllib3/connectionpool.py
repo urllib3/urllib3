@@ -384,7 +384,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                           httplib_response.length))
 
         header_parsing_errors = extract_parsing_errors(httplib_response.msg)
-        if header_parsing_errors:  # Platform-specific: Implementation.
+        if header_parsing_errors:  # Platform-specific: Python 3.
             logging.warning(
                 'Errors while parsing headers for %s %s: %s. Unparsed data: %s' %
                 (method,
