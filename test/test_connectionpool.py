@@ -226,11 +226,11 @@ class TestConnectionPool(unittest.TestCase):
 
         self.assertRaises(Empty, old_pool_queue.get, block=False)
 
-    def test_full_url(self):
+    def test_absolute_url(self):
         c = connection_from_url('http://google.com:80')
         self.assertEqual(
                 'http://google.com:80/path?query=foo',
-                c._full_url('path?query=foo').url)
+                c._absolute_url('path?query=foo').url)
 
 
 if __name__ == '__main__':

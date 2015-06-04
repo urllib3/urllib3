@@ -388,13 +388,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             logging.warning(
                 'Errors while parsing headers for %s %s: %s. Unparsed data: %s' %
                 (method,
-                    self._full_url(url).url,
+                    self._absolute_url(url).url,
                     header_parsing_errors.defects or 'Unknown',
                     repr(header_parsing_errors.unparsed_data)))
 
         return httplib_response
 
-    def _full_url(self, path):
+    def _absolute_url(self, path):
         return Url(
                 scheme=self.scheme, host=self.host, port=self.port, path=path)
 
