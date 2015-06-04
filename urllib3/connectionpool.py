@@ -38,6 +38,7 @@ from .request import RequestMethods
 from .response import HTTPResponse
 
 from .util.connection import is_connection_dropped
+from .util.response import extract_parsing_errors
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import get_host, Url
@@ -381,6 +382,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         log.debug("\"%s %s %s\" %s %s" % (method, url, http_version,
                                           httplib_response.status,
                                           httplib_response.length))
+
+        header_parsing_errors = extract_parsing_errors(httplib_response.msg)
+        if header_parsing_errors:  # Platform-specific: Implementation.
+            logging.warning(
+                'Errors while parsing headers for %s %s: %s. Unparsed data: %s' %
+                (method,
+                    self._full_url(url).url,
+                    header_parsing_errors.defects or 'Unknown',
+                    repr(header_parsing_errors.unparsed_data)))
+
         return httplib_response
 
     def _full_url(self, path):

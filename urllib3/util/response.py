@@ -1,6 +1,18 @@
-import logging
+from collections import namedtuple
+try:
+    import http.client as httplib
+except ImportError:
+    import httplib
 
-log = logging.getLogger(__name__)
+
+class HeaderParsingErrors(
+        namedtuple('_HeaderParsingErrors', ['defects', 'unparsed_data'])):
+
+    def __bool__(self):
+        return bool(self.defects or self.unparsed_data)
+
+    def __nonzero__(self):  # Platform-specific: Python 2.
+        return self.__bool__()
 
 
 def is_fp_closed(obj):
@@ -27,31 +39,32 @@ def is_fp_closed(obj):
     raise ValueError("Unable to determine whether fp is closed.")
 
 
-def validate_headers(headers):
+def extract_parsing_errors(headers):
     """
-    Checks whether headers have been successfully and completely parsed.
+    Extracts encountered errors from the result of parsing headers.
 
-    Only works on Python 3.
+    Only works on Python 3 (and PyPy 2).
 
-    :param headers: Headers to check.
+    :param headers: Headers to extract errors from.
     :type headers: `httplib.HTTPMessage`.
 
-    :returns: Whether any errors occured during header parsing.
-    :rtype: bool
+    :returns: Defects encountered while parsing headers and unparsed header
+              data.
+    :rtype: HeaderParsingErrors
     """
-    result = False
+
+    # This will fail silently if we pass in the wrong kind of parameter.
+    # To make debugging easier add a explicit check.
+    if not isinstance(headers, httplib.HTTPMessage):
+        raise TypeError('expected httplib.Message, got {}.'.format(
+            type(headers)))
+
     defects = getattr(headers, 'defects', None)
-
-    if defects:
-        log.error('Errors while parsing headers: %s', defects)
-        result = True
-
     get_payload = getattr(headers, 'get_payload', None)
 
-    if get_payload:
-        unparsed_headers = get_payload()
-        if unparsed_headers:
-            log.error('Unparsed headers: %s', repr(unparsed_headers))
-            result = True
+    if get_payload:  # Platform-specific: Implementation dependent.
+        unparsed_data = get_payload()
+    else:  # Platform-specific
+        unparsed_data = None
 
-    return result
+    return HeaderParsingErrors(defects=defects, unparsed_data=unparsed_data)
