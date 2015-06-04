@@ -54,7 +54,7 @@ def extract_parsing_errors(headers):
     """
 
     # This will fail silently if we pass in the wrong kind of parameter.
-    # To make debugging easier add a explicit check.
+    # To make debugging easier add an explicit check.
     if not isinstance(headers, httplib.HTTPMessage):
         raise TypeError('expected httplib.Message, got {}.'.format(
             type(headers)))
