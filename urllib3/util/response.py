@@ -14,6 +14,10 @@ class HeaderParsingErrors(
     def __nonzero__(self):  # Platform-specific: Python 2.
         return self.__bool__()
 
+    def __str__(self):
+        return '"%s" unparsed data: "%r"' % (
+                    self.defects or 'Unknown', self.unparsed_data)
+
 
 def is_fp_closed(obj):
     """

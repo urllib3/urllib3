@@ -386,11 +386,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         header_parsing_errors = extract_parsing_errors(httplib_response.msg)
         if header_parsing_errors:  # Platform-specific: Python 3.
             logging.warning(
-                'Errors while parsing headers for %s %s: %s. Unparsed data: %s' %
-                (method,
-                    self._absolute_url(url).url,
-                    header_parsing_errors.defects or 'Unknown',
-                    repr(header_parsing_errors.unparsed_data)))
+                'Failed to completely parse headers for %s: %s' %
+                (self._absolute_url(url).url, header_parsing_errors))
 
         return httplib_response
 
