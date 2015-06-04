@@ -651,9 +651,7 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
             str(self.port),
         ]
 
-        if not any([
-            all([s in record.msg for s in expected_strings])
-                for record in logs]):
+        if not any([all([s in record.msg for s in expected_strings]) for record in logs]):
             self.fail('Missing log about unparsed headers')
 
     def test_header_without_name(self):

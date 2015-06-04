@@ -395,8 +395,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         return httplib_response
 
     def _absolute_url(self, path):
-        return Url(
-                scheme=self.scheme, host=self.host, port=self.port, path=path)
+        return Url(scheme=self.scheme, host=self.host, port=self.port, path=path)
 
     def close(self):
         """
