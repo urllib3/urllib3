@@ -389,12 +389,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         except HeaderParsingErrors as hpe:  # Platform-specific: Python 3
             log.warning(
                 'Failed to parse headers (url=%s): %s',
-                self._absolute_url(url).url, hpe, exc_info=True)
+                self._absolute_url(url), hpe, exc_info=True)
 
         return httplib_response
 
     def _absolute_url(self, path):
-        return Url(scheme=self.scheme, host=self.host, port=self.port, path=path)
+        return Url(scheme=self.scheme, host=self.host, port=self.port, path=path).url
 
     def close(self):
         """

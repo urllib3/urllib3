@@ -647,7 +647,7 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
 
         for record in logs:
             if 'Failed to parse headers' in record.msg and \
-                    pool._absolute_url('/').url == record.args[0]:
+                    pool._absolute_url('/') == record.args[0]:
                 return
         self.fail('Missing log about unparsed headers')
 

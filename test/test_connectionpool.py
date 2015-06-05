@@ -230,7 +230,7 @@ class TestConnectionPool(unittest.TestCase):
         c = connection_from_url('http://google.com:80')
         self.assertEqual(
                 'http://google.com:80/path?query=foo',
-                c._absolute_url('path?query=foo').url)
+                c._absolute_url('path?query=foo'))
 
 
 if __name__ == '__main__':
