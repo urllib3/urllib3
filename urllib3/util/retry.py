@@ -7,6 +7,7 @@ from ..exceptions import (
     ProtocolError,
     ReadTimeoutError,
     ResponseError,
+    SocketConnectError,
 )
 from ..packages import six
 
@@ -181,7 +182,8 @@ class Retry(object):
         """ Errors when we're fairly sure that the server did not receive the
         request, so it should be safe to retry.
         """
-        return isinstance(err, ConnectTimeoutError)
+        return isinstance(err, ConnectTimeoutError) or \
+            isinstance(err, SocketConnectError)
 
     def _is_read_error(self, err):
         """ Errors that occur after the request has been started, so we should

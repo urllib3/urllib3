@@ -24,11 +24,12 @@ from urllib3 import (
 )
 from urllib3.exceptions import (
     ConnectTimeoutError,
-    EmptyPoolError,
     DecodeError,
+    EmptyPoolError,
     MaxRetryError,
-    ReadTimeoutError,
     ProtocolError,
+    ReadTimeoutError,
+    SocketConnectError,
 )
 from urllib3.packages.six import b, u
 from urllib3.util.retry import Retry
@@ -150,6 +151,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # connect to the host provided so we need a dummyserver to be running.
         pool = HTTPConnectionPool(self.host, self.port)
         conn = pool._get_conn()
+        conn = pool._make_connect(conn, 'GET', '/')
         pool._make_request(conn, 'GET', '/')
         tcp_nodelay_setting = conn.sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
         assert tcp_nodelay_setting > 0, ("Expected TCP_NODELAY to be set on the "
@@ -204,8 +206,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout, retries=False)
 
         conn = pool._get_conn()
+        conn = pool._make_connect(conn, 'GET', url)
         self.assertRaises(ReadTimeoutError, pool._make_request,
-                          conn, 'GET', url)
+                          conn, 'GET', url, timeout)
         pool._put_conn(conn)
 
         time.sleep(0.02) # Wait for server to start receiving again. :(
@@ -216,6 +219,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, timeout=0.1, retries=False)
 
         conn = pool._get_conn()
+        conn = pool._make_connect(conn, 'GET', url, timeout=timeout)
         self.assertRaises(ReadTimeoutError, pool._make_request,
                           conn, 'GET', url, timeout=timeout)
         pool._put_conn(conn)
@@ -230,6 +234,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertRaises(ReadTimeoutError, pool.request,
                           'GET', url, timeout=0.001)
         conn = pool._new_conn()
+        conn = pool._make_connect(conn, 'GET', url)
         self.assertRaises(ReadTimeoutError, pool._make_request, conn,
                           'GET', url, timeout=0.001)
         pool._put_conn(conn)
@@ -247,7 +252,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # Pool-global timeout
         pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)
         conn = pool._get_conn()
-        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', url)
+        self.assertRaises(ConnectTimeoutError, pool._make_connect, conn, 'GET', url)
 
         # Retries
         retries = Retry(connect=0)
@@ -259,7 +264,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(TARPIT_HOST, self.port,
                                   timeout=big_timeout, retries=False)
         conn = pool._get_conn()
-        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET',
+        self.assertRaises(ConnectTimeoutError, pool._make_connect, conn, 'GET',
                           url, timeout=timeout)
 
         pool._put_conn(conn)
@@ -285,6 +290,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
         conn = pool._get_conn()
         try:
+            conn = pool._make_connect(conn, 'GET', url)
             pool._make_request(conn, 'GET', url)
         except ReadTimeoutError:
             self.fail("This request shouldn't trigger a read timeout.")
@@ -297,19 +303,21 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         timeout = Timeout(connect=3, read=5, total=0.001)
         pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)
         conn = pool._get_conn()
-        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', url)
+        self.assertRaises(ConnectTimeoutError, pool._make_connect, conn, 'GET', url)
 
         # This will get the socket to raise an EAGAIN on the read
         timeout = Timeout(connect=3, read=0)
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
         conn = pool._get_conn()
+        pool._make_connect(conn, 'GET', url)
         self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', url)
 
         # The connect should succeed and this should hit the read timeout
         timeout = Timeout(connect=3, read=5, total=0.002)
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
         conn = pool._get_conn()
-        self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', url)
+        conn = pool._make_connect(conn, 'GET', url, timeout=timeout)
+        self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', url, timeout)
 
     @requires_network
     def test_none_total_applies_connect(self):
@@ -317,7 +325,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         timeout = Timeout(total=None, connect=0.001)
         pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)
         conn = pool._get_conn()
-        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET',
+        self.assertRaises(ConnectTimeoutError, pool._make_connect, conn, 'GET',
                           url)
 
     def test_timeout_success(self):
@@ -346,7 +354,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             conn._set_tunnel(self.host, self.port)
 
         conn._tunnel = mock.Mock(return_value=None)
-        pool._make_request(conn, 'GET', '/')
+        pool._make_connect(conn, 'GET', '/')
         conn._tunnel.assert_called_once_with()
 
         # test that it's not called when tunnel is not set
@@ -355,7 +363,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         conn = pool._get_conn()
 
         conn._tunnel = mock.Mock(return_value=None)
-        pool._make_request(conn, 'GET', '/')
+        pool._make_connect(conn, 'GET', '/')
         self.assertEqual(conn._tunnel.called, False)
 
     def test_redirect(self):
@@ -370,9 +378,18 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool('badhost.invalid', self.port)
         try:
             pool.request('GET', '/', retries=5)
-            self.fail("should raise timeout exception here")
+            self.fail("should raise connect exception here")
         except MaxRetryError as e:
-            self.assertTrue(isinstance(e.reason, ProtocolError), e.reason)
+            self.assertTrue(isinstance(e.reason, SocketConnectError), e.reason)
+
+    def test_bad_connect_object(self):
+        pool = HTTPConnectionPool('badhost.invalid', self.port)
+        try:
+            r = Retry(connect=3, read=0)
+            pool.request('GET', '/', retries=r)
+            self.fail("should raise connect exception here")
+        except MaxRetryError as e:
+            self.assertTrue(isinstance(e.reason, SocketConnectError), e.reason)
 
     def test_keepalive(self):
         pool = HTTPConnectionPool(self.host, self.port, block=True, maxsize=1)
@@ -556,7 +573,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(pool.num_connections, 1)
 
     def test_for_double_release(self):
-        MAXSIZE=5
+        MAXSIZE = 5
 
         # Check default state
         pool = HTTPConnectionPool(self.host, self.port, maxsize=MAXSIZE)
