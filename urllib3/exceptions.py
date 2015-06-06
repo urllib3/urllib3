@@ -180,16 +180,6 @@ class ProxySchemeUnknown(AssertionError, ValueError):
 
 class HeaderParsingErrors(HTTPError):
     def __init__(self, defects, unparsed_data):
-        super(HeaderParsingErrors, self).__init__(defects, unparsed_data)
-
-    def __str__(self):
-        return '%s, unparsed data: %r' % (
-                    self.defects or 'Unknown', self.unparsed_data)
-
-    @property
-    def defects(self):
-        return self.args[0]
-
-    @property
-    def unparsed_data(self):
-        return self.args[1]
+        message = '%s, unparsed data: %r' % (
+                defects or 'Unknown', unparsed_data)
+        super(HeaderParsingErrors, self).__init__(message)
