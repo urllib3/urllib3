@@ -226,6 +226,45 @@ class TestConnectionPool(unittest.TestCase):
 
         self.assertRaises(Empty, old_pool_queue.get, block=False)
 
+    def test_connection_recycling(self):
+        '''
+        Test that connections are recycled to the pool on 
+        connection/readtimeout errors where no http response 
+        is received.
+        '''
+        poolsize = 2
+        with HTTPConnectionPool('google.com', maxsize=poolsize, 
+                                  retries=1, block=True) as pool:
+
+            self.assertEqual(pool.pool.qsize(), poolsize)
+
+            # set a silly read timeout to force timeout exception. 
+            # We won't get a response for this and so the conn won't 
+            # be implicitly returned to the pool.
+            pool.timeout._read = 0
+            self.assertRaises(MaxRetryError, pool.urlopen, 'GET', 
+                              'http://google.com',
+                              release_conn=False)
+
+            # the pool should still contain poolsize elements
+            self.assertEqual(pool.pool.qsize(), poolsize)
+
+        with HTTPConnectionPool('localhost', maxsize=poolsize, 
+                                  retries=1, block=True) as pool:
+
+            self.assertEqual(pool.pool.qsize(), poolsize)
+
+            # force a connection error by supplying a 
+            # non-existent url. We won't get a response for this 
+            # and so the conn won't be implicitly returned to 
+            # the pool.
+            self.assertRaises(MaxRetryError, pool.urlopen, 'GET', 
+                              'localhost/nosuchurl',
+                              release_conn=False)
+
+            # the pool should still contain poolsize elements
+            self.assertEqual(pool.pool.qsize(), poolsize)
+
 
 if __name__ == '__main__':
     unittest.main()
