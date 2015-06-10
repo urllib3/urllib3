@@ -134,12 +134,14 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001, retries=False)
+        http = HTTPConnectionPool(self.host, self.port, timeout=0.001, retries=False, maxsize=3, block=True)
 
         try:
-            self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/')
+            self.assertRaises(ReadTimeoutError, http.request, 'GET', '/', release_conn=False)
         finally:
             timed_out.set()
+
+        self.assertEqual(http.pool.qsize(), http.pool.maxsize)
 
     def test_https_connection_read_timeout(self):
         """ Handshake timeouts should fail with a Timeout"""
