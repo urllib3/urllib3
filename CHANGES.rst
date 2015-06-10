@@ -12,6 +12,9 @@ dev (master)
   ``ValueError`` instead of ``AssertionError`` (backwards
   compatible for now, but please migrate). (Issue #640)
 
+* Fix pools not getting replenished when an error occurs during a
+  request using ``release_conn=False``. (Issue #644)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
