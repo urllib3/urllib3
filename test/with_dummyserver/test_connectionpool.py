@@ -647,6 +647,27 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         self.assertEqual(b'123' * 4, response.read())
 
+    def test_cleanup_on_connection_error(self):
+        '''
+        Test that connections are recycled to the pool on 
+        connection errors where no http response is received.
+        '''
+        poolsize = 3
+        with HTTPConnectionPool(self.host, self.port, maxsize=poolsize, block=True) as http:
+            self.assertEqual(http.pool.qsize(), poolsize)
+
+            # force a connection error by supplying a non-existent 
+            # url. We won't get a response for this  and so the 
+            # conn won't be implicitly returned to the pool.
+            self.assertRaises(MaxRetryError,
+                http.request, 'GET', '/redirect', fields={'target': '/'}, release_conn=False, retries=0)
+
+            r = http.request('GET', '/redirect', fields={'target': '/'}, release_conn=False, retries=1)
+            r.release_conn()
+
+            # the pool should still contain poolsize elements
+            self.assertEqual(http.pool.qsize(), http.pool.maxsize)
+
 
 class TestRetry(HTTPDummyServerTestCase):
     def setUp(self):

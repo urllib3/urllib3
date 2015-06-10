@@ -119,8 +119,9 @@ class TestSocketClosing(SocketDummyServerTestCase):
     def test_connection_refused(self):
         # Does the pool retry if there is no listener on the port?
         host, port = get_unreachable_address()
-        pool = HTTPConnectionPool(host, port)
-        self.assertRaises(MaxRetryError, pool.request, 'GET', '/', retries=0)
+        http = HTTPConnectionPool(host, port, maxsize=3, block=True)
+        self.assertRaises(MaxRetryError, http.request, 'GET', '/', retries=0, release_conn=False)
+        self.assertEqual(http.pool.qsize(), http.pool.maxsize)
 
     def test_connection_read_timeout(self):
         timed_out = Event()
@@ -133,12 +134,14 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001, retries=False)
+        http = HTTPConnectionPool(self.host, self.port, timeout=0.001, retries=False, maxsize=3, block=True)
 
         try:
-            self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/')
+            self.assertRaises(ReadTimeoutError, http.request, 'GET', '/', release_conn=False)
         finally:
             timed_out.set()
+
+        self.assertEqual(http.pool.qsize(), http.pool.maxsize)
 
     def test_https_connection_read_timeout(self):
         """ Handshake timeouts should fail with a Timeout"""

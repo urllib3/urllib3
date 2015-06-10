@@ -217,13 +217,10 @@ class TestConnectionPool(unittest.TestCase):
             old_pool_queue = pool.pool
 
         self.assertEqual(pool.pool, None)
-
         self.assertRaises(ClosedPoolError, pool._get_conn)
 
         pool._put_conn(conn3)
-
         self.assertRaises(ClosedPoolError, pool._get_conn)
-
         self.assertRaises(Empty, old_pool_queue.get, block=False)
 
 
