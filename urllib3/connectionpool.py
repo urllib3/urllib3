@@ -275,24 +275,24 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if conn:
             conn.close()
 
-    def _cleanup_conn(self, conn,  release_conn):
+    def _cleanup_conn(self, conn, replace_conn=False):
         """
-        Close the connection and return it to the pool if requested. 
-        Returns ``None``.
+        Close an invalidated connection and keep the pool replenished if
+        requested. Returns ``None``.
 
         :param conn:
             Connection object for the current host and port as returned by
             :meth:`._new_conn` or :meth:`._get_conn`.
        
-        :param  release_conn:
+        :param replace_conn:
             If ``True`` replenish the pool with a ``None`` which will be 
             recycled as a new connection. If ``False`` the connection
             should be returned to the pool by the caller.
         """
         if conn:
             conn.close()
-
-            if release_conn:
+            
+            if replace_conn:
                 self._put_conn(None)
 
         return None
@@ -431,7 +431,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # TODO: Add optional support for socket.gethostbyname checking.
         scheme, host, port = get_host(url)
-        
+ 
         # Use explicit default port for comparison when none is given
         if self.port and not port:
             port = port_by_scheme.get(scheme)
@@ -590,19 +590,19 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Close the connection. If a connection is reused on which there
             # was a Certificate error, the next request will certainly raise
             # another Certificate error.
-            conn = self._cleanup_conn(conn, not release_conn)
+            conn = self._cleanup_conn(conn, replace_conn=not release_conn)
             raise SSLError(e)
 
         except SSLError:
             # Treat SSLError separately from BaseSSLError to preserve
             # traceback.
-            conn = self._cleanup_conn(conn, not release_conn)
+            conn = self._cleanup_conn(conn, replace_conn=not release_conn)
             raise
 
         except (TimeoutError, HTTPException, SocketError, ConnectionError) as e:
             # Discard the connection for these exceptions. It will be
             # be replaced during the next _get_conn() call.            
-            conn = self._cleanup_conn(conn, not release_conn)
+            conn = self._cleanup_conn(conn, replace_conn=not release_conn)
 
             if isinstance(e, SocketError) and self.proxy:
                 e = ProxyError('Cannot connect to proxy.', e)
