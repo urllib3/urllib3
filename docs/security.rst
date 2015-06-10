@@ -126,7 +126,7 @@ are several limitations which are addressed by PyOpenSSL:
 To use the Python OpenSSL bindings instead, you'll need to install the required
 packages::
 
-    $ pip install pyopenssl ndg-httpsclient pyasn1
+    $ pip install pyopenssl ndg-httpsclient pyasn1 cryptography
 
 Once the packages are installed, you can tell urllib3 to switch the ssl backend
 to PyOpenSSL with :func:`~urllib3.contrib.pyopenssl.inject_into_urllib3`::
