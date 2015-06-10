@@ -17,8 +17,6 @@ from urllib3.exceptions import (
     SSLError,
 )
 
-from dummyserver.testcase import HTTPDummyServerTestCase
-
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 
@@ -227,56 +225,6 @@ class TestConnectionPool(unittest.TestCase):
         self.assertRaises(ClosedPoolError, pool._get_conn)
 
         self.assertRaises(Empty, old_pool_queue.get, block=False)
-
-
-class TestConnectionPoolConnectionCleanup(HTTPDummyServerTestCase):
-    '''
-    Tests in this suite are concerned with managing the pool
-    connections, specifically in the event of errors where
-    connection recycling must be handled internally.
-    '''
-    def test_cleanup_on_connection_error(self):
-        '''
-        Test that connections are recycled to the pool on 
-        connection errors where no http response is received.
-        '''
-        poolsize = 2
-        with HTTPConnectionPool('localhost', maxsize=poolsize, 
-                                  retries=1, block=True) as pool:
-
-            self.assertEqual(pool.pool.qsize(), poolsize)
-
-            # force a connection error by supplying a non-existent 
-            # url. We won't get a response for this  and so the 
-            # conn won't be implicitly returned to the pool.
-            self.assertRaises(MaxRetryError, pool.urlopen, 'GET', 
-                              'localhost/nosuchurl',
-                              release_conn=False)
-
-            # the pool should still contain poolsize elements
-            self.assertEqual(pool.pool.qsize(), poolsize)
-
-    def test_cleanup_on_read_timeout(self):
-        '''
-        Test that connections are recycled to the pool on 
-        connection errors where no http response is received.
-        '''
-        poolsize = 2
-        with HTTPConnectionPool('localhost', maxsize=poolsize, 
-                                  retries=1, block=True) as pool:
-
-            self.assertEqual(pool.pool.qsize(), poolsize)
-
-            # set a silly read timeout to force timeout exception.
-            # We won't get a response for this and so the conn won't
-            # be implicitly returned to the pool.
-            pool.timeout._read = 0
-            self.assertRaises(MaxRetryError, pool.urlopen, 'GET', 
-                              'localhost',
-                              release_conn=False)
-
-            # the pool should still contain poolsize elements
-            self.assertEqual(pool.pool.qsize(), poolsize)
 
 
 if __name__ == '__main__':

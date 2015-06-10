@@ -120,7 +120,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     :param maxsize:
         Number of connections to save that can be reused. More than 1 is useful
-        in multithreaded situations. If ``block`` is set to false, more
+        in multithreaded situations. If ``block`` is set to False, more
         connections will be created but they will not be saved once they've
         been used.
 
@@ -274,28 +274,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Connection never got put back into the pool, close it.
         if conn:
             conn.close()
-
-    def _cleanup_conn(self, conn, replace_conn=False):
-        """
-        Close an invalidated connection and keep the pool replenished if
-        requested. Returns ``None``.
-
-        :param conn:
-            Connection object for the current host and port as returned by
-            :meth:`._new_conn` or :meth:`._get_conn`.
-       
-        :param replace_conn:
-            If ``True`` replenish the pool with a ``None`` which will be 
-            recycled as a new connection. If ``False`` the connection
-            should be returned to the pool by the caller.
-        """
-        if conn:
-            conn.close()
-            
-            if replace_conn:
-                self._put_conn(None)
-
-        return None
 
     def _validate_conn(self, conn):
         """
@@ -590,19 +568,22 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Close the connection. If a connection is reused on which there
             # was a Certificate error, the next request will certainly raise
             # another Certificate error.
-            conn = self._cleanup_conn(conn, replace_conn=not release_conn)
+            conn = conn and conn.close()
+            release_conn = True
             raise SSLError(e)
 
         except SSLError:
             # Treat SSLError separately from BaseSSLError to preserve
             # traceback.
-            conn = self._cleanup_conn(conn, replace_conn=not release_conn)
+            conn = conn and conn.close()
+            release_conn = True
             raise
 
         except (TimeoutError, HTTPException, SocketError, ConnectionError) as e:
             # Discard the connection for these exceptions. It will be
-            # be replaced during the next _get_conn() call.            
-            conn = self._cleanup_conn(conn, replace_conn=not release_conn)
+            # be replaced during the next _get_conn() call.
+            conn = conn and conn.close()
+            release_conn = True
 
             if isinstance(e, SocketError) and self.proxy:
                 e = ProxyError('Cannot connect to proxy.', e)
@@ -642,6 +623,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 retries = retries.increment(method, url, response=response, _pool=self)
             except MaxRetryError:
                 if retries.raise_on_redirect:
+                    # Release the connection for this response, since we're not
+                    # returning it to be released manually.
+                    response.release_conn()
                     raise
                 return response
 
