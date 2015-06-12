@@ -319,6 +319,7 @@ class HTTPResponse(io.IOBase):
         with ``original_response=r``.
         """
         headers = r.msg
+
         if not isinstance(headers, HTTPHeaderDict):
             if PY3: # Python 3
                 headers = HTTPHeaderDict(headers.items())

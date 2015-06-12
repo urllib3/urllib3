@@ -10,6 +10,7 @@ from urllib3.exceptions import (
         SSLError,
         ProtocolError,
 )
+from urllib3.response import httplib
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util.timeout import Timeout
 from urllib3.util.retry import Retry
@@ -18,9 +19,14 @@ from dummyserver.testcase import SocketDummyServerTestCase
 from dummyserver.server import (
     DEFAULT_CERTS, DEFAULT_CA, get_unreachable_address)
 
-from .. import onlyPy3
+from .. import onlyPy3, LogRecorder
 
 from nose.plugins.skip import SkipTest
+try:
+    from mimetools import Message as MimeToolMessage
+except ImportError:
+    class MimeToolMessage(object):
+        pass
 from threading import Event
 import socket
 import ssl
@@ -619,6 +625,52 @@ class TestHeaders(SocketDummyServerTestCase):
         HEADERS = {'Content-Length': '0', 'Content-type': 'text/plain'}
         r = pool.request('GET', '/')
         self.assertEqual(HEADERS, dict(r.headers.items())) # to preserve case sensitivity
+
+
+class TestBrokenHeaders(SocketDummyServerTestCase):
+    def setUp(self):
+        if issubclass(httplib.HTTPMessage, MimeToolMessage):
+            raise SkipTest('Header parsing errors not available')
+
+        super(TestBrokenHeaders, self).setUp()
+
+    def _test_broken_header_parsing(self, headers):
+        handler = create_response_handler((
+           b'HTTP/1.1 200 OK\r\n'
+           b'Content-Length: 0\r\n'
+           b'Content-type: text/plain\r\n'
+           ) + b'\r\n'.join(headers) + b'\r\n'
+        )
+
+        self._start_server(handler)
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+
+        with LogRecorder() as logs:
+            pool.request('GET', '/')
+
+        for record in logs:
+            if 'Failed to parse headers' in record.msg and \
+                    pool._absolute_url('/') == record.args[0]:
+                return
+        self.fail('Missing log about unparsed headers')
+
+    def test_header_without_name(self):
+        self._test_broken_header_parsing([
+            b': Value\r\n',
+            b'Another: Header\r\n',
+        ])
+
+    def test_header_without_name_or_value(self):
+        self._test_broken_header_parsing([
+            b':\r\n',
+            b'Another: Header\r\n',
+        ])
+
+    def test_header_without_colon_or_value(self):
+        self._test_broken_header_parsing([
+            b'Broken Header',
+            b'Another: Header',
+        ])
 
 
 class TestHEAD(SocketDummyServerTestCase):

@@ -4,7 +4,7 @@ import pickle
 from urllib3.exceptions import (HTTPError, MaxRetryError, LocationParseError,
                                 ClosedPoolError, EmptyPoolError,
                                 HostChangedError, ReadTimeoutError,
-                                ConnectTimeoutError)
+                                ConnectTimeoutError, HeaderParsingError)
 from urllib3.connectionpool import HTTPConnectionPool
 
 
@@ -44,3 +44,11 @@ class TestPickle(unittest.TestCase):
 
         assert self.verify_pickling(
             ReadTimeoutError(HTTPConnectionPool('localhost'), '/', None))
+
+
+class TestFormat(unittest.TestCase):
+    def test_header_parsing_errors(self):
+        hpe = HeaderParsingError('defects', 'unparsed_data')
+
+        self.assertTrue('defects' in str(hpe))
+        self.assertTrue('unparsed_data' in str(hpe))

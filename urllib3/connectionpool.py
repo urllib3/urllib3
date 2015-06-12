@@ -17,6 +17,7 @@ from .exceptions import (
     ClosedPoolError,
     ProtocolError,
     EmptyPoolError,
+    HeaderParsingError,
     HostChangedError,
     LocationValueError,
     MaxRetryError,
@@ -38,9 +39,10 @@ from .request import RequestMethods
 from .response import HTTPResponse
 
 from .util.connection import is_connection_dropped
+from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.timeout import Timeout
-from .util.url import get_host
+from .util.url import get_host, Url
 
 
 xrange = six.moves.xrange
@@ -381,7 +383,18 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         log.debug("\"%s %s %s\" %s %s" % (method, url, http_version,
                                           httplib_response.status,
                                           httplib_response.length))
+
+        try:
+            assert_header_parsing(httplib_response.msg)
+        except HeaderParsingError as hpe:  # Platform-specific: Python 3
+            log.warning(
+                'Failed to parse headers (url=%s): %s',
+                self._absolute_url(url), hpe, exc_info=True)
+
         return httplib_response
+
+    def _absolute_url(self, path):
+        return Url(scheme=self.scheme, host=self.host, port=self.port, path=path).url
 
     def close(self):
         """
