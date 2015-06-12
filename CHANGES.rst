@@ -15,6 +15,9 @@ dev (master)
 * Fix pools not getting replenished when an error occurs during a
   request using ``release_conn=False``. (Issue #644)
 
+* log.warning in Python 3 when headers are skipped due to parsing
+  errors. (Issue #642)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
