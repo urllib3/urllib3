@@ -178,8 +178,8 @@ class ProxySchemeUnknown(AssertionError, ValueError):
         super(ProxySchemeUnknown, self).__init__(message)
 
 
-class HeaderParsingErrors(HTTPError):
+class HeaderParsingError(HTTPError):
+    "Raised by assert_header_parsing, but we convert it to a log.warning statement."
     def __init__(self, defects, unparsed_data):
-        message = '%s, unparsed data: %r' % (
-                defects or 'Unknown', unparsed_data)
-        super(HeaderParsingErrors, self).__init__(message)
+        message = '%s, unparsed data: %r' % (defects or 'Unknown', unparsed_data)
+        super(HeaderParsingError, self).__init__(message)

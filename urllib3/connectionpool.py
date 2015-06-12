@@ -17,7 +17,7 @@ from .exceptions import (
     ClosedPoolError,
     ProtocolError,
     EmptyPoolError,
-    HeaderParsingErrors,
+    HeaderParsingError,
     HostChangedError,
     LocationValueError,
     MaxRetryError,
@@ -386,7 +386,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         try:
             assert_header_parsing(httplib_response.msg)
-        except HeaderParsingErrors as hpe:  # Platform-specific: Python 3
+        except HeaderParsingError as hpe:  # Platform-specific: Python 3
             log.warning(
                 'Failed to parse headers (url=%s): %s',
                 self._absolute_url(url), hpe, exc_info=True)

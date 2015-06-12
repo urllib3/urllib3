@@ -3,7 +3,7 @@ try:
 except ImportError:
     import httplib
 
-from ..exceptions import HeaderParsingErrors
+from ..exceptions import HeaderParsingError
 
 
 def is_fp_closed(obj):
@@ -40,7 +40,7 @@ def assert_header_parsing(headers):
     :param headers: Headers to verify.
     :type headers: `httplib.HTTPMessage`.
 
-    :raises urllib3.exceptions.HeaderParsingErrors:
+    :raises urllib3.exceptions.HeaderParsingError:
         If parsing errors are found.
     """
 
@@ -58,4 +58,4 @@ def assert_header_parsing(headers):
         unparsed_data = get_payload()
 
     if defects or unparsed_data:
-        raise HeaderParsingErrors(defects=defects, unparsed_data=unparsed_data)
+        raise HeaderParsingError(defects=defects, unparsed_data=unparsed_data)

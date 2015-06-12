@@ -4,7 +4,7 @@ import pickle
 from urllib3.exceptions import (HTTPError, MaxRetryError, LocationParseError,
                                 ClosedPoolError, EmptyPoolError,
                                 HostChangedError, ReadTimeoutError,
-                                ConnectTimeoutError, HeaderParsingErrors)
+                                ConnectTimeoutError, HeaderParsingError)
 from urllib3.connectionpool import HTTPConnectionPool
 
 
@@ -48,7 +48,7 @@ class TestPickle(unittest.TestCase):
 
 class TestFormat(unittest.TestCase):
     def test_header_parsing_errors(self):
-        hpe = HeaderParsingErrors('defects', 'unparsed_data')
+        hpe = HeaderParsingError('defects', 'unparsed_data')
 
         self.assertTrue('defects' in str(hpe))
         self.assertTrue('unparsed_data' in str(hpe))
