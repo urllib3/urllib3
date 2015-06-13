@@ -419,6 +419,11 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
         self._pool.ca_certs = DEFAULT_CA
         self._pool.request('GET', '/')
 
+    def test_set_cert_default_cert_required(self):
+        conn = VerifiedHTTPSConnection(self.host, self.port)
+        conn.set_cert(ca_certs='/etc/ssl/certs/custom.pem')
+        self.assertEqual(conn.cert_reqs, 'CERT_REQUIRED')
+
 
 class TestHTTPS_NoSAN(HTTPSDummyServerTestCase):
     certs = NO_SAN_CERTS

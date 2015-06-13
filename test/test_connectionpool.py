@@ -229,6 +229,11 @@ class TestConnectionPool(unittest.TestCase):
                 'http://google.com:80/path?query=foo',
                 c._absolute_url('path?query=foo'))
 
+    def test_ca_certs_default_cert_required(self):
+        with connection_from_url('https://google.com:80', ca_certs='/etc/ssl/certs/custom.pem') as pool:
+            conn = pool._get_conn()
+            self.assertEqual(conn.cert_reqs, 'CERT_REQUIRED')
+
 
 if __name__ == '__main__':
     unittest.main()
