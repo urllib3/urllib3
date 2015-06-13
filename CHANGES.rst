@@ -4,6 +4,9 @@ Changes
 dev (master)
 ++++++++++++
 
+* When ``ca_certs`` is given, ``cert_reqs`` defaults to
+  'CERT_REQUIRED'. (Issue #650)
+
 * Fix performance regression when using PyOpenSSL. (Issue #626)
 
 * Dev: Added test suite for AppEngine. (Issue #631)
