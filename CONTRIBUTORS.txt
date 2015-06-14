@@ -153,6 +153,9 @@ In chronological order:
 
 * Jon Wayne Parrott <jonwayne@google.com>
   * App Engine environment tests.
+  
+* John Krauss <https://github.com/talos>
+  * Clues to debugging problems with `cryptography` dependency in docs
 
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
