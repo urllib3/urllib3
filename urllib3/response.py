@@ -12,7 +12,7 @@ from .exceptions import (
 )
 from .packages.six import string_types as basestring, binary_type, PY3
 from .connection import HTTPException, BaseSSLError
-from .util.response import is_fp_closed
+from .util.response import is_fp_closed, is_response_to_head
 
 
 class DeflateDecoder(object):
@@ -438,9 +438,8 @@ class HTTPResponse(io.IOBase):
             raise ResponseNotChunked("Response is not chunked. "
                 "Header 'transfer-encoding: chunked' is missing.")
 
-        if self._original_response and self._original_response._method.upper() == 'HEAD':
-            # Don't bother reading the body of a HEAD request.
-            # FIXME: Can we do this somehow without accessing private httplib _method?
+        # Don't bother reading the body of a HEAD request.
+        if self._original_response and is_response_to_head(self._original_response):
             self._original_response.close()
             return
 
