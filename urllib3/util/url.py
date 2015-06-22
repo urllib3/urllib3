@@ -177,6 +177,7 @@ def parse_url(url):
     # Port
     if ':' in url:
         _host, port = url.split(':', 1)
+	port = port.rstrip() # Drop any trailing whitespace
 
         if not host:
             host = _host
