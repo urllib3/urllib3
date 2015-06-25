@@ -152,7 +152,7 @@ class PoolManager(RequestMethods):
 
         kw['assert_same_host'] = False
         kw['redirect'] = False
-        if 'headers' not in kw or kw['headers'] == None:
+        if 'headers' not in kw:
             kw['headers'] = self.headers
 
         if self.proxy is not None and u.scheme == "http":
