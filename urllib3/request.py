@@ -71,17 +71,22 @@ class RequestMethods(object):
                                             headers=headers,
                                             **urlopen_kw)
 
-    def request_encode_url(self, method, url, fields=None, **urlopen_kw):
+    def request_encode_url(self, method, url, fields=None, headers=None,
+                           **urlopen_kw):
         """
         Make a request using :meth:`urlopen` with the ``fields`` encoded in
         the url. This is useful for request methods like GET, HEAD, DELETE, etc.
         """
-        if 'headers' not in urlopen_kw or urlopen_kw['headers'] is None:
-            urlopen_kw['headers'] = self.headers
+        if headers is None:
+            headers = self.headers
+
+        extra_kw = {'headers': headers}
+        extra_kw.update(urlopen_kw)
 
         if fields:
             url += '?' + urlencode(fields)
-        return self.urlopen(method, url, **urlopen_kw)
+
+        return self.urlopen(method, url, **extra_kw)
 
     def request_encode_body(self, method, url, fields=None, headers=None,
                             encode_multipart=True, multipart_boundary=None,
