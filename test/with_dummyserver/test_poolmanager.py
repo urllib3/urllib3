@@ -130,6 +130,14 @@ class TestPoolManager(HTTPDummyServerTestCase):
     def test_headers(self):
         http = PoolManager(headers={'Foo': 'bar'})
 
+        r = http.request('GET', '%s/headers' % self.base_url)
+        returned_headers = json.loads(r.data.decode())
+        self.assertEqual(returned_headers.get('Foo'), 'bar')
+
+        r = http.request('POST', '%s/headers' % self.base_url)
+        returned_headers = json.loads(r.data.decode())
+        self.assertEqual(returned_headers.get('Foo'), 'bar')
+        
         r = http.request_encode_url('GET', '%s/headers' % self.base_url)
         returned_headers = json.loads(r.data.decode())
         self.assertEqual(returned_headers.get('Foo'), 'bar')
