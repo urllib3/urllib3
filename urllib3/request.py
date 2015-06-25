@@ -76,6 +76,9 @@ class RequestMethods(object):
         Make a request using :meth:`urlopen` with the ``fields`` encoded in
         the url. This is useful for request methods like GET, HEAD, DELETE, etc.
         """
+        if 'headers' not in urlopen_kw or urlopen_kw['headers'] is None:
+            urlopen_kw['headers'] = self.headers
+
         if fields:
             url += '?' + urlencode(fields)
         return self.urlopen(method, url, **urlopen_kw)
