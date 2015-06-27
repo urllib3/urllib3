@@ -297,6 +297,64 @@ class TestSocketClosing(SocketDummyServerTestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(response.data, b'foo')
 
+    def test_connection_cleanup_on_read_timeout(self):
+        timed_out = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            buf = b''
+            body = 'Hi'
+            while not buf.endswith(b'\r\n\r\n'):
+                buf = sock.recv(65536)
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n' % len(body)).encode('utf-8'))
+
+            timed_out.wait()
+            sock.send(body.encode('utf-8'))
+            sock.close()
+
+        self._start_server(socket_handler)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            poolsize = pool.pool.qsize()
+            response = pool.urlopen('GET', '/', retries=0, preload_content=False,
+                                    timeout=Timeout(connect=1, read=0.001))
+            try:
+                self.assertRaises(ReadTimeoutError, response.read)
+                self.assertEqual(poolsize, pool.pool.qsize())
+            finally:
+                timed_out.set()
+
+    def test_connection_cleanup_on_protocol_error_during_read(self):
+        body = 'Response'
+        partial_body = body[:2]
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            # Consume request
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf = sock.recv(65536)
+
+            # Send partial response and close socket.
+            sock.send((
+                'HTTP/1.1 200 OK\r\n'
+                'Content-Type: text/plain\r\n'
+                'Content-Length: %d\r\n'
+                '\r\n'
+                '%s' % (len(body), partial_body)).encode('utf-8')
+            )
+            sock.close()
+
+        self._start_server(socket_handler)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            poolsize = pool.pool.qsize()
+            response = pool.request('GET', '/', retries=0, preload_content=False)
+
+            self.assertRaises(ProtocolError, response.read)
+            self.assertEqual(poolsize, pool.pool.qsize())
 
 
 class TestProxyManager(SocketDummyServerTestCase):
