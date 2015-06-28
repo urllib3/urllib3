@@ -312,7 +312,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
                        '\r\n' % len(body)).encode('utf-8'))
 
             timed_out.wait()
-            sock.send(body.encode('utf-8'))
             sock.close()
 
         self._start_server(socket_handler)
