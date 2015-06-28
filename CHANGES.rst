@@ -23,6 +23,9 @@ dev (master)
 
 * log.warning in Python 3 when headers are skipped due to parsing
   errors. (Issue #642)
+  
+* Close and discard connections if an error occurs during read.
+  (Issue #660)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
