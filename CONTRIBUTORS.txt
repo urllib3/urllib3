@@ -155,7 +155,7 @@ In chronological order:
   * App Engine environment tests.
 
 * James Atherfold <jlatherfold@hotmail.com>
-  * Bugfixes.
+  * Bugfixes relating to cleanup of connections during errors.
 
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
