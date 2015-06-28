@@ -234,57 +234,49 @@ class HTTPResponse(io.IOBase):
         data = None
 
         try:
-            if amt is None:
-                # cStringIO doesn't like amt=None
-                data = self._fp.read()
-                flush_decoder = True
-            else:
-                cache_content = False
-                data = self._fp.read(amt)
-                if amt != 0 and not data:  # Platform-specific: Buggy versions of Python.
-                    # Close the connection when no data is returned
-                    #
-                    # This is redundant to what httplib/http.client _should_
-                    # already do.  However, versions of python released before
-                    # December 15, 2012 (http://bugs.python.org/issue16298) do
-                    # not properly close the connection in all cases. There is
-                    # no harm in redundantly calling close.
-                    self._fp.close()
+            try:
+                if amt is None:
+                    # cStringIO doesn't like amt=None
+                    data = self._fp.read()
                     flush_decoder = True
+                else:
+                    cache_content = False
+                    data = self._fp.read(amt)
+                    if amt != 0 and not data:  # Platform-specific: Buggy versions of Python.
+                        # Close the connection when no data is returned
+                        #
+                        # This is redundant to what httplib/http.client _should_
+                        # already do.  However, versions of python released before
+                        # December 15, 2012 (http://bugs.python.org/issue16298) do
+                        # not properly close the connection in all cases. There is
+                        # no harm in redundantly calling close.
+                        self._fp.close()
+                        flush_decoder = True
 
-        except SocketTimeout:
-            # the response may not be closed but we're not going to use it anymore
-            # so close it now to ensure that the connection is released back to the pool
+            except SocketTimeout:
+                # FIXME: Ideally we'd like to include the url in the ReadTimeoutError but
+                # there is yet no clean way to get at it from this context.
+                raise ReadTimeoutError(self._pool, None, 'Read timed out.')
+
+            except BaseSSLError as e:
+                # FIXME: Is there a better way to differentiate between SSLErrors?
+                if 'read operation timed out' not in str(e):  # Defensive:
+                    # This shouldn't happen but just in case we're missing an edge
+                    # case, let's avoid swallowing SSL errors.
+                    raise
+
+                raise ReadTimeoutError(self._pool, None, 'Read timed out.')
+
+            except HTTPException as e:
+                # This includes IncompleteRead.
+                raise ProtocolError('Connection broken: %r' % e, e)
+        except Exception:
+            # The response may not be closed but we're not going to use it anymore
+            # so close it now to ensure that the connection is released back to the pool.
             if self._original_response and not self._original_response.isclosed():
                 self._original_response.close()
 
-            # FIXME: Ideally we'd like to include the url in the ReadTimeoutError but
-            # there is yet no clean way to get at it from this context.
-            raise ReadTimeoutError(self._pool, None, 'Read timed out.')
-
-        except BaseSSLError as e:
-            # the response may not be closed but we're not going to use it anymore
-            # so close it now to ensure that the connection is released back to the pool
-            if self._original_response and not self._original_response.isclosed():
-                self._original_response.close()
-
-            # FIXME: Is there a better way to differentiate between SSLErrors?
-            if 'read operation timed out' not in str(e):  # Defensive:
-                # This shouldn't happen but just in case we're missing an edge
-                # case, let's avoid swallowing SSL errors.
-                raise
-
-            raise ReadTimeoutError(self._pool, None, 'Read timed out.')
-
-        except HTTPException as e:
-            # the response may not be closed but we're not going to use it anymore
-            # so close it now to ensure that the connection is released back to the pool
-            if self._original_response and not self._original_response.isclosed():
-                self._original_response.close()
-
-            # This includes IncompleteRead.
-            raise ProtocolError('Connection broken: %r' % e, e)
-
+            raise
         finally:
             if self._original_response and self._original_response.isclosed():
                 self.release_conn()
