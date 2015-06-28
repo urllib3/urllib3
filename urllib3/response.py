@@ -231,6 +231,7 @@ class HTTPResponse(io.IOBase):
             return
 
         flush_decoder = False
+        data = None
 
         try:
             try:
@@ -269,7 +270,18 @@ class HTTPResponse(io.IOBase):
             except HTTPException as e:
                 # This includes IncompleteRead.
                 raise ProtocolError('Connection broken: %r' % e, e)
+        except Exception:
+            # The response may not be closed but we're not going to use it anymore
+            # so close it now to ensure that the connection is released back to the pool.
+            if self._original_response and not self._original_response.isclosed():
+                self._original_response.close()
 
+            raise
+        finally:
+            if self._original_response and self._original_response.isclosed():
+                self.release_conn()
+
+        if data:
             self._fp_bytes_read += len(data)
 
             data = self._decode(data, decode_content, flush_decoder)
@@ -277,11 +289,8 @@ class HTTPResponse(io.IOBase):
             if cache_content:
                 self._body = data
 
-            return data
+        return data
 
-        finally:
-            if self._original_response and self._original_response.isclosed():
-                self.release_conn()
 
     def stream(self, amt=2**16, decode_content=None):
         """
