@@ -9,9 +9,9 @@ urllib3 Documentation
    managers
    security
    helpers
+   exceptions
    collections
    contrib
-   security
 
 
 Highlights
@@ -319,10 +319,8 @@ To aid the limited functionality of the :mod:`httplib` module, :mod:`urllib3`
 provides various helper methods which are used with the higher level components
 but can also be used independently.
 
-.. toctree::
-
-   helpers
-   exceptions
+* :ref:`helpers`
+* :ref:`exceptions`
 
 
 Contrib Modules
@@ -331,9 +329,7 @@ Contrib Modules
 These modules implement various extra features, that may not be ready for
 prime time.
 
-.. toctree::
-
-   contrib
+* :ref:`contrib-modules`
 
 
 Contributing
