@@ -124,7 +124,7 @@ def assert_fingerprint(cert, fingerprint):
     hashfunc = HASHFUNC_MAP.get(digest_length)
     if not hashfunc:
         raise SSLError(
-            'Fingerprint {0} is of invalid length.'.format(fingerprint))
+            'Fingerprint is of invalid length:'.format(fingerprint))
 
     # We need encode() here for py32; works on py2 and p33.
     fingerprint_bytes = unhexlify(fingerprint.encode())
