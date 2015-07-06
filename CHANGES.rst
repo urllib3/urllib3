@@ -26,6 +26,8 @@ dev (master)
   
 * Close and discard connections if an error occurs during read.
   (Issue #660)
+  
+* Fix host parsing for IPv6 proxies. (Issue #668)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
