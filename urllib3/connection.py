@@ -38,7 +38,7 @@ except NameError:  # Python 2:
 from .exceptions import (
     ConnectTimeoutError,
     SystemTimeWarning,
-    SecurityWarning,
+    SubjectAltNameWarning,
 )
 from .packages.ssl_match_hostname import match_hostname
 
@@ -248,10 +248,11 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             cert = self.sock.getpeercert()
             if not cert.get('subjectAltName', ()):
                 warnings.warn((
-                    'Certificate has no `subjectAltName`, falling back to check for a `commonName` for now. '
-                    'This feature is being removed by major browsers and deprecated by RFC 2818. '
-                    '(See https://github.com/shazow/urllib3/issues/497 for details.)'),
-                    SecurityWarning
+                    'Certificate for {0} has no `subjectAltName`, falling back to check for a '
+                    '`commonName` for now. This feature is being removed by major browsers and '
+                    'deprecated by RFC 2818. (See https://github.com/shazow/urllib3/issues/497 '
+                    'for details.)'.format(hostname)),
+                    SubjectAltNameWarning
                 )
             match_hostname(cert, self.assert_hostname or hostname)
 
