@@ -149,6 +149,11 @@ class SecurityWarning(HTTPWarning):
     pass
 
 
+class SubjectAltNameWarning(SecurityWarning):
+    "Warned when connecting to a host with a certificate missing a SAN."
+    pass
+
+
 class InsecureRequestWarning(SecurityWarning):
     "Warned when making an unverified HTTPS request."
     pass
