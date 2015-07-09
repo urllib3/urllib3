@@ -29,6 +29,9 @@ dev (master)
   
 * Fix host parsing for IPv6 proxies. (Issue #668)
 
+* Separate warning type SubjectAltNameWarning, now issued once
+  per host. (Issue #671)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
