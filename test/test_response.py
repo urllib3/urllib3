@@ -7,7 +7,7 @@ try:
 except ImportError:
     import httplib
 from urllib3.response import HTTPResponse
-from urllib3.exceptions import DecodeError, ResponseNotChunked
+from urllib3.exceptions import DecodeError, ResponseNotChunked, ProtocolError
 
 
 from base64 import b64decode
@@ -487,7 +487,7 @@ class TestResponse(unittest.TestCase):
         r.chunked = True
         r.chunk_left = None
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
-        self.assertRaises(httplib.IncompleteRead, next, resp.read_chunked())
+        self.assertRaises(ProtocolError, next, resp.read_chunked())
 
     def test_chunked_response_without_crlf_on_end(self):
         stream = [b"foo", b"bar", b"baz"]
