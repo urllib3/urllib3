@@ -31,6 +31,10 @@ dev (master)
 
 * Separate warning type SubjectAltNameWarning, now issued once
   per host. (Issue #671)
+  
+* Fix ``httplib.IncompleteRead`` not getting converted to
+  ``ProtocolError`` when using ``HTTPResponse.stream()``
+  (Issue #674)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
