@@ -204,7 +204,7 @@ class HTTPResponse(io.IOBase):
         return data
 
     @contextmanager
-    def _catch_low_level_exceptions_and_release_connection(self):
+    def _error_catcher(self):
         """
         Catch low-level python exceptions, instead re-raising urllib3
         variants, so that low-level exceptions are not leaked in the
@@ -275,7 +275,7 @@ class HTTPResponse(io.IOBase):
         flush_decoder = False
         data = None
 
-        with self._catch_low_level_exceptions_and_release_connection():
+        with self._error_catcher():
             if amt is None:
                 # cStringIO doesn't like amt=None
                 data = self._fp.read()
@@ -465,7 +465,7 @@ class HTTPResponse(io.IOBase):
             self._original_response.close()
             return
 
-        with self._catch_low_level_exceptions_and_release_connection():
+        with self._error_catcher():
             while True:
                 self._update_chunk_length()
                 if self.chunk_left == 0:
