@@ -142,6 +142,32 @@ Now you can continue using urllib3 as you normally would.
 
 For more details, check the :mod:`~urllib3.contrib.pyopenssl` module.
 
+Installing urllib3 with SNI support and certificates
+----------------------------------------------------
+
+By default, if you need to use SNI on Python 2.6 or Python 2.7.0-2.7.8, you
+have to install PyOpenSSL, ndghttpsclient, and pyasn1 separately. Further, to
+use certifi you have to install it separately. If you know that you want these
+dependencies when you install urllib3, you can now do::
+
+    pip install urllib3[secure]
+
+This will install the SNI dependencies on Python 2.6 and 2.7 (we cannot yet
+restrict the microversion for 2.7) and certifi on all versions of Python.
+
+.. note::
+
+    If you do this on linux, e.g., Ubuntu 14.04, you will need extra system
+    dependencies for PyOpenSSL. Specifically, PyOpenSSL requires cryptography
+    which will require you to install:
+
+    - build-essential
+    - python-dev
+    - libffi-dev
+    - libssl-dev
+
+    The package names may vary depending on the distribution of linux you are
+    using.
 
 .. _insecurerequestwarning:
 
