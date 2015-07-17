@@ -35,6 +35,9 @@ dev (master)
 * Fix ``httplib.IncompleteRead`` not getting converted to
   ``ProtocolError`` when using ``HTTPResponse.stream()``
   (Issue #674)
+  
+* ``pip install urllib3[secure]`` will install Certifi and
+  PyOpenSSL as dependencies. (Issue #678)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
