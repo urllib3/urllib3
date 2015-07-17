@@ -73,6 +73,10 @@ class TestingApp(RequestHandler):
         """ Handle OPTIONS requests """
         self._call_method()
 
+    def head(self):
+        """ Handle HEAD requests """
+        self._call_method()
+
     def _call_method(self):
         """ Call the correct method in this class based on the incoming URI """
         req = self.request
@@ -231,6 +235,13 @@ class TestingApp(RequestHandler):
         chunks.append(compressor.flush())
 
         return Response(chunks, headers=[('Content-Encoding', 'gzip')])
+
+    def nbytes(self, request):
+        length = int(request.params.get('length'))
+        data = b'1' * length
+        return Response(
+            data,
+            headers=[('Content-Type', 'application/octet-stream')])
 
     def shutdown(self, request):
         sys.exit()
