@@ -237,7 +237,7 @@ class TestHTTPHeaderDict(unittest.TestCase):
     def test_copy(self):
         h = self.d.copy()
         self.assertTrue(self.d is not h)
-        self.assertEqual(self.d, h)        
+        self.assertEqual(self.d, h)
 
     def test_getlist(self):
         self.assertEqual(self.d.getlist('cookie'), ['foo', 'bar'])
