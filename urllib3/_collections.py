@@ -167,10 +167,6 @@ class HTTPHeaderDict(MutableMapping):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    values = MutableMapping.values
-    get = MutableMapping.get
-    update = MutableMapping.update
-
     if not PY3: # Python 2
         iterkeys = MutableMapping.iterkeys
         itervalues = MutableMapping.itervalues
@@ -306,8 +302,6 @@ class HTTPHeaderDict(MutableMapping):
 
     def items(self):
         return list(self.iteritems())
-
-    viewitems = items
 
     @classmethod
     def from_httplib(cls, message): # Python 2

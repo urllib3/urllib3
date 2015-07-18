@@ -237,8 +237,8 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         request_headers = HTTPHeaderDict(baz='quux')
         r = http.request('GET', '%s/headers' % self.http_url, headers=request_headers)
         returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get('foo'), 'bar')
-        self.assertEqual(returned_headers.get('baz'), 'quux')
+        self.assertEqual(returned_headers.get('Foo'), 'bar')
+        self.assertEqual(returned_headers.get('Baz'), 'quux')
 
     def test_proxy_pooling(self):
         http = proxy_from_url(self.proxy_url)
