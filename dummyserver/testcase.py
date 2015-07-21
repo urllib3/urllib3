@@ -14,7 +14,6 @@ from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
 
 
-
 class SocketDummyServerTestCase(unittest.TestCase):
     """
     A simple socket-based server is created for this class that is good for
@@ -131,3 +130,16 @@ class IPv6HTTPDummyServerTestCase(HTTPDummyServerTestCase):
             raise SkipTest('IPv6 not available')
         else:
             super(IPv6HTTPDummyServerTestCase, cls).setUpClass()
+
+
+class IPv6HTTPDummyProxyTestCase(HTTPDummyProxyTestCase):
+
+    http_host = 'localhost'
+    http_host_alt = '127.0.0.1'
+
+    https_host = 'localhost'
+    https_host_alt = '127.0.0.1'
+    https_certs = DEFAULT_CERTS
+
+    proxy_host = '::1'
+    proxy_host_alt = '127.0.0.1'

@@ -38,6 +38,35 @@ DEFAULT_CA = os.path.join(CERTS_PATH, 'cacert.pem')
 DEFAULT_CA_BAD = os.path.join(CERTS_PATH, 'client_bad.pem')
 NO_SAN_CA = os.path.join(CERTS_PATH, 'cacert.no_san.pem')
 
+def _has_ipv6(host):
+    """ Returns True if the system can bind an IPv6 address. """
+    sock = None
+    has_ipv6 = False
+
+    if socket.has_ipv6:
+        # has_ipv6 returns true if cPython was compiled with IPv6 support.
+        # It does not tell us if the system has IPv6 support enabled. To
+        # determine that we must bind to an IPv6 address.
+        # https://github.com/shazow/urllib3/pull/611
+        # https://bugs.python.org/issue658327
+        try:
+            sock = socket.socket(socket.AF_INET6)
+            sock.bind((host, 0))
+            has_ipv6 = True
+        except:
+            pass
+
+    if sock:
+        sock.close()
+    return has_ipv6
+
+# Some systems may have IPv6 support but DNS may not be configured
+# properly. We can not count that localhost will resolve to ::1 on all
+# systems. See https://github.com/shazow/urllib3/pull/611 and
+# https://bugs.python.org/issue18792
+HAS_IPV6_AND_DNS = _has_ipv6('localhost')
+HAS_IPV6 = _has_ipv6('::1')
+
 
 # Different types of servers we have:
 
@@ -64,7 +93,7 @@ class SocketServerThread(threading.Thread):
         self.ready_event = ready_event
 
     def _start_server(self):
-        if socket.has_ipv6:
+        if HAS_IPV6_AND_DNS:
             sock = socket.socket(socket.AF_INET6)
         else:
             warnings.warn("No IPv6 support. Falling back to IPv4.",
@@ -117,7 +146,7 @@ def bind_sockets(port, address=None, family=socket.AF_UNSPEC, backlog=128,
     sockets = []
     if address == "":
         address = None
-    if not socket.has_ipv6 and family == socket.AF_UNSPEC:
+    if not HAS_IPV6 and family == socket.AF_UNSPEC:
         # Python can be compiled with --disable-ipv6, which causes
         # operations on AF_INET6 sockets to fail, but does not
         # automatically exclude those results from getaddrinfo

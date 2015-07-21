@@ -2,6 +2,7 @@ import warnings
 import sys
 import errno
 import functools
+import logging
 import socket
 
 from nose.plugins.skip import SkipTest
@@ -91,3 +92,37 @@ def requires_network(test):
                 raise SkipTest(msg)
             raise
     return wrapper
+
+
+class _ListHandler(logging.Handler):
+    def __init__(self):
+        super(_ListHandler, self).__init__()
+        self.records = []
+
+    def emit(self, record):
+        self.records.append(record)
+
+
+class LogRecorder(object):
+    def __init__(self, target=logging.root):
+        super(LogRecorder, self).__init__()
+        self._target = target
+        self._handler = _ListHandler()
+
+    @property
+    def records(self):
+        return self._handler.records
+
+    def install(self):
+        self._target.addHandler(self._handler)
+
+    def uninstall(self):
+        self._target.removeHandler(self._handler)
+
+    def __enter__(self):
+        self.install()
+        return self.records
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.uninstall()
+        return False

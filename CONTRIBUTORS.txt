@@ -1,4 +1,4 @@
-# Contributions to the urllib3 project
+﻿# Contributions to the urllib3 project
 
 ## Creator & Maintainer
 
@@ -147,6 +147,27 @@ In chronological order:
 
 * tlynn <https://github.com/tlynn>
   * Respect the warning preferences at import.
+
+* David D. Riddle <ddriddle@illinois.edu>
+  * IPv6 bugfixes in testsuite
+
+* Jon Wayne Parrott <jonwayne@google.com>
+  * App Engine environment tests.
+  
+* John Krauss <https://github.com/talos>
+  * Clues to debugging problems with `cryptography` dependency in docs
+
+* Disassem <https://github.com/Disassem>
+  * Fix pool-default headers not applying for url-encoded requests like GET.
+
+* James Atherfold <jlatherfold@hotmail.com>
+  * Bugfixes relating to cleanup of connections during errors.
+
+* Christian Pedersen <https://github.com/chripede>
+  * IPv6 HTTPS proxy bugfix
+
+* Jordan Moldow <https://github.com/jmoldow>
+  * Fix low-level exceptions leaking from ``HTTPResponse.stream()``.
 
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

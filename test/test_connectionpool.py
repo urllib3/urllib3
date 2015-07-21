@@ -217,14 +217,22 @@ class TestConnectionPool(unittest.TestCase):
             old_pool_queue = pool.pool
 
         self.assertEqual(pool.pool, None)
-
         self.assertRaises(ClosedPoolError, pool._get_conn)
 
         pool._put_conn(conn3)
-
         self.assertRaises(ClosedPoolError, pool._get_conn)
-
         self.assertRaises(Empty, old_pool_queue.get, block=False)
+
+    def test_absolute_url(self):
+        c = connection_from_url('http://google.com:80')
+        self.assertEqual(
+                'http://google.com:80/path?query=foo',
+                c._absolute_url('path?query=foo'))
+
+    def test_ca_certs_default_cert_required(self):
+        with connection_from_url('https://google.com:80', ca_certs='/etc/ssl/certs/custom.pem') as pool:
+            conn = pool._get_conn()
+            self.assertEqual(conn.cert_reqs, 'CERT_REQUIRED')
 
 
 if __name__ == '__main__':

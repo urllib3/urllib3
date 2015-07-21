@@ -38,6 +38,10 @@ class TestProxyManager(unittest.TestCase):
         p = ProxyManager('https://something')
         self.assertEqual(p.proxy.port, 443)
 
+    def test_invalid_scheme(self):
+        self.assertRaises(AssertionError, ProxyManager, 'invalid://host/p')
+        self.assertRaises(ValueError, ProxyManager, 'invalid://host/p')
+
 
 if __name__ == '__main__':
     unittest.main()

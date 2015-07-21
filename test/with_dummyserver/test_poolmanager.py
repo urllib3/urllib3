@@ -1,6 +1,8 @@
 import unittest
 import json
 
+from nose.plugins.skip import SkipTest
+from dummyserver.server import HAS_IPV6
 from dummyserver.testcase import (HTTPDummyServerTestCase,
                                   IPv6HTTPDummyServerTestCase)
 from urllib3.poolmanager import PoolManager
@@ -128,6 +130,14 @@ class TestPoolManager(HTTPDummyServerTestCase):
     def test_headers(self):
         http = PoolManager(headers={'Foo': 'bar'})
 
+        r = http.request('GET', '%s/headers' % self.base_url)
+        returned_headers = json.loads(r.data.decode())
+        self.assertEqual(returned_headers.get('Foo'), 'bar')
+
+        r = http.request('POST', '%s/headers' % self.base_url)
+        returned_headers = json.loads(r.data.decode())
+        self.assertEqual(returned_headers.get('Foo'), 'bar')
+        
         r = http.request_encode_url('GET', '%s/headers' % self.base_url)
         returned_headers = json.loads(r.data.decode())
         self.assertEqual(returned_headers.get('Foo'), 'bar')
@@ -154,6 +164,9 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
 
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
+    if not HAS_IPV6:
+        raise SkipTest("IPv6 is not supported on this system.")
+
     def setUp(self):
         self.base_url = 'http://[%s]:%d' % (self.host, self.port)
 

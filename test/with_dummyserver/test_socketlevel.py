@@ -10,17 +10,24 @@ from urllib3.exceptions import (
         SSLError,
         ProtocolError,
 )
+from urllib3.response import httplib
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util.timeout import Timeout
 from urllib3.util.retry import Retry
+from urllib3._collections import HTTPHeaderDict
 
 from dummyserver.testcase import SocketDummyServerTestCase
 from dummyserver.server import (
     DEFAULT_CERTS, DEFAULT_CA, get_unreachable_address)
 
-from .. import onlyPy3
+from .. import onlyPy3, LogRecorder
 
 from nose.plugins.skip import SkipTest
+try:
+    from mimetools import Message as MimeToolMessage
+except ImportError:
+    class MimeToolMessage(object):
+        pass
 from threading import Event
 import socket
 import ssl
@@ -119,8 +126,9 @@ class TestSocketClosing(SocketDummyServerTestCase):
     def test_connection_refused(self):
         # Does the pool retry if there is no listener on the port?
         host, port = get_unreachable_address()
-        pool = HTTPConnectionPool(host, port)
-        self.assertRaises(MaxRetryError, pool.request, 'GET', '/', retries=0)
+        http = HTTPConnectionPool(host, port, maxsize=3, block=True)
+        self.assertRaises(MaxRetryError, http.request, 'GET', '/', retries=0, release_conn=False)
+        self.assertEqual(http.pool.qsize(), http.pool.maxsize)
 
     def test_connection_read_timeout(self):
         timed_out = Event()
@@ -133,12 +141,14 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001, retries=False)
+        http = HTTPConnectionPool(self.host, self.port, timeout=0.001, retries=False, maxsize=3, block=True)
 
         try:
-            self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/')
+            self.assertRaises(ReadTimeoutError, http.request, 'GET', '/', release_conn=False)
         finally:
             timed_out.set()
+
+        self.assertEqual(http.pool.qsize(), http.pool.maxsize)
 
     def test_https_connection_read_timeout(self):
         """ Handshake timeouts should fail with a Timeout"""
@@ -297,6 +307,63 @@ class TestSocketClosing(SocketDummyServerTestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(response.data, b'foo')
 
+    def test_connection_cleanup_on_read_timeout(self):
+        timed_out = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            buf = b''
+            body = 'Hi'
+            while not buf.endswith(b'\r\n\r\n'):
+                buf = sock.recv(65536)
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n' % len(body)).encode('utf-8'))
+
+            timed_out.wait()
+            sock.close()
+
+        self._start_server(socket_handler)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            poolsize = pool.pool.qsize()
+            response = pool.urlopen('GET', '/', retries=0, preload_content=False,
+                                    timeout=Timeout(connect=1, read=0.001))
+            try:
+                self.assertRaises(ReadTimeoutError, response.read)
+                self.assertEqual(poolsize, pool.pool.qsize())
+            finally:
+                timed_out.set()
+
+    def test_connection_cleanup_on_protocol_error_during_read(self):
+        body = 'Response'
+        partial_body = body[:2]
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            # Consume request
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf = sock.recv(65536)
+
+            # Send partial response and close socket.
+            sock.send((
+                'HTTP/1.1 200 OK\r\n'
+                'Content-Type: text/plain\r\n'
+                'Content-Length: %d\r\n'
+                '\r\n'
+                '%s' % (len(body), partial_body)).encode('utf-8')
+            )
+            sock.close()
+
+        self._start_server(socket_handler)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            poolsize = pool.pool.qsize()
+            response = pool.request('GET', '/', retries=0, preload_content=False)
+
+            self.assertRaises(ProtocolError, response.read)
+            self.assertEqual(poolsize, pool.pool.qsize())
 
 
 class TestProxyManager(SocketDummyServerTestCase):
@@ -355,7 +422,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         base_url = 'http://%s:%d' % (self.host, self.port)
 
         # Define some proxy headers.
-        proxy_headers = {'For The Proxy': 'YEAH!'}
+        proxy_headers = HTTPHeaderDict({'For The Proxy': 'YEAH!'})
         proxy = proxy_from_url(base_url, proxy_headers=proxy_headers)
 
         conn = proxy.connection_from_url('http://www.google.com/')
@@ -616,6 +683,86 @@ class TestHeaders(SocketDummyServerTestCase):
         HEADERS = {'Content-Length': '0', 'Content-type': 'text/plain'}
         r = pool.request('GET', '/')
         self.assertEqual(HEADERS, dict(r.headers.items())) # to preserve case sensitivity
+
+    def test_headers_are_sent_with_the_original_case(self):
+        headers = {'foo': 'bar', 'bAz': 'quux'}
+        parsed_headers = {}
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            headers_list = [header for header in buf.split(b'\r\n')[1:] if header]
+
+            for header in headers_list:
+                (key, value) = header.split(b': ')
+                parsed_headers[key.decode()] = value.decode()
+
+            # Send incomplete message (note Content-Length)
+            sock.send((
+                'HTTP/1.1 204 No Content\r\n'
+                'Content-Length: 0\r\n'
+                '\r\n').encode('utf-8'))
+
+            sock.close()
+
+        self._start_server(socket_handler)
+        expected_headers = {'Accept-Encoding': 'identity',
+                            'Host': '{0}:{1}'.format(self.host, self.port)}
+        expected_headers.update(headers)
+
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        pool.request('GET', '/', headers=HTTPHeaderDict(headers))
+        self.assertEqual(expected_headers, parsed_headers)
+
+
+class TestBrokenHeaders(SocketDummyServerTestCase):
+    def setUp(self):
+        if issubclass(httplib.HTTPMessage, MimeToolMessage):
+            raise SkipTest('Header parsing errors not available')
+
+        super(TestBrokenHeaders, self).setUp()
+
+    def _test_broken_header_parsing(self, headers):
+        handler = create_response_handler((
+           b'HTTP/1.1 200 OK\r\n'
+           b'Content-Length: 0\r\n'
+           b'Content-type: text/plain\r\n'
+           ) + b'\r\n'.join(headers) + b'\r\n'
+        )
+
+        self._start_server(handler)
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+
+        with LogRecorder() as logs:
+            pool.request('GET', '/')
+
+        for record in logs:
+            if 'Failed to parse headers' in record.msg and \
+                    pool._absolute_url('/') == record.args[0]:
+                return
+        self.fail('Missing log about unparsed headers')
+
+    def test_header_without_name(self):
+        self._test_broken_header_parsing([
+            b': Value\r\n',
+            b'Another: Header\r\n',
+        ])
+
+    def test_header_without_name_or_value(self):
+        self._test_broken_header_parsing([
+            b':\r\n',
+            b'Another: Header\r\n',
+        ])
+
+    def test_header_without_colon_or_value(self):
+        self._test_broken_header_parsing([
+            b'Broken Header',
+            b'Another: Header',
+        ])
 
 
 class TestHEAD(SocketDummyServerTestCase):

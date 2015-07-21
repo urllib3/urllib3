@@ -237,7 +237,7 @@ class TestHTTPHeaderDict(unittest.TestCase):
     def test_copy(self):
         h = self.d.copy()
         self.assertTrue(self.d is not h)
-        self.assertEqual(self.d, h)        
+        self.assertEqual(self.d, h)
 
     def test_getlist(self):
         self.assertEqual(self.d.getlist('cookie'), ['foo', 'bar'])
@@ -302,6 +302,7 @@ class TestHTTPHeaderDict(unittest.TestCase):
         hdict = {'Content-Length': '0', 'Content-type': 'text/plain', 'Server': 'TornadoServer/1.2.3'}
         h = dict(HTTPHeaderDict(hdict).items())
         self.assertEqual(hdict, h)
+        self.assertEqual(hdict, dict(HTTPHeaderDict(hdict)))
 
     def test_string_enforcement(self):
         # This currently throws AttributeError on key.lower(), should probably be something nicer
