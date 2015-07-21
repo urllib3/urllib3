@@ -7,9 +7,19 @@ dev (master)
 * When ``ca_certs`` is given, ``cert_reqs`` defaults to
   ``'CERT_REQUIRED'``. (Issue #650)
 
-* Fix performance regression when using PyOpenSSL. (Issue #626)
+* ``pip install urllib3[secure]`` will install Certifi and
+  PyOpenSSL as dependencies. (Issue #678)
+  
+* Made ``HTTPHeaderDict`` usable as a ``headers`` input value
+  (Issues #632, #679)
+  
+* Added `urllib3.contrib.appengine <https://urllib3.readthedocs.org/en/latest/contrib.html#google-app-engine>`_
+  which has an ``AppEngineManager`` for using ``URLFetch`` in a
+  Google AppEngine environment. (Issue #664)
 
 * Dev: Added test suite for AppEngine. (Issue #631)
+
+* Fix performance regression when using PyOpenSSL. (Issue #626)
 
 * Passing incorrect scheme (e.g. ``foo://``) will raise
   ``ValueError`` instead of ``AssertionError`` (backwards
@@ -35,12 +45,6 @@ dev (master)
 * Fix ``httplib.IncompleteRead`` not getting converted to
   ``ProtocolError`` when using ``HTTPResponse.stream()``
   (Issue #674)
-  
-* ``pip install urllib3[secure]`` will install Certifi and
-  PyOpenSSL as dependencies. (Issue #678)
-  
-* Made ``HTTPHeaderDict`` usable as a ``headers`` input value
-  (Issues #632, #679)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
