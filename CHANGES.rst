@@ -5,7 +5,7 @@ dev (master)
 ++++++++++++
 
 * When ``ca_certs`` is given, ``cert_reqs`` defaults to
-  'CERT_REQUIRED'. (Issue #650)
+  ``'CERT_REQUIRED'``. (Issue #650)
 
 * Fix performance regression when using PyOpenSSL. (Issue #626)
 
