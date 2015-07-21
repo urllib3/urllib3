@@ -4,6 +4,12 @@ Changes
 dev (master)
 ++++++++++++
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.11 (2015-07-21)
++++++++++++++++++
+
 * When ``ca_certs`` is given, ``cert_reqs`` defaults to
   ``'CERT_REQUIRED'``. (Issue #650)
 
