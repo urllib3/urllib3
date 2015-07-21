@@ -14,6 +14,7 @@ from urllib3.response import httplib
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util.timeout import Timeout
 from urllib3.util.retry import Retry
+from urllib3._collections import HTTPHeaderDict
 
 from dummyserver.testcase import SocketDummyServerTestCase
 from dummyserver.server import (
@@ -421,7 +422,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         base_url = 'http://%s:%d' % (self.host, self.port)
 
         # Define some proxy headers.
-        proxy_headers = {'For The Proxy': 'YEAH!'}
+        proxy_headers = HTTPHeaderDict({'For The Proxy': 'YEAH!'})
         proxy = proxy_from_url(base_url, proxy_headers=proxy_headers)
 
         conn = proxy.connection_from_url('http://www.google.com/')
@@ -682,6 +683,40 @@ class TestHeaders(SocketDummyServerTestCase):
         HEADERS = {'Content-Length': '0', 'Content-type': 'text/plain'}
         r = pool.request('GET', '/')
         self.assertEqual(HEADERS, dict(r.headers.items())) # to preserve case sensitivity
+
+    def test_headers_are_sent_with_the_original_case(self):
+        headers = {'foo': 'bar', 'bAz': 'quux'}
+        parsed_headers = {}
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            headers_list = [header for header in buf.split(b'\r\n')[1:] if header]
+
+            for header in headers_list:
+                (key, value) = header.split(b': ')
+                parsed_headers[key.decode()] = value.decode()
+
+            # Send incomplete message (note Content-Length)
+            sock.send((
+                'HTTP/1.1 204 No Content\r\n'
+                'Content-Length: 0\r\n'
+                '\r\n').encode('utf-8'))
+
+            sock.close()
+
+        self._start_server(socket_handler)
+        expected_headers = {'Accept-Encoding': 'identity',
+                            'Host': '{0}:{1}'.format(self.host, self.port)}
+        expected_headers.update(headers)
+
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        pool.request('GET', '/', headers=HTTPHeaderDict(headers))
+        self.assertEqual(expected_headers, parsed_headers)
 
 
 class TestBrokenHeaders(SocketDummyServerTestCase):

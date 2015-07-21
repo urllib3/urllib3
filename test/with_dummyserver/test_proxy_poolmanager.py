@@ -9,6 +9,7 @@ from dummyserver.server import (
     DEFAULT_CA, DEFAULT_CA_BAD, get_unreachable_address)
 from .. import TARPIT_HOST
 
+from urllib3._collections import HTTPHeaderDict
 from urllib3.poolmanager import proxy_from_url, ProxyManager
 from urllib3.exceptions import (
     MaxRetryError, SSLError, ProxyError, ConnectTimeoutError)
@@ -48,7 +49,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_proxy_conn_fail(self):
         host, port = get_unreachable_address()
-        http = proxy_from_url('http://%s:%s/' % (host, port), retries=1)
+        http = proxy_from_url('http://%s:%s/' % (host, port), retries=1, timeout=0.05)
         self.assertRaises(MaxRetryError, http.request, 'GET',
                           '%s/' % self.https_url)
         self.assertRaises(MaxRetryError, http.request, 'GET',
@@ -222,6 +223,22 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertEqual(returned_headers.get('Hickory'), None)
         self.assertEqual(returned_headers.get('Host'),
                 '%s:%s'%(self.https_host,self.https_port))
+
+    def test_headerdict(self):
+        default_headers = HTTPHeaderDict(a='b')
+        proxy_headers = HTTPHeaderDict()
+        proxy_headers.add('foo', 'bar')
+
+        http = proxy_from_url(
+            self.proxy_url,
+            headers=default_headers,
+            proxy_headers=proxy_headers)
+
+        request_headers = HTTPHeaderDict(baz='quux')
+        r = http.request('GET', '%s/headers' % self.http_url, headers=request_headers)
+        returned_headers = json.loads(r.data.decode())
+        self.assertEqual(returned_headers.get('Foo'), 'bar')
+        self.assertEqual(returned_headers.get('Baz'), 'quux')
 
     def test_proxy_pooling(self):
         http = proxy_from_url(self.proxy_url)
