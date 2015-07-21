@@ -38,6 +38,9 @@ dev (master)
   
 * ``pip install urllib3[secure]`` will install Certifi and
   PyOpenSSL as dependencies. (Issue #678)
+  
+* Made ``HTTPHeaderDict`` usable as a ``headers`` input value
+  (Issues #632, #679)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
