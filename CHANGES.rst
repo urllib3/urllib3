@@ -46,8 +46,6 @@ Changes
   ``ProtocolError`` when using ``HTTPResponse.stream()``
   (Issue #674)
 
-* ... [Short description of non-trivial change.] (Issue #)
-
 
 1.10.4 (2015-05-03)
 +++++++++++++++++++
