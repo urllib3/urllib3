@@ -1,12 +1,52 @@
 import socket
 try:
-    from select import poll, POLLIN
+    from select import poll, POLLIN, POLLOUT, POLLERR
 except ImportError:  # `poll` doesn't exist on OSX and other platforms
     poll = False
     try:
-        from select import select
+        from select import select as select
     except ImportError:  # `select` doesn't exist on AppEngine.
         select = False
+
+
+def _select(readlist, writelist, exceptionallist, timeout):
+    # Some platforms, e.g., OSX do not support poll
+    if not poll:
+        if select:
+            return select(readlist, writelist, exceptionallist, timeout)
+
+    # Using poll is better on platforms that support it
+    p = poll()
+    for fd in readlist:
+        p.register(fd, POLLIN)
+
+    for fd in writelist:
+        p.register(fd, POLLOUT)
+
+    for fd in exceptionallist:
+        p.register(fd, POLLERR)
+
+    return p.poll(timeout)
+
+
+def wait_to_read_data(socket, timeout=0.0):
+    sockets = _select([socket], [], [], timeout)
+
+    # select.select returns ([...], [...], [...])
+    if isinstance(sockets, tuple):
+        return sockets[0]
+
+    return sockets
+
+
+def wait_to_write_data(socket, timeout=0.0):
+    sockets = _select([], [socket], [], timeout)
+
+    # select.select returns ([...], [...], [...])
+    if isinstance(sockets, tuple):
+        return sockets[1]
+
+    return sockets
 
 
 def is_connection_dropped(conn):  # Platform-specific
@@ -25,22 +65,18 @@ def is_connection_dropped(conn):  # Platform-specific
     if sock is None:  # Connection already closed (such as by httplib).
         return True
 
-    if not poll:
-        if not select:  # Platform-specific: AppEngine
-            return False
+    try:
+        sockets = wait_to_read_data(sock)
+    except socket.error:
+        return True
 
-        try:
-            return select([sock], [], [], 0.0)[0]
-        except socket.error:
-            return True
-
-    # This version is better on platforms that support it.
-    p = poll()
-    p.register(sock, POLLIN)
-    for (fno, ev) in p.poll(0.0):
-        if fno == sock.fileno():
-            # Either data is buffered (bad), or the connection is dropped.
-            return True
+    try:
+        for (fno, ev) in sockets:
+            if fno == sock.fileno():
+                # Either data is buffered (bad), or the connection is dropped.
+                return True
+    except TypeError:
+        return sockets
 
 
 # This function is copied from socket.py in the Python 2.7 standard
