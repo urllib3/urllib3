@@ -4,6 +4,9 @@ Changes
 dev (master)
 ++++++++++++
 
+* Rely on ``six`` for importing ``httplib`` to work around
+  conflicts with other Python 3 shims. (Issue #688)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
