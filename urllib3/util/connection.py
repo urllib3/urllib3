@@ -3,30 +3,63 @@ try:
     from select import poll, POLLIN, POLLOUT, POLLERR
 except ImportError:  # `poll` doesn't exist on OSX and other platforms
     poll = False
-    try:
-        from select import select as select
-    except ImportError:  # `select` doesn't exist on AppEngine.
-        select = False
+
+try:
+    from select import select
+except ImportError:  # `select` doesn't exist on AppEngine.
+    select = False
+
+try:
+    from select import epoll, EPOLLIN, EPOLLOUT, EPOLLERR
+except ImportError:  # `epoll` only exists on Linux
+    epoll = False
+
+try:
+    from select import kqueue, kevent
+except ImportError:  # `kqueue` is only available for BSDs
+    kevent = kqueue = False
+
+
+def _poll(reads, writes, exceptions, timeout):
+    # Assume that if we're being called then poll or epoll is defined
+    pollfunc = poll
+    read_flag = POLLIN
+    write_flag = POLLOUT
+    exc_flag = POLLERR
+
+    if epoll:
+        pollfunc = epoll
+        read_flag = EPOLLIN
+        write_flag = EPOLLOUT
+        exc_flag = EPOLLERR
+
+    p = pollfunc()
+    for fd in reads:
+        p.register(fd, read_flag)
+
+    for fd in writes:
+        p.register(fd, write_flag)
+
+    for fd in exceptions:
+        p.register(fd, exc_flag)
+
+    return p.poll(timeout)
+
+
+def _kqueue(*args):
+    pass
 
 
 def _select(readlist, writelist, exceptionallist, timeout):
     # Some platforms, e.g., OSX do not support poll
-    if not poll:
-        if select:
-            return select(readlist, writelist, exceptionallist, timeout)
+    if epoll or poll:
+        return _poll(readlist, writelist, exceptionallist, timeout)
 
-    # Using poll is better on platforms that support it
-    p = poll()
-    for fd in readlist:
-        p.register(fd, POLLIN)
+    if kqueue and kevent:
+        return _kqueue(readlist, writelist, exceptionallist, timeout)
 
-    for fd in writelist:
-        p.register(fd, POLLOUT)
-
-    for fd in exceptionallist:
-        p.register(fd, POLLERR)
-
-    return p.poll(timeout)
+    if select:
+        return select(readlist, writelist, exceptionallist, timeout)
 
 
 def wait_to_read_data(socket, timeout=0.0):
