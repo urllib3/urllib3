@@ -179,7 +179,7 @@ class ProxySchemeUnknown(AssertionError, ValueError):
     # TODO(t-8ch): Stop inheriting from AssertionError in v2.0.
 
     def __init__(self, scheme):
-        message = "Not supported proxy scheme %s" % scheme
+        message = "Unsupported proxy scheme %s" % scheme
         super(ProxySchemeUnknown, self).__init__(message)
 
 

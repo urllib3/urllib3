@@ -10,8 +10,9 @@ from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
 from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
 from .request import RequestMethods
-from .util.url import parse_url
+from .util.url import parse_url, socks_opts_from_url
 from .util.retry import Retry
+from .packages import socks
 
 
 __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
@@ -227,20 +228,26 @@ class ProxyManager(PoolManager):
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
 
-        if proxy.scheme not in ("http", "https"):
+        if proxy.scheme not in port_by_scheme.keys():
             raise ProxySchemeUnknown(proxy.scheme)
 
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
+        self.is_socks = proxy.scheme.startswith('socks')
 
         connection_pool_kw['_proxy'] = self.proxy
         connection_pool_kw['_proxy_headers'] = self.proxy_headers
+
+        connection_pool_kw['_is_socks'] = self.is_socks
+
+        if self.is_socks:
+            connection_pool_kw['socks_opts'] = socks_opts_from_url(self.proxy)
 
         super(ProxyManager, self).__init__(
             num_pools, headers, **connection_pool_kw)
 
     def connection_from_host(self, host, port=None, scheme='http'):
-        if scheme == "https":
+        if scheme == "https" or self.is_socks:
             return super(ProxyManager, self).connection_from_host(
                 host, port, scheme)
 
@@ -252,6 +259,9 @@ class ProxyManager(PoolManager):
         Sets headers needed by proxies: specifically, the Accept and Host
         headers. Only sets headers not provided by the user.
         """
+        if self.is_socks:
+            return headers
+
         headers_ = {'Accept': '*/*'}
 
         netloc = parse_url(url).netloc

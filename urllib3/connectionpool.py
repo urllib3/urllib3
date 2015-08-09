@@ -30,7 +30,7 @@ from .exceptions import (
 from .packages.ssl_match_hostname import CertificateError
 from .packages import six
 from .connection import (
-    port_by_scheme,
+    port_by_scheme, socks_connection_classes,
     DummyConnection,
     HTTPConnection, HTTPSConnection, VerifiedHTTPSConnection,
     HTTPException, BaseSSLError, ConnectionError
@@ -178,9 +178,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.pool = self.QueueCls(maxsize)
         self.block = block
 
-        self.proxy = _proxy
-        self.proxy_headers = _proxy_headers or {}
-
         # Fill the queue up so that doing get() on it will block properly
         for _ in xrange(maxsize):
             self.pool.put(None)
@@ -190,11 +187,34 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.num_requests = 0
         self.conn_kw = conn_kw
 
-        if self.proxy:
-            # Enable Nagle's algorithm for proxies, to avoid packet fragmentation.
-            # We cannot know if the user has added default socket options, so we cannot replace the
-            # list.
-            self.conn_kw.setdefault('socket_options', [])
+        self._init_proxy(_proxy, _proxy_headers)
+
+    def _init_proxy(self, proxy, proxy_headers):
+        """
+        Set proxy-related instance variables. Behavior is dependent on ``_proxy`` argument
+        passed to :meth:`__init__`. No return value.
+
+        :param proxy:
+            Receives ``_proxy`` argument from :meth:`__init__`.
+
+        :param proxy_headers:
+            Receives ``_proxy_headers`` argument from :meth:`__init__`.
+        """
+        self.proxy = proxy
+        self.proxy_headers = proxy_headers or {}
+        is_socks = self.conn_kw.pop('_is_socks', None)
+
+        if proxy:
+            if is_socks:
+                self.ConnectionCls = socks_connection_classes.get(self.ConnectionCls)
+                # self.proxy assumes an HTTP proxy
+                self.proxy = None
+                self.proxy_headers = {}
+            else:
+                # Enable Nagle's algorithm for proxies, to avoid packet fragmentation.
+                # We cannot know if the user has added default socket options, so we cannot cannot
+                # replace the list.
+                self.conn_kw.setdefault('socket_options', [])
 
     def _new_conn(self):
         """
@@ -323,7 +343,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         pool.
 
         :param conn:
-            a connection from one of our connection pools
+            A connection from one of our connection pools.
 
         :param timeout:
             Socket timeout in seconds for the request. This can be a
@@ -422,7 +442,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # TODO: Add optional support for socket.gethostbyname checking.
         scheme, host, port = get_host(url)
- 
+
         # Use explicit default port for comparison when none is given
         if self.port and not port:
             port = port_by_scheme.get(scheme)
