@@ -2,27 +2,16 @@ language: python
 script: tox
 before_install:
   - openssl version
-  # Install Google Cloud Platform SDK to enable App Engine tests
-  - if [[ $TOXENV == 'gae' && ! -d $HOME/gcloud/google-cloud-sdk ]]; then
-      mkdir -p $HOME/gcloud &&
-      wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz --directory-prefix=$HOME/gcloud &&
-      cd $HOME/gcloud &&
-      tar xzf google-cloud-sdk.tar.gz &&
-      printf '\ny\n\ny\ny\n' | ./google-cloud-sdk/install.sh &&
-      cd $TRAVIS_BUILD_DIR &&
-      gcloud -q components update gae-python;
-    fi
 cache:
   directories:
-    - $HOME/gcloud/
+  - ${HOME}/.cache
 install:
-  - pip install tox
+- ./_travis/travis-install.sh
 notifications:
   email: false
 env:
   global:
-    - PATH=$PATH:$HOME/gcloud/google-cloud-sdk/bin
-    - GAE_PYTHONPATH=$HOME/gcloud/google-cloud-sdk/platform/google_appengine
+    - GAE_PYTHONPATH=${HOME}/.cache/google_appengine
     - PYTHONWARNINGS=always::DeprecationWarning
   matrix:
     - TOXENV=py26
