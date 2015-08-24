@@ -97,6 +97,12 @@ except NameError:
 orig_util_HAS_SNI = util.HAS_SNI
 orig_connection_ssl_wrap_socket = connection.ssl_wrap_socket
 
+class SSLResume:
+    def __init__(self, context, initial_session):
+        self.context = context
+        self.initial_session = initial_session
+
+ssl_session = dict()
 
 def inject_into_urllib3():
     'Monkey-patch urllib3 with PyOpenSSL-backed SSL-support.'
@@ -268,7 +274,12 @@ def _verify_callback(cnx, x509, err_no, err_depth, return_code):
 def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                     ca_certs=None, server_hostname=None,
                     ssl_version=None):
-    ctx = OpenSSL.SSL.Context(_openssl_versions[ssl_version])
+
+    ssl_resume = ssl_session.get(server_hostname)
+    if ssl_resume:
+        ctx = ssl_resume.context
+    else:
+        ctx = OpenSSL.SSL.Context(_openssl_versions[ssl_version])
     if certfile:
         keyfile = keyfile or certfile  # Match behaviour of the normal python ssl library
         ctx.use_certificate_file(certfile)
@@ -294,6 +305,9 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
     cnx = OpenSSL.SSL.Connection(ctx, sock)
     cnx.set_tlsext_host_name(server_hostname)
     cnx.set_connect_state()
+
+    if ssl_resume:
+        cnx.set_session(ssl_resume.initial_session)
     while True:
         try:
             cnx.do_handshake()
@@ -305,5 +319,8 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError('bad handshake: %r' % e)
         break
+
+    if not ssl_resume:
+        ssl_session[server_hostname] = SSLResume(ctx, cnx.get_session())
 
     return WrappedSocket(cnx, sock)
