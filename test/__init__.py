@@ -56,6 +56,17 @@ def onlyPy27OrNewer(test):
         return test(*args, **kwargs)
     return wrapper
 
+def onlyPy279OrNewer(test):
+    """Skips this test unless you are onl Python 2.7.9 or later."""
+
+    @functools.wraps(test)
+    def wrapper(*args, **kwargs):
+        msg = "{name} requires Python 2.7.9+ to run".format(name=test.__name__)
+        if sys.version_info < (2, 7, 9):
+            raise SkipTest(msg)
+        return test(*args, **kwargs)
+    return wrapper
+
 def onlyPy3(test):
     """Skips this test unless you are on Python3.x"""
 
