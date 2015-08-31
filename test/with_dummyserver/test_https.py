@@ -14,6 +14,7 @@ from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
 
 from test import (
     onlyPy26OrOlder,
+    onlyPy27OrNewer,
     requires_network,
     TARPIT_HOST,
     clear_warnings,
@@ -80,6 +81,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 error = call[0][1]
                 self.assertEqual(error, InsecurePlatformWarning)
 
+    @onlyPy27OrNewer
     def test_ca_dir_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_reqs='CERT_REQUIRED',

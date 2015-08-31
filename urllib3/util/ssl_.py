@@ -267,21 +267,9 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         context = create_urllib3_context(ssl_version, cert_reqs,
                                          ciphers=ciphers)
 
-    if ca_certs:
+    if ca_certs or ca_cert_dir:
         try:
-            context.load_verify_locations(ca_certs)
-        except IOError as e:  # Platform-specific: Python 2.6, 2.7, 3.2
-            raise SSLError(e)
-        # Py33 raises FileNotFoundError which subclasses OSError
-        # These are not equivalent unless we check the errno attribute
-        except OSError as e:  # Platform-specific: Python 3.3 and beyond
-            if e.errno == errno.ENOENT:
-                raise SSLError(e)
-            raise
-
-    if ca_cert_dir:
-        try:
-            context.load_verify_locations(capath=ca_cert_dir)
+            context.load_verify_locations(ca_certs, ca_cert_dir)
         except IOError as e:  # Platform-specific: Python 2.6, 2.7, 3.2
             raise SSLError(e)
         # Py33 raises FileNotFoundError which subclasses OSError

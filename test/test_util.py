@@ -393,7 +393,7 @@ class TestUtil(unittest.TestCase):
         ssl_wrap_socket(ssl_context=mock_context, ca_certs='/path/to/pem',
                         sock=socket)
         mock_context.load_verify_locations.assert_called_once_with(
-            '/path/to/pem')
+            '/path/to/pem', None)
 
     def test_ssl_wrap_socket_loads_certificate_directories(self):
         socket = object()
@@ -401,7 +401,7 @@ class TestUtil(unittest.TestCase):
         ssl_wrap_socket(ssl_context=mock_context, ca_cert_dir='/path/to/pems',
                         sock=socket)
         mock_context.load_verify_locations.assert_called_once_with(
-            capath='/path/to/pems')
+            None, '/path/to/pems')
 
     def test_ssl_wrap_socket_with_no_sni(self):
         socket = object()
