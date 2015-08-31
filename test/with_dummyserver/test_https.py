@@ -10,7 +10,7 @@ from nose.plugins.skip import SkipTest
 
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
-                                NO_SAN_CERTS, NO_SAN_CA)
+                                NO_SAN_CERTS, NO_SAN_CA, DEFAULT_CA_DIR)
 
 from test import (
     onlyPy26OrOlder,
@@ -64,6 +64,26 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
+
+        conn = https_pool._new_conn()
+        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
+
+        with mock.patch('warnings.warn') as warn:
+            r = https_pool.request('GET', '/')
+            self.assertEqual(r.status, 200)
+
+            if sys.version_info >= (2, 7, 9):
+                self.assertFalse(warn.called, warn.call_args_list)
+            else:
+                self.assertTrue(warn.called)
+                call, = warn.call_args_list
+                error = call[0][1]
+                self.assertEqual(error, InsecurePlatformWarning)
+
+    def test_ca_dir_verified(self):
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_reqs='CERT_REQUIRED',
+                                         ca_cert_dir=DEFAULT_CA_DIR)
 
         conn = https_pool._new_conn()
         self.assertEqual(conn.__class__, VerifiedHTTPSConnection)

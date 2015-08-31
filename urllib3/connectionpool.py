@@ -720,6 +720,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           cert_file=self.cert_file,
                           cert_reqs=self.cert_reqs,
                           ca_certs=self.ca_certs,
+                          ca_cert_dir=self.ca_cert_dir,
                           assert_hostname=self.assert_hostname,
                           assert_fingerprint=self.assert_fingerprint)
             conn.ssl_version = self.ssl_version
