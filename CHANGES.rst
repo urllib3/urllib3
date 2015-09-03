@@ -7,6 +7,9 @@ dev (master)
 * Rely on ``six`` for importing ``httplib`` to work around
   conflicts with other Python 3 shims. (Issue #688)
 
+* Add support for directories of certificate authorities, as supported by
+  OpenSSL. (Issue #701)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
@@ -18,10 +21,10 @@ dev (master)
 
 * ``pip install urllib3[secure]`` will install Certifi and
   PyOpenSSL as dependencies. (Issue #678)
-  
+
 * Made ``HTTPHeaderDict`` usable as a ``headers`` input value
   (Issues #632, #679)
-  
+
 * Added `urllib3.contrib.appengine <https://urllib3.readthedocs.org/en/latest/contrib.html#google-app-engine>`_
   which has an ``AppEngineManager`` for using ``URLFetch`` in a
   Google AppEngine environment. (Issue #664)
@@ -36,21 +39,21 @@ dev (master)
 
 * Fix pools not getting replenished when an error occurs during a
   request using ``release_conn=False``. (Issue #644)
-  
+
 * Fix pool-default headers not applying for url-encoded requests
   like GET. (Issue #657)
 
 * log.warning in Python 3 when headers are skipped due to parsing
   errors. (Issue #642)
-  
+
 * Close and discard connections if an error occurs during read.
   (Issue #660)
-  
+
 * Fix host parsing for IPv6 proxies. (Issue #668)
 
 * Separate warning type SubjectAltNameWarning, now issued once
   per host. (Issue #671)
-  
+
 * Fix ``httplib.IncompleteRead`` not getting converted to
   ``ProtocolError`` when using ``HTTPResponse.stream()``
   (Issue #674)

@@ -185,20 +185,23 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     """
     cert_reqs = None
     ca_certs = None
+    ca_cert_dir = None
     ssl_version = None
     assert_fingerprint = None
 
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None,
-                 assert_hostname=None, assert_fingerprint=None):
+                 assert_hostname=None, assert_fingerprint=None,
+                 ca_cert_dir=None):
 
-        if ca_certs and cert_reqs is None:
+        if (ca_certs or ca_cert_dir) and cert_reqs is None:
             cert_reqs = 'CERT_REQUIRED'
 
         self.key_file = key_file
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
         self.ca_certs = ca_certs
+        self.ca_cert_dir = ca_cert_dir
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
 
@@ -237,6 +240,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         self.sock = ssl_wrap_socket(conn, self.key_file, self.cert_file,
                                     cert_reqs=resolved_cert_reqs,
                                     ca_certs=self.ca_certs,
+                                    ca_cert_dir=self.ca_cert_dir,
                                     server_hostname=hostname,
                                     ssl_version=resolved_ssl_version)
 
