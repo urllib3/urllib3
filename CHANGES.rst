@@ -6,6 +6,7 @@ dev (master)
 
 * Rely on ``six`` for importing ``httplib`` to work around
   conflicts with other Python 3 shims. (Issue #688)
+
 * Add support for directories of certificate authorities, as supported by
   OpenSSL. (Issue #701)
 
