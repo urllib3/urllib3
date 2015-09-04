@@ -277,7 +277,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         conn = pool._get_conn()
         pool._make_request(conn, 'GET', '/')
         tcp_nodelay_setting = conn.sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
-        self.assertGreater(tcp_nodelay_setting, 0)
+        self.assertTrue(tcp_nodelay_setting)
 
     def test_socket_options(self):
         """Test that connections accept socket options."""
