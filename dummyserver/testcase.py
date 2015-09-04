@@ -40,7 +40,7 @@ class SocketDummyServerTestCase(unittest.TestCase):
         cls.port = cls.server_thread.port
 
     @classmethod
-    def start_response_handler(cls, response, num=1, block_read=None, block_send=None):
+    def start_response_handler(cls, response, num=1, block_send=None):
         ready_event = threading.Event()
         def socket_handler(listener):
             for _ in range(num):
@@ -48,9 +48,10 @@ class SocketDummyServerTestCase(unittest.TestCase):
                 ready_event.clear()
 
                 sock = listener.accept()[0]
-                block_read and block_read.wait() and block_read.clear()
                 consume_socket(sock)
-                block_send and block_send.wait() and block_send.clear()
+                if block_send:
+                    block_send.wait()
+                    block_send.clear()
                 sock.send(response)
                 sock.close()
 

@@ -98,6 +98,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         block_event.set() # Release request
 
         ready_event.wait()
+        block_event.clear()
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/')
         block_event.set() # Release request
 
@@ -180,22 +181,21 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
 
     def test_total_timeout(self):
         block_event = Event()
-        ready_event = self.start_basic_handler(block_read=block_event, num=2)
+        ready_event = self.start_basic_handler(block_send=block_event, num=2)
 
         # This will get the socket to raise an EAGAIN on the read
-        timeout = Timeout(connect=3, read=0)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
-        conn = pool._get_conn()
-        self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', '/')
+        timeout = Timeout(connect=3, read=SHORT_TIMEOUT)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout, retries=False)
+        self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/')
 
         block_event.set()
         ready_event.wait()
+        block_event.clear()
 
         # The connect should succeed and this should hit the read timeout
         timeout = Timeout(connect=3, read=5, total=SHORT_TIMEOUT)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
-        conn = pool._get_conn()
-        self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', '/')
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout, retries=False)
+        self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/')
 
     def test_create_connection_timeout(self):
         timeout = Timeout(connect=SHORT_TIMEOUT, total=LONG_TIMEOUT)
@@ -633,7 +633,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         for addr in INVALID_SOURCE_ADDRESSES:
             pool = HTTPConnectionPool(self.host, self.port, source_address=addr, retries=False)
             # FIXME: This assert flakes sometimes. Not sure why.
-            self.assertRaises(NewConnectionError, pool.request, 'GET', '/source_address?{}'.format(addr))
+            self.assertRaises(NewConnectionError, pool.request, 'GET', '/source_address?{0}'.format(addr))
 
     def test_stream_keepalive(self):
         x = 2
