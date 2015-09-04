@@ -318,8 +318,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.ca_certs = DEFAULT_CA
         https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
                                         '7A:F2:8A:D7:1E:07:33:67:DE'
-        url = '/sleep?seconds=0.005'
-        self.assertRaises(ReadTimeoutError, https_pool.request, 'GET', url)
 
         timeout = Timeout(total=None)
         https_pool = HTTPSConnectionPool(self.host, self.port, timeout=timeout,

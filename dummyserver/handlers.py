@@ -166,12 +166,6 @@ class TestingApp(RequestHandler):
         headers = [('Connection', 'keep-alive')]
         return Response('Keeping alive', headers=headers)
 
-    def sleep(self, request):
-        "Sleep for a specified amount of ``seconds``"
-        seconds = float(request.params.get('seconds', '1'))
-        time.sleep(seconds)
-        return Response()
-
     def echo(self, request):
         "Echo back the params"
         if request.method == 'GET':
