@@ -34,7 +34,6 @@ from urllib3.packages.six import b, u
 from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
 
-import tornado
 from dummyserver.testcase import HTTPDummyServerTestCase
 from dummyserver.server import NoIPv6Warning, HAS_IPV6_AND_DNS
 
@@ -44,6 +43,152 @@ log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
+
+class TestConnectionPoolSleepyQuarantine(HTTPDummyServerTestCase):
+    # FIXME: Replace these tests with ones that do not use sleep.
+
+    def setUp(self):
+        self.pool = HTTPConnectionPool(self.host, self.port)
+
+    def tearDown(self):
+        # Wait until the pool is back from sleeping before moving on to the next test, sigh.
+        import time
+        time.sleep(0.1) # FML
+
+    def test_timeout_float(self):
+        url = '/sleep?seconds=0.005'
+        # Pool-global timeout
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001, retries=False)
+        self.assertRaises(ReadTimeoutError, pool.request, 'GET', url)
+
+    def test_conn_closed(self):
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001, retries=False)
+        conn = pool._get_conn()
+        pool._put_conn(conn)
+        try:
+            url = '/sleep?seconds=0.005'
+            pool.urlopen('GET', url)
+            self.fail("The request should fail with a timeout error.")
+        except ReadTimeoutError:
+            if conn.sock:
+                self.assertRaises(socket.error, conn.sock.recv, 1024)
+        finally:
+            pool._put_conn(conn)
+
+    @timed(0.5)
+    def test_timeout(self):
+        """ Requests should time out when expected """
+        url = '/sleep?seconds=0.003'
+        timeout = Timeout(read=0.001)
+
+        # Pool-global timeout
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout, retries=False)
+
+        conn = pool._get_conn()
+        self.assertRaises(ReadTimeoutError, pool._make_request,
+                          conn, 'GET', url)
+        pool._put_conn(conn)
+
+        time.sleep(0.02) # Wait for server to start receiving again. :(
+
+        self.assertRaises(ReadTimeoutError, pool.request, 'GET', url)
+
+        # Request-specific timeouts should raise errors
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.1, retries=False)
+
+        conn = pool._get_conn()
+        self.assertRaises(ReadTimeoutError, pool._make_request,
+                          conn, 'GET', url, timeout=timeout)
+        pool._put_conn(conn)
+
+        time.sleep(0.02) # Wait for server to start receiving again. :(
+
+        self.assertRaises(ReadTimeoutError, pool.request,
+                          'GET', url, timeout=timeout)
+
+        # Timeout int/float passed directly to request and _make_request should
+        # raise a request timeout
+        self.assertRaises(ReadTimeoutError, pool.request,
+                          'GET', url, timeout=0.001)
+        conn = pool._new_conn()
+        self.assertRaises(ReadTimeoutError, pool._make_request, conn,
+                          'GET', url, timeout=0.001)
+        pool._put_conn(conn)
+
+        # Timeout int/float passed directly to _make_request should not raise a
+        # request timeout if it's a high value
+        pool.request('GET', url, timeout=1)
+
+    @requires_network
+    @timed(0.5)
+    def test_connect_timeout(self):
+        url = '/sleep?seconds=0.005'
+        timeout = Timeout(connect=0.001)
+
+        # Pool-global timeout
+        pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', url)
+
+        # Retries
+        retries = Retry(connect=0)
+        self.assertRaises(MaxRetryError, pool.request, 'GET', url,
+                          retries=retries)
+
+        # Request-specific connection timeouts
+        big_timeout = Timeout(read=0.2, connect=0.2)
+        pool = HTTPConnectionPool(TARPIT_HOST, self.port,
+                                  timeout=big_timeout, retries=False)
+        conn = pool._get_conn()
+        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET',
+                          url, timeout=timeout)
+
+        pool._put_conn(conn)
+        self.assertRaises(ConnectTimeoutError, pool.request, 'GET', url,
+                          timeout=timeout)
+
+
+    def test_timeout_reset(self):
+        """ If the read timeout isn't set, socket timeout should reset """
+        url = '/sleep?seconds=0.005'
+        timeout = Timeout(connect=0.001)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        try:
+            pool._make_request(conn, 'GET', url)
+        except ReadTimeoutError:
+            self.fail("This request shouldn't trigger a read timeout.")
+
+    @requires_network
+    @timed(5.0)
+    def test_total_timeout(self):
+        url = '/sleep?seconds=0.005'
+
+        timeout = Timeout(connect=3, read=5, total=0.001)
+        pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', url)
+
+        # This will get the socket to raise an EAGAIN on the read
+        timeout = Timeout(connect=3, read=0)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', url)
+
+        # The connect should succeed and this should hit the read timeout
+        timeout = Timeout(connect=3, read=5, total=0.002)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', url)
+
+    @requires_network
+    def test_none_total_applies_connect(self):
+        url = '/sleep?seconds=0.005'
+        timeout = Timeout(total=None, connect=0.001)
+        pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)
+        conn = pool._get_conn()
+        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET',
+                          url)
 
 class TestConnectionPool(HTTPDummyServerTestCase):
 
@@ -124,26 +269,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('POST', '/upload', fields=fields)
         self.assertEqual(r.status, 200, r.data)
 
-    def test_timeout_float(self):
-        url = '/sleep?seconds=0.005'
-        # Pool-global timeout
-        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001, retries=False)
-        self.assertRaises(ReadTimeoutError, pool.request, 'GET', url)
-
-    def test_conn_closed(self):
-        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001, retries=False)
-        conn = pool._get_conn()
-        pool._put_conn(conn)
-        try:
-            url = '/sleep?seconds=0.005'
-            pool.urlopen('GET', url)
-            self.fail("The request should fail with a timeout error.")
-        except ReadTimeoutError:
-            if conn.sock:
-                self.assertRaises(socket.error, conn.sock.recv, 1024)
-        finally:
-            pool._put_conn(conn)
-
     def test_nagle(self):
         """ Test that connections have TCP_NODELAY turned on """
         # This test needs to be here in order to be run. socket.create_connection actually tries to
@@ -191,79 +316,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertTrue(nagle_disabled)
         self.assertTrue(using_keepalive)
 
-    @timed(0.5)
-    def test_timeout(self):
-        """ Requests should time out when expected """
-        url = '/sleep?seconds=0.003'
-        timeout = Timeout(read=0.001)
-
-        # Pool-global timeout
-        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout, retries=False)
-
-        conn = pool._get_conn()
-        self.assertRaises(ReadTimeoutError, pool._make_request,
-                          conn, 'GET', url)
-        pool._put_conn(conn)
-
-        time.sleep(0.02) # Wait for server to start receiving again. :(
-
-        self.assertRaises(ReadTimeoutError, pool.request, 'GET', url)
-
-        # Request-specific timeouts should raise errors
-        pool = HTTPConnectionPool(self.host, self.port, timeout=0.1, retries=False)
-
-        conn = pool._get_conn()
-        self.assertRaises(ReadTimeoutError, pool._make_request,
-                          conn, 'GET', url, timeout=timeout)
-        pool._put_conn(conn)
-
-        time.sleep(0.02) # Wait for server to start receiving again. :(
-
-        self.assertRaises(ReadTimeoutError, pool.request,
-                          'GET', url, timeout=timeout)
-
-        # Timeout int/float passed directly to request and _make_request should
-        # raise a request timeout
-        self.assertRaises(ReadTimeoutError, pool.request,
-                          'GET', url, timeout=0.001)
-        conn = pool._new_conn()
-        self.assertRaises(ReadTimeoutError, pool._make_request, conn,
-                          'GET', url, timeout=0.001)
-        pool._put_conn(conn)
-
-        # Timeout int/float passed directly to _make_request should not raise a
-        # request timeout if it's a high value
-        pool.request('GET', url, timeout=1)
-
-    @requires_network
-    @timed(0.5)
-    def test_connect_timeout(self):
-        url = '/sleep?seconds=0.005'
-        timeout = Timeout(connect=0.001)
-
-        # Pool-global timeout
-        pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)
-        conn = pool._get_conn()
-        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', url)
-
-        # Retries
-        retries = Retry(connect=0)
-        self.assertRaises(MaxRetryError, pool.request, 'GET', url,
-                          retries=retries)
-
-        # Request-specific connection timeouts
-        big_timeout = Timeout(read=0.2, connect=0.2)
-        pool = HTTPConnectionPool(TARPIT_HOST, self.port,
-                                  timeout=big_timeout, retries=False)
-        conn = pool._get_conn()
-        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET',
-                          url, timeout=timeout)
-
-        pool._put_conn(conn)
-        self.assertRaises(ConnectTimeoutError, pool.request, 'GET', url,
-                          timeout=timeout)
-
-
     def test_connection_error_retries(self):
         """ ECONNREFUSED error should raise a connection error, with retries """
         port = find_unused_port()
@@ -274,48 +326,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         except MaxRetryError as e:
             self.assertTrue(isinstance(e.reason, ProtocolError))
             self.assertEqual(e.reason.args[1].errno, errno.ECONNREFUSED)
-
-    def test_timeout_reset(self):
-        """ If the read timeout isn't set, socket timeout should reset """
-        url = '/sleep?seconds=0.005'
-        timeout = Timeout(connect=0.001)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
-        conn = pool._get_conn()
-        try:
-            pool._make_request(conn, 'GET', url)
-        except ReadTimeoutError:
-            self.fail("This request shouldn't trigger a read timeout.")
-
-    @requires_network
-    @timed(5.0)
-    def test_total_timeout(self):
-        url = '/sleep?seconds=0.005'
-
-        timeout = Timeout(connect=3, read=5, total=0.001)
-        pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)
-        conn = pool._get_conn()
-        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', url)
-
-        # This will get the socket to raise an EAGAIN on the read
-        timeout = Timeout(connect=3, read=0)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
-        conn = pool._get_conn()
-        self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', url)
-
-        # The connect should succeed and this should hit the read timeout
-        timeout = Timeout(connect=3, read=5, total=0.002)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
-        conn = pool._get_conn()
-        self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', url)
-
-    @requires_network
-    def test_none_total_applies_connect(self):
-        url = '/sleep?seconds=0.005'
-        timeout = Timeout(total=None, connect=0.001)
-        pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout)
-        conn = pool._get_conn()
-        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET',
-                          url)
 
     def test_timeout_success(self):
         timeout = Timeout(connect=3, read=5, total=None)
@@ -662,6 +672,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
             # the pool should still contain poolsize elements
             self.assertEqual(http.pool.qsize(), http.pool.maxsize)
+
+
 
 
 class TestRetry(HTTPDummyServerTestCase):
