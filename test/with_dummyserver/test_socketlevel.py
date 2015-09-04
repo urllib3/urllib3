@@ -629,42 +629,23 @@ class TestSSL(SocketDummyServerTestCase):
         self.assertRaises(SSLError, request)
 
 
-def consume_socket(sock, chunks=65536):
-    while not sock.recv(chunks).endswith(b'\r\n\r\n'):
-        pass
-
-
-def create_response_handler(response, num=1):
-    def socket_handler(listener):
-        for _ in range(num):
-            sock = listener.accept()[0]
-            consume_socket(sock)
-
-            sock.send(response)
-            sock.close()
-
-    return socket_handler
-
-
 class TestErrorWrapping(SocketDummyServerTestCase):
 
     def test_bad_statusline(self):
-        handler = create_response_handler(
+        self.start_response_handler(
            b'HTTP/1.1 Omg What Is This?\r\n'
            b'Content-Length: 0\r\n'
            b'\r\n'
         )
-        self._start_server(handler)
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         self.assertRaises(ProtocolError, pool.request, 'GET', '/')
 
     def test_unknown_protocol(self):
-        handler = create_response_handler(
+        self.start_response_handler(
            b'HTTP/1000 200 OK\r\n'
            b'Content-Length: 0\r\n'
            b'\r\n'
         )
-        self._start_server(handler)
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         self.assertRaises(ProtocolError, pool.request, 'GET', '/')
 
@@ -672,13 +653,12 @@ class TestHeaders(SocketDummyServerTestCase):
 
     @onlyPy3
     def test_httplib_headers_case_insensitive(self):
-        handler = create_response_handler(
+        self.start_response_handler(
            b'HTTP/1.1 200 OK\r\n'
            b'Content-Length: 0\r\n'
            b'Content-type: text/plain\r\n'
            b'\r\n'
         )
-        self._start_server(handler)
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         HEADERS = {'Content-Length': '0', 'Content-type': 'text/plain'}
         r = pool.request('GET', '/')
@@ -727,14 +707,13 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
         super(TestBrokenHeaders, self).setUp()
 
     def _test_broken_header_parsing(self, headers):
-        handler = create_response_handler((
+        self.start_response_handler((
            b'HTTP/1.1 200 OK\r\n'
            b'Content-Length: 0\r\n'
            b'Content-type: text/plain\r\n'
            ) + b'\r\n'.join(headers) + b'\r\n'
         )
 
-        self._start_server(handler)
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
 
         with LogRecorder() as logs:
@@ -767,13 +746,12 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
 
 class TestHEAD(SocketDummyServerTestCase):
     def test_chunked_head_response_does_not_hang(self):
-        handler = create_response_handler(
+        self.start_response_handler(
            b'HTTP/1.1 200 OK\r\n'
            b'Transfer-Encoding: chunked\r\n'
            b'Content-type: text/plain\r\n'
            b'\r\n'
         )
-        self._start_server(handler)
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         r = pool.request('HEAD', '/', timeout=1, preload_content=False)
 
@@ -781,13 +759,12 @@ class TestHEAD(SocketDummyServerTestCase):
         self.assertEqual([], list(r.stream()))
 
     def test_empty_head_response_does_not_hang(self):
-        handler = create_response_handler(
+        self.start_response_handler(
            b'HTTP/1.1 200 OK\r\n'
            b'Content-Length: 256\r\n'
            b'Content-type: text/plain\r\n'
            b'\r\n'
         )
-        self._start_server(handler)
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         r = pool.request('HEAD', '/', timeout=1, preload_content=False)
 

@@ -14,6 +14,11 @@ from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
 
 
+def consume_socket(sock, chunks=65536):
+    while not sock.recv(chunks).endswith(b'\r\n\r\n'):
+        pass
+
+
 class SocketDummyServerTestCase(unittest.TestCase):
     """
     A simple socket-based server is created for this class that is good for
@@ -33,6 +38,25 @@ class SocketDummyServerTestCase(unittest.TestCase):
         if not ready_event.is_set():
             raise Exception("most likely failed to start server")
         cls.port = cls.server_thread.port
+
+    @classmethod
+    def start_response_handler(cls, response, num=1):
+        def socket_handler(listener):
+            for _ in range(num):
+                sock = listener.accept()[0]
+                consume_socket(sock)
+
+                sock.send(response)
+                sock.close()
+        cls._start_server(socket_handler)
+
+    @classmethod
+    def start_basic_handler(cls, num=1):
+        cls.start_response_handler(
+           b'HTTP/1.1 200 OK\r\n'
+           b'Content-Length: 0\r\n'
+           b'\r\n'
+        , num=num)
 
     @classmethod
     def tearDownClass(cls):
