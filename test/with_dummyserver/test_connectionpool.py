@@ -338,7 +338,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             pool.request('GET', '/', retries=Retry(connect=3))
             self.fail("Should have failed with a connection error.")
         except MaxRetryError as e:
-            self.assertIs(type(e.reason), NewConnectionError)
+            self.assertEqual(type(e.reason), NewConnectionError)
 
     def test_timeout_success(self):
         timeout = Timeout(connect=3, read=5, total=None)
@@ -392,7 +392,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             pool.request('GET', '/', retries=5)
             self.fail("should raise timeout exception here")
         except MaxRetryError as e:
-            self.assertIs(type(e.reason), NewConnectionError)
+            self.assertEqual(type(e.reason), NewConnectionError)
 
     def test_keepalive(self):
         pool = HTTPConnectionPool(self.host, self.port, block=True, maxsize=1)
