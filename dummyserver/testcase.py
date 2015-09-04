@@ -40,23 +40,29 @@ class SocketDummyServerTestCase(unittest.TestCase):
         cls.port = cls.server_thread.port
 
     @classmethod
-    def start_response_handler(cls, response, num=1):
+    def start_response_handler(cls, response, num=1, block_read=None, block_send=None):
+        ready_event = threading.Event()
         def socket_handler(listener):
             for _ in range(num):
-                sock = listener.accept()[0]
-                consume_socket(sock)
+                ready_event.set()
+                ready_event.clear()
 
+                sock = listener.accept()[0]
+                block_read and block_read.wait() and block_read.clear()
+                consume_socket(sock)
+                block_send and block_send.wait() and block_send.clear()
                 sock.send(response)
                 sock.close()
+
         cls._start_server(socket_handler)
+        return ready_event
 
     @classmethod
-    def start_basic_handler(cls, num=1):
-        cls.start_response_handler(
+    def start_basic_handler(cls, **kw):
+        return cls.start_response_handler(
            b'HTTP/1.1 200 OK\r\n'
            b'Content-Length: 0\r\n'
-           b'\r\n'
-        , num=num)
+           b'\r\n', **kw)
 
     @classmethod
     def tearDownClass(cls):

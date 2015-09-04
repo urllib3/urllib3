@@ -6,6 +6,7 @@ from urllib3.poolmanager import proxy_from_url
 from urllib3.exceptions import (
         MaxRetryError,
         ProxyError,
+        ConnectTimeoutError,
         ReadTimeoutError,
         SSLError,
         ProtocolError,

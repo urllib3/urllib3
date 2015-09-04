@@ -1,7 +1,7 @@
 import datetime
 import sys
 import socket
-from socket import timeout as SocketTimeout
+from socket import error as SocketError, timeout as SocketTimeout
 import warnings
 from .packages import six
 
@@ -36,9 +36,10 @@ except NameError:  # Python 2:
 
 
 from .exceptions import (
+    NewConnectionError,
     ConnectTimeoutError,
-    SystemTimeWarning,
     SubjectAltNameWarning,
+    SystemTimeWarning,
 )
 from .packages.ssl_match_hostname import match_hostname
 
@@ -133,10 +134,14 @@ class HTTPConnection(_HTTPConnection, object):
             conn = connection.create_connection(
                 (self.host, self.port), self.timeout, **extra_kw)
 
-        except SocketTimeout:
+        except SocketTimeout as e:
             raise ConnectTimeoutError(
                 self, "Connection to %s timed out. (connect timeout=%s)" %
                 (self.host, self.timeout))
+
+        except SocketError as e:
+            raise NewConnectionError(
+                self, "Failed to establish a new connection: %s" % e)
 
         return conn
 

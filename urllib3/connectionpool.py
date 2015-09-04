@@ -22,10 +22,12 @@ from .exceptions import (
     LocationValueError,
     MaxRetryError,
     ProxyError,
+    ConnectTimeoutError,
     ReadTimeoutError,
     SSLError,
     TimeoutError,
     InsecureRequestWarning,
+    NewConnectionError,
 )
 from .packages.ssl_match_hostname import CertificateError
 from .packages import six
@@ -592,13 +594,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             release_conn = True
             raise
 
-        except (TimeoutError, HTTPException, SocketError, ConnectionError) as e:
+        except (TimeoutError, HTTPException, SocketError, ProtocolError) as e:
             # Discard the connection for these exceptions. It will be
             # be replaced during the next _get_conn() call.
             conn = conn and conn.close()
             release_conn = True
 
-            if isinstance(e, SocketError) and self.proxy:
+            if isinstance(e, (SocketError, NewConnectionError)) and self.proxy:
                 e = ProxyError('Cannot connect to proxy.', e)
             elif isinstance(e, (SocketError, HTTPException)):
                 e = ProtocolError('Connection aborted.', e)
