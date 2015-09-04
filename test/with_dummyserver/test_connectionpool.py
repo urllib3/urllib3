@@ -152,10 +152,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         conn = pool._get_conn()
         pool._make_request(conn, 'GET', '/')
         tcp_nodelay_setting = conn.sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
-        assert tcp_nodelay_setting > 0, ("Expected TCP_NODELAY to be set on the "
-                                         "socket (with value greater than 0) "
-                                         "but instead was %s" %
-                                         tcp_nodelay_setting)
+        self.assertGreater(tcp_nodelay_setting, 0)
 
     def test_socket_options(self):
         """Test that connections accept socket options."""
@@ -607,9 +604,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             pool = HTTPConnectionPool(self.host, self.port,
                     source_address=addr, retries=False)
             r = pool.request('GET', '/source_address')
-            assert r.data == b(addr[0]), (
-                "expected the response to contain the source address {addr}, "
-                "but was {data}".format(data=r.data, addr=b(addr[0])))
+            self.assertEqual(r.data, b(addr[0]))
 
     def test_source_address_error(self):
         for addr in INVALID_SOURCE_ADDRESSES:
