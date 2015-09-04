@@ -84,7 +84,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         block_event.set()
 
     def test_timeout(self):
-        """ Requests should time out when expected """
+        # Requests should time out when expected
         block_event = Event()
         ready_event = self.start_basic_handler(block_send=block_event, num=6)
 
@@ -128,8 +128,9 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/', timeout=SHORT_TIMEOUT)
         block_event.set() # Release request
 
-        conn = pool._new_conn()
         ready_event.wait()
+        conn = pool._new_conn()
+        # FIXME: This assert flakes sometimes. Not sure why.
         self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', '/', timeout=SHORT_TIMEOUT)
         block_event.set() # Release request
 
@@ -631,7 +632,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     def test_source_address_error(self):
         for addr in INVALID_SOURCE_ADDRESSES:
             pool = HTTPConnectionPool(self.host, self.port, source_address=addr, retries=False)
-            self.assertRaises(NewConnectionError, pool.request, 'GET', '/source_address')
+            # FIXME: This assert flakes sometimes. Not sure why.
+            self.assertRaises(NewConnectionError, pool.request, 'GET', '/source_address?{}'.format(addr))
 
     def test_stream_keepalive(self):
         x = 2
