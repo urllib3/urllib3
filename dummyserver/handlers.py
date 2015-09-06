@@ -168,6 +168,8 @@ class TestingApp(RequestHandler):
 
     def sleep(self, request):
         "Sleep for a specified amount of ``seconds``"
+        # DO NOT USE THIS, IT'S DEPRECATED.
+        # FIXME: Delete this once appengine tests are fixed to not use this handler.
         seconds = float(request.params.get('seconds', '1'))
         time.sleep(seconds)
         return Response()
