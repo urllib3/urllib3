@@ -10,10 +10,11 @@ from nose.plugins.skip import SkipTest
 
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
-                                NO_SAN_CERTS, NO_SAN_CA)
+                                NO_SAN_CERTS, NO_SAN_CA, DEFAULT_CA_DIR)
 
 from test import (
     onlyPy26OrOlder,
+    onlyPy279OrNewer,
     requires_network,
     TARPIT_HOST,
     clear_warnings,
@@ -64,6 +65,27 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
+
+        conn = https_pool._new_conn()
+        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
+
+        with mock.patch('warnings.warn') as warn:
+            r = https_pool.request('GET', '/')
+            self.assertEqual(r.status, 200)
+
+            if sys.version_info >= (2, 7, 9):
+                self.assertFalse(warn.called, warn.call_args_list)
+            else:
+                self.assertTrue(warn.called)
+                call, = warn.call_args_list
+                error = call[0][1]
+                self.assertEqual(error, InsecurePlatformWarning)
+
+    @onlyPy279OrNewer
+    def test_ca_dir_verified(self):
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_reqs='CERT_REQUIRED',
+                                         ca_cert_dir=DEFAULT_CA_DIR)
 
         conn = https_pool._new_conn()
         self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
@@ -296,8 +318,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.ca_certs = DEFAULT_CA
         https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
                                         '7A:F2:8A:D7:1E:07:33:67:DE'
-        url = '/sleep?seconds=0.005'
-        self.assertRaises(ReadTimeoutError, https_pool.request, 'GET', url)
 
         timeout = Timeout(total=None)
         https_pool = HTTPSConnectionPool(self.host, self.port, timeout=timeout,
