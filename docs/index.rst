@@ -288,7 +288,7 @@ You may also stream your response and get data as they come (e.g. when using
 
 ::
 
-    >>> from urllib3 import PoolManager
+    >>> import urllib3
     >>> http = urllib3.PoolManager()
 
     >>> r = http.request("GET", "http://httpbin.org/stream/3")
