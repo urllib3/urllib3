@@ -55,13 +55,13 @@ setup(name='urllib3',
       ],
       test_suite='test',
       extras_require={
-          'secure;python_version<="2.7"': [
+          'secure:python_version<="2.7"': [
               'pyOpenSSL',
               'ndg-httpsclient',
               'pyasn1',
               'certifi',
           ],
-          'secure;python_version>"2.7"': [
+          'secure:python_version>"2.7"': [
               'certifi',
           ],
       },
