@@ -185,21 +185,8 @@ Unverified HTTPS requests will trigger a warning via Python's ``warnings`` modul
 This would be a great time to enable HTTPS verification:
 :ref:`certifi-with-urllib3`.
 
-If you know what you're doing and would like to disable this and other warnings,
-you can use :func:`~urllib3.disable_warnings`::
+For info about disabling warnings, see `Disabling Warnings`_.
 
-    import urllib3
-    urllib3.disable_warnings()
-
-Making unverified HTTPS requests is strongly discouraged. ˙ ͜ʟ˙
-
-Alternatively, if you are using Python's ``logging`` module, you can capture the
-warnings to your own log::
-
-	logging.captureWarnings(True)
-
-Capturing the warnings to your own log is much preferred over simply disabling
-the warnings.
 
 InsecurePlatformWarning
 -----------------------
@@ -216,6 +203,40 @@ If you encounter this warning, it is strongly recommended you upgrade to a
 newer Python version, or that you use pyOpenSSL as described in the
 :ref:`pyopenssl` section.
 
-If you know what you are doing and would like to disable this and other
-warnings, please consult the :ref:`insecurerequestwarning` section for
-instructions on how to handle the warnings.
+For info about disabling warnings, see `Disabling Warnings`_.
+
+
+Disabling Warnings
+------------------
+
+Making unverified HTTPS requests is strongly discouraged. ˙ ͜ʟ˙
+
+But if you understand the ramifications and still want to do it...
+
+Within the code
++++++++++++++++
+
+If you know what you're doing and would like to disable all ``urllib3`` warnings,
+you can use :func:`~urllib3.disable_warnings`::
+
+    import urllib3
+    urllib3.disable_warnings()
+
+Alternatively, if you are using Python's ``logging`` module, you can capture the
+warnings to your own log::
+
+	logging.captureWarnings(True)
+
+Capturing the warnings to your own log is much preferred over simply disabling
+the warnings.
+
+Without modifying code
+++++++++++++++++++++++
+
+If you are using a program that uses ``urllib3`` and don't want to change the
+code, you can suppress warnings by setting the ``PYTHONWARNINGS`` environment
+variable in Python 2.7+ or by using the ``-W`` flag with the Python
+interpreter (see `docs
+<https://docs.python.org/2/using/cmdline.html#cmdoption-W>`_), such as::
+
+    PYTHONWARNINGS="ignore:Unverified HTTPS request" ./do-insecure-request.py
