@@ -4,6 +4,8 @@ Changes
 dev (master)
 ++++++++++++
 
+* Fixed ``pip install urllib3[secure]`` on modern pip. (Issue #706)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
