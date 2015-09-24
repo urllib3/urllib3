@@ -153,7 +153,7 @@ In chronological order:
 
 * Jon Wayne Parrott <jonwayne@google.com>
   * App Engine environment tests.
-  
+
 * John Krauss <https://github.com/talos>
   * Clues to debugging problems with `cryptography` dependency in docs
 
@@ -168,6 +168,9 @@ In chronological order:
 
 * Jordan Moldow <https://github.com/jmoldow>
   * Fix low-level exceptions leaking from ``HTTPResponse.stream()``.
+
+* Predrag Gruevski <https://github.com/obi1kenobi>
+  * Made cert digest comparison use a constant-time algorithm.
 
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

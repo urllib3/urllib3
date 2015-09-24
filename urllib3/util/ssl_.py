@@ -17,6 +17,25 @@ HASHFUNC_MAP = {
 
 import errno
 import warnings
+import hmac
+
+
+def _const_compare_digest_backport(a, b):
+    """
+    Compare two digests of equal length in constant time.
+
+    The digests must be of type str/bytes.
+    Returns True if the digests match, and False otherwise.
+    """
+    result = abs(len(a) - len(b))
+    for l, r in zip(bytearray(a), bytearray(b)):
+        result |= l ^ r
+    return result == 0
+
+
+_const_compare_digest = getattr(hmac, 'compare_digest',
+                                _const_compare_digest_backport)
+
 
 try:  # Test for SSL features
     import ssl
@@ -134,7 +153,7 @@ def assert_fingerprint(cert, fingerprint):
 
     cert_digest = hashfunc(cert).digest()
 
-    if cert_digest != fingerprint_bytes:
+    if not _const_compare_digest(cert_digest, fingerprint_bytes):
         raise SSLError('Fingerprints did not match. Expected "{0}", got "{1}".'
                        .format(fingerprint, hexlify(cert_digest)))
 
