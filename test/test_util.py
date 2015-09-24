@@ -1,3 +1,4 @@
+import hashlib
 import warnings
 import logging
 import unittest
@@ -18,6 +19,7 @@ from urllib3.util.url import (
 from urllib3.util.ssl_ import (
     resolve_cert_reqs,
     ssl_wrap_socket,
+    _const_compare_digest_backport,
 )
 from urllib3.exceptions import (
     LocationParseError,
@@ -412,3 +414,16 @@ class TestUtil(unittest.TestCase):
         ssl_wrap_socket(ssl_context=mock_context, sock=socket)
         mock_context.wrap_socket.assert_called_once_with(socket)
         ssl_.HAS_SNI = HAS_SNI
+
+    def test_const_compare_digest_fallback(self):
+        target = hashlib.sha256(b'abcdef').digest()
+        self.assertTrue(_const_compare_digest_backport(target, target))
+
+        prefix = target[:-1]
+        self.assertFalse(_const_compare_digest_backport(target, prefix))
+
+        suffix = target + b'0'
+        self.assertFalse(_const_compare_digest_backport(target, suffix))
+
+        incorrect = hashlib.sha256(b'xyz').digest()
+        self.assertFalse(_const_compare_digest_backport(target, incorrect))
