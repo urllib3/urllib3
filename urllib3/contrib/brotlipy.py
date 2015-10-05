@@ -21,19 +21,7 @@ Brotli content-encoding when the required modules are installed.
 """
 import brotli
 
-from .. import response
-from ..util import request
-
-# Original _get_decoder method.
-original_decoder = response._get_decoder
-
-
-# New _get_decoder method.
-def _new_decoder(mode):
-    if mode == 'brotli':
-        return BrotliDecoder()
-
-    return original_decoder(mode)
+from ..util import encodings
 
 
 class BrotliDecoder(object):
@@ -50,6 +38,4 @@ class BrotliDecoder(object):
 
 
 def inject_into_urllib3():
-    response.HTTPResponse.CONTENT_DECODERS.append('brotli')
-    request.ACCEPT_ENCODING += ',brotli'
-    response._get_decoder = _new_decoder
+    encodings.register_content_encoding('brotli', BrotliDecoder)
