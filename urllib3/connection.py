@@ -206,12 +206,16 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         self.key_file = key_file
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
-        self.ca_cert_dir = ca_cert_dir
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
+
         if ca_certs:
             ca_certs = os.path.expanduser(ca_certs)
+        if ca_cert_dir:
+            ca_cert_dir = os.path.expanduser(ca_cert_dir)
+
         self.ca_certs = ca_certs
+        self.ca_cert_dir = ca_cert_dir
 
     def connect(self):
         # Add certificate verification
