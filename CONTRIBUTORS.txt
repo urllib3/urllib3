@@ -172,6 +172,9 @@ In chronological order:
 * Predrag Gruevski <https://github.com/obi1kenobi>
   * Made cert digest comparison use a constant-time algorithm.
 
+* Adam Talsma <https://github.com/a-tal>
+  * Bugfix to ca_cert file paths.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
 
