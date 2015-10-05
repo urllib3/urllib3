@@ -1,8 +1,7 @@
 from base64 import b64encode
 
+from .encodings import content_encodings
 from ..packages.six import b
-
-ACCEPT_ENCODING = 'gzip,deflate'
 
 
 def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
@@ -15,7 +14,8 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
 
     :param accept_encoding:
         Can be a boolean, list, or string.
-        ``True`` translates to 'gzip,deflate'.
+        ``True`` translates to the list of transparently-supported
+        content-encodings.
         List will get joined by comma.
         String will be used as provided.
 
@@ -48,7 +48,7 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
         elif isinstance(accept_encoding, list):
             accept_encoding = ','.join(accept_encoding)
         else:
-            accept_encoding = ACCEPT_ENCODING
+            accept_encoding = ','.join(sorted(content_encodings()))
         headers['accept-encoding'] = accept_encoding
 
     if user_agent:
