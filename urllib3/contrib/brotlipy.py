@@ -21,7 +21,7 @@ Brotli content-encoding when the required modules are installed.
 """
 import brotli
 
-from ..util import encodings
+from ..util import compression
 
 
 class BrotliDecoder(object):
@@ -31,11 +31,16 @@ class BrotliDecoder(object):
     def __getattr__(self, name):
         return getattr(self._obj, name)
 
+    @compression.catch_and_raise(Exception)
     def decompress(self, data):
         if not data:
             return data
         return self._obj.decompress(data)
 
+    @compression.catch_and_raise(Exception)
+    def flush(self):
+        return self._obj.flush()
+
 
 def inject_into_urllib3():
-    encodings.register_content_encoding('brotli', BrotliDecoder)
+    compression.register_content_encoding('brotli', BrotliDecoder)
