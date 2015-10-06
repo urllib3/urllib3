@@ -1,11 +1,38 @@
 import zlib
+
+from functools import wraps
+
 from ..packages.six import binary_type
 
 # The supported content-codings.
 CONTENT_ENCODINGS = {}
 
-# Any errors that may be raised during decoding.
-DECODING_ERRORS = ()
+# The accept-encoding string
+ACCEPT_ENCODING = ""
+
+
+class DecompressionError(Exception):
+    """
+    An error encountered during decompression.
+    """
+    pass
+
+
+def catch_and_raise(exceptions):
+    """
+    This decorator wraps a function and, if an exception in ``exceptions`` was
+    thrown, wraps it in a ``DecompressionError`` instead.
+    """
+    def wrap(f):
+        @wraps(f)
+        def inner(*args, **kwargs):
+            try:
+                return f(*args, **kwargs)
+            except exceptions as e:
+                raise DecompressionError(e)
+
+        return inner
+    return wrap
 
 
 class DeflateDecoder(object):
@@ -15,9 +42,10 @@ class DeflateDecoder(object):
         self._data = binary_type()
         self._obj = zlib.decompressobj()
 
-    def __getattr__(self, name):
+    def __getattr__(self, name):  # Defensive:
         return getattr(self._obj, name)
 
+    @catch_and_raise(zlib.error)
     def decompress(self, data):
         if not data:
             return data
@@ -36,19 +64,28 @@ class DeflateDecoder(object):
             finally:
                 self._data = None
 
+    @catch_and_raise(zlib.error)
+    def flush(self):
+        return self._obj.flush()
+
 
 class GzipDecoder(object):
 
     def __init__(self):
         self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name):  # Defensive:
         return getattr(self._obj, name)
 
+    @catch_and_raise(zlib.error)
     def decompress(self, data):
         if not data:
             return data
         return self._obj.decompress(data)
+
+    @catch_and_raise(zlib.error)
+    def flush(self):
+        return self._obj.flush()
 
 
 def register_content_encoding(name, decoder, exceptions=()):
@@ -68,11 +105,9 @@ def register_content_encoding(name, decoder, exceptions=()):
     :param exceptions: (optional) Any extra exceptions that may be raised by
                        this decoder on decompression failure.
     """
-    global DECODING_ERRORS
-
+    global DECODING_ERRORS, ACCEPT_ENCODING
     CONTENT_ENCODINGS[name] = decoder
-    if exceptions:
-        DECODING_ERRORS = tuple(set(DECODING_ERRORS + exceptions))
+    ACCEPT_ENCODING = ','.join(sorted(CONTENT_ENCODINGS))
 
 
 def get_decoder(name):
@@ -84,13 +119,6 @@ def get_decoder(name):
     return CONTENT_ENCODINGS.get(name, DeflateDecoder)()
 
 
-def decoding_errors():
-    """
-    All exceptions that may be raised by the content decoders.
-    """
-    return DECODING_ERRORS
-
-
 def content_encodings():
     """
     All currently-supported content_encodings.
@@ -98,5 +126,12 @@ def content_encodings():
     return list(CONTENT_ENCODINGS)
 
 
-register_content_encoding('deflate', DeflateDecoder, (IOError, zlib.error))
-register_content_encoding('gzip', GzipDecoder, (IOError, zlib.error))
+def default_accept_encoding():
+    """
+    Returns the complete header value for the Accept-Encoding header field.
+    """
+    return ACCEPT_ENCODING
+
+
+register_content_encoding('deflate', DeflateDecoder)
+register_content_encoding('gzip', GzipDecoder)

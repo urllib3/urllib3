@@ -1,6 +1,6 @@
 from base64 import b64encode
 
-from .encodings import content_encodings
+from .compression import default_accept_encoding
 from ..packages.six import b
 
 
@@ -48,7 +48,7 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
         elif isinstance(accept_encoding, list):
             accept_encoding = ','.join(accept_encoding)
         else:
-            accept_encoding = ','.join(sorted(content_encodings()))
+            accept_encoding = default_accept_encoding()
         headers['accept-encoding'] = accept_encoding
 
     if user_agent:

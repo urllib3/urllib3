@@ -10,7 +10,9 @@ from .packages.six import string_types as basestring, binary_type, PY3
 from .packages.six.moves import http_client as httplib
 from .connection import HTTPException, BaseSSLError
 from .util.response import is_fp_closed, is_response_to_head
-from .util.encodings import get_decoder, decoding_errors, content_encodings
+from .util.compression import (
+    get_decoder, DecompressionError, content_encodings
+)
 
 
 class HTTPResponse(io.IOBase):
@@ -138,7 +140,7 @@ class HTTPResponse(io.IOBase):
         try:
             if decode_content and self._decoder:
                 data = self._decoder.decompress(data)
-        except decoding_errors() as e:
+        except (IOError, DecompressionError) as e:
             content_encoding = self.headers.get('content-encoding', '').lower()
             raise DecodeError(
                 "Received response with content-encoding: %s, but "

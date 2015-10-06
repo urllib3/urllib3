@@ -9,9 +9,8 @@ from itertools import chain
 from mock import patch, Mock
 
 from urllib3 import add_stderr_logger, disable_warnings
-from urllib3.util.encodings import (
-    get_decoder, DeflateDecoder, content_encodings, decoding_errors,
-    register_content_encoding
+from urllib3.util.compression import (
+    get_decoder, DeflateDecoder, content_encodings, register_content_encoding
 )
 from urllib3.util.request import make_headers
 from urllib3.util.timeout import Timeout
@@ -441,21 +440,12 @@ class TestUtil(unittest.TestCase):
             sorted(['gzip', 'deflate']), sorted(content_encodings())
         )
 
-    def test_default_exceptions_are_present(self):
-        exceptions = decoding_errors()
-        self.assertTrue(len(exceptions), 2)
-        self.assertTrue(IOError in decoding_errors())
-        self.assertTrue(zlib.error in decoding_errors())
-
     def test_register_new_decoder(self):
         encoding = 'fake-encoding'
         decoder_cls = Mock()
         decoder = Mock()
         decoder_cls.return_value = decoder
-        exceptions = (RuntimeError, ValueError)
-        register_content_encoding(encoding, decoder_cls, exceptions)
+        register_content_encoding(encoding, decoder_cls)
 
         self.assertTrue(get_decoder(encoding) is decoder)
         self.assertTrue('fake-encoding' in content_encodings())
-        self.assertTrue(RuntimeError in decoding_errors())
-        self.assertTrue(ValueError in decoding_errors())
