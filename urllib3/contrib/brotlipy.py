@@ -43,4 +43,4 @@ class BrotliDecoder(object):
 
 
 def inject_into_urllib3():
-    compression.register_content_encoding('brotli', BrotliDecoder)
+    compression.register_content_encoding('br', BrotliDecoder)
