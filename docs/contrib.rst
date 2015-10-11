@@ -27,7 +27,7 @@ Example usage::
     from urllib3 import PoolManager
     from urllib3.contrib.appengine import AppEngineManager, is_appengine_sandbox
 
-    # This substitution will be done automagically once appengine code
+    # This substitution will be done automatically once appengine code
     # graduates from the contrib module.
     if is_appengine_sandbox():
         # AppEngineManager uses AppEngine's URLFetch API behind the scenes
