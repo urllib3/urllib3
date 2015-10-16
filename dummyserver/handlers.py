@@ -246,6 +246,11 @@ class TestingApp(RequestHandler):
             data,
             headers=[('Content-Type', 'application/octet-stream')])
 
+    def status(self, request):
+        status = request.params.get("status", "200 OK")
+
+        return Response(status=status)
+
     def shutdown(self, request):
         sys.exit()
 
