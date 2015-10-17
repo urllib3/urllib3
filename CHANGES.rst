@@ -6,6 +6,8 @@ dev (master)
 
 * Fixed ``pip install urllib3[secure]`` on modern pip. (Issue #706)
 
+* pyopenssl: Fixed SSL3_WRITE_PENDING error. (Issue #717)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
