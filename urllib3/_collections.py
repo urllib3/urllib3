@@ -234,7 +234,7 @@ class HTTPHeaderDict(MutableMapping):
         """
         if len(args) > 1:
             raise TypeError("extend() takes at most 1 positional "
-                            "arguments ({} given)".format(len(args)))
+                            "arguments ({0} given)".format(len(args)))
         other = args[0] if len(args) >= 1 else ()
 
         if isinstance(other, HTTPHeaderDict):
