@@ -1,3 +1,7 @@
+import errno
+import warnings
+import hmac
+
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
@@ -14,10 +18,6 @@ HASHFUNC_MAP = {
     40: sha1,
     64: sha256,
 }
-
-import errno
-import warnings
-import hmac
 
 
 def _const_compare_digest_backport(a, b):

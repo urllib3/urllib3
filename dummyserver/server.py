@@ -39,6 +39,7 @@ DEFAULT_CA_BAD = os.path.join(CERTS_PATH, 'client_bad.pem')
 NO_SAN_CA = os.path.join(CERTS_PATH, 'cacert.no_san.pem')
 DEFAULT_CA_DIR = os.path.join(CERTS_PATH, 'ca_path_test')
 
+
 def _has_ipv6(host):
     """ Returns True if the system can bind an IPv6 address. """
     sock = None

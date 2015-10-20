@@ -301,7 +301,6 @@ class HTTPResponse(io.IOBase):
 
         return data
 
-
     def stream(self, amt=2**16, decode_content=None):
         """
         A generator wrapper for the read() method. A call will block until
@@ -340,9 +339,9 @@ class HTTPResponse(io.IOBase):
         headers = r.msg
 
         if not isinstance(headers, HTTPHeaderDict):
-            if PY3: # Python 3
+            if PY3:  # Python 3
                 headers = HTTPHeaderDict(headers.items())
-            else: # Python 2
+            else:  # Python 2
                 headers = HTTPHeaderDict.from_httplib(headers)
 
         # HTTPResponse objects in Python 3 don't have a .strict attribute
@@ -454,7 +453,8 @@ class HTTPResponse(io.IOBase):
         self._init_decoder()
         # FIXME: Rewrite this method and make it a class with a better structured logic.
         if not self.chunked:
-            raise ResponseNotChunked("Response is not chunked. "
+            raise ResponseNotChunked(
+                "Response is not chunked. "
                 "Header 'transfer-encoding: chunked' is missing.")
 
         # Don't bother reading the body of a HEAD request.

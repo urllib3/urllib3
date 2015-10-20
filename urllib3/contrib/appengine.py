@@ -176,7 +176,7 @@ class AppEngineManager(RequestMethods):
         if timeout is Timeout.DEFAULT_TIMEOUT:
             return 5  # 5s is the default timeout for URLFetch.
         if isinstance(timeout, Timeout):
-            if not timeout.read is timeout.connect:
+            if timeout.read is not timeout.connect:
                 warnings.warn(
                     "URLFetch does not support granular timeout settings, "
                     "reverting to total timeout.", AppEnginePlatformWarning)
