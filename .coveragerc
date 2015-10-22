@@ -2,14 +2,19 @@
 omit =
     urllib3/packages/*
     urllib3/contrib/*
+    test/*
+    dummyserver/*
+    */site-packages/*
+    /usr/bin/*
 
 [report]
+show_missing = true
 exclude_lines =
     except ImportError:
     pass
     import
     raise
     .* # Platform-specific.*
-    .*:.* # Python \d.*
+    .*:.* # Python 2.6.4
     .* # Abstract
     .* # Defensive:

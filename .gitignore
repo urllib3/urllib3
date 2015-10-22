@@ -3,6 +3,9 @@
 *.egg
 *.egg-info
 *.log
+.coverage
+.coverage.*
+coverage.xml
 /dist
 /build
 /docs/_build
