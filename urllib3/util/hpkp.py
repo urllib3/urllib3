@@ -6,10 +6,7 @@ import time
 
 from ..exceptions import HPKPError
 
-from cryptography import x509
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.serialization import Encoding
-from cryptography.hazmat.primitives.serialization import PublicFormat
+from OpenSSL import crypto
 
 
 class HPKPDatabase(object):
@@ -315,11 +312,8 @@ def _certificate_in_pins(cert, host):
     For a single DER certificate, check whether the KnownPinnedHost has
     pinned it.
     """
-    key = cert.public_key()
-    public_key = key.public_bytes(Encoding.PEM,
-                                  PublicFormat.SubjectPublicKeyInfo)
-    public_key_base64 = ''.join(public_key.split("\n")[1:-2])
-    public_key_raw = base64.b64decode(public_key_base64)
+    key = cert.get_pubkey()
+    public_key_raw = crypto.dump_publickey(crypto.FILETYPE_ASN1, key)
     public_key_sha256 = hashlib.sha256(public_key_raw).digest()
     public_key_sha256_base64 = base64.b64encode(public_key_sha256)
 

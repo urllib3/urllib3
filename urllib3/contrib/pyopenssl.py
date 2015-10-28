@@ -61,14 +61,6 @@ import select
 from .. import connection
 from .. import util
 
-from OpenSSL.crypto import X509
-
-from cryptography.hazmat.bindings.openssl.binding import Binding
-from cryptography.hazmat.backends.openssl.x509 import _Certificate
-from cryptography.hazmat.backends.openssl import backend
-binding = Binding()
-_ffi = binding.ffi
-_lib = binding.lib
 
 __all__ = ['inject_into_urllib3', 'extract_from_urllib3']
 
@@ -286,28 +278,8 @@ class WrappedSocket(object):
 
 
 def _verify_callback(cnx, x509, err_no, err_depth, return_code):
+    cnx.certs.append(x509)
     return err_no == 0
-
-
-def _explicit_verify_callback(cnx, ctx):
-    issuer = _ffi.new("X509 *[1]")
-    cert = _lib.X509_STORE_CTX_get_current_cert(ctx)
-    ret = ctx.get_issuer(issuer, ctx, cert)
-
-    if ret == 0:
-        return True
-
-    if ret != 1:
-        raise RuntimeError("IT WENT WRONG")
-
-    issuer_cert = _Certificate(backend, issuer[0])
-
-    if not hasattr(cnx, 'certs'):
-        cnx.certs = []
-        cnx.certs.append(_Certificate(backend, cert))
-
-    cnx.certs.append(issuer_cert)
-    return True
 
 
 def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
@@ -319,10 +291,8 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         ctx.use_certificate_file(certfile)
     if keyfile:
         ctx.use_privatekey_file(keyfile)
-    #if cert_reqs != ssl.CERT_NONE:
-    #    ctx.set_verify(_openssl_verify[cert_reqs], _verify_callback)
     if cert_reqs != ssl.CERT_NONE:
-        ctx.set_explicit_verify(_openssl_verify[cert_reqs], _explicit_verify_callback)
+        ctx.set_verify(_openssl_verify[cert_reqs], _verify_callback)
     if ca_certs or ca_cert_dir:
         try:
             ctx.load_verify_locations(ca_certs, ca_cert_dir)
@@ -339,6 +309,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
     ctx.set_cipher_list(DEFAULT_SSL_CIPHER_LIST)
 
     cnx = OpenSSL.SSL.Connection(ctx, sock)
+    cnx.certs = []
     cnx.set_tlsext_host_name(server_hostname)
     cnx.set_connect_state()
     while True:
