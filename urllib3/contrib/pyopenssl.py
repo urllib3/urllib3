@@ -217,7 +217,10 @@ class WrappedSocket(object):
 
     def close(self):
         if self._makefile_refs < 1:
-            return self.connection.close()
+            try:
+                return self.connection.close()
+            except OpenSSL.SSL.Error:
+                return
         else:
             self._makefile_refs -= 1
 
