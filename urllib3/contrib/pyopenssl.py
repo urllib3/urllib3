@@ -53,7 +53,7 @@ except SyntaxError as e:
 import OpenSSL.SSL
 from pyasn1.codec.der import decoder as der_decoder
 from pyasn1.type import univ, constraint
-from socket import _fileobject, timeout
+from socket import _fileobject, timeout, error as SocketError
 import ssl
 import select
 
@@ -175,7 +175,7 @@ class WrappedSocket(object):
             if self.suppress_ragged_eofs and e.args == (-1, 'Unexpected EOF'):
                 return b''
             else:
-                raise
+                raise SocketError(e)
         except OpenSSL.SSL.ZeroReturnError as e:
             if self.connection.get_shutdown() == OpenSSL.SSL.RECEIVED_SHUTDOWN:
                 return b''
