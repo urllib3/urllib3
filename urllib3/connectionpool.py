@@ -537,6 +537,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             headers = headers.copy()
             headers.update(self.proxy_headers)
 
+        # If body is a file-like object, record position for possible retries
+        try:
+            body_pos = body.tell()
+        except AttributeError:
+            body_pos = None
+
         # Must keep the exception bound to a separate variable or else Python 3
         # complains about UnboundLocalError.
         err = None
@@ -622,6 +628,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Try again
             log.warning("Retrying (%r) after connection "
                         "broken by '%r': %s" % (retries, err, url))
+
+            # Without this we would not send the complete body in the retry!
+            if body_pos is not None:
+               body.seek(body_pos)
+
             return self.urlopen(method, url, body, headers, retries,
                                 redirect, assert_same_host,
                                 timeout=timeout, pool_timeout=pool_timeout,
@@ -644,6 +655,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 return response
 
             log.info("Redirecting %s -> %s" % (url, redirect_location))
+            # Without this we would not send the complete body in the retry!
+            if body_pos is not None:
+               body.seek(body_pos)
+
             return self.urlopen(method, redirect_location, body, headers,
                     retries=retries, redirect=redirect,
                     assert_same_host=assert_same_host,
@@ -655,6 +670,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             retries = retries.increment(method, url, response=response, _pool=self)
             retries.sleep()
             log.info("Forced retry: %s" % url)
+
+            # Without this we would not send the complete body in the retry!
+            if body_pos is not None:
+               body.seek(body_pos)
+
             return self.urlopen(method, url, body, headers,
                     retries=retries, redirect=redirect,
                     assert_same_host=assert_same_host,
