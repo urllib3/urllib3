@@ -7,18 +7,13 @@ import warnings
 from .packages import six
 
 try:  # Python 3
-    from http.client import HTTPConnection as _HTTPConnection, HTTPException
+    from http.client import HTTPConnection as _HTTPConnection
+    from http.client import HTTPException  # noqa: unused in this module
 except ImportError:
-    from httplib import HTTPConnection as _HTTPConnection, HTTPException
-
-
-class DummyConnection(object):
-    "Used to detect a failed ConnectionCls import."
-    pass
-
+    from httplib import HTTPConnection as _HTTPConnection
+    from httplib import HTTPException  # noqa: unused in this module
 
 try:  # Compiled with SSL?
-    HTTPSConnection = DummyConnection
     import ssl
     BaseSSLError = ssl.SSLError
 except (ImportError, AttributeError):  # Platform-specific: No SSL.
@@ -60,6 +55,11 @@ port_by_scheme = {
 }
 
 RECENT_DATE = datetime.date(2014, 1, 1)
+
+
+class DummyConnection(object):
+    """Used to detect a failed ConnectionCls import."""
+    pass
 
 
 class HTTPConnection(_HTTPConnection, object):
@@ -266,8 +266,8 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                 )
             match_hostname(cert, self.assert_hostname or hostname)
 
-        self.is_verified = (resolved_cert_reqs == ssl.CERT_REQUIRED
-                            or self.assert_fingerprint is not None)
+        self.is_verified = (resolved_cert_reqs == ssl.CERT_REQUIRED or
+                            self.assert_fingerprint is not None)
 
 
 if ssl:

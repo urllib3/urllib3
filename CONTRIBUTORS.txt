@@ -178,5 +178,8 @@ In chronological order:
 * Evan Meagher <https://evanmeagher.net>
   * Bugfix related to `memoryview` usage in PyOpenSSL adapter
 
+* John Vandenberg <jayvdb@gmail.com>
+  * Python 2.6 fixes; pyflakes and pep8 compliance
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

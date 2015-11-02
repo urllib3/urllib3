@@ -42,6 +42,7 @@ class SocketDummyServerTestCase(unittest.TestCase):
     @classmethod
     def start_response_handler(cls, response, num=1, block_send=None):
         ready_event = threading.Event()
+
         def socket_handler(listener):
             for _ in range(num):
                 ready_event.set()
@@ -61,9 +62,9 @@ class SocketDummyServerTestCase(unittest.TestCase):
     @classmethod
     def start_basic_handler(cls, **kw):
         return cls.start_response_handler(
-           b'HTTP/1.1 200 OK\r\n'
-           b'Content-Length: 0\r\n'
-           b'\r\n', **kw)
+            b'HTTP/1.1 200 OK\r\n'
+            b'Content-Length: 0\r\n'
+            b'\r\n', **kw)
 
     @classmethod
     def tearDownClass(cls):

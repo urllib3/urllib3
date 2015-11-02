@@ -133,7 +133,8 @@ class RequestMethods(object):
 
         if fields:
             if 'body' in urlopen_kw:
-                raise TypeError('request got values for both \'fields\' and \'body\', can only specify one.')
+                raise TypeError(
+                    "request got values for both 'fields' and 'body', can only specify one.")
 
             if encode_multipart:
                 body, content_type = encode_multipart_formdata(fields, boundary=multipart_boundary)

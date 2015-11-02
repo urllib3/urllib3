@@ -28,8 +28,8 @@ class Response(object):
     def __call__(self, request_handler):
         status, reason = self.status.split(' ', 1)
         request_handler.set_status(int(status), reason)
-        for header,value in self.headers:
-            request_handler.add_header(header,value)
+        for header, value in self.headers:
+            request_handler.add_header(header, value)
 
         # chunked
         if isinstance(self.body, list):
@@ -47,6 +47,7 @@ class Response(object):
 
 
 RETRY_TEST_NAMES = collections.defaultdict(int)
+
 
 class TestingApp(RequestHandler):
     """
@@ -136,8 +137,8 @@ class TestingApp(RequestHandler):
         files_ = request.files.get(param)
 
         if len(files_) != 1:
-            return Response("Expected 1 file for '%s', not %d" %(param, len(files_)),
-                                                    status='400 Bad Request')
+            return Response("Expected 1 file for '%s', not %d" % (param, len(files_)),
+                            status='400 Bad Request')
         file_ = files_[0]
 
         data = file_['body']
@@ -277,7 +278,7 @@ def _parse_header(line):
             value = p[i + 1:].strip()
             params.append((name, value))
     params = email.utils.decode_params(params)
-    params.pop(0) # get rid of the dummy again
+    params.pop(0)  # get rid of the dummy again
     pdict = {}
     for name, value in params:
         value = email.utils.collapse_rfc2231_value(value)

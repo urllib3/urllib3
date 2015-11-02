@@ -167,7 +167,7 @@ class HTTPHeaderDict(MutableMapping):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    if not PY3: # Python 2
+    if not PY3:  # Python 2
         iterkeys = MutableMapping.iterkeys
         itervalues = MutableMapping.itervalues
 
@@ -304,7 +304,7 @@ class HTTPHeaderDict(MutableMapping):
         return list(self.iteritems())
 
     @classmethod
-    def from_httplib(cls, message): # Python 2
+    def from_httplib(cls, message):  # Python 2
         """Read headers from a Python 2 httplib message object."""
         # python2.7 does not expose a proper API for exporting multiheaders
         # efficiently. This function re-reads raw lines from the message

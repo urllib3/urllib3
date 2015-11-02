@@ -79,8 +79,8 @@ except AttributeError:
 _openssl_verify = {
     ssl.CERT_NONE: OpenSSL.SSL.VERIFY_NONE,
     ssl.CERT_OPTIONAL: OpenSSL.SSL.VERIFY_PEER,
-    ssl.CERT_REQUIRED: OpenSSL.SSL.VERIFY_PEER
-                       + OpenSSL.SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
+    ssl.CERT_REQUIRED:
+        OpenSSL.SSL.VERIFY_PEER + OpenSSL.SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
 }
 
 DEFAULT_SSL_CIPHER_LIST = util.ssl_.DEFAULT_CIPHERS
@@ -106,7 +106,7 @@ def extract_from_urllib3():
     util.HAS_SNI = orig_util_HAS_SNI
 
 
-### Note: This is a slightly bug-fixed version of same from ndg-httpsclient.
+# Note: This is a slightly bug-fixed version of same from ndg-httpsclient.
 class SubjectAltName(BaseSubjectAltName):
     '''ASN.1 implementation for subjectAltNames support'''
 
@@ -117,7 +117,7 @@ class SubjectAltName(BaseSubjectAltName):
         constraint.ValueSizeConstraint(1, 1024)
 
 
-### Note: This is a slightly bug-fixed version of same from ndg-httpsclient.
+# Note: This is a slightly bug-fixed version of same from ndg-httpsclient.
 def get_subj_alt_name(peer_cert):
     # Search through extensions
     dns_name = []
@@ -208,7 +208,7 @@ class WrappedSocket(object):
     def sendall(self, data):
         total_sent = 0
         while total_sent < len(data):
-            sent = self._send_until_done(data[total_sent:total_sent+SSL_WRITE_BLOCKSIZE])
+            sent = self._send_until_done(data[total_sent:total_sent + SSL_WRITE_BLOCKSIZE])
             total_sent += sent
 
     def shutdown(self):

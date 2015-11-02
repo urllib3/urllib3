@@ -9,6 +9,7 @@ from ..exceptions import TimeoutStateError
 # urllib3
 _Default = object()
 
+
 def current_time():
     """
     Retrieve the current time. This function is mocked out in unit testing.
@@ -226,9 +227,9 @@ class Timeout(object):
             has not yet been called on this object.
         """
         if (self.total is not None and
-            self.total is not self.DEFAULT_TIMEOUT and
-            self._read is not None and
-            self._read is not self.DEFAULT_TIMEOUT):
+                self.total is not self.DEFAULT_TIMEOUT and
+                self._read is not None and
+                self._read is not self.DEFAULT_TIMEOUT):
             # In case the connect timeout has not yet been established.
             if self._start_connect is None:
                 return self._read
