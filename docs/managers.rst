@@ -70,6 +70,17 @@ connections and individual per-server:port
 :class:`~urllib3.connectionpool.HTTPSConnectionPool` instances for tunnelled
 HTTPS connections.
 
+Example using proxy authentication:
+
+::
+
+	>>> headers = urllib3.make_headers(proxy_basic_auth='myusername:mypassword')
+	>>> proxy = urllib3.ProxyManager('http://localhost:3128', proxy_headers=headers)
+	>>> r = proxy.request('GET', 'http://example.com/')
+	>>> r.status
+	200
+
+
 API
 ---
     .. autoclass:: ProxyManager
