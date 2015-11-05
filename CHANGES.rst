@@ -8,6 +8,8 @@ dev (master)
 
 * pyopenssl: Fixed SSL3_WRITE_PENDING error. (Issue #717)
 
+* Close connections more defensively on exception. (Issue #734)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
