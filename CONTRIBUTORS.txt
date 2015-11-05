@@ -181,5 +181,8 @@ In chronological order:
 * John Vandenberg <jayvdb@gmail.com>
   * Python 2.6 fixes; pyflakes and pep8 compliance
 
+* Andy Caldwell <andy.m.caldwell@googlemail.com>
+  * Bugfix related to reusing connections in indeterminate states.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
