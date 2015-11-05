@@ -30,6 +30,7 @@ except ImportError:
     class MimeToolMessage(object):
         pass
 from threading import Event
+import select
 import socket
 import ssl
 
@@ -365,6 +366,72 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
             self.assertRaises(ProtocolError, response.read)
             self.assertEqual(poolsize, pool.pool.qsize())
+
+    def test_connection_closed_on_read_timeout_preload_false(self):
+        timed_out = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            # Consume request
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf = sock.recv(65535)
+
+            # Send partial chunked response and then hang.
+            sock.send((
+                'HTTP/1.1 200 OK\r\n'
+                'Content-Type: text/plain\r\n'
+                'Transfer-Encoding: chunked\r\n'
+                '\r\n'
+                '8\r\n'
+                '12345678\r\n').encode('utf-8')
+            )
+            timed_out.wait(5)
+
+            # Expect a new request, but keep hold of the old socket to avoid
+            # leaking it. Because we don't want to hang this thread, we
+            # actually use select.select to confirm that a new request is
+            # coming in: this lets us time the thread out.
+            rlist, _, _ = select.select([listener], [], [], 1)
+            assert rlist
+            new_sock = listener.accept()[0]
+
+            # Consume request
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf = new_sock.recv(65535)
+
+            # Send complete chunked response.
+            new_sock.send((
+                'HTTP/1.1 200 OK\r\n'
+                'Content-Type: text/plain\r\n'
+                'Transfer-Encoding: chunked\r\n'
+                '\r\n'
+                '8\r\n'
+                '12345678\r\n'
+                '0\r\n\r\n').encode('utf-8')
+            )
+
+            new_sock.close()
+            sock.close()
+
+        self._start_server(socket_handler)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            # First request should fail.
+            response = pool.urlopen('GET', '/', retries=0,
+                                    preload_content=False,
+                                    timeout=Timeout(connect=1, read=0.001))
+            try:
+                self.assertRaises(ReadTimeoutError, response.read)
+            finally:
+                timed_out.set()
+
+            # Second should succeed.
+            response = pool.urlopen('GET', '/', retries=0,
+                                    preload_content=False,
+                                    timeout=Timeout(connect=1, read=0.1))
+            self.assertEqual(len(response.read()), 8)
 
 
 class TestProxyManager(SocketDummyServerTestCase):
