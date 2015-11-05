@@ -236,6 +236,12 @@ class HTTPResponse(io.IOBase):
             if self._original_response and not self._original_response.isclosed():
                 self._original_response.close()
 
+            # Closing the response may not actually be sufficient to close
+            # everything, so if we have a hold of the connection close that
+            # too.
+            if self._connection is not None:
+                self._connection.close()
+
             raise
         finally:
             if self._original_response and self._original_response.isclosed():
