@@ -1,6 +1,7 @@
 """
 urllib3 - Thread-safe connection pooling and re-using.
 """
+from __future__ import absolute_import
 import warnings
 
 from .connectionpool import (
