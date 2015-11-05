@@ -43,6 +43,7 @@ Module Variables
 .. _crime attack: https://en.wikipedia.org/wiki/CRIME_(security_exploit)
 
 '''
+from __future__ import absolute_import
 
 try:
     from ndg.httpsclient.ssl_peer_verification import SUBJ_ALT_NAME_SUPPORT

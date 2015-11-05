@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # For backwards compatibility, provide imports that used to be here.
 from .connection import is_connection_dropped
 from .request import make_headers
