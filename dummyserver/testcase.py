@@ -59,11 +59,6 @@ class SocketDummyServerTestCase(unittest.TestCase):
         return ready_event
 
     @classmethod
-    def wait_for_socket(cls, ready_event):
-        ready_event.wait()
-        ready_event.clear()
-
-    @classmethod
     def start_basic_handler(cls, **kw):
         return cls.start_response_handler(
             b'HTTP/1.1 200 OK\r\n'
