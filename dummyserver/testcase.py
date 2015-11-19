@@ -46,7 +46,6 @@ class SocketDummyServerTestCase(unittest.TestCase):
         def socket_handler(listener):
             for _ in range(num):
                 ready_event.set()
-                ready_event.clear()
 
                 sock = listener.accept()[0]
                 consume_socket(sock)
