@@ -475,8 +475,14 @@ class HTTPResponse(io.IOBase):
                 if self.chunk_left == 0:
                     break
                 chunk = self._handle_chunk(amt)
-                yield self._decode(chunk, decode_content=decode_content,
-                                   flush_decoder=True)
+                decoded = self._decode(chunk, decode_content=decode_content,
+                                       flush_decoder=False)
+                if decoded:
+                    yield decoded
+
+            decoded = self._decode(b'', decode_content, flush_decoder=True)
+            if decoded:
+                yield decoded
 
             # Chunk content ends with \r\n: discard it.
             while True:
