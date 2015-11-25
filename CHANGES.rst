@@ -12,6 +12,9 @@ dev (master)
 
 * Close connections more defensively on exception. (Issue #734)
 
+* Adjusted ``read_chunked`` to handle gzipped, chunk-encoded bodies without
+  repeatedly flushing the decoder, to function better on Jython. (Issue #743)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
