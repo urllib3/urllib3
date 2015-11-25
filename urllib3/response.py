@@ -195,11 +195,21 @@ class HTTPResponse(io.IOBase):
                 "Received response with content-encoding: %s, but "
                 "failed to decode it." % content_encoding, e)
 
-        if flush_decoder and decode_content and self._decoder:
-            buf = self._decoder.decompress(binary_type())
-            data += buf + self._decoder.flush()
+        if flush_decoder and decode_content:
+            data += self._flush_decoder()
 
         return data
+
+    def _flush_decoder(self):
+        """
+        Flushes the decoder. Should only be called if the decoder is actually
+        being used.
+        """
+        if self._decoder:
+            buf = self._decoder.decompress(b'')
+            return buf + self._decoder.flush()
+
+        return b''
 
     @contextmanager
     def _error_catcher(self):
