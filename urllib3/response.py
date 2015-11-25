@@ -490,9 +490,13 @@ class HTTPResponse(io.IOBase):
                 if decoded:
                     yield decoded
 
-            decoded = self._decode(b'', decode_content, flush_decoder=True)
-            if decoded:
-                yield decoded
+            if decode_content:
+                # On CPython and PyPy, we should never need to flush the
+                # decoder. However, on Jython we *might* need to, so
+                # lets defensively do it anyway.
+                decoded = self._flush_decoder()
+                if decoded:  # Platform-specific: Jython.
+                    yield decoded
 
             # Chunk content ends with \r\n: discard it.
             while True:
