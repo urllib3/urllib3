@@ -143,13 +143,8 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         block_event.set() # Release request
 
     def test_connect_timeout(self):
-        def noop_handler(listener):
-            return
-
-        self._start_server(noop_handler)
-
         url = '/'
-        host, port = self.host, self.port
+        host, port = TARPIT_HOST, 80
         timeout = Timeout(connect=SHORT_TIMEOUT)
 
         # Pool-global timeout
@@ -171,18 +166,15 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         self.assertRaises(ConnectTimeoutError, pool.request, 'GET', url, timeout=timeout)
 
     def test_total_applies_connect(self):
-        def noop_handler(listener):
-            return
-
-        self._start_server(noop_handler)
+        host, port = TARPIT_HOST, 80
 
         timeout = Timeout(total=None, connect=SHORT_TIMEOUT)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        pool = HTTPConnectionPool(host, port, timeout=timeout)
         conn = pool._get_conn()
         self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', '/')
 
         timeout = Timeout(connect=3, read=5, total=SHORT_TIMEOUT)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        pool = HTTPConnectionPool(host, port, timeout=timeout)
         conn = pool._get_conn()
         self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', '/')
 
@@ -674,15 +666,15 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_cleanup_on_connection_error(self):
         '''
-        Test that connections are recycled to the pool on 
+        Test that connections are recycled to the pool on
         connection errors where no http response is received.
         '''
         poolsize = 3
         with HTTPConnectionPool(self.host, self.port, maxsize=poolsize, block=True) as http:
             self.assertEqual(http.pool.qsize(), poolsize)
 
-            # force a connection error by supplying a non-existent 
-            # url. We won't get a response for this  and so the 
+            # force a connection error by supplying a non-existent
+            # url. We won't get a response for this  and so the
             # conn won't be implicitly returned to the pool.
             self.assertRaises(MaxRetryError,
                 http.request, 'GET', '/redirect', fields={'target': '/'}, release_conn=False, retries=0)
