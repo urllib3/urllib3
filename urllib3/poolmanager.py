@@ -149,10 +149,10 @@ class PoolManager(RequestMethods):
         constructor.
         """
         u = parse_url(url)
-        ssl_kwargs = {
-            k: v for k, v in self.connection_pool_kw.items()
+        ssl_kwargs = dict(
+            (k, v) for k, v in self.connection_pool_kw.items()
             if k in SSL_KEYWORDS
-        }
+        )
         return self.connection_from_host(
             u.host, port=u.port, scheme=u.scheme, ssl_kwargs=ssl_kwargs
         )
