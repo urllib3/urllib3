@@ -504,6 +504,8 @@ class TestProxyManager(SocketDummyServerTestCase):
         self.assertTrue(b'For The Proxy: YEAH!\r\n' in r.data)
 
     def test_retries(self):
+        close_event = Event()
+
         def echo_socket_handler(listener):
             sock = listener.accept()[0]
             # First request, which should fail
@@ -522,6 +524,7 @@ class TestProxyManager(SocketDummyServerTestCase):
                       '\r\n'
                       '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
             sock.close()
+            close_event.set()
 
         self._start_server(echo_socket_handler)
         base_url = 'http://%s:%d' % (self.host, self.port)
@@ -533,6 +536,7 @@ class TestProxyManager(SocketDummyServerTestCase):
                          assert_same_host=False, retries=1)
         self.assertEqual(r.status, 200)
 
+        close_event.wait(timeout=1)
         self.assertRaises(ProxyError, conn.urlopen, 'GET',
                 'http://www.google.com',
                 assert_same_host=False, retries=False)
