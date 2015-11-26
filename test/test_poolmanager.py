@@ -1,6 +1,6 @@
 import unittest
 
-from urllib3.poolmanager import PoolManager
+from urllib3.poolmanager import PoolManager, SSL_KEYWORDS
 from urllib3 import connection_from_url
 from urllib3.exceptions import (
     ClosedPoolError,
@@ -86,6 +86,64 @@ class TestPoolManager(unittest.TestCase):
         self.assertRaises(ClosedPoolError, conn_pool._get_conn)
 
         self.assertEqual(len(p.pools), 0)
+
+    def test_pools_keyed_on_ssl_arguments_from_host(self):
+        ssl_kw = {
+            'key_file': '/root/totally_legit.key',
+            'cert_file': '/root/totally_legit.crt',
+            'cert_reqs': 'CERT_REQUIRED',
+            'ca_certs': '/root/path_to_pem',
+            'ssl_version': 'SSLv23_METHOD',
+        }
+        p = PoolManager(5)
+        conns = []
+        conns.append(
+            p.connection_from_host(
+                'example.com', 443, scheme='https', ssl_kwargs=ssl_kw
+            )
+        )
+
+        for k in ssl_kw:
+            ssl_kw[k] = 'newval'
+            conns.append(
+                p.connection_from_host(
+                    'example.com', 443, scheme='https', ssl_kwargs=ssl_kw
+                )
+            )
+
+        self.assertTrue(
+            all(
+                x is not y
+                for i, x in enumerate(conns)
+                for j, y in enumerate(conns)
+                if i != j
+            )
+        )
+
+    def test_pools_keyed_on_ssl_arguments_from_url(self):
+        ssl_kw = {
+            'key_file': '/root/totally_legit.key',
+            'cert_file': '/root/totally_legit.crt',
+            'cert_reqs': 'CERT_REQUIRED',
+            'ca_certs': '/root/path_to_pem',
+            'ssl_version': 'SSLv23_METHOD',
+        }
+        p = PoolManager(5, **ssl_kw)
+        conns = []
+        conns.append(p.connection_from_url('https://example.com/'))
+
+        for k in ssl_kw:
+            p.connection_pool_kw[k] = 'newval'
+            conns.append(p.connection_from_url('https://example.com/'))
+
+        self.assertTrue(
+            all(
+                x is not y
+                for i, x in enumerate(conns)
+                for j, y in enumerate(conns)
+                if i != j
+            )
+        )
 
 
 if __name__ == '__main__':
