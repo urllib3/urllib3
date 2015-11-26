@@ -99,12 +99,19 @@ class PoolManager(RequestMethods):
         """
         self.pools.clear()
 
-    def connection_from_host(self, host, port=None, scheme='http'):
+    def connection_from_host(self, host, port=None, scheme='http',
+                             ssl_kwargs=None):
         """
-        Get a :class:`ConnectionPool` based on the host, port, and scheme.
+        Get a :class:`ConnectionPool` based on the host, port, scheme, and any
+        ssl-specific keyword arguments that apply to the HTTPSConnectionPool.
 
         If ``port`` isn't given, it will be derived from the ``scheme`` using
         ``urllib3.connectionpool.port_by_scheme``.
+
+        If ``scheme`` is ``https``, the ``ssl_kwargs`` will also be used as
+        part of the pool key. If called from user code, the user should ensure
+        that any keyword arguments in ``SSL_KEYWORDS` are passed to here before
+        being set on the pool.
         """
 
         if not host:
@@ -112,7 +119,12 @@ class PoolManager(RequestMethods):
 
         scheme = scheme or 'http'
         port = port or port_by_scheme.get(scheme, 80)
+        ssl_kwargs = ssl_kwargs or {}
+        ssl_kwargs = frozenset(ssl_kwargs.items())
         pool_key = (scheme, host, port)
+
+        if scheme == 'https':
+            pool_key = pool_key + (ssl_kwargs,)
 
         with self.pools.lock:
             # If the scheme, host, or port doesn't match existing open
@@ -137,7 +149,13 @@ class PoolManager(RequestMethods):
         constructor.
         """
         u = parse_url(url)
-        return self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
+        ssl_kwargs = {
+            k: v for k, v in self.connection_pool_kw.items()
+            if k in SSL_KEYWORDS
+        }
+        return self.connection_from_host(
+            u.host, port=u.port, scheme=u.scheme, ssl_kwargs=ssl_kwargs
+        )
 
     def urlopen(self, method, url, redirect=True, **kw):
         """
@@ -240,10 +258,11 @@ class ProxyManager(PoolManager):
         super(ProxyManager, self).__init__(
             num_pools, headers, **connection_pool_kw)
 
-    def connection_from_host(self, host, port=None, scheme='http'):
+    def connection_from_host(self, host, port=None, scheme='http',
+                             ssl_kwargs=None):
         if scheme == "https":
             return super(ProxyManager, self).connection_from_host(
-                host, port, scheme)
+                host, port, scheme, ssl_kwargs)
 
         return super(ProxyManager, self).connection_from_host(
             self.proxy.host, self.proxy.port, self.proxy.scheme)
