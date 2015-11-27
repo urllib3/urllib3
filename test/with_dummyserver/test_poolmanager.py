@@ -69,7 +69,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
         try:
             http.request('GET', '%s/redirect' % self.base_url,
                          fields={'target': cross_host_location},
-                         timeout=0.01, retries=0)
+                         timeout=1, retries=0)
             self.fail("Request succeeded instead of raising an exception like it should.")
 
         except MaxRetryError:
@@ -77,7 +77,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         r = http.request('GET', '%s/redirect' % self.base_url,
                          fields={'target': '%s/echo?a=b' % self.base_url_alt},
-                         timeout=0.01, retries=1)
+                         timeout=1, retries=1)
 
         self.assertEqual(r._pool.host, self.host_alt)
 
@@ -137,7 +137,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
         r = http.request('POST', '%s/headers' % self.base_url)
         returned_headers = json.loads(r.data.decode())
         self.assertEqual(returned_headers.get('Foo'), 'bar')
-        
+
         r = http.request_encode_url('GET', '%s/headers' % self.base_url)
         returned_headers = json.loads(r.data.decode())
         self.assertEqual(returned_headers.get('Foo'), 'bar')
