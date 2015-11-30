@@ -95,20 +95,16 @@ class TestPoolManager(unittest.TestCase):
             'ca_certs': '/root/path_to_pem',
             'ssl_version': 'SSLv23_METHOD',
         }
-        p = PoolManager(5)
+        p = PoolManager(5, **ssl_kw)
         conns = []
         conns.append(
-            p.connection_from_host(
-                'example.com', 443, scheme='https', ssl_kwargs=ssl_kw
-            )
+            p.connection_from_host('example.com', 443, scheme='https')
         )
 
         for k in ssl_kw:
-            ssl_kw[k] = 'newval'
+            p.connection_pool_kw[k] = 'newval'
             conns.append(
-                p.connection_from_host(
-                    'example.com', 443, scheme='https', ssl_kwargs=ssl_kw
-                )
+                p.connection_from_host('example.com', 443, scheme='https')
             )
 
         self.assertTrue(
