@@ -6,7 +6,7 @@ import hmac
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
-from ..exceptions import SSLError, InsecurePlatformWarning
+from ..exceptions import SSLError, InsecurePlatformWarning, SNIMissingWarning
 
 
 SSLContext = None
@@ -303,4 +303,15 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         context.load_cert_chain(certfile, keyfile)
     if HAS_SNI:  # Platform-specific: OpenSSL with enabled SNI
         return context.wrap_socket(sock, server_hostname=server_hostname)
+
+    warnings.warn(
+        'A HTTPS request has been made, but the SNI (Subject Name '
+        'Indication) extension to TLS is not available on this platform. '
+        'This may cause the server to present an incorrect TLS '
+        'certificate, which can cause validation failures. For more '
+        'information, see '
+        'https://urllib3.readthedocs.org/en/latest/security.html'
+        '#snimissingwarning.',
+        SNIMissingWarning
+    )
     return context.wrap_socket(sock)

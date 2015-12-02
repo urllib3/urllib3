@@ -81,6 +81,8 @@ warnings.simplefilter('default', exceptions.SubjectAltNameWarning)
 # InsecurePlatformWarning's don't vary between requests, so we keep it default.
 warnings.simplefilter('default', exceptions.InsecurePlatformWarning,
                       append=True)
+# SNIMissingWarnings should go off only once.
+warnings.simplefilter('default', exceptions.SNIMissingWarning)
 
 
 def disable_warnings(category=exceptions.HTTPWarning):
