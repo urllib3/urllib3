@@ -305,7 +305,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         return context.wrap_socket(sock, server_hostname=server_hostname)
 
     warnings.warn(
-        'A HTTPS request has been made, but the SNI (Subject Name '
+        'An HTTPS request has been made, but the SNI (Subject Name '
         'Indication) extension to TLS is not available on this platform. '
         'This may cause the server to present an incorrect TLS '
         'certificate, which can cause validation failures. For more '
