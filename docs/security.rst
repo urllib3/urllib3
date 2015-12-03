@@ -206,6 +206,24 @@ newer Python version, or that you use pyOpenSSL as described in the
 For info about disabling warnings, see `Disabling Warnings`_.
 
 
+SNIMissingWarning
+-----------------
+
+.. versionadded:: 1.13
+
+Certain Python distributions (specifically, versions of Python earlier than
+2.7.9) and older OpenSSLs have restrictions that prevent them from using the
+SNI (Server Name Indication) extension. This can cause unexpected behaviour
+when making some HTTPS requests, usually causing the server to present the a
+TLS certificate that is not valid for the website you're trying to access.
+
+If you encounter this warning, it is strongly recommended that you upgrade
+to a newer Python version, or that you use pyOpenSSL as described in the
+:ref:`pyopenssl` section.
+
+For info about disabling warnings, see `Disabling Warnings`_.
+
+
 Disabling Warnings
 ------------------
 

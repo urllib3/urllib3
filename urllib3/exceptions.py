@@ -175,6 +175,11 @@ class InsecurePlatformWarning(SecurityWarning):
     pass
 
 
+class SNIMissingWarning(HTTPWarning):
+    "Warned when making a HTTPS request without SNI available."
+    pass
+
+
 class ResponseNotChunked(ProtocolError, ValueError):
     "Response needs to be chunked in order to read it as chunks."
     pass
