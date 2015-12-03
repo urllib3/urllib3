@@ -3,6 +3,7 @@ from contextlib import contextmanager
 import zlib
 import io
 from socket import timeout as SocketTimeout
+from socket import error as SocketError
 
 from ._collections import HTTPHeaderDict
 from .exceptions import (
@@ -238,9 +239,10 @@ class HTTPResponse(io.IOBase):
 
                 raise ReadTimeoutError(self._pool, None, 'Read timed out.')
 
-            except HTTPException as e:
+            except (HTTPException, SocketError) as e:
                 # This includes IncompleteRead.
                 raise ProtocolError('Connection broken: %r' % e, e)
+
         except Exception:
             # The response may not be closed but we're not going to use it anymore
             # so close it now to ensure that the connection is released back to the pool.
