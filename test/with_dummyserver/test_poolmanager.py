@@ -162,6 +162,12 @@ class TestPoolManager(HTTPDummyServerTestCase):
         r = http.request('GET', 'http://%s:%s/' % (self.host, self.port))
         self.assertEqual(r.status, 200)
 
+    def test_http_with_ca_cert_dir(self):
+        http = PoolManager(ca_certs='REQUIRED', ca_cert_dir='/nosuchdir')
+
+        r = http.request('GET', 'http://%s:%s/' % (self.host, self.port))
+        self.assertEqual(r.status, 200)
+
 
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
     if not HAS_IPV6:
