@@ -35,6 +35,7 @@ from urllib3.exceptions import (
 )
 from urllib3.packages import six
 from urllib3.util.timeout import Timeout
+from urllib3.util.ssl_ import HAS_SNI
 
 
 ResourceWarning = getattr(
@@ -77,7 +78,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 self.assertFalse(warn.called, warn.call_args_list)
             else:
                 self.assertTrue(warn.called)
-                call = warn.call_args_list[0]
+                if HAS_SNI:
+                    call = warn.call_args_list[0]
+                else:
+                    call = warn.call_args_list[1]
                 error = call[0][1]
                 self.assertEqual(error, InsecurePlatformWarning)
 
@@ -176,8 +180,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             calls = warn.call_args_list
             if sys.version_info >= (2, 7, 9):
                 category = calls[0][0][1]
-            else:
+            elif HAS_SNI:
                 category = calls[1][0][1]
+            else:
+                category = calls[2][0][1]
             self.assertEqual(category, InsecureRequestWarning)
 
     @requires_network
