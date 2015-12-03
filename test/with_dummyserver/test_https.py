@@ -77,7 +77,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 self.assertFalse(warn.called, warn.call_args_list)
             else:
                 self.assertTrue(warn.called)
-                call, = warn.call_args_list
+                call = warn.call_args_list[0]
                 error = call[0][1]
                 self.assertEqual(error, InsecurePlatformWarning)
 
