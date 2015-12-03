@@ -15,6 +15,8 @@ dev (master)
 * Adjusted ``read_chunked`` to handle gzipped, chunk-encoded bodies without
   repeatedly flushing the decoder, to function better on Jython. (Issue #743)
 
+* Accept ``ca_cert_dir`` for SSL-related PoolManager configuration. (Issue #758)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
