@@ -4,6 +4,12 @@ Changes
 dev (master)
 ++++++++++++
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.13 (2015-12-14)
++++++++++++++++++
+
 * Fixed ``pip install urllib3[secure]`` on modern pip. (Issue #706)
 
 * pyopenssl: Fixed SSL3_WRITE_PENDING error. (Issue #717)
@@ -16,8 +22,6 @@ dev (master)
   repeatedly flushing the decoder, to function better on Jython. (Issue #743)
 
 * Accept ``ca_cert_dir`` for SSL-related PoolManager configuration. (Issue #758)
-
-* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.12 (2015-09-03)
