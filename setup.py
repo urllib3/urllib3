@@ -6,9 +6,9 @@ import os
 import re
 
 try:
-    import setuptools
+    import setuptools  # noqa: unused
 except ImportError:
-    pass # No 'develop' command, oh well.
+    pass  # No 'develop' command, oh well.
 
 base_path = os.path.dirname(__file__)
 
@@ -55,13 +55,10 @@ setup(name='urllib3',
       ],
       test_suite='test',
       extras_require={
-          'secure;python_version<="2.7"': [
-              'pyOpenSSL',
+          'secure': [
+              'pyOpenSSL>=0.13',
               'ndg-httpsclient',
               'pyasn1',
-              'certifi',
-          ],
-          'secure;python_version>"2.7"': [
               'certifi',
           ],
       },

@@ -1,3 +1,4 @@
+import hashlib
 import warnings
 import logging
 import unittest
@@ -18,12 +19,14 @@ from urllib3.util.url import (
 from urllib3.util.ssl_ import (
     resolve_cert_reqs,
     ssl_wrap_socket,
+    _const_compare_digest_backport,
 )
 from urllib3.exceptions import (
     LocationParseError,
     TimeoutStateError,
     InsecureRequestWarning,
     SSLError,
+    SNIMissingWarning,
 )
 
 from urllib3.util import is_fp_closed, ssl_
@@ -412,3 +415,30 @@ class TestUtil(unittest.TestCase):
         ssl_wrap_socket(ssl_context=mock_context, sock=socket)
         mock_context.wrap_socket.assert_called_once_with(socket)
         ssl_.HAS_SNI = HAS_SNI
+
+    def test_ssl_wrap_socket_with_no_sni_warns(self):
+        socket = object()
+        mock_context = Mock()
+        # Ugly preservation of original value
+        HAS_SNI = ssl_.HAS_SNI
+        ssl_.HAS_SNI = False
+        with patch('warnings.warn') as warn:
+            ssl_wrap_socket(ssl_context=mock_context, sock=socket)
+        mock_context.wrap_socket.assert_called_once_with(socket)
+        ssl_.HAS_SNI = HAS_SNI
+        self.assertTrue(warn.call_count >= 1)
+        warnings = [call[0][1] for call in warn.call_args_list]
+        self.assertTrue(SNIMissingWarning in warnings)
+
+    def test_const_compare_digest_fallback(self):
+        target = hashlib.sha256(b'abcdef').digest()
+        self.assertTrue(_const_compare_digest_backport(target, target))
+
+        prefix = target[:-1]
+        self.assertFalse(_const_compare_digest_backport(target, prefix))
+
+        suffix = target + b'0'
+        self.assertFalse(_const_compare_digest_backport(target, suffix))
+
+        incorrect = hashlib.sha256(b'xyz').digest()
+        self.assertFalse(_const_compare_digest_backport(target, incorrect))

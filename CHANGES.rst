@@ -1,6 +1,23 @@
 Changes
 =======
 
+1.13 (2015-12-14)
++++++++++++++++++
+
+* Fixed ``pip install urllib3[secure]`` on modern pip. (Issue #706)
+
+* pyopenssl: Fixed SSL3_WRITE_PENDING error. (Issue #717)
+
+* pyopenssl: Support for TLSv1.1 and TLSv1.2. (Issue #696)
+
+* Close connections more defensively on exception. (Issue #734)
+
+* Adjusted ``read_chunked`` to handle gzipped, chunk-encoded bodies without
+  repeatedly flushing the decoder, to function better on Jython. (Issue #743)
+
+* Accept ``ca_cert_dir`` for SSL-related PoolManager configuration. (Issue #758)
+
+
 1.12 (2015-09-03)
 +++++++++++++++++
 
