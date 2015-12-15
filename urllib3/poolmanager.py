@@ -59,7 +59,6 @@ class PoolManager(RequestMethods):
         'https': HTTPSConnectionPool,
     }
 
-
     def __init__(self, num_pools=10, headers=None, **connection_pool_kw):
         RequestMethods.__init__(self, headers)
         self.connection_pool_kw = connection_pool_kw
