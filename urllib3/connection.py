@@ -265,6 +265,11 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                     'for details.)'.format(hostname)),
                     SubjectAltNameWarning
                 )
+
+            # In case the hostname is an IPv6 address, strip the square
+            # brackets from it before using it to validate. Non IPv6 addresses
+            # should not start/end with square brackets, so this should be
+            # safe.
             asserted_hostname = self.assert_hostname or hostname
             asserted_hostname = asserted_hostname.strip('[]')
             match_hostname(cert, asserted_hostname)
