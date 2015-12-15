@@ -265,7 +265,9 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                     'for details.)'.format(hostname)),
                     SubjectAltNameWarning
                 )
-            match_hostname(cert, self.assert_hostname or hostname)
+            asserted_hostname = self.assert_hostname or hostname
+            asserted_hostname = asserted_hostname.strip('[]')
+            match_hostname(cert, asserted_hostname)
 
         self.is_verified = (resolved_cert_reqs == ssl.CERT_REQUIRED or
                             self.assert_fingerprint is not None)
