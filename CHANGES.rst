@@ -4,6 +4,8 @@ Changes
 dev (master)
 ++++++++++++
 
+* Fixed regression in IPv6 + SSL for match_hostname. (Issue #761)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
