@@ -18,11 +18,6 @@ from .util.retry import Retry
 __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
 
 
-pool_classes_by_scheme = {
-    'http': HTTPConnectionPool,
-    'https': HTTPSConnectionPool,
-}
-
 log = logging.getLogger(__name__)
 
 SSL_KEYWORDS = ('key_file', 'cert_file', 'cert_reqs', 'ca_certs',
@@ -59,6 +54,12 @@ class PoolManager(RequestMethods):
 
     proxy = None
 
+    pool_classes_by_scheme = {
+        'http': HTTPConnectionPool,
+        'https': HTTPSConnectionPool,
+    }
+
+
     def __init__(self, num_pools=10, headers=None, **connection_pool_kw):
         RequestMethods.__init__(self, headers)
         self.connection_pool_kw = connection_pool_kw
@@ -81,7 +82,7 @@ class PoolManager(RequestMethods):
         by :meth:`connection_from_url` and companion methods. It is intended
         to be overridden for customization.
         """
-        pool_cls = pool_classes_by_scheme[scheme]
+        pool_cls = self.pool_classes_by_scheme[scheme]
         kwargs = self.connection_pool_kw
         if scheme == 'http':
             kwargs = self.connection_pool_kw.copy()
