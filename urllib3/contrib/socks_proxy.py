@@ -45,9 +45,6 @@ class SOCKSConnection(HTTPConnection):
         """
         Establish a new connection via the SOCKS proxy.
         """
-        # TODO: This is a duplicate of HTTPConnection._new_conn but with a
-        # different callable for create_connection. Consider a refactor that
-        # allows us to strip that out.
         extra_kw = {}
         if self.source_address:
             extra_kw['source_address'] = self.source_address
@@ -71,6 +68,28 @@ class SOCKSConnection(HTTPConnection):
             raise ConnectTimeoutError(
                 self, "Connection to %s timed out. (connect timeout=%s)" %
                 (self.host, self.timeout))
+
+        except socks.ProxyError as e:
+            # This is fragile as hell, but it seems to be the only way to raise
+            # useful errors here.
+            if e.socket_err:
+                error = e.socket_err
+                if isinstance(error, SocketTimeout):
+                    raise ConnectTimeoutError(
+                        self,
+                        "Connection to %s timed out. (connect timeout=%s)" %
+                        (self.host, self.timeout)
+                    )
+                else:
+                    raise NewConnectionError(
+                        self,
+                        "Failed to establish a new connection: %s" % error
+                    )
+            else:
+                raise NewConnectionError(
+                    self,
+                    "Failed to establish a new connection: %s" % e
+                )
 
         except SocketError as e:
             raise NewConnectionError(
