@@ -14,6 +14,18 @@ SOCKS_VERSION_SOCKS4 = b'\x04'
 SOCKS_VERSION_SOCKS5 = b'\x05'
 
 
+def _get_free_port(host):
+    """
+    Gets a free port by opening a socket, binding it, checking the assigned
+    port, and then closing it.
+    """
+    s = socket.socket()
+    s.bind((host, 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+
 def _read_exactly(sock, amt):
     """
     Read *exactly* ``amt`` bytes from the socket ``sock``.
@@ -347,6 +359,40 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             self.assertTrue("SOCKS5 authentication failed" in str(e))
         else:
             self.fail("Did not raise")
+
+    def test_source_address_works(self):
+        expected_port = _get_free_port(self.host)
+
+        def request_handler(listener):
+            sock = listener.accept()[0]
+            self.assertEqual(sock.getpeername()[0], '127.0.0.1')
+            self.assertEqual(sock.getpeername()[1], expected_port)
+
+            handler = handle_socks5_negotiation(sock, negotiate=False)
+            addr, port = next(handler)
+
+            self.assertEqual(addr, '16.17.18.19')
+            self.assertTrue(port, 80)
+            handler.send(True)
+
+            while True:
+                buf = sock.recv(65535)
+                if buf.endswith(b'\r\n\r\n'):
+                    break
+
+            sock.sendall(b'HTTP/1.1 200 OK\r\n'
+                         b'Server: SocksTestServer\r\n'
+                         b'Content-Length: 0\r\n'
+                         b'\r\n')
+            sock.close()
+
+        self._start_server(request_handler)
+        proxy_url = "socks5://%s:%s" % (self.host, self.port)
+        pm = socks_proxy.SOCKSProxyManager(
+            proxy_url, source_address=('127.0.0.1', expected_port)
+        )
+        response = pm.request('GET', 'http://16.17.18.19')
+        self.assertEqual(response.status, 200)
 
 
 class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
