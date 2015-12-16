@@ -86,7 +86,6 @@ class IPV4SocketDummyServerTestCase(SocketDummyServerTestCase):
         cls.port = cls.server_thread.port
 
 
-
 class HTTPDummyServerTestCase(unittest.TestCase):
     """ A simple HTTP server that runs when your test class runs
 
