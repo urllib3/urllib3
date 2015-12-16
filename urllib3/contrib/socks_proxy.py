@@ -93,7 +93,7 @@ class SOCKSConnection(HTTPConnection):
                     "Failed to establish a new connection: %s" % e
                 )
 
-        except SocketError as e:
+        except SocketError as e:  # Defensive: PySocks should catch all these.
             raise NewConnectionError(
                 self, "Failed to establish a new connection: %s" % e)
 
