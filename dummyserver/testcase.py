@@ -71,6 +71,22 @@ class SocketDummyServerTestCase(unittest.TestCase):
             cls.server_thread.join(0.1)
 
 
+class IPV4SocketDummyServerTestCase(SocketDummyServerTestCase):
+    @classmethod
+    def _start_server(cls, socket_handler):
+        ready_event = threading.Event()
+        cls.server_thread = SocketServerThread(socket_handler=socket_handler,
+                                               ready_event=ready_event,
+                                               host=cls.host)
+        cls.server_thread.USE_IPV6 = False
+        cls.server_thread.start()
+        ready_event.wait(5)
+        if not ready_event.is_set():
+            raise Exception("most likely failed to start server")
+        cls.port = cls.server_thread.port
+
+
+
 class HTTPDummyServerTestCase(unittest.TestCase):
     """ A simple HTTP server that runs when your test class runs
 

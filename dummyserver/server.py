@@ -85,6 +85,8 @@ class SocketServerThread(threading.Thread):
     :param ready_event: Event which gets set when the socket handler is
         ready to receive requests.
     """
+    USE_IPV6 = HAS_IPV6_AND_DNS
+
     def __init__(self, socket_handler, host='localhost', port=8081,
                  ready_event=None):
         threading.Thread.__init__(self)
@@ -95,7 +97,7 @@ class SocketServerThread(threading.Thread):
         self.ready_event = ready_event
 
     def _start_server(self):
-        if HAS_IPV6_AND_DNS:
+        if self.USE_IPV6:
             sock = socket.socket(socket.AF_INET6)
         else:
             warnings.warn("No IPv6 support. Falling back to IPv4.",
