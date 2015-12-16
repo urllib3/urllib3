@@ -212,7 +212,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             handler = handle_socks5_negotiation(sock, negotiate=False)
             addr, port = next(handler)
 
-            self.assertEqual(addr, b'http2bin.org')
+            self.assertEqual(addr, b'example.com')
             self.assertTrue(port, 80)
             handler.send(True)
 
@@ -223,7 +223,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
                     break
 
             self.assertTrue(buf.startswith(b'GET / HTTP/1.1'))
-            self.assertTrue(b'Host: http2bin.org' in buf)
+            self.assertTrue(b'Host: example.com' in buf)
 
             sock.sendall(b'HTTP/1.1 200 OK\r\n'
                          b'Server: SocksTestServer\r\n'
@@ -234,7 +234,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         self._start_server(request_handler)
         proxy_url = "socks5://%s:%s" % (self.host, self.port)
         pm = socks_proxy.SOCKSProxyManager(proxy_url)
-        response = pm.request('GET', 'http://http2bin.org')
+        response = pm.request('GET', 'http://example.com')
         self.assertEqual(response.status, 200)
 
     def test_connection_timeouts(self):
@@ -248,7 +248,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         pm = socks_proxy.SOCKSProxyManager(proxy_url)
 
         self.assertRaises(
-            ConnectTimeoutError, pm.request, 'GET', 'http://http2bin.org',
+            ConnectTimeoutError, pm.request, 'GET', 'http://example.com',
             timeout=0.001, retries=False
         )
         event.set()
@@ -266,7 +266,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
 
         event.wait()
         self.assertRaises(
-            NewConnectionError, pm.request, 'GET', 'http://http2bin.org',
+            NewConnectionError, pm.request, 'GET', 'http://example.com',
             retries=False
         )
 
@@ -288,7 +288,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         pm = socks_proxy.SOCKSProxyManager(proxy_url)
 
         self.assertRaises(
-            NewConnectionError, pm.request, 'GET', 'http://http2bin.org',
+            NewConnectionError, pm.request, 'GET', 'http://example.com',
             retries=False
         )
         evt.set()
@@ -342,7 +342,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
                                            password='badpass')
 
         try:
-            pm.request('GET', 'http://http2bin.org', retries=False)
+            pm.request('GET', 'http://example.com', retries=False)
         except NewConnectionError as e:
             self.assertTrue("SOCKS5 authentication failed" in str(e))
         else:
@@ -394,7 +394,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             handler = handle_socks4_negotiation(sock)
             addr, port = next(handler)
 
-            self.assertEqual(addr, b'http2bin.org')
+            self.assertEqual(addr, b'example.com')
             self.assertTrue(port, 80)
             handler.send(True)
 
@@ -405,7 +405,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
                     break
 
             self.assertTrue(buf.startswith(b'GET / HTTP/1.1'))
-            self.assertTrue(b'Host: http2bin.org' in buf)
+            self.assertTrue(b'Host: example.com' in buf)
 
             sock.sendall(b'HTTP/1.1 200 OK\r\n'
                          b'Server: SocksTestServer\r\n'
@@ -416,7 +416,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         self._start_server(request_handler)
         proxy_url = "socks4://%s:%s" % (self.host, self.port)
         pm = socks_proxy.SOCKSProxyManager(proxy_url)
-        response = pm.request('GET', 'http://http2bin.org')
+        response = pm.request('GET', 'http://example.com')
         self.assertEqual(response.status, 200)
 
     def test_proxy_rejection(self):
@@ -437,7 +437,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         pm = socks_proxy.SOCKSProxyManager(proxy_url)
 
         self.assertRaises(
-            NewConnectionError, pm.request, 'GET', 'http://http2bin.org',
+            NewConnectionError, pm.request, 'GET', 'http://example.com',
             retries=False
         )
         evt.set()
@@ -485,7 +485,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         pm = socks_proxy.SOCKSProxyManager(proxy_url, username='baduser')
 
         try:
-            pm.request('GET', 'http://http2bin.org', retries=False)
+            pm.request('GET', 'http://example.com', retries=False)
         except NewConnectionError as e:
             self.assertTrue("different user-ids" in str(e))
         else:
