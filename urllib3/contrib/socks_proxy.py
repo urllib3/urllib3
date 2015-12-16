@@ -20,7 +20,7 @@ import socks
 from socket import error as SocketError, timeout as SocketTimeout
 
 from urllib3.connection import (
-    HTTPConnection, HTTPSConnection, VerifiedHTTPSConnection
+    HTTPConnection, HTTPSConnection
 )
 from urllib3.connectionpool import (
     HTTPConnectionPool, HTTPSConnectionPool
