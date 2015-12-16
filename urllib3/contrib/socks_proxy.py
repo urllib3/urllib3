@@ -5,6 +5,13 @@ SOCKS support for urllib3
 
 This contrib module contains provisional support for SOCKS proxies from within
 urllib3.
+
+Known Limitations:
+
+- Currently PySocks does not support contacting remote websites via literal
+  IPv6 addresses. Any such connection attempt will fail.
+- Currently PySocks does not support IPv6 connections to the SOCKS proxy. Any
+  such connection attempt will fail.
 """
 import socks
 
