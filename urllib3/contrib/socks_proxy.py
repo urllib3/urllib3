@@ -4,7 +4,9 @@ SOCKS support for urllib3
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This contrib module contains provisional support for SOCKS proxies from within
-urllib3.
+urllib3. This module supports SOCKS4 (specifically the SOCKS4A variant) and
+SOCKS5. To enable its functionality, either install PySocks or install this
+module with the ``socks`` extra.
 
 Known Limitations:
 
