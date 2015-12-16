@@ -100,11 +100,11 @@ class SOCKSConnection(HTTPConnection):
         return conn
 
 
+# We don't need to duplicate the Verified/Unverified distinction from
+# urllib3/connection.py here because the HTTPSConnection will already have been
+# correctly set to either the Verified or Unverified form by that module. This
+# means the SOCKSHTTPSConnection will automatically be the correct type.
 class SOCKSHTTPSConnection(SOCKSConnection, HTTPSConnection):
-    pass
-
-
-class VerifiedSOCKSHTTPSConnection(SOCKSConnection, VerifiedHTTPSConnection):
     pass
 
 
@@ -113,10 +113,7 @@ class SOCKSHTTPConnectionPool(HTTPConnectionPool):
 
 
 class SOCKSHTTPSConnectionPool(HTTPSConnectionPool):
-    if ssl:
-        ConnectionCls = VerifiedSOCKSHTTPSConnection
-    else:
-        ConnectionCls = SOCKSHTTPSConnection
+    ConnectionCls = SOCKSHTTPSConnection
 
 
 class SOCKSProxyManager(PoolManager):
