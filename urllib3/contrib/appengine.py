@@ -34,6 +34,22 @@ class AppEnginePlatformWarning(HTTPWarning):
 class AppEnginePlatformError(HTTPError):
     pass
 
+class _AppEngineConnection(object):
+    """A dummy Connection object that supports the urlopen() interface.
+
+    This Connection's urlopen() is called with a host-relative path,
+    so in order to properly support opening the URL, we need to store the full URL
+    when we are constructed from the Manager.
+    """
+
+    def __init__(self, manager, url):
+        self.manager = manager
+        self.url = url
+
+    def urlopen(self, **kwargs):
+        # We need to use the full URL here, not the host-relative path that is passed in
+        kwargs['url'] = self.url
+        return self.manager.urlopen(**kwargs)
 
 class AppEngineManager(RequestMethods):
     """
@@ -85,9 +101,25 @@ class AppEngineManager(RequestMethods):
         # Return False to re-raise any potential exceptions
         return False
 
-    def urlopen(self, method, url, body=None, headers=None,
-                retries=None, redirect=True, timeout=Timeout.DEFAULT_TIMEOUT,
-                **response_kw):
+    def clear(self):
+        pass
+
+    def connection_from_url(self, url):
+        return _AppEngineConnection(self, url)
+
+    def urlopen(self, method, url, body=None, headers=None, retries=None,
+                redirect=True, assert_same_host=True, timeout=Timeout.DEFAULT_TIMEOUT,
+                pool_timeout=None, release_conn=None, **response_kw):
+        """Perform an HTTP request using AppEngine's URLFetch.
+
+        To keep compatibility with HTTPConnectionPool.urlopen(), we accept dummy arguments:
+        - assert_same_host
+        - pool_timeout
+        - release_conn
+
+        The other parameters should mostly work as described in HTTPConnectionPool.urlopen,
+        except where necessary to support the limitations of AppEngine's URLFetch.
+        """
 
         retries = self._get_retries(retries, redirect)
 
@@ -164,6 +196,14 @@ class AppEngineManager(RequestMethods):
             if content_encoding == 'deflate':
                 del urlfetch_resp.headers['content-encoding']
 
+        transfer_encoding = urlfetch_resp.headers.get('transfer-encoding')
+        # We have a full response's content,
+        # so let's make sure we don't report ourselves as chunked data.
+        if transfer_encoding == 'chunked':
+            encodings = transfer_encoding.split(",")
+            encodings.remove('chunked')
+            urlfetch_resp.headers['transfer-encoding'] = ','.join(encodings)
+
         return HTTPResponse(
             # In order for decoding to work, we must present the content as
             # a file-like object.
@@ -177,7 +217,7 @@ class AppEngineManager(RequestMethods):
         if timeout is Timeout.DEFAULT_TIMEOUT:
             return 5  # 5s is the default timeout for URLFetch.
         if isinstance(timeout, Timeout):
-            if timeout.read is not timeout.connect:
+            if timeout._read is not timeout._connect:
                 warnings.warn(
                     "URLFetch does not support granular timeout settings, "
                     "reverting to total timeout.", AppEnginePlatformWarning)
