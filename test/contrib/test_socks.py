@@ -1,7 +1,7 @@
 import threading
 import socket
 
-from urllib3.contrib import socks_proxy
+from urllib3.contrib import socks
 from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
 from dummyserver.server import DEFAULT_CERTS
@@ -222,7 +222,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
 
         self._start_server(request_handler)
         proxy_url = "socks5://%s:%s" % (self.host, self.port)
-        pm = socks_proxy.SOCKSProxyManager(proxy_url)
+        pm = socks.SOCKSProxyManager(proxy_url)
         response = pm.request('GET', 'http://16.17.18.19')
 
         self.assertEqual(response.status, 200)
@@ -257,7 +257,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
 
         self._start_server(request_handler)
         proxy_url = "socks5://%s:%s" % (self.host, self.port)
-        pm = socks_proxy.SOCKSProxyManager(proxy_url)
+        pm = socks.SOCKSProxyManager(proxy_url)
         response = pm.request('GET', 'http://example.com')
         self.assertEqual(response.status, 200)
 
@@ -269,7 +269,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
 
         self._start_server(request_handler)
         proxy_url = "socks5://%s:%s" % (self.host, self.port)
-        pm = socks_proxy.SOCKSProxyManager(proxy_url)
+        pm = socks.SOCKSProxyManager(proxy_url)
 
         self.assertRaises(
             ConnectTimeoutError, pm.request, 'GET', 'http://example.com',
@@ -286,7 +286,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
 
         self._start_server(request_handler)
         proxy_url = "socks5://%s:%s" % (self.host, self.port)
-        pm = socks_proxy.SOCKSProxyManager(proxy_url)
+        pm = socks.SOCKSProxyManager(proxy_url)
 
         event.wait()
         self.assertRaises(
@@ -309,7 +309,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
 
         self._start_server(request_handler)
         proxy_url = "socks5://%s:%s" % (self.host, self.port)
-        pm = socks_proxy.SOCKSProxyManager(proxy_url)
+        pm = socks.SOCKSProxyManager(proxy_url)
 
         self.assertRaises(
             NewConnectionError, pm.request, 'GET', 'http://example.com',
@@ -343,7 +343,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
 
         self._start_server(request_handler)
         proxy_url = "socks5://%s:%s" % (self.host, self.port)
-        pm = socks_proxy.SOCKSProxyManager(proxy_url, username='user',
+        pm = socks.SOCKSProxyManager(proxy_url, username='user',
                                            password='pass')
         response = pm.request('GET', 'http://16.17.18.19')
 
@@ -362,7 +362,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
 
         self._start_server(request_handler)
         proxy_url = "socks5://%s:%s" % (self.host, self.port)
-        pm = socks_proxy.SOCKSProxyManager(proxy_url, username='user',
+        pm = socks.SOCKSProxyManager(proxy_url, username='user',
                                            password='badpass')
 
         try:
@@ -400,7 +400,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
 
         self._start_server(request_handler)
         proxy_url = "socks5://%s:%s" % (self.host, self.port)
-        pm = socks_proxy.SOCKSProxyManager(
+        pm = socks.SOCKSProxyManager(
             proxy_url, source_address=('127.0.0.1', expected_port)
         )
         response = pm.request('GET', 'http://16.17.18.19')
@@ -438,7 +438,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
 
         self._start_server(request_handler)
         proxy_url = "socks4://%s:%s" % (self.host, self.port)
-        pm = socks_proxy.SOCKSProxyManager(proxy_url)
+        pm = socks.SOCKSProxyManager(proxy_url)
         response = pm.request('GET', 'http://16.17.18.19')
 
         self.assertEqual(response.status, 200)
@@ -473,7 +473,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
 
         self._start_server(request_handler)
         proxy_url = "socks4://%s:%s" % (self.host, self.port)
-        pm = socks_proxy.SOCKSProxyManager(proxy_url)
+        pm = socks.SOCKSProxyManager(proxy_url)
         response = pm.request('GET', 'http://example.com')
         self.assertEqual(response.status, 200)
 
@@ -492,7 +492,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
 
         self._start_server(request_handler)
         proxy_url = "socks4://%s:%s" % (self.host, self.port)
-        pm = socks_proxy.SOCKSProxyManager(proxy_url)
+        pm = socks.SOCKSProxyManager(proxy_url)
 
         self.assertRaises(
             NewConnectionError, pm.request, 'GET', 'http://example.com',
@@ -524,7 +524,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
 
         self._start_server(request_handler)
         proxy_url = "socks4://%s:%s" % (self.host, self.port)
-        pm = socks_proxy.SOCKSProxyManager(proxy_url, username='user')
+        pm = socks.SOCKSProxyManager(proxy_url, username='user')
         response = pm.request('GET', 'http://16.17.18.19')
 
         self.assertEqual(response.status, 200)
@@ -540,7 +540,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
 
         self._start_server(request_handler)
         proxy_url = "socks4://%s:%s" % (self.host, self.port)
-        pm = socks_proxy.SOCKSProxyManager(proxy_url, username='baduser')
+        pm = socks.SOCKSProxyManager(proxy_url, username='baduser')
 
         try:
             pm.request('GET', 'http://example.com', retries=False)
@@ -591,7 +591,7 @@ class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
 
         self._start_server(request_handler)
         proxy_url = "socks5://%s:%s" % (self.host, self.port)
-        pm = socks_proxy.SOCKSProxyManager(proxy_url)
+        pm = socks.SOCKSProxyManager(proxy_url)
         response = pm.request('GET', 'https://localhost')
 
         self.assertEqual(response.status, 200)
