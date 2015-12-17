@@ -34,22 +34,6 @@ class AppEnginePlatformWarning(HTTPWarning):
 class AppEnginePlatformError(HTTPError):
     pass
 
-class _AppEngineConnection(object):
-    """A dummy Connection object that supports the urlopen() interface.
-
-    This Connection's urlopen() is called with a host-relative path,
-    so in order to properly support opening the URL, we need to store the full URL
-    when we are constructed from the Manager.
-    """
-
-    def __init__(self, manager, url):
-        self.manager = manager
-        self.url = url
-
-    def urlopen(self, **kwargs):
-        # We need to use the full URL here, not the host-relative path that is passed in
-        kwargs['url'] = self.url
-        return self.manager.urlopen(**kwargs)
 
 class AppEngineManager(RequestMethods):
     """
@@ -101,25 +85,9 @@ class AppEngineManager(RequestMethods):
         # Return False to re-raise any potential exceptions
         return False
 
-    def clear(self):
-        pass
-
-    def connection_from_url(self, url):
-        return _AppEngineConnection(self, url)
-
-    def urlopen(self, method, url, body=None, headers=None, retries=None,
-                redirect=True, assert_same_host=True, timeout=Timeout.DEFAULT_TIMEOUT,
-                pool_timeout=None, release_conn=None, **response_kw):
-        """Perform an HTTP request using AppEngine's URLFetch.
-
-        To keep compatibility with HTTPConnectionPool.urlopen(), we accept dummy arguments:
-        - assert_same_host
-        - pool_timeout
-        - release_conn
-
-        The other parameters should mostly work as described in HTTPConnectionPool.urlopen,
-        except where necessary to support the limitations of AppEngine's URLFetch.
-        """
+    def urlopen(self, method, url, body=None, headers=None,
+                retries=None, redirect=True, timeout=Timeout.DEFAULT_TIMEOUT,
+                **response_kw):
 
         retries = self._get_retries(retries, redirect)
 
