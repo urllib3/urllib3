@@ -4,7 +4,19 @@ import socket
 from urllib3.contrib import socks_proxy
 from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
+from dummyserver.server import DEFAULT_CERTS
 from dummyserver.testcase import IPV4SocketDummyServerTestCase
+
+from nose.plugins.skip import SkipTest
+
+try:
+    import ssl
+    from urllib3.util import ssl_ as better_ssl
+    HAS_SSL = True
+except ImportError:
+    ssl = None
+    better_ssl = None
+    HAS_SSL = False
 
 
 SOCKS_NEGOTIATION_NONE = b'\x00'
@@ -536,3 +548,52 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             self.assertTrue("different user-ids" in str(e))
         else:
             self.fail("Did not raise")
+
+
+class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
+    """
+    Test that TLS behaves properly for SOCKS proxies.
+    """
+    def test_basic_request(self):
+        if not HAS_SSL:
+            raise SkipTest("No TLS available")
+
+        def request_handler(listener):
+            sock = listener.accept()[0]
+
+            handler = handle_socks5_negotiation(sock, negotiate=False)
+            addr, port = next(handler)
+
+            self.assertEqual(addr, b'localhost')
+            self.assertTrue(port, 443)
+            handler.send(True)
+
+            # Wrap in TLS
+            context = better_ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+            context.load_cert_chain(
+                DEFAULT_CERTS['certfile'], DEFAULT_CERTS['keyfile']
+            )
+            tls = context.wrap_socket(sock, server_side=True)
+            buf = b''
+
+            while True:
+                buf += tls.recv(65535)
+                if buf.endswith(b'\r\n\r\n'):
+                    break
+
+            self.assertTrue(buf.startswith(b'GET / HTTP/1.1\r\n'))
+
+            tls.sendall(b'HTTP/1.1 200 OK\r\n'
+                         b'Server: SocksTestServer\r\n'
+                         b'Content-Length: 0\r\n'
+                         b'\r\n')
+            tls.close()
+
+        self._start_server(request_handler)
+        proxy_url = "socks5://%s:%s" % (self.host, self.port)
+        pm = socks_proxy.SOCKSProxyManager(proxy_url)
+        response = pm.request('GET', 'https://localhost')
+
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.data, b'')
+        self.assertEqual(response.headers['Server'], 'SocksTestServer')
