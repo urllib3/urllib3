@@ -8,9 +8,12 @@ import warnings
 import mock
 from nose.plugins.skip import SkipTest
 
-from dummyserver.testcase import HTTPSDummyServerTestCase
+from dummyserver.testcase import (
+    HTTPSDummyServerTestCase, IPV6HTTPSDummyServerTestCase
+)
 from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
-                                NO_SAN_CERTS, NO_SAN_CA, DEFAULT_CA_DIR)
+                                NO_SAN_CERTS, NO_SAN_CA, DEFAULT_CA_DIR,
+                                IPV6_ADDR_CERTS, IPV6_ADDR_CA, HAS_IPV6)
 
 from test import (
     onlyPy26OrOlder,
@@ -464,6 +467,21 @@ class TestHTTPS_NoSAN(HTTPSDummyServerTestCase):
             r = https_pool.request('GET', '/')
             self.assertEqual(r.status, 200)
             self.assertTrue(warn.called)
+
+
+
+class TestHTTPS_IPv6Addr(IPV6HTTPSDummyServerTestCase):
+    certs = IPV6_ADDR_CERTS
+
+    def test_strip_square_brackets_before_validating(self):
+        """Test that the fix for #760 works."""
+        if not HAS_IPV6:
+            raise SkipTest("Only runs on IPv6 systems")
+        https_pool = HTTPSConnectionPool('[::1]', self.port,
+                                         cert_reqs='CERT_REQUIRED',
+                                         ca_certs=IPV6_ADDR_CA)
+        r = https_pool.request('GET', '/')
+        self.assertEqual(r.status, 200)
 
 
 if __name__ == '__main__':

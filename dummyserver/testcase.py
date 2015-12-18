@@ -113,6 +113,17 @@ class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
     certs = DEFAULT_CERTS
 
 
+class IPV6HTTPSDummyServerTestCase(HTTPSDummyServerTestCase):
+    host = '::1'
+
+    @classmethod
+    def setUpClass(cls):
+        if not socket.has_ipv6:
+            raise SkipTest('IPv6 not available')
+        else:
+            super(IPV6HTTPSDummyServerTestCase, cls).setUpClass()
+
+
 class HTTPDummyProxyTestCase(unittest.TestCase):
 
     http_host = 'localhost'

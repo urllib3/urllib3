@@ -1,6 +1,12 @@
 Changes
 =======
 
+1.13.1 (2015-12-18)
++++++++++++++++++++
+
+* Fixed regression in IPv6 + SSL for match_hostname. (Issue #761)
+
+
 1.13 (2015-12-14)
 +++++++++++++++++
 
