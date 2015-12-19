@@ -80,8 +80,8 @@ machine, listening on port 8889:
 
     from urllib3.contrib.socks import SOCKSProxyManager
 
-    pm = SOCKSProxyManager('socks5://localhost:8889/')
-    r = pm.request('GET', 'https://www.google.com/')
+    http = SOCKSProxyManager('socks5://localhost:8889/')
+    r = http.request('GET', 'https://www.google.com/')
 
 The SOCKS implementation supports the full range of urllib3 features. It also
 supports the following SOCKS features:
