@@ -168,3 +168,5 @@ class SOCKSProxyManager(PoolManager):
         super(SOCKSProxyManager, self).__init__(
             num_pools, headers, **connection_pool_kw
         )
+
+        self.pool_classes_by_scheme = SOCKSProxyManager.pool_classes_by_scheme

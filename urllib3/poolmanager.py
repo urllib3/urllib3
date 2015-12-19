@@ -66,8 +66,7 @@ class PoolManager(RequestMethods):
                                            dispose_func=lambda p: p.close())
 
         # Locally set the pool classes so other PoolManagers can override them.
-        if not hasattr(self, 'pool_classes_by_scheme'):
-            self.pool_classes_by_scheme = pool_classes_by_scheme
+        self.pool_classes_by_scheme = pool_classes_by_scheme
 
     def __enter__(self):
         return self
