@@ -55,6 +55,8 @@ There are `limitations <https://cloud.google.com/appengine/docs/python/urlfetch/
 SOCKS Proxies
 -------------
 
+.. versionadded:: 1.14.0
+
 The :mod:`urllib3.contrib.socks` module enables urllib3 to work with proxies
 that use either the SOCKS4 or SOCKS5 protocols. These proxies are common in
 environments that want to allow generic TCP/UDP traffic through their borders,
