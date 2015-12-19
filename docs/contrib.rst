@@ -4,7 +4,7 @@ Contrib Modules
 ===============
 
 These modules implement various extra features, that may not be ready for
-prime time.
+prime time or that require optional third-party dependencies.
 
 .. _contrib-pyopenssl:
 
