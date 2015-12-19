@@ -17,7 +17,20 @@ Known Limitations:
 """
 from __future__ import absolute_import
 
-import socks
+try:
+    import socks
+except ImportError:
+    import warnings
+    from urllib3.exceptions import DependencyWarning
+
+    warnings.warn((
+        'SOCKS support in urllib3 requires the installation of optional '
+        'dependencies: specifically, PySocks.  For more information, see '
+        'https://urllib3.readthedocs.org/en/latest/contrib.html#socks-proxies'
+        ),
+        DependencyWarning
+    )
+    raise
 
 from socket import error as SocketError, timeout as SocketTimeout
 
