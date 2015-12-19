@@ -61,5 +61,8 @@ setup(name='urllib3',
               'pyasn1',
               'certifi',
           ],
+          'socks': [
+              'PySocks>=1.5.6,<2.0',
+          ]
       },
       )
