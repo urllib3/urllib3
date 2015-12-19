@@ -69,6 +69,12 @@ extra, like so:
 
     $ pip install urllib3[socks]
 
+If you have already got urllib3 1.14.0 or later installed, run:
+
+.. code-block:: bash
+
+    $ pip install -U urllib3[socks]
+
 The SOCKS module provides a
 :class:`SOCKSProxyManager <urllib3.contrib.socks.SOCKSProxyManager>` that can
 be used when SOCKS support is required. This class behaves very much like a
