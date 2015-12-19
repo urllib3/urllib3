@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import collections
 import logging
 
 try:  # Python 3
@@ -82,13 +83,20 @@ class PoolManager(RequestMethods):
         to be overridden for customization.
         """
         pool_cls = pool_classes_by_scheme[scheme]
-        kwargs = self.connection_pool_kw
+        kwargs = self._pool_kwargs_for_scheme(scheme)
+        return pool_cls(host, port, **kwargs)
+
+    def _pool_kwargs_for_scheme(self, scheme):
+        """
+        Returns a dictionary of the keyword arguments for a new connection pool
+        based on the scheme of the pool.
+        """
+        kwargs = self.connection_pool_kw.copy()
         if scheme == 'http':
-            kwargs = self.connection_pool_kw.copy()
             for kw in SSL_KEYWORDS:
                 kwargs.pop(kw, None)
 
-        return pool_cls(host, port, **kwargs)
+        return kwargs
 
     def clear(self):
         """
@@ -101,7 +109,9 @@ class PoolManager(RequestMethods):
 
     def connection_from_host(self, host, port=None, scheme='http'):
         """
-        Get a :class:`ConnectionPool` based on the host, port, and scheme.
+        Get a :class:`ConnectionPool` based on the host, port, scheme, and any
+        connection-specific keyword arguments that apply to the connection
+        pools.
 
         If ``port`` isn't given, it will be derived from the ``scheme`` using
         ``urllib3.connectionpool.port_by_scheme``.
@@ -112,7 +122,10 @@ class PoolManager(RequestMethods):
 
         scheme = scheme or 'http'
         port = port or port_by_scheme.get(scheme, 80)
-        pool_key = (scheme, host, port)
+        pool_kwargs = self._pool_kwargs_for_scheme(scheme)
+        pool_kwargs = _frozenset_from_dictionary(pool_kwargs)
+
+        pool_key = (scheme, host, port, pool_kwargs)
 
         with self.pools.lock:
             # If the scheme, host, or port doesn't match existing open
@@ -279,3 +292,16 @@ class ProxyManager(PoolManager):
 
 def proxy_from_url(url, **kw):
     return ProxyManager(proxy_url=url, **kw)
+
+
+def _frozenset_from_dictionary(dictionary):
+    """
+    Recursively turn a dictionary into frozensets of two-tuples. Needs to be
+    recursive because a given dictionary may contain other dictionaries, which
+    prevents building of the top-level frozenset.
+    """
+    for k, v in dictionary.items():
+        if isinstance(v, collections.MutableMapping):
+            dictionary[k] = _frozenset_from_dictionary(v)
+
+    return frozenset(dictionary.items())
