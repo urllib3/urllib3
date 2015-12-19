@@ -23,6 +23,11 @@ log = logging.getLogger(__name__)
 SSL_KEYWORDS = ('key_file', 'cert_file', 'cert_reqs', 'ca_certs',
                 'ssl_version', 'ca_cert_dir')
 
+pool_classes_by_scheme = {
+    'http': HTTPConnectionPool,
+    'https': HTTPSConnectionPool,
+}
+
 
 class PoolManager(RequestMethods):
     """
@@ -54,16 +59,15 @@ class PoolManager(RequestMethods):
 
     proxy = None
 
-    pool_classes_by_scheme = {
-        'http': HTTPConnectionPool,
-        'https': HTTPSConnectionPool,
-    }
-
     def __init__(self, num_pools=10, headers=None, **connection_pool_kw):
         RequestMethods.__init__(self, headers)
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools,
                                            dispose_func=lambda p: p.close())
+
+        # Locally set the pool classes so other PoolManagers can override them.
+        if not hasattr(self, 'pool_classes_by_scheme'):
+            self.pool_classes_by_scheme = pool_classes_by_scheme
 
     def __enter__(self):
         return self
