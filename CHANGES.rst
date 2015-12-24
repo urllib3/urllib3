@@ -4,6 +4,9 @@ Changes
 dev (master)
 ++++++++++++
 
+* Fixed AppEngine handling of transfer-encoding header and bug
+  in Timeout defaults checking. (Issue #763)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
