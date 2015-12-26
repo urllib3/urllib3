@@ -57,7 +57,7 @@ def onlyPy27OrNewer(test):
     return wrapper
 
 def onlyPy279OrNewer(test):
-    """Skips this test unless you are onl Python 2.7.9 or later."""
+    """Skips this test unless you are on Python 2.7.9 or later."""
 
     @functools.wraps(test)
     def wrapper(*args, **kwargs):
