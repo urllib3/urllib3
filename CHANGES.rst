@@ -4,6 +4,8 @@ Changes
 dev (master)
 ++++++++++++
 
+* contrib: SOCKS proxy support! (Issue #762)
+
 * Fixed AppEngine handling of transfer-encoding header and bug
   in Timeout defaults checking. (Issue #763)
 
