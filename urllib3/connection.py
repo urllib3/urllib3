@@ -6,6 +6,7 @@ import socket
 from socket import error as SocketError, timeout as SocketTimeout
 import warnings
 from .packages import six
+from .packages import socks
 
 try:  # Python 3
     from http.client import HTTPConnection as _HTTPConnection
@@ -53,6 +54,8 @@ from .util import connection
 port_by_scheme = {
     'http': 80,
     'https': 443,
+    'socks4': 1080,
+    'socks5': 1080,
 }
 
 RECENT_DATE = datetime.date(2014, 1, 1)
@@ -120,6 +123,9 @@ class HTTPConnection(_HTTPConnection, object):
         # Superclass also sets self.source_address in Python 2.7+.
         _HTTPConnection.__init__(self, *args, **kw)
 
+    def _create_connection(self, address, timeout, **kw):
+        return connection.create_connection(address, timeout, **kw)
+
     def _new_conn(self):
         """ Establish a socket connection and set nodelay settings on it.
 
@@ -133,8 +139,8 @@ class HTTPConnection(_HTTPConnection, object):
             extra_kw['socket_options'] = self.socket_options
 
         try:
-            conn = connection.create_connection(
-                (self.host, self.port), self.timeout, **extra_kw)
+            conn = self._create_connection((self.host, self.port),
+                self.timeout, **extra_kw)
 
         except SocketTimeout as e:
             raise ConnectTimeoutError(
@@ -280,9 +286,40 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                             self.assert_fingerprint is not None)
 
 
+class SOCKSHTTPConnection(HTTPConnection):
+    """
+    Identical to :class:`HTTPConnection`, except overrides :meth:`socket.create_connection` with
+    :meth:`socks.create_connection`, using ``socks_opts`` arguments from ``**conn_kw`` to
+    construct the :class:`socks.socksocket` object.
+    """
+    def __init__(self, *args, **kw):
+        self.socks_opts = kw.pop('socks_opts', None)
+        super(SOCKSHTTPConnection, self).__init__(*args, **kw)
+
+    def _create_connection(self, address, timeout, **kw):
+        return socks.create_connection(address,
+            proxy_type=self.socks_opts['type'],
+            proxy_addr=self.socks_opts['addr'],
+            proxy_port=self.socks_opts['port'],
+            proxy_username=self.socks_opts['username'],
+            proxy_password=self.socks_opts['password'],
+            timeout=timeout, **kw)
+
+class SOCKSHTTPSConnection(SOCKSHTTPConnection, HTTPSConnection):
+    pass
+
+class VerifiedSOCKSHTTPSConnection(SOCKSHTTPSConnection, VerifiedHTTPSConnection):
+    pass
+
 if ssl:
     # Make a copy for testing.
     UnverifiedHTTPSConnection = HTTPSConnection
     HTTPSConnection = VerifiedHTTPSConnection
 else:
     HTTPSConnection = DummyConnection
+
+socks_connection_classes = {
+    HTTPConnection: SOCKSHTTPConnection,
+    HTTPSConnection: SOCKSHTTPSConnection,
+    VerifiedHTTPSConnection: VerifiedSOCKSHTTPSConnection
+}

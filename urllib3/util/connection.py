@@ -9,7 +9,6 @@ except ImportError:  # `poll` doesn't exist on OSX and other platforms
     except ImportError:  # `select` doesn't exist on AppEngine.
         select = False
 
-
 def is_connection_dropped(conn):  # Platform-specific
     """
     Returns True if the connection is dropped and should be closed.
@@ -91,7 +90,6 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
         raise err
 
     raise socket.error("getaddrinfo returns an empty list")
-
 
 def _set_socket_options(sock, options):
     if options is None:

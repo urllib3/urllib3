@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from collections import namedtuple
 
 from ..exceptions import LocationParseError
+from ..packages import socks
 
 
 url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
@@ -215,3 +216,17 @@ def get_host(url):
     """
     p = parse_url(url)
     return p.scheme or 'http', p.hostname, p.port
+
+def socks_opts_from_url(url):
+    opts = {
+        "type": None, "username": None, "password": None,
+        "addr": None, "port": None,
+    }
+
+    opts['type'] = socks.SOCKS5 if url.scheme == 'socks5' else socks.SOCKS4
+    if url.auth:
+        ops['username'], opts['password'] = url.auth.split(':')
+
+    opts['addr'] = url.host
+    opts['port'] = url.port
+    return opts
