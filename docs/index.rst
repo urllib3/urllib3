@@ -366,31 +366,25 @@ Sponsorship
 Please consider sponsoring urllib3 development, especially if your company
 benefits from this library.
 
-* **Project Grant**: A grant for contiguous full-time development has the
-  biggest impact for progress. Periods of  3 to 10 days allow a contributor to
-  tackle substantial complex issues which are otherwise left to linger until
-  somebody can't afford to not fix them.
+We welcome your patronage on `Bountysource <https://www.bountysource.com/teams/urllib3>`_:
 
-  Contact `@shazow <https://github.com/shazow>`_ to arrange a grant for a core
-  contributor.
+* `Contribute a recurring amount to the team <https://salt.bountysource.com/checkout/amount?team=urllib3>`_
+* `Place a bounty on a specific feature <https://www.bountysource.com/teams/urllib3>`_
 
-* **One-off**: Development will continue regardless of funding, but donations help move
-  things further along quicker as the maintainer can allocate more time off to
-  work on urllib3 specifically.
-
-  .. raw:: html
-
-    <a href="https://donorbox.org/personal-sponsor-urllib3" style="background-color:#1275ff;color:#fff;text-decoration:none;font-family:Verdana,sans-serif;display:inline-block;font-size:14px;padding:7px 16px;border-radius:5px;margin-right:2em;vertical-align:top;border:1px solid rgba(160,160,160,0.5);background-image:linear-gradient(#7dc5ee,#008cdd 85%,#30a2e4);box-shadow:inset 0 1px 0 rgba(255,255,255,0.25);">Sponsor with Credit Card</a>
-
-    <a class="coinbase-button" data-code="137087702cf2e77ce400d53867b164e6" href="https://coinbase.com/checkouts/137087702cf2e77ce400d53867b164e6">Sponsor with Bitcoin</a>
-    <script src="https://www.coinbase.com/assets/button.js" type="text/javascript"></script>
-
-* **Recurring**: You're welcome to `support the maintainer on Gittip
-  <https://www.gittip.com/shazow/>`_.
+Your contribution will go towards adding new features to urllib3 and making
+sure all functionality continues to meet our high quality standards.
 
 
-Recent Sponsors
----------------
+Project Grant
+-------------
+
+A grant for contiguous full-time development has the biggest impact for
+progress. Periods of 3 to 10 days allow a contributor to tackle substantial
+complex issues which are otherwise left to linger until somebody can't afford
+to not fix them.
+
+Contact `@shazow <https://github.com/shazow>`_ to arrange a grant for a core
+contributor.
 
 Huge thanks to all the companies and individuals who financially contributed to
 the development of urllib3. Please send a PR if you've donated and would like
@@ -398,4 +392,4 @@ to be listed.
 
 * `Stripe <https://stripe.com/>`_ (June 23, 2014)
 
-.. * [Company] ([optional tagline]), [optional description of grant] ([date])
+.. * [Company] ([date])
