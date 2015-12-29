@@ -22,7 +22,7 @@ Highlights
   :class:`~urllib3.connectionpool.HTTPConnectionPool` and
   :class:`~urllib3.connectionpool.HTTPSConnectionPool`
 
-- File posting. See:
+- File posting with multipart encoding. See:
   :func:`~urllib3.filepost.encode_multipart_formdata`
 
 - Built-in redirection and retries (optional).
@@ -33,12 +33,14 @@ Highlights
 
 - Thread-safe and sanity-safe.
 
+- Proxy over :ref:`HTTP or SOCKS <proxymanager>`.
+
 - Tested on Python 2.6+ and Python 3.2+, 100% unit test coverage.
 
 - Works with AppEngine, gevent, eventlib, and the standard library :mod:`io` module.
 
 - Small and easy to understand codebase perfect for extending and building upon.
-  For a more comprehensive solution, have a look at
+  For a simplified abstraction, have a look at
   `Requests <http://python-requests.org/>`_ which is also powered by urllib3.
 
 
@@ -153,13 +155,18 @@ A :class:`~urllib3.poolmanagers.PoolManager` is a proxy for a collection of
 similar, so that instances of either can be passed around interchangeably.
 
 
+.. _proxymanager:
+
 ProxyManager
 ------------
+
+HTTP Proxy
+~~~~~~~~~~
 
 The :class:`~urllib3.poolmanagers.ProxyManager` is an HTTP proxy-aware
 subclass of :class:`~urllib3.poolmanagers.PoolManager`. It produces a single
 :class:`~urllib3.connectionpool.HTTPConnectionPool` instance for all HTTP
-connections and individual per-server:port
+connections and individual per-``server:port``
 :class:`~urllib3.connectionpool.HTTPSConnectionPool` instances for tunnelled
 HTTPS connections:
 
@@ -174,6 +181,12 @@ HTTPS connections:
     >>> r4 = proxy.request('GET', 'https://twitter.com/')
     >>> len(proxy.pools)
     3
+
+
+SOCKS Proxy
+~~~~~~~~~~~
+
+The :ref:`contrib module <socks>` includes support for a :class:`SOCKSProxyManager <urllib3.contrib.socks.SOCKSProxyManager>`.
 
 
 ConnectionPool

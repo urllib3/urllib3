@@ -17,7 +17,7 @@ Python with SSL enabled
 -----------------------
 
 First we need to make sure your Python installation has SSL enabled. Easiest
-way to check is to simply open a Python shell and type `import ssl`::
+way to check is to simply open a Python shell and type ``import ssl``::
 
     >>> import ssl
     Traceback (most recent call last):
