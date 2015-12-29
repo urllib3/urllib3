@@ -184,5 +184,8 @@ In chronological order:
 * Andy Caldwell <andy.m.caldwell@googlemail.com>
   * Bugfix related to reusing connections in indeterminate states.
 
+* Ville Skyttä <ville.skytta@iki.fi>
+  * Logging efficiency improvements, spelling fixes, Travis config.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

@@ -1,6 +1,15 @@
 Changes
 =======
 
+1.14 (2015-12-29)
++++++++++++++++++
+
+* contrib: SOCKS proxy support! (Issue #762)
+
+* Fixed AppEngine handling of transfer-encoding header and bug
+  in Timeout defaults checking. (Issue #763)
+
+
 1.13.1 (2015-12-18)
 +++++++++++++++++++
 

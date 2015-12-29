@@ -199,9 +199,11 @@ have restrictions in their ``ssl`` module that limit the configuration that
 succeed on more featureful platforms to fail, and can cause certain security
 features to be unavailable.
 
-If you encounter this warning, it is strongly recommended you upgrade to a
-newer Python version, or that you use pyOpenSSL as described in the
-:ref:`pyopenssl` section.
+If you encounter this warning, it is strongly recommended you:
+
+- upgrade to a newer Python version
+- upgrade ``ndg-httpsclient`` with ``pip install --upgrade ndg-httpsclient``
+- use pyOpenSSL as described in the :ref:`pyopenssl` section
 
 For info about disabling warnings, see `Disabling Warnings`_.
 
