@@ -18,6 +18,7 @@ Highlights
 - File posting (``encode_multipart_formdata``).
 - Built-in redirection and retries (optional).
 - Supports gzip and deflate decoding.
+- Proxy over HTTP or SOCKS.
 - Thread-safe and sanity-safe.
 - Works with AppEngine, gevent, and eventlib.
 - Tested on Python 2.6+, Python 3.2+, and PyPy, with 100% unit test coverage.
