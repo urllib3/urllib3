@@ -171,17 +171,21 @@ class HTTPConnection(_HTTPConnection, object):
         self.putrequest(method, url, skip_accept_encoding=True)
         for header, value in headers.items():
             self.putheader(header, value)
-        if 'transfer-encoding' not in headers:
+        if 'transfer-encoding' not in header_names:
             self.putheader('Transfer-Encoding', 'chunked')
         self.endheaders()
 
         if body is not None:
             for chunk in body:
+                if not chunk:
+                    continue
                 self.send(hex(len(chunk))[2:].encode('utf-8'))
                 self.send(b'\r\n')
-                self.send(chunk)
+                self.send(chunk.encode('utf-8'))
                 self.send(b'\r\n')
-            self.send(b'0\r\n\r\n')
+
+        # After the if clause, to always have a closed body
+        self.send(b'0\r\n\r\n')
 
 
 class HTTPSConnection(HTTPConnection):

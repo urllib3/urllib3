@@ -845,16 +845,15 @@ class TestHEAD(SocketDummyServerTestCase):
 
 
 class TestChunkedTransfer(SocketDummyServerTestCase):
-    def test_chunked(self):
+    def _start_chunked_handler(self):
         self.buffer = b''
 
         def socket_handler(listener):
             sock = listener.accept()[0]
 
-            while not self.buffer.endswith('\r\n0\r\n\r\n'):
+            while not self.buffer.endswith(b'\r\n0\r\n\r\n'):
                 self.buffer += sock.recv(65536)
 
-            # Send incomplete message (note Content-Length)
             sock.send(
                b'HTTP/1.1 200 OK\r\n'
                b'Content-type: text/plain\r\n'
@@ -863,13 +862,36 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        chunks = ['foo', 'bar', 'bazzzzzz']
+
+    def test_chunks(self):
+        self._start_chunked_handler()
+        chunks = ['foo', 'bar', '', 'bazzzzzz']
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         r = pool.urlopen('GET', '/', chunks, headers=dict(DNT='1'), chunked=True)
 
         self.assertTrue('Transfer-Encoding' in self.buffer)
-        body = self.buffer.split('\r\n\r\n')[1]
-        lines = body.split('\r\n')
-        for i, chunk in enumerate(chunks):
+        body = self.buffer.split(b'\r\n\r\n', 1)[1]
+        lines = body.split(b'\r\n')
+        # Empty chunks should have been skipped, as this could not be distinguished
+        # from terminating the transmission
+        for i, chunk in enumerate([c for c in chunks if c]):
             self.assertEqual(lines[i * 2], str(len(chunk)))
             self.assertEqual(lines[i * 2 + 1], chunk)
+
+    def test_no_body(self):
+        self._start_chunked_handler()
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        r = pool.urlopen('GET', '/', None, chunked=True)
+
+        self.assertTrue('Transfer-Encoding' in self.buffer)
+        body = self.buffer.split(b'\r\n\r\n', 1)[1]
+        self.assertEquals(body, b'0\r\n\r\n')
+
+    def test_empty_iterable_body(self):
+        self._start_chunked_handler()
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        r = pool.urlopen('GET', '/', [], chunked=True)
+
+        self.assertTrue('Transfer-Encoding' in self.buffer)
+        body = self.buffer.split(b'\r\n\r\n', 1)[1]
+        self.assertEquals(body, b'0\r\n\r\n')

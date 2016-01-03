@@ -318,8 +318,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if 'timed out' in str(err) or 'did not complete (read)' in str(err):  # Python 2.6
             raise ReadTimeoutError(self, url, "Read timed out. (read timeout=%s)" % timeout_value)
 
-
-
     def _make_request(self, conn, method, url, timeout=_Default, chunked=False,
                       **httplib_request_kw):
         """
