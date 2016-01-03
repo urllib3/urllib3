@@ -163,9 +163,9 @@ class HTTPConnection(_HTTPConnection, object):
         self._prepare_conn(conn)
 
     def request_chunked(self, method, url, body=None, headers={}):
-        """ 
-        Alternative to the common request method, which sends the 
-        body with chunked encoding and not as one block 
+        """
+        Alternative to the common request method, which sends the
+        body with chunked encoding and not as one block
         """
         header_names = set(k.lower() for k in headers)
         self.putrequest(method, url, skip_accept_encoding=True)
