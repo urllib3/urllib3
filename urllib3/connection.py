@@ -162,6 +162,27 @@ class HTTPConnection(_HTTPConnection, object):
         conn = self._new_conn()
         self._prepare_conn(conn)
 
+    def request_chunked(self, method, url, body=None, headers={}):
+        """ 
+        Alternative to the common request method, which sends the 
+        body with chunked encoding and not as one block 
+        """
+        header_names = set(k.lower() for k in headers)
+        self.putrequest(method, url, skip_accept_encoding=True)
+        for header, value in headers.items():
+            self.putheader(header, value)
+        if 'transfer-encoding' not in headers:
+            self.putheader('Transfer-Encoding', 'chunked')
+        self.endheaders()
+
+        if body is not None:
+            for chunk in body:
+                self.send(hex(len(chunk))[2:].encode('utf-8'))
+                self.send(b'\r\n')
+                self.send(chunk)
+                self.send(b'\r\n')
+            self.send(b'0\r\n\r\n')
+
 
 class HTTPSConnection(HTTPConnection):
     default_port = port_by_scheme['https']

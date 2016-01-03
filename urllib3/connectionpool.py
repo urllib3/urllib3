@@ -318,7 +318,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if 'timed out' in str(err) or 'did not complete (read)' in str(err):  # Python 2.6
             raise ReadTimeoutError(self, url, "Read timed out. (read timeout=%s)" % timeout_value)
 
-    def _make_request(self, conn, method, url, timeout=_Default,
+
+
+    def _make_request(self, conn, method, url, timeout=_Default, chunked=False,
                       **httplib_request_kw):
         """
         Perform a request on a given urllib connection object taken from our
@@ -350,7 +352,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # conn.request() calls httplib.*.request, not the method in
         # urllib3.request. It also calls makefile (recv) on the socket.
-        conn.request(method, url, **httplib_request_kw)
+        if chunked:
+            conn.request_chunked(method, url, **httplib_request_kw)
+        else:
+            conn.request(method, url, **httplib_request_kw)
 
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
@@ -434,7 +439,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def urlopen(self, method, url, body=None, headers=None, retries=None,
                 redirect=True, assert_same_host=True, timeout=_Default,
-                pool_timeout=None, release_conn=None, **response_kw):
+                pool_timeout=None, release_conn=None, chunked=False, **response_kw):
         """
         Get a connection from the pool and perform an HTTP request. This is the
         lowest level call for making a request, so you'll need to specify all
@@ -555,7 +560,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Make the request on the httplib connection object.
             httplib_response = self._make_request(conn, method, url,
                                                   timeout=timeout_obj,
-                                                  body=body, headers=headers)
+                                                  body=body, headers=headers,
+                                                  chunked=chunked)
 
             # If we're going to release the connection in ``finally:``, then
             # the request doesn't need to know about the connection. Otherwise
@@ -741,7 +747,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         except AttributeError:  # Platform-specific: Python 2.6
             set_tunnel = conn._set_tunnel
 
-        if sys.version_info <= (2, 6, 4) and not self.proxy_headers:   # Python 2.6.4 and older
+        if sys.version_info <= (2, 6, 4) and not self.proxy_headers:  # Python 2.6.4 and older
             set_tunnel(self.host, self.port)
         else:
             set_tunnel(self.host, self.port, self.proxy_headers)

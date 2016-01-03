@@ -70,7 +70,7 @@ class TestSNI(SocketDummyServerTestCase):
         def socket_handler(listener):
             sock = listener.accept()[0]
 
-            self.buf = sock.recv(65536) # We only accept one packet
+            self.buf = sock.recv(65536)  # We only accept one packet
             done_receiving.set()  # let the test know it can proceed
             sock.close()
 
@@ -78,7 +78,7 @@ class TestSNI(SocketDummyServerTestCase):
         pool = HTTPSConnectionPool(self.host, self.port)
         try:
             pool.request('GET', '/', retries=0)
-        except SSLError: # We are violating the protocol
+        except SSLError:  # We are violating the protocol
             pass
         done_receiving.wait()
         self.assertTrue(self.host.encode() in self.buf,
@@ -734,7 +734,7 @@ class TestHeaders(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         HEADERS = {'Content-Length': '0', 'Content-type': 'text/plain'}
         r = pool.request('GET', '/')
-        self.assertEqual(HEADERS, dict(r.headers.items())) # to preserve case sensitivity
+        self.assertEqual(HEADERS, dict(r.headers.items()))  # to preserve case sensitivity
 
     def test_headers_are_sent_with_the_original_case(self):
         headers = {'foo': 'bar', 'bAz': 'quux'}
@@ -842,3 +842,34 @@ class TestHEAD(SocketDummyServerTestCase):
 
         # stream will use the read method here.
         self.assertEqual([], list(r.stream()))
+
+
+class TestChunkedTransfer(SocketDummyServerTestCase):
+    def test_chunked(self):
+        self.buffer = b''
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            while not self.buffer.endswith('\r\n0\r\n\r\n'):
+                self.buffer += sock.recv(65536)
+
+            # Send incomplete message (note Content-Length)
+            sock.send(
+               b'HTTP/1.1 200 OK\r\n'
+               b'Content-type: text/plain\r\n'
+               b'Content-Length: 0\r\n'
+               b'\r\n')
+            sock.close()
+
+        self._start_server(socket_handler)
+        chunks = ['foo', 'bar', 'bazzzzzz']
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        r = pool.urlopen('GET', '/', chunks, chunked=True)
+
+        self.assertTrue('Transfer-Encoding' in self.buffer)
+        body = self.buffer.split('\r\n\r\n')[1]
+        lines = body.split('\r\n')
+        for i, chunk in enumerate(chunks):
+            self.assertEqual(lines[i * 2], str(len(chunk)))
+            self.assertEqual(lines[i * 2 + 1], chunk)
