@@ -865,7 +865,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         self._start_server(socket_handler)
         chunks = ['foo', 'bar', 'bazzzzzz']
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        r = pool.urlopen('GET', '/', chunks, chunked=True)
+        r = pool.urlopen('GET', '/', chunks, headers=dict(DNT='1'), chunked=True)
 
         self.assertTrue('Transfer-Encoding' in self.buffer)
         body = self.buffer.split('\r\n\r\n')[1]
