@@ -875,8 +875,8 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         # Empty chunks should have been skipped, as this could not be distinguished
         # from terminating the transmission
         for i, chunk in enumerate([c for c in chunks if c]):
-            self.assertEqual(lines[i * 2], str(len(chunk)))
-            self.assertEqual(lines[i * 2 + 1], chunk)
+            self.assertEqual(lines[i * 2], str(len(chunk)).encode('utf-8'))
+            self.assertEqual(lines[i * 2 + 1], chunk.encode('utf-8'))
 
     def test_no_body(self):
         self._start_chunked_handler()
@@ -885,7 +885,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
         self.assertTrue(b'Transfer-Encoding' in self.buffer)
         body = self.buffer.split(b'\r\n\r\n', 1)[1]
-        self.assertEquals(body, b'0\r\n\r\n')
+        self.assertEqual(body, b'0\r\n\r\n')
 
     def test_empty_iterable_body(self):
         self._start_chunked_handler()
@@ -894,4 +894,4 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
         self.assertTrue(b'Transfer-Encoding' in self.buffer)
         body = self.buffer.split(b'\r\n\r\n', 1)[1]
-        self.assertEquals(body, b'0\r\n\r\n')
+        self.assertEqual(body, b'0\r\n\r\n')
