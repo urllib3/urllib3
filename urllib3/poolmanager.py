@@ -13,6 +13,7 @@ from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
 from .request import RequestMethods
 from .util.url import parse_url
 from .util.retry import Retry
+from .util.hpkp import HPKPManager, MemoryHPKPDatabase
 
 
 __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
@@ -21,7 +22,7 @@ __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
 log = logging.getLogger(__name__)
 
 SSL_KEYWORDS = ('key_file', 'cert_file', 'cert_reqs', 'ca_certs',
-                'ssl_version', 'ca_cert_dir')
+                'ssl_version', 'ca_cert_dir', 'hpkp_manager')
 
 pool_classes_by_scheme = {
     'http': HTTPConnectionPool,
@@ -67,6 +68,11 @@ class PoolManager(RequestMethods):
 
         # Locally set the pool classes so other PoolManagers can override them.
         self.pool_classes_by_scheme = pool_classes_by_scheme
+
+        if 'hpkp_manager' not in self.connection_pool_kw:
+            self.connection_pool_kw['hpkp_manager'] = HPKPManager(
+                MemoryHPKPDatabase()
+            )
 
     def __enter__(self):
         return self
