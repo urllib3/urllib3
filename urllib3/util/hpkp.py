@@ -167,7 +167,7 @@ class HPKPManager(object):
         # connection. If it isn't, we simply don't trust the header: it's not a
         # full blown security violation.
         try:
-            valid = _validate_pin(response.fp, pin)
+            valid = _validate_pin(response.fp._sock, pin)
         except HPKPError:
             return
         else:
@@ -288,7 +288,7 @@ def _validate_pin(connection, host, shortcut=True):
     non_match = False
 
     # We ideally want to grab the whole cert chain here.
-    certificates = connection._sock.connection.certs
+    certificates = connection.connection.certs
 
     for binary_certificate in certificates:
         # For each cert in the chain, get a base64-encoded form of the
