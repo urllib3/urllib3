@@ -2,11 +2,15 @@
 import base64
 import collections
 import hashlib
+import logging
 import time
 
 from ..exceptions import HPKPError
 
 from OpenSSL import crypto
+
+
+log = logging.getLogger(__name__)
 
 
 class HPKPDatabase(object):
@@ -96,9 +100,11 @@ class MemoryHPKPDatabase(HPKPDatabase):
         self.hosts = {}
 
     def store_host(self, known_host):
+        log.debug("Storing host %s", known_host)
         self.hosts[known_host.domain] = known_host
 
     def invalidate_host(self, domain):
+        log.debug("Invalidating host %s", domain)
         del self.hosts[domain]
 
     def iter_hosts(self):
@@ -124,21 +130,29 @@ class HPKPManager(object):
         connection. If they are, validates that the presented certificate
         actually matches the pin.
         """
+        log.debug("Validating connection to %s" % domain)
         hosts = self.db.get_hosts_by_domain(domain)
         if not hosts:
             # This connection has not previously done any key pinning, so
             # there's no validation to do.
+            log.debug("No trust information for this host")
             return
 
         host = self._find_valid_pinned_host(domain, hosts)
         if host is None:
             # Again, no previous pinning was done on this connection, so
             # there's no validation to do.
+            log.debug("No previous pinning done for this host.")
             return
 
         # If we got this far, we have a KnownPinnedHost in hand that applies to
         # this connection. Get the certificate and check it matches one of the
         # pins. If it doesn't we'll blow up here.
+        valid = _validate_pin(socket, host)
+        if valid:
+            log.debug(
+                "Successfully validated connection to %s using HPKP", domain
+            )
         return _validate_pin(socket, host)
 
     def process_response(self, domain, response):
@@ -150,10 +164,13 @@ class HPKPManager(object):
         connection against the HPKP header, confirming that it does pass at
         this stage.
         """
+        log.debug("Searching for PKP header on HTTPS response")
+
         # TODO: Handle ip address domains.
         # If no PKP header is provided, then no action is required.
         pkp = response.getheader('public-key-pins')
         if not pkp:
+            log.info("No PKP header on connection.")
             return
 
         # Try to get the pins out. If this fails for any reason, abort the
@@ -161,6 +178,7 @@ class HPKPManager(object):
         try:
             pin = parse_public_key_pins(pkp, domain)
         except HPKPError:
+            log.warning("Unable to parse key pins from PKP header %s", pkp)
             return
 
         # Having found pins, we should check whether the pin is valid for this
@@ -169,15 +187,18 @@ class HPKPManager(object):
         try:
             valid = _validate_pin(response.fp._sock, pin)
         except HPKPError:
+            log.warning("Error encountered validating pin for %s", domain)
             return
         else:
             if not valid:
+                log.warning("Pin header %s not valid for %s", pkp, domain)
                 return
 
         # Quick check: if the max-age is 0, or the expiry date is after now,
         # we should invalidate any pin we already have for this domain and
         # exit.
         if not pin.max_age or (pin.max_age + pin.start_date <= time.time()):
+            log.debug("Invalidate pin for domain %s", domain)
             self.db.invalidate_host(domain)
             return
 
@@ -198,6 +219,7 @@ class HPKPManager(object):
             # First, check whether this host is still valid. If it's not, throw
             # it away and move on.
             if (host.start_date + host.max_age) > time.time():
+                log.debug("Found old pin for %s", host.domain)
                 self.db.invalidate_host(host.domain)
                 continue
 
@@ -205,6 +227,7 @@ class HPKPManager(object):
             # connection. It does if the domain either exactly matches the KPH
             # domain, or if the KPH has include_subdomains set to True.
             if domain == host.domain or host.include_subdomains:
+                log.debug("Found relevant pin for %s", host.domain)
                 return host
 
 # An object that holds information about a KnownPinnedHost. This object
@@ -302,10 +325,14 @@ def _validate_pin(connection, host, shortcut=True):
             non_match = True
 
     if not match:
+        log.error("Failed to validate trust chain with HPKP!")
         raise HPKPError("Failed to validate trust chain with HPKP!")
 
-    return match and non_match
+    valid_chain = match and non_match
+    if not valid_chain:
+        log.warning("Invalid HPKP chain provided")
 
+    return valid_chain
 
 def _certificate_in_pins(cert, host):
     """
