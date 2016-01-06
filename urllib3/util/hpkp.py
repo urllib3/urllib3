@@ -57,7 +57,7 @@ class HPKPDatabase(object):
             of their domain, from longest to shortest.
         """
         hosts = []
-        split_domain = reversed(domain.split('.'))
+        split_domain = list(reversed(domain.split('.')))
         split_domain_part_count = len(split_domain)
 
         for host in self.iter_hosts():
@@ -69,7 +69,7 @@ class HPKPDatabase(object):
             # that to be true, the KnownPinnedHost domain must be made of
             # fewer parts than the domain, and the higher order parts must
             # be equal.
-            split_host = reversed(host.domain.split('.'))
+            split_host = list(reversed(host.domain.split('.')))
             part_count = len(split_host)
 
             if part_count >= split_domain_part_count:
