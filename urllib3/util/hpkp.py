@@ -218,7 +218,7 @@ class HPKPManager(object):
         for host in hosts:
             # First, check whether this host is still valid. If it's not, throw
             # it away and move on.
-            if (host.start_date + host.max_age) > time.time():
+            if (host.start_date + host.max_age) < time.time():
                 log.debug("Found old pin for %s", host.domain)
                 self.db.invalidate_host(host.domain)
                 continue
