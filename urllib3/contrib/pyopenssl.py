@@ -285,7 +285,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
     else:
         ctx.set_default_verify_paths()
 
-    # Disable TLS compression to migitate CRIME attack (issue #309)
+    # Disable TLS compression to mitigate CRIME attack (issue #309)
     OP_NO_COMPRESSION = 0x20000
     ctx.set_options(OP_NO_COMPRESSION)
 
