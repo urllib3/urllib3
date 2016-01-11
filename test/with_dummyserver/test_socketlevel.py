@@ -886,7 +886,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         header, body = self.buffer.split(b'\r\n\r\n', 1)
 
         self.assertTrue(b'Transfer-Encoding: chunked' in header.split(b'\r\n'))
-        self.assertTrue(b'\r\n' + body_str + b'\r\n' in body)
+        self.assertTrue(b'\r\n' + body_str.encode('utf-8') + b'\r\n' in body)
         self.assertTrue(body.endswith(b'\r\n0\r\n\r\n'))
 
     def test_no_body(self):
