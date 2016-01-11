@@ -878,20 +878,31 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
             self.assertEqual(lines[i * 2], str(len(chunk)).encode('utf-8'))
             self.assertEqual(lines[i * 2 + 1], chunk.encode('utf-8'))
 
+    def test_string_body(self):
+        self._start_chunked_handler()
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        body_str = 'thisshouldbeonechunk'
+        r = pool.urlopen('GET', '/', body_str, chunked=True)
+        header, body = self.buffer.split(b'\r\n\r\n', 1)
+
+        self.assertTrue(b'Transfer-Encoding: chunked' in header.split('\r\n'))
+        self.assertTrue(b'\r\n' + body_str + b'\r\n' in body)
+        self.assertTrue(body.endswith(b'\r\n0\r\n\r\n'))
+
     def test_no_body(self):
         self._start_chunked_handler()
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         r = pool.urlopen('GET', '/', None, chunked=True)
+        header, body = self.buffer.split(b'\r\n\r\n', 1)
 
-        self.assertTrue(b'Transfer-Encoding' in self.buffer)
-        body = self.buffer.split(b'\r\n\r\n', 1)[1]
+        self.assertTrue(b'Transfer-Encoding: chunked' in header.split('\r\n'))
         self.assertEqual(body, b'0\r\n\r\n')
 
     def test_empty_iterable_body(self):
         self._start_chunked_handler()
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         r = pool.urlopen('GET', '/', [], chunked=True)
+        header, body = self.buffer.split(b'\r\n\r\n', 1)
 
-        self.assertTrue(b'Transfer-Encoding' in self.buffer)
-        body = self.buffer.split(b'\r\n\r\n', 1)[1]
+        self.assertTrue(b'Transfer-Encoding: chunked' in header.split('\r\n'))
         self.assertEqual(body, b'0\r\n\r\n')
