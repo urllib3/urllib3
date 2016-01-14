@@ -199,7 +199,7 @@ class ProxyManager(PoolManager):
     """
 
     def __init__(self, proxy_url, num_pools=10, headers=None,
-                 proxy_headers=None, **connection_pool_kw):
+                 proxy_headers=None, allow_connect=True, **connection_pool_kw):
 
         if isinstance(proxy_url, HTTPConnectionPool):
             proxy_url = '%s://%s:%i' % (proxy_url.scheme, proxy_url.host,
@@ -210,6 +210,7 @@ class ProxyManager(PoolManager):
             proxy = proxy._replace(port=port)
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
+        self.allow_connect = allow_connect
         assert self.proxy.scheme in ("http", "https"), \
             'Not supported proxy scheme %s' % self.proxy.scheme
         connection_pool_kw['_proxy'] = self.proxy
@@ -218,7 +219,7 @@ class ProxyManager(PoolManager):
             num_pools, headers, **connection_pool_kw)
 
     def connection_from_host(self, host, port=None, scheme='http'):
-        if scheme == "https":
+        if scheme == "https" and self.allow_connect:
             return super(ProxyManager, self).connection_from_host(
                 host, port, scheme)
 
@@ -244,7 +245,7 @@ class ProxyManager(PoolManager):
         "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
         u = parse_url(url)
 
-        if u.scheme == "http":
+        if u.scheme == "http" or not self.allow_connect:
             # It's too late to set proxy headers on per-request basis for
             # tunnelled HTTPS connections, should use
             # constructor's proxy_headers instead.
