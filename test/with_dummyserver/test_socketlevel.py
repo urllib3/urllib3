@@ -433,6 +433,45 @@ class TestSocketClosing(SocketDummyServerTestCase):
                                     timeout=Timeout(connect=1, read=0.1))
             self.assertEqual(len(response.read()), 8)
 
+    def test_closing_response_actually_closes_connection(self):
+        done_closing = Event()
+        complete = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf = sock.recv(65536)
+
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                      'Content-Type: text/plain\r\n'
+                      'Content-Length: 0\r\n'
+                      '\r\n').encode('utf-8'))
+
+            # Wait for the socket to close.
+            done_closing.wait(timeout=1)
+
+            # Look for the empty string to show that the connection got closed.
+            # Don't get stuck in a timeout.
+            sock.settimeout(1)
+            new_data = sock.recv(65536)
+            self.assertFalse(new_data)
+            sock.close()
+            complete.set()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port)
+
+        response = pool.request('GET', '/', retries=0, preload_content=False)
+        self.assertEqual(response.status, 200)
+        response.close()
+
+        done_closing.set()  # wait until the socket in our pool gets closed
+        completed = complete.wait(timeout=1)
+        if not completed:
+            self.fail("Timed out waiting for connection close")
+
 
 class TestProxyManager(SocketDummyServerTestCase):
 
