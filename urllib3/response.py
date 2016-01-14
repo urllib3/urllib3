@@ -387,6 +387,9 @@ class HTTPResponse(io.IOBase):
         if not self.closed:
             self._fp.close()
 
+        if self._connection is not None:
+            self._connection.close()
+
     @property
     def closed(self):
         if self._fp is None:

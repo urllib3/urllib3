@@ -433,6 +433,53 @@ class TestSocketClosing(SocketDummyServerTestCase):
                                     timeout=Timeout(connect=1, read=0.1))
             self.assertEqual(len(response.read()), 8)
 
+    def test_closing_response_actually_closes_connection(self):
+        done_closing = Event()
+        complete = Event()
+        # The insane use of this variable here is to get around the fact that
+        # Python 2.6 does not support returning a value from Event.wait(). This
+        # means we can't tell if an event timed out, so we can't use the timing
+        # out of the 'complete' event to determine the success or failure of
+        # the test. Python 2 also doesn't have the nonlocal statement, so we
+        # can't write directly to this variable, only mutate it. Hence: list.
+        successful = []
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf = sock.recv(65536)
+
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                      'Content-Type: text/plain\r\n'
+                      'Content-Length: 0\r\n'
+                      '\r\n').encode('utf-8'))
+
+            # Wait for the socket to close.
+            done_closing.wait(timeout=1)
+
+            # Look for the empty string to show that the connection got closed.
+            # Don't get stuck in a timeout.
+            sock.settimeout(1)
+            new_data = sock.recv(65536)
+            self.assertFalse(new_data)
+            successful.append(True)
+            sock.close()
+            complete.set()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port)
+
+        response = pool.request('GET', '/', retries=0, preload_content=False)
+        self.assertEqual(response.status, 200)
+        response.close()
+
+        done_closing.set()  # wait until the socket in our pool gets closed
+        complete.wait(timeout=1)
+        if not successful:
+            self.fail("Timed out waiting for connection close")
+
 
 class TestProxyManager(SocketDummyServerTestCase):
 
