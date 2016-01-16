@@ -184,7 +184,10 @@ class HTTPConnection(_HTTPConnection, object):
                 len_str = hex(len(chunk))[2:]
                 self.send(len_str.encode('utf-8'))
                 self.send(b'\r\n')
-                self.send(chunk.encode('utf-8'))
+                if isinstance(chunk, six.binary_type):
+                    self.send(chunk)
+                else:
+                    self.send(chunk.encode('utf-8'))
                 self.send(b'\r\n')
 
         # After the if clause, to always have a closed body
