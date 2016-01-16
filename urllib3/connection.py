@@ -176,7 +176,7 @@ class HTTPConnection(_HTTPConnection, object):
         self.endheaders()
 
         if body is not None:
-            if isinstance(body, (str, unicode)):
+            if isinstance(body, six.string_types):
                 body = [body]
             for chunk in body:
                 if not chunk:
