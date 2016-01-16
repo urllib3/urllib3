@@ -3,6 +3,9 @@
 from urllib3 import HTTPConnectionPool
 from dummyserver.testcase import SocketDummyServerTestCase
 
+from .. import onlyPy2, onlyPy3
+
+
 class TestChunkedTransfer(SocketDummyServerTestCase):
     def _start_chunked_handler(self):
         self.buffer = b''
@@ -54,11 +57,13 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
     def test_bytestring_body(self):
         self._test_body(b'thisshouldbeonechunk')
 
+    @onlyPy2
     def test_unicode_body(self):
-        self._test_body(u'letshavesomefunchars äöüß')
+        self._test_body(u'thisshouldbeonechunk äöüß')
 
-    def test_unmarked_string_body(self):
-        self._test_body('thisshouldbeonechunk')
+    @onlyPy3
+    def test_unidoce_body_py3(self):
+        self._test_body('thisshouldbeonechunk äöüß')
 
     def test_empty_body(self):
         header, body = self._test_body(None)

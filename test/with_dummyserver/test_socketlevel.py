@@ -715,4 +715,3 @@ class TestHEAD(SocketDummyServerTestCase):
 
         # stream will use the read method here.
         self.assertEqual([], list(r.stream()))
-
