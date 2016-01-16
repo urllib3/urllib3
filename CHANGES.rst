@@ -4,6 +4,8 @@ Changes
 dev (master)
 ++++++++++++
 
+* Added Retry(raise_on_status=False) (Issue #720)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
