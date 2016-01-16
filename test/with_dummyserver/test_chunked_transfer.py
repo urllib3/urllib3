@@ -59,7 +59,8 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     @onlyPy2
     def test_unicode_body(self):
-        self._test_body(u'thisshouldbeonechunk äöüß')
+        exec("body = u'thisshouldbeonechunk äöüß'")
+        self._test_body(body)
 
     @onlyPy3
     def test_unidoce_body_py3(self):
