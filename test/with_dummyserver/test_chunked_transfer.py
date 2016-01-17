@@ -61,7 +61,9 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     @onlyPy2
     def test_unicode_body(self):
-        exec("body = u'thisshouldbeonechunk äöüß'")
+        # Define u'thisshouldbeonechunk äöüß' in a way, so that python3.1
+        # does not suffer a syntax error
+        body = b'thisshouldbeonechunk \xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f'.decode('utf-8')
         self._test_body(body)
 
     @onlyPy3
