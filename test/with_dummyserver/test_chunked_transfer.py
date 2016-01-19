@@ -4,8 +4,6 @@ from urllib3 import HTTPConnectionPool
 from urllib3.packages import six
 from dummyserver.testcase import SocketDummyServerTestCase
 
-from .. import onlyPy2, onlyPy3
-
 
 class TestChunkedTransfer(SocketDummyServerTestCase):
     def _start_chunked_handler(self):
@@ -59,16 +57,11 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
     def test_bytestring_body(self):
         self._test_body(b'thisshouldbeonechunk')
 
-    @onlyPy2
     def test_unicode_body(self):
         # Define u'thisshouldbeonechunk äöüß' in a way, so that python3.1
         # does not suffer a syntax error
         body = b'thisshouldbeonechunk \xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f'.decode('utf-8')
         self._test_body(body)
-
-    @onlyPy3
-    def test_unicode_body_py3(self):
-        self._test_body('thisshouldbeonechunk äöüß')
 
     def test_empty_body(self):
         self._test_body(None)
