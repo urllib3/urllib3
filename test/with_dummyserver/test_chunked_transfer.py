@@ -26,7 +26,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     def test_chunks(self):
         self._start_chunked_handler()
-        chunks = ['foo', 'bar', '', 'bazzzzzz']
+        chunks = ['foo', 'bar', '', 'bazzzzzzzzzzzzzzzzzzzzzz']
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         r = pool.urlopen('GET', '/', chunks, headers=dict(DNT='1'), chunked=True)
 
@@ -36,7 +36,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         # Empty chunks should have been skipped, as this could not be distinguished
         # from terminating the transmission
         for i, chunk in enumerate([c for c in chunks if c]):
-            self.assertEqual(lines[i * 2], str(len(chunk)).encode('utf-8'))
+            self.assertEqual(lines[i * 2], hex(len(chunk))[2:].encode('utf-8'))
             self.assertEqual(lines[i * 2 + 1], chunk.encode('utf-8'))
 
     def _test_body(self, data):
@@ -50,21 +50,21 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
             bdata = data if isinstance(data, six.binary_type) else data.encode('utf-8')
             self.assertTrue(b'\r\n' + bdata + b'\r\n' in body)
             self.assertTrue(body.endswith(b'\r\n0\r\n\r\n'))
+
+            len_str = body.split(b'\r\n', 1)[0]
+            stated_len = int(len_str, 16)
+            self.assertEqual(stated_len, len(bdata))
         else:
             self.assertEqual(body, b'0\r\n\r\n')
-        return header, body
 
     def test_bytestring_body(self):
-        self._test_body(b'thisshouldbeonechunk')
+        self._test_body(b'thisshouldbeonechunk\r\nasdf')
 
     def test_unicode_body(self):
-        # Define u'thisshouldbeonechunk äöüß' in a way, so that python3.1
+        # Define u'thisshouldbeonechunk\r\näöüß' in a way, so that python3.1
         # does not suffer a syntax error
-        chunk = b'thisshouldbeonechunk \xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f'.decode('utf-8')
-        header, body = self._test_body(chunk)
-        len_str, chunk_str = body.split(b'\r\n')[:2]
-        stated_len = int(len_str, 16)
-        self.assertEqual(stated_len, len(chunk_str))
+        chunk = b'thisshouldbeonechunk\r\n\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f'.decode('utf-8')
+        self._test_body(chunk)
 
     def test_empty_body(self):
         self._test_body(None)
