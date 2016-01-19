@@ -67,17 +67,6 @@ def onlyPy279OrNewer(test):
         return test(*args, **kwargs)
     return wrapper
 
-def onlyPy2(test):
-    """Skips this test unless you are on Python3.x"""
-
-    @functools.wraps(test)
-    def wrapper(*args, **kwargs):
-        msg = "{name} requires Python2.x to run".format(name=test.__name__)
-        if six.PY3:
-            raise SkipTest(msg)
-        return test(*args, **kwargs)
-    return wrapper
-
 def onlyPy3(test):
     """Skips this test unless you are on Python3.x"""
 
