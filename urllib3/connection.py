@@ -168,7 +168,8 @@ class HTTPConnection(_HTTPConnection, object):
         body with chunked encoding and not as one block
         """
         header_names = set(k.lower() for k in headers)
-        self.putrequest(method, url, skip_accept_encoding=True)
+        skip_accept_encoding = 'accept-encoding' in header_names
+        self.putrequest(method, url, skip_accept_encoding=skip_accept_encoding)
         for header, value in headers.items():
             self.putheader(header, value)
         if 'transfer-encoding' not in header_names:
