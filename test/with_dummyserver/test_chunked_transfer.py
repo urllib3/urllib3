@@ -67,14 +67,14 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         self._test_body(body)
 
     @onlyPy3
-    def test_unidoce_body_py3(self):
+    def test_unicode_body_py3(self):
         self._test_body('thisshouldbeonechunk äöüß')
 
     def test_empty_body(self):
-        header, body = self._test_body(None)
+        self._test_body(None)
 
     def test_empty_string_body(self):
-        header, body = self._test_body('')
+        self._test_body('')
 
     def test_empty_iterable_body(self):
-        header, body = self._test_body([])
+        self._test_body([])
