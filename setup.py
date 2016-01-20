@@ -1,14 +1,10 @@
 #!/usr/bin/env python
 
-from distutils.core import setup
+from setuptools import setup
 
 import os
 import re
 
-try:
-    import setuptools  # noqa: unused
-except ImportError:
-    pass  # No 'develop' command, oh well.
 
 base_path = os.path.dirname(__file__)
 
