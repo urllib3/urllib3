@@ -6,6 +6,8 @@ dev (master)
 
 * Added Retry(raise_on_status=False) (Issue #720)
 
+* Always use setuptools, no more distutils fallback. (Issue #785)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
