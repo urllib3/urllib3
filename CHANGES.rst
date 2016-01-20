@@ -8,6 +8,8 @@ dev (master)
 
 * Always use setuptools, no more distutils fallback. (Issue #785)
 
+* Dropped support for Python 3.2. (Issue #786)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
