@@ -51,12 +51,20 @@ try:
 except SyntaxError as e:
     raise ImportError(e)
 
+try:
+    import certitude
+except ImportError:
+    pass
+
 import OpenSSL.SSL
+import OpenSSL.crypto
 from pyasn1.codec.der import decoder as der_decoder
 from pyasn1.type import univ, constraint
 from socket import _fileobject, timeout, error as SocketError
 import ssl
 import select
+import platform
+
 
 from .. import connection
 from .. import util
@@ -268,7 +276,7 @@ def _verify_callback(cnx, x509, err_no, err_depth, return_code):
 
 def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                     ca_certs=None, server_hostname=None,
-                    ssl_version=None, ca_cert_dir=None):
+                    ssl_version=None, ca_cert_dir=None, trust_system=False):
     ctx = OpenSSL.SSL.Context(_openssl_versions[ssl_version])
     if certfile:
         keyfile = keyfile or certfile  # Match behaviour of the normal python ssl library
@@ -277,13 +285,17 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         ctx.use_privatekey_file(keyfile)
     if cert_reqs != ssl.CERT_NONE:
         ctx.set_verify(_openssl_verify[cert_reqs], _verify_callback)
-    if ca_certs or ca_cert_dir:
-        try:
-            ctx.load_verify_locations(ca_certs, ca_cert_dir)
-        except OpenSSL.SSL.Error as e:
-            raise ssl.SSLError('bad ca_certs: %r' % ca_certs, e)
-    else:
-        ctx.set_default_verify_paths()
+    if trust_system:
+        ca_certs = None
+        ca_cert_dir = None
+    if not trust_system or platform.system() not in ('Darwin', 'Windows'):
+        if ca_certs or ca_cert_dir:
+            try:
+                ctx.load_verify_locations(ca_certs, ca_cert_dir)
+            except OpenSSL.SSL.Error as e:
+                raise ssl.SSLError('bad ca_certs: %r' % ca_certs, e)
+        else:
+            ctx.set_default_verify_paths()
 
     # Disable TLS compression to mitigate CRIME attack (issue #309)
     OP_NO_COMPRESSION = 0x20000
@@ -306,5 +318,12 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError('bad handshake: %r' % e)
         break
+
+    if platform.system() in ('Darwin', 'Windows') and trust_system:
+        valid = certitude.validate_cert_chain_tls(
+            cnx.get_peer_cert_chain(), server_hostname
+        )
+        if not valid:
+            raise ssl.SSLError("Could not validate cert chain!")
 
     return WrappedSocket(cnx, sock)
