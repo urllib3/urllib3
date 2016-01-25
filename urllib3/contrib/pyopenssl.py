@@ -176,6 +176,7 @@ class WrappedSocket(object):
         self.socket = socket
         self.suppress_ragged_eofs = suppress_ragged_eofs
         self._makefile_refs = 0
+        self._closed = False
 
     def fileno(self):
         return self.socket.fileno()
@@ -223,6 +224,12 @@ class WrappedSocket(object):
             text = io.TextIOWrapper(buffer, encoding, errors, newline)
             text.mode = mode
             return text
+
+        def _decref_socketios(self):
+            if self._makefile_refs > 0:
+                self._makefile_refs -= 1
+            if self._closed:
+                self.close()
 
     def recv(self, *args, **kwargs):
         try:
@@ -295,6 +302,7 @@ class WrappedSocket(object):
     def close(self):
         if self._makefile_refs < 1:
             try:
+                self._closed = True
                 return self.connection.close()
             except OpenSSL.SSL.Error:
                 return
