@@ -65,6 +65,7 @@ except ImportError:  # Platform-specific: Python 3
 
 import ssl
 import select
+import six
 
 from .. import connection
 from .. import util
@@ -341,6 +342,8 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
     ctx.set_cipher_list(DEFAULT_SSL_CIPHER_LIST)
 
     cnx = OpenSSL.SSL.Connection(ctx, sock)
+    if isinstance(server_hostname, six.text_type):  # Platform-specific: Python 3
+        server_hostname = server_hostname.encode('utf-8')
     cnx.set_tlsext_host_name(server_hostname)
     cnx.set_connect_state()
     while True:
