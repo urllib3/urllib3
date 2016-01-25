@@ -292,6 +292,29 @@ class TestResponse(unittest.TestCase):
 
         self.assertRaises(StopIteration, next, stream)
 
+    def test_concatenated_gzip_streaming(self):
+        import zlib
+        data = []
+        uncompressed_data = []
+        for i in range(3):
+            compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+            ud = b'foo{0}'.format(i)
+            d = compress.compress(ud)
+            d += compress.flush()
+            data.append(d)
+            uncompressed_data.append(ud)
+        data = ''.join(data)
+        uncompressed_data = ''.join(uncompressed_data)
+        fp = BytesIO(data)
+        resp = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
+                         preload_content=False)
+        stream = resp.stream()
+
+        # Read everything
+        payload = next(stream)
+        self.assertEqual(payload, uncompressed_data)
+        
+
     def test_deflate_streaming_tell_intermediate_point(self):
         # Ensure that ``tell()`` returns the correct number of bytes when
         # part-way through streaming compressed content.
