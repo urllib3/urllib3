@@ -50,6 +50,8 @@ from .util.ssl_ import (
 
 from .util import connection
 
+from ._collections import HTTPHeaderDict
+
 port_by_scheme = {
     'http': 80,
     'https': 443,
@@ -167,12 +169,12 @@ class HTTPConnection(_HTTPConnection, object):
         Alternative to the common request method, which sends the
         body with chunked encoding and not as one block
         """
-        header_names = set(k.lower() for k in headers)
-        skip_accept_encoding = 'accept-encoding' in header_names
+        headers = HTTPHeaderDict(headers)
+        skip_accept_encoding = 'accept-encoding' in headers
         self.putrequest(method, url, skip_accept_encoding=skip_accept_encoding)
         for header, value in headers.items():
             self.putheader(header, value)
-        if 'transfer-encoding' not in header_names:
+        if 'transfer-encoding' not in headers:
             self.putheader('Transfer-Encoding', 'chunked')
         self.endheaders()
 
