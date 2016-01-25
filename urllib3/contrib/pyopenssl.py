@@ -54,7 +54,15 @@ except SyntaxError as e:
 import OpenSSL.SSL
 from pyasn1.codec.der import decoder as der_decoder
 from pyasn1.type import univ, constraint
-from socket import _fileobject, timeout, error as SocketError
+from socket import timeout, error as SocketError
+
+try:  # Platform-specific: Python 2
+    from socket import _fileobject
+except ImportError:  # Platform-specific: Python 3
+    _fileobject = None
+    from socket import SocketIO
+    import io
+
 import ssl
 import select
 
@@ -171,9 +179,49 @@ class WrappedSocket(object):
     def fileno(self):
         return self.socket.fileno()
 
-    def makefile(self, mode, bufsize=-1):
-        self._makefile_refs += 1
-        return _fileobject(self, mode, bufsize, close=True)
+    if _fileobject:  # Platform-specific: Python 2
+        def makefile(self, mode, bufsize=-1):
+            self._makefile_refs += 1
+            return _fileobject(self, mode, bufsize, close=True)
+    else:  # Platform-specific: Python 3
+        # Copy-pasted from Python 3.5 source code
+        def makefile(self, mode="r", buffering=None, encoding=None,
+                     errors=None, newline=None):
+            if not set(mode) <= {"r", "w", "b"}:
+                raise ValueError(
+                    "invalid mode %r (only r, w, b allowed)" % (mode,)
+                )
+            writing = "w" in mode
+            reading = "r" in mode or not writing
+            assert reading or writing
+            binary = "b" in mode
+            rawmode = ""
+            if reading:
+                rawmode += "r"
+            if writing:
+                rawmode += "w"
+            raw = SocketIO(self, rawmode)
+            self._makefile_refs += 1
+            if buffering is None:
+                buffering = -1
+            if buffering < 0:
+                buffering = io.DEFAULT_BUFFER_SIZE
+            if buffering == 0:
+                if not binary:
+                    raise ValueError("unbuffered streams must be binary")
+                return raw
+            if reading and writing:
+                buffer = io.BufferedRWPair(raw, raw, buffering)
+            elif reading:
+                buffer = io.BufferedReader(raw, buffering)
+            else:
+                assert writing
+                buffer = io.BufferedWriter(raw, buffering)
+            if binary:
+                return buffer
+            text = io.TextIOWrapper(buffer, encoding, errors, newline)
+            text.mode = mode
+            return text
 
     def recv(self, *args, **kwargs):
         try:
