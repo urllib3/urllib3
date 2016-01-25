@@ -247,6 +247,27 @@ class WrappedSocket(object):
         else:
             return data
 
+    def recv_into(self, *args, **kwargs):
+        try:
+            return self.connection.recv_into(*args, **kwargs)
+        except OpenSSL.SSL.SysCallError as e:
+            if self.suppress_ragged_eofs and e.args == (-1, 'Unexpected EOF'):
+                return 0
+            else:
+                raise SocketError(str(e))
+        except OpenSSL.SSL.ZeroReturnError as e:
+            if self.connection.get_shutdown() == OpenSSL.SSL.RECEIVED_SHUTDOWN:
+                return 0
+            else:
+                raise
+        except OpenSSL.SSL.WantReadError:
+            rd, wd, ed = select.select(
+                [self.socket], [], [], self.socket.gettimeout())
+            if not rd:
+                raise timeout('The read operation timed out')
+            else:
+                return self.recv_into(*args, **kwargs)
+
     def settimeout(self, timeout):
         return self.socket.settimeout(timeout)
 
