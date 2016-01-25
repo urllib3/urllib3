@@ -6,7 +6,7 @@ from dummyserver.testcase import SocketDummyServerTestCase
 
 
 class TestChunkedTransfer(SocketDummyServerTestCase):
-    def _start_chunked_handler(self):
+    def start_chunked_handler(self):
         self.buffer = b''
 
         def socket_handler(listener):
@@ -25,7 +25,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         self._start_server(socket_handler)
 
     def test_chunks(self):
-        self._start_chunked_handler()
+        self.start_chunked_handler()
         chunks = ['foo', 'bar', '', 'bazzzzzzzzzzzzzzzzzzzzzz']
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         r = pool.urlopen('GET', '/', chunks, headers=dict(DNT='1'), chunked=True)
@@ -40,7 +40,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
             self.assertEqual(lines[i * 2 + 1], chunk.encode('utf-8'))
 
     def _test_body(self, data):
-        self._start_chunked_handler()
+        self.start_chunked_handler()
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         r = pool.urlopen('GET', '/', data, chunked=True)
         header, body = self.buffer.split(b'\r\n\r\n', 1)
