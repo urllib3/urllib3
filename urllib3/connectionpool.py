@@ -437,7 +437,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def urlopen(self, method, url, body=None, headers=None, retries=None,
                 redirect=True, assert_same_host=True, timeout=_Default,
-                pool_timeout=None, release_conn=None, chunked=False, **response_kw):
+                pool_timeout=None, release_conn=None, chunked=False,
+                **response_kw):
         """
         Get a connection from the pool and perform an HTTP request. This is the
         lowest level call for making a request, so you'll need to specify all
