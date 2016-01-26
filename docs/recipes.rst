@@ -4,7 +4,7 @@ Recipes
 This page includes a collection of recipes in the urlib3 cookbook.
 
 Decode HTTP Response Data in Concatenated Gzip Format
---------------------------------------------
+-----------------------------------------------------
 
 By default, urllib3 checks ``Content-Encoding`` header in HTTP response and decodes the data in ``gzip`` or ``deflate`` transparently. If ``Content-Encoding`` is not either of them, however, you will have to decode data in your application.
 
