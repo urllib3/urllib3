@@ -13,8 +13,7 @@ This recipe shows how to decode data in the concatenated gzip format where multi
 .. doctest ::
 
     import zlib
-    import requests
-    from requests.packages import urllib3
+    import urllib3
 
     CHUNK_SIZE = 1024
 
@@ -32,15 +31,11 @@ This recipe shows how to decode data in the concatenated gzip format where multi
         return b''.join(output)
 
 
-    def test_requests_and_urllib3():
+    def test_urllib3_concatenated_gzip_in_http_response():
         # example for urllib3
         http = urllib3.PoolManager()
         r = http.request('GET', 'http://example.com/abc.txt',
                          decode_content=False, preload_content=False)
         content = decode_gzip_raw_content(r).decode('utf-8')
-
-        # example for requests 
-        r = requests.get('http://example.com/abc.txt', stream=True)
-        content = decode_gzip_raw_content(r.raw).decode('utf-8')
 
 ``obj.unused_data`` includes the left over data in the previous ``obj.decompress`` method call. A new ``zlib.decompressobj`` is used to start decoding the next gzipped data chunk until no further data is given.
