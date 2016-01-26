@@ -55,12 +55,7 @@ class GzipDecoder(object):
     def decompress(self, data):
         if not data:
             return data
-        ret = self._obj.decompress(data)
-        while len(self._obj.unused_data) > 0:
-            unused_data = self._obj.unused_data
-            self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
-            ret += self._obj.decompress(unused_data)
-        return ret
+        return self._obj.decompress(data)
 
 
 def _get_decoder(mode):
