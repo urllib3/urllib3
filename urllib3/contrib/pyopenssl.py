@@ -189,7 +189,7 @@ class WrappedSocket(object):
         # Copy-pasted from Python 3.5 source code
         def makefile(self, mode="r", buffering=None, encoding=None,
                      errors=None, newline=None):
-            if not set(mode) <= {"r", "w", "b"}:
+            if not set(mode) <= set(["r", "w", "b"]):
                 raise ValueError(
                     "invalid mode %r (only r, w, b allowed)" % (mode,)
                 )
