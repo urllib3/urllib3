@@ -12,6 +12,7 @@ urllib3 Documentation
    exceptions
    collections
    contrib
+   recipes
 
 
 Highlights
