@@ -10,6 +10,9 @@ dev (master)
 
 * Dropped support for Python 3.2. (Issue #786)
 
+* Chunked transfer encoding when requesting with ``chunked=True``
+  (Issue #790)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
