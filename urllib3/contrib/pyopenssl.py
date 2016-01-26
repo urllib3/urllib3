@@ -113,6 +113,7 @@ def inject_into_urllib3():
 
     connection.ssl_wrap_socket = ssl_wrap_socket
     util.HAS_SNI = HAS_SNI
+    util.IS_PYOPENSSL = True
 
 
 def extract_from_urllib3():
@@ -120,6 +121,7 @@ def extract_from_urllib3():
 
     connection.ssl_wrap_socket = orig_connection_ssl_wrap_socket
     util.HAS_SNI = orig_util_HAS_SNI
+    util.IS_PYOPENSSL = False
 
 
 # Note: This is a slightly bug-fixed version of same from ndg-httpsclient.

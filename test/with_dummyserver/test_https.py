@@ -38,7 +38,7 @@ from urllib3.exceptions import (
 )
 from urllib3.packages import six
 from urllib3.util.timeout import Timeout
-from urllib3.util.ssl_ import HAS_SNI
+import urllib3.util as util
 
 
 ResourceWarning = getattr(
@@ -77,11 +77,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             r = https_pool.request('GET', '/')
             self.assertEqual(r.status, 200)
 
-            if sys.version_info >= (2, 7, 9):
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
                 self.assertFalse(warn.called, warn.call_args_list)
             else:
                 self.assertTrue(warn.called)
-                if HAS_SNI:
+                if util.HAS_SNI:
                     call = warn.call_args_list[0]
                 else:
                     call = warn.call_args_list[1]
@@ -181,9 +181,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.assertTrue(warn.called)
 
             calls = warn.call_args_list
-            if sys.version_info >= (2, 7, 9):
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
                 category = calls[0][0][1]
-            elif HAS_SNI:
+            elif util.HAS_SNI:
                 category = calls[1][0][1]
             else:
                 category = calls[2][0][1]
