@@ -515,6 +515,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             back into the pool. If None, it takes the value of
             ``response_kw.get('preload_content', True)``.
 
+        :param chunked:
+            If True, urllib3 will send the body using chunked transfer
+            encoding. Otherwise, urllib3 will send the body using the standard
+            content-length form. Defaults to False.
+
         :param \**response_kw:
             Additional parameters are passed to
             :meth:`urllib3.response.HTTPResponse.from_httplib`

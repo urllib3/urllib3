@@ -164,12 +164,12 @@ class HTTPConnection(_HTTPConnection, object):
         conn = self._new_conn()
         self._prepare_conn(conn)
 
-    def request_chunked(self, method, url, body=None, headers={}):
+    def request_chunked(self, method, url, body=None, headers=None):
         """
         Alternative to the common request method, which sends the
         body with chunked encoding and not as one block
         """
-        headers = HTTPHeaderDict(headers)
+        headers = HTTPHeaderDict(headers if headers is not None else {})
         skip_accept_encoding = 'accept-encoding' in headers
         self.putrequest(method, url, skip_accept_encoding=skip_accept_encoding)
         for header, value in headers.items():
