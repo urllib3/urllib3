@@ -56,7 +56,6 @@ from pyasn1.codec.der import decoder as der_decoder
 from pyasn1.type import univ, constraint
 from socket import _fileobject, timeout, error as SocketError
 import ssl
-import select
 
 from .. import connection
 from .. import util
@@ -189,8 +188,8 @@ class WrappedSocket(object):
             else:
                 raise
         except OpenSSL.SSL.WantReadError:
-            rd, wd, ed = select.select(
-                [self.socket], [], [], self.socket.gettimeout())
+            socket = self.socket
+            rd = util.wait_to_read_data(socket, socket.gettimeout())
             if not rd:
                 raise timeout('The read operation timed out')
             else:
@@ -206,8 +205,8 @@ class WrappedSocket(object):
             try:
                 return self.connection.send(data)
             except OpenSSL.SSL.WantWriteError:
-                _, wlist, _ = select.select([], [self.socket], [],
-                                            self.socket.gettimeout())
+                socket = self.socket
+                wlist = util.wait_to_write_data(socket, socket.gettimeout())
                 if not wlist:
                     raise timeout()
                 continue
@@ -299,7 +298,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         try:
             cnx.do_handshake()
         except OpenSSL.SSL.WantReadError:
-            rd, _, _ = select.select([sock], [], [], sock.gettimeout())
+            rd = util.wait_to_read_data(sock, sock.gettimeout())
             if not rd:
                 raise timeout('select timed out')
             continue

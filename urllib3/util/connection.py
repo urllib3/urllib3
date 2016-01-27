@@ -1,13 +1,86 @@
 from __future__ import absolute_import
 import socket
 try:
-    from select import poll, POLLIN
+    from select import poll, POLLIN, POLLOUT, POLLERR
 except ImportError:  # `poll` doesn't exist on OSX and other platforms
     poll = False
-    try:
-        from select import select
-    except ImportError:  # `select` doesn't exist on AppEngine.
-        select = False
+
+try:
+    from select import select
+except ImportError:  # `select` doesn't exist on AppEngine.
+    select = False
+
+try:
+    from select import epoll, EPOLLIN, EPOLLOUT, EPOLLERR
+except ImportError:  # `epoll` only exists on Linux
+    epoll = False
+
+try:
+    from select import kqueue, kevent
+except ImportError:  # `kqueue` is only available for BSDs
+    kevent = kqueue = False
+
+
+def _poll(reads, writes, exceptions, timeout):
+    # Assume that if we're being called then poll or epoll is defined
+    pollfunc = poll
+    read_flag = POLLIN
+    write_flag = POLLOUT
+    exc_flag = POLLERR
+
+    if epoll:
+        pollfunc = epoll
+        read_flag = EPOLLIN
+        write_flag = EPOLLOUT
+        exc_flag = EPOLLERR
+
+    p = pollfunc()
+    for fd in reads:
+        p.register(fd, read_flag)
+
+    for fd in writes:
+        p.register(fd, write_flag)
+
+    for fd in exceptions:
+        p.register(fd, exc_flag)
+
+    return p.poll(timeout)
+
+
+def _kqueue(*args):
+    pass
+
+
+def _select(readlist, writelist, exceptionallist, timeout):
+    # Some platforms, e.g., OSX do not support poll
+    if epoll or poll:
+        return _poll(readlist, writelist, exceptionallist, timeout)
+
+    if kqueue and kevent:
+        return _kqueue(readlist, writelist, exceptionallist, timeout)
+
+    if select:
+        return select(readlist, writelist, exceptionallist, timeout)
+
+
+def wait_to_read_data(socket, timeout=0.0):
+    sockets = _select([socket], [], [], timeout)
+
+    # select.select returns ([...], [...], [...])
+    if isinstance(sockets, tuple):
+        return sockets[0]
+
+    return sockets
+
+
+def wait_to_write_data(socket, timeout=0.0):
+    sockets = _select([], [socket], [], timeout)
+
+    # select.select returns ([...], [...], [...])
+    if isinstance(sockets, tuple):
+        return sockets[1]
+
+    return sockets
 
 
 def is_connection_dropped(conn):  # Platform-specific
@@ -26,22 +99,18 @@ def is_connection_dropped(conn):  # Platform-specific
     if sock is None:  # Connection already closed (such as by httplib).
         return True
 
-    if not poll:
-        if not select:  # Platform-specific: AppEngine
-            return False
+    try:
+        sockets = wait_to_read_data(sock)
+    except socket.error:
+        return True
 
-        try:
-            return select([sock], [], [], 0.0)[0]
-        except socket.error:
-            return True
-
-    # This version is better on platforms that support it.
-    p = poll()
-    p.register(sock, POLLIN)
-    for (fno, ev) in p.poll(0.0):
-        if fno == sock.fileno():
-            # Either data is buffered (bad), or the connection is dropped.
-            return True
+    try:
+        for (fno, ev) in sockets:
+            if fno == sock.fileno():
+                # Either data is buffered (bad), or the connection is dropped.
+                return True
+    except TypeError:
+        return sockets
 
 
 # This function is copied from socket.py in the Python 2.7 standard
