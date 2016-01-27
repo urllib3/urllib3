@@ -239,6 +239,33 @@ class TestSocketClosing(SocketDummyServerTestCase):
         finally:
             timed_out.set()
 
+    def test_delayed_body_read_timeout_with_preload(self):
+        timed_out = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            buf = b''
+            body = 'Hi'
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n' % len(body)).encode('utf-8'))
+
+            timed_out.wait(5)
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port)
+
+        try:
+            self.assertRaises(ReadTimeoutError, pool.urlopen,
+                              'GET', '/', retries=False,
+                              timeout=Timeout(connect=1, read=0.001))
+        finally:
+            timed_out.set()
+
     def test_incomplete_response(self):
         body = 'Response'
         partial_body = body[:2]
