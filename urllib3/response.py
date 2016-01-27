@@ -252,7 +252,7 @@ class HTTPResponse(io.IOBase):
             # Closing the response may not actually be sufficient to close
             # everything, so if we have a hold of the connection close that
             # too.
-            if self._connection is not None:
+            if self._connection:
                 self._connection.close()
 
             raise
@@ -387,7 +387,7 @@ class HTTPResponse(io.IOBase):
         if not self.closed:
             self._fp.close()
 
-        if self._connection is not None:
+        if self._connection:
             self._connection.close()
 
     @property

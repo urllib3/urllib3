@@ -561,7 +561,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # the request doesn't need to know about the connection. Otherwise
             # it will also try to release it and we'll have a double-release
             # mess.
-            response_conn = not release_conn and conn
+            response_conn = conn if not release_conn else None
 
             # Import httplib's response into our own wrapper object
             response = HTTPResponse.from_httplib(httplib_response,
