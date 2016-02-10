@@ -301,11 +301,9 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                 )
 
             # In case the hostname is an IPv6 address, strip the square
-            # brackets from it before using it to validate. This is because
-            # a certificate with an IPv6 address in it won't have square
-            # brackets around that address. Sadly, match_hostname won't do this
-            # for us: it expects the plain host part without any extra work
-            # that might have been done to make it palatable to httplib.
+            # brackets from it before using it to validate. Non IPv6 addresses
+            # should not start/end with square brackets, so this should be
+            # safe.
             asserted_hostname = self.assert_hostname or hostname
             asserted_hostname = asserted_hostname.strip('[]')
             match_hostname(cert, asserted_hostname)
