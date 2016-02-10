@@ -103,22 +103,28 @@ DEFAULT_SSL_CIPHER_LIST = util.ssl_.DEFAULT_CIPHERS
 # OpenSSL will only write 16K at a time
 SSL_WRITE_BLOCKSIZE = 16384
 
+TRUST_SYSTEM = False
+
 orig_util_HAS_SNI = util.HAS_SNI
 orig_connection_ssl_wrap_socket = connection.ssl_wrap_socket
 
 
-def inject_into_urllib3():
+def inject_into_urllib3(trust_system=False):
     'Monkey-patch urllib3 with PyOpenSSL-backed SSL-support.'
 
+    global TRUST_SYSTEM
     connection.ssl_wrap_socket = ssl_wrap_socket
     util.HAS_SNI = HAS_SNI
+    TRUST_SYSTEM = trust_system
 
 
 def extract_from_urllib3():
     'Undo monkey-patching by :func:`inject_into_urllib3`.'
 
+    global TRUST_SYSTEM
     connection.ssl_wrap_socket = orig_connection_ssl_wrap_socket
     util.HAS_SNI = orig_util_HAS_SNI
+    TRUST_SYSTEM = False
 
 
 # Note: This is a slightly bug-fixed version of same from ndg-httpsclient.
@@ -276,17 +282,17 @@ def _verify_callback(cnx, x509, err_no, err_depth, return_code):
 
 def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                     ca_certs=None, server_hostname=None,
-                    ssl_version=None, ca_cert_dir=None, trust_system=False):
+                    ssl_version=None, ca_cert_dir=None):
     ctx = OpenSSL.SSL.Context(_openssl_versions[ssl_version])
     if certfile:
         keyfile = keyfile or certfile  # Match behaviour of the normal python ssl library
         ctx.use_certificate_file(certfile)
     if keyfile:
         ctx.use_privatekey_file(keyfile)
-    if trust_system:
+    if TRUST_SYSTEM:
         ca_certs = None
         ca_cert_dir = None
-    if not trust_system or platform.system() not in ('Darwin', 'Windows'):
+    if not TRUST_SYSTEM or platform.system() not in ('Darwin', 'Windows'):
         if cert_reqs != ssl.CERT_NONE:
             ctx.set_verify(_openssl_verify[cert_reqs], _verify_callback)
         if ca_certs or ca_cert_dir:
@@ -319,7 +325,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
             raise ssl.SSLError('bad handshake: %r' % e)
         break
 
-    if platform.system() in ('Darwin', 'Windows') and trust_system:
+    if TRUST_SYSTEM and platform.system() in ('Darwin', 'Windows'):
         valid = certitude.validate_cert_chain_tls(
             cnx.get_peer_cert_chain(), server_hostname
         )
