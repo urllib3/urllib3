@@ -283,12 +283,12 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         ctx.use_certificate_file(certfile)
     if keyfile:
         ctx.use_privatekey_file(keyfile)
-    if cert_reqs != ssl.CERT_NONE:
-        ctx.set_verify(_openssl_verify[cert_reqs], _verify_callback)
     if trust_system:
         ca_certs = None
         ca_cert_dir = None
     if not trust_system or platform.system() not in ('Darwin', 'Windows'):
+        if cert_reqs != ssl.CERT_NONE:
+            ctx.set_verify(_openssl_verify[cert_reqs], _verify_callback)
         if ca_certs or ca_cert_dir:
             try:
                 ctx.load_verify_locations(ca_certs, ca_cert_dir)
