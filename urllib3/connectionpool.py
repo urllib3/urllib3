@@ -568,7 +568,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                                   chunked=chunked)
 
             # If we're going to release the connection in ``finally:``, then
-            # the request doesn't need to know about the connection. Otherwise
+            # the response doesn't need to know about the connection. Otherwise
             # it will also try to release it and we'll have a double-release
             # mess.
             response_conn = conn if not release_conn else None
