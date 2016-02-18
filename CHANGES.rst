@@ -12,6 +12,8 @@ dev (master)
 
 * Chunked transfer encoding when requesting with ``chunked=True``
   (Issue #790)
+  
+* Fixed regression with IPv6 port parsing. (Issue #801)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
