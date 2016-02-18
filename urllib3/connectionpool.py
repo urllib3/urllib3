@@ -69,7 +69,13 @@ class ConnectionPool(object):
         if not host:
             raise LocationValueError("No host specified.")
 
-        self.host = host
+        # httplib doesn't like it when we include brackets in ipv6 addresses
+        # Specifically, if we include brackets but also pass the port then
+        # httplib crazily doubles up the square brackets on the Host header.
+        # Instead, we need to make sure we never pass ``None`` as the port.
+        # However, for backward compatibility reasons we can't actually
+        # *assert* that.
+        self.host = host.strip('[]')
         self.port = port
 
     def __str__(self):
@@ -829,6 +835,7 @@ def connection_from_url(url, **kw):
         >>> r = conn.request('GET', '/')
     """
     scheme, host, port = get_host(url)
+    port = port or port_by_scheme.get(scheme, 80)
     if scheme == 'https':
         return HTTPSConnectionPool(host, port=port, **kw)
     else:
