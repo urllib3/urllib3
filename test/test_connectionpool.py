@@ -4,6 +4,7 @@ from urllib3.connectionpool import (
     connection_from_url,
     HTTPConnection,
     HTTPConnectionPool,
+    HTTPSConnectionPool,
 )
 from urllib3.util.timeout import Timeout
 from urllib3.packages.ssl_match_hostname import CertificateError
@@ -74,6 +75,54 @@ class TestConnectionPool(unittest.TestCase):
             c = connection_from_url(b)
             self.assertFalse(c.is_same_host(a), "%s =? %s" % (b, a))
 
+    def test_same_host_no_port(self):
+        # This test was introduced in #801 to deal with the fact that urllib3
+        # never initializes ConnectionPool objects with port=None.
+        same_host_http = [
+            ('google.com', '/'),
+            ('google.com', 'http://google.com/'),
+            ('google.com', 'http://google.com'),
+            ('google.com', 'http://google.com/abra/cadabra'),
+            # Test comparison using default ports
+            ('google.com', 'http://google.com:80/abracadabra'),
+        ]
+        same_host_https = [
+            ('google.com', '/'),
+            ('google.com', 'https://google.com/'),
+            ('google.com', 'https://google.com'),
+            ('google.com', 'https://google.com/abra/cadabra'),
+            # Test comparison using default ports
+            ('google.com', 'https://google.com:443/abracadabra'),
+        ]
+
+        for a, b in same_host_http:
+            c = HTTPConnectionPool(a)
+            self.assertTrue(c.is_same_host(b), "%s =? %s" % (a, b))
+        for a, b in same_host_https:
+            c = HTTPSConnectionPool(a)
+            self.assertTrue(c.is_same_host(b), "%s =? %s" % (a, b))
+
+        not_same_host_http = [
+            ('google.com', 'https://google.com/'),
+            ('yahoo.com', 'http://google.com/'),
+            ('google.com', 'https://google.net/'),
+        ]
+        not_same_host_https = [
+            ('google.com', 'http://google.com/'),
+            ('yahoo.com', 'https://google.com/'),
+            ('google.com', 'https://google.net/'),
+        ]
+
+        for a, b in not_same_host_http:
+            c = HTTPConnectionPool(a)
+            self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
+            c = HTTPConnectionPool(b)
+            self.assertFalse(c.is_same_host(a), "%s =? %s" % (b, a))
+        for a, b in not_same_host_https:
+            c = HTTPSConnectionPool(a)
+            self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
+            c = HTTPSConnectionPool(b)
+            self.assertFalse(c.is_same_host(a), "%s =? %s" % (b, a))
 
     def test_max_connections(self):
         pool = HTTPConnectionPool(host='localhost', maxsize=1, block=True)
