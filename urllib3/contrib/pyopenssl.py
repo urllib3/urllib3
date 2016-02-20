@@ -60,8 +60,7 @@ try:  # Platform-specific: Python 2
     from socket import _fileobject
 except ImportError:  # Platform-specific: Python 3
     _fileobject = None
-    from socket import SocketIO
-    import io
+    from urllib3.packages.backports.makefile import backport_makefile
 
 import ssl
 import select
@@ -188,45 +187,9 @@ class WrappedSocket(object):
             self._makefile_refs += 1
             return _fileobject(self, mode, bufsize, close=True)
     else:  # Platform-specific: Python 3
-        # Copy-pasted from Python 3.5 source code
-        def makefile(self, mode="r", buffering=None, encoding=None,
-                     errors=None, newline=None):
-            if not set(mode) <= set(["r", "w", "b"]):
-                raise ValueError(
-                    "invalid mode %r (only r, w, b allowed)" % (mode,)
-                )
-            writing = "w" in mode
-            reading = "r" in mode or not writing
-            assert reading or writing
-            binary = "b" in mode
-            rawmode = ""
-            if reading:
-                rawmode += "r"
-            if writing:
-                rawmode += "w"
-            raw = SocketIO(self, rawmode)
-            self._makefile_refs += 1
-            if buffering is None:
-                buffering = -1
-            if buffering < 0:
-                buffering = io.DEFAULT_BUFFER_SIZE
-            if buffering == 0:
-                if not binary:
-                    raise ValueError("unbuffered streams must be binary")
-                return raw
-            if reading and writing:
-                buffer = io.BufferedRWPair(raw, raw, buffering)
-            elif reading:
-                buffer = io.BufferedReader(raw, buffering)
-            else:
-                assert writing
-                buffer = io.BufferedWriter(raw, buffering)
-            if binary:
-                return buffer
-            text = io.TextIOWrapper(buffer, encoding, errors, newline)
-            text.mode = mode
-            return text
+        WrappedSocket.makefile = backport_makefile
 
+        # Copy-pasted from Python 3.5 source code
         def _decref_socketios(self):
             if self._makefile_refs > 0:
                 self._makefile_refs -= 1
