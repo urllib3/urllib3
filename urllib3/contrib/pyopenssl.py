@@ -51,12 +51,20 @@ try:
 except SyntaxError as e:
     raise ImportError(e)
 
+try:
+    import certitude
+except ImportError:
+    pass
+
 import OpenSSL.SSL
+import OpenSSL.crypto
 from pyasn1.codec.der import decoder as der_decoder
 from pyasn1.type import univ, constraint
 from socket import _fileobject, timeout, error as SocketError
 import ssl
 import select
+import platform
+
 
 from .. import connection
 from .. import util
@@ -95,22 +103,28 @@ DEFAULT_SSL_CIPHER_LIST = util.ssl_.DEFAULT_CIPHERS
 # OpenSSL will only write 16K at a time
 SSL_WRITE_BLOCKSIZE = 16384
 
+TRUST_SYSTEM = False
+
 orig_util_HAS_SNI = util.HAS_SNI
 orig_connection_ssl_wrap_socket = connection.ssl_wrap_socket
 
 
-def inject_into_urllib3():
+def inject_into_urllib3(trust_system=False):
     'Monkey-patch urllib3 with PyOpenSSL-backed SSL-support.'
 
+    global TRUST_SYSTEM
     connection.ssl_wrap_socket = ssl_wrap_socket
     util.HAS_SNI = HAS_SNI
+    TRUST_SYSTEM = trust_system
 
 
 def extract_from_urllib3():
     'Undo monkey-patching by :func:`inject_into_urllib3`.'
 
+    global TRUST_SYSTEM
     connection.ssl_wrap_socket = orig_connection_ssl_wrap_socket
     util.HAS_SNI = orig_util_HAS_SNI
+    TRUST_SYSTEM = False
 
 
 # Note: This is a slightly bug-fixed version of same from ndg-httpsclient.
@@ -275,15 +289,19 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         ctx.use_certificate_file(certfile)
     if keyfile:
         ctx.use_privatekey_file(keyfile)
-    if cert_reqs != ssl.CERT_NONE:
-        ctx.set_verify(_openssl_verify[cert_reqs], _verify_callback)
-    if ca_certs or ca_cert_dir:
-        try:
-            ctx.load_verify_locations(ca_certs, ca_cert_dir)
-        except OpenSSL.SSL.Error as e:
-            raise ssl.SSLError('bad ca_certs: %r' % ca_certs, e)
-    else:
-        ctx.set_default_verify_paths()
+    if TRUST_SYSTEM:
+        ca_certs = None
+        ca_cert_dir = None
+    if not TRUST_SYSTEM or platform.system() not in ('Darwin', 'Windows'):
+        if cert_reqs != ssl.CERT_NONE:
+            ctx.set_verify(_openssl_verify[cert_reqs], _verify_callback)
+        if ca_certs or ca_cert_dir:
+            try:
+                ctx.load_verify_locations(ca_certs, ca_cert_dir)
+            except OpenSSL.SSL.Error as e:
+                raise ssl.SSLError('bad ca_certs: %r' % ca_certs, e)
+        else:
+            ctx.set_default_verify_paths()
 
     # Disable TLS compression to mitigate CRIME attack (issue #309)
     OP_NO_COMPRESSION = 0x20000
@@ -306,5 +324,12 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError('bad handshake: %r' % e)
         break
+
+    if TRUST_SYSTEM and platform.system() in ('Darwin', 'Windows'):
+        valid = certitude.validate_cert_chain_tls(
+            cnx.get_peer_cert_chain(), server_hostname
+        )
+        if not valid:
+            raise ssl.SSLError("Could not validate cert chain!")
 
     return WrappedSocket(cnx, sock)
