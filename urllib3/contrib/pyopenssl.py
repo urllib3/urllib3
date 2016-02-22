@@ -182,19 +182,12 @@ class WrappedSocket(object):
     def fileno(self):
         return self.socket.fileno()
 
-    if _fileobject:  # Platform-specific: Python 2
-        def makefile(self, mode, bufsize=-1):
-            self._makefile_refs += 1
-            return _fileobject(self, mode, bufsize, close=True)
-    else:  # Platform-specific: Python 3
-        WrappedSocket.makefile = backport_makefile
-
-        # Copy-pasted from Python 3.5 source code
-        def _decref_socketios(self):
-            if self._makefile_refs > 0:
-                self._makefile_refs -= 1
-            if self._closed:
-                self.close()
+    # Copy-pasted from Python 3.5 source code
+    def _decref_socketios(self):
+        if self._makefile_refs > 0:
+            self._makefile_refs -= 1
+        if self._closed:
+            self.close()
 
     def recv(self, *args, **kwargs):
         try:
@@ -303,6 +296,16 @@ class WrappedSocket(object):
             self.close()
         else:
             self._makefile_refs -= 1
+
+
+if _fileobject:  # Platform-specific: Python 2
+    def makefile(self, mode, bufsize=-1):
+        self._makefile_refs += 1
+        return _fileobject(self, mode, bufsize, close=True)
+else:  # Platform-specific: Python 3
+    makefile = backport_makefile
+
+WrappedSocket.makefile = makefile
 
 
 def _verify_callback(cnx, x509, err_no, err_depth, return_code):
