@@ -1,5 +1,6 @@
 language: python
-script: tox
+script:
+  - ./_travis/travis-run.sh
 before_install:
   - openssl version
 cache:
