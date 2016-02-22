@@ -150,6 +150,11 @@ class ResponseError(HTTPError):
     SPECIFIC_ERROR = 'too many {status_code} error responses'
 
 
+class HPKPError(SSLError):
+    "Raised when HPKP validation fails."
+    pass
+
+
 class SecurityWarning(HTTPWarning):
     "Warned when perfoming security reducing actions"
     pass

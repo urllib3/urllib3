@@ -61,6 +61,7 @@ import select
 from .. import connection
 from .. import util
 
+
 __all__ = ['inject_into_urllib3', 'extract_from_urllib3']
 
 # SNI only *really* works if we can read the subjectAltName of certificates.
@@ -252,6 +253,20 @@ class WrappedSocket(object):
             ]
         }
 
+    def get_peer_cert_chain(self):
+        # This is currently an experimental function in the stdlib, not yet
+        # merged. For now, we'll try to keep the API the same as the stdlib.
+        x509_list = self.connection.get_peer_cert_chain()
+        if x509_list is None:
+            return
+
+        for cert in x509_list:
+            yield OpenSSL.crypto.dump_certificate(
+                OpenSSL.crypto.FILETYPE_ASN1,
+                cert
+            )
+
+
     def _reuse(self):
         self._makefile_refs += 1
 
@@ -263,6 +278,7 @@ class WrappedSocket(object):
 
 
 def _verify_callback(cnx, x509, err_no, err_depth, return_code):
+    cnx.certs.append(x509)
     return err_no == 0
 
 
@@ -293,6 +309,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
     ctx.set_cipher_list(DEFAULT_SSL_CIPHER_LIST)
 
     cnx = OpenSSL.SSL.Connection(ctx, sock)
+    cnx.certs = []
     cnx.set_tlsext_host_name(server_hostname)
     cnx.set_connect_state()
     while True:

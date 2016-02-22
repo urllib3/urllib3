@@ -166,8 +166,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def __init__(self, host, port=None, strict=False,
                  timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1, block=False,
-                 headers=None, retries=None,
-                 _proxy=None, _proxy_headers=None,
+                 headers=None, retries=None, _proxy=None, _proxy_headers=None,
                  **conn_kw):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
@@ -214,7 +213,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         conn = self.ConnectionCls(host=self.host, port=self.port,
                                   timeout=self.timeout.connect_timeout,
-                                  strict=self.strict, **self.conn_kw)
+                                  strict=self.strict,
+                                  **self.conn_kw)
         return conn
 
     def _get_conn(self, timeout=None):
@@ -573,6 +573,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                                   body=body, headers=headers,
                                                   chunked=chunked)
 
+            # Check HPKP.
+            self.hpkp_manager.process_response(self.host, httplib_response)
+
             # If we're going to release the connection in ``finally:``, then
             # the response doesn't need to know about the connection. Otherwise
             # it will also try to release it and we'll have a double-release
@@ -706,6 +709,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     ``ca_cert_dir``, and ``ssl_version`` are only used if :mod:`ssl` is
     available and are fed into :meth:`urllib3.util.ssl_wrap_socket` to upgrade
     the connection socket into an SSL socket.
+
+    The ``hpkp_manager`` is used to validate HPKP on connections.
     """
 
     scheme = 'https'
@@ -718,7 +723,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  key_file=None, cert_file=None, cert_reqs=None,
                  ca_certs=None, ssl_version=None,
                  assert_hostname=None, assert_fingerprint=None,
-                 ca_cert_dir=None, **conn_kw):
+                 ca_cert_dir=None, hpkp_manager=None, **conn_kw):
 
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
                                     block, headers, retries, _proxy, _proxy_headers,
@@ -735,6 +740,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.ssl_version = ssl_version
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
+        self.hpkp_manager = hpkp_manager
 
     def _prepare_conn(self, conn):
         """
@@ -749,7 +755,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           ca_certs=self.ca_certs,
                           ca_cert_dir=self.ca_cert_dir,
                           assert_hostname=self.assert_hostname,
-                          assert_fingerprint=self.assert_fingerprint)
+                          assert_fingerprint=self.assert_fingerprint,
+                          hpkp_manager=self.hpkp_manager)
             conn.ssl_version = self.ssl_version
 
         return conn
