@@ -15,6 +15,8 @@ dev (master)
   
 * Fixed regression with IPv6 port parsing. (Issue #801)
 
+* Fixed gevent exhausting the pool sometimes. (Issue #805)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
