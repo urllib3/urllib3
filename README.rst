@@ -128,7 +128,7 @@ Contributing
 ============
 
 Thank you for giving back to urllib3. Please meet our jolly team
-of jolly code-sherpas:
+of code-sherpas:
 
 Maintainers
 -----------
