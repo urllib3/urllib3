@@ -630,6 +630,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if not clean_exit:
                 # We hit some kind of exception, handled or otherwise. We need
                 # to throw the connection away unless explicitly told not to.
+                # Close the connection, set the variable to None, and make sure
+                # we put the None back in the pool to avoid leaking it.
                 conn = conn and conn.close()
                 release_conn = True
 

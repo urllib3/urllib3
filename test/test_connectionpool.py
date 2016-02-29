@@ -284,6 +284,11 @@ class TestConnectionPool(unittest.TestCase):
             self.assertEqual(conn.cert_reqs, 'CERT_REQUIRED')
 
     def test_cleanup_on_extreme_connection_error(self):
+        """
+        This test validates that we clean up properly even on exceptions that
+        we'd not otherwise catch, i.e. those that inherit from BaseException
+        like KeyboardInterrupt or gevent.Timeout. See #805 for more details.
+        """
         class RealBad(BaseException):
             pass
 
