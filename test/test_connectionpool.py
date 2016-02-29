@@ -283,6 +283,28 @@ class TestConnectionPool(unittest.TestCase):
             conn = pool._get_conn()
             self.assertEqual(conn.cert_reqs, 'CERT_REQUIRED')
 
+    def test_cleanup_on_extreme_connection_error(self):
+        class RealBad(BaseException):
+            pass
+
+        def kaboom(*args, **kwargs):
+            raise RealBad()
+
+        c = connection_from_url('http://localhost:80')
+        c._make_request = kaboom
+
+        initial_pool_size = c.pool.qsize()
+
+        try:
+            # We need to release_conn this way or we'd put it away regardless.
+            c.urlopen('GET', '/', release_conn=False)
+        except RealBad:
+            pass
+
+        new_pool_size = c.pool.qsize()
+        self.assertEqual(initial_pool_size, new_pool_size)
+
+
 
 if __name__ == '__main__':
     unittest.main()
