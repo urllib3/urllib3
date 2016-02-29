@@ -127,6 +127,21 @@ Our test suite `runs continuously on Travis CI
 Contributing
 ============
 
+Thank you for giving back to urllib3. Please meet our jolly team
+of code-sherpas:
+
+Maintainers
+-----------
+
+- `@lukasa <https://github.com/lukasa>`_ (Cory Benfield)
+- `@sigmavirus24 <https://github.com/sigmavirus24>`_ (Ian Cordasco)
+- `@shazow <https://github.com/shazow>`_ (Andrey Petrov)
+
+👋
+
+Getting Started
+---------------
+
 #. `Check for open issues <https://github.com/shazow/urllib3/issues>`_ or open
    a fresh issue to start a discussion around a feature idea or a bug. There is
    a *Contributor Friendly* tag for issues that should be ideal for people who
