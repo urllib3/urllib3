@@ -556,6 +556,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # complains about UnboundLocalError.
         err = None
 
+        # Keep track of whether we cleanly exited the except block. This
+        # ensures we do proper cleanup in finally.
+        clean_exit = False
+
         try:
             # Request a connection from the queue.
             timeout_obj = self._get_timeout(timeout)
@@ -585,10 +589,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                                  connection=response_conn,
                                                  **response_kw)
 
-            # else:
-            #     The connection will be put back into the pool when
-            #     ``response.release_conn()`` is called (implicitly by
-            #     ``response.read()``)
+            # Everything went great!
+            clean_exit = True
 
         except Empty:
             # Timed out by queue.
@@ -598,22 +600,19 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Close the connection. If a connection is reused on which there
             # was a Certificate error, the next request will certainly raise
             # another Certificate error.
-            conn = conn and conn.close()
-            release_conn = True
+            clean_exit = False
             raise SSLError(e)
 
         except SSLError:
             # Treat SSLError separately from BaseSSLError to preserve
             # traceback.
-            conn = conn and conn.close()
-            release_conn = True
+            clean_exit = False
             raise
 
         except (TimeoutError, HTTPException, SocketError, ProtocolError) as e:
             # Discard the connection for these exceptions. It will be
             # be replaced during the next _get_conn() call.
-            conn = conn and conn.close()
-            release_conn = True
+            clean_exit = False
 
             if isinstance(e, (SocketError, NewConnectionError)) and self.proxy:
                 e = ProxyError('Cannot connect to proxy.', e)
@@ -628,6 +627,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             err = e
 
         finally:
+            if not clean_exit:
+                # We hit some kind of exception, handled or otherwise. We need
+                # to throw the connection away unless explicitly told not to.
+                # Close the connection, set the variable to None, and make sure
+                # we put the None back in the pool to avoid leaking it.
+                conn = conn and conn.close()
+                release_conn = True
+
             if release_conn:
                 # Put the connection back to be reused. If the connection is
                 # expired then it will be None, which will get replaced with a
