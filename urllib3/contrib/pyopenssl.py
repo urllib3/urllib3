@@ -98,7 +98,7 @@ _openssl_verify = {
         OpenSSL.SSL.VERIFY_PEER + OpenSSL.SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
 }
 
-DEFAULT_SSL_CIPHER_LIST = util.ssl_.DEFAULT_CIPHERS
+DEFAULT_SSL_CIPHER_LIST = util.ssl_.DEFAULT_CIPHERS.encode('ascii')
 
 # OpenSSL will only write 16K at a time
 SSL_WRITE_BLOCKSIZE = 16384
