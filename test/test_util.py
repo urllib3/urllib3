@@ -123,7 +123,9 @@ class TestUtil(unittest.TestCase):
         'http://foo:bar@localhost/': Url('http', auth='foo:bar', host='localhost', path='/'),
         'http://foo@localhost/': Url('http', auth='foo', host='localhost', path='/'),
         'http://foo:bar@baz@localhost/': Url('http', auth='foo:bar@baz', host='localhost', path='/'),
-        'http://@': Url('http', host=None, auth='')
+        'http://@': Url('http', host=None, auth=''),
+        'http://foo:bar#@localhost': Url('http', auth='foo:bar#', host='localhost'),
+        'http://foo:bar/baz@localhost': Url('http', auth='foo:bar/baz', host='localhost')
     }
 
     non_round_tripping_parse_url_host_map = {
