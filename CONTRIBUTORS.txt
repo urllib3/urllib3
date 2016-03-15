@@ -190,5 +190,8 @@ In chronological order:
 * Shige Takeda <smtakeda@gmail.com>
   * Started Recipes documentation and added a recipe about handling concatenated gzip data in HTTP response
 
+* [Jesse Shapiro] <jesse@jesseshapiro.net>
+  * Making HTTP basic auth from URL parsing more robust in allowing '/', '#', and '?' characters
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

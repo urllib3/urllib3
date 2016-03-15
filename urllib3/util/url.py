@@ -158,6 +158,11 @@ def parse_url(url):
     if '://' in url:
         scheme, url = url.split('://', 1)
 
+    # Auth
+    if '@' in url:
+        # Last '@' denotes end of auth part
+        auth, url = url.rsplit('@', 1)
+
     # Find the earliest Authority Terminator
     # (http://tools.ietf.org/html/rfc3986#section-3.2)
     url, path_, delim = split_first(url, ['/', '?', '#'])
@@ -165,11 +170,6 @@ def parse_url(url):
     if delim:
         # Reassemble the path
         path = delim + path_
-
-    # Auth
-    if '@' in url:
-        # Last '@' denotes end of auth part
-        auth, url = url.rsplit('@', 1)
 
     # IPv6
     if url and url[0] == '[':
