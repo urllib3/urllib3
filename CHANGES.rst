@@ -4,16 +4,19 @@ Changes
 dev (master)
 ++++++++++++
 
-* Added Retry(raise_on_status=False) (Issue #720)
+* Added Retry(raise_on_status=False). (Issue #720)
 
 * Always use setuptools, no more distutils fallback. (Issue #785)
 
 * Dropped support for Python 3.2. (Issue #786)
 
-* Chunked transfer encoding when requesting with ``chunked=True``
+* Chunked transfer encoding when requesting with ``chunked=True``.
   (Issue #790)
   
 * Fixed regression with IPv6 port parsing. (Issue #801)
+
+* Append SNIMissingWarning messages to allow users to specify it in
+  the PYTHONWARNINGS environment variable. (Issue #816)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
