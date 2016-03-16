@@ -1,7 +1,7 @@
 import unittest
 
 from urllib3.fields import guess_content_type, RequestField
-from urllib3.packages.six import u
+from urllib3.packages.six import u, PY3
 
 
 class TestRequestField(unittest.TestCase):
@@ -47,3 +47,9 @@ class TestRequestField(unittest.TestCase):
         field = RequestField('somename', 'data')
         param = field._render_part('filename', u('n\u00e4me'))
         self.assertEqual(param, "filename*=utf-8''n%C3%A4me")
+
+    def test_render_unicode_bytes_py2(self):
+        if not PY3:
+            field = RequestField('somename', 'data')
+            param = field._render_part('filename', 'n\xc3\xa4me')
+            self.assertEqual(param, "filename*=utf-8''n%C3%A4me")
