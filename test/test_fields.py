@@ -2,7 +2,7 @@ import unittest
 
 from urllib3.fields import guess_content_type, RequestField
 from urllib3.packages.six import u, PY3
-from .. import onlyPy2
+from . import onlyPy2
 
 
 class TestRequestField(unittest.TestCase):
