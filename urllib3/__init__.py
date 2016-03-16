@@ -74,6 +74,9 @@ def add_stderr_logger(level=logging.DEBUG):
 del NullHandler
 
 
+# All warning filters *must* be appended unless you're really certain that they
+# shouldn't be: otherwise, it's very hard for users to use most Python
+# mechanisms to silence them.
 # SecurityWarning's always go off by default.
 warnings.simplefilter('always', exceptions.SecurityWarning, append=True)
 # SubjectAltNameWarning's should go off once per host
