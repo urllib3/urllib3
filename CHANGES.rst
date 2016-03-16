@@ -17,6 +17,8 @@ dev (master)
 
 * Append SNIMissingWarning messages to allow users to specify it in
   the PYTHONWARNINGS environment variable. (Issue #816)
+  
+* Handle unicode headers in Py2. (Issue #818)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
