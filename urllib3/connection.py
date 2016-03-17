@@ -302,21 +302,23 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                     'for details.)'.format(hostname)),
                     SubjectAltNameWarning
                 )
-            asserted_hostname = self.assert_hostname or hostname
-            try:
-                match_hostname(cert, asserted_hostname)
-            except CertificateError as e:
-                log.error(
-                    'Certificate did not match expected hostname: %s. '
-                    'Certificate: %s', asserted_hostname, cert
-                )
-                # Add cert to exception and reraise so client code can inspect
-                # the cert when catching the exception, if they want to
-                e.cert = cert
-                raise
+            _match_hostname(cert, self.assert_hostname or hostname)
 
         self.is_verified = (resolved_cert_reqs == ssl.CERT_REQUIRED or
                             self.assert_fingerprint is not None)
+
+def _match_hostname(cert, asserted_hostname):
+    try:
+        match_hostname(cert, asserted_hostname)
+    except CertificateError as e:
+        log.error(
+            'Certificate did not match expected hostname: %s. '
+            'Certificate: %s', asserted_hostname, cert
+        )
+        # Add cert to exception and reraise so client code can inspect
+        # the cert when catching the exception, if they want to
+        e._peer_cert = cert
+        raise
 
 
 if ssl:
