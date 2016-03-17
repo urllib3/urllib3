@@ -307,6 +307,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         self.is_verified = (resolved_cert_reqs == ssl.CERT_REQUIRED or
                             self.assert_fingerprint is not None)
 
+
 def _match_hostname(cert, asserted_hostname):
     try:
         match_hostname(cert, asserted_hostname)
