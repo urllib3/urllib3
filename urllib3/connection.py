@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import datetime
+import logging
 import os
 import sys
 import socket
@@ -38,7 +39,7 @@ from .exceptions import (
     SubjectAltNameWarning,
     SystemTimeWarning,
 )
-from .packages.ssl_match_hostname import match_hostname
+from .packages.ssl_match_hostname import match_hostname, CertificateError
 
 from .util.ssl_ import (
     resolve_cert_reqs,
@@ -51,6 +52,8 @@ from .util.ssl_ import (
 from .util import connection
 
 from ._collections import HTTPHeaderDict
+
+log = logging.getLogger(__name__)
 
 port_by_scheme = {
     'http': 80,
@@ -299,7 +302,18 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                     'for details.)'.format(hostname)),
                     SubjectAltNameWarning
                 )
-            match_hostname(cert, self.assert_hostname or hostname)
+            asserted_hostname = self.assert_hostname or hostname
+            try:
+                match_hostname(cert, asserted_hostname)
+            except CertificateError as e:
+                log.error(
+                    'Certificate did not match expected hostname: %s. '
+                    'Certificate: %s', asserted_hostname, cert
+                )
+                # Add cert to exception and reraise so client code can inspect
+                # the cert when catching the exception, if they want to
+                e.cert = cert
+                raise
 
         self.is_verified = (resolved_cert_reqs == ssl.CERT_REQUIRED or
                             self.assert_fingerprint is not None)
