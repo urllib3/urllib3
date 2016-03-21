@@ -20,6 +20,8 @@ dev (master)
   
 * Handle unicode headers in Py2. (Issue #818)
 
+* Log certificate when there is a hostname mismatch. (Issue #820)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
