@@ -192,6 +192,7 @@ In chronological order:
 
 * Jesse Shapiro <jesse@jesseshapiro.net>
   * Working on encoding unicode header parameter names
+  * Making setup.py resilient to ASCII locales
 
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
