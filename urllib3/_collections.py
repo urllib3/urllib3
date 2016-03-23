@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-from collections import Mapping, MutableMapping
+from collections import Mapping, MutableMapping, OrderedDict
 try:
     from threading import RLock
 except ImportError:  # Platform-specific: No threads available
@@ -134,7 +134,7 @@ class HTTPHeaderDict(MutableMapping):
 
     def __init__(self, headers=None, **kwargs):
         super(HTTPHeaderDict, self).__init__()
-        self._container = {}
+        self._container = OrderedDict()
         if headers is not None:
             if isinstance(headers, HTTPHeaderDict):
                 self._copy_from(headers)
