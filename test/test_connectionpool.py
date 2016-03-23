@@ -352,7 +352,9 @@ class TestConnectionPool(unittest.TestCase):
         are in the same order as received from the underlying httplib.
         """
         
-        expected_response_headers = OrderedDict([('X-Header-%d' % i, str(i)) for i in range(16)])
+        # NOTE: Using lowercase response header names since Python 2.x doesn't
+        #       preserve their case, normalizing them all to lowercase.
+        expected_response_headers = OrderedDict([('x-header-%d' % i, str(i)) for i in range(16)])
         
         c = connection_from_url('http://localhost:80')
         
@@ -387,9 +389,12 @@ class TestConnectionPool(unittest.TestCase):
             for (k, v) in headers.items():
                 httplib_message.add_header(k, v)
         else:
-            httplib_message = HTTPMessage(BytesIO(b''))
             for (k, v) in headers.items():
-                httplib_message.addheader(k, v)
+                assert k == k.lower(), \
+                    'Unwise to use anything but lowercase header names ' + \
+                    'since Python 2.x normalizes them to lowercase internally.'
+            header_text = ''.join(['%s: %s\r\n' % (k, v) for (k, v) in headers.items()])
+            httplib_message = HTTPMessage(BytesIO(header_text.encode('utf8')))
         return httplib_message
 
 
