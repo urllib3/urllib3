@@ -1,5 +1,6 @@
 import unittest
 
+from urllib3._collections import OrderedDict
 from urllib3.connectionpool import (
     connection_from_url,
     HTTPConnection,
@@ -7,6 +8,7 @@ from urllib3.connectionpool import (
     HTTPSConnectionPool,
 )
 from urllib3.util.timeout import Timeout
+from urllib3.packages import six
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
     ClosedPoolError,
@@ -18,15 +20,16 @@ from urllib3.exceptions import (
     SSLError,
 )
 
+from io import BytesIO
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 
 try:   # Python 3
     from queue import Empty
-    from http.client import HTTPException
+    from http.client import HTTPException, HTTPMessage
 except ImportError:
     from Queue import Empty
-    from httplib import HTTPException
+    from httplib import HTTPException, HTTPMessage
 
 
 class TestConnectionPool(unittest.TestCase):
@@ -308,7 +311,91 @@ class TestConnectionPool(unittest.TestCase):
 
         new_pool_size = c.pool.qsize()
         self.assertEqual(initial_pool_size, new_pool_size)
-
+    
+    def test_preserves_request_header_order(self):
+        """
+        Ensure that headers provided to ConnectionPool.urlopen()
+        are sent to the underlying httplib in the same order.
+        """
+        class AbortRequest(BaseException):
+            pass
+        
+        expected_request_headers = OrderedDict([('X-Header-%d' % i, str(i)) for i in range(16)])
+        
+        c = connection_from_url('http://localhost:80')
+        
+        # Defer: Assert the request sent to httplib had the same header order
+        #        as the original header arguments to ConnectionPool.urlopen().
+        def patched_request(*args, **kwargs):
+            actual_request_headers = kwargs['headers']
+            self.assertEqual(
+                list(actual_request_headers.items()),
+                list(expected_request_headers.items()))
+            raise AbortRequest()
+        
+        # Patch the .request() for new connections in the pool 
+        original_new_conn = c._new_conn
+        def patched_new_conn(*args, **kwargs):
+            conn = original_new_conn(*args, **kwargs)
+            conn.request = patched_request
+            return conn
+        c._new_conn = patched_new_conn
+        
+        try:
+            c.urlopen('GET', '/', headers=expected_request_headers, release_conn=False)
+        except AbortRequest:
+            pass
+    
+    def test_preserves_response_header_order(self):
+        """
+        Ensure that headers returned by ConnectionPool.urlopen()
+        are in the same order as received from the underlying httplib.
+        """
+        
+        # NOTE: Using lowercase response header names since Python 2.x doesn't
+        #       preserve their case, normalizing them all to lowercase.
+        expected_response_headers = OrderedDict([('x-header-%d' % i, str(i)) for i in range(16)])
+        
+        c = connection_from_url('http://localhost:80')
+        
+        # Patch the .getresponse() for new connections in the pool to return
+        # a simulated httplib.HTTPResponse
+        original_new_conn = c._new_conn
+        def patched_new_conn(*args, **kwargs):
+            conn = original_new_conn(*args, **kwargs)
+            conn.request = lambda *args, **kwargs: None
+            conn.getresponse = lambda *args, **kwargs: \
+                self._create_httplib_response(expected_response_headers)
+            return conn
+        c._new_conn = patched_new_conn
+        
+        actual_response = c.urlopen('GET', '/', release_conn=False)
+        self.assertEqual(
+            list(actual_response.headers.items()),
+            list(expected_response_headers.items()))
+    
+    def _create_httplib_response(self, headers):
+        class FakeHTTPResponse(object):
+            status = 200
+            reason = 'OK'
+            version = '0.9'
+            length = 0
+            msg = self._create_httplib_message(headers)
+        return FakeHTTPResponse()
+    
+    def _create_httplib_message(self, headers):
+        if six.PY3:
+            httplib_message = HTTPMessage()
+            for (k, v) in headers.items():
+                httplib_message.add_header(k, v)
+        else:
+            for (k, v) in headers.items():
+                assert k == k.lower(), \
+                    'Unwise to use anything but lowercase header names ' + \
+                    'since Python 2.x normalizes them to lowercase internally.'
+            header_text = ''.join(['%s: %s\r\n' % (k, v) for (k, v) in headers.items()])
+            httplib_message = HTTPMessage(BytesIO(header_text.encode('utf8')))
+        return httplib_message
 
 
 if __name__ == '__main__':

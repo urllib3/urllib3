@@ -2,6 +2,7 @@ import unittest
 
 from urllib3._collections import (
     HTTPHeaderDict,
+    OrderedDict,
     RecentlyUsedContainer as Container
 )
 from urllib3.packages import six
@@ -338,6 +339,16 @@ www-authenticate: bla
         self.assertEqual(d['x-some-multiline'].split(), ['asdf', 'asdf', 'asdf'])
         self.assertEqual(d['www-authenticate'], 'asdf, bla')
         self.assertEqual(d.getlist('www-authenticate'), ['asdf', 'bla'])
+    
+    def test_preserves_header_order(self):
+        kv_pairs = [('X-Header-%d' % i, str(i)) for i in range(16)]
+        
+        h = HTTPHeaderDict(OrderedDict(kv_pairs))
+        self.assertEqual(h.items(), kv_pairs)
+        
+        h = HTTPHeaderDict(OrderedDict(reversed(kv_pairs)))
+        self.assertEqual(h.items(), list(reversed(kv_pairs)))
+
 
 if __name__ == '__main__':
     unittest.main()
