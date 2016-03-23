@@ -1,5 +1,6 @@
 import unittest
 
+from urllib3._collections import OrderedDict
 from urllib3.connectionpool import (
     connection_from_url,
     HTTPConnection,
@@ -23,10 +24,10 @@ from ssl import SSLError as BaseSSLError
 
 try:   # Python 3
     from queue import Empty
-    from http.client import HTTPException
+    from http.client import HTTPException, HTTPMessage
 except ImportError:
     from Queue import Empty
-    from httplib import HTTPException
+    from httplib import HTTPException, HTTPMessage
 
 
 class TestConnectionPool(unittest.TestCase):
@@ -308,7 +309,77 @@ class TestConnectionPool(unittest.TestCase):
 
         new_pool_size = c.pool.qsize()
         self.assertEqual(initial_pool_size, new_pool_size)
-
+    
+    def test_preserves_request_header_order(self):
+        """
+        Ensure that headers provided to ConnectionPool.urlopen()
+        are sent to the underlying httplib in the same order.
+        """
+        class AbortRequest(BaseException):
+            pass
+        
+        expected_request_headers = OrderedDict([('X-Header-%d' % i, str(i)) for i in range(16)])
+        
+        c = connection_from_url('http://localhost:80')
+        
+        # Defer: Assert the request sent to httplib had the same header order
+        #        as the original header arguments to ConnectionPool.urlopen().
+        def patched_request(*args, **kwargs):
+            actual_request_headers = kwargs['headers']
+            self.assertEqual(
+                list(actual_request_headers.items()),
+                list(expected_request_headers.items()))
+            raise AbortRequest()
+        
+        # Patch the .request() for new connections in the pool 
+        original_new_conn = c._new_conn
+        def patched_new_conn(*args, **kwargs):
+            conn = original_new_conn(*args, **kwargs)
+            conn.request = patched_request
+            return conn
+        c._new_conn = patched_new_conn
+        
+        try:
+            c.urlopen('GET', '/', headers=expected_request_headers, release_conn=False)
+        except AbortRequest:
+            pass
+    
+    def test_preserves_response_header_order(self):
+        """
+        Ensure that headers returned by ConnectionPool.urlopen()
+        are in the same order as received from the underlying httplib.
+        """
+        
+        expected_response_headers = OrderedDict([('X-Header-%d' % i, str(i)) for i in range(16)])
+        
+        httplib_response_headers = HTTPMessage()
+        for (k, v) in expected_response_headers.items():
+            httplib_response_headers.add_header(k, v)
+        
+        class Response(object):
+            status = 200
+            reason = 'OK'
+            version = '0.9'
+            length = 0
+            msg = httplib_response_headers
+        httplib_response = Response()
+        
+        c = connection_from_url('http://localhost:80')
+        
+        # Patch the .getresponse() for new connections in the pool to return
+        # a simulated httplib.HTTPResponse
+        original_new_conn = c._new_conn
+        def patched_new_conn(*args, **kwargs):
+            conn = original_new_conn(*args, **kwargs)
+            conn.request = lambda *args, **kwargs: None
+            conn.getresponse = lambda *args, **kwargs: httplib_response
+            return conn
+        c._new_conn = patched_new_conn
+        
+        actual_response = c.urlopen('GET', '/', release_conn=False)
+        self.assertEqual(
+            list(actual_response.headers.items()),
+            list(expected_response_headers.items()))
 
 
 if __name__ == '__main__':
