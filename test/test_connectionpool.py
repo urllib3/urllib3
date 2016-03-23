@@ -354,21 +354,6 @@ class TestConnectionPool(unittest.TestCase):
         
         expected_response_headers = OrderedDict([('X-Header-%d' % i, str(i)) for i in range(16)])
         
-        if six.PY3:
-            httplib_response_headers = HTTPMessage()
-        else:
-            httplib_response_headers = HTTPMessage(BytesIO(b''))
-        for (k, v) in expected_response_headers.items():
-            httplib_response_headers.add_header(k, v)
-        
-        class FakeHTTPResponse(object):
-            status = 200
-            reason = 'OK'
-            version = '0.9'
-            length = 0
-            msg = httplib_response_headers
-        httplib_response = FakeHTTPResponse()
-        
         c = connection_from_url('http://localhost:80')
         
         # Patch the .getresponse() for new connections in the pool to return
@@ -377,7 +362,8 @@ class TestConnectionPool(unittest.TestCase):
         def patched_new_conn(*args, **kwargs):
             conn = original_new_conn(*args, **kwargs)
             conn.request = lambda *args, **kwargs: None
-            conn.getresponse = lambda *args, **kwargs: httplib_response
+            conn.getresponse = lambda *args, **kwargs: \
+                self._create_httplib_response(expected_response_headers)
             return conn
         c._new_conn = patched_new_conn
         
@@ -385,6 +371,26 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(
             list(actual_response.headers.items()),
             list(expected_response_headers.items()))
+    
+    def _create_httplib_response(self, headers):
+        class FakeHTTPResponse(object):
+            status = 200
+            reason = 'OK'
+            version = '0.9'
+            length = 0
+            msg = self._create_httplib_message(headers)
+        return FakeHTTPResponse()
+    
+    def _create_httplib_message(self, headers):
+        if six.PY3:
+            httplib_message = HTTPMessage()
+            for (k, v) in headers.items():
+                httplib_message.add_header(k, v)
+        else:
+            httplib_message = HTTPMessage(BytesIO(b''))
+            for (k, v) in headers.items():
+                httplib_message.addheader(k, v)
+        return httplib_message
 
 
 if __name__ == '__main__':
