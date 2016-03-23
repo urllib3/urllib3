@@ -8,6 +8,7 @@ from urllib3.connectionpool import (
     HTTPSConnectionPool,
 )
 from urllib3.util.timeout import Timeout
+from urllib3.packages import six
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
     ClosedPoolError,
@@ -19,6 +20,7 @@ from urllib3.exceptions import (
     SSLError,
 )
 
+from io import BytesIO
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 
@@ -352,17 +354,20 @@ class TestConnectionPool(unittest.TestCase):
         
         expected_response_headers = OrderedDict([('X-Header-%d' % i, str(i)) for i in range(16)])
         
-        httplib_response_headers = HTTPMessage()
+        if six.PY3:
+            httplib_response_headers = HTTPMessage()
+        else:
+            httplib_response_headers = HTTPMessage(BytesIO(b''))
         for (k, v) in expected_response_headers.items():
             httplib_response_headers.add_header(k, v)
         
-        class Response(object):
+        class FakeHTTPResponse(object):
             status = 200
             reason = 'OK'
             version = '0.9'
             length = 0
             msg = httplib_response_headers
-        httplib_response = Response()
+        httplib_response = FakeHTTPResponse()
         
         c = connection_from_url('http://localhost:80')
         
