@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import collections
 import logging
 
 try:  # Python 3
@@ -22,6 +23,32 @@ log = logging.getLogger(__name__)
 
 SSL_KEYWORDS = ('key_file', 'cert_file', 'cert_reqs', 'ca_certs',
                 'ssl_version', 'ca_cert_dir')
+
+# The base fields to use when determining what pool to get a connection from;
+# these do not rely on the ``connection_pool_kw`` and can be determined by the
+# URL and potentially the ``urllib3.connection.port_by_scheme`` dictionary.
+#
+# All custom key schemes should include the fields in this key at a minimum.
+BasePoolKey = collections.namedtuple('BasePoolKey', ('scheme', 'host', 'port'))
+
+# The fields to use when determining what pool to get a HTTP and HTTPS
+# connection from. All additional fields must be present in the PoolManager's
+# ``connection_pool_kw`` instance variable.
+HTTPPoolKey = collections.namedtuple(
+    'HTTPPoolKey', BasePoolKey._fields + ('timeout', 'retries',
+                                          'strict', 'block')
+)
+HTTPSPoolKey = collections.namedtuple(
+    'HTTPSPoolKey', HTTPPoolKey._fields + SSL_KEYWORDS
+)
+
+# The default pool key for each scheme; each PoolManager makes a copy of this
+# dictionary so they can be configured globally here, or individually on the
+# instance.
+pool_keys_by_scheme = {
+    'http': HTTPPoolKey,
+    'https': HTTPSPoolKey,
+}
 
 pool_classes_by_scheme = {
     'http': HTTPConnectionPool,
@@ -65,8 +92,10 @@ class PoolManager(RequestMethods):
         self.pools = RecentlyUsedContainer(num_pools,
                                            dispose_func=lambda p: p.close())
 
-        # Locally set the pool classes so other PoolManagers can override them.
+        # Locally set the pool classes and keys so other PoolManagers can
+        # override them.
         self.pool_classes_by_scheme = pool_classes_by_scheme
+        self.pool_keys_by_scheme = pool_keys_by_scheme.copy()
 
     def __enter__(self):
         return self
@@ -113,10 +142,31 @@ class PoolManager(RequestMethods):
         if not host:
             raise LocationValueError("No host specified.")
 
-        scheme = scheme or 'http'
-        port = port or port_by_scheme.get(scheme, 80)
-        pool_key = (scheme, host, port)
+        request_context = self.connection_pool_kw.copy()
+        request_context['scheme'] = scheme or 'http'
+        request_context['port'] = port or port_by_scheme.get(scheme, 80)
+        request_context['host'] = host
 
+        return self.connection_from_context(request_context)
+
+    def connection_from_context(self, request_context):
+        """Get a :class:`ConnectionPool` based on the request context."""
+        pool_key_cls = self.pool_keys_by_scheme[request_context['scheme']]
+        key_kwargs = {}
+        for key_field in pool_key_cls._fields:
+            key_kwargs[key_field] = request_context.get(key_field)
+        pool_key = pool_key_cls(**key_kwargs)
+
+        return self.connection_from_pool_key(pool_key)
+
+    def connection_from_pool_key(self, pool_key):
+        """
+        Get a :class:`ConnectionPool` based on the provided pool key.
+
+        ``pool_key`` should be a namedtuple that only contains immutable
+        objects. At a minimum it must have the ``scheme``, ``host``, and
+        ``port`` fields.
+        """
         with self.pools.lock:
             # If the scheme, host, or port doesn't match existing open
             # connections, open a new ConnectionPool.
@@ -125,7 +175,7 @@ class PoolManager(RequestMethods):
                 return pool
 
             # Make a fresh ConnectionPool of the desired type
-            pool = self._new_pool(scheme, host, port)
+            pool = self._new_pool(pool_key.scheme, pool_key.host, pool_key.port)
             self.pools[pool_key] = pool
 
         return pool
@@ -152,7 +202,11 @@ class PoolManager(RequestMethods):
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
         u = parse_url(url)
-        conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
+        request_context = self.connection_pool_kw.copy()
+        request_context['scheme'] = u.scheme or 'http'
+        request_context['port'] = u.port or port_by_scheme.get(u.scheme, 80)
+        request_context['host'] = u.host
+        conn = self.connection_from_context(request_context)
 
         kw['assert_same_host'] = False
         kw['redirect'] = False
