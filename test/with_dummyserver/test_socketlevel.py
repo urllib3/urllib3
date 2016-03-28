@@ -81,7 +81,7 @@ class TestSNI(SocketDummyServerTestCase):
         except SSLError: # We are violating the protocol
             pass
         done_receiving.wait()
-        self.assertTrue(self.host.encode() in self.buf,
+        self.assertTrue(self.host.encode('ascii') in self.buf,
                         "missing hostname in SSL handshake")
 
 
@@ -825,7 +825,7 @@ class TestHeaders(SocketDummyServerTestCase):
 
             for header in headers_list:
                 (key, value) = header.split(b': ')
-                parsed_headers[key.decode()] = value.decode()
+                parsed_headers[key.decode('ascii')] = value.decode('ascii')
 
             # Send incomplete message (note Content-Length)
             sock.send((
@@ -850,9 +850,8 @@ class TestHeaders(SocketDummyServerTestCase):
         # NOTE: Provide headers in non-sorted order (i.e. reversed)
         #       so that if the internal implementation tries to sort them,
         #       a change will be detected.
-        expected_request_headers = [('X-Header-%d' % i, str(i)) for i in reversed(range(K))]
+        expected_request_headers = [(u'X-Header-%d' % i, str(i)) for i in reversed(range(K))]
         
-        headers = {'foo': 'bar', 'bAz': 'quux'}
         actual_request_headers = []
 
         def socket_handler(listener):
@@ -866,15 +865,15 @@ class TestHeaders(SocketDummyServerTestCase):
 
             for header in headers_list:
                 (key, value) = header.split(b': ')
-                if not key.decode().startswith('X-Header-'):
+                if not key.decode('ascii').startswith(u'X-Header-'):
                     continue
-                actual_request_headers.append((key.decode(), value.decode()))
+                actual_request_headers.append((key.decode('ascii'), value.decode('ascii')))
 
             # Send incomplete message (note Content-Length)
             sock.send((
-                'HTTP/1.1 204 No Content\r\n'
-                'Content-Length: 0\r\n'
-                '\r\n').encode('utf-8'))
+                u'HTTP/1.1 204 No Content\r\n'
+                u'Content-Length: 0\r\n'
+                u'\r\n').encode('ascii'))
 
             sock.close()
 
