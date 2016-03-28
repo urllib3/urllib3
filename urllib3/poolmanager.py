@@ -122,7 +122,7 @@ class PoolManager(RequestMethods):
 
         # Locally set the pool classes and keys so other PoolManagers can
         # override them.
-        self.pool_classes_by_scheme = pool_classes_by_scheme
+        self.pool_classes_by_scheme = pool_classes_by_scheme.copy()
         self.key_fn_by_scheme = key_fn_by_scheme.copy()
 
     def __enter__(self):

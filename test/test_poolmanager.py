@@ -9,6 +9,7 @@ from urllib3.poolmanager import (
     key_fn_by_scheme,
     PoolManager,
     SSL_KEYWORDS,
+    pool_classes_by_scheme
 )
 from urllib3 import connection_from_url
 from urllib3.exceptions import (
@@ -314,6 +315,18 @@ class TestPoolManager(unittest.TestCase):
         p.connection_from_url('http://example.com')
 
         self.assertEqual(2, len(p.pools))
+
+    def test_pool_classes_by_scheme_unmodified(self):
+        """Assert that each PoolManager has a copy of pool_classes_by_scheme.
+
+        This allows each instance of PoolManager to have its own mapping of
+        scheme to connection class that it is free to modify.
+        """
+        p = PoolManager()
+        p.pool_classes_by_scheme['ftp'] = 'some_connection_class'
+
+        self.assertFalse('ftp' in pool_classes_by_scheme)
+        self.assertTrue('ftp' in p.pool_classes_by_scheme)
 
 
 if __name__ == '__main__':
