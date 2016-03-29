@@ -202,11 +202,7 @@ class PoolManager(RequestMethods):
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
         u = parse_url(url)
-        request_context = self.connection_pool_kw.copy()
-        request_context['scheme'] = u.scheme or 'http'
-        request_context['port'] = u.port or port_by_scheme.get(u.scheme, 80)
-        request_context['host'] = u.host
-        conn = self.connection_from_context(request_context)
+        conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
         kw['assert_same_host'] = False
         kw['redirect'] = False
