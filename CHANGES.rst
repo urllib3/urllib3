@@ -12,15 +12,17 @@ dev (master)
 
 * Chunked transfer encoding when requesting with ``chunked=True``.
   (Issue #790)
-  
+
 * Fixed regression with IPv6 port parsing. (Issue #801)
 
 * Append SNIMissingWarning messages to allow users to specify it in
   the PYTHONWARNINGS environment variable. (Issue #816)
-  
+
 * Handle unicode headers in Py2. (Issue #818)
 
 * Log certificate when there is a hostname mismatch. (Issue #820)
+
+* Preserve order of request/response headers. (Issue #821)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
