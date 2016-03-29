@@ -827,7 +827,6 @@ class TestHeaders(SocketDummyServerTestCase):
                 (key, value) = header.split(b': ')
                 parsed_headers[key.decode('ascii')] = value.decode('ascii')
 
-            # Send incomplete message (note Content-Length)
             sock.send((
                 'HTTP/1.1 204 No Content\r\n'
                 'Content-Length: 0\r\n'
@@ -869,7 +868,6 @@ class TestHeaders(SocketDummyServerTestCase):
                     continue
                 actual_request_headers.append((key.decode('ascii'), value.decode('ascii')))
 
-            # Send incomplete message (note Content-Length)
             sock.send((
                 u'HTTP/1.1 204 No Content\r\n'
                 u'Content-Length: 0\r\n'
