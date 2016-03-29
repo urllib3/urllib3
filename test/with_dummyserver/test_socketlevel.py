@@ -15,7 +15,7 @@ from urllib3.response import httplib
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util.timeout import Timeout
 from urllib3.util.retry import Retry
-from urllib3._collections import HTTPHeaderDict
+from urllib3._collections import HTTPHeaderDict, OrderedDict
 
 from dummyserver.testcase import SocketDummyServerTestCase
 from dummyserver.server import (
@@ -81,7 +81,7 @@ class TestSNI(SocketDummyServerTestCase):
         except SSLError: # We are violating the protocol
             pass
         done_receiving.wait()
-        self.assertTrue(self.host.encode() in self.buf,
+        self.assertTrue(self.host.encode('ascii') in self.buf,
                         "missing hostname in SSL handshake")
 
 
@@ -825,9 +825,8 @@ class TestHeaders(SocketDummyServerTestCase):
 
             for header in headers_list:
                 (key, value) = header.split(b': ')
-                parsed_headers[key.decode()] = value.decode()
+                parsed_headers[key.decode('ascii')] = value.decode('ascii')
 
-            # Send incomplete message (note Content-Length)
             sock.send((
                 'HTTP/1.1 204 No Content\r\n'
                 'Content-Length: 0\r\n'
@@ -843,6 +842,76 @@ class TestHeaders(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         pool.request('GET', '/', headers=HTTPHeaderDict(headers))
         self.assertEqual(expected_headers, parsed_headers)
+    
+    def test_request_headers_are_sent_in_the_original_order(self):
+        # NOTE: Probability this test gives a false negative is 1/(K!)
+        K = 16
+        # NOTE: Provide headers in non-sorted order (i.e. reversed)
+        #       so that if the internal implementation tries to sort them,
+        #       a change will be detected.
+        expected_request_headers = [(u'X-Header-%d' % i, str(i)) for i in reversed(range(K))]
+        
+        actual_request_headers = []
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            headers_list = [header for header in buf.split(b'\r\n')[1:] if header]
+
+            for header in headers_list:
+                (key, value) = header.split(b': ')
+                if not key.decode('ascii').startswith(u'X-Header-'):
+                    continue
+                actual_request_headers.append((key.decode('ascii'), value.decode('ascii')))
+
+            sock.send((
+                u'HTTP/1.1 204 No Content\r\n'
+                u'Content-Length: 0\r\n'
+                u'\r\n').encode('ascii'))
+
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        pool.request('GET', '/', headers=OrderedDict(expected_request_headers))
+        self.assertEqual(expected_request_headers, actual_request_headers)
+    
+    def test_response_headers_are_returned_in_the_original_order(self):
+        # NOTE: Probability this test gives a false negative is 1/(K!)
+        K = 16
+        # NOTE: Provide headers in non-sorted order (i.e. reversed)
+        #       so that if the internal implementation tries to sort them,
+        #       a change will be detected.
+        expected_response_headers = [('X-Header-%d' % i, str(i)) for i in reversed(range(K))]
+        
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            sock.send(b'HTTP/1.1 200 OK\r\n' +
+                      b'\r\n'.join([
+                          (k.encode('utf8') + b': ' + v.encode('utf8'))
+                          for (k, v) in expected_response_headers
+                      ]) +
+                      b'\r\n')
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port)
+        r = pool.request('GET', '/', retries=0)
+        actual_response_headers = [
+            (k, v) for (k, v) in r.headers.items()
+            if k.startswith('X-Header-')
+        ]
+        self.assertEqual(expected_response_headers, actual_response_headers)
 
 
 class TestBrokenHeaders(SocketDummyServerTestCase):
