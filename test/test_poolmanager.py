@@ -5,6 +5,7 @@ from urllib3.poolmanager import (
     pool_keys_by_scheme,
     HTTPPoolKey,
     HTTPSPoolKey,
+    SSL_KEYWORDS,
 )
 from urllib3 import connection_from_url
 from urllib3.exceptions import (
@@ -131,6 +132,16 @@ class TestPoolManager(unittest.TestCase):
         p = PoolManager()
         conn_pool = p.connection_from_url('http://example.com/')
         p.connection_pool_kw['some_kwarg'] = 'that should be ignored'
+        other_conn_pool = p.connection_from_url('http://example.com/')
+
+        self.assertTrue(conn_pool is other_conn_pool)
+
+    def test_http_pool_key_https_kwargs(self):
+        """Assert HTTPSPoolKey fields are ignored when selecting a HTTP pool."""
+        p = PoolManager()
+        conn_pool = p.connection_from_url('http://example.com/')
+        for key in SSL_KEYWORDS:
+            p.connection_pool_kw[key] = 'this should be ignored'
         other_conn_pool = p.connection_from_url('http://example.com/')
 
         self.assertTrue(conn_pool is other_conn_pool)
