@@ -4,6 +4,12 @@ Changes
 dev (master)
 ++++++++++++
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.15 (2016-04-06)
++++++++++++++++++
+
 * Added Retry(raise_on_status=False). (Issue #720)
 
 * Always use setuptools, no more distutils fallback. (Issue #785)
@@ -23,8 +29,6 @@ dev (master)
 * Log certificate when there is a hostname mismatch. (Issue #820)
 
 * Preserve order of request/response headers. (Issue #821)
-
-* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.14 (2015-12-29)
