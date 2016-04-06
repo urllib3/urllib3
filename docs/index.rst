@@ -12,6 +12,7 @@ urllib3 Documentation
    exceptions
    collections
    contrib
+   recipes
 
 
 Highlights
@@ -22,7 +23,7 @@ Highlights
   :class:`~urllib3.connectionpool.HTTPConnectionPool` and
   :class:`~urllib3.connectionpool.HTTPSConnectionPool`
 
-- File posting. See:
+- File posting with multipart encoding. See:
   :func:`~urllib3.filepost.encode_multipart_formdata`
 
 - Built-in redirection and retries (optional).
@@ -33,12 +34,14 @@ Highlights
 
 - Thread-safe and sanity-safe.
 
+- Proxy over :ref:`HTTP or SOCKS <proxymanager>`.
+
 - Tested on Python 2.6+ and Python 3.2+, 100% unit test coverage.
 
 - Works with AppEngine, gevent, eventlib, and the standard library :mod:`io` module.
 
 - Small and easy to understand codebase perfect for extending and building upon.
-  For a more comprehensive solution, have a look at
+  For a simplified abstraction, have a look at
   `Requests <http://python-requests.org/>`_ which is also powered by urllib3.
 
 
@@ -153,13 +156,18 @@ A :class:`~urllib3.poolmanagers.PoolManager` is a proxy for a collection of
 similar, so that instances of either can be passed around interchangeably.
 
 
+.. _proxymanager:
+
 ProxyManager
 ------------
+
+HTTP Proxy
+~~~~~~~~~~
 
 The :class:`~urllib3.poolmanagers.ProxyManager` is an HTTP proxy-aware
 subclass of :class:`~urllib3.poolmanagers.PoolManager`. It produces a single
 :class:`~urllib3.connectionpool.HTTPConnectionPool` instance for all HTTP
-connections and individual per-server:port
+connections and individual per-``server:port``
 :class:`~urllib3.connectionpool.HTTPSConnectionPool` instances for tunnelled
 HTTPS connections:
 
@@ -174,6 +182,12 @@ HTTPS connections:
     >>> r4 = proxy.request('GET', 'https://twitter.com/')
     >>> len(proxy.pools)
     3
+
+
+SOCKS Proxy
+~~~~~~~~~~~
+
+The :ref:`contrib module <socks>` includes support for a :class:`SOCKSProxyManager <urllib3.contrib.socks.SOCKSProxyManager>`.
 
 
 ConnectionPool
@@ -353,31 +367,25 @@ Sponsorship
 Please consider sponsoring urllib3 development, especially if your company
 benefits from this library.
 
-* **Project Grant**: A grant for contiguous full-time development has the
-  biggest impact for progress. Periods of  3 to 10 days allow a contributor to
-  tackle substantial complex issues which are otherwise left to linger until
-  somebody can't afford to not fix them.
+We welcome your patronage on `Bountysource <https://www.bountysource.com/teams/urllib3>`_:
 
-  Contact `@shazow <https://github.com/shazow>`_ to arrange a grant for a core
-  contributor.
+* `Contribute a recurring amount to the team <https://salt.bountysource.com/checkout/amount?team=urllib3>`_
+* `Place a bounty on a specific feature <https://www.bountysource.com/teams/urllib3>`_
 
-* **One-off**: Development will continue regardless of funding, but donations help move
-  things further along quicker as the maintainer can allocate more time off to
-  work on urllib3 specifically.
-
-  .. raw:: html
-
-    <a href="https://donorbox.org/personal-sponsor-urllib3" style="background-color:#1275ff;color:#fff;text-decoration:none;font-family:Verdana,sans-serif;display:inline-block;font-size:14px;padding:7px 16px;border-radius:5px;margin-right:2em;vertical-align:top;border:1px solid rgba(160,160,160,0.5);background-image:linear-gradient(#7dc5ee,#008cdd 85%,#30a2e4);box-shadow:inset 0 1px 0 rgba(255,255,255,0.25);">Sponsor with Credit Card</a>
-
-    <a class="coinbase-button" data-code="137087702cf2e77ce400d53867b164e6" href="https://coinbase.com/checkouts/137087702cf2e77ce400d53867b164e6">Sponsor with Bitcoin</a>
-    <script src="https://www.coinbase.com/assets/button.js" type="text/javascript"></script>
-
-* **Recurring**: You're welcome to `support the maintainer on Gittip
-  <https://www.gittip.com/shazow/>`_.
+Your contribution will go towards adding new features to urllib3 and making
+sure all functionality continues to meet our high quality standards.
 
 
-Recent Sponsors
----------------
+Project Grant
+-------------
+
+A grant for contiguous full-time development has the biggest impact for
+progress. Periods of 3 to 10 days allow a contributor to tackle substantial
+complex issues which are otherwise left to linger until somebody can't afford
+to not fix them.
+
+Contact `@shazow <https://github.com/shazow>`_ to arrange a grant for a core
+contributor.
 
 Huge thanks to all the companies and individuals who financially contributed to
 the development of urllib3. Please send a PR if you've donated and would like
@@ -385,4 +393,4 @@ to be listed.
 
 * `Stripe <https://stripe.com/>`_ (June 23, 2014)
 
-.. * [Company] ([optional tagline]), [optional description of grant] ([date])
+.. * [Company] ([date])

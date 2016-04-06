@@ -18,6 +18,7 @@ Highlights
 - File posting (``encode_multipart_formdata``).
 - Built-in redirection and retries (optional).
 - Supports gzip and deflate decoding.
+- Proxy over HTTP or SOCKS.
 - Thread-safe and sanity-safe.
 - Works with AppEngine, gevent, and eventlib.
 - Tested on Python 2.6+, Python 3.2+, and PyPy, with 100% unit test coverage.
@@ -125,6 +126,21 @@ Our test suite `runs continuously on Travis CI
 
 Contributing
 ============
+
+Thank you for giving back to urllib3. Please meet our jolly team
+of code-sherpas:
+
+Maintainers
+-----------
+
+- `@lukasa <https://github.com/lukasa>`_ (Cory Benfield)
+- `@sigmavirus24 <https://github.com/sigmavirus24>`_ (Ian Cordasco)
+- `@shazow <https://github.com/shazow>`_ (Andrey Petrov)
+
+👋
+
+Getting Started
+---------------
 
 #. `Check for open issues <https://github.com/shazow/urllib3/issues>`_ or open
    a fresh issue to start a discussion around a feature idea or a bug. There is

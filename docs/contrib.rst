@@ -52,10 +52,12 @@ There are `limitations <https://cloud.google.com/appengine/docs/python/urlfetch/
 3. If you are using `Managed VMs <https://cloud.google.com/appengine/docs/managed-vms/>`_, you can use the standard :class:`PoolManager` without any configuration or special environment variables.
 
 
+.. _socks:
+
 SOCKS Proxies
 -------------
 
-.. versionadded:: 1.14.0
+.. versionadded:: 1.14
 
 The :mod:`urllib3.contrib.socks` module enables urllib3 to work with proxies
 that use either the SOCKS4 or SOCKS5 protocols. These proxies are common in
@@ -64,12 +66,6 @@ but don't want unrestricted traffic flows.
 
 To use it, either install ``PySocks`` or install urllib3 with the ``socks``
 extra, like so:
-
-.. code-block:: bash
-
-    $ pip install urllib3[socks]
-
-If you have already got urllib3 1.14.0 or later installed, run:
 
 .. code-block:: bash
 

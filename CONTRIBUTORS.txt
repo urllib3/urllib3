@@ -187,5 +187,15 @@ In chronological order:
 * Ville Skyttä <ville.skytta@iki.fi>
   * Logging efficiency improvements, spelling fixes, Travis config.
 
+* Shige Takeda <smtakeda@gmail.com>
+  * Started Recipes documentation and added a recipe about handling concatenated gzip data in HTTP response
+
+* Jesse Shapiro <jesse@jesseshapiro.net>
+  * Working on encoding unicode header parameter names
+  * Making setup.py resilient to ASCII locales
+
+* David Foster <http://dafoster.net/>
+  * Ensure order of request and response headers are preserved.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

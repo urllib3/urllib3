@@ -109,6 +109,34 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         self.assertEqual(r.status, 303)
 
+    def test_raise_on_status(self):
+        http = PoolManager()
+
+        try:
+            # the default is to raise
+            r = http.request('GET', '%s/status' % self.base_url,
+                             fields={'status': '500 Internal Server Error'},
+                             retries=Retry(total=1, status_forcelist=range(500, 600)))
+            self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
+        except MaxRetryError:
+            pass
+
+        try:
+            # raise explicitly
+            r = http.request('GET', '%s/status' % self.base_url,
+                             fields={'status': '500 Internal Server Error'},
+                             retries=Retry(total=1, status_forcelist=range(500, 600), raise_on_status=True))
+            self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
+        except MaxRetryError:
+            pass
+
+        # don't raise
+        r = http.request('GET', '%s/status' % self.base_url,
+                         fields={'status': '500 Internal Server Error'},
+                         retries=Retry(total=1, status_forcelist=range(500, 600), raise_on_status=False))
+
+        self.assertEqual(r.status, 500)
+
     def test_missing_port(self):
         # Can a URL that lacks an explicit port like ':80' succeed, or
         # will all such URLs fail with an error?

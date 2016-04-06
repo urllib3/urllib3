@@ -1,14 +1,10 @@
 #!/usr/bin/env python
 
-from distutils.core import setup
+from setuptools import setup
 
 import os
 import re
-
-try:
-    import setuptools  # noqa: unused
-except ImportError:
-    pass  # No 'develop' command, oh well.
+import codecs
 
 base_path = os.path.dirname(__file__)
 
@@ -18,13 +14,14 @@ VERSION = re.compile(r".*__version__ = '(.*?)'",
                      re.S).match(fp.read()).group(1)
 fp.close()
 
-
+readme = codecs.open('README.rst', encoding='utf-8').read()
+changes = codecs.open('README.rst', encoding='utf-8').read()
 version = VERSION
 
 setup(name='urllib3',
       version=version,
       description="HTTP library with thread-safe connection pooling, file post, and more.",
-      long_description=open('README.rst').read() + '\n\n' + open('CHANGES.rst').read(),
+      long_description=u'\n\n'.join([readme, changes]),
       classifiers=[
           'Environment :: Web Environment',
           'Intended Audience :: Developers',

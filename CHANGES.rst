@@ -1,6 +1,30 @@
 Changes
 =======
 
+1.15 (2016-04-06)
++++++++++++++++++
+
+* Added Retry(raise_on_status=False). (Issue #720)
+
+* Always use setuptools, no more distutils fallback. (Issue #785)
+
+* Dropped support for Python 3.2. (Issue #786)
+
+* Chunked transfer encoding when requesting with ``chunked=True``.
+  (Issue #790)
+
+* Fixed regression with IPv6 port parsing. (Issue #801)
+
+* Append SNIMissingWarning messages to allow users to specify it in
+  the PYTHONWARNINGS environment variable. (Issue #816)
+
+* Handle unicode headers in Py2. (Issue #818)
+
+* Log certificate when there is a hostname mismatch. (Issue #820)
+
+* Preserve order of request/response headers. (Issue #821)
+
+
 1.14 (2015-12-29)
 +++++++++++++++++
 
