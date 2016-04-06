@@ -15,7 +15,7 @@ VERSION = re.compile(r".*__version__ = '(.*?)'",
 fp.close()
 
 readme = codecs.open('README.rst', encoding='utf-8').read()
-changes = codecs.open('README.rst', encoding='utf-8').read()
+changes = codecs.open('CHANGES.rst', encoding='utf-8').read()
 version = VERSION
 
 setup(name='urllib3',
