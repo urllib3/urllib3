@@ -55,6 +55,7 @@ import OpenSSL.SSL
 from pyasn1.codec.der import decoder as der_decoder
 from pyasn1.type import univ, constraint
 from socket import timeout, error as SocketError
+from io import BytesIO
 
 try:  # Platform-specific: Python 2
     from socket import _fileobject
@@ -104,13 +105,15 @@ DEFAULT_SSL_CIPHER_LIST = util.ssl_.DEFAULT_CIPHERS.encode('ascii')
 SSL_WRITE_BLOCKSIZE = 16384
 
 orig_util_HAS_SNI = util.HAS_SNI
-orig_connection_ssl_wrap_socket = connection.ssl_wrap_socket
+#orig_connection_ssl_wrap_socket = connection.ssl_wrap_socket
+orig_util_SSLContext = util.ssl_.SSLContext
 
 
 def inject_into_urllib3():
     'Monkey-patch urllib3 with PyOpenSSL-backed SSL-support.'
 
-    connection.ssl_wrap_socket = ssl_wrap_socket
+    #connection.ssl_wrap_socket = ssl_wrap_socket
+    util.ssl_.SSLContext = PyOpenSSLContext
     util.HAS_SNI = HAS_SNI
     util.IS_PYOPENSSL = True
 
@@ -118,7 +121,8 @@ def inject_into_urllib3():
 def extract_from_urllib3():
     'Undo monkey-patching by :func:`inject_into_urllib3`.'
 
-    connection.ssl_wrap_socket = orig_connection_ssl_wrap_socket
+    #connection.ssl_wrap_socket = orig_connection_ssl_wrap_socket
+    util.ssl_.SSLContext = orig_util_SSLContext
     util.HAS_SNI = orig_util_HAS_SNI
     util.IS_PYOPENSSL = False
 
@@ -306,6 +310,82 @@ else:  # Platform-specific: Python 3
     makefile = backport_makefile
 
 WrappedSocket.makefile = makefile
+
+
+class PyOpenSSLContext(object):
+    """
+    I am a wrapper class for the PyOpenSSL ``Context`` object. I am responsible
+    for translating the interface of the standard library ``SSLContext`` object
+    to calls into PyOpenSSL.
+    """
+    def __init__(self, protocol):
+        self.protocol = _openssl_versions[protocol]
+        self._ctx = OpenSSL.SSL.Context(self.protocol)
+        self._options = 0
+        self.check_hostname = False
+
+    @property
+    def options(self):
+        return self._options
+
+    @options.setter
+    def options(self, value):
+        self._options = value
+        self._ctx.set_options(value)
+
+    @property
+    def verify_mode(self):
+        return self._ctx.get_verify_mode()
+
+    @verify_mode.setter
+    def verify_mode(self, value):
+        self._ctx.set_verify(value, _verify_callback)
+
+    def set_default_verify_paths(self):
+        self._ctx.set_default_verify_paths()
+
+    def set_ciphers(self, ciphers):
+        self._ctx.set_cipher_list(ciphers)
+
+    def load_verify_locations(self, cafile=None, capath=None, cadata=None):
+        if cafile is not None:
+            cafile = cafile.encode('utf-8')
+        if capath is not None:
+            capath = capath.encode('utf-8')
+        self._ctx.load_verify_locations(cafile, capath)
+        if cadata is not None:
+            self._ctx.load_verify_locations(BytesIO(cadata))
+
+    def load_cert_chain(self, certfile, keyfile=None, password=None):
+        self._ctx.use_certificate_file(certfile)
+        if password is not None:
+            self._ctx.set_passwd_cb(lambda max_length, prompt_twice, userdata: password)
+        self._ctx.use_privatekey_file(keyfile or certfile)
+
+    def wrap_socket(self, sock, server_side=False,
+                    do_handshake_on_connect=True, suppress_ragged_eofs=True,
+                    server_hostname=None):
+        cnx = OpenSSL.SSL.Connection(self._ctx, sock)
+
+        if isinstance(server_hostname, six.text_type):  # Platform-specific: Python 3
+            server_hostname = server_hostname.encode('utf-8')
+
+        cnx.set_tlsext_host_name(server_hostname)
+        cnx.set_connect_state()
+
+        while True:
+            try:
+                cnx.do_handshake()
+            except OpenSSL.SSL.WantReadError:
+                rd, _, _ = select.select([sock], [], [], sock.gettimeout())
+                if not rd:
+                    raise timeout('select timed out')
+                continue
+            except OpenSSL.SSL.Error as e:
+                raise ssl.SSLError('bad handshake: %r' % e)
+            break
+
+        return WrappedSocket(cnx, sock)
 
 
 def _verify_callback(cnx, x509, err_no, err_depth, return_code):
