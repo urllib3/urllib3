@@ -451,7 +451,7 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
 
     def test_set_cert_default_cert_required(self):
         conn = VerifiedHTTPSConnection(self.host, self.port)
-        conn.set_cert(ca_certs='/etc/ssl/certs/custom.pem')
+        conn.set_cert(ca_certs=DEFAULT_CA)
         self.assertEqual(conn.cert_reqs, 'CERT_REQUIRED')
 
 
