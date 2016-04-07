@@ -397,6 +397,8 @@ def _verify_callback(cnx, x509, err_no, err_depth, return_code):
 def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                     ca_certs=None, server_hostname=None,
                     ssl_version=None, ca_cert_dir=None):
+    # This function is no longer used by urllib3. We should strongly consider
+    # removing it.
     ctx = OpenSSL.SSL.Context(_openssl_versions[ssl_version])
     if certfile:
         keyfile = keyfile or certfile  # Match behaviour of the normal python ssl library

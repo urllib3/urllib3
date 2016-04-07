@@ -287,6 +287,9 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
     """
     context = ssl_context
     if context is None:
+        # Note: This branch of code and all the variables in it are no longer
+        # used by urllib3 itself. We should consider deprecating and removing
+        # this code.
         context = create_urllib3_context(ssl_version, cert_reqs,
                                          ciphers=ciphers)
 
