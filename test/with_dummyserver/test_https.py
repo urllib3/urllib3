@@ -189,33 +189,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 category = calls[2][0][1]
             self.assertEqual(category, InsecureRequestWarning)
 
-    @requires_network
-    def test_ssl_verified_with_platform_ca_certs(self):
-        """
-        We should rely on the platform CA file to validate authenticity of SSL
-        certificates. Since this file is used by many components of the OS,
-        such as curl, apt-get, etc., we decided to not touch it, in order to
-        not compromise the security of the OS running the test suite (typically
-        urllib3 developer's OS).
-
-        This test assumes that httpbin.org uses a certificate signed by a well
-        known Certificate Authority.
-        """
-        try:
-            import urllib3.contrib.pyopenssl
-        except ImportError:
-            raise SkipTest('Test requires PyOpenSSL')
-        if (urllib3.util.ssl_.SSLContext is
-                urllib3.contrib.pyopenssl.orig_util_SSLContext):
-            # Not patched
-            raise SkipTest('Test should only be run after PyOpenSSL '
-                           'monkey patching')
-
-        https_pool = HTTPSConnectionPool('httpbin.org', 443,
-                                         cert_reqs=ssl.CERT_REQUIRED)
-
-        https_pool.request('HEAD', '/')
-
     def test_assert_hostname_false(self):
         https_pool = HTTPSConnectionPool('localhost', self.port,
                                          cert_reqs='CERT_REQUIRED',
