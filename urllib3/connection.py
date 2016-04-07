@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 import datetime
-import errno
 import logging
 import os
 import sys
@@ -320,9 +319,10 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                 )
             _match_hostname(cert, self.assert_hostname or hostname)
 
-        self.is_verified = (self.ssl_context.verify_mode == ssl.CERT_REQUIRED
-                            or self.assert_fingerprint is not None)
-
+        self.is_verified = (
+            self.ssl_context.verify_mode == ssl.CERT_REQUIRED or
+            self.assert_fingerprint is not None
+        )
 
 def _match_hostname(cert, asserted_hostname):
     try:

@@ -67,7 +67,6 @@ import ssl
 import select
 import six
 
-from .. import connection
 from .. import util
 
 __all__ = ['inject_into_urllib3', 'extract_from_urllib3']
@@ -105,14 +104,12 @@ DEFAULT_SSL_CIPHER_LIST = util.ssl_.DEFAULT_CIPHERS.encode('ascii')
 SSL_WRITE_BLOCKSIZE = 16384
 
 orig_util_HAS_SNI = util.HAS_SNI
-#orig_connection_ssl_wrap_socket = connection.ssl_wrap_socket
 orig_util_SSLContext = util.ssl_.SSLContext
 
 
 def inject_into_urllib3():
     'Monkey-patch urllib3 with PyOpenSSL-backed SSL-support.'
 
-    #connection.ssl_wrap_socket = ssl_wrap_socket
     util.ssl_.SSLContext = PyOpenSSLContext
     util.HAS_SNI = HAS_SNI
     util.IS_PYOPENSSL = True
@@ -121,7 +118,6 @@ def inject_into_urllib3():
 def extract_from_urllib3():
     'Undo monkey-patching by :func:`inject_into_urllib3`.'
 
-    #connection.ssl_wrap_socket = orig_connection_ssl_wrap_socket
     util.ssl_.SSLContext = orig_util_SSLContext
     util.HAS_SNI = orig_util_HAS_SNI
     util.IS_PYOPENSSL = False
