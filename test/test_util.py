@@ -346,7 +346,6 @@ class TestUtil(unittest.TestCase):
     def test_resolve_cert_reqs(self):
         self.assertEqual(resolve_cert_reqs(None), ssl.CERT_NONE)
         self.assertEqual(resolve_cert_reqs(ssl.CERT_NONE), ssl.CERT_NONE)
-
         self.assertEqual(resolve_cert_reqs(ssl.CERT_REQUIRED), ssl.CERT_REQUIRED)
         self.assertEqual(resolve_cert_reqs('REQUIRED'), ssl.CERT_REQUIRED)
         self.assertEqual(resolve_cert_reqs('CERT_REQUIRED'), ssl.CERT_REQUIRED)
