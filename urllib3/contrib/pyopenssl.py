@@ -112,7 +112,9 @@ def inject_into_urllib3():
 
     util.ssl_.SSLContext = PyOpenSSLContext
     util.HAS_SNI = HAS_SNI
+    util.ssl_.HAS_SNI = HAS_SNI
     util.IS_PYOPENSSL = True
+    util.ssl_.IS_PYOPENSSL = True
 
 
 def extract_from_urllib3():
@@ -120,7 +122,9 @@ def extract_from_urllib3():
 
     util.ssl_.SSLContext = orig_util_SSLContext
     util.HAS_SNI = orig_util_HAS_SNI
+    util.ssl_.HAS_SNI = orig_util_HAS_SNI
     util.IS_PYOPENSSL = False
+    util.ssl_.IS_PYOPENSSL = False
 
 
 # Note: This is a slightly bug-fixed version of same from ndg-httpsclient.
