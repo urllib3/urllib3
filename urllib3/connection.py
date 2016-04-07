@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import datetime
+import errno
 import logging
 import os
 import sys
@@ -38,6 +39,7 @@ from .exceptions import (
     ConnectTimeoutError,
     SubjectAltNameWarning,
     SystemTimeWarning,
+    SSLError
 )
 from .packages.ssl_match_hostname import match_hostname, CertificateError
 
@@ -47,6 +49,7 @@ from .util.ssl_ import (
     resolve_ssl_version,
     assert_fingerprint,
     create_urllib3_context,
+    ssl_wrap_socket,
 )
 
 
@@ -267,8 +270,17 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         if cert_file is not None:
             context.load_cert_chain(cert_file, key_file)
 
-        if ca_certs is not None:
-            self.ssl_context.load_verify_locations(ca_certs)
+        if ca_certs or ca_cert_dir:
+            try:
+                context.load_verify_locations(ca_certs, ca_cert_dir)
+            except IOError as e:  # Platform-specific: Python 2.6, 2.7, 3.2
+                raise SSLError(e)
+            # Py33 raises FileNotFoundError which subclasses OSError
+            # These are not equivalent unless we check the errno attribute
+            except OSError as e:  # Platform-specific: Python 3.3 and beyond
+                if e.errno == errno.ENOENT:
+                    raise SSLError(e)
+                raise
 
     def connect(self):
         # Add certificate verification
