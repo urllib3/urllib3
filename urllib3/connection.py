@@ -39,16 +39,15 @@ from .exceptions import (
     ConnectTimeoutError,
     SubjectAltNameWarning,
     SystemTimeWarning,
-    SSLError
 )
 from .packages.ssl_match_hostname import match_hostname, CertificateError
 
 from .util.ssl_ import (
-    HAS_SNI,
     resolve_cert_reqs,
     resolve_ssl_version,
     assert_fingerprint,
     create_urllib3_context,
+    ssl_wrap_socket
 )
 
 
@@ -219,9 +218,6 @@ class HTTPSConnection(HTTPConnection):
                 cert_reqs=ssl.CERT_NONE,
             )
 
-            if cert_file:
-                ssl_context.load_cert_chain(cert_file, key_file)
-
         self.key_file = key_file
         self.cert_file = cert_file
         self.ssl_context = ssl_context
@@ -233,7 +229,12 @@ class HTTPSConnection(HTTPConnection):
     def connect(self):
         conn = self._new_conn()
         self._prepare_conn(conn)
-        self.sock = ssl.wrap_socket(conn, self.key_file, self.cert_file)
+        self.sock = ssl_wrap_socket(
+            sock=conn,
+            keyfile=self.key_file,
+            certfile=self.cert_file,
+            ssl_context=self.ssl_context,
+        )
 
 
 class VerifiedHTTPSConnection(HTTPSConnection):
@@ -262,24 +263,6 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         self.assert_fingerprint = assert_fingerprint
         self.ca_certs = ca_certs and os.path.expanduser(ca_certs)
         self.ca_cert_dir = ca_cert_dir and os.path.expanduser(ca_cert_dir)
-
-        context = self.ssl_context
-        context.verify_mode = resolve_cert_reqs(cert_reqs)
-
-        if cert_file is not None:
-            context.load_cert_chain(cert_file, key_file)
-
-        if ca_certs or ca_cert_dir:
-            try:
-                context.load_verify_locations(ca_certs, ca_cert_dir)
-            except IOError as e:  # Platform-specific: Python 2.6, 2.7, 3.2
-                raise SSLError(e)
-            # Py33 raises FileNotFoundError which subclasses OSError
-            # These are not equivalent unless we check the errno attribute
-            except OSError as e:  # Platform-specific: Python 3.3 and beyond
-                if e.errno == errno.ENOENT:
-                    raise SSLError(e)
-                raise
 
     def connect(self):
         # Add certificate verification
@@ -310,11 +293,16 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
-        if HAS_SNI:
-            self.sock = self.ssl_context.wrap_socket(conn,
-                                                     server_hostname=hostname)
-        else:
-            self.sock = self.ssl_context.wrap_socket(conn)
+        context = self.ssl_context
+        context.verify_mode = resolve_cert_reqs(self.cert_reqs)
+        self.sock = ssl_wrap_socket(
+            sock=conn,
+            keyfile=self.key_file,
+            certfile=self.cert_file,
+            ca_certs=self.ca_certs,
+            ca_cert_dir=self.ca_cert_dir,
+            server_hostname=hostname,
+            ssl_context=context)
 
         if self.assert_fingerprint:
             assert_fingerprint(self.sock.getpeercert(binary_form=True),
