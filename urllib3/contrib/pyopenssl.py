@@ -345,6 +345,8 @@ class PyOpenSSLContext(object):
         self._ctx.set_default_verify_paths()
 
     def set_ciphers(self, ciphers):
+        if isinstance(ciphers, six.text_type):
+            ciphers = ciphers.encode('utf-8')
         self._ctx.set_cipher_list(ciphers)
 
     def load_verify_locations(self, cafile=None, capath=None, cadata=None):
