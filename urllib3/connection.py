@@ -49,7 +49,6 @@ from .util.ssl_ import (
     resolve_ssl_version,
     assert_fingerprint,
     create_urllib3_context,
-    ssl_wrap_socket,
 )
 
 
