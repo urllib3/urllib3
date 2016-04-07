@@ -370,7 +370,9 @@ class PyOpenSSLContext(object):
         if isinstance(server_hostname, six.text_type):  # Platform-specific: Python 3
             server_hostname = server_hostname.encode('utf-8')
 
-        cnx.set_tlsext_host_name(server_hostname)
+        if server_hostname is not None:
+            cnx.set_tlsext_host_name(server_hostname)
+
         cnx.set_connect_state()
 
         while True:
