@@ -205,8 +205,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             import urllib3.contrib.pyopenssl
         except ImportError:
             raise SkipTest('Test requires PyOpenSSL')
-        if (urllib3.connection.ssl_wrap_socket is
-                urllib3.contrib.pyopenssl.orig_connection_ssl_wrap_socket):
+        if (urllib3.util.ssl_.SSLContext is
+                urllib3.contrib.pyopenssl.orig_util_SSLContext):
             # Not patched
             raise SkipTest('Test should only be run after PyOpenSSL '
                            'monkey patching')
