@@ -166,8 +166,13 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.assertEqual(r.status, 200)
             self.assertTrue(warn.called)
 
-            call, = warn.call_args_list
-            category = call[0][1]
+            calls = warn.call_args_list
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
+                category = calls[0][0][1]
+            elif util.HAS_SNI:
+                category = calls[1][0][1]
+            else:
+                category = calls[2][0][1]
             self.assertEqual(category, InsecureRequestWarning)
 
     def test_ssl_unverified_with_ca_certs(self):
