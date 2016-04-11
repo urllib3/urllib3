@@ -21,7 +21,7 @@ Highlights
 - Proxy over HTTP or SOCKS.
 - Thread-safe and sanity-safe.
 - Works with AppEngine, gevent, and eventlib.
-- Tested on Python 2.6+, Python 3.2+, and PyPy, with 100% unit test coverage.
+- Tested on Python 2.6+, Python 3.3+, and PyPy, with 100% unit test coverage.
 - Small and easy to understand codebase perfect for extending and building upon.
   For a more comprehensive solution, have a look at
   `Requests <http://python-requests.org/>`_ which is also powered by ``urllib3``.
