@@ -2,9 +2,15 @@ Changes
 =======
 
 dev (master)
-++++++++++++
+------------
 
 * ... [Short description of non-trivial change.] (Issue #)
+
+
+1.15.1 (2016-04-11)
+-------------------
+
+* Fix packaging to include backports module. (Issue #841)
 
 
 1.15 (2016-04-06)
