@@ -67,7 +67,7 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
         host = host.strip('[]')
     err = None
 
-    # Using the value from family_filter() in the context of getaddrinfo lets
+    # Using the value from allowed_gai_family() in the context of getaddrinfo lets
     # us select whether to work with IPv4 DNS records, IPv6 records, or both.
     # The original create_connection function always returns all records.
     family = allowed_gai_family()
