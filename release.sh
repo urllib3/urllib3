@@ -16,7 +16,7 @@ git checkout master -- CHANGES.rst
 
 # Remove dev section and update version.
 sed -i '' '4,9d' CHANGES.rst
-version="$(grep -m1 -B1 '+++++' "${CHANGES_FILE}" | head -n1 | cut -d' ' -f1)"
+version="$(grep -m1 -B1 '-----' "${CHANGES_FILE}" | head -n1 | cut -d' ' -f1)"
 perl -p -i -e "s/__version__.*/__version__ = '${version}'/" "${VERSION_FILE}"
 git diff
 
