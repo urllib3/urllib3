@@ -66,7 +66,12 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     if host.startswith('['):
         host = host.strip('[]')
     err = None
-    family = supported_ip_family()
+
+    # Using the value from family_filter() in the context of getaddrinfo lets 
+    # us select whether to work with IPv4 DNS records, IPv6 records, or both.
+    # The original create_connection function always returns all records.
+    family = family_filter()
+
     for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
         af, socktype, proto, canonname, sa = res
         sock = None
@@ -74,7 +79,6 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
             sock = socket.socket(af, socktype, proto)
 
             # If provided, set socket level options before connecting.
-            # This is the only addition urllib3 makes to this function.
             _set_socket_options(sock, socket_options)
 
             if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
@@ -104,7 +108,11 @@ def _set_socket_options(sock, options):
         sock.setsockopt(*opt)
 
 
-def supported_ip_family():
+def family_filter():
+    """This function is designed to work in the context of
+    getaddrinfo, where family=0 is the default and will 
+    perform a DNS search for both IPv6 and IPv4 records."""
+
     family = socket.AF_INET
     if HAS_IPV6:
         family = 0
@@ -126,7 +134,7 @@ def _has_ipv6(host):
             sock = socket.socket(socket.AF_INET6)
             sock.bind((host, 0))
             has_ipv6 = True
-        except:
+        except Exception:
             pass
 
     if sock:
