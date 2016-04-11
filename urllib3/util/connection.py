@@ -46,6 +46,8 @@ def is_connection_dropped(conn):  # Platform-specific
 
 # This function is copied from socket.py in the Python 2.7 standard
 # library test suite. Added to its signature is only `socket_options`.
+# One additional modification is that we avoid binding to IPv6 servers
+# discovered in DNS if the system doesn't have IPv6 functionality.
 def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                       source_address=None, socket_options=None):
     """Connect to *address* and return the socket object.
@@ -64,7 +66,8 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     if host.startswith('['):
         host = host.strip('[]')
     err = None
-    for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
+    family = supported_ip_family()
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
         af, socktype, proto, canonname, sa = res
         sock = None
         try:
@@ -99,3 +102,35 @@ def _set_socket_options(sock, options):
 
     for opt in options:
         sock.setsockopt(*opt)
+
+
+def supported_ip_family():
+    family = socket.AF_INET
+    if HAS_IPV6:
+        family = 0
+    return family
+
+
+def _has_ipv6(host):
+    """ Returns True if the system can bind an IPv6 address. """
+    sock = None
+    has_ipv6 = False
+
+    if socket.has_ipv6:
+        # has_ipv6 returns true if cPython was compiled with IPv6 support.
+        # It does not tell us if the system has IPv6 support enabled. To
+        # determine that we must bind to an IPv6 address.
+        # https://github.com/shazow/urllib3/pull/611
+        # https://bugs.python.org/issue658327
+        try:
+            sock = socket.socket(socket.AF_INET6)
+            sock.bind((host, 0))
+            has_ipv6 = True
+        except:
+            pass
+
+    if sock:
+        sock.close()
+    return has_ipv6
+
+HAS_IPV6 = _has_ipv6('::1')
