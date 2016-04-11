@@ -29,7 +29,7 @@ fi
 
 # Prepare commit
 git commit -a -m "Merging new release version: ${version}"
-git tag ${version}
+git tag ${version} -s -m "Release: ${version}"
 
 # Build package
 make clean
