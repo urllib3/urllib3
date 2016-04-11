@@ -70,7 +70,7 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     # Using the value from family_filter() in the context of getaddrinfo lets
     # us select whether to work with IPv4 DNS records, IPv6 records, or both.
     # The original create_connection function always returns all records.
-    family = family_filter()
+    family = allowed_gai_family()
 
     for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
         af, socktype, proto, canonname, sa = res
@@ -108,14 +108,14 @@ def _set_socket_options(sock, options):
         sock.setsockopt(*opt)
 
 
-def family_filter():
+def allowed_gai_family():
     """This function is designed to work in the context of
-    getaddrinfo, where family=0 is the default and will
-    perform a DNS search for both IPv6 and IPv4 records."""
+    getaddrinfo, where family=socket.AF_UNSPEC is the default and
+    will perform a DNS search for both IPv6 and IPv4 records."""
 
     family = socket.AF_INET
     if HAS_IPV6:
-        family = 0
+        family = socket.AF_UNSPEC
     return family
 
 

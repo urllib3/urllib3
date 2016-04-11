@@ -30,7 +30,7 @@ from urllib3.exceptions import (
     SNIMissingWarning,
 )
 from urllib3.util.connection import (
-    family_filter,
+    allowed_gai_family,
     _has_ipv6
 )
 from urllib3.util import is_fp_closed, ssl_
@@ -467,8 +467,8 @@ class TestUtil(unittest.TestCase):
 
     def test_ip_family_ipv6_enabled(self):
         with patch('urllib3.util.connection.HAS_IPV6', True):
-            self.assertEqual(family_filter(), 0)
+            self.assertEqual(allowed_gai_family(), socket.AF_UNSPEC)
 
     def test_ip_family_ipv6_disabled(self):
         with patch('urllib3.util.connection.HAS_IPV6', False):
-            self.assertEqual(family_filter(), socket.AF_INET)
+            self.assertEqual(allowed_gai_family(), socket.AF_INET)
