@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 from contextlib import contextmanager
-import zlib
 import io
 from socket import timeout as SocketTimeout
 from socket import error as SocketError
@@ -13,56 +12,9 @@ from .packages.six import string_types as basestring, binary_type, PY3
 from .packages.six.moves import http_client as httplib
 from .connection import HTTPException, BaseSSLError
 from .util.response import is_fp_closed, is_response_to_head
-
-
-class DeflateDecoder(object):
-
-    def __init__(self):
-        self._first_try = True
-        self._data = binary_type()
-        self._obj = zlib.decompressobj()
-
-    def __getattr__(self, name):
-        return getattr(self._obj, name)
-
-    def decompress(self, data):
-        if not data:
-            return data
-
-        if not self._first_try:
-            return self._obj.decompress(data)
-
-        self._data += data
-        try:
-            return self._obj.decompress(data)
-        except zlib.error:
-            self._first_try = False
-            self._obj = zlib.decompressobj(-zlib.MAX_WBITS)
-            try:
-                return self.decompress(self._data)
-            finally:
-                self._data = None
-
-
-class GzipDecoder(object):
-
-    def __init__(self):
-        self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
-
-    def __getattr__(self, name):
-        return getattr(self._obj, name)
-
-    def decompress(self, data):
-        if not data:
-            return data
-        return self._obj.decompress(data)
-
-
-def _get_decoder(mode):
-    if mode == 'gzip':
-        return GzipDecoder()
-
-    return DeflateDecoder()
+from .util.compression import (
+    get_decoder, DecompressionError, content_encodings
+)
 
 
 class HTTPResponse(io.IOBase):
@@ -180,8 +132,8 @@ class HTTPResponse(io.IOBase):
         # Note: content-encoding value should be case-insensitive, per RFC 7230
         # Section 3.2
         content_encoding = self.headers.get('content-encoding', '').lower()
-        if self._decoder is None and content_encoding in self.CONTENT_DECODERS:
-            self._decoder = _get_decoder(content_encoding)
+        if self._decoder is None and content_encoding in content_encodings():
+            self._decoder = get_decoder(content_encoding)
 
     def _decode(self, data, decode_content, flush_decoder):
         """
@@ -190,7 +142,7 @@ class HTTPResponse(io.IOBase):
         try:
             if decode_content and self._decoder:
                 data = self._decoder.decompress(data)
-        except (IOError, zlib.error) as e:
+        except (IOError, DecompressionError) as e:
             content_encoding = self.headers.get('content-encoding', '').lower()
             raise DecodeError(
                 "Received response with content-encoding: %s, but "

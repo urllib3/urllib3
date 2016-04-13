@@ -3,11 +3,15 @@ import warnings
 import logging
 import unittest
 import ssl
+import zlib
 from itertools import chain
 
 from mock import patch, Mock
 
 from urllib3 import add_stderr_logger, disable_warnings
+from urllib3.util.compression import (
+    get_decoder, DeflateDecoder, content_encodings, register_content_encoding
+)
 from urllib3.util.request import make_headers
 from urllib3.util.timeout import Timeout
 from urllib3.util.url import (
@@ -183,7 +187,7 @@ class TestUtil(unittest.TestCase):
     def test_make_headers(self):
         self.assertEqual(
             make_headers(accept_encoding=True),
-            {'accept-encoding': 'gzip,deflate'})
+            {'accept-encoding': 'deflate,gzip'})
 
         self.assertEqual(
             make_headers(accept_encoding='foo,bar'),
@@ -195,7 +199,7 @@ class TestUtil(unittest.TestCase):
 
         self.assertEqual(
             make_headers(accept_encoding=True, user_agent='banana'),
-            {'accept-encoding': 'gzip,deflate', 'user-agent': 'banana'})
+            {'accept-encoding': 'deflate,gzip', 'user-agent': 'banana'})
 
         self.assertEqual(
             make_headers(user_agent='banana'),
@@ -442,3 +446,21 @@ class TestUtil(unittest.TestCase):
 
         incorrect = hashlib.sha256(b'xyz').digest()
         self.assertFalse(_const_compare_digest_backport(target, incorrect))
+
+    def test_decoder_fallback_is_deflate(self):
+        self.assertTrue(isinstance(get_decoder('nonexistent'), DeflateDecoder))
+
+    def test_decoder_for_gzip_and_deflate_are_registered(self):
+        self.assertEqual(
+            sorted(['gzip', 'deflate']), sorted(content_encodings())
+        )
+
+    def test_register_new_decoder(self):
+        encoding = 'fake-encoding'
+        decoder_cls = Mock()
+        decoder = Mock()
+        decoder_cls.return_value = decoder
+        register_content_encoding(encoding, decoder_cls)
+
+        self.assertTrue(get_decoder(encoding) is decoder)
+        self.assertTrue('fake-encoding' in content_encodings())
