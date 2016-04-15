@@ -251,6 +251,17 @@ class TestingApp(RequestHandler):
 
         return Response(status=status)
 
+    def set_cookie_on_client(self, request):
+        self.set_cookie('testing_cookie', 'test_cookie_value')
+        return Response('Attached a cookie!')
+
+    def verify_cookie(self, request):
+        cookie = self.get_cookie('testing_cookie')
+        if cookie == 'test_cookie_value':
+            return Response('Received cookie')
+        else:
+            return Response(str(cookie), status='400 Bad Request')
+
     def shutdown(self, request):
         sys.exit()
 

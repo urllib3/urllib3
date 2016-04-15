@@ -6,8 +6,31 @@ except ImportError:
 
 from .filepost import encode_multipart_formdata
 
+from .packages import six
 
-__all__ = ['RequestMethods']
+_Request = six.moves.urllib.request.Request
+
+
+__all__ = ['RequestMethods', 'Request']
+
+
+class Request(_Request):
+    """
+    Currently used as a shim to allow us to work with the stdlib cookie
+    handling, which expects a `urllib.request.Request`-like object.
+    """
+    def __init__(self, *args, **kwargs):
+        self._method = kwargs.pop('method', None)
+        _Request.__init__(self, *args, **kwargs)
+
+    def get_cookie_header(self):
+        return self.get_header('Cookie')
+
+    def get_header(self, header_name, default=None):
+        return self.headers.get(
+            header_name,
+            self.unredirected_hdrs.get(header_name, default)
+        )
 
 
 class RequestMethods(object):

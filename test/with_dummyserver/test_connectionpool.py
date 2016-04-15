@@ -34,11 +34,14 @@ from urllib3.exceptions import (
 from urllib3.packages.six import b, u
 from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
+from urllib3.packages import six
 
 from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
 from dummyserver.server import NoIPv6Warning, HAS_IPV6_AND_DNS
 
 from threading import Event
+
+CookieJar = six.moves.http_cookiejar.CookieJar
 
 log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
@@ -232,6 +235,34 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('POST', '/specific_method',
                                fields={'method': 'GET'})
         self.assertEqual(r.status, 400, r.data)
+
+    def test_cookie_with_pool_jar(self): 
+        pool = HTTPConnectionPool(self.host, self.port, cj=CookieJar())
+        r = pool.request('GET', '/set_cookie_on_client')
+        self.assertEqual(r.status, 200)
+        r = pool.request('GET', '/verify_cookie')
+        self.assertEqual(r.data, b'Received cookie')
+
+    def test_cookie_with_empty_external_jar(self):
+        pool = HTTPConnectionPool(self.host, self.port, cj=CookieJar())
+        r = pool.request('GET', '/set_cookie_on_client')
+        self.assertEqual(r.status, 200)
+        r = pool.request('GET', '/verify_cookie', cj=CookieJar())
+        self.assertEqual(r.status, 400)
+
+    def test_cookie_with_external_jar(self):
+        pool = HTTPConnectionPool(self.host, self.port)
+        jar = CookieJar()
+        r = pool.request('GET', '/set_cookie_on_client', cj=jar)
+        self.assertEqual(r.status, 200)
+        r = pool.request('GET', '/verify_cookie', cj=jar)
+        self.assertEqual(r.data, b'Received cookie')
+
+    def test_merge_header_cookie(self):
+        pool = HTTPConnectionPool(self.host, self.port, cj=CookieJar())
+        headers = {'Cookie': 'testing_cookie=test_cookie_value'}
+        r = pool.request('GET', '/verify_cookie', headers=headers)
+        self.assertEqual(r.data, b'Received cookie')
 
     def test_upload(self):
         data = "I'm in ur multipart form-data, hazing a cheezburgr"
