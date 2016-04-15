@@ -70,3 +70,12 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
         headers['cache-control'] = 'no-cache'
 
     return headers
+
+
+def make_cookie_header(headers, cookie_string):
+    original = headers.get('Cookie', None)
+    if original is not None:
+        cookies = (original, cookie_string)
+        return '; '.join(cookies)
+    else:
+        return cookie_string

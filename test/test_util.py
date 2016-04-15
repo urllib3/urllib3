@@ -8,7 +8,7 @@ from itertools import chain
 from mock import patch, Mock
 
 from urllib3 import add_stderr_logger, disable_warnings
-from urllib3.util.request import make_headers
+from urllib3.util.request import make_headers, make_cookie_header
 from urllib3.util.timeout import Timeout
 from urllib3.util.url import (
     get_host,
@@ -442,3 +442,15 @@ class TestUtil(unittest.TestCase):
 
         incorrect = hashlib.sha256(b'xyz').digest()
         self.assertFalse(_const_compare_digest_backport(target, incorrect))
+
+    def test_cookie_merging_with_full_headers(self):
+        headers = {'Cookie': 'HeaderCookieValue'}
+        cs = 'NewCookieString'
+        expected = 'HeaderCookieValue; NewCookieString'
+        self.assertEqual(make_cookie_header(headers, cs), expected)
+
+    def test_cookie_merging_with_empty_headers(self):
+        headers = {}
+        cs = 'NewCookieString'
+        expected = 'NewCookieString'
+        self.assertEqual(make_cookie_header(headers, cs), expected)

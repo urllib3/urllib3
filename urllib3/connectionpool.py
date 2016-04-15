@@ -38,7 +38,10 @@ from .connection import (
     HTTPConnection, HTTPSConnection, VerifiedHTTPSConnection,
     HTTPException, BaseSSLError,
 )
-from .request import RequestMethods
+from .request import (
+    RequestMethods,
+    Request
+)
 from .response import HTTPResponse
 
 from .util.connection import is_connection_dropped
@@ -46,9 +49,11 @@ from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import get_host, Url
+from .util.request import make_cookie_header
 
 
 xrange = six.moves.xrange
+CookieJar = six.moves.http_cookiejar.CookieJar
 
 log = logging.getLogger(__name__)
 
@@ -167,7 +172,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     def __init__(self, host, port=None, strict=False,
                  timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1, block=False,
                  headers=None, retries=None,
-                 _proxy=None, _proxy_headers=None,
+                 _proxy=None, _proxy_headers=None, cj=None,
                  **conn_kw):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
@@ -188,6 +193,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         self.proxy = _proxy
         self.proxy_headers = _proxy_headers or {}
+
+        self.cookie_jar = cj
 
         # Fill the queue up so that doing get() on it will block properly
         for _ in xrange(maxsize):
@@ -443,7 +450,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def urlopen(self, method, url, body=None, headers=None, retries=None,
                 redirect=True, assert_same_host=True, timeout=_Default,
-                pool_timeout=None, release_conn=None, chunked=False,
+                pool_timeout=None, release_conn=None, chunked=False, cj=None,
                 **response_kw):
         """
         Get a connection from the pool and perform an HTTP request. This is the
@@ -461,6 +468,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
            `preload_content=False` because we want to make
            `preload_content=False` the default behaviour someday soon without
            breaking backwards compatibility.
+
+        .. note::
+
+           `url` typically receives a subpath, rather than a full URI. Other
+           aspects of the URI are specified during the instantiation of the
+           ConnectionPool.
 
         :param method:
             HTTP request method (such as GET, POST, PUT, etc.)
@@ -530,6 +543,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             Additional parameters are passed to
             :meth:`urllib3.response.HTTPResponse.from_httplib`
         """
+        original_headers = headers
+
         if headers is None:
             headers = self.headers
 
@@ -538,6 +553,29 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if release_conn is None:
             release_conn = response_kw.get('preload_content', True)
+
+        # The local cookie_jar variable should be the most specific of the
+        # request-specific cookie jar or the ConnectionPool's jar. If we
+        # don't have one, skip the cookie processing logic altogether.
+        if cj is not None:
+            cookie_jar = cj
+        else:
+            cookie_jar = self.cookie_jar
+        cookie_string = None
+
+        if cookie_jar is not None:
+            # Note that currently we're not passing headers into the Request
+            # object. This is because if CookieJar.add_cookie_header sees an
+            # existing Cookie header, it won't add its own set. We may be able
+            # to override this with a fully-custom Request object.
+            request_object = Request(url=self._absolute_url(url), method=method)
+            cookie_jar.add_cookie_header(request_object)
+            cookie_string = request_object.get_cookie_header()
+
+        # Copy the headers to keep the changes from the cookie jar local.
+        if cookie_string is not None:
+            headers = headers.copy()
+            headers['Cookie'] = make_cookie_header(headers, cookie_string)
 
         # Check host
         if assert_same_host and not self.is_same_host(url):
@@ -577,11 +615,23 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                                   body=body, headers=headers,
                                                   chunked=chunked)
 
+            # httplib in Python 2 doesn't have the info method
+            # that cookie handling needs to get the headers
+            httplib_response.info = lambda: httplib_response.msg
+
             # If we're going to release the connection in ``finally:``, then
             # the response doesn't need to know about the connection. Otherwise
             # it will also try to release it and we'll have a double-release
             # mess.
             response_conn = conn if not release_conn else None
+
+            # Pull Set-Cookie headers from the httplibresponse and store them
+            # in a cookie jar, if we have one. If we passed a jar explicitly,
+            # don't store in the instance jar.
+            if self.cookie_jar is not None and cj is None:
+                self.cookie_jar.extract_cookies(httplib_response, request_object)
+            if cj is not None:
+                cj.extract_cookies(httplib_response, request_object)
 
             # Import httplib's response into our own wrapper object
             response = HTTPResponse.from_httplib(httplib_response,
@@ -645,10 +695,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Try again
             log.warning("Retrying (%r) after connection "
                         "broken by '%r': %s", retries, err, url)
-            return self.urlopen(method, url, body, headers, retries,
+            return self.urlopen(method, url, body, original_headers, retries,
                                 redirect, assert_same_host,
                                 timeout=timeout, pool_timeout=pool_timeout,
-                                release_conn=release_conn, **response_kw)
+                                release_conn=release_conn, cj=cj, **response_kw)
 
         # Handle redirect?
         redirect_location = redirect and response.get_redirect_location()
@@ -668,11 +718,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
             log.info("Redirecting %s -> %s", url, redirect_location)
             return self.urlopen(
-                method, redirect_location, body, headers,
+                method, redirect_location, body, original_headers,
                 retries=retries, redirect=redirect,
                 assert_same_host=assert_same_host,
                 timeout=timeout, pool_timeout=pool_timeout,
-                release_conn=release_conn, **response_kw)
+                release_conn=release_conn, cj=cj, **response_kw)
 
         # Check if we should retry the HTTP response.
         if retries.is_forced_retry(method, status_code=response.status):
@@ -688,11 +738,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             retries.sleep()
             log.info("Forced retry: %s", url)
             return self.urlopen(
-                method, url, body, headers,
+                method, url, body, original_headers,
                 retries=retries, redirect=redirect,
                 assert_same_host=assert_same_host,
                 timeout=timeout, pool_timeout=pool_timeout,
-                release_conn=release_conn, **response_kw)
+                release_conn=release_conn, cj=cj, **response_kw)
 
         return response
 
