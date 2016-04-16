@@ -42,12 +42,39 @@ HTTPSPoolKey = collections.namedtuple(
     'HTTPSPoolKey', HTTPPoolKey._fields + SSL_KEYWORDS
 )
 
-# The default pool key for each scheme; each PoolManager makes a copy of this
-# dictionary so they can be configured globally here, or individually on the
-# instance.
-pool_keys_by_scheme = {
-    'http': HTTPPoolKey,
-    'https': HTTPSPoolKey,
+
+def default_key_normalizer(request_context, key_class):
+    """
+    Create a pool key of type ``key_class`` for a request.
+
+    According to RFC 3986, both the scheme and host are case-insensitive.
+    Therefore, this function normalizes both before constructing the pool
+    key for an HTTPS request. If you wish to change this behaviour, provide
+    alternate callables to ``pool_key_funcs_by_scheme``.
+
+    :param request_context:
+        A dictionary-like object that contain the context for a request.
+        It should contain a key for each field in the :class:`HTTPPoolKey`
+
+    :param key_class:
+        The class to use when constructing the key. This should be a namedtuple
+        with the ``scheme`` and ``host`` keys at a minimum.
+    """
+    context = {}
+    for key in key_class._fields:
+        context[key] = request_context.get(key)
+    context['scheme'] = context['scheme'].lower()
+    context['host'] = context['host'].lower()
+    return key_class(**context)
+
+
+# A dictionary that maps a scheme to a callable that creates a pool key.
+# This can be used to alter the way pool keys are constructed, if desired.
+# Each PoolManager makes a copy of this dictionary so they can be configured
+# globally here, or individually on the instance.
+pool_key_funcs_by_scheme = {
+    'http': lambda context: default_key_normalizer(context, HTTPPoolKey),
+    'https': lambda context: default_key_normalizer(context, HTTPSPoolKey),
 }
 
 pool_classes_by_scheme = {
@@ -95,7 +122,7 @@ class PoolManager(RequestMethods):
         # Locally set the pool classes and keys so other PoolManagers can
         # override them.
         self.pool_classes_by_scheme = pool_classes_by_scheme
-        self.pool_keys_by_scheme = pool_keys_by_scheme.copy()
+        self.pool_key_funcs_by_scheme = pool_key_funcs_by_scheme.copy()
 
     def __enter__(self):
         return self
@@ -144,18 +171,23 @@ class PoolManager(RequestMethods):
 
         request_context = self.connection_pool_kw.copy()
         request_context['scheme'] = scheme or 'http'
-        request_context['port'] = port or port_by_scheme.get(scheme, 80)
+        if not port:
+            port = port_by_scheme.get(request_context['scheme'].lower(), 80)
+        request_context['port'] = port
         request_context['host'] = host
 
         return self.connection_from_context(request_context)
 
     def connection_from_context(self, request_context):
-        """Get a :class:`ConnectionPool` based on the request context."""
-        pool_key_cls = self.pool_keys_by_scheme[request_context['scheme']]
-        key_kwargs = {}
-        for key_field in pool_key_cls._fields:
-            key_kwargs[key_field] = request_context.get(key_field)
-        pool_key = pool_key_cls(**key_kwargs)
+        """
+        Get a :class:`ConnectionPool` based on the request context.
+
+        ``request_context`` must at least contain the ``scheme`` key and its
+        value must be a key in ``pool_key_funcs_by_scheme`` instance variable.
+        """
+        scheme = request_context['scheme'].lower()
+        pool_key_constructor = self.pool_key_funcs_by_scheme[scheme]
+        pool_key = pool_key_constructor(request_context)
 
         return self.connection_from_pool_key(pool_key)
 

@@ -1,10 +1,12 @@
 import unittest
+from collections import namedtuple
 
 from urllib3.poolmanager import (
-    PoolManager,
-    pool_keys_by_scheme,
+    default_key_normalizer,
     HTTPPoolKey,
     HTTPSPoolKey,
+    pool_key_funcs_by_scheme,
+    PoolManager,
     SSL_KEYWORDS,
 )
 from urllib3 import connection_from_url
@@ -198,11 +200,11 @@ class TestPoolManager(unittest.TestCase):
 
         self.assertTrue(conn_pool is other_conn_pool)
 
-    def test_default_pool_keys_copy(self):
+    def test_default_pool_key_funcs_copy(self):
         """Assert each PoolManager gets a copy of ``pool_keys_by_scheme``."""
         p = PoolManager()
-        self.assertEqual(p.pool_keys_by_scheme, pool_keys_by_scheme)
-        self.assertFalse(p.pool_keys_by_scheme is pool_keys_by_scheme)
+        self.assertEqual(p.pool_key_funcs_by_scheme, p.pool_key_funcs_by_scheme)
+        self.assertFalse(p.pool_key_funcs_by_scheme is pool_key_funcs_by_scheme)
 
     def test_pools_keyed_with_from_host(self):
         """Assert pools are still keyed correctly with connection_from_host."""
@@ -233,6 +235,84 @@ class TestPoolManager(unittest.TestCase):
                 if i != j
             )
         )
+
+    def test_https_connection_from_url_case_insensitive(self):
+        """Assert scheme case is ignored when pooling HTTPS connections."""
+        p = PoolManager()
+        pool = p.connection_from_url('https://example.com/')
+        other_pool = p.connection_from_url('HTTPS://EXAMPLE.COM/')
+
+        self.assertEqual(1, len(p.pools))
+        self.assertTrue(pool is other_pool)
+        self.assertTrue(all(isinstance(key, HTTPSPoolKey) for key in p.pools.keys()))
+
+    def test_https_connection_from_host_case_insensitive(self):
+        """Assert scheme case is ignored when getting the https key class."""
+        p = PoolManager()
+        pool = p.connection_from_host('example.com', scheme='https')
+        other_pool = p.connection_from_host('EXAMPLE.COM', scheme='HTTPS')
+
+        self.assertEqual(1, len(p.pools))
+        self.assertTrue(pool is other_pool)
+        self.assertTrue(all(isinstance(key, HTTPSPoolKey) for key in p.pools.keys()))
+
+    def test_https_connection_from_context_case_insensitive(self):
+        """Assert scheme case is ignored when getting the https key class."""
+        p = PoolManager()
+        context = {'scheme': 'https', 'host': 'example.com', 'port': '443'}
+        other_context = {'scheme': 'HTTPS', 'host': 'EXAMPLE.COM', 'port': '443'}
+        pool = p.connection_from_context(context)
+        other_pool = p.connection_from_context(other_context)
+
+        self.assertEqual(1, len(p.pools))
+        self.assertTrue(pool is other_pool)
+        self.assertTrue(all(isinstance(key, HTTPSPoolKey) for key in p.pools.keys()))
+
+    def test_http_connection_from_url_case_insensitive(self):
+        """Assert scheme case is ignored when pooling HTTP connections."""
+        p = PoolManager()
+        pool = p.connection_from_url('http://example.com/')
+        other_pool = p.connection_from_url('HTTP://EXAMPLE.COM/')
+
+        self.assertEqual(1, len(p.pools))
+        self.assertTrue(pool is other_pool)
+        self.assertTrue(all(isinstance(key, HTTPPoolKey) for key in p.pools.keys()))
+
+    def test_http_connection_from_host_case_insensitive(self):
+        """Assert scheme case is ignored when getting the https key class."""
+        p = PoolManager()
+        pool = p.connection_from_host('example.com', scheme='http')
+        other_pool = p.connection_from_host('EXAMPLE.COM', scheme='HTTP')
+
+        self.assertEqual(1, len(p.pools))
+        self.assertTrue(pool is other_pool)
+        self.assertTrue(all(isinstance(key, HTTPPoolKey) for key in p.pools.keys()))
+
+    def test_http_connection_from_context_case_insensitive(self):
+        """Assert scheme case is ignored when getting the https key class."""
+        p = PoolManager()
+        context = {'scheme': 'http', 'host': 'example.com', 'port': '8080'}
+        other_context = {'scheme': 'HTTP', 'host': 'EXAMPLE.COM', 'port': '8080'}
+        pool = p.connection_from_context(context)
+        other_pool = p.connection_from_context(other_context)
+
+        self.assertEqual(1, len(p.pools))
+        self.assertTrue(pool is other_pool)
+        self.assertTrue(all(isinstance(key, HTTPPoolKey) for key in p.pools.keys()))
+
+    def test_custom_pool_key(self):
+        custom_key = namedtuple('CustomKey', HTTPPoolKey._fields + ('source_address',))
+        p = PoolManager(10, source_address='127.0.0.1')
+
+        def new_key_func(context):
+            return default_key_normalizer(context, custom_key)
+
+        p.pool_key_funcs_by_scheme['http'] = new_key_func
+        p.connection_from_url('http://example.com')
+        p.connection_pool_kw['source_address'] = '127.0.0.2'
+        p.connection_from_url('http://example.com')
+
+        self.assertEqual(2, len(p.pools))
 
 
 if __name__ == '__main__':
