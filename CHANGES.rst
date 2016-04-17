@@ -4,6 +4,8 @@ Changes
 dev (master)
 ------------
 
+* Disable IPv6 DNS when IPv6 connections are not possible. (Issue $840)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
