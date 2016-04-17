@@ -43,14 +43,14 @@ HTTPSPoolKey = collections.namedtuple(
 )
 
 
-def default_key_normalizer(request_context, key_class):
+def _default_key_normalizer(request_context, key_class):
     """
     Create a pool key of type ``key_class`` for a request.
 
     According to RFC 3986, both the scheme and host are case-insensitive.
     Therefore, this function normalizes both before constructing the pool
     key for an HTTPS request. If you wish to change this behaviour, provide
-    alternate callables to ``pool_key_funcs_by_scheme``.
+    alternate callables to ``key_fn_by_scheme``.
 
     :param request_context:
         A dictionary-like object that contain the context for a request.
@@ -72,9 +72,9 @@ def default_key_normalizer(request_context, key_class):
 # This can be used to alter the way pool keys are constructed, if desired.
 # Each PoolManager makes a copy of this dictionary so they can be configured
 # globally here, or individually on the instance.
-pool_key_funcs_by_scheme = {
-    'http': lambda context: default_key_normalizer(context, HTTPPoolKey),
-    'https': lambda context: default_key_normalizer(context, HTTPSPoolKey),
+key_fn_by_scheme = {
+    'http': lambda context: _default_key_normalizer(context, HTTPPoolKey),
+    'https': lambda context: _default_key_normalizer(context, HTTPSPoolKey),
 }
 
 pool_classes_by_scheme = {
@@ -122,7 +122,7 @@ class PoolManager(RequestMethods):
         # Locally set the pool classes and keys so other PoolManagers can
         # override them.
         self.pool_classes_by_scheme = pool_classes_by_scheme
-        self.pool_key_funcs_by_scheme = pool_key_funcs_by_scheme.copy()
+        self.key_fn_by_scheme = key_fn_by_scheme.copy()
 
     def __enter__(self):
         return self
@@ -183,10 +183,10 @@ class PoolManager(RequestMethods):
         Get a :class:`ConnectionPool` based on the request context.
 
         ``request_context`` must at least contain the ``scheme`` key and its
-        value must be a key in ``pool_key_funcs_by_scheme`` instance variable.
+        value must be a key in ``key_fn_by_scheme`` instance variable.
         """
         scheme = request_context['scheme'].lower()
-        pool_key_constructor = self.pool_key_funcs_by_scheme[scheme]
+        pool_key_constructor = self.key_fn_by_scheme[scheme]
         pool_key = pool_key_constructor(request_context)
 
         return self.connection_from_pool_key(pool_key)

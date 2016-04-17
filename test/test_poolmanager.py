@@ -2,10 +2,10 @@ import unittest
 from collections import namedtuple
 
 from urllib3.poolmanager import (
-    default_key_normalizer,
+    _default_key_normalizer,
     HTTPPoolKey,
     HTTPSPoolKey,
-    pool_key_funcs_by_scheme,
+    key_fn_by_scheme,
     PoolManager,
     SSL_KEYWORDS,
 )
@@ -203,8 +203,8 @@ class TestPoolManager(unittest.TestCase):
     def test_default_pool_key_funcs_copy(self):
         """Assert each PoolManager gets a copy of ``pool_keys_by_scheme``."""
         p = PoolManager()
-        self.assertEqual(p.pool_key_funcs_by_scheme, p.pool_key_funcs_by_scheme)
-        self.assertFalse(p.pool_key_funcs_by_scheme is pool_key_funcs_by_scheme)
+        self.assertEqual(p.key_fn_by_scheme, p.key_fn_by_scheme)
+        self.assertFalse(p.key_fn_by_scheme is key_fn_by_scheme)
 
     def test_pools_keyed_with_from_host(self):
         """Assert pools are still keyed correctly with connection_from_host."""
@@ -305,9 +305,9 @@ class TestPoolManager(unittest.TestCase):
         p = PoolManager(10, source_address='127.0.0.1')
 
         def new_key_func(context):
-            return default_key_normalizer(context, custom_key)
+            return _default_key_normalizer(context, custom_key)
 
-        p.pool_key_funcs_by_scheme['http'] = new_key_func
+        p.key_fn_by_scheme['http'] = new_key_func
         p.connection_from_url('http://example.com')
         p.connection_pool_kw['source_address'] = '127.0.0.2'
         p.connection_from_url('http://example.com')

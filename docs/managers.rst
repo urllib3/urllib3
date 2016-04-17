@@ -49,7 +49,7 @@ considered.
 
 To make the pool manager create new pools when the value of
 ``source_address`` changes, you can define a custom pool key and alter
-the ``pool_key_funcs_by_scheme`` instance variable on :class:`.PoolManager`.
+the ``key_fn_by_scheme`` instance variable on :class:`.PoolManager`.
 
 .. doctest ::
 
@@ -58,7 +58,7 @@ the ``pool_key_funcs_by_scheme`` instance variable on :class:`.PoolManager`.
     >>> from urllib3.poolmanager import default_key_normalizer as normalizer
     >>> CustomKey = namedtuple('CustomKey', HTTPPoolKey._fields + ('source_address',))
     >>> manager = PoolManager(10, source_address='127.0.0.1')
-    >>> manager.pool_key_funcs_by_scheme['http'] = lambda context: normalizer(context, CustomKey)
+    >>> manager.key_fn_by_scheme['http'] = lambda context: normalizer(context, CustomKey)
     >>> manager.connection_from_url('http://example.com')
     >>> manager.connection_pool_kw['source_address'] = '127.0.0.2'
     >>> manager.connection_from_url('http://example.com')
