@@ -525,6 +525,13 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(r.headers.get('host'), 'example.com')
         self.assertEqual(r.headers.get('Host'), 'example.com')
 
+    def test_retries(self):
+        fp = BytesIO(b'')
+        resp = HTTPResponse(fp)
+        self.assertEqual(resp.retries, None)
+        resp = HTTPResponse(fp, retries="test")
+        self.assertEqual(resp.retries, "test")
+
 
 class MockChunkedEncodingResponse(object):
 

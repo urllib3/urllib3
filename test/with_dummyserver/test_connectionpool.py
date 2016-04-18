@@ -30,6 +30,7 @@ from urllib3.exceptions import (
     ReadTimeoutError,
     ProtocolError,
     NewConnectionError,
+    ResponseError,
 )
 from urllib3.packages.six import b, u
 from urllib3.util.retry import Retry
@@ -773,6 +774,16 @@ class TestRetry(HTTPDummyServerTestCase):
         resp = self.pool.request('GET', '/successful_retry',
                                  headers=headers, retries=retry)
         self.assertEqual(resp.status, 200)
+
+    def test_retry_return_in_response(self):
+        headers = {'test-name': 'test_retry_return_in_response'}
+        retry = Retry(total=2, status_forcelist=[418])
+        resp = self.pool.request('GET', '/successful_retry',
+                                 headers=headers, retries=retry)
+        self.assertEqual(resp.status, 200)
+        self.assertEqual(resp.retries.total, 1)
+        self.assertEqual(len(resp.retries.history), 1)
+        self.assertIsInstance(resp.retries.history[0], ResponseError)
 
 
 if __name__ == '__main__':
