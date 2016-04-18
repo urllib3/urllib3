@@ -197,5 +197,9 @@ In chronological order:
 * David Foster <http://dafoster.net/>
   * Ensure order of request and response headers are preserved.
 
+* Aviv Palivoda <palaviv@gmail.com>
+  * Errors history list to Retry object.
+  * HTTPResponse contains the last Retry object.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
