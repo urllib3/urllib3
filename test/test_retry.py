@@ -196,3 +196,13 @@ class RetryTest(unittest.TestCase):
         except MaxRetryError as e:
             assert 'Caused by redirect' not in str(e)
             self.assertEqual(str(e.reason), 'conntimeout')
+
+    def test_history(self):
+        retry = Retry(total=10)
+        self.assertEqual(retry.history, [])
+        connection_error = ConnectTimeoutError('conntimeout')
+        retry = retry.increment(error=connection_error)
+        self.assertEqual(retry.history, [connection_error])
+        read_error = ReadTimeoutError(None, "/", "read timed out")
+        retry = retry.increment(error=read_error)
+        self.assertEqual(retry.history, [connection_error, read_error])

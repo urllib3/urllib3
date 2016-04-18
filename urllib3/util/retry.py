@@ -118,7 +118,7 @@ class Retry(object):
     def __init__(self, total=10, connect=None, read=None, redirect=None,
                  method_whitelist=DEFAULT_METHOD_WHITELIST, status_forcelist=None,
                  backoff_factor=0, raise_on_redirect=True, raise_on_status=True,
-                 _observed_errors=0):
+                 history=None):
 
         self.total = total
         self.connect = connect
@@ -134,7 +134,7 @@ class Retry(object):
         self.backoff_factor = backoff_factor
         self.raise_on_redirect = raise_on_redirect
         self.raise_on_status = raise_on_status
-        self._observed_errors = _observed_errors  # TODO: use .history instead?
+        self.history = history or []
 
     def new(self, **kw):
         params = dict(
@@ -145,7 +145,7 @@ class Retry(object):
             backoff_factor=self.backoff_factor,
             raise_on_redirect=self.raise_on_redirect,
             raise_on_status=self.raise_on_status,
-            _observed_errors=self._observed_errors,
+            history=self.history,
         )
         params.update(kw)
         return type(self)(**params)
@@ -169,10 +169,10 @@ class Retry(object):
 
         :rtype: float
         """
-        if self._observed_errors <= 1:
+        if len(self.history) <= 1:
             return 0
 
-        backoff_value = self.backoff_factor * (2 ** (self._observed_errors - 1))
+        backoff_value = self.backoff_factor * (2 ** (len(self.history) - 1))
         return min(self.BACKOFF_MAX, backoff_value)
 
     def sleep(self):
@@ -235,7 +235,7 @@ class Retry(object):
         if total is not None:
             total -= 1
 
-        _observed_errors = self._observed_errors
+        history = self.history
         connect = self.connect
         read = self.read
         redirect = self.redirect
@@ -247,7 +247,7 @@ class Retry(object):
                 raise six.reraise(type(error), error, _stacktrace)
             elif connect is not None:
                 connect -= 1
-            _observed_errors += 1
+            history.append(error)
 
         elif error and self._is_read_error(error):
             # Read retry?
@@ -255,7 +255,7 @@ class Retry(object):
                 raise six.reraise(type(error), error, _stacktrace)
             elif read is not None:
                 read -= 1
-            _observed_errors += 1
+            history.append(error)
 
         elif response and response.get_redirect_location():
             # Redirect retry?
@@ -266,16 +266,16 @@ class Retry(object):
         else:
             # Incrementing because of a server error like a 500 in
             # status_forcelist and a the given method is in the whitelist
-            _observed_errors += 1
             cause = ResponseError.GENERIC_ERROR
             if response and response.status:
                 cause = ResponseError.SPECIFIC_ERROR.format(
                     status_code=response.status)
+            history.append(ResponseError(cause))
 
         new_retry = self.new(
             total=total,
             connect=connect, read=read, redirect=redirect,
-            _observed_errors=_observed_errors)
+            history=history)
 
         if new_retry.is_exhausted():
             raise MaxRetryError(_pool, url, error or ResponseError(cause))
