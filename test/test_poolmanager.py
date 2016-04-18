@@ -1,3 +1,4 @@
+import functools
 import unittest
 from collections import namedtuple
 
@@ -304,10 +305,7 @@ class TestPoolManager(unittest.TestCase):
         custom_key = namedtuple('CustomKey', HTTPPoolKey._fields + ('source_address',))
         p = PoolManager(10, source_address='127.0.0.1')
 
-        def new_key_func(context):
-            return _default_key_normalizer(context, custom_key)
-
-        p.key_fn_by_scheme['http'] = new_key_func
+        p.key_fn_by_scheme['http'] = functools.partial(_default_key_normalizer, custom_key)
         p.connection_from_url('http://example.com')
         p.connection_pool_kw['source_address'] = '127.0.0.2'
         p.connection_from_url('http://example.com')

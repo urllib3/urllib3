@@ -53,12 +53,13 @@ the ``key_fn_by_scheme`` instance variable on :class:`.PoolManager`.
 
 .. doctest ::
 
+    >>> import functools
     >>> from collections import namedtuple
     >>> from urllib3.poolmanager import PoolManager, HTTPPoolKey
     >>> from urllib3.poolmanager import default_key_normalizer as normalizer
     >>> CustomKey = namedtuple('CustomKey', HTTPPoolKey._fields + ('source_address',))
     >>> manager = PoolManager(10, source_address='127.0.0.1')
-    >>> manager.key_fn_by_scheme['http'] = lambda context: normalizer(context, CustomKey)
+    >>> manager.key_fn_by_scheme['http'] = functools.partial(normalizer, CustomKey)
     >>> manager.connection_from_url('http://example.com')
     >>> manager.connection_pool_kw['source_address'] = '127.0.0.2'
     >>> manager.connection_from_url('http://example.com')

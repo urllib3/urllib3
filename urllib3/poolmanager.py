@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import collections
+import functools
 import logging
 
 try:  # Python 3
@@ -43,7 +44,7 @@ HTTPSPoolKey = collections.namedtuple(
 )
 
 
-def _default_key_normalizer(request_context, key_class):
+def _default_key_normalizer(key_class, request_context):
     """
     Create a pool key of type ``key_class`` for a request.
 
@@ -52,13 +53,13 @@ def _default_key_normalizer(request_context, key_class):
     key for an HTTPS request. If you wish to change this behaviour, provide
     alternate callables to ``key_fn_by_scheme``.
 
-    :param request_context:
-        A dictionary-like object that contain the context for a request.
-        It should contain a key for each field in the :class:`HTTPPoolKey`
-
     :param key_class:
         The class to use when constructing the key. This should be a namedtuple
         with the ``scheme`` and ``host`` keys at a minimum.
+
+    :param request_context:
+        A dictionary-like object that contain the context for a request.
+        It should contain a key for each field in the :class:`HTTPPoolKey`
     """
     context = {}
     for key in key_class._fields:
@@ -73,8 +74,8 @@ def _default_key_normalizer(request_context, key_class):
 # Each PoolManager makes a copy of this dictionary so they can be configured
 # globally here, or individually on the instance.
 key_fn_by_scheme = {
-    'http': lambda context: _default_key_normalizer(context, HTTPPoolKey),
-    'https': lambda context: _default_key_normalizer(context, HTTPSPoolKey),
+    'http': functools.partial(_default_key_normalizer, HTTPPoolKey),
+    'https': functools.partial(_default_key_normalizer, HTTPSPoolKey),
 }
 
 pool_classes_by_scheme = {
