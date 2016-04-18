@@ -107,6 +107,10 @@ class Retry(object):
         whether we should raise an exception, or return a response,
         if status falls in ``status_forcelist`` range and retries have
         been exhausted.
+
+    :param list history: The history of the errors encountered during
+        each call to :meth:`~Retry.increment`. The list is in the order
+        the errors occurred.
     """
 
     DEFAULT_METHOD_WHITELIST = frozenset([
