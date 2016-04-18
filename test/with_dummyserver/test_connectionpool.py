@@ -783,7 +783,7 @@ class TestRetry(HTTPDummyServerTestCase):
         self.assertEqual(resp.status, 200)
         self.assertEqual(resp.retries.total, 1)
         self.assertEqual(len(resp.retries.history), 1)
-        self.assertIsInstance(resp.retries.history[0], ResponseError)
+        self.assertTrue(isinstance(resp.retries.history[0], ResponseError))
 
 
 if __name__ == '__main__':
