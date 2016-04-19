@@ -104,6 +104,7 @@ class TestPoolManager(unittest.TestCase):
             'retries': retry.Retry(total=6, connect=2),
             'block': True,
             'strict': True,
+            'source_address': '127.0.0.1',
         }
         p = PoolManager()
         conn_pools = [
@@ -156,6 +157,7 @@ class TestPoolManager(unittest.TestCase):
             'retries': retry.Retry(total=6, connect=2),
             'block': True,
             'strict': True,
+            'source_address': '127.0.0.1',
             'key_file': '/root/totally_legit.key',
             'cert_file': '/root/totally_legit.crt',
             'cert_reqs': 'CERT_REQUIRED',
@@ -302,12 +304,13 @@ class TestPoolManager(unittest.TestCase):
         self.assertTrue(all(isinstance(key, HTTPPoolKey) for key in p.pools.keys()))
 
     def test_custom_pool_key(self):
-        custom_key = namedtuple('CustomKey', HTTPPoolKey._fields + ('source_address',))
-        p = PoolManager(10, source_address='127.0.0.1')
+        """Assert it is possible to define addition pool key fields."""
+        custom_key = namedtuple('CustomKey', HTTPPoolKey._fields + ('my_field',))
+        p = PoolManager(10, my_field='barley')
 
         p.key_fn_by_scheme['http'] = functools.partial(_default_key_normalizer, custom_key)
         p.connection_from_url('http://example.com')
-        p.connection_pool_kw['source_address'] = '127.0.0.2'
+        p.connection_pool_kw['my_field'] = 'wheat'
         p.connection_from_url('http://example.com')
 
         self.assertEqual(2, len(p.pools))

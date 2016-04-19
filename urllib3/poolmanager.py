@@ -36,8 +36,8 @@ BasePoolKey = collections.namedtuple('BasePoolKey', ('scheme', 'host', 'port'))
 # connection from. All additional fields must be present in the PoolManager's
 # ``connection_pool_kw`` instance variable.
 HTTPPoolKey = collections.namedtuple(
-    'HTTPPoolKey', BasePoolKey._fields + ('timeout', 'retries',
-                                          'strict', 'block')
+    'HTTPPoolKey', BasePoolKey._fields + ('timeout', 'retries', 'strict',
+                                          'block', 'source_address')
 )
 HTTPSPoolKey = collections.namedtuple(
     'HTTPSPoolKey', HTTPPoolKey._fields + SSL_KEYWORDS
