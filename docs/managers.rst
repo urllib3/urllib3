@@ -28,6 +28,44 @@ so you don't have to.
     >>> conn.num_requests
     3
 
+A :class:`.PoolManager` will create a new :doc:`ConnectionPool <pools>`
+when no :doc:`ConnectionPools <pools>` exist with a matching pool key.
+The pool key is derived using the requested URL and the current values
+of the ``connection_pool_kw`` instance variable on :class:`.PoolManager`.
+
+The keys in ``connection_pool_kw`` used when deriving the key are
+configurable. For example, by default the ``my_field`` key is not
+considered.
+
+.. doctest ::
+
+    >>> from urllib3.poolmanager import PoolManager
+    >>> manager = PoolManager(10, my_field='wheat')
+    >>> manager.connection_from_url('http://example.com')
+    >>> manager.connection_pool_kw['my_field'] = 'barley'
+    >>> manager.connection_from_url('http://example.com')
+    >>> len(manager.pools)
+    1
+
+To make the pool manager create new pools when the value of
+``my_field`` changes, you can define a custom pool key and alter
+the ``key_fn_by_scheme`` instance variable on :class:`.PoolManager`.
+
+.. doctest ::
+
+    >>> import functools
+    >>> from collections import namedtuple
+    >>> from urllib3.poolmanager import PoolManager, HTTPPoolKey
+    >>> from urllib3.poolmanager import default_key_normalizer as normalizer
+    >>> CustomKey = namedtuple('CustomKey', HTTPPoolKey._fields + ('my_field',))
+    >>> manager = PoolManager(10, my_field='wheat')
+    >>> manager.key_fn_by_scheme['http'] = functools.partial(normalizer, CustomKey)
+    >>> manager.connection_from_url('http://example.com')
+    >>> manager.connection_pool_kw['my_field'] = 'barley'
+    >>> manager.connection_from_url('http://example.com')
+    >>> len(manager.pools)
+    2
+
 The API of a :class:`.PoolManager` object is similar to that of a
 :doc:`ConnectionPool <pools>`, so they can be passed around interchangeably.
 
@@ -58,6 +96,12 @@ API
 ---
 
     .. autoclass:: PoolManager
+       :inherited-members:
+    .. autoclass:: BasePoolKey
+       :inherited-members:
+    .. autoclass:: HTTPPoolKey
+       :inherited-members:
+    .. autoclass:: HTTPSPoolKey
        :inherited-members:
 
 ProxyManager

@@ -4,7 +4,13 @@ Changes
 dev (master)
 ------------
 
-* Disable IPv6 DNS when IPv6 connections are not possible. (Issue $840)
+* Disable IPv6 DNS when IPv6 connections are not possible. (Issue #840)
+
+* Provide ``key_fn_by_scheme`` pool keying mechanism that can be
+  overridden. (Issue #830)
+
+* Normalize scheme and host to lowercase for pool keys, and include
+  ``source_address``. (Issue #830)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
