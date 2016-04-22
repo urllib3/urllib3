@@ -786,7 +786,6 @@ class TestRetry(HTTPDummyServerTestCase):
     def test_retry_redirect_history(self):
         resp = self.pool.request('GET', '/redirect', fields={'target': '/'})
         self.assertEqual(resp.status, 200)
-        print(resp.retries.history)
         self.assertEqual(resp.retries.history, [RequestHistory('GET', '/redirect?target=%2F', None, 303, '/')])
 
 
