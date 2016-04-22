@@ -2,7 +2,7 @@ import unittest
 
 from urllib3.response import HTTPResponse
 from urllib3.packages.six.moves import xrange
-from urllib3.util.retry import Retry
+from urllib3.util.retry import Retry, RequestHistory
 from urllib3.exceptions import (
     ConnectTimeoutError,
     MaxRetryError,
@@ -201,8 +201,14 @@ class RetryTest(unittest.TestCase):
         retry = Retry(total=10)
         self.assertEqual(retry.history, [])
         connection_error = ConnectTimeoutError('conntimeout')
-        retry = retry.increment(error=connection_error)
-        self.assertEqual(retry.history, [connection_error])
-        read_error = ReadTimeoutError(None, "/", "read timed out")
-        retry = retry.increment(error=read_error)
-        self.assertEqual(retry.history, [connection_error, read_error])
+        retry = retry.increment('GET', '/test1', None, connection_error)
+        self.assertEqual(retry.history, [RequestHistory('GET', '/test1', connection_error, None, None)])
+        read_error = ReadTimeoutError(None, "/test2", "read timed out")
+        retry = retry.increment('POST', '/test2', None, read_error)
+        self.assertEqual(retry.history, [RequestHistory('GET', '/test1', connection_error, None, None),
+                                         RequestHistory('POST', '/test2', read_error, None, None)])
+        response = HTTPResponse(status=500)
+        retry = retry.increment('GET', '/test3', response, None)
+        self.assertEqual(retry.history, [RequestHistory('GET', '/test1', connection_error, None, None),
+                                         RequestHistory('POST', '/test2', read_error, None, None),
+                                         RequestHistory('GET', '/test3', None, 500, None)])

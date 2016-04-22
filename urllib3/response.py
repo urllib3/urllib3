@@ -92,9 +92,7 @@ class HTTPResponse(io.IOBase):
 
     :param retries:
         The retries contains the last :class:`~urllib3.util.retry.Retry` that
-        was used during the request. You may see a list of errors that occurred
-        during the current request with the :class:`~urllib3.util.retry.Retry`
-        ``history`` attribute.
+        was used during the request.
     """
 
     CONTENT_DECODERS = ['gzip', 'deflate']

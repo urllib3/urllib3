@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 import time
 import logging
+from collections import namedtuple
 
 from ..exceptions import (
     ConnectTimeoutError,
@@ -13,6 +14,14 @@ from ..packages import six
 
 
 log = logging.getLogger(__name__)
+
+
+class RequestHistory(namedtuple('RetryHistory', ["method", "url", "error", "status", "redirect_location"])):
+    """
+    Datastructure for representing the metadata of requests that result in a retry.
+    """
+    def __new__(cls, method, url, error, status, redirect_location):
+        return super(RequestHistory, cls).__new__(cls, method, url, error, status, redirect_location)
 
 
 class Retry(object):
@@ -108,9 +117,9 @@ class Retry(object):
         if status falls in ``status_forcelist`` range and retries have
         been exhausted.
 
-    :param list history: The history of the errors encountered during
+    :param list history: The history of the request encountered during
         each call to :meth:`~Retry.increment`. The list is in the order
-        the errors occurred.
+        the requests occurred. Each list item is of class :class:`RequestHistory`.
     """
 
     DEFAULT_METHOD_WHITELIST = frozenset([
@@ -239,11 +248,13 @@ class Retry(object):
         if total is not None:
             total -= 1
 
-        history = self.history
+        history = self.history[:]
         connect = self.connect
         read = self.read
         redirect = self.redirect
         cause = 'unknown'
+        status = None
+        redirect_location = None
 
         if error and self._is_connection_error(error):
             # Connect retry?
@@ -251,7 +262,6 @@ class Retry(object):
                 raise six.reraise(type(error), error, _stacktrace)
             elif connect is not None:
                 connect -= 1
-            history.append(error)
 
         elif error and self._is_read_error(error):
             # Read retry?
@@ -259,13 +269,14 @@ class Retry(object):
                 raise six.reraise(type(error), error, _stacktrace)
             elif read is not None:
                 read -= 1
-            history.append(error)
 
         elif response and response.get_redirect_location():
             # Redirect retry?
             if redirect is not None:
                 redirect -= 1
             cause = 'too many redirects'
+            redirect_location = response.get_redirect_location()
+            status = response.status
 
         else:
             # Incrementing because of a server error like a 500 in
@@ -274,7 +285,9 @@ class Retry(object):
             if response and response.status:
                 cause = ResponseError.SPECIFIC_ERROR.format(
                     status_code=response.status)
-            history.append(ResponseError(cause))
+                status = response.status
+
+        history.append(RequestHistory(method, url, error, status, redirect_location))
 
         new_retry = self.new(
             total=total,

@@ -30,10 +30,9 @@ from urllib3.exceptions import (
     ReadTimeoutError,
     ProtocolError,
     NewConnectionError,
-    ResponseError,
 )
 from urllib3.packages.six import b, u
-from urllib3.util.retry import Retry
+from urllib3.util.retry import Retry, RequestHistory
 from urllib3.util.timeout import Timeout
 
 from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
@@ -782,8 +781,13 @@ class TestRetry(HTTPDummyServerTestCase):
                                  headers=headers, retries=retry)
         self.assertEqual(resp.status, 200)
         self.assertEqual(resp.retries.total, 1)
-        self.assertEqual(len(resp.retries.history), 1)
-        self.assertTrue(isinstance(resp.retries.history[0], ResponseError))
+        self.assertEqual(resp.retries.history, [RequestHistory('GET', '/successful_retry', None, 418, None)])
+
+    def test_retry_redirect_history(self):
+        resp = self.pool.request('GET', '/redirect', fields={'target': '/'})
+        self.assertEqual(resp.status, 200)
+        print(resp.retries.history)
+        self.assertEqual(resp.retries.history, [RequestHistory('GET', '/redirect?target=%2F', None, 303, '/')])
 
 
 if __name__ == '__main__':
