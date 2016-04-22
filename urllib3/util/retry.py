@@ -16,12 +16,14 @@ from ..packages import six
 log = logging.getLogger(__name__)
 
 
-class RequestHistory(namedtuple('RetryHistory', ["method", "url", "error", "status", "redirect_location"])):
+class RequestHistory(namedtuple('RetryHistory', ["method", "url", "error",
+                                                 "status", "redirect_location"])):
     """
     Datastructure for representing the metadata of requests that result in a retry.
     """
     def __new__(cls, method, url, error, status, redirect_location):
-        return super(RequestHistory, cls).__new__(cls, method, url, error, status, redirect_location)
+        return super(RequestHistory, cls).__new__(cls, method, url, error,
+                                                  status, redirect_location)
 
 
 class Retry(object):
