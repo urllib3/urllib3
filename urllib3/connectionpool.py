@@ -757,7 +757,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           ca_cert_dir=self.ca_cert_dir,
                           assert_hostname=self.assert_hostname,
                           assert_fingerprint=self.assert_fingerprint)
-
+            conn.ssl_version = self.ssl_version
         return conn
 
     def _prepare_proxy(self, conn):
@@ -798,9 +798,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
                                   timeout=self.timeout.connect_timeout,
-                                  strict=self.strict,
-                                  ssl_version=self.ssl_version,
-                                  **self.conn_kw)
+                                  strict=self.strict, **self.conn_kw)
 
         return self._prepare_conn(conn)
 
