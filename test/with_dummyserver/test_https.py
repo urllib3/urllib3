@@ -77,6 +77,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             r = https_pool.request('GET', '/')
             self.assertEqual(r.status, 200)
 
+            # Modern versions of Python, or systems using PyOpenSSL, don't
+            # emit warnings.
             if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
                 self.assertFalse(warn.called, warn.call_args_list)
             else:
@@ -166,6 +168,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.assertEqual(r.status, 200)
             self.assertTrue(warn.called)
 
+            # Modern versions of Python, or systems using PyOpenSSL, only emit
+            # the unverified warning. Older systems may also emit other
+            # warnings, which we want to ignore here.
             calls = warn.call_args_list
             if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
                 category = calls[0][0][1]
@@ -185,6 +190,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.assertEqual(r.status, 200)
             self.assertTrue(warn.called)
 
+            # Modern versions of Python, or systems using PyOpenSSL, only emit
+            # the unverified warning. Older systems may also emit other
+            # warnings, which we want to ignore here.
             calls = warn.call_args_list
             if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
                 category = calls[0][0][1]
