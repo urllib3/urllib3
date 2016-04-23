@@ -116,6 +116,32 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 error = call[0][1]
                 self.assertEqual(error, InsecurePlatformWarning)
 
+    def test_context_combines_with_ca_certs(self):
+        ctx = util.ssl_.create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         ca_certs=DEFAULT_CA,
+                                         ssl_context=ctx)
+
+        conn = https_pool._new_conn()
+        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
+
+        with mock.patch('warnings.warn') as warn:
+            r = https_pool.request('GET', '/')
+            self.assertEqual(r.status, 200)
+
+            # Modern versions of Python, or systems using PyOpenSSL, don't
+            # emit warnings.
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
+                self.assertFalse(warn.called, warn.call_args_list)
+            else:
+                self.assertTrue(warn.called)
+                if util.HAS_SNI:
+                    call = warn.call_args_list[0]
+                else:
+                    call = warn.call_args_list[1]
+                error = call[0][1]
+                self.assertEqual(error, InsecurePlatformWarning)
+
     @onlyPy279OrNewer
     def test_ca_dir_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
