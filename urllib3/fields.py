@@ -31,9 +31,11 @@ def format_header_param_rfc2231(name, value):
         The name of the parameter, a string expected to be ASCII only.
     :param value:
         The value of the parameter, provided as a unicode string.
+    :ret:
+        An RFC-2231-formatted unicode string.
     """
     if not any(ch in value for ch in '"\\\r\n'):
-        result = '%s="%s"' % (name, value)
+        result = u'%s="%s"' % (name, value)
         try:
             result.encode('ascii')
         except (UnicodeEncodeError, UnicodeDecodeError):
@@ -44,8 +46,8 @@ def format_header_param_rfc2231(name, value):
     if not six.PY3:  # Python 2:
         value = value.encode('utf-8')
 
-    # encode_rfc2231 accepts and returns encoded strings in Python 2 but
-    # accepts and returns unicode strings in Python 3
+    # encode_rfc2231 accepts an encoded string and returns an ascii-encoded
+    # string in Python 2 but accepts and returns unicode strings in Python 3
     value = email.utils.encode_rfc2231(value, 'utf-8')
     value = '%s*=%s' % (name, value)
 
@@ -67,12 +69,14 @@ def format_header_param_html5(name, value):
         The name of the parameter, a string expected to be ASCII only.
     :param value:
         The value of the parameter, provided as a unicode string.
+    :ret:
+        A unicode string, stripped of troublesome characters.
     """
 
-    value = value.replace('\\', '\\\\').replace('"', '\\"')
-    value = value.replace('\r', ' ').replace('\n', ' ')
+    value = value.replace(u'\\', u'\\\\').replace(u'"', u'\\"')
+    value = value.replace(u'\r', u' ').replace(u'\n', u' ')
 
-    return '%s="%s"' % (name, value)
+    return u'%s="%s"' % (name, value)
 
 
 format_header_param = format_header_param_rfc2231  # For backwards-compatibility
@@ -85,11 +89,11 @@ class RequestField(object):
     A data container for request body parameters.
 
     :param name:
-        The name of this request field.
+        The name of this request field. Must be unicode.
     :param data:
         The data/value body.
     :param filename:
-        An optional filename of the request field.
+        An optional filename of the request field. Must be unicode.
     :param headers:
         An optional dict-like object of headers to initially use for the field.
     :param filename_encoding_style:
@@ -182,7 +186,7 @@ class RequestField(object):
             if value:
                 parts.append(self._render_part(name, value))
 
-        return '; '.join(parts)
+        return u'; '.join(parts)
 
     def render_headers(self):
         """
@@ -193,15 +197,15 @@ class RequestField(object):
         sort_keys = ['Content-Disposition', 'Content-Type', 'Content-Location']
         for sort_key in sort_keys:
             if self.headers.get(sort_key, False):
-                lines.append('%s: %s' % (sort_key, self.headers[sort_key]))
+                lines.append(u'%s: %s' % (sort_key, self.headers[sort_key]))
 
         for header_name, header_value in self.headers.items():
             if header_name not in sort_keys:
                 if header_value:
-                    lines.append('%s: %s' % (header_name, header_value))
+                    lines.append(u'%s: %s' % (header_name, header_value))
 
-        lines.append('\r\n')
-        return '\r\n'.join(lines)
+        lines.append(u'\r\n')
+        return u'\r\n'.join(lines)
 
     def make_multipart(self, content_disposition=None, content_type=None,
                        content_location=None):
@@ -217,10 +221,10 @@ class RequestField(object):
             The 'Content-Location' of the request body.
 
         """
-        self.headers['Content-Disposition'] = content_disposition or 'form-data'
-        self.headers['Content-Disposition'] += '; '.join([
-            '', self._render_parts(
-                (('name', self._name), ('filename', self._filename))
+        self.headers['Content-Disposition'] = content_disposition or u'form-data'
+        self.headers['Content-Disposition'] += u'; '.join([
+            u'', self._render_parts(
+                ((u'name', self._name), (u'filename', self._filename))
             )
         ])
         self.headers['Content-Type'] = content_type

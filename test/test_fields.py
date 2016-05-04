@@ -1,8 +1,7 @@
 import unittest
 
 from urllib3.fields import guess_content_type, RequestField
-from urllib3.packages.six import u, PY3
-from . import onlyPy2
+from urllib3.packages.six import u
 
 
 class TestRequestField(unittest.TestCase):
@@ -24,6 +23,9 @@ class TestRequestField(unittest.TestCase):
                                      headers={'Content-Length': 4})
         self.assertEqual(
             headers_field.render_headers(), 'Content-Length: 4\r\n\r\n')
+
+    def test_create_unsupported_filename_encoding_style(self):
+        self.assertRaises(ValueError, RequestField, 'somename', 'data', filename=u('n\u00e4me'), filename_encoding_style="HTML6")
 
     def test_make_multipart(self):
         field = RequestField('somename', 'data')
@@ -58,3 +60,13 @@ class TestRequestField(unittest.TestCase):
         field = RequestField('somename', 'data', filename_encoding_style="HTML5")
         param = field._render_part('filename', u('n\u00e4me'))
         self.assertEqual(param, u('filename="n\u00e4me"'))
+
+    def test_from_tuples_rfc2231(self):
+        field = RequestField.from_tuples(u('fieldname'), (u('filen\u00e4me'), 'data'), filename_encoding_style="RFC2231")
+        cd = field.headers['Content-Disposition']
+        self.assertEqual(cd, u("form-data; name=\"fieldname\"; filename*=utf-8''filen%C3%A4me"))
+
+    def test_from_tuples_html5(self):
+        field = RequestField.from_tuples(u('fieldname'), (u('filen\u00e4me'), 'data'), filename_encoding_style="HTML5")
+        cd = field.headers['Content-Disposition']
+        self.assertEqual(cd, u('form-data; name="fieldname"; filename="filen\u00e4me"'))
