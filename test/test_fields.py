@@ -44,13 +44,17 @@ class TestRequestField(unittest.TestCase):
         parts = field._render_parts([('name', 'value'), ('filename', 'value')])
         self.assertEqual(parts, 'name="value"; filename="value"')
 
-    def test_render_part(self):
-        field = RequestField('somename', 'data')
+    def test_render_part_rfc2231_non_ascii(self):
+        field = RequestField('somename', 'data', filename_encoding_style="RFC2231")
         param = field._render_part('filename', u('n\u00e4me'))
-        self.assertEqual(param, "filename*=utf-8''n%C3%A4me")
+        self.assertEqual(param, u("filename*=utf-8''n%C3%A4me"))
 
-    @onlyPy2
-    def test_render_unicode_bytes_py2(self):
-        field = RequestField('somename', 'data')
-        param = field._render_part('filename', 'n\xc3\xa4me')
-        self.assertEqual(param, "filename*=utf-8''n%C3%A4me")
+    def test_render_part_rfc2231_ascii_only(self):
+        field = RequestField('somename', 'data', filename_encoding_style="RFC2231")
+        param = field._render_part('filename', u('name'))
+        self.assertEqual(param, u('filename="name"'))
+
+    def test_render_part_html5(self):
+        field = RequestField('somename', 'data', filename_encoding_style="HTML5")
+        param = field._render_part('filename', u('n\u00e4me'))
+        self.assertEqual(param, u('filename="n\u00e4me"'))

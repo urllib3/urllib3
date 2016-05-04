@@ -19,7 +19,7 @@ def guess_content_type(filename, default='application/octet-stream'):
     return default
 
 
-def format_header_param(name, value):
+def format_header_param_rfc2231(name, value):
     """
     Helper function to format and quote a single header parameter.
 
@@ -40,14 +40,47 @@ def format_header_param(name, value):
             pass
         else:
             return result
-    if not six.PY3 and isinstance(value, six.text_type):  # Python 2:
+
+    if not six.PY3:  # Python 2:
         value = value.encode('utf-8')
+
+    # encode_rfc2231 accepts and returns encoded strings in Python 2 but
+    # accepts and returns unicode strings in Python 3
     value = email.utils.encode_rfc2231(value, 'utf-8')
     value = '%s*=%s' % (name, value)
+
+    if not six.PY3:  # Python 2:
+        value = value.decode('utf-8')
+
     return value
 
 
+def format_header_param_html5(name, value):
+    """
+    Helper function to format and quote a single header parameter.
+
+    Particularly useful for header parameters which might contain
+    non-ASCII values, like file names. This follows the HTML5 Working Draft
+    Section 4.10.22.7 (http://w3c.github.io/html/sec-forms.html#multipart-form-data)
+
+    :param name:
+        The name of the parameter, a string expected to be ASCII only.
+    :param value:
+        The value of the parameter, provided as a unicode string.
+    """
+
+    value = value.replace('\\', '\\\\').replace('"', '\\"')
+    value = value.replace('\r', ' ').replace('\n', ' ')
+
+    return '%s="%s"' % (name, value)
+
+
+format_header_param = format_header_param_rfc2231  # For backwards-compatibility
+
+
 class RequestField(object):
+    DEFAULT_FILENAME_ENCODING_STYLE = 'HTML5'
+
     """
     A data container for request body parameters.
 
@@ -59,8 +92,12 @@ class RequestField(object):
         An optional filename of the request field.
     :param headers:
         An optional dict-like object of headers to initially use for the field.
+    :param filename_encoding_style:
+        An optional string which tells according to which standard, RFC 2231 or the HTML5 Working
+        Draft, the file name should be rendered, if it contains non-ASCII characters.
     """
-    def __init__(self, name, data, filename=None, headers=None):
+    def __init__(self, name, data, filename=None, headers=None,
+                 filename_encoding_style=DEFAULT_FILENAME_ENCODING_STYLE):
         self._name = name
         self._filename = filename
         self.data = data
@@ -68,8 +105,15 @@ class RequestField(object):
         if headers:
             self.headers = dict(headers)
 
+        if filename_encoding_style not in ['HTML5', 'RFC2231']:
+            raise ValueError('filename_encoding_style "%s" not supported.'
+                             % filename_encoding_style)
+
+        self.filename_encoding_style = filename_encoding_style
+
     @classmethod
-    def from_tuples(cls, fieldname, value):
+    def from_tuples(cls, fieldname, value,
+                    filename_encoding_style=DEFAULT_FILENAME_ENCODING_STYLE):
         """
         A :class:`~urllib3.fields.RequestField` factory from old-style tuple parameters.
 
@@ -97,7 +141,8 @@ class RequestField(object):
             content_type = None
             data = value
 
-        request_param = cls(fieldname, data, filename=filename)
+        request_param = cls(fieldname, data, filename=filename,
+                            filename_encoding_style=filename_encoding_style)
         request_param.make_multipart(content_type=content_type)
 
         return request_param
@@ -111,7 +156,11 @@ class RequestField(object):
         :param value:
             The value of the parameter, provided as a unicode string.
         """
-        return format_header_param(name, value)
+
+        if self.filename_encoding_style == "RFC2231":
+            return format_header_param_rfc2231(name, value)
+        else:
+            return format_header_param_html5(name, value)
 
     def _render_parts(self, header_parts):
         """
