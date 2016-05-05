@@ -83,7 +83,7 @@ format_header_param = format_header_param_rfc2231  # For backwards-compatibility
 
 
 class RequestField(object):
-    DEFAULT_FILENAME_ENCODING_STYLE = 'HTML5'
+    header_formatter = staticmethod(format_header_param_html5)
 
     """
     A data container for request body parameters.
@@ -96,12 +96,8 @@ class RequestField(object):
         An optional filename of the request field. Must be unicode.
     :param headers:
         An optional dict-like object of headers to initially use for the field.
-    :param filename_encoding_style:
-        An optional string which tells according to which standard, RFC 2231 or the HTML5 Working
-        Draft, the file name should be rendered, if it contains non-ASCII characters.
     """
-    def __init__(self, name, data, filename=None, headers=None,
-                 filename_encoding_style=DEFAULT_FILENAME_ENCODING_STYLE):
+    def __init__(self, name, data, filename=None, headers=None):
         self._name = name
         self._filename = filename
         self.data = data
@@ -109,15 +105,8 @@ class RequestField(object):
         if headers:
             self.headers = dict(headers)
 
-        if filename_encoding_style not in ['HTML5', 'RFC2231']:
-            raise ValueError('filename_encoding_style "%s" not supported.'
-                             % filename_encoding_style)
-
-        self.filename_encoding_style = filename_encoding_style
-
     @classmethod
-    def from_tuples(cls, fieldname, value,
-                    filename_encoding_style=DEFAULT_FILENAME_ENCODING_STYLE):
+    def from_tuples(cls, fieldname, value):
         """
         A :class:`~urllib3.fields.RequestField` factory from old-style tuple parameters.
 
@@ -145,8 +134,7 @@ class RequestField(object):
             content_type = None
             data = value
 
-        request_param = cls(fieldname, data, filename=filename,
-                            filename_encoding_style=filename_encoding_style)
+        request_param = cls(fieldname, data, filename=filename)
         request_param.make_multipart(content_type=content_type)
 
         return request_param
@@ -161,10 +149,7 @@ class RequestField(object):
             The value of the parameter, provided as a unicode string.
         """
 
-        if self.filename_encoding_style == "RFC2231":
-            return format_header_param_rfc2231(name, value)
-        else:
-            return format_header_param_html5(name, value)
+        return type(self).header_formatter(name, value)
 
     def _render_parts(self, header_parts):
         """
