@@ -224,10 +224,11 @@ class AppEngineManager(RequestMethods):
         if timeout is Timeout.DEFAULT_TIMEOUT:
             return None  # Defer to URLFetch's default.
         if isinstance(timeout, Timeout):
-            if timeout._read is not timeout._connect:
+            if timeout._read is not None or timeout._connect is not None:
                 warnings.warn(
                     "URLFetch does not support granular timeout settings, "
-                    "reverting to total timeout.", AppEnginePlatformWarning)
+                    "reverting to total or default URLFetch timeout.",
+                    AppEnginePlatformWarning)
             return timeout.total
         return timeout
 
