@@ -222,7 +222,7 @@ class AppEngineManager(RequestMethods):
 
     def _get_absolute_timeout(self, timeout):
         if timeout is Timeout.DEFAULT_TIMEOUT:
-            return 5  # 5s is the default timeout for URLFetch.
+            return None  # Defer to URLFetch's default.
         if isinstance(timeout, Timeout):
             if timeout._read is not timeout._connect:
                 warnings.warn(
