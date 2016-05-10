@@ -788,6 +788,23 @@ class TestRetry(HTTPDummyServerTestCase):
         self.assertEqual(resp.status, 200)
         self.assertEqual(resp.retries.history, [RequestHistory('GET', '/redirect?target=%2F', None, 303, '/')])
 
+    def test_multi_redirect_history(self):
+        r = self.pool.request('GET', '/multi_redirect', fields={'redirect_codes': '303,302,200'}, redirect=False)
+        self.assertEqual(r.status, 303)
+        self.assertEqual(r.retries.history, [])
+
+        r = self.pool.request('GET', '/multi_redirect', retries=10,
+                              fields={'redirect_codes': '303,302,301,307,302,200'})
+        self.assertEqual(r.status, 200)
+        self.assertEqual(r.data, b'Done redirecting')
+        self.assertEqual([(request_history.status, request_history.redirect_location) for request_history in r.retries.history], [
+            (303, '/multi_redirect?redirect_codes=302,301,307,302,200'),
+            (302, '/multi_redirect?redirect_codes=301,307,302,200'),
+            (301, '/multi_redirect?redirect_codes=307,302,200'),
+            (307, '/multi_redirect?redirect_codes=302,200'),
+            (302, '/multi_redirect?redirect_codes=200')
+        ])
+
 
 if __name__ == '__main__':
     unittest.main()

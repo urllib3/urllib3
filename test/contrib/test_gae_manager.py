@@ -194,6 +194,7 @@ class TestGAERetry(TestRetry):
     #test_disabled_retry = None
     # URLFetch resolve redirects.
     test_retry_redirect_history = None
+    test_multi_redirect_history = None
 
 
 if __name__ == '__main__':
