@@ -212,9 +212,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         log.info("Starting new HTTP connection (%d): %s",
                  self.num_connections, self.host)
 
-        conn = self.ConnectionCls(host=self.host, port=self.port,
-                                  timeout=self.timeout.connect_timeout,
-                                  strict=self.strict, **self.conn_kw)
+        if sys.version_info <= (3,3):
+            conn = self.ConnectionCls(host=self.host, port=self.port,
+                                      timeout=self.timeout.connect_timeout,
+                                      strict=self.strict, **self.conn_kw)
+        else:
+            conn = self.ConnectionCls(host=self.host, port=self.port,
+                                      timeout=self.timeout.connect_timeout,
+                                      **self.conn_kw)
         return conn
 
     def _get_conn(self, timeout=None):
