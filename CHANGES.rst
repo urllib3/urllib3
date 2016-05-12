@@ -11,6 +11,9 @@ dev (master)
 
 * Normalize scheme and host to lowercase for pool keys, and include
   ``source_address``. (Issue #830)
+  
+* Cleaner exception chain in Python 3 for ``_make_request``.
+  (Issue #861)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
