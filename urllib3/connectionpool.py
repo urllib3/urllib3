@@ -383,8 +383,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         try:
             try:  # Python 2.7, use buffering of HTTP responses
                 httplib_response = conn.getresponse(buffering=True)
-            except TypeError:  # Python 2.6 and older
-                httplib_response = conn.getresponse()
+            except TypeError:  # Python 2.6 and older, Python 3
+                try:
+                    httplib_response = conn.getresponse()
+                except Exception as e:
+                    # Remove the TypeError from the exception chain in Python 3;
+                    # otherwise it looks like a programming error was the cause.
+                    six.raise_from(e, None)
         except (SocketTimeout, BaseSSLError, SocketError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
