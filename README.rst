@@ -71,6 +71,21 @@ This library is perfect for:
   anything!
 
 
+How do I use urllib3 in a multi-process environment?
+===================================
+
+Reusing connections is good. However, resources (i.e. sockets) cannot be
+shared between processes, and behaviour of pre-used pools after forking to
+a new process is undefined.
+
+For example, a socket remaining in the pool before forking could after be 
+used by multiple process at the same time.in multi-process environment. 
+
+So make sure to fork first before actually using your urllib3 pools.
+Otherwise, it is users' responsiblity to clean up at fork to make sure 
+things are correct.
+
+
 Examples
 ========
 
