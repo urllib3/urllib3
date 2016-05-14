@@ -2,6 +2,7 @@ from __future__ import absolute_import
 import time
 import logging
 from collections import namedtuple
+from itertools import takewhile
 
 from ..exceptions import (
     ConnectTimeoutError,
@@ -178,10 +179,12 @@ class Retry(object):
 
         :rtype: float
         """
-        if len(self.history) <= 1:
+        # We want to consider only the last consecutive errors sequence (Ignore redirects).
+        consecutive_errors_len = len(list(takewhile(lambda x: x.redirect_location is None, reversed(self.history))))
+        if consecutive_errors_len <= 1:
             return 0
 
-        backoff_value = self.backoff_factor * (2 ** (len(self.history) - 1))
+        backoff_value = self.backoff_factor * (2 ** (consecutive_errors_len - 1))
         return min(self.BACKOFF_MAX, backoff_value)
 
     def sleep(self):

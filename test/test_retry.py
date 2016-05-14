@@ -131,6 +131,18 @@ class RetryTest(unittest.TestCase):
         retry = retry.increment()
         self.assertEqual(retry.get_backoff_time(), 0)
 
+    def test_backoff_reset_after_redirect(self):
+        retry = Retry(total=100, redirect=5, backoff_factor=0.2)
+        retry = retry.increment()
+        retry = retry.increment()
+        self.assertEqual(retry.get_backoff_time(), 0.4)
+        redirect_response = HTTPResponse(status=302, headers={'location': 'test'})
+        retry = retry.increment(response=redirect_response)
+        self.assertEqual(retry.get_backoff_time(), 0)
+        retry = retry.increment()
+        retry = retry.increment()
+        self.assertEqual(retry.get_backoff_time(), 0.4)
+
     def test_sleep(self):
         # sleep a very small amount of time so our code coverage is happy
         retry = Retry(backoff_factor=0.0001)
