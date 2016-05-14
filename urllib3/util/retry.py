@@ -180,7 +180,8 @@ class Retry(object):
         :rtype: float
         """
         # We want to consider only the last consecutive errors sequence (Ignore redirects).
-        consecutive_errors_len = len(list(takewhile(lambda x: x.redirect_location is None, reversed(self.history))))
+        consecutive_errors_len = len(list(takewhile(lambda x: x.redirect_location is None,
+                                                    reversed(self.history))))
         if consecutive_errors_len <= 1:
             return 0
 
