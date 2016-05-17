@@ -17,6 +17,9 @@ dev (master)
   
 * Fixed installing ``urllib3[socks]`` extra. (Issue #864)
 
+* Always respect ``ConnectionPool.urlopen(release_conn=False)``, even after a
+  retry. (Issue #651)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

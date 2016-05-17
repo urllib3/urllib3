@@ -197,6 +197,45 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout, retries=False)
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/')
 
+    def test_release_conn_param_is_respected_after_timeout_retry(self):
+        """For successful ```urlopen(release_conn=False)```, the connection isn't released, even after a retry.
+
+        This is a regression test for issue #651 [1], where the connection
+        would be released if the initial request failed, even if a retry
+        succeeded.
+
+        [1] <https://github.com/shazow/urllib3/issues/651>
+        """
+        POOL_SIZE = 1
+        urlopen_args = ('GET', '/')
+        urlopen_kwargs = dict(release_conn=False, preload_content=False)
+
+        ready_event = self.start_basic_handler(delay=(([SHORT_TIMEOUT * 1.5] * 2) + [None]), num=3)
+        wait_for_socket(ready_event)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=SHORT_TIMEOUT, maxsize=POOL_SIZE)
+        self.assertEqual(pool.pool.qsize(), POOL_SIZE)
+        self.assertEqual(pool.num_connections, 0)
+
+        # Verify that our delay is long enough to trigger a read timeout, and
+        # that the ReadTimeoutError gets translated to a `MaxRetryError`.
+        self.assertRaises(MaxRetryError, pool.urlopen, *urlopen_args,
+                          retries=0, **urlopen_kwargs)
+        self.assertEqual(pool.pool.qsize(), 1)
+        self.assertEqual(pool.num_connections, 1)
+
+        # Verify that the request succeeds after two attempts, and that the
+        # connection is left on the response object, instead of being released
+        # back into the pool.
+        resp = pool.urlopen(*urlopen_args, retries=1, **urlopen_kwargs)
+        self.assertEqual(pool.pool.qsize(), 0)
+        self.assertEqual(pool.num_connections, 3)
+        self.assertTrue(resp.connection is not None)
+
+        resp.release_conn()
+        self.assertEqual(pool.pool.qsize(), POOL_SIZE)
+        self.assertEqual(pool.num_connections, 3)
+        self.assertTrue(resp.connection is None)
+
     def test_create_connection_timeout(self):
         timeout = Timeout(connect=SHORT_TIMEOUT, total=LONG_TIMEOUT)
         pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout, retries=False)

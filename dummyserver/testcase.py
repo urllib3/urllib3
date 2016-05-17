@@ -1,6 +1,9 @@
 import unittest
+from collections import Iterator
+import itertools
 import socket
 import threading
+import time
 from nose.plugins.skip import SkipTest
 from tornado import ioloop, web
 
@@ -40,11 +43,32 @@ class SocketDummyServerTestCase(unittest.TestCase):
         cls.port = cls.server_thread.port
 
     @classmethod
-    def start_response_handler(cls, response, num=1, block_send=None):
+    def start_response_handler(cls, response, num=1, block_send=None, delay=None):
+        # Allow the test writer to specify different parameters per response,
+        # by passing an iterable instead of a plain value. Passing a plain
+        # value is the same as passing a repeating iterable.
+        if isinstance(response, (list, tuple, Iterator)):
+            responses = iter(response)
+        else:
+            responses = itertools.repeat(response, num)
+
+        if isinstance(block_send, (list, tuple, Iterator)):
+            block_sends = iter(block_send)
+        else:
+            block_sends = itertools.repeat(block_send, num)
+
+        if isinstance(delay, (list, tuple, Iterator)):
+            delays = iter(delay)
+        else:
+            delays = itertools.repeat(delay, num)
+
         ready_event = threading.Event()
 
         def socket_handler(listener):
             for _ in range(num):
+                response = next(responses)
+                block_send = next(block_sends)
+                delay = next(delays)
                 ready_event.set()
 
                 sock = listener.accept()[0]
@@ -52,6 +76,8 @@ class SocketDummyServerTestCase(unittest.TestCase):
                 if block_send:
                     block_send.wait()
                     block_send.clear()
+                if delay:
+                    time.sleep(delay)
                 sock.send(response)
                 sock.close()
 
