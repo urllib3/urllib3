@@ -14,6 +14,8 @@ dev (master)
   
 * Cleaner exception chain in Python 3 for ``_make_request``.
   (Issue #861)
+  
+* Fixed installing ``urllib3[socks]`` extra. (Issue #864)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
