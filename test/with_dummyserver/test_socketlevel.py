@@ -507,6 +507,66 @@ class TestSocketClosing(SocketDummyServerTestCase):
         if not successful:
             self.fail("Timed out waiting for connection close")
 
+    def test_retry_returns_connection_to_pool(self):
+        """
+        This test allows a retry: one request fails, the next request succeeds.
+        """
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            # Consume request
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf = sock.recv(65535)
+
+            # Close the connection.
+            sock.close()
+
+            # Expect a new request. Because we don't want to hang this thread,
+            # we actually use select.select to confirm that a new request is
+            # coming in: this lets us time the thread out.
+            rlist, _, _ = select.select([listener], [], [], 5)
+            assert rlist
+            new_sock = listener.accept()[0]
+
+            # Consume request
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf = new_sock.recv(65535)
+
+            # Send complete chunked response.
+            new_sock.send((
+                'HTTP/1.1 200 OK\r\n'
+                'Content-Type: text/plain\r\n'
+                'Transfer-Encoding: chunked\r\n'
+                '\r\n'
+                '8\r\n'
+                '12345678\r\n'
+                '0\r\n\r\n').encode('utf-8')
+            )
+
+            new_sock.close()
+            sock.close()
+
+        self._start_server(socket_handler)
+        with HTTPConnectionPool(self.host, self.port, maxsize=1) as pool:
+            # First request should fail, but the timeout should save it.
+            response = pool.urlopen('GET', '/', retries=1,
+                                    preload_content=False,
+                                    timeout=Timeout(connect=1, read=0.001))
+
+            # The connection should still be on the response object, and none
+            # should be in the pool. We opened two though.
+            self.assertEqual(pool.num_connections, 2)
+            self.assertEqual(pool.pool.qsize(), 0)
+            self.assertTrue(response._connection is not None)
+
+            # Consume the data. This should put the connection back.
+            response.read()
+            self.assertEqual(pool.num_connections, 2)
+            self.assertEqual(pool.pool.qsize(), 1)
+            self.assertTrue(response._connection is None)
+
 
 class TestProxyManager(SocketDummyServerTestCase):
 
