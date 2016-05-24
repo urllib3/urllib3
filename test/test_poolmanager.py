@@ -204,10 +204,9 @@ class TestPoolManager(unittest.TestCase):
         self.assertTrue(conn_pool is other_conn_pool)
 
     def test_default_pool_key_funcs_copy(self):
-        """Assert each PoolManager gets a copy of ``pool_keys_by_scheme``."""
+        """Assert each PoolManager gets a reference to ``key_fn_by_scheme``."""
         p = PoolManager()
-        self.assertEqual(p.key_fn_by_scheme, p.key_fn_by_scheme)
-        self.assertFalse(p.key_fn_by_scheme is key_fn_by_scheme)
+        self.assertTrue(p.key_fn_by_scheme is key_fn_by_scheme)
 
     def test_pools_keyed_with_from_host(self):
         """Assert pools are still keyed correctly with connection_from_host."""
@@ -308,7 +307,7 @@ class TestPoolManager(unittest.TestCase):
         custom_key = namedtuple('CustomKey', HTTPPoolKey._fields + ('my_field',))
         p = PoolManager(10, my_field='barley')
 
-        p.key_fn_by_scheme['http'] = functools.partial(_default_key_normalizer, custom_key)
+        p.key_fn_by_scheme = {'http': functools.partial(_default_key_normalizer, custom_key)}
         p.connection_from_url('http://example.com')
         p.connection_pool_kw['my_field'] = 'wheat'
         p.connection_from_url('http://example.com')
