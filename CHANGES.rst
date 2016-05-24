@@ -11,11 +11,14 @@ dev (master)
 
 * Normalize scheme and host to lowercase for pool keys, and include
   ``source_address``. (Issue #830)
-  
+
 * Cleaner exception chain in Python 3 for ``_make_request``.
   (Issue #861)
-  
+
 * Fixed installing ``urllib3[socks]`` extra. (Issue #864)
+
+* Fixed signature of ``ConnectionPool.close`` so it can actually safely be
+  called by subclasses. (Issue #873)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
