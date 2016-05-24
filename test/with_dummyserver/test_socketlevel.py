@@ -17,7 +17,7 @@ from urllib3.util.timeout import Timeout
 from urllib3.util.retry import Retry
 from urllib3._collections import HTTPHeaderDict, OrderedDict
 
-from dummyserver.testcase import SocketDummyServerTestCase
+from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from dummyserver.server import (
     DEFAULT_CERTS, DEFAULT_CA, get_unreachable_address)
 
@@ -507,19 +507,24 @@ class TestSocketClosing(SocketDummyServerTestCase):
         if not successful:
             self.fail("Timed out waiting for connection close")
 
-    def test_retry_returns_connection_to_pool(self):
-        """
+    def test_release_conn_param_is_respected_after_timeout_retry(self):
+        """For successful ```urlopen(release_conn=False)```, the connection isn't released, even after a retry.
+
         This test allows a retry: one request fails, the next request succeeds.
+
+        This is a regression test for issue #651 [1], where the connection
+        would be released if the initial request failed, even if a retry
+        succeeded.
+
+        [1] <https://github.com/shazow/urllib3/issues/651>
         """
         def socket_handler(listener):
             sock = listener.accept()[0]
+            consume_socket(sock)
 
-            # Consume request
-            buf = b''
-            while not buf.endswith(b'\r\n\r\n'):
-                buf = sock.recv(65535)
-
-            # Close the connection.
+            # Close the connection, without sending any response (not even the
+            # HTTP status line). This will trigger a `Timeout` on the client,
+            # inside `urlopen()`.
             sock.close()
 
             # Expect a new request. Because we don't want to hang this thread,
@@ -527,15 +532,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # coming in: this lets us time the thread out.
             rlist, _, _ = select.select([listener], [], [], 5)
             assert rlist
-            new_sock = listener.accept()[0]
-
-            # Consume request
-            buf = b''
-            while not buf.endswith(b'\r\n\r\n'):
-                buf = new_sock.recv(65535)
+            sock = listener.accept()[0]
+            consume_socket(sock)
 
             # Send complete chunked response.
-            new_sock.send((
+            sock.send((
                 'HTTP/1.1 200 OK\r\n'
                 'Content-Type: text/plain\r\n'
                 'Transfer-Encoding: chunked\r\n'
@@ -545,27 +546,26 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 '0\r\n\r\n').encode('utf-8')
             )
 
-            new_sock.close()
             sock.close()
 
         self._start_server(socket_handler)
         with HTTPConnectionPool(self.host, self.port, maxsize=1) as pool:
-            # First request should fail, but the timeout should save it.
+            # First request should fail, but the timeout and `retries=1` should
+            # save it.
             response = pool.urlopen('GET', '/', retries=1,
-                                    preload_content=False,
+                                    release_conn=False, preload_content=False,
                                     timeout=Timeout(connect=1, read=0.001))
 
             # The connection should still be on the response object, and none
             # should be in the pool. We opened two though.
             self.assertEqual(pool.num_connections, 2)
             self.assertEqual(pool.pool.qsize(), 0)
-            self.assertTrue(response._connection is not None)
+            self.assertTrue(response.connection is not None)
 
             # Consume the data. This should put the connection back.
             response.read()
-            self.assertEqual(pool.num_connections, 2)
             self.assertEqual(pool.pool.qsize(), 1)
-            self.assertTrue(response._connection is None)
+            self.assertTrue(response.connection is None)
 
 
 class TestProxyManager(SocketDummyServerTestCase):

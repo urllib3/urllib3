@@ -324,9 +324,6 @@ class TestConnectionPool(unittest.TestCase):
 
         [1] <https://github.com/shazow/urllib3/issues/651>
         """
-        POOL_SIZE = 1
-        urlopen_args = ('GET', '/')
-        urlopen_kwargs = dict(release_conn=False, preload_content=False, chunked=True)
 
         class _raise_once_make_request_function(object):
             """Callable that can mimic `_make_request()`.
@@ -342,35 +339,27 @@ class TestConnectionPool(unittest.TestCase):
                 if self._ex:
                     ex, self._ex = self._ex, None
                     raise ex()
-                fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
                 response = httplib.HTTPResponse(MockSock)
-                response.fp = fp
+                response.fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
                 response.headers = response.msg = HTTPHeaderDict()
                 return response
 
         def _test(exception):
-            pool = HTTPConnectionPool(host='localhost', maxsize=POOL_SIZE, block=True)
-            self.assertEqual(pool.pool.qsize(), POOL_SIZE)
-            self.assertEqual(pool.num_connections, 0)
-
-            # Verify that this exception gets translated to a `MaxRetryError`.
-            pool._make_request = _raise_once_make_request_function(exception)
-            self.assertRaises(MaxRetryError, pool.urlopen, *urlopen_args, retries=0, **urlopen_kwargs)
-            self.assertEqual(pool.pool.qsize(), POOL_SIZE)
-            self.assertEqual(pool.num_connections, 1)
+            pool = HTTPConnectionPool(host='localhost', maxsize=1, block=True)
 
             # Verify that the request succeeds after two attempts, and that the
             # connection is left on the response object, instead of being
             # released back into the pool.
             pool._make_request = _raise_once_make_request_function(exception)
-            response = pool.urlopen(*urlopen_args, retries=1, **urlopen_kwargs)
+            response = pool.urlopen('GET', '/', retries=1,
+                                    release_conn=False, preload_content=False,
+                                    chunked=True)
             self.assertEqual(pool.pool.qsize(), 0)
-            self.assertEqual(pool.num_connections, 3)
+            self.assertEqual(pool.num_connections, 2)
             self.assertTrue(response.connection is not None)
 
             response.release_conn()
-            self.assertEqual(pool.pool.qsize(), POOL_SIZE)
-            self.assertEqual(pool.num_connections, 3)
+            self.assertEqual(pool.pool.qsize(), 1)
             self.assertTrue(response.connection is None)
 
         # Run the test case for all the retriable exceptions.
