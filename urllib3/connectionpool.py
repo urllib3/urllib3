@@ -90,7 +90,7 @@ class ConnectionPool(object):
         # Return False to re-raise any potential exceptions
         return False
 
-    def close():
+    def close(self):
         """
         Close all pooled connections and disable the pool.
         """
