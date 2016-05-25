@@ -22,6 +22,8 @@ dev (master)
 
 * Always respect ``ConnectionPool.urlopen(release_conn=False)``, even after a
   retry. (Issue #651)
+  
+* Retain ``release_conn` state across retries. (Issue #866)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
