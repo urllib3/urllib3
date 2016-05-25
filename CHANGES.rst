@@ -20,10 +20,7 @@ dev (master)
 * Fixed signature of ``ConnectionPool.close`` so it can actually safely be
   called by subclasses. (Issue #873)
 
-* Always respect ``ConnectionPool.urlopen(release_conn=False)``, even after a
-  retry. (Issue #651)
-  
-* Retain ``release_conn` state across retries. (Issue #866)
+* Retain ``release_conn`` state across retries. (Issues #651, #866)
 
 * Add customizable ``HTTPConnectionPool.ResponseCls``, which defaults to
   ``HTTPResponse`` but can be replaced with a subclass.
