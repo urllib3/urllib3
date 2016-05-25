@@ -20,6 +20,9 @@ dev (master)
 * Fixed signature of ``ConnectionPool.close`` so it can actually safely be
   called by subclasses. (Issue #873)
 
+* Always respect ``ConnectionPool.urlopen(release_conn=False)``, even after a
+  retry. (Issue #651)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
