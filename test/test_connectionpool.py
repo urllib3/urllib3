@@ -8,7 +8,7 @@ from urllib3.connectionpool import (
     HTTPConnectionPool,
     HTTPSConnectionPool,
 )
-from urllib3.response import httplib
+from urllib3.response import httplib, HTTPResponse
 from urllib3.util.timeout import Timeout
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
@@ -367,6 +367,25 @@ class TestConnectionPool(unittest.TestCase):
         _test(HTTPException)
         _test(SocketError)
         _test(ProtocolError)
+
+    def test_custom_http_response_class(self):
+
+        class CustomHTTPResponse(HTTPResponse):
+            pass
+
+        class CustomConnectionPool(HTTPConnectionPool):
+            ResponseCls = CustomHTTPResponse
+
+            def _make_request(self, *args, **kwargs):
+                httplib_response = httplib.HTTPResponse(MockSock)
+                httplib_response.fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
+                httplib_response.headers = httplib_response.msg = HTTPHeaderDict()
+                return httplib_response
+
+        pool = CustomConnectionPool(host='localhost', maxsize=1, block=True)
+        response = pool.request('GET', '/', retries=False, chunked=True,
+                                preload_content=False)
+        self.assertTrue(isinstance(response, CustomHTTPResponse))
 
 
 if __name__ == '__main__':

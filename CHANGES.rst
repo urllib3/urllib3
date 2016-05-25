@@ -22,6 +22,9 @@ dev (master)
 
 * Retain ``release_conn`` state across retries. (Issues #651, #866)
 
+* Add customizable ``HTTPConnectionPool.ResponseCls``, which defaults to
+  ``HTTPResponse`` but can be replaced with a subclass.
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
