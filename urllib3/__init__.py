@@ -4,6 +4,8 @@ urllib3 - Thread-safe connection pooling and re-using.
 from __future__ import absolute_import
 import warnings
 
+import sys
+
 from .connectionpool import (
     HTTPConnectionPool,
     HTTPSConnectionPool,
@@ -22,11 +24,12 @@ from .util.retry import Retry
 
 # Set default logging handler to avoid "No handler found" warnings.
 import logging
-try:  # Python 2.7+
+if sys.version_info >= (2, 7):
     from logging import NullHandler
-except ImportError:
-    class NullHandler(logging.Handler):
+else:
+    class NullHandler(logging.Handler):  # Python 2.6
         def emit(self, record):
+            # type: (logging.LogRecord) -> None
             pass
 
 __author__ = 'Andrey Petrov (andrey.petrov@shazow.net)'
@@ -54,6 +57,7 @@ logging.getLogger(__name__).addHandler(NullHandler())
 
 
 def add_stderr_logger(level=logging.DEBUG):
+    # type: (int) -> logging.Handler
     """
     Helper for quickly adding a StreamHandler to the logger. Useful for
     debugging.
@@ -89,6 +93,8 @@ warnings.simplefilter('default', exceptions.SNIMissingWarning, append=True)
 
 
 def disable_warnings(category=exceptions.HTTPWarning):
+    # type: (type) -> None
+    # TODO be more precise about which type is accepted
     """
     Helper for quickly disabling all urllib3 warnings.
     """
