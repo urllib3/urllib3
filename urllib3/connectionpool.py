@@ -163,6 +163,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     scheme = 'http'
     ConnectionCls = HTTPConnection
+    ResponseCls = HTTPResponse
 
     def __init__(self, host, port=None, strict=False,
                  timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1, block=False,
@@ -600,10 +601,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             response_conn = conn if not release_conn else None
 
             # Import httplib's response into our own wrapper object
-            response = HTTPResponse.from_httplib(httplib_response,
-                                                 pool=self,
-                                                 connection=response_conn,
-                                                 **response_kw)
+            response = self.ResponseCls.from_httplib(httplib_response,
+                                                     pool=self,
+                                                     connection=response_conn,
+                                                     **response_kw)
 
             # Everything went great!
             clean_exit = True
