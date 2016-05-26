@@ -15,10 +15,9 @@ from types import TracebackType  # noqa: unused in this module
 from .packages.six import iterkeys, itervalues, PY3
 
 import collections
-import sys
-if sys.version_info >= (2, 7):
+try:
     from collections import OrderedDict
-else:
+except ImportError:
     from .packages.ordered_dict import OrderedDict
 
 try:

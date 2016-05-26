@@ -4,8 +4,6 @@ urllib3 - Thread-safe connection pooling and re-using.
 from __future__ import absolute_import
 import warnings
 
-import sys
-
 from .connectionpool import (
     HTTPConnectionPool,
     HTTPSConnectionPool,
@@ -24,10 +22,10 @@ from .util.retry import Retry
 
 # Set default logging handler to avoid "No handler found" warnings.
 import logging
-if sys.version_info >= (2, 7):
+try:  # Python 2.7+
     from logging import NullHandler
-else:
-    class NullHandler(logging.Handler):  # Python 2.6
+except ImportError:
+    class NullHandler(logging.Handler):
         def emit(self, record):
             # type: (logging.LogRecord) -> None
             pass
