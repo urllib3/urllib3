@@ -115,7 +115,7 @@ dev (master)
 * Made ``HTTPHeaderDict`` usable as a ``headers`` input value
   (Issues #632, #679)
 
-* Added `urllib3.contrib.appengine <https://urllib3.readthedocs.org/en/latest/contrib.html#google-app-engine>`_
+* Added `urllib3.contrib.appengine <https://urllib3.readthedocs.io/en/latest/contrib.html#google-app-engine>`_
   which has an ``AppEngineManager`` for using ``URLFetch`` in a
   Google AppEngine environment. (Issue #664)
 
@@ -272,7 +272,7 @@ dev (master)
 
 * Unverified HTTPS requests will trigger a warning on the first request. See
   our new `security documentation
-  <https://urllib3.readthedocs.org/en/latest/security.html>`_ for details.
+  <https://urllib3.readthedocs.io/en/latest/security.html>`_ for details.
   (Issue #426)
 
 * New retry logic and ``urllib3.util.retry.Retry`` configuration object.
