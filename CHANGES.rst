@@ -25,6 +25,9 @@ dev (master)
 * Add customizable ``HTTPConnectionPool.ResponseCls``, which defaults to
   ``HTTPResponse`` but can be replaced with a subclass.
 
+* Ensure each PoolManager has its own copy of ``pool_classes_by_scheme``.
+  (Issue #828)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
