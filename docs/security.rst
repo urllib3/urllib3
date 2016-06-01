@@ -114,7 +114,7 @@ Once you find your root certificate file::
 Custom SSL Contexts
 -------------------
 
-.. versionadded:: 1.16.0
+.. versionadded:: 1.17.0
 
 It is possible to provide a specific `SSL Context objects`_ directly to urllib3
 to exercise fine-grained control over the SSL configuration used in urllib3.
