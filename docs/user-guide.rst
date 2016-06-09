@@ -1,7 +1,7 @@
 User Guide
 ==========
 
-.. module:: urllib3
+.. currentmodule:: urllib3
 
 Making requests
 ---------------
@@ -11,8 +11,8 @@ First things first, import the Urllib3 module::
     >>> import urllib3
 
 You'll need a :class:`~poolmanager.PoolManager` instance to make requests.
-:class:`PoolManager` handles all of the details of connection pooling and
-thread safety so that you don't have to::
+This object handles all of the details of connection pooling and thread safety
+so that you don't have to::
 
     >>> http = urllib3.PoolManager()
 
@@ -22,8 +22,8 @@ To make a request use :meth:`~poolmanager.PoolManager.request`::
     >>> r.data
     'User-agent: *\nDisallow: /deny\n'
 
-``request`` returns a :class:`Response` object, the :ref:`response_content`
-section explains how to handle various responses.
+``request()`` returns a :class:`~response.HTTPResponse` object, the
+:ref:`response_content` section explains how to handle various responses.
 
 You can use :meth:`~poolmanager.PoolManager.request` to make requests using any
 HTTP verb::
