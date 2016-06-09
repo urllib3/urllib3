@@ -4,7 +4,7 @@ try:
 except ImportError:
     from urllib import urlencode
 
-from .filepost import encode_multipart_formdata
+from .filepost import encode_multipart_formdata, iter_field_objects
 
 
 __all__ = ['RequestMethods']
@@ -72,6 +72,30 @@ class RequestMethods(object):
                                             headers=headers,
                                             **urlopen_kw)
 
+    def encode_body(self, method, body=None, fields=None, form_fields=None):
+        """
+        Encode and return a request body and headers to match
+        """
+        pass
+
+    def encode_url(self, method, url, fields=None, url_params=None):
+        """
+        Encode relevant fields into the URL; we need to do a bit of manipulation
+        first, as we don't have a guarantee that both will be in the same format.
+        """
+        url_params = url_params or []
+
+        if method in self._encode_url_methods:
+            fields = list(iter_field_objects(fields, url_params))
+        else:
+            fields = list(iter_field_objects(url_params))
+
+        if fields:
+            url += '?' + urlencode(fields)
+
+        return url
+
+
     def request_encode_url(self, method, url, fields=None, headers=None,
                            **urlopen_kw):
         """
@@ -88,6 +112,7 @@ class RequestMethods(object):
             url += '?' + urlencode(fields)
 
         return self.urlopen(method, url, **extra_kw)
+
 
     def request_encode_body(self, method, url, fields=None, headers=None,
                             encode_multipart=True, multipart_boundary=None,

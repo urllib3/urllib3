@@ -18,24 +18,25 @@ def choose_boundary():
     return uuid4().hex
 
 
-def iter_field_objects(fields):
+def iter_field_objects(*field_sets):
     """
     Iterate over fields.
 
-    Supports list of (k, v) tuples and dicts, and lists of
-    :class:`~urllib3.fields.RequestField`.
+    Supports any number of lists of (k, v) tuples, dicts,
+    and lists of :class:`~urllib3.fields.RequestField`.
 
     """
-    if isinstance(fields, dict):
-        i = six.iteritems(fields)
-    else:
-        i = iter(fields)
-
-    for field in i:
-        if isinstance(field, RequestField):
-            yield field
+    for fields in field_sets:
+        if isinstance(fields, dict):
+            i = six.iteritems(fields)
         else:
-            yield RequestField.from_tuples(*field)
+            i = iter(fields)
+
+        for field in i:
+            if isinstance(field, RequestField):
+                yield field
+            else:
+                yield RequestField.from_tuples(*field)
 
 
 def iter_fields(fields):
