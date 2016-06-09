@@ -1,18 +1,16 @@
-=====================
-urllib3 Documentation
-=====================
+urllib3
+=======
+
+*Urllib3* is a sanity-friendly HTTP client library for Python.
 
 .. toctree::
    :hidden:
 
-   pools
-   managers
-   security
-   helpers
-   exceptions
-   collections
+   index
+   user-guide
+   advanced-usage
+   reference
    contrib
-   recipes
 
 
 Highlights
