@@ -50,7 +50,7 @@ class RequestMethods(object):
         raise NotImplemented("Classes extending RequestMethods must implement "
                              "their own ``urlopen`` method.")
 
-    def request(self, method, url, fields=None, headers=None, **urlopen_kw):
+    def request(self, method, url, fields=None, headers=None, body=None, **urlopen_kw):
         """
         Make a request using :meth:`urlopen` with the appropriate encoding of
         ``fields`` based on the ``method`` used.
@@ -61,37 +61,72 @@ class RequestMethods(object):
         :meth:`request_encode_url`, :meth:`request_encode_body`,
         or even the lowest level :meth:`urlopen`.
         """
+        pops = [
+            'encode_multipart',
+            'multipart_boundary',
+            'form_fields',
+            'url_params',
+            'fields'
+        ]
         method = method.upper()
+        if headers is None:
+            headers = self.headers.copy()
+        url = self.encode_url(method, url, fields=fields, **urlopen_kw)
+        headers, body = self.encode_body_and_headers(method, body=body, fields=fields, headers=headers, **urlopen_kw)
+        for each in pops:
+            urlopen_kw.pop(each, None)
+        return self.urlopen(method, url, headers=headers, body=body, **urlopen_kw)
 
-        if method in self._encode_url_methods:
-            return self.request_encode_url(method, url, fields=fields,
-                                           headers=headers,
-                                           **urlopen_kw)
-        else:
-            return self.request_encode_body(method, url, fields=fields,
-                                            headers=headers,
-                                            **urlopen_kw)
-
-    def encode_body(self, method, body=None, fields=None, form_fields=None):
+    def encode_body_and_headers(self, method, body=None, fields=None, form_fields=None,
+                                headers=None, encode_multipart=True, multipart_boundary=None, **kw):
         """
         Encode and return a request body and headers to match
         """
-        pass
+        form_fields = form_fields or []
+        fields = fields or []
 
-    def encode_url(self, method, url, fields=None, url_params=None):
+        if fields or form_fields:
+            if body is not None:
+                raise TypeError(
+                    "request got values for both 'fields' and 'body', can only specify one.")
+
+            if encode_multipart and method not in self._encode_url_methods:
+                fields = iter_field_objects(fields, form_fields)
+                body, content_type = encode_multipart_formdata(fields, boundary=multipart_boundary)
+            else:
+                body = ''
+                if fields and method not in self._encode_url_methods:
+                    body += urlencode(fields)
+                    if form_fields:
+                        body += '&'
+                if form_fields:
+                    body += urlencode(form_fields)
+                content_type = 'application/x-www-form-urlencoded'
+
+            headers.update({'Content-Type':content_type})
+
+        return headers, body
+
+
+    def encode_url(self, method, url, fields=None, url_params=None, **kw):
         """
         Encode relevant fields into the URL; we need to do a bit of manipulation
         first, as we don't have a guarantee that both will be in the same format.
         """
         url_params = url_params or []
+        fields = fields or []
+        querystring = ''
+        if method in self._encode_url_methods and fields:
+            print(fields)
+            querystring += urlencode(fields)
+            if querystring and url_params:
+                querystring += '&'
+        if url_params:
+            print(url_params)
+            querystring += urlencode(url_params)
 
-        if method in self._encode_url_methods:
-            fields = list(iter_field_objects(fields, url_params))
-        else:
-            fields = list(iter_field_objects(url_params))
-
-        if fields:
-            url += '?' + urlencode(fields)
+        if querystring:
+            url += '?' + querystring
 
         return url
 
