@@ -10,10 +10,9 @@ urllib3
    reference/index
    contributing
 
-Urllib3 is a *sanity-friendly* HTTP client for Python. It helps you avoid the
-inevitable heartache and frustration of lower-level HTTP clients. It is the
-magic beneath the fantastic `Requests <http://python-requests.org/>`_ library.
-Notable features include:
+Urllib3 is a powerful, *sanity-friendly* HTTP client for Python. Much of the
+Python ecosystem :ref:`already uses <who-uses>` urllib3 and you should too. Urllib3 brings
+many critical features that are missing from the Python standard libraries:
 
 - Thread safe.
 - Connection pooling.
@@ -24,7 +23,7 @@ Notable features include:
 - Proxy support for HTTP and SOCKS.
 - 100% test coverage.
 
-Urllib3 is both easy to use and powerful::
+Urllib3 is powerful and easy to use::
 
     >>> import urllib3
     >>> http = urllib3.PoolManager()
@@ -54,6 +53,14 @@ accomplish common tasks. The more in-depth :doc:`advanced-usage` guide is the pl
 
 The :doc:`reference/index` documentation provides API-level documentation.
 
+.. _who-uses:
+
+Who uses urllib3?
+-----------------
+
+* `Requests <http://python-requests.org/>`_
+* `Pip <https://pip.pypa.io>`_
+* TODO: MOAR
 
 License
 -------
