@@ -74,7 +74,7 @@ This library is perfect for:
 Examples
 ========
 
-Go to `urllib3.readthedocs.org <http://urllib3.readthedocs.org>`_
+Go to `urllib3.readthedocs.org <https://urllib3.readthedocs.io>`_
 for more nice syntax-highlighted examples.
 
 But, long story short::
@@ -90,7 +90,7 @@ But, long story short::
 The ``PoolManager`` will take care of reusing connections for you whenever
 you request the same host. For more fine-grained control of your connection
 pools, you should look at `ConnectionPool
-<http://urllib3.readthedocs.org/#connectionpool>`_.
+<https://urllib3.readthedocs.io/#connectionpool>`_.
 
 
 Run the tests
@@ -158,4 +158,4 @@ Sponsorship
 ===========
 
 If your company benefits from this library, please consider `sponsoring its
-development <http://urllib3.readthedocs.org/en/latest/#sponsorship>`_.
+development <https://urllib3.readthedocs.io/en/latest/#sponsorship>`_.

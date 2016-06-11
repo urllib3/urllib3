@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import unittest
 
 from urllib3.connectionpool import (
@@ -6,6 +8,7 @@ from urllib3.connectionpool import (
     HTTPConnectionPool,
     HTTPSConnectionPool,
 )
+from urllib3.response import httplib, HTTPResponse
 from urllib3.util.timeout import Timeout
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
@@ -16,7 +19,10 @@ from urllib3.exceptions import (
     MaxRetryError,
     ProtocolError,
     SSLError,
+    TimeoutError,
 )
+from urllib3._collections import HTTPHeaderDict
+from .test_response import MockChunkedEncodingResponse, MockSock
 
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
@@ -309,6 +315,77 @@ class TestConnectionPool(unittest.TestCase):
         new_pool_size = c.pool.qsize()
         self.assertEqual(initial_pool_size, new_pool_size)
 
+    def test_release_conn_param_is_respected_after_http_error_retry(self):
+        """For successful ```urlopen(release_conn=False)```, the connection isn't released, even after a retry.
+
+        This is a regression test for issue #651 [1], where the connection
+        would be released if the initial request failed, even if a retry
+        succeeded.
+
+        [1] <https://github.com/shazow/urllib3/issues/651>
+        """
+
+        class _raise_once_make_request_function(object):
+            """Callable that can mimic `_make_request()`.
+
+            Raises the given exception on its first call, but returns a
+            successful response on subsequent calls.
+            """
+            def __init__(self, ex):
+                super(_raise_once_make_request_function, self).__init__()
+                self._ex = ex
+
+            def __call__(self, *args, **kwargs):
+                if self._ex:
+                    ex, self._ex = self._ex, None
+                    raise ex()
+                response = httplib.HTTPResponse(MockSock)
+                response.fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
+                response.headers = response.msg = HTTPHeaderDict()
+                return response
+
+        def _test(exception):
+            pool = HTTPConnectionPool(host='localhost', maxsize=1, block=True)
+
+            # Verify that the request succeeds after two attempts, and that the
+            # connection is left on the response object, instead of being
+            # released back into the pool.
+            pool._make_request = _raise_once_make_request_function(exception)
+            response = pool.urlopen('GET', '/', retries=1,
+                                    release_conn=False, preload_content=False,
+                                    chunked=True)
+            self.assertEqual(pool.pool.qsize(), 0)
+            self.assertEqual(pool.num_connections, 2)
+            self.assertTrue(response.connection is not None)
+
+            response.release_conn()
+            self.assertEqual(pool.pool.qsize(), 1)
+            self.assertTrue(response.connection is None)
+
+        # Run the test case for all the retriable exceptions.
+        _test(TimeoutError)
+        _test(HTTPException)
+        _test(SocketError)
+        _test(ProtocolError)
+
+    def test_custom_http_response_class(self):
+
+        class CustomHTTPResponse(HTTPResponse):
+            pass
+
+        class CustomConnectionPool(HTTPConnectionPool):
+            ResponseCls = CustomHTTPResponse
+
+            def _make_request(self, *args, **kwargs):
+                httplib_response = httplib.HTTPResponse(MockSock)
+                httplib_response.fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
+                httplib_response.headers = httplib_response.msg = HTTPHeaderDict()
+                return httplib_response
+
+        pool = CustomConnectionPool(host='localhost', maxsize=1, block=True)
+        response = pool.request('GET', '/', retries=False, chunked=True,
+                                preload_content=False)
+        self.assertTrue(isinstance(response, CustomHTTPResponse))
 
 
 if __name__ == '__main__':

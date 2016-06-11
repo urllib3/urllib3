@@ -3,6 +3,7 @@ import warnings
 import logging
 import unittest
 import ssl
+import socket
 from itertools import chain
 
 from mock import patch, Mock
@@ -28,7 +29,10 @@ from urllib3.exceptions import (
     SSLError,
     SNIMissingWarning,
 )
-
+from urllib3.util.connection import (
+    allowed_gai_family,
+    _has_ipv6
+)
 from urllib3.util import is_fp_closed, ssl_
 
 from . import clear_warnings
@@ -442,3 +446,29 @@ class TestUtil(unittest.TestCase):
 
         incorrect = hashlib.sha256(b'xyz').digest()
         self.assertFalse(_const_compare_digest_backport(target, incorrect))
+
+    def test_has_ipv6_disabled_on_compile(self):
+        with patch('socket.has_ipv6', False):
+            self.assertFalse(_has_ipv6('::1'))
+
+    def test_has_ipv6_enabled_but_fails(self):
+        with patch('socket.has_ipv6', True):
+            with patch('socket.socket') as mock:
+                instance = mock.return_value
+                instance.bind = Mock(side_effect=Exception('No IPv6 here!'))
+                self.assertFalse(_has_ipv6('::1'))
+
+    def test_has_ipv6_enabled_and_working(self):
+        with patch('socket.has_ipv6', True):
+            with patch('socket.socket') as mock:
+                instance = mock.return_value
+                instance.bind.return_value = True
+                self.assertTrue(_has_ipv6('::1'))
+
+    def test_ip_family_ipv6_enabled(self):
+        with patch('urllib3.util.connection.HAS_IPV6', True):
+            self.assertEqual(allowed_gai_family(), socket.AF_UNSPEC)
+
+    def test_ip_family_ipv6_disabled(self):
+        with patch('urllib3.util.connection.HAS_IPV6', False):
+            self.assertEqual(allowed_gai_family(), socket.AF_INET)

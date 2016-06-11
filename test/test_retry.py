@@ -148,6 +148,21 @@ class RetryTest(unittest.TestCase):
         self.assertFalse(retry.is_forced_retry('GET', status_code=400))
         self.assertTrue(retry.is_forced_retry('GET', status_code=418))
 
+        # String status codes are not matched.
+        retry = Retry(total=1, status_forcelist=['418'])
+        self.assertFalse(retry.is_forced_retry('GET', status_code=418))
+
+    def test_method_whitelist_with_status_forcelist(self):
+        # Falsey method_whitelist means to retry on any method.
+        retry = Retry(status_forcelist=[500], method_whitelist=None)
+        self.assertTrue(retry.is_forced_retry('GET', status_code=500))
+        self.assertTrue(retry.is_forced_retry('POST', status_code=500))
+
+        # Criteria of method_whitelist and status_forcelist are ANDed.
+        retry = Retry(status_forcelist=[500], method_whitelist=['POST'])
+        self.assertFalse(retry.is_forced_retry('GET', status_code=500))
+        self.assertTrue(retry.is_forced_retry('POST', status_code=500))
+
     def test_exhausted(self):
         self.assertFalse(Retry(0).is_exhausted())
         self.assertTrue(Retry(-1).is_exhausted())
