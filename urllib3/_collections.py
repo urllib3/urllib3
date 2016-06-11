@@ -272,6 +272,9 @@ class HTTPHeaderDict(MutableMapping):
     getallmatchingheaders = getlist
     iget = getlist
 
+    def get_all(self, key, failobj=None):
+        return self.getlist(key) or failobj
+
     def __repr__(self):
         return "%s(%s)" % (type(self).__name__, dict(self.itermerged()))
 

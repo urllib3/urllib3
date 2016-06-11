@@ -13,7 +13,6 @@ from ..exceptions import (
 )
 from ..packages import six
 
-
 log = logging.getLogger(__name__)
 
 # Data structure for representing the metadata of requests that result in a retry.
@@ -310,6 +309,20 @@ class Retry(object):
         return ('{cls.__name__}(total={self.total}, connect={self.connect}, '
                 'read={self.read}, redirect={self.redirect})').format(
                     cls=type(self), self=self)
+
+    def redirect_method(self, method, status):
+        """
+        Assuming we're doing a redirect, should we change HTTP methods?
+        """
+        if method == 'GET':
+            return method
+        if method == 'HEAD':
+            return method
+        if status == 303:
+            return 'GET'
+        if method == 'POST' and status in set([301, 302, 303]):
+            return 'GET'
+        return method
 
 
 # For backwards compatibility (equivalent to pre-v1.9):

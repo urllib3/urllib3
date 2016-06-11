@@ -144,6 +144,12 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.d = HTTPHeaderDict(Cookie='foo')
         self.d.add('cookie', 'bar')
 
+    def test_get_all(self):
+        self.assertEqual(self.d.get_all('cookie', None), ['foo', 'bar'])
+
+    def test_get_all_with_default(self):
+        self.assertEqual(self.d.get_all('NOT THERE', {}), {})
+
     def test_create_from_kwargs(self):
         h = HTTPHeaderDict(ab=1, cd=2, ef=3, gh=4)
         self.assertEqual(len(h), 4)

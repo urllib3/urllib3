@@ -3,6 +3,35 @@ Advanced Usage
 
 .. currentmodule:: urllib3
 
+SessionManager
+--------------
+
+:doc:`SessionManager(...) <manager>` is currently urllib3's most abstract manager
+level. Currently, it's in charge of creating and managing a :class:`~urllib3.util.context.SessionContext`
+object, which in turn will extract and apply cookies to and from each HTTP request
+and response that you make with that :class:`SessionManager`.
+
+By default, to create a `SessionManager`, you'll just create it; :class:`SessionManager` will handle
+creating a :class:`PoolManager` to actually make HTTP requests; meanwhile, :class:`SessionManager`
+will handle extracting and applying context to each request.
+
+You can also pass in another manager explicitly if you'd like different behavior:
+
+::
+
+    >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
+    >>> session = urllib3.SessionManager(manager=proxy)
+
+If you want to customize the :class:`SessionContext` that your :class:`SessionManager`
+is using, just pass your own when initializing it:
+
+::
+
+    >>> liberal = urllib3.util.sessioncontext.DefaultCookiePolicy.DomainLiberal
+    >>> liberal_policy = urllib3.util.sessioncontext.DefaultCookiePolicy(strict_ns_domain=liberal)
+    >>> cj = urllib3.util.sessioncontext.CookieJar(policy=liberal_policy)
+    >>> context = urllib3.SessionContext(cookie_jar=cj)
+    >>> session = urllib3.SessionManager(manager=urllib3.PoolManager(), context=context)
 
 Customizing pool behavior
 -------------------------
