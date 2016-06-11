@@ -142,10 +142,40 @@ sanity. To achieve this, the codebase is a collection of small reusable
 utilities and abstractions composed together in a few helpful layers.
 
 
+SessionManager
+--------------
+
+:doc:`SessionManager(...) <manager>` is currently urllib3's most abstract manager
+level. Currently, it's in charge of creating and managing a :class:`~urllib3.util.context.SessionContext`
+object, which in turn will extract and apply cookies to and from each HTTP request
+and response that you make with that :class:`SessionManager`.
+
+By default, to create a `SessionManager`, you'll just need to pass in an instantiated
+:class:`PoolManager` or :class:`ProxyManager`; :class:`SessionManager` will handle extracting
+and applying context to each request, while your :class:`PoolManager` will handle the
+actual HTTP connections and preprocessing.
+
+::
+
+    >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
+    >>> session = urllib3.SessionManager(proxy)
+
+If you want to customize the :class:`SessionContext` that your :class:`SessionManager`
+is using, just pass your own when initializing it:
+
+::
+
+    >>> liberal = urllib3.util.sessioncontext.DefaultCookiePolicy.DomainLiberal
+    >>> liberal_policy = urllib3.util.sessioncontext.DefaultCookiePolicy(strict_ns_domain=liberal)
+    >>> cj = urllib3.util.sessioncontext.CookieJar(policy=liberal_policy)
+    >>> context = urllib3.SessionContext(cookie_jar=cj)
+    >>> session = urllib3.SessionManager(urllib3.PoolManager(), context=context)
+
+
 PoolManager
 -----------
 
-The highest level is the :doc:`PoolManager(...) <managers>`.
+The highest HTTP level is the :doc:`PoolManager(...) <managers>`.
 
 The :class:`~urllib3.poolmanagers.PoolManager` will take care of reusing
 connections for you whenever you request the same host. This should cover most

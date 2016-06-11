@@ -1,13 +1,51 @@
 from __future__ import absolute_import
-try:
-    from urllib.parse import urlencode
-except ImportError:
-    from urllib import urlencode
+
+import logging
 
 from .filepost import encode_multipart_formdata
+from .exceptions import MaxRetryError
+
+from .packages.six.moves.urllib.request import Request as _Request
+from .packages.six.moves.urllib.parse import urlencode
+from .packages.six.moves.urllib.parse import urljoin
+
+__all__ = ['RequestMethods', 'Request']
+
+log = logging.getLogger(__name__)
 
 
-__all__ = ['RequestMethods']
+class Request(_Request):
+    """
+    Currently used as a shim to allow us to work with the stdlib cookie
+    handling, which expects a `urllib.request.Request`-like object.
+    """
+    def __init__(self, *args, **kwargs):
+        kwargs.pop('method', None)
+        # Request is an old-style class in Python 2
+        _Request.__init__(self, *args, **kwargs)
+        self._cookies = []
+        # If there's an existing Cookie header, let's split it up
+        # so we can handle it similarly to those we get from a jar.
+        if self.has_header('Cookie'):
+            self._cookies = self.get_header('Cookie').split('; ')
+
+    def add_cookies(self, *cookies):
+        """
+        We keep track of individual cookies so that we can keep them from
+        duplicating, and re-render the Cookie header when we get new ones.
+        """
+        for each in cookies:
+            if each not in self._cookies:
+                self._cookies.append(each)
+        self.add_header('Cookie', '; '.join(self._cookies))
+
+    def get_all_headers(self):
+        """
+        Returns a complete set of all headers
+        """
+        headers = self.unredirected_hdrs.copy()
+        headers.update(self.headers)
+        return headers
 
 
 class RequestMethods(object):
@@ -149,3 +187,24 @@ class RequestMethods(object):
         extra_kw.update(urlopen_kw)
 
         return self.urlopen(method, url, **extra_kw)
+
+    def redirect(self, response, method, retries, **kwargs):
+        """
+        Abstracts the redirect process to be used from any :class:`RequestMethods` object
+        """
+        url = kwargs.pop('url', '')
+        redirect_location = urljoin(url, response.get_redirect_location())
+        method = retries.redirect_method(method, response.status)
+        try:
+            pool = kwargs.pop('pool', self)
+            retries = retries.increment(method, url, response=response, _pool=pool)
+        except MaxRetryError:
+            if retries.raise_on_redirect:
+                # Release the connection for this response, since we're not
+                # returning it to be released manually.
+                response.release_conn()
+                raise
+            return response
+
+        log.info("Redirecting %s -> %s", url, redirect_location)
+        return self.urlopen(method=method, url=redirect_location, retries=retries, **kwargs)

@@ -251,6 +251,39 @@ class TestingApp(RequestHandler):
 
         return Response(status=status)
 
+    def set_cookie_on_client(self, request):
+        """
+        Set a standard cookie on the response
+        """
+        self.set_cookie('testing_cookie', 'test_cookie_value')
+        return Response('Attached a cookie!')
+
+    def set_undomained_cookie_on_client(self, request):
+        """
+        Sets a cookie on the response without a specific domain
+        """
+        headers = [('Set-Cookie', 'testing_cookie=test_cookie_value')]
+        return Response(headers=headers)
+
+    def verify_cookie(self, request):
+        """
+        Verifies that we receive a cookie back
+        """
+        cookie = self.get_cookie('testing_cookie')
+        if cookie == 'test_cookie_value':
+            return Response('Received cookie')
+        else:
+            return Response(str(cookie), status='400 Bad Request')
+
+    def set_cookie_and_redirect(self, request):
+        """
+        Sets a cookie on the response and redirects to a page to
+        check that the cookie was set
+        """
+        self.set_cookie('testing_cookie', 'test_cookie_value')
+        headers = [('Location', '/verify_cookie')]
+        return Response(status='303 See Other', headers=headers)
+
     def shutdown(self, request):
         sys.exit()
 
