@@ -67,7 +67,10 @@ cases, you might want to stream the response::
 
     >>> import codecs
     >>> reader = codecs.getreader('utf-8')
-    >>> r = http.request('GET', 'http://httpbin.org/ip', preload_content=False)
+    >>> r = http.request(
+    ...     'GET',
+    ...     'http://httpbin.org/ip',
+    ...     preload_content=False)
     >>> json.load(reader(r))
     {'origin': '127.0.0.1'}
     >>> r.release_conn()
@@ -93,7 +96,10 @@ When dealing with large responses it's often better to stream and optionally
 buffer the response content::
 
     >>> import io
-    >>> r = http.request('GET', 'http://httpbin.org/bytes/1024', preload_content=False)
+    >>> r = http.request(
+    ...     'GET',
+    ...     'http://httpbin.org/bytes/1024',
+    ...     preload_content=False)
     >>> reader = io.BufferedReader(r, 8)
     >>> reader.read(4)
     b'\x88\x1f\x8b\xe5'
@@ -146,7 +152,10 @@ You can specify headers as a dictionary in the ``headers`` argument in :meth:`~p
     ...         'X-Something': 'value'
     ...     })
     >>> json.loads(r.data.decode('utf-8'))['headers']
-    {'X-Something': 'value', 'Host': 'httpbin.org', 'Accept-Encoding': 'identity'}
+    {'X-Something': 'value', ...}
+
+
+.. _form_data:
 
 Form data
 ~~~~~~~~~
@@ -165,7 +174,7 @@ dictionary in the ``fields`` argument provided to
 JSON
 ~~~~
 
-You can sent JSON a request by specifying the encoded data as the `body`
+You can sent JSON a request by specifying the encoded data as the ``body``
 argument and setting the ``Content-Type`` header when calling 
 :meth:`~poolmanager.PoolManager.request`::
 
@@ -183,8 +192,191 @@ argument and setting the ``Content-Type`` header when calling
 Files & binary data
 ~~~~~~~~~~~~~~~~~~~
 
+For uploading files using ``multipart/form-data`` encoding you can use the same
+approach as :ref:`form_data` and specify the file field as a tuple of
+``(file_name, file_data)``::
+
+    >>> file_data = open('example.txt').read()
+    >>> r = http.request(
+    ...     'POST',
+    ...     'http://httpbin.org/post',
+    ...     fields={
+    ...         'filefield': ('example.txt', file_data),
+    ...     })
+    >>> json.loads(r.data.decode('utf-8'))['files']
+    {'filefield': '...'}
+
+While specifying the filename is not strictly required, it's recommended in
+order to match browser behavior.
+
+For sending raw binary data simply specify the ``body`` argument. It's also
+recommended to set the ``Content-Type`` header::
+
+    >>> binary_data = open('example.jpg', 'rb').read()
+    >>> r = http.request(
+    ...     'POST',
+    ...     'http://httpbin.org/post',
+    ...     body=binary_data,
+    ...     headers={'Content-Type': 'image/jpeg'})
+    >>> json.loads(r.data.decode('utf-8'))['data']
+    b'...'
+
+.. _ssl:
+
 SSL Verification
 ----------------
+
+It is highly recommended to always use SSL verification. **By default, urllib3
+does not verify HTTPS requests**.
+
+In order to verify SSL you will need root certifications. The easiest and most
+reliable method is to use the `certifi <https://certifi.io/en/latest>`_ package
+which provides Mozilla's root certificate bundle::
+
+    pip install certifi
+
+You can also install certifi along with urllib3 by using the ``secure``
+extra::
+    
+    pip install urllib3[secure]
+
+.. warning:: If you're using Python 2 you will need additional packages. See the :ref:`section below <ssl_py2>` for more details.
+
+Once you have certificates, you can create a :class:`~poolmanager.PoolManager`
+that verifies requests::
+
+    >>> import certifi
+    >>> import urllib3
+    >>> http = urlilb3.PoolManager(
+    ...     cert_reqs='CERT_REQUIRED',
+    ...     ca_certs=certifi.where())
+
+The :class:`~poolmanager.PoolManager` will automatically handle certificate
+verification and will raise :class:`~exceptions.SSLError` if verification fails::
+
+    >>> http.request('GET', 'https://google.com')
+    (No exception)
+    >>> http.request('GET', 'https://expired.badssl.com')
+    urllib3.exceptions.SSLError ...
+
+.. note:: You can use OS-provided certificates if desired. Just specify the full
+    path to the certificate bundle as the ``ca_certs`` argument instead of
+    ``certifi.where()``. For example, most Linux systems store the certificates
+    at ``/etc/ssl/certs/ca-certificates.crt``. Other operating systems can
+    be `difficult <https://stackoverflow.com/questions/10095676/openssl-reasonable-default-for-trusted-ca-certificates>`_.
+
+.. _ssl_py2:
+
+SSL Verification in Python 2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Python 2's SSL module lacks :ref:`SNI support <sni_warning>` and can lag behind
+security updates. For these reasons it's recommended to use
+`pyOpenSSL <https://pyopenssl.readthedocs.io/en/latest/>`_.
+
+If you install urllib3 with the ``secure`` extra, all required packages for SSL
+verification on Python 2 will be installed::
+
+    pip install urllib3[secure]
+
+If you want to install the packages manually, you will need ``pyOpenSSL``,
+``ndg-httpsclient``, ``pyasn``, and ``certifi``.
+
+.. note:: If you are not using Mac OS X or Windows, note that pyOpenSSL depends
+    on `cryptography <https://cryptography.io/en/latest/>`_ which requires
+    additional system packages to compile. See `building cryptography on Linux
+    <https://cryptography.io/en/latest/installation/#building-cryptography-on-linux>`_
+    for the list of packages required.
+
+Once installed, you can tell urllib3 to use pyOpenSSL by using :mod:`urllib3.contrib.pyopenssl`::
+
+    >>> import urllib3.contrib.pyopenssl
+    >>> urllib3.contrib.pyopenssl.inject_into_urllib3()
+
+Finally, you can create a :class:`~poolmanager.PoolManager` that verifies
+requests::
+
+    >>> import certifi
+    >>> import urllib3
+    >>> http = urlilb3.PoolManager(
+    ...     cert_reqs='CERT_REQUIRED',
+    ...     ca_certs=certifi.where())
+
+If you do not wish to use pyOpenSSL, you can simply omit the call to
+:func:`urllib3.contrib.pyopenssl.inject_into_urllib3`. Urllib3 will fall back
+to the standard-library :mod:`ssl` module. You may experience
+:ref:`several warnings <ssl_warnings>` when doing this.
+
+.. warning:: If you do not use pyOpenSSL, Python must be compiled with ssl
+    support for SSL verification to work. It is uncommon, but it is possible to
+    compile Python without SSL support. See this
+    `Stackoverflow thread <https://stackoverflow.com/questions/5128845/importerror-no-module-named-ssl>`_
+    for more details.
+
+    If you are on Google App Engine, you must explicitly enable SSL
+    support in your ``app.yaml``::
+
+        libraries:
+        - name: ssl
+          version: latest
+
+
+.. _ssl_mac:
+
+Note about Mac OS X
+~~~~~~~~~~~~~~~~~~~
+
+Apple-provided Python and OpenSSL libraries contain a patch that makes ssl
+libraries automatically check the system keychain's certificates. This can be
+surprising if you specify custom certificates and see requests unexpectedly
+succeed. See this
+`article <https://hynek.me/articles/apple-openssl-verification-surprises/>`_
+for more information.
+
+.. _ssl_warnings:
+
+SSL Warnings
+~~~~~~~~~~~~
+
+Urllib3 will issue several different warnings based on the level of SSL
+verification support. These warning indicate particular situations and can
+resolved in different ways.
+
+* :class:`~exceptions.InsecureRequestWarning`
+    This happens when an request is made to an HTTPS URL without certificate
+    verification enabled. Follow the :ref:`SSL verification <ssl>` guide to
+    resolve this warning.
+* :class:`~exceptions.InsecurePlatformWarning`
+    This happens on Python 2 platforms that have an outdated :mod:`ssl` module.
+    These older :mod:`ssl` can cause some insecure requests to succeed where
+    they should fail and secure requests to fail where they should succeed.
+    Follow the :ref:`pyOpenSSL <ssl_py2>` guide to resolve this warning.
+
+.. _sni_warning:
+
+* :class:`~exceptions.SNIMissingWarning`
+    This happens on Python 2 versions older than 2.7.9 and older versions of
+    pyOpenSSL. These older versions lack
+    `SNI <https://en.wikipedia.org/wiki/Server_Name_Indication>`_ support. This
+    can cause servers to present a certificate that the client thinks is
+    invalid. Follow the :ref:`pyOpenSSL <ssl_py2>` guide to resolve this
+    warning.
+
+.. _disable_ssl_warnings:
+
+Making unverified HTTPS requests is **strongly** discouraged, however, if you
+understand the risks and wish to disable these warnings, you can use :func:`~urllib3.disable_warnings`::
+
+    >>> import urllib3
+    >>> urllib3.disable_warnings()
+
+Alternatively you can capture the warnings with the standard :mod:`logging` module::
+
+    >>> logging.captureWarnings(True)
+
+Finally, you can suppress the warnings at the interpreter level by setting the
+``PYTHONWARNINGS`` environment variable or by using the
+`-W flag <https://docs.python.org/2/using/cmdline.html#cmdoption-W>`_.
 
 Using timeouts
 --------------
