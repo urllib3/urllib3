@@ -6,7 +6,7 @@ User Guide
 Making requests
 ---------------
 
-First things first, import the Urllib3 module::
+First things first, import the urllib3 module::
 
     >>> import urllib3
 
@@ -318,7 +318,7 @@ certificates when performing requests::
     ...     ca_certs=certifi.where())
 
 If you do not wish to use pyOpenSSL, you can simply omit the call to
-:func:`urllib3.contrib.pyopenssl.inject_into_urllib3`. Urllib3 will fall back
+:func:`urllib3.contrib.pyopenssl.inject_into_urllib3`. urllib3 will fall back
 to the standard-library :mod:`ssl` module. You may experience
 :ref:`several warnings <ssl_warnings>` when doing this.
 
@@ -353,7 +353,7 @@ for more information.
 SSL Warnings
 ~~~~~~~~~~~~
 
-Urllib3 will issue several different warnings based on the level of certificate
+urllib3 will issue several different warnings based on the level of certificate
 verification support. These warning indicate particular situations and can
 resolved in different ways.
 
@@ -435,7 +435,7 @@ You still override this pool-level timeout by specifying ``timeout`` to
 Retrying requests
 -----------------
 
-Urllib3 can automatically retry idempotent requests. This same mechanism also
+urllib3 can automatically retry idempotent requests. This same mechanism also
 handles redirects. You can control the retries using the ``retries`` parameter
 to :meth:`~poolmanager.PoolManager.request`. By default, urllib3 will retry
 requests 3 times and follow up to 3 redirects.
@@ -505,5 +505,5 @@ standard logger interface to change the log level for urllib3's logger::
 Errors & Exceptions
 -------------------
 
-Urllib3 wraps lower-level exceptions. See :mod:`~urllib3.exceptions` for
+urllib3 wraps lower-level exceptions. See :mod:`~urllib3.exceptions` for
 the full list of all exceptions.
