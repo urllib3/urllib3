@@ -223,6 +223,12 @@ If you encounter this warning, it is strongly recommended that you upgrade
 to a newer Python version, or that you use pyOpenSSL as described in the
 :ref:`pyopenssl` section.
 
+However, several of pyopenssl's dependancies use compile libraries that aren't
+compatable with Jython.  You won't be able to get SNI hooks in.  To modify SSL
+verificaiton, you'll need to set properties using Jython - Java in Python.
+FOR DEVELOPMENT perposes, if you just need to disable SSL you can use this
+gist `myjavahttpadapter.py <https://gist.github.com/owns/c55d1826683918076871d749c2f4bc04>`
+
 For info about disabling warnings, see `Disabling Warnings`_.
 
 
