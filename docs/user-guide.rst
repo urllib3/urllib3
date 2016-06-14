@@ -496,5 +496,14 @@ You still override this pool-level retry policy by specifying ``retries`` to
 Logging
 -------
 
+If you are using the standard library :mod:`logging` module urllib3 will
+emit several logs. In some cases this can be undesirable. You can use the
+standard logger interface to change the log level for urllib3's logger::
+
+    >>> logging.getLogger("urllib3").setLevel(logging.WARNING)
+
 Errors & Exceptions
 -------------------
+
+Urllib3 wraps lower-level exceptions. See :mod:`~urllib3.exceptions` for
+the full list of all exceptions.
