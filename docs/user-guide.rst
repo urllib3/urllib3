@@ -401,10 +401,10 @@ being aborted. In simple cases, you can specify a timeout as a ``float``
 to :meth:`~poolmanager.PoolManager.request`::
 
     >>> http.request(
-    ...     'GET', 'https://httpbin.org/delay/3', timeout=4.0)
+    ...     'GET', 'http://httpbin.org/delay/3', timeout=4.0)
     <urllib3.response.HTTPResponse>
     >>> http.request(
-    ...     'GET', 'https://httpbin.org/delay/3', timeout=2.5)
+    ...     'GET', 'http://httpbin.org/delay/3', timeout=2.5)
     MaxRetryError caused by ReadTimeoutError
 
 For more granular control you can use a :class:`~util.timeout.Timeout`
@@ -412,12 +412,12 @@ instance which lets you specify separate connect and read timeouts::
 
     >>> http.request(
     ...     'GET',
-    ...     'https://httpbin.org/delay/3',
+    ...     'http://httpbin.org/delay/3',
     ...     timeout=urllib3.Timeout(connect=1.0))
     <urllib3.response.HTTPResponse>
     >>> http.request(
     ...     'GET',
-    ...     'https://httpbin.org/delay/3',
+    ...     'http://httpbin.org/delay/3',
     ...     timeout=urllib3.Timeout(connect=1.0, read=2.0))
     MaxRetryError caused by ReadTimeoutError
     
@@ -434,6 +434,64 @@ You still override this pool-level timeout by specifying ``timeout`` to
 
 Retrying requests
 -----------------
+
+Urllib3 can automatically retry idempotent requests. This same mechanism also
+handles redirects. You can control the retries using the ``retries`` parameter
+to :meth:`~poolmanager.PoolManager.request`. By default, urllib3 will retry
+requests 3 times and follow up to 3 redirects.
+
+To change the number of retries just specify an integer::
+
+    >>> http.requests('GET', 'http://httpbin.org/ip', retries=10)
+
+To disable all retry and redirect logic specify ``retries=False``::
+
+    >>> http.request(
+    ...     'GET', 'http://nxdomain.example.com', retries=False)
+    NewConnectionError
+    >>> r = http.request(
+    ...     'GET', 'http://httpbin.org/redirect/1', retries=False)
+    >>> r.status
+    302
+
+To disable redirects but keep the retrying logic, specify ``redirect=False``::
+
+    >>> r = http.request(
+    ...     'GET', 'http://httpbin.org/redirect/1', redirect=False)
+    >>> r.status
+    302
+
+For more granular control you can use a :class:`~util.retry.Retry` instance.
+This class allows you far greater control of how requests are retried.
+
+For example, to do a total of 3 retries, but limit to only 2 redirects::
+
+    >>> http.request(
+    ...     'GET',
+    ...     'http://httpbin.org/redirect/3',
+    ...     retries=urllib3.Retries(3, redirect=2))
+    MaxRetryError
+
+You can also disable exceptions for too many redirects and just return the
+``302`` response::
+
+    >>> r = http.request(
+    ...     'GET',
+    ...     'http://httpbin.org/redirect/3',
+    ...     retries=urllib3.Retries(
+    ...         redirect=2, raise_on_redirect=False))
+    >>> r.status
+    302
+
+If you want all requests to be subject to the same retry policy, you can
+specify the retry at the :class:`~urllib3.poolmanager.PoolManager` level::
+
+    >>> http = urllib3.PoolManager(retries=False)
+    >>> http = urllib3.PoolManager(
+    ...     retries=urllib3.Retry(5, redirect=2))
+
+You still override this pool-level retry policy by specifying ``retries`` to
+:meth:`~poolmanager.PoolManager.request`.
 
 Logging
 -------
