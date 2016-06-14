@@ -63,7 +63,7 @@ memory::
     {'origin': '127.0.0.1'}
 
 However, this might not be the best way to handle larger responses. In these
-cases, you might want to stream the response::
+cases, you might want to :ref:`stream <stream>` the response::
 
     >>> import codecs
     >>> reader = codecs.getreader('utf-8')
@@ -75,12 +75,7 @@ cases, you might want to stream the response::
     {'origin': '127.0.0.1'}
     >>> r.release_conn()
 
-Setting ``preload_content`` to ``False`` means that urllib3 will stream the
-response content. The response object can be treated as a file-like object where
-calls to :meth:`~response.HTTPResponse.read()` will block until more response
-data is available. The :mod:`codecs` module is used to ensure that the bytes are decoded as utf-8 suitable for the :mod:`json` module. Finally,
-the call to :meth:`~response.HTTPResponse.release_conn` signals that the
-connection can be returned to the pool to be re-used.
+The :mod:`codecs` module is used to ensure that the bytes are decoded as utf-8 suitable for the :mod:`json` module.
 
 Binary content
 ~~~~~~~~~~~~~~
@@ -92,8 +87,27 @@ representing the response content::
     >>> r.data
     b'\xaa\xa5H?\x95\xe9\x9b\x11'
 
-When dealing with large responses it's often better to stream and optionally
-buffer the response content::
+.. _stream:
+
+When dealing with large responses it's often better to stream the response content::
+
+    >>> r = http.request(
+    ...     'GET',
+    ...     'http://httpbin.org/bytes/1024',
+    ...     preload_content=False)
+    >>> for chunk in r.stream(32):
+    ...     print(chunk)
+    b'...'
+    b'...'
+    ...
+    >>> r.release_conn()
+
+Setting ``preload_content`` to ``False`` means that urllib3 will stream the
+response content. :meth:`~response.HTTPResponse.stream` lets you iterate over
+chunks of the response content.
+
+Alternatively, you can treat the :class:`~response.HTTPResponse` instance as
+a file-like object. This allows you to do buffering::
 
     >>> import io
     >>> r = http.request(
@@ -105,11 +119,13 @@ buffer the response content::
     b'\x88\x1f\x8b\xe5'
     >>> r.release_conn()
 
-Setting ``preload_content`` to ``False`` means that urllib3 will stream the
-response content. The response object can be treated as a file-like object where
-calls to :meth:`~response.HTTPResponse.read()` will block until more response
+Calls to :meth:`~response.HTTPResponse.read()` will block until more response
 data is available. :class:`io.BufferedReader` is used to demonstrate how to
-buffer the stream. Finally, the call to :meth:`~response.HTTPResponse.release_conn` signals that the connection can be returned to the pool to be re-used.
+buffer the stream.
+
+.. note:: When using ``preload_content=False``, you should call 
+    :meth:`~response.HTTPResponse.release_conn` to release the http connection
+    back to the connection pool so that it can be re-used.
 
 .. _request_data:
 
@@ -223,15 +239,14 @@ recommended to set the ``Content-Type`` header::
 
 .. _ssl:
 
-SSL Verification
-----------------
+Certificate verification
+------------------------
 
-It is highly recommended to always use SSL verification. **By default, urllib3
-does not verify HTTPS requests**.
+It is highly recommended to always use SSL certificate verification.
+**By default, urllib3 does not verify HTTPS requests**.
 
-In order to verify SSL you will need root certifications. The easiest and most
-reliable method is to use the `certifi <https://certifi.io/en/latest>`_ package
-which provides Mozilla's root certificate bundle::
+In order to enable verification you will need root certifications. The easiest
+and most reliable method is to use the `certifi <https://certifi.io/en/latest>`_ package which provides Mozilla's root certificate bundle::
 
     pip install certifi
 
@@ -243,7 +258,7 @@ extra::
 .. warning:: If you're using Python 2 you will need additional packages. See the :ref:`section below <ssl_py2>` for more details.
 
 Once you have certificates, you can create a :class:`~poolmanager.PoolManager`
-that verifies requests::
+that verifies certificates when making requests::
 
     >>> import certifi
     >>> import urllib3
@@ -267,15 +282,15 @@ verification and will raise :class:`~exceptions.SSLError` if verification fails:
 
 .. _ssl_py2:
 
-SSL Verification in Python 2
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Certificate verification in Python 2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Python 2's SSL module lacks :ref:`SNI support <sni_warning>` and can lag behind
-security updates. For these reasons it's recommended to use
+Python 2's :mod:`ssl` module lacks :ref:`SNI support <sni_warning>` and can lag
+behind security updates. For these reasons it's recommended to use
 `pyOpenSSL <https://pyopenssl.readthedocs.io/en/latest/>`_.
 
-If you install urllib3 with the ``secure`` extra, all required packages for SSL
-verification on Python 2 will be installed::
+If you install urllib3 with the ``secure`` extra, all required packages for
+certificate verification on Python 2 will be installed::
 
     pip install urllib3[secure]
 
@@ -294,7 +309,7 @@ Once installed, you can tell urllib3 to use pyOpenSSL by using :mod:`urllib3.con
     >>> urllib3.contrib.pyopenssl.inject_into_urllib3()
 
 Finally, you can create a :class:`~poolmanager.PoolManager` that verifies
-requests::
+certificates when performing requests::
 
     >>> import certifi
     >>> import urllib3
@@ -308,8 +323,8 @@ to the standard-library :mod:`ssl` module. You may experience
 :ref:`several warnings <ssl_warnings>` when doing this.
 
 .. warning:: If you do not use pyOpenSSL, Python must be compiled with ssl
-    support for SSL verification to work. It is uncommon, but it is possible to
-    compile Python without SSL support. See this
+    support for certificate verification to work. It is uncommon, but it is
+    possible to compile Python without SSL support. See this
     `Stackoverflow thread <https://stackoverflow.com/questions/5128845/importerror-no-module-named-ssl>`_
     for more details.
 
@@ -326,8 +341,8 @@ to the standard-library :mod:`ssl` module. You may experience
 Note about Mac OS X
 ~~~~~~~~~~~~~~~~~~~
 
-Apple-provided Python and OpenSSL libraries contain a patch that makes ssl
-libraries automatically check the system keychain's certificates. This can be
+Apple-provided Python and OpenSSL libraries contain a patches that make them
+automatically check the system keychain's certificates. This can be
 surprising if you specify custom certificates and see requests unexpectedly
 succeed. See this
 `article <https://hynek.me/articles/apple-openssl-verification-surprises/>`_
@@ -338,14 +353,14 @@ for more information.
 SSL Warnings
 ~~~~~~~~~~~~
 
-Urllib3 will issue several different warnings based on the level of SSL
+Urllib3 will issue several different warnings based on the level of certificate
 verification support. These warning indicate particular situations and can
 resolved in different ways.
 
 * :class:`~exceptions.InsecureRequestWarning`
     This happens when an request is made to an HTTPS URL without certificate
-    verification enabled. Follow the :ref:`SSL verification <ssl>` guide to
-    resolve this warning.
+    verification enabled. Follow the :ref:`certificate verification <ssl>`
+    guide to resolve this warning.
 * :class:`~exceptions.InsecurePlatformWarning`
     This happens on Python 2 platforms that have an outdated :mod:`ssl` module.
     These older :mod:`ssl` can cause some insecure requests to succeed where
