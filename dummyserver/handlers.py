@@ -131,6 +131,10 @@ class TestingApp(RequestHandler):
     def upload(self, request):
         "Confirm that the uploaded file conforms to specification"
         # FIXME: This is a huge broken mess
+        content_type = request.headers.get('Content-Type', '')
+        if 'multipart/form-data' not in content_type:
+            return Response('Wrong content type: {}'.format(content_type),
+                            status='400 Bad Request')
         param = request.params.get('upload_param', 'myfile').decode('ascii')
         filename = request.params.get('upload_filename', '').decode('utf-8')
         size = int(request.params.get('upload_size', '0'))
