@@ -239,7 +239,7 @@ class Retry(object):
 
         total = self.total
         while hasattr(total, 'total'):
-            total = total.total  ## allow nested Retry objects
+            total = total.total  # allow nested Retry objects
         if total is not None:
             total -= 1
 
