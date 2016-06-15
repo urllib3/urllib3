@@ -88,6 +88,17 @@ class RetryTest(unittest.TestCase):
         self.assertTrue(Retry(0).raise_on_redirect)
         self.assertFalse(Retry(False).raise_on_redirect)
 
+    def test_retry_total_is_a_retry(self):
+        """ When retry.total is a Retry object, do not fail as before with a
+            "TypeError: unsupported operand type(s) for -=: 'Retry' and 'int'"
+        """
+        retry = Retry(total=5)
+        retry = retry.increment()
+        self.assertEqual(retry.total, 4)
+        retry.total = Retry(total=5)
+        retry = retry.increment()
+        self.assertEqual(retry.total, 4)
+
     def test_retry_read_zero(self):
         """ No second chances on read timeouts, by default """
         error = ReadTimeoutError(None, "/", "read timed out")

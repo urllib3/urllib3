@@ -238,6 +238,8 @@ class Retry(object):
             raise six.reraise(type(error), error, _stacktrace)
 
         total = self.total
+        while hasattr(total, 'total'):
+            total = total.total  ## allow nested Retry objects
         if total is not None:
             total -= 1
 
