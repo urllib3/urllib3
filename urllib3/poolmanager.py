@@ -225,6 +225,10 @@ class PoolManager(RequestMethods):
         u = parse_url(url)
         return self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
+    def request(self, method, url, fields=None, headers=None, **urlopen_kw):
+        log.debug("%s \" %s %s", str(self.pools), method, url)
+        return RequestMethods.request(self, method, url, fields, headers, **urlopen_kw)
+
     def urlopen(self, method, url, redirect=True, **kw):
         """
         Same as :meth:`urllib3.connectionpool.HTTPConnectionPool.urlopen`
