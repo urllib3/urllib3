@@ -92,7 +92,7 @@ class RequestMethods(object):
         fields = fields or []
 
         if fields or form_fields:
-    
+
             content_type = None
 
             if body is not None:
@@ -129,7 +129,7 @@ class RequestMethods(object):
             querystring += urlencode(fields)
             if querystring and url_params:
                 querystring += '&'
-        
+
         if url_params:
             querystring += urlencode(url_params)
 
