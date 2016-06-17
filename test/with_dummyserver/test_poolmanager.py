@@ -166,20 +166,12 @@ class TestPoolManager(HTTPDummyServerTestCase):
         returned_headers = json.loads(r.data.decode())
         self.assertEqual(returned_headers.get('Foo'), 'bar')
 
-        r = http.request_encode_url('GET', '%s/headers' % self.base_url)
-        returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get('Foo'), 'bar')
-
-        r = http.request_encode_body('POST', '%s/headers' % self.base_url)
-        returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get('Foo'), 'bar')
-
-        r = http.request_encode_url('GET', '%s/headers' % self.base_url, headers={'Baz': 'quux'})
+        r = http.request('GET', '%s/headers' % self.base_url, headers={'Baz': 'quux'})
         returned_headers = json.loads(r.data.decode())
         self.assertEqual(returned_headers.get('Foo'), None)
         self.assertEqual(returned_headers.get('Baz'), 'quux')
 
-        r = http.request_encode_body('GET', '%s/headers' % self.base_url, headers={'Baz': 'quux'})
+        r = http.request('GET', '%s/headers' % self.base_url, headers={'Baz': 'quux'})
         returned_headers = json.loads(r.data.decode())
         self.assertEqual(returned_headers.get('Foo'), None)
         self.assertEqual(returned_headers.get('Baz'), 'quux')
