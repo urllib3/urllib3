@@ -1,3 +1,4 @@
+import atexit
 import datetime
 import logging
 import ssl
@@ -50,7 +51,36 @@ log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
+_wincerts = None
 
+# copied from setuptools.ssl_support
+def get_win_certfile():
+    global _wincerts
+    if _wincerts:
+        return _wincerts.name
+
+    try:
+        from wincertstore import CertFile
+    except ImportError:
+        return None
+
+    class MyCertFile(CertFile):
+        def __init__(self, stores=(), certs=()):
+            CertFile.__init__(self)
+            for store in stores:
+                self.addstore(store)
+            self.addcerts(certs)
+            atexit.register(self.close)
+
+        def close(self):
+            try:
+                super(MyCertFile, self).close()
+            except OSError:
+                pass
+
+    _wincerts = MyCertFile(stores=['CA', 'ROOT'])
+    return _wincerts.name 
+    
 
 class TestHTTPS(HTTPSDummyServerTestCase):
     def setUp(self):
@@ -212,7 +242,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                            'monkey patching')
 
         https_pool = HTTPSConnectionPool('httpbin.org', 443,
-                                         cert_reqs=ssl.CERT_REQUIRED)
+                                         cert_reqs=ssl.CERT_REQUIRED,
+                                         ca_certs=get_win_certfile())
 
         https_pool.request('HEAD', '/')
 
