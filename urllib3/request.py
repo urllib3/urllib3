@@ -97,6 +97,7 @@ class Request(object):
         kw.update(self.kwargs)
         return kw
 
+
 class RequestMethods(object):
     """
     Convenience mixin for classes who implement a :meth:`urlopen` method, such
