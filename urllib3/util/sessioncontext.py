@@ -12,8 +12,8 @@ class SessionContext(object):
     """
 
     def __init__(self, handlers=None):
-        # We unfortunately have to do it this way; empty cookie jars
-        # evaluate as falsey.
+        # We want to be able to have an empty list passed to handlers; that way
+        # we can have a SessionContext with no handlers.
         if handlers is not None:
             self.handlers = handlers
         else:
