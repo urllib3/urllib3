@@ -21,16 +21,9 @@ class RequestMethods(object):
 
     Specifically,
 
-    :meth:`.request_encode_url` is for sending requests whose fields are
-    encoded in the URL (such as GET, HEAD, DELETE).
-
-    :meth:`.request_encode_body` is for sending requests whose fields are
-    encoded in the *body* of the request using multipart or www-form-urlencoded
-    (such as for POST, PUT, PATCH).
-
     :meth:`.request` is for making any kind of request, it will look up the
-    appropriate encoding format and use one of the above two methods to make
-    the request.
+    appropriate encoding format and make the request in that format. It can
+    also receive fields in a specified format and encode them into the request.
 
     Initializer parameters:
 
