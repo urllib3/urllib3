@@ -35,17 +35,13 @@ class SessionManager(RequestMethods):
         2
 
     """
-    def __init__(self, manager, context=None, headers=None):
+    def __init__(self, manager, context=None, headers=None, **context_kw):
         super(SessionManager, self).__init__(headers=headers)
         self.manager = manager
-        self.context = context or SessionContext()
+        self.context = context or SessionContext(**context_kw)
 
-<<<<<<< HEAD
-    def urlopen(self, method, url, redirect=True, retries=None, **kw):
-=======
     def urlopen(self, method, url, body=None, redirect=True,
                 retries=None, redirect_from=None, **kw):
->>>>>>> b295ab0... Fixing flake8 bugs; making implementation more version-agnostic
         """
         Same as :meth:`urllib2.poolmanager.PoolManager.urlopen` with added
         request-context-managing special sauce. The received ``url`` param
@@ -62,19 +58,12 @@ class SessionManager(RequestMethods):
         # Build a mock Request object to work with
         request_object = Request(url=url, method=method, headers=headers)
         self.context.apply_to(request_object)
-        modified_headers = request_object.get_all_headers()
 
         # Ensure that redirects happen at this level only
         kw['redirect'] = False
-<<<<<<< HEAD
-        kw['headers'] = modified_headers
-
-        response = self.manager.urlopen(method, url, retries=retries, **kw)
-=======
-        request_kw = request_object.kw()
+        request_kw = request_object.get_kwargs()
         request_kw.update(kw)
         response = self.manager.urlopen(retries=retries, **request_kw)
->>>>>>> b295ab0... Fixing flake8 bugs; making implementation more version-agnostic
 
         # Retrieve any context from the response
         self.context.extract_from(response, request_object)
