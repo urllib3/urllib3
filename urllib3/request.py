@@ -1,13 +1,101 @@
 from __future__ import absolute_import
-try:
-    from urllib.parse import urlencode
-except ImportError:
-    from urllib import urlencode
+
+import logging
 
 from .filepost import encode_multipart_formdata
+from .exceptions import MaxRetryError
+from .util.url import parse_url
+
+from .packages.six.moves.urllib.parse import urlencode
+from .packages.six.moves.urllib.parse import urljoin
+
+__all__ = ['RequestMethods', 'Request']
+
+log = logging.getLogger(__name__)
 
 
-__all__ = ['RequestMethods']
+class Request(object):
+    """
+    Implements some of the interface of the stdlib Request object, but does it
+    in our own way, so we're free from the constrains of urllib/urllib2
+    """
+    def __init__(self, method, url, headers=None, body=None, redirected_by=None):
+        self.method = method
+        self.url = url
+        self.headers = headers or dict()
+        self.body = body
+        self.redirect_source = redirected_by
+        self.kwargs = {}
+        if self.has_header('Cookie'):
+            self._cookies = self.get_header('Cookie').split('; ')
+        else:
+            self._cookies = []
+
+    def add_cookies(self, *cookies):
+        """
+        Add cookies to the request, updating the Cookie header with each one.
+        """
+        for each in cookies:
+            if each not in self._cookies:
+                self._cookies.append(each)
+        self.headers['Cookie'] = '; '.join(self._cookies)
+
+    def get_full_url(self):
+        """
+        Get the request's full URL
+        """
+        return self.full_url
+
+    @property
+    def full_url(self):
+        return self.url
+
+    @property
+    def host(self):
+        return parse_url(self.url).host
+
+    @property
+    def type(self):
+        return parse_url(self.url).scheme
+
+    @property
+    def unverifiable(self):
+        return self.is_unverifiable()
+
+    @property
+    def origin_req_host(self):
+        return parse_url(self.redirect_source).host or self.host
+
+    def is_unverifiable(self):
+        """
+        This determines if the request is "verifiable" for cookie handling
+        purposes - generally, a request is "verifiable" if the user has an
+        opportunity to change the URL pre-request. In the context of urllib3,
+        this is generally not the case only if a redirect happened.
+        """
+        if self.redirect_source and self.redirect_source != self.url:
+            return True
+        else:
+            return False
+
+    def has_header(self, header):
+        return header in self.headers
+
+    def get_header(self, header, default=None):
+        return self.headers.get(header, default)
+
+    def get_kwargs(self):
+        """
+        Gives us a set of keywords we can **expand into urlopen
+        """
+        kw = {
+            'method': self.method,
+            'url': self.url,
+            'headers': self.headers,
+            'body': self.body
+        }
+        kw.update(self.kwargs)
+        return kw
 
 
 class RequestMethods(object):
@@ -149,3 +237,24 @@ class RequestMethods(object):
         extra_kw.update(urlopen_kw)
 
         return self.urlopen(method, url, **extra_kw)
+
+    def redirect(self, response, method, retries, **kwargs):
+        """
+        Abstracts the redirect process to be used from any :class:`RequestMethods` object
+        """
+        url = kwargs.pop('url', '')
+        redirect_location = urljoin(url, response.get_redirect_location())
+        method = retries.redirect_method(method, response.status)
+        try:
+            pool = kwargs.pop('pool', self)
+            retries = retries.increment(method, url, response=response, _pool=pool)
+        except MaxRetryError:
+            if retries.raise_on_redirect:
+                # Release the connection for this response, since we're not
+                # returning it to be released manually.
+                response.release_conn()
+                raise
+            return response
+
+        log.info("Redirecting %s -> %s", url, redirect_location)
+        return self.urlopen(method=method, url=redirect_location, retries=retries, **kwargs)

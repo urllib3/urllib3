@@ -193,7 +193,7 @@ In chronological order:
   * Started Recipes documentation and added a recipe about handling concatenated gzip data in HTTP response
 
 * Jesse Shapiro <jesse@jesseshapiro.net>
-  * Various character-encoding fixes/tweaks
+  * Created SessionManager
   * Disabling IPv6 DNS when IPv6 connections not supported
 
 * David Foster <http://dafoster.net/>

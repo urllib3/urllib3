@@ -169,6 +169,10 @@ class HTTPResponse(io.IOBase):
     def connection(self):
         return self._connection
 
+    def info(self):
+        # Compatibility method for cookie handler
+        return self.headers
+
     def tell(self):
         """
         Obtain the number of bytes pulled over the wire so far. May differ from

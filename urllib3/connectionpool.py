@@ -454,7 +454,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         Get a connection from the pool and perform an HTTP request. This is the
         lowest level call for making a request, so you'll need to specify all
-        the raw details.
+        the raw details. To make HTTP calls, use :func:`urllib3.request.RequestMethods.request`
+        instead.
 
         .. note::
 
@@ -668,28 +669,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                 release_conn=release_conn, **response_kw)
 
         # Handle redirect?
-        redirect_location = redirect and response.get_redirect_location()
-        if redirect_location:
-            if response.status == 303:
-                method = 'GET'
-
-            try:
-                retries = retries.increment(method, url, response=response, _pool=self)
-            except MaxRetryError:
-                if retries.raise_on_redirect:
-                    # Release the connection for this response, since we're not
-                    # returning it to be released manually.
-                    response.release_conn()
-                    raise
-                return response
-
-            log.info("Redirecting %s -> %s", url, redirect_location)
-            return self.urlopen(
-                method, redirect_location, body, headers,
-                retries=retries, redirect=redirect,
-                assert_same_host=assert_same_host,
-                timeout=timeout, pool_timeout=pool_timeout,
-                release_conn=release_conn, **response_kw)
+        if redirect and response.get_redirect_location():
+            return self.redirect(
+                response=response, method=method, retries=retries,
+                url=url, headers=headers, body=body,
+                assert_same_host=assert_same_host, timeout=timeout,
+                pool_timeout=pool_timeout, release_conn=release_conn,
+                redirect=redirect, **response_kw)
 
         # Check if we should retry the HTTP response.
         if retries.is_forced_retry(method, status_code=response.status):
