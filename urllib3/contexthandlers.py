@@ -94,7 +94,7 @@ class BasicAuthHandler(object):
         """
         Build an authorization header based on stored information
         """
-        auth_string = '{}:{}'.format(self.username or '', self.password or '')
+        auth_string = '{0}:{1}'.format(self.username or '', self.password or '')
         return make_headers(basic_auth=auth_string)
 
     def host_matches(self, request):
