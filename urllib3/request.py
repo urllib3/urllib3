@@ -4,6 +4,7 @@ import logging
 
 from .filepost import encode_multipart_formdata
 from .exceptions import MaxRetryError
+from .util.url import parse_url
 
 from .packages.six.moves.urllib.parse import urlencode
 from .packages.six.moves.urllib.parse import urljoin

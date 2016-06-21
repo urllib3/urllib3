@@ -5,7 +5,7 @@ from urllib3.poolmanager import PoolManager
 from urllib3.packages.six import b, u
 from urllib3.packages import six
 
-from dummyserver.testcase import HTTPDummyServerTestCase
+from dummyserver.testcase import HTTPDummyServerTestCase, HTTPSDummyServerTestCase
 
 
 class TestSessionManager(HTTPDummyServerTestCase):
