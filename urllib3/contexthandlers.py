@@ -22,7 +22,11 @@ class DefaultCookiePolicy(PythonCookiePolicy):
 
 
 class CookieJar(PythonCookieJar):
-
+    """
+    Inherit from the stdlib cookie jar object, but modify the way we
+    add cookies to be more friendly to our own custom Request object, and
+    also prebuild the policy to be a secure option, rather than the default.
+    """
     def __init__(self, policy=None):
         policy = policy or DefaultCookiePolicy()
         # Old-style class on Python 2
@@ -58,13 +62,13 @@ class CookieHandler(object):
 
     def apply_to(self, request):
         """
-        Applies changes from the context to the supplied :class:`.request.Request`.
+        Applies cookies to the supplied :class:`.request.Request`.
         """
         self.cookie_jar.add_cookie_header(request)
 
     def extract_from(self, response, request):
         """
-        Extracts context modifications (new cookies, etc) from the response and stores them.
+        Extracts new cookies from the response and stores them.
         """
         self.cookie_jar.extract_cookies(response, request)
 
@@ -79,14 +83,24 @@ class BasicAuthHandler(object):
         self.scheme = domain.scheme or None
 
     def apply_to(self, request):
+        """
+        Verify that the host/scheme match the instance options, and if so, apply
+        an authorization header with the stored username and password
+        """
         if self.host_matches(request):
             request.headers.update(self.build_header())
 
     def build_header(self):
+        """
+        Build an authorization header based on stored information
+        """
         auth_string = '{}:{}'.format(self.username or '', self.password or '')
         return make_headers(basic_auth=auth_string)
 
     def host_matches(self, request):
+        """
+        Check if the host and scheme of the request match those stored here
+        """
         if self.scheme is not None and self.scheme != request.type:
             return False
         else:

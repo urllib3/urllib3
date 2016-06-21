@@ -1,13 +1,14 @@
 from ..contexthandlers import CookieHandler
 
+
 class SessionContext(object):
     """
     Extensible class encapsulated by :class:`.SessionManager`; currently
     used to manage cookies.
 
-    :param cookie_jar:
-        Used to pass a prebuilt :class:`CookieJar` into the
-        context to be used instead of an empty jar.
+    :param handlers:
+        Takes a list of ContextHandler objects that will be able to mutate in-flight
+        requests and get information back from responses.
     """
 
     def __init__(self, handlers=None):
@@ -24,7 +25,7 @@ class SessionContext(object):
         """
         for handler in self.handlers:
             if hasattr(handler, 'apply_to'):
-                handler.apply_to(request) 
+                handler.apply_to(request)
 
     def extract_from(self, response, request):
         """

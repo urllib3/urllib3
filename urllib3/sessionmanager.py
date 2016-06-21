@@ -25,13 +25,13 @@ class SessionManager(RequestMethods):
     Example::
 
         >>> manager = SessionManager(PoolManager())
-        >>> manager.context.cookie_jar
+        >>> manager.context.handlers[0].cookie_jar
         <CookieJar[]>
-        >>> len(manager.context.cookie_jar)
+        >>> len(manager.context.handlers[0].cookie_jar)
         0
         >>> manager.request('GET', 'http://google.com')
         >>> manager.request('GET', 'http://yahoo.com')
-        >>> len(manager.context.cookie_jar)
+        >>> len(manager.context.handlers[0].cookie_jar)
         2
 
     """

@@ -12,44 +12,12 @@ __all__ = ['RequestMethods', 'Request']
 
 log = logging.getLogger(__name__)
 
-'''
-class Request(_Request):
-    """
-    Currently used as a shim to allow us to work with the stdlib cookie
-    handling, which expects a `urllib.request.Request`-like object.
-    """
-    def __init__(self, *args, **kwargs):
-        kwargs.pop('method', None)
-        # Request is an old-style class in Python 2
-        _Request.__init__(self, *args, **kwargs)
-        self._cookies = []
-        # If there's an existing Cookie header, let's split it up
-        # so we can handle it similarly to those we get from a jar.
-        if self.has_header('Cookie'):
-            self._cookies = self.get_header('Cookie').split('; ')
-
-    def add_cookies(self, *cookies):
-        """
-        We keep track of individual cookies so that we can keep them from
-        duplicating, and re-render the Cookie header when we get new ones.
-        """
-        for each in cookies:
-            if each not in self._cookies:
-                self._cookies.append(each)
-        self.add_header('Cookie', '; '.join(self._cookies))
-
-    def get_all_headers(self):
-        """
-        Returns a complete set of all headers
-        """
-        headers = self.unredirected_hdrs.copy()
-        headers.update(self.headers)
-        return headers
-'''
-
 
 class Request(object):
-
+    """
+    Implements some of the interface of the stdlib Request object, but does it
+    in our own way, so we're free from the constrains of urllib/urllib2
+    """
     def __init__(self, method, url, headers=None, body=None, redirected_by=None):
         self.method = method
         self.url = url
@@ -63,12 +31,18 @@ class Request(object):
             self._cookies = []
 
     def add_cookies(self, *cookies):
+        """
+        Add cookies to the request, updating the Cookie header with each one.
+        """
         for each in cookies:
             if each not in self._cookies:
                 self._cookies.append(each)
         self.headers['Cookie'] = '; '.join(self._cookies)
 
     def get_full_url(self):
+        """
+        Get the request's full URL
+        """
         return self.full_url
 
     @property
@@ -92,6 +66,12 @@ class Request(object):
         return parse_url(self.redirect_source).host or self.host
 
     def is_unverifiable(self):
+        """
+        This determines if the request is "verifiable" for cookie handling
+        purposes - generally, a request is "verifiable" if the user has an
+        opportunity to change the URL pre-request. In the context of urllib3,
+        this is generally not the case only if a redirect happened.
+        """
         if self.redirect_source and self.redirect_source != self.url:
             return True
         else:
@@ -104,6 +84,9 @@ class Request(object):
         return self.headers.get(header, default)
 
     def get_kwargs(self):
+        """
+        Gives us a set of keywords we can **expand into urlopen
+        """
         kw = {
             'method': self.method,
             'url': self.url,
