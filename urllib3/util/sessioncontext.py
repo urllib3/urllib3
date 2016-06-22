@@ -1,6 +1,6 @@
 import time
 
-from ..packages.six.moves.http_cookiejar import(
+from ..packages.six.moves.http_cookiejar import (
     DefaultCookiePolicy as PythonCookiePolicy,
     CookieJar as PythonCookieJar
 )
