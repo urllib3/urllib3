@@ -775,7 +775,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           assert_hostname=self.assert_hostname,
                           assert_fingerprint=self.assert_fingerprint)
             conn.ssl_version = self.ssl_version
-
         return conn
 
     def _prepare_proxy(self, conn):
