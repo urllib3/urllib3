@@ -4,6 +4,12 @@ Changes
 dev (master)
 ------------
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.16 (2016-06-11)
+-----------------
+
 * Disable IPv6 DNS when IPv6 connections are not possible. (Issue #840)
 
 * Provide ``key_fn_by_scheme`` pool keying mechanism that can be
@@ -23,9 +29,7 @@ dev (master)
 * Retain ``release_conn`` state across retries. (Issues #651, #866)
 
 * Add customizable ``HTTPConnectionPool.ResponseCls``, which defaults to
-  ``HTTPResponse`` but can be replaced with a subclass.
-
-* ... [Short description of non-trivial change.] (Issue #)
+  ``HTTPResponse`` but can be replaced with a subclass. (Issue #879)
 
 
 1.15.1 (2016-04-11)

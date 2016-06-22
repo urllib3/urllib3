@@ -61,7 +61,7 @@ try:  # Platform-specific: Python 2
     from socket import _fileobject
 except ImportError:  # Platform-specific: Python 3
     _fileobject = None
-    from urllib3.packages.backports.makefile import backport_makefile
+    from ..packages.backports.makefile import backport_makefile
 
 import ssl
 import select
