@@ -77,6 +77,60 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             r = https_pool.request('GET', '/')
             self.assertEqual(r.status, 200)
 
+            # Modern versions of Python, or systems using PyOpenSSL, don't
+            # emit warnings.
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
+                self.assertFalse(warn.called, warn.call_args_list)
+            else:
+                self.assertTrue(warn.called)
+                if util.HAS_SNI:
+                    call = warn.call_args_list[0]
+                else:
+                    call = warn.call_args_list[1]
+                error = call[0][1]
+                self.assertEqual(error, InsecurePlatformWarning)
+
+    def test_verified_with_context(self):
+        ctx = util.ssl_.create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
+        ctx.load_verify_locations(cafile=DEFAULT_CA)
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         ssl_context=ctx)
+
+        conn = https_pool._new_conn()
+        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
+
+        with mock.patch('warnings.warn') as warn:
+            r = https_pool.request('GET', '/')
+            self.assertEqual(r.status, 200)
+
+            # Modern versions of Python, or systems using PyOpenSSL, don't
+            # emit warnings.
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
+                self.assertFalse(warn.called, warn.call_args_list)
+            else:
+                self.assertTrue(warn.called)
+                if util.HAS_SNI:
+                    call = warn.call_args_list[0]
+                else:
+                    call = warn.call_args_list[1]
+                error = call[0][1]
+                self.assertEqual(error, InsecurePlatformWarning)
+
+    def test_context_combines_with_ca_certs(self):
+        ctx = util.ssl_.create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         ca_certs=DEFAULT_CA,
+                                         ssl_context=ctx)
+
+        conn = https_pool._new_conn()
+        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
+
+        with mock.patch('warnings.warn') as warn:
+            r = https_pool.request('GET', '/')
+            self.assertEqual(r.status, 200)
+
+            # Modern versions of Python, or systems using PyOpenSSL, don't
+            # emit warnings.
             if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
                 self.assertFalse(warn.called, warn.call_args_list)
             else:
@@ -166,8 +220,16 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.assertEqual(r.status, 200)
             self.assertTrue(warn.called)
 
-            call, = warn.call_args_list
-            category = call[0][1]
+            # Modern versions of Python, or systems using PyOpenSSL, only emit
+            # the unverified warning. Older systems may also emit other
+            # warnings, which we want to ignore here.
+            calls = warn.call_args_list
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
+                category = calls[0][0][1]
+            elif util.HAS_SNI:
+                category = calls[1][0][1]
+            else:
+                category = calls[2][0][1]
             self.assertEqual(category, InsecureRequestWarning)
 
     def test_ssl_unverified_with_ca_certs(self):
@@ -180,6 +242,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.assertEqual(r.status, 200)
             self.assertTrue(warn.called)
 
+            # Modern versions of Python, or systems using PyOpenSSL, only emit
+            # the unverified warning. Older systems may also emit other
+            # warnings, which we want to ignore here.
             calls = warn.call_args_list
             if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
                 category = calls[0][0][1]
@@ -188,33 +253,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             else:
                 category = calls[2][0][1]
             self.assertEqual(category, InsecureRequestWarning)
-
-    @requires_network
-    def test_ssl_verified_with_platform_ca_certs(self):
-        """
-        We should rely on the platform CA file to validate authenticity of SSL
-        certificates. Since this file is used by many components of the OS,
-        such as curl, apt-get, etc., we decided to not touch it, in order to
-        not compromise the security of the OS running the test suite (typically
-        urllib3 developer's OS).
-
-        This test assumes that httpbin.org uses a certificate signed by a well
-        known Certificate Authority.
-        """
-        try:
-            import urllib3.contrib.pyopenssl
-        except ImportError:
-            raise SkipTest('Test requires PyOpenSSL')
-        if (urllib3.connection.ssl_wrap_socket is
-                urllib3.contrib.pyopenssl.orig_connection_ssl_wrap_socket):
-            # Not patched
-            raise SkipTest('Test should only be run after PyOpenSSL '
-                           'monkey patching')
-
-        https_pool = HTTPSConnectionPool('httpbin.org', 443,
-                                         cert_reqs=ssl.CERT_REQUIRED)
-
-        https_pool.request('HEAD', '/')
 
     def test_assert_hostname_false(self):
         https_pool = HTTPSConnectionPool('localhost', self.port,
@@ -451,7 +489,7 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
 
     def test_set_cert_default_cert_required(self):
         conn = VerifiedHTTPSConnection(self.host, self.port)
-        conn.set_cert(ca_certs='/etc/ssl/certs/custom.pem')
+        conn.set_cert(ca_certs=DEFAULT_CA)
         self.assertEqual(conn.cert_reqs, 'CERT_REQUIRED')
 
 
