@@ -4,7 +4,7 @@ Changes
 dev (master)
 ------------
 
-* Accept ``SSLContext`` objects for use in SSL/TLS negotation.
+* Accept ``SSLContext`` objects for use in SSL/TLS negotation. (Issue #835)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
