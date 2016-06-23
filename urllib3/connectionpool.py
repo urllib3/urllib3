@@ -397,8 +397,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # AppEngine doesn't have a version attr.
         http_version = getattr(conn, '_http_vsn_str', 'HTTP/?')
-        log.debug("\"%s %s %s\" %s %s", method, url, http_version,
-                  httplib_response.status, httplib_response.length)
+        log.debug("%s://%s:%s \"%s %s %s\" %s %s", self.scheme, self.host, self.port,
+                  method, url, http_version, httplib_response.status,
+                  httplib_response.length)
 
         try:
             assert_header_parsing(httplib_response.msg)
