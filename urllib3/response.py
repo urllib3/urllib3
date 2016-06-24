@@ -133,7 +133,7 @@ class HTTPResponse(io.IOBase):
             self.chunked = True
 
         # If requested, preload the body.
-        if preload_content and not self._body:
+        if preload_content and not (self._body or self.chunked):
             self._body = self.read(decode_content=decode_content)
 
     def get_redirect_location(self):
@@ -485,6 +485,8 @@ class HTTPResponse(io.IOBase):
             If True, will attempt to decode the body based on the
             'content-encoding' header.
         """
+        if self._body:
+            return
         self._init_decoder()
         # FIXME: Rewrite this method and make it a class with a better structured logic.
         if not self.chunked:
