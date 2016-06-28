@@ -1,4 +1,5 @@
-'''SSL with SNI_-support for Python 2. Follow these instructions if you would
+"""
+SSL with SNI_-support for Python 2. Follow these instructions if you would
 like to verify SSL certificates in Python 2. Note, the default libraries do
 *not* do certificate checking; you need to do additional work to validate
 certificates yourself.
@@ -34,15 +35,9 @@ compression in Python 2 (see `CRIME attack`_).
 If you want to configure the default list of supported cipher suites, you can
 set the ``urllib3.contrib.pyopenssl.DEFAULT_SSL_CIPHER_LIST`` variable.
 
-Module Variables
-----------------
-
-:var DEFAULT_SSL_CIPHER_LIST: The list of supported SSL/TLS cipher suites.
-
 .. _sni: https://en.wikipedia.org/wiki/Server_Name_Indication
 .. _crime attack: https://en.wikipedia.org/wiki/CRIME_(security_exploit)
-
-'''
+"""
 from __future__ import absolute_import
 
 try:
@@ -98,6 +93,7 @@ _openssl_verify = {
         OpenSSL.SSL.VERIFY_PEER + OpenSSL.SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
 }
 
+#: The list of supported SSL/TLS cipher suites.
 DEFAULT_SSL_CIPHER_LIST = util.ssl_.DEFAULT_CIPHERS.encode('ascii')
 
 # OpenSSL will only write 16K at a time
