@@ -3,9 +3,6 @@ Advanced Usage
 
 .. currentmodule:: urllib3
 
-TODO: This section is under construction and stuff may move around.
-Please review for accuracy, not organization.
-
 .. _stream:
 
 Streaming and IO
@@ -63,6 +60,34 @@ You can use this file-like objects to do things like decode the content using
     >>> json.load(reader(r))
     {'origin': '127.0.0.1'}
     >>> r.release_conn()
+
+.. _proxies:
+
+Proxies
+-------
+
+You can use :class:`~poolmanager.ProxyManager` to tunnel requests through an
+HTTP proxy::
+
+    >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
+    >>> proxy.request('GET', 'http://google.com/')
+
+The usage of :class:`~poolmanager.ProxyManager` is the same as
+:class:`~poolmanager.PoolManager`.
+
+You can use :class:`~contrib.socks.SOCKSProxyManager` to connect to SOCKS4 or
+SOCKS5 proxies. In order to use SOCKS proxies you will need to install
+`PySocks <https://pypi.python.org/pypi/PySocks>`_ or install urllib3 with the
+``socks`` extra::
+
+    pip install urllib3[socks]
+
+Once PySocks is installed, you can use
+:class:`~contrib.socks.SOCKSProxyManager`::
+
+    >>> from urllib3.contrib.socks import SOCKSProxyManager
+    >>> proxy = SOCKSProxyManager('socks5://localhost:8889/')
+    >>> proxy.request('GET', 'http://google.com/')
 
 .. _ssl_mac:
 
