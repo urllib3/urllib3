@@ -145,3 +145,32 @@ Alternatively you can capture the warnings with the standard :mod:`logging` modu
 Finally, you can suppress the warnings at the interpreter level by setting the
 ``PYTHONWARNINGS`` environment variable or by using the
 `-W flag <https://docs.python.org/2/using/cmdline.html#cmdoption-W>`_.
+
+Google App Engine
+-----------------
+
+urllib3 supports `Google App Engine <https://cloud.google.com/appengine>`_ with
+some caveats.
+
+If you're using the `Flexible environment
+<https://cloud.google.com/appengine/docs/flexible/>`_, you do not have to do
+any configuration- urllib3 will just work. However, if you're using the
+`Standard environment <https://cloud.google.com/appengine/docs/python/>`_ then
+you either have to use :mod:`urllib3.contrib.appengine`'s
+:class:`~urllib3.contrib.appengine.AppEngineManager` or use the `Sockets API
+<https://cloud.google.com/appengine/docs/python/sockets/>`_
+
+To use :class:`~urllib3.contrib.appengine.AppEngineManager`::
+
+    >>> from urllib3.contrib.appengine import AppEngineManager
+    >>> http = AppEngineManager()
+    >>> http.request('GET', 'https://google.com/')
+
+To use the Sockets API, add the following to your app.yaml and use
+:class:`~urllib3.poolmanager.PoolManager` as usual::
+
+    env_variables:
+        GAE_USE_SOCKETS_HTTPLIB : 'true'
+
+For more details on the limitations and gotchas, see
+:mod:`urllib3.contrib.appengine`.
