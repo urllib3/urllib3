@@ -1,6 +1,9 @@
 Contributing
 ============
 
+urllib3 is a community-maintained project and we happily accept contributions.
+
+If you wish to add a new feature or fix a bug:
 
 #. `Check for open issues <https://github.com/shazow/urllib3/issues>`_ or open
    a fresh issue to start a discussion around a feature idea or a bug. There is
