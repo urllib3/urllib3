@@ -384,6 +384,18 @@ specify the retry at the :class:`~urllib3.poolmanager.PoolManager` level::
 You still override this pool-level retry policy by specifying ``retries`` to
 :meth:`~poolmanager.PoolManager.request`.
 
+Errors & Exceptions
+-------------------
+
+urllib3 wraps lower-level exceptions, for example::
+
+    >>> try:
+    ...     http.request('GET', 'nx.example.com', retries=False)
+    >>> except urllib3.exceptions.NewConnectionError:
+    ...     print('Connection failed.')
+
+See :mod:`~urllib3.exceptions` for the full list of all exceptions.
+
 Logging
 -------
 
@@ -392,9 +404,3 @@ emit several logs. In some cases this can be undesirable. You can use the
 standard logger interface to change the log level for urllib3's logger::
 
     >>> logging.getLogger("urllib3").setLevel(logging.WARNING)
-
-Errors & Exceptions
--------------------
-
-urllib3 wraps lower-level exceptions. See :mod:`~urllib3.exceptions` for
-the full list of all exceptions.
