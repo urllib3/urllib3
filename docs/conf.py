@@ -24,6 +24,25 @@ import alabaster
 root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, root_path)
 
+# Mock some expensive/platform-specific modules so build will work.
+# (https://read-the-docs.readthedocs.io/en/latest/faq.html#\
+#  i-get-import-errors-on-libraries-that-depend-on-c-modules)
+import mock
+
+
+class MockModule(mock.Mock):
+    @classmethod
+    def __getattr__(cls, name):
+        return MockModule()
+
+
+MOCK_MODULES = (
+    'ntlm',
+)
+
+sys.modules.update((mod_name, MockModule()) for mod_name in MOCK_MODULES)
+
+
 import urllib3
 
 
