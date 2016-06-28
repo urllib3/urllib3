@@ -61,7 +61,7 @@ Who uses urllib3?
 
 * `Requests <http://python-requests.org/>`_
 * `Pip <https://pip.pypa.io>`_
-* TODO: MOAR
+* & more!
 
 License
 -------
