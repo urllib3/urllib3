@@ -33,7 +33,6 @@ chunks of the response content.
 However, you can also treat the :class:`~response.HTTPResponse` instance as
 a file-like object. This allows you to do buffering::
 
-    >>> import io
     >>> r = http.request(
     ...     'GET',
     ...     'http://httpbin.org/bytes/1024',
@@ -44,11 +43,12 @@ a file-like object. This allows you to do buffering::
 Calls to :meth:`~response.HTTPResponse.read()` will block until more response
 data is available. 
 
+    >>> import io
     >>> reader = io.BufferedReader(r, 8)
     >>> reader.read(4)
     >>> r.release_conn()
 
-You can use this file-like objects to do things like decode the content using
+You can use this file-like object to do things like decode the content using
 :mod:`codecs`::
 
     >>> import codecs
@@ -116,17 +116,17 @@ resolved in different ways.
     guide to resolve this warning.
 * :class:`~exceptions.InsecurePlatformWarning`
     This happens on Python 2 platforms that have an outdated :mod:`ssl` module.
-    These older :mod:`ssl` can cause some insecure requests to succeed where
-    they should fail and secure requests to fail where they should succeed.
-    Follow the :ref:`pyOpenSSL <ssl_py2>` guide to resolve this warning.
+    These older :mod:`ssl` modules can cause some insecure requests to succeed
+    where they should fail and secure requests to fail where they should
+    succeed. Follow the :ref:`pyOpenSSL <ssl_py2>` guide to resolve this
+    warning.
 
 .. _sni_warning:
 
 * :class:`~exceptions.SNIMissingWarning`
-    This happens on Python 2 versions older than 2.7.9 and older versions of
-    pyOpenSSL. These older versions lack
-    `SNI <https://en.wikipedia.org/wiki/Server_Name_Indication>`_ support. This
-    can cause servers to present a certificate that the client thinks is
+    This happens on Python 2 versions older than 2.7.9. These older versions
+    lack `SNI <https://en.wikipedia.org/wiki/Server_Name_Indication>`_ support.
+    This can cause servers to present a certificate that the client thinks is
     invalid. Follow the :ref:`pyOpenSSL <ssl_py2>` guide to resolve this
     warning.
 

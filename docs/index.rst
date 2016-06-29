@@ -15,7 +15,7 @@ Python ecosystem :ref:`already uses <who-uses>` urllib3 and you should too.
 urllib3 brings many critical features that are missing from the Python
 standard libraries:
 
-- Thread safe.
+- Thread safety.
 - Connection pooling.
 - Client-side SSL/TLS verification.
 - File uploads with multipart encoding.

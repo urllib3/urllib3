@@ -194,7 +194,7 @@ Certificate verification
 It is highly recommended to always use SSL certificate verification.
 **By default, urllib3 does not verify HTTPS requests**.
 
-In order to enable verification you will need root certifications. The easiest
+In order to enable verification you will need root certificate. The easiest
 and most reliable method is to use the `certifi <https://certifi.io/en/latest>`_ package which provides Mozilla's root certificate bundle::
 
     pip install certifi
@@ -204,7 +204,7 @@ extra::
     
     pip install urllib3[secure]
 
-.. warning:: If you're using Python 2 you will need additional packages. See the :ref:`section below <ssl_py2>` for more details.
+.. warning:: If you're using Python 2 you may need additional packages. See the :ref:`section below <ssl_py2>` for more details.
 
 Once you have certificates, you can create a :class:`~poolmanager.PoolManager`
 that verifies certificates when making requests::
@@ -234,8 +234,8 @@ verification and will raise :class:`~exceptions.SSLError` if verification fails:
 Certificate verification in Python 2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Python 2's :mod:`ssl` module lacks :ref:`SNI support <sni_warning>` and can lag
-behind security updates. For these reasons it's recommended to use
+Older versions of Python 2 are built with an :mod:`ssl` module that lacks
+:ref:`SNI support <sni_warning>` and can lag behind security updates. For these reasons it's recommended to use
 `pyOpenSSL <https://pyopenssl.readthedocs.io/en/latest/>`_.
 
 If you install urllib3 with the ``secure`` extra, all required packages for
