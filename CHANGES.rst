@@ -4,6 +4,16 @@ Changes
 dev (master)
 ------------
 
+* Accept ``SSLContext`` objects for use in SSL/TLS negotation. (Issue #835)
+
+* ConnectionPool debug log now includes scheme, host, and port. (Issue #897)
+
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.16 (2016-06-11)
+-----------------
+
 * Disable IPv6 DNS when IPv6 connections are not possible. (Issue #840)
 
 * Provide ``key_fn_by_scheme`` pool keying mechanism that can be
@@ -12,7 +22,18 @@ dev (master)
 * Normalize scheme and host to lowercase for pool keys, and include
   ``source_address``. (Issue #830)
 
-* ... [Short description of non-trivial change.] (Issue #)
+* Cleaner exception chain in Python 3 for ``_make_request``.
+  (Issue #861)
+
+* Fixed installing ``urllib3[socks]`` extra. (Issue #864)
+
+* Fixed signature of ``ConnectionPool.close`` so it can actually safely be
+  called by subclasses. (Issue #873)
+
+* Retain ``release_conn`` state across retries. (Issues #651, #866)
+
+* Add customizable ``HTTPConnectionPool.ResponseCls``, which defaults to
+  ``HTTPResponse`` but can be replaced with a subclass. (Issue #879)
 
 
 1.15.1 (2016-04-11)
@@ -102,7 +123,7 @@ dev (master)
 * Made ``HTTPHeaderDict`` usable as a ``headers`` input value
   (Issues #632, #679)
 
-* Added `urllib3.contrib.appengine <https://urllib3.readthedocs.org/en/latest/contrib.html#google-app-engine>`_
+* Added `urllib3.contrib.appengine <https://urllib3.readthedocs.io/en/latest/contrib.html#google-app-engine>`_
   which has an ``AppEngineManager`` for using ``URLFetch`` in a
   Google AppEngine environment. (Issue #664)
 
@@ -259,7 +280,7 @@ dev (master)
 
 * Unverified HTTPS requests will trigger a warning on the first request. See
   our new `security documentation
-  <https://urllib3.readthedocs.org/en/latest/security.html>`_ for details.
+  <https://urllib3.readthedocs.io/en/latest/security.html>`_ for details.
   (Issue #426)
 
 * New retry logic and ``urllib3.util.retry.Retry`` configuration object.

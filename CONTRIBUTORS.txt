@@ -168,6 +168,8 @@ In chronological order:
 
 * Jordan Moldow <https://github.com/jmoldow>
   * Fix low-level exceptions leaking from ``HTTPResponse.stream()``.
+  * Bugfix for ``ConnectionPool.urlopen(release_conn=False)``.
+  * Creation of ``HTTPConnectionPool.ResponseCls``.
 
 * Predrag Gruevski <https://github.com/obi1kenobi>
   * Made cert digest comparison use a constant-time algorithm.

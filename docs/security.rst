@@ -111,6 +111,41 @@ Once you find your root certificate file::
         ...
 
 
+Custom SSL Contexts
+-------------------
+
+.. versionadded:: 1.17.0
+
+It is possible to provide a specific `SSL Context objects`_ directly to urllib3
+to exercise fine-grained control over the SSL configuration used in urllib3.
+
+For the purposes of compatibility, if you intend to customise an ``SSLContext``
+object we *strongly* recommend you obtain one from the following factory
+function:
+
+.. autofunction:: urllib3.util.ssl_.create_urllib3_context
+
+Once you have a context object, you can mutate that to achieve whatever affect
+you'd like. For example, the code below loads the default SSL certificates on
+Linux systems and then makes a HTTPS request to Google:
+
+.. code-block:: python
+
+    from urllib3 import PoolManager
+    from urllib3.util.ssl_ import create_urllib3_context
+
+    ctx = create_urllib3_context()
+    ctx.load_default_certs()
+
+    p = PoolManager(ssl_context=ctx)
+    p.urlopen('GET', 'https://www.google.com/')
+
+
+Any customisation that is possible with the ``SSLContext`` object is possible
+here.
+
+
+
 .. _pyopenssl:
 
 OpenSSL / PyOpenSSL
@@ -180,7 +215,7 @@ Unverified HTTPS requests will trigger a warning via Python's ``warnings`` modul
 
     urllib3/connectionpool.py:736: InsecureRequestWarning: Unverified HTTPS
     request is being made. Adding certificate verification is strongly advised.
-    See: https://urllib3.readthedocs.org/en/latest/security.html
+    See: https://urllib3.readthedocs.io/en/latest/security.html
 
 This would be a great time to enable HTTPS verification:
 :ref:`certifi-with-urllib3`.
@@ -260,3 +295,6 @@ interpreter (see `docs
 <https://docs.python.org/2/using/cmdline.html#cmdoption-W>`_), such as::
 
     PYTHONWARNINGS="ignore:Unverified HTTPS request" ./do-insecure-request.py
+
+
+.. _SSL Context objects: https://docs.python.org/3/library/ssl.html#ssl.SSLContext

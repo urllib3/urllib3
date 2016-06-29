@@ -23,7 +23,7 @@ __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
 log = logging.getLogger(__name__)
 
 SSL_KEYWORDS = ('key_file', 'cert_file', 'cert_reqs', 'ca_certs',
-                'ssl_version', 'ca_cert_dir')
+                'ssl_version', 'ca_cert_dir', 'ssl_context')
 
 # The base fields to use when determining what pool to get a connection from;
 # these do not rely on the ``connection_pool_kw`` and can be determined by the

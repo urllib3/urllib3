@@ -117,7 +117,7 @@ except ImportError:
                 'urllib3 from configuring SSL appropriately and may cause '
                 'certain SSL connections to fail. You can upgrade to a newer '
                 'version of Python to solve this. For more information, see '
-                'https://urllib3.readthedocs.org/en/latest/security.html'
+                'https://urllib3.readthedocs.io/en/latest/security.html'
                 '#insecureplatformwarning.',
                 InsecurePlatformWarning
             )
@@ -287,6 +287,9 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
     """
     context = ssl_context
     if context is None:
+        # Note: This branch of code and all the variables in it are no longer
+        # used by urllib3 itself. We should consider deprecating and removing
+        # this code.
         context = create_urllib3_context(ssl_version, cert_reqs,
                                          ciphers=ciphers)
 
@@ -313,7 +316,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         'This may cause the server to present an incorrect TLS '
         'certificate, which can cause validation failures. You can upgrade to '
         'a newer version of Python to solve this. For more information, see '
-        'https://urllib3.readthedocs.org/en/latest/security.html'
+        'https://urllib3.readthedocs.io/en/latest/security.html'
         '#snimissingwarning.',
         SNIMissingWarning
     )
