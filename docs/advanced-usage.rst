@@ -102,7 +102,7 @@ surprising if you specify custom certificates and see requests unexpectedly
 succeed. For example, if you are specifying your own certificate for validation
 and the server presents a different certificate you would expect the connection
 to fail. However, if that server presents a certificate that is in the system
-keychain then the conneciton will succeed.
+keychain then the connection will succeed.
 
 `This article <https://hynek.me/articles/apple-openssl-verification-surprises/>`_
 has more in-depth analysis and explanation.
