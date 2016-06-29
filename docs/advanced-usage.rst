@@ -11,6 +11,8 @@ Streaming and IO
 When dealing with large responses it's often better to stream the response
 content::
 
+    >>> import urllib3
+    >>> http = urllib3.PoolManager()
     >>> r = http.request(
     ...     'GET',
     ...     'http://httpbin.org/bytes/1024',
@@ -97,9 +99,19 @@ Certificate validation and Mac OS X
 Apple-provided Python and OpenSSL libraries contain a patches that make them
 automatically check the system keychain's certificates. This can be
 surprising if you specify custom certificates and see requests unexpectedly
-succeed. See this
-`article <https://hynek.me/articles/apple-openssl-verification-surprises/>`_
-for more information.
+succeed. For example, if you are specifying your own certificate for validation
+and the server presents a different certificate you would expect the connection
+to fail. However, if that server presents a certificate that is in the system
+keychain then the conneciton will succeed.
+
+`This article <https://hynek.me/articles/apple-openssl-verification-surprises/>`_
+has more in-depth analysis and explanation.
+
+If you have `homebrew <http://brew.sh>`_, you can configure homebrew Python to
+use homebrew's OpenSSL instead of the system OpenSSL::
+
+    brew install openssl
+    brew install python --with-brewed-openssl
 
 .. _ssl_warnings:
 

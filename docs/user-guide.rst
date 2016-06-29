@@ -33,7 +33,8 @@ HTTP verb::
     ...     'http://httpbin.org/post',
     ...     fields={'hello: 'world'})
 
-The different types of requests you can send is covered in :ref:`request_data`.
+The :ref:`request_data` section covers sending other kinds of requests data,
+including JSON, files, and binary data.
 
 .. _response_content:
 
@@ -81,6 +82,20 @@ to a byte string representing the response content::
 Request data
 ------------
 
+Headers
+~~~~~~~
+
+You can specify headers as a dictionary in the ``headers`` argument in :meth:`~poolmanager.PoolManager.request`::
+
+    >>> r = http.request(
+    ...     'GET',
+    ...     'http://httpbin.org/headers',
+    ...     headers={
+    ...         'X-Something': 'value'
+    ...     })
+    >>> json.loads(r.data.decode('utf-8'))['headers']
+    {'X-Something': 'value', ...}
+
 Query parameters
 ~~~~~~~~~~~~~~~~
 
@@ -104,20 +119,6 @@ in the URL::
     >>> r = http.request('POST', url)
     >>> json.loads(r.data.decode('utf-8'))['args']
     {'arg': 'value'}
-
-Headers
-~~~~~~~
-
-You can specify headers as a dictionary in the ``headers`` argument in :meth:`~poolmanager.PoolManager.request`::
-
-    >>> r = http.request(
-    ...     'GET',
-    ...     'http://httpbin.org/headers',
-    ...     headers={
-    ...         'X-Something': 'value'
-    ...     })
-    >>> json.loads(r.data.decode('utf-8'))['headers']
-    {'X-Something': 'value', ...}
 
 
 .. _form_data:
@@ -172,7 +173,15 @@ approach as :ref:`form_data` and specify the file field as a tuple of
     {'filefield': '...'}
 
 While specifying the filename is not strictly required, it's recommended in
-order to match browser behavior.
+order to match browser behavior. You can also pass a third item in the tuple
+to specify the file's MIME type explicitly::
+
+    >>> r = http.request(
+    ...     'POST',
+    ...     'http://httpbin.org/post',
+    ...     fields={
+    ...         'filefield': ('example.txt', file_data, 'text/plain'),
+    ...     })
 
 For sending raw binary data simply specify the ``body`` argument. It's also
 recommended to set the ``Content-Type`` header::
