@@ -146,7 +146,7 @@ argument and setting the ``Content-Type`` header when calling
 
     >>> import json
     >>> data = {'attribute': 'value'}
-    >>> encoded_data = json.dumps(data)
+    >>> encoded_data = json.dumps(data).encode('utf-8')
     >>> r = http.request(
     ...     'POST',
     ...     'http://httpbin.org/post',
