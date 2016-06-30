@@ -211,7 +211,7 @@ def parse_url(url):
 
 def get_host(url):
     """
-    Deprecated. Use :func:`.parse_url` instead.
+    Deprecated. Use :func:`parse_url` instead.
     """
     p = parse_url(url)
     return p.scheme or 'http', p.hostname, p.port
