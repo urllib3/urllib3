@@ -164,13 +164,12 @@ class TestingApp(RequestHandler):
     def multi_redirect(self, request):
         "Performs a redirect chain based on ``redirect_codes``"
         codes = request.params.get('redirect_codes', '200').decode('utf-8')
-        codes = codes.split(',')
-        head, tail = codes[0], codes[1:]
+        head, tail = codes.split(',', 1) if "," in codes else (codes, None)
         status = "{0} {1}".format(head, responses[int(head)])
         if not tail:
             return Response("Done redirecting", status=status)
 
-        headers = [('Location', '/multi_redirect?redirect_codes=%s' % ','.join(tail))]
+        headers = [('Location', '/multi_redirect?redirect_codes=%s' % tail)]
         return Response(status=status, headers=headers)
 
     def keepalive(self, request):

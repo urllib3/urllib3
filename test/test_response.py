@@ -8,6 +8,7 @@ except ImportError:
     import httplib
 from urllib3.response import HTTPResponse
 from urllib3.exceptions import DecodeError, ResponseNotChunked, ProtocolError
+from urllib3.util.retry import Retry
 
 
 from base64 import b64decode
@@ -529,8 +530,9 @@ class TestResponse(unittest.TestCase):
         fp = BytesIO(b'')
         resp = HTTPResponse(fp)
         self.assertEqual(resp.retries, None)
-        resp = HTTPResponse(fp, retries="test")
-        self.assertEqual(resp.retries, "test")
+        retry = Retry()
+        resp = HTTPResponse(fp, retries=retry)
+        self.assertEqual(resp.retries, retry)
 
 
 class MockChunkedEncodingResponse(object):

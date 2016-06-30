@@ -192,7 +192,7 @@ class TestGAERetry(TestRetry):
 
     #test_max_retry = None
     #test_disabled_retry = None
-    # URLFetch resolve redirects.
+    # We don't need these tests because URLFetch resolves its own redirects.
     test_retry_redirect_history = None
     test_multi_redirect_history = None
 
