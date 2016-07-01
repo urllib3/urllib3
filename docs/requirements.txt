@@ -1,0 +1,4 @@
+-r ../dev-requirements.txt
+ndg-httpsclient
+sphinx
+alabaster
