@@ -300,6 +300,16 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         except MaxRetryError as e:
             self.assertEqual(type(e.reason), ConnectTimeoutError)
 
+    def test_scheme_host_case_insensitive(self):
+        """Assert that upper-case schemes and hosts are normalized."""
+        http = proxy_from_url(self.proxy_url.upper())
+
+        r = http.request('GET', '%s/' % self.http_url.upper())
+        self.assertEqual(r.status, 200)
+
+        r = http.request('GET', '%s/' % self.https_url.upper())
+        self.assertEqual(r.status, 200)
+
 
 class TestIPv6HTTPProxyManager(IPv6HTTPDummyProxyTestCase):
 
