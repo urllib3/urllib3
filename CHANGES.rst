@@ -8,6 +8,13 @@ dev (master)
 
 * ConnectionPool debug log now includes scheme, host, and port. (Issue #897)
 
+* Substantially refactored documentation. (Issue #887)
+
+* Used URLFetch default timeout on AppEngine, rather than hardcoding our own.
+  (Issue #858)
+
+* Normalize the scheme and host in the URL parser (Issue #833)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
