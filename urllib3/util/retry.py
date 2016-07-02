@@ -120,7 +120,7 @@ class Retry(object):
         if status falls in ``status_forcelist`` range and retries have
         been exhausted.
 
-    :param list history: The history of the request encountered during
+    :param tuple history: The history of the request encountered during
         each call to :meth:`~Retry.increment`. The list is in the order
         the requests occurred. Each list item is of class :class:`RequestHistory`.
     """
@@ -150,7 +150,7 @@ class Retry(object):
         self.backoff_factor = backoff_factor
         self.raise_on_redirect = raise_on_redirect
         self.raise_on_status = raise_on_status
-        self.history = history or []
+        self.history = history or tuple()
 
     def new(self, **kw):
         params = dict(
@@ -254,7 +254,6 @@ class Retry(object):
         if total is not None:
             total -= 1
 
-        history = self.history[:]
         connect = self.connect
         read = self.read
         redirect = self.redirect
@@ -293,7 +292,7 @@ class Retry(object):
                     status_code=response.status)
                 status = response.status
 
-        history.append(RequestHistory(method, url, error, status, redirect_location))
+        history = self.history + (RequestHistory(method, url, error, status, redirect_location),)
 
         new_retry = self.new(
             total=total,

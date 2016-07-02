@@ -781,17 +781,17 @@ class TestRetry(HTTPDummyServerTestCase):
                                  headers=headers, retries=retry)
         self.assertEqual(resp.status, 200)
         self.assertEqual(resp.retries.total, 1)
-        self.assertEqual(resp.retries.history, [RequestHistory('GET', '/successful_retry', None, 418, None)])
+        self.assertEqual(resp.retries.history, (RequestHistory('GET', '/successful_retry', None, 418, None),))
 
     def test_retry_redirect_history(self):
         resp = self.pool.request('GET', '/redirect', fields={'target': '/'})
         self.assertEqual(resp.status, 200)
-        self.assertEqual(resp.retries.history, [RequestHistory('GET', '/redirect?target=%2F', None, 303, '/')])
+        self.assertEqual(resp.retries.history, (RequestHistory('GET', '/redirect?target=%2F', None, 303, '/'),))
 
     def test_multi_redirect_history(self):
         r = self.pool.request('GET', '/multi_redirect', fields={'redirect_codes': '303,302,200'}, redirect=False)
         self.assertEqual(r.status, 303)
-        self.assertEqual(r.retries.history, [])
+        self.assertEqual(r.retries.history, tuple())
 
         r = self.pool.request('GET', '/multi_redirect', retries=10,
                               fields={'redirect_codes': '303,302,301,307,302,200'})

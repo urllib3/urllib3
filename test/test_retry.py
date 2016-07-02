@@ -226,16 +226,16 @@ class RetryTest(unittest.TestCase):
 
     def test_history(self):
         retry = Retry(total=10)
-        self.assertEqual(retry.history, [])
+        self.assertEqual(retry.history, tuple())
         connection_error = ConnectTimeoutError('conntimeout')
         retry = retry.increment('GET', '/test1', None, connection_error)
-        self.assertEqual(retry.history, [RequestHistory('GET', '/test1', connection_error, None, None)])
+        self.assertEqual(retry.history, (RequestHistory('GET', '/test1', connection_error, None, None),))
         read_error = ReadTimeoutError(None, "/test2", "read timed out")
         retry = retry.increment('POST', '/test2', None, read_error)
-        self.assertEqual(retry.history, [RequestHistory('GET', '/test1', connection_error, None, None),
-                                         RequestHistory('POST', '/test2', read_error, None, None)])
+        self.assertEqual(retry.history, (RequestHistory('GET', '/test1', connection_error, None, None),
+                                         RequestHistory('POST', '/test2', read_error, None, None)))
         response = HTTPResponse(status=500)
         retry = retry.increment('GET', '/test3', response, None)
-        self.assertEqual(retry.history, [RequestHistory('GET', '/test1', connection_error, None, None),
+        self.assertEqual(retry.history, (RequestHistory('GET', '/test1', connection_error, None, None),
                                          RequestHistory('POST', '/test2', read_error, None, None),
-                                         RequestHistory('GET', '/test3', None, 500, None)])
+                                         RequestHistory('GET', '/test3', None, 500, None)))

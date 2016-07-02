@@ -186,9 +186,9 @@ class TestGAERetry(TestRetry):
         self.assertEqual(resp.retries.total, 1)
         # URLFetch use absolute urls.
         self.assertEqual(resp.retries.history,
-                         [RequestHistory('GET',
+                         (RequestHistory('GET',
                                          self.pool._absolute_url('/successful_retry'),
-                                         None, 418, None)])
+                                         None, 418, None),))
 
     #test_max_retry = None
     #test_disabled_retry = None
