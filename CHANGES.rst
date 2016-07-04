@@ -15,6 +15,9 @@ dev (master)
 
 * Normalize the scheme and host in the URL parser (Issue #833)
 
+* ``HTTPResponse`` contains the last ``Retry`` object, which now also
+  contains retries history. (Issue #848)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
