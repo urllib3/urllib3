@@ -13,8 +13,10 @@ from tornado.web import RequestHandler
 
 try:
     from urllib.parse import urlsplit
+    from http.client import responses
 except ImportError:
     from urlparse import urlsplit
+    from httplib import responses
 
 log = logging.getLogger(__name__)
 
@@ -158,6 +160,17 @@ class TestingApp(RequestHandler):
         target = request.params.get('target', '/')
         headers = [('Location', target)]
         return Response(status='303 See Other', headers=headers)
+
+    def multi_redirect(self, request):
+        "Performs a redirect chain based on ``redirect_codes``"
+        codes = request.params.get('redirect_codes', '200').decode('utf-8')
+        head, tail = codes.split(',', 1) if "," in codes else (codes, None)
+        status = "{0} {1}".format(head, responses[int(head)])
+        if not tail:
+            return Response("Done redirecting", status=status)
+
+        headers = [('Location', '/multi_redirect?redirect_codes=%s' % tail)]
+        return Response(status=status, headers=headers)
 
     def keepalive(self, request):
         if request.params.get('close', b'0') == b'1':

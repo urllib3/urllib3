@@ -89,6 +89,10 @@ class HTTPResponse(io.IOBase):
         When this HTTPResponse wrapper is generated from an httplib.HTTPResponse
         object, it's convenient to include the original for debug purposes. It's
         otherwise unused.
+
+    :param retries:
+        The retries contains the last :class:`~urllib3.util.retry.Retry` that
+        was used during the request.
     """
 
     CONTENT_DECODERS = ['gzip', 'deflate']
@@ -96,7 +100,7 @@ class HTTPResponse(io.IOBase):
 
     def __init__(self, body='', headers=None, status=0, version=0, reason=None,
                  strict=0, preload_content=True, decode_content=True,
-                 original_response=None, pool=None, connection=None):
+                 original_response=None, pool=None, connection=None, retries=None):
 
         if isinstance(headers, HTTPHeaderDict):
             self.headers = headers
@@ -107,6 +111,7 @@ class HTTPResponse(io.IOBase):
         self.reason = reason
         self.strict = strict
         self.decode_content = decode_content
+        self.retries = retries
 
         self._decoder = None
         self._body = None

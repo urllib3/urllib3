@@ -605,6 +605,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             response = self.ResponseCls.from_httplib(httplib_response,
                                                      pool=self,
                                                      connection=response_conn,
+                                                     retries=retries,
                                                      **response_kw)
 
             # Everything went great!

@@ -172,7 +172,7 @@ class AppEngineManager(RequestMethods):
                 "URLFetch does not support method: %s" % method, e)
 
         http_response = self._urlfetch_response_to_http_response(
-            response, **response_kw)
+            response, retries=retries, **response_kw)
 
         # Check for redirect response
         if (http_response.get_redirect_location() and
