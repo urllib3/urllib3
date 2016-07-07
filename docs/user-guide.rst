@@ -31,7 +31,7 @@ HTTP verb::
     >>> r = http.request(
     ...     'POST',
     ...     'http://httpbin.org/post',
-    ...     fields={'hello: 'world'})
+    ...     fields={'hello': 'world'})
 
 The :ref:`request_data` section covers sending other kinds of requests data,
 including JSON, files, and binary data.
