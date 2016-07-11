@@ -18,6 +18,9 @@ dev (master)
 * ``HTTPResponse`` contains the last ``Retry`` object, which now also
   contains retries history. (Issue #848)
 
+* Accept ``iPAddress`` subject alternative name fields in TLS certificates.
+  (Issue #258)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
