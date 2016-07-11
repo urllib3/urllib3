@@ -2,19 +2,19 @@
 
 # Note: This file is under the PSF license as the code comes from the python
 # stdlib.   http://docs.python.org/3/license.html
+# Please note that there is a small revision here! In the upstream version of
+# this code, the ipaddress module is optionally loaded and then a fallback is
+# used if it is not present. Here, because we vendor the ipaddress module, we
+# choose to fallback to the vendored copy rather than have no support at all.
+# This means we *always* support iPAddress subject alternative names.
 
 import re
 import sys
 
-# ipaddress has been backported to 2.6+ in pypi.  If it is installed on the
-# system, use it to handle IPAddress ServerAltnames (this was added in
-# python-3.5) otherwise only do DNS matching.  This allows
-# backports.ssl_match_hostname to continue to be used all the way back to
-# python-2.4.
 try:
     import ipaddress
 except ImportError:
-    ipaddress = None
+    from .. import ipaddress
 
 __version__ = '3.5.0.1'
 
