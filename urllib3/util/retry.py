@@ -20,6 +20,8 @@ RequestHistory = namedtuple('RequestHistory', ["method", "url", "error",
                                                "status", "redirect_location"])
 
 
+_POST_REDIRECT_DOWNGRADE_STATUSES = set([301, 302, 303])
+
 class Retry(object):
     """ Retry configuration.
 
@@ -320,7 +322,7 @@ class Retry(object):
             return method
         if status == 303:
             return 'GET'
-        if method == 'POST' and status in set([301, 302, 303]):
+        if method == 'POST' and status in _POST_REDIRECT_DOWNGRADE_STATUSES:
             return 'GET'
         return method
 

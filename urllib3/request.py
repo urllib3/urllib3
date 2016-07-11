@@ -19,7 +19,7 @@ class Request(_Request):
     handling, which expects a `urllib.request.Request`-like object.
     """
     def __init__(self, *args, **kwargs):
-        kwargs.pop('method', None)
+        del kwargs['method']
         # Request is an old-style class in Python 2
         _Request.__init__(self, *args, **kwargs)
         self._cookies = []
@@ -194,8 +194,8 @@ class RequestMethods(object):
         url = kwargs.pop('url', '')
         redirect_location = urljoin(url, response.get_redirect_location())
         method = retries.redirect_method(method, response.status)
+        pool = kwargs.pop('pool', self)
         try:
-            pool = kwargs.pop('pool', self)
             retries = retries.increment(method, url, response=response, _pool=pool)
         except MaxRetryError:
             if retries.raise_on_redirect:

@@ -188,7 +188,10 @@ class HTTPResponse(io.IOBase):
         return self._connection
 
     def info(self):
-        # Compatibility method for cookie handler
+        """
+        This is a compatibility method that's only used by urllib3's cookie
+        handlers; don't use it in your own code.
+        """
         return self.headers
 
     def tell(self):

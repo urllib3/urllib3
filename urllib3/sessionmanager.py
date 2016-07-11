@@ -19,7 +19,7 @@ class SessionManager(RequestMethods):
         if not provided, a new one will be created.
 
     :param headers:
-        A set of headers to include with all requests, unless other
+        Headers to include with all requests, unless other
         headers are given explicitly.
 
     Example::

@@ -21,7 +21,8 @@ class DefaultCookiePolicy(PythonCookiePolicy):
 class CookieJar(PythonCookieJar):
 
     def __init__(self, policy=None):
-        policy = policy or DefaultCookiePolicy()
+        if policy is None:
+            policy = DefaultCookiePolicy()
         # Old-style class on Python 2
         PythonCookieJar.__init__(self, policy=policy)
 
@@ -30,8 +31,7 @@ class CookieJar(PythonCookieJar):
         Add correct Cookie: header to Request object.
         This is copied from and slightly modified from the stdlib version.
         """
-        self._cookies_lock.acquire()
-        try:
+        with self._cookies_lock:
             self._policy._now = self._now = int(time.time())
             cookies = self._cookies_for_request(request)
             attrs = self._cookie_attrs(cookies)
@@ -39,8 +39,7 @@ class CookieJar(PythonCookieJar):
             # and only if it's not there already. We're less picky.
             if attrs:
                 request.add_cookies(*attrs)
-        finally:
-            self._cookies_lock.release()
+
         self.clear_expired_cookies()
 
 
