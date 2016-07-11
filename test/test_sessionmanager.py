@@ -78,7 +78,7 @@ class TestSessionContext(unittest.TestCase):
         self.context.extract_from(resp, req)
         self.assertTrue(self.context.cookie_jar)
         for each in self.context.cookie_jar:
-            self.assertEqual(repr(each), repr(expected_cookie))
+            self.assertEqual(each.__dict__, expected_cookie.__dict__)
 
     def test_apply_cookie(self):
         """
