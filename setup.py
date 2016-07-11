@@ -59,6 +59,9 @@ setup(name='urllib3',
               'pyasn1',
               'certifi',
           ],
+          'secure:python_version < "3.3"': [
+              "ipaddress",
+          ],
           'socks': [
               'PySocks>=1.5.6,<2.0',
           ]
