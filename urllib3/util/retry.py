@@ -22,6 +22,7 @@ RequestHistory = namedtuple('RequestHistory', ["method", "url", "error",
 
 _POST_REDIRECT_DOWNGRADE_STATUSES = set([301, 302, 303])
 
+
 class Retry(object):
     """ Retry configuration.
 
