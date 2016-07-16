@@ -206,5 +206,8 @@ In chronological order:
   * History list to Retry object.
   * HTTPResponse contains the last Retry object.
 
+* Nate Prewitt <nate.prewitt@gmail.com>
+  * Ensure timeouts are not booleans and greater than zero.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

@@ -304,15 +304,29 @@ class TestUtil(unittest.TestCase):
         except ValueError as e:
             self.assertTrue('less than' in str(e))
 
-        # Booleans are allowed also by socket.settimeout and converted to the
-        # equivalent float (1.0 for True, 0.0 for False)
-        Timeout(connect=False, read=True)
+        try:
+            Timeout(connect=False)
+            self.fail("boolean values should throw exception")
+        except ValueError as e:
+            self.assertTrue('cannot be a boolean' in str(e))
+
+        try:
+            Timeout(read=True)
+            self.fail("boolean values should throw exception")
+        except ValueError as e:
+            self.assertTrue('cannot be a boolean' in str(e))
+
+        try:
+            Timeout(connect=0)
+            self.fail("value <= 0 should throw exception")
+        except ValueError as e:
+            self.assertTrue('less than or equal' in str(e))
 
         try:
             Timeout(read="foo")
             self.fail("string value should not be allowed")
         except ValueError as e:
-            self.assertTrue('int or float' in str(e))
+            self.assertTrue('int, float or None' in str(e))
 
 
     @patch('urllib3.util.timeout.current_time')
