@@ -220,7 +220,7 @@ that verifies certificates when making requests::
 
     >>> import certifi
     >>> import urllib3
-    >>> http = urlilb3.PoolManager(
+    >>> http = urllib3.PoolManager(
     ...     cert_reqs='CERT_REQUIRED',
     ...     ca_certs=certifi.where())
 
@@ -271,7 +271,7 @@ certificates when performing requests::
 
     >>> import certifi
     >>> import urllib3
-    >>> http = urlilb3.PoolManager(
+    >>> http = urllib3.PoolManager(
     ...     cert_reqs='CERT_REQUIRED',
     ...     ca_certs=certifi.where())
 
