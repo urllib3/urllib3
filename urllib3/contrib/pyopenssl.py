@@ -135,6 +135,7 @@ class SubjectAltName(BaseSubjectAltName):
 
 
 # Note: This is a slightly bug-fixed version of same from ndg-httpsclient.
+# Also, support for iPAddress was added.
 def get_subj_alt_name(peer_cert):
     # Search through extensions
     dns_name = []
@@ -158,9 +159,11 @@ def get_subj_alt_name(peer_cert):
                 continue
             for entry in range(len(name)):
                 component = name.getComponentByPosition(entry)
-                if component.getName() != 'dNSName':
-                    continue
-                dns_name.append(str(component.getComponent()))
+                if component.getName() == 'dNSName':
+                    dns_name.append(('DNS', str(component.getComponent())))
+                if component.getName() == 'iPAddress':
+                    ip = '.'.join(str(ord(b)) for b in component.getComponent())
+                    dns_name.append(('IP Address', ip))
 
     return dns_name
 
@@ -282,10 +285,7 @@ class WrappedSocket(object):
             'subject': (
                 (('commonName', x509.get_subject().CN),),
             ),
-            'subjectAltName': [
-                ('DNS', value)
-                for value in get_subj_alt_name(x509)
-            ]
+            'subjectAltName': get_subj_alt_name(x509)
         }
 
     def _reuse(self):
