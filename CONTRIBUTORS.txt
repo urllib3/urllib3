@@ -208,6 +208,7 @@ In chronological order:
 
 * Nate Prewitt <nate.prewitt@gmail.com>
   * Ensure timeouts are not booleans and greater than zero.
+  * Fixed infinite loop in ``stream`` when amt=None.
 
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

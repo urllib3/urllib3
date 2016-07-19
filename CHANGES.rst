@@ -25,6 +25,8 @@ dev (master)
   now use cryptography and idna, both of which are already dependencies of
   PyOpenSSL. (PR #930)
 
+* Fixed infinite loop in ``stream`` when amt=None. (Issue #928)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

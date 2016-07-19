@@ -1045,3 +1045,34 @@ class TestHEAD(SocketDummyServerTestCase):
 
         # stream will use the read method here.
         self.assertEqual([], list(r.stream()))
+
+
+class TestStream(SocketDummyServerTestCase):
+    def test_stream_none_unchunked_response_does_not_hang(self):
+        done_event = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            sock.send(
+                b'HTTP/1.1 200 OK\r\n'
+                b'Content-Length: 12\r\n'
+                b'Content-type: text/plain\r\n'
+                b'\r\n'
+                b'hello, world'
+            )
+            done_event.wait(5)
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        r = pool.request('GET', '/', timeout=1, preload_content=False)
+
+        # Stream should read to the end.
+        self.assertEqual([b'hello, world'], list(r.stream(None)))
+
+        done_event.set()
