@@ -255,7 +255,7 @@ certificate verification on Python 2 will be installed::
 If you want to install the packages manually, you will need ``pyOpenSSL``,
 ``cryptography``, ``idna``, and ``certifi``.
 
-.. note:: If you are not using Mac OS X or Windows, note that `cryptography
+.. note:: If you are not using macOS or Windows, note that `cryptography
     <https://cryptography.io/en/latest/>`_ requires additional system packages
     to compile. See `building cryptography on Linux
     <https://cryptography.io/en/latest/installation/#building-cryptography-on-linux>`_
