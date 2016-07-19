@@ -18,8 +18,12 @@ dev (master)
 * ``HTTPResponse`` contains the last ``Retry`` object, which now also
   contains retries history. (Issue #848)
 
-* Timeout can no longer be set as boolean, and must be greater than zero. 
+* Timeout can no longer be set as boolean, and must be greater than zero.
   (PR #924)
+
+* Removed pyasn1 and ndg-httpsclient from dependencies used for PyOpenSSL. We
+  now use cryptography and idna, both of which are already dependencies of
+  PyOpenSSL. (PR #930)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
