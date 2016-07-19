@@ -46,7 +46,7 @@ from __future__ import absolute_import
 import idna
 import OpenSSL.SSL
 from cryptography import x509
-from cryptography.haztmat.backends.openssl import backend as openssl_backend
+from cryptography.hazmat.backends.openssl import backend as openssl_backend
 from cryptography.hazmat.backends.openssl.x509 import _Certificate
 
 from socket import timeout, error as SocketError
@@ -151,14 +151,14 @@ def get_subj_alt_name(peer_cert):
     # Pass the cert to cryptography, which has much better APIs for this.
     # This is technically using private APIs, but should work across all
     # relevant versions until PyOpenSSL gets something proper for this.
-    cert = _Certificate(openssl_backend(), peer_cert._x509)
+    cert = _Certificate(openssl_backend, peer_cert._x509)
 
     # We want to find the SAN extension. Ask Cryptography to locate it (it's
     # faster than looping in Python)
     try:
         ext = cert.extensions.get_extension_for_class(
             x509.SubjectAlternativeName
-        )
+        ).value
     except x509.ExtensionNotFound:
         # No such extension, return the empty list.
         return []
@@ -309,7 +309,7 @@ class WrappedSocket(object):
             'subject': (
                 (('commonName', x509.get_subject().CN),),
             ),
-            'subjectAltName': [get_subj_alt_name(x509)]
+            'subjectAltName': get_subj_alt_name(x509)
         }
 
     def _reuse(self):
