@@ -55,8 +55,8 @@ setup(name='urllib3',
       extras_require={
           'secure': [
               'pyOpenSSL>=0.13',
-              'ndg-httpsclient',
-              'pyasn1',
+              'cryptography>=1.3.4',
+              'idna>=2.0.0',
               'certifi',
           ],
           'socks': [
