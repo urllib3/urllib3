@@ -11,9 +11,11 @@ from .packages import six
 try:  # Python 3
     from http.client import HTTPConnection as _HTTPConnection
     from http.client import HTTPException  # noqa: unused in this module
+    from http.client import PROXY_AUTHENTICATION_REQUIRED
 except ImportError:
     from httplib import HTTPConnection as _HTTPConnection
     from httplib import HTTPException  # noqa: unused in this module
+    from httplib import PROXY_AUTHENTICATION_REQUIRED
 
 try:  # Compiled with SSL?
     import ssl
@@ -275,9 +277,38 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         self.ca_certs = ca_certs and os.path.expanduser(ca_certs)
         self.ca_cert_dir = ca_cert_dir and os.path.expanduser(ca_cert_dir)
 
-    def connect(self):
+    def _tunnel(self):
+        # need to keep proxy server address
+        self._proxy_server = self.host
+        self._proxy_port = self.port
+
+        self._set_hostport(self._tunnel_host, self._tunnel_port)
+        self.send("CONNECT %s:%d HTTP/1.0\r\n" % (self.host, self.port))
+        self._tunnel_headers["Connection"] = "Keep-Alive"
+        for header, value in self._tunnel_headers.iteritems():
+            self.send("%s: %s\r\n" % (header, value))
+        self.send("\r\n")
+        response = self.response_class(self.sock, strict=self.strict,
+                                       method=self._method)
+
+        response.begin()
+
+        # Here we want to handle the connection
+        if response.status == PROXY_AUTHENTICATION_REQUIRED:
+            # All keys must be in title mode (needed by request library)
+            response.headers = {key.title(): value for key, value in response.getheaders()}
+            response.original_sock = self.sock
+
+        elif response.status != 200:
+            self.close()
+            raise socket.error("Tunnel connection failed: %d %s" % (response.status,
+                                                                    response.reason.strip()))
+        return response
+
+    def connect(self, conn=None):
         # Add certificate verification
-        conn = self._new_conn()
+        if not conn:
+            conn = self._new_conn()
 
         hostname = self.host
         if getattr(self, '_tunnel_host', None):
@@ -287,7 +318,10 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             self.sock = conn
             # Calls self._set_hostport(), so self.host is
             # self._tunnel_host below.
-            self._tunnel()
+            response = self._tunnel()
+            if response.status == PROXY_AUTHENTICATION_REQUIRED:
+                return response
+
             # Mark this connection as not reusable
             self.auto_open = 0
 
