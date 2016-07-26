@@ -10,10 +10,10 @@ from .packages import six
 
 try:  # Python 3
     from http.client import HTTPConnection as _HTTPConnection
-    from http.client import HTTPException  # noqa: unused in this module
+    from http.client import HTTPException  # noqa: F401
 except ImportError:
     from httplib import HTTPConnection as _HTTPConnection
-    from httplib import HTTPException  # noqa: unused in this module
+    from httplib import HTTPException  # noqa: F401
 
 try:  # Compiled with SSL?
     import ssl
