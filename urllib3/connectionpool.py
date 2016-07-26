@@ -12,7 +12,7 @@ try:  # Python 3
 except ImportError:
     from Queue import LifoQueue, Empty, Full
     # Queue is imported for side effects on MS Windows
-    import Queue as _unused_module_Queue  # noqa: unused
+    import Queue as _unused_module_Queue  # noqa: F401
 
 
 from .exceptions import (
