@@ -91,8 +91,8 @@ def main(argv):
         return 1
     sdk_contents.seek(0)
     try:
-        zip_contents = zipfile.ZipFile(sdk_contents)
-        zip_contents.extractall(dest_dir)
+        with zipfile.ZipFile(sdk_contents) as zip_contents:
+            zip_contents.extractall(dest_dir)
     except:
         print('Error extracting SDK contents')
         return 1
