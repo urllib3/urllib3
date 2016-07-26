@@ -4,7 +4,7 @@ Changes
 dev (master)
 ------------
 
-* Accept ``SSLContext`` objects for use in SSL/TLS negotation. (Issue #835)
+* Accept ``SSLContext`` objects for use in SSL/TLS negotiation. (Issue #835)
 
 * ConnectionPool debug log now includes scheme, host, and port. (Issue #897)
 
