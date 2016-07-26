@@ -10,6 +10,8 @@ from urllib3.connectionpool import (
 )
 from urllib3.response import httplib, HTTPResponse
 from urllib3.util.timeout import Timeout
+from urllib3.packages.six.moves.http_client import HTTPException
+from urllib3.packages.six.moves.queue import Empty
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
     ClosedPoolError,
@@ -28,13 +30,6 @@ from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 
 from dummyserver.server import DEFAULT_CA
-
-try:   # Python 3
-    from queue import Empty
-    from http.client import HTTPException
-except ImportError:
-    from Queue import Empty
-    from httplib import HTTPException
 
 
 class TestConnectionPool(unittest.TestCase):

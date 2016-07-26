@@ -7,13 +7,6 @@ import warnings
 from socket import error as SocketError, timeout as SocketTimeout
 import socket
 
-try:  # Python 3
-    from queue import LifoQueue, Empty, Full
-except ImportError:
-    from Queue import LifoQueue, Empty, Full
-    # Queue is imported for side effects on MS Windows
-    import Queue as _unused_module_Queue  # noqa: F401
-
 
 from .exceptions import (
     ClosedPoolError,
@@ -32,6 +25,7 @@ from .exceptions import (
 )
 from .packages.ssl_match_hostname import CertificateError
 from .packages import six
+from .packages.six.moves.queue import LifoQueue, Empty, Full
 from .connection import (
     port_by_scheme,
     DummyConnection,
@@ -47,6 +41,10 @@ from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import get_host, Url
 
+
+if six.PY2:
+    # Queue is imported for side effects on MS Windows
+    import Queue as _unused_module_Queue  # noqa: F401
 
 xrange = six.moves.xrange
 
