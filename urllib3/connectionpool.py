@@ -705,7 +705,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     response.release_conn()
                     raise
                 return response
-            retries.sleep()
+            retries.sleep(response)
             log.debug("Forced retry: %s", url)
             return self.urlopen(
                 method, url, body, headers,

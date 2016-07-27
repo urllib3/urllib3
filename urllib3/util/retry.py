@@ -194,12 +194,22 @@ class Retry(object):
         backoff_value = self.backoff_factor * (2 ** (consecutive_errors_len - 1))
         return min(self.BACKOFF_MAX, backoff_value)
 
-    def sleep(self):
-        """ Sleep between retry attempts using an exponential backoff.
+    def sleep(self, response=None):
+        """ Sleep between retry attempts.
 
-        By default, the backoff factor is 0 and this method will return
-        immediately.
+        This method will respect a server's ``Retry-After`` response header
+        and sleep the duration of the time requested. If that is not present, it
+        will use an exponential backoff. By default, the backoff factor is 0 and
+        this method will return immediately.
         """
+
+        # Sleep for the seconds specifed by Retry-After header
+        if response:
+            retry_after = response.getheader("Retry-After")
+            if retry_after and retry_after.isdigit():
+                time.sleep(int(retry_after))
+                return
+
         backoff = self.get_backoff_time()
         if backoff <= 0:
             return

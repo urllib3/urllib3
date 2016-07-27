@@ -184,7 +184,7 @@ class AppEngineManager(RequestMethods):
             retries = retries.increment(
                 method, url, response=http_response, _pool=self)
             log.info("Forced retry: %s", url)
-            retries.sleep()
+            retries.sleep(http_response)
             return self.urlopen(
                 method, url,
                 body=body, headers=headers,

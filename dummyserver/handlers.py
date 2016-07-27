@@ -11,6 +11,8 @@ import zlib
 
 from io import BytesIO
 from tornado.web import RequestHandler
+from datetime import datetime
+from datetime import timedelta
 
 from urllib3.packages.six.moves.http_client import responses
 from urllib3.packages.six.moves.urllib.parse import urlsplit
@@ -259,6 +261,16 @@ class TestingApp(RequestHandler):
         status = request.params.get("status", "200 OK")
 
         return Response(status=status)
+
+    def retry_after(self, request):
+        if datetime.now() - self.application.last_req < timedelta(seconds=1):
+            return Response(
+                    status="429 Too Many Requests",
+                    headers=[('Retry-After', '1')])
+
+        self.application.last_req = datetime.now()
+
+        return Response(status="200 OK")
 
     def shutdown(self, request):
         sys.exit()

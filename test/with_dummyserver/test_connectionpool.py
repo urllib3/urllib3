@@ -801,6 +801,15 @@ class TestRetry(HTTPDummyServerTestCase):
             (302, '/multi_redirect?redirect_codes=200')
         ])
 
+    def test_retry_after(self):
+        # Request twice in a second to get a 429 response.
+        r = self.pool.request('GET', '/retry_after')
+        r = self.pool.request('GET', '/retry_after')
+        self.assertEqual(r.status, 429)
+
+        r = self.pool.request('GET', '/retry_after',
+                retries=Retry(status_forcelist=[429]))
+        self.assertEqual(r.status, 200)
 
 if __name__ == '__main__':
     unittest.main()
