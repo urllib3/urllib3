@@ -1,13 +1,16 @@
 language: python
 script:
-  - ./_travis/travis-run.sh
+  - tox
 before_install:
   - openssl version
 cache:
   directories:
   - ${HOME}/.cache
 install:
-- ./_travis/travis-install.sh
+  - pip install tox==2.1.1
+  - if [[ "${TOXENV}" == "gae" && ! -d ${GAE_PYTHONPATH} ]]; then
+      python _travis/fetch_gae_sdk.py ;
+    fi
 notifications:
   email: false
 env:
@@ -20,11 +23,12 @@ env:
     - TOXENV=py27
     - TOXENV=py33
     - TOXENV=py34
-    - TOXENV=pypy
     - TOXENV=gae
 # https://github.com/travis-ci/travis-ci/issues/4794
 matrix:
   include:
     - python: 3.5
       env: TOXENV=py35
+    - python: pypy-5.3
+      env: TOXENV=pypy
 sudo: false
