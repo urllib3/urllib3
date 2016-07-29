@@ -3,6 +3,50 @@ Advanced Usage
 
 .. currentmodule:: urllib3
 
+
+Customizing pool behavior
+-------------------------
+
+The :class:`~poolmanager.PoolManager` class automatically handles creating
+:class:`~connectionpool.ConnectionPool` instances for each host as needed. By
+default, it will keep a maximum of 10 :class:`~connectionpool.ConnectionPool`
+instances. If you're making requests to many different hosts it might improve
+performance to increase this number::
+
+    >>> import urllib3
+    >>> http = urllib3.PoolManager(num_pools=50)
+
+However, keep in mind that this does increase memory and socket consumption.
+
+Similarly, the :class:`~connectionpool.ConnectionPool` class keeps a pool
+of individual :class:`~connection.HTTPConnection` instances. These connections
+are used during an individual request and returned to the pool when the request
+is complete. By default only one connection will be saved for re-use. If you
+are making many requests to the same host simultaneously it might improve
+performance to increase this number::
+
+    >>> import urllib3
+    >>> http = urllib3.PoolManager(maxsize=10)
+    # Alternatively
+    >>> http = urllib3.HTTPConnectionPool('google.com', maxsize=10)
+
+The behavior of the pooling for :class:`~connectionpool.ConnectionPool` is
+different from :class:`~poolmanager.PoolManager`. By default, if a new
+request is made and there is no free connection in the pool then a new
+connection will be created. However, this connection will not be saved if more
+than ``maxsize`` connections exist. This means that ``maxsize`` does not
+determine the maximum number of connections that can be open to a particular
+host, just the maximum number of connections to keep in the pool. However, if you specify ``block=True`` then there can be at most ``maxsize`` connections
+open to a particular host::
+
+    >>> http = urllib3.PoolManager(maxsize=10, block=True)
+    # Alternatively
+    >>> http = urllib3.HTTPConnectionPool('google.com', maxsize=10, block=True)
+
+Any new requests will block until a connection is available from the pool.
+This is a great way to prevent flooding a host with too many connections in
+multi-threaded applications.
+
 .. _stream:
 
 Streaming and IO
@@ -71,6 +115,7 @@ Proxies
 You can use :class:`~poolmanager.ProxyManager` to tunnel requests through an
 HTTP proxy::
 
+    >>> import urllib3
     >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
     >>> proxy.request('GET', 'http://google.com/')
 
@@ -90,6 +135,38 @@ Once PySocks is installed, you can use
     >>> from urllib3.contrib.socks import SOCKSProxyManager
     >>> proxy = SOCKSProxyManager('socks5://localhost:8889/')
     >>> proxy.request('GET', 'http://google.com/')
+
+
+.. _ssl_custom:
+
+Custom SSL certificates and client certificates
+-----------------------------------------------
+
+Instead of using `certifi <https://certifi.io/en/latest>`_ you can provide your
+own certificate authority bundle. This is useful for cases where you've
+generated your own certificates or when you're using a private certificate
+authority. Just provide the full path to the certificate bundle when creating a
+:class:`~poolmanager.PoolManager`::
+
+    >>> import urllib3
+    >>> http = urllib3.PoolManager(
+    ...     cert_reqs='CERT_REQUIRED',
+    ...     ca_certs='/path/to/your/certificate_bundle')
+
+When you specify your own certificate bundle only requests that can be
+verified with that bundle will succeed. It's recommended to use a separate
+:class:`~poolmanager.PoolManager` to make requests to URLs that do not need
+the custom certificate.
+
+You can also specify a client certificate. This is useful when both the server
+and the client need to verify each other's identity. Typically these
+certificates are issued from the same authority. To use a client certificate,
+provide the full path when creating a :class:`~poolmanager.PoolManager`::
+
+    >>> http = urllib3.PoolManager(
+    ...     cert_file='/path/to/your/client_cert.pem',
+    ...     cert_reqs='CERT_REQUIRED',
+    ...     ca_certs='/path/to/your/certificate_bundle')
 
 .. _ssl_mac:
 
