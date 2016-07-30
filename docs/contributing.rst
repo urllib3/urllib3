@@ -17,6 +17,37 @@ If you wish to add a new feature or fix a bug:
    :) Make sure to add yourself to ``CONTRIBUTORS.txt``.
 
 
+Running the tests
+-----------------
+
+We use some external dependencies, multiple interpreters and code coverage
+analysis while running test suite. Our ``Makefile`` handles much of this for
+you as long as you're running it `inside of a virtualenv
+<http://docs.python-guide.org/en/latest/dev/virtualenvs/>`_::
+
+  $ make test
+  [... magically installs dependencies and runs tests on your virtualenv]
+  Ran 182 tests in 1.633s
+
+  OK (SKIP=6)
+
+Note that code coverage less than 100% is regarded as a failing run. Some
+platform-specific tests are skipped unless run in that platform.  To make sure
+the code works in all of urllib3's supported platforms, you can run our ``tox``
+suite::
+
+  $ make test-all
+  [... tox creates a virtualenv for every platform and runs tests inside of each]
+  py26: commands succeeded
+  py27: commands succeeded
+  py32: commands succeeded
+  py33: commands succeeded
+  py34: commands succeeded
+
+Our test suite `runs continuously on Travis CI
+<https://travis-ci.org/shazow/urllib3>`_ with every pull request.
+
+
 Sponsorship
 -----------
 

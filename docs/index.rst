@@ -37,7 +37,7 @@ urllib3 is powerful and easy to use::
 Installing
 ----------
 
-urllib3 can installed with `pip <https://pip.pypa.io>`_::
+urllib3 can be installed with `pip <https://pip.pypa.io>`_::
 
     $ pip install urllib3
 
