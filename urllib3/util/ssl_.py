@@ -11,7 +11,6 @@ from ..exceptions import SSLError, InsecurePlatformWarning, SNIMissingWarning
 
 SSLContext = None
 HAS_SNI = False
-create_default_context = None
 IS_PYOPENSSL = False
 
 # Maps the length of a digest to a possible hash function producing this digest
@@ -304,6 +303,9 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
             if e.errno == errno.ENOENT:
                 raise SSLError(e)
             raise
+    elif getattr(context, 'load_default_certs', None) is not None:
+        # try to load OS default certs; works well on Windows (require Python3.4+)
+        context.load_default_certs()
 
     if certfile:
         context.load_cert_chain(certfile, keyfile)
