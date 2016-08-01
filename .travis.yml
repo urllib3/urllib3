@@ -31,4 +31,6 @@ matrix:
       env: TOXENV=py35
     - python: pypy-5.3
       env: TOXENV=pypy
+  allow_failures:
+  - python: pypy-5.3
 sudo: false
