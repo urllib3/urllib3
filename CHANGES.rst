@@ -27,6 +27,9 @@ dev (master)
 
 * Fixed infinite loop in ``stream`` when amt=None. (Issue #928)
 
+* Try to use the operating system's certificates when we are using an
+  ``SSLContext``. (PR #941)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
