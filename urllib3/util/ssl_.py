@@ -62,14 +62,32 @@ except ImportError:
 # The general intent is:
 # - Prefer cipher suites that offer perfect forward secrecy (DHE/ECDHE),
 # - prefer ECDHE over DHE for better performance,
-# - prefer any AES-GCM over any AES-CBC for better performance and security,
+# - prefer any AES-GCM and ChaCha20 over any AES-CBC for better performance and
+#   security,
+# - prefer AES-GCM over ChaCha20 because hardware-accelerated AES is common,
 # - use 3DES as fallback which is secure but slow,
 # - disable NULL authentication, MD5 MACs and DSS for security reasons.
-DEFAULT_CIPHERS = (
-    'ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+HIGH:'
-    'DH+HIGH:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+HIGH:RSA+3DES:!aNULL:'
-    '!eNULL:!MD5'
-)
+DEFAULT_CIPHERS = ':'.join([
+    'ECDH+AESGCM',
+    'ECDH+CHACHA20',
+    'DH+AESGCM',
+    'DH+CHACHA20',
+    'ECDH+AES256',
+    'DH+AES256',
+    'ECDH+AES128',
+    'DH+AES',
+    'ECDH+HIGH',
+    'DH+HIGH',
+    'ECDH+3DES',
+    'DH+3DES',
+    'RSA+AESGCM',
+    'RSA+AES',
+    'RSA+HIGH',
+    'RSA+3DES',
+    '!aNULL',
+    '!eNULL',
+    '!MD5',
+])
 
 try:
     from ssl import SSLContext  # Modern SSL?

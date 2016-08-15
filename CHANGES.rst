@@ -30,6 +30,9 @@ dev (master)
 * Try to use the operating system's certificates when we are using an
   ``SSLContext``. (PR #941)
 
+* Updated cipher suite list to allow ChaCha20+Poly1305. AES-GCM is preferred to
+  ChaCha20, but ChaCha20 is then preferred to everything else. (PR #947)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
