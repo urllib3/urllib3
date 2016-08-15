@@ -8,11 +8,6 @@ import warnings
 
 import mock
 
-try:
-    from urllib.parse import urlencode
-except:
-    from urllib import urlencode
-
 from .. import (
     requires_network, onlyPy3, onlyPy26OrOlder,
     TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES,
@@ -32,6 +27,7 @@ from urllib3.exceptions import (
     NewConnectionError,
 )
 from urllib3.packages.six import b, u
+from urllib3.packages.six.moves.urllib.parse import urlencode
 from urllib3.util.retry import Retry, RequestHistory
 from urllib3.util.timeout import Timeout
 

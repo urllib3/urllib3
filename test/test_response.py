@@ -2,12 +2,9 @@ import unittest
 
 from io import BytesIO, BufferedReader
 
-try:
-    import http.client as httplib
-except ImportError:
-    import httplib
 from urllib3.response import HTTPResponse
 from urllib3.exceptions import DecodeError, ResponseNotChunked, ProtocolError
+from urllib3.packages.six.moves import http_client as httplib
 from urllib3.util.retry import Retry
 
 

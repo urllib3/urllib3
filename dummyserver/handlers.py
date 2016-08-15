@@ -11,12 +11,8 @@ import zlib
 from io import BytesIO
 from tornado.web import RequestHandler
 
-try:
-    from urllib.parse import urlsplit
-    from http.client import responses
-except ImportError:
-    from urlparse import urlsplit
-    from httplib import responses
+from urllib3.packages.six.moves.http_client import responses
+from urllib3.packages.six.moves.urllib.parse import urlsplit
 
 log = logging.getLogger(__name__)
 

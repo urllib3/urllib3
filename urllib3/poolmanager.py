@@ -3,15 +3,11 @@ import collections
 import functools
 import logging
 
-try:  # Python 3
-    from urllib.parse import urljoin
-except ImportError:
-    from urlparse import urljoin
-
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
 from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
+from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
 from .util.url import parse_url
 from .util.retry import Retry
