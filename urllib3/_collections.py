@@ -316,6 +316,7 @@ class HTTPHeaderDict(MutableMapping):
             if line.startswith((' ', '\t')):
                 if headers:
                 # If the first header is an invalid one, then just drop it.
+                # This mimic Python 3.
                     key, value = headers[-1]
                     headers[-1] = (key, value + '\r\n' + line.rstrip())
                 continue
