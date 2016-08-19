@@ -1,8 +1,9 @@
 from __future__ import absolute_import
 from collections import namedtuple
 
-from ..exceptions import LocationParseError
+import rfc3986
 
+from ..exceptions import LocationParseError
 
 url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
 
@@ -150,6 +151,8 @@ def parse_url(url):
     if not url:
         # Empty
         return Url()
+
+    url = rfc3986.uri_reference(url).unsplit()
 
     scheme = None
     auth = None

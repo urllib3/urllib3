@@ -109,6 +109,21 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         self.assertEqual(r.status, 303)
 
+    def test_unicode_url_parsing(self):
+        http = PoolManager()
+
+        url = ('%s/取得する' % self.base_url).encode('utf-8')
+        r = http.request('GET', url)
+        self.assertEqual(r.status, 200)
+
+    def test_unicode_location_url(self):
+        http = PoolManager()
+
+        url = ('%s/取得する' % self.base_url).encode('utf-8')
+        r = http.request('GET', '%s/redirect' % self.base_url, fields={'target': url},
+                         retries=Retry(total=None, redirect=1, raise_on_redirect=False))
+        self.assertEqual(r.status, 200)
+
     def test_raise_on_status(self):
         http = PoolManager()
 
