@@ -1,35 +1,78 @@
 from __future__ import absolute_import
-from collections import namedtuple
 
 from ..exceptions import LocationParseError
+from ..packages import rfc3986
+from ..packages import six
 
 
 url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
 
 
-class Url(namedtuple('Url', url_attrs)):
+class Url(object):
     """
     Datastructure for representing an HTTP URL. Used as a return value for
     :func:`parse_url`. Both the scheme and host are normalized as they are
     both case-insensitive according to RFC 3986.
     """
-    __slots__ = ()
 
-    def __new__(cls, scheme=None, auth=None, host=None, port=None, path=None,
-                query=None, fragment=None):
+    def __init__(self, scheme=None, auth=None, host=None, port=None, path=None,
+                 query=None, fragment=None, parse_result=None):
         if path and not path.startswith('/'):
             path = '/' + path
-        if scheme:
-            scheme = scheme.lower()
-        if host:
-            host = host.lower()
-        return super(Url, cls).__new__(cls, scheme, auth, host, port, path,
-                                       query, fragment)
+            if parse_result is not None:
+                parse_result = parse_result.copy_with(path=path)
+
+        if parse_result is None:
+            parse_result = rfc3986.ParseResult.from_parts(
+                scheme=scheme,
+                userinfo=auth,
+                host=host,
+                port=port,
+                path=path,
+                query=query,
+                fragment=fragment,
+            )
+
+        self._parseresult = parse_result
+
+    def _replace(self, **kwargs):
+        if 'auth' in kwargs:
+            kwargs['userinfo'] = kwargs.pop('auth')
+
+        return Url(parse_result=self._parseresult.copy_with(**kwargs))
+
+    @property
+    def scheme(self):
+        return self._parseresult.scheme
+
+    @property
+    def auth(self):
+        return self._parseresult.userinfo
+
+    @property
+    def host(self):
+        return self._parseresult.host
 
     @property
     def hostname(self):
         """For backwards-compatibility with urlparse. We're nice like that."""
         return self.host
+
+    @property
+    def port(self):
+        return self._parseresult.port
+
+    @property
+    def path(self):
+        return self._parseresult.path
+
+    @property
+    def query(self):
+        return self._parseresult.query
+
+    @property
+    def fragment(self):
+        return self._parseresult.fragment
 
     @property
     def request_uri(self):
@@ -67,25 +110,12 @@ class Url(namedtuple('Url', url_attrs)):
             ... '/path', 'query', 'fragment').url
             'http://username:password@host.com:80/path?query#fragment'
         """
-        scheme, auth, host, port, path, query, fragment = self
-        url = ''
-
-        # We use "is not None" we want things to happen with empty strings (or 0 port)
-        if scheme is not None:
-            url += scheme + '://'
-        if auth is not None:
-            url += auth + '@'
-        if host is not None:
-            url += host
-        if port is not None:
-            url += ':' + str(port)
-        if path is not None:
-            url += path
-        if query is not None:
-            url += '?' + query
-        if fragment is not None:
-            url += '#' + fragment
-
+        url = self._parseresult.unsplit()
+        if six.PY2:
+            # NOTE(sigmavirus24): rfc3986 always returns a text-type. On Python 2,
+            # __str__ cannot return unicode, so we have to encode to keep backwards
+            # compatibility
+            return url.encode('utf-8')
         return url
 
     def __str__(self):
@@ -151,67 +181,10 @@ def parse_url(url):
         # Empty
         return Url()
 
-    scheme = None
-    auth = None
-    host = None
-    port = None
-    path = None
-    fragment = None
-    query = None
-
-    # Scheme
-    if '://' in url:
-        scheme, url = url.split('://', 1)
-
-    # Find the earliest Authority Terminator
-    # (http://tools.ietf.org/html/rfc3986#section-3.2)
-    url, path_, delim = split_first(url, ['/', '?', '#'])
-
-    if delim:
-        # Reassemble the path
-        path = delim + path_
-
-    # Auth
-    if '@' in url:
-        # Last '@' denotes end of auth part
-        auth, url = url.rsplit('@', 1)
-
-    # IPv6
-    if url and url[0] == '[':
-        host, url = url.split(']', 1)
-        host += ']'
-
-    # Port
-    if ':' in url:
-        _host, port = url.split(':', 1)
-
-        if not host:
-            host = _host
-
-        if port:
-            # If given, ports must be integers.
-            if not port.isdigit():
-                raise LocationParseError(url)
-            port = int(port)
-        else:
-            # Blank ports are cool, too. (rfc3986#section-3.2.3)
-            port = None
-
-    elif not host and url:
-        host = url
-
-    if not path:
-        return Url(scheme, auth, host, port, path, query, fragment)
-
-    # Fragment
-    if '#' in path:
-        path, fragment = path.split('#', 1)
-
-    # Query
-    if '?' in path:
-        path, query = path.split('?', 1)
-
-    return Url(scheme, auth, host, port, path, query, fragment)
+    try:
+        return Url(parse_result=rfc3986.urlparse(url))
+    except (rfc3986.exceptions.InvalidAuthority, rfc3986.exceptions.InvalidPort):
+        raise LocationParseError(url)
 
 
 def get_host(url):
