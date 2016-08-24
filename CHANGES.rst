@@ -35,6 +35,8 @@ dev (master)
 
 * Updated cipher suite list to remove 3DES-based cipher suites. (PR #958)
 
+* Removed the cipher suite fallback to allow HIGH ciphers. (PR #958)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
