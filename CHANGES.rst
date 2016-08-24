@@ -33,6 +33,8 @@ dev (master)
 * Updated cipher suite list to allow ChaCha20+Poly1305. AES-GCM is preferred to
   ChaCha20, but ChaCha20 is then preferred to everything else. (PR #947)
 
+* Updated cipher suite list to remove 3DES-based cipher suites. (PR #958)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

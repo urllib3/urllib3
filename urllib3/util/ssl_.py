@@ -65,7 +65,6 @@ except ImportError:
 # - prefer any AES-GCM and ChaCha20 over any AES-CBC for better performance and
 #   security,
 # - prefer AES-GCM over ChaCha20 because hardware-accelerated AES is common,
-# - use 3DES as fallback which is secure but slow,
 # - disable NULL authentication, MD5 MACs and DSS for security reasons.
 DEFAULT_CIPHERS = ':'.join([
     'ECDH+AESGCM',
@@ -78,12 +77,9 @@ DEFAULT_CIPHERS = ':'.join([
     'DH+AES',
     'ECDH+HIGH',
     'DH+HIGH',
-    'ECDH+3DES',
-    'DH+3DES',
     'RSA+AESGCM',
     'RSA+AES',
     'RSA+HIGH',
-    'RSA+3DES',
     '!aNULL',
     '!eNULL',
     '!MD5',
