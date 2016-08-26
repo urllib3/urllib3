@@ -3,6 +3,7 @@ import time
 import logging
 from collections import namedtuple
 from itertools import takewhile
+import email
 
 from ..exceptions import (
     ConnectTimeoutError,
@@ -194,6 +195,24 @@ class Retry(object):
         backoff_value = self.backoff_factor * (2 ** (consecutive_errors_len - 1))
         return min(self.BACKOFF_MAX, backoff_value)
 
+    def sleep_for_retry(self, response):
+        """ Sleep for the seconds or until the date specifed by Retry-After header.
+        """
+
+        retry_after = response.getheader("Retry-After")
+
+        if retry_after:
+            seconds = 0
+            if retry_after.isdigit():
+                seconds = int(retry_after)
+            else:
+                retry_date_tuple = email.utils.parsedate(retry_after)
+                retry_date = time.mktime(retry_date_tuple)
+                if retry_date:
+                    seconds = retry_date - time.time()
+            time.sleep(seconds)
+            return
+
     def sleep(self, response=None):
         """ Sleep between retry attempts.
 
@@ -203,17 +222,13 @@ class Retry(object):
         this method will return immediately.
         """
 
-        # Sleep for the seconds specifed by Retry-After header
         if response:
-            retry_after = response.getheader("Retry-After")
-            if retry_after and retry_after.isdigit():
-                time.sleep(int(retry_after))
+            self.sleep_for_retry(response)
+        else:
+            backoff = self.get_backoff_time()
+            if backoff <= 0:
                 return
-
-        backoff = self.get_backoff_time()
-        if backoff <= 0:
-            return
-        time.sleep(backoff)
+            time.sleep(backoff)
 
     def _is_connection_error(self, err):
         """ Errors when we're fairly sure that the server did not receive the
