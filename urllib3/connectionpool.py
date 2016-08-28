@@ -599,6 +599,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # mess.
             response_conn = conn if not release_conn else None
 
+            # Pass method to Response for length checking
+            response_kw['request_method'] = method
+
             # Import httplib's response into our own wrapper object
             response = self.ResponseCls.from_httplib(httplib_response,
                                                      pool=self,

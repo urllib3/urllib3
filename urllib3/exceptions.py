@@ -193,6 +193,11 @@ class ResponseNotChunked(ProtocolError, ValueError):
     pass
 
 
+class InvalidHeader(HTTPError):
+    "The header provided was somehow invalid."
+    pass
+
+
 class ProxySchemeUnknown(AssertionError, ValueError):
     "ProxyManager does not support the supplied scheme"
     # TODO(t-8ch): Stop inheriting from AssertionError in v2.0.
