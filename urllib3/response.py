@@ -9,7 +9,7 @@ from socket import error as SocketError
 from ._collections import HTTPHeaderDict
 from .exceptions import (
     ProtocolError, DecodeError, ReadTimeoutError,
-    ResponseNotChunked, InvalidHeader
+    ResponseNotChunked, IncompleteRead, InvalidHeader
 )
 from .packages.six import string_types as basestring, binary_type, PY3
 from .packages.six.moves import http_client as httplib
@@ -97,6 +97,10 @@ class HTTPResponse(io.IOBase):
     :param retries:
         The retries contains the last :class:`~urllib3.util.retry.Retry` that
         was used during the request.
+
+    :param enforce_content_length:
+        Enforce content length checking. Body returned by server must match
+        value of Content-Length header, if present. Otherwise, raise error.
     """
 
     CONTENT_DECODERS = ['gzip', 'deflate']
@@ -105,7 +109,7 @@ class HTTPResponse(io.IOBase):
     def __init__(self, body='', headers=None, status=0, version=0, reason=None,
                  strict=0, preload_content=True, decode_content=True,
                  original_response=None, pool=None, connection=None,
-                 retries=None, request_method=None):
+                 retries=None, enforce_content_length=False, request_method=None):
 
         if isinstance(headers, HTTPHeaderDict):
             self.headers = headers
@@ -117,6 +121,7 @@ class HTTPResponse(io.IOBase):
         self.strict = strict
         self.decode_content = decode_content
         self.retries = retries
+        self.enforce_content_length = enforce_content_length
 
         self._decoder = None
         self._body = None
@@ -383,6 +388,13 @@ class HTTPResponse(io.IOBase):
                     # no harm in redundantly calling close.
                     self._fp.close()
                     flush_decoder = True
+                    if self.enforce_content_length and self.length_remaining not in (0, None):
+                        # This is an edge case that httplib failed to cover due
+                        # to concerns of backward compatibility. We're
+                        # addressing it here to make sure IncompleteRead is
+                        # raised during streaming, so all calls with incorrect
+                        # Content-Length are caught.
+                        raise IncompleteRead(self._fp_bytes_read, self.length_remaining)
 
         if data:
             self._fp_bytes_read += len(data)

@@ -210,6 +210,7 @@ In chronological order:
   * Ensure timeouts are not booleans and greater than zero.
   * Fixed infinite loop in ``stream`` when amt=None.
   * Added length_remaining to determine remaining data to be read.
+  * Added enforce_content_length to raise exception when incorrect content-length received.
 
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

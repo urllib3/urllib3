@@ -1,4 +1,7 @@
 from __future__ import absolute_import
+from .packages.six.moves.http_client import (
+    IncompleteRead as httplib_IncompleteRead
+)
 # Base Exceptions
 
 
@@ -191,6 +194,20 @@ class DependencyWarning(HTTPWarning):
 class ResponseNotChunked(ProtocolError, ValueError):
     "Response needs to be chunked in order to read it as chunks."
     pass
+
+
+class IncompleteRead(HTTPError, httplib_IncompleteRead):
+    """
+    Response length doesn't match expected Content-Length
+
+    Subclass of http_client.IncompleteRead to allow int value
+    for `partial` to avoid creating large objects on streamed
+    reads.
+    """
+    def __init__(self, partial, expected):
+        message = ('IncompleteRead(%i bytes read, '
+                   '%i more expected)' % (partial, expected))
+        httplib_IncompleteRead.__init__(self, message)
 
 
 class InvalidHeader(HTTPError):
