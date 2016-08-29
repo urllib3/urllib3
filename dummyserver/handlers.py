@@ -265,8 +265,9 @@ class TestingApp(RequestHandler):
 
     def retry_after(self, request):
         if datetime.now() - self.application.last_req < timedelta(seconds=1):
+            status = request.params.get("status", "429 Too Many Requests")
             return Response(
-                    status="429 Too Many Requests",
+                    status=status.decode('utf-8'),
                     headers=[('Retry-After', '1')])
 
         self.application.last_req = datetime.now()

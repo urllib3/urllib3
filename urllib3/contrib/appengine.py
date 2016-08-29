@@ -204,10 +204,11 @@ class AppEngineManager(RequestMethods):
                     timeout=timeout, **response_kw)
 
         # Check if we should retry the HTTP response.
-        if retries.is_forced_retry(method, status_code=http_response.status):
+        has_retry_after = bool(http_response.getheader('Retry-After'))
+        if retries.is_retry(method, http_response.status, has_retry_after):
             retries = retries.increment(
                 method, url, response=http_response, _pool=self)
-            log.debug("Forced retry: %s", url)
+            log.debug("Retry: %s", url)
             retries.sleep(http_response)
             return self.urlopen(
                 method, url,

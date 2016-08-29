@@ -811,13 +811,39 @@ class TestRetryAfter(HTTPDummyServerTestCase):
 
     def test_retry_after(self):
         # Request twice in a second to get a 429 response.
-        r = self.pool.request('GET', '/retry_after')
-        r = self.pool.request('GET', '/retry_after')
+        r = self.pool.request('GET', '/retry_after',
+                fields={'status': '429 Too Many Requests'},
+                retries=False)
+        r = self.pool.request('GET', '/retry_after',
+                fields={'status': '429 Too Many Requests'},
+                retries=False)
         self.assertEqual(r.status, 429)
 
         r = self.pool.request('GET', '/retry_after',
-                retries=Retry(status_forcelist=[429]))
+                fields={'status': '429 Too Many Requests'},
+                retries=True)
         self.assertEqual(r.status, 200)
+
+        # Request twice in a second to get a 503 response.
+        r = self.pool.request('GET', '/retry_after',
+                fields={'status': '503 Service Unavailable'},
+                retries=False)
+        r = self.pool.request('GET', '/retry_after',
+                fields={'status': '503 Service Unavailable'},
+                retries=False)
+        self.assertEqual(r.status, 503)
+
+        r = self.pool.request('GET', '/retry_after',
+                fields={'status': '503 Service Unavailable'},
+                retries=True)
+        self.assertEqual(r.status, 200)
+
+        # Ignore Retry-After header on status which is not defined in
+        # Retry.RETRY_AFTER_STATUS_CODES.
+        r = self.pool.request('GET', '/retry_after',
+                fields={'status': "418 I'm a teapot"},
+                retries=True)
+        self.assertEqual(r.status, 418)
 
     def test_redirect_after(self):
         r = self.pool.request('GET', '/redirect_after', retries=False)

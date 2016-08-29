@@ -11,6 +11,7 @@ from ..exceptions import (
     ProtocolError,
     ReadTimeoutError,
     ResponseError,
+    InvalidHeader,
 )
 from ..packages import six
 
@@ -124,10 +125,17 @@ class Retry(object):
     :param tuple history: The history of the request encountered during
         each call to :meth:`~Retry.increment`. The list is in the order
         the requests occurred. Each list item is of class :class:`RequestHistory`.
+
+    :param bool respect_retry_after_header:
+        Whether to respect Retry-After header on status codes defined as
+        :attr:`Retry.RETRY_AFTER_STATUS_CODES` or not.
+
     """
 
     DEFAULT_METHOD_WHITELIST = frozenset([
         'HEAD', 'GET', 'PUT', 'DELETE', 'OPTIONS', 'TRACE'])
+
+    RETRY_AFTER_STATUS_CODES = frozenset([413, 429, 503])
 
     #: Maximum backoff time.
     BACKOFF_MAX = 120
@@ -135,7 +143,7 @@ class Retry(object):
     def __init__(self, total=10, connect=None, read=None, redirect=None,
                  method_whitelist=DEFAULT_METHOD_WHITELIST, status_forcelist=None,
                  backoff_factor=0, raise_on_redirect=True, raise_on_status=True,
-                 history=None):
+                 history=None, respect_retry_after_header=True):
 
         self.total = total
         self.connect = connect
@@ -152,6 +160,7 @@ class Retry(object):
         self.raise_on_redirect = raise_on_redirect
         self.raise_on_status = raise_on_status
         self.history = history or tuple()
+        self.respect_retry_after_header = respect_retry_after_header
 
     def new(self, **kw):
         params = dict(
@@ -195,23 +204,44 @@ class Retry(object):
         backoff_value = self.backoff_factor * (2 ** (consecutive_errors_len - 1))
         return min(self.BACKOFF_MAX, backoff_value)
 
-    def sleep_for_retry(self, response):
-        """ Sleep for the seconds or until the date specifed by Retry-After header.
-        """
+    def parse_retry_after(self, retry_after):
+        if retry_after.isdigit():
+            seconds = int(retry_after)
+        else:
+            retry_date_tuple = email.utils.parsedate(retry_after)
+            if retry_date_tuple is None:
+                raise InvalidHeader("Invalid Retry-After header: %s" % retry_after)
+            retry_date = time.mktime(retry_date_tuple)
+            seconds = retry_date - time.time()
+
+        if seconds < 0:
+            seconds = 0
+
+        return seconds
+
+    def get_retry_after(self, response):
+        """ Get the value of Retry-After in seconds. """
 
         retry_after = response.getheader("Retry-After")
 
+        if retry_after is None:
+            return None
+
+        return self.parse_retry_after(retry_after)
+
+    def sleep_for_retry(self, response=None):
+        retry_after = self.get_retry_after(response)
         if retry_after:
-            seconds = 0
-            if retry_after.isdigit():
-                seconds = int(retry_after)
-            else:
-                retry_date_tuple = email.utils.parsedate(retry_after)
-                retry_date = time.mktime(retry_date_tuple)
-                if retry_date:
-                    seconds = retry_date - time.time()
-            time.sleep(seconds)
+            time.sleep(retry_after)
+            return True
+
+        return False
+
+    def _sleep_backoff(self):
+        backoff = self.get_backoff_time()
+        if backoff <= 0:
             return
+        time.sleep(backoff)
 
     def sleep(self, response=None):
         """ Sleep between retry attempts.
@@ -223,12 +253,11 @@ class Retry(object):
         """
 
         if response:
-            self.sleep_for_retry(response)
-        else:
-            backoff = self.get_backoff_time()
-            if backoff <= 0:
+            slept = self.sleep_for_retry(response)
+            if slept:
                 return
-            time.sleep(backoff)
+
+        self._sleep_backoff()
 
     def _is_connection_error(self, err):
         """ Errors when we're fairly sure that the server did not receive the
@@ -242,13 +271,17 @@ class Retry(object):
         """
         return isinstance(err, (ReadTimeoutError, ProtocolError))
 
-    def is_forced_retry(self, method, status_code):
+    def is_retry(self, method, status_code, has_retry_after=False):
         """ Is this method/status code retryable? (Based on method/codes whitelists)
         """
         if self.method_whitelist and method.upper() not in self.method_whitelist:
             return False
 
-        return self.status_forcelist and status_code in self.status_forcelist
+        if self.status_forcelist and status_code in self.status_forcelist:
+            return True
+
+        return (self.total and self.respect_retry_after_header and
+                has_retry_after and (status_code in self.RETRY_AFTER_STATUS_CODES))
 
     def is_exhausted(self):
         """ Are we out of retries? """
