@@ -8,7 +8,7 @@ from dummyserver.testcase import (HTTPDummyServerTestCase,
 from urllib3.poolmanager import PoolManager
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError, SSLError
-from urllib3.util.retry import Retry
+from urllib3.util.retry import Retry, RequestHistory
 
 
 class TestPoolManager(HTTPDummyServerTestCase):
@@ -108,6 +108,50 @@ class TestPoolManager(HTTPDummyServerTestCase):
                          retries=Retry(total=None, redirect=1, raise_on_redirect=False))
 
         self.assertEqual(r.status, 303)
+
+    def test_cleanup_on_connection_error(self):
+        poolsize = 3
+        http = PoolManager(maxsize=poolsize, block=True)
+        connpool = http.connection_from_host(self.host, self.port)
+        self.assertEqual(connpool.pool.qsize(), poolsize)
+
+        # force a connection error by supplying a non-existent
+        # url. We won't get a response for this  and so the
+        # conn won't be implicitly returned to the pool.
+        self.assertRaises(MaxRetryError,
+            http.request, 'GET', '%s/redirect' % self.base_url, fields={'target': '/'}, release_conn=False, retries=0)
+
+        r = http.request('GET', '%s/redirect' % self.base_url, fields={'target': '/'}, release_conn=False, retries=1)
+        r.release_conn()
+
+        # the pool should still contain poolsize elements
+        self.assertEqual(connpool.pool.qsize(), connpool.pool.maxsize)
+
+    def test_redirect_history(self):
+        http = PoolManager()
+
+        r = http.request('GET', '%s/redirect' % self.base_url, fields={'target': '/'})
+        self.assertEqual(r.status, 200)
+        self.assertEqual(r.retries.history,
+                         (RequestHistory('GET', self.base_url + '/redirect?target=%2F', None, 303, '/'),))
+
+    def test_multi_redirect_history(self):
+        http = PoolManager()
+        r = http.request('GET', '%s/multi_redirect' % self.base_url, fields={'redirect_codes': '303,302,200'}, redirect=False)
+        self.assertEqual(r.status, 303)
+        self.assertEqual(r.retries.history, tuple())
+
+        r = http.request('GET', '%s/multi_redirect' % self.base_url, retries=10,
+                         fields={'redirect_codes': '303,302,301,307,302,200'})
+        self.assertEqual(r.status, 200)
+        self.assertEqual(r.data, b'Done redirecting')
+        self.assertEqual([(request_history.status, request_history.redirect_location) for request_history in r.retries.history], [
+            (303, '/multi_redirect?redirect_codes=302,301,307,302,200'),
+            (302, '/multi_redirect?redirect_codes=301,307,302,200'),
+            (301, '/multi_redirect?redirect_codes=307,302,200'),
+            (307, '/multi_redirect?redirect_codes=302,200'),
+            (302, '/multi_redirect?redirect_codes=200')
+        ])
 
     def test_raise_on_status(self):
         http = PoolManager()

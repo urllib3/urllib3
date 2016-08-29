@@ -16,6 +16,7 @@ from ..port_helpers import find_unused_port
 from urllib3 import (
     encode_multipart_formdata,
     HTTPConnectionPool,
+    PoolManager,
 )
 from urllib3.exceptions import (
     ConnectTimeoutError,
@@ -374,14 +375,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool._make_request(conn, 'GET', '/')
         self.assertEqual(conn._tunnel.called, False)
 
-    def test_redirect(self):
-        r = self.pool.request('GET', '/redirect', fields={'target': '/'}, redirect=False)
-        self.assertEqual(r.status, 303)
-
-        r = self.pool.request('GET', '/redirect', fields={'target': '/'})
-        self.assertEqual(r.status, 200)
-        self.assertEqual(r.data, b'Dummy server!')
-
     def test_bad_connect(self):
         pool = HTTPConnectionPool('badhost.invalid', self.port)
         try:
@@ -660,42 +653,13 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         self.assertEqual(b'123' * 4, response.read())
 
-    def test_cleanup_on_connection_error(self):
-        '''
-        Test that connections are recycled to the pool on
-        connection errors where no http response is received.
-        '''
-        poolsize = 3
-        with HTTPConnectionPool(self.host, self.port, maxsize=poolsize, block=True) as http:
-            self.assertEqual(http.pool.qsize(), poolsize)
-
-            # force a connection error by supplying a non-existent
-            # url. We won't get a response for this  and so the
-            # conn won't be implicitly returned to the pool.
-            self.assertRaises(MaxRetryError,
-                http.request, 'GET', '/redirect', fields={'target': '/'}, release_conn=False, retries=0)
-
-            r = http.request('GET', '/redirect', fields={'target': '/'}, release_conn=False, retries=1)
-            r.release_conn()
-
-            # the pool should still contain poolsize elements
-            self.assertEqual(http.pool.qsize(), http.pool.maxsize)
-
 
 
 
 class TestRetry(HTTPDummyServerTestCase):
     def setUp(self):
         self.pool = HTTPConnectionPool(self.host, self.port)
-
-    def test_max_retry(self):
-        try:
-            r = self.pool.request('GET', '/redirect',
-                              fields={'target': '/'},
-                              retries=0)
-            self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
-        except MaxRetryError:
-            pass
+        self.manager = PoolManager()
 
     def test_disabled_retry(self):
         """ Disabled retries should disable redirect handling. """
@@ -778,28 +742,6 @@ class TestRetry(HTTPDummyServerTestCase):
         self.assertEqual(resp.status, 200)
         self.assertEqual(resp.retries.total, 1)
         self.assertEqual(resp.retries.history, (RequestHistory('GET', '/successful_retry', None, 418, None),))
-
-    def test_retry_redirect_history(self):
-        resp = self.pool.request('GET', '/redirect', fields={'target': '/'})
-        self.assertEqual(resp.status, 200)
-        self.assertEqual(resp.retries.history, (RequestHistory('GET', '/redirect?target=%2F', None, 303, '/'),))
-
-    def test_multi_redirect_history(self):
-        r = self.pool.request('GET', '/multi_redirect', fields={'redirect_codes': '303,302,200'}, redirect=False)
-        self.assertEqual(r.status, 303)
-        self.assertEqual(r.retries.history, tuple())
-
-        r = self.pool.request('GET', '/multi_redirect', retries=10,
-                              fields={'redirect_codes': '303,302,301,307,302,200'})
-        self.assertEqual(r.status, 200)
-        self.assertEqual(r.data, b'Done redirecting')
-        self.assertEqual([(request_history.status, request_history.redirect_location) for request_history in r.retries.history], [
-            (303, '/multi_redirect?redirect_codes=302,301,307,302,200'),
-            (302, '/multi_redirect?redirect_codes=301,307,302,200'),
-            (301, '/multi_redirect?redirect_codes=307,302,200'),
-            (307, '/multi_redirect?redirect_codes=302,200'),
-            (302, '/multi_redirect?redirect_codes=200')
-        ])
 
 
 if __name__ == '__main__':

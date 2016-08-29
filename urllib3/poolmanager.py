@@ -238,6 +238,11 @@ class PoolManager(RequestMethods):
         if 'headers' not in kw:
             kw['headers'] = self.headers
 
+        retries = kw.get('retries')
+        if not isinstance(retries, Retry):
+            retries = Retry.from_int(retries, redirect=redirect)
+            kw['retries'] = retries
+
         if self.proxy is not None and u.scheme == "http":
             response = conn.urlopen(method, url, **kw)
         else:
@@ -253,10 +258,6 @@ class PoolManager(RequestMethods):
         # RFC 7231, Section 6.4.4
         if response.status == 303:
             method = 'GET'
-
-        retries = kw.get('retries')
-        if not isinstance(retries, Retry):
-            retries = Retry.from_int(retries, redirect=redirect)
 
         try:
             retries = retries.increment(method, url, response=response, _pool=conn)
