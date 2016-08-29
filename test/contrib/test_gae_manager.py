@@ -18,7 +18,7 @@ from urllib3.util.url import Url
 from urllib3.util.retry import Retry, RequestHistory
 
 from test.with_dummyserver.test_connectionpool import (
-    TestConnectionPool, TestRetry)
+    TestConnectionPool, TestRetry, TestRetryAfter)
 
 
 # Prevent nose from running these test.
@@ -195,6 +195,17 @@ class TestGAERetry(TestRetry):
     # We don't need these tests because URLFetch resolves its own redirects.
     test_retry_redirect_history = None
     test_multi_redirect_history = None
+
+class TestGAERetryAfter(TestRetryAfter):
+    __test__ = True
+
+    # Magic class variable that tells NoseGAE to enable the URLFetch stub.
+    nosegae_urlfetch = True
+
+    def setUp(self):
+        # Disable urlfetch which doesn't respect Retry-After header.
+        self.manager = AppEngineManager(urlfetch_retries=False)
+        self.pool = MockPool(self.host, self.port, self.manager)
 
 
 if __name__ == '__main__':

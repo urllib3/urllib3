@@ -11,6 +11,7 @@ import zlib
 
 from io import BytesIO
 from tornado.web import RequestHandler
+from tornado import httputil
 from datetime import datetime
 from datetime import timedelta
 
@@ -271,6 +272,18 @@ class TestingApp(RequestHandler):
         self.application.last_req = datetime.now()
 
         return Response(status="200 OK")
+
+    def redirect_after(self, request):
+        "Perform a redirect to ``target``"
+        date = request.params.get('date')
+        if date:
+            retry_after = str(httputil.format_timestamp(
+                    datetime.fromtimestamp(float(date))))
+        else:
+            retry_after = '1'
+        target = request.params.get('target', '/')
+        headers = [('Location', target), ('Retry-After', retry_after)]
+        return Response(status='303 See Other', headers=headers)
 
     def shutdown(self, request):
         sys.exit()

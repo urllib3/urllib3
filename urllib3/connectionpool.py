@@ -686,6 +686,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     raise
                 return response
 
+            retries.sleep_for_retry(response)
             log.debug("Redirecting %s -> %s", url, redirect_location)
             return self.urlopen(
                 method, redirect_location, body, headers,

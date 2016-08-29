@@ -6,6 +6,9 @@ import unittest
 import time
 import warnings
 
+from datetime import datetime
+from datetime import timedelta
+
 import mock
 
 from .. import (
@@ -801,6 +804,11 @@ class TestRetry(HTTPDummyServerTestCase):
             (302, '/multi_redirect?redirect_codes=200')
         ])
 
+
+class TestRetryAfter(HTTPDummyServerTestCase):
+    def setUp(self):
+        self.pool = HTTPConnectionPool(self.host, self.port)
+
     def test_retry_after(self):
         # Request twice in a second to get a 429 response.
         r = self.pool.request('GET', '/retry_after')
@@ -810,6 +818,23 @@ class TestRetry(HTTPDummyServerTestCase):
         r = self.pool.request('GET', '/retry_after',
                 retries=Retry(status_forcelist=[429]))
         self.assertEqual(r.status, 200)
+
+    def test_redirect_after(self):
+        r = self.pool.request('GET', '/redirect_after', retries=False)
+        self.assertEqual(r.status, 303)
+
+        t = time.time()
+        r = self.pool.request('GET', '/redirect_after')
+        self.assertEqual(r.status, 200)
+        delta = time.time() - t
+        self.assertTrue(delta >= 1)
+
+        t = time.time()
+        timestamp = t + 2
+        r = self.pool.request('GET', '/redirect_after?date=' + str(timestamp))
+        self.assertEqual(r.status, 200)
+        delta = time.time() - t
+        self.assertTrue(delta >= 1)
 
 if __name__ == '__main__':
     unittest.main()
