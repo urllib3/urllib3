@@ -37,6 +37,12 @@ dev (master)
 
 * Removed the cipher suite fallback to allow HIGH ciphers. (PR #958)
 
+* Implemented ``length_remaining`` to determine remaining content
+  to be read. (PR #949)
+
+* Implemented ``enforce_content_length`` to enable exceptions when
+  incomplete data chunks are received. (PR #949)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
