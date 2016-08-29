@@ -836,5 +836,13 @@ class TestRetryAfter(HTTPDummyServerTestCase):
         delta = time.time() - t
         self.assertTrue(delta >= 1)
 
+        # Retry-After is past
+        t = time.time()
+        timestamp = t - 1
+        r = self.pool.request('GET', '/redirect_after?date=' + str(timestamp))
+        delta = time.time() - t
+        self.assertEqual(r.status, 200)
+        self.assertTrue(delta < 1)
+
 if __name__ == '__main__':
     unittest.main()
