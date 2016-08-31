@@ -458,7 +458,13 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                 raise timeout('select timed out')
             continue
         except OpenSSL.SSL.Error as e:
-            raise ssl.SSLError('bad handshake: %r' % e)
+            error = 'bad handshake: %r' % e
+            if e.message == [('SSL routines', 'SSL23_GET_SERVER_HELLO',
+                              'sslv3 alert handshake failure')]:
+                error += ' If you has installed pyopenssl. You can try ' \
+                         'to uninstall it and retry'
+
+            raise ssl.SSLError(error)
         break
 
     return WrappedSocket(cnx, sock)
