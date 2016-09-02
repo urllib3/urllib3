@@ -1,6 +1,6 @@
 import unittest
 
-from urllib3.sessionmanager import SessionManager
+from urllib3.sessionmanager import SessionManager, ProxySessionManager
 from urllib3.poolmanager import ProxyManager, PoolManager
 from urllib3.util.sessioncontext import DefaultCookiePolicy, CookieJar, SessionContext
 from urllib3.packages import six
@@ -13,7 +13,7 @@ cookielib = six.moves.http_cookiejar
 class TestSessionManager(unittest.TestCase):
 
     def setUp(self):
-        self.manager = SessionManager(PoolManager())
+        self.manager = SessionManager()
 
     def test_set_cookie_policy(self):
         """
@@ -26,19 +26,19 @@ class TestSessionManager(unittest.TestCase):
 
     def test_create_proxy_manager(self):
         """
-        Make sure that when we pass a ProxyManager in, we use it.
+        Make sure that the ProxySessionManager has its `manager` attribute
+        set correctly
         """
-        pm = ProxyManager(proxy_url='http://none')
-        manager = SessionManager(pm)
-        self.assertTrue(manager.manager is pm)
+        manager = ProxySessionManager(proxy_url='http://none')
+        self.assertTrue(isinstance(manager.manager, ProxyManager))
 
     def test_creates_pool_manager(self):
         """
-        Make sure that when we pass a PoolManager in, we use it.
+        Make sure that when we just create a SessionManager, the embedded manager
+        is of the PoolManager type.
         """
-        pm = PoolManager()
-        manager = SessionManager(pm)
-        self.assertTrue(manager.manager is pm)
+        manager = SessionManager()
+        self.assertTrue(isinstance(manager.manager, PoolManager))
 
     def test_with_external_jar(self):
         """
@@ -47,9 +47,29 @@ class TestSessionManager(unittest.TestCase):
         this_policy = cookielib.DefaultCookiePolicy()
         jar = CookieJar(policy=this_policy)
         context = SessionContext(cookie_jar=jar)
-        manager = SessionManager(PoolManager(), context=context)
+        manager = SessionManager(manager=PoolManager(), context=context)
         self.assertTrue(manager.context.cookie_jar is jar)
 
+    def test_with_own_manager(self):
+        """
+        Make sure that when we pass our own manager instance in,
+        it gets used.
+        """
+        manager = 18743
+        sm = SessionManager(manager=manager)
+        self.assertEqual(manager, sm.manager)
+
+    def test_with_own_manager_class(self):
+        """
+        If we subclass SessionManager and give it a new manager class,
+        check that we instantiate that class on creation of a new instance.
+        """
+        class PointlessSessionManager(SessionManager):
+
+            manager_class = int
+
+        psm = PointlessSessionManager()
+        self.assertEqual(psm.manager, 0)
 
 class TestSessionContext(unittest.TestCase):
 

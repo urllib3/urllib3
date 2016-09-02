@@ -1,4 +1,5 @@
 from .util.retry import Retry
+from .poolmanager import PoolManager, ProxyManager
 from .request import RequestMethods, Request
 from .util.sessioncontext import SessionContext
 
@@ -35,14 +36,17 @@ class SessionManager(RequestMethods):
         2
 
     """
-    def __init__(self, manager, context=None, headers=None):
+
+    manager_class = PoolManager
+
+    def __init__(self, context=None, headers=None, manager=None, **manager_kw):
         super(SessionManager, self).__init__(headers=headers)
-        self.manager = manager
+        self.manager = self.manager_class(**manager_kw) if manager is None else manager
         self.context = context or SessionContext()
 
     def urlopen(self, method, url, redirect=True, retries=None, **kw):
         """
-        Same as :meth:`urllib2.poolmanager.PoolManager.urlopen` with added
+        Same as :meth:`urllib3.poolmanager.PoolManager.urlopen` with added
         request-context-managing special sauce. The received ``url`` param
         must be an absolute path.
 
@@ -75,3 +79,8 @@ class SessionManager(RequestMethods):
             return self.redirect(response=response, method=method,
                                  retries=retries, url=url, **kw)
         return response
+
+
+class ProxySessionManager(SessionManager):
+
+    manager_class = ProxyManager

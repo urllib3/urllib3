@@ -17,7 +17,7 @@ class TestSessionManager(HTTPDummyServerTestCase):
         return 'http://' + self.host_alt + ':' + str(self.port) + route
 
     def setUp(self):
-        self.manager = SessionManager(PoolManager())
+        self.manager = SessionManager()
 
     def test_cookie_handler(self):
         """
@@ -61,7 +61,7 @@ class TestSessionManager(HTTPDummyServerTestCase):
         successfully merged, rather than skipped
         """
         headers = {'Cookie': 'testing_cookie=test_cookie_value'}
-        manager = SessionManager(PoolManager(), headers=headers)
+        manager = SessionManager(headers=headers)
         route = self.create_url('/verify_cookie')
         r = manager.request('GET', route)
         self.assertEqual(r.data, b'Received cookie')
