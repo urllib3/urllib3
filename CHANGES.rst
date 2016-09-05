@@ -43,6 +43,9 @@ dev (master)
 * Implemented ``enforce_content_length`` to enable exceptions when
   incomplete data chunks are received. (PR #949)
 
+* Dropped connection start, dropped connection reset, redirect, forced retry,
+  and new HTTPS connection log levels to DEBUG, from INFO. (PR #967)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
