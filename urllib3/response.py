@@ -187,6 +187,13 @@ class HTTPResponse(io.IOBase):
     def connection(self):
         return self._connection
 
+    def info(self):
+        """
+        This is a compatibility method that's only used by urllib3's cookie
+        handlers; don't use it in your own code.
+        """
+        return self.headers
+
     def tell(self):
         """
         Obtain the number of bytes pulled over the wire so far. May differ from

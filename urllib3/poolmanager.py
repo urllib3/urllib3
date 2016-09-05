@@ -6,8 +6,7 @@ import logging
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
-from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
-from .packages.six.moves.urllib.parse import urljoin
+from .exceptions import LocationValueError, ProxySchemeUnknown
 from .request import RequestMethods
 from .util.url import parse_url
 from .util.retry import Retry
@@ -221,7 +220,7 @@ class PoolManager(RequestMethods):
         u = parse_url(url)
         return self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
-    def urlopen(self, method, url, redirect=True, **kw):
+    def urlopen(self, method, url, redirect=True, retries=None, **kw):
         """
         Same as :meth:`urllib3.connectionpool.HTTPConnectionPool.urlopen`
         with custom cross-host redirect logic and only sends the request-uri
@@ -229,47 +228,30 @@ class PoolManager(RequestMethods):
 
         The given ``url`` parameter must be absolute, such that an appropriate
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
+
+        This is a low-level method; use :func:`urllib3.request.RequestMethods.request`
+        instead.
         """
         u = parse_url(url)
         conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
-
         kw['assert_same_host'] = False
         kw['redirect'] = False
         if 'headers' not in kw:
             kw['headers'] = self.headers
 
-        if self.proxy is not None and u.scheme == "http":
-            response = conn.urlopen(method, url, **kw)
-        else:
-            response = conn.urlopen(method, u.request_uri, **kw)
-
-        redirect_location = redirect and response.get_redirect_location()
-        if not redirect_location:
-            return response
-
-        # Support relative URLs for redirecting.
-        redirect_location = urljoin(url, redirect_location)
-
-        # RFC 7231, Section 6.4.4
-        if response.status == 303:
-            method = 'GET'
-
-        retries = kw.get('retries')
         if not isinstance(retries, Retry):
             retries = Retry.from_int(retries, redirect=redirect)
 
-        try:
-            retries = retries.increment(method, url, response=response, _pool=conn)
-        except MaxRetryError:
-            if retries.raise_on_redirect:
-                raise
-            return response
+        if self.proxy is not None and u.scheme == "http":
+            response = conn.urlopen(method, url, retries=retries, **kw)
+        else:
+            response = conn.urlopen(method, u.request_uri, retries=retries, **kw)
 
-        kw['retries'] = retries
-        kw['redirect'] = redirect
-
-        log.info("Redirecting %s -> %s", url, redirect_location)
-        return self.urlopen(method, redirect_location, **kw)
+        if redirect and response.get_redirect_location():
+            kw['redirect'] = redirect
+            return self.redirect(response=response, method=method, retries=retries,
+                                 url=url, pool=conn, **kw)
+        return response
 
 
 class ProxyManager(PoolManager):
