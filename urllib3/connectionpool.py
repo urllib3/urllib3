@@ -209,7 +209,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         self.num_connections += 1
         log.debug("Starting new HTTP connection (%d): %s",
-                 self.num_connections, self.host)
+                  self.num_connections, self.host)
 
         conn = self.ConnectionCls(host=self.host, port=self.port,
                                   timeout=self.timeout.connect_timeout,
@@ -804,7 +804,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         """
         self.num_connections += 1
         log.debug("Starting new HTTPS connection (%d): %s",
-                 self.num_connections, self.host)
+                  self.num_connections, self.host)
 
         if not self.ConnectionCls or self.ConnectionCls is DummyConnection:
             raise SSLError("Can't connect to HTTPS URL because the SSL "
