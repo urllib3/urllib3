@@ -162,7 +162,8 @@ For uploading files using ``multipart/form-data`` encoding you can use the same
 approach as :ref:`form_data` and specify the file field as a tuple of
 ``(file_name, file_data)``::
 
-    >>> file_data = open('example.txt').read()
+    >>> with open('example.txt') as fp:
+    ...     file_data = fp.read()
     >>> r = http.request(
     ...     'POST',
     ...     'http://httpbin.org/post',
@@ -186,7 +187,8 @@ to specify the file's MIME type explicitly::
 For sending raw binary data simply specify the ``body`` argument. It's also
 recommended to set the ``Content-Type`` header::
 
-    >>> binary_data = open('example.jpg', 'rb').read()
+    >>> with open('example.jpg', 'rb') as fp:
+    ...     binary_data = fp.read()
     >>> r = http.request(
     ...     'POST',
     ...     'http://httpbin.org/post',
