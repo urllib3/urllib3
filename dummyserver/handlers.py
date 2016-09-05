@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import collections
+import contextlib
 import gzip
 import json
 import logging
@@ -199,9 +200,8 @@ class TestingApp(RequestHandler):
         if encoding == 'gzip':
             headers = [('Content-Encoding', 'gzip')]
             file_ = BytesIO()
-            zipfile = gzip.GzipFile('', mode='w', fileobj=file_)
-            zipfile.write(data)
-            zipfile.close()
+            with contextlib.closing(gzip.GzipFile('', mode='w', fileobj=file_)) as zipfile:
+                zipfile.write(data)
             data = file_.getvalue()
         elif encoding == 'deflate':
             headers = [('Content-Encoding', 'deflate')]
