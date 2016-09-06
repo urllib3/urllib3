@@ -94,6 +94,9 @@ class HTTPResponse(io.IOBase):
         object, it's convenient to include the original for debug purposes. It's
         otherwise unused.
 
+    :param url:
+        The URL of the original request.
+
     :param retries:
         The retries contains the last :class:`~urllib3.util.retry.Retry` that
         was used during the request.
@@ -108,7 +111,7 @@ class HTTPResponse(io.IOBase):
 
     def __init__(self, body='', headers=None, status=0, version=0, reason=None,
                  strict=0, preload_content=True, decode_content=True,
-                 original_response=None, pool=None, connection=None,
+                 original_response=None, pool=None, connection=None, url=None,
                  retries=None, enforce_content_length=False, request_method=None):
 
         if isinstance(headers, HTTPHeaderDict):
@@ -120,6 +123,7 @@ class HTTPResponse(io.IOBase):
         self.reason = reason
         self.strict = strict
         self.decode_content = decode_content
+        self.url = url
         self.retries = retries
         self.enforce_content_length = enforce_content_length
 

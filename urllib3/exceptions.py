@@ -153,6 +153,11 @@ class ResponseError(HTTPError):
     SPECIFIC_ERROR = 'too many {status_code} error responses'
 
 
+class HPKPError(SSLError):
+    "Raised when HPKP validation fails."
+    pass
+
+
 class SecurityWarning(HTTPWarning):
     "Warned when perfoming security reducing actions"
     pass
@@ -195,6 +200,18 @@ class ResponseNotChunked(ProtocolError, ValueError):
     "Response needs to be chunked in order to read it as chunks."
     pass
 
+
+class PolicyViolation(Exception):
+    """
+    Raised when an explicit security policy has been violated
+    Intentionally *no* subclass of HTTPError or SSLError.
+    """
+    pass
+
+
+class HSTSViolation(PolicyViolation):
+    "Raised when an SSL exception to an HSTS protected site occurs."
+    pass
 
 class IncompleteRead(HTTPError, httplib_IncompleteRead):
     """

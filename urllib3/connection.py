@@ -57,6 +57,7 @@ port_by_scheme = {
 }
 
 RECENT_DATE = datetime.date(2014, 1, 1)
+log = logging.getLogger(__name__)
 
 
 class DummyConnection(object):
@@ -117,6 +118,7 @@ class HTTPConnection(_HTTPConnection, object):
         #: The socket options provided by the user. If no options are
         #: provided, we use the default options.
         self.socket_options = kw.pop('socket_options', self.default_socket_options)
+        self.hsts_manager = kw.pop('hsts_manager', None)
 
         # Superclass also sets self.source_address in Python 2.7+.
         _HTTPConnection.__init__(self, *args, **kw)
@@ -132,6 +134,8 @@ class HTTPConnection(_HTTPConnection, object):
 
         if self.socket_options:
             extra_kw['socket_options'] = self.socket_options
+
+        self._check_hsts_rewrite()
 
         try:
             conn = connection.create_connection(
@@ -162,6 +166,12 @@ class HTTPConnection(_HTTPConnection, object):
     def connect(self):
         conn = self._new_conn()
         self._prepare_conn(conn)
+
+    def _check_hsts_rewrite(self):
+        result = self.hsts_manager and self.hsts_manager.check_domain(self.host)
+        if result:
+            log.warning('Ignoring HSTS for %s', self.host)
+        return result
 
     def request_chunked(self, method, url, body=None, headers=None):
         """
@@ -248,7 +258,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None,
                  assert_hostname=None, assert_fingerprint=None,
-                 ca_cert_dir=None):
+                 ca_cert_dir=None, hpkp_manager=None):
         """
         This method should only be called once, before the connection is used.
         """
@@ -269,6 +279,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         self.assert_fingerprint = assert_fingerprint
         self.ca_certs = ca_certs and os.path.expanduser(ca_certs)
         self.ca_cert_dir = ca_cert_dir and os.path.expanduser(ca_cert_dir)
+        self.hpkp_manager = hpkp_manager
 
     def connect(self):
         # Add certificate verification
@@ -337,6 +348,9 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             self.assert_fingerprint is not None
         )
 
+        if self.is_verified and self.hpkp_manager is not None:
+            self.hpkp_manager.validate_connection(hostname, self.sock)
+
 
 def _match_hostname(cert, asserted_hostname):
     try:
@@ -350,6 +364,9 @@ def _match_hostname(cert, asserted_hostname):
         # the cert when catching the exception, if they want to
         e._peer_cert = cert
         raise
+
+    def _check_hsts_rewrite(self):
+        return False
 
 
 if ssl:

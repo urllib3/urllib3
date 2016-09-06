@@ -1,7 +1,7 @@
 # TODO: Break this module up into pieces. Maybe group by functionality tested
 # rather than the socket level-ness of it.
 
-from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
+from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, PoolManager
 from urllib3.poolmanager import proxy_from_url
 from urllib3.exceptions import (
         MaxRetryError,
@@ -10,6 +10,7 @@ from urllib3.exceptions import (
         ReadTimeoutError,
         SSLError,
         ProtocolError,
+        HSTSViolation,
 )
 from urllib3.response import httplib
 from urllib3.util.ssl_ import HAS_SNI
@@ -19,7 +20,7 @@ from urllib3._collections import HTTPHeaderDict, OrderedDict
 
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from dummyserver.server import (
-    DEFAULT_CERTS, DEFAULT_CA, get_unreachable_address)
+    DEFAULT_CERTS, DEFAULT_CA, UNSIGNED_CERTS, get_unreachable_address)
 
 from .. import onlyPy3, LogRecorder
 
@@ -833,6 +834,45 @@ class TestSSL(SocketDummyServerTestCase):
         self.assertRaises(SSLError, request)
         # Should not hang, see https://github.com/shazow/urllib3/issues/529
         self.assertRaises(SSLError, request)
+
+    def test_hsts(self):
+        def socket_handler(listener):
+            for certs in DEFAULT_CERTS, UNSIGNED_CERTS:
+                sock = listener.accept()[0]
+                try:
+                    ssl_sock = ssl.wrap_socket(
+                            sock, server_side=True,
+                            keyfile=certs['keyfile'],
+                            certfile=certs['certfile'])
+                except ssl.SSLError:
+                    pass
+                else:
+                    ssl_sock.send(b'HTTP/1.1 200 OK\r\n'
+                                  b'Content-Type: text/plain\r\n'
+                                  b'Strict-Transport-Security: max-age=10000\r\n'
+                                  b'Content-Length: 5\r\n\r\n'
+                                  b'Hello')
+
+                    ssl_sock.close()
+                    sock.close()
+
+        self._start_server(socket_handler)
+
+        http = PoolManager(cert_reqs=ssl.CERT_REQUIRED, ca_certs=DEFAULT_CA)
+
+        def request():
+            try:
+                response = http.request(
+                        'GET',
+                        'https://{0}:{1}/'.format(self.host, self.port))
+                response.read()
+            finally:
+                pass
+
+        request()
+        # http.clear()
+        self.assertEqual(len(http.hsts_manager.db), 1)
+        self.assertRaises(HSTSViolation, request)
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):

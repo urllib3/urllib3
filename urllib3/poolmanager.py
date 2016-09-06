@@ -3,10 +3,13 @@ import collections
 import functools
 import logging
 
+from . import util
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
-from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
+from .exceptions import (LocationValueError, MaxRetryError, SSLError,
+                         ProxySchemeUnknown, HSTSViolation, HPKPError)
+from .hsts import MemoryHSTSStore, HSTSManager
 from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
 from .util.url import parse_url
@@ -19,7 +22,7 @@ __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
 log = logging.getLogger(__name__)
 
 SSL_KEYWORDS = ('key_file', 'cert_file', 'cert_reqs', 'ca_certs',
-                'ssl_version', 'ca_cert_dir', 'ssl_context')
+                'ssl_version', 'ca_cert_dir', 'ssl_context', 'hpkp_manager')
 
 # The base fields to use when determining what pool to get a connection from;
 # these do not rely on the ``connection_pool_kw`` and can be determined by the
@@ -115,11 +118,19 @@ class PoolManager(RequestMethods):
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools,
                                            dispose_func=lambda p: p.close())
+        self.hsts_manager = HSTSManager(MemoryHSTSStore())
+        self.connection_pool_kw['hsts_manager'] = self.hsts_manager
 
         # Locally set the pool classes and keys so other PoolManagers can
         # override them.
         self.pool_classes_by_scheme = pool_classes_by_scheme
         self.key_fn_by_scheme = key_fn_by_scheme.copy()
+
+        if util.IS_PYOPENSSL:
+            from .util.hpkp import HPKPManager, MemoryHPKPDatabase
+            self.connection_pool_kw.setdefault('hpkp_manager', HPKPManager(MemoryHPKPDatabase()))
+        elif 'hpkp_manager' in self.connection_pool_kw:
+            raise HPKPError("hpkp_manager requires PyOpenSSL to be loaded")
 
     def __enter__(self):
         return self
@@ -231,6 +242,14 @@ class PoolManager(RequestMethods):
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
         u = parse_url(url)
+
+        hsts_active = (self.hsts_manager and
+                       self.hsts_manager.check_domain(u.host))
+
+        if hsts_active:
+            u = self.hsts_manager.rewrite_url(u)
+            log.info("HSTS rewrite %s -> %s" % (url, u.url))
+
         conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
         kw['assert_same_host'] = False
@@ -238,10 +257,20 @@ class PoolManager(RequestMethods):
         if 'headers' not in kw:
             kw['headers'] = self.headers
 
-        if self.proxy is not None and u.scheme == "http":
-            response = conn.urlopen(method, url, **kw)
-        else:
-            response = conn.urlopen(method, u.request_uri, **kw)
+        try:
+            if self.proxy is not None and u.scheme == "http":
+                response = conn.urlopen(method, url, **kw)
+            else:
+                response = conn.urlopen(method, u.request_uri, **kw)
+        except SSLError as e:
+            if hsts_active:
+                raise HSTSViolation(e)
+            else:
+                raise
+
+        if self.hsts_manager:
+            ru = parse_url(response.url)
+            self.hsts_manager.process_response(ru.host, ru.scheme, response)
 
         redirect_location = redirect and response.get_redirect_location()
         if not redirect_location:

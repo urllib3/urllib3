@@ -39,8 +39,7 @@ from .util.connection import is_connection_dropped
 from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.timeout import Timeout
-from .util.url import get_host, Url
-
+from .util.url import get_host, parse_url, Url
 
 if six.PY2:
     # Queue is imported for side effects on MS Windows
@@ -165,8 +164,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def __init__(self, host, port=None, strict=False,
                  timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1, block=False,
-                 headers=None, retries=None,
-                 _proxy=None, _proxy_headers=None,
+                 headers=None, retries=None, _proxy=None, _proxy_headers=None,
                  **conn_kw):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
@@ -213,7 +211,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         conn = self.ConnectionCls(host=self.host, port=self.port,
                                   timeout=self.timeout.connect_timeout,
-                                  strict=self.strict, **self.conn_kw)
+                                  strict=self.strict,
+                                  **self.conn_kw)
         return conn
 
     def _get_conn(self, timeout=None):
@@ -446,6 +445,20 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         return (scheme, host, port) == (self.scheme, self.host, self.port)
 
+    def _full_url(self, path_or_url):
+        u = parse_url(path_or_url)
+
+        if u.scheme is None:
+            u = u._replace(scheme=self.scheme)
+
+        if u.host is None:
+            u = u._replace(host=self.host)
+
+        if u.port is None and not self.port == port_by_scheme.get(u.scheme):
+            u = u._replace(host=self.host)
+
+        return u.url
+
     def urlopen(self, method, url, body=None, headers=None, retries=None,
                 redirect=True, assert_same_host=True, timeout=_Default,
                 pool_timeout=None, release_conn=None, chunked=False,
@@ -593,6 +606,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                                   body=body, headers=headers,
                                                   chunked=chunked)
 
+            # Check HPKP.
+            if self.scheme == 'https' and self.hpkp_manager is not None:
+                self.hpkp_manager.process_response(self.host, httplib_response)
+
             # If we're going to release the connection in ``finally:``, then
             # the response doesn't need to know about the connection. Otherwise
             # it will also try to release it and we'll have a double-release
@@ -606,6 +623,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             response = self.ResponseCls.from_httplib(httplib_response,
                                                      pool=self,
                                                      connection=response_conn,
+                                                     url=self._full_url(url),
                                                      retries=retries,
                                                      **response_kw)
 
@@ -733,6 +751,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     ``ca_cert_dir``, and ``ssl_version`` are only used if :mod:`ssl` is
     available and are fed into :meth:`urllib3.util.ssl_wrap_socket` to upgrade
     the connection socket into an SSL socket.
+
+    The ``hpkp_manager`` is used to validate HPKP on connections.
     """
 
     scheme = 'https'
@@ -745,7 +765,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  key_file=None, cert_file=None, cert_reqs=None,
                  ca_certs=None, ssl_version=None,
                  assert_hostname=None, assert_fingerprint=None,
-                 ca_cert_dir=None, **conn_kw):
+                 ca_cert_dir=None, hpkp_manager=None, **conn_kw):
 
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
                                     block, headers, retries, _proxy, _proxy_headers,
@@ -762,6 +782,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.ssl_version = ssl_version
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
+        self.hpkp_manager = hpkp_manager
 
     def _prepare_conn(self, conn):
         """
@@ -776,7 +797,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           ca_certs=self.ca_certs,
                           ca_cert_dir=self.ca_cert_dir,
                           assert_hostname=self.assert_hostname,
-                          assert_fingerprint=self.assert_fingerprint)
+                          assert_fingerprint=self.assert_fingerprint,
+                          hpkp_manager=self.hpkp_manager)
             conn.ssl_version = self.ssl_version
         return conn
 

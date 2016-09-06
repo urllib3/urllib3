@@ -34,6 +34,10 @@ NO_SAN_CERTS = {
     'certfile': os.path.join(CERTS_PATH, 'server.no_san.crt'),
     'keyfile': DEFAULT_CERTS['keyfile']
 }
+UNSIGNED_CERTS = {
+    'certfile': os.path.join(CERTS_PATH, 'server.unsigned.crt'),
+    'keyfile': DEFAULT_CERTS['keyfile']
+}
 IPV6_ADDR_CERTS = {
     'certfile': os.path.join(CERTS_PATH, 'server.ipv6addr.crt'),
     'keyfile': os.path.join(CERTS_PATH, 'server.ipv6addr.key'),
