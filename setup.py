@@ -1,14 +1,10 @@
 #!/usr/bin/env python
 
-from distutils.core import setup
+from setuptools import setup
 
 import os
 import re
-
-try:
-    import setuptools  # noqa: unused
-except ImportError:
-    pass  # No 'develop' command, oh well.
+import codecs
 
 base_path = os.path.dirname(__file__)
 
@@ -18,13 +14,14 @@ VERSION = re.compile(r".*__version__ = '(.*?)'",
                      re.S).match(fp.read()).group(1)
 fp.close()
 
-
+readme = codecs.open('README.rst', encoding='utf-8').read()
+changes = codecs.open('CHANGES.rst', encoding='utf-8').read()
 version = VERSION
 
 setup(name='urllib3',
       version=version,
       description="HTTP library with thread-safe connection pooling, file post, and more.",
-      long_description=open('README.rst').read() + '\n\n' + open('CHANGES.rst').read(),
+      long_description=u'\n\n'.join([readme, changes]),
       classifiers=[
           'Environment :: Web Environment',
           'Intended Audience :: Developers',
@@ -39,11 +36,12 @@ setup(name='urllib3',
       keywords='urllib httplib threadsafe filepost http https ssl pooling',
       author='Andrey Petrov',
       author_email='andrey.petrov@shazow.net',
-      url='http://urllib3.readthedocs.org/',
+      url='https://urllib3.readthedocs.io/',
       license='MIT',
       packages=['urllib3',
                 'urllib3.packages', 'urllib3.packages.ssl_match_hostname',
-                'urllib3.contrib', 'urllib3.util',
+                'urllib3.packages.backports', 'urllib3.contrib',
+                'urllib3.util',
                 ],
       requires=[],
       tests_require=[
@@ -56,9 +54,9 @@ setup(name='urllib3',
       test_suite='test',
       extras_require={
           'secure': [
-              'pyOpenSSL>=0.13',
-              'ndg-httpsclient',
-              'pyasn1',
+              'pyOpenSSL>=0.14',
+              'cryptography>=1.3.4',
+              'idna>=2.0.0',
               'certifi',
           ],
           'socks': [

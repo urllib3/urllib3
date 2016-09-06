@@ -1,11 +1,17 @@
+from __future__ import absolute_import
+
 import unittest
 
 from urllib3.connectionpool import (
     connection_from_url,
     HTTPConnection,
     HTTPConnectionPool,
+    HTTPSConnectionPool,
 )
+from urllib3.response import httplib, HTTPResponse
 from urllib3.util.timeout import Timeout
+from urllib3.packages.six.moves.http_client import HTTPException
+from urllib3.packages.six.moves.queue import Empty
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
     ClosedPoolError,
@@ -15,17 +21,15 @@ from urllib3.exceptions import (
     MaxRetryError,
     ProtocolError,
     SSLError,
+    TimeoutError,
 )
+from urllib3._collections import HTTPHeaderDict
+from .test_response import MockChunkedEncodingResponse, MockSock
 
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 
-try:   # Python 3
-    from queue import Empty
-    from http.client import HTTPException
-except ImportError:
-    from Queue import Empty
-    from httplib import HTTPException
+from dummyserver.server import DEFAULT_CA
 
 
 class TestConnectionPool(unittest.TestCase):
@@ -74,6 +78,54 @@ class TestConnectionPool(unittest.TestCase):
             c = connection_from_url(b)
             self.assertFalse(c.is_same_host(a), "%s =? %s" % (b, a))
 
+    def test_same_host_no_port(self):
+        # This test was introduced in #801 to deal with the fact that urllib3
+        # never initializes ConnectionPool objects with port=None.
+        same_host_http = [
+            ('google.com', '/'),
+            ('google.com', 'http://google.com/'),
+            ('google.com', 'http://google.com'),
+            ('google.com', 'http://google.com/abra/cadabra'),
+            # Test comparison using default ports
+            ('google.com', 'http://google.com:80/abracadabra'),
+        ]
+        same_host_https = [
+            ('google.com', '/'),
+            ('google.com', 'https://google.com/'),
+            ('google.com', 'https://google.com'),
+            ('google.com', 'https://google.com/abra/cadabra'),
+            # Test comparison using default ports
+            ('google.com', 'https://google.com:443/abracadabra'),
+        ]
+
+        for a, b in same_host_http:
+            c = HTTPConnectionPool(a)
+            self.assertTrue(c.is_same_host(b), "%s =? %s" % (a, b))
+        for a, b in same_host_https:
+            c = HTTPSConnectionPool(a)
+            self.assertTrue(c.is_same_host(b), "%s =? %s" % (a, b))
+
+        not_same_host_http = [
+            ('google.com', 'https://google.com/'),
+            ('yahoo.com', 'http://google.com/'),
+            ('google.com', 'https://google.net/'),
+        ]
+        not_same_host_https = [
+            ('google.com', 'http://google.com/'),
+            ('yahoo.com', 'https://google.com/'),
+            ('google.com', 'https://google.net/'),
+        ]
+
+        for a, b in not_same_host_http:
+            c = HTTPConnectionPool(a)
+            self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
+            c = HTTPConnectionPool(b)
+            self.assertFalse(c.is_same_host(a), "%s =? %s" % (b, a))
+        for a, b in not_same_host_https:
+            c = HTTPSConnectionPool(a)
+            self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
+            c = HTTPSConnectionPool(b)
+            self.assertFalse(c.is_same_host(a), "%s =? %s" % (b, a))
 
     def test_max_connections(self):
         pool = HTTPConnectionPool(host='localhost', maxsize=1, block=True)
@@ -230,9 +282,107 @@ class TestConnectionPool(unittest.TestCase):
                 c._absolute_url('path?query=foo'))
 
     def test_ca_certs_default_cert_required(self):
-        with connection_from_url('https://google.com:80', ca_certs='/etc/ssl/certs/custom.pem') as pool:
+        with connection_from_url('https://google.com:80', ca_certs=DEFAULT_CA) as pool:
             conn = pool._get_conn()
             self.assertEqual(conn.cert_reqs, 'CERT_REQUIRED')
+
+    def test_cleanup_on_extreme_connection_error(self):
+        """
+        This test validates that we clean up properly even on exceptions that
+        we'd not otherwise catch, i.e. those that inherit from BaseException
+        like KeyboardInterrupt or gevent.Timeout. See #805 for more details.
+        """
+        class RealBad(BaseException):
+            pass
+
+        def kaboom(*args, **kwargs):
+            raise RealBad()
+
+        c = connection_from_url('http://localhost:80')
+        c._make_request = kaboom
+
+        initial_pool_size = c.pool.qsize()
+
+        try:
+            # We need to release_conn this way or we'd put it away regardless.
+            c.urlopen('GET', '/', release_conn=False)
+        except RealBad:
+            pass
+
+        new_pool_size = c.pool.qsize()
+        self.assertEqual(initial_pool_size, new_pool_size)
+
+    def test_release_conn_param_is_respected_after_http_error_retry(self):
+        """For successful ```urlopen(release_conn=False)```, the connection isn't released, even after a retry.
+
+        This is a regression test for issue #651 [1], where the connection
+        would be released if the initial request failed, even if a retry
+        succeeded.
+
+        [1] <https://github.com/shazow/urllib3/issues/651>
+        """
+
+        class _raise_once_make_request_function(object):
+            """Callable that can mimic `_make_request()`.
+
+            Raises the given exception on its first call, but returns a
+            successful response on subsequent calls.
+            """
+            def __init__(self, ex):
+                super(_raise_once_make_request_function, self).__init__()
+                self._ex = ex
+
+            def __call__(self, *args, **kwargs):
+                if self._ex:
+                    ex, self._ex = self._ex, None
+                    raise ex()
+                response = httplib.HTTPResponse(MockSock)
+                response.fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
+                response.headers = response.msg = HTTPHeaderDict()
+                return response
+
+        def _test(exception):
+            pool = HTTPConnectionPool(host='localhost', maxsize=1, block=True)
+
+            # Verify that the request succeeds after two attempts, and that the
+            # connection is left on the response object, instead of being
+            # released back into the pool.
+            pool._make_request = _raise_once_make_request_function(exception)
+            response = pool.urlopen('GET', '/', retries=1,
+                                    release_conn=False, preload_content=False,
+                                    chunked=True)
+            self.assertEqual(pool.pool.qsize(), 0)
+            self.assertEqual(pool.num_connections, 2)
+            self.assertTrue(response.connection is not None)
+
+            response.release_conn()
+            self.assertEqual(pool.pool.qsize(), 1)
+            self.assertTrue(response.connection is None)
+
+        # Run the test case for all the retriable exceptions.
+        _test(TimeoutError)
+        _test(HTTPException)
+        _test(SocketError)
+        _test(ProtocolError)
+
+    def test_custom_http_response_class(self):
+
+        class CustomHTTPResponse(HTTPResponse):
+            pass
+
+        class CustomConnectionPool(HTTPConnectionPool):
+            ResponseCls = CustomHTTPResponse
+
+            def _make_request(self, *args, **kwargs):
+                httplib_response = httplib.HTTPResponse(MockSock)
+                httplib_response.fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
+                httplib_response.headers = httplib_response.msg = HTTPHeaderDict()
+                return httplib_response
+
+        pool = CustomConnectionPool(host='localhost', maxsize=1, block=True)
+        response = pool.request('GET', '/', retries=False, chunked=True,
+                                preload_content=False)
+        self.assertTrue(isinstance(response, CustomHTTPResponse))
 
 
 if __name__ == '__main__':

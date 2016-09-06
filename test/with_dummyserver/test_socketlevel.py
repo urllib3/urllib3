@@ -15,9 +15,9 @@ from urllib3.response import httplib
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util.timeout import Timeout
 from urllib3.util.retry import Retry
-from urllib3._collections import HTTPHeaderDict
+from urllib3._collections import HTTPHeaderDict, OrderedDict
 
-from dummyserver.testcase import SocketDummyServerTestCase
+from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from dummyserver.server import (
     DEFAULT_CERTS, DEFAULT_CA, get_unreachable_address)
 
@@ -81,7 +81,7 @@ class TestSNI(SocketDummyServerTestCase):
         except SSLError: # We are violating the protocol
             pass
         done_receiving.wait()
-        self.assertTrue(self.host.encode() in self.buf,
+        self.assertTrue(self.host.encode('ascii') in self.buf,
                         "missing hostname in SSL handshake")
 
 
@@ -236,6 +236,33 @@ class TestSocketClosing(SocketDummyServerTestCase):
                                 timeout=Timeout(connect=1, read=0.001))
         try:
             self.assertRaises(ReadTimeoutError, response.read)
+        finally:
+            timed_out.set()
+
+    def test_delayed_body_read_timeout_with_preload(self):
+        timed_out = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            buf = b''
+            body = 'Hi'
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n' % len(body)).encode('utf-8'))
+
+            timed_out.wait(5)
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port)
+
+        try:
+            self.assertRaises(ReadTimeoutError, pool.urlopen,
+                              'GET', '/', retries=False,
+                              timeout=Timeout(connect=1, read=0.001))
         finally:
             timed_out.set()
 
@@ -432,6 +459,113 @@ class TestSocketClosing(SocketDummyServerTestCase):
                                     preload_content=False,
                                     timeout=Timeout(connect=1, read=0.1))
             self.assertEqual(len(response.read()), 8)
+
+    def test_closing_response_actually_closes_connection(self):
+        done_closing = Event()
+        complete = Event()
+        # The insane use of this variable here is to get around the fact that
+        # Python 2.6 does not support returning a value from Event.wait(). This
+        # means we can't tell if an event timed out, so we can't use the timing
+        # out of the 'complete' event to determine the success or failure of
+        # the test. Python 2 also doesn't have the nonlocal statement, so we
+        # can't write directly to this variable, only mutate it. Hence: list.
+        successful = []
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf = sock.recv(65536)
+
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                      'Content-Type: text/plain\r\n'
+                      'Content-Length: 0\r\n'
+                      '\r\n').encode('utf-8'))
+
+            # Wait for the socket to close.
+            done_closing.wait(timeout=1)
+
+            # Look for the empty string to show that the connection got closed.
+            # Don't get stuck in a timeout.
+            sock.settimeout(1)
+            new_data = sock.recv(65536)
+            self.assertFalse(new_data)
+            successful.append(True)
+            sock.close()
+            complete.set()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port)
+
+        response = pool.request('GET', '/', retries=0, preload_content=False)
+        self.assertEqual(response.status, 200)
+        response.close()
+
+        done_closing.set()  # wait until the socket in our pool gets closed
+        complete.wait(timeout=1)
+        if not successful:
+            self.fail("Timed out waiting for connection close")
+
+    def test_release_conn_param_is_respected_after_timeout_retry(self):
+        """For successful ```urlopen(release_conn=False)```, the connection isn't released, even after a retry.
+
+        This test allows a retry: one request fails, the next request succeeds.
+
+        This is a regression test for issue #651 [1], where the connection
+        would be released if the initial request failed, even if a retry
+        succeeded.
+
+        [1] <https://github.com/shazow/urllib3/issues/651>
+        """
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            consume_socket(sock)
+
+            # Close the connection, without sending any response (not even the
+            # HTTP status line). This will trigger a `Timeout` on the client,
+            # inside `urlopen()`.
+            sock.close()
+
+            # Expect a new request. Because we don't want to hang this thread,
+            # we actually use select.select to confirm that a new request is
+            # coming in: this lets us time the thread out.
+            rlist, _, _ = select.select([listener], [], [], 5)
+            assert rlist
+            sock = listener.accept()[0]
+            consume_socket(sock)
+
+            # Send complete chunked response.
+            sock.send((
+                'HTTP/1.1 200 OK\r\n'
+                'Content-Type: text/plain\r\n'
+                'Transfer-Encoding: chunked\r\n'
+                '\r\n'
+                '8\r\n'
+                '12345678\r\n'
+                '0\r\n\r\n').encode('utf-8')
+            )
+
+            sock.close()
+
+        self._start_server(socket_handler)
+        with HTTPConnectionPool(self.host, self.port, maxsize=1) as pool:
+            # First request should fail, but the timeout and `retries=1` should
+            # save it.
+            response = pool.urlopen('GET', '/', retries=1,
+                                    release_conn=False, preload_content=False,
+                                    timeout=Timeout(connect=1, read=0.001))
+
+            # The connection should still be on the response object, and none
+            # should be in the pool. We opened two though.
+            self.assertEqual(pool.num_connections, 2)
+            self.assertEqual(pool.pool.qsize(), 0)
+            self.assertTrue(response.connection is not None)
+
+            # Consume the data. This should put the connection back.
+            response.read()
+            self.assertEqual(pool.pool.qsize(), 1)
+            self.assertTrue(response.connection is None)
 
 
 class TestProxyManager(SocketDummyServerTestCase):
@@ -751,9 +885,8 @@ class TestHeaders(SocketDummyServerTestCase):
 
             for header in headers_list:
                 (key, value) = header.split(b': ')
-                parsed_headers[key.decode()] = value.decode()
+                parsed_headers[key.decode('ascii')] = value.decode('ascii')
 
-            # Send incomplete message (note Content-Length)
             sock.send((
                 'HTTP/1.1 204 No Content\r\n'
                 'Content-Length: 0\r\n'
@@ -769,6 +902,76 @@ class TestHeaders(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         pool.request('GET', '/', headers=HTTPHeaderDict(headers))
         self.assertEqual(expected_headers, parsed_headers)
+    
+    def test_request_headers_are_sent_in_the_original_order(self):
+        # NOTE: Probability this test gives a false negative is 1/(K!)
+        K = 16
+        # NOTE: Provide headers in non-sorted order (i.e. reversed)
+        #       so that if the internal implementation tries to sort them,
+        #       a change will be detected.
+        expected_request_headers = [(u'X-Header-%d' % i, str(i)) for i in reversed(range(K))]
+        
+        actual_request_headers = []
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            headers_list = [header for header in buf.split(b'\r\n')[1:] if header]
+
+            for header in headers_list:
+                (key, value) = header.split(b': ')
+                if not key.decode('ascii').startswith(u'X-Header-'):
+                    continue
+                actual_request_headers.append((key.decode('ascii'), value.decode('ascii')))
+
+            sock.send((
+                u'HTTP/1.1 204 No Content\r\n'
+                u'Content-Length: 0\r\n'
+                u'\r\n').encode('ascii'))
+
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        pool.request('GET', '/', headers=OrderedDict(expected_request_headers))
+        self.assertEqual(expected_request_headers, actual_request_headers)
+    
+    def test_response_headers_are_returned_in_the_original_order(self):
+        # NOTE: Probability this test gives a false negative is 1/(K!)
+        K = 16
+        # NOTE: Provide headers in non-sorted order (i.e. reversed)
+        #       so that if the internal implementation tries to sort them,
+        #       a change will be detected.
+        expected_response_headers = [('X-Header-%d' % i, str(i)) for i in reversed(range(K))]
+        
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            sock.send(b'HTTP/1.1 200 OK\r\n' +
+                      b'\r\n'.join([
+                          (k.encode('utf8') + b': ' + v.encode('utf8'))
+                          for (k, v) in expected_response_headers
+                      ]) +
+                      b'\r\n')
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port)
+        r = pool.request('GET', '/', retries=0)
+        actual_response_headers = [
+            (k, v) for (k, v) in r.headers.items()
+            if k.startswith('X-Header-')
+        ]
+        self.assertEqual(expected_response_headers, actual_response_headers)
 
 
 class TestBrokenHeaders(SocketDummyServerTestCase):
@@ -842,3 +1045,99 @@ class TestHEAD(SocketDummyServerTestCase):
 
         # stream will use the read method here.
         self.assertEqual([], list(r.stream()))
+
+
+class TestStream(SocketDummyServerTestCase):
+    def test_stream_none_unchunked_response_does_not_hang(self):
+        done_event = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            sock.send(
+                b'HTTP/1.1 200 OK\r\n'
+                b'Content-Length: 12\r\n'
+                b'Content-type: text/plain\r\n'
+                b'\r\n'
+                b'hello, world'
+            )
+            done_event.wait(5)
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        r = pool.request('GET', '/', timeout=1, preload_content=False)
+
+        # Stream should read to the end.
+        self.assertEqual([b'hello, world'], list(r.stream(None)))
+
+        done_event.set()
+
+class TestBadContentLength(SocketDummyServerTestCase):
+    def test_enforce_content_length_get(self):
+        done_event = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            sock.send(
+                b'HTTP/1.1 200 OK\r\n'
+                b'Content-Length: 22\r\n'
+                b'Content-type: text/plain\r\n'
+                b'\r\n'
+                b'hello, world'
+            )
+            done_event.wait(1)
+            sock.close()
+
+        self._start_server(socket_handler)
+        conn = HTTPConnectionPool(self.host, self.port, maxsize=1)
+
+        # Test stream read when content length less than headers claim
+        get_response = conn.request('GET', url='/', preload_content=False,
+                                    enforce_content_length=True)
+        data = get_response.stream(100)
+        # Read "good" data before we try to read again.
+        # This won't trigger till generator is exhausted.
+        next(data)
+        self.assertRaises(ProtocolError, next, data)
+
+        done_event.set()
+
+    def test_enforce_content_length_no_body(self):
+        done_event = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            sock.send(
+                b'HTTP/1.1 200 OK\r\n'
+                b'Content-Length: 22\r\n'
+                b'Content-type: text/plain\r\n'
+                b'\r\n'
+            )
+            done_event.wait(1)
+            sock.close()
+
+        self._start_server(socket_handler)
+        conn = HTTPConnectionPool(self.host, self.port, maxsize=1)
+
+        #Test stream on 0 length body
+        head_response = conn.request('HEAD', url='/', preload_content=False,
+                                     enforce_content_length=True)
+        data = [chunk for chunk in head_response.stream(1)]
+        self.assertEqual(len(data), 0)
+
+        done_event.set()

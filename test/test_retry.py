@@ -2,7 +2,7 @@ import unittest
 
 from urllib3.response import HTTPResponse
 from urllib3.packages.six.moves import xrange
-from urllib3.util.retry import Retry
+from urllib3.util.retry import Retry, RequestHistory
 from urllib3.exceptions import (
     ConnectTimeoutError,
     MaxRetryError,
@@ -131,6 +131,18 @@ class RetryTest(unittest.TestCase):
         retry = retry.increment()
         self.assertEqual(retry.get_backoff_time(), 0)
 
+    def test_backoff_reset_after_redirect(self):
+        retry = Retry(total=100, redirect=5, backoff_factor=0.2)
+        retry = retry.increment()
+        retry = retry.increment()
+        self.assertEqual(retry.get_backoff_time(), 0.4)
+        redirect_response = HTTPResponse(status=302, headers={'location': 'test'})
+        retry = retry.increment(response=redirect_response)
+        self.assertEqual(retry.get_backoff_time(), 0)
+        retry = retry.increment()
+        retry = retry.increment()
+        self.assertEqual(retry.get_backoff_time(), 0.4)
+
     def test_sleep(self):
         # sleep a very small amount of time so our code coverage is happy
         retry = Retry(backoff_factor=0.0001)
@@ -147,6 +159,21 @@ class RetryTest(unittest.TestCase):
         retry = Retry(total=1, status_forcelist=[418])
         self.assertFalse(retry.is_forced_retry('GET', status_code=400))
         self.assertTrue(retry.is_forced_retry('GET', status_code=418))
+
+        # String status codes are not matched.
+        retry = Retry(total=1, status_forcelist=['418'])
+        self.assertFalse(retry.is_forced_retry('GET', status_code=418))
+
+    def test_method_whitelist_with_status_forcelist(self):
+        # Falsey method_whitelist means to retry on any method.
+        retry = Retry(status_forcelist=[500], method_whitelist=None)
+        self.assertTrue(retry.is_forced_retry('GET', status_code=500))
+        self.assertTrue(retry.is_forced_retry('POST', status_code=500))
+
+        # Criteria of method_whitelist and status_forcelist are ANDed.
+        retry = Retry(status_forcelist=[500], method_whitelist=['POST'])
+        self.assertFalse(retry.is_forced_retry('GET', status_code=500))
+        self.assertTrue(retry.is_forced_retry('POST', status_code=500))
 
     def test_exhausted(self):
         self.assertFalse(Retry(0).is_exhausted())
@@ -196,3 +223,19 @@ class RetryTest(unittest.TestCase):
         except MaxRetryError as e:
             assert 'Caused by redirect' not in str(e)
             self.assertEqual(str(e.reason), 'conntimeout')
+
+    def test_history(self):
+        retry = Retry(total=10)
+        self.assertEqual(retry.history, tuple())
+        connection_error = ConnectTimeoutError('conntimeout')
+        retry = retry.increment('GET', '/test1', None, connection_error)
+        self.assertEqual(retry.history, (RequestHistory('GET', '/test1', connection_error, None, None),))
+        read_error = ReadTimeoutError(None, "/test2", "read timed out")
+        retry = retry.increment('POST', '/test2', None, read_error)
+        self.assertEqual(retry.history, (RequestHistory('GET', '/test1', connection_error, None, None),
+                                         RequestHistory('POST', '/test2', read_error, None, None)))
+        response = HTTPResponse(status=500)
+        retry = retry.increment('GET', '/test3', response, None)
+        self.assertEqual(retry.history, (RequestHistory('GET', '/test1', connection_error, None, None),
+                                         RequestHistory('POST', '/test2', read_error, None, None),
+                                         RequestHistory('GET', '/test3', None, 500, None)))

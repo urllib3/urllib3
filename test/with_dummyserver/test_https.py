@@ -38,7 +38,7 @@ from urllib3.exceptions import (
 )
 from urllib3.packages import six
 from urllib3.util.timeout import Timeout
-from urllib3.util.ssl_ import HAS_SNI
+import urllib3.util as util
 
 
 ResourceWarning = getattr(
@@ -77,11 +77,65 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             r = https_pool.request('GET', '/')
             self.assertEqual(r.status, 200)
 
-            if sys.version_info >= (2, 7, 9):
+            # Modern versions of Python, or systems using PyOpenSSL, don't
+            # emit warnings.
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
                 self.assertFalse(warn.called, warn.call_args_list)
             else:
                 self.assertTrue(warn.called)
-                if HAS_SNI:
+                if util.HAS_SNI:
+                    call = warn.call_args_list[0]
+                else:
+                    call = warn.call_args_list[1]
+                error = call[0][1]
+                self.assertEqual(error, InsecurePlatformWarning)
+
+    def test_verified_with_context(self):
+        ctx = util.ssl_.create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
+        ctx.load_verify_locations(cafile=DEFAULT_CA)
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         ssl_context=ctx)
+
+        conn = https_pool._new_conn()
+        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
+
+        with mock.patch('warnings.warn') as warn:
+            r = https_pool.request('GET', '/')
+            self.assertEqual(r.status, 200)
+
+            # Modern versions of Python, or systems using PyOpenSSL, don't
+            # emit warnings.
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
+                self.assertFalse(warn.called, warn.call_args_list)
+            else:
+                self.assertTrue(warn.called)
+                if util.HAS_SNI:
+                    call = warn.call_args_list[0]
+                else:
+                    call = warn.call_args_list[1]
+                error = call[0][1]
+                self.assertEqual(error, InsecurePlatformWarning)
+
+    def test_context_combines_with_ca_certs(self):
+        ctx = util.ssl_.create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         ca_certs=DEFAULT_CA,
+                                         ssl_context=ctx)
+
+        conn = https_pool._new_conn()
+        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
+
+        with mock.patch('warnings.warn') as warn:
+            r = https_pool.request('GET', '/')
+            self.assertEqual(r.status, 200)
+
+            # Modern versions of Python, or systems using PyOpenSSL, don't
+            # emit warnings.
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
+                self.assertFalse(warn.called, warn.call_args_list)
+            else:
+                self.assertTrue(warn.called)
+                if util.HAS_SNI:
                     call = warn.call_args_list[0]
                 else:
                     call = warn.call_args_list[1]
@@ -166,8 +220,16 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.assertEqual(r.status, 200)
             self.assertTrue(warn.called)
 
-            call, = warn.call_args_list
-            category = call[0][1]
+            # Modern versions of Python, or systems using PyOpenSSL, only emit
+            # the unverified warning. Older systems may also emit other
+            # warnings, which we want to ignore here.
+            calls = warn.call_args_list
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
+                category = calls[0][0][1]
+            elif util.HAS_SNI:
+                category = calls[1][0][1]
+            else:
+                category = calls[2][0][1]
             self.assertEqual(category, InsecureRequestWarning)
 
     def test_ssl_unverified_with_ca_certs(self):
@@ -180,41 +242,17 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.assertEqual(r.status, 200)
             self.assertTrue(warn.called)
 
+            # Modern versions of Python, or systems using PyOpenSSL, only emit
+            # the unverified warning. Older systems may also emit other
+            # warnings, which we want to ignore here.
             calls = warn.call_args_list
-            if sys.version_info >= (2, 7, 9):
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
                 category = calls[0][0][1]
-            elif HAS_SNI:
+            elif util.HAS_SNI:
                 category = calls[1][0][1]
             else:
                 category = calls[2][0][1]
             self.assertEqual(category, InsecureRequestWarning)
-
-    @requires_network
-    def test_ssl_verified_with_platform_ca_certs(self):
-        """
-        We should rely on the platform CA file to validate authenticity of SSL
-        certificates. Since this file is used by many components of the OS,
-        such as curl, apt-get, etc., we decided to not touch it, in order to
-        not compromise the security of the OS running the test suite (typically
-        urllib3 developer's OS).
-
-        This test assumes that httpbin.org uses a certificate signed by a well
-        known Certificate Authority.
-        """
-        try:
-            import urllib3.contrib.pyopenssl
-        except ImportError:
-            raise SkipTest('Test requires PyOpenSSL')
-        if (urllib3.connection.ssl_wrap_socket is
-                urllib3.contrib.pyopenssl.orig_connection_ssl_wrap_socket):
-            # Not patched
-            raise SkipTest('Test should only be run after PyOpenSSL '
-                           'monkey patching')
-
-        https_pool = HTTPSConnectionPool('httpbin.org', 443,
-                                         cert_reqs=ssl.CERT_REQUIRED)
-
-        https_pool.request('HEAD', '/')
 
     def test_assert_hostname_false(self):
         https_pool = HTTPSConnectionPool('localhost', self.port,
@@ -237,8 +275,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
 
-        https_pool.assert_fingerprint = 'CA:84:E1:AD0E5a:ef:2f:C3:09' \
-                                        ':E7:30:F8:CD:C8:5B'
+        https_pool.assert_fingerprint = 'F2:06:5A:42:10:3F:45:1C:17:FE:E6:' \
+                                        '07:1E:8A:86:E5'
+
         https_pool.request('GET', '/')
 
     def test_assert_fingerprint_sha1(self):
@@ -246,8 +285,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
 
-        https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
-                                        '7A:F2:8A:D7:1E:07:33:67:DE'
+        https_pool.assert_fingerprint = '92:81:FE:85:F7:0C:26:60:EC:D6:B3:' \
+                                        'BF:93:CF:F9:71:CC:07:7D:0A'
         https_pool.request('GET', '/')
 
     def test_assert_fingerprint_sha256(self):
@@ -255,9 +294,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
 
-        https_pool.assert_fingerprint = ('9A:29:9D:4F:47:85:1C:51:23:F5:9A:A3:'
-                                         '0F:5A:EF:96:F9:2E:3C:22:2E:FC:E8:BC:'
-                                         '0E:73:90:37:ED:3B:AA:AB')
+        https_pool.assert_fingerprint = ('C5:4D:0B:83:84:89:2E:AE:B4:58:BB:12:'
+                                         'F7:A6:C4:76:05:03:88:D8:57:65:51:F3:'
+                                         '1E:60:B0:8B:70:18:64:E6')
         https_pool.request('GET', '/')
 
     def test_assert_invalid_fingerprint(self):
@@ -294,8 +333,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          cert_reqs='CERT_NONE',
                                          ca_certs=DEFAULT_CA_BAD)
 
-        https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
-                                        '7A:F2:8A:D7:1E:07:33:67:DE'
+        https_pool.assert_fingerprint = '92:81:FE:85:F7:0C:26:60:EC:D6:B3:' \
+                                        'BF:93:CF:F9:71:CC:07:7D:0A'
         https_pool.request('GET', '/')
 
     def test_good_fingerprint_and_hostname_mismatch(self):
@@ -303,8 +342,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
 
-        https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
-                                        '7A:F2:8A:D7:1E:07:33:67:DE'
+        https_pool.assert_fingerprint = '92:81:FE:85:F7:0C:26:60:EC:D6:B3:' \
+                                        'BF:93:CF:F9:71:CC:07:7D:0A'
         https_pool.request('GET', '/')
 
     @requires_network
@@ -325,8 +364,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          timeout=timeout, retries=False,
                                          cert_reqs='CERT_REQUIRED')
         https_pool.ca_certs = DEFAULT_CA
-        https_pool.assert_fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:' \
-                                        '7A:F2:8A:D7:1E:07:33:67:DE'
+        https_pool.assert_fingerprint = '92:81:FE:85:F7:0C:26:60:EC:D6:B3:' \
+                                        'BF:93:CF:F9:71:CC:07:7D:0A'
 
         timeout = Timeout(total=None)
         https_pool = HTTPSConnectionPool(self.host, self.port, timeout=timeout,
@@ -385,7 +424,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                           timeout=Timeout(total=None, connect=0.001))
 
     def test_enhanced_ssl_connection(self):
-        fingerprint = 'CC:45:6A:90:82:F7FF:C0:8218:8e:7A:F2:8A:D7:1E:07:33:67:DE'
+        fingerprint = '92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A'
 
         conn = VerifiedHTTPSConnection(self.host, self.port)
         https_pool = HTTPSConnectionPool(self.host, self.port,
@@ -450,7 +489,7 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
 
     def test_set_cert_default_cert_required(self):
         conn = VerifiedHTTPSConnection(self.host, self.port)
-        conn.set_cert(ca_certs='/etc/ssl/certs/custom.pem')
+        conn.set_cert(ca_certs=DEFAULT_CA)
         self.assertEqual(conn.cert_reqs, 'CERT_REQUIRED')
 
 
