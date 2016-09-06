@@ -77,13 +77,13 @@ class TestUtil(unittest.TestCase):
             'http://[2a00:1450:4001:c01::67]:80/test': ('http', '[2a00:1450:4001:c01::67]', 80),
 
             # More IPv6 from http://www.ietf.org/rfc/rfc2732.txt
-            'http://[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]:8000/index.html': ('http', '[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]', 8000),
-            'http://[1080:0:0:0:8:800:200C:417A]/index.html': ('http', '[1080:0:0:0:8:800:200C:417A]', None),
+            'http://[fedc:ba98:7654:3210:fedc:ba98:7654:3210]:8000/index.html': ('http', '[fedc:ba98:7654:3210:fedc:ba98:7654:3210]', 8000),
+            'http://[1080:0:0:0:8:800:200c:417a]/index.html': ('http', '[1080:0:0:0:8:800:200c:417a]', None),
             'http://[3ffe:2a00:100:7031::1]': ('http', '[3ffe:2a00:100:7031::1]', None),
-            'http://[1080::8:800:200C:417A]/foo': ('http', '[1080::8:800:200C:417A]', None),
+            'http://[1080::8:800:200c:417a]/foo': ('http', '[1080::8:800:200c:417a]', None),
             'http://[::192.9.5.5]/ipng': ('http', '[::192.9.5.5]', None),
-            'http://[::FFFF:129.144.52.38]:42/index.html': ('http', '[::FFFF:129.144.52.38]', 42),
-            'http://[2010:836B:4179::836B:4179]': ('http', '[2010:836B:4179::836B:4179]', None),
+            'http://[::ffff:129.144.52.38]:42/index.html': ('http', '[::ffff:129.144.52.38]', 42),
+            'http://[2010:836b:4179::836b:4179]': ('http', '[2010:836b:4179::836b:4179]', None),
         }
         for url, expected_host in url_host_map.items():
             returned_host = get_host(url)
@@ -100,6 +100,35 @@ class TestUtil(unittest.TestCase):
         for location in invalid_host:
             self.assertRaises(LocationParseError, get_host, location)
 
+    def test_host_normalization(self):
+        """Asserts the scheme and host is normalized to lower-case."""
+        url_host_map = {
+            # Hosts
+            'HTTP://GOOGLE.COM/mail/': ('http', 'google.com', None),
+            'GOogle.COM/mail': ('http', 'google.com', None),
+            'HTTP://GoOgLe.CoM:8000/mail/': ('http', 'google.com', 8000),
+            'HTTP://user:password@EXAMPLE.COM:1234': ('http', 'example.com', 1234),
+            '173.194.35.7': ('http', '173.194.35.7', None),
+            'HTTP://173.194.35.7': ('http', '173.194.35.7', None),
+            'HTTP://[2a00:1450:4001:c01::67]:80/test': ('http', '[2a00:1450:4001:c01::67]', 80),
+            'HTTP://[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]:8000/index.html': ('http', '[fedc:ba98:7654:3210:fedc:ba98:7654:3210]', 8000),
+            'HTTPS://[1080:0:0:0:8:800:200c:417A]/index.html': ('https', '[1080:0:0:0:8:800:200c:417a]', None),
+        }
+        for url, expected_host in url_host_map.items():
+            returned_host = get_host(url)
+            self.assertEqual(returned_host, expected_host)
+
+    def test_parse_url_normalization(self):
+        """Assert parse_url normalizes the scheme/host, and only the scheme/host"""
+        test_urls = [
+            ('HTTP://GOOGLE.COM/MAIL/', 'http://google.com/MAIL/'),
+            ('HTTP://JeremyCline:Hunter2@Example.com:8080/', 'http://JeremyCline:Hunter2@example.com:8080/'),
+            ('HTTPS://Example.Com/?Key=Value', 'https://example.com/?Key=Value'),
+            ('Https://Example.Com/#Fragment', 'https://example.com/#Fragment'),
+        ]
+        for url, expected_normalized_url in test_urls:
+            actual_normalized_url = parse_url(url).url
+            self.assertEqual(actual_normalized_url, expected_normalized_url)
 
     parse_url_host_map = {
         'http://google.com/mail': Url('http', host='google.com', path='/mail'),
@@ -275,15 +304,29 @@ class TestUtil(unittest.TestCase):
         except ValueError as e:
             self.assertTrue('less than' in str(e))
 
-        # Booleans are allowed also by socket.settimeout and converted to the
-        # equivalent float (1.0 for True, 0.0 for False)
-        Timeout(connect=False, read=True)
+        try:
+            Timeout(connect=False)
+            self.fail("boolean values should throw exception")
+        except ValueError as e:
+            self.assertTrue('cannot be a boolean' in str(e))
+
+        try:
+            Timeout(read=True)
+            self.fail("boolean values should throw exception")
+        except ValueError as e:
+            self.assertTrue('cannot be a boolean' in str(e))
+
+        try:
+            Timeout(connect=0)
+            self.fail("value <= 0 should throw exception")
+        except ValueError as e:
+            self.assertTrue('less than or equal' in str(e))
 
         try:
             Timeout(read="foo")
             self.fail("string value should not be allowed")
         except ValueError as e:
-            self.assertTrue('int or float' in str(e))
+            self.assertTrue('int, float or None' in str(e))
 
 
     @patch('urllib3.util.timeout.current_time')
@@ -350,7 +393,6 @@ class TestUtil(unittest.TestCase):
     def test_resolve_cert_reqs(self):
         self.assertEqual(resolve_cert_reqs(None), ssl.CERT_NONE)
         self.assertEqual(resolve_cert_reqs(ssl.CERT_NONE), ssl.CERT_NONE)
-
         self.assertEqual(resolve_cert_reqs(ssl.CERT_REQUIRED), ssl.CERT_REQUIRED)
         self.assertEqual(resolve_cert_reqs('REQUIRED'), ssl.CERT_REQUIRED)
         self.assertEqual(resolve_cert_reqs('CERT_REQUIRED'), ssl.CERT_REQUIRED)
@@ -393,6 +435,16 @@ class TestUtil(unittest.TestCase):
 
         mock_context.load_cert_chain.assert_called_once_with(
             '/path/to/certfile', None)
+
+    @patch('urllib3.util.ssl_.create_urllib3_context')
+    def test_ssl_wrap_socket_creates_new_context(self,
+                                                 create_urllib3_context):
+        socket = object()
+        ssl_wrap_socket(sock=socket, cert_reqs='CERT_REQUIRED')
+
+        create_urllib3_context.assert_called_once_with(
+            None, 'CERT_REQUIRED', ciphers=None
+        )
 
     def test_ssl_wrap_socket_loads_verify_locations(self):
         socket = object()

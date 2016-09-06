@@ -10,6 +10,8 @@ from urllib3.connectionpool import (
 )
 from urllib3.response import httplib, HTTPResponse
 from urllib3.util.timeout import Timeout
+from urllib3.packages.six.moves.http_client import HTTPException
+from urllib3.packages.six.moves.queue import Empty
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
     ClosedPoolError,
@@ -27,12 +29,7 @@ from .test_response import MockChunkedEncodingResponse, MockSock
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 
-try:   # Python 3
-    from queue import Empty
-    from http.client import HTTPException
-except ImportError:
-    from Queue import Empty
-    from httplib import HTTPException
+from dummyserver.server import DEFAULT_CA
 
 
 class TestConnectionPool(unittest.TestCase):
@@ -285,7 +282,7 @@ class TestConnectionPool(unittest.TestCase):
                 c._absolute_url('path?query=foo'))
 
     def test_ca_certs_default_cert_required(self):
-        with connection_from_url('https://google.com:80', ca_certs='/etc/ssl/certs/custom.pem') as pool:
+        with connection_from_url('https://google.com:80', ca_certs=DEFAULT_CA) as pool:
             conn = pool._get_conn()
             self.assertEqual(conn.cert_reqs, 'CERT_REQUIRED')
 

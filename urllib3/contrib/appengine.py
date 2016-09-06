@@ -1,3 +1,43 @@
+"""
+This module provides a pool manager that uses Google App Engine's
+`URLFetch Service <https://cloud.google.com/appengine/docs/python/urlfetch>`_.
+
+Example usage::
+
+    from urllib3 import PoolManager
+    from urllib3.contrib.appengine import AppEngineManager, is_appengine_sandbox
+
+    if is_appengine_sandbox():
+        # AppEngineManager uses AppEngine's URLFetch API behind the scenes
+        http = AppEngineManager()
+    else:
+        # PoolManager uses a socket-level API behind the scenes
+        http = PoolManager()
+
+    r = http.request('GET', 'https://google.com/')
+
+There are `limitations <https://cloud.google.com/appengine/docs/python/\
+urlfetch/#Python_Quotas_and_limits>`_ to the URLFetch service and it may not be
+the best choice for your application. There are three options for using
+urllib3 on Google App Engine:
+
+1. You can use :class:`AppEngineManager` with URLFetch. URLFetch is
+   cost-effective in many circumstances as long as your usage is within the
+   limitations.
+2. You can use a normal :class:`~urllib3.PoolManager` by enabling sockets.
+   Sockets also have `limitations and restrictions
+   <https://cloud.google.com/appengine/docs/python/sockets/\
+   #limitations-and-restrictions>`_ and have a lower free quota than URLFetch.
+   To use sockets, be sure to specify the following in your ``app.yaml``::
+
+        env_variables:
+            GAE_USE_SOCKETS_HTTPLIB : 'true'
+
+3. If you are using `App Engine Flexible
+<https://cloud.google.com/appengine/docs/flexible/>`_, you can use the standard
+:class:`PoolManager` without any configuration or special environment variables.
+"""
+
 from __future__ import absolute_import
 import logging
 import os
@@ -41,13 +81,12 @@ class AppEngineManager(RequestMethods):
 
     This manager uses the URLFetch service directly instead of using the
     emulated httplib, and is subject to URLFetch limitations as described in
-    the App Engine documentation here:
+    the App Engine documentation `here
+    <https://cloud.google.com/appengine/docs/python/urlfetch>`_.
 
-        https://cloud.google.com/appengine/docs/python/urlfetch
-
-    Notably it will raise an AppEnginePlatformError if:
+    Notably it will raise an :class:`AppEnginePlatformError` if:
         * URLFetch is not available.
-        * If you attempt to use this on GAEv2 (Managed VMs), as full socket
+        * If you attempt to use this on App Engine Flexible, as full socket
           support is available.
         * If a request size is more than 10 megabytes.
         * If a response size is more than 32 megabtyes.
@@ -133,7 +172,7 @@ class AppEngineManager(RequestMethods):
                 "URLFetch does not support method: %s" % method, e)
 
         http_response = self._urlfetch_response_to_http_response(
-            response, **response_kw)
+            response, retries=retries, **response_kw)
 
         # Check for redirect response
         if (http_response.get_redirect_location() and
@@ -183,12 +222,13 @@ class AppEngineManager(RequestMethods):
 
     def _get_absolute_timeout(self, timeout):
         if timeout is Timeout.DEFAULT_TIMEOUT:
-            return 5  # 5s is the default timeout for URLFetch.
+            return None  # Defer to URLFetch's default.
         if isinstance(timeout, Timeout):
-            if timeout._read is not timeout._connect:
+            if timeout._read is not None or timeout._connect is not None:
                 warnings.warn(
                     "URLFetch does not support granular timeout settings, "
-                    "reverting to total timeout.", AppEnginePlatformWarning)
+                    "reverting to total or default URLFetch timeout.",
+                    AppEnginePlatformWarning)
             return timeout.total
         return timeout
 

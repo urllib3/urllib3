@@ -15,12 +15,33 @@ from datetime import date
 import os
 import sys
 
+import alabaster
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
 root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, root_path)
+
+# Mock some expensive/platform-specific modules so build will work.
+# (https://read-the-docs.readthedocs.io/en/latest/faq.html#\
+#  i-get-import-errors-on-libraries-that-depend-on-c-modules)
+import mock
+
+
+class MockModule(mock.Mock):
+    @classmethod
+    def __getattr__(cls, name):
+        return MockModule()
+
+
+MOCK_MODULES = (
+    'ntlm',
+)
+
+sys.modules.update((mod_name, MockModule()) for mod_name in MOCK_MODULES)
+
 
 import urllib3
 
@@ -33,6 +54,7 @@ import urllib3
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
+    'alabaster',
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
@@ -105,15 +127,26 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'nature'
+html_theme = 'alabaster'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+html_theme_options = {
+    'description': 'Sanity-friendly HTTP client.',
+    'github_user': 'shazow',
+    'github_repo': 'urllib3',
+    'github_button': False,
+    'github_banner': True,
+    'travis_button': True,
+    'show_powered_by': False,
+    'font_family': "'Roboto', Georgia, sans",
+    'head_font_family': "'Roboto', Georgia, serif",
+    'code_font_family': "'Roboto Mono', 'Consolas', monospace",
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
-#html_theme_path = []
+html_theme_path = [alabaster.get_path()]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -145,7 +178,15 @@ html_theme = 'nature'
 #html_use_smartypants = True
 
 # Custom sidebar templates, maps document names to template names.
-#html_sidebars = {}
+html_sidebars = {
+    '**': [
+        'about.html',
+        'navigation.html',
+        'relations.html',
+        'searchbox.html',
+        'donate.html',
+    ]
+}
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
@@ -229,4 +270,5 @@ man_pages = [
      [u'Andrey Petrov'], 1)
 ]
 
-intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None)}
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3.5', None),}
