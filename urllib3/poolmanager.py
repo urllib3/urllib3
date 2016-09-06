@@ -3,11 +3,12 @@ import collections
 import functools
 import logging
 
+from . import util
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
 from .exceptions import (LocationValueError, MaxRetryError, SSLError,
-                         ProxySchemeUnknown, HSTSViolation)
+                         ProxySchemeUnknown, HSTSViolation, HPKPError)
 from .hsts import MemoryHSTSStore, HSTSManager
 from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
@@ -21,7 +22,7 @@ __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
 log = logging.getLogger(__name__)
 
 SSL_KEYWORDS = ('key_file', 'cert_file', 'cert_reqs', 'ca_certs',
-                'ssl_version', 'ca_cert_dir', 'ssl_context')
+                'ssl_version', 'ca_cert_dir', 'ssl_context', 'hpkp_manager')
 
 # The base fields to use when determining what pool to get a connection from;
 # these do not rely on the ``connection_pool_kw`` and can be determined by the
@@ -124,6 +125,12 @@ class PoolManager(RequestMethods):
         # override them.
         self.pool_classes_by_scheme = pool_classes_by_scheme
         self.key_fn_by_scheme = key_fn_by_scheme.copy()
+
+        if util.IS_PYOPENSSL:
+            from .util.hpkp import HPKPManager, MemoryHPKPDatabase
+            self.connection_pool_kw.setdefault('hpkp_manager', HPKPManager(MemoryHPKPDatabase()))
+        elif 'hpkp_manager' in self.connection_pool_kw:
+            raise HPKPError("hpkp_manager requires PyOpenSSL to be loaded")
 
     def __enter__(self):
         return self
