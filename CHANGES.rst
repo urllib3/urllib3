@@ -4,6 +4,12 @@ Changes
 dev (master)
 ------------
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.17 (2016-09-06)
+-----------------
+
 * Accept ``SSLContext`` objects for use in SSL/TLS negotiation. (Issue #835)
 
 * ConnectionPool debug log now includes scheme, host, and port. (Issue #897)
@@ -45,8 +51,6 @@ dev (master)
 
 * Dropped connection start, dropped connection reset, redirect, forced retry,
   and new HTTPS connection log levels to DEBUG, from INFO. (PR #967)
-
-* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.16 (2016-06-11)
