@@ -1045,3 +1045,99 @@ class TestHEAD(SocketDummyServerTestCase):
 
         # stream will use the read method here.
         self.assertEqual([], list(r.stream()))
+
+
+class TestStream(SocketDummyServerTestCase):
+    def test_stream_none_unchunked_response_does_not_hang(self):
+        done_event = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            sock.send(
+                b'HTTP/1.1 200 OK\r\n'
+                b'Content-Length: 12\r\n'
+                b'Content-type: text/plain\r\n'
+                b'\r\n'
+                b'hello, world'
+            )
+            done_event.wait(5)
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        r = pool.request('GET', '/', timeout=1, preload_content=False)
+
+        # Stream should read to the end.
+        self.assertEqual([b'hello, world'], list(r.stream(None)))
+
+        done_event.set()
+
+class TestBadContentLength(SocketDummyServerTestCase):
+    def test_enforce_content_length_get(self):
+        done_event = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            sock.send(
+                b'HTTP/1.1 200 OK\r\n'
+                b'Content-Length: 22\r\n'
+                b'Content-type: text/plain\r\n'
+                b'\r\n'
+                b'hello, world'
+            )
+            done_event.wait(1)
+            sock.close()
+
+        self._start_server(socket_handler)
+        conn = HTTPConnectionPool(self.host, self.port, maxsize=1)
+
+        # Test stream read when content length less than headers claim
+        get_response = conn.request('GET', url='/', preload_content=False,
+                                    enforce_content_length=True)
+        data = get_response.stream(100)
+        # Read "good" data before we try to read again.
+        # This won't trigger till generator is exhausted.
+        next(data)
+        self.assertRaises(ProtocolError, next, data)
+
+        done_event.set()
+
+    def test_enforce_content_length_no_body(self):
+        done_event = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            sock.send(
+                b'HTTP/1.1 200 OK\r\n'
+                b'Content-Length: 22\r\n'
+                b'Content-type: text/plain\r\n'
+                b'\r\n'
+            )
+            done_event.wait(1)
+            sock.close()
+
+        self._start_server(socket_handler)
+        conn = HTTPConnectionPool(self.host, self.port, maxsize=1)
+
+        #Test stream on 0 length body
+        head_response = conn.request('HEAD', url='/', preload_content=False,
+                                     enforce_content_length=True)
+        data = [chunk for chunk in head_response.stream(1)]
+        self.assertEqual(len(data), 0)
+
+        done_event.set()
