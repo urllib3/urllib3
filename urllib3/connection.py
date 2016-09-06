@@ -333,13 +333,13 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                 )
             _match_hostname(cert, self.assert_hostname or hostname)
 
-        if self.hpkp_manager is not None:
-            self.hpkp_manager.validate_connection(hostname, self.sock)
-
         self.is_verified = (
             context.verify_mode == ssl.CERT_REQUIRED or
             self.assert_fingerprint is not None
         )
+
+        if self.is_verified and self.hpkp_manager is not None:
+            self.hpkp_manager.validate_connection(hostname, self.sock)
 
 
 def _match_hostname(cert, asserted_hostname):

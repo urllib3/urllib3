@@ -3,15 +3,15 @@ import collections
 import functools
 import logging
 
+from . import util
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
-from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
+from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown, HPKPError
 from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
 from .util.url import parse_url
 from .util.retry import Retry
-from .util.hpkp import HPKPManager, MemoryHPKPDatabase
 
 
 __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
@@ -122,10 +122,11 @@ class PoolManager(RequestMethods):
         self.pool_classes_by_scheme = pool_classes_by_scheme
         self.key_fn_by_scheme = key_fn_by_scheme.copy()
 
-        if 'hpkp_manager' not in self.connection_pool_kw:
-            self.connection_pool_kw['hpkp_manager'] = HPKPManager(
-                MemoryHPKPDatabase()
-            )
+        if util.IS_PYOPENSSL:
+            from .util.hpkp import HPKPManager, MemoryHPKPDatabase
+            self.connection_pool_kw.setdefault('hpkp_manager', HPKPManager(MemoryHPKPDatabase()))
+        elif 'hpkp_manager' in self.connection_pool_kw:
+            raise HPKPError("hpkp_manager requires PyOpenSSL to be loaded")
 
     def __enter__(self):
         return self

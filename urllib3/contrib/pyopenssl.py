@@ -403,6 +403,7 @@ class PyOpenSSLContext(object):
                     do_handshake_on_connect=True, suppress_ragged_eofs=True,
                     server_hostname=None):
         cnx = OpenSSL.SSL.Connection(self._ctx, sock)
+        cnx.certs = []
 
         if isinstance(server_hostname, six.text_type):  # Platform-specific: Python 3
             server_hostname = server_hostname.encode('utf-8')

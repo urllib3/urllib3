@@ -594,7 +594,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                                   chunked=chunked)
 
             # Check HPKP.
-            self.hpkp_manager.process_response(self.host, httplib_response)
+            if self.scheme == 'https' and self.hpkp_manager is not None:
+                self.hpkp_manager.process_response(self.host, httplib_response)
 
             # If we're going to release the connection in ``finally:``, then
             # the response doesn't need to know about the connection. Otherwise
