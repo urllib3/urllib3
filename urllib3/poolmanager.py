@@ -1,16 +1,15 @@
+from __future__ import absolute_import
+import collections
+import functools
 import logging
-
-try:  # Python 3
-    from urllib.parse import urljoin
-except ImportError:
-    from urlparse import urljoin
 
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
 from .exceptions import (LocationValueError, MaxRetryError, SSLError,
-                         HSTSViolation)
+                         ProxySchemeUnknown, HSTSViolation)
 from .hsts import MemoryHSTSStore, HSTSManager
+from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
 from .util.url import parse_url
 from .util.retry import Retry
@@ -19,15 +18,68 @@ from .util.retry import Retry
 __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
 
 
+log = logging.getLogger(__name__)
+
+SSL_KEYWORDS = ('key_file', 'cert_file', 'cert_reqs', 'ca_certs',
+                'ssl_version', 'ca_cert_dir', 'ssl_context')
+
+# The base fields to use when determining what pool to get a connection from;
+# these do not rely on the ``connection_pool_kw`` and can be determined by the
+# URL and potentially the ``urllib3.connection.port_by_scheme`` dictionary.
+#
+# All custom key schemes should include the fields in this key at a minimum.
+BasePoolKey = collections.namedtuple('BasePoolKey', ('scheme', 'host', 'port'))
+
+# The fields to use when determining what pool to get a HTTP and HTTPS
+# connection from. All additional fields must be present in the PoolManager's
+# ``connection_pool_kw`` instance variable.
+HTTPPoolKey = collections.namedtuple(
+    'HTTPPoolKey', BasePoolKey._fields + ('timeout', 'retries', 'strict',
+                                          'block', 'source_address')
+)
+HTTPSPoolKey = collections.namedtuple(
+    'HTTPSPoolKey', HTTPPoolKey._fields + SSL_KEYWORDS
+)
+
+
+def _default_key_normalizer(key_class, request_context):
+    """
+    Create a pool key of type ``key_class`` for a request.
+
+    According to RFC 3986, both the scheme and host are case-insensitive.
+    Therefore, this function normalizes both before constructing the pool
+    key for an HTTPS request. If you wish to change this behaviour, provide
+    alternate callables to ``key_fn_by_scheme``.
+
+    :param key_class:
+        The class to use when constructing the key. This should be a namedtuple
+        with the ``scheme`` and ``host`` keys at a minimum.
+
+    :param request_context:
+        A dictionary-like object that contain the context for a request.
+        It should contain a key for each field in the :class:`HTTPPoolKey`
+    """
+    context = {}
+    for key in key_class._fields:
+        context[key] = request_context.get(key)
+    context['scheme'] = context['scheme'].lower()
+    context['host'] = context['host'].lower()
+    return key_class(**context)
+
+
+# A dictionary that maps a scheme to a callable that creates a pool key.
+# This can be used to alter the way pool keys are constructed, if desired.
+# Each PoolManager makes a copy of this dictionary so they can be configured
+# globally here, or individually on the instance.
+key_fn_by_scheme = {
+    'http': functools.partial(_default_key_normalizer, HTTPPoolKey),
+    'https': functools.partial(_default_key_normalizer, HTTPSPoolKey),
+}
+
 pool_classes_by_scheme = {
     'http': HTTPConnectionPool,
     'https': HTTPSConnectionPool,
 }
-
-log = logging.getLogger(__name__)
-
-SSL_KEYWORDS = ('key_file', 'cert_file', 'cert_reqs', 'ca_certs',
-                'ssl_version')
 
 
 class PoolManager(RequestMethods):
@@ -68,6 +120,11 @@ class PoolManager(RequestMethods):
         self.hsts_manager = HSTSManager(MemoryHSTSStore())
         self.connection_pool_kw['hsts_manager'] = self.hsts_manager
 
+        # Locally set the pool classes and keys so other PoolManagers can
+        # override them.
+        self.pool_classes_by_scheme = pool_classes_by_scheme
+        self.key_fn_by_scheme = key_fn_by_scheme.copy()
+
     def __enter__(self):
         return self
 
@@ -84,7 +141,7 @@ class PoolManager(RequestMethods):
         by :meth:`connection_from_url` and companion methods. It is intended
         to be overridden for customization.
         """
-        pool_cls = pool_classes_by_scheme[scheme]
+        pool_cls = self.pool_classes_by_scheme[scheme]
         kwargs = self.connection_pool_kw
         if scheme == 'http':
             kwargs = self.connection_pool_kw.copy()
@@ -113,10 +170,36 @@ class PoolManager(RequestMethods):
         if not host:
             raise LocationValueError("No host specified.")
 
-        scheme = scheme or 'http'
-        port = port or port_by_scheme.get(scheme, 80)
-        pool_key = (scheme, host, port)
+        request_context = self.connection_pool_kw.copy()
+        request_context['scheme'] = scheme or 'http'
+        if not port:
+            port = port_by_scheme.get(request_context['scheme'].lower(), 80)
+        request_context['port'] = port
+        request_context['host'] = host
 
+        return self.connection_from_context(request_context)
+
+    def connection_from_context(self, request_context):
+        """
+        Get a :class:`ConnectionPool` based on the request context.
+
+        ``request_context`` must at least contain the ``scheme`` key and its
+        value must be a key in ``key_fn_by_scheme`` instance variable.
+        """
+        scheme = request_context['scheme'].lower()
+        pool_key_constructor = self.key_fn_by_scheme[scheme]
+        pool_key = pool_key_constructor(request_context)
+
+        return self.connection_from_pool_key(pool_key)
+
+    def connection_from_pool_key(self, pool_key):
+        """
+        Get a :class:`ConnectionPool` based on the provided pool key.
+
+        ``pool_key`` should be a namedtuple that only contains immutable
+        objects. At a minimum it must have the ``scheme``, ``host``, and
+        ``port`` fields.
+        """
         with self.pools.lock:
             # If the scheme, host, or port doesn't match existing open
             # connections, open a new ConnectionPool.
@@ -125,7 +208,7 @@ class PoolManager(RequestMethods):
                 return pool
 
             # Make a fresh ConnectionPool of the desired type
-            pool = self._new_pool(scheme, host, port)
+            pool = self._new_pool(pool_key.scheme, pool_key.host, pool_key.port)
             self.pools[pool_key] = pool
 
         return pool
@@ -207,7 +290,7 @@ class PoolManager(RequestMethods):
         kw['retries'] = retries
         kw['redirect'] = redirect
 
-        log.info("Redirecting %s -> %s" % (url, redirect_location))
+        log.info("Redirecting %s -> %s", url, redirect_location)
         return self.urlopen(method, redirect_location, **kw)
 
 
@@ -249,8 +332,8 @@ class ProxyManager(PoolManager):
             port = port_by_scheme.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
 
-        assert proxy.scheme in ("http", "https"), \
-            'Not supported proxy scheme %s' % proxy.scheme
+        if proxy.scheme not in ("http", "https"):
+            raise ProxySchemeUnknown(proxy.scheme)
 
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}

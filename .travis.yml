@@ -1,17 +1,36 @@
 language: python
-python:
-  - "2.6"
-  - "2.7"
-  - "3.2"
-  - "3.3"
-  - "3.4"
-  - "pypy"
-script: make test
+script:
+  - tox
 before_install:
   - openssl version
+cache:
+  directories:
+  - ${HOME}/.cache
 install:
-  - make
+  - pip install tox==2.1.1
+  - if [[ "${TOXENV}" == "gae" && ! -d ${GAE_PYTHONPATH} ]]; then
+      python _travis/fetch_gae_sdk.py ;
+    fi
 notifications:
   email: false
-env: PYTHONWARNINGS=always::DeprecationWarning
+env:
+  global:
+    - GAE_PYTHONPATH=${HOME}/.cache/google_appengine
+    - PYTHONWARNINGS=always::DeprecationWarning
+  matrix:
+    - TOXENV=flake8-py3
+    - TOXENV=py26
+    - TOXENV=py27
+    - TOXENV=py33
+    - TOXENV=py34
+    - TOXENV=gae
+# https://github.com/travis-ci/travis-ci/issues/4794
+matrix:
+  include:
+    - python: 3.5
+      env: TOXENV=py35
+    - python: pypy-5.3
+      env: TOXENV=pypy
+  allow_failures:
+  - python: pypy-5.3
 sudo: false

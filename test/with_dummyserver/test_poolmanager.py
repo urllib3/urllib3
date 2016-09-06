@@ -1,6 +1,8 @@
 import unittest
 import json
 
+from nose.plugins.skip import SkipTest
+from dummyserver.server import HAS_IPV6
 from dummyserver.testcase import (HTTPDummyServerTestCase,
                                   IPv6HTTPDummyServerTestCase)
 from urllib3.poolmanager import PoolManager
@@ -67,7 +69,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
         try:
             http.request('GET', '%s/redirect' % self.base_url,
                          fields={'target': cross_host_location},
-                         timeout=0.01, retries=0)
+                         timeout=1, retries=0)
             self.fail("Request succeeded instead of raising an exception like it should.")
 
         except MaxRetryError:
@@ -75,7 +77,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         r = http.request('GET', '%s/redirect' % self.base_url,
                          fields={'target': '%s/echo?a=b' % self.base_url_alt},
-                         timeout=0.01, retries=1)
+                         timeout=1, retries=1)
 
         self.assertEqual(r._pool.host, self.host_alt)
 
@@ -107,6 +109,34 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         self.assertEqual(r.status, 303)
 
+    def test_raise_on_status(self):
+        http = PoolManager()
+
+        try:
+            # the default is to raise
+            r = http.request('GET', '%s/status' % self.base_url,
+                             fields={'status': '500 Internal Server Error'},
+                             retries=Retry(total=1, status_forcelist=range(500, 600)))
+            self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
+        except MaxRetryError:
+            pass
+
+        try:
+            # raise explicitly
+            r = http.request('GET', '%s/status' % self.base_url,
+                             fields={'status': '500 Internal Server Error'},
+                             retries=Retry(total=1, status_forcelist=range(500, 600), raise_on_status=True))
+            self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
+        except MaxRetryError:
+            pass
+
+        # don't raise
+        r = http.request('GET', '%s/status' % self.base_url,
+                         fields={'status': '500 Internal Server Error'},
+                         retries=Retry(total=1, status_forcelist=range(500, 600), raise_on_status=False))
+
+        self.assertEqual(r.status, 500)
+
     def test_missing_port(self):
         # Can a URL that lacks an explicit port like ':80' succeed, or
         # will all such URLs fail with an error?
@@ -127,6 +157,14 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_headers(self):
         http = PoolManager(headers={'Foo': 'bar'})
+
+        r = http.request('GET', '%s/headers' % self.base_url)
+        returned_headers = json.loads(r.data.decode())
+        self.assertEqual(returned_headers.get('Foo'), 'bar')
+
+        r = http.request('POST', '%s/headers' % self.base_url)
+        returned_headers = json.loads(r.data.decode())
+        self.assertEqual(returned_headers.get('Foo'), 'bar')
 
         r = http.request_encode_url('GET', '%s/headers' % self.base_url)
         returned_headers = json.loads(r.data.decode())
@@ -152,8 +190,17 @@ class TestPoolManager(HTTPDummyServerTestCase):
         r = http.request('GET', 'http://%s:%s/' % (self.host, self.port))
         self.assertEqual(r.status, 200)
 
+    def test_http_with_ca_cert_dir(self):
+        http = PoolManager(ca_certs='REQUIRED', ca_cert_dir='/nosuchdir')
+
+        r = http.request('GET', 'http://%s:%s/' % (self.host, self.port))
+        self.assertEqual(r.status, 200)
+
 
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
+    if not HAS_IPV6:
+        raise SkipTest("IPv6 is not supported on this system.")
+
     def setUp(self):
         self.base_url = 'http://[%s]:%d' % (self.host, self.port)
 

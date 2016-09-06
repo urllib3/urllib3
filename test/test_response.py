@@ -2,12 +2,12 @@ import unittest
 
 from io import BytesIO, BufferedReader
 
-try:
-    import http.client as httplib
-except ImportError:
-    import httplib
 from urllib3.response import HTTPResponse
-from urllib3.exceptions import DecodeError, ResponseNotChunked
+from urllib3.exceptions import (
+    DecodeError, ResponseNotChunked, ProtocolError, InvalidHeader
+)
+from urllib3.packages.six.moves import http_client as httplib
+from urllib3.util.retry import Retry
 
 
 from base64 import b64decode
@@ -379,6 +379,73 @@ class TestResponse(unittest.TestCase):
 
         self.assertRaises(StopIteration, next, stream)
 
+    def test_length_no_header(self):
+        fp = BytesIO(b'12345')
+        resp = HTTPResponse(fp, preload_content=False)
+        self.assertEqual(resp.length_remaining, None)
+
+    def test_length_w_valid_header(self):
+        headers = {"content-length": "5"}
+        fp = BytesIO(b'12345')
+
+        resp = HTTPResponse(fp, headers=headers, preload_content=False)
+        self.assertEqual(resp.length_remaining, 5)
+
+    def test_length_w_bad_header(self):
+        garbage = {'content-length': 'foo'}
+        fp = BytesIO(b'12345')
+
+        resp = HTTPResponse(fp, headers=garbage, preload_content=False)
+        self.assertEqual(resp.length_remaining, None)
+
+        garbage['content-length'] = "-10"
+        resp = HTTPResponse(fp, headers=garbage, preload_content=False)
+        self.assertEqual(resp.length_remaining, None)
+
+    def test_length_when_chunked(self):
+        # This is expressly forbidden in RFC 7230 sec 3.3.2
+        # We fall back to chunked in this case and try to
+        # handle response ignoring content length.
+        headers = {'content-length': '5',
+                   'transfer-encoding': 'chunked'}
+        fp = BytesIO(b'12345')
+
+        resp = HTTPResponse(fp, headers=headers, preload_content=False)
+        self.assertEqual(resp.length_remaining, None)
+
+    def test_length_with_multiple_content_lengths(self):
+        headers = {'content-length': '5, 5, 5'}
+        garbage = {'content-length': '5, 42'}
+        fp = BytesIO(b'abcde')
+
+        resp = HTTPResponse(fp, headers=headers, preload_content=False)
+        self.assertEqual(resp.length_remaining, 5)
+
+        self.assertRaises(InvalidHeader, HTTPResponse, fp,
+                          headers=garbage, preload_content=False)
+
+    def test_length_after_read(self):
+        headers = {"content-length": "5"}
+
+        # Test no defined length
+        fp = BytesIO(b'12345')
+        resp = HTTPResponse(fp, preload_content=False)
+        resp.read()
+        self.assertEqual(resp.length_remaining, None)
+
+        # Test our update from content-length
+        fp = BytesIO(b'12345')
+        resp = HTTPResponse(fp, headers=headers, preload_content=False)
+        resp.read()
+        self.assertEqual(resp.length_remaining, 0)
+
+        # Test partial read
+        fp = BytesIO(b'12345')
+        resp = HTTPResponse(fp, headers=headers, preload_content=False)
+        data = resp.stream(2)
+        next(data)
+        self.assertEqual(resp.length_remaining, 3)
+
     def test_mock_httpresponse_stream(self):
         # Mock out a HTTP Request that does enough to make it through urllib3's
         # read() and close() calls, and also exhausts and underlying file
@@ -487,7 +554,7 @@ class TestResponse(unittest.TestCase):
         r.chunked = True
         r.chunk_left = None
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
-        self.assertRaises(httplib.IncompleteRead, next, resp.read_chunked())
+        self.assertRaises(ProtocolError, next, resp.read_chunked())
 
     def test_chunked_response_without_crlf_on_end(self):
         stream = [b"foo", b"bar", b"baz"]
@@ -524,6 +591,14 @@ class TestResponse(unittest.TestCase):
         r = HTTPResponse(headers=headers)
         self.assertEqual(r.headers.get('host'), 'example.com')
         self.assertEqual(r.headers.get('Host'), 'example.com')
+
+    def test_retries(self):
+        fp = BytesIO(b'')
+        resp = HTTPResponse(fp)
+        self.assertEqual(resp.retries, None)
+        retry = Retry()
+        resp = HTTPResponse(fp, retries=retry)
+        self.assertEqual(resp.retries, retry)
 
 
 class MockChunkedEncodingResponse(object):

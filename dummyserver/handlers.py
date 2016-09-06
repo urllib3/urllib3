@@ -11,10 +11,8 @@ import zlib
 from io import BytesIO
 from tornado.web import RequestHandler
 
-try:
-    from urllib.parse import urlsplit
-except ImportError:
-    from urlparse import urlsplit
+from urllib3.packages.six.moves.http_client import responses
+from urllib3.packages.six.moves.urllib.parse import urlsplit
 
 log = logging.getLogger(__name__)
 
@@ -28,8 +26,8 @@ class Response(object):
     def __call__(self, request_handler):
         status, reason = self.status.split(' ', 1)
         request_handler.set_status(int(status), reason)
-        for header,value in self.headers:
-            request_handler.add_header(header,value)
+        for header, value in self.headers:
+            request_handler.add_header(header, value)
 
         # chunked
         if isinstance(self.body, list):
@@ -47,6 +45,7 @@ class Response(object):
 
 
 RETRY_TEST_NAMES = collections.defaultdict(int)
+
 
 class TestingApp(RequestHandler):
     """
@@ -71,6 +70,10 @@ class TestingApp(RequestHandler):
 
     def options(self):
         """ Handle OPTIONS requests """
+        self._call_method()
+
+    def head(self):
+        """ Handle HEAD requests """
         self._call_method()
 
     def _call_method(self):
@@ -132,8 +135,8 @@ class TestingApp(RequestHandler):
         files_ = request.files.get(param)
 
         if len(files_) != 1:
-            return Response("Expected 1 file for '%s', not %d" %(param, len(files_)),
-                                                    status='400 Bad Request')
+            return Response("Expected 1 file for '%s', not %d" % (param, len(files_)),
+                            status='400 Bad Request')
         file_ = files_[0]
 
         data = file_['body']
@@ -154,6 +157,17 @@ class TestingApp(RequestHandler):
         headers = [('Location', target)]
         return Response(status='303 See Other', headers=headers)
 
+    def multi_redirect(self, request):
+        "Performs a redirect chain based on ``redirect_codes``"
+        codes = request.params.get('redirect_codes', '200').decode('utf-8')
+        head, tail = codes.split(',', 1) if "," in codes else (codes, None)
+        status = "{0} {1}".format(head, responses[int(head)])
+        if not tail:
+            return Response("Done redirecting", status=status)
+
+        headers = [('Location', '/multi_redirect?redirect_codes=%s' % tail)]
+        return Response(status=status, headers=headers)
+
     def keepalive(self, request):
         if request.params.get('close', b'0') == b'1':
             headers = [('Connection', 'close')]
@@ -164,6 +178,8 @@ class TestingApp(RequestHandler):
 
     def sleep(self, request):
         "Sleep for a specified amount of ``seconds``"
+        # DO NOT USE THIS, IT'S DEPRECATED.
+        # FIXME: Delete this once appengine tests are fixed to not use this handler.
         seconds = float(request.params.get('seconds', '1'))
         time.sleep(seconds)
         return Response()
@@ -232,6 +248,18 @@ class TestingApp(RequestHandler):
 
         return Response(chunks, headers=[('Content-Encoding', 'gzip')])
 
+    def nbytes(self, request):
+        length = int(request.params.get('length'))
+        data = b'1' * length
+        return Response(
+            data,
+            headers=[('Content-Type', 'application/octet-stream')])
+
+    def status(self, request):
+        status = request.params.get("status", "200 OK")
+
+        return Response(status=status)
+
     def shutdown(self, request):
         sys.exit()
 
@@ -269,7 +297,7 @@ def _parse_header(line):
             value = p[i + 1:].strip()
             params.append((name, value))
     params = email.utils.decode_params(params)
-    params.pop(0) # get rid of the dummy again
+    params.pop(0)  # get rid of the dummy again
     pdict = {}
     for name, value in params:
         value = email.utils.collapse_rfc2231_value(value)

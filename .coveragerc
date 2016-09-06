@@ -1,7 +1,12 @@
 [run]
+include =
+    urllib3/*
+
 omit =
     urllib3/packages/*
-    urllib3/contrib/*
+    urllib3/contrib/appengine.py
+    urllib3/contrib/ntlmpool.py
+    urllib3/contrib/pyopenssl.py
 
 [report]
 exclude_lines =

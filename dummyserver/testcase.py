@@ -14,6 +14,10 @@ from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
 
 
+def consume_socket(sock, chunks=65536):
+    while not sock.recv(chunks).endswith(b'\r\n\r\n'):
+        pass
+
 
 class SocketDummyServerTestCase(unittest.TestCase):
     """
@@ -36,9 +40,50 @@ class SocketDummyServerTestCase(unittest.TestCase):
         cls.port = cls.server_thread.port
 
     @classmethod
+    def start_response_handler(cls, response, num=1, block_send=None):
+        ready_event = threading.Event()
+
+        def socket_handler(listener):
+            for _ in range(num):
+                ready_event.set()
+
+                sock = listener.accept()[0]
+                consume_socket(sock)
+                if block_send:
+                    block_send.wait()
+                    block_send.clear()
+                sock.send(response)
+                sock.close()
+
+        cls._start_server(socket_handler)
+        return ready_event
+
+    @classmethod
+    def start_basic_handler(cls, **kw):
+        return cls.start_response_handler(
+            b'HTTP/1.1 200 OK\r\n'
+            b'Content-Length: 0\r\n'
+            b'\r\n', **kw)
+
+    @classmethod
     def tearDownClass(cls):
         if hasattr(cls, 'server_thread'):
             cls.server_thread.join(0.1)
+
+
+class IPV4SocketDummyServerTestCase(SocketDummyServerTestCase):
+    @classmethod
+    def _start_server(cls, socket_handler):
+        ready_event = threading.Event()
+        cls.server_thread = SocketServerThread(socket_handler=socket_handler,
+                                               ready_event=ready_event,
+                                               host=cls.host)
+        cls.server_thread.USE_IPV6 = False
+        cls.server_thread.start()
+        ready_event.wait(5)
+        if not ready_event.is_set():
+            raise Exception("most likely failed to start server")
+        cls.port = cls.server_thread.port
 
 
 class HTTPDummyServerTestCase(unittest.TestCase):
@@ -81,6 +126,17 @@ class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
     scheme = 'https'
     host = 'localhost'
     certs = DEFAULT_CERTS
+
+
+class IPV6HTTPSDummyServerTestCase(HTTPSDummyServerTestCase):
+    host = '::1'
+
+    @classmethod
+    def setUpClass(cls):
+        if not socket.has_ipv6:
+            raise SkipTest('IPv6 not available')
+        else:
+            super(IPV6HTTPSDummyServerTestCase, cls).setUpClass()
 
 
 class HTTPDummyProxyTestCase(unittest.TestCase):
@@ -131,3 +187,16 @@ class IPv6HTTPDummyServerTestCase(HTTPDummyServerTestCase):
             raise SkipTest('IPv6 not available')
         else:
             super(IPv6HTTPDummyServerTestCase, cls).setUpClass()
+
+
+class IPv6HTTPDummyProxyTestCase(HTTPDummyProxyTestCase):
+
+    http_host = 'localhost'
+    http_host_alt = '127.0.0.1'
+
+    https_host = 'localhost'
+    https_host_alt = '127.0.0.1'
+    https_certs = DEFAULT_CERTS
+
+    proxy_host = '::1'
+    proxy_host_alt = '127.0.0.1'

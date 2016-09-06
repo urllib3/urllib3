@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # The default socket timeout, used by httplib to indicate that no timeout was
 # specified by the user
 from socket import _GLOBAL_DEFAULT_TIMEOUT
@@ -8,6 +9,7 @@ from ..exceptions import TimeoutStateError
 # A sentinel value to indicate that no timeout was specified by the user in
 # urllib3
 _Default = object()
+
 
 def current_time():
     """
@@ -109,8 +111,8 @@ class Timeout(object):
         :param name: The name of the timeout attribute to validate. This is
             used to specify in error messages.
         :return: The validated and casted version of the given value.
-        :raises ValueError: If the type is not an integer or a float, or if it
-            is a numeric value less than zero.
+        :raises ValueError: If it is a numeric value less than or equal to
+            zero, or the type is not an integer, float, or None.
         """
         if value is _Default:
             return cls.DEFAULT_TIMEOUT
@@ -118,20 +120,23 @@ class Timeout(object):
         if value is None or value is cls.DEFAULT_TIMEOUT:
             return value
 
+        if isinstance(value, bool):
+            raise ValueError("Timeout cannot be a boolean value. It must "
+                             "be an int, float or None.")
         try:
             float(value)
         except (TypeError, ValueError):
             raise ValueError("Timeout value %s was %s, but it must be an "
-                             "int or float." % (name, value))
+                             "int, float or None." % (name, value))
 
         try:
-            if value < 0:
+            if value <= 0:
                 raise ValueError("Attempted to set %s timeout to %s, but the "
                                  "timeout cannot be set to a value less "
-                                 "than 0." % (name, value))
+                                 "than or equal to 0." % (name, value))
         except TypeError:  # Python 3
             raise ValueError("Timeout value %s was %s, but it must be an "
-                             "int or float." % (name, value))
+                             "int, float or None." % (name, value))
 
         return value
 
@@ -226,9 +231,9 @@ class Timeout(object):
             has not yet been called on this object.
         """
         if (self.total is not None and
-            self.total is not self.DEFAULT_TIMEOUT and
-            self._read is not None and
-            self._read is not self.DEFAULT_TIMEOUT):
+                self.total is not self.DEFAULT_TIMEOUT and
+                self._read is not None and
+                self._read is not self.DEFAULT_TIMEOUT):
             # In case the connect timeout has not yet been established.
             if self._start_connect is None:
                 return self._read

@@ -1,24 +1,16 @@
+from __future__ import absolute_import
 import datetime
 import logging
+import os
 import sys
 import socket
-from socket import timeout as SocketTimeout
+from socket import error as SocketError, timeout as SocketTimeout
 import warnings
 from .packages import six
-
-try:  # Python 3
-    from http.client import HTTPConnection as _HTTPConnection, HTTPException
-except ImportError:
-    from httplib import HTTPConnection as _HTTPConnection, HTTPException
-
-
-class DummyConnection(object):
-    "Used to detect a failed ConnectionCls import."
-    pass
-
+from .packages.six.moves.http_client import HTTPConnection as _HTTPConnection
+from .packages.six.moves.http_client import HTTPException  # noqa: F401
 
 try:  # Compiled with SSL?
-    HTTPSConnection = DummyConnection
     import ssl
     BaseSSLError = ssl.SSLError
 except (ImportError, AttributeError):  # Platform-specific: No SSL.
@@ -37,21 +29,27 @@ except NameError:  # Python 2:
 
 
 from .exceptions import (
+    NewConnectionError,
     ConnectTimeoutError,
+    SubjectAltNameWarning,
     SystemTimeWarning,
-    SecurityWarning,
 )
-from .packages.ssl_match_hostname import match_hostname
+from .packages.ssl_match_hostname import match_hostname, CertificateError
 
 from .util.ssl_ import (
     resolve_cert_reqs,
     resolve_ssl_version,
-    ssl_wrap_socket,
     assert_fingerprint,
+    create_urllib3_context,
+    ssl_wrap_socket
 )
 
 
 from .util import connection
+
+from ._collections import HTTPHeaderDict
+
+log = logging.getLogger(__name__)
 
 port_by_scheme = {
     'http': 80,
@@ -60,6 +58,11 @@ port_by_scheme = {
 
 RECENT_DATE = datetime.date(2014, 1, 1)
 log = logging.getLogger(__name__)
+
+
+class DummyConnection(object):
+    """Used to detect a failed ConnectionCls import."""
+    pass
 
 
 class HTTPConnection(_HTTPConnection, object):
@@ -138,10 +141,14 @@ class HTTPConnection(_HTTPConnection, object):
             conn = connection.create_connection(
                 (self.host, self.port), self.timeout, **extra_kw)
 
-        except SocketTimeout:
+        except SocketTimeout as e:
             raise ConnectTimeoutError(
                 self, "Connection to %s timed out. (connect timeout=%s)" %
                 (self.host, self.timeout))
+
+        except SocketError as e:
+            raise NewConnectionError(
+                self, "Failed to establish a new connection: %s" % e)
 
         return conn
 
@@ -166,18 +173,54 @@ class HTTPConnection(_HTTPConnection, object):
             log.warning('Ignoring HSTS for %s', self.host)
         return result
 
+    def request_chunked(self, method, url, body=None, headers=None):
+        """
+        Alternative to the common request method, which sends the
+        body with chunked encoding and not as one block
+        """
+        headers = HTTPHeaderDict(headers if headers is not None else {})
+        skip_accept_encoding = 'accept-encoding' in headers
+        self.putrequest(method, url, skip_accept_encoding=skip_accept_encoding)
+        for header, value in headers.items():
+            self.putheader(header, value)
+        if 'transfer-encoding' not in headers:
+            self.putheader('Transfer-Encoding', 'chunked')
+        self.endheaders()
+
+        if body is not None:
+            stringish_types = six.string_types + (six.binary_type,)
+            if isinstance(body, stringish_types):
+                body = (body,)
+            for chunk in body:
+                if not chunk:
+                    continue
+                if not isinstance(chunk, six.binary_type):
+                    chunk = chunk.encode('utf8')
+                len_str = hex(len(chunk))[2:]
+                self.send(len_str.encode('utf-8'))
+                self.send(b'\r\n')
+                self.send(chunk)
+                self.send(b'\r\n')
+
+        # After the if clause, to always have a closed body
+        self.send(b'0\r\n\r\n')
+
 
 class HTTPSConnection(HTTPConnection):
     default_port = port_by_scheme['https']
 
+    ssl_version = None
+
     def __init__(self, host, port=None, key_file=None, cert_file=None,
-                 strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, **kw):
+                 strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+                 ssl_context=None, **kw):
 
         HTTPConnection.__init__(self, host, port, strict=strict,
                                 timeout=timeout, **kw)
 
         self.key_file = key_file
         self.cert_file = cert_file
+        self.ssl_context = ssl_context
 
         # Required property for Google AppEngine 1.9.0 which otherwise causes
         # HTTPS requests to go out as HTTP. (See Issue #356)
@@ -186,7 +229,19 @@ class HTTPSConnection(HTTPConnection):
     def connect(self):
         conn = self._new_conn()
         self._prepare_conn(conn)
-        self.sock = ssl.wrap_socket(conn, self.key_file, self.cert_file)
+
+        if self.ssl_context is None:
+            self.ssl_context = create_urllib3_context(
+                ssl_version=resolve_ssl_version(None),
+                cert_reqs=resolve_cert_reqs(None),
+            )
+
+        self.sock = ssl_wrap_socket(
+            sock=conn,
+            keyfile=self.key_file,
+            certfile=self.cert_file,
+            ssl_context=self.ssl_context,
+        )
 
 
 class VerifiedHTTPSConnection(HTTPSConnection):
@@ -196,26 +251,38 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     """
     cert_reqs = None
     ca_certs = None
+    ca_cert_dir = None
     ssl_version = None
     assert_fingerprint = None
 
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None,
-                 assert_hostname=None, assert_fingerprint=None):
+                 assert_hostname=None, assert_fingerprint=None,
+                 ca_cert_dir=None):
+        """
+        This method should only be called once, before the connection is used.
+        """
+        # If cert_reqs is not provided, we can try to guess. If the user gave
+        # us a cert database, we assume they want to use it: otherwise, if
+        # they gave us an SSL Context object we should use whatever is set for
+        # it.
+        if cert_reqs is None:
+            if ca_certs or ca_cert_dir:
+                cert_reqs = 'CERT_REQUIRED'
+            elif self.ssl_context is not None:
+                cert_reqs = self.ssl_context.verify_mode
 
         self.key_file = key_file
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
-        self.ca_certs = ca_certs
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
+        self.ca_certs = ca_certs and os.path.expanduser(ca_certs)
+        self.ca_cert_dir = ca_cert_dir and os.path.expanduser(ca_cert_dir)
 
     def connect(self):
         # Add certificate verification
         conn = self._new_conn()
-
-        resolved_cert_reqs = resolve_cert_reqs(self.cert_reqs)
-        resolved_ssl_version = resolve_ssl_version(self.ssl_version)
 
         hostname = self.host
         if getattr(self, '_tunnel_host', None):
@@ -242,29 +309,57 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
-        self.sock = ssl_wrap_socket(conn, self.key_file, self.cert_file,
-                                    cert_reqs=resolved_cert_reqs,
-                                    ca_certs=self.ca_certs,
-                                    server_hostname=hostname,
-                                    ssl_version=resolved_ssl_version)
+        if self.ssl_context is None:
+            self.ssl_context = create_urllib3_context(
+                ssl_version=resolve_ssl_version(self.ssl_version),
+                cert_reqs=resolve_cert_reqs(self.cert_reqs),
+            )
+
+        context = self.ssl_context
+        context.verify_mode = resolve_cert_reqs(self.cert_reqs)
+        self.sock = ssl_wrap_socket(
+            sock=conn,
+            keyfile=self.key_file,
+            certfile=self.cert_file,
+            ca_certs=self.ca_certs,
+            ca_cert_dir=self.ca_cert_dir,
+            server_hostname=hostname,
+            ssl_context=context)
 
         if self.assert_fingerprint:
             assert_fingerprint(self.sock.getpeercert(binary_form=True),
                                self.assert_fingerprint)
-        elif resolved_cert_reqs != ssl.CERT_NONE \
+        elif context.verify_mode != ssl.CERT_NONE \
                 and self.assert_hostname is not False:
             cert = self.sock.getpeercert()
             if not cert.get('subjectAltName', ()):
                 warnings.warn((
-                    'Certificate has no `subjectAltName`, falling back to check for a `commonName` for now. '
-                    'This feature is being removed by major browsers and deprecated by RFC 2818. '
-                    '(See https://github.com/shazow/urllib3/issues/497 for details.)'),
-                    SecurityWarning
+                    'Certificate for {0} has no `subjectAltName`, falling back to check for a '
+                    '`commonName` for now. This feature is being removed by major browsers and '
+                    'deprecated by RFC 2818. (See https://github.com/shazow/urllib3/issues/497 '
+                    'for details.)'.format(hostname)),
+                    SubjectAltNameWarning
                 )
-            match_hostname(cert, self.assert_hostname or hostname)
+            _match_hostname(cert, self.assert_hostname or hostname)
 
-        self.is_verified = (resolved_cert_reqs == ssl.CERT_REQUIRED
-                            or self.assert_fingerprint is not None)
+        self.is_verified = (
+            context.verify_mode == ssl.CERT_REQUIRED or
+            self.assert_fingerprint is not None
+        )
+
+
+def _match_hostname(cert, asserted_hostname):
+    try:
+        match_hostname(cert, asserted_hostname)
+    except CertificateError as e:
+        log.error(
+            'Certificate did not match expected hostname: %s. '
+            'Certificate: %s', asserted_hostname, cert
+        )
+        # Add cert to exception and reraise so client code can inspect
+        # the cert when catching the exception, if they want to
+        e._peer_cert = cert
+        raise
 
     def _check_hsts_rewrite(self):
         return False
