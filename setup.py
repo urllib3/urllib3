@@ -9,13 +9,14 @@ import codecs
 base_path = os.path.dirname(__file__)
 
 # Get the version (borrowed from SQLAlchemy)
-fp = open(os.path.join(base_path, 'urllib3', '__init__.py'))
-VERSION = re.compile(r".*__version__ = '(.*?)'",
-                     re.S).match(fp.read()).group(1)
-fp.close()
+with open(os.path.join(base_path, 'urllib3', '__init__.py')) as fp:
+    VERSION = re.compile(r".*__version__ = '(.*?)'",
+                         re.S).match(fp.read()).group(1)
 
-readme = codecs.open('README.rst', encoding='utf-8').read()
-changes = codecs.open('CHANGES.rst', encoding='utf-8').read()
+with codecs.open('README.rst', encoding='utf-8') as fp:
+    readme = fp.read()
+with codecs.open('CHANGES.rst', encoding='utf-8') as fp:
+    changes = fp.read()
 version = VERSION
 
 setup(name='urllib3',
