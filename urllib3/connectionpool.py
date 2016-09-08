@@ -34,6 +34,7 @@ from .connection import (
 )
 from .request import RequestMethods
 from .response import HTTPResponse
+from .transport_security import TransportSecurityManager
 
 from .util.connection import is_connection_dropped
 from .util.response import assert_header_parsing
@@ -166,6 +167,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     def __init__(self, host, port=None, strict=False,
                  timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1, block=False,
                  headers=None, retries=None,
+                 transport_security_manager=None,
                  _proxy=None, _proxy_headers=None,
                  **conn_kw):
         ConnectionPool.__init__(self, host, port)
@@ -191,6 +193,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Fill the queue up so that doing get() on it will block properly
         for _ in xrange(maxsize):
             self.pool.put(None)
+
+        self.transport_security_manager = transport_security_manager or TransportSecurityManager()
 
         # These are mostly for testing and debugging purposes.
         self.num_connections = 0
@@ -288,7 +292,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         Called right before a request is made, after the socket is created.
         """
-        pass
+        self.transport_security_manager.validate_new_connection(conn, self.scheme)
 
     def _prepare_proxy(self, conn):
         # Nothing to do for HTTP connections.
@@ -609,6 +613,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                                      retries=retries,
                                                      **response_kw)
 
+            self.transport_security_manager.process_response(response)
+
             # Everything went great!
             clean_exit = True
 
@@ -745,10 +751,11 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  key_file=None, cert_file=None, cert_reqs=None,
                  ca_certs=None, ssl_version=None,
                  assert_hostname=None, assert_fingerprint=None,
+                 transport_security_manager=None,
                  ca_cert_dir=None, **conn_kw):
 
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
-                                    block, headers, retries, _proxy, _proxy_headers,
+                                    block, headers, retries, transport_security_manager, _proxy, _proxy_headers,
                                     **conn_kw)
 
         if ca_certs and cert_reqs is None:
@@ -776,7 +783,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                           ca_certs=self.ca_certs,
                           ca_cert_dir=self.ca_cert_dir,
                           assert_hostname=self.assert_hostname,
-                          assert_fingerprint=self.assert_fingerprint)
+                          assert_fingerprint=self.assert_fingerprint,
+                          transport_security_manager=self.transport_security_manager)
             conn.ssl_version = self.ssl_version
         return conn
 
