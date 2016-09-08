@@ -244,6 +244,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     ca_cert_dir = None
     ssl_version = None
     assert_fingerprint = None
+    transport_security_manager = None
 
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None,
