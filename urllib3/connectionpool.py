@@ -34,6 +34,7 @@ from .connection import (
 )
 from .request import RequestMethods
 from .response import HTTPResponse
+from .transport_security import TransportSecurityManager
 
 from .util.connection import is_connection_dropped
 from .util.response import assert_header_parsing
@@ -193,7 +194,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         for _ in xrange(maxsize):
             self.pool.put(None)
 
-        self.transport_security_manager = transport_security_manager
+        self.transport_security_manager = transport_security_manager or TransportSecurityManager()
 
         # These are mostly for testing and debugging purposes.
         self.num_connections = 0
