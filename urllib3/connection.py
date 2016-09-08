@@ -249,8 +249,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     def set_cert(self, key_file=None, cert_file=None,
                  cert_reqs=None, ca_certs=None,
                  assert_hostname=None, assert_fingerprint=None,
-                 transport_security_manager=None,
-                 ca_cert_dir=None):
+                 ca_cert_dir=None, transport_security_manager=None):
         """
         This method should only be called once, before the connection is used.
         """

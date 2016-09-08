@@ -8,7 +8,7 @@ log = logging.getLogger(__name__)
 
 
 def parse_header(header):
-    return dict(split_header_words([header])[0])
+    return split_header_words([header])[0]
 
 
 class TransportSecurityManager(object):

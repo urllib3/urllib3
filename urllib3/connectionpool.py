@@ -34,7 +34,6 @@ from .connection import (
 )
 from .request import RequestMethods
 from .response import HTTPResponse
-from .transport_security import TransportSecurityManager
 
 from .util.connection import is_connection_dropped
 from .util.response import assert_header_parsing
@@ -155,6 +154,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         A dictionary with proxy headers, should not be used directly,
         instead, see :class:`urllib3.connectionpool.ProxyManager`"
 
+    :param transport_security_manager:
+        A :class:`urllib3.transport_security.TransportSecurityManager` object
+        to use for requests in this pool.
+
     :param \**conn_kw:
         Additional parameters are used to create fresh :class:`urllib3.connection.HTTPConnection`,
         :class:`urllib3.connection.HTTPSConnection` instances.
@@ -167,8 +170,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     def __init__(self, host, port=None, strict=False,
                  timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1, block=False,
                  headers=None, retries=None,
-                 transport_security_manager=None,
                  _proxy=None, _proxy_headers=None,
+                 transport_security_manager=None,
                  **conn_kw):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
@@ -194,7 +197,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         for _ in xrange(maxsize):
             self.pool.put(None)
 
-        self.transport_security_manager = transport_security_manager or TransportSecurityManager()
+        self.transport_security_manager = transport_security_manager
 
         # These are mostly for testing and debugging purposes.
         self.num_connections = 0
@@ -292,7 +295,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         Called right before a request is made, after the socket is created.
         """
-        self.transport_security_manager.validate_new_connection(conn)
+        if self.transport_security_manager:
+            self.transport_security_manager.validate_new_connection(conn)
 
     def _prepare_proxy(self, conn):
         # Nothing to do for HTTP connections.
@@ -613,7 +617,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                                      retries=retries,
                                                      **response_kw)
 
-            self.transport_security_manager.process_response(response)
+            if self.transport_security_manager:
+                self.transport_security_manager.process_response(response)
 
             # Everything went great!
             clean_exit = True
@@ -751,13 +756,11 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  key_file=None, cert_file=None, cert_reqs=None,
                  ca_certs=None, ssl_version=None,
                  assert_hostname=None, assert_fingerprint=None,
-                 transport_security_manager=None,
-                 ca_cert_dir=None, **conn_kw):
+                 ca_cert_dir=None, transport_security_manager=None, **conn_kw):
 
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
-                                    block, headers, retries, transport_security_manager,
-                                    _proxy, _proxy_headers,
-                                    **conn_kw)
+                                    block, headers, retries, _proxy, _proxy_headers,
+                                    transport_security_manager, **conn_kw)
 
         if ca_certs and cert_reqs is None:
             cert_reqs = 'CERT_REQUIRED'
