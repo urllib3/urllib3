@@ -755,7 +755,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  ca_cert_dir=None, **conn_kw):
 
         HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
-                                    block, headers, retries, transport_security_manager, _proxy, _proxy_headers,
+                                    block, headers, retries, transport_security_manager,
+                                    _proxy, _proxy_headers,
                                     **conn_kw)
 
         if ca_certs and cert_reqs is None:

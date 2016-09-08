@@ -4,6 +4,7 @@ from . import util
 
 log = logging.getLogger(__name__)
 
+
 class TransportSecurityManager(object):
     """
     Coordinates HSTS, HPKP, and certificate fingerprint matching
@@ -52,7 +53,8 @@ class TransportSecurityStore(object):
     """
     Abstract baseclass to store transport security (HSTS/HPKP) records.
     """
-    def store_host(self, host, pins=None, force_https=False, include_subdomains=False, max_age=None):
+    def store_host(self, host, pins=None, force_https=False, include_subdomains=False,
+                   max_age=None):
         raise NotImplementedError("Must be overridden.")
 
     def invalidate_host(self, host):
