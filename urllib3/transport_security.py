@@ -1,5 +1,6 @@
 import logging
 from six.moves.http_cookiejar import split_header_words
+from . import util
 
 log = logging.getLogger(__name__)
 
@@ -22,8 +23,10 @@ class TransportSecurityManager(object):
         """
         Enforce HPKP or a custom certificate fingerprint.
         """
-        log.debug("hpkp validate")
-        print(getattr(conn.connection, "certs", None))
+        if util.IS_PYOPENSSL:
+            log.debug("hpkp validate: %s", conn.connection.certs)
+        else:
+            log.debug("PyOpenSSL not available, hpkp validation disabled")
 
     def process_response(self, response):
         """
