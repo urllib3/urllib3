@@ -9,6 +9,7 @@ from .connectionpool import port_by_scheme
 from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
 from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
+from .transport_security import TransportSecurityManager
 from .util.url import parse_url
 from .util.retry import Retry
 
@@ -112,6 +113,7 @@ class PoolManager(RequestMethods):
 
     def __init__(self, num_pools=10, headers=None, **connection_pool_kw):
         RequestMethods.__init__(self, headers)
+        connection_pool_kw.setdefault("transport_security_manager", TransportSecurityManager())
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools,
                                            dispose_func=lambda p: p.close())

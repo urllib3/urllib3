@@ -2,51 +2,59 @@ import logging
 from six.moves.http_cookiejar import split_header_words
 from . import util
 
+__all__ = ['TransportSecurityManager', 'TransportSecurityStore']
+
+
 log = logging.getLogger(__name__)
+
+def parse_header(header):
+    return dict(split_header_words([header])[0])
 
 
 class TransportSecurityManager(object):
     """
-    Coordinates HSTS, HPKP, and certificate fingerprint matching
-    on outgoing requests and incoming responses.
+    Coordinates transport security checks (HSTS, HPKP, certificate
+    fingerprint matching, or custom checks) on outgoing requests and
+    incoming responses.
+
+    :param transport_security_store:
+        A :class:`urllib3.transport_security.TransportSecurityStore`
+        instance to be used for persisting host transport security
+        preferences.
+
     """
     def __init__(self, transport_security_store=None):
         self._tss = transport_security_store or TransportSecurityStore()
-        log.debug("tss init")
 
-    def validate_new_connection(self, conn, scheme):
+    def validate_new_connection(self, conn):
         """
-        Enforce HSTS.
+        Enforce pre-connect checks such as HSTS.
+        This is a stub, to be implemented later.
+
+        :param conn:
+            A :class:`urllib3.connection.HTTPConnection` instance in a
+            pre-connect state.
         """
-        log.debug("hsts validate: %s %s %s", scheme, conn.host, conn.port)
 
     def validate_established_connection(self, conn):
         """
-        Enforce HPKP or a custom certificate fingerprint.
+        Enforce post-connect checks such as HPKP.
+        This is a stub, to be implemented later.
+
+        :param conn:
+            A :class:`urllib3.connection.HTTPConnection` instance in a
+            post-connect, pre-request state.
         """
-        if util.IS_PYOPENSSL:
-            log.debug("hpkp validate: %s", conn.connection.certs)
-        else:
-            log.debug("PyOpenSSL not available, hpkp validation disabled")
 
     def process_response(self, response):
         """
         Enroll or update hosts in our TSS based on response HSTS/HPKP
         headers.
+        This is a stub, to be implemented later.
+
+        :param response:
+            A :class:`urllib3.response.HTTPResponse` instance.
         """
-        try:
-            sts = _split_header(response.headers.get("strict-transport-security"))
-        except Exception as e:
-            sts = {}
-        try:
-            pins = _split_header(response.headers.get('public-key-pins'))
-        except Exception:
-            pins = {}
-        log.debug("tss enroll: %s %s", sts, pins)
-
-
-def _split_header(header):
-    return dict(split_header_words([header])[0])
 
 
 class TransportSecurityStore(object):
