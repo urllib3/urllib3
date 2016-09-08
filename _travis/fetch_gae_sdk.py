@@ -67,7 +67,13 @@ def main(argv):
     if len(argv) > 2:
         print('Usage: {0} [<destination_dir>]'.format(argv[0]))
         return 1
-    dest_dir = argv[1] if len(argv) > 1 else '.'
+    if len(argv) > 1:
+        dest_dir = argv[1]
+    else:
+        try:
+            dest_dir = os.path.dirname(os.environ['GAE_PYTHONPATH'])
+        except IndexError:
+            dest_dir = '.'
     if not os.path.exists(dest_dir):
         os.makedirs(dest_dir)
 
@@ -91,8 +97,8 @@ def main(argv):
         return 1
     sdk_contents.seek(0)
     try:
-        zip_contents = zipfile.ZipFile(sdk_contents)
-        zip_contents.extractall(dest_dir)
+        with zipfile.ZipFile(sdk_contents) as zip_contents:
+            zip_contents.extractall(dest_dir)
     except:
         print('Error extracting SDK contents')
         return 1

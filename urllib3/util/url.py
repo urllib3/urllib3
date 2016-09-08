@@ -13,7 +13,7 @@ class Url(namedtuple('Url', url_attrs)):
     :func:`parse_url`. Both the scheme and host are normalized as they are
     both case-insensitive according to RFC 3986.
     """
-    slots = ()
+    __slots__ = ()
 
     def __new__(cls, scheme=None, auth=None, host=None, port=None, path=None,
                 query=None, fragment=None):

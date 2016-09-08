@@ -4,7 +4,16 @@ Changes
 dev (master)
 ------------
 
-* Accept ``SSLContext`` objects for use in SSL/TLS negotation. (Issue #835)
+* Accept ``iPAddress`` subject alternative name fields in TLS certificates.
+  (Issue #258)
+
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.17 (2016-09-06)
+-----------------
+
+* Accept ``SSLContext`` objects for use in SSL/TLS negotiation. (Issue #835)
 
 * ConnectionPool debug log now includes scheme, host, and port. (Issue #897)
 
@@ -18,10 +27,33 @@ dev (master)
 * ``HTTPResponse`` contains the last ``Retry`` object, which now also
   contains retries history. (Issue #848)
 
-* Accept ``iPAddress`` subject alternative name fields in TLS certificates.
-  (Issue #258)
+* Timeout can no longer be set as boolean, and must be greater than zero.
+  (PR #924)
 
-* ... [Short description of non-trivial change.] (Issue #)
+* Removed pyasn1 and ndg-httpsclient from dependencies used for PyOpenSSL. We
+  now use cryptography and idna, both of which are already dependencies of
+  PyOpenSSL. (PR #930)
+
+* Fixed infinite loop in ``stream`` when amt=None. (Issue #928)
+
+* Try to use the operating system's certificates when we are using an
+  ``SSLContext``. (PR #941)
+
+* Updated cipher suite list to allow ChaCha20+Poly1305. AES-GCM is preferred to
+  ChaCha20, but ChaCha20 is then preferred to everything else. (PR #947)
+
+* Updated cipher suite list to remove 3DES-based cipher suites. (PR #958)
+
+* Removed the cipher suite fallback to allow HIGH ciphers. (PR #958)
+
+* Implemented ``length_remaining`` to determine remaining content
+  to be read. (PR #949)
+
+* Implemented ``enforce_content_length`` to enable exceptions when
+  incomplete data chunks are received. (PR #949)
+
+* Dropped connection start, dropped connection reset, redirect, forced retry,
+  and new HTTPS connection log levels to DEBUG, from INFO. (PR #967)
 
 
 1.16 (2016-06-11)

@@ -141,7 +141,7 @@ JSON
 ~~~~
 
 You can sent JSON a request by specifying the encoded data as the ``body``
-argument and setting the ``Content-Type`` header when calling 
+argument and setting the ``Content-Type`` header when calling
 :meth:`~poolmanager.PoolManager.request`::
 
     >>> import json
@@ -162,7 +162,8 @@ For uploading files using ``multipart/form-data`` encoding you can use the same
 approach as :ref:`form_data` and specify the file field as a tuple of
 ``(file_name, file_data)``::
 
-    >>> file_data = open('example.txt').read()
+    >>> with open('example.txt') as fp:
+    ...     file_data = fp.read()
     >>> r = http.request(
     ...     'POST',
     ...     'http://httpbin.org/post',
@@ -186,7 +187,8 @@ to specify the file's MIME type explicitly::
 For sending raw binary data simply specify the ``body`` argument. It's also
 recommended to set the ``Content-Type`` header::
 
-    >>> binary_data = open('example.jpg', 'rb').read()
+    >>> with open('example.jpg', 'rb') as fp:
+    ...     binary_data = fp.read()
     >>> r = http.request(
     ...     'POST',
     ...     'http://httpbin.org/post',
@@ -210,7 +212,7 @@ and most reliable method is to use the `certifi <https://certifi.io/en/latest>`_
 
 You can also install certifi along with urllib3 by using the ``secure``
 extra::
-    
+
     pip install urllib3[secure]
 
 .. warning:: If you're using Python 2 you may need additional packages. See the :ref:`section below <ssl_py2>` for more details.
@@ -220,7 +222,7 @@ that verifies certificates when making requests::
 
     >>> import certifi
     >>> import urllib3
-    >>> http = urlilb3.PoolManager(
+    >>> http = urllib3.PoolManager(
     ...     cert_reqs='CERT_REQUIRED',
     ...     ca_certs=certifi.where())
 
@@ -253,11 +255,11 @@ certificate verification on Python 2 will be installed::
     pip install urllib3[secure]
 
 If you want to install the packages manually, you will need ``pyOpenSSL``,
-``ndg-httpsclient``, ``pyasn``, and ``certifi``.
+``cryptography``, ``idna``, and ``certifi``.
 
-.. note:: If you are not using Mac OS X or Windows, note that pyOpenSSL depends
-    on `cryptography <https://cryptography.io/en/latest/>`_ which requires
-    additional system packages to compile. See `building cryptography on Linux
+.. note:: If you are not using macOS or Windows, note that `cryptography
+    <https://cryptography.io/en/latest/>`_ requires additional system packages
+    to compile. See `building cryptography on Linux
     <https://cryptography.io/en/latest/installation/#building-cryptography-on-linux>`_
     for the list of packages required.
 
@@ -271,7 +273,7 @@ certificates when performing requests::
 
     >>> import certifi
     >>> import urllib3
-    >>> http = urlilb3.PoolManager(
+    >>> http = urllib3.PoolManager(
     ...     cert_reqs='CERT_REQUIRED',
     ...     ca_certs=certifi.where())
 
@@ -320,7 +322,7 @@ instance which lets you specify separate connect and read timeouts::
     ...     'http://httpbin.org/delay/3',
     ...     timeout=urllib3.Timeout(connect=1.0, read=2.0))
     MaxRetryError caused by ReadTimeoutError
-    
+
 
 If you want all requests to be subject to the same timeout, you can specify
 the timeout at the :class:`~urllib3.poolmanager.PoolManager` level::
