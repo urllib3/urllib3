@@ -113,7 +113,8 @@ class PoolManager(RequestMethods):
 
     def __init__(self, num_pools=10, headers=None, **connection_pool_kw):
         RequestMethods.__init__(self, headers)
-        connection_pool_kw.setdefault("transport_security_manager", TransportSecurityManager())
+        if "transport_security_manager" not in connection_pool_kw:
+            connection_pool_kw["transport_security_manager"] = TransportSecurityManager()
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools,
                                            dispose_func=lambda p: p.close())
