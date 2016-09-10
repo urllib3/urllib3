@@ -60,7 +60,7 @@ setup(name='urllib3',
               'idna>=2.0.0',
               'certifi',
           ],
-          'secure:python_version < "3.3"': [
+          'secure:python_version <= "2.7"': [
               "ipaddress",
           ],
           'socks': [
