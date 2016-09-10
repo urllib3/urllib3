@@ -1108,7 +1108,11 @@ class TestBadContentLength(SocketDummyServerTestCase):
         # Read "good" data before we try to read again.
         # This won't trigger till generator is exhausted.
         next(data)
-        self.assertRaises(ProtocolError, next, data)
+        try:
+            next(data)
+            self.assertFail()
+        except ProtocolError as e:
+            self.assertTrue('12 bytes read, 10 more expected' in str(e))
 
         done_event.set()
 

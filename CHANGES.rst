@@ -4,6 +4,8 @@ Changes
 dev (master)
 ------------
 
+* Fixed incorrect message for IncompleteRead exception. (PR #973)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

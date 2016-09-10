@@ -205,9 +205,11 @@ class IncompleteRead(HTTPError, httplib_IncompleteRead):
     reads.
     """
     def __init__(self, partial, expected):
-        message = ('IncompleteRead(%i bytes read, '
-                   '%i more expected)' % (partial, expected))
-        httplib_IncompleteRead.__init__(self, message)
+        super(IncompleteRead, self).__init__(partial, expected)
+
+    def __repr__(self):
+        return ('IncompleteRead(%i bytes read, '
+                '%i more expected)' % (self.partial, self.expected))
 
 
 class InvalidHeader(HTTPError):
