@@ -4,6 +4,8 @@ Changes
 dev (master)
 ------------
 
+* Fixed incorrect message for IncompleteRead exception. (PR #973)
+
 * Accept ``iPAddress`` subject alternative name fields in TLS certificates.
   (Issue #258)
 

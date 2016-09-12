@@ -49,6 +49,9 @@ test-all: requirements
 
 .PHONY: test-gae
 test-gae: requirements
+ifndef GAE_PYTHONPATH
+	$(error GAE_PYTHONPATH must be set)
+endif
 	tox -e gae
 
 .PHONY: docs
