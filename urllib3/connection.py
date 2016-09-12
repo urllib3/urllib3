@@ -318,7 +318,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             server_hostname=hostname,
             ssl_context=context)
 
-        if self.transport_security_manager:
+        if self.transport_security_manager is not None:
             self.transport_security_manager.validate_established_connection(self.sock)
 
         if self.assert_fingerprint:

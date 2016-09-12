@@ -94,6 +94,10 @@ class PoolManager(RequestMethods):
         Headers to include with all requests, unless other headers are given
         explicitly.
 
+    :param transport_security_manager:
+        A :class:`urllib3.transport_security.TransportSecurityManager` object
+        to use for requests in this pool manager.
+
     :param \**connection_pool_kw:
         Additional parameters are used to create fresh
         :class:`urllib3.connectionpool.ConnectionPool` instances.
@@ -111,10 +115,14 @@ class PoolManager(RequestMethods):
 
     proxy = None
 
-    def __init__(self, num_pools=10, headers=None, **connection_pool_kw):
+    def __init__(self, num_pools=10, headers=None, transport_security_manager=None,
+                 **connection_pool_kw):
         RequestMethods.__init__(self, headers)
-        if "transport_security_manager" not in connection_pool_kw:
-            connection_pool_kw["transport_security_manager"] = TransportSecurityManager()
+
+        if transport_security_manager is None:
+            transport_security_manager = TransportSecurityManager()
+        connection_pool_kw["transport_security_manager"] = transport_security_manager
+
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools,
                                            dispose_func=lambda p: p.close())

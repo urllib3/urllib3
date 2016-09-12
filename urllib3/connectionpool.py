@@ -295,7 +295,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         Called right before a request is made, after the socket is created.
         """
-        if self.transport_security_manager:
+        if self.transport_security_manager is not None:
             self.transport_security_manager.validate_new_connection(conn)
 
     def _prepare_proxy(self, conn):
@@ -617,7 +617,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                                      retries=retries,
                                                      **response_kw)
 
-            if self.transport_security_manager:
+            if self.transport_security_manager is not None:
                 self.transport_security_manager.process_response(response)
 
             # Everything went great!
