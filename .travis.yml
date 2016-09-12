@@ -7,6 +7,7 @@ cache:
   directories:
   - ${HOME}/.cache
 install:
+  - pip install -U setuptools
   - pip install tox==2.1.1
   - if [[ "${TOXENV}" == "gae" && ! -d ${GAE_PYTHONPATH} ]]; then
       python _travis/fetch_gae_sdk.py ;
