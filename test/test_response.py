@@ -1,4 +1,5 @@
 import unittest
+import socket
 
 from io import BytesIO, BufferedReader
 
@@ -8,7 +9,7 @@ from urllib3.exceptions import (
 )
 from urllib3.packages.six.moves import http_client as httplib
 from urllib3.util.retry import Retry
-
+from urllib3.util.response import is_fp_closed
 
 from base64 import b64decode
 
@@ -159,8 +160,6 @@ class TestResponse(unittest.TestCase):
         self.assertTrue(resp.closed)
 
     def test_io(self):
-        import socket
-
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)
 
@@ -189,6 +188,21 @@ class TestResponse(unittest.TestCase):
         # `isclosed`, or `fileno`.  Unlikely, but possible.
         self.assertEqual(resp3.closed, True)
         self.assertRaises(IOError, resp3.fileno)
+
+    def test_io_closed_consistently(self):
+        hlr = httplib.HTTPResponse(socket.socket())
+        hlr.fp = BytesIO(b'foo')
+        hlr.chunked = 0
+        hlr.length = 3
+        resp = HTTPResponse(hlr, preload_content=False)
+
+        self.assertEqual(resp.closed, False)
+        self.assertEqual(resp._fp.isclosed(), False)
+        self.assertEqual(is_fp_closed(resp._fp), False)
+        resp.read()
+        self.assertEqual(resp.closed, True)
+        self.assertEqual(resp._fp.isclosed(), True)
+        self.assertEqual(is_fp_closed(resp._fp), True)
 
     def test_io_bufferedreader(self):
         fp = BytesIO(b'foo')
