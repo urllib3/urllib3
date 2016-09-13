@@ -34,7 +34,8 @@ BasePoolKey = collections.namedtuple('BasePoolKey', ('scheme', 'host', 'port'))
 # ``connection_pool_kw`` instance variable.
 HTTPPoolKey = collections.namedtuple(
     'HTTPPoolKey', BasePoolKey._fields + ('timeout', 'retries', 'strict',
-                                          'block', 'source_address')
+                                          'block', 'source_address',
+                                          'transport_security_manager')
 )
 HTTPSPoolKey = collections.namedtuple(
     'HTTPSPoolKey', HTTPPoolKey._fields + SSL_KEYWORDS

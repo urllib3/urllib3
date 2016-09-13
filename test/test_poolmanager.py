@@ -9,6 +9,7 @@ from urllib3.poolmanager import (
     key_fn_by_scheme,
     PoolManager,
     SSL_KEYWORDS,
+    TransportSecurityManager,
 )
 from urllib3 import connection_from_url
 from urllib3.exceptions import (
@@ -105,6 +106,7 @@ class TestPoolManager(unittest.TestCase):
             'block': True,
             'strict': True,
             'source_address': '127.0.0.1',
+            'transport_security_manager': TransportSecurityManager(),
         }
         p = PoolManager()
         conn_pools = [
