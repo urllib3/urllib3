@@ -4,6 +4,14 @@ Changes
 dev (master)
 ------------
 
+* Fixed incorrect message for IncompleteRead exception. (PR #973)
+
+* Accept ``iPAddress`` subject alternative name fields in TLS certificates.
+  (Issue #258)
+
+* Fixed consistency of ``HTTPResponse.closed`` between Python 2 and 3.
+  (Issue #977)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

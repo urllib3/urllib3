@@ -482,10 +482,10 @@ class HTTPResponse(io.IOBase):
     def closed(self):
         if self._fp is None:
             return True
+        elif hasattr(self._fp, 'isclosed'):
+            return self._fp.isclosed()
         elif hasattr(self._fp, 'closed'):
             return self._fp.closed
-        elif hasattr(self._fp, 'isclosed'):  # Python 2
-            return self._fp.isclosed()
         else:
             return True
 
