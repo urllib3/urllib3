@@ -26,24 +26,13 @@ class TransportSecurityManager(object):
     def __init__(self, transport_security_store=None):
         self._tss = transport_security_store or TransportSecurityStore()
 
-    def validate_new_connection(self, conn):
+    def validate_connection(self, conn):
         """
-        Enforce pre-connect checks such as HSTS.
+        Enforce connection security checks such as HSTS and HPKP.
         This is a stub, to be implemented later.
 
         :param conn:
-            A :class:`urllib3.connection.HTTPConnection` instance in a
-            pre-connect state.
-        """
-
-    def validate_established_connection(self, conn):
-        """
-        Enforce post-connect checks such as HPKP.
-        This is a stub, to be implemented later.
-
-        :param conn:
-            A :class:`urllib3.connection.HTTPConnection` instance in a
-            post-connect, pre-request state.
+            A :class:`urllib3.connection.HTTPConnection` instance.
         """
 
     def process_response(self, response):
