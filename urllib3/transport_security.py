@@ -1,10 +1,6 @@
-import logging
 from six.moves.http_cookiejar import split_header_words
 
 __all__ = ['TransportSecurityManager', 'TransportSecurityStore']
-
-
-log = logging.getLogger(__name__)
 
 
 def parse_header(header):
