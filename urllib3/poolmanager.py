@@ -43,6 +43,7 @@ HTTPSPoolKey = collections.namedtuple(
 
 _DEFAULT_TSM = object()
 
+
 def _default_key_normalizer(key_class, request_context):
     """
     Create a pool key of type ``key_class`` for a request.
