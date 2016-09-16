@@ -123,7 +123,7 @@ class PoolManager(RequestMethods):
                  **connection_pool_kw):
         RequestMethods.__init__(self, headers)
 
-        if transport_security_manager == _DEFAULT_TSM:
+        if transport_security_manager is _DEFAULT_TSM:
             transport_security_manager = TransportSecurityManager()
         connection_pool_kw["transport_security_manager"] = transport_security_manager
 

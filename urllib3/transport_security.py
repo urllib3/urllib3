@@ -26,7 +26,7 @@ class TransportSecurityManager(object):
     def __init__(self, transport_security_store=None):
         self._tss = transport_security_store or TransportSecurityStore()
 
-    def validate_connection(self, conn):
+    def validate_hsts(self, conn):
         """
         Enforce connection security checks such as HSTS. This can be called
         multiple times on the same connection before each request,
@@ -39,15 +39,15 @@ class TransportSecurityManager(object):
 
         """
 
-    def validate_ssl_connection(self, conn):
+    def validate_hpkp(self, conn):
         """
         Enforce HPKP on an SSL connection.
 
         This is a stub, to be implemented later.
 
         :param conn:
-            A :class:`urllib3.connection.VerifiedHTTPSConnection` instance.
-
+            A :class:`urllib3.connection.VerifiedHTTPSConnection` instance in a
+            connected state.
         """
 
     def process_response(self, response):

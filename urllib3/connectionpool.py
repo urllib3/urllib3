@@ -297,7 +297,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         Called right before a request is made, after the socket is created.
         """
         if self.transport_security_manager is not None:
-            self.transport_security_manager.validate_connection(conn)
+            self.transport_security_manager.validate_hsts(conn)
 
     def _prepare_proxy(self, conn):
         # Nothing to do for HTTP connections.

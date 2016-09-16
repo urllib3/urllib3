@@ -319,7 +319,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             ssl_context=context)
 
         if self.transport_security_manager is not None:
-            self.transport_security_manager.validate_ssl_connection(self.sock)
+            self.transport_security_manager.validate_hpkp(self.sock)
 
         if self.assert_fingerprint:
             assert_fingerprint(self.sock.getpeercert(binary_form=True),
