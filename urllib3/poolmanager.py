@@ -41,6 +41,7 @@ HTTPSPoolKey = collections.namedtuple(
     'HTTPSPoolKey', HTTPPoolKey._fields + SSL_KEYWORDS
 )
 
+_DEFAULT_TSM = object()
 
 def _default_key_normalizer(key_class, request_context):
     """
@@ -97,7 +98,9 @@ class PoolManager(RequestMethods):
 
     :param transport_security_manager:
         A :class:`urllib3.transport_security.TransportSecurityManager` object
-        to use for requests in this pool manager.
+        to use for requests in this pool manager. Pass ``None`` to disable
+        TransportSecurityManager functionality. By default, a
+        TransportSecurityManager will be initialized with default options.
 
     :param \**connection_pool_kw:
         Additional parameters are used to create fresh
@@ -116,11 +119,11 @@ class PoolManager(RequestMethods):
 
     proxy = None
 
-    def __init__(self, num_pools=10, headers=None, transport_security_manager=None,
+    def __init__(self, num_pools=10, headers=None, transport_security_manager=_DEFAULT_TSM,
                  **connection_pool_kw):
         RequestMethods.__init__(self, headers)
 
-        if transport_security_manager is None:
+        if transport_security_manager == _DEFAULT_TSM:
             transport_security_manager = TransportSecurityManager()
         connection_pool_kw["transport_security_manager"] = transport_security_manager
 
