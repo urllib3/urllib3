@@ -138,7 +138,19 @@ def _dnsname_to_stdlib(name):
     then on Python 3 we also need to convert to unicode via UTF-8 (the stdlib
     uses PyUnicode_FromStringAndSize on it, which decodes via UTF-8).
     """
-    name = idna.encode(name)
+    def idna_encode(name):
+        """
+        Borrowed wholesale from the Python Cryptography Project. It turns out
+        that we can't just safely call `idna.encode`: it can explode for
+        wildcard names. This avoids that problem.
+        """
+        for prefix in [u'*.', u'.']:
+            if name.startswith(prefix):
+                name = name[len(prefix):]
+                return prefix.encode('ascii') + idna.encode(name)
+        return idna.encode(name)
+
+    name = idna_encode(name)
     if sys.version_info >= (3, 0):
         name = name.decode('utf-8')
     return name
