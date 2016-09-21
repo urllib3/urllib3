@@ -12,6 +12,8 @@ dev (master)
 * Fixed consistency of ``HTTPResponse.closed`` between Python 2 and 3.
   (Issue #977)
 
+* Fixed handling of wildcard certificates when using PyOpenSSL. (Issue #979)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
