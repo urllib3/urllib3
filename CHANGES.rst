@@ -4,6 +4,12 @@ Changes
 dev (master)
 ------------
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.18 (2016-09-26)
+-----------------
+
 * Fixed incorrect message for IncompleteRead exception. (PR #973)
 
 * Accept ``iPAddress`` subject alternative name fields in TLS certificates.
@@ -13,8 +19,6 @@ dev (master)
   (Issue #977)
 
 * Fixed handling of wildcard certificates when using PyOpenSSL. (Issue #979)
-
-* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.17 (2016-09-06)
