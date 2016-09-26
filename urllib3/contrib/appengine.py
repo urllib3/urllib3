@@ -42,6 +42,7 @@ from __future__ import absolute_import
 import logging
 import os
 import warnings
+from urlparse import urljoin
 
 from ..exceptions import (
     HTTPError,
@@ -95,7 +96,8 @@ class AppEngineManager(RequestMethods):
     Beyond those cases, it will raise normal urllib3 errors.
     """
 
-    def __init__(self, headers=None, retries=None, validate_certificate=True):
+    def __init__(self, headers=None, retries=None, validate_certificate=True,
+                 urlfetch_retries=True):
         if not urlfetch:
             raise AppEnginePlatformError(
                 "URLFetch is not available in this environment.")
@@ -114,6 +116,7 @@ class AppEngineManager(RequestMethods):
 
         RequestMethods.__init__(self, headers)
         self.validate_certificate = validate_certificate
+        self.urlfetch_retries = urlfetch_retries
 
         self.retries = retries or Retry.DEFAULT
 
@@ -131,16 +134,17 @@ class AppEngineManager(RequestMethods):
         retries = self._get_retries(retries, redirect)
 
         try:
+            follow_redirects = (
+                    redirect and
+                    retries.redirect != 0 and
+                    retries.total)
             response = urlfetch.fetch(
                 url,
                 payload=body,
                 method=method,
                 headers=headers or {},
                 allow_truncated=False,
-                follow_redirects=(
-                    redirect and
-                    retries.redirect != 0 and
-                    retries.total),
+                follow_redirects=self.urlfetch_retries and follow_redirects,
                 deadline=self._get_absolute_timeout(timeout),
                 validate_certificate=self.validate_certificate,
             )
@@ -174,17 +178,38 @@ class AppEngineManager(RequestMethods):
         http_response = self._urlfetch_response_to_http_response(
             response, retries=retries, **response_kw)
 
-        # Check for redirect response
-        if (http_response.get_redirect_location() and
-                retries.raise_on_redirect and redirect):
-            raise MaxRetryError(self, url, "too many redirects")
+        # Handle redirect?
+        redirect_location = redirect and http_response.get_redirect_location()
+        if redirect_location:
+            # Check for redirect response
+            if (self.urlfetch_retries and retries.raise_on_redirect):
+                raise MaxRetryError(self, url, "too many redirects")
+            else:
+                if http_response.status == 303:
+                    method = 'GET'
+
+                try:
+                    retries = retries.increment(method, url, response=http_response, _pool=self)
+                except MaxRetryError:
+                    if retries.raise_on_redirect:
+                        raise MaxRetryError(self, url, "too many redirects")
+                    return http_response
+
+                retries.sleep_for_retry(http_response)
+                log.debug("Redirecting %s -> %s", url, redirect_location)
+                redirect_url = urljoin(url, redirect_location)
+                return self.urlopen(
+                    method, redirect_url, body, headers,
+                    retries=retries, redirect=redirect,
+                    timeout=timeout, **response_kw)
 
         # Check if we should retry the HTTP response.
-        if retries.is_forced_retry(method, status_code=http_response.status):
+        has_retry_after = bool(http_response.getheader('Retry-After'))
+        if retries.is_retry(method, http_response.status, has_retry_after):
             retries = retries.increment(
                 method, url, response=http_response, _pool=self)
-            log.info("Forced retry: %s", url)
-            retries.sleep()
+            log.debug("Retry: %s", url)
+            retries.sleep(http_response)
             return self.urlopen(
                 method, url,
                 body=body, headers=headers,

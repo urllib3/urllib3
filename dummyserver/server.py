@@ -14,6 +14,7 @@ import sys
 import threading
 import socket
 import warnings
+from datetime import datetime
 
 from urllib3.exceptions import HTTPWarning
 
@@ -208,6 +209,8 @@ def bind_sockets(port, address=None, family=socket.AF_UNSPEC, backlog=128,
 
 
 def run_tornado_app(app, io_loop, certs, scheme, host):
+    app.last_req = datetime.fromtimestamp(0)
+
     if scheme == 'https':
         http_server = tornado.httpserver.HTTPServer(app, ssl_options=certs,
                                                     io_loop=io_loop)
