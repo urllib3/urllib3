@@ -1,6 +1,20 @@
 Changes
 =======
 
+1.18 (2016-09-26)
+-----------------
+
+* Fixed incorrect message for IncompleteRead exception. (PR #973)
+
+* Accept ``iPAddress`` subject alternative name fields in TLS certificates.
+  (Issue #258)
+
+* Fixed consistency of ``HTTPResponse.closed`` between Python 2 and 3.
+  (Issue #977)
+
+* Fixed handling of wildcard certificates when using PyOpenSSL. (Issue #979)
+
+
 1.17 (2016-09-06)
 -----------------
 

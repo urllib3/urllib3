@@ -13,7 +13,8 @@ from dummyserver.testcase import (
 )
 from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
                                 NO_SAN_CERTS, NO_SAN_CA, DEFAULT_CA_DIR,
-                                IPV6_ADDR_CERTS, IPV6_ADDR_CA, HAS_IPV6)
+                                IPV6_ADDR_CERTS, IPV6_ADDR_CA, HAS_IPV6,
+                                IP_SAN_CERTS)
 
 from test import (
     onlyPy26OrOlder,
@@ -507,6 +508,17 @@ class TestHTTPS_NoSAN(HTTPSDummyServerTestCase):
             self.assertEqual(r.status, 200)
             self.assertTrue(warn.called)
 
+
+class TestHTTPS_IPSAN(HTTPSDummyServerTestCase):
+    certs = IP_SAN_CERTS
+
+    def test_can_validate_ip_san(self):
+        """Ensure that urllib3 can validate SANs with IP addresses in them."""
+        https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
+                                         cert_reqs='CERT_REQUIRED',
+                                         ca_certs=DEFAULT_CA)
+        r = https_pool.request('GET', '/')
+        self.assertEqual(r.status, 200)
 
 
 class TestHTTPS_IPv6Addr(IPV6HTTPSDummyServerTestCase):
