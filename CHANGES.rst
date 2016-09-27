@@ -7,6 +7,9 @@ dev (master)
 * urllib3 now respects Retry-After headers on 413, 429, and 503 responses when
   using the default retry logic.
 
+* Remove markers from setup.py to assist ancient setuptools versions. (Issue
+  #986)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
