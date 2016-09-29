@@ -619,7 +619,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                                      **response_kw)
 
             if self.transport_security_manager is not None:
-                self.transport_security_manager.process_response(response)
+                self.transport_security_manager.process_response(response, conn)
 
             # Everything went great!
             clean_exit = True

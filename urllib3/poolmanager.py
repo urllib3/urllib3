@@ -6,7 +6,7 @@ import logging
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
-from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
+from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown, HSTSError
 from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
 from .transport_security import TransportSecurityManager
@@ -257,7 +257,14 @@ class PoolManager(RequestMethods):
         if self.proxy is not None and u.scheme == "http":
             response = conn.urlopen(method, url, **kw)
         else:
-            response = conn.urlopen(method, u.request_uri, **kw)
+            try:
+                response = conn.urlopen(method, u.request_uri, **kw)
+            except HSTSError as e:
+                logging.info('{}, retrying over HTTPS'.format(e))
+                new_port = port_by_scheme['https'] if u.port == port_by_scheme['http'] else u.port
+                u = u._replace(scheme='https', port=new_port)
+                conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
+                response = conn.urlopen(method, u.request_uri, **kw)
 
         redirect_location = redirect and response.get_redirect_location()
         if not redirect_location:
