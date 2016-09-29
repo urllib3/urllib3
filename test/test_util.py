@@ -34,6 +34,7 @@ from urllib3.util.connection import (
     _has_ipv6
 )
 from urllib3.util import is_fp_closed, ssl_
+from urllib3.packages import six
 
 from . import clear_warnings
 
@@ -95,6 +96,8 @@ class TestUtil(unittest.TestCase):
             'http://google.com:foo',
             'http://::1/',
             'http://::1:80/',
+            'http://google.com:-80',
+            six.u('http://google.com:\xb2\xb2'),  # \xb2 = ^2
         ]
 
         for location in invalid_host:
