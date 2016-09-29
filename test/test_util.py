@@ -10,6 +10,7 @@ from mock import patch, Mock
 
 from urllib3 import add_stderr_logger, disable_warnings
 from urllib3.util.request import make_headers
+from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
 from urllib3.util.url import (
     get_host,
@@ -28,6 +29,7 @@ from urllib3.exceptions import (
     InsecureRequestWarning,
     SSLError,
     SNIMissingWarning,
+    InvalidHeader,
 )
 from urllib3.util.connection import (
     allowed_gai_family,
@@ -527,3 +529,19 @@ class TestUtil(unittest.TestCase):
     def test_ip_family_ipv6_disabled(self):
         with patch('urllib3.util.connection.HAS_IPV6', False):
             self.assertEqual(allowed_gai_family(), socket.AF_INET)
+
+    def test_parse_retry_after(self):
+        invalid = [
+            "-1",
+            "+1",
+            "1.0",
+            six.u("\xb2"),  # \xb2 = ^2
+        ]
+        retry = Retry()
+
+        for value in invalid:
+            self.assertRaises(InvalidHeader, retry.parse_retry_after, value)
+
+        self.assertEqual(retry.parse_retry_after("0"), 0)
+        self.assertEqual(retry.parse_retry_after("1000"), 1000)
+        self.assertEqual(retry.parse_retry_after("\t42 "), 42)

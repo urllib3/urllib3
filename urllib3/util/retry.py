@@ -4,6 +4,7 @@ import logging
 from collections import namedtuple
 from itertools import takewhile
 import email
+import re
 
 from ..exceptions import (
     ConnectTimeoutError,
@@ -205,7 +206,8 @@ class Retry(object):
         return min(self.BACKOFF_MAX, backoff_value)
 
     def parse_retry_after(self, retry_after):
-        if retry_after.isdigit():
+        # Whitespace: https://tools.ietf.org/html/rfc7230#section-3.2.4
+        if re.match(r"^\s*[0-9]+\s*$", retry_after):
             seconds = int(retry_after)
         else:
             retry_date_tuple = email.utils.parsedate(retry_after)
