@@ -196,6 +196,14 @@ class ResponseNotChunked(ProtocolError, ValueError):
     pass
 
 
+class BodyNotHttplibCompatible(AssertionError, ValueError):
+    """
+    Body should be httplib.HTTPResponse like (have an fp attribute which
+    returns raw chunks) for read_chunked().
+    """
+    pass
+
+
 class IncompleteRead(HTTPError, httplib_IncompleteRead):
     """
     Response length doesn't match expected Content-Length
