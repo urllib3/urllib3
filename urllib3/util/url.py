@@ -189,10 +189,14 @@ def parse_url(url):
             host = _host
 
         if port:
-            # If given, ports must be integers.
+            # If given, ports must be integers. No whitespace, no plus or
+            # minus prefixes, no non-integer digits such as ^2 (superscript).
             if not port.isdigit():
                 raise LocationParseError(url)
-            port = int(port)
+            try:
+                port = int(port)
+            except ValueError:
+                raise LocationParseError(url)
         else:
             # Blank ports are cool, too. (rfc3986#section-3.2.3)
             port = None
