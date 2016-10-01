@@ -4,6 +4,7 @@ from urllib3.transport_security import parse_header, TransportSecurityManager, T
 from urllib3.connection import HTTPConnection, HTTPSConnection
 from urllib3.response import HTTPResponse
 from urllib3.exceptions import HSTSError
+from urllib3.poolmanager import PoolManager
 
 
 class TSMTest(unittest.TestCase):
@@ -26,8 +27,7 @@ class TSMTest(unittest.TestCase):
         self.assertRaises(IndexError, parse_header, None)
 
     def assert_hsts_on(self, tsm, domain):
-        with self.assertRaises(HSTSError):
-            tsm.validate_hsts(HTTPConnection(domain))
+        self.assertRaises(HSTSError, tsm.validate_hsts, HTTPConnection(domain))
         tsm.validate_hsts(HTTPSConnection(domain))
 
     def assert_hsts_off(self, tsm, domain):
@@ -52,10 +52,11 @@ class TSMTest(unittest.TestCase):
         # Subdomains default to N/A
         self.assert_hsts_off(tsm, "subdomain.example.com")
 
-        # Quoted HSTS header with subdomains directive is honored
-        tsm.process_response(HSTSResponse('max-age="9000"; includesubdomains'),
+        # Quoted HSTS header with subdomains directive and unrecognized directives is honored
+        tsm.process_response(HSTSResponse('Max-Age="31536000"; IncludeSubDomains; preload'),
                              HTTPSConnection("example.com"))
-        self.assert_hsts_on(tsm, "subdomain.example.com")
+        self.assert_hsts_on(tsm, "sub-domain.example.com")
+        self.assert_hsts_on(tsm, "sub.subdomain.example.com")
 
         # Sibling and superdomains are unaffected
         self.assert_hsts_off(tsm, "com")
@@ -79,3 +80,28 @@ class TSMTest(unittest.TestCase):
         for addr in ("2001:db8:85a3::8a2e:370:7334", "1.2.3.4", "example"):
             tsm.process_response(HSTSResponse("max-age=9000"), HTTPSConnection(addr))
             self.assert_hsts_off(tsm, addr)
+
+        # Expired HSTS records are invalidated
+        tsm.process_response(HSTSResponse("max-age=9000"), HTTPSConnection("example.com"))
+        self.assert_hsts_on(tsm, "example.com")
+        for record in tsm._tss._store.values():
+            record["expires"] = 1
+        self.assert_hsts_off(tsm, "example.com")
+
+        # PoolManager automatically retries on HSTS error, rewrites ports per spec
+        tsm = TransportSecurityManager()
+        tsm.process_response(HSTSResponse("max-age=9000"), HTTPSConnection("example.com"))
+        pm = PoolManager(transport_security_manager=tsm)
+        pm.urlopen("GET", "http://example.com")
+        self.assert_poolmanager_connected_to(pm, "https", "example.com", 443)
+        pm = PoolManager(transport_security_manager=tsm)
+        pm.urlopen("GET", "http://example.com:80")
+        self.assert_poolmanager_connected_to(pm, "https", "example.com", 443)
+        pm = PoolManager(transport_security_manager=tsm)
+        pm.urlopen("GET", "http://example.com:443")
+        self.assert_poolmanager_connected_to(pm, "https", "example.com", 443)
+
+    def assert_poolmanager_connected_to(self, pm, scheme, host, port):
+        self.assertTrue(any(pool_key.scheme == scheme and pool_key.host == host
+                            and pool_key.port == port
+                            for pool_key in pm.pools._container.keys()))

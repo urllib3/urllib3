@@ -260,7 +260,7 @@ class PoolManager(RequestMethods):
             try:
                 response = conn.urlopen(method, u.request_uri, **kw)
             except HSTSError as e:
-                logging.info('{}, retrying over HTTPS'.format(e))
+                logging.info('{0}, retrying over HTTPS'.format(e))
                 new_port = port_by_scheme['https'] if u.port == port_by_scheme['http'] else u.port
                 u = u._replace(scheme='https', port=new_port)
                 conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)

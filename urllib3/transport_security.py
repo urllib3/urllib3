@@ -43,7 +43,7 @@ class TransportSecurityManager(object):
         """
         if not isinstance(conn, HTTPSConnection):
             if self._tss.requires_https(conn.host):
-                msg = 'Host {} has set an HSTS policy preventing plain HTTP connections'
+                msg = 'Host {0} has set an HSTS policy preventing plain HTTP connections'
                 raise HSTSError(msg.format(conn.host))
 
     def validate_hpkp(self, conn):
@@ -64,6 +64,9 @@ class TransportSecurityManager(object):
 
         :param response:
             A :class:`urllib3.response.HTTPResponse` instance.
+        :param conn:
+            A :class:`urllib3.connection.HTTPSConnection` instance over which the response was
+            received.
         """
         if isinstance(conn, HTTPSConnection):
             sts_header = response.headers.get("strict-transport-security")
@@ -73,12 +76,10 @@ class TransportSecurityManager(object):
     def _process_sts_header(self, sts_header, host):
         try:
             parsed_sts_header = parse_header(sts_header)
-            sts_directives = {k.lower(): v for k, v in parsed_sts_header}
+            sts_directives = dict((k.lower(), v) for k, v in parsed_sts_header)
             if len(sts_directives) < len(parsed_sts_header):
                 raise HSTSError("Repeating directives in HSTS header, ignoring")
             max_age = sts_directives.get("max-age", "")
-            if max_age.startswith('"') and max_age.endswith('"'):
-                max_age = max_age[1:-1]
             if not max_age.isdigit():
                 raise HSTSError("Missing or invalid HSTS max-age directive, ignoring")
             if is_ipaddress(host):
@@ -96,16 +97,16 @@ class TransportSecurityManager(object):
 
 class TransportSecurityStore(object):
     """
-    Abstract baseclass to store transport security (HSTS/HPKP) records.
+    Provides in-memory storage for transport security (HSTS/HPKP) records.
     """
-    MAX_AGE_LIMIT = 3600*90
+    MAX_AGE_LIMIT = 7776000  # 90 days; see https://tools.ietf.org/html/rfc6797#section-11.2
 
     def __init__(self):
         self._store = defaultdict(dict)
 
     def store_host(self, host, pins=None, force_https=False, include_subdomains=False,
                    max_age=None):
-        max_age = min(max_age, self.MAX_AGE_LIMIT)
+        max_age = min(int(max_age), self.MAX_AGE_LIMIT)
         expires = int(time.time()) + max_age
         self._store[host].update(force_https=force_https, include_subdomains=include_subdomains,
                                  expires=expires)
@@ -114,7 +115,7 @@ class TransportSecurityStore(object):
         del self._store[host]
 
     def get_pins(self, host):
-        raise NotImplementedError("Must be overridden.")
+        raise NotImplementedError()
 
     def requires_https(self, host):
         parts = host.split(".")
@@ -124,6 +125,7 @@ class TransportSecurityStore(object):
                 tss_record = self._store[superdomain]
                 if tss_record["expires"] < time.time():
                     self.invalidate_host(host)
+                    continue
                 if superdomain == host or tss_record.get("include_subdomains"):
                     if tss_record.get("force_https"):
                         return True
