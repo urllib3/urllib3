@@ -112,7 +112,8 @@ class TransportSecurityStore(object):
                                  expires=expires)
 
     def invalidate_host(self, host):
-        del self._store[host]
+        if host in self._store:
+            del self._store[host]
 
     def get_pins(self, host):
         raise NotImplementedError()
