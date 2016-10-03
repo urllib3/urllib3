@@ -10,6 +10,8 @@ dev (master)
 * Remove markers from setup.py to assist ancient setuptools versions. (Issue
   #986)
 
+* Disallow superscripts and other integerish things in URL ports. (Issue #989)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
