@@ -135,9 +135,9 @@ class AppEngineManager(RequestMethods):
 
         try:
             follow_redirects = (
-                    redirect and
-                    retries.redirect != 0 and
-                    retries.total)
+                redirect and
+                retries.redirect != 0 and
+                retries.total)
             response = urlfetch.fetch(
                 url,
                 payload=body,
