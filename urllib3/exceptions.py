@@ -196,7 +196,7 @@ class ResponseNotChunked(ProtocolError, ValueError):
     pass
 
 
-class BodyNotHttplibCompatible(AssertionError, ValueError):
+class BodyNotHttplibCompatible(HTTPError):
     """
     Body should be httplib.HTTPResponse like (have an fp attribute which
     returns raw chunks) for read_chunked().
