@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 import unittest
+import urllib3
 
 from nose.plugins.skip import SkipTest
+from urllib3.exceptions import SSLError
 from urllib3.packages import six
 
 try:
@@ -55,3 +57,15 @@ class TestPyOpenSSLHelpers(unittest.TestCase):
         expected_result = '*.xn--p1b6ci4b4b3a.xn--11b5bs8d'
 
         self.assertEqual(_dnsname_to_stdlib(name), expected_result)
+
+class TestPyOpenSSLErrorHandling(unittest.TestCase):
+    """
+    Tests for wrapping OpenSSL errors in urllib3 errors
+    """
+    def test_invalid_ca_certs(self):
+        """
+        Checks that we get an urllib3.exceptions.SSLError and not openssl.Error with missing ca_certs.
+        """
+        with self.assertRaises(SSLError):
+            http = urllib3.PoolManager(ca_certs='/no/path', cert_reqs='CERT_REQUIRED')
+            http.request('GET', 'https://python.org')

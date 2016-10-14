@@ -389,7 +389,7 @@ class PyOpenSSLContext(object):
         try:
             self._ctx.load_verify_locations(cafile, capath)
         except OpenSSL.SSL.Error as e:
-            raise ssl.SSLError('bad ca_certs ("%s"): %r' % (cafile or capath, e))
+            raise ssl.SSLError('bad certs (CAfile: "%s", CApath: "%s"): %r' % (cafile, capath, e))
         if cadata is not None:
             self._ctx.load_verify_locations(BytesIO(cadata))
 
