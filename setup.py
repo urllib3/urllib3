@@ -59,8 +59,6 @@ setup(name='urllib3',
               'cryptography>=1.3.4',
               'idna>=2.0.0',
               'certifi',
-          ],
-          'secure:python_version <= "2.7"': [
               "ipaddress",
           ],
           'socks': [

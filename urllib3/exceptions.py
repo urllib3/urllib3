@@ -196,6 +196,14 @@ class ResponseNotChunked(ProtocolError, ValueError):
     pass
 
 
+class BodyNotHttplibCompatible(HTTPError):
+    """
+    Body should be httplib.HTTPResponse like (have an fp attribute which
+    returns raw chunks) for read_chunked().
+    """
+    pass
+
+
 class IncompleteRead(HTTPError, httplib_IncompleteRead):
     """
     Response length doesn't match expected Content-Length
@@ -231,3 +239,7 @@ class HeaderParsingError(HTTPError):
     def __init__(self, defects, unparsed_data):
         message = '%s, unparsed data: %r' % (defects or 'Unknown', unparsed_data)
         super(HeaderParsingError, self).__init__(message)
+
+
+class HSTSError(HTTPError):
+    "Raised when an HSTS policy violation occurs."
