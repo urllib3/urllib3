@@ -12,6 +12,9 @@ dev (master)
 
 * Disallow superscripts and other integerish things in URL ports. (Issue #989)
 
+* Allow urllib3's HTTPResponse.stream() method to continue to work with
+  non-httplib underlying FPs. (Pull #990)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
