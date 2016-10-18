@@ -75,7 +75,8 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     # The original create_connection function always returns all records.
     family = allowed_gai_family()
 
-    # If IPv6 and select are available, use the Happy Eyes protocol (RFC 6665)
+    # If IPv6 and select are available, use the Happy Eyes protocol.
+    # (RFC 6555 https://tools.ietf.org/html/rfc6555)
     if HAS_HAPPY_EYES:
         return _connect_happy_eyes((host, port), timeout,
                                    source_address, socket_options)
