@@ -118,7 +118,7 @@ def _set_socket_options(sock, options):
 
 def _connect_happy_eyes(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                         source_address=None, socket_options=None):
-    """ Implements the Happy Eyes protocol (RFC 6665) which allows
+    """ Implements the Happy Eyes protocol (RFC 6555) which allows
     multiple sockets to attempt to connect from different families
     for better connect times for dual-stack clients where server
     IPv6 service is advertised but broken. """
@@ -155,8 +155,9 @@ def _connect_happy_eyes(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     host, port = address
     socks = []
 
-    # Perform a DNS lookup for the address for IPv4 / IPv6.
-    for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
+    # Perform a DNS lookup for the address for IPv4 or IPv6 families.
+    family = allowed_gai_family()
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
         af, socktype, proto, canonname, sa = res
 
         # Create and connect the socket for each address we get back.
