@@ -17,11 +17,9 @@ def wait_to_read_data(sock, timeout=0.0):
         if has_epoll:
             _poll = select.epoll
             read_flag = select.EPOLLIN
-            exc_flag = select.EPOLLERR
         else:
             _poll = select.poll
             read_flag = select.POLLIN
-            exc_flag = select.POLLERR
         p = _poll()
         p.register(sock.fileno(), read_flag)
         rd = p.poll(timeout)
