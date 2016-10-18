@@ -232,7 +232,8 @@ def _connect_happy_eyes(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
             found.settimeout(None)
 
         # Cache the results of Happy Eyes protocol.
-        HAPPY_EYES_CACHE[address] = (found.family, found.proto, time.time() + HAPPY_EYES_CACHE_TIME)
+        expires = time.time() + HAPPY_EYES_CACHE_TIME
+        HAPPY_EYES_CACHE[address] = (found.family, found.proto, expires)
 
         return found
 
@@ -279,4 +280,3 @@ HAS_IPV6 = _has_ipv6('::1')
 HAS_HAPPY_EYES = select and HAS_IPV6
 HAPPY_EYES_CACHE = {}
 HAPPY_EYES_CACHE_TIME = 600
-
