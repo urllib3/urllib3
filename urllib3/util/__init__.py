@@ -1,6 +1,10 @@
 from __future__ import absolute_import
 # For backwards compatibility, provide imports that used to be here.
-from .connection import is_connection_dropped
+from .connection import (
+    is_connection_dropped,
+    wait_to_read_data,
+    wait_to_write_data
+)
 from .request import make_headers
 from .response import is_fp_closed
 from .ssl_ import (
@@ -43,4 +47,6 @@ __all__ = (
     'resolve_ssl_version',
     'split_first',
     'ssl_wrap_socket',
+    'wait_to_read_data',
+    'wait_to_write_data',
 )

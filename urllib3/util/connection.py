@@ -1,14 +1,67 @@
 from __future__ import absolute_import
 import socket
-try:
-    from select import poll, POLLIN
-except ImportError:  # `poll` doesn't exist on OSX and other platforms
-    poll = False
-    try:
-        from select import select
-    except ImportError:  # `select` doesn't exist on AppEngine.
-        select = False
 
+try:
+    # `select` doesn't exist on AppEngine.
+    import select
+except ImportError:
+    select = False
+
+def wait_to_read_data(sock, timeout=0.0):
+    has_poll = hasattr(select, 'poll')
+    has_epoll = hasattr(select, 'epoll')
+    has_kevent = hasattr(select, 'kevent')
+    has_kqueue = hasattr(select, 'kqueue')
+    if has_poll or has_epoll:
+        if has_epoll:
+            _poll = select.epoll
+            read_flag = select.EPOLLIN
+            write_flag = select.EPOLLOUT
+            exc_flag = select.EPOLLERR
+        else:
+            _poll = select.poll
+            read_flag = select.POLLIN
+            write_flag = select.POLLOUT
+            exc_flag = select.POLLERR
+        p = _poll()
+        p.register(sock.fileno(), read_flag)
+        rd = p.poll(timeout)
+    elif has_kevent and has_kqueue:
+        kq = select.kqueue()
+        flags = select.KQ_EV_ADD | select.KQ_EV_ENABLE
+        ke = select.kevent(sock.fileno(), filter=select.KQ_FILTER_READ, flags=flags)
+        rd = kq.control([ke], 1, timeout)
+    else:
+        rd, _, _ = select.select([sock], [], [], timeout)
+    return rd
+
+def wait_to_write_data(sock, timeout=0.0):
+    has_poll = hasattr(select, 'poll')
+    has_epoll = hasattr(select, 'epoll')
+    has_kevent = hasattr(select, 'kevent')
+    has_kqueue = hasattr(select, 'kqueue')
+    if has_poll or has_epoll:
+        if has_epoll:
+            _poll = select.epoll
+            read_flag = select.EPOLLIN
+            write_flag = select.EPOLLOUT
+            exc_flag = select.EPOLLERR
+        else:
+            _poll = select.poll
+            read_flag = select.POLLIN
+            write_flag = select.POLLOUT
+            exc_flag = select.POLLERR
+        p = _poll()
+        p.register(sock.fileno(), write_flag)
+        wlist = p.poll(timeout)
+    elif has_kevent and has_kqueue:
+        kq = select.kqueue()
+        flags = select.KQ_EV_ADD | select.KQ_EV_ENABLE
+        ke = select.kevent(sock.fileno(), filter=select.KQ_FILTER_WRITE, flags=flags)
+        wlist = kq.control([ke], 1, timeout)
+    else:
+        _, wlist, _ = select.select([], [sock], [], timeout)
+    return wlist
 
 def is_connection_dropped(conn):  # Platform-specific
     """
@@ -26,23 +79,13 @@ def is_connection_dropped(conn):  # Platform-specific
     if sock is None:  # Connection already closed (such as by httplib).
         return True
 
-    if not poll:
-        if not select:  # Platform-specific: AppEngine
-            return False
+    if not select:
+        return False
 
-        try:
-            return select([sock], [], [], 0.0)[0]
-        except socket.error:
-            return True
-
-    # This version is better on platforms that support it.
-    p = poll()
-    p.register(sock, POLLIN)
-    for (fno, ev) in p.poll(0.0):
-        if fno == sock.fileno():
-            # Either data is buffered (bad), or the connection is dropped.
-            return True
-
+    try:
+        return wait_to_read_data(sock)
+    except socket.error:
+        return True
 
 # This function is copied from socket.py in the Python 2.7 standard
 # library test suite. Added to its signature is only `socket_options`.
