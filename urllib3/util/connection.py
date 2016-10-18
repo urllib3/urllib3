@@ -7,6 +7,7 @@ try:
 except ImportError:
     select = False
 
+
 def wait_to_read_data(sock, timeout=0.0):
     has_poll = hasattr(select, 'poll')
     has_epoll = hasattr(select, 'epoll')
@@ -16,12 +17,10 @@ def wait_to_read_data(sock, timeout=0.0):
         if has_epoll:
             _poll = select.epoll
             read_flag = select.EPOLLIN
-            write_flag = select.EPOLLOUT
             exc_flag = select.EPOLLERR
         else:
             _poll = select.poll
             read_flag = select.POLLIN
-            write_flag = select.POLLOUT
             exc_flag = select.POLLERR
         p = _poll()
         p.register(sock.fileno(), read_flag)
@@ -35,6 +34,7 @@ def wait_to_read_data(sock, timeout=0.0):
         rd, _, _ = select.select([sock], [], [], timeout)
     return rd
 
+
 def wait_to_write_data(sock, timeout=0.0):
     has_poll = hasattr(select, 'poll')
     has_epoll = hasattr(select, 'epoll')
@@ -43,12 +43,10 @@ def wait_to_write_data(sock, timeout=0.0):
     if has_poll or has_epoll:
         if has_epoll:
             _poll = select.epoll
-            read_flag = select.EPOLLIN
             write_flag = select.EPOLLOUT
             exc_flag = select.EPOLLERR
         else:
             _poll = select.poll
-            read_flag = select.POLLIN
             write_flag = select.POLLOUT
             exc_flag = select.POLLERR
         p = _poll()
@@ -62,6 +60,7 @@ def wait_to_write_data(sock, timeout=0.0):
     else:
         _, wlist, _ = select.select([], [sock], [], timeout)
     return wlist
+
 
 def is_connection_dropped(conn):  # Platform-specific
     """
@@ -86,6 +85,7 @@ def is_connection_dropped(conn):  # Platform-specific
         return wait_to_read_data(sock)
     except socket.error:
         return True
+
 
 # This function is copied from socket.py in the Python 2.7 standard
 # library test suite. Added to its signature is only `socket_options`.
