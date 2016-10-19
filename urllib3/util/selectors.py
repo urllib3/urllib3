@@ -6,6 +6,7 @@
 # support for select.devpoll is made to maintain 100% test coverage.
 
 import errno
+import math
 import select
 import six
 from collections import namedtuple, Mapping
@@ -13,7 +14,7 @@ from collections import namedtuple, Mapping
 import time
 try:
     monotonic = time.monotonic
-except AttributeError:
+except AttributeError:  # Python 3.3<
     monotonic = time.time
 
 EVENT_READ = (1 << 0)
@@ -38,18 +39,25 @@ def _fileobj_to_fd(fileobj):
     return fd
 
 
-def _syscall_wrapper(func, syscall_timeout, *args, **kwargs):
+def _syscall_wrapper(func, syscall_timeout, recalc_timeout, *args, **kwargs):
     """ Wrapper function for syscalls that could fail due to EINTR.
     All functions should be retried if there is time left in the timeout
     in accordance with PEP 475. """
     if syscall_timeout is None:
         expires = None
+        recalc_timeout = False
     else:
         timeout = float(syscall_timeout)
-        if timeout < 0.0:
+        if timeout < 0.0:  # Timeout less than 0 treated as no timeout.
             expires = None
         else:
             expires = monotonic() + timeout
+
+    args = list(args)
+    if recalc_timeout and "timeout" not in kwargs and not (
+                len(args) and isinstance(args[-1], (float, int))):
+        raise ValueError(
+            "Timeout must be in args or kwargs to be recalculated")
 
     result = _SYSCALL_SENTINEL
     while result is _SYSCALL_SENTINEL:
@@ -57,9 +65,17 @@ def _syscall_wrapper(func, syscall_timeout, *args, **kwargs):
             result = func(*args, **kwargs)
             break
         except OSError as e:
+            print(e.errno)
             if e.errno == errno.EINTR:
-                if expires is not None and monotonic() > expires:
-                    raise OSError(errno=errno.ETIMEDOUT)
+                if expires is not None:
+                    current_time = monotonic()
+                    if current_time > expires:
+                        raise OSError(errno=errno.ETIMEDOUT)
+                    if recalc_timeout:
+                        if "timeout" in kwargs:
+                            kwargs["timeout"] = expires - current_time
+                        else:
+                            args[-1] = expires - current_time
                 continue
             raise
     return result
@@ -127,7 +143,7 @@ class BaseSelector:
                 if key.fileobj is fileobj:
                     return key.fd
 
-            # Raise ValueError after all
+            # Raise ValueError after all.
             raise
 
     def register(self, fileobj, events, data=None):
@@ -172,7 +188,7 @@ class BaseSelector:
         return key
 
     def select(self, timeout=None):
-        """ Perform the actual selection until soime monitored file objects
+        """ Perform the actual selection until some monitored file objects
         are ready or the timeout expires. """
         raise NotImplementedError()
 
@@ -210,7 +226,7 @@ class BaseSelector:
     def __exit__(self, *args):
         self.close()
 
-
+# Almost all platforms have select.select()
 if hasattr(select, "select"):
     class SelectSelector(BaseSelector):
         """ Select-based selector. """
@@ -234,10 +250,15 @@ if hasattr(select, "select"):
             return key
 
         def select(self, timeout=None):
+
+            # Selecting on empty lists on Windows errors out.
+            if not (self._readers | self._writers):
+                return []
+
             timeout = None if timeout is None else max(timeout, 0.0)
             ready = []
-            r, w, _ = _syscall_wrapper(select.select, timeout,
-                                self._readers, self._writers, [], timeout)
+            r, w, _ = _syscall_wrapper(select.select, timeout, True,
+                            self._readers, self._writers, [], timeout)
             r = set(r)
             w = set(w)
             for fd in r | w:
@@ -252,20 +273,103 @@ if hasattr(select, "select"):
                     ready.append((key, events & key.events))
             return ready
 
+if hasattr(select, "poll"):
+    class PollSelector(BaseSelector):
+        """ Poll-based selector """
+        def __init__(self):
+            super(PollSelector, self).__init__()
+            self._poll = select.poll()
+
+        def register(self, fileobj, events, data=None):
+            key = super(PollSelector, self).register(fileobj, events, data)
+            event_mask = 0
+            if events & EVENT_READ:
+                event_mask |= select.POLLIN
+            if events & EVENT_WRITE:
+                event_mask |= select.POLLOUT
+            self._poll.register(key.fd, event_mask)
+            return key
+
+        def unregister(self, fileobj):
+            key = super(PollSelector, self).unregister(fileobj)
+            self._poll.unregister(key.fd)
+            return key
+
+        def _wrap_poll(self, timeout=None):
+            """ Wrapper function for select.poll.poll() so that
+            _syscall_wrapper can work with only seconds. """
+            if timeout is None:
+                timeout = None
+            elif timeout <= 0:
+                timeout = 0
+            else:
+                # select.poll.poll() has a resolution of 1 millisecond,
+                # round away from zero to wait *at least* timeout seconds.
+                timeout = math.ceil(timeout * 1e3)
+            result =  self._poll.poll(timeout)
+            print(result)
+            return result
+
+        def select(self, timeout=None):
+            ready = []
+            fd_events = _syscall_wrapper(self._wrap_poll, timeout, True, timeout)
+            for fd, event_mask in fd_events:
+                events = 0
+                if event_mask & ~select.POLLIN:
+                    events |= EVENT_WRITE
+                elif event_mask & ~select.POLLOUT:
+                    events |= EVENT_READ
+
+                key = self._key_from_fd(fd)
+                if key:
+                    ready.append((key, events & key.events))
+
+            return ready
 
 # Choose the best implementation, roughly:
 # kqueue == epoll > poll > select. Devpoll not supported. (See above)
 # select() also can't accept a FD > FD_SETSIZE (usually around 1024)
-if 'KqueueSelector' in globals():
+if 'KqueueSelector' in globals():  # Platform-specific: Mac OS and BSD
     DefaultSelector = KqueueSelector
-elif 'EpollSelector' in globals():
+elif 'EpollSelector' in globals():  # Platform-specific: Linux
     DefaultSelector = EpollSelector
-elif 'PollSelector' in globals():
+elif 'PollSelector' in globals():  # Platform-specific: Linux
     DefaultSelector = PollSelector
-elif 'SelectSelector' in globals():
+elif 'SelectSelector' in globals(): # Platform-specific: Windows
     DefaultSelector = SelectSelector
-else:
-    def no_selector():
+else:  # Platform-specific: AppEngine
+    def no_selector(_):
         raise ValueError("Platform does not have a selector")
     DefaultSelector = no_selector
     HAS_SELECT = False
+
+
+def wait_for_read(socks, timeout=None):
+    """ Waits for reading to be available from a list of sockets
+    or optionally a single socket if passed in. Returns a list of
+    sockets that can be read from immediately. """
+    if not HAS_SELECT:
+        raise ValueError('Platform does not have a selector')
+    if not isinstance(socks, list):
+        socks = [socks]
+    selector = DefaultSelector()
+    for sock in socks:
+        selector.register(sock, EVENT_READ)
+    return [key[0].fileobj for key in
+            selector.select(timeout) if key[1] & EVENT_READ]
+
+
+def wait_for_write(socks, timeout=None):
+    """ Waits for writing to be available from a list of sockets
+    or optionally a single socket if passed in. Returns a list of
+    sockets that can be written to immediately. """
+    if not HAS_SELECT:
+        raise ValueError('Platform does not have a selector')
+    if not isinstance(socks, list):
+        socks = [socks]
+    selector = DefaultSelector()
+    for sock in socks:
+        selector.register(sock, EVENT_WRITE)
+    return [key[0].fileobj for key in
+            selector.select(timeout) if key[1] & EVENT_WRITE]
+

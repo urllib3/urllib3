@@ -24,7 +24,7 @@ from .url import (
     split_first,
     Url,
 )
-from .wait import (
+from .selectors import (
     wait_for_read,
     wait_for_write
 )

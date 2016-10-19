@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 import socket
 import select
-from .wait import (
+from .selectors import (
     wait_for_read,
     HAS_SELECT
 )

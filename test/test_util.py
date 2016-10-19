@@ -38,11 +38,6 @@ from urllib3.util.connection import (
 )
 from urllib3.util import is_fp_closed, ssl_
 from urllib3.packages import six
-from urllib3.util import wait
-from urllib3.util.wait import (
-    wait_for_read,
-    wait_for_write
-)
 
 from . import clear_warnings
 
