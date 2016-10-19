@@ -27,7 +27,7 @@ def is_connection_dropped(conn):  # Platform-specific
         return False
 
     try:
-        return wait_for_read(sock)
+        return wait_for_read(sock, timeout=0.0)
     except select.error:
         return True
 
