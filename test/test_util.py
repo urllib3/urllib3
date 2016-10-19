@@ -2,6 +2,7 @@ import hashlib
 import warnings
 import logging
 import unittest
+import select
 import ssl
 import socket
 from itertools import chain
@@ -37,8 +38,16 @@ from urllib3.util.connection import (
 )
 from urllib3.util import is_fp_closed, ssl_
 from urllib3.packages import six
+from urllib3.util import wait
+from urllib3.util.wait import (
+    wait_for_read,
+    wait_for_write,
+    HAS_SELECT
+)
 
 from . import clear_warnings
+
+from nose.plugins.skip import SkipTest
 
 # This number represents a time in seconds, it doesn't mean anything in
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller
@@ -545,3 +554,70 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(retry.parse_retry_after("0"), 0)
         self.assertEqual(retry.parse_retry_after("1000"), 1000)
         self.assertEqual(retry.parse_retry_after("\t42 "), 42)
+
+    def test_kqueue_selector(self):
+        if not hasattr(select, "kqueue"):
+            raise SkipTest("Platform doesn't have a kqueue selector")
+        if not hasattr(socket, "socketpair"):
+            raise SkipTest("Platform doesn't have socketpair")
+
+        with patch('urllib3.util.wait._READ_SELECTOR', wait._kqueue_wait_for_read):
+            with patch('urllib3.util.wait._WRITE_SELECTOR', wait._kqueue_wait_for_write):
+                self._exercise_selector()
+
+    def test_epoll_selector(self):
+        if not hasattr(select, "kqueue"):
+            raise SkipTest("Platform doesn't have a epoll selector")
+        if not hasattr(socket, "socketpair"):
+            raise SkipTest("Platform doesn't have socketpair")
+
+        with patch('urllib3.util.wait._READ_SELECTOR', wait._epoll_wait_for_read):
+            with patch('urllib3.util.wait._WRITE_SELECTOR', wait._epoll_wait_for_write):
+                self._exercise_selector()
+
+    def test_devpoll_selector(self):
+        if not hasattr(select, "kqueue"):
+            raise SkipTest("Platform doesn't have a devpoll selector")
+        if not hasattr(socket, "socketpair"):
+            raise SkipTest("Platform doesn't have socketpair")
+
+        with patch('urllib3.util.wait._READ_SELECTOR', wait._devpoll_wait_for_read):
+            with patch('urllib3.util.wait._WRITE_SELECTOR', wait._devpoll_wait_for_write):
+                self._exercise_selector()
+
+    def test_poll_selector(self):
+        if not hasattr(select, "kqueue"):
+            raise SkipTest("Platform doesn't have a poll selector")
+        if not hasattr(socket, "socketpair"):
+            raise SkipTest("Platform doesn't have socketpair")
+
+        with patch('urllib3.util.wait._READ_SELECTOR', wait._poll_wait_for_read):
+            with patch('urllib3.util.wait._WRITE_SELECTOR', wait._poll_wait_for_write):
+                self._exercise_selector()
+
+    def test_select_selector(self):
+        if not hasattr(select, "select"):
+            raise SkipTest("Platform doesn't have a select selector")
+        if not hasattr(socket, "socketpair"):
+            raise SkipTest("Platform doesn't have socketpair")
+
+        with patch('urllib3.util.wait._READ_SELECTOR', wait._select_wait_for_read):
+            with patch('urllib3.util.wait._WRITE_SELECTOR', wait._select_wait_for_write):
+                self._exercise_selector()
+
+    def _exercise_selector(self):
+        """ Helper function to exercise the selectors """
+        self.assertEqual([], wait_for_read([], timeout=0))
+        self.assertEqual([], wait_for_write([], timeout=0))
+
+        rd, wr = socket.socketpair()
+
+        writers = wait_for_write([wr], timeout=0)
+        self.assertEqual(len(writers), 1)
+        self.assertEqual(writers, [wr.fileno()])
+
+        readers = wait_for_read([rd], timeout=0)
+        self.assertEqual(readers, [])
+        wr.send(b'a')
+        readers = wait_for_read([rd], timeout=0)
+        self.assertEqual(readers, [rd.fileno()])

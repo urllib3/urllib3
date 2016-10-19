@@ -1,13 +1,13 @@
 from __future__ import absolute_import
+import errno
 import socket
-try:
-    from select import poll, POLLIN
-except ImportError:  # `poll` doesn't exist on OSX and other platforms
-    poll = False
-    try:
-        from select import select
-    except ImportError:  # `select` doesn't exist on AppEngine.
-        select = False
+import select
+import time
+from .wait import (
+    wait_for_read,
+    wait_for_write,
+    HAS_SELECT
+)
 
 
 def is_connection_dropped(conn):  # Platform-specific
@@ -26,22 +26,13 @@ def is_connection_dropped(conn):  # Platform-specific
     if sock is None:  # Connection already closed (such as by httplib).
         return True
 
-    if not poll:
-        if not select:  # Platform-specific: AppEngine
-            return False
+    if not HAS_SELECT:
+        return False
 
-        try:
-            return select([sock], [], [], 0.0)[0]
-        except socket.error:
-            return True
-
-    # This version is better on platforms that support it.
-    p = poll()
-    p.register(sock, POLLIN)
-    for (fno, ev) in p.poll(0.0):
-        if fno == sock.fileno():
-            # Either data is buffered (bad), or the connection is dropped.
-            return True
+    try:
+        return wait_for_read(sock, timeout=0)
+    except select.error:
+        return True
 
 
 # This function is copied from socket.py in the Python 2.7 standard
@@ -72,6 +63,12 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     # The original create_connection function always returns all records.
     family = allowed_gai_family()
 
+    # If IPv6 and select are available, use the Happy Eyes protocol.
+    # (RFC 6555 https://tools.ietf.org/html/rfc6555)
+    if HAS_HAPPY_EYES:
+        return _connect_happy_eyes((host, port), timeout,
+                                   source_address, socket_options)
+
     for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
         af, socktype, proto, canonname, sa = res
         sock = None
@@ -92,7 +89,6 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
             err = e
             if sock is not None:
                 sock.close()
-                sock = None
 
     if err is not None:
         raise err
@@ -106,6 +102,135 @@ def _set_socket_options(sock, options):
 
     for opt in options:
         sock.setsockopt(*opt)
+
+
+def _connect_happy_eyes(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+                        source_address=None, socket_options=None):
+    """ Implements the Happy Eyes protocol (RFC 6555) which allows
+    multiple sockets to attempt to connect from different families
+    for better connect times for dual-stack clients where server
+    IPv6 service is advertised but broken. """
+    err = None
+
+    if address in HAPPY_EYES_CACHE:
+        family, proto, expires = HAPPY_EYES_CACHE[address]
+
+        # If the cache entry is expired, don't use it.
+        if time.time() < expires:
+            del HAPPY_EYES_CACHE[address]
+
+        # Otherwise try to use the entry right away, if this
+        # fails then run the Happy Eyes protocol again.
+        else:
+            sock = None
+            try:
+                sock = socket.socket(family, socket.SOCK_STREAM, proto)
+
+                _set_socket_options(sock, socket_options)
+
+                if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
+                    sock.settimeout(timeout)
+                if source_address:
+                    sock.bind(source_address)
+
+                sock.connect(address)
+                return sock
+            except socket.error as e:
+                err = e
+                sock.close()
+
+    # Couldn't find a cached value or cached value didn't work.
+    host, port = address
+    socks = []
+
+    # Perform a DNS lookup for the address for IPv4 or IPv6 families.
+    family = allowed_gai_family()
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+        af, socktype, proto, canonname, sa = res
+
+        # Create and connect the socket for each address we get back.
+        sock = None
+        try:
+            sock = socket.socket(af, socktype, proto)
+
+            _set_socket_options(sock, socket_options)
+
+            if source_address:
+                sock.bind(source_address)
+            sock.settimeout(0)  # Make the socket non-blocking to use select.
+
+            # We should catch all errors except all non-blocking error codes.
+            errcode = sock.connect_ex(sa)
+            if errcode not in [errno.EINPROGRESS,
+                               errno.EAGAIN,
+                               errno.ENOTCONN]:
+                raise socket.error(errcode)
+
+            socks.append(sock)
+
+        except socket.error as e:
+            err = e
+            if sock is not None:
+                sock.close()
+
+    found = None
+    while socks:
+        select_timeout = timeout
+        if timeout is socket._GLOBAL_DEFAULT_TIMEOUT:
+            select_timeout = None
+
+        # Use select to detect which sockets are connected.
+        connected = wait_for_write(socks, timeout=select_timeout)
+        connected = [sock for sock in socks if sock.fileno() in connected]
+
+        # If no sockets are ready, then we timed out.
+        if not connected:
+            err = socket.error(errno.ETIMEDOUT)
+            for sock in socks:
+                sock.close()
+            break
+
+        # For each "connected" socket, check that it didn't error out.
+        for sock in connected:
+            socks.remove(sock)
+
+            errcode = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+            if errcode:
+                sock.close()
+                err = socket.error(errcode)
+                continue
+
+            found = sock
+
+            # If the socket is IPv6 then we'll use it, otherwise we
+            # should give the other sockets a chance just in case
+            # an IPv4 socket finished first. Always prefer IPv6.
+            if found.family == socket.AF_INET6:
+                break
+
+        if found is not None:
+            break
+
+    for sock in socks:
+        sock.close()
+
+    if found:
+        # We found a proper socket, set the timeout now.
+        if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
+            found.settimeout(timeout)
+        else:
+            found.settimeout(None)
+
+        # Cache the results of Happy Eyes protocol.
+        expires = time.time() + HAPPY_EYES_CACHE_TIME
+        HAPPY_EYES_CACHE[address] = (found.family, found.proto, expires)
+
+        return found
+
+    if err is not None:
+        raise err
+
+    raise socket.error("getaddrinfo returns an empty list")
 
 
 def allowed_gai_family():
@@ -142,3 +267,6 @@ def _has_ipv6(host):
     return has_ipv6
 
 HAS_IPV6 = _has_ipv6('::1')
+HAS_HAPPY_EYES = select and HAS_IPV6
+HAPPY_EYES_CACHE = {}
+HAPPY_EYES_CACHE_TIME = 600
