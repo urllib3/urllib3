@@ -11,15 +11,16 @@ import six
 from collections import namedtuple, Mapping
 
 import time
-if hasattr(time, "monotime"):
+try:
     monotonic = time.monotonic
-else:
+except AttributeError:
     monotonic = time.time
 
 EVENT_READ = (1 << 0)
 EVENT_WRITE = (1 << 1)
 
 HAS_SELECT = True  # Variable that shows whether the platform has a selector.
+_SYSCALL_SENTINEL = object()  # Sentinel in case a system call returns None.
 
 
 def _fileobj_to_fd(fileobj):
@@ -45,20 +46,20 @@ def _syscall_wrapper(func, syscall_timeout, *args, **kwargs):
         expires = None
     else:
         timeout = float(syscall_timeout)
-        if timeout < 0:
-            timeout = 0
-        expires = monotonic() + timeout
+        if timeout < 0.0:
+            expires = None
+        else:
+            expires = monotonic() + timeout
 
-    result = None
-    while expires is None:
-        current_time = monotonic()
-        if current_time > expires:
-            raise OSError(errno=errno.ETIMEDOUT)
+    result = _SYSCALL_SENTINEL
+    while result is _SYSCALL_SENTINEL:
         try:
             result = func(*args, **kwargs)
             break
         except OSError as e:
             if e.errno == errno.EINTR:
+                if expires is not None and monotonic() > expires:
+                    raise OSError(errno=errno.ETIMEDOUT)
                 continue
             raise
     return result
@@ -87,7 +88,7 @@ class _SelectorMapping(Mapping):
         return iter(self._selector._fd_to_key)
 
 
-class BaseSelector(object):
+class BaseSelector:
     """ Abstract Selector class
 
     A select supports registering file objects to be monitored
@@ -102,52 +103,6 @@ class BaseSelector(object):
     and kqueue()) depending on the platform. The 'DefaultSelector' class uses
     the most efficient implementation for the current platform.
     """
-
-    def register(self, fileobj, events, data=None):
-        """ Register a file object for a set of events to monitor. """
-        raise NotImplementedError()
-
-    def unregister(self, fileobj):
-        """ Unregister a file object from being monitored. """
-        raise NotImplementedError()
-
-    def modify(self, fileobj, events, data=None):
-        """ Change a registered file object monitored events and data. """
-        raise NotImplementedError()
-
-    def select(self, timeout=None):
-        """ Perform the actual selection until soime monitored file objects
-        are ready or the timeout expires. """
-        raise NotImplementedError()
-
-    def close(self):
-        """ Close the selector. This must be called to insure that all
-        underlying resources are freed. """
-        raise NotImplementedError()
-
-    def get_key(self, fileobj):
-        """ Return the key associated with a registered file object. """
-        mapping = self.get_map()
-        if mapping is None:
-            raise RuntimeError("Selector is closed")
-        try:
-            return mapping[fileobj]
-        except KeyError:
-            raise KeyError("{0!r} is not registered".format(fileobj))
-
-    def get_map(self):
-        """ Return a mapping of file objects to selector keys """
-        raise NotImplementedError()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        self.close()
-
-
-class _BaseSelectorImpl(BaseSelector):
-    """ Base selector implementation. """
     def __init__(self):
         # Maps file descriptors to keys.
         self._fd_to_key = {}
@@ -176,6 +131,7 @@ class _BaseSelectorImpl(BaseSelector):
             raise
 
     def register(self, fileobj, events, data=None):
+        """ Register a file object for a set of events to monitor. """
         if (not events) or (events & ~(EVENT_READ | EVENT_WRITE)):
             raise ValueError("Invalid events: {0!r}".format(events))
 
@@ -189,6 +145,7 @@ class _BaseSelectorImpl(BaseSelector):
         return key
 
     def unregister(self, fileobj):
+        """ Unregister a file object from being monitored. """
         try:
             key = self._fd_to_key.pop(self._fileobj_lookup(fileobj))
         except KeyError:
@@ -196,6 +153,7 @@ class _BaseSelectorImpl(BaseSelector):
         return key
 
     def modify(self, fileobj, events, data=None):
+        """ Change a registered file object monitored events and data. """
         # NOTE: Some subclasses optimize this operation even further.
         try:
             key = self._fd_to_key[self._fileobj_lookup(fileobj)]
@@ -213,11 +171,29 @@ class _BaseSelectorImpl(BaseSelector):
 
         return key
 
+    def select(self, timeout=None):
+        """ Perform the actual selection until soime monitored file objects
+        are ready or the timeout expires. """
+        raise NotImplementedError()
+
     def close(self):
+        """ Close the selector. This must be called to insure that all
+        underlying resources are freed. """
         self._fd_to_key.clear()
         self._map = None
 
+    def get_key(self, fileobj):
+        """ Return the key associated with a registered file object. """
+        mapping = self.get_map()
+        if mapping is None:
+            raise RuntimeError("Selector is closed")
+        try:
+            return mapping[fileobj]
+        except KeyError:
+            raise KeyError("{0!r} is not registered".format(fileobj))
+
     def get_map(self):
+        """ Return a mapping of file objects to selector keys """
         return self._map
 
     def _key_from_fd(self, fd):
@@ -228,8 +204,15 @@ class _BaseSelectorImpl(BaseSelector):
         except KeyError:
             return None
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+
 if hasattr(select, "select"):
-    class SelectSelector(_BaseSelectorImpl):
+    class SelectSelector(BaseSelector):
         """ Select-based selector. """
         def __init__(self):
             super(SelectSelector, self).__init__()
@@ -241,7 +224,7 @@ if hasattr(select, "select"):
             if events & EVENT_READ:
                 self._readers.add(key.fd)
             if events & EVENT_WRITE:
-                self._readers.add(key.fd)
+                self._writers.add(key.fd)
             return key
 
         def unregister(self, fileobj):
