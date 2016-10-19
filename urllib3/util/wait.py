@@ -121,19 +121,25 @@ def wait_for_read(socks, timeout=None):
     """ Waits for reading to be available from a list of sockets
     or optionally a single socket if passed in. Returns a list of
     sockets that can be read from immediately. """
-    if not HAS_SELECT:
-        raise ValueError('Platform does not have a selector.')
-    if not isinstance(socks, list):
-        socks = [socks]
-    return _READ_SELECTOR(socks, timeout)
+    try:
+        if not HAS_SELECT:
+            raise ValueError('Platform does not have a selector.')
+        if not isinstance(socks, list):
+            socks = [socks]
+        return _READ_SELECTOR(socks, timeout)
+    except OSError:
+        return []
 
 
 def wait_for_write(socks, timeout=None):
     """ Waits for writing to be available from a list of sockets
     or optionally a single socket if passed in. Returns a list of
     sockets that can be written to immediately. """
-    if not HAS_SELECT:
-        raise ValueError('Platform does not have a selector.')
-    if not isinstance(socks, list):
-        socks = [socks]
-    return _WRITE_SELECTOR(socks, timeout)
+    try:
+        if not HAS_SELECT:
+            raise ValueError('Platform does not have a selector.')
+        if not isinstance(socks, list):
+            socks = [socks]
+        return _WRITE_SELECTOR(socks, timeout)
+    except OSError:
+        return []
