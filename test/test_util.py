@@ -605,6 +605,17 @@ class TestUtil(unittest.TestCase):
             with patch('urllib3.util.wait._WRITE_SELECTOR', wait._select_wait_for_write):
                 self._exercise_selector()
 
+    def test_no_selector(self):
+        if not hasattr(socket, "socketpair"):
+            raise SkipTest("Platform doesn't have socketpair")
+
+        with patch('urllib3.util.wait.HAS_SELECT', False):
+            rd, wr = socket.socketpair()
+            with self.assertRaises(ValueError):
+                wait_for_read([rd])
+            with self.assertRaises(ValueError):
+                wait_for_write([wr])
+
     def _exercise_selector(self):
         """ Helper function to exercise the selectors """
         self.assertEqual([], wait_for_read([], timeout=0))
@@ -621,3 +632,12 @@ class TestUtil(unittest.TestCase):
         wr.send(b'a')
         readers = wait_for_read([rd], timeout=0)
         self.assertEqual(readers, [rd.fileno()])
+
+        wr.close()
+        rd.close()
+
+        writers = wait_for_write(wr, timeout=0)
+        self.assertEqual(writers, [])
+
+        readers = wait_for_read(rd, timeout=0)
+        self.assertEqual(readers, [])

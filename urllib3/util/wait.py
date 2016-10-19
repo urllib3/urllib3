@@ -81,12 +81,14 @@ if hasattr(select, "select"):
     def _select_wait_for_read(socks, timeout=None):
         if not socks:  # Windows is not tolerant of empty selects.
             return []
-        return select.select([s.fileno() for s in socks], [], [], timeout)[0]
+        filenos = [s.fileno() for s in socks if s.fileno() > 0]
+        return select.select(filenos, [], [], timeout)[0]
 
     def _select_wait_for_write(socks, timeout=None):
         if not socks:  # Windows is not tolerant of empty selects.
             return []
-        return select.select([], [s.fileno() for s in socks], [], timeout)[1]
+        filenos = [s.fileno() for s in socks if s.fileno() > 0]
+        return select.select([], filenos, [], timeout)[1]
 
 # Platform doesn't have a selector
 else:
@@ -121,11 +123,11 @@ def wait_for_read(socks, timeout=None):
     """ Waits for reading to be available from a list of sockets
     or optionally a single socket if passed in. Returns a list of
     sockets that can be read from immediately. """
+    if not HAS_SELECT:
+        raise ValueError('Platform does not have a selector.')
+    if not isinstance(socks, list):
+        socks = [socks]
     try:
-        if not HAS_SELECT:
-            raise ValueError('Platform does not have a selector.')
-        if not isinstance(socks, list):
-            socks = [socks]
         return _READ_SELECTOR(socks, timeout)
     except OSError:
         return []
@@ -135,11 +137,11 @@ def wait_for_write(socks, timeout=None):
     """ Waits for writing to be available from a list of sockets
     or optionally a single socket if passed in. Returns a list of
     sockets that can be written to immediately. """
+    if not HAS_SELECT:
+        raise ValueError('Platform does not have a selector.')
+    if not isinstance(socks, list):
+        socks = [socks]
     try:
-        if not HAS_SELECT:
-            raise ValueError('Platform does not have a selector.')
-        if not isinstance(socks, list):
-            socks = [socks]
         return _WRITE_SELECTOR(socks, timeout)
     except OSError:
         return []
