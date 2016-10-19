@@ -31,12 +31,18 @@ if hasattr(select, "kqueue"):
 # Linux 2.5.44+
 if hasattr(select, "epoll"):
     def _epoll_wait_for_read(socks, timeout=None):
+        if timeout is None:
+            timeout = -1
+        timeout = float(timeout)  # Epoll must take a float, no ints.
         epoll = select.epoll()
         for sock in socks:
             epoll.register(sock.fileno(), select.EPOLLIN)
         return [fd for fd, _ in epoll.poll(timeout)]
 
     def _epoll_wait_for_write(socks, timeout=None):
+        if timeout is None:
+            timeout = -1
+        timeout = float(timeout)  # Epoll must take a float, no ints.
         epoll = select.epoll()
         for sock in socks:
             epoll.register(sock.fileno(), select.EPOLLOUT)
