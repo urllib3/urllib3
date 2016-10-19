@@ -41,8 +41,7 @@ from urllib3.packages import six
 from urllib3.util import wait
 from urllib3.util.wait import (
     wait_for_read,
-    wait_for_write,
-    HAS_SELECT
+    wait_for_write
 )
 
 from . import clear_warnings
@@ -611,10 +610,16 @@ class TestUtil(unittest.TestCase):
 
         with patch('urllib3.util.wait.HAS_SELECT', False):
             rd, wr = socket.socketpair()
-            with self.assertRaises(ValueError):
+            try:
                 wait_for_read([rd])
-            with self.assertRaises(ValueError):
+                self.fail("wait_for_read() didn't raise ValueError")
+            except ValueError:
+                pass
+            try:
                 wait_for_write([wr])
+                self.fail("wait_for_read() didn't raise ValueError")
+            except ValueError:
+                pass
 
     def _exercise_selector(self):
         """ Helper function to exercise the selectors """
