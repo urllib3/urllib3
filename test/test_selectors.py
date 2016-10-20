@@ -11,8 +11,20 @@ except (AttributeError, ImportError):
 
 from urllib3.util import selectors
 
+try:
+    from unittest import skipUnless
+except (AttributeError, ImportError):
+    def skipUnless(condition, reason):
+        """
+        Skip a test unless the condition is true.
+        """
+        if condition:
+            return lambda x: x
+        else:
+            return lambda x: None
 
-@unittest.skipUnless(selectors.HAS_SELECT and hasattr(socket, "socketpair"),
+
+@skipUnless(selectors.HAS_SELECT and hasattr(socket, "socketpair"),
                      "Platform doesn't have a selector and socketpair")
 class WaitForIOTest(unittest.TestCase):
     """ Tests for the higher level wait_for_* functions. """
@@ -53,7 +65,7 @@ class WaitForIOTest(unittest.TestCase):
         selectors.wait_for_read([rd], timeout=1.0)
         self.assertTrue(0.8 < monotonic() - t < 1.2)
 
-    @unittest.skipUnless(hasattr(signal, "alarm"),
+    @skipUnless(hasattr(signal, "alarm"),
                          "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_no_event(self):
         rd, wr = self.make_socketpair()
@@ -69,7 +81,7 @@ class WaitForIOTest(unittest.TestCase):
         self.assertEqual([], selectors.wait_for_read(rd, timeout=2.0))
         self.assertLess(monotonic() - t, 2.2)
 
-    @unittest.skipUnless(hasattr(signal, "alarm"),
+    @skipUnless(hasattr(signal, "alarm"),
                          "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_with_event(self):
         rd, wr = self.make_socketpair()
@@ -87,7 +99,7 @@ class WaitForIOTest(unittest.TestCase):
         self.assertEqual(rd.recv(1), b'x')
 
 
-@unittest.skipUnless(selectors.HAS_SELECT and hasattr(socket, "socketpair"),
+@skipUnless(selectors.HAS_SELECT and hasattr(socket, "socketpair"),
                      "Platform doesn't have a selector and socketpair")
 class BaseSelectorTestCase(unittest.TestCase):
     """ Implements the tests that each type of selector must pass. """
@@ -202,7 +214,7 @@ class BaseSelectorTestCase(unittest.TestCase):
         s.unregister(rd)
         s.unregister(wr)
 
-    @unittest.skipUnless(os.name == "posix",
+    @skipUnless(os.name == "posix",
                          "Platform doesn't support os.dup2")
     def test_unregister_after_reuse_fd(self):
         s, rd, wr = self.standard_setup()
@@ -282,7 +294,7 @@ class BaseSelectorTestCase(unittest.TestCase):
         self.assertEqual(0, len(s.select(timeout=1)))
         self.assertTrue(0.8 <= monotonic() - t <= 1.2)
 
-    @unittest.skipUnless(hasattr(signal, "alarm"),
+    @skipUnless(hasattr(signal, "alarm"),
                          "Platform doesn't have signal.alarm()")
     def test_select_interrupt_no_event(self):
         s = self.make_selector()
@@ -300,7 +312,7 @@ class BaseSelectorTestCase(unittest.TestCase):
         self.assertEqual([], s.select(2))
         self.assertLess(monotonic() - t, 2.2)
 
-    @unittest.skipUnless(hasattr(signal, "alarm"),
+    @skipUnless(hasattr(signal, "alarm"),
                          "Platform doesn't have signal.alarm()")
     def test_select_interrupt_with_event(self):
         s = self.make_selector()
@@ -328,25 +340,25 @@ class BaseSelectorTestCase(unittest.TestCase):
             self.assertGreaterEqual(fd, 0)
 
 
-@unittest.skipUnless(hasattr(selectors, "SelectSelector"),
+@skipUnless(hasattr(selectors, "SelectSelector"),
                      "Platform doesn't have a SelectSelector")
 class SelectSelectorTestCase(BaseSelectorTestCase):
     SELECTOR = getattr(selectors, "SelectSelector", None)
 
 
-@unittest.skipUnless(hasattr(selectors, "PollSelector"),
+@skipUnless(hasattr(selectors, "PollSelector"),
                      "Platform doesn't have a PollSelector")
 class PollSelectorTestCase(BaseSelectorTestCase):
     SELECTOR = getattr(selectors, "PollSelector", None)
 
 
-@unittest.skipUnless(hasattr(selectors, "EpollSelector"),
+@skipUnless(hasattr(selectors, "EpollSelector"),
                          "Platform doesn't have an EpollSelector")
 class EpollSelectorTestCase(BaseSelectorTestCase):
     SELECTOR = getattr(selectors, "EpollSelector", None)
 
 
-@unittest.skipUnless(hasattr(selectors, "KqueueSelector"),
+@skipUnless(hasattr(selectors, "KqueueSelector"),
                          "Platform doesn't have a KqueueSelector")
 class KqueueSelectorTestCase(BaseSelectorTestCase):
     SELECTOR = getattr(selectors, "KqueueSelector", None)
