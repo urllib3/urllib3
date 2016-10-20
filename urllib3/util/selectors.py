@@ -340,7 +340,7 @@ if hasattr(select, "epoll"):
             return self._epoll.fileno()
 
         def register(self, fileobj, events, data=None):
-            key = super(BaseSelector, self).register(fileobj, events, data)
+            key = super(EpollSelector, self).register(fileobj, events, data)
             events_mask = 0
             if events & EVENT_READ:
                 events_mask |= select.EPOLLIN
@@ -351,7 +351,7 @@ if hasattr(select, "epoll"):
             return key
 
         def unregister(self, fileobj):
-            key = super(BaseSelector, self).unregister(fileobj)
+            key = super(EpollSelector, self).unregister(fileobj)
             try:
                 _syscall_wrapper(self._epoll.unregister, None,
                                  False, key.fd)
@@ -391,7 +391,7 @@ if hasattr(select, "epoll"):
 
         def close(self):
             self._epoll.close()
-            super(BaseSelector, self).close()
+            super(EpollSelector, self).close()
 
 
 # Choose the best implementation, roughly:
