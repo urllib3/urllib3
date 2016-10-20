@@ -14,7 +14,7 @@ from collections import namedtuple, Mapping
 import time
 try:
     monotonic = time.monotonic
-except AttributeError:  # Python 3.3<
+except (AttributeError, ImportError):  # Python 3.3<
     monotonic = time.time
 
 EVENT_READ = (1 << 0)
