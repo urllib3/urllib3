@@ -64,6 +64,11 @@ def _syscall_wrapper(func, syscall_timeout, recalc_timeout, *args, **kwargs):
         try:
             result = func(*args, **kwargs)
             break
+
+        # OSError is thrown by select.select
+        # IOError is thrown by select.epoll.poll
+        # select.error is thrown by select.poll.poll
+        # Aren't we thankful for Python 3.x rework for exceptions?
         except (OSError, IOError, select.error) as e:
             # select.error wasn't a subclass of OSError in the past.
             if ((hasattr(e, "errno") and e.errno == errno.EINTR) or
@@ -355,7 +360,7 @@ if hasattr(select, "epoll"):
             try:
                 _syscall_wrapper(self._epoll.unregister, None,
                                  False, key.fd)
-            except OSError:
+            except (OSError, IOError):
                 # This can occur when the fd was closed since registry.
                 pass
             return key
@@ -370,6 +375,8 @@ if hasattr(select, "epoll"):
                     # like PollSelector. Just for better rounding.
                     timeout = math.ceil(timeout * 1e3) * 1e-3
                 timeout = float(timeout)
+            else:
+                timeout = -1.0  # epoll.poll() must have a float.
 
             # We always want at least 1 to ensure that select can be called
             # with no file descriptors registered. Otherwise will fail.
