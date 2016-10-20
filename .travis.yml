@@ -4,6 +4,7 @@ script:
 before_install:
   - openssl version
 after_success:
+  - coverage combine
   - codecov --env TRAVIS_OS_NAME,TOXENV
 cache:
   directories:
