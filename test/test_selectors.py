@@ -369,35 +369,6 @@ class BaseSelectorTestCase(unittest.TestCase):
             self.assertTrue(isinstance(fd, int))
             self.assertGreaterEqual(fd, 0)
 
-    @skipUnless(resource, "Could not import the resource module")
-    def test_fd_setsize(self):
-        # All selectors should be able to take the soft limit on number
-        # of fds can be opened. Use the resource module to find FD_SETSIZE.
-        fd_setsize, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
-
-        try:  # If we're on a *BSD system, the limit tag is different.
-            bsd_nofile, _ = resource.getrlimit(resource.RLIMIT_OFILE)
-            if bsd_nofile < fd_setsize:
-                fd_setsize = bsd_nofile
-        except (OSError, resource.error):
-            pass
-
-        s = self.make_selector()
-
-        # Guard against already allocated FDs
-        fd_setsize -= 256
-        fd_setsize = max(0, fd_setsize)
-
-        for i in range(fd_setsize // 2):
-            try:
-                rd, wr = self.make_socketpair()
-            except (OSError, socket.error) as e:
-                self.fail("Couldn't create enough fds.")
-            s.register(rd, selectors.EVENT_READ)
-            s.register(wr, selectors.EVENT_WRITE)
-
-        self.assertEqual(fd_setsize // 2, len(s.select()))
-
 
 class ScalableSelectorMixin(object):
     """ Mixin to test selectors that allow more fds than FD_SETSIZE """
