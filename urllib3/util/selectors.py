@@ -64,9 +64,10 @@ def _syscall_wrapper(func, syscall_timeout, recalc_timeout, *args, **kwargs):
         try:
             result = func(*args, **kwargs)
             break
-        except OSError as e:
-            print(e.errno)
-            if e.errno == errno.EINTR:
+        except (OSError, select.error) as e:
+            # select.error wasn't a subclass of OSError in the past.
+            if ((hasattr(e, "errno") and e.errno == errno.EINTR) or
+                    (hasattr(e, "args") and e.args[0] == errno.EINTR)):
                 if expires is not None:
                     current_time = monotonic()
                     if current_time > expires:
@@ -306,8 +307,8 @@ if hasattr(select, "poll"):
                 # select.poll.poll() has a resolution of 1 millisecond,
                 # round away from zero to wait *at least* timeout seconds.
                 timeout = math.ceil(timeout * 1e3)
-            result =  self._poll.poll(timeout)
-            print(result)
+
+            result = self._poll.poll(timeout)
             return result
 
         def select(self, timeout=None):
@@ -372,4 +373,3 @@ def wait_for_write(socks, timeout=None):
         selector.register(sock, EVENT_WRITE)
     return [key[0].fileobj for key in
             selector.select(timeout) if key[1] & EVENT_WRITE]
-
