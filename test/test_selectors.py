@@ -371,17 +371,15 @@ class BaseSelectorTestCase(unittest.TestCase):
         s.register(rd, selectors.EVENT_READ)
         key = s.get_key(rd)
 
-        alarms = 2
+        def second_alarm(*args):
+            wr.send(b'x')
 
-        def multi_alarm():
-            global alarms
-            alarms -= 1
-            if alarms > 0:
-                signal.alarm(1)
-            else:
-                wr.send(b'x')
+        def first_alarm(*args):
+            signal.alarm(0)
+            signal.alarm(1)
+            signal.signal(signal.SIGALRM, second_alarm)
 
-        sigalrm_handler = signal.signal(signal.SIGALRM, lambda *args: wr.send(b'x'))
+        sigalrm_handler = signal.signal(signal.SIGALRM, first_alarm)
         self.addCleanup(signal.signal, signal.SIGALRM, sigalrm_handler)
         self.addCleanup(signal.alarm, 0)
 
