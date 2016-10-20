@@ -313,7 +313,8 @@ if hasattr(select, "poll"):
 
         def select(self, timeout=None):
             ready = []
-            fd_events = _syscall_wrapper(self._wrap_poll, timeout, True, timeout)
+            fd_events = _syscall_wrapper(self._wrap_poll, timeout,
+                                         True, timeout=timeout)
             for fd, event_mask in fd_events:
                 events = 0
                 if event_mask & ~select.POLLIN:
