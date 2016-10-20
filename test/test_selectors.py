@@ -320,6 +320,13 @@ class BaseSelectorTestCase(unittest.TestCase):
         self.assertLess(monotonic() - t, 2.2)
         self.assertEqual(rd.recv(1), b'x')
 
+    def test_fileno(self):
+        s = self.make_selector()
+        if hasattr(s, "fileno"):
+            fd = s.fileno()
+            self.assertTrue(isinstance(fd, int))
+            self.assertGreaterEqual(fd, 0)
+
 
 @unittest.skipUnless(hasattr(selectors, "SelectSelector"),
                      "Platform doesn't have a SelectSelector")
