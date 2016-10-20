@@ -42,13 +42,13 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
             ;;
     esac
     pyenv rehash
-    python -m pip install -U setuptools
-    python -m pip install --user virtualenv
+    pip install -U setuptools
+    pip install --user virtualenv
 else
-    python -m pip install virtualenv
+    pip install virtualenv
 fi
 
-python -m pip install tox
+pip install tox
 
 if [[ "${TOXENV}" == "gae" && ! -d ${GAE_PYTHONPATH} ]]; then
   python _travis/fetch_gae_sdk.py ;
