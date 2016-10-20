@@ -3,7 +3,13 @@ import errno
 import os
 import signal
 import socket
-import unittest
+
+try:  # Python 2.6 unittest module doesn't have skip decorators.
+    from unittest import skip, skipIf, skipUnless
+    import unittest
+except ImportError:
+    from unittest2 import skip, skipIf, skipUnless
+    import unittest2 as unittest
 
 try:  # Python 2.x doesn't define time.monotonic. time.time will have to do.
     from time import monotonic
@@ -14,11 +20,6 @@ try:  # Python 2.6 doesn't have the resource module.
     import resource
 except ImportError:
     resource = None
-
-try:  # Python 2.6 unittest module doesn't have skip decorators.
-    from unittest import skip, skipIf, skipUnless
-except ImportError:
-    from unittest2 import skip, skipIf, skipUnless
 
 from urllib3.util import selectors
 
@@ -370,7 +371,7 @@ class BaseSelectorTestCase(unittest.TestCase):
             self.assertGreaterEqual(fd, 0)
 
 
-class ScalableSelectorMixin(object):
+class ScalableSelectorMixin:
     """ Mixin to test selectors that allow more fds than FD_SETSIZE """
     @skipUnless(resource, "Could not import the resource module")
     def test_above_fd_setsize(self):
