@@ -64,7 +64,7 @@ def _syscall_wrapper(func, syscall_timeout, recalc_timeout, *args, **kwargs):
         try:
             result = func(*args, **kwargs)
             break
-        except (OSError, select.error) as e:
+        except (OSError, IOError, select.error) as e:
             # select.error wasn't a subclass of OSError in the past.
             if ((hasattr(e, "errno") and e.errno == errno.EINTR) or
                     (hasattr(e, "args") and e.args[0] == errno.EINTR)):
@@ -369,6 +369,7 @@ if hasattr(select, "epoll"):
                     # but luckily takes seconds so we don't need a wrapper
                     # like PollSelector. Just for better rounding.
                     timeout = math.ceil(timeout * 1e3) * 1e-3
+                timeout = float(timeout)
 
             # We always want at least 1 to ensure that select can be called
             # with no file descriptors registered. Otherwise will fail.
