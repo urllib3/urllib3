@@ -3,6 +3,8 @@ script:
   - ./_travis/run.sh
 before_install:
   - openssl version
+after_success:
+  - codecov --env TRAVIS_OS_NAME,TOXENV
 cache:
   directories:
   - ${HOME}/.cache
