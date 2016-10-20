@@ -264,7 +264,8 @@ if hasattr(select, "select"):
             timeout = None if timeout is None else max(timeout, 0.0)
             ready = []
             r, w, _ = _syscall_wrapper(select.select, timeout, True,
-                            self._readers, self._writers, [], timeout)
+                                       self._readers, self._writers,
+                                       [], timeout)
             r = set(r)
             w = set(w)
             for fd in r | w:
@@ -384,7 +385,8 @@ if hasattr(select, "epoll"):
 
             ready = []
             fd_events = _syscall_wrapper(self._epoll.poll, timeout, True,
-                                        timeout=timeout, maxevents=max_events)
+                                         timeout=timeout,
+                                         maxevents=max_events)
             for fd, event_mask in fd_events:
                 events = 0
                 if event_mask & ~select.EPOLLIN:
@@ -400,6 +402,83 @@ if hasattr(select, "epoll"):
         def close(self):
             self._epoll.close()
             super(EpollSelector, self).close()
+
+
+if hasattr(select, "kqueue"):
+    class KqueueSelector(BaseSelector):
+        """ Kqueue / Kevent-based selector """
+        def __init__(self):
+            super(KqueueSelector, self).__init__()
+            self._kqueue = select.kqueue()
+
+        def fileno(self):
+            return self._kqueue.fileno()
+
+        def register(self, fileobj, events, data=None):
+            key = super(KqueueSelector, self).register(fileobj, events, data)
+            if events & EVENT_READ:
+                kevent = select.kevent(key.fd,
+                                       select.KQ_FILTER_READ,
+                                       select.KQ_EV_ADD)
+                _syscall_wrapper(self._kqueue.control, None, False,
+                                 [kevent], 0, 0)
+            if events & EVENT_WRITE:
+                kevent = select.kevent(key.fd,
+                                       select.KQ_FILTER_WRITE,
+                                       select.KQ_EV_ADD)
+                _syscall_wrapper(self._kqueue.control, None, False,
+                                 [kevent], 0, 0)
+            return key
+
+        def unregister(self, fileobj):
+            key = super(KqueueSelector, self).unregister(fileobj)
+            if key.events & EVENT_READ:
+                kevent = select.kevent(key.fd,
+                                       select.KQ_FILTER_READ,
+                                       select.KQ_EV_DELETE)
+                try:
+                    _syscall_wrapper(self._kqueue.control, None,
+                                     False, [kevent], 0, 0)
+                except OSError:
+                    pass
+            if key.events & EVENT_WRITE:
+                kevent = select.kevent(key.fd,
+                                       select.KQ_FILTER_WRITE,
+                                       select.KQ_EV_DELETE)
+                try:
+                    _syscall_wrapper(self._kqueue.control, None,
+                                     False, [kevent], 0, 0)
+                except OSError:
+                    pass
+            return key
+
+        def select(self, timeout=None):
+            if timeout is not None:
+                timeout = max(timeout, 0)
+
+            max_events = len(self._fd_to_key)
+            ready = []
+
+            kevent_list = _syscall_wrapper(self._kqueue.control,
+                                           timeout, True, None,
+                                           max_events, timeout)
+            for kevent in kevent_list:
+                fd = kevent.ident
+                event_mask = kevent.filter
+                events = 0
+                if event_mask == select.KQ_FILTER_READ:
+                    events |= EVENT_READ
+                if event_mask == select.KQ_FILTER_WRITE:
+                    events |= EVENT_WRITE
+
+                key = self._key_from_fd(fd)
+                if key:
+                    ready.append((key, events & key.events))
+            return ready
+
+        def close(self):
+            self._kqueue.close()
+            super(KqueueSelector, self).close()
 
 
 # Choose the best implementation, roughly:
