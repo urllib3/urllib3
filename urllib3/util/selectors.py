@@ -274,6 +274,7 @@ if hasattr(select, "select"):
                     ready.append((key, events & key.events))
             return ready
 
+
 if hasattr(select, "poll"):
     class PollSelector(BaseSelector):
         """ Poll-based selector """
@@ -299,14 +300,13 @@ if hasattr(select, "poll"):
         def _wrap_poll(self, timeout=None):
             """ Wrapper function for select.poll.poll() so that
             _syscall_wrapper can work with only seconds. """
-            if timeout is None:
-                timeout = None
-            elif timeout <= 0:
-                timeout = 0
-            else:
-                # select.poll.poll() has a resolution of 1 millisecond,
-                # round away from zero to wait *at least* timeout seconds.
-                timeout = math.ceil(timeout * 1e3)
+            if timeout is not None:
+                if timeout <= 0:
+                    timeout = 0
+                else:
+                    # select.poll.poll() has a resolution of 1 millisecond,
+                    # round away from zero to wait *at least* timeout seconds.
+                    timeout = math.ceil(timeout * 1e3)
 
             result = self._poll.poll(timeout)
             return result
@@ -328,6 +328,72 @@ if hasattr(select, "poll"):
 
             return ready
 
+
+if hasattr(select, "epoll"):
+    class EpollSelector(BaseSelector):
+        """ Epoll-based selector """
+        def __init__(self):
+            super(BaseSelector, self).__init__()
+            self._epoll = select.epoll()
+
+        def fileno(self):
+            return self._epoll.fileno()
+
+        def register(self, fileobj, events, data=None):
+            key = super(BaseSelector, self).register(fileobj, events, data)
+            events_mask = 0
+            if events & EVENT_READ:
+                events_mask |= select.EPOLLIN
+            if events & EVENT_WRITE:
+                events_mask |= select.EPOLLOUT
+            _syscall_wrapper(self._epoll.register, None,
+                             False, key.fd, events_mask)
+            return key
+
+        def unregister(self, fileobj):
+            key = super(BaseSelector, self).unregister(fileobj)
+            try:
+                _syscall_wrapper(self._epoll.unregister, None,
+                                 False, key.fd)
+            except OSError:
+                # This can occur when the fd was closed since registry.
+                pass
+            return key
+
+        def select(self, timeout=None):
+            if timeout is not None:
+                if timeout <= 0:
+                    timeout = 0.0
+                else:
+                    # select.epoll.poll() has a resolution of 1 millisecond
+                    # but luckily takes seconds so we don't need a wrapper
+                    # like PollSelector. Just for better rounding.
+                    timeout = math.ceil(timeout * 1e3) * 1e-3
+
+            # We always want at least 1 to ensure that select can be called
+            # with no file descriptors registered. Otherwise will fail.
+            max_events = max(len(self._fd_to_key), 1)
+
+            ready = []
+            fd_events = _syscall_wrapper(self._epoll.poll, timeout, True,
+                                        timeout=timeout, maxevents=max_events)
+            for fd, event_mask in fd_events:
+                events = 0
+                if event_mask & ~select.EPOLLIN:
+                    events |= EVENT_WRITE
+                if event_mask & ~select.EPOLLOUT:
+                    events |= EVENT_READ
+
+                key = self._key_from_fd(fd)
+                if key:
+                    ready.append((key, events & key.events))
+            return ready
+
+        def close(self):
+            self._epoll.close()
+            super(BaseSelector, self).close()
+
+
 # Choose the best implementation, roughly:
 # kqueue == epoll > poll > select. Devpoll not supported. (See above)
 # select() also can't accept a FD > FD_SETSIZE (usually around 1024)
@@ -337,7 +403,7 @@ elif 'EpollSelector' in globals():  # Platform-specific: Linux
     DefaultSelector = EpollSelector
 elif 'PollSelector' in globals():  # Platform-specific: Linux
     DefaultSelector = PollSelector
-elif 'SelectSelector' in globals(): # Platform-specific: Windows
+elif 'SelectSelector' in globals():  # Platform-specific: Windows
     DefaultSelector = SelectSelector
 else:  # Platform-specific: AppEngine
     def no_selector(_):
