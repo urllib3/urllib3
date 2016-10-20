@@ -372,7 +372,7 @@ if hasattr(select, "epoll"):
 
             # We always want at least 1 to ensure that select can be called
             # with no file descriptors registered. Otherwise will fail.
-            max_events = max(len(self._fd_to_key), 1)
+            max_events = max(len(super(EpollSelector, self)._fd_to_key), 1)
 
             ready = []
             fd_events = _syscall_wrapper(self._epoll.poll, timeout, True,
