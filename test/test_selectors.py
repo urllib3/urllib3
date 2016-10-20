@@ -6,7 +6,7 @@ import unittest
 
 try:
     from time import monotonic
-except AttributeError:
+except (AttributeError, ImportError):
     from time import time as monotonic
 
 from urllib3.util import selectors

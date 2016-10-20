@@ -12,9 +12,9 @@ import six
 from collections import namedtuple, Mapping
 
 import time
-if hasattr(time, "monotonic"):
+try:
     monotonic = time.monotonic
-else:  # Python 3.3<
+except (AttributeError, ImportError):  # Python 3.3<
     monotonic = time.time
 
 EVENT_READ = (1 << 0)
