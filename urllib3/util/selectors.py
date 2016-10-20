@@ -104,7 +104,7 @@ class _SelectorMapping(Mapping):
         return iter(self._selector._fd_to_key)
 
 
-class BaseSelector:
+class BaseSelector(object):
     """ Abstract Selector class
 
     A select supports registering file objects to be monitored
