@@ -8,6 +8,8 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     brew update || brew update
 
     brew outdated openssl || brew upgrade openssl
+    export LDFLAGS="-L$(brew --prefix openssl)/lib"
+    export CFLAGS="-I$(brew --prefix openssl)/include"
 
     # install pyenv
     git clone --depth 1 https://github.com/yyuu/pyenv.git ~/.pyenv
