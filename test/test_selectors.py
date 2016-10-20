@@ -10,6 +10,7 @@ except (AttributeError, ImportError):
     from time import time as monotonic
 
 from urllib3.util import selectors
+from nose.plugins.skip import SkipTest
 
 try:
     from unittest import skipUnless
@@ -18,10 +19,10 @@ except (AttributeError, ImportError):
         """
         Skip a test unless the condition is true.
         """
-        if condition:
+        if not condition:
             return lambda x: x
         else:
-            return lambda x: None
+            raise SkipTest(reason)
 
 
 @skipUnless(selectors.HAS_SELECT and hasattr(socket, "socketpair"),
