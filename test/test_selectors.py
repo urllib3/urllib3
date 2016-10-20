@@ -1,18 +1,29 @@
 from __future__ import with_statement
+import errno
 import os
 import signal
 import socket
 import unittest
 
-try:
+try:  # Python 2.x doesn't define time.monotonic. time.time will have to do.
     from time import monotonic
-except (AttributeError, ImportError):
+except ImportError:
     from time import time as monotonic
+
+try:  # Python 2.6 doesn't have the resource module.
+    import resource
+except ImportError:
+    resource = None
+
+try:  # Python 2.6 unittest module doesn't have skip decorators.
+    from unittest import skip, skipIf, skipUnless
+except ImportError:
+    from unittest2 import skip, skipIf, skipUnless
 
 from urllib3.util import selectors
 
 
-@unittest.skipUnless(selectors.HAS_SELECT and hasattr(socket, "socketpair"),
+@skipUnless(selectors.HAS_SELECT and hasattr(socket, "socketpair"),
                      "Platform doesn't have a selector and socketpair")
 class WaitForIOTest(unittest.TestCase):
     """ Tests for the higher level wait_for_* functions. """
@@ -53,7 +64,7 @@ class WaitForIOTest(unittest.TestCase):
         selectors.wait_for_read([rd], timeout=1.0)
         self.assertTrue(0.8 < monotonic() - t < 1.2)
 
-    @unittest.skipUnless(hasattr(signal, "alarm"),
+    @skipUnless(hasattr(signal, "alarm"),
                          "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_no_event(self):
         rd, wr = self.make_socketpair()
@@ -69,7 +80,7 @@ class WaitForIOTest(unittest.TestCase):
         self.assertEqual([], selectors.wait_for_read(rd, timeout=2.0))
         self.assertLess(monotonic() - t, 2.2)
 
-    @unittest.skipUnless(hasattr(signal, "alarm"),
+    @skipUnless(hasattr(signal, "alarm"),
                          "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_with_event(self):
         rd, wr = self.make_socketpair()
@@ -87,7 +98,7 @@ class WaitForIOTest(unittest.TestCase):
         self.assertEqual(rd.recv(1), b'x')
 
 
-@unittest.skipUnless(selectors.HAS_SELECT and hasattr(socket, "socketpair"),
+@skipUnless(selectors.HAS_SELECT and hasattr(socket, "socketpair"),
                      "Platform doesn't have a selector and socketpair")
 class BaseSelectorTestCase(unittest.TestCase):
     """ Implements the tests that each type of selector must pass. """
@@ -95,6 +106,12 @@ class BaseSelectorTestCase(unittest.TestCase):
 
     def make_socketpair(self):
         rd, wr = socket.socketpair()
+
+        # Make non-blocking so we get errors if the
+        # sockets are interacted with but not ready.
+        rd.settimeout(0.0)
+        wr.settimeout(0.0)
+
         self.addCleanup(rd.close)
         self.addCleanup(wr.close)
         return rd, wr
@@ -202,7 +219,7 @@ class BaseSelectorTestCase(unittest.TestCase):
         s.unregister(rd)
         s.unregister(wr)
 
-    @unittest.skipUnless(os.name == "posix",
+    @skipUnless(os.name == "posix",
                          "Platform doesn't support os.dup2")
     def test_unregister_after_reuse_fd(self):
         s, rd, wr = self.standard_setup()
@@ -249,6 +266,31 @@ class BaseSelectorTestCase(unittest.TestCase):
         s = self.make_selector()
         self.assertEqual([], s.select(timeout=0.001))
 
+    def test_select_many_events(self):
+        s = self.make_selector()
+        readers = []
+        writers = []
+        for i in range(256):
+            rd, wr = self.make_socketpair()
+            readers.append(rd)
+            writers.append(wr)
+            s.register(rd, selectors.EVENT_READ)
+
+        self.assertEqual(0, len(s.select(0.001)))
+
+        # Write a byte to each end.
+        for wr in writers:
+            wr.send(b'x')
+
+        self.assertEqual(256, len(s.select(0.001)))
+
+        # Now read the byte from each endpoint.
+        for rd in readers:
+            data = rd.recv(1)
+            self.assertEqual(b'x', data)
+
+        self.assertEqual(0, len(s.select(0.001)))
+
     def test_select_timeout_none(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
@@ -282,7 +324,7 @@ class BaseSelectorTestCase(unittest.TestCase):
         self.assertEqual(0, len(s.select(timeout=1)))
         self.assertTrue(0.8 <= monotonic() - t <= 1.2)
 
-    @unittest.skipUnless(hasattr(signal, "alarm"),
+    @skipUnless(hasattr(signal, "alarm"),
                          "Platform doesn't have signal.alarm()")
     def test_select_interrupt_no_event(self):
         s = self.make_selector()
@@ -300,7 +342,7 @@ class BaseSelectorTestCase(unittest.TestCase):
         self.assertEqual([], s.select(2))
         self.assertLess(monotonic() - t, 2.2)
 
-    @unittest.skipUnless(hasattr(signal, "alarm"),
+    @skipUnless(hasattr(signal, "alarm"),
                          "Platform doesn't have signal.alarm()")
     def test_select_interrupt_with_event(self):
         s = self.make_selector()
@@ -327,26 +369,109 @@ class BaseSelectorTestCase(unittest.TestCase):
             self.assertTrue(isinstance(fd, int))
             self.assertGreaterEqual(fd, 0)
 
+    @skipUnless(resource, "Could not import the resource module")
+    def test_fd_setsize(self):
+        # All selectors should be able to take the soft limit on number
+        # of fds can be opened. Use the resource module to find FD_SETSIZE.
+        fd_setsize, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
 
-@unittest.skipUnless(hasattr(selectors, "SelectSelector"),
+        try:  # If we're on a *BSD system, the limit tag is different.
+            bsd_nofile, _ = resource.getrlimit(resource.RLIMIT_OFILE)
+            if bsd_nofile < fd_setsize:
+                fd_setsize = bsd_nofile
+        except (OSError, resource.error):
+            pass
+
+        s = self.make_selector()
+
+        # Guard against already allocated FDs
+        fd_setsize -= 256
+        fd_setsize = max(0, fd_setsize)
+
+        for i in range(fd_setsize // 2):
+            try:
+                rd, wr = self.make_socketpair()
+            except (OSError, socket.error) as e:
+                self.fail("Couldn't create enough fds.")
+            s.register(rd, selectors.EVENT_READ)
+            s.register(wr, selectors.EVENT_WRITE)
+
+        self.assertEqual(fd_setsize // 2, len(s.select()))
+
+
+class ScalableSelectorMixin(object):
+    """ Mixin to test selectors that allow more fds than FD_SETSIZE """
+    @skipUnless(resource, "Could not import the resource module")
+    def test_above_fd_setsize(self):
+        # A scalable implementation should have no problem with more than
+        # FD_SETSIZE file descriptors. Since we don't know the value, we just
+        # try to set the soft RLIMIT_NOFILE to the hard RLIMIT_NOFILE ceiling.
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+
+        try:  # If we're on a *BSD system, the limit tag is different.
+            _, bsd_hard = resource.getrlimit(resource.RLIMIT_OFILE)
+            if bsd_hard < hard:
+                hard = bsd_hard
+        except (OSError, resource.error):
+            pass
+
+        try:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
+            self.addCleanup(resource.setrlimit, resource.RLIMIT_NOFILE,
+                            (soft, hard))
+            limit_nofile = min(hard, 2 ** 16)
+        except (OSError, ValueError):
+            limit_nofile = soft
+
+        # Guard against already allocated FDs
+        limit_nofile -= 256
+        limit_nofile = max(0, limit_nofile)
+
+        s = self.make_selector()
+
+        for i in range(limit_nofile // 2):
+            try:
+                rd, wr = self.make_socketpair()
+            except (OSError, socket.error) as e:
+                # Too many FDs should skip. *BSD and Solaris fail on
+                # connecting or binding rather than on create.
+                if e.errno == errno.EMFILE or e.errno == errno.EADDRNOTAVAIL:
+                    self.skipTest("RLIMIT_NOFILE limit reached.")
+                    break
+                raise
+            try:
+                s.register(rd, selectors.EVENT_READ)
+                s.register(wr, selectors.EVENT_WRITE)
+            except (OSError, IOError) as e:
+                if e.errno == errno.ENOSPC:
+                    # This can be raised by epoll if we go
+                    # over fs.epoll.max_user_watches sysctl
+                    self.skipTest("MAX_USER_WATCHES reached.")
+                    break
+                raise
+
+        self.assertEqual(limit_nofile // 2, len(s.select()))
+
+
+@skipUnless(hasattr(selectors, "SelectSelector"),
                      "Platform doesn't have a SelectSelector")
 class SelectSelectorTestCase(BaseSelectorTestCase):
     SELECTOR = getattr(selectors, "SelectSelector", None)
 
 
-@unittest.skipUnless(hasattr(selectors, "PollSelector"),
+@skipUnless(hasattr(selectors, "PollSelector"),
                      "Platform doesn't have a PollSelector")
-class PollSelectorTestCase(BaseSelectorTestCase):
+class PollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     SELECTOR = getattr(selectors, "PollSelector", None)
 
 
-@unittest.skipUnless(hasattr(selectors, "EpollSelector"),
+@skipUnless(hasattr(selectors, "EpollSelector"),
                          "Platform doesn't have an EpollSelector")
-class EpollSelectorTestCase(BaseSelectorTestCase):
+class EpollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     SELECTOR = getattr(selectors, "EpollSelector", None)
 
 
-@unittest.skipUnless(hasattr(selectors, "KqueueSelector"),
+@skipUnless(hasattr(selectors, "KqueueSelector"),
                          "Platform doesn't have a KqueueSelector")
-class KqueueSelectorTestCase(BaseSelectorTestCase):
+class KqueueSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     SELECTOR = getattr(selectors, "KqueueSelector", None)
