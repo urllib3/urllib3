@@ -363,6 +363,36 @@ class BaseSelectorTestCase(unittest.TestCase):
         self.assertLess(monotonic() - t, 2.2)
         self.assertEqual(rd.recv(1), b'x')
 
+    @skipUnless(hasattr(signal, "alarm"),
+                "Platform doesn't have signal.alarm()")
+    def test_select_multiple_interrupts_with_event(self):
+        s = self.make_selector()
+        rd, wr = self.make_socketpair()
+        s.register(rd, selectors.EVENT_READ)
+        key = s.get_key(rd)
+
+        alarms = 2
+
+        def multi_alarm():
+            global alarms
+            alarms -= 1
+            if alarms > 0:
+                signal.alarm(1)
+            else:
+                wr.send(b'x')
+
+        sigalrm_handler = signal.signal(signal.SIGALRM, lambda *args: wr.send(b'x'))
+        self.addCleanup(signal.signal, signal.SIGALRM, sigalrm_handler)
+        self.addCleanup(signal.alarm, 0)
+
+        # Start the timer for the interrupt.
+        signal.alarm(1)
+
+        t = monotonic()
+        self.assertEqual([(key, selectors.EVENT_READ)], s.select(3))
+        self.assertLess(monotonic() - t, 3.2)
+        self.assertEqual(rd.recv(1), b'x')
+
     def test_fileno(self):
         s = self.make_selector()
         if hasattr(s, "fileno"):
@@ -384,7 +414,9 @@ class ScalableSelectorMixin:
             _, bsd_hard = resource.getrlimit(resource.RLIMIT_OFILE)
             if bsd_hard < hard:
                 hard = bsd_hard
-        except (OSError, resource.error):
+
+        # NOTE: AttributeError resource.RLIMIT_OFILE is not defined on Mac OS.
+        except (OSError, resource.error, AttributeError):
             pass
 
         try:
