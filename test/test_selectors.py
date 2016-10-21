@@ -305,15 +305,6 @@ class BaseSelectorTestCase(unittest.TestCase):
         s = self.make_selector()
         self.assertEqual([], s.select(timeout=0.001))
 
-    def test_select_multiple_event_types(self):
-        s = self.make_selector()
-        rd, wr = self.make_socketpair()
-        key = s.register(rd, selectors.EVENT_READ | selectors.EVENT_WRITE)
-
-        self.assertEqual([(key, selectors.EVENT_WRITE)], s.select(None))
-        wr.send(b'x')
-        self.assertEqual([(key, selectors.EVENT_READ | selectors.EVENT_WRITE)], s.select(None))
-
     def test_select_no_event_types(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
