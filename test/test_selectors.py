@@ -3,6 +3,7 @@ import errno
 import os
 import signal
 import socket
+import sys
 
 try:  # Python 2.6 unittest module doesn't have skip decorators.
     from unittest import skip, skipIf, skipUnless
@@ -271,7 +272,7 @@ class BaseSelectorTestCase(unittest.TestCase):
         s = self.make_selector()
         readers = []
         writers = []
-        for i in range(256):
+        for i in range(32):
             rd, wr = self.make_socketpair()
             readers.append(rd)
             writers.append(wr)
@@ -283,7 +284,7 @@ class BaseSelectorTestCase(unittest.TestCase):
         for wr in writers:
             wr.send(b'x')
 
-        self.assertEqual(256, len(s.select(0.001)))
+        self.assertEqual(32, len(s.select(0.001)))
 
         # Now read the byte from each endpoint.
         for rd in readers:
@@ -402,6 +403,7 @@ class BaseSelectorTestCase(unittest.TestCase):
 class ScalableSelectorMixin:
     """ Mixin to test selectors that allow more fds than FD_SETSIZE """
     @skipUnless(resource, "Could not import the resource module")
+    @skipUnless(sys.platform != "darwin", "Can't run on Mac OS due to RINFINITE hard limit.")
     def test_above_fd_setsize(self):
         # A scalable implementation should have no problem with more than
         # FD_SETSIZE file descriptors. Since we don't know the value, we just
