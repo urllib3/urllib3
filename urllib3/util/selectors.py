@@ -457,11 +457,12 @@ if hasattr(select, "kqueue"):
                 timeout = max(timeout, 0)
 
             max_events = len(self._fd_to_key)
-            ready = []
+            ready_fds = {}
 
             kevent_list = _syscall_wrapper(self._kqueue.control,
                                            timeout, True, None,
                                            max_events, timeout)
+
             for kevent in kevent_list:
                 fd = kevent.ident
                 event_mask = kevent.filter
@@ -473,8 +474,16 @@ if hasattr(select, "kqueue"):
 
                 key = self._key_from_fd(fd)
                 if key:
-                    ready.append((key, events & key.events))
-            return ready
+                    # If a fd is set for reading and
+                    # writing, need to combine kevents.
+                    if key.fd not in ready_fds:
+                        ready_fds[key.fd] = (key, events & key.events)
+                    else:
+                        # Already a reported kevent for this fd, combine their events.
+                        _, old_events = ready_fds[key.fd]
+                        ready_fds[key.fd] = (key, (events | old_events) & key.events)
+
+            return list(ready_fds.values())
 
         def close(self):
             self._kqueue.close()
@@ -499,31 +508,35 @@ else:  # Platform-specific: AppEngine
     HAS_SELECT = False
 
 
+def _wait_for_io_events(socks, events, timeout=None):
+    """ Waits for IO events to be available from a list of sockets
+    or optionally a single socket if passed in. Returns a list of
+    sockets that can be interacted with immediately. """
+    if not HAS_SELECT:
+        raise ValueError('Platform does not have a selector')
+    if not isinstance(socks, list):
+        # Probably just a single socket.
+        if hasattr(socks, "fileno"):
+            socks = [socks]
+        # Otherwise it might be a non-list iterable.
+        else:
+            socks = list(socks)
+    selector = DefaultSelector()
+    for sock in socks:
+        selector.register(sock, events)
+    return [key[0].fileobj for key in
+            selector.select(timeout) if key[1] & events]
+
+
 def wait_for_read(socks, timeout=None):
     """ Waits for reading to be available from a list of sockets
     or optionally a single socket if passed in. Returns a list of
     sockets that can be read from immediately. """
-    if not HAS_SELECT:
-        raise ValueError('Platform does not have a selector')
-    if not isinstance(socks, list):
-        socks = [socks]
-    selector = DefaultSelector()
-    for sock in socks:
-        selector.register(sock, EVENT_READ)
-    return [key[0].fileobj for key in
-            selector.select(timeout) if key[1] & EVENT_READ]
+    return _wait_for_io_events(socks, EVENT_READ, timeout)
 
 
 def wait_for_write(socks, timeout=None):
     """ Waits for writing to be available from a list of sockets
     or optionally a single socket if passed in. Returns a list of
     sockets that can be written to immediately. """
-    if not HAS_SELECT:
-        raise ValueError('Platform does not have a selector')
-    if not isinstance(socks, list):
-        socks = [socks]
-    selector = DefaultSelector()
-    for sock in socks:
-        selector.register(sock, EVENT_WRITE)
-    return [key[0].fileobj for key in
-            selector.select(timeout) if key[1] & EVENT_WRITE]
+    return _wait_for_io_events(socks, EVENT_WRITE, timeout)

@@ -60,6 +60,11 @@ class WaitForIOTest(unittest.TestCase):
     def test_wait_for_write_empty(self):
         self.assertEqual([], selectors.wait_for_write([], timeout=0.001))
 
+    def test_wait_for_non_list_iterable(self):
+        rd, wr = self.make_socketpair()
+        iterable = {'rd': rd}.values()
+        self.assertEqual([], selectors.wait_for_read(iterable, timeout=0.001))
+
     def test_wait_timeout(self):
         rd, wr = self.make_socketpair()
         t = monotonic()
