@@ -1,6 +1,7 @@
 from __future__ import with_statement
 import errno
 import os
+import psutil
 import signal
 import socket
 import sys
@@ -135,6 +136,38 @@ class BaseSelectorTestCase(unittest.TestCase):
         s.register(wr, selectors.EVENT_WRITE, "data_wr")
         return s, rd, wr
 
+    def test_get_key(self):
+        s = self.make_selector()
+        rd, wr = self.make_socketpair()
+
+        key = s.register(rd, selectors.EVENT_READ, "data")
+        self.assertEqual(key, s.get_key(rd))
+
+        # Unknown fileobj
+        self.assertRaises(KeyError, s.get_key, 999999)
+
+    def test_get_map(self):
+        s = self.make_selector()
+        rd, wr = self.make_socketpair()
+
+        keys = s.get_map()
+        self.assertFalse(keys)
+        self.assertEqual(len(keys), 0)
+        self.assertEqual(list(keys), [])
+        key = s.register(rd, selectors.EVENT_READ, "data")
+        self.assertIn(rd, keys)
+        self.assertEqual(key, keys[rd])
+        self.assertEqual(len(keys), 1)
+        self.assertEqual(list(keys), [rd.fileno()])
+        self.assertEqual(list(keys.values()), [key])
+
+        # Unknown fileobj
+        self.assertRaises(KeyError, keys.__getitem__, 999999)
+
+        # Read-only mapping
+        with self.assertRaises(TypeError):
+            del keys[rd]
+
     def test_register(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
@@ -226,8 +259,7 @@ class BaseSelectorTestCase(unittest.TestCase):
         s.unregister(rd)
         s.unregister(wr)
 
-    @skipUnless(os.name == "posix",
-                         "Platform doesn't support os.dup2")
+    @skipUnless(os.name == "posix", "Platform doesn't support os.dup2")
     def test_unregister_after_reuse_fd(self):
         s, rd, wr = self.standard_setup()
         rdfd = rd.fileno()
@@ -349,8 +381,7 @@ class BaseSelectorTestCase(unittest.TestCase):
         self.assertEqual(0, len(s.select(timeout=1)))
         self.assertTrue(0.8 <= monotonic() - t <= 1.2)
 
-    @skipUnless(hasattr(signal, "alarm"),
-                "Platform doesn't have signal.alarm()")
+    @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_select_timing(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
@@ -368,8 +399,7 @@ class BaseSelectorTestCase(unittest.TestCase):
         self.assertLess(monotonic() - t, 1.2)
         self.assertEqual([(key, selectors.EVENT_READ)], ready)
 
-    @skipUnless(hasattr(signal, "alarm"),
-                         "Platform doesn't have signal.alarm()")
+    @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_select_interrupt_no_event(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
@@ -386,8 +416,7 @@ class BaseSelectorTestCase(unittest.TestCase):
         self.assertEqual([], s.select(2))
         self.assertLess(monotonic() - t, 2.2)
 
-    @skipUnless(hasattr(signal, "alarm"),
-                         "Platform doesn't have signal.alarm()")
+    @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_select_interrupt_with_event(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
@@ -406,8 +435,7 @@ class BaseSelectorTestCase(unittest.TestCase):
         self.assertLess(monotonic() - t, 2.2)
         self.assertEqual(rd.recv(1), b'x')
 
-    @skipUnless(hasattr(signal, "alarm"),
-                "Platform doesn't have signal.alarm()")
+    @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_select_multiple_interrupts_with_event(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
@@ -434,12 +462,52 @@ class BaseSelectorTestCase(unittest.TestCase):
         self.assertLess(monotonic() - t, 3.2)
         self.assertEqual(rd.recv(1), b'x')
 
+    # This is to ensure that the _syscall_wrapper still follows
+    # specification from PEP 475 which is that any system call
+    # that is interrupted and the interrupt handler raises an
+    # exception should not retry the system call and instead
+    # raise the exception.
+    @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
+    def test_select_interrupt_exception(self):
+        s = self.make_selector()
+        rd, wr = self.make_socketpair()
+        s.register(rd, selectors.EVENT_READ)
+
+        class AlarmInterrupt(Exception):
+            pass
+
+        def alarm_exception(*args):
+            raise AlarmInterrupt()
+
+        sigalrm_handler = signal.signal(signal.SIGALRM, alarm_exception)
+        self.addCleanup(signal.signal, signal.SIGALRM, sigalrm_handler)
+        self.addCleanup(signal.alarm, 0)
+
+        # Start the timer for the interrupt.
+        signal.alarm(1)
+
+        t = monotonic()
+        self.assertRaises(AlarmInterrupt, s.select, 2.0)
+        self.assertLess(monotonic() - t, 1.2)
+
     def test_fileno(self):
         s = self.make_selector()
         if hasattr(s, "fileno"):
             fd = s.fileno()
             self.assertTrue(isinstance(fd, int))
             self.assertGreaterEqual(fd, 0)
+
+    # According to the psutil docs, open_files() has strange behavior
+    # on Windows including giving back incorrect results so to
+    # stop random failures from occurring we're skipping on Windows.
+    @skipIf(sys.platform == "win32", "psutil.Process.open_files() is unstable on Windows.")
+    def test_leaking_fds(self):
+        proc = psutil.Process()
+        before_fds = len(proc.open_files())
+        s = self.make_selector()
+        s.close()
+        after_fds = len(proc.open_files())
+        self.assertEqual(before_fds, after_fds)
 
 
 class ScalableSelectorMixin:
