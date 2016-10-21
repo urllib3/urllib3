@@ -386,7 +386,10 @@ class PyOpenSSLContext(object):
             cafile = cafile.encode('utf-8')
         if capath is not None:
             capath = capath.encode('utf-8')
-        self._ctx.load_verify_locations(cafile, capath)
+        try:
+            self._ctx.load_verify_locations(cafile, capath)
+        except OpenSSL.SSL.Error as e:
+            raise ssl.SSLError('bad certs (CAfile: "%s", CApath: "%s"): %r' % (cafile, capath, e))
         if cadata is not None:
             self._ctx.load_verify_locations(BytesIO(cadata))
 
@@ -442,10 +445,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
     if cert_reqs != ssl.CERT_NONE:
         ctx.set_verify(_openssl_verify[cert_reqs], _verify_callback)
     if ca_certs or ca_cert_dir:
-        try:
-            ctx.load_verify_locations(ca_certs, ca_cert_dir)
-        except OpenSSL.SSL.Error as e:
-            raise ssl.SSLError('bad ca_certs: %r' % ca_certs, e)
+        ctx.load_verify_locations(ca_certs, ca_cert_dir)
     else:
         ctx.set_default_verify_paths()
 
