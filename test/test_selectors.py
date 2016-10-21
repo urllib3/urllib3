@@ -268,6 +268,20 @@ class BaseSelectorTestCase(unittest.TestCase):
         s = self.make_selector()
         self.assertEqual([], s.select(timeout=0.001))
 
+    def test_select_multiple_event_types(self):
+        s = self.make_selector()
+        rd, wr = self.make_socketpair()
+        key = s.register(rd, selectors.EVENT_READ | selectors.EVENT_WRITE)
+
+        self.assertEqual([(key, selectors.EVENT_WRITE)], s.select(None))
+        wr.send(b'x')
+        self.assertEqual([(key, selectors.EVENT_READ | selectors.EVENT_WRITE)], s.select(None))
+
+    def test_select_no_event_types(self):
+        s = self.make_selector()
+        rd, wr = self.make_socketpair()
+        self.assertRaises(ValueError, s.register, rd, 0)
+
     def test_select_many_events(self):
         s = self.make_selector()
         readers = []
@@ -284,7 +298,11 @@ class BaseSelectorTestCase(unittest.TestCase):
         for wr in writers:
             wr.send(b'x')
 
-        self.assertEqual(32, len(s.select(0.001)))
+        ready = s.select(0.001)
+        self.assertEqual(32, len(ready))
+        for key, events in ready:
+            self.assertEqual(selectors.EVENT_READ, events)
+            self.assertIn(key.fileobj, readers)
 
         # Now read the byte from each endpoint.
         for rd in readers:
@@ -325,6 +343,25 @@ class BaseSelectorTestCase(unittest.TestCase):
         t = monotonic()
         self.assertEqual(0, len(s.select(timeout=1)))
         self.assertTrue(0.8 <= monotonic() - t <= 1.2)
+
+    @skipUnless(hasattr(signal, "alarm"),
+                "Platform doesn't have signal.alarm()")
+    def test_select_timing(self):
+        s = self.make_selector()
+        rd, wr = self.make_socketpair()
+        key = s.register(rd, selectors.EVENT_READ)
+
+        sigalrm_handler = signal.signal(signal.SIGALRM, lambda *args: wr.send(b'x'))
+        self.addCleanup(signal.signal, signal.SIGALRM, sigalrm_handler)
+        self.addCleanup(signal.alarm, 0)
+
+        # Start the timer for the interrupt.
+        signal.alarm(1)
+
+        t = monotonic()
+        ready = s.select(2)
+        self.assertLess(monotonic() - t, 1.2)
+        self.assertEqual([(key, selectors.EVENT_READ)], ready)
 
     @skipUnless(hasattr(signal, "alarm"),
                          "Platform doesn't have signal.alarm()")

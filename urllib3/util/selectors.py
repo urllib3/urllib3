@@ -325,7 +325,7 @@ if hasattr(select, "poll"):
                 events = 0
                 if event_mask & ~select.POLLIN:
                     events |= EVENT_WRITE
-                elif event_mask & ~select.POLLOUT:
+                if event_mask & ~select.POLLOUT:
                     events |= EVENT_READ
 
                 key = self._key_from_fd(fd)
