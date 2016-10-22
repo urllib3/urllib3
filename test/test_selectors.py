@@ -24,15 +24,19 @@ try:  # Python 2.6 doesn't have the resource module.
 except ImportError:
     resource = None
 
+try:  # Windows doesn't support socketpair on Python 3.5<
+    from socket import socketpair
+except ImportError:
+    from .socketpair_helper import socketpair
+
 from urllib3.util import selectors
 
 
-@skipUnless(selectors.HAS_SELECT and hasattr(socket, "socketpair"),
-                     "Platform doesn't have a selector and socketpair")
+@skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector and socketpair")
 class WaitForIOTest(unittest.TestCase):
     """ Tests for the higher level wait_for_* functions. """
     def make_socketpair(self):
-        rd, wr = socket.socketpair()
+        rd, wr = socketpair()
         self.addCleanup(rd.close)
         self.addCleanup(wr.close)
         return rd, wr
@@ -73,8 +77,7 @@ class WaitForIOTest(unittest.TestCase):
         selectors.wait_for_read([rd], timeout=1.0)
         self.assertTrue(0.8 < monotonic() - t < 1.2)
 
-    @skipUnless(hasattr(signal, "alarm"),
-                         "Platform doesn't have signal.alarm()")
+    @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_no_event(self):
         rd, wr = self.make_socketpair()
 
@@ -89,8 +92,7 @@ class WaitForIOTest(unittest.TestCase):
         self.assertEqual([], selectors.wait_for_read(rd, timeout=2.0))
         self.assertLess(monotonic() - t, 2.2)
 
-    @skipUnless(hasattr(signal, "alarm"),
-                         "Platform doesn't have signal.alarm()")
+    @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_with_event(self):
         rd, wr = self.make_socketpair()
 
@@ -107,8 +109,7 @@ class WaitForIOTest(unittest.TestCase):
         self.assertEqual(rd.recv(1), b'x')
 
 
-@skipUnless(selectors.HAS_SELECT and hasattr(socket, "socketpair"),
-                     "Platform doesn't have a selector and socketpair")
+@skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector and socketpair")
 class BaseSelectorTestCase(unittest.TestCase):
     """ Implements the tests that each type of selector must pass. """
     SELECTOR = selectors.DefaultSelector
@@ -308,13 +309,31 @@ class BaseSelectorTestCase(unittest.TestCase):
 
     def test_select_multiple_event_types(self):
         s = self.make_selector()
+        if hasattr(selectors, "KqueueSelector") and isinstance(s, selectors.KqueueSelector):
+            self.skipTest("KqueueSelector cannot select on multiple event types.")
+
         rd, wr = self.make_socketpair()
         key = s.register(rd, selectors.EVENT_READ | selectors.EVENT_WRITE)
 
-        self.assertEqual([(key, selectors.EVENT_WRITE)], s.select(None))
+        self.assertEqual([(key, selectors.EVENT_WRITE)], s.select(0.001))
+
         wr.send(b'x')
-        time.sleep(2)  # Wait for the read to go through.
-        self.assertEqual([(key, selectors.EVENT_READ | selectors.EVENT_WRITE)], s.select(None))
+        time.sleep(1.0)  # Wait for the write to flush.
+
+        self.assertEqual([(key, selectors.EVENT_READ | selectors.EVENT_WRITE)], s.select(0.001))
+
+    def test_select_multiple_selectors(self):
+        s1 = self.make_selector()
+        s2 = self.make_selector()
+        rd, wr = self.make_socketpair()
+        key1 = s1.register(rd, selectors.EVENT_READ)
+        key2 = s2.register(rd, selectors.EVENT_READ)
+
+        wr.send(b'x')
+        time.sleep(1.0)  # Wait for the write to flush.
+
+        self.assertEqual([(key1, selectors.EVENT_READ)], s1.select(timeout=0.001))
+        self.assertEqual([(key2, selectors.EVENT_READ)], s2.select(timeout=0.001))
 
     def test_select_no_event_types(self):
         s = self.make_selector()
@@ -336,6 +355,9 @@ class BaseSelectorTestCase(unittest.TestCase):
         # Write a byte to each end.
         for wr in writers:
             wr.send(b'x')
+
+        # Give time to flush the writes.
+        time.sleep(1.0)
 
         ready = s.select(0.001)
         self.assertEqual(32, len(ready))
@@ -511,6 +533,15 @@ class BaseSelectorTestCase(unittest.TestCase):
         after_fds = len(proc.open_files())
         self.assertEqual(before_fds, after_fds)
 
+    @skipUnless(sys.platform == "win32", "This is the same as test_leaking_fds but for Windows")
+    def test_leaking_fds_windows(self):
+        proc = psutil.Process()
+        before_fds = len(proc.open_files())
+        s = self.make_selector()
+        s.close()
+        after_fds = len(proc.open_files())
+        if before_fds != after_fds:
+            self.skipTest("Leaked fd but test was on Windows.")
 
 class ScalableSelectorMixin:
     """ Mixin to test selectors that allow more fds than FD_SETSIZE """
@@ -591,3 +622,8 @@ class EpollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
                          "Platform doesn't have a KqueueSelector")
 class KqueueSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     SELECTOR = getattr(selectors, "KqueueSelector", None)
+
+    def test_multiple_event_types_exception(self):
+        s = self.make_selector()
+        rd, wr = self.make_socketpair()
+        self.assertRaises(ValueError, s.register, rd, selectors.EVENT_READ | selectors.EVENT_WRITE)

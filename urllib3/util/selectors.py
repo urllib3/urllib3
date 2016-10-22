@@ -415,19 +415,29 @@ if hasattr(select, "kqueue"):
             return self._kqueue.fileno()
 
         def register(self, fileobj, events, data=None):
+            if events == (EVENT_READ | EVENT_WRITE):
+                raise ValueError("Cannot use KqueueSelector for mixed event types. "
+                                 "Please use DefaultSelector instead of FastestSelector.")
+
             key = super(KqueueSelector, self).register(fileobj, events, data)
             event_mask = 0
             if events & EVENT_READ:
                 event_mask |= select.KQ_FILTER_READ
+                kevent = select.kevent(key.fd,
+                                       event_mask,
+                                       select.KQ_EV_ADD)
+
+                _syscall_wrapper(self._kqueue.control, None, False,
+                                 [kevent], 0, 0)
             if events & EVENT_WRITE:
                 event_mask |= select.KQ_FILTER_WRITE
+                kevent = select.kevent(key.fd,
+                                       event_mask,
+                                       select.KQ_EV_ADD)
 
-            kevent = select.kevent(key.fd,
-                                   event_mask,
-                                   select.KQ_EV_ADD)
+                _syscall_wrapper(self._kqueue.control, None, False,
+                                 [kevent], 0, 0)
 
-            _syscall_wrapper(self._kqueue.control, None, False,
-                             [kevent], 0, 0)
             return key
 
         def unregister(self, fileobj):
@@ -457,7 +467,7 @@ if hasattr(select, "kqueue"):
                 timeout = max(timeout, 0)
 
             max_events = len(self._fd_to_key)
-            ready_fds = {}
+            ready = []
 
             kevent_list = _syscall_wrapper(self._kqueue.control,
                                            timeout, True, None,
@@ -469,21 +479,13 @@ if hasattr(select, "kqueue"):
                 events = 0
                 if event_mask == select.KQ_FILTER_READ:
                     events |= EVENT_READ
-                if event_mask == select.KQ_FILTER_WRITE:
+                elif event_mask == select.KQ_FILTER_WRITE:
                     events |= EVENT_WRITE
 
                 key = self._key_from_fd(fd)
-                if key:
-                    # If a fd is set for reading and
-                    # writing, need to combine kevents.
-                    if key.fd not in ready_fds:
-                        ready_fds[key.fd] = (key, events & key.events)
-                    else:
-                        # Already a reported kevent for this fd, combine their events.
-                        _, old_events = ready_fds[key.fd]
-                        ready_fds[key.fd] = (key, (events | old_events) & key.events)
+                ready.append((key, events & key.events))
 
-            return list(ready_fds.values())
+            return ready
 
         def close(self):
             self._kqueue.close()
@@ -493,18 +495,29 @@ if hasattr(select, "kqueue"):
 # Choose the best implementation, roughly:
 # kqueue == epoll > poll > select. Devpoll not supported. (See above)
 # select() also can't accept a FD > FD_SETSIZE (usually around 1024)
+FastestSelector = None
+DefaultSelector = None
 if 'KqueueSelector' in globals():  # Platform-specific: Mac OS and BSD
-    DefaultSelector = KqueueSelector
-elif 'EpollSelector' in globals():  # Platform-specific: Linux
+    FastestSelector = KqueueSelector
+if 'EpollSelector' in globals():  # Platform-specific: Linux
     DefaultSelector = EpollSelector
+    if not FastestSelector:
+        FastestSelector = EpollSelector
 elif 'PollSelector' in globals():  # Platform-specific: Linux
-    DefaultSelector = PollSelector
-elif 'SelectSelector' in globals():  # Platform-specific: Windows
-    DefaultSelector = SelectSelector
-else:  # Platform-specific: AppEngine
+    if not DefaultSelector:
+        DefaultSelector = PollSelector
+    if not FastestSelector:
+        FastestSelector = PollSelector
+if 'SelectSelector' in globals():  # Platform-specific: Windows
+    if not DefaultSelector:
+        DefaultSelector = SelectSelector
+    if not FastestSelector:
+        FastestSelector = SelectSelector
+if not DefaultSelector:  # Platform-specific: AppEngine
     def no_selector(_):
         raise ValueError("Platform does not have a selector")
     DefaultSelector = no_selector
+    FastestSelector = no_selector
     HAS_SELECT = False
 
 
@@ -521,7 +534,7 @@ def _wait_for_io_events(socks, events, timeout=None):
         # Otherwise it might be a non-list iterable.
         else:
             socks = list(socks)
-    selector = DefaultSelector()
+    selector = FastestSelector()
     for sock in socks:
         selector.register(sock, events)
     return [key[0].fileobj for key in
