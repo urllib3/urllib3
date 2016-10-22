@@ -6,10 +6,11 @@
 # support for select.devpoll is made to maintain 100% test coverage.
 
 # NOTE TO MAINTAINERS: If you're using selectors directly and selecting for
-# both reading and writing events -DO NOT USE- `FastestSelector`. This is to
-# be only used for selecting either only reading or only writing. This is
-# because KqueueSelector doesn't allow this. If you're not doing this, however
-# feel free to use `FastestSelector` directly.
+# both reading and writing events on the same file descriptor then
+#  -DO NOT USE- `FastestSelector`. This is to be only used for selecting
+# either only reading or only writing. This is because KqueueSelector
+# doesn't allow this. If you're not doing this, however feel free to
+# use `FastestSelector` directly.
 
 import errno
 import math
