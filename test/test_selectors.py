@@ -309,8 +309,6 @@ class BaseSelectorTestCase(unittest.TestCase):
 
     def test_select_multiple_event_types(self):
         s = self.make_selector()
-        if hasattr(selectors, "KqueueSelector") and isinstance(s, selectors.KqueueSelector):
-            self.skipTest("KqueueSelector cannot select on multiple event types.")
 
         rd, wr = self.make_socketpair()
         key = s.register(rd, selectors.EVENT_READ | selectors.EVENT_WRITE)
@@ -622,8 +620,3 @@ class EpollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
                          "Platform doesn't have a KqueueSelector")
 class KqueueSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     SELECTOR = getattr(selectors, "KqueueSelector", None)
-
-    def test_multiple_event_types_exception(self):
-        s = self.make_selector()
-        rd, wr = self.make_socketpair()
-        self.assertRaises(ValueError, s.register, rd, selectors.EVENT_READ | selectors.EVENT_WRITE)
