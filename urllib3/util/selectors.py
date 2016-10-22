@@ -435,6 +435,8 @@ if hasattr(select, "kqueue"):
                 _syscall_wrapper(self._kqueue.control, None, False,
                                  [kevent], 0, 0)
 
+                print("KQUEUE READ FOR FD " + str(key.fd))
+
             if events & EVENT_WRITE:
                 kevent = select.kevent(key.fd,
                                        select.KQ_FILTER_WRITE,
@@ -442,6 +444,8 @@ if hasattr(select, "kqueue"):
 
                 _syscall_wrapper(self._kqueue.control, None, False,
                                  [kevent], 0, 0)
+
+                print("KQUEUE WRITE FOR FD " + str(key.fd))
 
             return key
 
@@ -456,6 +460,9 @@ if hasattr(select, "kqueue"):
                                      False, [kevent], 0, 0)
                 except OSError:
                     pass
+
+                print("KQUEUE UNREAD FOR FD " + str(key.fd))
+
             if key.events & EVENT_WRITE:
                 kevent = select.kevent(key.fd,
                                        select.KQ_FILTER_WRITE,
@@ -465,6 +472,9 @@ if hasattr(select, "kqueue"):
                                      False, [kevent], 0, 0)
                 except OSError:
                     pass
+
+                print("KQUEUE UNWRITE FOR FD " + str(key.fd))
+
             return key
 
         def select(self, timeout=None):
