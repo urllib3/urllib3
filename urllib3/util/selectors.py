@@ -427,19 +427,17 @@ if hasattr(select, "kqueue"):
                                  "Please use DefaultSelector instead of FastestSelector.")
 
             key = super(KqueueSelector, self).register(fileobj, events, data)
-            event_mask = 0
             if events & EVENT_READ:
-                event_mask |= select.KQ_FILTER_READ
                 kevent = select.kevent(key.fd,
-                                       event_mask,
+                                       select.KQ_FILTER_READ,
                                        select.KQ_EV_ADD)
 
                 _syscall_wrapper(self._kqueue.control, None, False,
                                  [kevent], 0, 0)
+
             if events & EVENT_WRITE:
-                event_mask |= select.KQ_FILTER_WRITE
                 kevent = select.kevent(key.fd,
-                                       event_mask,
+                                       select.KQ_FILTER_WRITE,
                                        select.KQ_EV_ADD)
 
                 _syscall_wrapper(self._kqueue.control, None, False,
@@ -473,14 +471,18 @@ if hasattr(select, "kqueue"):
             if timeout is not None:
                 timeout = max(timeout, 0)
 
-            max_events = len(self._fd_to_key)
+            max_events = len(self._fd_to_key) * 2
             ready = []
 
             kevent_list = _syscall_wrapper(self._kqueue.control,
                                            timeout, True, None,
                                            max_events, timeout)
 
+            print("MAX_EVENTS=" + str(max_events))
+            print("KEVENT_LIST=" + str(kevent_list))
+
             for kevent in kevent_list:
+                print("KEVENT=" + str(kevent))
                 fd = kevent.ident
                 event_mask = kevent.filter
                 events = 0
@@ -491,6 +493,8 @@ if hasattr(select, "kqueue"):
 
                 key = self._key_from_fd(fd)
                 ready.append((key, events & key.events))
+
+            print("READY=" + str(ready))
 
             return ready
 
