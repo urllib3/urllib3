@@ -5,13 +5,6 @@
 # events have occurred rather than retry the syscall. The decision to drop
 # support for select.devpoll is made to maintain 100% test coverage.
 
-# NOTE TO MAINTAINERS: If you're using selectors directly and selecting for
-# both reading and writing events on the same file descriptor then
-#  -DO NOT USE- `FastestSelector`. This is to be only used for selecting
-# either only reading or only writing. This is because KqueueSelector
-# doesn't allow this. If you're not doing this, however feel free to
-# use `FastestSelector` directly.
-
 import errno
 import math
 import select
@@ -422,10 +415,6 @@ if hasattr(select, "kqueue"):
             return self._kqueue.fileno()
 
         def register(self, fileobj, events, data=None):
-            if events == (EVENT_READ | EVENT_WRITE):
-                raise ValueError("Cannot use KqueueSelector for mixed event types. "
-                                 "Please use DefaultSelector instead of FastestSelector.")
-
             key = super(KqueueSelector, self).register(fileobj, events, data)
             if events & EVENT_READ:
                 kevent = select.kevent(key.fd,
@@ -498,7 +487,7 @@ if hasattr(select, "kqueue"):
                 events = 0
                 if event_mask == select.KQ_FILTER_READ:
                     events |= EVENT_READ
-                elif event_mask == select.KQ_FILTER_WRITE:
+                if event_mask == select.KQ_FILTER_WRITE:
                     events |= EVENT_WRITE
 
                 key = self._key_from_fd(fd)
@@ -516,29 +505,18 @@ if hasattr(select, "kqueue"):
 # Choose the best implementation, roughly:
 # kqueue == epoll > poll > select. Devpoll not supported. (See above)
 # select() also can't accept a FD > FD_SETSIZE (usually around 1024)
-FastestSelector = None
-DefaultSelector = None
 if 'KqueueSelector' in globals():  # Platform-specific: Mac OS and BSD
-    FastestSelector = KqueueSelector
-if 'EpollSelector' in globals():  # Platform-specific: Linux
+    DefaultSelector = KqueueSelector
+elif 'EpollSelector' in globals():  # Platform-specific: Linux
     DefaultSelector = EpollSelector
-    if not FastestSelector:
-        FastestSelector = EpollSelector
 elif 'PollSelector' in globals():  # Platform-specific: Linux
-    if not DefaultSelector:
-        DefaultSelector = PollSelector
-    if not FastestSelector:
-        FastestSelector = PollSelector
-if 'SelectSelector' in globals():  # Platform-specific: Windows
-    if not DefaultSelector:
-        DefaultSelector = SelectSelector
-    if not FastestSelector:
-        FastestSelector = SelectSelector
-if not DefaultSelector:  # Platform-specific: AppEngine
+    DefaultSelector = PollSelector
+elif 'SelectSelector' in globals():  # Platform-specific: Windows
+    DefaultSelector = SelectSelector
+else:  # Platform-specific: AppEngine
     def no_selector(_):
         raise ValueError("Platform does not have a selector")
     DefaultSelector = no_selector
-    FastestSelector = no_selector
     HAS_SELECT = False
 
 
@@ -555,7 +533,7 @@ def _wait_for_io_events(socks, events, timeout=None):
         # Otherwise it might be a non-list iterable.
         else:
             socks = list(socks)
-    selector = FastestSelector()
+    selector = DefaultSelector()
     for sock in socks:
         selector.register(sock, events)
     return [key[0].fileobj for key in
