@@ -424,8 +424,6 @@ if hasattr(select, "kqueue"):
                 _syscall_wrapper(self._kqueue.control, None, False,
                                  [kevent], 0, 0)
 
-                print("KQUEUE READ FOR FD " + str(key.fd))
-
             if events & EVENT_WRITE:
                 kevent = select.kevent(key.fd,
                                        select.KQ_FILTER_WRITE,
@@ -433,8 +431,6 @@ if hasattr(select, "kqueue"):
 
                 _syscall_wrapper(self._kqueue.control, None, False,
                                  [kevent], 0, 0)
-
-                print("KQUEUE WRITE FOR FD " + str(key.fd))
 
             return key
 
@@ -449,9 +445,6 @@ if hasattr(select, "kqueue"):
                                      False, [kevent], 0, 0)
                 except OSError:
                     pass
-
-                print("KQUEUE UNREAD FOR FD " + str(key.fd))
-
             if key.events & EVENT_WRITE:
                 kevent = select.kevent(key.fd,
                                        select.KQ_FILTER_WRITE,
@@ -462,8 +455,6 @@ if hasattr(select, "kqueue"):
                 except OSError:
                     pass
 
-                print("KQUEUE UNWRITE FOR FD " + str(key.fd))
-
             return key
 
         def select(self, timeout=None):
@@ -471,17 +462,13 @@ if hasattr(select, "kqueue"):
                 timeout = max(timeout, 0)
 
             max_events = len(self._fd_to_key) * 2
-            ready = []
+            ready_fds = {}
 
             kevent_list = _syscall_wrapper(self._kqueue.control,
                                            timeout, True, None,
                                            max_events, timeout)
 
-            print("MAX_EVENTS=" + str(max_events))
-            print("KEVENT_LIST=" + str(kevent_list))
-
             for kevent in kevent_list:
-                print("KEVENT=" + str(kevent))
                 fd = kevent.ident
                 event_mask = kevent.filter
                 events = 0
@@ -491,11 +478,14 @@ if hasattr(select, "kqueue"):
                     events |= EVENT_WRITE
 
                 key = self._key_from_fd(fd)
-                ready.append((key, events & key.events))
+                if key:
+                    if key.fd not in ready_fds:
+                        ready_fds[key.fd] = (key, events & key.events)
+                    else:
+                        old_events = ready_fds[key.fd][1]
+                        ready_fds[key.fd] = (key, (events | old_events) & key.events)
 
-            print("READY=" + str(ready))
-
-            return ready
+            return list(ready_fds.values())
 
         def close(self):
             self._kqueue.close()
