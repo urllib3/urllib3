@@ -11,6 +11,15 @@ except ImportError:
     from time import time as monotonic
 
 HAPPY_EYEBALLS_CACHE = {}
+HAPPY_EYEBALLS_CACHE_TIME = 60 * 10  # 10 minutes according to RFC 6555
+_ASYNC_ERROR_NUMBERS = set([errno.EINPROGRESS,
+                            errno.EAGAIN,
+                            errno.EWOULDBLOCK,
+                            errno.WSAEWOULDBLOCK])
+
+_IP_FAMILIES = set([socket.AF_INET])
+if hasattr(socket, "AF_INET6"):
+    _IP_FAMILIES.add(socket.AF_INET6)
 
 
 def happy_eyeballs_algorithm(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
@@ -25,17 +34,19 @@ def happy_eyeballs_algorithm(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
 
     # We need to keep track of the time so we don't exceed timeout.
     start_time = monotonic()
-    if timeout is not None and timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
-        timeout_time = start_time + timeout
-    else:
+    if timeout is None:
         timeout_time = None
+    elif timeout is socket._GLOBAL_DEFAULT_TIMEOUT:
+        timeout_time = socket._GLOBAL_DEFAULT_TIMEOUT
+    else:
+        timeout_time = start_time + timeout
 
     # Check the cache to see if our address is already there.
     if address in HAPPY_EYEBALLS_CACHE:
         family, expires = HAPPY_EYEBALLS_CACHE[address]
 
         # If the cache entry is expired, don't use it.
-        if start_time < expires:
+        if start_time > expires:
             del HAPPY_EYEBALLS_CACHE[address]
             family = 0
 
@@ -55,15 +66,22 @@ def happy_eyeballs_algorithm(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
             af, socktype, proto, canonname, sa = dns_results[i]
 
             # We only care about IPv4 and IPv6 addresses.
-            if af not in [socket.AF_INET, socket.AF_INET6]:
+            if af not in _IP_FAMILIES:
                 continue
 
             sock = None
             try:
                 sock = socket.socket(af, socktype, proto)
+                if timeout_time is socket._GLOBAL_DEFAULT_TIMEOUT:
+                    sock_timeout = sock.gettimeout()
+                    if sock_timeout is None:
+                        timeout_time = None
+                    else:
+                        timeout_time = start_time + sock_timeout
 
-                for opt in socket_options:
-                    sock.setsockopt(*opt)
+                if socket_options:
+                    for opt in socket_options:
+                        sock.setsockopt(*opt)
 
                 # If we're given a source address, bind to it.
                 if source_address:
@@ -74,9 +92,14 @@ def happy_eyeballs_algorithm(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
 
                 # Connect to the host.
                 errcode = sock.connect_ex(sa)
-                if errcode and errcode not in [errno.EINPROGRESS,
-                                               errno.EAGAIN]:
-                    raise socket.error(errcode)
+                if errcode and errcode not in _ASYNC_ERROR_NUMBERS:
+                    err = socket.error(errcode)
+                    continue
+
+                errcode = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+                if errcode and errcode not in _ASYNC_ERROR_NUMBERS:
+                    err = socket.error(errcode)
+                    continue
 
                 # Register this new socket with the selector.
                 socks.append(sock)
@@ -118,9 +141,27 @@ def happy_eyeballs_algorithm(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                         if select_time < 0.0:
                             break
                     else:
-                        # Otherwise we're willing to block forever.
-                        select_time = None
+                        # Otherwise we're willing to block forever, but set a time
+                        # so that we can still filter out errored sockets.
+                        select_time = 1.0
 
+                # Make sure we don't have any errored sockets.
+                for sock in socks:
+                    errcode = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+                    if errcode and errcode not in _ASYNC_ERROR_NUMBERS:
+                        err = socket.error(errcode)
+                        socks.remove(sock)
+                        selector.unregister(sock)
+
+                # If we don't have any sockets, don't try selecting.
+                if not socks:
+                    # If there are no more sockets to look through, then
+                    # we should give up immediately with a non-timeout error.
+                    if i == dns_results_len - 1:
+                        err = socket.error(errno.ECONNREFUSED)
+                    break
+
+                # Monitor our selector for a new connection.
                 connected = selector.select(timeout=select_time)
 
                 # Iterate over the sockets that are reporting writable.
@@ -129,9 +170,8 @@ def happy_eyeballs_algorithm(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                     conn = key.fileobj
                     errcode = conn.getsockopt(socket.SOL_SOCKET,
                                               socket.SO_ERROR)
-                    if errcode and errcode not in [
-                        errno.EAGAIN, errno.EINPROGRESS
-                    ]:
+
+                    if errcode and errcode not in _ASYNC_ERROR_NUMBERS:
                         selector.unregister(conn)
                         try:
                             socks.remove(conn)
@@ -141,7 +181,7 @@ def happy_eyeballs_algorithm(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                         continue
 
                     # Finally found a suitable socket!
-                    if errcode == 0:
+                    elif errcode == 0:
                         # Make sure to remove from socks to avoid closing.
                         result = conn
                         socks.remove(conn)
@@ -153,12 +193,6 @@ def happy_eyeballs_algorithm(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                 # Empty list means that we timed out as system call
                 # interrupts don't affect us here anymore.
                 if not len(connected):
-                    break
-
-                # If there are no more sockets to look through, then
-                # we should give up immediately with a non-timeout error.
-                if not len(socks) and i == dns_results_len - 1:
-                    err = socket.error(errno.ECONNREFUSED)
                     break
 
             if result:
