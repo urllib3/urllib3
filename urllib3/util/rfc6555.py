@@ -14,8 +14,9 @@ HAPPY_EYEBALLS_CACHE = {}
 HAPPY_EYEBALLS_CACHE_TIME = 60 * 10  # 10 minutes according to RFC 6555
 _ASYNC_ERROR_NUMBERS = set([errno.EINPROGRESS,
                             errno.EAGAIN,
-                            errno.EWOULDBLOCK,
-                            errno.WSAEWOULDBLOCK])
+                            errno.EWOULDBLOCK])
+if hasattr(errno, "WSAEWOULDBLOCK"):  # Platform-specific: Windows
+    _ASYNC_ERROR_NUMBERS.add(errno.WSAEWOULDBLOCK)
 
 _IP_FAMILIES = set([socket.AF_INET])
 if hasattr(socket, "AF_INET6"):
