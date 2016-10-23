@@ -7,6 +7,7 @@ from urllib3.util.selectors import (
     HAS_SELECT,
     wait_for_read
 )
+ENABLE_HAPPY_EYEBALLS = True
 
 
 def is_connection_dropped(conn):  # Platform-specific
@@ -40,7 +41,8 @@ def is_connection_dropped(conn):  # Platform-specific
 # One additional modification is that we avoid binding to IPv6 servers
 # discovered in DNS if the system doesn't have IPv6 functionality.
 def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-                      source_address=None, socket_options=None):
+                      source_address=None, socket_options=None,
+                      enable_happy_eyeballs=True):
     """Connect to *address* and return the socket object.
 
     Convenience function.  Connect to *address* (a 2-tuple ``(host,
@@ -65,7 +67,7 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
 
     # If IPv6 and selectors are available, use the Happy Eyes algorithm.
     # (RFC 6555 https://tools.ietf.org/html/rfc6555)
-    if HAS_IPV6 and HAS_SELECT:
+    if HAS_IPV6 and HAS_SELECT and ENABLE_HAPPY_EYEBALLS:
         return happy_eyeballs_algorithm((host, port), timeout,
                                         source_address, socket_options)
 
