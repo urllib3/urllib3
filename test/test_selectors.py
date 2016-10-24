@@ -34,6 +34,7 @@ from urllib3.util import selectors
 
 LONG_SELECT = 0.2
 SHORT_SELECT = 0.01
+TOLERANCE = 0.005  # Tolerance value because CI timers are bad.
 
 
 class AlarmThread(threading.Thread):
@@ -128,7 +129,7 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin):
 
         t = monotonic()
         self.assertEqual([], selectors.wait_for_read(rd, timeout=LONG_SELECT))
-        self.assertGreaterEqual(monotonic() - t, LONG_SELECT)
+        self.assertGreaterEqual(monotonic() - t, LONG_SELECT - TOLERANCE)
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_with_event(self):
@@ -474,7 +475,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
 
         t = monotonic()
         self.assertEqual([], s.select(LONG_SELECT))
-        self.assertGreaterEqual(monotonic() - t, LONG_SELECT)
+        self.assertGreaterEqual(monotonic() - t, LONG_SELECT - TOLERANCE)
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_select_interrupt_with_event(self):
