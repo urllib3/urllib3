@@ -6,6 +6,7 @@ import signal
 import socket
 import sys
 import time
+import threading
 
 try:  # Python 2.6 unittest module doesn't have skip decorators.
     from unittest import skip, skipIf, skipUnless
@@ -31,9 +32,46 @@ except ImportError:
 
 from urllib3.util import selectors
 
+LONG_SELECT = 0.2
+SHORT_SELECT = 0.01
+
+
+class AlarmThread(threading.Thread):
+    def __init__(self, timeout):
+        super(AlarmThread, self).__init__(group=None)
+        self.setDaemon(True)
+        self.timeout = timeout
+        self.canceled = False
+
+    def cancel(self):
+        self.canceled = True
+
+    def run(self):
+        time.sleep(self.timeout)
+        if not self.canceled:
+            os.kill(os.getpid(), signal.SIGALRM)
+
+
+class AlarmMixin(object):
+    alarm_thread = None
+
+    def set_alarm(self, timeout):
+        if not hasattr(signal, "SIGALRM"):
+            self.skipTest("Platform doesn't have signal.SIGALRM")
+        if AlarmMixin.alarm_thread is None:
+            self.addCleanup(self.cancel_alarm)
+        AlarmMixin.alarm_thread = AlarmThread(timeout)
+        AlarmMixin.alarm_thread.start()
+
+    def cancel_alarm(self):
+        if AlarmMixin.alarm_thread is not None:
+            AlarmMixin.alarm_thread.cancel()
+            AlarmMixin.alarm_thread.join(0.0)
+        AlarmMixin.alarm_thread = None
+
 
 @skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector and socketpair")
-class WaitForIOTest(unittest.TestCase):
+class WaitForIOTest(unittest.TestCase, AlarmMixin):
     """ Tests for the higher level wait_for_* functions. """
     def make_socketpair(self):
         rd, wr = socketpair()
@@ -86,11 +124,11 @@ class WaitForIOTest(unittest.TestCase):
         self.addCleanup(signal.alarm, 0)
 
         # Start the timer for the interrupt.
-        signal.alarm(1)
+        self.set_alarm(SHORT_SELECT)
 
         t = monotonic()
-        self.assertEqual([], selectors.wait_for_read(rd, timeout=2.0))
-        self.assertLess(monotonic() - t, 2.2)
+        self.assertEqual([], selectors.wait_for_read(rd, timeout=LONG_SELECT))
+        self.assertGreaterEqual(monotonic() - t, LONG_SELECT)
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_with_event(self):
@@ -101,16 +139,18 @@ class WaitForIOTest(unittest.TestCase):
         self.addCleanup(signal.alarm, 0)
 
         # Start the timer for the interrupt.
-        signal.alarm(1)
+        self.set_alarm(SHORT_SELECT)
 
         t = monotonic()
-        self.assertEqual([rd], selectors.wait_for_read(rd, timeout=2.0))
-        self.assertLess(monotonic() - t, 2.2)
+        self.assertEqual([rd], selectors.wait_for_read(rd, timeout=LONG_SELECT))
+        t = monotonic() - t
+        self.assertLess(t, LONG_SELECT)
+        self.assertGreaterEqual(t, SHORT_SELECT)
         self.assertEqual(rd.recv(1), b'x')
 
 
 @skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector and socketpair")
-class BaseSelectorTestCase(unittest.TestCase):
+class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
     """ Implements the tests that each type of selector must pass. """
     SELECTOR = selectors.DefaultSelector
 
@@ -316,7 +356,7 @@ class BaseSelectorTestCase(unittest.TestCase):
         self.assertEqual([(key, selectors.EVENT_WRITE)], s.select(0.001))
 
         wr.send(b'x')
-        time.sleep(1.0)  # Wait for the write to flush.
+        time.sleep(0.01)  # Wait for the write to flush.
 
         self.assertEqual([(key, selectors.EVENT_READ | selectors.EVENT_WRITE)], s.select(0.001))
 
@@ -328,7 +368,7 @@ class BaseSelectorTestCase(unittest.TestCase):
         key2 = s2.register(rd, selectors.EVENT_READ)
 
         wr.send(b'x')
-        time.sleep(1.0)  # Wait for the write to flush.
+        time.sleep(0.01)  # Wait for the write to flush.
 
         self.assertEqual([(key1, selectors.EVENT_READ)], s1.select(timeout=0.001))
         self.assertEqual([(key2, selectors.EVENT_READ)], s2.select(timeout=0.001))
@@ -355,7 +395,7 @@ class BaseSelectorTestCase(unittest.TestCase):
             wr.send(b'x')
 
         # Give time to flush the writes.
-        time.sleep(1.0)
+        time.sleep(0.01)
 
         ready = s.select(0.001)
         self.assertEqual(32, len(ready))
@@ -397,11 +437,11 @@ class BaseSelectorTestCase(unittest.TestCase):
 
         t = monotonic()
         self.assertEqual(0, len(s.select(timeout=0)))
-        self.assertLess(monotonic() - t, 0.1)
+        self.assertLess(monotonic() - t, SHORT_SELECT)
 
         t = monotonic()
-        self.assertEqual(0, len(s.select(timeout=1)))
-        self.assertTrue(0.8 <= monotonic() - t <= 1.2)
+        self.assertEqual(0, len(s.select(timeout=SHORT_SELECT)))
+        self.assertGreater(monotonic() - t, SHORT_SELECT)
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_select_timing(self):
@@ -411,14 +451,13 @@ class BaseSelectorTestCase(unittest.TestCase):
 
         sigalrm_handler = signal.signal(signal.SIGALRM, lambda *args: wr.send(b'x'))
         self.addCleanup(signal.signal, signal.SIGALRM, sigalrm_handler)
-        self.addCleanup(signal.alarm, 0)
 
         # Start the timer for the interrupt.
-        signal.alarm(1)
+        self.set_alarm(SHORT_SELECT)
 
         t = monotonic()
-        ready = s.select(2)
-        self.assertLess(monotonic() - t, 1.2)
+        ready = s.select(LONG_SELECT)
+        self.assertLess(monotonic() - t, LONG_SELECT)
         self.assertEqual([(key, selectors.EVENT_READ)], ready)
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
@@ -429,14 +468,13 @@ class BaseSelectorTestCase(unittest.TestCase):
 
         sigalrm_handler = signal.signal(signal.SIGALRM, lambda *args: None)
         self.addCleanup(signal.signal, signal.SIGALRM, sigalrm_handler)
-        self.addCleanup(signal.alarm, 0)
 
         # Start the timer for the interrupt.
-        signal.alarm(1)
+        self.set_alarm(SHORT_SELECT)
 
         t = monotonic()
-        self.assertEqual([], s.select(2))
-        self.assertLess(monotonic() - t, 2.2)
+        self.assertEqual([], s.select(LONG_SELECT))
+        self.assertGreaterEqual(monotonic() - t, LONG_SELECT)
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_select_interrupt_with_event(self):
@@ -447,14 +485,13 @@ class BaseSelectorTestCase(unittest.TestCase):
 
         sigalrm_handler = signal.signal(signal.SIGALRM, lambda *args: wr.send(b'x'))
         self.addCleanup(signal.signal, signal.SIGALRM, sigalrm_handler)
-        self.addCleanup(signal.alarm, 0)
 
         # Start the timer for the interrupt.
-        signal.alarm(1)
+        self.set_alarm(SHORT_SELECT)
 
         t = monotonic()
-        self.assertEqual([(key, selectors.EVENT_READ)], s.select(2))
-        self.assertLess(monotonic() - t, 2.2)
+        self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
+        self.assertLess(monotonic() - t, LONG_SELECT)
         self.assertEqual(rd.recv(1), b'x')
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
@@ -468,8 +505,7 @@ class BaseSelectorTestCase(unittest.TestCase):
             wr.send(b'x')
 
         def first_alarm(*args):
-            signal.alarm(0)
-            signal.alarm(1)
+            self.set_alarm(SHORT_SELECT)
             signal.signal(signal.SIGALRM, second_alarm)
 
         sigalrm_handler = signal.signal(signal.SIGALRM, first_alarm)
@@ -477,11 +513,13 @@ class BaseSelectorTestCase(unittest.TestCase):
         self.addCleanup(signal.alarm, 0)
 
         # Start the timer for the interrupt.
-        signal.alarm(1)
+        self.set_alarm(SHORT_SELECT)
 
         t = monotonic()
-        self.assertEqual([(key, selectors.EVENT_READ)], s.select(3))
-        self.assertLess(monotonic() - t, 3.2)
+        self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
+        t = monotonic() - t
+        self.assertGreaterEqual(t, SHORT_SELECT * 2)
+        self.assertLess(t, LONG_SELECT)
         self.assertEqual(rd.recv(1), b'x')
 
     # This is to ensure that the _syscall_wrapper still follows
@@ -503,14 +541,13 @@ class BaseSelectorTestCase(unittest.TestCase):
 
         sigalrm_handler = signal.signal(signal.SIGALRM, alarm_exception)
         self.addCleanup(signal.signal, signal.SIGALRM, sigalrm_handler)
-        self.addCleanup(signal.alarm, 0)
 
         # Start the timer for the interrupt.
-        signal.alarm(1)
+        self.set_alarm(SHORT_SELECT)
 
         t = monotonic()
-        self.assertRaises(AlarmInterrupt, s.select, 2.0)
-        self.assertLess(monotonic() - t, 1.2)
+        self.assertRaises(AlarmInterrupt, s.select, LONG_SELECT)
+        self.assertLess(monotonic() - t, LONG_SELECT)
 
     def test_fileno(self):
         s = self.make_selector()
@@ -541,7 +578,8 @@ class BaseSelectorTestCase(unittest.TestCase):
         if before_fds != after_fds:
             self.skipTest("Leaked fd but test was on Windows.")
 
-class ScalableSelectorMixin:
+
+class ScalableSelectorMixin(object):
     """ Mixin to test selectors that allow more fds than FD_SETSIZE """
     @skipUnless(resource, "Could not import the resource module")
     @skipUnless(sys.platform != "darwin", "Can't run on Mac OS due to RINFINITE hard limit.")
