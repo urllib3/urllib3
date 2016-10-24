@@ -1,14 +1,16 @@
 from __future__ import absolute_import
 import datetime
+import collections
 import logging
 import os
+import re
 import sys
 import socket
 from socket import error as SocketError, timeout as SocketTimeout
 import warnings
 from .packages import six
-from .packages.six.moves.http_client import HTTPConnection as _HTTPConnection
-from .packages.six.moves.http_client import HTTPException  # noqa: F401
+
+import h11
 
 try:  # Compiled with SSL?
     import ssl
@@ -43,6 +45,7 @@ from .util.ssl_ import (
     create_urllib3_context,
     ssl_wrap_socket
 )
+from .util import parse_url
 
 
 from .util import connection
@@ -58,16 +61,45 @@ port_by_scheme = {
 
 RECENT_DATE = datetime.date(2014, 1, 1)
 
+# the patterns for both name and value are more lenient than RFC
+# definitions to allow for backwards compatibility
+# TODO: I pulled these out of httplib: does h11 obviate them?
+_is_legal_header_name = re.compile(
+    r'[^:\s][^:\r\n]*'.encode('ascii')
+).fullmatch
+_is_illegal_header_value = re.compile(
+    r'\n(?![ \t])|\r(?![ \t\n])'.encode('ascii')
+).search
+
+
+def _encode(data, name='data'):
+    """Call data.encode("latin-1") but show a better error message."""
+    # TODO: Do we want to do better than this?
+    try:
+        return data.encode("latin-1")
+    except UnicodeEncodeError as err:
+        raise UnicodeEncodeError(
+            err.encoding,
+            err.object,
+            err.start,
+            err.end,
+            "%s (%.20r) is not valid Latin-1. Use %s.encode('utf-8') "
+            "if you want to send it encoded in UTF-8." %
+            (name.title(), data[err.start:err.end], name))
+
 
 class DummyConnection(object):
     """Used to detect a failed ConnectionCls import."""
     pass
 
 
-class HTTPConnection(_HTTPConnection, object):
+class HTTPConnection(object):
     """
-    Based on httplib.HTTPConnection but provides an extra constructor
-    backwards-compatibility layer between older and newer Pythons.
+    A custom HTTP connection class that is compatible with httplib, but does
+    not use httplib at all. This class exists to enable a transition from older
+    versions of urllib3, which used httplib to provide their HTTP support, to
+    the current h11-based model for HTTP support which requires no HTTP from
+    the standard library.
 
     Additional keyword parameters are used to configure attributes of the connection.
     Accepted parameters include:
@@ -100,26 +132,118 @@ class HTTPConnection(_HTTPConnection, object):
     #: Whether this connection verifies the host's certificate.
     is_verified = False
 
-    def __init__(self, *args, **kw):
-        if six.PY3:  # Python 3
-            kw.pop('strict', None)
+    def __init__(self, host, port, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+                 source_address=None, socket_options=None):
 
-        # Pre-set source_address in case we have an older Python like 2.6.
-        self.source_address = kw.get('source_address')
+        # TODO: Do we need this? I think we might not: urllib3 may not ever
+        # provide host and port in one string like the stdlib allows.
+        (self.host, self.port) = self._get_hostport(host, port)
+        self.sock = None
+        self.timeout = timeout
+        self.source_address = source_address
 
-        if sys.version_info < (2, 7):  # Python 2.6
-            # _HTTPConnection on Python 2.6 will balk at this keyword arg, but
-            # not newer versions. We can still use it when creating a
-            # connection though, so we pop it *after* we have saved it as
-            # self.source_address.
-            kw.pop('source_address', None)
+        # These are from httplib, and we may want to replace them with
+        # something less dumb.
+        # TODO: reconsider tunnelling.
+        self._tunnel_host = None
+        self._tunnel_port = None
+        self._tunnel_headers = {}
 
         #: The socket options provided by the user. If no options are
         #: provided, we use the default options.
-        self.socket_options = kw.pop('socket_options', self.default_socket_options)
+        self.socket_options = (
+            socket_options if socket_options is not None
+            else self.default_socket_options
+        )
 
-        # Superclass also sets self.source_address in Python 2.7+.
-        _HTTPConnection.__init__(self, *args, **kw)
+        self.__response = None
+        self._pending_headers = []
+        self._url = None
+
+        self._state_machine = h11.Connection(our_role=h11.CLIENT)
+
+    def set_tunnel(self, host, port=None, headers=None):
+        """
+        Set up host and port for HTTP CONNECT tunnelling.
+
+        In a connection that uses HTTP CONNECT tunneling, the host passed to
+        the constructor is used as a proxy server that relays all communication
+        to the endpoint passed to `set_tunnel`. This done by sending an HTTP
+        CONNECT request to the proxy server when the connection is established.
+
+        This method must be called before the HTML connection has been
+        established.
+
+        The headers argument should be a mapping of extra HTTP headers to send
+        with the CONNECT request.
+        """
+        # TODO: Rewrite this method from its httplib form.
+        if self.sock:
+            raise RuntimeError("Can't set up tunnel for established conn")
+
+        self._tunnel_host, self._tunnel_port = self._get_hostport(host, port)
+        if headers:
+            self._tunnel_headers = headers
+        else:
+            self._tunnel_headers.clear()
+
+    def _get_hostport(self, host, port):
+        # TODO: We may not need this method. If we do, we should consider
+        # whether we can rewrite it.
+        if port is None:
+            i = host.rfind(':')
+            j = host.rfind(']')         # ipv6 addresses have [...]
+            if i > j:
+                try:
+                    port = int(host[i + 1:])
+                except ValueError:
+                    if host[i + 1:] == "":  # http://foo.co:/ == http://foo.co/
+                        port = self.default_port
+                    else:
+                        raise InvalidURL(
+                            "nonnumeric port: '%s'" % host[i + 1:]
+                        )
+                host = host[:i]
+            else:
+                port = self.default_port
+            if host and host[0] == '[' and host[-1] == ']':
+                host = host[1:-1]
+
+        return (host, port)
+
+    def _tunnel(self):
+        # TODO: replace this with a method that doesn't suck.
+        connect_str = "CONNECT %s:%d HTTP/1.0\r\n" % (
+            self._tunnel_host, self._tunnel_port
+        )
+        connect_bytes = connect_str.encode("ascii")
+        self.send(connect_bytes)
+        for header, value in self._tunnel_headers.items():
+            header_str = "%s: %s\r\n" % (header, value)
+            header_bytes = header_str.encode("latin-1")
+            self.send(header_bytes)
+        self.send(b'\r\n')
+
+        response = self.response_class(self.sock, method=self._method)
+        (version, code, message) = response._read_status()
+
+        if code != http.HTTPStatus.OK:
+            self.close()
+            raise OSError("Tunnel connection failed: %d %s" % (
+                code, message.strip())
+            )
+        while True:
+            line = response.fp.readline(_MAXLINE + 1)
+            if len(line) > _MAXLINE:
+                raise LineTooLong("header line")
+            if not line:
+                # for sites which EOF without sending a trailer
+                break
+            if line in (b'\r\n', b'\n', b''):
+                break
+
+            if self.debuglevel > 0:
+                print('header:', line.decode())
 
     def _new_conn(self):
         """ Establish a socket connection and set nodelay settings on it.
@@ -163,6 +287,342 @@ class HTTPConnection(_HTTPConnection, object):
         conn = self._new_conn()
         self._prepare_conn(conn)
 
+    def close(self):
+        """Close the connection to the HTTP server."""
+        try:
+            sock = self.sock
+            if sock:
+                self.sock = None
+                sock.close()   # close it manually... there may be other refs
+
+            self._state_machine.send(h11.ConnectionClosed())
+        finally:
+            response = self.__response
+            if response:
+                self.__response = None
+                response.close()
+
+    def send(self, data):
+        """Send `data' to the server.
+        ``data`` can be a string object, a bytes object, an array object, a
+        file-like object that supports a .read() method, or an iterable object.
+        """
+        if hasattr(data, "read"):
+            # TODO: We probably need to replicate this method.
+            for datablock in self._read_readable(data):
+                to_send = self._state_machine.send(h11.Data(data=datablock))
+                self.sock.sendall(to_send)
+            return
+        try:
+            to_send = self._state_machine.send(h11.Data(data=data))
+            self.sock.sendall(to_send)
+        except TypeError:
+            if isinstance(data, collections.Iterable):
+                for d in data:
+                    to_send = self._state_machine.send(h11.Data(data=data))
+                    self.sock.sendall(to_send)
+            else:
+                raise TypeError("data should be a bytes-like object "
+                                "or an iterable, got %r" % type(data))
+
+    def _read_readable(self, readable):
+        # TODO: reconsider this block size
+        blocksize = 8192
+        # TODO: We probably need to replicate this method.
+        encode = self._is_textIO(readable)
+        while True:
+            datablock = readable.read(blocksize)
+            if not datablock:
+                break
+            if encode:
+                datablock = datablock.encode("iso-8859-1")
+            yield datablock
+
+    def _send_output(self, message_body=None, encode_chunked=False):
+        """Send the currently buffered request and clear the buffer.
+
+        Appends an extra \\r\\n to the buffer.
+        A message_body may be specified, to be appended to the request.
+        """
+        if message_body is not None:
+            # create a consistent interface to message_body
+            if hasattr(message_body, 'read'):
+                # Let file-like take precedence over byte-like.  This
+                # is needed to allow the current position of mmap'ed
+                # files to be taken into account.
+                chunks = self._read_readable(message_body)
+            else:
+                try:
+                    # this is solely to check to see if message_body
+                    # implements the buffer API.  it /would/ be easier
+                    # to capture if PyObject_CheckBuffer was exposed
+                    # to Python.
+                    memoryview(message_body)
+                except TypeError:
+                    try:
+                        chunks = iter(message_body)
+                    except TypeError:
+                        raise TypeError("message_body should be a bytes-like "
+                                        "object or an iterable, got %r"
+                                        % type(message_body))
+                else:
+                    # the object implements the buffer interface and
+                    # can be passed directly into socket methods
+                    chunks = (message_body,)
+
+            for chunk in chunks:
+                # Ignore zero-length chunks. This was originally done in
+                # httplib and we're just leaving it here.
+                if not chunk:
+                    continue
+
+                self.send(chunk)
+
+        self._complete_request()
+
+    def _complete_request(self):
+        """
+        We're done with the request.
+        """
+        to_send = self._state_machine.send(h11.EndOfMessage())
+        self.sock.sendall(to_send)
+
+    def putrequest(self, method, url, skip_host=False,
+                   skip_accept_encoding=False):
+        """Send a request to the server.
+
+        `method' specifies an HTTP request method, e.g. 'GET'.
+        `url' specifies the object being requested, e.g. '/index.html'.
+        `skip_host' if True does not add automatically a 'Host:' header
+        `skip_accept_encoding' if True does not add automatically an
+           'Accept-Encoding:' header
+        """
+        # TODO: rewrite this from httplib form to our own form.
+
+        # if a prior response has been completed, then forget about it.
+        if self.__response and self.__response.isclosed():
+            self.__response = None
+
+        # Save the method we use, we need it later in the response phase
+        # TODO: We need to encode all these strings to bytes.
+        self._method = method
+        if not url:
+            url = '/'
+        self._url = url
+
+        if not skip_host:
+            # this header is issued *only* for HTTP/1.1
+            # connections. more specifically, this means it is
+            # only issued when the client uses the new
+            # HTTPConnection() class. backwards-compat clients
+            # will be using HTTP/1.0 and those clients may be
+            # issuing this header themselves. we should NOT issue
+            # it twice; some web servers (such as Apache) barf
+            # when they see two Host: headers
+
+            # If we need a non-standard port,include it in the
+            # header.  If the request is going through a proxy,
+            # but the host of the actual URL, not the host of the
+            # proxy.
+
+            netloc = ''
+            if url.startswith('http'):
+                netloc = parse_url(url).netloc
+
+            if netloc:
+                try:
+                    netloc_enc = netloc.encode("ascii")
+                except UnicodeEncodeError:
+                    netloc_enc = netloc.encode("idna")
+                self.putheader('Host', netloc_enc)
+            else:
+                if self._tunnel_host:
+                    host = self._tunnel_host
+                    port = self._tunnel_port
+                else:
+                    host = self.host
+                    port = self.port
+
+                try:
+                    host_enc = host.encode("ascii")
+                except UnicodeEncodeError:
+                    host_enc = host.encode("idna")
+
+                # As per RFC 273, IPv6 address should be wrapped with []
+                # when used as Host header
+
+                if host.find(':') >= 0:
+                    host_enc = b'[' + host_enc + b']'
+
+                if port == self.default_port:
+                    self.putheader('Host', host_enc)
+                else:
+                    host_enc = host_enc.decode("ascii")
+                    self.putheader('Host', "%s:%s" % (host_enc, port))
+
+        # we only want a Content-Encoding of "identity" since we don't
+        # support encodings such as x-gzip or x-deflate.
+        if not skip_accept_encoding:
+            self.putheader('Accept-Encoding', 'identity')
+
+    def putheader(self, header, *values):
+        """Send a request header line to the server.
+
+        For example: h.putheader('Accept', 'text/html')
+        """
+        # TODO: rewrite this from httplib form to our own form.
+        if hasattr(header, 'encode'):
+            header = header.encode('ascii')
+
+        # TODO: gotta get this method or assume h11 resolves it for us
+        if not _is_legal_header_name(header):
+            raise ValueError('Invalid header name %r' % (header,))
+
+        values = list(values)
+        for value in values:
+            if hasattr(value, 'encode'):
+                value = value.encode('latin-1')
+            elif isinstance(value, int):
+                value = str(value).encode('ascii')
+
+            # TODO: gotta get this method or assume h11 resolves it for us
+            if _is_illegal_header_value(value):
+                raise ValueError('Invalid header value %r' % (value,))
+
+            self._pending_headers.append((header, value))
+
+    def endheaders(self, message_body=None, encode_chunked=False):
+        """Indicate that the last header line has been sent to the server.
+
+        This method sends the request to the server.  The optional message_body
+        argument can be used to pass a message body associated with the
+        request.
+        """
+        if self.sock is None:
+            self.connect()
+
+        request = h11.Request(
+            method=self.method,
+            target=self._url,
+            headers=self._pending_headers,
+        )
+        self._pending_headers = []
+        self._url = None
+
+        bytes_to_send = self._state_machine.send(request)
+        self.sock.sendall(bytes_to_send)
+        self._send_output(message_body, encode_chunked=encode_chunked)
+
+    def request(self, method, url, body=None, headers={},
+                encode_chunked=False):
+        """Send a complete request to the server."""
+        # TODO: rewrite this from httplib form to our own form.
+        self._send_request(method, url, body, headers, encode_chunked)
+
+    def _send_request(self, method, url, body, headers, encode_chunked):
+        # TODO: rewrite this from httplib form to our own form.
+        # Honor explicitly requested Host: and Accept-Encoding: headers.
+        header_names = frozenset(k.lower() for k in headers)
+        skips = {}
+        if 'host' in header_names:
+            skips['skip_host'] = 1
+        if 'accept-encoding' in header_names:
+            skips['skip_accept_encoding'] = 1
+
+        self.putrequest(method, url, **skips)
+
+        # chunked encoding will happen if HTTP/1.1 is used and either
+        # the caller passes encode_chunked=True or the following
+        # conditions hold:
+        # 1. content-length has not been explicitly set
+        # 2. the body is a file or iterable, but not a str or bytes-like
+        # 3. Transfer-Encoding has NOT been explicitly set by the caller
+
+        if 'content-length' not in header_names:
+            # only chunk body if not explicitly set for backwards
+            # compatibility, assuming the client code is already handling the
+            # chunking
+            if 'transfer-encoding' not in header_names:
+                # if content-length cannot be automatically determined, fall
+                # back to chunked encoding
+                encode_chunked = False
+                content_length = self._get_content_length(body, method)
+                if content_length is None:
+                    if body is not None:
+                        encode_chunked = True
+                        self.putheader('Transfer-Encoding', 'chunked')
+                else:
+                    self.putheader('Content-Length', str(content_length))
+        else:
+            encode_chunked = False
+
+        for hdr, value in headers.items():
+            self.putheader(hdr, value)
+        if isinstance(body, str):
+            # RFC 2616 Section 3.7.1 says that text default has a
+            # default charset of iso-8859-1.
+            # TODO: what?
+            body = _encode(body, 'body')
+        self.endheaders(body, encode_chunked=encode_chunked)
+
+    def getresponse(self):
+        """Get the response from the server.
+
+        If the HTTPConnection is in the correct state, returns an
+        instance of HTTPResponse or of whatever object is returned by
+        the response_class variable.
+
+        If a request has not been sent or if a previous response has
+        not be handled, ResponseNotReady is raised.  If the HTTP
+        response indicates that the connection should be closed, then
+        it will be closed before the response is returned.  When the
+        connection is closed, the underlying socket is closed.
+        """
+        # TODO: rewrite this from httplib form to our own form.
+
+        # if a prior response has been completed, then forget about it.
+        if self.__response and self.__response.isclosed():
+            self.__response = None
+
+        # if a prior response exists, then it must be completed (otherwise, we
+        # cannot read this response's header to determine the connection-close
+        # behavior)
+        #
+        # note: if a prior response existed, but was connection-close, then the
+        # socket and response were made independent of this HTTPConnection
+        # object since a new request requires that we open a whole new
+        # connection
+        #
+        # this means the prior response had one of two states:
+        #   1) will_close: this connection was reset and the prior socket and
+        #                  response operate independently
+        #   2) persistent: the response was retained and we await its
+        #                  isclosed() status to become true.
+        #
+        if self.__response:
+            raise ResponseNotReady()
+
+        response = self.response_class(self.sock, method=self._method)
+
+        try:
+            try:
+                response.begin()
+            except ConnectionError:
+                self.close()
+                raise
+
+            if response.will_close:
+                # this effectively passes the connection to the response
+                self.close()
+            else:
+                # remember this, so we can tell when it is complete
+                self.__response = response
+
+            return response
+        except Exception:
+            response.close()
+            raise
+
     def request_chunked(self, method, url, body=None, headers=None):
         """
         Alternative to the common request method, which sends the
@@ -186,14 +646,9 @@ class HTTPConnection(_HTTPConnection, object):
                     continue
                 if not isinstance(chunk, six.binary_type):
                     chunk = chunk.encode('utf8')
-                len_str = hex(len(chunk))[2:]
-                self.send(len_str.encode('utf-8'))
-                self.send(b'\r\n')
                 self.send(chunk)
-                self.send(b'\r\n')
 
-        # After the if clause, to always have a closed body
-        self.send(b'0\r\n\r\n')
+        self._complete_request()
 
 
 class HTTPSConnection(HTTPConnection):
