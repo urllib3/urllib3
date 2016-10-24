@@ -7,6 +7,7 @@ from urllib3.util.selectors import (
     HAS_SELECT,
     wait_for_read
 )
+
 ENABLE_HAPPY_EYEBALLS = True
 
 
@@ -27,7 +28,7 @@ def is_connection_dropped(conn):  # Platform-specific
     if sock is None:  # Connection already closed (such as by httplib).
         return True
 
-    if not HAS_SELECT: # Platform-specific: AppEngine
+    if not HAS_SELECT:  # Platform-specific: AppEngine
         return False
 
     try:

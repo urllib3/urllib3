@@ -1,4 +1,10 @@
-import unittest
+try:
+    from unittest import skip
+    import unittest
+except ImportError:
+    from unittest2 import skip
+    import unittest2 as unittest
+
 import socket
 import threading
 from nose.plugins.skip import SkipTest

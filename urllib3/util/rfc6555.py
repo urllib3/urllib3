@@ -24,7 +24,7 @@ if hasattr(socket, "AF_INET6"):
 
 
 def happy_eyeballs_algorithm(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-                            source_address=None, socket_options=None):
+                             source_address=None, socket_options=None):
     """ Implements the Happy Eyeballs protocol (RFC 6555) which allows
     multiple sockets to attempt to connect from different families
     for better connect times for dual-stack clients where server
