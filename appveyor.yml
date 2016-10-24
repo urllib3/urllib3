@@ -81,4 +81,4 @@ test_script:
 
 on_success:
   - "pip install codecov"
-  - "codecov --env TRAVIS_OS_NAME,TOXENV"
+  - "codecov --env PLATFORM,TOXENV"
