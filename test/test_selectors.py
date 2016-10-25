@@ -593,13 +593,6 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         self.assertEqual(before_fds, after_fds)
 
 
-def min_mac_version(major, minor):
-    if sys.platform == "darwin":
-        if tuple(map(int, platform.mac_ver()[0].split("."))) < (major, minor):
-            return False
-    return True
-
-
 class ScalableSelectorMixin(object):
     """ Mixin to test selectors that allow more fds than FD_SETSIZE """
     @skipUnless(resource, "Could not import the resource module")
@@ -637,23 +630,9 @@ class ScalableSelectorMixin(object):
         s = self.make_selector()
 
         for i in range(limit_nofile // 2):
-            try:
-                rd, wr = self.make_socketpair()
-            except (OSError, socket.error) as e:
-                # Too many FDs should skip. *BSD and Solaris fail on
-                # connecting or binding rather than on create.
-                if e.errno == errno.EMFILE or e.errno == errno.EADDRNOTAVAIL:
-                    self.skipTest("RLIMIT_NOFILE limit reached.")
-                raise
-            try:
-                s.register(rd, selectors.EVENT_READ)
-                s.register(wr, selectors.EVENT_WRITE)
-            except (OSError, IOError) as e:
-                if e.errno == errno.ENOSPC:
-                    # This can be raised by epoll if we go
-                    # over fs.epoll.max_user_watches sysctl
-                    self.skipTest("MAX_USER_WATCHES reached.")
-                raise
+            rd, wr = self.make_socketpair()
+            s.register(rd, selectors.EVENT_READ)
+            s.register(wr, selectors.EVENT_WRITE)
 
         self.assertEqual(limit_nofile // 2, len(s.select()))
 
