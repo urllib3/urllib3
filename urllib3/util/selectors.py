@@ -30,7 +30,7 @@ class SelectorError(Exception):
         self.errno = errcode
 
     def __repr__(self):
-        return "<SelectorError errno={}>".format(self.errno)
+        return "<SelectorError errno={0}>".format(self.errno)
 
     def __str__(self):
         return self.__repr__()
