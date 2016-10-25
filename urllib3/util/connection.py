@@ -3,6 +3,8 @@ import socket
 from .wait import wait_for_read
 from .selectors import HAS_SELECT, SelectorError
 
+from ..exceptions import NameResolutionError
+
 
 def is_connection_dropped(conn):  # Platform-specific
     """
@@ -57,8 +59,14 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     # The original create_connection function always returns all records.
     family = allowed_gai_family()
 
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
-        af, socktype, proto, canonname, sa = res
+    try:
+        addrlist = socket.getaddrinfo(host, port, family, socket.SOCK_STREAM)
+    except socket.gaierror as e:
+        # Windows gives "socket.gaierror: [Errno 11001] getaddrinfo failed"
+        #   if DNS lookup fails
+        raise NameResolutionError(host, e)
+
+    for af, socktype, proto, canonname, sa in addrlist:
         sock = None
         try:
             sock = socket.socket(af, socktype, proto)

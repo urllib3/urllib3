@@ -37,6 +37,16 @@ class RequestError(PoolError):
         return self.__class__, (None, self.url, None)
 
 
+class NameResolutionError(HTTPError):
+    "Raised when host name resolution fails"
+    def __init__(self, name, exc):
+        self.message = "address '%s' not found" % name
+        self.reason = exc
+
+    def __str__(self):
+        return self.message + " (%s)" % self.reason
+
+
 class SSLError(HTTPError):
     "Raised when SSL certificate fails in an HTTPS connection."
     pass
