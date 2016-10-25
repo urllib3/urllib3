@@ -18,6 +18,7 @@ from .exceptions import (
     MaxRetryError,
     ProxyError,
     ReadTimeoutError,
+    NameResolutionError,
     SSLError,
     TimeoutError,
     InsecureRequestWarning,
@@ -629,7 +630,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             clean_exit = False
             raise
 
-        except (TimeoutError, HTTPException, SocketError, ProtocolError) as e:
+        except (TimeoutError, HTTPException, SocketError, ProtocolError,
+                NameResolutionError) as e:
             # Discard the connection for these exceptions. It will be
             # be replaced during the next _get_conn() call.
             clean_exit = False
