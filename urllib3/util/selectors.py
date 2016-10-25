@@ -29,6 +29,12 @@ class SelectorError(Exception):
         super(SelectorError, self).__init__()
         self.errno = errcode
 
+    def __repr__(self):
+        return "<SelectorError errno={}>".format(self.errno)
+
+    def __str__(self):
+        return self.__repr__()
+
 
 def _fileobj_to_fd(fileobj):
     """ Return a file descriptor from a file object. If
@@ -79,9 +85,9 @@ def _syscall_wrapper(func, recalc_timeout, *args, **kwargs):
             if hasattr(e, "errno"):
                 errcode = e.errno
             elif hasattr(e, "args"):
-                errcode = args[0]
-            if errcode is not None and (errcode == errno.EINTR or
-                                        (hasattr(errno, "WSAEINTR") and errno.WSAEINTR)):
+                errcode = e.args[0]
+            if errcode is not None and (errcode == errno.EINTR or (hasattr(errno, "WSAEINTR")
+                                                                    and errcode == errno.WSAEINTR)):
                 if expires is not None:
                     current_time = monotonic()
                     if current_time > expires:
@@ -370,7 +376,7 @@ if hasattr(select, "epoll"):
             key = super(EpollSelector, self).unregister(fileobj)
             try:
                 _syscall_wrapper(self._epoll.unregister, False, key.fd)
-            except (OSError, IOError):
+            except SelectorError:
                 # This can occur when the fd was closed since registry.
                 pass
             return key
@@ -449,7 +455,7 @@ if hasattr(select, "kqueue"):
                                        select.KQ_EV_DELETE)
                 try:
                     _syscall_wrapper(self._kqueue.control, False, [kevent], 0, 0)
-                except OSError:
+                except SelectorError:
                     pass
             if key.events & EVENT_WRITE:
                 kevent = select.kevent(key.fd,
@@ -457,7 +463,7 @@ if hasattr(select, "kqueue"):
                                        select.KQ_EV_DELETE)
                 try:
                     _syscall_wrapper(self._kqueue.control, False, [kevent], 0, 0)
-                except OSError:
+                except SelectorError:
                     pass
 
             return key

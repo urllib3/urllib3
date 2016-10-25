@@ -72,8 +72,8 @@ class AlarmMixin(object):
         AlarmMixin.alarm_thread = None
 
 
-@skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector and socketpair")
-class WaitForIOTest(unittest.TestCase):
+@skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector")
+class WaitForIOTest(unittest.TestCase, AlarmMixin):
     """ Tests for the higher level wait_for_* functions. """
     def make_socketpair(self):
         rd, wr = socketpair()
@@ -586,15 +586,18 @@ def min_mac_version(major, minor):
 class ScalableSelectorMixin(object):
     """ Mixin to test selectors that allow more fds than FD_SETSIZE """
     @skipUnless(resource, "Could not import the resource module")
-    @skipUnless(min_mac_version(10, 5), "Can't run on Mac OS 10.5< due to RINFINITE hard limit.")
     def test_above_fd_setsize(self):
         # A scalable implementation should have no problem with more than
         # FD_SETSIZE file descriptors. Since we don't know the value, we just
         # try to set the soft RLIMIT_NOFILE to the hard RLIMIT_NOFILE ceiling.
         soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        if hard == resource.RLIM_INFINITY:
+            self.skipTest("RLIMIT_NOFILE is infinite")
 
         try:  # If we're on a *BSD system, the limit tag is different.
             _, bsd_hard = resource.getrlimit(resource.RLIMIT_OFILE)
+            if bsd_hard == resource.RLIM_INFINITY:
+                self.skipTest("RLIMIT_OFILE is infinite")
             if bsd_hard < hard:
                 hard = bsd_hard
 
