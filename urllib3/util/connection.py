@@ -27,7 +27,7 @@ def is_connection_dropped(conn):  # Platform-specific
         return False
 
     try:
-        return wait_for_read(sock, timeout=0.0)
+        return bool(wait_for_read(sock, timeout=0.0))
     except select.error:
         return True
 
@@ -80,6 +80,7 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
             err = e
             if sock is not None:
                 sock.close()
+                sock = None
 
     if err is not None:
         raise err

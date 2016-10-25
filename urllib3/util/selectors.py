@@ -24,6 +24,12 @@ HAS_SELECT = True  # Variable that shows whether the platform has a selector.
 _SYSCALL_SENTINEL = object()  # Sentinel in case a system call returns None.
 
 
+class SelectorError(Exception):
+    def __init__(self, errcode):
+        super(SelectorError, self).__init__()
+        self.errno = errcode
+
+
 def _fileobj_to_fd(fileobj):
     """ Return a file descriptor from a file object. If
     given an integer will simply return that integer back. """
@@ -39,23 +45,23 @@ def _fileobj_to_fd(fileobj):
     return fd
 
 
-def _syscall_wrapper(func, syscall_timeout, recalc_timeout, *args, **kwargs):
+def _syscall_wrapper(func, recalc_timeout, *args, **kwargs):
     """ Wrapper function for syscalls that could fail due to EINTR.
     All functions should be retried if there is time left in the timeout
     in accordance with PEP 475. """
-    if syscall_timeout is None:
+    timeout = kwargs.get("timeout", None)
+    if timeout is None:
         expires = None
         recalc_timeout = False
     else:
-        timeout = float(syscall_timeout)
+        timeout = float(timeout)
         if timeout < 0.0:  # Timeout less than 0 treated as no timeout.
             expires = None
         else:
             expires = monotonic() + timeout
 
     args = list(args)
-    if recalc_timeout and "timeout" not in kwargs and not (
-                len(args) and isinstance(args[-1], (float, int))):
+    if recalc_timeout and "timeout" not in kwargs:
         raise ValueError(
             "Timeout must be in args or kwargs to be recalculated")
 
@@ -63,16 +69,19 @@ def _syscall_wrapper(func, syscall_timeout, recalc_timeout, *args, **kwargs):
     while result is _SYSCALL_SENTINEL:
         try:
             result = func(*args, **kwargs)
-            break
-
         # OSError is thrown by select.select
         # IOError is thrown by select.epoll.poll
         # select.error is thrown by select.poll.poll
         # Aren't we thankful for Python 3.x rework for exceptions?
         except (OSError, IOError, select.error) as e:
             # select.error wasn't a subclass of OSError in the past.
-            if ((hasattr(e, "errno") and e.errno == errno.EINTR) or
-                    (hasattr(e, "args") and e.args[0] == errno.EINTR)):
+            errcode = None
+            if hasattr(e, "errno"):
+                errcode = e.errno
+            elif hasattr(e, "args"):
+                errcode = args[0]
+            if errcode is not None and (errcode == errno.EINTR or
+                                        (hasattr(errno, "WSAEINTR") and errno.WSAEINTR)):
                 if expires is not None:
                     current_time = monotonic()
                     if current_time > expires:
@@ -80,10 +89,11 @@ def _syscall_wrapper(func, syscall_timeout, recalc_timeout, *args, **kwargs):
                     if recalc_timeout:
                         if "timeout" in kwargs:
                             kwargs["timeout"] = expires - current_time
-                        else:
-                            args[-1] = expires - current_time
                 continue
-            raise
+            if errcode:
+                raise SelectorError(errcode)
+            else:
+                raise
     return result
 
 
@@ -199,7 +209,7 @@ class BaseSelector(object):
         raise NotImplementedError()
 
     def close(self):
-        """ Close the selector. This must be called to insure that all
+        """ Close the selector. This must be called to ensure that all
         underlying resources are freed. """
         self._fd_to_key.clear()
         self._map = None
@@ -255,17 +265,19 @@ if hasattr(select, "select"):
             self._writers.discard(key.fd)
             return key
 
-        def select(self, timeout=None):
+        def _select(self, r, w, timeout=None):
+            """ Wrapper for select.select because timeout is a positional arg """
+            return select.select(r, w, [], timeout)
 
+        def select(self, timeout=None):
             # Selecting on empty lists on Windows errors out.
-            if not (self._readers | self._writers):
+            if not self._readers and not self._writers:
                 return []
 
             timeout = None if timeout is None else max(timeout, 0.0)
             ready = []
-            r, w, _ = _syscall_wrapper(select.select, timeout, True,
-                                       self._readers, self._writers,
-                                       [], timeout)
+            r, w, _ = _syscall_wrapper(self._select, True, self._readers,
+                                       self._writers, timeout)
             r = set(r)
             w = set(w)
             for fd in r | w:
@@ -319,8 +331,7 @@ if hasattr(select, "poll"):
 
         def select(self, timeout=None):
             ready = []
-            fd_events = _syscall_wrapper(self._wrap_poll, timeout,
-                                         True, timeout=timeout)
+            fd_events = _syscall_wrapper(self._wrap_poll, True, timeout=timeout)
             for fd, event_mask in fd_events:
                 events = 0
                 if event_mask & ~select.POLLIN:
@@ -352,15 +363,13 @@ if hasattr(select, "epoll"):
                 events_mask |= select.EPOLLIN
             if events & EVENT_WRITE:
                 events_mask |= select.EPOLLOUT
-            _syscall_wrapper(self._epoll.register, None,
-                             False, key.fd, events_mask)
+            _syscall_wrapper(self._epoll.register, False, key.fd, events_mask)
             return key
 
         def unregister(self, fileobj):
             key = super(EpollSelector, self).unregister(fileobj)
             try:
-                _syscall_wrapper(self._epoll.unregister, None,
-                                 False, key.fd)
+                _syscall_wrapper(self._epoll.unregister, False, key.fd)
             except (OSError, IOError):
                 # This can occur when the fd was closed since registry.
                 pass
@@ -384,7 +393,7 @@ if hasattr(select, "epoll"):
             max_events = max(len(self._fd_to_key), 1)
 
             ready = []
-            fd_events = _syscall_wrapper(self._epoll.poll, timeout, True,
+            fd_events = _syscall_wrapper(self._epoll.poll, True,
                                          timeout=timeout,
                                          maxevents=max_events)
             for fd, event_mask in fd_events:
@@ -421,16 +430,14 @@ if hasattr(select, "kqueue"):
                                        select.KQ_FILTER_READ,
                                        select.KQ_EV_ADD)
 
-                _syscall_wrapper(self._kqueue.control, None, False,
-                                 [kevent], 0, 0)
+                _syscall_wrapper(self._kqueue.control, False, [kevent], 0, 0)
 
             if events & EVENT_WRITE:
                 kevent = select.kevent(key.fd,
                                        select.KQ_FILTER_WRITE,
                                        select.KQ_EV_ADD)
 
-                _syscall_wrapper(self._kqueue.control, None, False,
-                                 [kevent], 0, 0)
+                _syscall_wrapper(self._kqueue.control, False, [kevent], 0, 0)
 
             return key
 
@@ -441,8 +448,7 @@ if hasattr(select, "kqueue"):
                                        select.KQ_FILTER_READ,
                                        select.KQ_EV_DELETE)
                 try:
-                    _syscall_wrapper(self._kqueue.control, None,
-                                     False, [kevent], 0, 0)
+                    _syscall_wrapper(self._kqueue.control, False, [kevent], 0, 0)
                 except OSError:
                     pass
             if key.events & EVENT_WRITE:
@@ -450,8 +456,7 @@ if hasattr(select, "kqueue"):
                                        select.KQ_FILTER_WRITE,
                                        select.KQ_EV_DELETE)
                 try:
-                    _syscall_wrapper(self._kqueue.control, None,
-                                     False, [kevent], 0, 0)
+                    _syscall_wrapper(self._kqueue.control, False, [kevent], 0, 0)
                 except OSError:
                     pass
 
@@ -464,9 +469,8 @@ if hasattr(select, "kqueue"):
             max_events = len(self._fd_to_key) * 2
             ready_fds = {}
 
-            kevent_list = _syscall_wrapper(self._kqueue.control,
-                                           timeout, True, None,
-                                           max_events, timeout)
+            kevent_list = _syscall_wrapper(self._kqueue.control, True,
+                                           None, max_events, timeout)
 
             for kevent in kevent_list:
                 fd = kevent.ident

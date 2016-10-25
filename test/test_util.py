@@ -2,7 +2,6 @@ import hashlib
 import warnings
 import logging
 import unittest
-import select
 import ssl
 import socket
 from itertools import chain
@@ -40,8 +39,6 @@ from urllib3.util import is_fp_closed, ssl_
 from urllib3.packages import six
 
 from . import clear_warnings
-
-from nose.plugins.skip import SkipTest
 
 # This number represents a time in seconds, it doesn't mean anything in
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller

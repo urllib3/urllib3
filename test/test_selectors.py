@@ -1,6 +1,7 @@
 from __future__ import with_statement
 import errno
 import os
+import platform
 import psutil
 import signal
 import socket
@@ -15,10 +16,10 @@ except ImportError:
     from unittest2 import skip, skipIf, skipUnless
     import unittest2 as unittest
 
-try:  # Python 2.x doesn't define time.monotonic. time.time will have to do.
-    from time import monotonic
+try:  # Python 2.x doesn't define time.perf_counter.
+    from time import perf_counter as get_time
 except ImportError:
-    from time import time as monotonic
+    from time import time as get_time
 
 try:  # Python 2.6 doesn't have the resource module.
     import resource
@@ -72,7 +73,7 @@ class AlarmMixin(object):
 
 
 @skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector and socketpair")
-class WaitForIOTest(unittest.TestCase, AlarmMixin):
+class WaitForIOTest(unittest.TestCase):
     """ Tests for the higher level wait_for_* functions. """
     def make_socketpair(self):
         rd, wr = socketpair()
@@ -98,9 +99,11 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin):
     def test_wait_for_write_multiple_socket(self):
         wr, wr2 = self.make_socketpair()
         result = selectors.wait_for_write([wr, wr2], timeout=0.001)
-        self.assertEqual(2, len(result))
-        self.assertTrue(wr in result)
-        self.assertTrue(wr2 in result)
+        # assertItemsEqual renamed in Python 3.x
+        if hasattr(self, "assertItemsEqual"):
+            self.assertItemsEqual([wr, wr2], result)
+        else:
+            self.assertCountEqual([wr, wr2], result)
 
     def test_wait_for_write_empty(self):
         self.assertEqual([], selectors.wait_for_write([], timeout=0.001))
@@ -112,9 +115,11 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin):
 
     def test_wait_timeout(self):
         rd, wr = self.make_socketpair()
-        t = monotonic()
-        selectors.wait_for_read([rd], timeout=1.0)
-        self.assertTrue(0.8 < monotonic() - t < 1.2)
+        t = get_time()
+        selectors.wait_for_read([rd], timeout=0.01)
+        t = get_time() - t
+        self.assertGreater(t, 0.0)
+        self.assertLess(t, 0.1)
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_no_event(self):
@@ -122,14 +127,13 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin):
 
         sigalrm_handler = signal.signal(signal.SIGALRM, lambda *args: None)
         self.addCleanup(signal.signal, signal.SIGALRM, sigalrm_handler)
-        self.addCleanup(signal.alarm, 0)
 
         # Start the timer for the interrupt.
         self.set_alarm(SHORT_SELECT)
 
-        t = monotonic()
+        t = get_time()
         self.assertEqual([], selectors.wait_for_read(rd, timeout=LONG_SELECT))
-        self.assertGreaterEqual(monotonic() - t, LONG_SELECT - TOLERANCE)
+        self.assertGreaterEqual(get_time() - t, LONG_SELECT - TOLERANCE)
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_with_event(self):
@@ -137,14 +141,13 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin):
 
         sigalrm_handler = signal.signal(signal.SIGALRM, lambda *args: wr.send(b'x'))
         self.addCleanup(signal.signal, signal.SIGALRM, sigalrm_handler)
-        self.addCleanup(signal.alarm, 0)
 
         # Start the timer for the interrupt.
         self.set_alarm(SHORT_SELECT)
 
-        t = monotonic()
+        t = get_time()
         self.assertEqual([rd], selectors.wait_for_read(rd, timeout=LONG_SELECT))
-        t = monotonic() - t
+        t = get_time() - t
         self.assertLess(t, LONG_SELECT)
         self.assertGreaterEqual(t, SHORT_SELECT)
         self.assertEqual(rd.recv(1), b'x')
@@ -221,12 +224,13 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         self.assertRaises(KeyError, s.get_key, rd)
         self.assertEqual(None, s._key_from_fd(rd.fileno()))
 
-        key = s.register(rd, selectors.EVENT_READ, "data")
+        data = object()
+        key = s.register(rd, selectors.EVENT_READ, data)
         self.assertIsInstance(key, selectors.SelectorKey)
         self.assertEqual(key.fileobj, rd)
         self.assertEqual(key.fd, rd.fileno())
         self.assertEqual(key.events, selectors.EVENT_READ)
-        self.assertEqual(key.data, "data")
+        self.assertIs(key.data, data)
         self.assertEqual(1, len(s.get_map()))
         for fd in s.get_map():
             self.assertEqual(fd, rd.fileno())
@@ -289,6 +293,8 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
 
         s.unregister(rdfd)
         s.unregister(wrfd)
+
+        self.assertEqual(0, len(s.get_map()))
 
     def test_unregister_after_fileobj_close(self):
         s = self.make_selector()
@@ -416,33 +422,33 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         rd, wr = self.make_socketpair()
         s.register(wr, selectors.EVENT_WRITE)
 
-        t = monotonic()
+        t = get_time()
         self.assertEqual(1, len(s.select(timeout=None)))
         self.assertEqual(1, len(s.select(timeout=None)))
         self.assertEqual(1, len(s.select(timeout=None)))
-        self.assertLess(monotonic() - t, 0.1)
+        self.assertLess(get_time() - t, 0.1)
 
     def test_select_timeout_ready(self):
         s, rd, wr = self.standard_setup()
 
-        t = monotonic()
+        t = get_time()
         self.assertEqual(1, len(s.select(timeout=0)))
         self.assertEqual(1, len(s.select(timeout=-1)))
         self.assertEqual(1, len(s.select(timeout=0.001)))
-        self.assertLess(monotonic() - t, 0.1)
+        self.assertLess(get_time() - t, 0.1)
 
     def test_select_timeout_not_ready(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
         s.register(rd, selectors.EVENT_READ)
 
-        t = monotonic()
+        t = get_time()
         self.assertEqual(0, len(s.select(timeout=0)))
-        self.assertLess(monotonic() - t, SHORT_SELECT)
+        self.assertLess(get_time() - t, SHORT_SELECT)
 
-        t = monotonic()
+        t = get_time()
         self.assertEqual(0, len(s.select(timeout=SHORT_SELECT)))
-        self.assertGreater(monotonic() - t, SHORT_SELECT)
+        self.assertGreaterEqual(get_time() - t, SHORT_SELECT - TOLERANCE)
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_select_timing(self):
@@ -456,9 +462,9 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         # Start the timer for the interrupt.
         self.set_alarm(SHORT_SELECT)
 
-        t = monotonic()
+        t = get_time()
         ready = s.select(LONG_SELECT)
-        self.assertLess(monotonic() - t, LONG_SELECT)
+        self.assertLess(get_time() - t, LONG_SELECT)
         self.assertEqual([(key, selectors.EVENT_READ)], ready)
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
@@ -473,9 +479,9 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         # Start the timer for the interrupt.
         self.set_alarm(SHORT_SELECT)
 
-        t = monotonic()
+        t = get_time()
         self.assertEqual([], s.select(LONG_SELECT))
-        self.assertGreaterEqual(monotonic() - t, LONG_SELECT - TOLERANCE)
+        self.assertGreaterEqual(get_time() - t, LONG_SELECT - TOLERANCE)
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_select_interrupt_with_event(self):
@@ -490,9 +496,9 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         # Start the timer for the interrupt.
         self.set_alarm(SHORT_SELECT)
 
-        t = monotonic()
+        t = get_time()
         self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
-        self.assertLess(monotonic() - t, LONG_SELECT)
+        self.assertLess(get_time() - t, LONG_SELECT)
         self.assertEqual(rd.recv(1), b'x')
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
@@ -516,18 +522,15 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         # Start the timer for the interrupt.
         self.set_alarm(SHORT_SELECT)
 
-        t = monotonic()
+        t = get_time()
         self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
-        t = monotonic() - t
+        t = get_time() - t
         self.assertGreaterEqual(t, SHORT_SELECT * 2)
         self.assertLess(t, LONG_SELECT)
         self.assertEqual(rd.recv(1), b'x')
 
-    # This is to ensure that the _syscall_wrapper still follows
-    # specification from PEP 475 which is that any system call
-    # that is interrupted and the interrupt handler raises an
-    # exception should not retry the system call and instead
-    # raise the exception.
+    # Test ensures that _syscall_wrapper properly raises the
+    # exception that is raised from an interrupt handler.
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_select_interrupt_exception(self):
         s = self.make_selector()
@@ -546,9 +549,9 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         # Start the timer for the interrupt.
         self.set_alarm(SHORT_SELECT)
 
-        t = monotonic()
+        t = get_time()
         self.assertRaises(AlarmInterrupt, s.select, LONG_SELECT)
-        self.assertLess(monotonic() - t, LONG_SELECT)
+        self.assertLess(get_time() - t, LONG_SELECT)
 
     def test_fileno(self):
         s = self.make_selector()
@@ -569,21 +572,21 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         after_fds = len(proc.open_files())
         self.assertEqual(before_fds, after_fds)
 
-    @skipUnless(sys.platform == "win32", "This is the same as test_leaking_fds but for Windows")
-    def test_leaking_fds_windows(self):
-        proc = psutil.Process()
-        before_fds = len(proc.open_files())
-        s = self.make_selector()
-        s.close()
-        after_fds = len(proc.open_files())
-        if before_fds != after_fds:
-            self.skipTest("Leaked fd but test was on Windows.")
+
+def min_mac_version(major, minor):
+    if sys.platform == "darwin":
+        try:
+            if tuple(map(int, platform.mac_ver()[0].split("."))) < (major, minor):
+                return False
+        except ValueError:
+            pass
+    return True
 
 
 class ScalableSelectorMixin(object):
     """ Mixin to test selectors that allow more fds than FD_SETSIZE """
     @skipUnless(resource, "Could not import the resource module")
-    @skipUnless(sys.platform != "darwin", "Can't run on Mac OS due to RINFINITE hard limit.")
+    @skipUnless(min_mac_version(10, 5), "Can't run on Mac OS 10.5< due to RINFINITE hard limit.")
     def test_above_fd_setsize(self):
         # A scalable implementation should have no problem with more than
         # FD_SETSIZE file descriptors. Since we don't know the value, we just
@@ -621,7 +624,6 @@ class ScalableSelectorMixin(object):
                 # connecting or binding rather than on create.
                 if e.errno == errno.EMFILE or e.errno == errno.EADDRNOTAVAIL:
                     self.skipTest("RLIMIT_NOFILE limit reached.")
-                    break
                 raise
             try:
                 s.register(rd, selectors.EVENT_READ)
@@ -631,7 +633,6 @@ class ScalableSelectorMixin(object):
                     # This can be raised by epoll if we go
                     # over fs.epoll.max_user_watches sysctl
                     self.skipTest("MAX_USER_WATCHES reached.")
-                    break
                 raise
 
         self.assertEqual(limit_nofile // 2, len(s.select()))
