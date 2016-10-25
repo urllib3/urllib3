@@ -81,6 +81,11 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin):
         self.addCleanup(wr.close)
         return rd, wr
 
+    def test_selector_error(self):
+        err = selectors.SelectorError(1)
+        self.assertEqual(err.__repr__(), "<SelectorError errno=1>")
+        self.assertEqual(err.__str__(), "<SelectorError errno=1>")
+
     def test_wait_for_read_single_socket(self):
         rd, wr = self.make_socketpair()
         self.assertEqual([], selectors.wait_for_read(rd, timeout=0.001))
