@@ -86,8 +86,12 @@ def _syscall_wrapper(func, recalc_timeout, *args, **kwargs):
                 errcode = e.errno
             elif hasattr(e, "args"):
                 errcode = e.args[0]
-            if errcode is not None and (errcode == errno.EINTR or (hasattr(errno, "WSAEINTR")
-                                                                    and errcode == errno.WSAEINTR)):
+
+            # Also test for the Windows equivalent of EINTR.
+            is_interrupt = (errcode == errno.EINTR or (hasattr(errno, "WSAEINTR") and
+                                                       errcode == errno.WSAEINTR))
+
+            if errcode is not None and is_interrupt:
                 if expires is not None:
                     current_time = monotonic()
                     if current_time > expires:
