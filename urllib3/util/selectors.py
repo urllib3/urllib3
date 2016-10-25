@@ -281,7 +281,7 @@ if hasattr(select, "select"):
 
         def select(self, timeout=None):
             # Selecting on empty lists on Windows errors out.
-            if not self._readers and not self._writers:
+            if not len(self._readers) and not len(self._writers):
                 return []
 
             timeout = None if timeout is None else max(timeout, 0.0)

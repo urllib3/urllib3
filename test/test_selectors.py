@@ -72,8 +72,33 @@ class AlarmMixin(object):
         AlarmMixin.alarm_thread = None
 
 
+class TimerContext(object):
+    def __init__(self, testcase, lower=None, upper=None):
+        self.testcase = testcase
+        self.lower = lower
+        self.upper = upper
+        self.start_time = None
+        self.end_time = None
+
+    def __enter__(self):
+        self.start_time = get_time()
+
+    def __exit__(self, *args):
+        self.end_time = get_time()
+        total_time = self.end_time - self.start_time
+        if self.lower is not None:
+            self.testcase.assertGreaterEqual(total_time, self.lower - TOLERANCE)
+        if self.upper is not None:
+            self.testcase.assertLessEqual(total_time, self.upper + TOLERANCE)
+
+
+class TimerMixin(object):
+    def assertTakesTime(self, lower=None, upper=None):
+        return TimerContext(self, lower=lower, upper=upper)
+
+
 @skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector")
-class WaitForIOTest(unittest.TestCase, AlarmMixin):
+class WaitForIOTest(unittest.TestCase, AlarmMixin, TimerMixin):
     """ Tests for the higher level wait_for_* functions. """
     def make_socketpair(self):
         rd, wr = socketpair()
@@ -120,11 +145,8 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin):
 
     def test_wait_timeout(self):
         rd, wr = self.make_socketpair()
-        t = get_time()
-        selectors.wait_for_read([rd], timeout=0.01)
-        t = get_time() - t
-        self.assertGreater(t, 0.0)
-        self.assertLess(t, 0.1)
+        with self.assertTakesTime(lower=0.0, upper=0.1):
+            selectors.wait_for_read([rd], timeout=0.01)
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_no_event(self):
@@ -136,9 +158,8 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin):
         # Start the timer for the interrupt.
         self.set_alarm(SHORT_SELECT)
 
-        t = get_time()
-        self.assertEqual([], selectors.wait_for_read(rd, timeout=LONG_SELECT))
-        self.assertGreaterEqual(get_time() - t, LONG_SELECT - TOLERANCE)
+        with self.assertTakesTime(lower=LONG_SELECT):
+            self.assertEqual([], selectors.wait_for_read(rd, timeout=LONG_SELECT))
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_with_event(self):
@@ -150,16 +171,13 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin):
         # Start the timer for the interrupt.
         self.set_alarm(SHORT_SELECT)
 
-        t = get_time()
-        self.assertEqual([rd], selectors.wait_for_read(rd, timeout=LONG_SELECT))
-        t = get_time() - t
-        self.assertLess(t, LONG_SELECT)
-        self.assertGreaterEqual(t, SHORT_SELECT)
+        with self.assertTakesTime(lower=SHORT_SELECT, upper=LONG_SELECT):
+            self.assertEqual([rd], selectors.wait_for_read(rd, timeout=LONG_SELECT))
         self.assertEqual(rd.recv(1), b'x')
 
 
 @skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector and socketpair")
-class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
+class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
     """ Implements the tests that each type of selector must pass. """
     SELECTOR = selectors.DefaultSelector
 
@@ -267,8 +285,10 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         rd, wr = self.make_socketpair()
 
         with s as sel:
-            sel.register(rd, selectors.EVENT_READ)
-            sel.register(wr, selectors.EVENT_WRITE)
+            rd_key = sel.register(rd, selectors.EVENT_READ)
+            wr_key = sel.register(wr, selectors.EVENT_WRITE)
+            self.assertEqual(rd_key, sel.get_key(rd))
+            self.assertEqual(wr_key, sel.get_key(wr))
 
         self.assertRaises(RuntimeError, s.get_key, rd)
         self.assertRaises(RuntimeError, s.get_key, wr)
@@ -313,6 +333,8 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         s.unregister(rd)
         s.unregister(wr)
 
+        self.assertEqual(0, len(s.get_map()))
+
     @skipUnless(os.name == "posix", "Platform doesn't support os.dup2")
     def test_unregister_after_reuse_fd(self):
         s, rd, wr = self.standard_setup()
@@ -327,6 +349,8 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
 
         s.unregister(rdfd)
         s.unregister(wrfd)
+
+        self.assertEqual(0, len(s.get_map()))
 
     def test_modify(self):
         s = self.make_selector()
@@ -357,7 +381,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
 
     def test_empty_select(self):
         s = self.make_selector()
-        self.assertEqual([], s.select(timeout=0.001))
+        self.assertEqual([], s.select(timeout=SHORT_SELECT))
 
     def test_select_multiple_event_types(self):
         s = self.make_selector()
@@ -427,33 +451,29 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         rd, wr = self.make_socketpair()
         s.register(wr, selectors.EVENT_WRITE)
 
-        t = get_time()
-        self.assertEqual(1, len(s.select(timeout=None)))
-        self.assertEqual(1, len(s.select(timeout=None)))
-        self.assertEqual(1, len(s.select(timeout=None)))
-        self.assertLess(get_time() - t, 0.1)
+        with self.assertTakesTime(upper=SHORT_SELECT):
+            self.assertEqual(1, len(s.select(timeout=None)))
+            self.assertEqual(1, len(s.select(timeout=None)))
+            self.assertEqual(1, len(s.select(timeout=None)))
 
     def test_select_timeout_ready(self):
         s, rd, wr = self.standard_setup()
 
-        t = get_time()
-        self.assertEqual(1, len(s.select(timeout=0)))
-        self.assertEqual(1, len(s.select(timeout=-1)))
-        self.assertEqual(1, len(s.select(timeout=0.001)))
-        self.assertLess(get_time() - t, 0.1)
+        with self.assertTakesTime(upper=SHORT_SELECT):
+            self.assertEqual(1, len(s.select(timeout=0)))
+            self.assertEqual(1, len(s.select(timeout=-1)))
+            self.assertEqual(1, len(s.select(timeout=0.001)))
 
     def test_select_timeout_not_ready(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
         s.register(rd, selectors.EVENT_READ)
 
-        t = get_time()
-        self.assertEqual(0, len(s.select(timeout=0)))
-        self.assertLess(get_time() - t, SHORT_SELECT)
+        with self.assertTakesTime(upper=SHORT_SELECT):
+            self.assertEqual(0, len(s.select(timeout=0)))
 
-        t = get_time()
-        self.assertEqual(0, len(s.select(timeout=SHORT_SELECT)))
-        self.assertGreaterEqual(get_time() - t, SHORT_SELECT - TOLERANCE)
+        with self.assertTakesTime(lower=SHORT_SELECT):
+            self.assertEqual(0, len(s.select(timeout=SHORT_SELECT)))
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_select_timing(self):
@@ -467,10 +487,9 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         # Start the timer for the interrupt.
         self.set_alarm(SHORT_SELECT)
 
-        t = get_time()
-        ready = s.select(LONG_SELECT)
-        self.assertLess(get_time() - t, LONG_SELECT)
-        self.assertEqual([(key, selectors.EVENT_READ)], ready)
+        with self.assertTakesTime(upper=LONG_SELECT):
+            ready = s.select(LONG_SELECT)
+            self.assertEqual([(key, selectors.EVENT_READ)], ready)
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_select_interrupt_no_event(self):
@@ -484,9 +503,8 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         # Start the timer for the interrupt.
         self.set_alarm(SHORT_SELECT)
 
-        t = get_time()
-        self.assertEqual([], s.select(LONG_SELECT))
-        self.assertGreaterEqual(get_time() - t, LONG_SELECT - TOLERANCE)
+        with self.assertTakesTime(lower=LONG_SELECT):
+            self.assertEqual([], s.select(LONG_SELECT))
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
     def test_select_interrupt_with_event(self):
@@ -501,9 +519,8 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         # Start the timer for the interrupt.
         self.set_alarm(SHORT_SELECT)
 
-        t = get_time()
-        self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
-        self.assertLess(get_time() - t, LONG_SELECT)
+        with self.assertTakesTime(upper=LONG_SELECT):
+            self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
         self.assertEqual(rd.recv(1), b'x')
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
@@ -527,11 +544,8 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         # Start the timer for the interrupt.
         self.set_alarm(SHORT_SELECT)
 
-        t = get_time()
-        self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
-        t = get_time() - t
-        self.assertGreaterEqual(t, SHORT_SELECT * 2)
-        self.assertLess(t, LONG_SELECT)
+        with self.assertTakesTime(lower=SHORT_SELECT * 2, upper=LONG_SELECT):
+            self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
         self.assertEqual(rd.recv(1), b'x')
 
     # Test ensures that _syscall_wrapper properly raises the
@@ -554,9 +568,8 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         # Start the timer for the interrupt.
         self.set_alarm(SHORT_SELECT)
 
-        t = get_time()
-        self.assertRaises(AlarmInterrupt, s.select, LONG_SELECT)
-        self.assertLess(get_time() - t, LONG_SELECT)
+        with self.assertTakesTime(upper=LONG_SELECT):
+            self.assertRaises(AlarmInterrupt, s.select, LONG_SELECT)
 
     def test_fileno(self):
         s = self.make_selector()
@@ -564,6 +577,8 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
             fd = s.fileno()
             self.assertTrue(isinstance(fd, int))
             self.assertGreaterEqual(fd, 0)
+        else:
+            self.skipTest("Selector doesn't implement fileno()")
 
     # According to the psutil docs, open_files() has strange behavior
     # on Windows including giving back incorrect results so to
@@ -580,11 +595,8 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
 
 def min_mac_version(major, minor):
     if sys.platform == "darwin":
-        try:
-            if tuple(map(int, platform.mac_ver()[0].split("."))) < (major, minor):
-                return False
-        except ValueError:
-            pass
+        if tuple(map(int, platform.mac_ver()[0].split("."))) < (major, minor):
+            return False
     return True
 
 
