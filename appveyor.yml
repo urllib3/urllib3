@@ -5,50 +5,25 @@ build: off
 
 environment:
   matrix:
-    - PYTHON: "C:\\Python266"
-      PYTHON_VERSION: "2.6.6"
-      PYTHON_ARCH: "32"
-      TOXENV: "py26"
-
     - PYTHON: "C:\\Python266-x64"
       PYTHON_VERSION: "2.6.6"
       PYTHON_ARCH: "64"
       TOXENV: "py26"
-
-    - PYTHON: "C:\\Python27"
-      PYTHON_VERSION: "2.7.x"
-      PYTHON_ARCH: "32"
-      TOXENV: "py27"
 
     - PYTHON: "C:\\Python27-x64"
       PYTHON_VERSION: "2.7.x"
       PYTHON_ARCH: "64"
       TOXENV: "py27"
 
-    - PYTHON: "C:\\Python33"
-      PYTHON_VERSION: "3.3.x"
-      PYTHON_ARCH: "32"
-      TOXENV: "py33"
-
     - PYTHON: "C:\\Python33-x64"
       PYTHON_VERSION: "3.3.x"
       PYTHON_ARCH: "64"
       TOXENV: "py33"
 
-    - PYTHON: "C:\\Python34"
-      PYTHON_VERSION: "3.4.x"
-      PYTHON_ARCH: "32"
-      TOXENV: "py34"
-
     - PYTHON: "C:\\Python34-x64"
       PYTHON_VERSION: "3.4.x"
       PYTHON_ARCH: "64"
       TOXENV: "py34"
-
-    - PYTHON: "C:\\Python35"
-      PYTHON_VERSION: "3.5.x"
-      PYTHON_ARCH: "32"
-      TOXENV: "py35"
 
     - PYTHON: "C:\\Python35-x64"
       PYTHON_VERSION: "3.5.x"
@@ -80,5 +55,6 @@ test_script:
   - "tox"
 
 on_success:
+  - ".tox\\%TOXENV%\\Scripts\\activate"
   - "pip install codecov"
   - "codecov --env PLATFORM,TOXENV"
