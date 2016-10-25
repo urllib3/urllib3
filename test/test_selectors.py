@@ -1,7 +1,5 @@
 from __future__ import with_statement
-import errno
 import os
-import platform
 import psutil
 import signal
 import socket
@@ -547,6 +545,31 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         with self.assertTakesTime(lower=SHORT_SELECT * 2, upper=LONG_SELECT):
             self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
         self.assertEqual(rd.recv(1), b'x')
+
+    @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
+    def test_selector_error(self):
+        s = self.make_selector()
+        rd, wr = self.make_socketpair()
+        s.register(rd, selectors.EVENT_READ)
+
+        def alarm_exception(*args):
+            err = OSError()
+            err.errno = 100
+            raise err
+
+        sigalrm_handler = signal.signal(signal.SIGALRM, alarm_exception)
+        self.addCleanup(signal.signal, signal.SIGALRM, sigalrm_handler)
+
+        # Start the timer for the interrupt.
+        self.set_alarm(SHORT_SELECT)
+
+        try:
+            s.select(LONG_SELECT)
+            self.fail("select() didn't raise SelectorError")
+        except selectors.SelectorError as e:
+            self.assertEqual(e.errno, 100)
+        except Exception:
+            self.fail("Raised incorrect exception")
 
     # Test ensures that _syscall_wrapper properly raises the
     # exception that is raised from an interrupt handler.
