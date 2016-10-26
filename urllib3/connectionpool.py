@@ -163,15 +163,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     ConnectionCls = HTTPConnection
     ResponseCls = HTTPResponse
 
-    def __init__(self, host, port=None, strict=False,
+    def __init__(self, host, port=None,
                  timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1, block=False,
                  headers=None, retries=None,
                  _proxy=None, _proxy_headers=None,
                  **conn_kw):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
-
-        self.strict = strict
 
         if not isinstance(timeout, Timeout):
             timeout = Timeout.from_float(timeout)
@@ -213,7 +211,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         conn = self.ConnectionCls(host=self.host, port=self.port,
                                   timeout=self.timeout.connect_timeout,
-                                  strict=self.strict, **self.conn_kw)
+                                  **self.conn_kw)
         return conn
 
     def _get_conn(self, timeout=None):
@@ -741,7 +739,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     ConnectionCls = HTTPSConnection
 
     def __init__(self, host, port=None,
-                 strict=False, timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1,
+                 timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1,
                  block=False, headers=None, retries=None,
                  _proxy=None, _proxy_headers=None,
                  key_file=None, cert_file=None, cert_reqs=None,
@@ -749,7 +747,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  assert_hostname=None, assert_fingerprint=None,
                  ca_cert_dir=None, **conn_kw):
 
-        HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
+        HTTPConnectionPool.__init__(self, host, port, timeout, maxsize,
                                     block, headers, retries, _proxy, _proxy_headers,
                                     **conn_kw)
 
@@ -820,7 +818,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
                                   timeout=self.timeout.connect_timeout,
-                                  strict=self.strict, **self.conn_kw)
+                                  **self.conn_kw)
 
         return self._prepare_conn(conn)
 

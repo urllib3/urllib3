@@ -1,10 +1,10 @@
 from __future__ import absolute_import
 import datetime
 import collections
+import io
 import logging
 import os
 import re
-import sys
 import socket
 from socket import error as SocketError, timeout as SocketTimeout
 import warnings
@@ -65,8 +65,8 @@ RECENT_DATE = datetime.date(2014, 1, 1)
 # definitions to allow for backwards compatibility
 # TODO: I pulled these out of httplib: does h11 obviate them?
 _is_legal_header_name = re.compile(
-    r'[^:\s][^:\r\n]*'.encode('ascii')
-).fullmatch
+    r'^[^:\s][^:\r\n]*$'.encode('ascii')
+).match
 _is_illegal_header_value = re.compile(
     r'\n(?![ \t])|\r(?![ \t\n])'.encode('ascii')
 ).search
@@ -91,6 +91,301 @@ def _encode(data, name='data'):
 class DummyConnection(object):
     """Used to detect a failed ConnectionCls import."""
     pass
+
+
+# TODO: This is needed to avoid breaking imports, revisit it.
+class HTTPException(object):
+    pass
+
+
+class OldHTTPResponse(io.BufferedIOBase):
+
+    # See RFC 2616 sec 19.6 and RFC 1945 sec 6 for details.
+
+    # The bytes from the socket object are iso-8859-1 strings.
+    # See RFC 2616 sec 2.2 which notes an exception for MIME-encoded
+    # text following RFC 2047.  The basic status line parsing only
+    # accepts iso-8859-1.
+
+    def __init__(self, sock, state_machine, method=None, url=None):
+        # If the response includes a content-length header, we need to
+        # make sure that the client doesn't read more than the
+        # specified number of bytes.  If it does, it will block until
+        # the server times out and closes the connection.  This will
+        # happen if a self.fp.read() is done (without a size) whether
+        # self.fp is buffered or not.  So, no self.fp.read() by
+        # clients unless they know what they are doing.
+        self.fp = sock
+        self._state_machine = state_machine
+        self._method = method
+
+        self._buffered_data = b''
+
+        # The HTTPResponse object is returned via urllib.  The clients
+        # of http and urllib expect different attributes for the
+        # headers.  headers is used here and supports urllib.  msg is
+        # provided as a backwards compatibility layer for http
+        # clients.
+
+        self.headers = self.msg = None
+
+        # from the Status-Line of the response
+        self.version = _UNKNOWN
+        self.status = _UNKNOWN
+        self.reason = _UNKNOWN
+
+        self.length = _UNKNOWN          # number of bytes left in response
+        self.will_close = _UNKNOWN      # conn will close at end of response
+        self.chunked = _UNKNOWN
+
+    def _read_response(self):
+        """
+        Grab the response.
+        """
+        while True:
+            data = self.fp.recv(8192)
+            self._state_machine.receive_data(data)
+
+            while True:
+                event = self._state_machine.next_event()
+                if event is h11.NEED_DATA:
+                    break
+
+                if isinstance(event, h11.Response):
+                    return event
+                elif isinstance(event, h11.ConnectionClosed):
+                    # TODO: What exception?
+                    raise RemoteDisconnected(
+                        "Remote end closed connection without response"
+                    )
+                else:
+                    # TODO: better exception
+                    raise RuntimeError("Unexpected event %s" % event)
+
+    def begin(self):
+        # TODO: rewrite in our own style.
+        if self.headers is not None:
+            # we've already started reading the response
+            return
+
+        # read until we get a non-100 response
+        event = self._read_response()
+
+        self.code = self.status = event.status_code
+        self.reason = b''
+        version = event.http_version
+        if version in (b"1.0", b"0.9"):
+            # Some servers might still return "0.9", treat it as 1.0 anyway
+            self.version = 10
+        elif version == b"1.1":
+            self.version = 11
+        else:
+            # TODO: Need to replace exception
+            raise UnknownProtocol(version)
+
+        self.headers = HTTPHeaderDict(event.headers)
+
+    def _close_conn(self):
+        # TODO: rewrite in our own style.
+        fp, self.fp = self.fp, None
+        fp.close()
+
+    def close(self):
+        # TODO: rewrite in our own style.
+        try:
+            super(OldHTTPResponse, self).close()  # set "closed" flag
+        finally:
+            if self.fp:
+                self._close_conn()
+
+    # These implementations are for the benefit of io.BufferedReader.
+
+    # XXX This class should probably be revised to act more like
+    # the "raw stream" that BufferedReader expects.
+
+    def flush(self):
+        super(OldHTTPResponse, self).flush()
+        if self.fp:
+            self.fp.flush()
+
+    def readable(self):
+        """Always returns True"""
+        return True
+
+    # End of "raw stream" methods
+
+    def isclosed(self):
+        """True if the connection is closed."""
+        # TODO: rewrite in our own style
+        return self.fp is None
+
+    def read(self, amt=None):
+        # TODO: definitely needs a rewrite
+        if self.fp is None:
+            return b""
+
+        data_out = [self._buffered_data]
+        out_len = len(self._buffered_data)
+
+        if amt is not None:
+            # Amount is given
+            while out_len < amt:
+                event = self.state_machine.next_event()
+                if event == h11.NEED_DATA:
+                    data = self.sock.recv(65536)
+                    self.state_machine.receive_data(data)
+                    continue
+
+                if isinstance(event, h11.Data):
+                    data_out.append(event.data)
+                    out_len += len(event.data)
+                elif isinstance(event, h11.EndOfMessage):
+                    self._close_conn()
+                    break
+                elif isinstance(event, h11.ConnectionClosed):
+                    # TODO: better exception
+                    raise RuntimeError("Connection closed early!")
+
+            received_data = b''.join(data_out)
+            data_to_return, self._buffered_data = (
+                received_data[:amt], received_data[amt:]
+            )
+            return data_to_return
+        else:
+            # Amount is not given (unbounded read)
+            # TODO: this loop is *basically* identical to the one above it.
+            # we should really try to refactor to remove the duplication.
+            while True:
+                event = self.state_machine.next_event()
+                if event == h11.NEED_DATA:
+                    data = self.sock.recv(65536)
+                    self.state_machine.receive_data(data)
+                    continue
+
+                if isinstance(event, h11.Data):
+                    data_out.append(event.data)
+                elif isinstance(event, h11.EndOfMessage):
+                    self._close_conn()
+                    break
+                elif isinstance(event, h11.ConnectionClosed):
+                    # TODO: better exception
+                    raise RuntimeError("Connection closed early!")
+
+            return b''.join(data_out)
+
+    def readinto(self, b):
+        """Read up to len(b) bytes into bytearray b and return the number
+        of bytes read.
+        """
+        if self.fp is None:
+            return 0
+
+        data = self.read(len(b))
+        b[:] = data
+        return len(data)
+
+    def read1(self, n=-1):
+        """Read with at most one underlying system call.  If at least one
+        byte is buffered, return that instead.
+        """
+        if self.fp is None:
+            return b""
+
+        if self._buffered_data:
+            # This is a dumb default value of this argument.
+            if n == -1:
+                n == len(self._buffered_data)
+            return self._buffered_data[:n]
+
+        # 65536 is a nice number
+        if n == -1:
+            n == 65536
+
+        self._state_machine.receive_data(self.fp.recv(n))
+        data = []
+
+        while True:
+            event = self.state_machine.next_event()
+            if event is h11.NEED_DATA:
+                break
+
+            if isinstance(event, h11.Data):
+                data.append(event.data)
+            elif isinstance(event, h11.EndOfMessage):
+                self._close_conn()
+                break
+            elif isinstance(event, h11.ConnectionClosed):
+                # TODO: better exception
+                raise RuntimeError("Connection closed early!")
+
+        # Thanks to the fact that we called recv with n, we cannot possibly get
+        # too much data here.
+        return b''.join(data)
+
+    def peek(self, size=None):
+        data_out = [self._buffered_data]
+        data_out_len = len(self._buffered_data)
+
+        while (size is None) or (size < data_out_len):
+            event = self.state_machine.next_event()
+            if event is h11.NEED_DATA:
+                self._state_machine.receive_data(self.fp.recv(8192))
+                continue
+
+            if isinstance(event, h11.Data):
+                data_out.append(event.data)
+                data_out_len += len(event.data)
+            elif isinstance(event, h11.EndOfMessage):
+                self._close_conn()
+                break
+            elif isinstance(event, h11.ConnectionClosed):
+                # TODO: better exception
+                raise RuntimeError("Connection closed early!")
+
+        self._buffered_data = b''.join(data_out)
+        if size is None:
+            return self._buffered_data
+        else:
+            return self._buffered_data[:size]
+
+    def readline(self, limit=-1):
+        # TODO: the performance here sucks.
+        if self.fp is None:
+            return b""
+
+        # Fallback to IOBase readline which uses peek() and read()
+        return super().readline(limit)
+
+    def fileno(self):
+        return self.fp.fileno()
+
+    def getheader(self, name, default=None):
+        '''Returns the value of the header matching *name*.
+        If there are multiple matching headers, the values are
+        combined into a single string separated by commas and spaces.
+        If no matching header is found, returns *default* or None if
+        the *default* is not specified.
+        If the headers are unknown, raises http.client.ResponseNotReady.
+        '''
+        if self.headers is None:
+            # TODO: this exception isn't real
+            raise ResponseNotReady()
+        headers = self.headers.getlist(name)
+        if not headers:
+            return default
+        else:
+            return b', '.join(headers)
+
+    def getheaders(self):
+        """Return list of (header, value) tuples."""
+        if self.headers is None:
+            # TODO: this exception isn't real
+            raise ResponseNotReady()
+        return list(self.headers.items())
+
+    # We override IOBase.__iter__ so that it doesn't check for closed-ness
+    def __iter__(self):
+        return self
 
 
 class HTTPConnection(object):
@@ -132,6 +427,8 @@ class HTTPConnection(object):
     #: Whether this connection verifies the host's certificate.
     is_verified = False
 
+    response_class = OldHTTPResponse
+
     def __init__(self, host, port, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                  source_address=None, socket_options=None):
 
@@ -161,6 +458,37 @@ class HTTPConnection(object):
         self._url = None
 
         self._state_machine = h11.Connection(our_role=h11.CLIENT)
+
+    @staticmethod
+    def _get_content_length(body, method):
+        """Get the content-length based on the body.
+        If the body is None, we set Content-Length: 0 for methods that expect
+        a body (RFC 7230, Section 3.3.2). We also set the Content-Length for
+        any method if the body is a str or bytes-like object and not a file.
+        """
+        if body is None:
+            # do an explicit check for not None here to distinguish
+            # between unset and set but empty
+            if method.upper() in set(['PATCH', 'POST', 'PUT']):
+                return 0
+            else:
+                return None
+
+        if hasattr(body, 'read'):
+            # file-like object.
+            return None
+
+        try:
+            # does it implement the buffer protocol (bytes, bytearray, array)?
+            mv = memoryview(body)
+            return mv.nbytes
+        except TypeError:
+            pass
+
+        if isinstance(body, str):
+            return len(body)
+
+        return None
 
     def set_tunnel(self, host, port=None, headers=None):
         """
@@ -502,7 +830,7 @@ class HTTPConnection(object):
             self.connect()
 
         request = h11.Request(
-            method=self.method,
+            method=self._method,
             target=self._url,
             headers=self._pending_headers,
         )
@@ -657,11 +985,10 @@ class HTTPSConnection(HTTPConnection):
     ssl_version = None
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
-                 strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+                 timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                  ssl_context=None, **kw):
 
-        HTTPConnection.__init__(self, host, port, strict=strict,
-                                timeout=timeout, **kw)
+        HTTPConnection.__init__(self, host, port, timeout=timeout, **kw)
 
         self.key_file = key_file
         self.cert_file = cert_file
