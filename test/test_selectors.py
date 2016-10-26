@@ -39,7 +39,7 @@ LOWER_TOLERANCE = 0.05
 UPPER_TOLERANCE = 0.05
 
 # Travis CI detection, sometimes Travis is extremely slow.
-if "CI" in os.environ:
+if "TRAVIS" in os.environ:
     UPPER_TOLERANCE = 0.55
 
 
