@@ -33,7 +33,10 @@ from urllib3.util import selectors
 
 LONG_SELECT = 0.2
 SHORT_SELECT = 0.01
-TOLERANCE = 0.0625
+
+# Tolerance values for CI timer/speed fluctuations.
+LOWER_TOLERANCE = 0.0625
+UPPER_TOLERANCE = 0.125
 
 
 class AlarmThread(threading.Thread):
@@ -77,11 +80,10 @@ class AlarmMixin(object):
 
 
 class TimerContext(object):
-    def __init__(self, testcase, lower=None, upper=None, tolerance=0.0):
+    def __init__(self, testcase, lower=None, upper=None ):
         self.testcase = testcase
         self.lower = lower
         self.upper = upper
-        self.tolerance = tolerance
         self.start_time = None
         self.end_time = None
 
@@ -92,14 +94,14 @@ class TimerContext(object):
         self.end_time = get_time()
         total_time = self.end_time - self.start_time
         if self.lower is not None:
-            self.testcase.assertGreaterEqual(total_time, self.lower * (1 - self.tolerance))
+            self.testcase.assertGreaterEqual(total_time, self.lower * (1.0 - LOWER_TOLERANCE))
         if self.upper is not None:
-            self.testcase.assertLessEqual(total_time, self.upper * (1 + self.tolerance))
+            self.testcase.assertLessEqual(total_time, self.upper * (1.0 + UPPER_TOLERANCE))
 
 
 class TimerMixin(object):
     def assertTakesTime(self, lower=None, upper=None):
-        return TimerContext(self, lower=lower, upper=upper, tolerance=TOLERANCE)
+        return TimerContext(self, lower=lower, upper=upper)
 
 
 @skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector")
@@ -646,25 +648,21 @@ class ScalableSelectorMixin(object):
         self.assertEqual(limit_nofile // 2, len(s.select()))
 
 
-@skipUnless(hasattr(selectors, "SelectSelector"),
-                     "Platform doesn't have a SelectSelector")
+@skipUnless(hasattr(selectors, "SelectSelector"), "Platform doesn't have a SelectSelector")
 class SelectSelectorTestCase(BaseSelectorTestCase):
     SELECTOR = getattr(selectors, "SelectSelector", None)
 
 
-@skipUnless(hasattr(selectors, "PollSelector"),
-                     "Platform doesn't have a PollSelector")
+@skipUnless(hasattr(selectors, "PollSelector"), "Platform doesn't have a PollSelector")
 class PollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     SELECTOR = getattr(selectors, "PollSelector", None)
 
 
-@skipUnless(hasattr(selectors, "EpollSelector"),
-                         "Platform doesn't have an EpollSelector")
+@skipUnless(hasattr(selectors, "EpollSelector"), "Platform doesn't have an EpollSelector")
 class EpollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     SELECTOR = getattr(selectors, "EpollSelector", None)
 
 
-@skipUnless(hasattr(selectors, "KqueueSelector"),
-                         "Platform doesn't have a KqueueSelector")
+@skipUnless(hasattr(selectors, "KqueueSelector"), "Platform doesn't have a KqueueSelector")
 class KqueueSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     SELECTOR = getattr(selectors, "KqueueSelector", None)
