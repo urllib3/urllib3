@@ -8,7 +8,6 @@
 import errno
 import math
 import select
-import six
 from collections import namedtuple, Mapping
 
 import time
@@ -39,7 +38,7 @@ class SelectorError(Exception):
 def _fileobj_to_fd(fileobj):
     """ Return a file descriptor from a file object. If
     given an integer will simply return that integer back. """
-    if isinstance(fileobj, six.integer_types):
+    if isinstance(fileobj, int):
         fd = fileobj
     else:
         try:
@@ -91,7 +90,7 @@ def _syscall_wrapper(func, recalc_timeout, *args, **kwargs):
             is_interrupt = (errcode == errno.EINTR or (hasattr(errno, "WSAEINTR") and
                                                        errcode == errno.WSAEINTR))
 
-            if errcode is not None and is_interrupt:
+            if is_interrupt:
                 if expires is not None:
                     current_time = monotonic()
                     if current_time > expires:
@@ -133,11 +132,11 @@ class _SelectorMapping(Mapping):
 class BaseSelector(object):
     """ Abstract Selector class
 
-    A select supports registering file objects to be monitored
+    A selector supports registering file objects to be monitored
     for specific I/O events.
 
     A file object is a file descriptor or any object with a
-    `fileno()` method. An arbitrary object can be attaced to the
+    `fileno()` method. An arbitrary object can be attached to the
     file object which can be used for example to store context info,
     a callback, etc.
 
