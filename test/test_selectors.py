@@ -33,7 +33,7 @@ from urllib3.util import selectors
 
 LONG_SELECT = 0.2
 SHORT_SELECT = 0.01
-TOLERANCE = 0.005  # Tolerance value because CI timers are bad.
+TOLERANCE = 0.0625
 
 
 class AlarmThread(threading.Thread):
@@ -60,6 +60,7 @@ class AlarmMixin(object):
             self.alarm_thread = None
         if self.alarm_thread is None:
             self.addCleanup(self.cancel_alarm)
+
         self.alarm_thread = AlarmThread(timeout)
         self.alarm_thread.start()
 
@@ -76,10 +77,11 @@ class AlarmMixin(object):
 
 
 class TimerContext(object):
-    def __init__(self, testcase, lower=None, upper=None):
+    def __init__(self, testcase, lower=None, upper=None, tolerance=0.0):
         self.testcase = testcase
         self.lower = lower
         self.upper = upper
+        self.tolerance = tolerance
         self.start_time = None
         self.end_time = None
 
@@ -90,19 +92,21 @@ class TimerContext(object):
         self.end_time = get_time()
         total_time = self.end_time - self.start_time
         if self.lower is not None:
-            self.testcase.assertGreaterEqual(total_time, self.lower - TOLERANCE)
+            self.testcase.assertGreaterEqual(total_time, self.lower * (1 - self.tolerance))
         if self.upper is not None:
-            self.testcase.assertLessEqual(total_time, self.upper + TOLERANCE)
+            self.testcase.assertLessEqual(total_time, self.upper * (1 + self.tolerance))
 
 
 class TimerMixin(object):
     def assertTakesTime(self, lower=None, upper=None):
-        return TimerContext(self, lower=lower, upper=upper)
+        return TimerContext(self, lower=lower, upper=upper, tolerance=TOLERANCE)
 
 
 @skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector")
 class WaitForIOTest(unittest.TestCase, AlarmMixin, TimerMixin):
     """ Tests for the higher level wait_for_* functions. """
+    TOLERANCE = 0.05
+
     def make_socketpair(self):
         rd, wr = socketpair()
 
@@ -179,6 +183,7 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin, TimerMixin):
 class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
     """ Implements the tests that each type of selector must pass. """
     SELECTOR = selectors.DefaultSelector
+    TOLERANCE = 0.05
 
     def make_socketpair(self):
         rd, wr = socket.socketpair()
@@ -498,7 +503,8 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 
         self.make_alarm(lambda *args: None, SHORT_SELECT)
 
-        with self.assertTakesTime(lower=LONG_SELECT, upper=LONG_SELECT):
+        # The x1.1 is because SelectSelector is really slow on CI.
+        with self.assertTakesTime(lower=LONG_SELECT, upper=LONG_SELECT * 1.1):
             self.assertEqual([], s.select(LONG_SELECT))
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
