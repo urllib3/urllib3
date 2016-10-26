@@ -35,8 +35,12 @@ LONG_SELECT = 0.2
 SHORT_SELECT = 0.01
 
 # Tolerance values for CI timer/speed fluctuations.
-LOWER_TOLERANCE = 0.0625
-UPPER_TOLERANCE = 0.125
+LOWER_TOLERANCE = 0.05
+UPPER_TOLERANCE = 0.05
+
+# Travis CI detection, sometimes Travis is extremely slow.
+if "CI" in os.environ:
+    UPPER_TOLERANCE = 0.55
 
 
 class AlarmThread(threading.Thread):
