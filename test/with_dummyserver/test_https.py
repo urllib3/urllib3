@@ -471,16 +471,22 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
         self._pool = HTTPSConnectionPool(self.host, self.port)
 
     def test_set_ssl_version_to_sslv3(self):
-        self._pool.ssl_version = ssl.PROTOCOL_SSLv3
-        self.assertRaises(SSLError, self._pool.request, 'GET', '/')
+        self.assertEqual(
+            ssl.PROTOCOL_SSLv3,
+            util.ssl_.resolve_ssl_version(ssl.PROTOCOL_SSLv3)
+        )
 
     def test_ssl_version_as_string(self):
-        self._pool.ssl_version = 'PROTOCOL_SSLv3'
-        self.assertRaises(SSLError, self._pool.request, 'GET', '/')
+        self.assertEqual(
+            ssl.PROTOCOL_SSLv3,
+            util.ssl_.resolve_ssl_version("PROTOCOL_SSLv3")
+        )
 
     def test_ssl_version_as_short_string(self):
-        self._pool.ssl_version = 'SSLv3'
-        self.assertRaises(SSLError, self._pool.request, 'GET', '/')
+        self.assertEqual(
+            ssl.PROTOCOL_SSLv3,
+            util.ssl_.resolve_ssl_version("SSLv3")
+        )
 
     def test_discards_connection_on_sslerror(self):
         self._pool.cert_reqs = 'CERT_REQUIRED'
