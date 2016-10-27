@@ -197,7 +197,10 @@ class OldHTTPResponse(io.BufferedIOBase):
         fp, self.fp = self.fp, None
         fp.close()
 
-        if self._state_machine.our_state is h11.DONE:
+        # TODO: I can't tell if this is too conservative. I guess we'll find
+        # out.
+        if (self._state_machine.our_state is h11.DONE and
+            self._state_machine.their_state is h11.DONE):
             self._state_machine.start_next_cycle()
 
     def close(self):
