@@ -375,7 +375,8 @@ class PyOpenSSLContext(object):
     @verify_mode.setter
     def verify_mode(self, value):
         self._ctx.set_verify(
-            _stdlib_to_openssl_verify[value], _verify_callback
+            _stdlib_to_openssl_verify[value],
+            _verify_callback
         )
 
     def set_default_verify_paths(self):
