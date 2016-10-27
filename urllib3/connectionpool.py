@@ -384,6 +384,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 try:
                     httplib_response = conn.getresponse()
                 except Exception as e:
+                    raise
                     # Remove the TypeError from the exception chain in Python 3;
                     # otherwise it looks like a programming error was the cause.
                     six.raise_from(e, None)
@@ -398,7 +399,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                   httplib_response.length)
 
         try:
-            assert_header_parsing(httplib_response.msg)
+            #assert_header_parsing(httplib_response.msg)
+            pass
         except HeaderParsingError as hpe:  # Platform-specific: Python 3
             log.warning(
                 'Failed to parse headers (url=%s): %s',

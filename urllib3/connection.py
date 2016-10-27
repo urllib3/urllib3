@@ -98,6 +98,10 @@ class HTTPException(object):
     pass
 
 
+# TODO: This is a holdover from httplib, do we need it?
+_UNKNOWN = object()
+
+
 class OldHTTPResponse(io.BufferedIOBase):
 
     # See RFC 2616 sec 19.6 and RFC 1945 sec 6 for details.
@@ -183,7 +187,7 @@ class OldHTTPResponse(io.BufferedIOBase):
             # TODO: Need to replace exception
             raise UnknownProtocol(version)
 
-        self.headers = HTTPHeaderDict(event.headers)
+        self.headers = self.msg = HTTPHeaderDict(event.headers)
 
     def _close_conn(self):
         # TODO: rewrite in our own style.
@@ -202,11 +206,6 @@ class OldHTTPResponse(io.BufferedIOBase):
 
     # XXX This class should probably be revised to act more like
     # the "raw stream" that BufferedReader expects.
-
-    def flush(self):
-        super(OldHTTPResponse, self).flush()
-        if self.fp:
-            self.fp.flush()
 
     def readable(self):
         """Always returns True"""
@@ -230,10 +229,10 @@ class OldHTTPResponse(io.BufferedIOBase):
         if amt is not None:
             # Amount is given
             while out_len < amt:
-                event = self.state_machine.next_event()
+                event = self._state_machine.next_event()
                 if event == h11.NEED_DATA:
                     data = self.sock.recv(65536)
-                    self.state_machine.receive_data(data)
+                    self._state_machine.receive_data(data)
                     continue
 
                 if isinstance(event, h11.Data):
@@ -256,14 +255,14 @@ class OldHTTPResponse(io.BufferedIOBase):
             # TODO: this loop is *basically* identical to the one above it.
             # we should really try to refactor to remove the duplication.
             while True:
-                event = self.state_machine.next_event()
+                event = self._state_machine.next_event()
                 if event == h11.NEED_DATA:
                     data = self.sock.recv(65536)
-                    self.state_machine.receive_data(data)
+                    self._state_machine.receive_data(data)
                     continue
 
                 if isinstance(event, h11.Data):
-                    data_out.append(event.data)
+                    data_out.append(bytes(event.data))
                 elif isinstance(event, h11.EndOfMessage):
                     self._close_conn()
                     break
@@ -327,7 +326,7 @@ class OldHTTPResponse(io.BufferedIOBase):
         data_out_len = len(self._buffered_data)
 
         while (size is None) or (size < data_out_len):
-            event = self.state_machine.next_event()
+            event = self._state_machine.next_event()
             if event is h11.NEED_DATA:
                 self._state_machine.receive_data(self.fp.recv(8192))
                 continue
@@ -930,7 +929,9 @@ class HTTPConnection(object):
         if self.__response:
             raise ResponseNotReady()
 
-        response = self.response_class(self.sock, method=self._method)
+        response = self.response_class(
+            self.sock, self._state_machine, method=self._method
+        )
 
         try:
             try:
