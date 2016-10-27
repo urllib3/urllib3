@@ -87,12 +87,15 @@ try:
 except AttributeError:
     pass
 
-_openssl_verify = {
+_stdlib_to_openssl_verify = {
     ssl.CERT_NONE: OpenSSL.SSL.VERIFY_NONE,
     ssl.CERT_OPTIONAL: OpenSSL.SSL.VERIFY_PEER,
     ssl.CERT_REQUIRED:
         OpenSSL.SSL.VERIFY_PEER + OpenSSL.SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
 }
+_openssl_to_stdlib_verify = dict(
+    (v, k) for k, v in _stdlib_to_openssl_verify.items()
+)
 
 #: The list of supported SSL/TLS cipher suites.
 DEFAULT_SSL_CIPHER_LIST = util.ssl_.DEFAULT_CIPHERS.encode('ascii')
@@ -363,11 +366,14 @@ class PyOpenSSLContext(object):
 
     @property
     def verify_mode(self):
-        return self._ctx.get_verify_mode()
+        return _openssl_to_stdlib_verify[self._ctx.get_verify_mode()]
 
     @verify_mode.setter
     def verify_mode(self, value):
-        self._ctx.set_verify(value, _verify_callback)
+        self._ctx.set_verify(
+            _stdlib_to_openssl_verify[value],
+            _verify_callback
+        )
 
     def set_default_verify_paths(self):
         self._ctx.set_default_verify_paths()
@@ -436,7 +442,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
     if keyfile:
         ctx.use_privatekey_file(keyfile)
     if cert_reqs != ssl.CERT_NONE:
-        ctx.set_verify(_openssl_verify[cert_reqs], _verify_callback)
+        ctx.set_verify(_stdlib_to_openssl_verify[cert_reqs], _verify_callback)
     if ca_certs or ca_cert_dir:
         try:
             ctx.load_verify_locations(ca_certs, ca_cert_dir)
