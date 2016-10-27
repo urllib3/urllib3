@@ -188,11 +188,17 @@ class OldHTTPResponse(io.BufferedIOBase):
             raise UnknownProtocol(version)
 
         self.headers = self.msg = HTTPHeaderDict(event.headers)
+        connection = self.headers.get("connection")
+        self.will_close = "close" in connection.strip()
 
     def _close_conn(self):
-        # TODO: rewrite in our own style.
+        # Note that this closure only closes the backing socket if there is no
+        # other reference to it.
         fp, self.fp = self.fp, None
         fp.close()
+
+        if self._state_machine.our_state is h11.DONE:
+            self._state_machine.start_next_cycle()
 
     def close(self):
         # TODO: rewrite in our own style.
@@ -622,12 +628,12 @@ class HTTPConnection(object):
                 self.sock = None
                 sock.close()   # close it manually... there may be other refs
 
-            self._state_machine.send(h11.ConnectionClosed())
         finally:
             response = self.__response
             if response:
                 self.__response = None
                 response.close()
+            self._state_machine = h11.Connection(our_role=h11.CLIENT)
 
     def send(self, data):
         """Send `data' to the server.
