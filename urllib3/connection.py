@@ -188,8 +188,8 @@ class OldHTTPResponse(io.BufferedIOBase):
             raise UnknownProtocol(version)
 
         self.headers = self.msg = HTTPHeaderDict(event.headers)
-        connection = self.headers.get("connection")
-        self.will_close = "close" in connection.strip()
+        connection = self.headers.get(b"connection", b"")
+        self.will_close = b"close" in connection.strip()
 
     def _close_conn(self):
         # Note that this closure only closes the backing socket if there is no
