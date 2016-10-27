@@ -94,8 +94,8 @@ class DummyConnection(object):
 
 
 # TODO: This is needed to avoid breaking imports, revisit it.
-class HTTPException(object):
-    pass
+# For now, we map it to h11's RemoteProtocolError.
+HTTPException = h11.RemoteProtocolError
 
 
 # TODO: This is a holdover from httplib, do we need it?
