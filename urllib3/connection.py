@@ -263,8 +263,7 @@ class OldHTTPResponse(io.BufferedIOBase):
             while True:
                 event = self._state_machine.next_event()
                 if event == h11.NEED_DATA:
-                    data = self.sock.recv(65536)
-                    self._state_machine.receive_data(data)
+                    self._state_machine.receive_data(self.fp.recv(65536))
                     continue
 
                 if isinstance(event, h11.Data):
