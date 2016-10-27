@@ -72,8 +72,13 @@ class ConnectionPool(object):
         # httplib crazily doubles up the square brackets on the Host header.
         # Instead, we need to make sure we never pass ``None`` as the port.
         # However, for backward compatibility reasons we can't actually
-        # *assert* that.
-        self.host = host.strip('[]')
+        # *assert* that.  See http://bugs.python.org/issue28539
+        #
+        # Also if an IPv6 address literal has a zone identifier, the
+        # percent sign might be URIencoded, convert it back into ASCII
+        if host[0] == '[' and host[-1] == ']' and '%25' in host:
+            host = host.strip('[]').replace('%25', '%')
+        self.host = host
         self.port = port
 
     def __str__(self):
