@@ -78,7 +78,7 @@ class AlarmMixin(object):
             self.alarm_thread.join(0.0)
         self.alarm_thread = None
 
-    def make_alarm(self, handler, duration):
+    def make_alarm(self, duration, handler):
         sigalrm_handler = signal.signal(signal.SIGALRM, handler)
         self.addCleanup(signal.signal, signal.SIGALRM, sigalrm_handler)
         self.set_alarm(duration)
@@ -169,7 +169,7 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin, TimerMixin):
     def test_interrupt_wait_for_read_no_event(self):
         rd, wr = self.make_socketpair()
 
-        self.make_alarm(lambda *args: None, SHORT_SELECT)
+        self.make_alarm(SHORT_SELECT, lambda *args: None)
 
         with self.assertTakesTime(lower=LONG_SELECT, upper=LONG_SELECT):
             self.assertEqual([], selectors.wait_for_read(rd, timeout=LONG_SELECT))
@@ -178,7 +178,7 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin, TimerMixin):
     def test_interrupt_wait_for_read_with_event(self):
         rd, wr = self.make_socketpair()
 
-        self.make_alarm(lambda *args: wr.send(b'x'), SHORT_SELECT)
+        self.make_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
 
         with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
             self.assertEqual([rd], selectors.wait_for_read(rd, timeout=LONG_SELECT))
@@ -488,7 +488,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         rd, wr = self.make_socketpair()
         key = s.register(rd, selectors.EVENT_READ)
 
-        self.make_alarm(lambda *args: wr.send(b'x'), SHORT_SELECT)
+        self.make_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
 
         with self.assertTakesTime(upper=SHORT_SELECT * 2):
             ready = s.select(LONG_SELECT)
@@ -500,7 +500,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         rd, wr = self.make_socketpair()
         s.register(rd, selectors.EVENT_READ)
 
-        self.make_alarm(lambda *args: None, SHORT_SELECT)
+        self.make_alarm(SHORT_SELECT, lambda *args: None)
 
         with self.assertTakesTime(lower=LONG_SELECT, upper=LONG_SELECT):
             self.assertEqual([], s.select(LONG_SELECT))
@@ -512,7 +512,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         s.register(rd, selectors.EVENT_READ)
         key = s.get_key(rd)
 
-        self.make_alarm(lambda *args: wr.send(b'x'), SHORT_SELECT)
+        self.make_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
 
         with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
             self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
@@ -532,7 +532,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
             self.set_alarm(SHORT_SELECT)
             signal.signal(signal.SIGALRM, second_alarm)
 
-        self.make_alarm(first_alarm, SHORT_SELECT)
+        self.make_alarm(SHORT_SELECT, first_alarm)
 
         with self.assertTakesTime(lower=SHORT_SELECT * 2, upper=SHORT_SELECT * 2):
             self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
@@ -549,7 +549,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
             err.errno = errno.EACCES
             raise err
 
-        self.make_alarm(alarm_exception, SHORT_SELECT)
+        self.make_alarm(SHORT_SELECT, alarm_exception)
 
         try:
             s.select(LONG_SELECT)
@@ -573,7 +573,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         def alarm_exception(*args):
             raise AlarmInterrupt()
 
-        self.make_alarm(alarm_exception, SHORT_SELECT)
+        self.make_alarm(SHORT_SELECT, alarm_exception)
 
         with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
             self.assertRaises(AlarmInterrupt, s.select, LONG_SELECT)
