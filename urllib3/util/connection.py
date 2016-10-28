@@ -1,10 +1,7 @@
 from __future__ import absolute_import
 import socket
-import select
-from .selectors import (
-    wait_for_read,
-    HAS_SELECT
-)
+from .wait import wait_for_read
+from .selectors import HAS_SELECT, SelectorError
 
 
 def is_connection_dropped(conn):  # Platform-specific
@@ -28,7 +25,7 @@ def is_connection_dropped(conn):  # Platform-specific
 
     try:
         return bool(wait_for_read(sock, timeout=0.0))
-    except select.error:
+    except SelectorError:
         return True
 
 

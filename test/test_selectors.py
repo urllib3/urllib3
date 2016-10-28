@@ -30,7 +30,13 @@ try:  # Windows doesn't support socketpair on Python 3.5<
 except ImportError:
     from .socketpair_helper import socketpair
 
-from urllib3.util import selectors
+from urllib3.util import (
+    selectors,
+    wait_for_read,
+    wait_for_write
+)
+
+HAS_ALARM = hasattr(signal, "alarm")
 
 LONG_SELECT = 0.2
 SHORT_SELECT = 0.01
@@ -63,25 +69,23 @@ class AlarmThread(threading.Thread):
 class AlarmMixin(object):
     alarm_thread = None
 
-    def set_alarm(self, timeout):
-        if not hasattr(signal, "SIGALRM"):
+    def _begin_alarm_thread(self, timeout):
+        if not HAS_ALARM:
             self.skipTest("Platform doesn't have signal.SIGALRM")
-        if self.alarm_thread is None:
-            self.addCleanup(self.cancel_alarm)
-
+        self.addCleanup(self._cancel_alarm_thread)
         self.alarm_thread = AlarmThread(timeout)
         self.alarm_thread.start()
 
-    def cancel_alarm(self):
+    def _cancel_alarm_thread(self):
         if self.alarm_thread is not None:
             self.alarm_thread.cancel()
             self.alarm_thread.join(0.0)
         self.alarm_thread = None
 
-    def make_alarm(self, duration, handler):
+    def set_alarm(self, duration, handler):
         sigalrm_handler = signal.signal(signal.SIGALRM, handler)
         self.addCleanup(signal.signal, signal.SIGALRM, sigalrm_handler)
-        self.set_alarm(duration)
+        self._begin_alarm_thread(duration)
 
 
 class TimerContext(object):
@@ -130,22 +134,22 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin, TimerMixin):
 
     def test_wait_for_read_single_socket(self):
         rd, wr = self.make_socketpair()
-        self.assertEqual([], selectors.wait_for_read(rd, timeout=0.001))
+        self.assertEqual([], wait_for_read(rd, timeout=SHORT_SELECT))
 
     def test_wait_for_read_multiple_socket(self):
         rd, rd2 = self.make_socketpair()
-        self.assertEqual([], selectors.wait_for_read([rd, rd2], timeout=0.001))
+        self.assertEqual([], wait_for_read([rd, rd2], timeout=SHORT_SELECT))
 
     def test_wait_for_read_empty(self):
-        self.assertEqual([], selectors.wait_for_read([], timeout=0.001))
+        self.assertEqual([], wait_for_read([], timeout=SHORT_SELECT))
 
     def test_wait_for_write_single_socket(self):
         wr, wr2 = self.make_socketpair()
-        self.assertEqual([wr], selectors.wait_for_write(wr, timeout=0.001))
+        self.assertEqual([wr], wait_for_write(wr, timeout=SHORT_SELECT))
 
     def test_wait_for_write_multiple_socket(self):
         wr, wr2 = self.make_socketpair()
-        result = selectors.wait_for_write([wr, wr2], timeout=0.001)
+        result = wait_for_write([wr, wr2], timeout=SHORT_SELECT)
         # assertItemsEqual renamed in Python 3.x
         if hasattr(self, "assertItemsEqual"):
             self.assertItemsEqual([wr, wr2], result)
@@ -153,35 +157,35 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin, TimerMixin):
             self.assertCountEqual([wr, wr2], result)
 
     def test_wait_for_write_empty(self):
-        self.assertEqual([], selectors.wait_for_write([], timeout=0.001))
+        self.assertEqual([], wait_for_write([], timeout=SHORT_SELECT))
 
     def test_wait_for_non_list_iterable(self):
         rd, wr = self.make_socketpair()
         iterable = {'rd': rd}.values()
-        self.assertEqual([], selectors.wait_for_read(iterable, timeout=0.001))
+        self.assertEqual([], wait_for_read(iterable, timeout=SHORT_SELECT))
 
     def test_wait_timeout(self):
         rd, wr = self.make_socketpair()
-        with self.assertTakesTime(lower=0.0, upper=0.1):
-            selectors.wait_for_read([rd], timeout=0.01)
+        with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
+            wait_for_read([rd], timeout=SHORT_SELECT)
 
-    @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
+    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_no_event(self):
         rd, wr = self.make_socketpair()
 
-        self.make_alarm(SHORT_SELECT, lambda *args: None)
+        self.set_alarm(SHORT_SELECT, lambda *args: None)
 
         with self.assertTakesTime(lower=LONG_SELECT, upper=LONG_SELECT):
-            self.assertEqual([], selectors.wait_for_read(rd, timeout=LONG_SELECT))
+            self.assertEqual([], wait_for_read(rd, timeout=LONG_SELECT))
 
-    @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
+    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_with_event(self):
         rd, wr = self.make_socketpair()
 
-        self.make_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
+        self.set_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
 
         with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
-            self.assertEqual([rd], selectors.wait_for_read(rd, timeout=LONG_SELECT))
+            self.assertEqual([rd], wait_for_read(rd, timeout=LONG_SELECT))
         self.assertEqual(rd.recv(1), b'x')
 
 
@@ -245,6 +249,10 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         # Read-only mapping
         with self.assertRaises(TypeError):
             del keys[rd]
+
+        # Doesn't define __setitem__
+        with self.assertRaises(TypeError):
+            keys[rd] = key
 
     def test_register(self):
         s = self.make_selector()
@@ -482,43 +490,43 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
             self.assertEqual(0, len(s.select(timeout=SHORT_SELECT)))
 
-    @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
+    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
     def test_select_timing(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
         key = s.register(rd, selectors.EVENT_READ)
 
-        self.make_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
+        self.set_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
 
-        with self.assertTakesTime(upper=SHORT_SELECT * 2):
+        with self.assertTakesTime(upper=SHORT_SELECT):
             ready = s.select(LONG_SELECT)
         self.assertEqual([(key, selectors.EVENT_READ)], ready)
 
-    @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
+    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
     def test_select_interrupt_no_event(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
         s.register(rd, selectors.EVENT_READ)
 
-        self.make_alarm(SHORT_SELECT, lambda *args: None)
+        self.set_alarm(SHORT_SELECT, lambda *args: None)
 
         with self.assertTakesTime(lower=LONG_SELECT, upper=LONG_SELECT):
             self.assertEqual([], s.select(LONG_SELECT))
 
-    @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
+    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
     def test_select_interrupt_with_event(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
         s.register(rd, selectors.EVENT_READ)
         key = s.get_key(rd)
 
-        self.make_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
+        self.set_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
 
         with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
             self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
         self.assertEqual(rd.recv(1), b'x')
 
-    @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
+    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
     def test_select_multiple_interrupts_with_event(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
@@ -529,16 +537,16 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
             wr.send(b'x')
 
         def first_alarm(*args):
-            self.set_alarm(SHORT_SELECT)
+            self._begin_alarm_thread(SHORT_SELECT)
             signal.signal(signal.SIGALRM, second_alarm)
 
-        self.make_alarm(SHORT_SELECT, first_alarm)
+        self.set_alarm(SHORT_SELECT, first_alarm)
 
         with self.assertTakesTime(lower=SHORT_SELECT * 2, upper=SHORT_SELECT * 2):
             self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
         self.assertEqual(rd.recv(1), b'x')
 
-    @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
+    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
     def test_selector_error(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
@@ -549,7 +557,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
             err.errno = errno.EACCES
             raise err
 
-        self.make_alarm(SHORT_SELECT, alarm_exception)
+        self.set_alarm(SHORT_SELECT, alarm_exception)
 
         try:
             s.select(LONG_SELECT)
@@ -561,7 +569,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 
     # Test ensures that _syscall_wrapper properly raises the
     # exception that is raised from an interrupt handler.
-    @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
+    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
     def test_select_interrupt_exception(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
@@ -573,7 +581,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         def alarm_exception(*args):
             raise AlarmInterrupt()
 
-        self.make_alarm(SHORT_SELECT, alarm_exception)
+        self.set_alarm(SHORT_SELECT, alarm_exception)
 
         with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
             self.assertRaises(AlarmInterrupt, s.select, LONG_SELECT)
