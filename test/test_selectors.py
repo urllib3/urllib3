@@ -1,4 +1,5 @@
 from __future__ import with_statement
+import errno
 import os
 import psutil
 import signal
@@ -60,11 +61,11 @@ class AlarmThread(threading.Thread):
 
 
 class AlarmMixin(object):
+    alarm_thread = None
+
     def set_alarm(self, timeout):
         if not hasattr(signal, "SIGALRM"):
             self.skipTest("Platform doesn't have signal.SIGALRM")
-        if not hasattr(self, "alarm_thread"):
-            self.alarm_thread = None
         if self.alarm_thread is None:
             self.addCleanup(self.cancel_alarm)
 
@@ -72,7 +73,7 @@ class AlarmMixin(object):
         self.alarm_thread.start()
 
     def cancel_alarm(self):
-        if getattr(self, "alarm_thread", None) is not None:
+        if self.alarm_thread is not None:
             self.alarm_thread.cancel()
             self.alarm_thread.join(0.0)
         self.alarm_thread = None
@@ -84,7 +85,7 @@ class AlarmMixin(object):
 
 
 class TimerContext(object):
-    def __init__(self, testcase, lower=None, upper=None ):
+    def __init__(self, testcase, lower=None, upper=None):
         self.testcase = testcase
         self.lower = lower
         self.upper = upper
@@ -94,7 +95,7 @@ class TimerContext(object):
     def __enter__(self):
         self.start_time = get_time()
 
-    def __exit__(self, *args):
+    def __exit__(self, *args, **kwargs):
         self.end_time = get_time()
         total_time = self.end_time - self.start_time
         if self.lower is not None:
@@ -111,7 +112,6 @@ class TimerMixin(object):
 @skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector")
 class WaitForIOTest(unittest.TestCase, AlarmMixin, TimerMixin):
     """ Tests for the higher level wait_for_* functions. """
-    TOLERANCE = 0.05
 
     def make_socketpair(self):
         rd, wr = socketpair()
@@ -180,7 +180,7 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin, TimerMixin):
 
         self.make_alarm(lambda *args: wr.send(b'x'), SHORT_SELECT)
 
-        with self.assertTakesTime(lower=SHORT_SELECT, upper=LONG_SELECT):
+        with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
             self.assertEqual([rd], selectors.wait_for_read(rd, timeout=LONG_SELECT))
         self.assertEqual(rd.recv(1), b'x')
 
@@ -189,7 +189,6 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin, TimerMixin):
 class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
     """ Implements the tests that each type of selector must pass. """
     SELECTOR = selectors.DefaultSelector
-    TOLERANCE = 0.05
 
     def make_socketpair(self):
         rd, wr = socket.socketpair()
@@ -428,7 +427,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         s = self.make_selector()
         readers = []
         writers = []
-        for i in range(32):
+        for _ in range(32):
             rd, wr = self.make_socketpair()
             readers.append(rd)
             writers.append(wr)
@@ -463,8 +462,6 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 
         with self.assertTakesTime(upper=SHORT_SELECT):
             self.assertEqual(1, len(s.select(timeout=None)))
-            self.assertEqual(1, len(s.select(timeout=None)))
-            self.assertEqual(1, len(s.select(timeout=None)))
 
     def test_select_timeout_ready(self):
         s, rd, wr = self.standard_setup()
@@ -482,7 +479,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         with self.assertTakesTime(upper=SHORT_SELECT):
             self.assertEqual(0, len(s.select(timeout=0)))
 
-        with self.assertTakesTime(lower=SHORT_SELECT):
+        with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
             self.assertEqual(0, len(s.select(timeout=SHORT_SELECT)))
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
@@ -491,13 +488,9 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         rd, wr = self.make_socketpair()
         key = s.register(rd, selectors.EVENT_READ)
 
-        sigalrm_handler = signal.signal(signal.SIGALRM, lambda *args: wr.send(b'x'))
-        self.addCleanup(signal.signal, signal.SIGALRM, sigalrm_handler)
+        self.make_alarm(lambda *args: wr.send(b'x'), SHORT_SELECT)
 
-        # Start the timer for the interrupt.
-        self.set_alarm(SHORT_SELECT)
-
-        with self.assertTakesTime(upper=LONG_SELECT):
+        with self.assertTakesTime(upper=SHORT_SELECT * 2):
             ready = s.select(LONG_SELECT)
         self.assertEqual([(key, selectors.EVENT_READ)], ready)
 
@@ -509,8 +502,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 
         self.make_alarm(lambda *args: None, SHORT_SELECT)
 
-        # The x1.1 is because SelectSelector is really slow on CI.
-        with self.assertTakesTime(lower=LONG_SELECT, upper=LONG_SELECT * 1.1):
+        with self.assertTakesTime(lower=LONG_SELECT, upper=LONG_SELECT):
             self.assertEqual([], s.select(LONG_SELECT))
 
     @skipUnless(hasattr(signal, "alarm"), "Platform doesn't have signal.alarm()")
@@ -542,7 +534,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 
         self.make_alarm(first_alarm, SHORT_SELECT)
 
-        with self.assertTakesTime(lower=SHORT_SELECT * 2, upper=SHORT_SELECT * 4):
+        with self.assertTakesTime(lower=SHORT_SELECT * 2, upper=SHORT_SELECT * 2):
             self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
         self.assertEqual(rd.recv(1), b'x')
 
@@ -554,7 +546,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 
         def alarm_exception(*args):
             err = OSError()
-            err.errno = 100
+            err.errno = errno.EACCES
             raise err
 
         self.make_alarm(alarm_exception, SHORT_SELECT)
@@ -563,7 +555,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
             s.select(LONG_SELECT)
             self.fail("select() didn't raise SelectorError")
         except selectors.SelectorError as e:
-            self.assertEqual(e.errno, 100)
+            self.assertEqual(e.errno, errno.EACCES)
         except Exception as e:
             self.fail("Raised incorrect exception: " + str(e))
 
