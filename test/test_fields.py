@@ -36,6 +36,15 @@ class TestRequestField(unittest.TestCase):
             'Content-Location: /test\r\n'
             '\r\n')
 
+    def test_make_multipart_empty_filename(self):
+        field = RequestField('somename', 'data', '')
+        field.make_multipart(content_type='application/octet-stream')
+        self.assertEqual(
+            field.render_headers(),
+            'Content-Disposition: form-data; name="somename"; filename=""\r\n'
+            'Content-Type: application/octet-stream\r\n'
+            '\r\n')
+
     def test_render_parts(self):
         field = RequestField('somename', 'data')
         parts = field._render_parts({'name': 'value', 'filename': 'value'})
