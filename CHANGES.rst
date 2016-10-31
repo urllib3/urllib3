@@ -18,6 +18,8 @@ dev (master)
 * Empty filenames in multipart headers are now emitted as such, rather than
   being supressed. (Issue #1015)
 
+* Prefer user-supplied Host headers on chunked uploads. (Issue #1009)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
