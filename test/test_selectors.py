@@ -42,12 +42,10 @@ LONG_SELECT = 0.2
 SHORT_SELECT = 0.01
 
 # Tolerance values for CI timer/speed fluctuations.
-LOWER_TOLERANCE = 0.05
-UPPER_TOLERANCE = 0.05
+TOLERANCE = 0.075
 
 # Travis CI detection, sometimes Travis is extremely slow.
-if "TRAVIS" in os.environ:
-    UPPER_TOLERANCE = 0.55
+TRAVIS_CI = "TRAVIS" in os.environ
 
 
 class AlarmThread(threading.Thread):
@@ -102,10 +100,13 @@ class TimerContext(object):
     def __exit__(self, *args, **kwargs):
         self.end_time = get_time()
         total_time = self.end_time - self.start_time
-        if self.lower is not None:
-            self.testcase.assertGreaterEqual(total_time, self.lower * (1.0 - LOWER_TOLERANCE))
-        if self.upper is not None:
-            self.testcase.assertLessEqual(total_time, self.upper * (1.0 + UPPER_TOLERANCE))
+
+        # Skip timing on CI due to flakiness.
+        if not TRAVIS_CI:
+            if self.lower is not None:
+                self.testcase.assertGreaterEqual(total_time, self.lower * (1.0 - TOLERANCE))
+            if self.upper is not None:
+                self.testcase.assertLessEqual(total_time, self.upper * (1.0 + TOLERANCE))
 
 
 class TimerMixin(object):
