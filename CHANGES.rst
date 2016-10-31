@@ -15,6 +15,9 @@ dev (master)
 * Allow urllib3's HTTPResponse.stream() method to continue to work with
   non-httplib underlying FPs. (Pull #990)
 
+* Empty filenames in multipart headers are now emitted as such, rather than
+  being supressed. (Issue #1015)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
