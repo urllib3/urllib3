@@ -15,7 +15,25 @@ dev (master)
 * Allow urllib3's HTTPResponse.stream() method to continue to work with
   non-httplib underlying FPs. (Pull #990)
 
+* Empty filenames in multipart headers are now emitted as such, rather than
+  being supressed. (Issue #1015)
+
 * ... [Short description of non-trivial change.] (Issue #)
+
+
+1.18.1 (2016-10-27)
+-------------------
+
+* CVE-2016-9015. Users who are using urllib3 version 1.17 or 1.18 along with
+  PyOpenSSL injection and OpenSSL 1.1.0 *must* upgrade to this version. This
+  release fixes a vulnerability whereby urllib3 in the above configuration
+  would silently fail to validate TLS certificates due to erroneously setting
+  invalid flags in OpenSSL's ``SSL_CTX_set_verify`` function. These erroneous
+  flags do not cause a problem in OpenSSL versions before 1.1.0, which
+  interprets the presence of any flag as requesting certificate validation.
+
+  There is no PR for this patch, as it was prepared for simultaneous disclosure
+  and release. The master branch received the same fix in PR #1010.
 
 
 1.18 (2016-09-26)
