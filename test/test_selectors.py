@@ -42,7 +42,7 @@ LONG_SELECT = 0.2
 SHORT_SELECT = 0.01
 
 # Tolerance values for timer/speed fluctuations.
-TOLERANCE = 0.075
+TOLERANCE = 0.75
 
 # Detect whether we're running on Travis.  This is used
 # to skip some verification points inside of tests to
