@@ -41,10 +41,12 @@ HAS_ALARM = hasattr(signal, "alarm")
 LONG_SELECT = 0.2
 SHORT_SELECT = 0.01
 
-# Tolerance values for CI timer/speed fluctuations.
+# Tolerance values for timer/speed fluctuations.
 TOLERANCE = 0.075
 
-# Travis CI detection, sometimes Travis is extremely slow.
+# Detect whether we're running on Travis.  This is used
+# to skip some verification points inside of tests to
+# not randomly fail our CI due to wild timer/speed differences.
 TRAVIS_CI = "TRAVIS" in os.environ
 
 
@@ -103,10 +105,12 @@ class TimerContext(object):
 
         # Skip timing on CI due to flakiness.
         if not TRAVIS_CI:
-            if self.lower is not None:
-                self.testcase.assertGreaterEqual(total_time, self.lower * (1.0 - TOLERANCE))
-            if self.upper is not None:
-                self.testcase.assertLessEqual(total_time, self.upper * (1.0 + TOLERANCE))
+            return
+
+        if self.lower is not None:
+            self.testcase.assertGreaterEqual(total_time, self.lower * (1.0 - TOLERANCE))
+        if self.upper is not None:
+            self.testcase.assertLessEqual(total_time, self.upper * (1.0 + TOLERANCE))
 
 
 class TimerMixin(object):
@@ -562,11 +566,12 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 
         try:
             s.select(LONG_SELECT)
-            self.fail("select() didn't raise SelectorError")
         except selectors.SelectorError as e:
             self.assertEqual(e.errno, errno.EACCES)
         except Exception as e:
             self.fail("Raised incorrect exception: " + str(e))
+        else:
+            self.fail("select() didn't raise SelectorError")
 
     # Test ensures that _syscall_wrapper properly raises the
     # exception that is raised from an interrupt handler.
