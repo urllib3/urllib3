@@ -104,7 +104,7 @@ class TimerContext(object):
         total_time = self.end_time - self.start_time
 
         # Skip timing on CI due to flakiness.
-        if not TRAVIS_CI:
+        if TRAVIS_CI:
             return
 
         if self.lower is not None:
