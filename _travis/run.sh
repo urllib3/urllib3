@@ -9,9 +9,9 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
     PATH="$PYENV_ROOT/bin:$PATH"
     eval "$(pyenv init -)"
 
-    # Use the good OpenSSL
-    export LDFLAGS="-L$(brew --prefix openssl)/lib"
-    export CFLAGS="-I$(brew --prefix openssl)/include"
+    # Use the good OpenSSL for PyOpenSSL.
+    export LDFLAGS="-L$(brew --prefix openssl@1.1)/lib"
+    export CFLAGS="-I$(brew --prefix openssl@1.1)/include"
 fi
 
 tox

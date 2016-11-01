@@ -20,6 +20,7 @@ from urllib3.util.url import (
 )
 from urllib3.util.ssl_ import (
     resolve_cert_reqs,
+    resolve_ssl_version,
     ssl_wrap_socket,
     _const_compare_digest_backport,
 )
@@ -401,6 +402,12 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(resolve_cert_reqs(ssl.CERT_REQUIRED), ssl.CERT_REQUIRED)
         self.assertEqual(resolve_cert_reqs('REQUIRED'), ssl.CERT_REQUIRED)
         self.assertEqual(resolve_cert_reqs('CERT_REQUIRED'), ssl.CERT_REQUIRED)
+
+    def test_resolve_ssl_version(self):
+        self.assertEqual(resolve_ssl_version(ssl.PROTOCOL_TLSv1), ssl.PROTOCOL_TLSv1)
+        self.assertEqual(resolve_ssl_version("PROTOCOL_TLSv1"), ssl.PROTOCOL_TLSv1)
+        self.assertEqual(resolve_ssl_version("TLSv1"), ssl.PROTOCOL_TLSv1)
+        self.assertEqual(resolve_ssl_version(ssl.PROTOCOL_SSLv23), ssl.PROTOCOL_SSLv23)
 
     def test_is_fp_closed_object_supports_closed(self):
         class ClosedFile(object):

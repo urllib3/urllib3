@@ -8,6 +8,11 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     brew update || brew update
 
     brew outdated openssl || brew upgrade openssl
+    brew install openssl@1.1
+
+    # We can't use OpenSSL@1.1 for the standard library, because it's
+    # unsupported, but we want it for PyOpenSSL. So use regular openssl here
+    # for now.
     export LDFLAGS="-L$(brew --prefix openssl)/lib"
     export CFLAGS="-I$(brew --prefix openssl)/include"
 

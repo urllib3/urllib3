@@ -74,3 +74,29 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     def test_empty_iterable_body(self):
         self._test_body([])
+
+    def test_removes_duplicate_host_header(self):
+        self.start_chunked_handler()
+        chunks = ['foo', 'bar', '', 'bazzzzzzzzzzzzzzzzzzzzzz']
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        pool.urlopen(
+            'GET', '/', chunks, headers={'Host': 'test.org'}, chunked=True
+        )
+
+        header_block = self.buffer.split(b'\r\n\r\n', 1)[0].lower()
+        header_lines = header_block.split(b'\r\n')[1:]
+
+        host_headers = [x for x in header_lines if x.startswith(b'host')]
+        self.assertEqual(len(host_headers), 1)
+
+    def test_provides_default_host_header(self):
+        self.start_chunked_handler()
+        chunks = ['foo', 'bar', '', 'bazzzzzzzzzzzzzzzzzzzzzz']
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        pool.urlopen('GET', '/', chunks, chunked=True)
+
+        header_block = self.buffer.split(b'\r\n\r\n', 1)[0].lower()
+        header_lines = header_block.split(b'\r\n')[1:]
+
+        host_headers = [x for x in header_lines if x.startswith(b'host')]
+        self.assertEqual(len(host_headers), 1)
