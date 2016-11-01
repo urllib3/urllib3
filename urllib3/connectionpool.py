@@ -7,6 +7,8 @@ import warnings
 from socket import error as SocketError, timeout as SocketTimeout
 import socket
 
+import h11
+
 
 from .exceptions import (
     ClosedPoolError,
@@ -30,7 +32,7 @@ from .connection import (
     port_by_scheme,
     DummyConnection,
     HTTPConnection, HTTPSConnection, VerifiedHTTPSConnection,
-    HTTPException, BaseSSLError,
+    BaseSSLError
 )
 from .request import RequestMethods
 from .response import HTTPResponse
@@ -631,14 +633,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             clean_exit = False
             raise
 
-        except (TimeoutError, HTTPException, SocketError, ProtocolError) as e:
+        except (TimeoutError, SocketError, ProtocolError, h11.ProtocolError) as e:
             # Discard the connection for these exceptions. It will be
             # be replaced during the next _get_conn() call.
             clean_exit = False
 
             if isinstance(e, (SocketError, NewConnectionError)) and self.proxy:
                 e = ProxyError('Cannot connect to proxy.', e)
-            elif isinstance(e, (SocketError, HTTPException)):
+            elif isinstance(e, (SocketError, h11.ProtocolError)):
                 e = ProtocolError('Connection aborted.', e)
 
             retries = retries.increment(method, url, error=e, _pool=self,

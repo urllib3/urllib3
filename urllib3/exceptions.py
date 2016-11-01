@@ -225,6 +225,15 @@ class InvalidHeader(HTTPError):
     pass
 
 
+class BadVersionError(ProtocolError):
+    """
+    The HTTP version in the response is unsupported.
+    """
+    def __init__(self, version):
+        message = "HTTP version {} is unsupported".format(version)
+        super(BadVersionError, self).__init__(message)
+
+
 class ProxySchemeUnknown(AssertionError, ValueError):
     "ProxyManager does not support the supplied scheme"
     # TODO(t-8ch): Stop inheriting from AssertionError in v2.0.

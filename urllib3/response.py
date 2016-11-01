@@ -6,13 +6,15 @@ import logging
 from socket import timeout as SocketTimeout
 from socket import error as SocketError
 
+import h11
+
 from ._collections import HTTPHeaderDict
 from .exceptions import (
     BodyNotHttplibCompatible, ProtocolError, DecodeError, ReadTimeoutError,
     ResponseNotChunked, IncompleteRead, InvalidHeader
 )
 from .packages.six import string_types as basestring, binary_type, PY3
-from .connection import HTTPException, BaseSSLError
+from .connection import BaseSSLError
 from .util.response import is_fp_closed, is_response_to_head
 
 log = logging.getLogger(__name__)
@@ -310,7 +312,7 @@ class HTTPResponse(io.IOBase):
 
                 raise ReadTimeoutError(self._pool, None, 'Read timed out.')
 
-            except (HTTPException, SocketError) as e:
+            except (h11.ProtocolError, SocketError) as e:
                 # This includes IncompleteRead.
                 raise ProtocolError('Connection broken: %r' % e, e)
 

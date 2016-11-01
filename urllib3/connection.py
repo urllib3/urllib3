@@ -35,6 +35,7 @@ from .exceptions import (
     ConnectTimeoutError,
     SubjectAltNameWarning,
     SystemTimeWarning,
+    BadVersionError,
 )
 from .packages.ssl_match_hostname import match_hostname, CertificateError
 
@@ -91,11 +92,6 @@ def _encode(data, name='data'):
 class DummyConnection(object):
     """Used to detect a failed ConnectionCls import."""
     pass
-
-
-# TODO: This is needed to avoid breaking imports, revisit it.
-# For now, we map it to h11's RemoteProtocolError.
-HTTPException = h11.RemoteProtocolError
 
 
 # TODO: This is a holdover from httplib, do we need it?
@@ -184,8 +180,7 @@ class OldHTTPResponse(io.BufferedIOBase):
         elif version == b"1.1":
             self.version = 11
         else:
-            # TODO: Need to replace exception
-            raise UnknownProtocol(version)
+            raise BadVersionError(version)
 
         self.headers = self.msg = HTTPHeaderDict(event.headers)
         connection = self.headers.get(b"connection", b"")
