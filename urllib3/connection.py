@@ -247,7 +247,7 @@ class OldHTTPResponse(io.BufferedIOBase):
                     continue
 
                 if isinstance(event, h11.Data):
-                    data_out.append(event.data)
+                    data_out.append(bytes(event.data))
                     out_len += len(event.data)
                 elif isinstance(event, h11.EndOfMessage):
                     self._close_conn()
