@@ -488,16 +488,9 @@ class HTTPConnection(object):
             return None
 
         try:
-            # does it implement the buffer protocol (bytes, bytearray, array)?
-            mv = memoryview(body)
-            return mv.nbytes
-        except TypeError:
-            pass
-
-        if isinstance(body, str):
             return len(body)
-
-        return None
+        except (AttributeError, TypeError):
+            return None
 
     def set_tunnel(self, host, port=None, headers=None):
         """
