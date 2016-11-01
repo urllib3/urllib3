@@ -23,6 +23,7 @@ env:
     - TOXENV=py33
     - TOXENV=py34
     - TOXENV=gae
+    - TOXENV=docs
 # https://github.com/travis-ci/travis-ci/issues/4794
 matrix:
   include:
