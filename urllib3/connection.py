@@ -192,16 +192,23 @@ class OldHTTPResponse(io.BufferedIOBase):
         self.will_close = b"close" in connection.strip()
 
     def _close_conn(self):
-        # Note that this closure only closes the backing socket if there is no
-        # other reference to it.
-        fp, self.fp = self.fp, None
-        fp.close()
+        # We need to check what we're doing. h11 will tell us if we have to
+        # actually close the socket or not.
+        our_state = self._state_machine.our_state
+        their_state = self._state_machine.their_state
 
-        # TODO: I can't tell if this is too conservative. I guess we'll find
-        # out.
-        if (self._state_machine.our_state is h11.DONE and
-            self._state_machine.their_state is h11.DONE):
+        # If both sides are at DONE, we can re-use this connection.
+        # In literally any other case, we need to close the connection.
+        can_reuse = (our_state is h11.DONE and their_state is h11.DONE)
+
+        # Regardless, we want to hide the fp from this response: it's not
+        # allowed to see it.
+        fp, self.fp = self.fp, None
+
+        if can_reuse:
             self._state_machine.start_next_cycle()
+        else:
+            fp.close()
 
     def close(self):
         # TODO: rewrite in our own style.
