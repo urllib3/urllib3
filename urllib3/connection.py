@@ -439,7 +439,7 @@ class HTTPConnection(object):
     response_class = OldHTTPResponse
 
     def __init__(self, host, port, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-                 source_address=None, socket_options=None):
+                 source_address=None, socket_options=_UNKNOWN):
 
         # TODO: Do we need this? I think we might not: urllib3 may not ever
         # provide host and port in one string like the stdlib allows.
@@ -458,7 +458,7 @@ class HTTPConnection(object):
         #: The socket options provided by the user. If no options are
         #: provided, we use the default options.
         self.socket_options = (
-            socket_options if socket_options is not None
+            socket_options if socket_options is not _UNKNOWN
             else self.default_socket_options
         )
 
