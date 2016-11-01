@@ -712,6 +712,9 @@ class HTTPConnection(object):
                 if not chunk:
                     continue
 
+                if not isinstance(chunk, six.binary_type):
+                    chunk = chunk.encode('utf8')
+
                 self.send(chunk)
 
         self._complete_request()
@@ -966,6 +969,8 @@ class HTTPConnection(object):
         Alternative to the common request method, which sends the
         body with chunked encoding and not as one block
         """
+        # TODO: We should be able to merge this method entirely with
+        # request()
         headers = HTTPHeaderDict(headers if headers is not None else {})
         skip_accept_encoding = 'accept-encoding' in headers
         self.putrequest(method, url, skip_accept_encoding=skip_accept_encoding)
@@ -973,20 +978,14 @@ class HTTPConnection(object):
             self.putheader(header, value)
         if 'transfer-encoding' not in headers:
             self.putheader('Transfer-Encoding', 'chunked')
-        self.endheaders()
 
         if body is not None:
             stringish_types = six.string_types + (six.binary_type,)
             if isinstance(body, stringish_types):
                 body = (body,)
-            for chunk in body:
-                if not chunk:
-                    continue
-                if not isinstance(chunk, six.binary_type):
-                    chunk = chunk.encode('utf8')
-                self.send(chunk)
 
-        self._complete_request()
+        self.endheaders(body, encode_chunked=True)
+
 
 
 class HTTPSConnection(HTTPConnection):
