@@ -10,8 +10,8 @@ try:  # time.monotonic is Python 3.x only
 except ImportError:
     from time import time as monotonic
 
-HAPPY_EYEBALLS_CACHE = {}
-HAPPY_EYEBALLS_CACHE_TIME = 60 * 10  # 10 minutes according to RFC 6555
+_HAPPY_EYEBALLS_CACHE = {}
+_HAPPY_EYEBALLS_CACHE_TIME = 60 * 10  # 10 minutes according to RFC 6555
 _ASYNC_ERROR_NUMBERS = set([errno.EINPROGRESS,
                             errno.EAGAIN,
                             errno.EWOULDBLOCK])
@@ -32,6 +32,7 @@ def happy_eyeballs_algorithm(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     result = None  # This is the actual connected socket eventually.
     err = None
     family = 0
+    cached = False
 
     # We need to keep track of the time so we don't exceed timeout.
     start_time = monotonic()
@@ -43,13 +44,15 @@ def happy_eyeballs_algorithm(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
         timeout_time = start_time + timeout
 
     # Check the cache to see if our address is already there.
-    if address in HAPPY_EYEBALLS_CACHE:
-        family, expires = HAPPY_EYEBALLS_CACHE[address]
+    if address in _HAPPY_EYEBALLS_CACHE:
+        family, expires = _HAPPY_EYEBALLS_CACHE[address]
 
         # If the cache entry is expired, don't use it.
         if start_time > expires:
-            del HAPPY_EYEBALLS_CACHE[address]
+            del _HAPPY_EYEBALLS_CACHE[address]
             family = 0
+        else:
+            cached = True
 
     host, port = address
     socks = []
@@ -173,12 +176,13 @@ def happy_eyeballs_algorithm(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                                               socket.SO_ERROR)
 
                     if errcode and errcode not in _ASYNC_ERROR_NUMBERS:
+                        err = socket.error(errcode)
                         selector.unregister(conn)
                         try:
                             socks.remove(conn)
                             conn.close()
-                        except (OSError, socket.error) as e:
-                            err = e
+                        except (OSError, socket.error):
+                            pass
                         continue
 
                     # Finally found a suitable socket!
@@ -208,8 +212,8 @@ def happy_eyeballs_algorithm(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
 
         if result:
             # If we found a successful result, cache it here.
-            expire_time = monotonic() + HAPPY_EYEBALLS_CACHE_TIME
-            HAPPY_EYEBALLS_CACHE[address] = (result.family, expire_time)
+            expire_time = monotonic() + _HAPPY_EYEBALLS_CACHE_TIME
+            _HAPPY_EYEBALLS_CACHE[address] = (result.family, expire_time)
 
             # Restore the old timeout here.
             if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
@@ -218,8 +222,20 @@ def happy_eyeballs_algorithm(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                 result.settimeout(None)
             return result
 
+        # If we used a cached entry and it didn't work, try again.
+        if cached and not result:
+            del _HAPPY_EYEBALLS_CACHE[address]
+            if isinstance(timeout, (int, float)):  # Recalculate the timeout.
+                timeout -= monotonic() - start_time
+            return happy_eyeballs_algorithm(address, timeout, source_address, socket_options)
+
         if err:
             raise err
 
-        # Otherwise if there's no other errors we timed out.
-        raise socket.timeout()
+        # Otherwise if there's no other errors we either timed out or were refused connection.
+        if (timeout is None or
+                timeout is socket._GLOBAL_DEFAULT_TIMEOUT or
+                start_time + timeout < monotonic()):
+            raise socket.timeout()
+        else:
+            raise socket.error(errno.ECONNREFUSED)
