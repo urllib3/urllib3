@@ -170,7 +170,13 @@ class HTTPConnection(_HTTPConnection, object):
         """
         headers = HTTPHeaderDict(headers if headers is not None else {})
         skip_accept_encoding = 'accept-encoding' in headers
-        self.putrequest(method, url, skip_accept_encoding=skip_accept_encoding)
+        skip_host = 'host' in headers
+        self.putrequest(
+            method,
+            url,
+            skip_accept_encoding=skip_accept_encoding,
+            skip_host=skip_host
+        )
         for header, value in headers.items():
             self.putheader(header, value)
         if 'transfer-encoding' not in headers:

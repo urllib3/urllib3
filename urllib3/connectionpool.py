@@ -686,6 +686,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     raise
                 return response
 
+            retries.sleep_for_retry(response)
             log.debug("Redirecting %s -> %s", url, redirect_location)
             return self.urlopen(
                 method, redirect_location, body, headers,
@@ -695,7 +696,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 release_conn=release_conn, **response_kw)
 
         # Check if we should retry the HTTP response.
-        if retries.is_forced_retry(method, status_code=response.status):
+        has_retry_after = bool(response.getheader('Retry-After'))
+        if retries.is_retry(method, response.status, has_retry_after):
             try:
                 retries = retries.increment(method, url, response=response, _pool=self)
             except MaxRetryError:
@@ -705,8 +707,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     response.release_conn()
                     raise
                 return response
-            retries.sleep()
-            log.debug("Forced retry: %s", url)
+            retries.sleep(response)
+            log.debug("Retry: %s", url)
             return self.urlopen(
                 method, url, body, headers,
                 retries=retries, redirect=redirect,
