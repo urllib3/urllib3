@@ -4,6 +4,12 @@ Changes
 dev (master)
 ------------
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.19 (2016-11-03)
+-----------------
+
 * urllib3 now respects Retry-After headers on 413, 429, and 503 responses when
   using the default retry logic. (Pull #955)
 
@@ -18,7 +24,7 @@ dev (master)
 * Empty filenames in multipart headers are now emitted as such, rather than
   being supressed. (Issue #1015)
 
-* ... [Short description of non-trivial change.] (Issue #)
+* Prefer user-supplied Host headers on chunked uploads. (Issue #1009)
 
 
 1.18.1 (2016-10-27)
