@@ -8,6 +8,8 @@ dev (master)
   improving urllib3's behaviour with large numbers of concurrent connections.
   (Pull #1001)
 
+* Fixed AppEngine import that didn't function on Python 3.5. (Pull #1025)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
