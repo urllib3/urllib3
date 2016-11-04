@@ -4,6 +4,10 @@ Changes
 dev (master)
 ------------
 
+* Added support for waiting for I/O using selectors other than select,
+  improving urllib3's behaviour with large numbers of concurrent connections.
+  (Pull #1001)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
