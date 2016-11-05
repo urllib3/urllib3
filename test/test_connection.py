@@ -53,7 +53,7 @@ class TestConnection(unittest.TestCase):
         # This test is to make sure that the RECENT_DATE value
         # doesn't get too far behind what the current date is.
         two_years = datetime.timedelta(days=365 * 2)
-        self.assertGreater(RECENT_DATE, (datetime.datetime.today() - two_years).date())
+        self.assertTrue(RECENT_DATE > (datetime.datetime.today() - two_years).date())
 
 
 if __name__ == '__main__':
