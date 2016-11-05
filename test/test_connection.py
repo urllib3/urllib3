@@ -1,5 +1,9 @@
 import datetime
-import unittest
+import sys
+if sys.version_info > (2, 6):
+    import unittest
+else:
+    import unittest2 as unittest
 
 import mock
 
