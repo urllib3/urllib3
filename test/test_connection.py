@@ -1,3 +1,4 @@
+import datetime
 import unittest
 
 import mock
@@ -6,6 +7,7 @@ from urllib3.connection import (
     CertificateError,
     VerifiedHTTPSConnection,
     _match_hostname,
+    RECENT_DATE
 )
 
 
@@ -42,6 +44,12 @@ class TestConnection(unittest.TestCase):
                 'bar', {'subjectAltName': [('DNS', 'foo')]}
             )
             self.assertEqual(e._peer_cert, cert)
+
+    def test_recent_date(self):
+        # This test is to make sure that the RECENT_DATE value
+        # doesn't get too far behind what the current date is.
+        three_years = datetime.timedelta(days=365 * 3)
+        self.assertGreater(RECENT_DATE, (datetime.datetime.today() - three_years).date())
 
 
 if __name__ == '__main__':

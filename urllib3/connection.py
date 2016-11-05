@@ -56,7 +56,7 @@ port_by_scheme = {
     'https': 443,
 }
 
-RECENT_DATE = datetime.date(2014, 1, 1)
+RECENT_DATE = datetime.date(2016, 1, 1)
 
 
 class DummyConnection(object):
