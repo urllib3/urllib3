@@ -1,4 +1,5 @@
 import unittest
+import psutil
 
 from urllib3.filepost import (
     encode_multipart_formdata,
@@ -25,6 +26,15 @@ class TestMultipartEncoderGenerator(unittest.TestCase):
             encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
             encoded = b''.join(encoded)
             self.assertEqual(len(encoded), len(MultipartEncoderGenerator(fields, boundary=BOUNDARY)))
+
+    def test_memory_usage(self):
+        MEGABYTE = 1024 * 1024
+        data = b'x' * MEGABYTE  # 1 MB of data
+        start_memory = psutil.Process().memory_info().rss
+
+        encoded, _ = encode_multipart_formdata([(b'k', data)], boundary=BOUNDARY)
+        end_memory = psutil.Process().memory_info().rss
+        self.assertTrue(end_memory <= start_memory + MEGABYTE)
 
 
 class TestIterfields(unittest.TestCase):
