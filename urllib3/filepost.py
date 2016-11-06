@@ -210,23 +210,12 @@ class MultipartEncoderGenerator(object):
 
 def encode_multipart_formdata(fields, boundary=None, chunk_size=8192):
     """
-    ``fields`` is a dictionary where the parameter name is the key and the value
-    is either a (filename, data) tuple or just data. Data can be a string, file-like
-    object, or iterator.
-
-    Example:
-        fields = {
-            'foo': 'bar',
-            'upload_file': ('file.txt', 'data'),
-            'huge_huge': ('video.mpg', fp),
-            'hihihi_42_times': ('hi' for i in xrange(42)),
-        }
-
-    File-like objects are read ``chunk_size`` bytes at a time.
-
-    If no ``boundary`` is given, a random one is chosen.
-
-    See MultipartEncoderGenerator for more details.
+    Encode a dictionary of ``fields`` using the multipart/form-data MIME format.
+    :param fields:
+        Dictionary of fields or list of (key, :class:`~urllib3.fields.RequestField`).
+    :param boundary:
+        If not specified, then a random boundary will be generated using
+        :func:`mimetools.choose_boundary`.
     """
     stream = MultipartEncoderGenerator(fields, boundary=boundary, chunk_size=chunk_size)
     return IterStreamer(stream), stream.get_content_type()
