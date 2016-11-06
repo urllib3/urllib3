@@ -32,7 +32,7 @@ class TestMultipartEncoderGenerator(unittest.TestCase):
         data = b'x' * MEGABYTE  # 1 MB of data
         start_memory = psutil.Process().memory_info().rss
 
-        encoded, _ = encode_multipart_formdata([(b'k', data)], boundary=BOUNDARY)
+        encoded, _ = encode_multipart_formdata([('k', data)], boundary=BOUNDARY)
         end_memory = psutil.Process().memory_info().rss
         self.assertTrue(end_memory <= start_memory + MEGABYTE)
 
