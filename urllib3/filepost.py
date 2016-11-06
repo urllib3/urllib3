@@ -103,8 +103,10 @@ class IterStreamer(object):
         return self.iterator
 
     def next(self):
-        next = self.iterator.next()
-        return next
+        return six.next(self.iterator)
+
+    def __next__(self):
+        return self.next()
 
     def read(self, size=None):
         data = self.leftover
