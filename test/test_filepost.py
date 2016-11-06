@@ -1,6 +1,10 @@
 import unittest
 
-from urllib3.filepost import encode_multipart_formdata, iter_fields
+from urllib3.filepost import (
+    encode_multipart_formdata,
+    iter_fields,
+    MultipartEncoderGenerator
+)
 from urllib3.fields import RequestField
 from urllib3.packages.six import b, u
 
@@ -8,8 +12,22 @@ from urllib3.packages.six import b, u
 BOUNDARY = '!! test boundary !!'
 
 
-class TestIterfields(unittest.TestCase):
+class TestMultipartEncoderGenerator(unittest.TestCase):
+    def test_len(self):
+        fieldsets = [
+            [('k', 'v'), ('k2', 'v2')],
+            [('k', b'v'), (u('k2'), b'v2')],
+            [('k', b'v'), (u('k2'), 'v2')],
+        ]
 
+        for fields in fieldsets:
+            encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
+            encoded = b''.join(encoded)
+
+            self.assertEqual(len(encoded), len(MultipartEncoderGenerator(fields, boundary=BOUNDARY)))
+
+
+class TestIterfields(unittest.TestCase):
     def test_dict(self):
         for fieldname, value in iter_fields(dict(a='b')):
             self.assertEqual((fieldname, value), ('a', 'b'))
@@ -37,8 +55,8 @@ class TestMultipartEncoding(unittest.TestCase):
 
         for fields in fieldsets:
             encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
+            encoded = encoded.read(4096)
             self.assertEqual(encoded.count(b(BOUNDARY)), 3)
-
 
     def test_field_encoding(self):
         fieldsets = [
@@ -49,6 +67,7 @@ class TestMultipartEncoding(unittest.TestCase):
 
         for fields in fieldsets:
             encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+            encoded = b''.join(encoded)
 
             self.assertEqual(encoded,
                 b'--' + b(BOUNDARY) + b'\r\n'
@@ -65,11 +84,11 @@ class TestMultipartEncoding(unittest.TestCase):
             self.assertEqual(content_type,
                 'multipart/form-data; boundary=' + str(BOUNDARY))
 
-
     def test_filename(self):
         fields = [('k', ('somename', b'v'))]
 
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        encoded = b''.join(encoded)
 
         self.assertEqual(encoded,
             b'--' + b(BOUNDARY) + b'\r\n'
@@ -88,6 +107,7 @@ class TestMultipartEncoding(unittest.TestCase):
         fields = [('k', ('somefile.txt', b'v'))]
 
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        encoded = b''.join(encoded)
 
         self.assertEqual(encoded,
             b'--' + b(BOUNDARY) + b'\r\n'
@@ -101,11 +121,11 @@ class TestMultipartEncoding(unittest.TestCase):
         self.assertEqual(content_type,
             'multipart/form-data; boundary=' + str(BOUNDARY))
 
-
     def test_explicit(self):
         fields = [('k', ('somefile.txt', b'v', 'image/jpeg'))]
 
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        encoded = b''.join(encoded)
 
         self.assertEqual(encoded,
             b'--' + b(BOUNDARY) + b'\r\n'
@@ -123,6 +143,7 @@ class TestMultipartEncoding(unittest.TestCase):
       fields = [RequestField('k', b'v', filename='somefile.txt', headers={'Content-Type': 'image/jpeg'})]
 
       encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+      encoded = b''.join(encoded)
 
       self.assertEqual(encoded,
           b'--' + b(BOUNDARY) + b'\r\n'

@@ -256,6 +256,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         # multipart
         r = self.pool.request('POST', '/echo', fields=fields)
+        print(type(r))
+        print(r.data)
         self.assertEqual(r.data.count(b'name="foo"'), 2)
 
     def test_request_method_body(self):
