@@ -4,16 +4,10 @@ import mimetypes
 
 import math
 from uuid import uuid4
-from io import BytesIO
 
 from .packages import six
-from .packages.six import b, u
+from .packages.six import u
 from .fields import RequestField
-
-try:
-    from cStringIO import StringIO
-except:
-    from StringIO import StringIO
 
 writer = codecs.lookup('utf-8')[3]
 

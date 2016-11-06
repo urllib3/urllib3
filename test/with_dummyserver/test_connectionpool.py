@@ -466,8 +466,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                                     encode_multipart=True)
         body = r.data.split(b'\r\n')
 
-        encoded_data = encode_multipart_formdata(data)[0]
-        expected_body = encoded_data.split(b'\r\n')
+        encoded = encode_multipart_formdata(data)[0]
+        encoded = b''.join(encoded)
+        expected_body = encoded.split(b'\r\n')
 
         # TODO: Get rid of extra parsing stuff when you can specify
         # a custom boundary to encode_multipart_formdata
@@ -548,10 +549,10 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         boundary = 'foo'
 
         req_data = {'count': 'a' * payload_size}
-        resp_data = encode_multipart_formdata(req_data, boundary=boundary)[0]
+        resp_data = b''.join(encode_multipart_formdata(req_data, boundary=boundary)[0])
 
         req2_data = {'count': 'b' * payload_size}
-        resp2_data = encode_multipart_formdata(req2_data, boundary=boundary)[0]
+        resp2_data = b''.join(encode_multipart_formdata(req2_data, boundary=boundary)[0])
 
         r1 = pool.request('POST', '/echo', fields=req_data, multipart_boundary=boundary, preload_content=False)
 
