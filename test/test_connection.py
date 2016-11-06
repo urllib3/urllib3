@@ -1,6 +1,6 @@
 import datetime
 import sys
-if sys.version_info > (2, 6):
+if sys.version_info >= (2, 7):
     import unittest
 else:
     import unittest2 as unittest
@@ -53,7 +53,7 @@ class TestConnection(unittest.TestCase):
         # This test is to make sure that the RECENT_DATE value
         # doesn't get too far behind what the current date is.
         two_years = datetime.timedelta(days=365 * 2)
-        self.assertTrue(RECENT_DATE > (datetime.datetime.today() - two_years).date())
+        self.assertGreater(RECENT_DATE, (datetime.datetime.today() - two_years).date())
 
 
 if __name__ == '__main__':
