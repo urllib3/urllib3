@@ -211,8 +211,10 @@ class MultipartEncoderGenerator(object):
 def encode_multipart_formdata(fields, boundary=None, chunk_size=8192):
     """
     Encode a dictionary of ``fields`` using the multipart/form-data MIME format.
+
     :param fields:
         Dictionary of fields or list of (key, :class:`~urllib3.fields.RequestField`).
+    
     :param boundary:
         If not specified, then a random boundary will be generated using
         :func:`mimetools.choose_boundary`.
