@@ -60,7 +60,6 @@ except ImportError:  # Platform-specific: Python 3
 
 import logging
 import ssl
-import select
 import six
 import sys
 
@@ -242,8 +241,7 @@ class WrappedSocket(object):
             else:
                 raise
         except OpenSSL.SSL.WantReadError:
-            rd, wd, ed = select.select(
-                [self.socket], [], [], self.socket.gettimeout())
+            rd = util.wait_for_read(self.socket, self.socket.gettimeout())
             if not rd:
                 raise timeout('The read operation timed out')
             else:
@@ -265,8 +263,7 @@ class WrappedSocket(object):
             else:
                 raise
         except OpenSSL.SSL.WantReadError:
-            rd, wd, ed = select.select(
-                [self.socket], [], [], self.socket.gettimeout())
+            rd = util.wait_for_read(self.socket, self.socket.gettimeout())
             if not rd:
                 raise timeout('The read operation timed out')
             else:
@@ -280,9 +277,8 @@ class WrappedSocket(object):
             try:
                 return self.connection.send(data)
             except OpenSSL.SSL.WantWriteError:
-                _, wlist, _ = select.select([], [self.socket], [],
-                                            self.socket.gettimeout())
-                if not wlist:
+                wr = util.wait_for_write(self.socket, self.socket.gettimeout())
+                if not wr:
                     raise timeout()
                 continue
 
@@ -416,7 +412,7 @@ class PyOpenSSLContext(object):
             try:
                 cnx.do_handshake()
             except OpenSSL.SSL.WantReadError:
-                rd, _, _ = select.select([sock], [], [], sock.gettimeout())
+                rd = util.wait_for_read(sock, sock.gettimeout())
                 if not rd:
                     raise timeout('select timed out')
                 continue

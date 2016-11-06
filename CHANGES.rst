@@ -4,6 +4,18 @@ Changes
 dev (master)
 ------------
 
+* Added support for waiting for I/O using selectors other than select,
+  improving urllib3's behaviour with large numbers of concurrent connections.
+  (Pull #1001)
+
+* Fixed AppEngine import that didn't function on Python 3.5. (Pull #1025)
+
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.19 (2016-11-03)
+-----------------
+
 * urllib3 now respects Retry-After headers on 413, 429, and 503 responses when
   using the default retry logic. (Pull #955)
 
@@ -19,8 +31,6 @@ dev (master)
   being supressed. (Issue #1015)
 
 * Prefer user-supplied Host headers on chunked uploads. (Issue #1009)
-
-* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.18.1 (2016-10-27)
