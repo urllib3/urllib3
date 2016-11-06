@@ -140,7 +140,7 @@ class MultipartEncoderGenerator(object):
         contained empty files, while accumulating the value file sizes as
         efficiently as we can.
         """
-        empty_fields = {}
+        empty_fields = []
         size = 0
         for field in self.fields:
             name = field._name
@@ -148,24 +148,24 @@ class MultipartEncoderGenerator(object):
             filename = field._filename
 
             if filename is not None:
-                empty_fields[name] = (filename, '')
+                empty_fields.append((name, (filename, '')))
             else:
-                empty_fields[name] = ''
+                empty_fields.append((name, ''))
 
             if hasattr(data, '__len__'):
-                size += len(data)
+                size += len(encode(data))
             elif isinstance(data, six.integer_types):
                 size += len(str(data))
             elif hasattr(data, 'seek'):
                 size += file_size(data)
             elif hasattr(data, 'read'):
-                size += len(data.read())  # This is undesired
+                size += len(encode(data.read()))  # This is undesired
             elif hasattr(data, '__iter__'):
-                size += sum(len(chunk) for chunk in data)  # This is also undesired
+                size += sum(len(encode(chunk)) for chunk in data)  # This is also undesired
             else:
-                size += len(u(data))  # Hope for the best
+                size += len(encode(u(data)))  # Hope for the best
 
-        return size + sum(len(chunk) for chunk in iter(MultipartEncoderGenerator(empty_fields, boundary=self.boundary)))
+        return size + sum(encode(len(chunk)) for chunk in iter(MultipartEncoderGenerator(empty_fields, boundary=self.boundary)))
 
     def __iter__(self):
         for field in self.fields:
