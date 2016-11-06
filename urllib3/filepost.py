@@ -4,7 +4,6 @@ import mimetypes
 from uuid import uuid4
 
 from .packages import six
-from .packages.six import u
 from .fields import RequestField
 
 writer = codecs.lookup('utf-8')[3]
@@ -60,7 +59,7 @@ def get_content_type(filename):
 
 
 def encode(string):
-    if isinstance(string, six.text_type):
+    if isinstance(string, (str, six.text_type)):
         return string.encode('utf-8')
     else:
         return string
@@ -163,7 +162,7 @@ class MultipartEncoderGenerator(object):
             elif hasattr(data, '__iter__'):
                 size += sum(len(encode(chunk)) for chunk in data)  # This is also undesired
             else:
-                size += len(encode(u(data)))  # Hope for the best
+                size += len(encode(data))  # Hope for the best
 
         empty_multipart = MultipartEncoderGenerator(empty_fields, boundary=self.boundary)
         empty_size = sum(encode(len(chunk)) for chunk in empty_multipart)
@@ -173,7 +172,7 @@ class MultipartEncoderGenerator(object):
     def __iter__(self):
         for field in self.fields:
             data = field.data
-            yield encode(u('--%s\r\n' % (self.boundary)))
+            yield encode('--%s\r\n' % (self.boundary))
             yield encode(field.render_headers())
 
             if isinstance(data, bytes):
@@ -201,11 +200,11 @@ class MultipartEncoderGenerator(object):
 
             else:
                 # Hope for the best
-                yield encode(u(data))
+                yield encode(data)
 
-            yield encode(u('\r\n'))
+            yield encode('\r\n')
 
-        yield encode(u('--%s--\r\n' % (self.boundary)))
+        yield encode('--%s--\r\n' % (self.boundary))
 
 
 def encode_multipart_formdata(fields, boundary=None, chunk_size=8192):
