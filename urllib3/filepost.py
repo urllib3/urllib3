@@ -165,7 +165,10 @@ class MultipartEncoderGenerator(object):
             else:
                 size += len(encode(u(data)))  # Hope for the best
 
-        return size + sum(encode(len(chunk)) for chunk in iter(MultipartEncoderGenerator(empty_fields, boundary=self.boundary)))
+        empty_multipart = MultipartEncoderGenerator(empty_fields, boundary=self.boundary)
+        empty_size = sum(encode(len(chunk)) for chunk in empty_multipart)
+
+        return size + empty_size
 
     def __iter__(self):
         for field in self.fields:
@@ -173,7 +176,10 @@ class MultipartEncoderGenerator(object):
             yield encode(u('--%s\r\n' % (self.boundary)))
             yield encode(field.render_headers())
 
-            if isinstance(data, (str, six.text_type)):
+            if isinstance(data, bytes):
+                yield data
+
+            elif isinstance(data, (str, six.text_type)):
                 yield encode(data)
 
             elif isinstance(data, six.integer_types):

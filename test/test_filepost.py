@@ -15,16 +15,15 @@ BOUNDARY = '!! test boundary !!'
 class TestMultipartEncoderGenerator(unittest.TestCase):
     def test_len(self):
         fieldsets = [
-            #[('k', 'v'), ('k2', 'v2')],
-            #[('k', b'v'), (u('k2'), b'v2')],
-            #[('k', b'v'), (u('k2'), 'v2')],
+            [('k', 'v'), ('k2', 'v2')],
+            [('k', b'v'), (u('k2'), b'v2')],
+            [('k', b'v'), (u('k2'), 'v2')],
             [('foo', b'a'), ('foo', b'b')],
         ]
 
         for fields in fieldsets:
             encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
             encoded = b''.join(encoded)
-
             self.assertEqual(len(encoded), len(MultipartEncoderGenerator(fields, boundary=BOUNDARY)))
 
 
