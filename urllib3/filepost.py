@@ -19,17 +19,6 @@ def choose_boundary():
     return uuid4().hex
 
 
-def integer_display_length(integer):
-    """
-    Gets the length of an integer if it were a string.
-    :param integer: Integer to get the length for.
-    :return: Number of characters required to display the integer.
-    """
-    if not integer:
-        return 1
-    return int(math.log10(abs(integer))) + (1 if integer > 0 else 2)
-
-
 def iter_field_objects(fields):
     """
     Iterate over fields.
@@ -72,11 +61,11 @@ def get_content_type(filename):
     return mimetypes.guess_type(filename)[0] or 'application/octet-stream'
 
 
-def encode(str):
-    if isinstance(str, six.text_type):
-        return str.encode('utf-8')
+def encode(string):
+    if isinstance(string, six.text_type):
+        return string.encode('utf-8')
     else:
-        return str
+        return string
 
 
 def file_size(fp):
@@ -168,7 +157,7 @@ class MultipartEncoderGenerator(object):
             if hasattr(data, '__len__'):
                 size += len(data)
             elif isinstance(data, six.integer_types):
-                size += integer_display_length(data)
+                size += len(str(data))
             elif hasattr(data, 'seek'):
                 size += file_size(data)
             elif hasattr(data, 'read'):
