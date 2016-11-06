@@ -58,6 +58,7 @@ from ..request import RequestMethods
 from ..response import HTTPResponse
 from ..util.timeout import Timeout
 from ..util.retry import Retry
+from ..filepost import IterStreamer
 
 try:
     from google.appengine.api import urlfetch
@@ -132,6 +133,11 @@ class AppEngineManager(RequestMethods):
                 **response_kw):
 
         retries = self._get_retries(retries, redirect)
+
+        # Because Google AppEngine only takes 10MB requests
+        # having a streaming upload makes less of an impact.
+        if isinstance(body, IterStreamer):
+            body = b''.join(body)
 
         try:
             follow_redirects = (
