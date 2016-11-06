@@ -55,7 +55,7 @@ class TestMultipartEncoding(unittest.TestCase):
 
         for fields in fieldsets:
             encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
-            encoded = encoded.read(4096)
+            encoded = b''.join(encoded)
             self.assertEqual(encoded.count(b(BOUNDARY)), 3)
 
     def test_field_encoding(self):
