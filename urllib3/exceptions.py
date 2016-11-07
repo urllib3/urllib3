@@ -37,7 +37,7 @@ class RequestError(PoolError):
         return self.__class__, (None, self.url, None)
 
 
-class NameResolutionError(HTTPError):
+class NameLookupError(HTTPError):
     "Raised when host name resolution fails"
     def __init__(self, name, exc):
         self.message = "address '%s' not found" % name
