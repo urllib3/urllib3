@@ -61,8 +61,6 @@ def get_content_type(filename):
 def encode(string):
     if isinstance(string, six.text_type):
         return string.encode('utf-8')
-    elif isinstance(string, str):
-        return string
     else:
         return string
 
