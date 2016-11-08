@@ -3,8 +3,6 @@ import socket
 from .wait import wait_for_read
 from .selectors import HAS_SELECT, SelectorError
 
-from ..exceptions import NameLookupError
-
 
 def is_connection_dropped(conn):  # Platform-specific
     """
@@ -50,7 +48,7 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
 
     :raises SocketTimeout:
     :raises SocketError:
-    :raises NameLookupError:
+    :raises socket.gaierror:
     """
 
     host, port = address
@@ -68,7 +66,7 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     except socket.gaierror as e:
         # Windows gives "socket.gaierror: [Errno 11001] getaddrinfo failed"
         #   if DNS lookup fails
-        raise NameLookupError(host, e)
+        raise
 
     for af, socktype, proto, canonname, sa in addrlist:
         sock = None

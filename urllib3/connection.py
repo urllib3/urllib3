@@ -31,6 +31,7 @@ except NameError:  # Python 2:
 from .exceptions import (
     NewConnectionError,
     ConnectTimeoutError,
+    NameLookupError,
     SubjectAltNameWarning,
     SystemTimeWarning,
 )
@@ -124,6 +125,9 @@ class HTTPConnection(_HTTPConnection, object):
     def _new_conn(self):
         """ Establish a socket connection and set nodelay settings on it.
 
+        :raises ConnectTimeoutError:
+        :raises NewConnectionError:
+        :raises NameLookupError:
         :return: New socket connection.
         """
         extra_kw = {}
@@ -145,6 +149,9 @@ class HTTPConnection(_HTTPConnection, object):
         except SocketError as e:
             raise NewConnectionError(
                 self, "Failed to establish a new connection: %s" % e)
+
+        except socket.gaierror as e:
+            raise NameLookupError(self.host, e)
 
         return conn
 
