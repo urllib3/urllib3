@@ -47,6 +47,10 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     is used.  If *source_address* is set it must be a tuple of (host, port)
     for the socket to bind as a source address before making the connection.
     An host of '' or port 0 tells the OS to use the default.
+
+    :raises SocketTimeout:
+    :raises SocketError:
+    :raises NameLookupError:
     """
 
     host, port = address
