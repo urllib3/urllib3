@@ -56,11 +56,9 @@ port_by_scheme = {
     'https': 443,
 }
 
-# When updating RECENT_DATE be sure to not
-# update the value to be later than two years
-# in the past and no earlier than 6 months
-# in the past to stay consistent with the
-# history of this value.
+# When updating RECENT_DATE, move it to
+# within two years of the current date, and no
+# earlier than 6 months ago.
 RECENT_DATE = datetime.date(2016, 1, 1)
 
 
