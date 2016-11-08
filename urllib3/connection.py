@@ -141,6 +141,9 @@ class HTTPConnection(_HTTPConnection, object):
             conn = connection.create_connection(
                 (self.host, self.port), self.timeout, **extra_kw)
 
+        except socket.gaierror as e:
+            raise NameLookupError(self.host, e)
+
         except SocketTimeout as e:
             raise ConnectTimeoutError(
                 self, "Connection to %s timed out. (connect timeout=%s)" %
@@ -149,9 +152,6 @@ class HTTPConnection(_HTTPConnection, object):
         except SocketError as e:
             raise NewConnectionError(
                 self, "Failed to establish a new connection: %s" % e)
-
-        except socket.gaierror as e:
-            raise NameLookupError(self.host, e)
 
         return conn
 

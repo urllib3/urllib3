@@ -46,9 +46,9 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     for the socket to bind as a source address before making the connection.
     An host of '' or port 0 tells the OS to use the default.
 
+    :raises socket.gaierror:
     :raises SocketTimeout:
     :raises SocketError:
-    :raises socket.gaierror:
     """
 
     host, port = address
