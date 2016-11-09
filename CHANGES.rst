@@ -10,6 +10,8 @@ dev (master)
 
 * Fixed AppEngine import that didn't function on Python 3.5. (Pull #1025)
 
+* Updated the date for the system clock check. (Issue #1005)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
