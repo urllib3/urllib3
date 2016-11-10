@@ -12,6 +12,9 @@ dev (master)
 
 * Updated the date for the system clock check. (Issue #1005)
 
+* ConnectionPools now correctly consider hostnames to be case-insensitive.
+  (Issue #1032)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
