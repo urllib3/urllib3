@@ -19,7 +19,7 @@ def guess_content_type(filename, default='application/octet-stream'):
     return default
 
 
-def format_header_param(name, value):
+def format_header_param_rfc2231(name, value):
     """
     Helper function to format and quote a single header parameter.
 
@@ -31,32 +31,69 @@ def format_header_param(name, value):
         The name of the parameter, a string expected to be ASCII only.
     :param value:
         The value of the parameter, provided as a unicode string.
+    :ret:
+        An RFC-2231-formatted unicode string.
     """
     if not any(ch in value for ch in '"\\\r\n'):
-        result = '%s="%s"' % (name, value)
+        result = u'%s="%s"' % (name, value)
         try:
             result.encode('ascii')
         except (UnicodeEncodeError, UnicodeDecodeError):
             pass
         else:
             return result
-    if not six.PY3 and isinstance(value, six.text_type):  # Python 2:
+
+    if not six.PY3:  # Python 2:
         value = value.encode('utf-8')
+
+    # encode_rfc2231 accepts an encoded string and returns an ascii-encoded
+    # string in Python 2 but accepts and returns unicode strings in Python 3
     value = email.utils.encode_rfc2231(value, 'utf-8')
     value = '%s*=%s' % (name, value)
+
+    if not six.PY3:  # Python 2:
+        value = value.decode('utf-8')
+
     return value
 
 
+def format_header_param_html5(name, value):
+    """
+    Helper function to format and quote a single header parameter.
+
+    Particularly useful for header parameters which might contain
+    non-ASCII values, like file names. This follows the HTML5 Working Draft
+    Section 4.10.22.7 (http://w3c.github.io/html/sec-forms.html#multipart-form-data)
+
+    :param name:
+        The name of the parameter, a string expected to be ASCII only.
+    :param value:
+        The value of the parameter, provided as a unicode string.
+    :ret:
+        A unicode string, stripped of troublesome characters.
+    """
+
+    value = value.replace(u'\\', u'\\\\').replace(u'"', u'\\"')
+    value = value.replace(u'\r', u' ').replace(u'\n', u' ')
+
+    return u'%s="%s"' % (name, value)
+
+
+format_header_param = format_header_param_rfc2231  # For backwards-compatibility
+
+
 class RequestField(object):
+    header_formatter = staticmethod(format_header_param_html5)
+
     """
     A data container for request body parameters.
 
     :param name:
-        The name of this request field.
+        The name of this request field. Must be unicode.
     :param data:
         The data/value body.
     :param filename:
-        An optional filename of the request field.
+        An optional filename of the request field. Must be unicode.
     :param headers:
         An optional dict-like object of headers to initially use for the field.
     """
@@ -111,7 +148,8 @@ class RequestField(object):
         :param value:
             The value of the parameter, provided as a unicode string.
         """
-        return format_header_param(name, value)
+
+        return type(self).header_formatter(name, value)
 
     def _render_parts(self, header_parts):
         """
@@ -133,7 +171,7 @@ class RequestField(object):
             if value is not None:
                 parts.append(self._render_part(name, value))
 
-        return '; '.join(parts)
+        return u'; '.join(parts)
 
     def render_headers(self):
         """
@@ -144,15 +182,15 @@ class RequestField(object):
         sort_keys = ['Content-Disposition', 'Content-Type', 'Content-Location']
         for sort_key in sort_keys:
             if self.headers.get(sort_key, False):
-                lines.append('%s: %s' % (sort_key, self.headers[sort_key]))
+                lines.append(u'%s: %s' % (sort_key, self.headers[sort_key]))
 
         for header_name, header_value in self.headers.items():
             if header_name not in sort_keys:
                 if header_value:
-                    lines.append('%s: %s' % (header_name, header_value))
+                    lines.append(u'%s: %s' % (header_name, header_value))
 
-        lines.append('\r\n')
-        return '\r\n'.join(lines)
+        lines.append(u'\r\n')
+        return u'\r\n'.join(lines)
 
     def make_multipart(self, content_disposition=None, content_type=None,
                        content_location=None):
@@ -168,10 +206,10 @@ class RequestField(object):
             The 'Content-Location' of the request body.
 
         """
-        self.headers['Content-Disposition'] = content_disposition or 'form-data'
-        self.headers['Content-Disposition'] += '; '.join([
-            '', self._render_parts(
-                (('name', self._name), ('filename', self._filename))
+        self.headers['Content-Disposition'] = content_disposition or u'form-data'
+        self.headers['Content-Disposition'] += u'; '.join([
+            u'', self._render_parts(
+                ((u'name', self._name), (u'filename', self._filename))
             )
         ])
         self.headers['Content-Type'] = content_type
