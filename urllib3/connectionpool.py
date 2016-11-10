@@ -73,7 +73,7 @@ class ConnectionPool(object):
         # Instead, we need to make sure we never pass ``None`` as the port.
         # However, for backward compatibility reasons we can't actually
         # *assert* that.
-        self.host = host.strip('[]')
+        self.host = host.strip('[]').lower()
         self.port = port
 
     def __str__(self):
