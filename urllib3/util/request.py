@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 from base64 import b64encode
 
-from ..packages.six import b
+from ..packages.six import b, integer_types
+from ..exceptions import UnrewindableBodyError
 
 ACCEPT_ENCODING = 'gzip,deflate'
 
@@ -70,3 +71,27 @@ def make_headers(keep_alive=None, accept_encoding=None, user_agent=None,
         headers['cache-control'] = 'no-cache'
 
     return headers
+
+
+def rewind_body(body, pos):
+    """
+    Attempt to rewind body to a certain position.
+    Primarily used for request redirects and retrys.
+
+    :param body:
+        File-like object that supports seek.
+
+    :param pos:
+        Position to seek to in file. An `object()` value
+        is used to denote a failed `tell()`.
+    """
+    body_seek = getattr(body, 'seek', None)
+    if body_seek is not None and isinstance(pos, integer_types):
+        try:
+            body_seek(pos)
+        except (IOError, OSError):
+            raise UnrewindableBodyError("An error occured when rewinding request "
+                                        "body for redirect/retry.")
+    else:
+        raise UnrewindableBodyError("Unable to rewind request body for "
+                                    "redirect/retry.")
