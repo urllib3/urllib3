@@ -10,6 +10,11 @@ dev (master)
 
 * Fixed AppEngine import that didn't function on Python 3.5. (Pull #1025)
 
+* Updated the date for the system clock check. (Issue #1005)
+
+* ConnectionPools now correctly consider hostnames to be case-insensitive.
+  (Issue #1032)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
