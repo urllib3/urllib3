@@ -11,11 +11,10 @@ from ..exceptions import TimeoutStateError
 _Default = object()
 
 
-def current_time():
-    """
-    Retrieve the current time. This function is mocked out in unit testing.
-    """
-    return time.time()
+# Use time.monotonic if available.
+current_time = time.time
+if hasattr(time, "monotonic"):
+    current_time = time.monotonic
 
 
 class Timeout(object):
