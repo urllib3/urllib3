@@ -236,12 +236,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             handler = handle_socks5_negotiation(sock, negotiate=False)
             addr, port = next(handler)
 
-            # We're not using assertIn because the tests need to pass under the
-            # old Python 2.6
-            if not addr in ['127.0.0.1', '::1']:
-                raise self.failureException(
-                    "Requested address is %s, 127.0.0.1 or ::1 expected" %
-                    safe_repr(addr))
+            self.assertIn(addr, ['127.0.0.1', '::1'])
             self.assertTrue(port, 80)
             handler.send(True)
 
