@@ -12,9 +12,7 @@ _Default = object()
 
 
 # Use time.monotonic if available.
-current_time = time.time
-if hasattr(time, "monotonic"):
-    current_time = time.monotonic
+current_time = getattr(time, "monotonic", time.time)
 
 
 class Timeout(object):
