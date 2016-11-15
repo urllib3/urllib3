@@ -3,10 +3,8 @@ import socket
 from urllib3.util.rfc6555 import (
     happy_eyeballs_algorithm
 )
-from urllib3.util.selectors import (
-    HAS_SELECT,
-    wait_for_read
-)
+from .wait import wait_for_read
+from .selectors import HAS_SELECT, SelectorError
 
 ENABLE_HAPPY_EYEBALLS = True
 
@@ -14,26 +12,23 @@ ENABLE_HAPPY_EYEBALLS = True
 def is_connection_dropped(conn):  # Platform-specific
     """
     Returns True if the connection is dropped and should be closed.
-
     :param conn:
         :class:`httplib.HTTPConnection` object.
-
     Note: For platforms like AppEngine, this will always return ``False`` to
     let the platform handle connection recycling transparently for us.
     """
     sock = getattr(conn, 'sock', False)
     if sock is False:  # Platform-specific: AppEngine
         return False
-
     if sock is None:  # Connection already closed (such as by httplib).
         return True
 
-    if not HAS_SELECT:  # Platform-specific: AppEngine
+    if not HAS_SELECT:
         return False
 
     try:
-        return wait_for_read(sock, 0.0)
-    except socket.error:
+        return bool(wait_for_read(sock, timeout=0.0))
+    except SelectorError:
         return True
 
 

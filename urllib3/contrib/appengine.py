@@ -42,7 +42,7 @@ from __future__ import absolute_import
 import logging
 import os
 import warnings
-from urlparse import urljoin
+from ..packages.six.moves.urllib.parse import urljoin
 
 from ..exceptions import (
     HTTPError,
@@ -111,7 +111,7 @@ class AppEngineManager(RequestMethods):
         warnings.warn(
             "urllib3 is using URLFetch on Google App Engine sandbox instead "
             "of sockets. To use sockets directly instead of URLFetch see "
-            "https://urllib3.readthedocs.io/en/latest/contrib.html.",
+            "https://urllib3.readthedocs.io/en/latest/reference/urllib3.contrib.html.",
             AppEnginePlatformWarning)
 
         RequestMethods.__init__(self, headers)

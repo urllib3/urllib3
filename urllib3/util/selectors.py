@@ -1,8 +1,13 @@
-# REPLACE THIS FILE ONCE PR #1001 IS MERGED.
+# Backport of selectors.py from Python 3.5+ to support Python < 3.4
+# Also has the behavior specified in PEP 475 which is to retry syscalls
+# in the case of an EINTR error. This module is required because selectors34
+# does not follow this behavior and instead returns that no dile descriptor
+# events have occurred rather than retry the syscall. The decision to drop
+# support for select.devpoll is made to maintain 100% test coverage.
 
 import errno
+import math
 import select
-import six
 from collections import namedtuple, Mapping
 
 import time
@@ -18,10 +23,22 @@ HAS_SELECT = True  # Variable that shows whether the platform has a selector.
 _SYSCALL_SENTINEL = object()  # Sentinel in case a system call returns None.
 
 
+class SelectorError(Exception):
+    def __init__(self, errcode):
+        super(SelectorError, self).__init__()
+        self.errno = errcode
+
+    def __repr__(self):
+        return "<SelectorError errno={0}>".format(self.errno)
+
+    def __str__(self):
+        return self.__repr__()
+
+
 def _fileobj_to_fd(fileobj):
     """ Return a file descriptor from a file object. If
     given an integer will simply return that integer back. """
-    if isinstance(fileobj, six.integer_types):
+    if isinstance(fileobj, int):
         fd = fileobj
     else:
         try:
@@ -33,23 +50,23 @@ def _fileobj_to_fd(fileobj):
     return fd
 
 
-def _syscall_wrapper(func, syscall_timeout, recalc_timeout, *args, **kwargs):
+def _syscall_wrapper(func, recalc_timeout, *args, **kwargs):
     """ Wrapper function for syscalls that could fail due to EINTR.
     All functions should be retried if there is time left in the timeout
     in accordance with PEP 475. """
-    if syscall_timeout is None:
+    timeout = kwargs.get("timeout", None)
+    if timeout is None:
         expires = None
         recalc_timeout = False
     else:
-        timeout = float(syscall_timeout)
+        timeout = float(timeout)
         if timeout < 0.0:  # Timeout less than 0 treated as no timeout.
             expires = None
         else:
             expires = monotonic() + timeout
 
     args = list(args)
-    if recalc_timeout and "timeout" not in kwargs and not (
-                len(args) and isinstance(args[-1], (float, int))):
+    if recalc_timeout and "timeout" not in kwargs:
         raise ValueError(
             "Timeout must be in args or kwargs to be recalculated")
 
@@ -57,16 +74,23 @@ def _syscall_wrapper(func, syscall_timeout, recalc_timeout, *args, **kwargs):
     while result is _SYSCALL_SENTINEL:
         try:
             result = func(*args, **kwargs)
-            break
-
         # OSError is thrown by select.select
         # IOError is thrown by select.epoll.poll
         # select.error is thrown by select.poll.poll
         # Aren't we thankful for Python 3.x rework for exceptions?
         except (OSError, IOError, select.error) as e:
             # select.error wasn't a subclass of OSError in the past.
-            if ((hasattr(e, "errno") and e.errno == errno.EINTR) or
-                    (hasattr(e, "args") and e.args[0] == errno.EINTR)):
+            errcode = None
+            if hasattr(e, "errno"):
+                errcode = e.errno
+            elif hasattr(e, "args"):
+                errcode = e.args[0]
+
+            # Also test for the Windows equivalent of EINTR.
+            is_interrupt = (errcode == errno.EINTR or (hasattr(errno, "WSAEINTR") and
+                                                       errcode == errno.WSAEINTR))
+
+            if is_interrupt:
                 if expires is not None:
                     current_time = monotonic()
                     if current_time > expires:
@@ -74,10 +98,11 @@ def _syscall_wrapper(func, syscall_timeout, recalc_timeout, *args, **kwargs):
                     if recalc_timeout:
                         if "timeout" in kwargs:
                             kwargs["timeout"] = expires - current_time
-                        else:
-                            args[-1] = expires - current_time
                 continue
-            raise
+            if errcode:
+                raise SelectorError(errcode)
+            else:
+                raise
     return result
 
 
@@ -106,12 +131,15 @@ class _SelectorMapping(Mapping):
 
 class BaseSelector(object):
     """ Abstract Selector class
-    A select supports registering file objects to be monitored
+
+    A selector supports registering file objects to be monitored
     for specific I/O events.
+
     A file object is a file descriptor or any object with a
-    `fileno()` method. An arbitrary object can be attaced to the
+    `fileno()` method. An arbitrary object can be attached to the
     file object which can be used for example to store context info,
     a callback, etc.
+
     A selector can use various implementations (select(), poll(), epoll(),
     and kqueue()) depending on the platform. The 'DefaultSelector' class uses
     the most efficient implementation for the current platform.
@@ -190,7 +218,7 @@ class BaseSelector(object):
         raise NotImplementedError()
 
     def close(self):
-        """ Close the selector. This must be called to insure that all
+        """ Close the selector. This must be called to ensure that all
         underlying resources are freed. """
         self._fd_to_key.clear()
         self._map = None
@@ -223,88 +251,273 @@ class BaseSelector(object):
     def __exit__(self, *args):
         self.close()
 
+# Almost all platforms have select.select()
+if hasattr(select, "select"):
+    class SelectSelector(BaseSelector):
+        """ Select-based selector. """
+        def __init__(self):
+            super(SelectSelector, self).__init__()
+            self._readers = set()
+            self._writers = set()
 
-class SelectSelector(BaseSelector):
-    """ Select-based selector. """
-    def __init__(self):
-        super(SelectSelector, self).__init__()
-        self._readers = set()
-        self._writers = set()
+        def register(self, fileobj, events, data=None):
+            key = super(SelectSelector, self).register(fileobj, events, data)
+            if events & EVENT_READ:
+                self._readers.add(key.fd)
+            if events & EVENT_WRITE:
+                self._writers.add(key.fd)
+            return key
 
-    def register(self, fileobj, events, data=None):
-        key = super(SelectSelector, self).register(fileobj, events, data)
-        if events & EVENT_READ:
-            self._readers.add(key.fd)
-        if events & EVENT_WRITE:
-            self._writers.add(key.fd)
-        return key
+        def unregister(self, fileobj):
+            key = super(SelectSelector, self).unregister(fileobj)
+            self._readers.discard(key.fd)
+            self._writers.discard(key.fd)
+            return key
 
-    def unregister(self, fileobj):
-        key = super(SelectSelector, self).unregister(fileobj)
-        self._readers.discard(key.fd)
-        self._writers.discard(key.fd)
-        return key
+        def _select(self, r, w, timeout=None):
+            """ Wrapper for select.select because timeout is a positional arg """
+            return select.select(r, w, [], timeout)
 
-    def select(self, timeout=None):
+        def select(self, timeout=None):
+            # Selecting on empty lists on Windows errors out.
+            if not len(self._readers) and not len(self._writers):
+                return []
 
-        # Selecting on empty lists on Windows errors out.
-        if not (self._readers | self._writers):
-            return []
+            timeout = None if timeout is None else max(timeout, 0.0)
+            ready = []
+            r, w, _ = _syscall_wrapper(self._select, True, self._readers,
+                                       self._writers, timeout)
+            r = set(r)
+            w = set(w)
+            for fd in r | w:
+                events = 0
+                if fd in r:
+                    events |= EVENT_READ
+                if fd in w:
+                    events |= EVENT_WRITE
 
-        timeout = None if timeout is None else max(timeout, 0.0)
-        ready = []
-        r, w, _ = _syscall_wrapper(select.select, timeout, True,
-                                   self._readers, self._writers,
-                                   [], timeout)
-        r = set(r)
-        w = set(w)
-        for fd in r | w:
-            events = 0
-            if fd in r:
-                events |= EVENT_READ
-            if fd in w:
-                events |= EVENT_WRITE
-
-            key = self._key_from_fd(fd)
-            if key:
-                ready.append((key, events & key.events))
-        return ready
+                key = self._key_from_fd(fd)
+                if key:
+                    ready.append((key, events & key.events))
+            return ready
 
 
-if 'SelectSelector' in globals():  # Platform-specific: Windows
+if hasattr(select, "poll"):
+    class PollSelector(BaseSelector):
+        """ Poll-based selector """
+        def __init__(self):
+            super(PollSelector, self).__init__()
+            self._poll = select.poll()
+
+        def register(self, fileobj, events, data=None):
+            key = super(PollSelector, self).register(fileobj, events, data)
+            event_mask = 0
+            if events & EVENT_READ:
+                event_mask |= select.POLLIN
+            if events & EVENT_WRITE:
+                event_mask |= select.POLLOUT
+            self._poll.register(key.fd, event_mask)
+            return key
+
+        def unregister(self, fileobj):
+            key = super(PollSelector, self).unregister(fileobj)
+            self._poll.unregister(key.fd)
+            return key
+
+        def _wrap_poll(self, timeout=None):
+            """ Wrapper function for select.poll.poll() so that
+            _syscall_wrapper can work with only seconds. """
+            if timeout is not None:
+                if timeout <= 0:
+                    timeout = 0
+                else:
+                    # select.poll.poll() has a resolution of 1 millisecond,
+                    # round away from zero to wait *at least* timeout seconds.
+                    timeout = math.ceil(timeout * 1e3)
+
+            result = self._poll.poll(timeout)
+            return result
+
+        def select(self, timeout=None):
+            ready = []
+            fd_events = _syscall_wrapper(self._wrap_poll, True, timeout=timeout)
+            for fd, event_mask in fd_events:
+                events = 0
+                if event_mask & ~select.POLLIN:
+                    events |= EVENT_WRITE
+                if event_mask & ~select.POLLOUT:
+                    events |= EVENT_READ
+
+                key = self._key_from_fd(fd)
+                if key:
+                    ready.append((key, events & key.events))
+
+            return ready
+
+
+if hasattr(select, "epoll"):
+    class EpollSelector(BaseSelector):
+        """ Epoll-based selector """
+        def __init__(self):
+            super(EpollSelector, self).__init__()
+            self._epoll = select.epoll()
+
+        def fileno(self):
+            return self._epoll.fileno()
+
+        def register(self, fileobj, events, data=None):
+            key = super(EpollSelector, self).register(fileobj, events, data)
+            events_mask = 0
+            if events & EVENT_READ:
+                events_mask |= select.EPOLLIN
+            if events & EVENT_WRITE:
+                events_mask |= select.EPOLLOUT
+            _syscall_wrapper(self._epoll.register, False, key.fd, events_mask)
+            return key
+
+        def unregister(self, fileobj):
+            key = super(EpollSelector, self).unregister(fileobj)
+            try:
+                _syscall_wrapper(self._epoll.unregister, False, key.fd)
+            except SelectorError:
+                # This can occur when the fd was closed since registry.
+                pass
+            return key
+
+        def select(self, timeout=None):
+            if timeout is not None:
+                if timeout <= 0:
+                    timeout = 0.0
+                else:
+                    # select.epoll.poll() has a resolution of 1 millisecond
+                    # but luckily takes seconds so we don't need a wrapper
+                    # like PollSelector. Just for better rounding.
+                    timeout = math.ceil(timeout * 1e3) * 1e-3
+                timeout = float(timeout)
+            else:
+                timeout = -1.0  # epoll.poll() must have a float.
+
+            # We always want at least 1 to ensure that select can be called
+            # with no file descriptors registered. Otherwise will fail.
+            max_events = max(len(self._fd_to_key), 1)
+
+            ready = []
+            fd_events = _syscall_wrapper(self._epoll.poll, True,
+                                         timeout=timeout,
+                                         maxevents=max_events)
+            for fd, event_mask in fd_events:
+                events = 0
+                if event_mask & ~select.EPOLLIN:
+                    events |= EVENT_WRITE
+                if event_mask & ~select.EPOLLOUT:
+                    events |= EVENT_READ
+
+                key = self._key_from_fd(fd)
+                if key:
+                    ready.append((key, events & key.events))
+            return ready
+
+        def close(self):
+            self._epoll.close()
+            super(EpollSelector, self).close()
+
+
+if hasattr(select, "kqueue"):
+    class KqueueSelector(BaseSelector):
+        """ Kqueue / Kevent-based selector """
+        def __init__(self):
+            super(KqueueSelector, self).__init__()
+            self._kqueue = select.kqueue()
+
+        def fileno(self):
+            return self._kqueue.fileno()
+
+        def register(self, fileobj, events, data=None):
+            key = super(KqueueSelector, self).register(fileobj, events, data)
+            if events & EVENT_READ:
+                kevent = select.kevent(key.fd,
+                                       select.KQ_FILTER_READ,
+                                       select.KQ_EV_ADD)
+
+                _syscall_wrapper(self._kqueue.control, False, [kevent], 0, 0)
+
+            if events & EVENT_WRITE:
+                kevent = select.kevent(key.fd,
+                                       select.KQ_FILTER_WRITE,
+                                       select.KQ_EV_ADD)
+
+                _syscall_wrapper(self._kqueue.control, False, [kevent], 0, 0)
+
+            return key
+
+        def unregister(self, fileobj):
+            key = super(KqueueSelector, self).unregister(fileobj)
+            if key.events & EVENT_READ:
+                kevent = select.kevent(key.fd,
+                                       select.KQ_FILTER_READ,
+                                       select.KQ_EV_DELETE)
+                try:
+                    _syscall_wrapper(self._kqueue.control, False, [kevent], 0, 0)
+                except SelectorError:
+                    pass
+            if key.events & EVENT_WRITE:
+                kevent = select.kevent(key.fd,
+                                       select.KQ_FILTER_WRITE,
+                                       select.KQ_EV_DELETE)
+                try:
+                    _syscall_wrapper(self._kqueue.control, False, [kevent], 0, 0)
+                except SelectorError:
+                    pass
+
+            return key
+
+        def select(self, timeout=None):
+            if timeout is not None:
+                timeout = max(timeout, 0)
+
+            max_events = len(self._fd_to_key) * 2
+            ready_fds = {}
+
+            kevent_list = _syscall_wrapper(self._kqueue.control, True,
+                                           None, max_events, timeout)
+
+            for kevent in kevent_list:
+                fd = kevent.ident
+                event_mask = kevent.filter
+                events = 0
+                if event_mask == select.KQ_FILTER_READ:
+                    events |= EVENT_READ
+                if event_mask == select.KQ_FILTER_WRITE:
+                    events |= EVENT_WRITE
+
+                key = self._key_from_fd(fd)
+                if key:
+                    if key.fd not in ready_fds:
+                        ready_fds[key.fd] = (key, events & key.events)
+                    else:
+                        old_events = ready_fds[key.fd][1]
+                        ready_fds[key.fd] = (key, (events | old_events) & key.events)
+
+            return list(ready_fds.values())
+
+        def close(self):
+            self._kqueue.close()
+            super(KqueueSelector, self).close()
+
+
+# Choose the best implementation, roughly:
+# kqueue == epoll > poll > select. Devpoll not supported. (See above)
+# select() also can't accept a FD > FD_SETSIZE (usually around 1024)
+if 'KqueueSelector' in globals():  # Platform-specific: Mac OS and BSD
+    DefaultSelector = KqueueSelector
+elif 'EpollSelector' in globals():  # Platform-specific: Linux
+    DefaultSelector = EpollSelector
+elif 'PollSelector' in globals():  # Platform-specific: Linux
+    DefaultSelector = PollSelector
+elif 'SelectSelector' in globals():  # Platform-specific: Windows
     DefaultSelector = SelectSelector
 else:  # Platform-specific: AppEngine
     def no_selector(_):
         raise ValueError("Platform does not have a selector")
     DefaultSelector = no_selector
     HAS_SELECT = False
-
-
-def wait_for_read(socks, timeout=None):
-    """ Waits for reading to be available from a list of sockets
-    or optionally a single socket if passed in. Returns a list of
-    sockets that can be read from immediately. """
-    if not HAS_SELECT:
-        raise ValueError('Platform does not have a selector')
-    if not isinstance(socks, list):
-        socks = [socks]
-    selector = DefaultSelector()
-    for sock in socks:
-        selector.register(sock, EVENT_READ)
-    return [key[0].fileobj for key in
-            selector.select(timeout) if key[1] & EVENT_READ]
-
-
-def wait_for_write(socks, timeout=None):
-    """ Waits for writing to be available from a list of sockets
-    or optionally a single socket if passed in. Returns a list of
-    sockets that can be written to immediately. """
-    if not HAS_SELECT:
-        raise ValueError('Platform does not have a selector')
-    if not isinstance(socks, list):
-        socks = [socks]
-    selector = DefaultSelector()
-    for sock in socks:
-        selector.register(sock, EVENT_WRITE)
-    return [key[0].fileobj for key in
-            selector.select(timeout) if key[1] & EVENT_WRITE]
