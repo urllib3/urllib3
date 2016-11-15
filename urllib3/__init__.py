@@ -71,6 +71,7 @@ def add_stderr_logger(level=logging.DEBUG):
     logger.debug('Added a stderr logging handler to logger: %s', __name__)
     return handler
 
+
 # ... Clean up.
 del NullHandler
 
