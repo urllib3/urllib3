@@ -251,6 +251,7 @@ class BaseSelector(object):
     def __exit__(self, *args):
         self.close()
 
+
 # Almost all platforms have select.select()
 if hasattr(select, "select"):
     class SelectSelector(BaseSelector):
