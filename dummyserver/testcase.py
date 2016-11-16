@@ -1,9 +1,4 @@
 import sys
-if sys.version_info > (2, 7):
-    import unittest
-else:
-    import unittest2 as unittest
-
 import socket
 import threading
 from nose.plugins.skip import SkipTest
@@ -17,6 +12,11 @@ from dummyserver.server import (
 )
 from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
+
+if sys.version_info > (2, 7):
+    import unittest
+else:
+    import unittest2 as unittest
 
 
 def consume_socket(sock, chunks=65536):
