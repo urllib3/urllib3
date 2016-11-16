@@ -210,7 +210,7 @@ class _HappyEyeballs(object):
         elif self._timeout is None:
             return 0.2
         else:
-            return min(0.2, self._timeout - (current_time() - self._start_time))
+            return min(0.2, max(0.0, self._timeout - (current_time() - self._start_time)))
 
 
 def happy_eyeballs_algorithm(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
