@@ -1,6 +1,11 @@
 Changes
 =======
 
+1.19.1 (2016-11-16)
+-------------------
+
+* Fixed AppEngine import that didn't function on Python 3.5. (Pull #1025)
+
 1.19 (2016-11-03)
 -----------------
 
