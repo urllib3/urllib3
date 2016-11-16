@@ -114,7 +114,7 @@ class _HappyEyeballs(object):
                 select_time = max(0.0, self._timeout - (current_time() - self._start_time))
         # Otherwise block for 200ms like the RFC suggests.
         else:
-            select_time = 0.2
+            select_time = self._get_select_time()
 
         ready = self._selector.select(select_time)
 
@@ -203,6 +203,14 @@ class _HappyEyeballs(object):
             except (OSError, socket.error):
                 pass
         self._selector.close()
+
+    def _get_select_time(self):
+        if self._timeout is socket._GLOBAL_DEFAULT_TIMEOUT:
+            return 0.2
+        elif self._timeout is None:
+            return 0.2
+        else:
+            return min(0.2, self._timeout - (current_time() - self._start_time))
 
 
 def happy_eyeballs_algorithm(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
