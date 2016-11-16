@@ -4,11 +4,8 @@ from urllib3.util.selectors import (
     DefaultSelector,
     EVENT_WRITE
 )
+from urllib3.util.timeout import current_time
 
-try:  # time.monotonic is Python 3.x only
-    from time import monotonic
-except ImportError:
-    from time import time as monotonic
 
 _HAPPY_EYEBALLS_CACHE = {}
 _HAPPY_EYEBALLS_CACHE_TIME = 60 * 10  # 10 minutes according to RFC 6555
@@ -23,219 +20,196 @@ if hasattr(socket, "AF_INET6"):
     _IP_FAMILIES.add(socket.AF_INET6)
 
 
+class _HappyEyeballs(object):
+    def __init__(self, address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+                 source_address=None, socket_options=None):
+        self._address = address
+        self._error = None
+        self._timeout = timeout
+        self._source_address = source_address
+        self._socket_options = socket_options
+        self._sockets = []
+        self._selector = DefaultSelector()
+        self._start_time = None
+
+    def connect(self):
+        """ Given the setup of the algorithm, attempt to
+        use a cached value and if it doesn't work then try
+        to use a """
+        self._start_time = current_time()
+        try:
+            sock = None
+            if self._address in _HAPPY_EYEBALLS_CACHE:
+                family, expires = _HAPPY_EYEBALLS_CACHE[self._address]
+
+                # Invalidate the cache if it's expired.
+                if expires > current_time():
+                    del _HAPPY_EYEBALLS_CACHE[self._address]
+                else:
+                    try:
+                        sock = self._algorithm(family)
+                    # Invalidate the cache if connecting doesn't work.
+                    except (OSError, socket.error):
+                        del _HAPPY_EYEBALLS_CACHE[self._address]
+
+            if sock is None:
+                sock = self._algorithm()
+
+                # Add a new entry to the cache if successful.
+                cache_entry = (sock.family,
+                               current_time() + _HAPPY_EYEBALLS_CACHE_TIME)
+                _HAPPY_EYEBALLS_CACHE[self._address] = cache_entry
+
+            return sock
+        finally:
+            self._cleanup()
+
+    def _algorithm(self, family=None):
+        """ Executes the algorithm for a given family
+        or no family if IPv4 or IPv6 are allowed. """
+        if family is None:
+            family = socket.AF_UNSPEC
+        host, port = self._address
+        dns_results = socket.getaddrinfo(host, port, family, socket.SOCK_STREAM)
+        dns_results = list(filter(lambda *args: args[0] not in _IP_FAMILIES,
+                                  dns_results))
+
+        result = None
+        for family, socktype, proto, _, sa in dns_results:
+            self._create_socket(family, socktype, proto, sa)
+            result = self._wait_for_connection(False)
+            if result:
+                break
+            self._timeout_check()
+
+        if result is None:
+            if self._error:
+                raise self._error
+            else:
+                raise socket.error(errno.ECONNREFUSED)
+
+        # Restore the old timeout value and remove it from cleanup.
+        result.settimeout(self._timeout)
+        self._sockets.remove(result)
+        self._selector.unregister(result)
+
+        return result
+
+    def _wait_for_connection(self, last_socket=False):
+        """ Does the actual selecting on the sockets waiting
+        for one to be ready to be written to. """
+        # Make sure we don't have any errored sockets.
+        for sock in self._sockets:
+            self._socket_check(sock)
+
+        # If there are no sockets to select on, then don't try.
+        if not self._sockets:
+            return None
+
+        # If it's the last socket then we can block until timeout
+        if last_socket:
+            if self._timeout is None:
+                select_time = None
+            else:
+                select_time = max(0.0, self._timeout - (current_time() - self._start_time))
+        # Otherwise block for 200ms like the RFC suggests.
+        else:
+            select_time = 0.2
+
+        ready = self._selector.select(select_time)
+
+        for key, _ in ready:
+            sock = key.fileobj
+
+            # Successfully found a proper connected socket.
+            if self._socket_check(sock):
+                return sock
+
+        return None
+
+    def _create_socket(self, family, socktype, proto, sa):
+        """ Tries it's best to create a socket and register
+        the new socket with the selector. If it fails, no
+        problem, the algorithm continues as usual. """
+        sock = None
+        try:
+            sock = socket.socket(family, socktype, proto)
+            if self._timeout is socket._GLOBAL_DEFAULT_TIMEOUT:
+                self._timeout = sock.gettimeout()
+
+            if self._socket_options:
+                for opt in self._socket_options:
+                    sock.setsockopt(*opt)
+
+            if self._source_address:
+                sock.bind(self._source_address)
+
+            # Set the socket to non-blocking so we can select it.
+            sock.settimeout(0.0)
+
+            error_code = sock.connect_ex(sa)
+            if error_code and error_code not in _ASYNC_ERROR_NUMBERS:
+                self._error = socket.error(error_code)
+            else:
+                self._sockets.append(sock)
+                self._selector.register(sock, EVENT_WRITE)
+        except (socket.error, OSError) as e:
+            self._error = e
+            if sock is not None:
+                try:
+                    sock.close()
+                except (OSError, socket.error):
+                    pass
+
+    def _socket_check(self, sock):
+        """ Checks a socket to see if it is in an
+        error state, if so deal with cleaning it up
+        Returns True if the socket is still good to use. """
+        error_code = sock.getsockopt(socket.SOL_SOCKET,
+                                     socket.SO_ERROR)
+
+        # If the socket is errored, then we need to clean it up.
+        if error_code and error_code not in _ASYNC_ERROR_NUMBERS:
+            self._error = socket.error(error_code)
+            self._selector.unregister(sock)
+            self._sockets.remove(sock)
+            try:
+                sock.close()
+            except (OSError, socket.error):
+                pass
+            return False
+
+        return True
+
+    def _timeout_check(self):
+        """ Checks to see if the algorithm has timed out
+        and if it has, raise a timeout error. """
+        if self._has_timed_out():
+            raise socket.timeout()
+
+    def _has_timed_out(self):
+        """ Checks to see if the algorithm has timed out. """
+        if self._timeout is socket._GLOBAL_DEFAULT_TIMEOUT:
+            return False
+        elif self._timeout is None:
+            return False
+        else:
+            return current_time() > self._start_time + self._timeout
+
+    def _cleanup(self):
+        for sock in self._sockets:
+            try:
+                sock.close()
+            except (OSError, socket.error):
+                pass
+        self._selector.close()
+
+
 def happy_eyeballs_algorithm(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                              source_address=None, socket_options=None):
     """ Implements the Happy Eyeballs protocol (RFC 6555) which allows
     multiple sockets to attempt to connect from different families
     for better connect times for dual-stack clients where server
     IPv6 service is advertised but broken. """
-    result = None  # This is the actual connected socket eventually.
-    err = None
-    family = 0
-    cached = False
-
-    # We need to keep track of the time so we don't exceed timeout.
-    start_time = monotonic()
-    if timeout is None:
-        timeout_time = None
-    elif timeout is socket._GLOBAL_DEFAULT_TIMEOUT:
-        timeout_time = socket._GLOBAL_DEFAULT_TIMEOUT
-    else:
-        timeout_time = start_time + timeout
-
-    # Check the cache to see if our address is already there.
-    if address in _HAPPY_EYEBALLS_CACHE:
-        family, expires = _HAPPY_EYEBALLS_CACHE[address]
-
-        # If the cache entry is expired, don't use it.
-        if start_time > expires:
-            del _HAPPY_EYEBALLS_CACHE[address]
-            family = 0
-        else:
-            cached = True
-
-    host, port = address
-    socks = []
-
-    # Make sure we close the selector after we're done.
-    with DefaultSelector() as selector:
-        # Perform a DNS lookup for the address for IPv4 or IPv6 families.
-        if not family:
-            family = socket.AF_UNSPEC
-
-        dns_results = socket.getaddrinfo(host, port, family, socket.SOCK_STREAM)
-        dns_results_len = len(dns_results)
-
-        for i in range(dns_results_len):
-            af, socktype, proto, canonname, sa = dns_results[i]
-
-            # We only care about IPv4 and IPv6 addresses.
-            if af not in _IP_FAMILIES:
-                continue
-
-            sock = None
-            try:
-                sock = socket.socket(af, socktype, proto)
-                if timeout_time is socket._GLOBAL_DEFAULT_TIMEOUT:
-                    sock_timeout = sock.gettimeout()
-                    if sock_timeout is None:
-                        timeout_time = None
-                    else:
-                        timeout_time = start_time + sock_timeout
-
-                if socket_options:
-                    for opt in socket_options:
-                        sock.setsockopt(*opt)
-
-                # If we're given a source address, bind to it.
-                if source_address:
-                    sock.bind(source_address)
-
-                # Set non-blocking for selecting.
-                sock.settimeout(0.0)
-
-                # Connect to the host.
-                errcode = sock.connect_ex(sa)
-                if errcode and errcode not in _ASYNC_ERROR_NUMBERS:
-                    err = socket.error(errcode)
-                    continue
-
-                errcode = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-                if errcode and errcode not in _ASYNC_ERROR_NUMBERS:
-                    err = socket.error(errcode)
-                    continue
-
-                # Register this new socket with the selector.
-                socks.append(sock)
-
-                # Using EVENT_WRITE to detect a connection.
-                selector.register(sock, EVENT_WRITE)
-
-            except (socket.error, OSError) as e:
-                err = e
-                if sock is not None:
-                    sock.close()
-
-            # This is where the selecting logic occurs. Once all sockets
-            # have been created and are added to the selector, they should
-            # be continually selected until one of them works.  If there are
-            # still sockets to add to the selector, then select for only 200
-            # ms before adding the next socket to the selector.
-            reattempt_select = True
-            while reattempt_select:
-                if i < dns_results_len - 1:
-                    # If this isn't the last socket to try, then only try
-                    # for 200 ms before adding the next preferred connection
-                    # to the selector. The 200 ms constant is the recommended
-                    # value by the RFC.
-                    select_time = 0.2
-                    reattempt_select = False  # Only want one round.
-                else:
-                    # Here we need to calculate how long we're willing to wait
-                    # as there are no sockets left to add to the selector.
-                    if timeout_time is not None:
-                        # If there are no more entries to add to the selector
-                        # we're going to keep trying until we either find
-                        # a socket without errors or we run out of time
-                        # to establish a connection.
-                        select_time = timeout_time - monotonic()
-
-                        # We do this for safety reasons, as negative timeout
-                        # may mean no timeout for certain selectors.
-                        if select_time < 0.0:
-                            break
-                    else:
-                        # Otherwise we're willing to block forever, but set a time
-                        # so that we can still filter out errored sockets.
-                        select_time = 1.0
-
-                # Make sure we don't have any errored sockets.
-                for sock in socks:
-                    errcode = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-                    if errcode and errcode not in _ASYNC_ERROR_NUMBERS:
-                        err = socket.error(errcode)
-                        socks.remove(sock)
-                        selector.unregister(sock)
-
-                # If we don't have any sockets, don't try selecting.
-                if not socks:
-                    # If there are no more sockets to look through, then
-                    # we should give up immediately with a non-timeout error.
-                    if i == dns_results_len - 1:
-                        err = socket.error(errno.ECONNREFUSED)
-                    break
-
-                # Monitor our selector for a new connection.
-                connected = selector.select(timeout=select_time)
-
-                # Iterate over the sockets that are reporting writable.
-                for key, _ in connected:
-                    # Check to see if there's an error post-connection.
-                    conn = key.fileobj
-                    errcode = conn.getsockopt(socket.SOL_SOCKET,
-                                              socket.SO_ERROR)
-
-                    if errcode and errcode not in _ASYNC_ERROR_NUMBERS:
-                        err = socket.error(errcode)
-                        selector.unregister(conn)
-                        try:
-                            socks.remove(conn)
-                            conn.close()
-                        except (OSError, socket.error):
-                            pass
-                        continue
-
-                    # Finally found a suitable socket!
-                    elif errcode == 0:
-                        # Make sure to remove from socks to avoid closing.
-                        result = conn
-                        socks.remove(conn)
-                        break
-
-                if result:
-                    break
-
-                # Empty list means that we timed out as system call
-                # interrupts don't affect us here anymore.
-                if not len(connected):
-                    break
-
-            if result:
-                break
-
-        # Close all the sockets that weren't used.
-        for sock in socks:
-            try:
-                sock.close()
-            except (OSError, socket.error):
-                pass
-
-        if result:
-            # If we found a successful result, cache it here.
-            expire_time = monotonic() + _HAPPY_EYEBALLS_CACHE_TIME
-            _HAPPY_EYEBALLS_CACHE[address] = (result.family, expire_time)
-
-            # Restore the old timeout here.
-            if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
-                result.settimeout(timeout)
-            else:
-                result.settimeout(None)
-            return result
-
-        # If we used a cached entry and it didn't work, try again.
-        if cached and not result:
-            del _HAPPY_EYEBALLS_CACHE[address]
-            if isinstance(timeout, (int, float)):  # Recalculate the timeout.
-                timeout -= monotonic() - start_time
-            return happy_eyeballs_algorithm(address, timeout, source_address, socket_options)
-
-        if err:
-            raise err
-
-        # Otherwise if there's no other errors we either timed out or were refused connection.
-        if (timeout is None or
-                timeout is socket._GLOBAL_DEFAULT_TIMEOUT or
-                start_time + timeout < monotonic()):
-            raise socket.timeout()
-        else:
-            raise socket.error(errno.ECONNREFUSED)
+    happy_eyeballs = _HappyEyeballs(address, timeout, source_address, socket_options)
+    return happy_eyeballs.connect()
