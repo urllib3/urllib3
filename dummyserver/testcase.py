@@ -1,8 +1,7 @@
-try:
-    from unittest import skip
+import sys
+if sys.version_info > (2, 7):
     import unittest
-except ImportError:
-    from unittest2 import skip
+else:
     import unittest2 as unittest
 
 import socket
