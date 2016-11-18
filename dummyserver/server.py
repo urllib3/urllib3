@@ -72,6 +72,7 @@ def _has_ipv6(host):
         sock.close()
     return has_ipv6
 
+
 # Some systems may have IPv6 support but DNS may not be configured
 # properly. We can not count that localhost will resolve to ::1 on all
 # systems. See https://github.com/shazow/urllib3/pull/611 and
