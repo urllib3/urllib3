@@ -1,6 +1,7 @@
 import hashlib
 import warnings
 import logging
+import io
 import unittest
 import ssl
 import socket
@@ -9,7 +10,7 @@ from itertools import chain
 from mock import patch, Mock
 
 from urllib3 import add_stderr_logger, disable_warnings
-from urllib3.util.request import make_headers
+from urllib3.util.request import make_headers, rewind_body
 from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
 from urllib3.util.url import (
@@ -31,6 +32,7 @@ from urllib3.exceptions import (
     SSLError,
     SNIMissingWarning,
     InvalidHeader,
+    UnrewindableBodyError,
 )
 from urllib3.util.connection import (
     allowed_gai_family,
@@ -255,6 +257,39 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(
             make_headers(disable_cache=True),
             {'cache-control': 'no-cache'})
+
+    def test_rewind_body(self):
+        body = io.BytesIO(b'test data')
+        self.assertEqual(body.read(), b'test data')
+
+        # Assert the file object has been consumed
+        self.assertEqual(body.read(), b'')
+
+        # Rewind it back to just be b'data'
+        rewind_body(body, 5)
+        self.assertEqual(body.read(), b'data')
+
+    def test_rewind_body_failed_tell(self):
+        body = io.BytesIO(b'test data')
+        body.read()  # Consume body
+
+        # Simulate failed tell()
+        self.assertRaises(UnrewindableBodyError, rewind_body, body, object())
+
+    def test_rewind_body_bad_position(self):
+        body = io.BytesIO(b'test data')
+        body.read()  # Consume body
+
+        # Pass non-integer position
+        self.assertRaises(UnrewindableBodyError, rewind_body, body, None)
+
+    def test_rewind_body_failed_seek(self):
+        class BadSeek():
+
+            def seek(self, pos, offset=0):
+                raise IOError
+
+        self.assertRaises(UnrewindableBodyError, rewind_body, BadSeek(), 2)
 
     def test_split_first(self):
         test_cases = {
