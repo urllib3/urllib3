@@ -36,7 +36,7 @@ from .request import RequestMethods
 from .response import HTTPResponse
 
 from .util.connection import is_connection_dropped
-from .util.request import rewind_body
+from .util.request import set_file_position
 from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.timeout import Timeout
@@ -577,20 +577,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # ensures we do proper cleanup in finally.
         clean_exit = False
 
-        # Attempt to rewind body if body_pos has been set.
-        if body_pos is not None:
-            rewind_body(body, body_pos)
-
-        # Make note of current file pointer position if available and
-        # not previously noted. This allows us to rewind a file in the
-        # event of a redirect/retry.
-        if body_pos is None and getattr(body, 'tell', None) is not None:
-            try:
-                body_pos = body.tell()
-            except (IOError, OSError):
-                # This differentiates from None, allowing us to catch
-                # a failed `tell()` later when trying to rewind the body.
-                body_pos = object()
+        # Rewind body position, if needed. Record current position
+        # for future rewinds in the event of a redirect/retry.
+        body_pos = set_file_position(body, body_pos)
 
         try:
             # Request a connection from the queue.
@@ -708,8 +697,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             return self.urlopen(
                 method, redirect_location, body, headers,
                 retries=retries, redirect=redirect,
-                assert_same_host=assert_same_host, timeout=timeout,
-                pool_timeout=pool_timeout,
+                assert_same_host=assert_same_host,
+                timeout=timeout, pool_timeout=pool_timeout,
                 release_conn=release_conn, body_pos=body_pos,
                 **response_kw)
 
