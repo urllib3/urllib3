@@ -899,7 +899,8 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
         uploaded_file = io.BytesIO(data)
         headers = {'test-name': 'test_redirect_put_file',
                    'Content-Length': str(content_length)}
-        resp = self.pool.urlopen('PUT', '/echo',
+        url = '/redirect?target=/echo&status=307'
+        resp = self.pool.urlopen('PUT', url,
                                  headers=headers,
                                  retries=retry,
                                  body=uploaded_file,
@@ -916,12 +917,14 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
 
         body = BadTellObject(b'the data')
         url = '/redirect?target=/successful_retry'
+        # httplib uses fileno if Content-Length isn't supplied,
+        # which is unsupported by BytesIO.
         headers = {'Content-Length': '8'}
         try:
             resp = self.pool.urlopen('PUT', url, headers=headers, body=body)
             self.fail('PUT successful despite failed rewind.')
         except UnrewindableBodyError as e:
-            self.assertTrue('Unable to rewind request body' in str(e))
+            self.assertTrue('Unable to record file position for' in str(e))
 
 if __name__ == '__main__':
     unittest.main()

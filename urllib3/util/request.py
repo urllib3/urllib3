@@ -92,7 +92,7 @@ def set_file_position(body, pos):
     return pos
 
 
-def rewind_body(body, pos):
+def rewind_body(body, body_pos):
     """
     Attempt to rewind body to a certain position.
     Primarily used for request redirects and retries.
@@ -100,17 +100,19 @@ def rewind_body(body, pos):
     :param body:
         File-like object that supports seek.
 
-    :param pos:
-        Position to seek to in file. An `object()` value
-        is used to denote a failed `tell()`.
+    :param int pos:
+        Position to seek to in file.
     """
     body_seek = getattr(body, 'seek', None)
-    if body_seek is not None and isinstance(pos, integer_types):
+    if body_seek is not None and isinstance(body_pos, integer_types):
         try:
-            body_seek(pos)
+            body_seek(body_pos)
         except (IOError, OSError):
             raise UnrewindableBodyError("An error occured when rewinding request "
                                         "body for redirect/retry.")
+    elif body_pos is _FAILEDTELL:
+        raise UnrewindableBodyError("Unable to record file position for rewinding "
+                                    "request body during a redirect/retry.")
     else:
-        raise UnrewindableBodyError("Unable to rewind request body for "
-                                    "redirect/retry.")
+        raise ValueError("body_pos must be of type integer, "
+                         "instead it was %s." % type(body_pos))

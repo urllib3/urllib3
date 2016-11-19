@@ -10,7 +10,7 @@ from itertools import chain
 from mock import patch, Mock
 
 from urllib3 import add_stderr_logger, disable_warnings
-from urllib3.util.request import make_headers, rewind_body
+from urllib3.util.request import make_headers, rewind_body, _FAILEDTELL
 from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
 from urllib3.util.url import (
@@ -274,14 +274,16 @@ class TestUtil(unittest.TestCase):
         body.read()  # Consume body
 
         # Simulate failed tell()
-        self.assertRaises(UnrewindableBodyError, rewind_body, body, object())
+        body_pos = _FAILEDTELL
+        self.assertRaises(UnrewindableBodyError, rewind_body, body, body_pos)
 
     def test_rewind_body_bad_position(self):
         body = io.BytesIO(b'test data')
         body.read()  # Consume body
 
         # Pass non-integer position
-        self.assertRaises(UnrewindableBodyError, rewind_body, body, None)
+        self.assertRaises(ValueError, rewind_body, body, None)
+        self.assertRaises(ValueError, rewind_body, body, object())
 
     def test_rewind_body_failed_seek(self):
         class BadSeek():
