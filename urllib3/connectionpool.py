@@ -532,6 +532,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             encoding. Otherwise, urllib3 will send the body using the standard
             content-length form. Defaults to False.
 
+        :param int body_pos:
+            Position to seek to in file-like body in the event of a retry or
+            redirect. Typically this won't need to be set because urllib3 will
+            auto-populate the value when needed.
+
         :param \**response_kw:
             Additional parameters are passed to
             :meth:`urllib3.response.HTTPResponse.from_httplib`
