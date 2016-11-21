@@ -335,14 +335,14 @@ class OldHTTPResponse(io.BufferedIOBase):
         data_out = [self._buffered_data]
         data_out_len = len(self._buffered_data)
 
-        while (size is None) or (size < data_out_len):
+        while (size is None) or (data_out_len < size):
             event = self._state_machine.next_event()
             if event is h11.NEED_DATA:
                 self._state_machine.receive_data(self.fp.recv(8192))
                 continue
 
             if isinstance(event, h11.Data):
-                data_out.append(event.data)
+                data_out.append(bytes(event.data))
                 data_out_len += len(event.data)
             elif isinstance(event, h11.EndOfMessage):
                 self._close_conn()
@@ -391,6 +391,51 @@ class OldHTTPResponse(io.BufferedIOBase):
             # TODO: this exception isn't real
             raise ResponseNotReady()
         return list(self.headers.items())
+
+    def _read_chunk(self, size=None):
+        """
+        This helper method is used by the HTTPResponse object to ask for a
+        single HTTP chunk. In practice this uses a buffer stored on the object
+        to hold excess data, as needed.
+        """
+        # This is a bit odd. If we have data in a buffer, we *assume* that it
+        # is part of a previous chunk that we only partially read. We assume
+        # this because h11 generally tries to emit Data events on chunk
+        # boundaries if it can. However, this will lead to weird behavioural
+        # behaviours if users combine read() and _read_chunk. So...please
+        # don't.'
+        data_out = [self._buffered_data]
+        data_out_len = len(self._buffered_data)
+
+        # We want to read until either we have read `size` bytes, or until we
+        # get to a chunk boundary.
+        while (size is None) or (data_out_len < size):
+            event = self._state_machine.next_event()
+            if event is h11.NEED_DATA:
+                self._state_machine.receive_data(self.fp.recv(8192))
+                continue
+
+            if isinstance(event, h11.Data):
+                data_out.append(bytes(event.data))
+                data_out_len += len(event.data)
+
+                # We've got to the end of a chunk, we're done.
+                if event.chunk_end:
+                    break
+            elif isinstance(event, h11.EndOfMessage):
+                self._close_conn()
+                break
+            elif isinstance(event, h11.ConnectionClosed):
+                # TODO: better exception
+                raise RuntimeError("Connection closed early!")
+
+        data_out = b''.join(data_out)
+
+        # If we stopped because of the max read size, store the partial chunk.
+        if size is not None and data_out_len < size:
+            data_out, self._buffered_data = data_out[:size], data_out[size:]
+
+        return data_out
 
     # We override IOBase.__iter__ so that it doesn't check for closed-ness
     def __iter__(self):

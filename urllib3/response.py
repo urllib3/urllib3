@@ -520,43 +520,7 @@ class HTTPResponse(io.IOBase):
         attribute. If it is present we assume it returns raw chunks as
         processed by read_chunked().
         """
-        return hasattr(self._fp, 'fp')
-
-    def _update_chunk_length(self):
-        # First, we'll figure out length of a chunk and then
-        # we'll try to read it from socket.
-        if self.chunk_left is not None:
-            return
-        line = self._fp.fp.readline()
-        line = line.split(b';', 1)[0]
-        try:
-            self.chunk_left = int(line, 16)
-        except ValueError:
-            # Invalid chunked protocol response, abort.
-            self.close()
-            raise httplib.IncompleteRead(line)
-
-    def _handle_chunk(self, amt):
-        returned_chunk = None
-        if amt is None:
-            chunk = self._fp._safe_read(self.chunk_left)
-            returned_chunk = chunk
-            self._fp._safe_read(2)  # Toss the CRLF at the end of the chunk.
-            self.chunk_left = None
-        elif amt < self.chunk_left:
-            value = self._fp._safe_read(amt)
-            self.chunk_left = self.chunk_left - amt
-            returned_chunk = value
-        elif amt == self.chunk_left:
-            value = self._fp._safe_read(amt)
-            self._fp._safe_read(2)  # Toss the CRLF at the end of the chunk.
-            self.chunk_left = None
-            returned_chunk = value
-        else:  # amt > self.chunk_left
-            returned_chunk = self._fp._safe_read(self.chunk_left)
-            self._fp._safe_read(2)  # Toss the CRLF at the end of the chunk.
-            self.chunk_left = None
-        return returned_chunk
+        return hasattr(self._fp, "_read_chunk")
 
     def read_chunked(self, amt=None, decode_content=None):
         """
@@ -585,10 +549,9 @@ class HTTPResponse(io.IOBase):
 
         with self._error_catcher():
             while True:
-                self._update_chunk_length()
-                if self.chunk_left == 0:
+                chunk = self._fp._read_chunk(amt)
+                if not chunk:
                     break
-                chunk = self._handle_chunk(amt)
                 decoded = self._decode(chunk, decode_content=decode_content,
                                        flush_decoder=False)
                 if decoded:
@@ -601,15 +564,6 @@ class HTTPResponse(io.IOBase):
                 decoded = self._flush_decoder()
                 if decoded:  # Platform-specific: Jython.
                     yield decoded
-
-            # Chunk content ends with \r\n: discard it.
-            while True:
-                line = self._fp.fp.readline()
-                if not line:
-                    # Some sites may not end with '\r\n'.
-                    break
-                if line == b'\r\n':
-                    break
 
             # We read everything; close the "file".
             if self._original_response:
