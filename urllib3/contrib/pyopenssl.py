@@ -110,6 +110,8 @@ log = logging.getLogger(__name__)
 def inject_into_urllib3():
     'Monkey-patch urllib3 with PyOpenSSL-backed SSL-support.'
 
+    _validate_dependencies_met()
+
     util.ssl_.SSLContext = PyOpenSSLContext
     util.HAS_SNI = HAS_SNI
     util.ssl_.HAS_SNI = HAS_SNI
@@ -125,6 +127,18 @@ def extract_from_urllib3():
     util.ssl_.HAS_SNI = orig_util_HAS_SNI
     util.IS_PYOPENSSL = False
     util.ssl_.IS_PYOPENSSL = False
+
+
+def _validate_dependencies_met():
+    """
+    Verifies that PyOpenSSL's package-level dependencies have been met.
+    Throws `ImportError` if they are not met.
+    """
+    # Method added in `cryptography==1.1`; not available in older versions
+    from cryptography.x509.extensions import Extensions
+    if not hasattr(Extensions, "get_extension_for_class"):
+        raise ImportError("'cryptography' module missing required functionality.  "
+                          "Try upgrading to v1.3.4 or newer.")
 
 
 def _dnsname_to_stdlib(name):
