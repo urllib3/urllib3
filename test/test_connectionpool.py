@@ -275,6 +275,11 @@ class TestConnectionPool(unittest.TestCase):
         self.assertRaises(ClosedPoolError, pool._get_conn)
         self.assertRaises(Empty, old_pool_queue.get, block=False)
 
+    def test_mixed_case_url(self):
+        pool = HTTPConnectionPool('Example.com')
+        response = pool.request('GET', "http://Example.com")
+        self.assertEqual(response.status, 200)
+
     def test_absolute_url(self):
         c = connection_from_url('http://google.com:80')
         self.assertEqual(
