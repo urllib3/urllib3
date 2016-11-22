@@ -1,5 +1,6 @@
 from __future__ import with_statement
 import errno
+import mock
 import os
 import psutil
 import signal
@@ -638,7 +639,20 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         after_fds = len(proc.open_files())
         self.assertEqual(before_fds, after_fds)
 
+    def test_wait_io_close_is_called(self):
+        selector = self.SELECTOR()
+        self.addCleanup(selector.close)
 
+        def fake_constructor(*args, **kwargs):
+            return selector
+
+        old_selector = wait.DefaultSelector
+        wait.DefaultSelector = fake_constructor
+        self.addCleanup(setattr, wait, "DefaultSelector", old_selector)
+
+        rd, wr = self.make_socketpair()
+        wait.wait_for_write([rd, wr], 0.001)
+        self.assertIs(selector._map, None)
 
 
 class ScalableSelectorMixin(object):
