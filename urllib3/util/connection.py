@@ -1,4 +1,4 @@
-from __future__ import absolute_import, with_statement
+from __future__ import absolute_import
 import socket
 from urllib3.util.rfc6555 import (
     happy_eyeballs_algorithm
@@ -37,8 +37,7 @@ def is_connection_dropped(conn):  # Platform-specific
 # One additional modification is that we avoid binding to IPv6 servers
 # discovered in DNS if the system doesn't have IPv6 functionality.
 def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-                      source_address=None, socket_options=None,
-                      enable_happy_eyeballs=True):
+                      source_address=None, socket_options=None):
     """Connect to *address* and return the socket object.
 
     Convenience function.  Connect to *address* (a 2-tuple ``(host,

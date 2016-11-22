@@ -1,5 +1,3 @@
-from __future__ import with_statement
-import errno
 import logging
 import socket
 import sys
@@ -620,8 +618,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertRaises(MaxRetryError, pool.request, 'GET', '/test', retries=2)
 
     def test_source_address(self):
-        connection.ENABLE_HAPPY_EYEBALLS = False
-        self.addCleanup(setattr, connection, "ENABLE_HAPPY_EYEBALLS", True)
         for addr, is_ipv6 in VALID_SOURCE_ADDRESSES:
             if is_ipv6 and not HAS_IPV6_AND_DNS:
                 warnings.warn("No IPv6 support: skipping.",
