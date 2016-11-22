@@ -98,6 +98,23 @@ class ConnectionPool(object):
 # This is taken from http://hg.python.org/cpython/file/7aaba721ebc0/Lib/socket.py#l252
 _blocking_errnos = set([errno.EAGAIN, errno.EWOULDBLOCK])
 
+# CPython 2.7 supports an opt-in parameter for response buffering
+# in HTTPConnection.getresponse
+# Rather than checking on each request, we inspect the code object
+# (if available) at import and only pass the argument if it appears
+# in the list of variable names
+def _request_httplib_response_buffering():
+    try:
+        names = HTTPConnection.getresponse.im_func.func_code.co_varnames
+    except AttributeError:
+        return False # Either Python 3 or not CPython
+    return "buffering" in names
+
+if _request_httplib_response_buffering():
+    def _get_httplib_response(conn):
+        return conn.getresponse(buffering=True)
+else:
+    _get_httplib_response = HTTPConnection.getresponse
 
 class HTTPConnectionPool(ConnectionPool, RequestMethods):
     """
@@ -380,15 +397,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Receive the response from the server
         try:
-            try:  # Python 2.7, use buffering of HTTP responses
-                httplib_response = conn.getresponse(buffering=True)
-            except TypeError:  # Python 2.6 and older, Python 3
-                try:
-                    httplib_response = conn.getresponse()
-                except Exception as e:
-                    # Remove the TypeError from the exception chain in Python 3;
-                    # otherwise it looks like a programming error was the cause.
-                    six.raise_from(e, None)
+            # Issue #1047: Handle variations in HTTPConnection.getresponse signature
+            httplib_response = _get_httplib_response(conn)
         except (SocketTimeout, BaseSSLError, SocketError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
