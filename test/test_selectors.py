@@ -32,8 +32,7 @@ except ImportError:
 
 from urllib3.util import (
     selectors,
-    wait_for_read,
-    wait_for_write
+    wait
 )
 
 HAS_ALARM = hasattr(signal, "alarm")
@@ -139,22 +138,22 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin, TimerMixin):
 
     def test_wait_for_read_single_socket(self):
         rd, wr = self.make_socketpair()
-        self.assertEqual([], wait_for_read(rd, timeout=SHORT_SELECT))
+        self.assertEqual([], wait.wait_for_read(rd, timeout=SHORT_SELECT))
 
     def test_wait_for_read_multiple_socket(self):
         rd, rd2 = self.make_socketpair()
-        self.assertEqual([], wait_for_read([rd, rd2], timeout=SHORT_SELECT))
+        self.assertEqual([], wait.wait_for_read([rd, rd2], timeout=SHORT_SELECT))
 
     def test_wait_for_read_empty(self):
-        self.assertEqual([], wait_for_read([], timeout=SHORT_SELECT))
+        self.assertEqual([], wait.wait_for_read([], timeout=SHORT_SELECT))
 
     def test_wait_for_write_single_socket(self):
         wr, wr2 = self.make_socketpair()
-        self.assertEqual([wr], wait_for_write(wr, timeout=SHORT_SELECT))
+        self.assertEqual([wr], wait.wait_for_write(wr, timeout=SHORT_SELECT))
 
     def test_wait_for_write_multiple_socket(self):
         wr, wr2 = self.make_socketpair()
-        result = wait_for_write([wr, wr2], timeout=SHORT_SELECT)
+        result = wait.wait_for_write([wr, wr2], timeout=SHORT_SELECT)
         # assertItemsEqual renamed in Python 3.x
         if hasattr(self, "assertItemsEqual"):
             self.assertItemsEqual([wr, wr2], result)
@@ -162,17 +161,17 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin, TimerMixin):
             self.assertCountEqual([wr, wr2], result)
 
     def test_wait_for_write_empty(self):
-        self.assertEqual([], wait_for_write([], timeout=SHORT_SELECT))
+        self.assertEqual([], wait.wait_for_write([], timeout=SHORT_SELECT))
 
     def test_wait_for_non_list_iterable(self):
         rd, wr = self.make_socketpair()
         iterable = {'rd': rd}.values()
-        self.assertEqual([], wait_for_read(iterable, timeout=SHORT_SELECT))
+        self.assertEqual([], wait.wait_for_read(iterable, timeout=SHORT_SELECT))
 
     def test_wait_timeout(self):
         rd, wr = self.make_socketpair()
         with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
-            wait_for_read([rd], timeout=SHORT_SELECT)
+            wait.wait_for_read([rd], timeout=SHORT_SELECT)
 
     @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_no_event(self):
@@ -181,7 +180,7 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin, TimerMixin):
         self.set_alarm(SHORT_SELECT, lambda *args: None)
 
         with self.assertTakesTime(lower=LONG_SELECT, upper=LONG_SELECT):
-            self.assertEqual([], wait_for_read(rd, timeout=LONG_SELECT))
+            self.assertEqual([], wait.wait_for_read(rd, timeout=LONG_SELECT))
 
     @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_with_event(self):
@@ -190,7 +189,7 @@ class WaitForIOTest(unittest.TestCase, AlarmMixin, TimerMixin):
         self.set_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
 
         with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
-            self.assertEqual([rd], wait_for_read(rd, timeout=LONG_SELECT))
+            self.assertEqual([rd], wait.wait_for_read(rd, timeout=LONG_SELECT))
         self.assertEqual(rd.recv(1), b'x')
 
 
@@ -584,7 +583,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         class AlarmInterrupt(Exception):
             pass
 
-        def alarm_exception(*args):
+        def alarm_exception(*_):
             raise AlarmInterrupt()
 
         self.set_alarm(SHORT_SELECT, alarm_exception)
@@ -612,6 +611,34 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         s.close()
         after_fds = len(proc.open_files())
         self.assertEqual(before_fds, after_fds)
+
+    @skipIf(sys.platform == "win32", "psutil.Process.open_files() is unstable on Windows.")
+    def test_wait_read_leaking_fds(self):
+        old_selector = wait.DefaultSelector
+        wait.DefaultSelector = self.SELECTOR
+        self.addCleanup(setattr, wait, "DefaultSelector", old_selector)
+
+        proc = psutil.Process()
+        rd, wr = self.make_socketpair()
+        before_fds = len(proc.open_files())
+        self.assertEqual(0, len(wait.wait_for_read([rd], 0.001)))
+        after_fds = len(proc.open_files())
+        self.assertEqual(before_fds, after_fds)
+
+    @skipIf(sys.platform == "win32", "psutil.Process.open_files() is unstable on Windows.")
+    def test_wait_write_leaking_fds(self):
+        old_selector = wait.DefaultSelector
+        wait.DefaultSelector = self.SELECTOR
+        self.addCleanup(setattr, wait, "DefaultSelector", old_selector)
+
+        proc = psutil.Process()
+        rd, wr = self.make_socketpair()
+        before_fds = len(proc.open_files())
+        self.assertEqual(1, len(wait.wait_for_write([wr], 0.001)))
+        after_fds = len(proc.open_files())
+        self.assertEqual(before_fds, after_fds)
+
+
 
 
 class ScalableSelectorMixin(object):
