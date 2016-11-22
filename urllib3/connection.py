@@ -935,7 +935,7 @@ class HTTPConnection(object):
 
         for hdr, value in headers.items():
             self.putheader(hdr, value)
-        if isinstance(body, str):
+        if isinstance(body, six.text_type):
             # RFC 2616 Section 3.7.1 says that text default has a
             # default charset of iso-8859-1.
             # TODO: what?
