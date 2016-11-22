@@ -23,11 +23,9 @@ except (ImportError, AttributeError):  # Platform-specific: No SSL.
 
 
 try:  # Python 3:
-    # Not a no-op, we're adding this to the namespace so it can be imported.
     ConnectionError = ConnectionError
 except NameError:  # Python 2:
-    class ConnectionError(Exception):
-        pass
+    ConnectionError = SocketError
 
 
 from .exceptions import (
