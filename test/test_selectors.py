@@ -1,6 +1,5 @@
 from __future__ import with_statement
 import errno
-import mock
 import os
 import psutil
 import signal
