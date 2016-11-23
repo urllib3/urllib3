@@ -67,8 +67,8 @@ def _default_key_normalizer(key_class, request_context):
 
 # A dictionary that maps a scheme to a callable that creates a pool key.
 # This can be used to alter the way pool keys are constructed, if desired.
-# Each PoolManager makes a copy of this dictionary so they can be configured
-# globally here, or individually on the instance.
+# Each PoolManager references this dictionary, so modifying this dictionary
+# results in a change for all PoolManager instances.
 key_fn_by_scheme = {
     'http': functools.partial(_default_key_normalizer, HTTPPoolKey),
     'https': functools.partial(_default_key_normalizer, HTTPSPoolKey),
@@ -119,7 +119,7 @@ class PoolManager(RequestMethods):
         # Locally set the pool classes and keys so other PoolManagers can
         # override them.
         self.pool_classes_by_scheme = pool_classes_by_scheme
-        self.key_fn_by_scheme = key_fn_by_scheme.copy()
+        self.key_fn_by_scheme = key_fn_by_scheme
 
     def __enter__(self):
         return self
