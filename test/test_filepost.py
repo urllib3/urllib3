@@ -165,6 +165,17 @@ class TestMultipartEncoding(unittest.TestCase):
           )
 
 
+class _SeekableObject(object):
+    def __init__(self, data):
+        self.data = io.BytesIO(data)
+
+    def seek(self, *args, **kwargs):
+        return self.data.seek(*args, **kwargs)
+
+    def tell(self, *args, **kwargs):
+        return self.data.tell(*args, **kwargs)
+
+
 class _ReadableObject(object):
     def __init__(self, data):
         self.data = io.BytesIO(data)
@@ -181,8 +192,55 @@ class _IterableObject(object):
         return iter(self.data)
 
 
+class _LengthObject(object):
+    def __init__(self, data):
+        self.length = len(data)
+
+    def __len__(self):
+        return self.length
+
+
 class TestStreamingUploads(unittest.TestCase):
-    def test_seekable_object(self):
+    def test_length_file_like_object(self):
+        fields = [('k', ('somefile.txt', io.BytesIO(b'v'), 'image/jpeg'))]
+
+        encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        self.assertEqual(len(encoded), 146)
+
+    def test_length_readable_object(self):
+        fields = [('k', ('somefile.txt', _ReadableObject(b'v'), 'image/jpeg'))]
+
+        encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        self.assertEqual(len(encoded), 146)
+
+    def test_length_iterable_object(self):
+        fields = [('k', ('somefile.txt', _IterableObject(b'v'), 'image/jpeg'))]
+
+        encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        self.assertEqual(len(encoded), 146)
+
+    def test_length_unknown_object(self):
+        fields = [('k', ('somefile.txt', object(), 'image/jpeg'))]
+
+        encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        self.assertRaises(TypeError, encoded.__len__)
+
+    def test_unknown_object(self):
+        unknown_object = object()
+        fields = [('k', ('somefile.txt', unknown_object, 'image/jpeg'))]
+
+        encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY, chunk_size=1)
+        non_chunks = [b'--' + b(BOUNDARY) + b'\r\n',
+                      b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
+                      b'Content-Type: image/jpeg\r\n\r\n',
+                      b'\r\n',
+                      b'--' + b(BOUNDARY) + b'--\r\n']
+
+        for chunk in encoded:
+            if chunk not in non_chunks:
+                self.assertIs(chunk, unknown_object)
+
+    def test_file_like_object(self):
         fields = [('k', ('somefile.txt', io.BytesIO(b'v'), 'image/jpeg'))]
 
         encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
@@ -251,3 +309,37 @@ class TestStreamingUploads(unittest.TestCase):
         for chunk in encoded:
             if chunk not in non_chunks:
                 self.assertEqual(len(chunk), 1)
+
+    def test_iterate_over_encoded(self):
+        fields = [('k', ('somefile.txt', _IterableObject(b'v'), 'image/jpeg'))]
+
+        encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        expected = [b'--' + b(BOUNDARY) + b'\r\n',
+                    b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
+                    b'Content-Type: image/jpeg\r\n\r\n',
+                    b'v',
+                    b'\r\n',
+                    b'--' + b(BOUNDARY) + b'--\r\n']
+
+        i = 0
+        try:
+            actual = next(encoded)
+            self.assertEqual(expected[i], actual)
+            i += 1
+        except StopIteration:
+            self.assertEqual(i, len(expected) - 1)
+
+    def test_chunking_remaining(self):
+        fields = [('k', ('somefile.txt', _ReadableObject(b'v' * 1024), 'image/jpeg'))]
+
+        for chunk_size in range(1, 128):
+            encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY, chunk_size=chunk_size)
+            non_chunks = [b'--' + b(BOUNDARY) + b'\r\n',
+                          b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
+                          b'Content-Type: image/jpeg\r\n\r\n',
+                          b'\r\n',
+                          b'--' + b(BOUNDARY) + b'--\r\n']
+
+            for chunk in encoded:
+                if chunk not in non_chunks:
+                    self.assertTrue(len(chunk) == chunk_size or len(chunk) == 1024 % chunk_size)
