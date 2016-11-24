@@ -13,6 +13,9 @@ dev (master)
 * ConnectionPools now correctly consider hostnames to be case-insensitive.
   (Issue #1032)
 
+* Outdated versions of cryptography now cause the PyOpenSSL contrib module
+  to fail when it is injected, rather than at first use. (Issue #1044)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
