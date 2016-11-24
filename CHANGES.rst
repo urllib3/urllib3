@@ -8,14 +8,21 @@ dev (master)
   improving urllib3's behaviour with large numbers of concurrent connections.
   (Pull #1001)
 
-* Fixed AppEngine import that didn't function on Python 3.5. (Pull #1025)
-
 * Updated the date for the system clock check. (Issue #1005)
 
 * ConnectionPools now correctly consider hostnames to be case-insensitive.
   (Issue #1032)
 
+* Outdated versions of cryptography now cause the PyOpenSSL contrib module
+  to fail when it is injected, rather than at first use. (Issue #1044)
+
 * ... [Short description of non-trivial change.] (Issue #)
+
+
+1.19.1 (2016-11-16)
+-------------------
+
+* Fixed AppEngine import that didn't function on Python 3.5. (Pull #1025)
 
 
 1.19 (2016-11-03)
