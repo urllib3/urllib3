@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 import codecs
-import mimetypes
 from uuid import uuid4
 
 from .packages import six
