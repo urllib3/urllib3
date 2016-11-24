@@ -98,23 +98,30 @@ class ConnectionPool(object):
 # This is taken from http://hg.python.org/cpython/file/7aaba721ebc0/Lib/socket.py#l252
 _blocking_errnos = set([errno.EAGAIN, errno.EWOULDBLOCK])
 
-# CPython 2.7 supports an opt-in parameter for response buffering
-# in HTTPConnection.getresponse
-# Rather than checking on each request, we inspect the code object
-# (if available) at import and only pass the argument if it appears
-# in the list of variable names
-def _request_httplib_response_buffering():
-    try:
-        names = HTTPConnection.getresponse.im_func.func_code.co_varnames
-    except AttributeError:
-        return False # Either Python 3 or not CPython
-    return "buffering" in names
 
-if _request_httplib_response_buffering():
-    def _get_httplib_response(conn):
+# The buffering argument to HTTPConnection.getresponse is only supported
+# as an implementation detail of CPython 2.7, so other versions and other
+# implementations don't support it.
+def _get_httplib_response(conn):
+    """Get HTTP connection response with buffering explicitly enabled"""
+    try:
+        # CPython 2.7 supports this call, while other versions and
+        # implementations may not do so (e.g. 3.x doesn't)
         return conn.getresponse(buffering=True)
-else:
+    except TypeError:
+        pass
+    # This isn't CPython 2.7, so don't even try to pass "buffering"
+    # on future calls, and instead invoke the connection method directly
+    _replace_get_httplib_response()
+    # Retry the original failed call without the "buffering" argument
+    return conn.getresponse()
+
+
+def _replace_get_httplib_response():
+    """Use HTTPConnection.getresponse directly as _get_hittplib_response"""
+    global _get_httplib_response
     _get_httplib_response = HTTPConnection.getresponse
+
 
 class HTTPConnectionPool(ConnectionPool, RequestMethods):
     """
