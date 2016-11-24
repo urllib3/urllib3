@@ -54,10 +54,6 @@ def iter_fields(fields):
     return ((k, v) for k, v in fields)
 
 
-def get_content_type(filename):
-    return mimetypes.guess_type(filename)[0] or 'application/octet-stream'
-
-
 def encode(string):
     if isinstance(string, six.text_type):
         return string.encode('utf-8')

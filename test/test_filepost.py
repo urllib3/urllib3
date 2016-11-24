@@ -1,5 +1,6 @@
 import unittest
 import psutil
+import io
 
 from urllib3.filepost import (
     encode_multipart_formdata,
@@ -162,3 +163,91 @@ class TestMultipartEncoding(unittest.TestCase):
           b'v\r\n'
           b'--' + b(BOUNDARY) + b'--\r\n'
           )
+
+
+class _ReadableObject(object):
+    def __init__(self, data):
+        self.data = io.BytesIO(data)
+
+    def read(self, chunk=None):
+        return self.data.read(chunk)
+
+
+class _IterableObject(object):
+    def __init__(self, data):
+        self.data = io.BytesIO(data)
+
+    def __iter__(self):
+        return iter(self.data)
+
+
+class TestStreamingUploads(unittest.TestCase):
+    def test_seekable_object(self):
+        fields = [('k', ('somefile.txt', io.BytesIO(b'v'), 'image/jpeg'))]
+
+        encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        expected = [b'--' + b(BOUNDARY) + b'\r\n',
+                    b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
+                    b'Content-Type: image/jpeg\r\n\r\n',
+                    b'v',
+                    b'\r\n',
+                    b'--' + b(BOUNDARY) + b'--\r\n']
+
+        for i, actual in enumerate(encoded):
+            self.assertEqual(expected[i], actual)
+
+    def test_readable_object(self):
+        fields = [('k', ('somefile.txt', _ReadableObject(b'v'), 'image/jpeg'))]
+
+        encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        expected = [b'--' + b(BOUNDARY) + b'\r\n',
+                    b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
+                    b'Content-Type: image/jpeg\r\n\r\n',
+                    b'v',
+                    b'\r\n',
+                    b'--' + b(BOUNDARY) + b'--\r\n']
+
+        for i, actual in enumerate(encoded):
+            self.assertEqual(expected[i], actual)
+
+    def test_iterable_object(self):
+        fields = [('k', ('somefile.txt', _IterableObject(b'v'), 'image/jpeg'))]
+
+        encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        expected = [b'--' + b(BOUNDARY) + b'\r\n',
+                    b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
+                    b'Content-Type: image/jpeg\r\n\r\n',
+                    b'v',
+                    b'\r\n',
+                    b'--' + b(BOUNDARY) + b'--\r\n']
+
+        for i, actual in enumerate(encoded):
+            self.assertEqual(expected[i], actual)
+
+    def test_readable_small_chunk_size(self):
+        fields = [('k', ('somefile.txt', _ReadableObject(b'v' * 1024), 'image/jpeg'))]
+
+        encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY, chunk_size=1)
+        non_chunks = [b'--' + b(BOUNDARY) + b'\r\n',
+                      b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
+                      b'Content-Type: image/jpeg\r\n\r\n',
+                      b'\r\n',
+                      b'--' + b(BOUNDARY) + b'--\r\n']
+
+        for chunk in encoded:
+            if chunk not in non_chunks:
+                self.assertEqual(len(chunk), 1)
+
+    def test_seekable_small_chunk_size(self):
+        fields = [('k', ('somefile.txt', io.BytesIO(b'v' * 1024), 'image/jpeg'))]
+
+        encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY, chunk_size=1)
+        non_chunks = [b'--' + b(BOUNDARY) + b'\r\n',
+                      b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
+                      b'Content-Type: image/jpeg\r\n\r\n',
+                      b'\r\n',
+                      b'--' + b(BOUNDARY) + b'--\r\n']
+
+        for chunk in encoded:
+            if chunk not in non_chunks:
+                self.assertEqual(len(chunk), 1)
