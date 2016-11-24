@@ -334,7 +334,7 @@ class TestStreamingUploads(unittest.TestCase):
         except StopIteration:
             self.assertEqual(i, len(expected) - 1)
 
-    def test_chunking_remaining(self):
+    def test_iter_chunking_remaining(self):
         fields = [('k', ('somefile.txt', _ReadableObject(b'v' * 1024), 'image/jpeg'))]
 
         for chunk_size in range(1, 128):
@@ -348,3 +348,15 @@ class TestStreamingUploads(unittest.TestCase):
             for chunk in encoded:
                 if chunk not in non_chunks:
                     self.assertTrue(len(chunk) == chunk_size or len(chunk) == 1024 % chunk_size)
+
+    def test_read_chunking_remaining(self):
+        for chunk_size in range(2, 128):
+            fields = [('k', ('somefile.txt', io.BytesIO(b'v' * 1024), 'image/jpeg'))]
+            encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY, chunk_size=chunk_size)
+            to_read = 1169
+
+            while to_read > 0:
+                read_size = min(chunk_size - 1, to_read)
+                chunk = encoded.read(read_size)
+                self.assertEqual(len(chunk), read_size)
+                to_read -= len(chunk)
