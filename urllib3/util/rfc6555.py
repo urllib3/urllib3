@@ -49,7 +49,6 @@ class _HappyEyeballs(object):
         value exists or the cached value fails follow RFC 6555
         in order to determine whether to use AF_INET or AF_INET6
         to connect to the remote host. """
-        self._start_time = current_time()
         sock = self._connect_cached_socket_family()
 
         if sock is None:
@@ -90,6 +89,7 @@ class _HappyEyeballs(object):
     def _connect_first_socket_family(self, family=socket.AF_UNSPEC):
         """ Executes the algorithm for a given family
         or no family if IPv4 or IPv6 are allowed. """
+        self._start_time = current_time()
         host, port = self._address
         dns_results = socket.getaddrinfo(host, port, family, socket.SOCK_STREAM)
         dns_results = [result for result in dns_results if result[0] in _IP_FAMILIES]
