@@ -1,4 +1,5 @@
 import errno
+import io
 import logging
 import socket
 import sys
@@ -28,6 +29,7 @@ from urllib3.exceptions import (
     ReadTimeoutError,
     ProtocolError,
     NewConnectionError,
+    UnrewindableBodyError,
 )
 from urllib3.packages.six import b, u
 from urllib3.packages.six.moves.urllib.parse import urlencode
@@ -685,8 +687,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             self.assertEqual(http.pool.qsize(), http.pool.maxsize)
 
 
-
-
 class TestRetry(HTTPDummyServerTestCase):
     def setUp(self):
         self.pool = HTTPConnectionPool(self.host, self.port)
@@ -869,6 +869,62 @@ class TestRetryAfter(HTTPDummyServerTestCase):
         delta = time.time() - t
         self.assertEqual(r.status, 200)
         self.assertTrue(delta < 1)
+
+class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
+    def setUp(self):
+        self.pool = HTTPConnectionPool(self.host, self.port, timeout=0.1)
+
+    def test_retries_put_filehandle(self):
+        """HTTP PUT retry with a file-like object should not timeout"""
+        retry = Retry(total=3, status_forcelist=[418])
+        # httplib reads in 8k chunks; use a larger content length
+        content_length = 65535
+        data = b'A' * content_length
+        uploaded_file = io.BytesIO(data)
+        headers = {'test-name': 'test_retries_put_filehandle',
+                   'Content-Length': str(content_length)}
+        resp = self.pool.urlopen('PUT', '/successful_retry',
+                                 headers=headers,
+                                 retries=retry,
+                                 body=uploaded_file,
+                                 assert_same_host=False, redirect=False)
+        self.assertEqual(resp.status, 200)
+
+    def test_redirect_put_file(self):
+        """PUT with file object should work with a redirection response"""
+        retry = Retry(total=3, status_forcelist=[418])
+        # httplib reads in 8k chunks; use a larger content length
+        content_length = 65535
+        data = b'A' * content_length
+        uploaded_file = io.BytesIO(data)
+        headers = {'test-name': 'test_redirect_put_file',
+                   'Content-Length': str(content_length)}
+        url = '/redirect?target=/echo&status=307'
+        resp = self.pool.urlopen('PUT', url,
+                                 headers=headers,
+                                 retries=retry,
+                                 body=uploaded_file,
+                                 assert_same_host=False, redirect=True)
+        self.assertEqual(resp.status, 200)
+        self.assertEqual(resp.data, data)
+
+    def test_redirect_with_failed_tell(self):
+        """Abort request if failed to get a position from tell()"""
+        class BadTellObject(io.BytesIO):
+
+            def tell(self):
+                raise IOError
+
+        body = BadTellObject(b'the data')
+        url = '/redirect?target=/successful_retry'
+        # httplib uses fileno if Content-Length isn't supplied,
+        # which is unsupported by BytesIO.
+        headers = {'Content-Length': '8'}
+        try:
+            resp = self.pool.urlopen('PUT', url, headers=headers, body=body)
+            self.fail('PUT successful despite failed rewind.')
+        except UnrewindableBodyError as e:
+            self.assertTrue('Unable to record file position for' in str(e))
 
 if __name__ == '__main__':
     unittest.main()
