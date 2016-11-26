@@ -324,6 +324,21 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if 'timed out' in str(err) or 'did not complete (read)' in str(err):  # Python 2.6
             raise ReadTimeoutError(self, url, "Read timed out. (read timeout=%s)" % timeout_value)
 
+    def _getresponse(self, conn):
+        # Assume Python 2.7 HTTPConnection, use buffering of HTTP responses
+        try:
+            return conn.getresponse(buffering=True)
+        except TypeError:
+            # Python 3.x HTTPConnection, Python 2.6 and older, or custom
+            if not isinstance(conn, self.ConnectionCls):
+                msg = 'expected {0!r} connection, got {1!r}.'
+                raise TypeError(msg.format(self.ConnectionCls, type(conn)))
+            # Use the ConnectionCls method directly when retrieving any
+            # future responses for this connection pool
+            self._getresponse = self.ConnectionCls.getresponse
+        # Retrieve response without chaining the above 'TypeError' on Python 3
+        return self.ConnectionCls.getresponse(conn)
+
     def _make_request(self, conn, method, url, timeout=_Default, chunked=False,
                       **httplib_request_kw):
         """
@@ -381,15 +396,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Receive the response from the server
         try:
-            try:  # Python 2.7, use buffering of HTTP responses
-                httplib_response = conn.getresponse(buffering=True)
-            except TypeError:  # Python 2.6 and older, Python 3
-                try:
-                    httplib_response = conn.getresponse()
-                except Exception as e:
-                    # Remove the TypeError from the exception chain in Python 3;
-                    # otherwise it looks like a programming error was the cause.
-                    six.raise_from(e, None)
+            httplib_response = self._getresponse(conn)
         except (SocketTimeout, BaseSSLError, SocketError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
