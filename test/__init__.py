@@ -114,6 +114,10 @@ def requires_network(test):
             raise
     return wrapper
 
+def get_exception_message(e):
+    if getattr(e, "message", None) is not None:
+        return getattr(e, "message")
+    return e.args[0]
 
 class _ListHandler(logging.Handler):
     def __init__(self):
