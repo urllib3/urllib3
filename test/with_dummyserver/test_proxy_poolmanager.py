@@ -3,6 +3,7 @@ import socket
 import unittest
 
 from nose.tools import timed
+from nose import SkipTest
 
 from dummyserver.testcase import HTTPDummyProxyTestCase, IPv6HTTPDummyProxyTestCase
 from dummyserver.server import (
@@ -12,7 +13,7 @@ from .. import TARPIT_HOST
 from urllib3._collections import HTTPHeaderDict
 from urllib3.poolmanager import proxy_from_url, ProxyManager
 from urllib3.exceptions import (
-    MaxRetryError, SSLError, ProxyError, ConnectTimeoutError)
+    MaxRetryError, SSLError, ProxyError, ConnectTimeoutError, NewConnectionError)
 from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
 
 
@@ -282,23 +283,32 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     @timed(0.5)
     def test_https_proxy_timeout(self):
-        https = proxy_from_url('https://{host}'.format(host=TARPIT_HOST))
+        https = proxy_from_url('https://{host}'.format(host=TARPIT_HOST), retries=False)
         try:
             https.request('GET', self.http_url, timeout=0.001)
             self.fail("Failed to raise retry error.")
-        except MaxRetryError as e:
-           self.assertEqual(type(e.reason), ConnectTimeoutError)
-
+        except ProxyError as e:
+            for a in e.args:
+                if isinstance(a, NewConnectionError) and a.message.find("unreachable") >= 0:
+                    raise SkipTest("No network")
+            raise
+        except ConnectTimeoutError:
+            self.assertTrue(True)
 
     @timed(0.5)
     def test_https_proxy_pool_timeout(self):
         https = proxy_from_url('https://{host}'.format(host=TARPIT_HOST),
-                               timeout=0.001)
+                               timeout=0.001, retries=False)
         try:
             https.request('GET', self.http_url)
             self.fail("Failed to raise retry error.")
-        except MaxRetryError as e:
-            self.assertEqual(type(e.reason), ConnectTimeoutError)
+        except ProxyError as e:
+            for a in e.args:
+                if isinstance(a, NewConnectionError) and a.message.find("unreachable") >= 0:
+                    raise SkipTest("No network")
+            raise
+        except ConnectTimeoutError:
+            self.assertTrue(True)
 
     def test_scheme_host_case_insensitive(self):
         """Assert that upper-case schemes and hosts are normalized."""
