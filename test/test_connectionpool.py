@@ -19,6 +19,7 @@ from urllib3.exceptions import (
     HostChangedError,
     LocationValueError,
     MaxRetryError,
+    NewConnectionError,
     ProtocolError,
     SSLError,
     TimeoutError,
@@ -31,6 +32,7 @@ from ssl import SSLError as BaseSSLError
 
 from dummyserver.server import DEFAULT_CA
 
+from nose import SkipTest
 
 class TestConnectionPool(unittest.TestCase):
     """
@@ -277,7 +279,13 @@ class TestConnectionPool(unittest.TestCase):
 
     def test_mixed_case_url(self):
         pool = HTTPConnectionPool('Example.com')
-        response = pool.request('GET', "http://Example.com")
+        try:
+            response = pool.request('GET', "http://Example.com")
+        except MaxRetryError as e:
+            if isinstance(e.reason, NewConnectionError):
+                if e.reason.message.find("failure in name resolution") >= 0:
+                    raise SkipTest("No network")
+            raise
         self.assertEqual(response.status, 200)
 
     def test_absolute_url(self):
