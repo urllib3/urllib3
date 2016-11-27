@@ -16,6 +16,9 @@ dev (master)
 * Outdated versions of cryptography now cause the PyOpenSSL contrib module
   to fail when it is injected, rather than at first use. (Issue #1044)
 
+* Automatically attempt to rewind a file-like body object when a request is
+  retried or redirected. (Pull #1039)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
