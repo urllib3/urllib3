@@ -2,34 +2,11 @@ from __future__ import absolute_import
 
 import unittest
 
-from urllib3.connectionpool import (
-    connection_from_url,
-    HTTPConnection,
-    HTTPConnectionPool,
-    HTTPSConnectionPool,
-)
+from urllib3.connectionpool import HTTPConnection, HTTPConnectionPool
 from urllib3.response import httplib, HTTPResponse
-from urllib3.util.timeout import Timeout
-from urllib3.packages.six.moves.http_client import HTTPException, HTTPMessage
-from urllib3.packages.six.moves.queue import Empty
-from urllib3.packages.ssl_match_hostname import CertificateError
-from urllib3.exceptions import (
-    ClosedPoolError,
-    EmptyPoolError,
-    HostChangedError,
-    LocationValueError,
-    MaxRetryError,
-    ProtocolError,
-    SSLError,
-    TimeoutError,
-)
+from urllib3.packages.six.moves.http_client import HTTPMessage
 from urllib3._collections import HTTPHeaderDict
 from .test_response import MockChunkedEncodingResponse, MockSock
-
-from socket import error as SocketError
-from ssl import SSLError as BaseSSLError
-
-from dummyserver.server import DEFAULT_CA
 
 def make_custom_pool(pool_cls):
     """Instantiate the given custom pool class"""
