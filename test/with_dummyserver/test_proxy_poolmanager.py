@@ -7,7 +7,9 @@ from nose.tools import timed
 from dummyserver.testcase import HTTPDummyProxyTestCase, IPv6HTTPDummyProxyTestCase
 from dummyserver.server import (
     DEFAULT_CA, DEFAULT_CA_BAD, get_unreachable_address)
-from .. import TARPIT_HOST
+from .. import (TARPIT_HOST,
+                requires_network,
+)
 
 from urllib3._collections import HTTPHeaderDict
 from urllib3.poolmanager import proxy_from_url, ProxyManager
@@ -281,6 +283,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
 
     @timed(0.5)
+    @requires_network
     def test_https_proxy_timeout(self):
         https = proxy_from_url('https://{host}'.format(host=TARPIT_HOST))
         try:
@@ -291,6 +294,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
 
     @timed(0.5)
+    @requires_network
     def test_https_proxy_pool_timeout(self):
         https = proxy_from_url('https://{host}'.format(host=TARPIT_HOST),
                                timeout=0.001)
