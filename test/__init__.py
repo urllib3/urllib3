@@ -100,7 +100,9 @@ def requires_network(test):
         msg = "Can't run {name} because the network is unreachable".format(
             name=test.__name__)
         try:
-            return test(*args, **kwargs)
+            sock = socket.create_connection((TARPIT_HOST, 80), 0.0001)
+        except socket.timeout:
+            pass
         except socket.error as e:
             # This test needs an initial network connection to attempt the
             # connection to the TARPIT_HOST. This fails if you are in a place
@@ -108,10 +110,7 @@ def requires_network(test):
             if _is_unreachable_err(e):
                 raise SkipTest(msg)
             raise
-        except MaxRetryError as e:
-            if _is_unreachable_err(e.reason):
-                raise SkipTest(msg)
-            raise
+        return test(*args, **kwargs)
     return wrapper
 
 
