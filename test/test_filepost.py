@@ -1,4 +1,3 @@
-import psutil
 import io
 import sys
 
@@ -32,15 +31,6 @@ class TestMultipartEncoderGenerator(unittest.TestCase):
             encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
             encoded = b''.join(encoded)
             self.assertEqual(len(encoded), len(MultipartEncoderGenerator(fields, boundary=BOUNDARY)))
-
-    def test_memory_usage(self):
-        MEGABYTE = 1024 * 1024
-        data = b'x' * MEGABYTE  # 1 MB of data
-        start_memory = psutil.Process().memory_info().rss
-
-        encoded, _ = encode_multipart_formdata([('k', data)], boundary=BOUNDARY)
-        end_memory = psutil.Process().memory_info().rss
-        self.assertTrue(end_memory <= start_memory + MEGABYTE)
 
 
 class TestIterfields(unittest.TestCase):
@@ -228,22 +218,22 @@ class TestStreamingUploads(unittest.TestCase):
         fields = [('k', ('somefile.txt', object(), 'image/jpeg'))]
 
         encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
-        self.assertRaises(TypeError, encoded.__len__)
+        self.assertRaises(TypeError, len, encoded)
 
     def test_unknown_object(self):
         unknown_object = object()
         fields = [('k', ('somefile.txt', unknown_object, 'image/jpeg'))]
 
         encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY, chunk_size=1)
-        non_chunks = [b'--' + b(BOUNDARY) + b'\r\n',
-                      b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
-                      b'Content-Type: image/jpeg\r\n\r\n',
-                      b'\r\n',
-                      b'--' + b(BOUNDARY) + b'--\r\n']
+        expected = [b'--' + b(BOUNDARY) + b'\r\n',
+                    b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
+                    b'Content-Type: image/jpeg\r\n\r\n',
+                    unknown_object,
+                    b'\r\n',
+                    b'--' + b(BOUNDARY) + b'--\r\n']
 
-        for chunk in encoded:
-            if chunk not in non_chunks:
-                self.assertIs(chunk, unknown_object)
+        for i, actual in enumerate(encoded):
+            self.assertEqual(expected[i], actual)
 
     def test_file_like_object(self):
         fields = [('k', ('somefile.txt', io.BytesIO(b'v'), 'image/jpeg'))]

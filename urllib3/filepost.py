@@ -134,18 +134,10 @@ class MultipartEncoderGenerator(object):
         contained empty files, while accumulating the value file sizes as
         efficiently as we can.
         """
-        empty_fields = []
-        size = 0
+        size = (len(self.fields) + 1) * (len(self.boundary) + 6)
         for field in self.fields:
-            name = field._name
+            size += len(field.render_headers())
             data = field.data
-            filename = field._filename
-
-            if filename is not None:
-                empty_fields.append((name, (filename, '')))
-            else:
-                empty_fields.append((name, ''))
-
             if hasattr(data, '__len__'):
                 size += len(encode(data))
             elif isinstance(data, six.integer_types):
@@ -159,10 +151,7 @@ class MultipartEncoderGenerator(object):
             else:
                 size += len(encode(data))  # Hope for the best
 
-        empty_multipart = MultipartEncoderGenerator(empty_fields, boundary=self.boundary)
-        empty_size = sum(encode(len(chunk)) for chunk in empty_multipart)
-
-        return size + empty_size
+        return size
 
     def __iter__(self):
         for field in self.fields:
@@ -197,7 +186,7 @@ class MultipartEncoderGenerator(object):
                 # Hope for the best
                 yield encode(data)
 
-            yield encode('\r\n')
+            yield b'\r\n'
 
         yield encode('--%s--\r\n' % (self.boundary))
 
