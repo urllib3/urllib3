@@ -8,9 +8,9 @@ from urllib3.connectionpool import (
     HTTPConnectionPool,
     HTTPSConnectionPool,
 )
-from urllib3.response import httplib, HTTPResponse
+from urllib3.response import httplib
 from urllib3.util.timeout import Timeout
-from urllib3.packages.six.moves.http_client import HTTPException, HTTPMessage
+from urllib3.packages.six.moves.http_client import HTTPException
 from urllib3.packages.six.moves.queue import Empty
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
@@ -364,115 +364,6 @@ class TestConnectionPool(unittest.TestCase):
         _test(HTTPException)
         _test(SocketError)
         _test(ProtocolError)
-
-    def test_custom_http_response_class(self):
-
-        class CustomHTTPResponse(HTTPResponse):
-            pass
-
-        class CustomConnectionPool(HTTPConnectionPool):
-            ResponseCls = CustomHTTPResponse
-
-            def _make_request(self, *args, **kwargs):
-                httplib_response = httplib.HTTPResponse(MockSock)
-                httplib_response.fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
-                httplib_response.headers = httplib_response.msg = HTTPHeaderDict()
-                return httplib_response
-
-        pool = CustomConnectionPool(host='localhost', maxsize=1, block=True)
-        response = pool.request('GET', '/', retries=False, chunked=True,
-                                preload_content=False)
-        self.assertTrue(isinstance(response, CustomHTTPResponse))
-
-    def test_getresponse_buffering_parameter(self):
-        # CPython 2.7 doesn't buffer response by default, but will do so
-        # if the undocumented "buffering" parameter is set to True.
-        # ConnectionPool should try that initially, but then stop calling it
-        # once it raises TypeError
-
-        class CustomConnection:
-            """Mock out HTTPConnection well enough for HTTPConnectionPool"""
-            mocked_response_count = 0
-            explicitly_buffered_call_count = 0
-            reject_buffering_arg = False
-            rejected_call_count = 0
-
-            # Ignore all settings and indicate no socket is available
-            def __init__(self, *args, **kwds):
-                self.sock = None
-
-            # Allow close calls
-            def close(self):
-                pass
-
-            # Don't actually issue any requests
-            def request(self, *args, **kwds):
-                pass
-
-            # Return a mock response unless configured to fail
-            def getresponse(self, buffering=None):
-                cls = type(self)
-                cls.mocked_response_count += 1
-                if buffering is not None:
-                    cls.explicitly_buffered_call_count += 1
-                    if cls.reject_buffering_arg:
-                        cls.rejected_call_count += 1
-                        raise TypeError("Buffering argument not supported!")
-                response = httplib.HTTPResponse(MockSock)
-                response.fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
-                response.msg = HTTPMessage()
-                response.headers = HTTPHeaderDict()
-                return response
-
-        class CustomResponse(HTTPResponse):
-            @classmethod
-            def from_httplib(cls, httplib_response, pool, connection, **kwds):
-                return cls(pool=pool, connection=connection)
-
-        class CustomConnectionPool(HTTPConnectionPool):
-            ConnectionCls = CustomConnection
-            ResponseCls = CustomResponse
-
-            def _validate_conn(self, conn):
-                return True
-
-        # Set up a custom pool that lets us test the getresponse() handling
-        pool = CustomConnectionPool(host='localhost', maxsize=1, block=True)
-        def _make_new_request(**request_kwds):
-            return pool.request('GET', '/',
-                                redirect=False,
-                                retries=False,
-                                **request_kwds,
-            )
-        # First check the behaviour with the buffering argument accepted
-        # This also checks that the custom connection and response are used
-        response = _make_new_request(release_conn=False)
-        self.assertIsInstance(response, CustomResponse)
-        self.assertIsInstance(response.connection, CustomConnection)
-        self.assertEqual(CustomConnection.explicitly_buffered_call_count, 1)
-        self.assertEqual(CustomConnection.rejected_call_count, 0)
-        response.release_conn()
-        # Then check the first time it fails
-        CustomConnection.reject_buffering_arg = True
-        response = _make_new_request()
-        self.assertEqual(CustomConnection.explicitly_buffered_call_count, 2)
-        self.assertEqual(CustomConnection.rejected_call_count, 1)
-        # Then check the argument isn't even tried on subsequent calls
-        response = _make_new_request()
-        self.assertEqual(CustomConnection.explicitly_buffered_call_count, 2)
-        self.assertEqual(CustomConnection.rejected_call_count, 1)
-        # Finally, check a completely broken custom pool raises TypeError
-        class BadConnectionPool(HTTPConnectionPool):
-            ConnectionCls = CustomConnection
-            ResponseCls = CustomResponse
-
-            def _validate_conn(self, conn):
-                self.ConnectionCls = HTTPConnection
-                return True
-        bad_pool = BadConnectionPool(host='localhost', maxsize=1, block=True)
-        error_structure = 'expected.*HTTPConnection.*got.*CustomConnection'
-        with self.assertRaisesRegex(TypeError, error_structure):
-            bad_pool.request('GET', '/', redirect=False, retries=False)
 
 
 if __name__ == '__main__':
