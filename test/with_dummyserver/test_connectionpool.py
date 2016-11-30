@@ -686,6 +686,11 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             # the pool should still contain poolsize elements
             self.assertEqual(http.pool.qsize(), http.pool.maxsize)
 
+    def test_mixed_case_hostname(self):
+        pool = HTTPConnectionPool("LoCaLhOsT", self.port)
+        response = pool.request('GET', "http://LoCaLhOsT:%d/" % self.port)
+        self.assertEqual(response.status, 200)
+
 
 class TestRetry(HTTPDummyServerTestCase):
     def setUp(self):
