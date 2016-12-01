@@ -511,6 +511,11 @@ class HTTPConnection(object):
 
         self._state_machine = h11.Connection(our_role=h11.CLIENT)
 
+        # If we need to tunnel through a CONNECT proxy, we need an extra state
+        # machine to manage the "outer" HTTP connection. We only use it to set
+        # up the connection: once it is set up, we throw this back away.
+        self._tunnel_state_machine = None
+
     @staticmethod
     def _get_content_length(body, method):
         """Get the content-length based on the body.
@@ -544,16 +549,12 @@ class HTTPConnection(object):
         to the endpoint passed to `set_tunnel`. This done by sending an HTTP
         CONNECT request to the proxy server when the connection is established.
 
-        This method must be called before the HTML connection has been
+        This method must be called before the HTTP connection has been
         established.
 
         The headers argument should be a mapping of extra HTTP headers to send
         with the CONNECT request.
         """
-        # TODO: Rewrite this method from its httplib form.
-        if self.sock:
-            raise RuntimeError("Can't set up tunnel for established conn")
-
         self._tunnel_host, self._tunnel_port = self._get_hostport(host, port)
         if headers:
             self._tunnel_headers = headers
@@ -585,38 +586,55 @@ class HTTPConnection(object):
         return (host, port)
 
     def _tunnel(self):
-        # TODO: replace this with a method that doesn't suck.
-        connect_str = "CONNECT %s:%d HTTP/1.0\r\n" % (
-            self._tunnel_host, self._tunnel_port
+        """
+        We have been asked to set up a CONNECT tunnel. We do this using a
+        temporary state machine to manage the CONNECT request.
+
+        If the attempt to tunnel fails, we will throw an exception that
+        includes the response object so that callers can extract that response
+        and use it to make sensible decisions.
+        """
+        # Basic sanity check that _tunnel is only called at appropriate times.
+        assert self._state_machine.our_state is h11.IDLE
+
+        # We need to set the Host header.
+        headers = self._tunnel_headers.copy()
+        if "host" not in frozenset(k.lower() for k in headers):
+            headers["host"] = "%s:%d" % (self._tunnel_host, self._tunnel_port)
+
+        self._tunnel_state_machine = h11.Connection(our_role=h11.CLIENT)
+        request = h11.Request(
+            method=b"CONNECT",
+            target=b"%s:%d" % (self._tunnel_host, self._tunnel_port),
+            headers=headers.items(),
         )
-        connect_bytes = connect_str.encode("ascii")
-        self.send(connect_bytes)
-        for header, value in self._tunnel_headers.items():
-            header_str = "%s: %s\r\n" % (header, value)
-            header_bytes = header_str.encode("latin-1")
-            self.send(header_bytes)
-        self.send(b'\r\n')
+        bytes_to_send = self._tunnel_state_machine.send(request)
+        self.sock.sendall(bytes_to_send)
 
-        response = self.response_class(self.sock, method=self._method)
-        (version, code, message) = response._read_status()
+        response = self.response_class(
+            self.sock, self._tunnel_state_machine, method=b"CONNECT"
+        )
 
-        if code != http.HTTPStatus.OK:
+        try:
+            response.begin()
+        except ConnectionError:
             self.close()
-            raise OSError("Tunnel connection failed: %d %s" % (
-                code, message.strip())
-            )
-        while True:
-            line = response.fp.readline(_MAXLINE + 1)
-            if len(line) > _MAXLINE:
-                raise LineTooLong("header line")
-            if not line:
-                # for sites which EOF without sending a trailer
-                break
-            if line in (b'\r\n', b'\n', b''):
-                break
+            raise
 
-            if self.debuglevel > 0:
-                print('header:', line.decode())
+        if response.status != 200:
+            # TODO: include the response here.
+            self.close()
+            raise RuntimeError("Bad response!")
+
+        # Tunnel is complete. Throw away our tunnel state machine, we don't
+        # need it now.
+        self._tunnel_state_machine = None
+
+        # Before we exit, we need to take the socket away from the response.
+        # This is because the response will try to close it when it gets
+        # GC'd, which is double-plus-un-good.
+        # TODO: Can we do better here? Surely we must.
+        response.fp = None
 
     def _new_conn(self):
         """ Establish a socket connection and set nodelay settings on it.
@@ -647,11 +665,7 @@ class HTTPConnection(object):
 
     def _prepare_conn(self, conn):
         self.sock = conn
-        # the _tunnel_host attribute was added in python 2.6.3 (via
-        # http://hg.python.org/cpython/rev/0f57b30a152f) so pythons 2.6(0-2) do
-        # not have them.
-        if getattr(self, '_tunnel_host', None):
-            # TODO: Fix tunnel so it doesn't depend on self.sock state.
+        if self._tunnel_host is not None:
             self._tunnel()
 
     def connect(self):
@@ -1102,9 +1116,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         conn = self._new_conn()
 
         hostname = self.host
-        if getattr(self, '_tunnel_host', None):
-            # _tunnel_host was added in Python 2.6.3
-            # (See: http://hg.python.org/cpython/rev/0f57b30a152f)
+        if self._tunnel_host is not None:
 
             self.sock = conn
             # Calls self._set_hostport(), so self.host is
