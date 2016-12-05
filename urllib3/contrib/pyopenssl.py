@@ -140,6 +140,14 @@ def _validate_dependencies_met():
         raise ImportError("'cryptography' module missing required functionality.  "
                           "Try upgrading to v1.3.4 or newer.")
 
+    # pyOpenSSL 0.14 and above use cryptography for OpenSSL bindings. The _x509
+    # attribute is only present on those versions.
+    from OpenSSL.crypto import X509
+    x509 = X509()
+    if not hasattr(x509, "_x509"):
+        raise ImportError("'pyOpenSSL' module missing required functionality. "
+                          "Try upgrading to v0.14 or newer.")
+
 
 def _dnsname_to_stdlib(name):
     """
