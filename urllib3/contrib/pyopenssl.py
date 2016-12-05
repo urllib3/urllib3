@@ -136,7 +136,7 @@ def _validate_dependencies_met():
     """
     # Method added in `cryptography==1.1`; not available in older versions
     from cryptography.x509.extensions import Extensions
-    if not hasattr(Extensions, "get_extension_for_class"):
+    if getattr(Extensions, "get_extension_for_class", None) is None:
         raise ImportError("'cryptography' module missing required functionality.  "
                           "Try upgrading to v1.3.4 or newer.")
 
@@ -144,7 +144,7 @@ def _validate_dependencies_met():
     # attribute is only present on those versions.
     from OpenSSL.crypto import X509
     x509 = X509()
-    if not hasattr(x509, "_x509"):
+    if getattr(x509, "_x509", None) is None:
         raise ImportError("'pyOpenSSL' module missing required functionality. "
                           "Try upgrading to v0.14 or newer.")
 
