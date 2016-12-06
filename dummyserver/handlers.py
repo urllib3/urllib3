@@ -158,8 +158,12 @@ class TestingApp(RequestHandler):
     def redirect(self, request):
         "Perform a redirect to ``target``"
         target = request.params.get('target', '/')
+        status = request.params.get('status', '303 See Other')
+        if len(status) == 3:
+            status = '%s Redirect' % status.decode('latin-1')
+
         headers = [('Location', target)]
-        return Response(status='303 See Other', headers=headers)
+        return Response(status=status, headers=headers)
 
     def multi_redirect(self, request):
         "Performs a redirect chain based on ``redirect_codes``"
