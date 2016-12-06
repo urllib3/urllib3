@@ -25,7 +25,7 @@ from .exceptions import (
 )
 from .packages.ssl_match_hostname import CertificateError
 from .packages import six
-from .packages.six.moves.queue import LifoQueue, Empty, Full
+from .packages.six.moves import queue
 from .connection import (
     port_by_scheme,
     DummyConnection,
@@ -62,7 +62,7 @@ class ConnectionPool(object):
     """
 
     scheme = None
-    QueueCls = LifoQueue
+    QueueCls = queue.LifoQueue
 
     def __init__(self, host, port=None):
         if not host:
@@ -236,7 +236,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         except AttributeError:  # self.pool is None
             raise ClosedPoolError(self, "Pool is closed.")
 
-        except Empty:
+        except queue.Empty:
             if self.block:
                 raise EmptyPoolError(self,
                                      "Pool reached maximum size and no more "
@@ -275,7 +275,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         except AttributeError:
             # self.pool is None.
             pass
-        except Full:
+        except queue.Full:
             # This should never happen if self.block == True
             log.warning(
                 "Connection pool is full, discarding connection: %s",
@@ -425,7 +425,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 if conn:
                     conn.close()
 
-        except Empty:
+        except queue.Empty:
             pass  # Done.
 
     def is_same_host(self, url):
@@ -622,7 +622,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Everything went great!
             clean_exit = True
 
-        except Empty:
+        except queue.Empty:
             # Timed out by queue.
             raise EmptyPoolError(self, "No pool connections are available.")
 
