@@ -22,6 +22,9 @@ dev (master)
 * Automatically attempt to rewind a file-like body object when a request is
   retried or redirected. (Pull #1039)
 
+* Fix some bugs that occur when modules incautiously patch the queue module.
+  (Pull #1061)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
