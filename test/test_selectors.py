@@ -541,26 +541,6 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         after_fds = len(proc.open_files())
         self.assertEqual(before_fds, after_fds)
 
-    @skipIf(sys.platform == "win32", "psutil.Process.open_files() is unstable on Windows.")
-    def test_wait_read_leaking_fds(self):
-        self.patch_wait_selector()
-        proc = psutil.Process()
-        rd, wr = self.make_socketpair()
-        before_fds = len(proc.open_files())
-        self.assertEqual(0, len(wait.wait_for_read([rd], 0.001)))
-        after_fds = len(proc.open_files())
-        self.assertEqual(before_fds, after_fds)
-
-    @skipIf(sys.platform == "win32", "psutil.Process.open_files() is unstable on Windows.")
-    def test_wait_write_leaking_fds(self):
-        self.patch_wait_selector()
-        proc = psutil.Process()
-        rd, wr = self.make_socketpair()
-        before_fds = len(proc.open_files())
-        self.assertEqual(1, len(wait.wait_for_write([wr], 0.001)))
-        after_fds = len(proc.open_files())
-        self.assertEqual(before_fds, after_fds)
-
     def test_wait_io_close_is_called(self):
         selector = self.SELECTOR()
         self.addCleanup(selector.close)
