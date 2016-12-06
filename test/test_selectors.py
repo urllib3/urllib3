@@ -512,7 +512,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         class AlarmInterrupt(Exception):
             pass
 
-        def alarm_exception(*_):
+        def alarm_exception(*args):
             raise AlarmInterrupt()
 
         self.set_alarm(SHORT_SELECT, alarm_exception)
