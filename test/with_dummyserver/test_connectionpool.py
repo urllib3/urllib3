@@ -166,6 +166,68 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         pool._put_conn(conn)
         self.assertRaises(ConnectTimeoutError, pool.request, 'GET', url, timeout=timeout)
 
+    def test_timeout_method_not_in_whitelist(self):
+        # Requests should time out when the method is not on the retry whitelist
+        block_event = Event()
+        ready_event = self.start_basic_handler(block_send=block_event, num=6)
+
+        # Pool-global timeout
+        timeout = Timeout(read=SHORT_TIMEOUT)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout, retries=True)
+
+        wait_for_socket(ready_event)
+        block_event.clear()
+        self.assertRaises(ReadTimeoutError, pool.request, 'POST', '/')
+        block_event.set() # Release request
+
+        # Request-specific timeouts should raise errors
+        pool = HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT, retries=True)
+
+        conn = pool._get_conn()
+
+        wait_for_socket(ready_event)
+        now = time.time()
+        self.assertRaises(ReadTimeoutError, pool.request, 'POST', '/', timeout=timeout)
+        delta = time.time() - now
+
+        self.assertTrue(delta < LONG_TIMEOUT, "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT")
+        block_event.set() # Release request
+
+        # Timeout int/float passed directly to request and _make_request should
+        # raise a request timeout
+        wait_for_socket(ready_event)
+        self.assertRaises(ReadTimeoutError, pool.request, 'POST', '/', timeout=SHORT_TIMEOUT)
+        block_event.set() # Release request
+
+    def test_timeout_method_in_whitelist(self):
+        # Requests should retry on timeout if the method is on the whitelist
+        block_event = Event()
+        ready_event = self.start_basic_handler(block_send=block_event, num=6)
+
+        retry = Retry(total=1)
+
+        # Pool-global timeout
+        timeout = Timeout(read=SHORT_TIMEOUT)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout, retries=retry)
+
+        wait_for_socket(ready_event)
+        block_event.clear()
+        self.assertRaises(MaxRetryError, pool.request, 'GET', '/')
+        block_event.set() # Release request
+
+        # Request-specific timeouts
+        pool = HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT, retries=retry)
+        conn = pool._get_conn()
+
+        wait_for_socket(ready_event)
+        self.assertRaises(MaxRetryError, pool.request, 'GET', '/', timeout=timeout)
+        block_event.set() # Release request
+
+        # Timeout int/float passed directly to request
+        wait_for_socket(ready_event)
+        self.assertRaises(MaxRetryError, pool.request, 'GET', '/', timeout=SHORT_TIMEOUT)
+        block_event.set() # Release request
+
     def test_total_applies_connect(self):
         host, port = TARPIT_HOST, 80
 
