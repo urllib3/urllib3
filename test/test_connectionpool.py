@@ -2,13 +2,14 @@ from __future__ import absolute_import
 
 import unittest
 
+from urllib3.connection import OldHTTPResponse
 from urllib3.connectionpool import (
     connection_from_url,
     HTTPConnection,
     HTTPConnectionPool,
     HTTPSConnectionPool,
 )
-from urllib3.response import httplib, HTTPResponse
+from urllib3.response import HTTPResponse
 from urllib3.util.timeout import Timeout
 from urllib3.packages.six.moves.http_client import HTTPException
 from urllib3.packages.six.moves.queue import Empty
@@ -30,6 +31,8 @@ from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 
 from dummyserver.server import DEFAULT_CA
+
+import h11
 
 
 class TestConnectionPool(unittest.TestCase):
@@ -336,7 +339,9 @@ class TestConnectionPool(unittest.TestCase):
                 if self._ex:
                     ex, self._ex = self._ex, None
                     raise ex()
-                response = httplib.HTTPResponse(MockSock)
+                response = OldHTTPResponse(
+                    MockSock, state_machine=h11.Connection(our_role=h11.CLIENT)
+                )
                 response.fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
                 response.headers = response.msg = HTTPHeaderDict()
                 return response
@@ -374,7 +379,9 @@ class TestConnectionPool(unittest.TestCase):
             ResponseCls = CustomHTTPResponse
 
             def _make_request(self, *args, **kwargs):
-                httplib_response = httplib.HTTPResponse(MockSock)
+                httplib_response = OldHTTPResponse(
+                    MockSock, state_machine=h11.Connection(our_role=h11.CLIENT)
+                )
                 httplib_response.fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
                 httplib_response.headers = httplib_response.msg = HTTPHeaderDict()
                 return httplib_response

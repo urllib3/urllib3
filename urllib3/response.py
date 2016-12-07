@@ -233,9 +233,12 @@ class HTTPResponse(io.IOBase):
 
         # Convert status to int for comparison
         # In some cases, httplib returns a status of "_UNKNOWN"
+        # TODO: This block should not be necessary anymore, at least for
+        # the httplib case, though we do use it in our mocks and generally
+        # speaking may want to consider whether we need to continue this.
         try:
             status = int(self.status)
-        except ValueError:
+        except TypeError:
             status = 0
 
         # Check for responses that shouldn't include a body
