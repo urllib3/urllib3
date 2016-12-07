@@ -980,19 +980,11 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
            b'HTTP/1.1 200 OK\r\n'
            b'Content-Length: 0\r\n'
            b'Content-type: text/plain\r\n'
-           ) + b'\r\n'.join(headers) + b'\r\n'
+           ) + b''.join(headers) + b'\r\n'
         )
 
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
-
-        with LogRecorder() as logs:
-            pool.request('GET', '/')
-
-        for record in logs:
-            if 'Failed to parse headers' in record.msg and \
-                    pool._absolute_url('/') == record.args[0]:
-                return
-        self.fail('Missing log about unparsed headers')
+        self.assertRaises(ProtocolError, pool.request, 'GET', '/')
 
     def test_header_without_name(self):
         self._test_broken_header_parsing([
@@ -1008,8 +1000,8 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
 
     def test_header_without_colon_or_value(self):
         self._test_broken_header_parsing([
-            b'Broken Header',
-            b'Another: Header',
+            b'Broken Header\r\n',
+            b'Another: Header\r\n',
         ])
 
 
