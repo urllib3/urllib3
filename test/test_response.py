@@ -553,7 +553,6 @@ class TestResponse(unittest.TestCase):
         r = chunked_response(MockSock)
         r.fp = fp
         r.chunked = True
-        r.chunk_left = None
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
         expected_response = [b'fo', b'oo', b'o', b'bb', b'bb', b'aa', b'aa', b'ar']
         response = list(resp.read_chunked(2))
@@ -570,7 +569,6 @@ class TestResponse(unittest.TestCase):
         r = chunked_response(MockSock)
         r.fp = fp
         r.chunked = True
-        r.chunk_left = None
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
         if getattr(self, "assertListEqual", False):
             self.assertListEqual(stream, list(resp.read_chunked()))
@@ -591,24 +589,8 @@ class TestResponse(unittest.TestCase):
         r = chunked_response(MockSock)
         r.fp = fp
         r.chunked = True
-        r.chunk_left = None
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
         self.assertRaises(ProtocolError, next, resp.read_chunked())
-
-    def test_chunked_response_without_crlf_on_end(self):
-        stream = [b"foo", b"bar", b"baz"]
-        fp = MockChunkedEncodingWithoutCRLFOnEnd(stream)
-        r = chunked_response(MockSock)
-        r.fp = fp
-        r.chunked = True
-        r.chunk_left = None
-        resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
-        if getattr(self, "assertListEqual", False):
-            self.assertListEqual(stream, list(resp.stream()))
-        else:
-            for index, item in enumerate(resp.stream()):
-                v = stream[index]
-                self.assertEqual(item, v)
 
     def test_chunked_response_with_extensions(self):
         stream = [b"foo", b"bar"]
@@ -616,7 +598,6 @@ class TestResponse(unittest.TestCase):
         r = chunked_response(MockSock)
         r.fp = fp
         r.chunked = True
-        r.chunk_left = None
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
         if getattr(self, "assertListEqual", False):
             self.assertListEqual(stream, list(resp.stream()))
