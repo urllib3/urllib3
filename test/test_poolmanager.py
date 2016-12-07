@@ -103,7 +103,6 @@ class TestPoolManager(unittest.TestCase):
             'timeout': timeout.Timeout(3.14),
             'retries': retry.Retry(total=6, connect=2),
             'block': True,
-            'strict': True,
             'source_address': '127.0.0.1',
         }
         p = PoolManager()
@@ -156,7 +155,6 @@ class TestPoolManager(unittest.TestCase):
             'timeout': timeout.Timeout(3.14),
             'retries': retry.Retry(total=6, connect=2),
             'block': True,
-            'strict': True,
             'source_address': '127.0.0.1',
             'key_file': '/root/totally_legit.key',
             'cert_file': '/root/totally_legit.crt',
