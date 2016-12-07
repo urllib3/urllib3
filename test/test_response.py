@@ -1,13 +1,15 @@
 import unittest
 import socket
 
+import h11
+
 from io import BytesIO, BufferedReader
 
+from urllib3.connection import OldHTTPResponse
 from urllib3.response import HTTPResponse
 from urllib3.exceptions import (
     DecodeError, ResponseNotChunked, ProtocolError, InvalidHeader
 )
-from urllib3.packages.six.moves import http_client as httplib
 from urllib3.util.retry import Retry
 from urllib3.util.response import is_fp_closed
 
@@ -27,6 +29,12 @@ a3l0LwJsloWpMbzByU5WLbRE6X5INFqjQOtIwYz5BAlhkn+kVqJvWM5vBlfrwP42ifonM5yF4ciJ
 auHVks62997mNGOsM7WXNG3P98dBHPo2NhbTvHleL0BI5dus2JY81MUOnK3SGWLH8HeWPa1t5KcW
 S5moAj5HexY/g/F8TctpxwsvyZp38dXeLDjSQvEQIkF7XR3YXbeZgKk3V34KGCPOAeeuQDIgyVhV
 nP4HF2uWHA==""")
+
+
+def old_response(socket):
+    return OldHTTPResponse(
+        socket, state_machine=h11.Connection(our_role=h11.CLIENT)
+    )
 
 
 class TestLegacyResponse(unittest.TestCase):
@@ -171,9 +179,9 @@ class TestResponse(unittest.TestCase):
         resp.close()
         self.assertEqual(resp.closed, True)
 
-        # Try closing with an `httplib.HTTPResponse`, because it has an
+        # Try closing with an `OldHTTPResponse`, because it has an
         # `isclosed` method.
-        hlr = httplib.HTTPResponse(socket.socket())
+        hlr = old_response(socket.socket())
         resp2 = HTTPResponse(hlr, preload_content=False)
         self.assertEqual(resp2.closed, False)
         resp2.close()
@@ -190,7 +198,7 @@ class TestResponse(unittest.TestCase):
         self.assertRaises(IOError, resp3.fileno)
 
     def test_io_closed_consistently(self):
-        hlr = httplib.HTTPResponse(socket.socket())
+        hlr = old_response(socket.socket())
         hlr.fp = BytesIO(b'foo')
         hlr.chunked = 0
         hlr.length = 3
@@ -490,7 +498,7 @@ class TestResponse(unittest.TestCase):
     def test_mock_transfer_encoding_chunked(self):
         stream = [b"fo", b"o", b"bar"]
         fp = MockChunkedEncodingResponse(stream)
-        r = httplib.HTTPResponse(MockSock)
+        r = old_response(MockSock)
         r.fp = fp
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
 
@@ -511,7 +519,7 @@ class TestResponse(unittest.TestCase):
                 yield data[i:i+2]
 
         fp = MockChunkedEncodingResponse(list(stream()))
-        r = httplib.HTTPResponse(MockSock)
+        r = old_response(MockSock)
         r.fp = fp
         headers = {'transfer-encoding': 'chunked', 'content-encoding': 'gzip'}
         resp = HTTPResponse(r, preload_content=False, headers=headers)
@@ -525,7 +533,7 @@ class TestResponse(unittest.TestCase):
     def test_mock_transfer_encoding_chunked_custom_read(self):
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedEncodingResponse(stream)
-        r = httplib.HTTPResponse(MockSock)
+        r = old_response(MockSock)
         r.fp = fp
         r.chunked = True
         r.chunk_left = None
@@ -542,7 +550,7 @@ class TestResponse(unittest.TestCase):
     def test_mock_transfer_encoding_chunked_unlmtd_read(self):
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedEncodingResponse(stream)
-        r = httplib.HTTPResponse(MockSock)
+        r = old_response(MockSock)
         r.fp = fp
         r.chunked = True
         r.chunk_left = None
@@ -563,7 +571,7 @@ class TestResponse(unittest.TestCase):
     def test_invalid_chunks(self):
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedInvalidEncoding(stream)
-        r = httplib.HTTPResponse(MockSock)
+        r = old_response(MockSock)
         r.fp = fp
         r.chunked = True
         r.chunk_left = None
@@ -573,7 +581,7 @@ class TestResponse(unittest.TestCase):
     def test_chunked_response_without_crlf_on_end(self):
         stream = [b"foo", b"bar", b"baz"]
         fp = MockChunkedEncodingWithoutCRLFOnEnd(stream)
-        r = httplib.HTTPResponse(MockSock)
+        r = old_response(MockSock)
         r.fp = fp
         r.chunked = True
         r.chunk_left = None
@@ -588,7 +596,7 @@ class TestResponse(unittest.TestCase):
     def test_chunked_response_with_extensions(self):
         stream = [b"foo", b"bar"]
         fp = MockChunkedEncodingWithExtensions(stream)
-        r = httplib.HTTPResponse(MockSock)
+        r = old_response(MockSock)
         r.fp = fp
         r.chunked = True
         r.chunk_left = None
@@ -682,6 +690,9 @@ class MockChunkedEncodingResponse(object):
         return self.pop_current_chunk(till_crlf=True)
 
     def read(self, amt=-1):
+        return self.pop_current_chunk(amt)
+
+    def recv(self, amt=-1):
         return self.pop_current_chunk(amt)
 
     def flush(self):
