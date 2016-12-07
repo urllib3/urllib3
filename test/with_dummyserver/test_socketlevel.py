@@ -634,7 +634,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         # FIXME: The order of the headers is not predictable right now. We
         # should fix that someday (maybe when we migrate to
         # OrderedDict/MultiDict).
-        self.assertTrue(b'For The Proxy: YEAH!\r\n' in r.data)
+        self.assertTrue(b'for the proxy: YEAH!\r\n' in r.data)
 
     def test_retries(self):
         close_event = Event()
@@ -947,7 +947,7 @@ class TestHeaders(SocketDummyServerTestCase):
         # NOTE: Provide headers in non-sorted order (i.e. reversed)
         #       so that if the internal implementation tries to sort them,
         #       a change will be detected.
-        expected_response_headers = [('X-Header-%d' % i, str(i)) for i in reversed(range(K))]
+        expected_response_headers = [('x-header-%d' % i, str(i)) for i in reversed(range(K))]
 
         def socket_handler(listener):
             sock = listener.accept()[0]
@@ -969,7 +969,7 @@ class TestHeaders(SocketDummyServerTestCase):
         r = pool.request('GET', '/', retries=0)
         actual_response_headers = [
             (k, v) for (k, v) in r.headers.items()
-            if k.startswith('X-Header-')
+            if k.startswith('x-header-')
         ]
         self.assertEqual(expected_response_headers, actual_response_headers)
 
