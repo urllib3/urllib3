@@ -396,6 +396,9 @@ class OldHTTPResponse(io.BufferedIOBase):
         single HTTP chunk. In practice this uses a buffer stored on the object
         to hold excess data, as needed.
         """
+        if self.fp is None:
+            return b""
+
         # This is a bit odd. If we have data in a buffer, we *assume* that it
         # is part of a previous chunk that we only partially read. We assume
         # this because h11 generally tries to emit Data events on chunk
@@ -430,7 +433,7 @@ class OldHTTPResponse(io.BufferedIOBase):
         data_out = b''.join(data_out)
 
         # If we stopped because of the max read size, store the partial chunk.
-        if size is not None and data_out_len < size:
+        if size is not None and data_out_len > size:
             data_out, self._buffered_data = data_out[:size], data_out[size:]
 
         return data_out
