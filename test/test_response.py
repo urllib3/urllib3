@@ -37,6 +37,23 @@ def old_response(socket):
     )
 
 
+def chunked_response(socket):
+    """
+    Prepares an OldHTTPResponse ready for use with chunked
+    transfer encoding.
+    """
+    # Prime the state machine.
+    conn = h11.Connection(our_role=h11.CLIENT)
+    conn.receive_data(
+        b'HTTP/1.1 200 OK\r\n'
+        b'Server: no such server\r\n'
+        b'Transfer-Encoding: chunked\r\n'
+        b'\r\n'
+    )
+    conn.next_event()
+    return OldHTTPResponse(socket, state_machine=conn)
+
+
 class TestLegacyResponse(unittest.TestCase):
     def test_getheaders(self):
         headers = {'host': 'example.com'}
@@ -498,7 +515,7 @@ class TestResponse(unittest.TestCase):
     def test_mock_transfer_encoding_chunked(self):
         stream = [b"fo", b"o", b"bar"]
         fp = MockChunkedEncodingResponse(stream)
-        r = old_response(MockSock)
+        r = chunked_response(MockSock)
         r.fp = fp
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
 
@@ -519,7 +536,7 @@ class TestResponse(unittest.TestCase):
                 yield data[i:i+2]
 
         fp = MockChunkedEncodingResponse(list(stream()))
-        r = old_response(MockSock)
+        r = chunked_response(MockSock)
         r.fp = fp
         headers = {'transfer-encoding': 'chunked', 'content-encoding': 'gzip'}
         resp = HTTPResponse(r, preload_content=False, headers=headers)
@@ -533,7 +550,7 @@ class TestResponse(unittest.TestCase):
     def test_mock_transfer_encoding_chunked_custom_read(self):
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedEncodingResponse(stream)
-        r = old_response(MockSock)
+        r = chunked_response(MockSock)
         r.fp = fp
         r.chunked = True
         r.chunk_left = None
@@ -550,7 +567,7 @@ class TestResponse(unittest.TestCase):
     def test_mock_transfer_encoding_chunked_unlmtd_read(self):
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedEncodingResponse(stream)
-        r = old_response(MockSock)
+        r = chunked_response(MockSock)
         r.fp = fp
         r.chunked = True
         r.chunk_left = None
@@ -571,7 +588,7 @@ class TestResponse(unittest.TestCase):
     def test_invalid_chunks(self):
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedInvalidEncoding(stream)
-        r = old_response(MockSock)
+        r = chunked_response(MockSock)
         r.fp = fp
         r.chunked = True
         r.chunk_left = None
@@ -581,7 +598,7 @@ class TestResponse(unittest.TestCase):
     def test_chunked_response_without_crlf_on_end(self):
         stream = [b"foo", b"bar", b"baz"]
         fp = MockChunkedEncodingWithoutCRLFOnEnd(stream)
-        r = old_response(MockSock)
+        r = chunked_response(MockSock)
         r.fp = fp
         r.chunked = True
         r.chunk_left = None
@@ -596,7 +613,7 @@ class TestResponse(unittest.TestCase):
     def test_chunked_response_with_extensions(self):
         stream = [b"foo", b"bar"]
         fp = MockChunkedEncodingWithExtensions(stream)
-        r = old_response(MockSock)
+        r = chunked_response(MockSock)
         r.fp = fp
         r.chunked = True
         r.chunk_left = None
