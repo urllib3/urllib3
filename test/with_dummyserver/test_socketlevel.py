@@ -1099,14 +1099,11 @@ class TestBadContentLength(SocketDummyServerTestCase):
         get_response = conn.request('GET', url='/', preload_content=False,
                                     enforce_content_length=True)
         data = get_response.stream(100)
-        # Read "good" data before we try to read again.
-        # This won't trigger till generator is exhausted.
-        next(data)
         try:
             next(data)
             self.assertFail()
         except ProtocolError as e:
-            self.assertTrue('12 bytes read, 10 more expected' in str(e))
+            self.assertTrue('received 12 bytes, expected 22' in str(e))
 
         done_event.set()
 
