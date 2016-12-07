@@ -216,7 +216,15 @@ class TestResponse(unittest.TestCase):
 
     def test_io_closed_consistently(self):
         hlr = old_response(socket.socket())
+        hlr._state_machine.receive_data(
+            b'HTTP/1.1 200 OK\r\n'
+            b'Server: test\r\n'
+            b'Content-Length: 3\r\n'
+            b'\r\n'
+        )
+        hlr._state_machine.next_event()
         hlr.fp = BytesIO(b'foo')
+        hlr.fp.recv = hlr.fp.read
         hlr.chunked = 0
         hlr.length = 3
         resp = HTTPResponse(hlr, preload_content=False)
