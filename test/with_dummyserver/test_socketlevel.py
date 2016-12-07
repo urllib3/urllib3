@@ -869,8 +869,8 @@ class TestHeaders(SocketDummyServerTestCase):
         r = pool.request('GET', '/')
         self.assertEqual(HEADERS, dict(r.headers.items())) # to preserve case sensitivity
 
-    def test_headers_are_sent_with_the_original_case(self):
-        headers = {'foo': 'bar', 'bAz': 'quux'}
+    def test_headers_are_sent_with_lower_case(self):
+        headers = {'Foo': 'bar', 'bAz': 'quux'}
         parsed_headers = {}
 
         def socket_handler(listener):
@@ -894,9 +894,10 @@ class TestHeaders(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        expected_headers = {'Accept-Encoding': 'identity',
-                            'Host': '{0}:{1}'.format(self.host, self.port)}
-        expected_headers.update(headers)
+        expected_headers = {'accept-encoding': 'identity',
+                            'host': '{0}:{1}'.format(self.host, self.port)}
+        for key, value in headers.items():
+            expected_headers[key.lower()] = value
 
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         pool.request('GET', '/', headers=HTTPHeaderDict(headers))
@@ -908,7 +909,7 @@ class TestHeaders(SocketDummyServerTestCase):
         # NOTE: Provide headers in non-sorted order (i.e. reversed)
         #       so that if the internal implementation tries to sort them,
         #       a change will be detected.
-        expected_request_headers = [(u'X-Header-%d' % i, str(i)) for i in reversed(range(K))]
+        expected_request_headers = [(u'x-header-%d' % i, str(i)) for i in reversed(range(K))]
 
         actual_request_headers = []
 
@@ -923,7 +924,7 @@ class TestHeaders(SocketDummyServerTestCase):
 
             for header in headers_list:
                 (key, value) = header.split(b': ')
-                if not key.decode('ascii').startswith(u'X-Header-'):
+                if not key.decode('ascii').startswith(u'x-header-'):
                     continue
                 actual_request_headers.append((key.decode('ascii'), value.decode('ascii')))
 
@@ -946,7 +947,7 @@ class TestHeaders(SocketDummyServerTestCase):
         # NOTE: Provide headers in non-sorted order (i.e. reversed)
         #       so that if the internal implementation tries to sort them,
         #       a change will be detected.
-        expected_response_headers = [('X-Header-%d' % i, str(i)) for i in reversed(range(K))]
+        expected_response_headers = [('x-header-%d' % i, str(i)) for i in reversed(range(K))]
 
         def socket_handler(listener):
             sock = listener.accept()[0]
@@ -968,7 +969,7 @@ class TestHeaders(SocketDummyServerTestCase):
         r = pool.request('GET', '/', retries=0)
         actual_response_headers = [
             (k, v) for (k, v) in r.headers.items()
-            if k.startswith('X-Header-')
+            if k.startswith('x-header-')
         ]
         self.assertEqual(expected_response_headers, actual_response_headers)
 
