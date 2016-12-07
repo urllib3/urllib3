@@ -648,9 +648,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 e = ProxyError('Cannot connect to proxy.', e)
             elif isinstance(e, (SocketError, HTTPException)):
                 e = ProtocolError('Connection aborted.', e)
-            elif isinstance(e, TimeoutError):
-                if not retries.method_whitelist or method.upper() not in retries.method_whitelist:
-                    raise e
 
             retries = retries.increment(method, url, error=e, _pool=self,
                                         _stacktrace=sys.exc_info()[2])

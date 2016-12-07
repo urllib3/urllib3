@@ -225,7 +225,7 @@ class RetryTest(unittest.TestCase):
             self.assertEqual(str(e.reason), 'conntimeout')
 
     def test_history(self):
-        retry = Retry(total=10)
+        retry = Retry(total=10, method_whitelist=frozenset(['GET', 'POST']))
         self.assertEqual(retry.history, tuple())
         connection_error = ConnectTimeoutError('conntimeout')
         retry = retry.increment('GET', '/test1', None, connection_error)
@@ -239,3 +239,13 @@ class RetryTest(unittest.TestCase):
         self.assertEqual(retry.history, (RequestHistory('GET', '/test1', connection_error, None, None),
                                          RequestHistory('POST', '/test2', read_error, None, None),
                                          RequestHistory('GET', '/test3', None, 500, None)))
+
+    def test_retry_method_not_in_whitelist(self):
+        error = ReadTimeoutError(None, "/", "read timed out")
+        retry = Retry()
+        try:
+            retry.increment(method='POST', error=error)
+        except ReadTimeoutError:
+            pass
+        else:
+            self.fail('Request did not raise expected ReadTimeoutError')

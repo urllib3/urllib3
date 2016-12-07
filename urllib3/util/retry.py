@@ -273,10 +273,18 @@ class Retry(object):
         """
         return isinstance(err, (ReadTimeoutError, ProtocolError))
 
+    def _is_method_retryable(self, method):
+        """ Is this method retryable? (Based on method whitelist)
+        """
+        if self.method_whitelist and method.upper() not in self.method_whitelist:
+            return False
+
+        return True
+
     def is_retry(self, method, status_code, has_retry_after=False):
         """ Is this method/status code retryable? (Based on method/codes whitelists)
         """
-        if self.method_whitelist and method.upper() not in self.method_whitelist:
+        if not self._is_method_retryable(method):
             return False
 
         if self.status_forcelist and status_code in self.status_forcelist:
@@ -330,7 +338,7 @@ class Retry(object):
 
         elif error and self._is_read_error(error):
             # Read retry?
-            if read is False:
+            if read is False or (method is not None and not self._is_method_retryable(method)):
                 raise six.reraise(type(error), error, _stacktrace)
             elif read is not None:
                 read -= 1
