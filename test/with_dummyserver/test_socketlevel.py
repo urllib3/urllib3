@@ -597,9 +597,9 @@ class TestProxyManager(SocketDummyServerTestCase):
         self.assertEqual(sorted(r.data.split(b'\r\n')),
                          sorted([
                              b'GET http://google.com/ HTTP/1.1',
-                             b'Host: google.com',
-                             b'Accept-Encoding: identity',
-                             b'Accept: */*',
+                             b'host: google.com',
+                             b'accept-encoding: identity',
+                             b'accept: */*',
                              b'',
                              b'',
                          ]))
