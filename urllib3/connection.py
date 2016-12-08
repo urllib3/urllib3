@@ -746,7 +746,7 @@ class HTTPConnection(object):
         # TODO: reconsider this block size
         blocksize = 8192
         # TODO: We probably need to replicate this method.
-        encode = self._is_textIO(readable)
+        encode = isinstance(readable, io.TextIOBase)
         while True:
             datablock = readable.read(blocksize)
             if not datablock:
