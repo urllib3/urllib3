@@ -119,6 +119,11 @@ class OldHTTPResponse(io.BufferedIOBase):
 
         self._buffered_data = b''
 
+        # This flag indicates whether we received received a data chunk end
+        # as the last read. This is used to keep track of chunk framing even in
+        # buffered data. This is an annoying feature we should stop exposing.
+        self._buffer_end_is_chunk_end = False
+
         # The HTTPResponse object is returned via urllib.  The clients
         # of http and urllib expect different attributes for the
         # headers.  headers is used here and supports urllib.  msg is
@@ -404,13 +409,23 @@ class OldHTTPResponse(io.BufferedIOBase):
         # this because h11 generally tries to emit Data events on chunk
         # boundaries if it can. However, this will lead to weird behavioural
         # behaviours if users combine read() and _read_chunk. So...please
-        # don't.'
+        # don't.
         data_out = [self._buffered_data]
         data_out_len = len(self._buffered_data)
 
+        def should_keep_reading(size, data_out_len):
+            """
+            This helper function evaluates some extra conditionals to avoid
+            a very dirty with statement.
+            """
+            return (
+                ((size is None) or data_out_len < size) and
+                not self._buffer_end_is_chunk_end
+            )
+
         # We want to read until either we have read `size` bytes, or until we
-        # get to a chunk boundary.
-        while (size is None) or (data_out_len < size):
+        # get to a chunk boundary (including a buffered one).
+        while should_keep_reading(size, data_out_len):
             event = self._state_machine.next_event()
             if event is h11.NEED_DATA:
                 self._state_machine.receive_data(self.fp.recv(8192))
@@ -420,9 +435,15 @@ class OldHTTPResponse(io.BufferedIOBase):
                 data_out.append(bytes(event.data))
                 data_out_len += len(event.data)
 
-                # We've got to the end of a chunk, we're done.
+                # We've got to the end of a chunk, we're done. The break
+                # statement here is technically duplicating a check in the
+                # with conditional above, but it adds to clarity. The with
+                # conditional exists for other purposes.
                 if event.chunk_end:
+                    self._buffer_end_is_chunk_end = True
                     break
+                else:
+                    self._buffer_end_is_chunk_end = False
             elif isinstance(event, h11.EndOfMessage):
                 self._close_conn()
                 break
@@ -433,8 +454,12 @@ class OldHTTPResponse(io.BufferedIOBase):
         data_out = b''.join(data_out)
 
         # If we stopped because of the max read size, store the partial chunk.
+        # Otherwise, just throw the buffered data away.
         if size is not None and data_out_len > size:
             data_out, self._buffered_data = data_out[:size], data_out[size:]
+        else:
+            self._buffered_data = b''
+            self._buffer_end_is_chunk_end = False
 
         return data_out
 
