@@ -463,7 +463,6 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
                     break
 
             self.assertTrue(buf.startswith(b'GET / HTTP/1.1'))
-            print buf
             self.assertTrue(b'host: example.com' in buf)
 
             sock.sendall(b'HTTP/1.1 200 OK\r\n'
