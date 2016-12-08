@@ -58,7 +58,10 @@ port_by_scheme = {
     'https': 443,
 }
 
-RECENT_DATE = datetime.date(2014, 1, 1)
+# When updating RECENT_DATE, move it to
+# within two years of the current date, and no
+# earlier than 6 months ago.
+RECENT_DATE = datetime.date(2016, 1, 1)
 
 # the patterns for both name and value are more lenient than RFC
 # definitions to allow for backwards compatibility
@@ -1051,7 +1054,13 @@ class HTTPConnection(object):
         # request()
         headers = HTTPHeaderDict(headers if headers is not None else {})
         skip_accept_encoding = 'accept-encoding' in headers
-        self.putrequest(method, url, skip_accept_encoding=skip_accept_encoding)
+        skip_host = 'host' in headers
+        self.putrequest(
+            method,
+            url,
+            skip_accept_encoding=skip_accept_encoding,
+            skip_host=skip_host
+        )
         for header, value in headers.items():
             self.putheader(header, value)
         if 'transfer-encoding' not in headers:

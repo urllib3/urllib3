@@ -1,6 +1,7 @@
 import hashlib
 import warnings
 import logging
+import io
 import unittest
 import ssl
 import socket
@@ -9,7 +10,7 @@ from itertools import chain
 from mock import patch, Mock
 
 from urllib3 import add_stderr_logger, disable_warnings
-from urllib3.util.request import make_headers
+from urllib3.util.request import make_headers, rewind_body, _FAILEDTELL
 from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
 from urllib3.util.url import (
@@ -20,6 +21,7 @@ from urllib3.util.url import (
 )
 from urllib3.util.ssl_ import (
     resolve_cert_reqs,
+    resolve_ssl_version,
     ssl_wrap_socket,
     _const_compare_digest_backport,
 )
@@ -30,6 +32,7 @@ from urllib3.exceptions import (
     SSLError,
     SNIMissingWarning,
     InvalidHeader,
+    UnrewindableBodyError,
 )
 from urllib3.util.connection import (
     allowed_gai_family,
@@ -255,6 +258,41 @@ class TestUtil(unittest.TestCase):
             make_headers(disable_cache=True),
             {'cache-control': 'no-cache'})
 
+    def test_rewind_body(self):
+        body = io.BytesIO(b'test data')
+        self.assertEqual(body.read(), b'test data')
+
+        # Assert the file object has been consumed
+        self.assertEqual(body.read(), b'')
+
+        # Rewind it back to just be b'data'
+        rewind_body(body, 5)
+        self.assertEqual(body.read(), b'data')
+
+    def test_rewind_body_failed_tell(self):
+        body = io.BytesIO(b'test data')
+        body.read()  # Consume body
+
+        # Simulate failed tell()
+        body_pos = _FAILEDTELL
+        self.assertRaises(UnrewindableBodyError, rewind_body, body, body_pos)
+
+    def test_rewind_body_bad_position(self):
+        body = io.BytesIO(b'test data')
+        body.read()  # Consume body
+
+        # Pass non-integer position
+        self.assertRaises(ValueError, rewind_body, body, None)
+        self.assertRaises(ValueError, rewind_body, body, object())
+
+    def test_rewind_body_failed_seek(self):
+        class BadSeek():
+
+            def seek(self, pos, offset=0):
+                raise IOError
+
+        self.assertRaises(UnrewindableBodyError, rewind_body, BadSeek(), 2)
+
     def test_split_first(self):
         test_cases = {
             ('abcd', 'b'): ('a', 'cd', 'b'),
@@ -401,6 +439,12 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(resolve_cert_reqs(ssl.CERT_REQUIRED), ssl.CERT_REQUIRED)
         self.assertEqual(resolve_cert_reqs('REQUIRED'), ssl.CERT_REQUIRED)
         self.assertEqual(resolve_cert_reqs('CERT_REQUIRED'), ssl.CERT_REQUIRED)
+
+    def test_resolve_ssl_version(self):
+        self.assertEqual(resolve_ssl_version(ssl.PROTOCOL_TLSv1), ssl.PROTOCOL_TLSv1)
+        self.assertEqual(resolve_ssl_version("PROTOCOL_TLSv1"), ssl.PROTOCOL_TLSv1)
+        self.assertEqual(resolve_ssl_version("TLSv1"), ssl.PROTOCOL_TLSv1)
+        self.assertEqual(resolve_ssl_version(ssl.PROTOCOL_SSLv23), ssl.PROTOCOL_SSLv23)
 
     def test_is_fp_closed_object_supports_closed(self):
         class ClosedFile(object):
