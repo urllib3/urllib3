@@ -39,7 +39,6 @@ from .response import HTTPResponse
 
 from .util.connection import is_connection_dropped
 from .util.request import set_file_position
-from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import get_host, Url
@@ -402,14 +401,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         log.debug("%s://%s:%s \"%s %s %s\" %s %s", self.scheme, self.host, self.port,
                   method, url, http_version, httplib_response.status,
                   httplib_response.length)
-
-        try:
-            #assert_header_parsing(httplib_response.msg)
-            pass
-        except HeaderParsingError as hpe:  # Platform-specific: Python 3
-            log.warning(
-                'Failed to parse headers (url=%s): %s',
-                self._absolute_url(url), hpe, exc_info=True)
 
         return httplib_response
 
