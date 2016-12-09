@@ -7,6 +7,10 @@ Upcoming 2.0 Changes
 * Removed the dependency on httplib, enabling us to bring new features and
   improvements to all supported Python versions equally.
 
+* Invalid HTTP responses now trigger hard failures, rather than getting a
+  best-effort interpretation. This additional strictness reduces the risk that
+  responses will be misinterpreted.
+
 dev (master)
 ------------
 
