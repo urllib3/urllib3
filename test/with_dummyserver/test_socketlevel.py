@@ -857,7 +857,7 @@ class TestErrorWrapping(SocketDummyServerTestCase):
 class TestHeaders(SocketDummyServerTestCase):
 
     @onlyPy3
-    def test_httplib_headers_case_insensitive(self):
+    def test_headers_always_lowercase(self):
         self.start_response_handler(
            b'HTTP/1.1 200 OK\r\n'
            b'Content-Length: 0\r\n'
@@ -865,7 +865,7 @@ class TestHeaders(SocketDummyServerTestCase):
            b'\r\n'
         )
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        HEADERS = {'Content-Length': '0', 'Content-type': 'text/plain'}
+        HEADERS = {'content-length': '0', 'content-type': 'text/plain'}
         r = pool.request('GET', '/')
         self.assertEqual(HEADERS, dict(r.headers.items())) # to preserve case sensitivity
 
