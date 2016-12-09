@@ -1,6 +1,12 @@
 Changes
 =======
 
+Upcoming 2.0 Changes
+--------------------
+
+* Removed the dependency on httplib, enabling us to bring new features and
+  improvements to all supported Python versions equally.
+
 dev (master)
 ------------
 
