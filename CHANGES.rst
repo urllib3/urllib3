@@ -11,6 +11,12 @@ Upcoming 2.0 Changes
   best-effort interpretation. This additional strictness reduces the risk that
   responses will be misinterpreted.
 
+* Removed the ``length_remaining`` property on responses.
+
+* urllib3 now strictly checks the length of responses and hard fails in all
+  cases if the response is either too long or the remote peer closes the
+  connection before the body is complete.
+
 dev (master)
 ------------
 
