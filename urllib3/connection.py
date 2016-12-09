@@ -101,6 +101,22 @@ def _headers_to_native_string(headers):
         yield (n, v)
 
 
+def _headers_to_byte_string(headers):
+    """
+    A temporary shim to convert headers we want to send to byte strings, to
+    match the behaviour of httplib. We will reconsider this later in the
+    process.
+    """
+    # TODO: revisit.
+    for n, v in headers:
+        if not isinstance(n, bytes):
+            n = n.encode('latin1')
+        if not isinstance(v, bytes):
+            v = v.encode('latin1')
+        yield (n, v)
+
+
+
 class DummyConnection(object):
     """Used to detect a failed ConnectionCls import."""
     pass
@@ -641,15 +657,19 @@ class HTTPConnection(object):
         # Basic sanity check that _tunnel is only called at appropriate times.
         assert self._state_machine.our_state is h11.IDLE
 
+        target = "%s:%d" % (self._tunnel_host, self._tunnel_port)
+        if not isinstance(target, bytes):
+            target = target.encode('latin1')
+
         # We need to set the Host header.
-        headers = self._tunnel_headers.copy()
-        if "host" not in frozenset(k.lower() for k in headers):
-            headers["host"] = "%s:%d" % (self._tunnel_host, self._tunnel_port)
+        headers = dict(_headers_to_byte_string(self._tunnel_headers.items()))
+        if b"host" not in frozenset(k.lower() for k in headers):
+            headers[b"host"] = target
 
         self._tunnel_state_machine = h11.Connection(our_role=h11.CLIENT)
         request = h11.Request(
             method=b"CONNECT",
-            target=b"%s:%d" % (self._tunnel_host, self._tunnel_port),
+            target=target,
             headers=headers.items(),
         )
         bytes_to_send = self._tunnel_state_machine.send(request)
