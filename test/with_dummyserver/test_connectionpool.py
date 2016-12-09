@@ -47,7 +47,7 @@ log.addHandler(logging.StreamHandler(sys.stdout))
 
 
 SHORT_TIMEOUT = 0.001
-LONG_TIMEOUT = 0.01
+LONG_TIMEOUT = 0.1
 
 
 def wait_for_socket(ready_event):
