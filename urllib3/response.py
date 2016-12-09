@@ -11,7 +11,7 @@ import h11
 from ._collections import HTTPHeaderDict
 from .exceptions import (
     BodyNotHttplibCompatible, ProtocolError, DecodeError, ReadTimeoutError,
-    ResponseNotChunked, IncompleteRead, InvalidHeader
+    ResponseNotChunked, InvalidHeader
 )
 from .packages.six import string_types as basestring, binary_type, PY3
 from .connection import BaseSSLError
@@ -98,10 +98,6 @@ class HTTPResponse(io.IOBase):
     :param retries:
         The retries contains the last :class:`~urllib3.util.retry.Retry` that
         was used during the request.
-
-    :param enforce_content_length:
-        Enforce content length checking. Body returned by server must match
-        value of Content-Length header, if present. Otherwise, raise error.
     """
 
     CONTENT_DECODERS = ['gzip', 'deflate']
@@ -110,7 +106,7 @@ class HTTPResponse(io.IOBase):
     def __init__(self, body='', headers=None, status=0, version=0, reason=None,
                  strict=0, preload_content=True, decode_content=True,
                  original_response=None, pool=None, connection=None,
-                 retries=None, enforce_content_length=False, request_method=None):
+                 retries=None, request_method=None):
 
         if isinstance(headers, HTTPHeaderDict):
             self.headers = headers
@@ -122,7 +118,6 @@ class HTTPResponse(io.IOBase):
         self.strict = strict
         self.decode_content = decode_content
         self.retries = retries
-        self.enforce_content_length = enforce_content_length
 
         self._decoder = None
         self._body = None
@@ -147,9 +142,6 @@ class HTTPResponse(io.IOBase):
         encodings = (enc.strip() for enc in tr_enc.split(","))
         if "chunked" in encodings:
             self.chunked = True
-
-        # Determine length of response
-        self.length_remaining = self._init_length(request_method)
 
         # If requested, preload the body.
         if preload_content and not self._body:
@@ -195,57 +187,6 @@ class HTTPResponse(io.IOBase):
         are encoded on the wire (e.g, compressed).
         """
         return self._fp_bytes_read
-
-    def _init_length(self, request_method):
-        """
-        Set initial length value for Response content if available.
-        """
-        length = self.headers.get('content-length')
-
-        if length is not None and self.chunked:
-            # This Response will fail with an IncompleteRead if it can't be
-            # received as chunked. This method falls back to attempt reading
-            # the response before raising an exception.
-            log.warning("Received response with both Content-Length and "
-                        "Transfer-Encoding set. This is expressly forbidden "
-                        "by RFC 7230 sec 3.3.2. Ignoring Content-Length and "
-                        "attempting to process response as Transfer-Encoding: "
-                        "chunked.")
-            return None
-
-        elif length is not None:
-            try:
-                # RFC 7230 section 3.3.2 specifies multiple content lengths can
-                # be sent in a single Content-Length header
-                # (e.g. Content-Length: 42, 42). This line ensures the values
-                # are all valid ints and that as long as the `set` length is 1,
-                # all values are the same. Otherwise, the header is invalid.
-                lengths = set([int(val) for val in length.split(',')])
-                if len(lengths) > 1:
-                    raise InvalidHeader("Content-Length contained multiple "
-                                        "unmatching values (%s)" % length)
-                length = lengths.pop()
-            except ValueError:
-                length = None
-            else:
-                if length < 0:
-                    length = None
-
-        # Convert status to int for comparison
-        # In some cases, httplib returns a status of "_UNKNOWN"
-        # TODO: This block should not be necessary anymore, at least for
-        # the httplib case, though we do use it in our mocks and generally
-        # speaking may want to consider whether we need to continue this.
-        try:
-            status = int(self.status)
-        except TypeError:
-            status = 0
-
-        # Check for responses that shouldn't include a body
-        if status in (204, 304) or 100 <= status < 200 or request_method == 'HEAD':
-            length = 0
-
-        return length
 
     def _init_decoder(self):
         """
@@ -382,28 +323,20 @@ class HTTPResponse(io.IOBase):
             else:
                 cache_content = False
                 data = self._fp.read(amt)
-                if amt != 0 and not data:  # Platform-specific: Buggy versions of Python.
+                if amt != 0 and not data:
                     # Close the connection when no data is returned
                     #
-                    # This is redundant to what httplib/http.client _should_
-                    # already do.  However, versions of python released before
-                    # December 15, 2012 (http://bugs.python.org/issue16298) do
-                    # not properly close the connection in all cases. There is
-                    # no harm in redundantly calling close.
+                    # TODO: While we no longer use httplib, and so technically
+                    # don't need this close, some tests implicitly rely on it.
+                    # Most notably, those tests that patch in things like
+                    # BytesIO as the _fp. We shouldn't actually need the close
+                    # anymore if we can rewrite those tests to use actual
+                    # HTTP responses.
                     self._fp.close()
                     flush_decoder = True
-                    if self.enforce_content_length and self.length_remaining not in (0, None):
-                        # This is an edge case that httplib failed to cover due
-                        # to concerns of backward compatibility. We're
-                        # addressing it here to make sure IncompleteRead is
-                        # raised during streaming, so all calls with incorrect
-                        # Content-Length are caught.
-                        raise IncompleteRead(self._fp_bytes_read, self.length_remaining)
 
         if data:
             self._fp_bytes_read += len(data)
-            if self.length_remaining is not None:
-                self.length_remaining -= len(data)
 
             data = self._decode(data, decode_content, flush_decoder)
 

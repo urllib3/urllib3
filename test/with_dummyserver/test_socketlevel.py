@@ -1089,8 +1089,7 @@ class TestBadContentLength(SocketDummyServerTestCase):
         conn = HTTPConnectionPool(self.host, self.port, maxsize=1)
 
         # Test stream read when content length less than headers claim
-        get_response = conn.request('GET', url='/', preload_content=False,
-                                    enforce_content_length=True)
+        get_response = conn.request('GET', url='/', preload_content=False)
         data = get_response.stream(100)
         try:
             next(data)
@@ -1123,8 +1122,7 @@ class TestBadContentLength(SocketDummyServerTestCase):
         conn = HTTPConnectionPool(self.host, self.port, maxsize=1)
 
         #Test stream on 0 length body
-        head_response = conn.request('HEAD', url='/', preload_content=False,
-                                     enforce_content_length=True)
+        head_response = conn.request('HEAD', url='/', preload_content=False)
         data = [chunk for chunk in head_response.stream(1)]
         self.assertEqual(len(data), 0)
 
