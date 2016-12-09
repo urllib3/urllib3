@@ -22,12 +22,6 @@ except (ImportError, AttributeError):  # Platform-specific: No SSL.
         pass
 
 
-try:  # Python 3:
-    ConnectionError = ConnectionError
-except NameError:  # Python 2:
-    ConnectionError = SocketError
-
-
 from .exceptions import (
     NewConnectionError,
     ConnectTimeoutError,
@@ -667,7 +661,7 @@ class HTTPConnection(object):
 
         try:
             response.begin()
-        except ConnectionError:
+        except SocketError:
             self.close()
             raise
 
@@ -1047,7 +1041,7 @@ class HTTPConnection(object):
         try:
             try:
                 response.begin()
-            except ConnectionError:
+            except SocketError:
                 self.close()
                 raise
 
