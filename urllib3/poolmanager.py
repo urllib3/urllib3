@@ -9,6 +9,7 @@ from .connectionpool import port_by_scheme
 from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
 from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
+from .transport_security import TransportSecurityManager
 from .util.url import parse_url
 from .util.retry import Retry
 
@@ -33,11 +34,14 @@ BasePoolKey = collections.namedtuple('BasePoolKey', ('scheme', 'host', 'port'))
 # ``connection_pool_kw`` instance variable.
 HTTPPoolKey = collections.namedtuple(
     'HTTPPoolKey', BasePoolKey._fields + ('timeout', 'retries', 'strict',
-                                          'block', 'source_address')
+                                          'block', 'source_address',
+                                          'transport_security_manager')
 )
 HTTPSPoolKey = collections.namedtuple(
     'HTTPSPoolKey', HTTPPoolKey._fields + SSL_KEYWORDS
 )
+
+_DEFAULT_TSM = object()
 
 
 def _default_key_normalizer(key_class, request_context):
@@ -93,6 +97,12 @@ class PoolManager(RequestMethods):
         Headers to include with all requests, unless other headers are given
         explicitly.
 
+    :param transport_security_manager:
+        A :class:`urllib3.transport_security.TransportSecurityManager` object
+        to use for requests in this pool manager. Pass ``None`` to disable
+        TransportSecurityManager functionality. By default, a
+        TransportSecurityManager will be initialized with default options.
+
     :param \**connection_pool_kw:
         Additional parameters are used to create fresh
         :class:`urllib3.connectionpool.ConnectionPool` instances.
@@ -110,8 +120,14 @@ class PoolManager(RequestMethods):
 
     proxy = None
 
-    def __init__(self, num_pools=10, headers=None, **connection_pool_kw):
+    def __init__(self, num_pools=10, headers=None, transport_security_manager=_DEFAULT_TSM,
+                 **connection_pool_kw):
         RequestMethods.__init__(self, headers)
+
+        if transport_security_manager is _DEFAULT_TSM:
+            transport_security_manager = TransportSecurityManager()
+        connection_pool_kw["transport_security_manager"] = transport_security_manager
+
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools,
                                            dispose_func=lambda p: p.close())
