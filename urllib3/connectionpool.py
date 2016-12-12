@@ -14,7 +14,6 @@ from .exceptions import (
     ClosedPoolError,
     ProtocolError,
     EmptyPoolError,
-    HeaderParsingError,
     HostChangedError,
     LocationValueError,
     MaxRetryError,

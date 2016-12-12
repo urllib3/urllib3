@@ -11,9 +11,9 @@ import h11
 from ._collections import HTTPHeaderDict
 from .exceptions import (
     BodyNotHttplibCompatible, ProtocolError, DecodeError, ReadTimeoutError,
-    ResponseNotChunked, InvalidHeader
+    ResponseNotChunked
 )
-from .packages.six import string_types as basestring, binary_type, PY3
+from .packages.six import string_types as basestring, binary_type
 from .connection import BaseSSLError
 from .util.response import is_fp_closed, is_response_to_head
 

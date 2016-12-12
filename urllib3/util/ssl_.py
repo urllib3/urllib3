@@ -85,7 +85,6 @@ DEFAULT_CIPHERS = ':'.join([
 try:
     from ssl import SSLContext  # Modern SSL?
 except ImportError:
-    import sys
 
     # TODO: Can we remove this by choosing to support only platforms with
     # actual SSLContext objects?

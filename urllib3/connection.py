@@ -116,7 +116,6 @@ def _headers_to_byte_string(headers):
         yield (n, v)
 
 
-
 class DummyConnection(object):
     """Used to detect a failed ConnectionCls import."""
     pass
@@ -1100,7 +1099,6 @@ class HTTPConnection(object):
                 body = (body,)
 
         self.endheaders(body, encode_chunked=True)
-
 
 
 class HTTPSConnection(HTTPConnection):
