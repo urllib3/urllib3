@@ -14,7 +14,7 @@ from .exceptions import (
 )
 from .packages.six import string_types as basestring, binary_type
 from .connection import BaseSSLError
-from .util.response import is_fp_closed, is_response_to_head
+from .util.response import is_fp_closed
 
 log = logging.getLogger(__name__)
 
