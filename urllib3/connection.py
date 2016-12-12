@@ -836,14 +836,7 @@ class HTTPConnection(object):
 
     def putrequest(self, method, url, skip_host=False,
                    skip_accept_encoding=False):
-        """Send a request to the server.
-
-        `method' specifies an HTTP request method, e.g. 'GET'.
-        `url' specifies the object being requested, e.g. '/index.html'.
-        `skip_host' if True does not add automatically a 'Host:' header
-        `skip_accept_encoding' if True does not add automatically an
-        'Accept-Encoding:' header
-        """
+        """Send a request to the server."""
         # TODO: rewrite this from httplib form to our own form.
 
         # if a prior response has been completed, then forget about it.
