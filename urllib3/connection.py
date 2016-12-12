@@ -297,7 +297,7 @@ class OldHTTPResponse(io.BufferedIOBase):
                     break
                 elif isinstance(event, h11.ConnectionClosed):
                     # TODO: better exception
-                    raise RuntimeError("Connection closed early!")
+                    raise ProtocolError("Connection closed early!")
 
             received_data = b''.join(data_out)
             data_to_return, self._buffered_data = (
@@ -321,7 +321,7 @@ class OldHTTPResponse(io.BufferedIOBase):
                     break
                 elif isinstance(event, h11.ConnectionClosed):
                     # TODO: better exception
-                    raise RuntimeError("Connection closed early!")
+                    raise ProtocolError("Connection closed early!")
 
             return b''.join(data_out)
 
@@ -367,8 +367,7 @@ class OldHTTPResponse(io.BufferedIOBase):
                 self._close_conn()
                 break
             elif isinstance(event, h11.ConnectionClosed):
-                # TODO: better exception
-                raise RuntimeError("Connection closed early!")
+                raise ProtocolError("Connection closed early!")
 
         # Thanks to the fact that we called recv with n, we cannot possibly get
         # too much data here.
@@ -391,8 +390,7 @@ class OldHTTPResponse(io.BufferedIOBase):
                 self._close_conn()
                 break
             elif isinstance(event, h11.ConnectionClosed):
-                # TODO: better exception
-                raise RuntimeError("Connection closed early!")
+                raise ProtocolError("Connection closed early!")
 
         self._buffered_data = b''.join(data_out)
         if size is None:
@@ -488,8 +486,7 @@ class OldHTTPResponse(io.BufferedIOBase):
                 self._close_conn()
                 break
             elif isinstance(event, h11.ConnectionClosed):
-                # TODO: better exception
-                raise RuntimeError("Connection closed early!")
+                raise ProtocolError("Connection closed early!")
 
         data_out = b''.join(data_out)
 
