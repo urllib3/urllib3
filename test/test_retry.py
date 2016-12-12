@@ -243,9 +243,4 @@ class RetryTest(unittest.TestCase):
     def test_retry_method_not_in_whitelist(self):
         error = ReadTimeoutError(None, "/", "read timed out")
         retry = Retry()
-        try:
-            retry.increment(method='POST', error=error)
-        except ReadTimeoutError:
-            pass
-        else:
-            self.fail('Request did not raise expected ReadTimeoutError')
+        self.assertRaises(ReadTimeoutError, retry.increment, method='POST', error=error)
