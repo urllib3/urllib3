@@ -646,7 +646,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                     preload_content=False,
                     retries=False,
                     )
-            for chunk in response.stream():
+            for chunk in response.stream(3):
                 self.assertEqual(chunk, b'123')
 
         self.assertEqual(self.pool.num_connections, 1)
