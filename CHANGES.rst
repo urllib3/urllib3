@@ -17,6 +17,12 @@ Upcoming 2.0 Changes
   cases if the response is either too long or the remote peer closes the
   connection before the body is complete.
 
+* Removed the ``read_chunked`` method on responses.
+
+* Removed the behaviour that ``HTTPResponse.stream`` had where it would always
+  return on chunked bodies. These boundaries are not semantic, so it is not
+  useful to persist them up to the user.
+
 * Dropped support for Python 2.6.
 
 dev (master)
