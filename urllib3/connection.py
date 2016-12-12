@@ -196,7 +196,6 @@ class OldHTTPResponse(io.BufferedIOBase):
                 if isinstance(event, h11.Response):
                     return event
                 elif isinstance(event, h11.ConnectionClosed):
-                    # TODO: What exception?
                     raise ProtocolError(
                         "Remote end closed connection without response"
                     )
