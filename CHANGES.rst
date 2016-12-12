@@ -23,6 +23,8 @@ Upcoming 2.0 Changes
   return on chunked bodies. These boundaries are not semantic, so it is not
   useful to persist them up to the user.
 
+* Removed ``BodyNotHttplibCompatible`` and ``ResponseNotChunked`` exceptions.
+
 * Dropped support for Python 2.6.
 
 dev (master)

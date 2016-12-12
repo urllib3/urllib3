@@ -8,7 +8,7 @@ from io import BytesIO, BufferedReader
 from urllib3.connection import OldHTTPResponse
 from urllib3.response import HTTPResponse
 from urllib3.exceptions import (
-    DecodeError, ResponseNotChunked, ProtocolError, InvalidHeader
+    DecodeError, ProtocolError, InvalidHeader
 )
 from urllib3.util.retry import Retry
 from urllib3.util.response import is_fp_closed

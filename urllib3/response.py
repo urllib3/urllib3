@@ -10,8 +10,7 @@ import h11
 
 from ._collections import HTTPHeaderDict
 from .exceptions import (
-    BodyNotHttplibCompatible, ProtocolError, DecodeError, ReadTimeoutError,
-    ResponseNotChunked
+    ProtocolError, DecodeError, ReadTimeoutError
 )
 from .packages.six import string_types as basestring, binary_type
 from .connection import BaseSSLError
