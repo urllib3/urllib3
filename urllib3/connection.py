@@ -28,6 +28,7 @@ from .exceptions import (
     SubjectAltNameWarning,
     SystemTimeWarning,
     BadVersionError,
+    ProtocolError
 )
 from .packages.ssl_match_hostname import match_hostname, CertificateError
 
@@ -125,6 +126,15 @@ class DummyConnection(object):
 _UNKNOWN = object()
 
 
+# TODO: This is a holdover from httplib, do we need it?
+class ResponseNotReady(Exception):
+    """
+    A holdover exception raised when urllib3 incorrectly asks for a response
+    before it's done with the last one.
+    """
+    pass
+
+
 class OldHTTPResponse(io.BufferedIOBase):
 
     # See RFC 2616 sec 19.6 and RFC 1945 sec 6 for details.
@@ -187,7 +197,7 @@ class OldHTTPResponse(io.BufferedIOBase):
                     return event
                 elif isinstance(event, h11.ConnectionClosed):
                     # TODO: What exception?
-                    raise RemoteDisconnected(
+                    raise ProtocolError(
                         "Remote end closed connection without response"
                     )
                 else:
