@@ -617,24 +617,14 @@ class HTTPConnection(object):
             self._tunnel_headers.clear()
 
     def _get_hostport(self, host, port):
-        # TODO: We may not need this method. If we do, we should consider
-        # whether we can rewrite it.
+        """
+        Handle parsing host/port descriptions to tolerate the cases where the
+        host is a string that also contains port information.
+        """
         if port is None:
-            i = host.rfind(':')
-            j = host.rfind(']')         # ipv6 addresses have [...]
-            if i > j:
-                try:
-                    port = int(host[i + 1:])
-                except ValueError:
-                    if host[i + 1:] == "":  # http://foo.co:/ == http://foo.co/
-                        port = self.default_port
-                    else:
-                        raise InvalidURL(
-                            "nonnumeric port: '%s'" % host[i + 1:]
-                        )
-                host = host[:i]
-            else:
-                port = self.default_port
+            url = parse_url(host)
+            host = url.host
+            port = url.port if url.port is not None else self.default_port
             if host and host[0] == '[' and host[-1] == ']':
                 host = host[1:-1]
 
