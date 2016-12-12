@@ -1,9 +1,6 @@
 from __future__ import absolute_import
 
-import sys
-if sys.version_info >= (2, 7):
-    import unittest
-else:
+if str is bytes:
     import unittest2 as unittest
 
 from urllib3.connectionpool import HTTPConnection, HTTPConnectionPool
@@ -189,7 +186,7 @@ class TestCustomisedConnectionPool(unittest.TestCase):
         response.release_conn()
         # Check it's disallowed when attempting to bypass the wrapper
         error_structure = 'expected.*HTTPConnection.*got.*CustomConnection'
-        with self.assertRaisesRegexp(TypeError, error_structure):
+        with self.assertRaisesRegex(TypeError, error_structure):
             make_pool_request(bad_pool)
 
 

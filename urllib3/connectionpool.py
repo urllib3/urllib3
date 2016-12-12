@@ -336,6 +336,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if not class_ok:
                 msg = 'expected {0!r} connection, got {1!r}.'
                 raise TypeError(msg.format(self.ConnectionCls, conn.__class__))
+
             # Don't try to use buffering when retrieving any future responses
             # for this connection pool.
             # Note: we can't use the unbound method directly, as that won't
