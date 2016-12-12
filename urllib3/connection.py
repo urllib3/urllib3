@@ -752,7 +752,6 @@ class HTTPConnection(object):
         file-like object that supports a .read() method, or an iterable object.
         """
         if hasattr(data, "read"):
-            # TODO: We probably need to replicate this method.
             for datablock in self._read_readable(data):
                 to_send = self._state_machine.send(h11.Data(data=datablock))
                 self.sock.sendall(to_send)
