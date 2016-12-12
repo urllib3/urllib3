@@ -330,14 +330,21 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             return conn.getresponse(buffering=True)
         except TypeError:
             # Python 3.x HTTPConnection, Python 2.6 and older, or custom
-            if not isinstance(conn, self.ConnectionCls):
+            # Note: the __class__ check handles old-style classes
+            class_ok = (conn.__class__ == self.ConnectionCls or
+                        isinstance(conn, self.ConnectionCls))
+            if not class_ok:
                 msg = 'expected {0!r} connection, got {1!r}.'
-                raise TypeError(msg.format(self.ConnectionCls, type(conn)))
-            # Use the ConnectionCls method directly when retrieving any
-            # future responses for this connection pool
-            self._getresponse = self.ConnectionCls.getresponse
+                raise TypeError(msg.format(self.ConnectionCls, conn.__class__))
+            # Don't try to use buffering when retrieving any future responses
+            # for this connection pool.
+            # Note: we can't use the unbound method directly, as that won't
+            # always work with Python 2.x classes
+            def _unbuffered_get_response(conn):
+                return conn.getresponse()
+            self._getresponse = _unbuffered_get_response
         # Retrieve response without chaining the above 'TypeError' on Python 3
-        return self.ConnectionCls.getresponse(conn)
+        return conn.getresponse()
 
     def _make_request(self, conn, method, url, timeout=_Default, chunked=False,
                       **httplib_request_kw):

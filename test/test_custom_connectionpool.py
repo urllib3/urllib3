@@ -4,9 +4,21 @@ import unittest
 
 from urllib3.connectionpool import HTTPConnection, HTTPConnectionPool
 from urllib3.response import httplib, HTTPResponse
+from urllib3.packages.six.moves import StringIO
 from urllib3.packages.six.moves.http_client import HTTPMessage
 from urllib3._collections import HTTPHeaderDict
 from .test_response import MockChunkedEncodingResponse, MockSock
+
+# HTTPMessage requires a file-like object as input in Python 2.x
+if str is bytes:
+    # Python 2
+    def make_dummy_message():
+        return HTTPMessage(StringIO())
+else:
+    # Python 3
+    make_dummy_message = HTTPMessage
+
+
 
 def make_custom_pool(pool_cls):
     """Instantiate the given custom pool class"""
@@ -31,12 +43,13 @@ class CustomHTTPResponse(HTTPResponse):
 
 class DummyRequestPool(HTTPConnectionPool):
     """Connection pool that doesn't initiate any real network requests"""
+    @staticmethod
     def _make_request(*args, **kwargs):
         """Construct a dummy httplib level request response"""
         # Note that this can also be used as "DummyRequestPool._make_request()"
         httplib_response = httplib.HTTPResponse(MockSock)
         httplib_response.fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
-        httplib_response.msg = HTTPMessage()
+        httplib_response.msg = make_dummy_message()
         httplib_response.headers = HTTPHeaderDict()
         return httplib_response
 
