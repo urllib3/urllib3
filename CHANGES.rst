@@ -17,6 +17,8 @@ Upcoming 2.0 Changes
   cases if the response is either too long or the remote peer closes the
   connection before the body is complete.
 
+* Dropped support for Python 2.6.
+
 dev (master)
 ------------
 

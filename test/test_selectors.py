@@ -8,22 +8,15 @@ import sys
 import time
 import threading
 
-try:  # Python 2.6 unittest module doesn't have skip decorators.
-    from unittest import skip, skipIf, skipUnless
-    import unittest
-except ImportError:
-    from unittest2 import skip, skipIf, skipUnless
-    import unittest2 as unittest
+from unittest import skip, skipIf, skipUnless
+import unittest
 
 try:  # Python 2.x doesn't define time.perf_counter.
     from time import perf_counter as get_time
 except ImportError:
     from time import time as get_time
 
-try:  # Python 2.6 doesn't have the resource module.
-    import resource
-except ImportError:
-    resource = None
+import resource
 
 try:  # Windows doesn't support socketpair on Python 3.5<
     from socket import socketpair

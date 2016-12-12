@@ -260,24 +260,6 @@ class TestResponse(unittest.TestCase):
         while not br.closed:
             br.read(5)
 
-    def test_io_readinto(self):
-        # This test is necessary because in py2.6, `readinto` doesn't get called
-        # in `test_io_bufferedreader` like it does for all the other python
-        # versions.  Probably this is because the `io` module in py2.6 is an
-        # old version that has a different underlying implementation.
-
-
-        fp = BytesIO(b'foo')
-        resp = HTTPResponse(fp, preload_content=False)
-
-        barr = bytearray(3)
-        assert resp.readinto(barr) == 3
-        assert b'foo' == barr
-
-        # The reader should already be empty, so this should read nothing.
-        assert resp.readinto(barr) == 0
-        assert b'foo' == barr
-
     def test_streaming(self):
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)

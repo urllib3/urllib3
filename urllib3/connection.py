@@ -511,11 +511,7 @@ class HTTPConnection(object):
     Additional keyword parameters are used to configure attributes of the connection.
     Accepted parameters include:
 
-      - ``strict``: See the documentation on :class:`urllib3.connectionpool.HTTPConnectionPool`
       - ``source_address``: Set the source address for the current connection.
-
-        .. note:: This is ignored for Python 2.6. It is only applied for 2.7 and 3.x
-
       - ``socket_options``: Set specific options on the underlying socket. If not specified, then
         defaults are loaded from ``HTTPConnection.default_socket_options`` which includes disabling
         Nagle's algorithm (sets TCP_NODELAY to 1) unless the connection is behind a proxy.
@@ -847,7 +843,7 @@ class HTTPConnection(object):
         `url' specifies the object being requested, e.g. '/index.html'.
         `skip_host' if True does not add automatically a 'Host:' header
         `skip_accept_encoding' if True does not add automatically an
-           'Accept-Encoding:' header
+        'Accept-Encoding:' header
         """
         # TODO: rewrite this from httplib form to our own form.
 

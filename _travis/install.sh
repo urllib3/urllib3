@@ -23,10 +23,6 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     eval "$(pyenv init -)"
 
     case "${TOXENV}" in
-        py26)
-            pyenv install 2.6.9
-            pyenv global 2.6.9
-            ;;
         py27)
             curl -O https://bootstrap.pypa.io/get-pip.py
             python get-pip.py --user

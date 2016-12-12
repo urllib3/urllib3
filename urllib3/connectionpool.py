@@ -322,6 +322,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Catch possible read timeouts thrown as SSL errors. If not the
         # case, rethrow the original. We need to do this because of:
         # http://bugs.python.org/issue10272
+        # TODO: Can we remove this?
         if 'timed out' in str(err) or 'did not complete (read)' in str(err):  # Python 2.6
             raise ReadTimeoutError(self, url, "Read timed out. (read timeout=%s)" % timeout_value)
 
@@ -786,17 +787,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         Establish tunnel connection early, because otherwise httplib
         would improperly set Host: header to proxy's IP:port.
         """
-        # Python 2.7+
-        try:
-            set_tunnel = conn.set_tunnel
-        except AttributeError:  # Platform-specific: Python 2.6
-            set_tunnel = conn._set_tunnel
-
-        if sys.version_info <= (2, 6, 4) and not self.proxy_headers:  # Python 2.6.4 and older
-            set_tunnel(self.host, self.port)
-        else:
-            set_tunnel(self.host, self.port, self.proxy_headers)
-
+        conn.set_tunnel(self.host, self.port, self.proxy_headers)
         conn.connect()
 
     def _new_conn(self):
