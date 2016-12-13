@@ -24,8 +24,9 @@ from urllib3.exceptions import (
     TimeoutError,
 )
 from urllib3._collections import HTTPHeaderDict
-from .test_response import MockChunkedEncodingResponse, MockSock
+from .test_response import MockSock
 
+from io import BytesIO
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 
@@ -342,7 +343,7 @@ class TestConnectionPool(unittest.TestCase):
                 response = OldHTTPResponse(
                     MockSock, state_machine=h11.Connection(our_role=h11.CLIENT)
                 )
-                response.fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
+                response.fp = BytesIO(b"foo")
                 response.headers = response.msg = HTTPHeaderDict()
                 return response
 
@@ -382,7 +383,7 @@ class TestConnectionPool(unittest.TestCase):
                 httplib_response = OldHTTPResponse(
                     MockSock, state_machine=h11.Connection(our_role=h11.CLIENT)
                 )
-                httplib_response.fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
+                httplib_response.fp = BytesIO(b"foo")
                 httplib_response.headers = httplib_response.msg = HTTPHeaderDict()
                 return httplib_response
 

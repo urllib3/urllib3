@@ -30,18 +30,3 @@ def is_fp_closed(obj):
         pass
 
     raise ValueError("Unable to determine whether fp is closed.")
-
-
-def is_response_to_head(response):
-    """
-    Checks whether the request of a response has been a HEAD-request.
-    Handles the quirks of AppEngine.
-
-    :param conn:
-    :type conn: :class:`httplib.HTTPResponse`
-    """
-    # FIXME: Can we do this somehow without accessing private httplib _method?
-    method = response._method
-    if isinstance(method, int):  # Platform-specific: Appengine
-        return method == 3
-    return method.upper() == 'HEAD'

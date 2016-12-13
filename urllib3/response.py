@@ -10,12 +10,11 @@ import h11
 
 from ._collections import HTTPHeaderDict
 from .exceptions import (
-    BodyNotHttplibCompatible, ProtocolError, DecodeError, ReadTimeoutError,
-    ResponseNotChunked
+    ProtocolError, DecodeError, ReadTimeoutError
 )
 from .packages.six import string_types as basestring, binary_type
 from .connection import BaseSSLError
-from .util.response import is_fp_closed, is_response_to_head
+from .util.response import is_fp_closed
 
 log = logging.getLogger(__name__)
 
@@ -133,15 +132,6 @@ class HTTPResponse(io.IOBase):
 
         if hasattr(body, 'read'):
             self._fp = body
-
-        # Are we using the chunked-style of transfer encoding?
-        self.chunked = False
-        self.chunk_left = None
-        tr_enc = self.headers.get('transfer-encoding', '').lower()
-        # Don't incur the penalty of creating a list and then discarding it
-        encodings = (enc.strip() for enc in tr_enc.split(","))
-        if "chunked" in encodings:
-            self.chunked = True
 
         # If requested, preload the body.
         if preload_content and not self._body:
@@ -361,15 +351,11 @@ class HTTPResponse(io.IOBase):
             If True, will attempt to decode the body based on the
             'content-encoding' header.
         """
-        if self.chunked and self.supports_chunked_reads():
-            for line in self.read_chunked(amt, decode_content=decode_content):
-                yield line
-        else:
-            while not is_fp_closed(self._fp):
-                data = self.read(amt=amt, decode_content=decode_content)
+        while not is_fp_closed(self._fp):
+            data = self.read(amt=amt, decode_content=decode_content)
 
-                if data:
-                    yield data
+            if data:
+                yield data
 
     @classmethod
     def from_httplib(ResponseCls, r, **response_kw):
@@ -448,59 +434,3 @@ class HTTPResponse(io.IOBase):
         else:
             b[:len(temp)] = temp
             return len(temp)
-
-    def supports_chunked_reads(self):
-        """
-        Checks if the underlying file-like object looks like a
-        httplib.HTTPResponse object. We do this by testing for the fp
-        attribute. If it is present we assume it returns raw chunks as
-        processed by read_chunked().
-        """
-        return hasattr(self._fp, "_read_chunk")
-
-    def read_chunked(self, amt=None, decode_content=None):
-        """
-        Similar to :meth:`HTTPResponse.read`, but with an additional
-        parameter: ``decode_content``.
-
-        :param decode_content:
-            If True, will attempt to decode the body based on the
-            'content-encoding' header.
-        """
-        self._init_decoder()
-        # FIXME: Rewrite this method and make it a class with a better structured logic.
-        if not self.chunked:
-            raise ResponseNotChunked(
-                "Response is not chunked. "
-                "Header 'transfer-encoding: chunked' is missing.")
-        if not self.supports_chunked_reads():
-            raise BodyNotHttplibCompatible(
-                "Body should be httplib.HTTPResponse like. "
-                "It should have have an fp attribute which returns raw chunks.")
-
-        # Don't bother reading the body of a HEAD request.
-        if self._original_response and is_response_to_head(self._original_response):
-            self._original_response.close()
-            return
-
-        with self._error_catcher():
-            while True:
-                chunk = self._fp._read_chunk(amt)
-                if not chunk:
-                    break
-                decoded = self._decode(chunk, decode_content=decode_content,
-                                       flush_decoder=False)
-                if decoded:
-                    yield decoded
-
-            if decode_content:
-                # On CPython and PyPy, we should never need to flush the
-                # decoder. However, on Jython we *might* need to, so
-                # lets defensively do it anyway.
-                decoded = self._flush_decoder()
-                if decoded:  # Platform-specific: Jython.
-                    yield decoded
-
-            # We read everything; close the "file".
-            if self._original_response:
-                self._original_response.close()

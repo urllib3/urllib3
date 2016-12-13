@@ -188,19 +188,6 @@ class DependencyWarning(HTTPWarning):
     pass
 
 
-class ResponseNotChunked(ProtocolError, ValueError):
-    "Response needs to be chunked in order to read it as chunks."
-    pass
-
-
-class BodyNotHttplibCompatible(HTTPError):
-    """
-    Body should be httplib.HTTPResponse like (have an fp attribute which
-    returns raw chunks) for read_chunked().
-    """
-    pass
-
-
 class InvalidHeader(HTTPError):
     "The header provided was somehow invalid."
     pass
