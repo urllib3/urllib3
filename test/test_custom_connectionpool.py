@@ -2,6 +2,8 @@ from __future__ import absolute_import
 
 if str is bytes:
     import unittest2 as unittest
+else:
+    import unittest
 
 from urllib3.connectionpool import HTTPConnection, HTTPConnectionPool
 from urllib3.response import httplib, HTTPResponse
