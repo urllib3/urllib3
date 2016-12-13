@@ -18,7 +18,7 @@ class RetryTest(unittest.TestCase):
         retry = Retry()
         self.assertEqual(str(retry), 'Retry(total=10, connect=None, read=None, redirect=None)')
         for _ in range(3):
-            retry = retry.increment()
+            retry = retry.increment(method='GET')
         self.assertEqual(str(retry), 'Retry(total=7, connect=None, read=None, redirect=None)')
 
     def test_retry_both_specified(self):
@@ -45,9 +45,9 @@ class RetryTest(unittest.TestCase):
         """ A lower read timeout than the total is honored """
         error = ReadTimeoutError(None, "/", "read timed out")
         retry = Retry(read=2, total=3)
-        retry = retry.increment(error=error)
-        retry = retry.increment(error=error)
-        self.assertRaises(MaxRetryError, retry.increment, error=error)
+        retry = retry.increment(method='GET', error=error)
+        retry = retry.increment(method='GET', error=error)
+        self.assertRaises(MaxRetryError, retry.increment, method='GET', error=error)
 
     def test_retry_total_none(self):
         """ if Total is none, connect error should take precedence """
@@ -63,9 +63,9 @@ class RetryTest(unittest.TestCase):
 
         error = ReadTimeoutError(None, "/", "read timed out")
         retry = Retry(connect=2, total=None)
-        retry = retry.increment(error=error)
-        retry = retry.increment(error=error)
-        retry = retry.increment(error=error)
+        retry = retry.increment(method='GET', error=error)
+        retry = retry.increment(method='GET', error=error)
+        retry = retry.increment(method='GET', error=error)
         self.assertFalse(retry.is_exhausted())
 
     def test_retry_default(self):
@@ -93,7 +93,7 @@ class RetryTest(unittest.TestCase):
         error = ReadTimeoutError(None, "/", "read timed out")
         retry = Retry(read=0)
         try:
-            retry.increment(error=error)
+            retry.increment(method='GET', error=error)
             self.fail("Failed to raise error.")
         except MaxRetryError as e:
             self.assertEqual(e.reason, error)
@@ -105,49 +105,49 @@ class RetryTest(unittest.TestCase):
         retry = Retry(total=100, backoff_factor=0.2)
         self.assertEqual(retry.get_backoff_time(), 0) # First request
 
-        retry = retry.increment()
+        retry = retry.increment(method='GET')
         self.assertEqual(retry.get_backoff_time(), 0) # First retry
 
-        retry = retry.increment()
+        retry = retry.increment(method='GET')
         self.assertEqual(retry.backoff_factor, 0.2)
         self.assertEqual(retry.total, 98)
         self.assertEqual(retry.get_backoff_time(), 0.4) # Start backoff
 
-        retry = retry.increment()
+        retry = retry.increment(method='GET')
         self.assertEqual(retry.get_backoff_time(), 0.8)
 
-        retry = retry.increment()
+        retry = retry.increment(method='GET')
         self.assertEqual(retry.get_backoff_time(), 1.6)
 
         for i in xrange(10):
-            retry = retry.increment()
+            retry = retry.increment(method='GET')
 
         self.assertEqual(retry.get_backoff_time(), max_backoff)
 
     def test_zero_backoff(self):
         retry = Retry()
         self.assertEqual(retry.get_backoff_time(), 0)
-        retry = retry.increment()
-        retry = retry.increment()
+        retry = retry.increment(method='GET')
+        retry = retry.increment(method='GET')
         self.assertEqual(retry.get_backoff_time(), 0)
 
     def test_backoff_reset_after_redirect(self):
         retry = Retry(total=100, redirect=5, backoff_factor=0.2)
-        retry = retry.increment()
-        retry = retry.increment()
+        retry = retry.increment(method='GET')
+        retry = retry.increment(method='GET')
         self.assertEqual(retry.get_backoff_time(), 0.4)
         redirect_response = HTTPResponse(status=302, headers={'location': 'test'})
-        retry = retry.increment(response=redirect_response)
+        retry = retry.increment(method='GET', response=redirect_response)
         self.assertEqual(retry.get_backoff_time(), 0)
-        retry = retry.increment()
-        retry = retry.increment()
+        retry = retry.increment(method='GET')
+        retry = retry.increment(method='GET')
         self.assertEqual(retry.get_backoff_time(), 0.4)
 
     def test_sleep(self):
         # sleep a very small amount of time so our code coverage is happy
         retry = Retry(backoff_factor=0.0001)
-        retry = retry.increment()
-        retry = retry.increment()
+        retry = retry.increment(method='GET')
+        retry = retry.increment(method='GET')
         retry.sleep()
 
     def test_status_forcelist(self):
@@ -178,16 +178,16 @@ class RetryTest(unittest.TestCase):
     def test_exhausted(self):
         self.assertFalse(Retry(0).is_exhausted())
         self.assertTrue(Retry(-1).is_exhausted())
-        self.assertEqual(Retry(1).increment().total, 0)
+        self.assertEqual(Retry(1).increment(method='GET').total, 0)
 
     def test_disabled(self):
-        self.assertRaises(MaxRetryError, Retry(-1).increment)
-        self.assertRaises(MaxRetryError, Retry(0).increment)
+        self.assertRaises(MaxRetryError, Retry(-1).increment, method='GET')
+        self.assertRaises(MaxRetryError, Retry(0).increment, method='GET')
 
     def test_error_message(self):
         retry = Retry(total=0)
         try:
-            retry = retry.increment(error=ReadTimeoutError(None, "/", "read timed out"))
+            retry = retry.increment(method='GET', error=ReadTimeoutError(None, "/", "read timed out"))
             raise AssertionError("Should have raised a MaxRetryError")
         except MaxRetryError as e:
             assert 'Caused by redirect' not in str(e)

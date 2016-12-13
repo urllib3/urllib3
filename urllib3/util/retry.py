@@ -338,7 +338,7 @@ class Retry(object):
 
         elif error and self._is_read_error(error):
             # Read retry?
-            if read is False or (method is not None and not self._is_method_retryable(method)):
+            if read is False or not self._is_method_retryable(method):
                 raise six.reraise(type(error), error, _stacktrace)
             elif read is not None:
                 read -= 1
