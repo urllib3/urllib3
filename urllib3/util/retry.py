@@ -274,7 +274,8 @@ class Retry(object):
         return isinstance(err, (ReadTimeoutError, ProtocolError))
 
     def _is_method_retryable(self, method):
-        """ Is this method retryable? (Based on method whitelist)
+        """ Checks if a given HTTP method should be retried upon, depending if
+        it is included on the method whitelist.
         """
         if self.method_whitelist and method.upper() not in self.method_whitelist:
             return False
@@ -282,7 +283,11 @@ class Retry(object):
         return True
 
     def is_retry(self, method, status_code, has_retry_after=False):
-        """ Is this method/status code retryable? (Based on method/codes whitelists)
+        """ Is this method/status code retryable? (Based on whitelists and control
+        variables such as the number of total retries to allow, whether to
+        respect the Retry-After header, whether this header is present, and
+        whether the returned status code is on the list of status codes to
+        be retried upon on the presence of the aforementioned header)
         """
         if not self._is_method_retryable(method):
             return False
