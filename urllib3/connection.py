@@ -122,8 +122,7 @@ class DummyConnection(object):
     pass
 
 
-# TODO: This is a holdover from httplib, do we need it?
-_UNKNOWN = object()
+_DEFAULT_SOCKET_OPTS = object()
 
 
 # TODO: This is a holdover from httplib, do we need it?
@@ -167,12 +166,12 @@ class OldHTTPResponse(io.BufferedIOBase):
         self.headers = self.msg = None
 
         # from the Status-Line of the response
-        self.version = _UNKNOWN
-        self.status = _UNKNOWN
-        self.reason = _UNKNOWN
+        self.version = None
+        self.status = None
+        self.reason = None
 
-        self.length = _UNKNOWN          # number of bytes left in response
-        self.will_close = _UNKNOWN      # conn will close at end of response
+        self.length = None          # number of bytes left in response
+        self.will_close = None      # conn will close at end of response
 
     def _read_response(self):
         """
@@ -470,7 +469,7 @@ class HTTPConnection(object):
     response_class = OldHTTPResponse
 
     def __init__(self, host, port, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-                 source_address=None, socket_options=_UNKNOWN):
+                 source_address=None, socket_options=_DEFAULT_SOCKET_OPTS):
 
         # TODO: Do we need this? I think we might not: urllib3 may not ever
         # provide host and port in one string like the stdlib allows.
@@ -489,7 +488,7 @@ class HTTPConnection(object):
         #: The socket options provided by the user. If no options are
         #: provided, we use the default options.
         self.socket_options = (
-            socket_options if socket_options is not _UNKNOWN
+            socket_options if socket_options is not _DEFAULT_SOCKET_OPTS
             else self.default_socket_options
         )
 
