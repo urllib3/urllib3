@@ -120,7 +120,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         delta = time.time() - now
         block_event.set() # Release request
 
-        self.assertTrue(delta < LONG_TIMEOUT, "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT")
+        self.assertLess(delta, LONG_TIMEOUT, "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT")
         pool._put_conn(conn)
 
         wait_for_socket(ready_event)
@@ -128,7 +128,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/', timeout=timeout)
         delta = time.time() - now
 
-        self.assertTrue(delta < LONG_TIMEOUT, "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT")
+        self.assertLess(delta, LONG_TIMEOUT, "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT")
         block_event.set() # Release request
 
         # Timeout int/float passed directly to request and _make_request should
