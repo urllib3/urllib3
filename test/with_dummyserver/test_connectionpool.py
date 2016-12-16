@@ -130,6 +130,12 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         block_event.set() # Release request
 
         self.assertLess(delta, LONG_TIMEOUT, "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT")
+        # TEMPORARY CI DEBUGGING
+        # Pre-emptively close the connection & make a new one
+        conn.close()
+        pool._put_conn(conn)
+        conn = pool._get_conn()
+        # END TEMPORARY CI DEBUGGING
         pool._put_conn(conn)
 
         wait_for_socket(ready_event)
