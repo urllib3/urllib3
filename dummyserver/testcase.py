@@ -1,8 +1,12 @@
-import unittest
 import socket
 import threading
 from nose.plugins.skip import SkipTest
 from tornado import ioloop, web
+
+if str is bytes:
+    import unittest2 as unittest
+else:
+    import unittest
 
 from dummyserver.server import (
     SocketServerThread,
