@@ -3,11 +3,6 @@ import threading
 from nose.plugins.skip import SkipTest
 from tornado import ioloop, web
 
-if str is bytes:
-    import unittest2 as unittest
-else:
-    import unittest
-
 from dummyserver.server import (
     SocketServerThread,
     run_tornado_app,
@@ -16,6 +11,11 @@ from dummyserver.server import (
 )
 from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
+
+if str is bytes:
+    import unittest2 as unittest
+else:
+    import unittest
 
 
 def consume_socket(sock, chunks=65536):
