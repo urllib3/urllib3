@@ -341,6 +341,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # for this connection pool.
             # Note: we can't use the unbound method directly, as that won't
             # always work with Python 2.x classes
+            msg = ("TypeError in (%r).getresponse(buffering=True): "
+                   "shadowing (%r)._getresponse()")
+            log.debug(msg, conn, self)
             def _unbuffered_get_response(conn):
                 return conn.getresponse()
             self._getresponse = _unbuffered_get_response
