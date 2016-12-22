@@ -556,7 +556,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         self.assertEqual(err.__repr__(), "<SelectorError errno=1>")
         self.assertEqual(err.__str__(), "<SelectorError errno=1>")
 
-
+        
 class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
     SELECTOR = selectors.DefaultSelector
 
