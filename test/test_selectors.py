@@ -556,7 +556,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         self.assertEqual(err.__repr__(), "<SelectorError errno=1>")
         self.assertEqual(err.__str__(), "<SelectorError errno=1>")
 
-        
+
 class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
     SELECTOR = selectors.DefaultSelector
 
@@ -692,20 +692,40 @@ class ScalableSelectorMixin(object):
 
 
 @skipUnless(hasattr(selectors, "SelectSelector"), "Platform doesn't have a SelectSelector")
-class SelectSelectorTestCase(BaseSelectorTestCase, BaseWaitForTestCase):
+class SelectSelectorTestCase(BaseSelectorTestCase):
     SELECTOR = getattr(selectors, "SelectSelector", None)
 
 
 @skipUnless(hasattr(selectors, "PollSelector"), "Platform doesn't have a PollSelector")
-class PollSelectorTestCase(BaseSelectorTestCase, BaseWaitForTestCase, ScalableSelectorMixin):
+class PollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     SELECTOR = getattr(selectors, "PollSelector", None)
 
 
 @skipUnless(hasattr(selectors, "EpollSelector"), "Platform doesn't have an EpollSelector")
-class EpollSelectorTestCase(BaseSelectorTestCase, BaseWaitForTestCase, ScalableSelectorMixin):
+class EpollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     SELECTOR = getattr(selectors, "EpollSelector", None)
 
 
 @skipUnless(hasattr(selectors, "KqueueSelector"), "Platform doesn't have a KqueueSelector")
-class KqueueSelectorTestCase(BaseSelectorTestCase, BaseWaitForTestCase, ScalableSelectorMixin):
+class KqueueSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
+    SELECTOR = getattr(selectors, "KqueueSelector", None)
+
+
+@skipUnless(hasattr(selectors, "SelectSelector"), "Platform doesn't have a SelectSelector")
+class SelectWaitForTestCase(BaseWaitForTestCase):
+    SELECTOR = getattr(selectors, "SelectSelector", None)
+
+
+@skipUnless(hasattr(selectors, "PollSelector"), "Platform doesn't have a PollSelector")
+class PollWaitForTestCase(BaseWaitForTestCase):
+    SELECTOR = getattr(selectors, "PollSelector", None)
+
+
+@skipUnless(hasattr(selectors, "EpollSelector"), "Platform doesn't have an EpollSelector")
+class EpollWaitForTestCase(BaseWaitForTestCase):
+    SELECTOR = getattr(selectors, "EpollSelector", None)
+
+
+@skipUnless(hasattr(selectors, "KqueueSelector"), "Platform doesn't have a KqueueSelector")
+class KqueueWaitForTestCase(BaseWaitForTestCase):
     SELECTOR = getattr(selectors, "KqueueSelector", None)
