@@ -122,11 +122,6 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
     """ Implements the tests that each type of selector must pass. """
     SELECTOR = selectors.DefaultSelector
 
-    def patch_wait_selector(self):
-        old_selector = wait.DefaultSelector
-        wait.DefaultSelector = self.SELECTOR
-        self.addCleanup(setattr, wait, "DefaultSelector", old_selector)
-
     def make_socketpair(self):
         rd, wr = socket.socketpair()
 
@@ -561,6 +556,32 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         self.assertEqual(err.__repr__(), "<SelectorError errno=1>")
         self.assertEqual(err.__str__(), "<SelectorError errno=1>")
 
+
+class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
+    SELECTOR = selectors.DefaultSelector
+
+    def patch_wait_selector(self):
+        old_selector = wait.DefaultSelector
+        wait.DefaultSelector = self.SELECTOR
+        self.addCleanup(setattr, wait, "DefaultSelector", old_selector)
+
+    def make_socketpair(self):
+        rd, wr = socket.socketpair()
+
+        # Make non-blocking so we get errors if the
+        # sockets are interacted with but not ready.
+        rd.settimeout(0.0)
+        wr.settimeout(0.0)
+
+        self.addCleanup(rd.close)
+        self.addCleanup(wr.close)
+        return rd, wr
+
+    def make_selector(self):
+        s = self.SELECTOR()
+        self.addCleanup(s.close)
+        return s
+
     def test_wait_for_read_single_socket(self):
         self.patch_wait_selector()
         rd, wr = self.make_socketpair()
@@ -605,7 +626,6 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         rd, wr = self.make_socketpair()
         with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
             wait.wait_for_read([rd], timeout=SHORT_SELECT)
-
 
     @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_no_event(self):
@@ -672,20 +692,20 @@ class ScalableSelectorMixin(object):
 
 
 @skipUnless(hasattr(selectors, "SelectSelector"), "Platform doesn't have a SelectSelector")
-class SelectSelectorTestCase(BaseSelectorTestCase):
+class SelectSelectorTestCase(BaseSelectorTestCase, BaseWaitForTestCase):
     SELECTOR = getattr(selectors, "SelectSelector", None)
 
 
 @skipUnless(hasattr(selectors, "PollSelector"), "Platform doesn't have a PollSelector")
-class PollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
+class PollSelectorTestCase(BaseSelectorTestCase, BaseWaitForTestCase, ScalableSelectorMixin):
     SELECTOR = getattr(selectors, "PollSelector", None)
 
 
 @skipUnless(hasattr(selectors, "EpollSelector"), "Platform doesn't have an EpollSelector")
-class EpollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
+class EpollSelectorTestCase(BaseSelectorTestCase, BaseWaitForTestCase, ScalableSelectorMixin):
     SELECTOR = getattr(selectors, "EpollSelector", None)
 
 
 @skipUnless(hasattr(selectors, "KqueueSelector"), "Platform doesn't have a KqueueSelector")
-class KqueueSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
+class KqueueSelectorTestCase(BaseSelectorTestCase, BaseWaitForTestCase, ScalableSelectorMixin):
     SELECTOR = getattr(selectors, "KqueueSelector", None)
