@@ -25,6 +25,9 @@ dev (master)
 * Fix some bugs that occur when modules incautiously patch the queue module.
   (Pull #1061)
 
+* Prevent retries from occuring on read timeouts for which the request method
+  was not in the method whitelist. (Issue #1059)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
