@@ -218,5 +218,8 @@ In chronological order:
 * Alexandre Dias <alex.dias@smarkets.com>
   * Don't retry on timeout if method not in whitelist
 
+* Moinuddin Quadri <moin18@gmail.com>
+  * Lazy load idna library
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

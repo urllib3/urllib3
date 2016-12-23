@@ -43,7 +43,6 @@ set the ``urllib3.contrib.pyopenssl.DEFAULT_SSL_CIPHER_LIST`` variable.
 """
 from __future__ import absolute_import
 
-import idna
 import OpenSSL.SSL
 from cryptography import x509
 from cryptography.hazmat.backends.openssl import backend as openssl_backend
@@ -159,12 +158,14 @@ def _dnsname_to_stdlib(name):
     then on Python 3 we also need to convert to unicode via UTF-8 (the stdlib
     uses PyUnicode_FromStringAndSize on it, which decodes via UTF-8).
     """
+    @util.importutil.load_idna
     def idna_encode(name):
         """
         Borrowed wholesale from the Python Cryptography Project. It turns out
         that we can't just safely call `idna.encode`: it can explode for
         wildcard names. This avoids that problem.
         """
+        import idna
         for prefix in [u'*.', u'.']:
             if name.startswith(prefix):
                 name = name[len(prefix):]
