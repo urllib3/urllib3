@@ -155,7 +155,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         A dictionary with proxy headers, should not be used directly,
         instead, see :class:`urllib3.connectionpool.ProxyManager`"
 
-    :param \**conn_kw:
+    :param \\**conn_kw:
         Additional parameters are used to create fresh :class:`urllib3.connection.HTTPConnection`,
         :class:`urllib3.connection.HTTPSConnection` instances.
     """
@@ -537,7 +537,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             redirect. Typically this won't need to be set because urllib3 will
             auto-populate the value when needed.
 
-        :param \**response_kw:
+        :param \\**response_kw:
             Additional parameters are passed to
             :meth:`urllib3.response.HTTPResponse.from_httplib`
         """
@@ -866,7 +866,7 @@ def connection_from_url(url, **kw):
     :param url:
         Absolute URL string that must include the scheme. Port is optional.
 
-    :param \**kw:
+    :param \\**kw:
         Passes additional parameters to the constructor of the appropriate
         :class:`.ConnectionPool`. Useful for specifying things like
         timeout, maxsize, headers, etc.
