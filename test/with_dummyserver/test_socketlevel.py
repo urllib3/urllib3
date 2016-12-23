@@ -11,7 +11,6 @@ from urllib3.exceptions import (
         SSLError,
         ProtocolError,
 )
-from urllib3.response import httplib
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util.timeout import Timeout
 from urllib3.util.retry import Retry
@@ -614,9 +613,9 @@ class TestProxyManager(SocketDummyServerTestCase):
         self.assertEqual(sorted(r.data.split(b'\r\n')),
                          sorted([
                              b'GET http://google.com/ HTTP/1.1',
-                             b'Host: google.com',
-                             b'Accept-Encoding: identity',
-                             b'Accept: */*',
+                             b'host: google.com',
+                             b'accept-encoding: identity',
+                             b'accept: */*',
                              b'',
                              b'',
                          ]))
@@ -651,7 +650,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         # FIXME: The order of the headers is not predictable right now. We
         # should fix that someday (maybe when we migrate to
         # OrderedDict/MultiDict).
-        self.assertTrue(b'For The Proxy: YEAH!\r\n' in r.data)
+        self.assertTrue(b'for the proxy: YEAH!\r\n' in r.data)
 
     def test_retries(self):
         close_event = Event()
@@ -874,7 +873,7 @@ class TestErrorWrapping(SocketDummyServerTestCase):
 class TestHeaders(SocketDummyServerTestCase):
 
     @onlyPy3
-    def test_httplib_headers_case_insensitive(self):
+    def test_headers_always_lowercase(self):
         self.start_response_handler(
            b'HTTP/1.1 200 OK\r\n'
            b'Content-Length: 0\r\n'
@@ -882,12 +881,12 @@ class TestHeaders(SocketDummyServerTestCase):
            b'\r\n'
         )
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        HEADERS = {'Content-Length': '0', 'Content-type': 'text/plain'}
+        HEADERS = {'content-length': '0', 'content-type': 'text/plain'}
         r = pool.request('GET', '/')
         self.assertEqual(HEADERS, dict(r.headers.items())) # to preserve case sensitivity
 
-    def test_headers_are_sent_with_the_original_case(self):
-        headers = {'foo': 'bar', 'bAz': 'quux'}
+    def test_headers_are_sent_with_lower_case(self):
+        headers = {'Foo': 'bar', 'bAz': 'quux'}
         parsed_headers = {}
 
         def socket_handler(listener):
@@ -911,22 +910,23 @@ class TestHeaders(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        expected_headers = {'Accept-Encoding': 'identity',
-                            'Host': '{0}:{1}'.format(self.host, self.port)}
-        expected_headers.update(headers)
+        expected_headers = {'accept-encoding': 'identity',
+                            'host': '{0}:{1}'.format(self.host, self.port)}
+        for key, value in headers.items():
+            expected_headers[key.lower()] = value
 
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         pool.request('GET', '/', headers=HTTPHeaderDict(headers))
         self.assertEqual(expected_headers, parsed_headers)
-    
+
     def test_request_headers_are_sent_in_the_original_order(self):
         # NOTE: Probability this test gives a false negative is 1/(K!)
         K = 16
         # NOTE: Provide headers in non-sorted order (i.e. reversed)
         #       so that if the internal implementation tries to sort them,
         #       a change will be detected.
-        expected_request_headers = [(u'X-Header-%d' % i, str(i)) for i in reversed(range(K))]
-        
+        expected_request_headers = [(u'x-header-%d' % i, str(i)) for i in reversed(range(K))]
+
         actual_request_headers = []
 
         def socket_handler(listener):
@@ -940,7 +940,7 @@ class TestHeaders(SocketDummyServerTestCase):
 
             for header in headers_list:
                 (key, value) = header.split(b': ')
-                if not key.decode('ascii').startswith(u'X-Header-'):
+                if not key.decode('ascii').startswith(u'x-header-'):
                     continue
                 actual_request_headers.append((key.decode('ascii'), value.decode('ascii')))
 
@@ -956,15 +956,15 @@ class TestHeaders(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         pool.request('GET', '/', headers=OrderedDict(expected_request_headers))
         self.assertEqual(expected_request_headers, actual_request_headers)
-    
+
     def test_response_headers_are_returned_in_the_original_order(self):
         # NOTE: Probability this test gives a false negative is 1/(K!)
         K = 16
         # NOTE: Provide headers in non-sorted order (i.e. reversed)
         #       so that if the internal implementation tries to sort them,
         #       a change will be detected.
-        expected_response_headers = [('X-Header-%d' % i, str(i)) for i in reversed(range(K))]
-        
+        expected_response_headers = [('x-header-%d' % i, str(i)) for i in reversed(range(K))]
+
         def socket_handler(listener):
             sock = listener.accept()[0]
 
@@ -977,7 +977,7 @@ class TestHeaders(SocketDummyServerTestCase):
                           (k.encode('utf8') + b': ' + v.encode('utf8'))
                           for (k, v) in expected_response_headers
                       ]) +
-                      b'\r\n')
+                      b'\r\n\r\n')
             sock.close()
 
         self._start_server(socket_handler)
@@ -985,36 +985,23 @@ class TestHeaders(SocketDummyServerTestCase):
         r = pool.request('GET', '/', retries=0)
         actual_response_headers = [
             (k, v) for (k, v) in r.headers.items()
-            if k.startswith('X-Header-')
+            if k.startswith('x-header-')
         ]
         self.assertEqual(expected_response_headers, actual_response_headers)
 
 
 class TestBrokenHeaders(SocketDummyServerTestCase):
-    def setUp(self):
-        if issubclass(httplib.HTTPMessage, MimeToolMessage):
-            raise SkipTest('Header parsing errors not available')
-
-        super(TestBrokenHeaders, self).setUp()
 
     def _test_broken_header_parsing(self, headers):
         self.start_response_handler((
            b'HTTP/1.1 200 OK\r\n'
            b'Content-Length: 0\r\n'
            b'Content-type: text/plain\r\n'
-           ) + b'\r\n'.join(headers) + b'\r\n'
+           ) + b''.join(headers) + b'\r\n'
         )
 
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
-
-        with LogRecorder() as logs:
-            pool.request('GET', '/')
-
-        for record in logs:
-            if 'Failed to parse headers' in record.msg and \
-                    pool._absolute_url('/') == record.args[0]:
-                return
-        self.fail('Missing log about unparsed headers')
+        self.assertRaises(ProtocolError, pool.request, 'GET', '/')
 
     def test_header_without_name(self):
         self._test_broken_header_parsing([
@@ -1030,8 +1017,8 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
 
     def test_header_without_colon_or_value(self):
         self._test_broken_header_parsing([
-            b'Broken Header',
-            b'Another: Header',
+            b'Broken Header\r\n',
+            b'Another: Header\r\n',
         ])
 
 
@@ -1118,17 +1105,13 @@ class TestBadContentLength(SocketDummyServerTestCase):
         conn = HTTPConnectionPool(self.host, self.port, maxsize=1)
 
         # Test stream read when content length less than headers claim
-        get_response = conn.request('GET', url='/', preload_content=False,
-                                    enforce_content_length=True)
+        get_response = conn.request('GET', url='/', preload_content=False)
         data = get_response.stream(100)
-        # Read "good" data before we try to read again.
-        # This won't trigger till generator is exhausted.
-        next(data)
         try:
             next(data)
             self.assertFail()
         except ProtocolError as e:
-            self.assertTrue('12 bytes read, 10 more expected' in str(e))
+            self.assertTrue('received 12 bytes, expected 22' in str(e))
 
         done_event.set()
 
@@ -1155,8 +1138,7 @@ class TestBadContentLength(SocketDummyServerTestCase):
         conn = HTTPConnectionPool(self.host, self.port, maxsize=1)
 
         #Test stream on 0 length body
-        head_response = conn.request('HEAD', url='/', preload_content=False,
-                                     enforce_content_length=True)
+        head_response = conn.request('HEAD', url='/', preload_content=False)
         data = [chunk for chunk in head_response.stream(1)]
         self.assertEqual(len(data), 0)
 

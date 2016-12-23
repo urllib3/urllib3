@@ -18,7 +18,6 @@ env:
     - PYTHONWARNINGS=always::DeprecationWarning
   matrix:
     - TOXENV=flake8-py3
-    - TOXENV=py26
     - TOXENV=py27
     - TOXENV=py33
     - TOXENV=py34
@@ -33,9 +32,6 @@ matrix:
       env: TOXENV=pypy
     - language: generic
       os: osx
-      env: TOXENV=py26
-    - language: generic
-      os: osx
       env: TOXENV=py27
     - language: generic
       os: osx
@@ -48,4 +44,5 @@ matrix:
       env: TOXENV=py35
   allow_failures:
   - python: pypy-5.4
+  - env: TOXENV=gae
 sudo: false

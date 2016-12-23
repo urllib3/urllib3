@@ -13,7 +13,7 @@ from datetime import timedelta
 import mock
 
 from .. import (
-    requires_network, onlyPy3, onlyPy26OrOlder,
+    requires_network, onlyPy3,
     TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES,
 )
 from ..port_helpers import find_unused_port
@@ -47,7 +47,7 @@ log.addHandler(logging.StreamHandler(sys.stdout))
 
 
 SHORT_TIMEOUT = 0.001
-LONG_TIMEOUT = 0.01
+LONG_TIMEOUT = 0.1
 
 
 def wait_for_socket(ready_event):
@@ -361,10 +361,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         timeout = Timeout(total=None)
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
         conn = pool._get_conn()
-        try:
-            conn.set_tunnel(self.host, self.port)
-        except AttributeError: # python 2.6
-            conn._set_tunnel(self.host, self.port)
+        conn.set_tunnel(self.host, self.port)
 
         conn._tunnel = mock.Mock(return_value=None)
         pool._make_request(conn, 'GET', '/')

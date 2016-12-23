@@ -7,12 +7,13 @@ import warnings
 from socket import error as SocketError, timeout as SocketTimeout
 import socket
 
+import h11
+
 
 from .exceptions import (
     ClosedPoolError,
     ProtocolError,
     EmptyPoolError,
-    HeaderParsingError,
     HostChangedError,
     LocationValueError,
     MaxRetryError,
@@ -30,14 +31,13 @@ from .connection import (
     port_by_scheme,
     DummyConnection,
     HTTPConnection, HTTPSConnection, VerifiedHTTPSConnection,
-    HTTPException, BaseSSLError,
+    BaseSSLError
 )
 from .request import RequestMethods
 from .response import HTTPResponse
 
 from .util.connection import is_connection_dropped
 from .util.request import set_file_position
-from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import get_host, Url
@@ -164,15 +164,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     ConnectionCls = HTTPConnection
     ResponseCls = HTTPResponse
 
-    def __init__(self, host, port=None, strict=False,
+    def __init__(self, host, port=None,
                  timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1, block=False,
                  headers=None, retries=None,
                  _proxy=None, _proxy_headers=None,
                  **conn_kw):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
-
-        self.strict = strict
 
         if not isinstance(timeout, Timeout):
             timeout = Timeout.from_float(timeout)
@@ -214,7 +212,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         conn = self.ConnectionCls(host=self.host, port=self.port,
                                   timeout=self.timeout.connect_timeout,
-                                  strict=self.strict, **self.conn_kw)
+                                  **self.conn_kw)
         return conn
 
     def _get_conn(self, timeout=None):
@@ -247,6 +245,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if conn and is_connection_dropped(conn):
             log.debug("Resetting dropped connection: %s", self.host)
             conn.close()
+            # TODO: This now doesn't work at all, but we can signal it in a
+            # much more intelligent way now.
             if getattr(conn, 'auto_open', 1) == 0:
                 # This is a proxied connection that has been mutated by
                 # httplib._tunnel() and cannot be reused (since it would
@@ -321,6 +321,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Catch possible read timeouts thrown as SSL errors. If not the
         # case, rethrow the original. We need to do this because of:
         # http://bugs.python.org/issue10272
+        # TODO: Can we remove this?
         if 'timed out' in str(err) or 'did not complete (read)' in str(err):  # Python 2.6
             raise ReadTimeoutError(self, url, "Read timed out. (read timeout=%s)" % timeout_value)
 
@@ -381,15 +382,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Receive the response from the server
         try:
-            try:  # Python 2.7, use buffering of HTTP responses
-                httplib_response = conn.getresponse(buffering=True)
-            except TypeError:  # Python 2.6 and older, Python 3
-                try:
-                    httplib_response = conn.getresponse()
-                except Exception as e:
-                    # Remove the TypeError from the exception chain in Python 3;
-                    # otherwise it looks like a programming error was the cause.
-                    six.raise_from(e, None)
+            httplib_response = conn.getresponse()
         except (SocketTimeout, BaseSSLError, SocketError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
@@ -399,13 +392,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         log.debug("%s://%s:%s \"%s %s %s\" %s %s", self.scheme, self.host, self.port,
                   method, url, http_version, httplib_response.status,
                   httplib_response.length)
-
-        try:
-            assert_header_parsing(httplib_response.msg)
-        except HeaderParsingError as hpe:  # Platform-specific: Python 3
-            log.warning(
-                'Failed to parse headers (url=%s): %s',
-                self._absolute_url(url), hpe, exc_info=True)
 
         return httplib_response
 
@@ -639,14 +625,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             clean_exit = False
             raise
 
-        except (TimeoutError, HTTPException, SocketError, ProtocolError) as e:
+        except (TimeoutError, SocketError, ProtocolError, h11.ProtocolError) as e:
             # Discard the connection for these exceptions. It will be
             # be replaced during the next _get_conn() call.
             clean_exit = False
 
             if isinstance(e, (SocketError, NewConnectionError)) and self.proxy:
                 e = ProxyError('Cannot connect to proxy.', e)
-            elif isinstance(e, (SocketError, HTTPException)):
+            elif isinstance(e, (SocketError, h11.ProtocolError)):
                 e = ProtocolError('Connection aborted.', e)
 
             retries = retries.increment(method, url, error=e, _pool=self,
@@ -754,7 +740,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     ConnectionCls = HTTPSConnection
 
     def __init__(self, host, port=None,
-                 strict=False, timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1,
+                 timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1,
                  block=False, headers=None, retries=None,
                  _proxy=None, _proxy_headers=None,
                  key_file=None, cert_file=None, cert_reqs=None,
@@ -762,7 +748,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  assert_hostname=None, assert_fingerprint=None,
                  ca_cert_dir=None, **conn_kw):
 
-        HTTPConnectionPool.__init__(self, host, port, strict, timeout, maxsize,
+        HTTPConnectionPool.__init__(self, host, port, timeout, maxsize,
                                     block, headers, retries, _proxy, _proxy_headers,
                                     **conn_kw)
 
@@ -800,17 +786,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         Establish tunnel connection early, because otherwise httplib
         would improperly set Host: header to proxy's IP:port.
         """
-        # Python 2.7+
-        try:
-            set_tunnel = conn.set_tunnel
-        except AttributeError:  # Platform-specific: Python 2.6
-            set_tunnel = conn._set_tunnel
-
-        if sys.version_info <= (2, 6, 4) and not self.proxy_headers:  # Python 2.6.4 and older
-            set_tunnel(self.host, self.port)
-        else:
-            set_tunnel(self.host, self.port, self.proxy_headers)
-
+        conn.set_tunnel(self.host, self.port, self.proxy_headers)
         conn.connect()
 
     def _new_conn(self):
@@ -833,7 +809,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
                                   timeout=self.timeout.connect_timeout,
-                                  strict=self.strict, **self.conn_kw)
+                                  **self.conn_kw)
 
         return self._prepare_conn(conn)
 

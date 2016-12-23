@@ -2,15 +2,15 @@ from __future__ import absolute_import
 
 import unittest
 
+from urllib3.connection import OldHTTPResponse
 from urllib3.connectionpool import (
     connection_from_url,
     HTTPConnection,
     HTTPConnectionPool,
     HTTPSConnectionPool,
 )
-from urllib3.response import httplib, HTTPResponse
+from urllib3.response import HTTPResponse
 from urllib3.util.timeout import Timeout
-from urllib3.packages.six.moves.http_client import HTTPException
 from urllib3.packages.six.moves.queue import Empty
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
@@ -30,6 +30,8 @@ from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 
 from dummyserver.server import DEFAULT_CA
+
+import h11
 
 
 class TestConnectionPool(unittest.TestCase):
@@ -188,8 +190,8 @@ class TestConnectionPool(unittest.TestCase):
         POOL_SIZE = 1
         pool = HTTPConnectionPool(host='localhost', maxsize=POOL_SIZE, block=True)
 
-        def _raise(ex):
-            raise ex()
+        def _raise(ex, *args):
+            raise ex(*args)
 
         def _test(exception, expect):
             pool._make_request = lambda *args, **kwargs: _raise(exception)
@@ -206,7 +208,7 @@ class TestConnectionPool(unittest.TestCase):
         # a retry will be triggered, but that retry will fail, eventually raising
         # MaxRetryError, not EmptyPoolError
         # See: https://github.com/shazow/urllib3/issues/76
-        pool._make_request = lambda *args, **kwargs: _raise(HTTPException)
+        pool._make_request = lambda *args, **kwargs: _raise(h11.RemoteProtocolError, "")
         self.assertRaises(MaxRetryError, pool.request,
                           'GET', '/', retries=1, pool_timeout=0.01)
         self.assertEqual(pool.pool.qsize(), POOL_SIZE)
@@ -328,26 +330,29 @@ class TestConnectionPool(unittest.TestCase):
             Raises the given exception on its first call, but returns a
             successful response on subsequent calls.
             """
-            def __init__(self, ex):
+            def __init__(self, ex, *args):
                 super(_raise_once_make_request_function, self).__init__()
                 self._ex = ex
+                self._args = args
 
             def __call__(self, *args, **kwargs):
                 if self._ex:
                     ex, self._ex = self._ex, None
-                    raise ex()
-                response = httplib.HTTPResponse(MockSock)
+                    raise ex(*self._args)
+                response = OldHTTPResponse(
+                    MockSock, state_machine=h11.Connection(our_role=h11.CLIENT)
+                )
                 response.fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
                 response.headers = response.msg = HTTPHeaderDict()
                 return response
 
-        def _test(exception):
+        def _test(exception, *args):
             pool = HTTPConnectionPool(host='localhost', maxsize=1, block=True)
 
             # Verify that the request succeeds after two attempts, and that the
             # connection is left on the response object, instead of being
             # released back into the pool.
-            pool._make_request = _raise_once_make_request_function(exception)
+            pool._make_request = _raise_once_make_request_function(exception, *args)
             response = pool.urlopen('GET', '/', retries=1,
                                     release_conn=False, preload_content=False,
                                     chunked=True)
@@ -361,7 +366,7 @@ class TestConnectionPool(unittest.TestCase):
 
         # Run the test case for all the retriable exceptions.
         _test(TimeoutError)
-        _test(HTTPException)
+        _test(h11.RemoteProtocolError, "")
         _test(SocketError)
         _test(ProtocolError)
 
@@ -374,7 +379,9 @@ class TestConnectionPool(unittest.TestCase):
             ResponseCls = CustomHTTPResponse
 
             def _make_request(self, *args, **kwargs):
-                httplib_response = httplib.HTTPResponse(MockSock)
+                httplib_response = OldHTTPResponse(
+                    MockSock, state_machine=h11.Connection(our_role=h11.CLIENT)
+                )
                 httplib_response.fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
                 httplib_response.headers = httplib_response.msg = HTTPHeaderDict()
                 return httplib_response

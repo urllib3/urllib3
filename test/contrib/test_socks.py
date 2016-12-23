@@ -247,7 +247,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
                     break
 
             self.assertTrue(buf.startswith(b'GET / HTTP/1.1'))
-            self.assertTrue(b'Host: example.com' in buf)
+            self.assertTrue(b'host: example.com' in buf)
 
             sock.sendall(b'HTTP/1.1 200 OK\r\n'
                          b'Server: SocksTestServer\r\n'
@@ -463,7 +463,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
                     break
 
             self.assertTrue(buf.startswith(b'GET / HTTP/1.1'))
-            self.assertTrue(b'Host: example.com' in buf)
+            self.assertTrue(b'host: example.com' in buf)
 
             sock.sendall(b'HTTP/1.1 200 OK\r\n'
                          b'Server: SocksTestServer\r\n'

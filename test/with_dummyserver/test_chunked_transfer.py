@@ -30,7 +30,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         r = pool.urlopen('GET', '/', chunks, headers=dict(DNT='1'), chunked=True)
 
-        self.assertTrue(b'Transfer-Encoding' in self.buffer)
+        self.assertTrue(b'transfer-encoding' in self.buffer)
         body = self.buffer.split(b'\r\n\r\n', 1)[1]
         lines = body.split(b'\r\n')
         # Empty chunks should have been skipped, as this could not be distinguished
@@ -45,7 +45,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         r = pool.urlopen('GET', '/', data, chunked=True)
         header, body = self.buffer.split(b'\r\n\r\n', 1)
 
-        self.assertTrue(b'Transfer-Encoding: chunked' in header.split(b'\r\n'))
+        self.assertTrue(b'transfer-encoding: chunked' in header.split(b'\r\n'))
         if data:
             bdata = data if isinstance(data, six.binary_type) else data.encode('utf-8')
             self.assertTrue(b'\r\n' + bdata + b'\r\n' in body)

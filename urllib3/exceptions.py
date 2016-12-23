@@ -1,7 +1,4 @@
 from __future__ import absolute_import
-from .packages.six.moves.http_client import (
-    IncompleteRead as httplib_IncompleteRead
-)
 # Base Exceptions
 
 
@@ -204,25 +201,18 @@ class BodyNotHttplibCompatible(HTTPError):
     pass
 
 
-class IncompleteRead(HTTPError, httplib_IncompleteRead):
-    """
-    Response length doesn't match expected Content-Length
-
-    Subclass of http_client.IncompleteRead to allow int value
-    for `partial` to avoid creating large objects on streamed
-    reads.
-    """
-    def __init__(self, partial, expected):
-        super(IncompleteRead, self).__init__(partial, expected)
-
-    def __repr__(self):
-        return ('IncompleteRead(%i bytes read, '
-                '%i more expected)' % (self.partial, self.expected))
-
-
 class InvalidHeader(HTTPError):
     "The header provided was somehow invalid."
     pass
+
+
+class BadVersionError(ProtocolError):
+    """
+    The HTTP version in the response is unsupported.
+    """
+    def __init__(self, version):
+        message = "HTTP version {} is unsupported".format(version)
+        super(BadVersionError, self).__init__(message)
 
 
 class ProxySchemeUnknown(AssertionError, ValueError):

@@ -1,13 +1,15 @@
 import unittest
 import socket
 
+import h11
+
 from io import BytesIO, BufferedReader
 
+from urllib3.connection import OldHTTPResponse
 from urllib3.response import HTTPResponse
 from urllib3.exceptions import (
     DecodeError, ResponseNotChunked, ProtocolError, InvalidHeader
 )
-from urllib3.packages.six.moves import http_client as httplib
 from urllib3.util.retry import Retry
 from urllib3.util.response import is_fp_closed
 
@@ -27,6 +29,29 @@ a3l0LwJsloWpMbzByU5WLbRE6X5INFqjQOtIwYz5BAlhkn+kVqJvWM5vBlfrwP42ifonM5yF4ciJ
 auHVks62997mNGOsM7WXNG3P98dBHPo2NhbTvHleL0BI5dus2JY81MUOnK3SGWLH8HeWPa1t5KcW
 S5moAj5HexY/g/F8TctpxwsvyZp38dXeLDjSQvEQIkF7XR3YXbeZgKk3V34KGCPOAeeuQDIgyVhV
 nP4HF2uWHA==""")
+
+
+def old_response(socket):
+    return OldHTTPResponse(
+        socket, state_machine=h11.Connection(our_role=h11.CLIENT)
+    )
+
+
+def chunked_response(socket):
+    """
+    Prepares an OldHTTPResponse ready for use with chunked
+    transfer encoding.
+    """
+    # Prime the state machine.
+    conn = h11.Connection(our_role=h11.CLIENT)
+    conn.receive_data(
+        b'HTTP/1.1 200 OK\r\n'
+        b'Server: no such server\r\n'
+        b'Transfer-Encoding: chunked\r\n'
+        b'\r\n'
+    )
+    conn.next_event()
+    return OldHTTPResponse(socket, state_machine=conn)
 
 
 class TestLegacyResponse(unittest.TestCase):
@@ -171,9 +196,9 @@ class TestResponse(unittest.TestCase):
         resp.close()
         self.assertEqual(resp.closed, True)
 
-        # Try closing with an `httplib.HTTPResponse`, because it has an
+        # Try closing with an `OldHTTPResponse`, because it has an
         # `isclosed` method.
-        hlr = httplib.HTTPResponse(socket.socket())
+        hlr = old_response(socket.socket())
         resp2 = HTTPResponse(hlr, preload_content=False)
         self.assertEqual(resp2.closed, False)
         resp2.close()
@@ -190,8 +215,16 @@ class TestResponse(unittest.TestCase):
         self.assertRaises(IOError, resp3.fileno)
 
     def test_io_closed_consistently(self):
-        hlr = httplib.HTTPResponse(socket.socket())
+        hlr = old_response(socket.socket())
+        hlr._state_machine.receive_data(
+            b'HTTP/1.1 200 OK\r\n'
+            b'Server: test\r\n'
+            b'Content-Length: 3\r\n'
+            b'\r\n'
+        )
+        hlr._state_machine.next_event()
         hlr.fp = BytesIO(b'foo')
+        hlr.fp.recv = hlr.fp.read
         hlr.chunked = 0
         hlr.length = 3
         resp = HTTPResponse(hlr, preload_content=False)
@@ -226,24 +259,6 @@ class TestResponse(unittest.TestCase):
         # gets tested.
         while not br.closed:
             br.read(5)
-
-    def test_io_readinto(self):
-        # This test is necessary because in py2.6, `readinto` doesn't get called
-        # in `test_io_bufferedreader` like it does for all the other python
-        # versions.  Probably this is because the `io` module in py2.6 is an
-        # old version that has a different underlying implementation.
-
-
-        fp = BytesIO(b'foo')
-        resp = HTTPResponse(fp, preload_content=False)
-
-        barr = bytearray(3)
-        assert resp.readinto(barr) == 3
-        assert b'foo' == barr
-
-        # The reader should already be empty, so this should read nothing.
-        assert resp.readinto(barr) == 0
-        assert b'foo' == barr
 
     def test_streaming(self):
         fp = BytesIO(b'foo')
@@ -393,73 +408,6 @@ class TestResponse(unittest.TestCase):
 
         self.assertRaises(StopIteration, next, stream)
 
-    def test_length_no_header(self):
-        fp = BytesIO(b'12345')
-        resp = HTTPResponse(fp, preload_content=False)
-        self.assertEqual(resp.length_remaining, None)
-
-    def test_length_w_valid_header(self):
-        headers = {"content-length": "5"}
-        fp = BytesIO(b'12345')
-
-        resp = HTTPResponse(fp, headers=headers, preload_content=False)
-        self.assertEqual(resp.length_remaining, 5)
-
-    def test_length_w_bad_header(self):
-        garbage = {'content-length': 'foo'}
-        fp = BytesIO(b'12345')
-
-        resp = HTTPResponse(fp, headers=garbage, preload_content=False)
-        self.assertEqual(resp.length_remaining, None)
-
-        garbage['content-length'] = "-10"
-        resp = HTTPResponse(fp, headers=garbage, preload_content=False)
-        self.assertEqual(resp.length_remaining, None)
-
-    def test_length_when_chunked(self):
-        # This is expressly forbidden in RFC 7230 sec 3.3.2
-        # We fall back to chunked in this case and try to
-        # handle response ignoring content length.
-        headers = {'content-length': '5',
-                   'transfer-encoding': 'chunked'}
-        fp = BytesIO(b'12345')
-
-        resp = HTTPResponse(fp, headers=headers, preload_content=False)
-        self.assertEqual(resp.length_remaining, None)
-
-    def test_length_with_multiple_content_lengths(self):
-        headers = {'content-length': '5, 5, 5'}
-        garbage = {'content-length': '5, 42'}
-        fp = BytesIO(b'abcde')
-
-        resp = HTTPResponse(fp, headers=headers, preload_content=False)
-        self.assertEqual(resp.length_remaining, 5)
-
-        self.assertRaises(InvalidHeader, HTTPResponse, fp,
-                          headers=garbage, preload_content=False)
-
-    def test_length_after_read(self):
-        headers = {"content-length": "5"}
-
-        # Test no defined length
-        fp = BytesIO(b'12345')
-        resp = HTTPResponse(fp, preload_content=False)
-        resp.read()
-        self.assertEqual(resp.length_remaining, None)
-
-        # Test our update from content-length
-        fp = BytesIO(b'12345')
-        resp = HTTPResponse(fp, headers=headers, preload_content=False)
-        resp.read()
-        self.assertEqual(resp.length_remaining, 0)
-
-        # Test partial read
-        fp = BytesIO(b'12345')
-        resp = HTTPResponse(fp, headers=headers, preload_content=False)
-        data = resp.stream(2)
-        next(data)
-        self.assertEqual(resp.length_remaining, 3)
-
     def test_mock_httpresponse_stream(self):
         # Mock out a HTTP Request that does enough to make it through urllib3's
         # read() and close() calls, and also exhausts and underlying file
@@ -490,7 +438,7 @@ class TestResponse(unittest.TestCase):
     def test_mock_transfer_encoding_chunked(self):
         stream = [b"fo", b"o", b"bar"]
         fp = MockChunkedEncodingResponse(stream)
-        r = httplib.HTTPResponse(MockSock)
+        r = chunked_response(MockSock)
         r.fp = fp
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
 
@@ -511,7 +459,7 @@ class TestResponse(unittest.TestCase):
                 yield data[i:i+2]
 
         fp = MockChunkedEncodingResponse(list(stream()))
-        r = httplib.HTTPResponse(MockSock)
+        r = chunked_response(MockSock)
         r.fp = fp
         headers = {'transfer-encoding': 'chunked', 'content-encoding': 'gzip'}
         resp = HTTPResponse(r, preload_content=False, headers=headers)
@@ -525,10 +473,9 @@ class TestResponse(unittest.TestCase):
     def test_mock_transfer_encoding_chunked_custom_read(self):
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedEncodingResponse(stream)
-        r = httplib.HTTPResponse(MockSock)
+        r = chunked_response(MockSock)
         r.fp = fp
         r.chunked = True
-        r.chunk_left = None
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
         expected_response = [b'fo', b'oo', b'o', b'bb', b'bb', b'aa', b'aa', b'ar']
         response = list(resp.read_chunked(2))
@@ -542,10 +489,9 @@ class TestResponse(unittest.TestCase):
     def test_mock_transfer_encoding_chunked_unlmtd_read(self):
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedEncodingResponse(stream)
-        r = httplib.HTTPResponse(MockSock)
+        r = chunked_response(MockSock)
         r.fp = fp
         r.chunked = True
-        r.chunk_left = None
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
         if getattr(self, "assertListEqual", False):
             self.assertListEqual(stream, list(resp.read_chunked()))
@@ -563,35 +509,18 @@ class TestResponse(unittest.TestCase):
     def test_invalid_chunks(self):
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedInvalidEncoding(stream)
-        r = httplib.HTTPResponse(MockSock)
+        r = chunked_response(MockSock)
         r.fp = fp
         r.chunked = True
-        r.chunk_left = None
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
         self.assertRaises(ProtocolError, next, resp.read_chunked())
-
-    def test_chunked_response_without_crlf_on_end(self):
-        stream = [b"foo", b"bar", b"baz"]
-        fp = MockChunkedEncodingWithoutCRLFOnEnd(stream)
-        r = httplib.HTTPResponse(MockSock)
-        r.fp = fp
-        r.chunked = True
-        r.chunk_left = None
-        resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
-        if getattr(self, "assertListEqual", False):
-            self.assertListEqual(stream, list(resp.stream()))
-        else:
-            for index, item in enumerate(resp.stream()):
-                v = stream[index]
-                self.assertEqual(item, v)
 
     def test_chunked_response_with_extensions(self):
         stream = [b"foo", b"bar"]
         fp = MockChunkedEncodingWithExtensions(stream)
-        r = httplib.HTTPResponse(MockSock)
+        r = chunked_response(MockSock)
         r.fp = fp
         r.chunked = True
-        r.chunk_left = None
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
         if getattr(self, "assertListEqual", False):
             self.assertListEqual(stream, list(resp.stream()))
@@ -682,6 +611,9 @@ class MockChunkedEncodingResponse(object):
         return self.pop_current_chunk(till_crlf=True)
 
     def read(self, amt=-1):
+        return self.pop_current_chunk(amt)
+
+    def recv(self, amt=-1):
         return self.pop_current_chunk(amt)
 
     def flush(self):
