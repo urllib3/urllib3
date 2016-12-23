@@ -7,13 +7,9 @@ import unittest
 import time
 import warnings
 
-from datetime import datetime
-from datetime import timedelta
-
 import mock
 
 from .. import (
-    requires_network, onlyPy3, onlyPy26OrOlder,
     TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES,
 )
 from ..port_helpers import find_unused_port
@@ -27,7 +23,6 @@ from urllib3.exceptions import (
     DecodeError,
     MaxRetryError,
     ReadTimeoutError,
-    ProtocolError,
     NewConnectionError,
     UnrewindableBodyError,
 )
@@ -35,7 +30,6 @@ from urllib3.packages.six import b, u
 from urllib3.packages.six.moves.urllib.parse import urlencode
 from urllib3.util.retry import Retry, RequestHistory
 from urllib3.util.timeout import Timeout
-from urllib3.util import connection
 
 from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
 from dummyserver.server import NoIPv6Warning, HAS_IPV6_AND_DNS

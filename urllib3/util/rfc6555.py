@@ -19,7 +19,7 @@ _IP_FAMILIES = set([socket.AF_INET, socket.AF_INET6])
 
 
 def _safely_close_socket(sock):
-    """ Close a socket an guarantee it won't
+    """ Close a socket and guarantee it won't
     error as Python 3.4< can actually error
     on socket closure if it's interrupted. """
     try:
@@ -46,7 +46,7 @@ class _HappyEyeballs(object):
     def connect(self):
         """ Given the setup of the algorithm, attempt to
         use a cached value for socket family.  If no cached
-        value exists or the cached value fails follow RFC 6555
+        value exists or the cached value fails, follow RFC 6555
         in order to determine whether to use AF_INET or AF_INET6
         to connect to the remote host. """
         sock = self._connect_cached_socket_family()
@@ -56,8 +56,7 @@ class _HappyEyeballs(object):
             # Only add an entry to the cache if it's
             # newly connected to, don't 'refresh' the cache
             # whenever it's used.
-            if sock:
-                self._cache_socket_family(sock.family)
+            self._cache_socket_family(sock.family)
         return sock
 
     def _cache_socket_family(self, family):
@@ -132,7 +131,7 @@ class _HappyEyeballs(object):
         for key, _ in ready:
             sock = key.fileobj
 
-            # Successfully found a proper connected socket.
+            # If the socket is not in an error state we can use it.
             if not self._is_socket_errored(sock):
 
                 # Restore the old timeout value and remove it from cleanup.
@@ -220,9 +219,7 @@ class _HappyEyeballs(object):
         self._selector.close()
 
     def _calculate_select_time(self):
-        if self._timeout is socket._GLOBAL_DEFAULT_TIMEOUT:
-            return 0.2
-        elif self._timeout is None:
+        if self._timeout is None:
             return 0.2
         else:
             return min(0.2, max(0.0, self._timeout - (current_time() - self._start_time)))

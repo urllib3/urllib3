@@ -6,7 +6,10 @@ from urllib3.util.rfc6555 import (
 from .wait import wait_for_read
 from .selectors import HAS_SELECT, SelectorError
 
-ENABLE_HAPPY_EYEBALLS = True
+# This global is here for the case where Happy
+# Eyeballs Algorithm (RFC 6555) needs to be disabled
+# such as for debugging a connection.
+_ENABLE_HAPPY_EYEBALLS = True
 
 
 def is_connection_dropped(conn):  # Platform-specific
@@ -62,7 +65,7 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
 
     # If IPv6 and selectors are available, use the Happy Eyes algorithm.
     # (RFC 6555 https://tools.ietf.org/html/rfc6555)
-    if HAS_IPV6 and HAS_SELECT and ENABLE_HAPPY_EYEBALLS:
+    if HAS_IPV6 and HAS_SELECT and _ENABLE_HAPPY_EYEBALLS:
         return happy_eyeballs_algorithm((host, port), timeout,
                                         source_address, socket_options)
 
