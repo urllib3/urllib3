@@ -29,8 +29,6 @@ from .wait import (
     wait_for_write
 )
 
-from .importutil import load_idna
-
 __all__ = (
     'HAS_SNI',
     'IS_PYOPENSSL',
@@ -50,6 +48,5 @@ __all__ = (
     'split_first',
     'ssl_wrap_socket',
     'wait_for_read',
-    'wait_for_write',
-    'load_idna'
+    'wait_for_write'
 )
