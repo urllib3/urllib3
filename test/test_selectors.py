@@ -536,22 +536,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         after_fds = len(proc.open_files())
         self.assertEqual(before_fds, after_fds)
 
-    def test_wait_io_close_is_called(self):
-        selector = self.SELECTOR()
-        self.addCleanup(selector.close)
-
-        def fake_constructor(*args, **kwargs):
-            return selector
-
-        old_selector = wait.DefaultSelector
-        wait.DefaultSelector = fake_constructor
-        self.addCleanup(setattr, wait, "DefaultSelector", old_selector)
-
-        rd, wr = self.make_socketpair()
-        wait.wait_for_write([rd, wr], 0.001)
-        self.assertIs(selector._map, None)
-
-    def test_wait_selector_error(self):
+    def test_selector_error(self):
         err = selectors.SelectorError(1)
         self.assertEqual(err.__repr__(), "<SelectorError errno=1>")
         self.assertEqual(err.__str__(), "<SelectorError errno=1>")
@@ -560,7 +545,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
     SELECTOR = selectors.DefaultSelector
 
-    def patch_wait_selector(self):
+    def setUp(self):
         old_selector = wait.DefaultSelector
         wait.DefaultSelector = self.SELECTOR
         self.addCleanup(setattr, wait, "DefaultSelector", old_selector)
@@ -583,26 +568,21 @@ class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
         return s
 
     def test_wait_for_read_single_socket(self):
-        self.patch_wait_selector()
         rd, wr = self.make_socketpair()
         self.assertEqual([], wait.wait_for_read(rd, timeout=SHORT_SELECT))
 
     def test_wait_for_read_multiple_socket(self):
-        self.patch_wait_selector()
         rd, rd2 = self.make_socketpair()
         self.assertEqual([], wait.wait_for_read([rd, rd2], timeout=SHORT_SELECT))
 
     def test_wait_for_read_empty(self):
-        self.patch_wait_selector()
         self.assertEqual([], wait.wait_for_read([], timeout=SHORT_SELECT))
 
     def test_wait_for_write_single_socket(self):
-        self.patch_wait_selector()
         wr, wr2 = self.make_socketpair()
         self.assertEqual([wr], wait.wait_for_write(wr, timeout=SHORT_SELECT))
 
     def test_wait_for_write_multiple_socket(self):
-        self.patch_wait_selector()
         wr, wr2 = self.make_socketpair()
         result = wait.wait_for_write([wr, wr2], timeout=SHORT_SELECT)
         # assertItemsEqual renamed in Python 3.x
@@ -612,24 +592,35 @@ class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
             self.assertCountEqual([wr, wr2], result)
 
     def test_wait_for_write_empty(self):
-        self.patch_wait_selector()
         self.assertEqual([], wait.wait_for_write([], timeout=SHORT_SELECT))
 
     def test_wait_for_non_list_iterable(self):
-        self.patch_wait_selector()
         rd, wr = self.make_socketpair()
         iterable = {'rd': rd}.values()
         self.assertEqual([], wait.wait_for_read(iterable, timeout=SHORT_SELECT))
 
     def test_wait_timeout(self):
-        self.patch_wait_selector()
         rd, wr = self.make_socketpair()
         with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
             wait.wait_for_read([rd], timeout=SHORT_SELECT)
 
+    def test_wait_io_close_is_called(self):
+        selector = self.SELECTOR()
+        self.addCleanup(selector.close)
+
+        def fake_constructor(*args, **kwargs):
+            return selector
+
+        old_selector = wait.DefaultSelector
+        wait.DefaultSelector = fake_constructor
+        self.addCleanup(setattr, wait, "DefaultSelector", old_selector)
+
+        rd, wr = self.make_socketpair()
+        wait.wait_for_write([rd, wr], 0.001)
+        self.assertIs(selector._map, None)
+
     @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_no_event(self):
-        self.patch_wait_selector()
         rd, wr = self.make_socketpair()
 
         self.set_alarm(SHORT_SELECT, lambda *args: None)
@@ -638,7 +629,6 @@ class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
 
     @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
     def test_interrupt_wait_for_read_with_event(self):
-        self.patch_wait_selector()
         rd, wr = self.make_socketpair()
 
         self.set_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
