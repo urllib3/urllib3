@@ -215,5 +215,8 @@ In chronological order:
 * Seth Michael Larson <sethmichaellarson@protonmail.com>
   * Created selectors backport that supports PEP 475.
 
+* Alexandre Dias <alex.dias@smarkets.com>
+  * Don't retry on timeout if method not in whitelist
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

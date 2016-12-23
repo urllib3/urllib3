@@ -13,8 +13,20 @@ dev (master)
 * ConnectionPools now correctly consider hostnames to be case-insensitive.
   (Issue #1032)
 
+* Outdated versions of PyOpenSSL now cause the PyOpenSSL contrib module
+  to fail when it is injected, rather than at first use. (Pull #1063)
+
 * Outdated versions of cryptography now cause the PyOpenSSL contrib module
   to fail when it is injected, rather than at first use. (Issue #1044)
+
+* Automatically attempt to rewind a file-like body object when a request is
+  retried or redirected. (Pull #1039)
+
+* Fix some bugs that occur when modules incautiously patch the queue module.
+  (Pull #1061)
+
+* Prevent retries from occuring on read timeouts for which the request method
+  was not in the method whitelist. (Issue #1059)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
