@@ -28,6 +28,10 @@ dev (master)
 * Prevent retries from occuring on read timeouts for which the request method
   was not in the method whitelist. (Issue #1059)
 
+* Changed the PyOpenSSL contrib module to lazily load idna to avoid
+  unnecessarily bloating the memory of programs that don't need it. (Pull
+  #1076)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
