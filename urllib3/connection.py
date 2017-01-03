@@ -755,11 +755,52 @@ class HTTPConnection(object):
         to_send = self._state_machine.send(h11.EndOfMessage())
         self.sock.sendall(to_send)
 
+    def _get_host_header(self, url):
+        """
+        For a given URL, extracts the appropriate value for the Host header
+        field for the request.
+        """
+        # If we need a non-standard port, include it in the header. If the
+        # request is going through a proxy, we want to set the host of the
+        # actual URL, not the host of the proxy.
+        netloc = ''
+        if url.startswith('http'):
+            netloc = parse_url(url).netloc
+
+        if netloc:
+            try:
+                netloc_enc = netloc.encode("ascii")
+            except UnicodeEncodeError:
+                netloc_enc = netloc.encode("idna")
+            return netloc_enc
+        else:
+            if self._tunnel_host:
+                host = self._tunnel_host
+                port = self._tunnel_port
+            else:
+                host = self.host
+                port = self.port
+
+            try:
+                host_enc = host.encode("ascii")
+            except UnicodeEncodeError:
+                host_enc = host.encode("idna")
+
+            # As per RFC 273, IPv6 address should be wrapped with []
+            # when used as Host header
+
+            if host.find(':') >= 0:
+                host_enc = b'[' + host_enc + b']'
+
+            if port == self.default_port:
+                return host_enc
+            else:
+                host_enc = host_enc.decode("ascii")
+                return u"%s:%s" % (host_enc, port)
+
     def putrequest(self, method, url, skip_host=False,
                    skip_accept_encoding=False):
         """Send a request to the server."""
-        # TODO: rewrite this from httplib form to our own form.
-
         # if a prior response has been completed, then forget about it.
         if self.__response and self.__response.isclosed():
             self.__response = None
@@ -772,54 +813,7 @@ class HTTPConnection(object):
         self._url = url
 
         if not skip_host:
-            # this header is issued *only* for HTTP/1.1
-            # connections. more specifically, this means it is
-            # only issued when the client uses the new
-            # HTTPConnection() class. backwards-compat clients
-            # will be using HTTP/1.0 and those clients may be
-            # issuing this header themselves. we should NOT issue
-            # it twice; some web servers (such as Apache) barf
-            # when they see two Host: headers
-
-            # If we need a non-standard port,include it in the
-            # header.  If the request is going through a proxy,
-            # but the host of the actual URL, not the host of the
-            # proxy.
-
-            netloc = ''
-            if url.startswith('http'):
-                netloc = parse_url(url).netloc
-
-            if netloc:
-                try:
-                    netloc_enc = netloc.encode("ascii")
-                except UnicodeEncodeError:
-                    netloc_enc = netloc.encode("idna")
-                self.putheader('Host', netloc_enc)
-            else:
-                if self._tunnel_host:
-                    host = self._tunnel_host
-                    port = self._tunnel_port
-                else:
-                    host = self.host
-                    port = self.port
-
-                try:
-                    host_enc = host.encode("ascii")
-                except UnicodeEncodeError:
-                    host_enc = host.encode("idna")
-
-                # As per RFC 273, IPv6 address should be wrapped with []
-                # when used as Host header
-
-                if host.find(':') >= 0:
-                    host_enc = b'[' + host_enc + b']'
-
-                if port == self.default_port:
-                    self.putheader('Host', host_enc)
-                else:
-                    host_enc = host_enc.decode("ascii")
-                    self.putheader('Host', "%s:%s" % (host_enc, port))
+            self.putheader('Host', self._get_host_header(url))
 
         # we only want a Content-Encoding of "identity" since we don't
         # support encodings such as x-gzip or x-deflate.
@@ -877,11 +871,9 @@ class HTTPConnection(object):
     def request(self, method, url, body=None, headers={},
                 encode_chunked=False):
         """Send a complete request to the server."""
-        # TODO: rewrite this from httplib form to our own form.
         self._send_request(method, url, body, headers, encode_chunked)
 
     def _send_request(self, method, url, body, headers, encode_chunked):
-        # TODO: rewrite this from httplib form to our own form.
         # Honor explicitly requested Host: and Accept-Encoding: headers.
         header_names = frozenset(k.lower() for k in headers)
         skips = {}
