@@ -948,9 +948,8 @@ class HTTPConnection(object):
         Alternative to the common request method, which sends the
         body with chunked encoding and not as one block
         """
-        # TODO: We should be able to merge this method entirely with
-        # request()
         headers = HTTPHeaderDict(headers if headers is not None else {})
+        # TODO: throw exception if we have content-length too.
         if 'transfer-encoding' not in headers:
             headers['Transfer-Encoding'] = 'chunked'
 
