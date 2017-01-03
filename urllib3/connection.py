@@ -870,30 +870,22 @@ class HTTPConnection(object):
         if 'accept-encoding' not in header_names:
             headers['Accept-Encoding'] = 'identity'
 
-        # chunked encoding will happen if HTTP/1.1 is used and either
-        # the caller passes encode_chunked=True or the following
-        # conditions hold:
+        # chunked encoding will happen if the following conditions hold:
         # 1. content-length has not been explicitly set
         # 2. the body is a file or iterable, but not a str or bytes-like
         # 3. Transfer-Encoding has NOT been explicitly set by the caller
+        no_content_length = 'content-length' not in header_names
+        no_transfer_encoding = 'transfer-encoding' not in header_names
 
-        if 'content-length' not in header_names:
-            # only chunk body if not explicitly set for backwards
-            # compatibility, assuming the client code is already handling the
-            # chunking
-            if 'transfer-encoding' not in header_names:
-                # if content-length cannot be automatically determined, fall
-                # back to chunked encoding
-                encode_chunked = False
-                content_length = self._get_content_length(body, method)
-                if content_length is None:
-                    if body is not None:
-                        encode_chunked = True
-                        self.putheader('Transfer-Encoding', 'chunked')
-                else:
-                    self.putheader('Content-Length', str(content_length))
-        else:
-            encode_chunked = False
+        if no_content_length and no_transfer_encoding:
+            # if content-length cannot be automatically determined, fall
+            # back to chunked encoding
+            content_length = self._get_content_length(body, method)
+            if content_length is None:
+                if body is not None:
+                    headers['Transfer-Encoding'] = 'chunked'
+            else:
+                headers['Content-Length'] = str(content_length)
 
         for hdr, value in headers.items():
             self.putheader(hdr, value)
