@@ -117,6 +117,30 @@ def _headers_to_byte_string(headers):
         yield (n, v)
 
 
+def _validate_headers(headers):
+    """
+    A generator that validates headers as they are iterated over and then emits
+    them, one at a time. Used to apply validation to headers before sending
+    them.
+    """
+    for name, value in headers:
+        if hasattr(name, 'encode'):
+            name = name.encode('ascii')
+
+        if not _is_legal_header_name(name):
+            raise ValueError('Invalid header name %r' % (name,))
+
+        if hasattr(value, 'encode'):
+            value = value.encode('latin-1')
+        elif isinstance(value, int):
+            value = str(value).encode('ascii')
+
+        if _is_illegal_header_value(value):
+            raise ValueError('Invalid header value %r' % (value,))
+
+        yield (name, value)
+
+
 class DummyConnection(object):
     """Used to detect a failed ConnectionCls import."""
     pass
@@ -703,7 +727,7 @@ class HTTPConnection(object):
                 datablock = datablock.encode("iso-8859-1")
             yield datablock
 
-    def _send_output(self, message_body=None, encode_chunked=False):
+    def _send_output(self, message_body=None):
         """Send the currently buffered request and clear the buffer.
 
         Appends an extra \\r\\n to the buffer.
@@ -798,54 +822,6 @@ class HTTPConnection(object):
                 host_enc = host_enc.decode("ascii")
                 return u"%s:%s" % (host_enc, port)
 
-    def putheader(self, header, *values):
-        """Send a request header line to the server.
-
-        For example: h.putheader('Accept', 'text/html')
-        """
-        # TODO: rewrite this from httplib form to our own form.
-        if hasattr(header, 'encode'):
-            header = header.encode('ascii')
-
-        # TODO: gotta get this method or assume h11 resolves it for us
-        if not _is_legal_header_name(header):
-            raise ValueError('Invalid header name %r' % (header,))
-
-        values = list(values)
-        for value in values:
-            if hasattr(value, 'encode'):
-                value = value.encode('latin-1')
-            elif isinstance(value, int):
-                value = str(value).encode('ascii')
-
-            # TODO: gotta get this method or assume h11 resolves it for us
-            if _is_illegal_header_value(value):
-                raise ValueError('Invalid header value %r' % (value,))
-
-            self._pending_headers.append((header, value))
-
-    def endheaders(self, message_body=None, encode_chunked=False):
-        """Indicate that the last header line has been sent to the server.
-
-        This method sends the request to the server.  The optional message_body
-        argument can be used to pass a message body associated with the
-        request.
-        """
-        if self.sock is None:
-            self.connect()
-
-        request = h11.Request(
-            method=self._method,
-            target=self._url,
-            headers=self._pending_headers,
-        )
-        self._pending_headers = []
-        self._url = None
-
-        bytes_to_send = self._state_machine.send(request)
-        self.sock.sendall(bytes_to_send)
-        self._send_output(message_body, encode_chunked=encode_chunked)
-
     def request(self, method, url, body=None, headers={},
                 encode_chunked=False):
         """Send a complete request to the server."""
@@ -887,14 +863,26 @@ class HTTPConnection(object):
             else:
                 headers['Content-Length'] = str(content_length)
 
-        for hdr, value in headers.items():
-            self.putheader(hdr, value)
+        headers = _validate_headers(headers.items())
+
         if isinstance(body, six.text_type):
             # RFC 2616 Section 3.7.1 says that text default has a
             # default charset of iso-8859-1.
             # TODO: what?
             body = _encode(body, 'body')
-        self.endheaders(body, encode_chunked=encode_chunked)
+
+        if self.sock is None:
+            self.connect()
+
+        request = h11.Request(
+            method=method,
+            target=url,
+            headers=headers,
+        )
+
+        bytes_to_send = self._state_machine.send(request)
+        self.sock.sendall(bytes_to_send)
+        self._send_output(body)
 
     def getresponse(self):
         """Get the response from the server.
@@ -964,25 +952,15 @@ class HTTPConnection(object):
         # TODO: We should be able to merge this method entirely with
         # request()
         headers = HTTPHeaderDict(headers if headers is not None else {})
-        skip_accept_encoding = 'accept-encoding' in headers
-        skip_host = 'host' in headers
-        self.putrequest(
-            method,
-            url,
-            skip_accept_encoding=skip_accept_encoding,
-            skip_host=skip_host
-        )
-        for header, value in headers.items():
-            self.putheader(header, value)
         if 'transfer-encoding' not in headers:
-            self.putheader('Transfer-Encoding', 'chunked')
+            headers['Transfer-Encoding'] = 'chunked'
 
         if body is not None:
             stringish_types = six.string_types + (six.binary_type,)
             if isinstance(body, stringish_types):
                 body = (body,)
 
-        self.endheaders(body, encode_chunked=True)
+        self.request(method, url, body, headers)
 
 
 class HTTPSConnection(HTTPConnection):
