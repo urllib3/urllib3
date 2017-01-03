@@ -822,7 +822,7 @@ class HTTPConnection(object):
 
     def request(self, method, url, body=None, headers={}):
         """Send a complete request to the server."""
-        self._send_request(method, url, body, headers)
+        self._send_request(method, url, body, headers.copy())
 
     def _send_request(self, method, url, body, headers):
         # if a prior response has been completed, then forget about it.
