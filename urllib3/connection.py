@@ -102,21 +102,6 @@ def _headers_to_native_string(headers):
         yield (n, v)
 
 
-def _headers_to_byte_string(headers):
-    """
-    A temporary shim to convert headers we want to send to byte strings, to
-    match the behaviour of httplib. We will reconsider this later in the
-    process.
-    """
-    # TODO: revisit.
-    for n, v in headers:
-        if not isinstance(n, bytes):
-            n = n.encode('latin1')
-        if not isinstance(v, bytes):
-            v = v.encode('latin1')
-        yield (n, v)
-
-
 def _validate_headers(headers):
     """
     A generator that validates headers as they are iterated over and then emits
@@ -601,7 +586,7 @@ class HTTPConnection(object):
             target = target.encode('latin1')
 
         # We need to set the Host header.
-        headers = dict(_headers_to_byte_string(self._tunnel_headers.items()))
+        headers = dict(_validate_headers(self._tunnel_headers.items()))
         if b"host" not in frozenset(k.lower() for k in headers):
             headers[b"host"] = target
 
