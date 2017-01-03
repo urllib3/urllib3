@@ -822,12 +822,11 @@ class HTTPConnection(object):
                 host_enc = host_enc.decode("ascii")
                 return u"%s:%s" % (host_enc, port)
 
-    def request(self, method, url, body=None, headers={},
-                encode_chunked=False):
+    def request(self, method, url, body=None, headers={}):
         """Send a complete request to the server."""
-        self._send_request(method, url, body, headers, encode_chunked)
+        self._send_request(method, url, body, headers)
 
-    def _send_request(self, method, url, body, headers, encode_chunked):
+    def _send_request(self, method, url, body, headers):
         # if a prior response has been completed, then forget about it.
         if self.__response and self.__response.isclosed():
             self.__response = None
