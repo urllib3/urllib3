@@ -798,28 +798,6 @@ class HTTPConnection(object):
                 host_enc = host_enc.decode("ascii")
                 return u"%s:%s" % (host_enc, port)
 
-    def putrequest(self, method, url, skip_host=False,
-                   skip_accept_encoding=False):
-        """Send a request to the server."""
-        # if a prior response has been completed, then forget about it.
-        if self.__response and self.__response.isclosed():
-            self.__response = None
-
-        # Save the method we use, we need it later in the response phase
-        # TODO: We need to encode all these strings to bytes.
-        self._method = method
-        if not url:
-            url = '/'
-        self._url = url
-
-        if not skip_host:
-            self.putheader('Host', self._get_host_header(url))
-
-        # we only want a Content-Encoding of "identity" since we don't
-        # support encodings such as x-gzip or x-deflate.
-        if not skip_accept_encoding:
-            self.putheader('Accept-Encoding', 'identity')
-
     def putheader(self, header, *values):
         """Send a request header line to the server.
 
@@ -874,15 +852,23 @@ class HTTPConnection(object):
         self._send_request(method, url, body, headers, encode_chunked)
 
     def _send_request(self, method, url, body, headers, encode_chunked):
+        # if a prior response has been completed, then forget about it.
+        if self.__response and self.__response.isclosed():
+            self.__response = None
+
+        # Save the method we use, we need it later in the response phase
+        # TODO: We need to encode all these strings to bytes.
+        self._method = method
+        if not url:
+            url = '/'
+        self._url = url
+
         # Honor explicitly requested Host: and Accept-Encoding: headers.
         header_names = frozenset(k.lower() for k in headers)
-        skips = {}
-        if 'host' in header_names:
-            skips['skip_host'] = 1
-        if 'accept-encoding' in header_names:
-            skips['skip_accept_encoding'] = 1
-
-        self.putrequest(method, url, **skips)
+        if 'host' not in header_names:
+            headers['Host'] = self._get_host_header(url)
+        if 'accept-encoding' not in header_names:
+            headers['Accept-Encoding'] = 'identity'
 
         # chunked encoding will happen if HTTP/1.1 is used and either
         # the caller passes encode_chunked=True or the following
