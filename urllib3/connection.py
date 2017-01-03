@@ -517,8 +517,6 @@ class HTTPConnection(object):
         )
 
         self.__response = None
-        self._pending_headers = []
-        self._url = None
 
         self._state_machine = h11.Connection(our_role=h11.CLIENT)
 
@@ -836,7 +834,6 @@ class HTTPConnection(object):
         self._method = method
         if not url:
             url = '/'
-        self._url = url
 
         # Honor explicitly requested Host: and Accept-Encoding: headers.
         header_names = frozenset(k.lower() for k in headers)
