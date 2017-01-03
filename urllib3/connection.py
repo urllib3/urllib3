@@ -775,10 +775,8 @@ class HTTPConnection(object):
             netloc = parse_url(url).netloc
 
         if netloc:
-            try:
-                netloc_enc = netloc.encode("ascii")
-            except UnicodeEncodeError:
-                netloc_enc = netloc.encode("idna")
+            # TODO: Address IDNs.
+            netloc_enc = netloc.encode("ascii")
             return netloc_enc
         else:
             if self._tunnel_host:
@@ -788,10 +786,8 @@ class HTTPConnection(object):
                 host = self.host
                 port = self.port
 
-            try:
-                host_enc = host.encode("ascii")
-            except UnicodeEncodeError:
-                host_enc = host.encode("idna")
+            # TODO: Address IDNs.
+            host_enc = host.encode("ascii")
 
             # As per RFC 273, IPv6 address should be wrapped with []
             # when used as Host header
