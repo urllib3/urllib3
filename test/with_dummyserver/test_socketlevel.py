@@ -29,6 +29,7 @@ except ImportError:
     class MimeToolMessage(object):
         pass
 from threading import Event
+import io
 import select
 import socket
 import ssl
@@ -1161,3 +1162,46 @@ class TestBadContentLength(SocketDummyServerTestCase):
         self.assertEqual(len(data), 0)
 
         done_event.set()
+
+
+class TestAutomaticHeaderInsertion(SocketDummyServerTestCase):
+    """
+    Tests for automatically inserting headers, including for chunked transfer
+    encoding.
+    """
+    def test_automatic_chunking_fileobj(self):
+        """
+        A file-like object should automatically be chunked if the user provides
+        neither content-length nor transfer encoding.
+        """
+        done_event = Event()
+        data = []
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'0\r\n\r\n'):
+                buf += sock.recv(65536)
+            data.append(buf)
+
+            sock.send(
+                b'HTTP/1.1 200 OK\r\n'
+                b'Content-Length: 0\r\n'
+                b'\r\n'
+            )
+            done_event.wait(1)
+            sock.close()
+
+        self._start_server(socket_handler)
+        conn = HTTPConnectionPool(self.host, self.port)
+
+        myfileobj = io.BytesIO(b'helloworld')
+        response = conn.request('POST', url='/', body=myfileobj)
+        self.assertEqual(response.status, 200)
+
+        # Confirm we auto chunked the body.
+        self.assertIn(b'transfer-encoding: chunked\r\n', data[0])
+        self.assertTrue(
+            data[0].endswith(b'a\r\nhelloworld\r\n0\r\n\r\n')
+        )
