@@ -263,50 +263,33 @@ class OldHTTPResponse(io.BufferedIOBase):
         data_out = [self._buffered_data]
         out_len = len(self._buffered_data)
 
-        if amt is not None:
-            # Amount is given
-            while out_len < amt:
-                event = self._state_machine.next_event()
-                if event == h11.NEED_DATA:
-                    data = self.fp.recv(65536)
-                    self._state_machine.receive_data(data)
-                    continue
+        unlimited_read = amt is None
 
-                if isinstance(event, h11.Data):
-                    data_out.append(bytes(event.data))
-                    out_len += len(event.data)
-                elif isinstance(event, h11.EndOfMessage):
-                    self._close_conn()
-                    break
-                elif isinstance(event, h11.ConnectionClosed):
-                    # TODO: better exception
-                    raise ProtocolError("Connection closed early!")
+        while unlimited_read or (out_len < amt):
+            event = self._state_machine.next_event()
+            if event == h11.NEED_DATA:
+                data = self.fp.recv(65536)
+                self._state_machine.receive_data(data)
+                continue
 
-            received_data = b''.join(data_out)
-            data_to_return, self._buffered_data = (
+            if isinstance(event, h11.Data):
+                data_out.append(bytes(event.data))
+                out_len += len(event.data)
+            elif isinstance(event, h11.EndOfMessage):
+                self._close_conn()
+                break
+            elif isinstance(event, h11.ConnectionClosed):
+                # TODO: better exception
+                raise ProtocolError("Connection closed early!")
+
+        received_data = b''.join(data_out)
+
+        if not unlimited_read:
+            received_data, self._buffered_data = (
                 received_data[:amt], received_data[amt:]
             )
-            return data_to_return
-        else:
-            # Amount is not given (unbounded read)
-            # TODO: this loop is *basically* identical to the one above it.
-            # we should really try to refactor to remove the duplication.
-            while True:
-                event = self._state_machine.next_event()
-                if event == h11.NEED_DATA:
-                    self._state_machine.receive_data(self.fp.recv(65536))
-                    continue
 
-                if isinstance(event, h11.Data):
-                    data_out.append(bytes(event.data))
-                elif isinstance(event, h11.EndOfMessage):
-                    self._close_conn()
-                    break
-                elif isinstance(event, h11.ConnectionClosed):
-                    # TODO: better exception
-                    raise ProtocolError("Connection closed early!")
-
-            return b''.join(data_out)
+        return received_data
 
     def readinto(self, b):
         """Read up to len(b) bytes into bytearray b and return the number
