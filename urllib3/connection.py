@@ -4,7 +4,6 @@ import collections
 import io
 import logging
 import os
-import re
 import socket
 from socket import error as SocketError, timeout as SocketTimeout
 import warnings
@@ -58,16 +57,6 @@ port_by_scheme = {
 # earlier than 6 months ago.
 RECENT_DATE = datetime.date(2016, 1, 1)
 
-# the patterns for both name and value are more lenient than RFC
-# definitions to allow for backwards compatibility
-# TODO: I pulled these out of httplib: does h11 obviate them?
-_is_legal_header_name = re.compile(
-    r'^[^:\s][^:\r\n]*$'.encode('ascii')
-).match
-_is_illegal_header_value = re.compile(
-    r'\n(?![ \t])|\r(?![ \t\n])'.encode('ascii')
-).search
-
 
 def _encode(data, name='data'):
     """Call data.encode("latin-1") but show a better error message."""
@@ -102,26 +91,18 @@ def _headers_to_native_string(headers):
         yield (n, v)
 
 
-def _validate_headers(headers):
+def _stringify_headers(headers):
     """
-    A generator that validates headers as they are iterated over and then emits
-    them, one at a time. Used to apply validation to headers before sending
-    them.
+    A generator that transforms headers so they're suitable for sending by h11.
     """
     for name, value in headers:
         if hasattr(name, 'encode'):
             name = name.encode('ascii')
 
-        if not _is_legal_header_name(name):
-            raise ValueError('Invalid header name %r' % (name,))
-
         if hasattr(value, 'encode'):
             value = value.encode('latin-1')
         elif isinstance(value, int):
             value = str(value).encode('ascii')
-
-        if _is_illegal_header_value(value):
-            raise ValueError('Invalid header value %r' % (value,))
 
         yield (name, value)
 
@@ -586,7 +567,7 @@ class HTTPConnection(object):
             target = target.encode('latin1')
 
         # We need to set the Host header.
-        headers = dict(_validate_headers(self._tunnel_headers.items()))
+        headers = dict(_stringify_headers(self._tunnel_headers.items()))
         if b"host" not in frozenset(k.lower() for k in headers):
             headers[b"host"] = target
 
@@ -840,7 +821,7 @@ class HTTPConnection(object):
             else:
                 headers['Content-Length'] = str(content_length)
 
-        headers = _validate_headers(headers.items())
+        headers = _stringify_headers(headers.items())
 
         if isinstance(body, six.text_type):
             # RFC 2616 Section 3.7.1 says that text default has a
