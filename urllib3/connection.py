@@ -392,30 +392,6 @@ class OldHTTPResponse(io.BufferedIOBase):
     def fileno(self):
         return self.fp.fileno()
 
-    def getheader(self, name, default=None):
-        '''Returns the value of the header matching *name*.
-        If there are multiple matching headers, the values are
-        combined into a single string separated by commas and spaces.
-        If no matching header is found, returns *default* or None if
-        the *default* is not specified.
-        If the headers are unknown, raises http.client.ResponseNotReady.
-        '''
-        if self.headers is None:
-            # TODO: this exception isn't real
-            raise ResponseNotReady()
-        headers = self.headers.getlist(name)
-        if not headers:
-            return default
-        else:
-            return b', '.join(headers)
-
-    def getheaders(self):
-        """Return list of (header, value) tuples."""
-        if self.headers is None:
-            # TODO: this exception isn't real
-            raise ResponseNotReady()
-        return list(self.headers.items())
-
     # We override IOBase.__iter__ so that it doesn't check for closed-ness
     def __iter__(self):
         return self
