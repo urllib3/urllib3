@@ -340,29 +340,13 @@ class OldHTTPResponse(io.BufferedIOBase):
         return b''.join(data)
 
     def peek(self, size=None):
-        data_out = [self._buffered_data]
-        data_out_len = len(self._buffered_data)
-
-        while (size is None) or (data_out_len < size):
-            event = self._state_machine.next_event()
-            if event is h11.NEED_DATA:
-                self._state_machine.receive_data(self.fp.recv(8192))
-                continue
-
-            if isinstance(event, h11.Data):
-                data_out.append(bytes(event.data))
-                data_out_len += len(event.data)
-            elif isinstance(event, h11.EndOfMessage):
-                self._close_conn()
-                break
-            elif isinstance(event, h11.ConnectionClosed):
-                raise ProtocolError("Connection closed early!")
-
-        self._buffered_data = b''.join(data_out)
-        if size is None:
-            return self._buffered_data
-        else:
-            return self._buffered_data[:size]
+        """
+        Essentially here we just read the data and then shove it back into the
+        buffer.
+        """
+        data = self.read(size)
+        self._buffered_data = data + self._buffered_data
+        return data
 
     def readline(self, limit=-1):
         # TODO: the performance here sucks.
