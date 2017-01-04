@@ -25,8 +25,7 @@ except ImportError:
 
 from urllib3.util import (
     selectors,
-    wait_for_read,
-    wait_for_write
+    wait
 )
 
 HAS_ALARM = hasattr(signal, "alarm")
@@ -109,82 +108,6 @@ class TimerContext(object):
 class TimerMixin(object):
     def assertTakesTime(self, lower=None, upper=None):
         return TimerContext(self, lower=lower, upper=upper)
-
-
-@skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector")
-class WaitForIOTest(unittest.TestCase, AlarmMixin, TimerMixin):
-    """ Tests for the higher level wait_for_* functions. """
-
-    def make_socketpair(self):
-        rd, wr = socketpair()
-
-        rd.settimeout(0.0)
-        wr.settimeout(0.0)
-
-        self.addCleanup(rd.close)
-        self.addCleanup(wr.close)
-        return rd, wr
-
-    def test_selector_error(self):
-        err = selectors.SelectorError(1)
-        self.assertEqual(err.__repr__(), "<SelectorError errno=1>")
-        self.assertEqual(err.__str__(), "<SelectorError errno=1>")
-
-    def test_wait_for_read_single_socket(self):
-        rd, wr = self.make_socketpair()
-        self.assertEqual([], wait_for_read(rd, timeout=SHORT_SELECT))
-
-    def test_wait_for_read_multiple_socket(self):
-        rd, rd2 = self.make_socketpair()
-        self.assertEqual([], wait_for_read([rd, rd2], timeout=SHORT_SELECT))
-
-    def test_wait_for_read_empty(self):
-        self.assertEqual([], wait_for_read([], timeout=SHORT_SELECT))
-
-    def test_wait_for_write_single_socket(self):
-        wr, wr2 = self.make_socketpair()
-        self.assertEqual([wr], wait_for_write(wr, timeout=SHORT_SELECT))
-
-    def test_wait_for_write_multiple_socket(self):
-        wr, wr2 = self.make_socketpair()
-        result = wait_for_write([wr, wr2], timeout=SHORT_SELECT)
-        # assertItemsEqual renamed in Python 3.x
-        if hasattr(self, "assertItemsEqual"):
-            self.assertItemsEqual([wr, wr2], result)
-        else:
-            self.assertCountEqual([wr, wr2], result)
-
-    def test_wait_for_write_empty(self):
-        self.assertEqual([], wait_for_write([], timeout=SHORT_SELECT))
-
-    def test_wait_for_non_list_iterable(self):
-        rd, wr = self.make_socketpair()
-        iterable = {'rd': rd}.values()
-        self.assertEqual([], wait_for_read(iterable, timeout=SHORT_SELECT))
-
-    def test_wait_timeout(self):
-        rd, wr = self.make_socketpair()
-        with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
-            wait_for_read([rd], timeout=SHORT_SELECT)
-
-    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
-    def test_interrupt_wait_for_read_no_event(self):
-        rd, wr = self.make_socketpair()
-
-        self.set_alarm(SHORT_SELECT, lambda *args: None)
-
-        with self.assertTakesTime(lower=LONG_SELECT, upper=LONG_SELECT):
-            self.assertEqual([], wait_for_read(rd, timeout=LONG_SELECT))
-
-    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
-    def test_interrupt_wait_for_read_with_event(self):
-        rd, wr = self.make_socketpair()
-
-        self.set_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
-
-        with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
-            self.assertEqual([rd], wait_for_read(rd, timeout=LONG_SELECT))
-        self.assertEqual(rd.recv(1), b'x')
 
 
 @skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector")
@@ -606,6 +529,106 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         after_fds = len(proc.open_files())
         self.assertEqual(before_fds, after_fds)
 
+    def test_selector_error(self):
+        err = selectors.SelectorError(1)
+        self.assertEqual(err.__repr__(), "<SelectorError errno=1>")
+        self.assertEqual(err.__str__(), "<SelectorError errno=1>")
+
+
+class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
+    SELECTOR = selectors.DefaultSelector
+
+    def setUp(self):
+        old_selector = wait.DefaultSelector
+        wait.DefaultSelector = self.SELECTOR
+        self.addCleanup(setattr, wait, "DefaultSelector", old_selector)
+
+    def make_socketpair(self):
+        rd, wr = socket.socketpair()
+
+        # Make non-blocking so we get errors if the
+        # sockets are interacted with but not ready.
+        rd.settimeout(0.0)
+        wr.settimeout(0.0)
+
+        self.addCleanup(rd.close)
+        self.addCleanup(wr.close)
+        return rd, wr
+
+    def make_selector(self):
+        s = self.SELECTOR()
+        self.addCleanup(s.close)
+        return s
+
+    def test_wait_for_read_single_socket(self):
+        rd, wr = self.make_socketpair()
+        self.assertEqual([], wait.wait_for_read(rd, timeout=SHORT_SELECT))
+
+    def test_wait_for_read_multiple_socket(self):
+        rd, rd2 = self.make_socketpair()
+        self.assertEqual([], wait.wait_for_read([rd, rd2], timeout=SHORT_SELECT))
+
+    def test_wait_for_read_empty(self):
+        self.assertEqual([], wait.wait_for_read([], timeout=SHORT_SELECT))
+
+    def test_wait_for_write_single_socket(self):
+        wr, wr2 = self.make_socketpair()
+        self.assertEqual([wr], wait.wait_for_write(wr, timeout=SHORT_SELECT))
+
+    def test_wait_for_write_multiple_socket(self):
+        wr, wr2 = self.make_socketpair()
+        result = wait.wait_for_write([wr, wr2], timeout=SHORT_SELECT)
+        # assertItemsEqual renamed in Python 3.x
+        if hasattr(self, "assertItemsEqual"):
+            self.assertItemsEqual([wr, wr2], result)
+        else:
+            self.assertCountEqual([wr, wr2], result)
+
+    def test_wait_for_write_empty(self):
+        self.assertEqual([], wait.wait_for_write([], timeout=SHORT_SELECT))
+
+    def test_wait_for_non_list_iterable(self):
+        rd, wr = self.make_socketpair()
+        iterable = {'rd': rd}.values()
+        self.assertEqual([], wait.wait_for_read(iterable, timeout=SHORT_SELECT))
+
+    def test_wait_timeout(self):
+        rd, wr = self.make_socketpair()
+        with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
+            wait.wait_for_read([rd], timeout=SHORT_SELECT)
+
+    def test_wait_io_close_is_called(self):
+        selector = self.SELECTOR()
+        self.addCleanup(selector.close)
+
+        def fake_constructor(*args, **kwargs):
+            return selector
+
+        old_selector = wait.DefaultSelector
+        wait.DefaultSelector = fake_constructor
+        self.addCleanup(setattr, wait, "DefaultSelector", old_selector)
+
+        rd, wr = self.make_socketpair()
+        wait.wait_for_write([rd, wr], 0.001)
+        self.assertIs(selector._map, None)
+
+    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
+    def test_interrupt_wait_for_read_no_event(self):
+        rd, wr = self.make_socketpair()
+
+        self.set_alarm(SHORT_SELECT, lambda *args: None)
+        with self.assertTakesTime(lower=LONG_SELECT, upper=LONG_SELECT):
+            self.assertEqual([], wait.wait_for_read(rd, timeout=LONG_SELECT))
+
+    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
+    def test_interrupt_wait_for_read_with_event(self):
+        rd, wr = self.make_socketpair()
+
+        self.set_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
+        with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
+            self.assertEqual([rd], wait.wait_for_read(rd, timeout=LONG_SELECT))
+        self.assertEqual(rd.recv(1), b'x')
+
 
 class ScalableSelectorMixin(object):
     """ Mixin to test selectors that allow more fds than FD_SETSIZE """
@@ -668,4 +691,24 @@ class EpollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
 
 @skipUnless(hasattr(selectors, "KqueueSelector"), "Platform doesn't have a KqueueSelector")
 class KqueueSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
+    SELECTOR = getattr(selectors, "KqueueSelector", None)
+
+
+@skipUnless(hasattr(selectors, "SelectSelector"), "Platform doesn't have a SelectSelector")
+class SelectWaitForTestCase(BaseWaitForTestCase):
+    SELECTOR = getattr(selectors, "SelectSelector", None)
+
+
+@skipUnless(hasattr(selectors, "PollSelector"), "Platform doesn't have a PollSelector")
+class PollWaitForTestCase(BaseWaitForTestCase):
+    SELECTOR = getattr(selectors, "PollSelector", None)
+
+
+@skipUnless(hasattr(selectors, "EpollSelector"), "Platform doesn't have an EpollSelector")
+class EpollWaitForTestCase(BaseWaitForTestCase):
+    SELECTOR = getattr(selectors, "EpollSelector", None)
+
+
+@skipUnless(hasattr(selectors, "KqueueSelector"), "Platform doesn't have a KqueueSelector")
+class KqueueWaitForTestCase(BaseWaitForTestCase):
     SELECTOR = getattr(selectors, "KqueueSelector", None)
