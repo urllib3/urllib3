@@ -29,6 +29,7 @@ except ImportError:
     class MimeToolMessage(object):
         pass
 from threading import Event
+import io
 import select
 import socket
 import ssl
@@ -623,7 +624,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         base_url = 'http://%s:%d' % (self.host, self.port)
 
         # Define some proxy headers.
-        proxy_headers = HTTPHeaderDict({'For The Proxy': 'YEAH!'})
+        proxy_headers = HTTPHeaderDict({'For-The-Proxy': 'YEAH!'})
         proxy = proxy_from_url(base_url, proxy_headers=proxy_headers)
 
         conn = proxy.connection_from_url('http://www.google.com/')
@@ -634,7 +635,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         # FIXME: The order of the headers is not predictable right now. We
         # should fix that someday (maybe when we migrate to
         # OrderedDict/MultiDict).
-        self.assertTrue(b'for the proxy: YEAH!\r\n' in r.data)
+        self.assertTrue(b'for-the-proxy: YEAH!\r\n' in r.data)
 
     def test_retries(self):
         close_event = Event()
@@ -973,6 +974,40 @@ class TestHeaders(SocketDummyServerTestCase):
         ]
         self.assertEqual(expected_response_headers, actual_response_headers)
 
+    def test_integer_values_are_sent_as_decimal_strings(self):
+        headers = {'Foo': 88}
+        parsed_headers = {}
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            headers_list = [header for header in buf.split(b'\r\n')[1:] if header]
+
+            for header in headers_list:
+                (key, value) = header.split(b': ')
+                parsed_headers[key.decode('ascii')] = value.decode('ascii')
+
+            sock.send((
+                'HTTP/1.1 204 No Content\r\n'
+                'Content-Length: 0\r\n'
+                '\r\n').encode('utf-8'))
+
+            sock.close()
+
+        self._start_server(socket_handler)
+        expected_headers = {'accept-encoding': 'identity',
+                            'host': '{0}:{1}'.format(self.host, self.port),
+                            'foo': '88'}
+
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        pool.request('GET', '/', headers=HTTPHeaderDict(headers))
+        self.assertEqual(expected_headers, parsed_headers)
+
+
 
 class TestBrokenHeaders(SocketDummyServerTestCase):
 
@@ -1127,3 +1162,46 @@ class TestBadContentLength(SocketDummyServerTestCase):
         self.assertEqual(len(data), 0)
 
         done_event.set()
+
+
+class TestAutomaticHeaderInsertion(SocketDummyServerTestCase):
+    """
+    Tests for automatically inserting headers, including for chunked transfer
+    encoding.
+    """
+    def test_automatic_chunking_fileobj(self):
+        """
+        A file-like object should automatically be chunked if the user provides
+        neither content-length nor transfer encoding.
+        """
+        done_event = Event()
+        data = []
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'0\r\n\r\n'):
+                buf += sock.recv(65536)
+            data.append(buf)
+
+            sock.send(
+                b'HTTP/1.1 200 OK\r\n'
+                b'Content-Length: 0\r\n'
+                b'\r\n'
+            )
+            done_event.wait(1)
+            sock.close()
+
+        self._start_server(socket_handler)
+        conn = HTTPConnectionPool(self.host, self.port)
+
+        myfileobj = io.BytesIO(b'helloworld')
+        response = conn.request('POST', url='/', body=myfileobj)
+        self.assertEqual(response.status, 200)
+
+        # Confirm we auto chunked the body.
+        self.assertIn(b'transfer-encoding: chunked\r\n', data[0])
+        self.assertTrue(
+            data[0].endswith(b'a\r\nhelloworld\r\n0\r\n\r\n')
+        )

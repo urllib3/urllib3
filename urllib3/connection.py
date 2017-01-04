@@ -102,19 +102,28 @@ def _headers_to_native_string(headers):
         yield (n, v)
 
 
-def _headers_to_byte_string(headers):
+def _validate_headers(headers):
     """
-    A temporary shim to convert headers we want to send to byte strings, to
-    match the behaviour of httplib. We will reconsider this later in the
-    process.
+    A generator that validates headers as they are iterated over and then emits
+    them, one at a time. Used to apply validation to headers before sending
+    them.
     """
-    # TODO: revisit.
-    for n, v in headers:
-        if not isinstance(n, bytes):
-            n = n.encode('latin1')
-        if not isinstance(v, bytes):
-            v = v.encode('latin1')
-        yield (n, v)
+    for name, value in headers:
+        if hasattr(name, 'encode'):
+            name = name.encode('ascii')
+
+        if not _is_legal_header_name(name):
+            raise ValueError('Invalid header name %r' % (name,))
+
+        if hasattr(value, 'encode'):
+            value = value.encode('latin-1')
+        elif isinstance(value, int):
+            value = str(value).encode('ascii')
+
+        if _is_illegal_header_value(value):
+            raise ValueError('Invalid header value %r' % (value,))
+
+        yield (name, value)
 
 
 class DummyConnection(object):
@@ -493,8 +502,6 @@ class HTTPConnection(object):
         )
 
         self.__response = None
-        self._pending_headers = []
-        self._url = None
 
         self._state_machine = h11.Connection(our_role=h11.CLIENT)
 
@@ -579,7 +586,7 @@ class HTTPConnection(object):
             target = target.encode('latin1')
 
         # We need to set the Host header.
-        headers = dict(_headers_to_byte_string(self._tunnel_headers.items()))
+        headers = dict(_validate_headers(self._tunnel_headers.items()))
         if b"host" not in frozenset(k.lower() for k in headers):
             headers[b"host"] = target
 
@@ -703,7 +710,7 @@ class HTTPConnection(object):
                 datablock = datablock.encode("iso-8859-1")
             yield datablock
 
-    def _send_output(self, message_body=None, encode_chunked=False):
+    def _send_output(self, message_body=None):
         """Send the currently buffered request and clear the buffer.
 
         Appends an extra \\r\\n to the buffer.
@@ -755,11 +762,50 @@ class HTTPConnection(object):
         to_send = self._state_machine.send(h11.EndOfMessage())
         self.sock.sendall(to_send)
 
-    def putrequest(self, method, url, skip_host=False,
-                   skip_accept_encoding=False):
-        """Send a request to the server."""
-        # TODO: rewrite this from httplib form to our own form.
+    def _get_host_header(self, url):
+        """
+        For a given URL, extracts the appropriate value for the Host header
+        field for the request.
+        """
+        # If we need a non-standard port, include it in the header. If the
+        # request is going through a proxy, we want to set the host of the
+        # actual URL, not the host of the proxy.
+        netloc = ''
+        if url.startswith('http'):
+            netloc = parse_url(url).netloc
 
+        if netloc:
+            # TODO: Address IDNs.
+            netloc_enc = netloc.encode("ascii")
+            return netloc_enc
+        else:
+            if self._tunnel_host:
+                host = self._tunnel_host
+                port = self._tunnel_port
+            else:
+                host = self.host
+                port = self.port
+
+            # TODO: Address IDNs.
+            host_enc = host.encode("ascii")
+
+            # As per RFC 273, IPv6 address should be wrapped with []
+            # when used as Host header
+
+            if host.find(':') >= 0:
+                host_enc = b'[' + host_enc + b']'
+
+            if port == self.default_port:
+                return host_enc
+            else:
+                host_enc = host_enc.decode("ascii")
+                return u"%s:%s" % (host_enc, port)
+
+    def request(self, method, url, body=None, headers={}):
+        """Send a complete request to the server."""
+        self._send_request(method, url, body, headers.copy())
+
+    def _send_request(self, method, url, body, headers):
         # if a prior response has been completed, then forget about it.
         if self.__response and self.__response.isclosed():
             self.__response = None
@@ -769,162 +815,51 @@ class HTTPConnection(object):
         self._method = method
         if not url:
             url = '/'
-        self._url = url
 
-        if not skip_host:
-            # this header is issued *only* for HTTP/1.1
-            # connections. more specifically, this means it is
-            # only issued when the client uses the new
-            # HTTPConnection() class. backwards-compat clients
-            # will be using HTTP/1.0 and those clients may be
-            # issuing this header themselves. we should NOT issue
-            # it twice; some web servers (such as Apache) barf
-            # when they see two Host: headers
-
-            # If we need a non-standard port,include it in the
-            # header.  If the request is going through a proxy,
-            # but the host of the actual URL, not the host of the
-            # proxy.
-
-            netloc = ''
-            if url.startswith('http'):
-                netloc = parse_url(url).netloc
-
-            if netloc:
-                try:
-                    netloc_enc = netloc.encode("ascii")
-                except UnicodeEncodeError:
-                    netloc_enc = netloc.encode("idna")
-                self.putheader('Host', netloc_enc)
-            else:
-                if self._tunnel_host:
-                    host = self._tunnel_host
-                    port = self._tunnel_port
-                else:
-                    host = self.host
-                    port = self.port
-
-                try:
-                    host_enc = host.encode("ascii")
-                except UnicodeEncodeError:
-                    host_enc = host.encode("idna")
-
-                # As per RFC 273, IPv6 address should be wrapped with []
-                # when used as Host header
-
-                if host.find(':') >= 0:
-                    host_enc = b'[' + host_enc + b']'
-
-                if port == self.default_port:
-                    self.putheader('Host', host_enc)
-                else:
-                    host_enc = host_enc.decode("ascii")
-                    self.putheader('Host', "%s:%s" % (host_enc, port))
-
-        # we only want a Content-Encoding of "identity" since we don't
-        # support encodings such as x-gzip or x-deflate.
-        if not skip_accept_encoding:
-            self.putheader('Accept-Encoding', 'identity')
-
-    def putheader(self, header, *values):
-        """Send a request header line to the server.
-
-        For example: h.putheader('Accept', 'text/html')
-        """
-        # TODO: rewrite this from httplib form to our own form.
-        if hasattr(header, 'encode'):
-            header = header.encode('ascii')
-
-        # TODO: gotta get this method or assume h11 resolves it for us
-        if not _is_legal_header_name(header):
-            raise ValueError('Invalid header name %r' % (header,))
-
-        values = list(values)
-        for value in values:
-            if hasattr(value, 'encode'):
-                value = value.encode('latin-1')
-            elif isinstance(value, int):
-                value = str(value).encode('ascii')
-
-            # TODO: gotta get this method or assume h11 resolves it for us
-            if _is_illegal_header_value(value):
-                raise ValueError('Invalid header value %r' % (value,))
-
-            self._pending_headers.append((header, value))
-
-    def endheaders(self, message_body=None, encode_chunked=False):
-        """Indicate that the last header line has been sent to the server.
-
-        This method sends the request to the server.  The optional message_body
-        argument can be used to pass a message body associated with the
-        request.
-        """
-        if self.sock is None:
-            self.connect()
-
-        request = h11.Request(
-            method=self._method,
-            target=self._url,
-            headers=self._pending_headers,
-        )
-        self._pending_headers = []
-        self._url = None
-
-        bytes_to_send = self._state_machine.send(request)
-        self.sock.sendall(bytes_to_send)
-        self._send_output(message_body, encode_chunked=encode_chunked)
-
-    def request(self, method, url, body=None, headers={},
-                encode_chunked=False):
-        """Send a complete request to the server."""
-        # TODO: rewrite this from httplib form to our own form.
-        self._send_request(method, url, body, headers, encode_chunked)
-
-    def _send_request(self, method, url, body, headers, encode_chunked):
-        # TODO: rewrite this from httplib form to our own form.
         # Honor explicitly requested Host: and Accept-Encoding: headers.
         header_names = frozenset(k.lower() for k in headers)
-        skips = {}
-        if 'host' in header_names:
-            skips['skip_host'] = 1
-        if 'accept-encoding' in header_names:
-            skips['skip_accept_encoding'] = 1
+        if 'host' not in header_names:
+            headers['Host'] = self._get_host_header(url)
+        if 'accept-encoding' not in header_names:
+            headers['Accept-Encoding'] = 'identity'
 
-        self.putrequest(method, url, **skips)
-
-        # chunked encoding will happen if HTTP/1.1 is used and either
-        # the caller passes encode_chunked=True or the following
-        # conditions hold:
+        # chunked encoding will happen if the following conditions hold:
         # 1. content-length has not been explicitly set
         # 2. the body is a file or iterable, but not a str or bytes-like
         # 3. Transfer-Encoding has NOT been explicitly set by the caller
+        no_content_length = 'content-length' not in header_names
+        no_transfer_encoding = 'transfer-encoding' not in header_names
 
-        if 'content-length' not in header_names:
-            # only chunk body if not explicitly set for backwards
-            # compatibility, assuming the client code is already handling the
-            # chunking
-            if 'transfer-encoding' not in header_names:
-                # if content-length cannot be automatically determined, fall
-                # back to chunked encoding
-                encode_chunked = False
-                content_length = self._get_content_length(body, method)
-                if content_length is None:
-                    if body is not None:
-                        encode_chunked = True
-                        self.putheader('Transfer-Encoding', 'chunked')
-                else:
-                    self.putheader('Content-Length', str(content_length))
-        else:
-            encode_chunked = False
+        if no_content_length and no_transfer_encoding:
+            # if content-length cannot be automatically determined, fall
+            # back to chunked encoding
+            content_length = self._get_content_length(body, method)
+            if content_length is None:
+                if body is not None:
+                    headers['Transfer-Encoding'] = 'chunked'
+            else:
+                headers['Content-Length'] = str(content_length)
 
-        for hdr, value in headers.items():
-            self.putheader(hdr, value)
+        headers = _validate_headers(headers.items())
+
         if isinstance(body, six.text_type):
             # RFC 2616 Section 3.7.1 says that text default has a
             # default charset of iso-8859-1.
             # TODO: what?
             body = _encode(body, 'body')
-        self.endheaders(body, encode_chunked=encode_chunked)
+
+        if self.sock is None:
+            self.connect()
+
+        request = h11.Request(
+            method=method,
+            target=url,
+            headers=headers,
+        )
+
+        bytes_to_send = self._state_machine.send(request)
+        self.sock.sendall(bytes_to_send)
+        self._send_output(body)
 
     def getresponse(self):
         """Get the response from the server.
@@ -991,28 +926,17 @@ class HTTPConnection(object):
         Alternative to the common request method, which sends the
         body with chunked encoding and not as one block
         """
-        # TODO: We should be able to merge this method entirely with
-        # request()
         headers = HTTPHeaderDict(headers if headers is not None else {})
-        skip_accept_encoding = 'accept-encoding' in headers
-        skip_host = 'host' in headers
-        self.putrequest(
-            method,
-            url,
-            skip_accept_encoding=skip_accept_encoding,
-            skip_host=skip_host
-        )
-        for header, value in headers.items():
-            self.putheader(header, value)
+        # TODO: throw exception if we have content-length too.
         if 'transfer-encoding' not in headers:
-            self.putheader('Transfer-Encoding', 'chunked')
+            headers['Transfer-Encoding'] = 'chunked'
 
         if body is not None:
             stringish_types = six.string_types + (six.binary_type,)
             if isinstance(body, stringish_types):
                 body = (body,)
 
-        self.endheaders(body, encode_chunked=True)
+        self.request(method, url, body, headers)
 
 
 class HTTPSConnection(HTTPConnection):
