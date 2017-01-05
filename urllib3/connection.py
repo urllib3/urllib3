@@ -186,6 +186,50 @@ class OldHTTPResponse(io.BufferedIOBase):
                     # TODO: better exception
                     raise RuntimeError("Unexpected event %s" % event)
 
+    def _reading_loop(self, data_generator):
+        """
+        This generator handles reading data from the network for a response.abs
+
+        The purpose of this generator is to unify the API for the various
+        reading methods. Specifically, this contains the common code for
+        transforming read data into response data. It works by noting that
+        there are three possible behaviours when reading data:
+
+        1. Some response data arrives. That can be emitted by this generator
+           directly.
+        2. The EOM condition is hit. That can be shown by this generator using
+           the StopIteration exception.
+        3. A protocol error occurs. That can be thrown from this generator.
+
+        To allow for reading data on demand, this generator accepts another
+        generator as an argument. The inner generator will be iterated over
+        whenever further data is required. If this generator raises
+        StopIteration, then the outer generator will also stop iterating.
+        This allows for the implementation of methods like read1(), as they can
+        provide an inner generator that only yields once.
+
+        This generator is safely re-entrant. All buffering is handled in the
+        state machine object itself, so this generator can be created and
+        closed as often as needed.
+        """
+        while True:
+            event = self._state_machine.next_event()
+            if event == h11.NEED_DATA:
+                try:
+                    data = next(data_generator)
+                except StopIteration:
+                    break
+
+                self._state_machine.receive_data(data)
+            elif isinstance(event, h11.Data):
+                yield bytes(event.data)
+            elif isinstance(event, h11.EndOfMessage):
+                self._close_conn()
+                break
+            elif isinstance(event, h11.ConnectionClosed):
+                # TODO: better exception
+                raise ProtocolError("Connection closed early!")
+
     def begin(self):
         # TODO: rewrite in our own style.
         if self.headers is not None:
@@ -260,53 +304,30 @@ class OldHTTPResponse(io.BufferedIOBase):
         if self.fp is None:
             return b""
 
+        def _read_gen():
+            while True:
+                yield self.fp.recv(65536)
+
         data_out = [self._buffered_data]
         out_len = len(self._buffered_data)
 
-        if amt is not None:
-            # Amount is given
-            while out_len < amt:
-                event = self._state_machine.next_event()
-                if event == h11.NEED_DATA:
-                    data = self.fp.recv(65536)
-                    self._state_machine.receive_data(data)
-                    continue
+        limited_read = amt is not None
 
-                if isinstance(event, h11.Data):
-                    data_out.append(bytes(event.data))
-                    out_len += len(event.data)
-                elif isinstance(event, h11.EndOfMessage):
-                    self._close_conn()
-                    break
-                elif isinstance(event, h11.ConnectionClosed):
-                    # TODO: better exception
-                    raise ProtocolError("Connection closed early!")
+        for data in self._reading_loop(_read_gen()):
+            data_out.append(data)
+            out_len += len(data)
 
-            received_data = b''.join(data_out)
-            data_to_return, self._buffered_data = (
+            if limited_read and out_len >= amt:
+                break
+
+        received_data = b''.join(data_out)
+
+        if limited_read:
+            received_data, self._buffered_data = (
                 received_data[:amt], received_data[amt:]
             )
-            return data_to_return
-        else:
-            # Amount is not given (unbounded read)
-            # TODO: this loop is *basically* identical to the one above it.
-            # we should really try to refactor to remove the duplication.
-            while True:
-                event = self._state_machine.next_event()
-                if event == h11.NEED_DATA:
-                    self._state_machine.receive_data(self.fp.recv(65536))
-                    continue
 
-                if isinstance(event, h11.Data):
-                    data_out.append(bytes(event.data))
-                elif isinstance(event, h11.EndOfMessage):
-                    self._close_conn()
-                    break
-                elif isinstance(event, h11.ConnectionClosed):
-                    # TODO: better exception
-                    raise ProtocolError("Connection closed early!")
-
-            return b''.join(data_out)
+        return received_data
 
     def readinto(self, b):
         """Read up to len(b) bytes into bytearray b and return the number
@@ -336,50 +357,26 @@ class OldHTTPResponse(io.BufferedIOBase):
         if n == -1:
             n == 65536
 
-        self._state_machine.receive_data(self.fp.recv(n))
+        def _read_gen():
+            yield self.fp.recv(n)
+
         data = []
 
-        while True:
-            event = self.state_machine.next_event()
-            if event is h11.NEED_DATA:
-                break
-
-            if isinstance(event, h11.Data):
-                data.append(event.data)
-            elif isinstance(event, h11.EndOfMessage):
-                self._close_conn()
-                break
-            elif isinstance(event, h11.ConnectionClosed):
-                raise ProtocolError("Connection closed early!")
+        for data in self._reading_loop(_read_gen()):
+            data.append(data)
 
         # Thanks to the fact that we called recv with n, we cannot possibly get
         # too much data here.
         return b''.join(data)
 
     def peek(self, size=None):
-        data_out = [self._buffered_data]
-        data_out_len = len(self._buffered_data)
-
-        while (size is None) or (data_out_len < size):
-            event = self._state_machine.next_event()
-            if event is h11.NEED_DATA:
-                self._state_machine.receive_data(self.fp.recv(8192))
-                continue
-
-            if isinstance(event, h11.Data):
-                data_out.append(bytes(event.data))
-                data_out_len += len(event.data)
-            elif isinstance(event, h11.EndOfMessage):
-                self._close_conn()
-                break
-            elif isinstance(event, h11.ConnectionClosed):
-                raise ProtocolError("Connection closed early!")
-
-        self._buffered_data = b''.join(data_out)
-        if size is None:
-            return self._buffered_data
-        else:
-            return self._buffered_data[:size]
+        """
+        Essentially here we just read the data and then shove it back into the
+        buffer.
+        """
+        data = self.read(size)
+        self._buffered_data = data + self._buffered_data
+        return data
 
     def readline(self, limit=-1):
         # TODO: the performance here sucks.
