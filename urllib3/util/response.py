@@ -8,14 +8,6 @@ def is_fp_closed(obj):
     :param obj:
         The file-like object to check.
     """
-
-    try:
-        # Check `isclosed()` first, in case Python3 doesn't set `closed`.
-        # GH Issue #928
-        return obj.isclosed()
-    except AttributeError:
-        pass
-
     try:
         # Check via the official file-like-object way.
         return obj.closed

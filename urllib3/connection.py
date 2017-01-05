@@ -694,7 +694,7 @@ class HTTPConnection(object):
 
     def _send_request(self, method, url, body, headers):
         # if a prior response has been completed, then forget about it.
-        if self.__response and self.__response.isclosed():
+        if self.__response and self.__response.closed:
             self.__response = None
 
         # Save the method we use, we need it later in the response phase
@@ -764,7 +764,7 @@ class HTTPConnection(object):
         # TODO: rewrite this from httplib form to our own form.
 
         # if a prior response has been completed, then forget about it.
-        if self.__response and self.__response.isclosed():
+        if self.__response and self.__response.closed:
             self.__response = None
 
         # if a prior response exists, then it must be completed (otherwise, we
@@ -780,7 +780,7 @@ class HTTPConnection(object):
         #   1) will_close: this connection was reset and the prior socket and
         #                  response operate independently
         #   2) persistent: the response was retained and we await its
-        #                  isclosed() status to become true.
+        #                  closed status to become true.
         #
         if self.__response:
             raise ResponseNotReady()
