@@ -196,8 +196,7 @@ class TestResponse(unittest.TestCase):
         resp.close()
         self.assertEqual(resp.closed, True)
 
-        # Try closing with an `OldHTTPResponse`, because it has an
-        # `isclosed` method.
+        # Try closing with an `OldHTTPResponse`
         hlr = old_response(socket.socket())
         resp2 = HTTPResponse(hlr, preload_content=False)
         self.assertEqual(resp2.closed, False)
@@ -229,11 +228,11 @@ class TestResponse(unittest.TestCase):
         resp = HTTPResponse(hlr, preload_content=False)
 
         self.assertEqual(resp.closed, False)
-        self.assertEqual(resp._fp.isclosed(), False)
+        self.assertEqual(resp._fp.closed, False)
         self.assertEqual(is_fp_closed(resp._fp), False)
         resp.read()
         self.assertEqual(resp.closed, True)
-        self.assertEqual(resp._fp.isclosed(), True)
+        self.assertEqual(resp._fp.closed, True)
         self.assertEqual(is_fp_closed(resp._fp), True)
 
     def test_io_bufferedreader(self):

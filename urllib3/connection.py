@@ -124,14 +124,22 @@ class ResponseNotReady(Exception):
     pass
 
 
-class OldHTTPResponse(io.BufferedIOBase):
+class OldHTTPResponse(object):
+    """
+    A compatibility class that implements something like the API in http.client
+    for the purpose of urllib3.
 
-    # See RFC 2616 sec 19.6 and RFC 1945 sec 6 for details.
+    Right now this class exists primarily as a transition entity to allow for
+    small, targeted refactoring efforts instead of a whole-scale rewrite of
+    80% of the library in one go. In this case, it lets us start using h11
+    without throwing away most of the internals.
 
-    # The bytes from the socket object are iso-8859-1 strings.
-    # See RFC 2616 sec 2.2 which notes an exception for MIME-encoded
-    # text following RFC 2047.  The basic status line parsing only
-    # accepts iso-8859-1.
+    The major difference right now between the http.client version and this one
+    is that this one is not a subclass of io.BufferedReader. This is despite
+    the fact that the read() method here does use a buffer. Primarily, this is
+    to avoid needing to do too much implementing of methods we don't care about
+    like read1().
+    """
 
     def __init__(self, sock, state_machine, method=None, url=None):
         # If the response includes a content-length header, we need to
@@ -276,27 +284,13 @@ class OldHTTPResponse(io.BufferedIOBase):
             fp.close()
 
     def close(self):
-        # TODO: rewrite in our own style.
-        try:
-            super(OldHTTPResponse, self).close()  # set "closed" flag
-        finally:
-            if self.fp:
-                self._close_conn()
+        if self.fp:
+            self._close_conn()
 
-    # These implementations are for the benefit of io.BufferedReader.
-
-    # XXX This class should probably be revised to act more like
-    # the "raw stream" that BufferedReader expects.
-
-    def readable(self):
-        """Always returns True"""
-        return True
-
-    # End of "raw stream" methods
-
-    def isclosed(self):
+    @property
+    def closed(self):
         """True if the connection is closed."""
-        # TODO: rewrite in our own style
+        print("closed: %s" % (self.fp is None))
         return self.fp is None
 
     def read(self, amt=None):
@@ -329,69 +323,8 @@ class OldHTTPResponse(io.BufferedIOBase):
 
         return received_data
 
-    def readinto(self, b):
-        """Read up to len(b) bytes into bytearray b and return the number
-        of bytes read.
-        """
-        if self.fp is None:
-            return 0
-
-        data = self.read(len(b))
-        b[:] = data
-        return len(data)
-
-    def read1(self, n=-1):
-        """Read with at most one underlying system call.  If at least one
-        byte is buffered, return that instead.
-        """
-        if self.fp is None:
-            return b""
-
-        if self._buffered_data:
-            # This is a dumb default value of this argument.
-            if n == -1:
-                n == len(self._buffered_data)
-            return self._buffered_data[:n]
-
-        # 65536 is a nice number
-        if n == -1:
-            n == 65536
-
-        def _read_gen():
-            yield self.fp.recv(n)
-
-        data = []
-
-        for data in self._reading_loop(_read_gen()):
-            data.append(data)
-
-        # Thanks to the fact that we called recv with n, we cannot possibly get
-        # too much data here.
-        return b''.join(data)
-
-    def peek(self, size=None):
-        """
-        Essentially here we just read the data and then shove it back into the
-        buffer.
-        """
-        data = self.read(size)
-        self._buffered_data = data + self._buffered_data
-        return data
-
-    def readline(self, limit=-1):
-        # TODO: the performance here sucks.
-        if self.fp is None:
-            return b""
-
-        # Fallback to IOBase readline which uses peek() and read()
-        return super().readline(limit)
-
     def fileno(self):
         return self.fp.fileno()
-
-    # We override IOBase.__iter__ so that it doesn't check for closed-ness
-    def __iter__(self):
-        return self
 
 
 class HTTPConnection(object):
@@ -761,7 +694,7 @@ class HTTPConnection(object):
 
     def _send_request(self, method, url, body, headers):
         # if a prior response has been completed, then forget about it.
-        if self.__response and self.__response.isclosed():
+        if self.__response and self.__response.closed:
             self.__response = None
 
         # Save the method we use, we need it later in the response phase
@@ -831,7 +764,7 @@ class HTTPConnection(object):
         # TODO: rewrite this from httplib form to our own form.
 
         # if a prior response has been completed, then forget about it.
-        if self.__response and self.__response.isclosed():
+        if self.__response and self.__response.closed:
             self.__response = None
 
         # if a prior response exists, then it must be completed (otherwise, we
@@ -847,7 +780,7 @@ class HTTPConnection(object):
         #   1) will_close: this connection was reset and the prior socket and
         #                  response operate independently
         #   2) persistent: the response was retained and we await its
-        #                  isclosed() status to become true.
+        #                  closed status to become true.
         #
         if self.__response:
             raise ResponseNotReady()

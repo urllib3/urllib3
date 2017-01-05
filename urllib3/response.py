@@ -271,7 +271,7 @@ class HTTPResponse(io.IOBase):
 
             # If we hold the original response but it's closed now, we should
             # return the connection back to the pool.
-            if self._original_response and self._original_response.isclosed():
+            if self._original_response and self._original_response.closed:
                 self.release_conn()
 
     def read(self, amt=None, decode_content=None, cache_content=False):
@@ -402,8 +402,6 @@ class HTTPResponse(io.IOBase):
     def closed(self):
         if self._fp is None:
             return True
-        elif hasattr(self._fp, 'isclosed'):
-            return self._fp.isclosed()
         elif hasattr(self._fp, 'closed'):
             return self._fp.closed
         else:
