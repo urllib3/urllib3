@@ -12,14 +12,6 @@ urllib3.contrib.appengine module
     :undoc-members:
     :show-inheritance:
 
-urllib3.contrib.ntlmpool module
--------------------------------
-
-.. automodule:: urllib3.contrib.ntlmpool
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 urllib3.contrib.pyopenssl module
 --------------------------------
 
