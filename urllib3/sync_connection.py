@@ -58,8 +58,6 @@ class SyncHTTP1Connection(object):
                  tunnel_host, tunnel_port):
         self.is_verified = False
 
-        self._state_machine = h11.Connection(our_role=h11.CLIENT)
-        self._selector = selectors.DefaultSelector()
         self._host = host
         self._port = port
         self._timeout = timeout
@@ -68,11 +66,47 @@ class SyncHTTP1Connection(object):
         self._tunnel_host = tunnel_host
         self._tunnel_port = tunnel_port
         self._sock = None
+        self._state_machine = None
+        self._selector = None
 
         # If we need to tunnel through a CONNECT proxy, we need an extra state
         # machine to manage the "outer" HTTP connection. We only use this to
         # set up the connection: once it is set up, we throw this away.
         self._tunnel_state_machine = None
+
+    def _wrap_socket(self, conn, ssl_context, fingerprint, assert_hostname):
+        """
+        Handles extra logic to wrap the socket in TLS magic.
+        """
+        conn = ssl_util.ssl_wrap_socket(
+            conn, server_hostname=self._host, ssl_context=ssl_context
+        )
+
+        if fingerprint:
+            ssl_util.assert_fingerprint(conn.getpeercert(binary_form=True),
+                                        fingerprint)
+
+        if (ssl_context.verify_mode != ssl.CERT_NONE
+            and assert_hostname is not False):
+            cert = conn.getpeercert()
+            if not cert.get('subjectAltName', ()):
+                warnings.warn((
+                    'Certificate for {0} has no `subjectAltName`, falling '
+                    'back to check for a `commonName` for now. This '
+                    'feature is being removed by major browsers and '
+                    'deprecated by RFC 2818. (See '
+                    'https://github.com/shazow/urllib3/issues/497 for '
+                    'details.)'.format(self._host)),
+                    SubjectAltNameWarning
+                )
+            ssl_util.match_hostname(cert, assert_hostname or self._host)
+
+        self.is_verified = (
+            ssl_context.verify_mode == ssl.CERT_REQUIRED and
+            (assert_hostname is not False or fingerprint)
+        )
+
+        return conn
 
     def connect(self, ssl_context=None,
                 fingerprint=None, assert_hostname=None):
@@ -80,6 +114,9 @@ class SyncHTTP1Connection(object):
         Connect this socket to the server, applying the source address, any
         relevant socket options, and the relevant connection timeout.
         """
+        self._state_machine = h11.Connection(our_role=h11.CLIENT)
+        self._selector = selectors.DefaultSelector()
+
         extra_kw = {}
         if self._source_address:
             extra_kw['source_address'] = self._source_address
@@ -101,34 +138,9 @@ class SyncHTTP1Connection(object):
                 self, "Failed to establish a new connection: %s" % e)
 
         if ssl_context is not None:
-            conn = ssl_util.ssl_wrap_socket(
-                conn, server_hostname=self._host, ssl_context=ssl_context
+            conn = self._wrap_socket(
+                conn, ssl_context, fingerprint, assert_hostname
             )
-
-            if fingerprint:
-                ssl_util.assert_fingerprint(conn.getpeercert(binary_form=True),
-                                            fingerprint)
-
-            if (ssl_context.verify_mode != ssl.CERT_NONE
-                and assert_hostname is not False):
-                cert = conn.getpeercert()
-                if not cert.get('subjectAltName', ()):
-                    warnings.warn((
-                        'Certificate for {0} has no `subjectAltName`, falling '
-                        'back to check for a `commonName` for now. This '
-                        'feature is being removed by major browsers and '
-                        'deprecated by RFC 2818. (See '
-                        'https://github.com/shazow/urllib3/issues/497 for '
-                        'details.)'.format(self._host)),
-                        SubjectAltNameWarning
-                    )
-                ssl_util.match_hostname(cert, assert_hostname or self._host)
-
-            self.is_verified = (
-                ssl_context.verify_mode == ssl.CERT_REQUIRED and
-                (assert_hostname is not False or fingerprint)
-            )
-
 
         self._sock = conn
 
