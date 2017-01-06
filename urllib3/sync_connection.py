@@ -29,7 +29,12 @@ def _request_to_bytes(request, state_machine):
     """
     Returns the request header bytes for sending.
     """
-    pass
+    h11_request = h11.Request(
+        method=request.method,
+        target=request.path,
+        headers=request.headers
+    )
+    return state_machine.send(h11_request)
 
 
 def _body_bytes(body_chunk, state_machine):
