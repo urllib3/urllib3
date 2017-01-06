@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import errno
+import logging
 import warnings
 import hmac
 
@@ -7,6 +8,10 @@ from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
 from ..exceptions import SSLError, InsecurePlatformWarning, SNIMissingWarning
+from ..packages.ssl_match_hostname import (
+    match_hostname as _match_hostname,
+    CertificateError
+)
 
 
 SSLContext = None
@@ -19,6 +24,9 @@ HASHFUNC_MAP = {
     40: sha1,
     64: sha256,
 }
+
+
+log = logging.getLogger(__name__)
 
 
 def _const_compare_digest_backport(a, b):
@@ -321,3 +329,17 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         SNIMissingWarning
     )
     return context.wrap_socket(sock)
+
+
+def match_hostname(cert, asserted_hostname):
+    try:
+        _match_hostname(cert, asserted_hostname)
+    except CertificateError as e:
+        log.error(
+            'Certificate did not match expected hostname: %s. '
+            'Certificate: %s', asserted_hostname, cert
+        )
+        # Add cert to exception and reraise so client code can inspect
+        # the cert when catching the exception, if they want to
+        e._peer_cert = cert
+        raise

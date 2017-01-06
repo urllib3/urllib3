@@ -29,14 +29,13 @@ from .exceptions import (
     BadVersionError,
     ProtocolError
 )
-from .packages.ssl_match_hostname import match_hostname, CertificateError
-
 from .util.ssl_ import (
     resolve_cert_reqs,
     resolve_ssl_version,
     assert_fingerprint,
     create_urllib3_context,
-    ssl_wrap_socket
+    ssl_wrap_socket,
+    match_hostname
 )
 from .util import parse_url
 
@@ -955,26 +954,12 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                     'for details.)'.format(hostname)),
                     SubjectAltNameWarning
                 )
-            _match_hostname(cert, self.assert_hostname or hostname)
+            match_hostname(cert, self.assert_hostname or hostname)
 
         self.is_verified = (
             context.verify_mode == ssl.CERT_REQUIRED or
             self.assert_fingerprint is not None
         )
-
-
-def _match_hostname(cert, asserted_hostname):
-    try:
-        match_hostname(cert, asserted_hostname)
-    except CertificateError as e:
-        log.error(
-            'Certificate did not match expected hostname: %s. '
-            'Certificate: %s', asserted_hostname, cert
-        )
-        # Add cert to exception and reraise so client code can inspect
-        # the cert when catching the exception, if they want to
-        e._peer_cert = cert
-        raise
 
 
 if ssl:
