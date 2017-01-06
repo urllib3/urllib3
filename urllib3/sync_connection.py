@@ -182,6 +182,16 @@ class SyncHTTP1Connection(object):
 
         self._state_machine = None
 
+    @property
+    def readable(self):
+        """
+        Returns True if the connection is readable.
+        """
+        # This method only works if we have one socket per selector. Otherwise
+        # we're totally hosed.
+        results = self._selector.select(timeout=0)
+        return any(result[1] & selectors.EVENT_READ for result in results)
+
     def __iter__(self):
         return self
 
