@@ -176,6 +176,12 @@ class SyncHTTP1Connection(object):
             sock, self._sock = self._sock, None
             sock.close()
 
+        if self._selector is not None:
+            selector, self._selector = self._selector, None
+            selector.close()
+
+        self._state_machine = None
+
     def __iter__(self):
         return self
 
