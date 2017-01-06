@@ -13,10 +13,14 @@ construct HTTP requests and responses. It mostly manages the socket itself.
 """
 from __future__ import absolute_import
 
-from .exceptions import ConnectTimeoutError, NewConnectionError
-from .util import selectors, connection
+from .exceptions import (
+    ConnectTimeoutError, NewConnectionError, SubjectAltNameWarning
+)
+from .util import selectors, connection, ssl_ as ssl_util
 
 import socket
+import ssl
+import warnings
 
 import h11
 
@@ -52,6 +56,8 @@ class SyncHTTP1Connection(object):
     """
     def __init__(self, host, port, timeout, socket_options, source_address,
                  tunnel_host, tunnel_port):
+        self.is_verified = False
+
         self._state_machine = h11.Connection(our_role=h11.CLIENT)
         self._selector = selectors.DefaultSelector()
         self._host = host
@@ -68,7 +74,8 @@ class SyncHTTP1Connection(object):
         # set up the connection: once it is set up, we throw this away.
         self._tunnel_state_machine = None
 
-    def connect(self):
+    def connect(self, ssl_context=None,
+                fingerprint=None, assert_hostname=None):
         """
         Connect this socket to the server, applying the source address, any
         relevant socket options, and the relevant connection timeout.
@@ -92,6 +99,36 @@ class SyncHTTP1Connection(object):
         except socket.error as e:
             raise NewConnectionError(
                 self, "Failed to establish a new connection: %s" % e)
+
+        if ssl_context is not None:
+            conn = ssl_util.ssl_wrap_socket(
+                conn, server_hostname=self._host, ssl_context=ssl_context
+            )
+
+            if fingerprint:
+                ssl_util.assert_fingerprint(conn.getpeercert(binary_form=True),
+                                            fingerprint)
+
+            if (ssl_context.verify_mode != ssl.CERT_NONE
+                and assert_hostname is not False):
+                cert = conn.getpeercert()
+                if not cert.get('subjectAltName', ()):
+                    warnings.warn((
+                        'Certificate for {0} has no `subjectAltName`, falling '
+                        'back to check for a `commonName` for now. This '
+                        'feature is being removed by major browsers and '
+                        'deprecated by RFC 2818. (See '
+                        'https://github.com/shazow/urllib3/issues/497 for '
+                        'details.)'.format(self._host)),
+                        SubjectAltNameWarning
+                    )
+                ssl_util.match_hostname(cert, assert_hostname or self._host)
+
+            self.is_verified = (
+                ssl_context.verify_mode == ssl.CERT_REQUIRED and
+                (assert_hostname is not False or fingerprint)
+            )
+
 
         self._sock = conn
 
