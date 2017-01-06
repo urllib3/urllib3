@@ -37,11 +37,16 @@ def _request_to_bytes(request, state_machine):
     return state_machine.send(h11_request)
 
 
-def _body_bytes(body_chunk, state_machine):
+def _body_bytes(request, state_machine):
     """
     An iterable that serialises a set of bytes for the body.
     """
-    pass
+    iterable_body = _make_body_iterable(request.body)
+
+    for chunk in iterable_body:
+        yield state_machine.send(h11.Data(chunk))
+
+    yield state_machine.send(h11.EndOfMessage())
 
 
 class SyncHTTP1Connection(object):
