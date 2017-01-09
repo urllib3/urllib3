@@ -117,6 +117,9 @@ def _maybe_read_response(data, state_machine):
     return response
 
 
+_DEFAULT_SOCKET_OPTIONS = object()
+
+
 class SyncHTTP1Connection(object):
     """
     A synchronous wrapper around a single HTTP/1.1 connection.
@@ -132,14 +135,22 @@ class SyncHTTP1Connection(object):
     data is buffered it will issue one read syscall and return all of that
     data. Buffering of response data must happen at a higher layer.
     """
-    def __init__(self, host, port, timeout, socket_options, source_address,
-                 tunnel_host, tunnel_port, tunnel_headers):
+    #: Disable Nagle's algorithm by default.
+    #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
+    default_socket_options = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
+
+    def __init__(self, host, port, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+                 socket_options=_DEFAULT_SOCKET_OPTIONS, source_address=None,
+                 tunnel_host=None, tunnel_port=None, tunnel_headers=None):
         self.is_verified = False
 
         self._host = host
         self._port = port
         self._timeout = timeout
-        self._socket_options = socket_options
+        self._socket_options = (
+            socket_options if socket_options is not _DEFAULT_SOCKET_OPTIONS
+            else self.default_socket_options
+        )
         self._source_address = source_address
         self._tunnel_host = tunnel_host
         self._tunnel_port = tunnel_port
