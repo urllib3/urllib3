@@ -80,7 +80,7 @@ def _request_to_bytes(request, state_machine):
     """
     h11_request = h11.Request(
         method=request.method,
-        target=request.path,
+        target=request.target,
         headers=request.headers
     )
     return state_machine.send(h11_request)
