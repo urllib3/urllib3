@@ -62,3 +62,22 @@ class Request(object):
             headers = HTTPHeaderDict(host=host)
             headers._copy_from(self.headers)
             self.headers = headers
+
+
+class Response(object):
+    """
+    The abstract low-level Response object that urllib3 works on. This is not
+    the high-level helpful Response object that is exposed at the higher layers
+    of urllib3: it's just a simple object that just exposes the lowest-level
+    HTTP semantics to allow processing by the higher levels.
+    """
+    def __init__(self, status_code, headers, body):
+        #: The HTTP status code of the response.
+        self.status_code = status_code
+
+        #: The headers on the response, as a HTTPHeaderDict.
+        self.headers = HTTPHeaderDict(headers)
+
+        #: The request body. This is an iterable of bytes, and *must* be
+        #: iterated if the connection is to be preserved.
+        self.body = body
