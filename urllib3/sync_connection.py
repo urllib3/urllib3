@@ -258,9 +258,13 @@ class SyncHTTP1Connection(object):
 
         # Now that the connection is created, we want to set the socket to
         # non-blocking mode. We're going to select on it for the rest of its
-        # lifetime, so we need it non-blocking.
+        # lifetime, so we need it non-blocking. We also register it with our
+        # selector to allow us to assume that it is *always* registered.
         conn.setblocking(0)
         self._sock = conn
+        self._selector.register(
+            self._sock, selectors.EVENT_READ | selectors.EVENT_WRITE
+        )
 
     def send_request(self, request):
         """
@@ -273,7 +277,7 @@ class SyncHTTP1Connection(object):
         # First, register the socket with the selector. We want to look for
         # readability *and* writability, because if the socket suddenly becomes
         # readable we need to stop our upload immediately.
-        self._selector.register(
+        self._selector.modify(
             self._sock, selectors.EVENT_READ | selectors.EVENT_WRITE
         )
         header_bytes = _request_to_bytes(request, self._state_machine)
