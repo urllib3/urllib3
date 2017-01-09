@@ -18,6 +18,7 @@ from .exceptions import (
 )
 from .util import selectors, connection, ssl_ as ssl_util
 
+import itertools
 import socket
 import ssl
 import warnings
@@ -47,6 +48,24 @@ def _body_bytes(request, state_machine):
         yield state_machine.send(h11.Data(chunk))
 
     yield state_machine.send(h11.EndOfMessage())
+
+
+def _maybe_read_response(data, state_machine):
+    """
+    Feeds some more data into the state machine and potentially returns a
+    response object.
+    """
+    response = None
+    event = None
+    state_machine.receive_bytes(data)
+
+    while event is not h11.NEED_DATA:
+        event = state_machine.next_event()
+        if isinstance(event, h11.Response):
+            response = event
+            break
+
+    return response
 
 
 class SyncHTTP1Connection(object):
@@ -118,6 +137,43 @@ class SyncHTTP1Connection(object):
 
         return conn
 
+    def _send_unless_readable(self, data):
+        """
+        This method sends the data in ``data`` on the given socket. It will
+        abort early if the socket became readable for any reason.
+
+        If the socket became readable, this returns True. Otherwise, returns
+        False.
+        """
+        # We take a memoryview here because if the chunk is very large we're
+        # going to slice it a few times, and we'd like to avoid doing copies as
+        # we do that.
+        chunk = memoryview(data)
+
+        while chunk:
+            events = self._selector.select()[0][1]  # TODO: timeout!
+
+            # If the socket is readable, we stop uploading.
+            if events & selectors.EVENT_READ:
+                return True
+            assert events & selectors.EVENT_WRITE
+
+            chunk_sent = self._sock.send(chunk)
+            chunk = chunk[chunk_sent:]
+
+        return False
+
+    def _receive_bytes(self):
+        """
+        This method blocks until the socket is readable or the read times out
+        (TODO), and then returns whatever data was read. Signals EOF the same
+        way ``recv`` does: by returning the empty string.
+        """
+        events = self._selector.select()[0][1]  # TODO: timeout!
+        assert events == selectors.EVENT_READ
+        data = self._sock.recv(65536)
+        return data
+
     def connect(self, ssl_context=None,
                 fingerprint=None, assert_hostname=None):
         """
@@ -162,17 +218,25 @@ class SyncHTTP1Connection(object):
         """
         Sends a single Request object. Returns a Response.
         """
+        # First, register the socket with the selector. We want to look for
+        # readability *and* writability, because if the socket suddenly becomes
+        # readable we need to stop our upload immediately.
+        self._selector.register(
+            self._sock, selectors.EVENT_READ | selectors.EVENT_WRITE
+        )
         header_bytes = _request_to_bytes(request, self._state_machine)
-        self._send_bytes(header_bytes)
+        body_chunks = _body_bytes(request, self._state_machine)
+        request_chunks = itertools.chain([header_bytes], body_chunks)
 
-        # We want to send the body bytes for as long as there is no response
-        # for us to read. If there is a response for us to read, we should
-        # immediately stop upload. This isn't an error condition, so we don't
-        # need to detect it.
-        for chunk in _body_bytes(request, self._state_machine):
-            if self.readable:
+        for chunk in request_chunks:
+            # If the socket becomes readable we don't need to error out or
+            # anything: we can just continue with our current logic.
+            readable = self._send_unless_readable(chunk)
+            if readable:
                 break
-            self._send_bytes(header_bytes)
+
+        # At this point we no longer care if the socket is writable.
+        self._selector.modify(self._sock, selectors.EVENT_READ)
 
         response = None
         while response is None:
