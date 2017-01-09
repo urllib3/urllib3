@@ -13,17 +13,17 @@ construct HTTP requests and responses. It mostly manages the socket itself.
 """
 from __future__ import absolute_import
 
-from .exceptions import (
-    ConnectTimeoutError, NewConnectionError, SubjectAltNameWarning
-)
-from .util import selectors, connection, ssl_ as ssl_util
-
 import itertools
 import socket
 import ssl
 import warnings
 
 import h11
+
+from .exceptions import (
+    ConnectTimeoutError, NewConnectionError, SubjectAltNameWarning
+)
+from .util import selectors, connection, ssl_ as ssl_util
 
 
 def _request_to_bytes(request, state_machine):
