@@ -301,10 +301,12 @@ class SyncHTTP1Connection(object):
             read_bytes = self._receive_bytes()
             response = _maybe_read_response(read_bytes, self._state_machine)
 
+        version = 11 if response.http_version == b'1.1' else 10
         our_response = Response(
             status_code=response.status_code,
             headers=response.headers,
-            body=self
+            body=self,
+            version=version
         )
         return our_response
 

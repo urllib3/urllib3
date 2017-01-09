@@ -71,7 +71,7 @@ class Response(object):
     of urllib3: it's just a simple object that just exposes the lowest-level
     HTTP semantics to allow processing by the higher levels.
     """
-    def __init__(self, status_code, headers, body):
+    def __init__(self, status_code, headers, body, version):
         #: The HTTP status code of the response.
         self.status_code = status_code
 
@@ -81,3 +81,9 @@ class Response(object):
         #: The request body. This is an iterable of bytes, and *must* be
         #: iterated if the connection is to be preserved.
         self.body = body
+
+        #: The HTTP version of the response. Stored as a two-digit integer:
+        #: - 10 for HTTP/1.0
+        #: - 11 for HTTP/1.1
+        #: - 20 for HTTP/2
+        self.version = version
