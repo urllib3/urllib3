@@ -104,7 +104,7 @@ def _maybe_read_response(data, state_machine):
     """
     response = None
     event = None
-    state_machine.receive_bytes(data)
+    state_machine.receive_data(data)
 
     while event is not h11.NEED_DATA:
         event = state_machine.next_event()
@@ -345,6 +345,22 @@ class SyncHTTP1Connection(object):
         return self
 
     def next(self):
-        pass
+        """
+        Iterate over the body bytes of the response until end of message.
+        """
+        data = None
+
+        while data is None:
+            event = self._state_machine.next_event()
+            if event is h11.NEED_DATA:
+                received_bytes = self._receive_bytes()
+                self._state_machine.receive_data(received_bytes)
+            elif isinstance(event, h11.Data):
+                data = event.data
+            elif isinstance(event, h11.EndOfMessage):
+                self._reset()
+                raise StopIteration()
+
+        return data
 
     __next__ = next
