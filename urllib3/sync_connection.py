@@ -5,7 +5,7 @@ This module implements the synchronous connection management logic.
 Unlike in http.client, the connection here is an object that is responsible
 for a very small number of tasks:
 
-    1. Serializing/deserializing data to/from the netwwork.
+    1. Serializing/deserializing data to/from the network.
     2. Being able to do basic parsing of HTTP and maintaining the framing.
     3. Understanding connection state.
 
