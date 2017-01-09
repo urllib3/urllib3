@@ -299,6 +299,7 @@ class SyncHTTP1Connection(object):
             read_bytes = self._receive_bytes()
             response = _maybe_read_response(read_bytes, self._state_machine)
 
+        response.body = self
         return response
 
     def close(self):
