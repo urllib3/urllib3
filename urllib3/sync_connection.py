@@ -23,6 +23,7 @@ import warnings
 
 import h11
 
+from .base import Response
 from .exceptions import (
     ConnectTimeoutError, NewConnectionError, SubjectAltNameWarning
 )
@@ -299,8 +300,12 @@ class SyncHTTP1Connection(object):
             read_bytes = self._receive_bytes()
             response = _maybe_read_response(read_bytes, self._state_machine)
 
-        response.body = self
-        return response
+        our_response = Response(
+            status_code=response.status_code,
+            headers=response.headers,
+            body=self
+        )
+        return our_response
 
     def close(self):
         """
