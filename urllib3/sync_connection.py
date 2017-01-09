@@ -265,6 +265,10 @@ class SyncHTTP1Connection(object):
         """
         Sends a single Request object. Returns a Response.
         """
+        # Before we begin, confirm that the state machine is ok.
+        assert self._state_machine.our_state is h11.IDLE
+        assert self._state_machine.their_state is h11.IDLE
+
         # First, register the socket with the selector. We want to look for
         # readability *and* writability, because if the socket suddenly becomes
         # readable we need to stop our upload immediately.
@@ -307,6 +311,35 @@ class SyncHTTP1Connection(object):
             selector.close()
 
         self._state_machine = None
+
+    def _reset(self):
+        """
+        Called once we hit EndOfMessage, and checks whether we can re-use this
+        state machine and connection or not, and if not, closes the socket and
+        state machine.
+
+        This method is safe to call multiple times.
+        """
+        # The logic here is as follows. Once we've got EndOfMessage, only two
+        # things can be true. Either a) the connection is suitable for
+        # connection re-use per RFC 7230, or b) it is not. h11 signals this
+        # difference by what happens when you call `next_event()`.
+        #
+        # If the connection is safe to re-use, when we call `next_event()`
+        # we'll get back a h11.NEED_DATA and the state machine will be reset to
+        # (IDLE, IDLE). If it's not, we'll get either ConnectionClosed or we'll
+        # find that our state is MUST_CLOSE, and then we should close the
+        # connection accordingly.
+        event = self._state_machine.next_event()
+        our_state = self._state_machine.our_state
+        their_state = self._state_machine.their_state
+        must_close = (
+            event is not h11.NEED_DATA or
+            our_state is not h11.IDLE or
+            their_state is not h11.IDLE
+        )
+        if must_close:
+            self.close()
 
     def __iter__(self):
         return self
