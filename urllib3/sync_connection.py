@@ -152,6 +152,10 @@ class SyncHTTP1Connection(object):
                 conn, ssl_context, fingerprint, assert_hostname
             )
 
+        # Now that the connection is created, we want to set the socket to
+        # non-blocking mode. We're going to select on it for the rest of its
+        # lifetime, so we need it non-blocking.
+        conn.setblocking(0)
         self._sock = conn
 
     def send_request(self, request):
@@ -184,6 +188,7 @@ class SyncHTTP1Connection(object):
         """
         if self._sock is not None:
             sock, self._sock = self._sock, None
+            sock.setblocking(1)
             sock.close()
 
         if self._selector is not None:
