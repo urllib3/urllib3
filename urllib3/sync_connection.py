@@ -13,6 +13,8 @@ construct HTTP requests and responses. It mostly manages the socket itself.
 """
 from __future__ import absolute_import
 
+import collections
+import io
 import itertools
 import socket
 import ssl
@@ -23,7 +25,52 @@ import h11
 from .exceptions import (
     ConnectTimeoutError, NewConnectionError, SubjectAltNameWarning
 )
+from .packages import six
 from .util import selectors, connection, ssl_ as ssl_util
+
+
+def _read_readable(readable):
+    # TODO: reconsider this block size
+    blocksize = 8192
+    # TODO: is this acceptable? Is it too optimistic?
+    encode = isinstance(readable, io.TextIOBase)
+    while True:
+        datablock = readable.read(blocksize)
+        if not datablock:
+            break
+        if encode:
+            datablock = datablock.encode("utf-8")
+        yield datablock
+
+
+def _make_body_iterable(body):
+    """
+    This function turns all possible body types that urllib3 supports into an
+    iterable of bytes. The goal is to expose a uniform structure to request
+    bodies so that they all appear to be identical to the low-level code.
+
+    The basic logic here is:
+        - byte strings are turned into single-element lists
+        - unicode strings are encoded and turned into single-element lists
+        - readables are wrapped in an iterable that repeatedly calls read until
+          nothing is returned anymore
+        - other iterables are used directly
+        - anything else is not acceptable
+    """
+    if isinstance(body, six.binary_type):
+        return [body]
+    elif isinstance(body, six.text_type):
+        # TODO: Consider raising warnings on auto-encode?
+        body = body.encode('utf-8')
+        return [body]
+    elif hasattr(body, "read"):
+        return _read_readable(body)
+    elif isinstance(body, collections.Iterable):
+        # TODO: Should we wrap this in an iterable that auto-encodes text?
+        return body
+    else:
+        # TODO: Better exception.
+        raise RuntimeError("Unacceptable body type")
 
 
 def _request_to_bytes(request, state_machine):
