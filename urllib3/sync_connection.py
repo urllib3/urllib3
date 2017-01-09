@@ -133,7 +133,7 @@ class SyncHTTP1Connection(object):
     data. Buffering of response data must happen at a higher layer.
     """
     def __init__(self, host, port, timeout, socket_options, source_address,
-                 tunnel_host, tunnel_port):
+                 tunnel_host, tunnel_port, tunnel_headers):
         self.is_verified = False
 
         self._host = host
@@ -143,6 +143,7 @@ class SyncHTTP1Connection(object):
         self._source_address = source_address
         self._tunnel_host = tunnel_host
         self._tunnel_port = tunnel_port
+        self._tunnel_headers = tunnel_headers
         self._sock = None
         self._state_machine = None
         self._selector = None
