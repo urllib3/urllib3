@@ -89,11 +89,6 @@ class HTTPResponse(io.IOBase):
         (like 'gzip' and 'deflate') will be skipped and raw data will be used
         instead.
 
-    :param original_response:
-        When this HTTPResponse wrapper is generated from an httplib.HTTPResponse
-        object, it's convenient to include the original for debug purposes. It's
-        otherwise unused.
-
     :param retries:
         The retries contains the last :class:`~urllib3.util.retry.Retry` that
         was used during the request.
@@ -126,12 +121,11 @@ class HTTPResponse(io.IOBase):
 
         if body and isinstance(body, (basestring, binary_type)):
             self._body = body
+        else:
+            self._fp = body
 
         self._pool = pool
         self._connection = connection
-
-        if hasattr(body, 'read'):
-            self._fp = body
 
         # If requested, preload the body.
         if preload_content and not self._body:
@@ -308,22 +302,21 @@ class HTTPResponse(io.IOBase):
         with self._error_catcher():
             if amt is None:
                 # cStringIO doesn't like amt=None
-                data = self._fp.read()
+                data = b''.join(self._fp)
                 flush_decoder = True
             else:
                 cache_content = False
-                data = self._fp.read(amt)
-                if amt != 0 and not data:
-                    # Close the connection when no data is returned
-                    #
-                    # TODO: While we no longer use httplib, and so technically
-                    # don't need this close, some tests implicitly rely on it.
-                    # Most notably, those tests that patch in things like
-                    # BytesIO as the _fp. We shouldn't actually need the close
-                    # anymore if we can rewrite those tests to use actual
-                    # HTTP responses.
-                    self._fp.close()
+                chunks = []
+                data_len = 0
+                for chunk in self._fp:
+                    chunks.append(chunk)
+                    data_len += len(chunk)
+                    if data_len >= amt:
+                        break
+                else:
                     flush_decoder = True
+
+                data = b''.join(chunks)
 
         if data:
             self._fp_bytes_read += len(data)
@@ -358,27 +351,18 @@ class HTTPResponse(io.IOBase):
                 yield data
 
     @classmethod
-    def from_httplib(ResponseCls, r, **response_kw):
+    def from_base(ResponseCls, r, **response_kw):
         """
-        Given an :class:`httplib.HTTPResponse` instance ``r``, return a
+        Given an :class:`urllib3.base.Response` instance ``r``, return a
         corresponding :class:`urllib3.response.HTTPResponse` object.
 
         Remaining parameters are passed to the HTTPResponse constructor, along
         with ``original_response=r``.
         """
-        headers = r.msg
-
-        if not isinstance(headers, HTTPHeaderDict):
-            headers = HTTPHeaderDict(headers.items())
-
-        # HTTPResponse objects in Python 3 don't have a .strict attribute
-        strict = getattr(r, 'strict', 0)
-        resp = ResponseCls(body=r,
-                           headers=headers,
-                           status=r.status,
+        resp = ResponseCls(body=r.body,
+                           headers=r.headers,
+                           status=r.status_code,
                            version=r.version,
-                           reason=r.reason,
-                           strict=strict,
                            original_response=r,
                            **response_kw)
         return resp
@@ -400,6 +384,7 @@ class HTTPResponse(io.IOBase):
 
     @property
     def closed(self):
+        # TODO: Do we need this?
         if self._fp is None:
             return True
         elif hasattr(self._fp, 'closed'):
@@ -408,6 +393,7 @@ class HTTPResponse(io.IOBase):
             return True
 
     def fileno(self):
+        # TODO: Do we need this?
         if self._fp is None:
             raise IOError("HTTPResponse has no file to get a fileno from")
         elif hasattr(self._fp, "fileno"):
