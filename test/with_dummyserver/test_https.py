@@ -406,12 +406,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     def test_enhanced_ssl_connection(self):
         fingerprint = '92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A'
 
-        conn = VerifiedHTTPSConnection(self.host, self.port)
         https_pool = HTTPSConnectionPool(self.host, self.port,
                 cert_reqs='CERT_REQUIRED', ca_certs=DEFAULT_CA,
                 assert_fingerprint=fingerprint)
 
-        https_pool._make_request(conn, 'GET', '/')
+        https_pool.urlopen('GET', '/')
 
     def test_ssl_correct_system_time(self):
         self._pool.cert_reqs = 'CERT_REQUIRED'
