@@ -71,7 +71,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          ca_certs=DEFAULT_CA)
 
         conn = https_pool._new_conn()
-        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
 
         with mock.patch('warnings.warn') as warn:
             r = https_pool.request('GET', '/')
@@ -97,7 +96,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          ssl_context=ctx)
 
         conn = https_pool._new_conn()
-        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
 
         with mock.patch('warnings.warn') as warn:
             r = https_pool.request('GET', '/')
@@ -123,7 +121,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          ssl_context=ctx)
 
         conn = https_pool._new_conn()
-        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
 
         with mock.patch('warnings.warn') as warn:
             r = https_pool.request('GET', '/')
@@ -149,7 +146,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          ca_cert_dir=DEFAULT_CA_DIR)
 
         conn = https_pool._new_conn()
-        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
 
         with mock.patch('warnings.warn') as warn:
             r = https_pool.request('GET', '/')
@@ -213,7 +209,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     def test_unverified_ssl(self):
         """ Test that bare HTTPSConnection can connect, make requests """
         pool = HTTPSConnectionPool(self.host, self.port)
-        pool.ConnectionCls = UnverifiedHTTPSConnection
 
         with mock.patch('warnings.warn') as warn:
             r = pool.request('GET', '/')
