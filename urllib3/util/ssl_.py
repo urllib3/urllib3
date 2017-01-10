@@ -270,6 +270,34 @@ def create_urllib3_context(ssl_version=None, cert_reqs=None,
     return context
 
 
+def merge_context_settings(context, keyfile=None, certfile=None,
+                           cert_reqs=None, ca_certs=None, ca_cert_dir=None):
+    """
+    Merges provided settings into an SSL Context.
+    """
+    context.verify_mode = resolve_cert_reqs(cert_reqs)
+
+    if ca_certs or ca_cert_dir:
+        try:
+            context.load_verify_locations(ca_certs, ca_cert_dir)
+        except IOError as e:  # Platform-specific: Python 2.6, 2.7, 3.2
+            raise SSLError(e)
+        # Py33 raises FileNotFoundError which subclasses OSError
+        # These are not equivalent unless we check the errno attribute
+        except OSError as e:  # Platform-specific: Python 3.3 and beyond
+            if e.errno == errno.ENOENT:
+                raise SSLError(e)
+            raise
+    elif getattr(context, 'load_default_certs', None) is not None:
+        # try to load OS default certs; works well on Windows (require Python3.4+)
+        context.load_default_certs()
+
+    if certfile:
+        context.load_cert_chain(certfile, keyfile)
+
+    return context
+
+
 def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                     ca_certs=None, server_hostname=None,
                     ssl_version=None, ciphers=None, ssl_context=None,
