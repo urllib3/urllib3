@@ -368,6 +368,20 @@ class SyncHTTP1Connection(object):
         if must_close:
             self.close()
 
+    @property
+    def complete(self):
+        """
+        Returns True if this connection should be returned to the pool: False
+        otherwise.
+        """
+        if self._state_machine is None:
+            return True
+
+        our_state = self._state_machine.our_state
+        their_state = self._state_machine.their_state
+
+        return (our_state is h11.IDLE and their_state is h11.IDLE)
+
     def __iter__(self):
         return self
 

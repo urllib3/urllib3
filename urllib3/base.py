@@ -84,3 +84,11 @@ class Response(object):
 
         #: The HTTP version of the response. Stored as a bytestring.
         self.version = version
+
+    @property
+    def complete(self):
+        """
+        If the response can be safely returned to the connection pool, returns
+        True.
+        """
+        return self.body.complete
