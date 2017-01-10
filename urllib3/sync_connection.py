@@ -15,6 +15,7 @@ construct HTTP requests and responses. It mostly manages the socket itself.
 from __future__ import absolute_import
 
 import collections
+import datetime
 import io
 import itertools
 import socket
@@ -25,10 +26,17 @@ import h11
 
 from .base import Response
 from .exceptions import (
-    ConnectTimeoutError, NewConnectionError, SubjectAltNameWarning
+    ConnectTimeoutError, NewConnectionError, SubjectAltNameWarning,
+    SystemTimeWarning
 )
 from .packages import six
 from .util import selectors, connection, ssl_ as ssl_util
+
+
+# When updating RECENT_DATE, move it to
+# within two years of the current date, and no
+# earlier than 6 months ago.
+RECENT_DATE = datetime.date(2016, 1, 1)
 
 
 def _read_readable(readable):
@@ -170,6 +178,15 @@ class SyncHTTP1Connection(object):
         """
         Handles extra logic to wrap the socket in TLS magic.
         """
+        is_time_off = datetime.date.today() < RECENT_DATE
+        print(is_time_off)
+        if is_time_off:
+            warnings.warn((
+                'System time is way off (before {0}). This will probably '
+                'lead to SSL verification errors').format(RECENT_DATE),
+                SystemTimeWarning
+            )
+
         conn = ssl_util.ssl_wrap_socket(
             conn, server_hostname=self._host, ssl_context=ssl_context
         )

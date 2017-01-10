@@ -417,7 +417,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.assertEqual([], w)
 
     def test_ssl_wrong_system_time(self):
-        with mock.patch('urllib3.connection.datetime') as mock_date:
+        with mock.patch('urllib3.sync_connection.datetime') as mock_date:
             mock_date.date.today.return_value = datetime.date(1970, 1, 1)
 
             w = self._request_without_resource_warnings('GET', '/')
