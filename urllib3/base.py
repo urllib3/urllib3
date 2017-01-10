@@ -82,8 +82,5 @@ class Response(object):
         #: iterated if the connection is to be preserved.
         self.body = body
 
-        #: The HTTP version of the response. Stored as a two-digit integer:
-        #: - 10 for HTTP/1.0
-        #: - 11 for HTTP/1.1
-        #: - 20 for HTTP/2
+        #: The HTTP version of the response. Stored as a bytestring.
         self.version = version
