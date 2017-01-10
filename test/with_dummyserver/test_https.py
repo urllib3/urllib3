@@ -413,15 +413,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.urlopen('GET', '/')
 
     def test_ssl_correct_system_time(self):
-        self._pool.cert_reqs = 'CERT_REQUIRED'
-        self._pool.ca_certs = DEFAULT_CA
-
         w = self._request_without_resource_warnings('GET', '/')
         self.assertEqual([], w)
 
     def test_ssl_wrong_system_time(self):
-        self._pool.cert_reqs = 'CERT_REQUIRED'
-        self._pool.ca_certs = DEFAULT_CA
         with mock.patch('urllib3.connection.datetime') as mock_date:
             mock_date.date.today.return_value = datetime.date(1970, 1, 1)
 
@@ -434,9 +429,13 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.assertTrue(str(RECENT_DATE) in warning.message.args[0])
 
     def _request_without_resource_warnings(self, method, url):
+        pool = HTTPSConnectionPool(
+            self.host, self.port, cert_reqs='CERT_REQUIRED',
+            ca_certs=DEFAULT_CA
+        )
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('always')
-            self._pool.request(method, url)
+            pool.request(method, url)
 
         return [x for x in w if not isinstance(x.message, ResourceWarning)]
 
