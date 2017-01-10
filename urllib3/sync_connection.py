@@ -59,7 +59,9 @@ def _make_body_iterable(body):
         - other iterables are used directly
         - anything else is not acceptable
     """
-    if isinstance(body, six.binary_type):
+    if body is None:
+        return []
+    elif isinstance(body, six.binary_type):
         return [body]
     elif isinstance(body, six.text_type):
         # TODO: Consider raising warnings on auto-encode?
