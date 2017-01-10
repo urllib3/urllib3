@@ -178,8 +178,8 @@ class SyncHTTP1Connection(object):
             ssl_util.assert_fingerprint(conn.getpeercert(binary_form=True),
                                         fingerprint)
 
-        if (ssl_context.verify_mode != ssl.CERT_NONE
-            and assert_hostname is not False):
+        elif (ssl_context.verify_mode != ssl.CERT_NONE
+              and assert_hostname is not False):
             cert = conn.getpeercert()
             if not cert.get('subjectAltName', ()):
                 warnings.warn((
