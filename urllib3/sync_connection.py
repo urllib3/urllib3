@@ -314,7 +314,7 @@ class SyncHTTP1Connection(object):
             read_bytes = self._receive_bytes()
             response = _maybe_read_response(read_bytes, self._state_machine)
 
-        version = b'HTTP/' + response.version
+        version = b'HTTP/' + response.http_version
         our_response = Response(
             status_code=response.status_code,
             headers=response.headers,
