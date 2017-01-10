@@ -305,6 +305,9 @@ class WrappedSocket(object):
                     raise timeout()
                 continue
 
+    def send(self, data):
+        return self._send_until_done(data)
+
     def sendall(self, data):
         total_sent = 0
         while total_sent < len(data):
@@ -342,6 +345,9 @@ class WrappedSocket(object):
             ),
             'subjectAltName': get_subj_alt_name(x509)
         }
+
+    def setblocking(self, flag):
+        return self.connection.setblocking(flag)
 
     def _reuse(self):
         self._makefile_refs += 1
