@@ -10,6 +10,7 @@ import socket
 import h11
 
 
+from .base import Request
 from .exceptions import (
     ClosedPoolError,
     ProtocolError,
@@ -35,10 +36,14 @@ from .connection import (
 )
 from .request import RequestMethods
 from .response import HTTPResponse
+from .sync_connection import SyncHTTP1Connection
 
 from .util.connection import is_connection_dropped
 from .util.request import set_file_position
 from .util.retry import Retry
+from .util.ssl_ import (
+    create_urllib3_context, merge_context_settings, resolve_ssl_version
+)
 from .util.timeout import Timeout
 from .util.url import get_host, Url
 
@@ -161,7 +166,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     """
 
     scheme = 'http'
-    ConnectionCls = HTTPConnection
+    ConnectionCls = SyncHTTP1Connection
     ResponseCls = HTTPResponse
 
     def __init__(self, host, port=None,
@@ -204,7 +209,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def _new_conn(self):
         """
-        Return a fresh :class:`HTTPConnection`.
+        Return a fresh connection.
         """
         self.num_connections += 1
         log.debug("Starting new HTTP connection (%d): %s",
@@ -325,8 +330,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if 'timed out' in str(err) or 'did not complete (read)' in str(err):  # Python 2.6
             raise ReadTimeoutError(self, url, "Read timed out. (read timeout=%s)" % timeout_value)
 
-    def _make_request(self, conn, method, url, timeout=_Default, chunked=False,
-                      **httplib_request_kw):
+    def _make_request(self, conn, method, url, timeout=_Default, body=None,
+                      headers=None):
         """
         Perform a request on a given urllib connection object taken from our
         pool.
@@ -355,17 +360,22 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
             raise
 
-        # conn.request() calls httplib.*.request, not the method in
-        # urllib3.request. It also calls makefile (recv) on the socket.
-        if chunked:
-            conn.request_chunked(method, url, **httplib_request_kw)
+        # TODO: We need to encapsulate our proxy logic in here somewhere.
+        parsed_url = Url(url)
+        request = Request(method=method, target=parsed_url.request_uri, headers=headers, body=body)
+
+        if parsed_url.host is not None:
+            host = parsed_url.host
         else:
-            conn.request(method, url, **httplib_request_kw)
+            host = self.host
+        request.add_host(host)
 
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
 
         # App Engine doesn't have a sock attr
+        # TODO: This doesn't work any more, and we should come up with a better
+        # way of handling it than this.
         if getattr(conn, 'sock', None):
             # In Python 3 socket.py will catch EAGAIN and return None when you
             # try and read into the file pointer created by http.client, which
@@ -382,18 +392,17 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Receive the response from the server
         try:
-            httplib_response = conn.getresponse()
+            response = conn.send_request(request)
         except (SocketTimeout, BaseSSLError, SocketError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
 
         # AppEngine doesn't have a version attr.
         http_version = getattr(conn, '_http_vsn_str', 'HTTP/?')
-        log.debug("%s://%s:%s \"%s %s %s\" %s %s", self.scheme, self.host, self.port,
-                  method, url, http_version, httplib_response.status,
-                  httplib_response.length)
+        log.debug("%s://%s:%s \"%s %s %s\" %s", self.scheme, self.host, self.port,
+                  method, url, http_version, response.status_code)
 
-        return httplib_response
+        return response
 
     def _absolute_url(self, path):
         return Url(scheme=self.scheme, host=self.host, port=self.port, path=path).url
@@ -583,11 +592,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if is_new_proxy_conn:
                 self._prepare_proxy(conn)
 
-            # Make the request on the httplib connection object.
-            httplib_response = self._make_request(conn, method, url,
-                                                  timeout=timeout_obj,
-                                                  body=body, headers=headers,
-                                                  chunked=chunked)
+            # Make the request on the base connection object.
+            base_response = self._make_request(conn, method, url,
+                                               timeout=timeout_obj,
+                                               body=body, headers=headers)
 
             # If we're going to release the connection in ``finally:``, then
             # the response doesn't need to know about the connection. Otherwise
@@ -599,11 +607,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             response_kw['request_method'] = method
 
             # Import httplib's response into our own wrapper object
-            response = self.ResponseCls.from_httplib(httplib_response,
-                                                     pool=self,
-                                                     connection=response_conn,
-                                                     retries=retries,
-                                                     **response_kw)
+            response = self.ResponseCls.from_base(base_response,
+                                                  pool=self,
+                                                  retries=retries,
+                                                  **response_kw)
 
             # Everything went great!
             clean_exit = True
@@ -737,7 +744,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     """
 
     scheme = 'https'
-    ConnectionCls = HTTPSConnection
 
     def __init__(self, host, port=None,
                  timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1,
@@ -746,7 +752,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  key_file=None, cert_file=None, cert_reqs=None,
                  ca_certs=None, ssl_version=None,
                  assert_hostname=None, assert_fingerprint=None,
-                 ca_cert_dir=None, **conn_kw):
+                 ca_cert_dir=None, ssl_context=None, **conn_kw):
 
         HTTPConnectionPool.__init__(self, host, port, timeout, maxsize,
                                     block, headers, retries, _proxy, _proxy_headers,
@@ -755,31 +761,25 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         if ca_certs and cert_reqs is None:
             cert_reqs = 'CERT_REQUIRED'
 
-        self.key_file = key_file
-        self.cert_file = cert_file
-        self.cert_reqs = cert_reqs
-        self.ca_certs = ca_certs
-        self.ca_cert_dir = ca_cert_dir
-        self.ssl_version = ssl_version
+        self.ssl_context = self._build_context(
+            ssl_context, keyfile=key_file, certfile=cert_file,
+            cert_reqs=cert_reqs, ca_certs=ca_certs, ca_cert_dir=ca_cert_dir,
+            ssl_version=ssl_version
+        )
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
 
-    def _prepare_conn(self, conn):
-        """
-        Prepare the ``connection`` for :meth:`urllib3.util.ssl_wrap_socket`
-        and establish the tunnel if proxy is used.
-        """
-
-        if isinstance(conn, VerifiedHTTPSConnection):
-            conn.set_cert(key_file=self.key_file,
-                          cert_file=self.cert_file,
-                          cert_reqs=self.cert_reqs,
-                          ca_certs=self.ca_certs,
-                          ca_cert_dir=self.ca_cert_dir,
-                          assert_hostname=self.assert_hostname,
-                          assert_fingerprint=self.assert_fingerprint)
-            conn.ssl_version = self.ssl_version
-        return conn
+    def _build_context(self, context, keyfile, certfile, cert_reqs,
+                       ca_certs, ca_cert_dir, ssl_version):
+        if context is None:
+            context = create_urllib3_context(
+                ssl_version=resolve_ssl_version(ssl_version)
+            )
+        context = merge_context_settings(
+            context, keyfile=keyfile, certfile=certfile, cert_reqs=cert_reqs,
+            ca_certs=ca_certs, ca_cert_dir=ca_cert_dir
+        )
+        return context
 
     def _prepare_proxy(self, conn):
         """
@@ -791,7 +791,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     def _new_conn(self):
         """
-        Return a fresh :class:`httplib.HTTPSConnection`.
+        Return a fresh connection.
         """
         self.num_connections += 1
         log.debug("Starting new HTTPS connection (%d): %s",
@@ -811,7 +811,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                                   timeout=self.timeout.connect_timeout,
                                   **self.conn_kw)
 
-        return self._prepare_conn(conn)
+        return conn
 
     def _validate_conn(self, conn):
         """
@@ -820,8 +820,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         super(HTTPSConnectionPool, self)._validate_conn(conn)
 
         # Force connect early to allow us to validate the connection.
-        if not getattr(conn, 'sock', None):  # AppEngine might not have  `.sock`
-            conn.connect()
+        conn.connect(
+            ssl_context=self.ssl_context, fingerprint=self.assert_fingerprint,
+            assert_hostname=self.assert_hostname
+        )
 
         if not conn.is_verified:
             warnings.warn((
