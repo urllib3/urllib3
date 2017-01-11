@@ -72,6 +72,7 @@ def _has_ipv6(host):
         sock.close()
     return has_ipv6
 
+
 # Some systems may have IPv6 support but DNS may not be configured
 # properly. We can not count that localhost will resolve to ::1 on all
 # systems. See https://github.com/shazow/urllib3/pull/611 and
@@ -119,7 +120,7 @@ class SocketServerThread(threading.Thread):
         self.port = sock.getsockname()[1]
 
         # Once listen() returns, the server socket is ready
-        sock.listen(0)
+        sock.listen(1)
 
         if self.ready_event:
             self.ready_event.set()

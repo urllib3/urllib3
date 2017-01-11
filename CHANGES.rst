@@ -4,6 +4,46 @@ Changes
 dev (master)
 ------------
 
+* Added support for waiting for I/O using selectors other than select,
+  improving urllib3's behaviour with large numbers of concurrent connections.
+  (Pull #1001)
+
+* Updated the date for the system clock check. (Issue #1005)
+
+* ConnectionPools now correctly consider hostnames to be case-insensitive.
+  (Issue #1032)
+
+* Outdated versions of PyOpenSSL now cause the PyOpenSSL contrib module
+  to fail when it is injected, rather than at first use. (Pull #1063)
+
+* Outdated versions of cryptography now cause the PyOpenSSL contrib module
+  to fail when it is injected, rather than at first use. (Issue #1044)
+
+* Automatically attempt to rewind a file-like body object when a request is
+  retried or redirected. (Pull #1039)
+
+* Fix some bugs that occur when modules incautiously patch the queue module.
+  (Pull #1061)
+
+* Prevent retries from occuring on read timeouts for which the request method
+  was not in the method whitelist. (Issue #1059)
+
+* Changed the PyOpenSSL contrib module to lazily load idna to avoid
+  unnecessarily bloating the memory of programs that don't need it. (Pull
+  #1076)
+
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.19.1 (2016-11-16)
+-------------------
+
+* Fixed AppEngine import that didn't function on Python 3.5. (Pull #1025)
+
+
+1.19 (2016-11-03)
+-----------------
+
 * urllib3 now respects Retry-After headers on 413, 429, and 503 responses when
   using the default retry logic. (Pull #955)
 
@@ -18,7 +58,7 @@ dev (master)
 * Empty filenames in multipart headers are now emitted as such, rather than
   being supressed. (Issue #1015)
 
-* ... [Short description of non-trivial change.] (Issue #)
+* Prefer user-supplied Host headers on chunked uploads. (Issue #1009)
 
 
 1.18.1 (2016-10-27)

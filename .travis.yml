@@ -23,11 +23,14 @@ env:
     - TOXENV=py33
     - TOXENV=py34
     - TOXENV=gae
+    - TOXENV=docs
 # https://github.com/travis-ci/travis-ci/issues/4794
 matrix:
   include:
     - python: 3.5
       env: TOXENV=py35
+    - python: 3.6
+      env: TOXENV=py36
     - python: pypy-5.4
       env: TOXENV=pypy
     - language: generic
@@ -45,6 +48,9 @@ matrix:
     - language: generic
       os: osx
       env: TOXENV=py35
+    - language: generic
+      os: osx
+      env: TOXENV=py36
   allow_failures:
   - python: pypy-5.4
 sudo: false
