@@ -169,11 +169,6 @@ class SyncHTTP1Connection(object):
         self._state_machine = None
         self._selector = None
 
-        # If we need to tunnel through a CONNECT proxy, we need an extra state
-        # machine to manage the "outer" HTTP connection. We only use this to
-        # set up the connection: once it is set up, we throw this away.
-        self._tunnel_state_machine = None
-
     def _wrap_socket(self, conn, ssl_context, fingerprint, assert_hostname):
         """
         Handles extra logic to wrap the socket in TLS magic.
@@ -254,6 +249,55 @@ class SyncHTTP1Connection(object):
         data = self._sock.recv(65536)
         return data
 
+    def _tunnel(self):
+        """
+        This method establishes a CONNECT tunnel shortly after connection.
+        """
+        # Basic sanity check that _tunnel is only called at appropriate times.
+        assert self._state_machine.our_state is h11.IDLE
+
+        target = "%s:%d" % (self._tunnel_host, self._tunnel_port)
+        if not isinstance(target, bytes):
+            target = target.encode('latin1')
+
+        # We need to set the Host header.
+        headers = dict(self._tunnel_headers.items())
+        if b"host" not in frozenset(k.lower() for k in headers):
+            headers[b"host"] = target
+
+        tunnel_state_machine = h11.Connection(our_role=h11.CLIENT)
+        request = h11.Request(
+            method=b"CONNECT",
+            target=target,
+            headers=headers.items(),
+        )
+        bytes_to_send = tunnel_state_machine.send(request)
+        bytes_to_send += tunnel_state_machine.send(h11.EndOfMessage())
+
+        # First, register the socket with the selector. We want to look for
+        # readability *and* writability, because if the socket suddenly becomes
+        # readable we need to stop our upload immediately. Then, send the
+        # request.
+        self._selector.modify(
+            self._sock, selectors.EVENT_READ | selectors.EVENT_WRITE
+        )
+        self._send_unless_readable(bytes_to_send)
+
+        # At this point we no longer care if the socket is writable.
+        self._selector.modify(self._sock, selectors.EVENT_READ)
+
+        response = None
+        while response is None:
+            # TODO: Add a timeout here.
+            # TODO: Error handling.
+            read_bytes = self._receive_bytes(read_timeout=None)
+            response = _maybe_read_response(read_bytes, tunnel_state_machine)
+
+        if response.status_code != 200:
+            # TODO: include the response here.
+            self.close()
+            raise RuntimeError("Bad response!")
+
     def connect(self, ssl_context=None,
                 fingerprint=None, assert_hostname=None, connect_timeout=None):
         """
@@ -286,6 +330,9 @@ class SyncHTTP1Connection(object):
         except socket.error as e:
             raise NewConnectionError(
                 self, "Failed to establish a new connection: %s" % e)
+
+        if self._tunnel_host is not None:
+            self._tunnel()
 
         if ssl_context is not None:
             conn = self._wrap_socket(

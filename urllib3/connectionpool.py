@@ -295,10 +295,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         conn.connect(timeout=connect_timeout)
 
-    def _prepare_proxy(self, conn):
-        # Nothing to do for HTTP connections.
-        pass
-
     def _get_timeout(self, timeout):
         """ Helper that always returns a :class:`urllib3.util.Timeout` """
         if timeout is _Default:
@@ -580,10 +576,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
             conn.timeout = timeout_obj.connect_timeout
 
-            is_new_proxy_conn = self.proxy is not None and not getattr(conn, 'sock', None)
-            if is_new_proxy_conn:
-                self._prepare_proxy(conn)
-
             # Make the request on the base connection object.
             base_response = self._make_request(conn, method, url,
                                                timeout=timeout_obj,
@@ -773,14 +765,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         )
         return context
 
-    def _prepare_proxy(self, conn):
-        """
-        Establish tunnel connection early, because otherwise httplib
-        would improperly set Host: header to proxy's IP:port.
-        """
-        conn.set_tunnel(self.host, self.port, self.proxy_headers)
-        conn.connect()
-
     def _new_conn(self):
         """
         Return a fresh connection.
@@ -795,11 +779,20 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
         actual_host = self.host
         actual_port = self.port
+        tunnel_host = None
+        tunnel_port = None
+        tunnel_headers = None
         if self.proxy is not None:
             actual_host = self.proxy.host
             actual_port = self.proxy.port
+            tunnel_host = self.host
+            tunnel_port = self.port
+            tunnel_headers = self.proxy_headers
 
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
+                                  tunnel_host=tunnel_host,
+                                  tunnel_port=tunnel_port,
+                                  tunnel_headers=tunnel_headers,
                                   **self.conn_kw)
 
         return conn
