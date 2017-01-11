@@ -216,7 +216,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                   self.num_connections, self.host)
 
         conn = self.ConnectionCls(host=self.host, port=self.port,
-                                  timeout=self.timeout.connect_timeout,
                                   **self.conn_kw)
         return conn
 
@@ -290,11 +289,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if conn:
             conn.close()
 
-    def _validate_conn(self, conn):
+    def _start_conn(self, conn, connect_timeout):
         """
         Called right before a request is made, after the socket is created.
         """
-        pass
+        conn.connect(timeout=connect_timeout)
 
     def _prepare_proxy(self, conn):
         # Nothing to do for HTTP connections.
@@ -350,11 +349,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         timeout_obj = self._get_timeout(timeout)
         timeout_obj.start_connect()
-        conn.timeout = timeout_obj.connect_timeout
 
         # Trigger any extra validation we need to do.
         try:
-            self._validate_conn(conn)
+            self._start_conn(conn, timeout_obj.connect_timeout)
         except (SocketTimeout, BaseSSLError) as e:
             # Py2 raises this as a BaseSSLError, Py3 raises it as socket timeout.
             self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
@@ -802,21 +800,18 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             actual_port = self.proxy.port
 
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
-                                  timeout=self.timeout.connect_timeout,
                                   **self.conn_kw)
 
         return conn
 
-    def _validate_conn(self, conn):
+    def _start_conn(self, conn, connect_timeout):
         """
         Called right before a request is made, after the socket is created.
         """
-        super(HTTPSConnectionPool, self)._validate_conn(conn)
-
-        # Force connect early to allow us to validate the connection.
         conn.connect(
             ssl_context=self.ssl_context, fingerprint=self.assert_fingerprint,
-            assert_hostname=self.assert_hostname
+            assert_hostname=self.assert_hostname,
+            connect_timeout=connect_timeout
         )
 
         if not conn.is_verified:

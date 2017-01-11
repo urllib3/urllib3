@@ -149,14 +149,13 @@ class SyncHTTP1Connection(object):
     #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
     default_socket_options = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
 
-    def __init__(self, host, port, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-                 socket_options=_DEFAULT_SOCKET_OPTIONS, source_address=None,
-                 tunnel_host=None, tunnel_port=None, tunnel_headers=None):
+    def __init__(self, host, port, socket_options=_DEFAULT_SOCKET_OPTIONS,
+                 source_address=None, tunnel_host=None, tunnel_port=None,
+                 tunnel_headers=None):
         self.is_verified = False
 
         self._host = host
         self._port = port
-        self._connect_timeout = timeout
         self._read_timeout = None
         self._socket_options = (
             socket_options if socket_options is not _DEFAULT_SOCKET_OPTIONS
@@ -256,7 +255,7 @@ class SyncHTTP1Connection(object):
         return data
 
     def connect(self, ssl_context=None,
-                fingerprint=None, assert_hostname=None):
+                fingerprint=None, assert_hostname=None, connect_timeout=None):
         """
         Connect this socket to the server, applying the source address, any
         relevant socket options, and the relevant connection timeout.
@@ -273,12 +272,12 @@ class SyncHTTP1Connection(object):
 
         try:
             conn = connection.create_connection(
-                (self._host, self._port), self._connect_timeout, **extra_kw)
+                (self._host, self._port), connect_timeout, **extra_kw)
 
         except socket.timeout:
             raise ConnectTimeoutError(
                 self, "Connection to %s timed out. (connect timeout=%s)" %
-                (self._host, self._connect_timeout))
+                (self._host, connect_timeout))
 
         except socket.error as e:
             raise NewConnectionError(
