@@ -243,7 +243,11 @@ class SyncHTTP1Connection(object):
         (TODO), and then returns whatever data was read. Signals EOF the same
         way ``recv`` does: by returning the empty string.
         """
-        events = self._selector.select(read_timeout)[0][1]
+        keys = self._selector.select(read_timeout)
+        if not keys:
+            # TODO: Raise our own timeouts later.
+            raise socket.timeout()
+        events = keys[0][1]
         assert events == selectors.EVENT_READ
         data = self._sock.recv(65536)
         return data
