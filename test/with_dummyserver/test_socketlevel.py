@@ -321,9 +321,9 @@ class TestSocketClosing(SocketDummyServerTestCase):
             while not buf.endswith(b'\r\n\r\n'):
                 buf += sock.recv(65536)
 
-            # send unknown http protocol
-            body = "bad http 0.5 response"
-            sock.send(('HTTP/0.5 200 OK\r\n'
+            # send bad response
+            body = "bad http response"
+            sock.send(('HTTP0.5 200 OK\r\n'
                       'Content-Type: text/plain\r\n'
                       'Content-Length: %d\r\n'
                       '\r\n'
