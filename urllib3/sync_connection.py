@@ -260,6 +260,10 @@ class SyncHTTP1Connection(object):
         Connect this socket to the server, applying the source address, any
         relevant socket options, and the relevant connection timeout.
         """
+        if self._sock is not None:
+            # We're already connected, move on.
+            return
+
         self._state_machine = h11.Connection(our_role=h11.CLIENT)
         self._selector = selectors.DefaultSelector()
 
