@@ -294,7 +294,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         Called right before a request is made, after the socket is created.
         """
-        conn.connect(timeout=connect_timeout)
+        conn.connect(connect_timeout=connect_timeout)
 
     def _get_timeout(self, timeout):
         """ Helper that always returns a :class:`urllib3.util.Timeout` """
