@@ -275,7 +275,8 @@ def merge_context_settings(context, keyfile=None, certfile=None,
     """
     Merges provided settings into an SSL Context.
     """
-    context.verify_mode = resolve_cert_reqs(cert_reqs)
+    if cert_reqs is not None:
+        context.verify_mode = resolve_cert_reqs(cert_reqs)
 
     if ca_certs or ca_cert_dir:
         try:

@@ -42,7 +42,8 @@ from .util.connection import is_connection_dropped
 from .util.request import set_file_position
 from .util.retry import Retry
 from .util.ssl_ import (
-    create_urllib3_context, merge_context_settings, resolve_ssl_version
+    create_urllib3_context, merge_context_settings, resolve_ssl_version,
+    resolve_cert_reqs
 )
 from .util.timeout import Timeout
 from .util.url import get_host, Url
@@ -757,11 +758,12 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                        ca_certs, ca_cert_dir, ssl_version):
         if context is None:
             context = create_urllib3_context(
-                ssl_version=resolve_ssl_version(ssl_version)
+                ssl_version=resolve_ssl_version(ssl_version),
+                cert_reqs=resolve_cert_reqs(cert_reqs)
             )
         context = merge_context_settings(
-            context, keyfile=keyfile, certfile=certfile, cert_reqs=cert_reqs,
-            ca_certs=ca_certs, ca_cert_dir=ca_cert_dir
+            context, keyfile=keyfile, certfile=certfile,
+            cert_reqs=cert_reqs, ca_certs=ca_certs, ca_cert_dir=ca_cert_dir
         )
         return context
 
