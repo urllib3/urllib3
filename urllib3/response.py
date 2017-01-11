@@ -255,7 +255,7 @@ class HTTPResponse(io.IOBase):
                 # anymore so close it now to ensure that the connection is
                 # released back to the pool.
                 if self._original_response:
-                    self._original_response.close()
+                    self._original_response.body.close()
 
                 # Closing the response may not actually be sufficient to close
                 # everything, so if we have a hold of the connection close that
@@ -364,6 +364,7 @@ class HTTPResponse(io.IOBase):
                            status=r.status_code,
                            version=r.version,
                            original_response=r,
+                           connection=r.body,
                            **response_kw)
         return resp
 
