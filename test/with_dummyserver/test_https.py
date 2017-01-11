@@ -437,9 +437,14 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
         self._pool = HTTPSConnectionPool(self.host, self.port)
 
     def test_discards_connection_on_sslerror(self):
-        self._pool.cert_reqs = 'CERT_REQUIRED'
-        self.assertRaises(SSLError, self._pool.request, 'GET', '/')
-        self._pool.ca_certs = DEFAULT_CA
+        pool = HTTPSConnectionPool(
+            self.host, self.port, cert_reqs='CERT_REQUIRED'
+        )
+        self.assertRaises(SSLError, pool.request, 'GET', '/')
+        pool = HTTPSConnectionPool(
+            self.host, self.port, cert_reqs='CERT_REQUIRED',
+            ca_certs=DEFAULT_CA
+        )
         self._pool.request('GET', '/')
 
     def test_set_cert_default_cert_required(self):
