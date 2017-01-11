@@ -4,9 +4,6 @@ import six
 
 from urllib3.pipeline.context import Context, ContextWrapper
 
-def has_callable_attr(obj, attr_name):
-    return hasattr(obj, attr_name) and hasattr(getattr(obj, attr_name), '__call__')
-
 
 class HttpPipelineElement(object):
     
@@ -16,14 +13,6 @@ class HttpPipelineElement(object):
         that can be used to store state in a context object.
         """
         self.id = uuid4().hex
-
-    def save_context(self, context, key, value):
-
-        context.setdefault(self.id, {})
-        context[self.id][key] = value
-
-    def get_context(self, context, key, default=None):
-        return context.get(self.id, {}).get(key, default)
 
     def apply(self, context, **kwargs):
         return kwargs
