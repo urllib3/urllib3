@@ -373,26 +373,20 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
 
-        # App Engine doesn't have a sock attr
-        # TODO: This doesn't work any more, and we should come up with a better
-        # way of handling it than this.
-        if getattr(conn, 'sock', None):
-            # In Python 3 socket.py will catch EAGAIN and return None when you
-            # try and read into the file pointer created by http.client, which
-            # instead raises a BadStatusLine exception. Instead of catching
-            # the exception and assuming all BadStatusLine exceptions are read
-            # timeouts, check for a zero timeout before making the request.
-            if read_timeout == 0:
-                raise ReadTimeoutError(
-                    self, url, "Read timed out. (read timeout=%s)" % read_timeout)
-            if read_timeout is Timeout.DEFAULT_TIMEOUT:
-                conn.sock.settimeout(socket.getdefaulttimeout())
-            else:  # None or a value
-                conn.sock.settimeout(read_timeout)
+        # In Python 3 socket.py will catch EAGAIN and return None when you
+        # try and read into the file pointer created by http.client, which
+        # instead raises a BadStatusLine exception. Instead of catching
+        # the exception and assuming all BadStatusLine exceptions are read
+        # timeouts, check for a zero timeout before making the request.
+        if read_timeout == 0:
+            raise ReadTimeoutError(
+                self, url, "Read timed out. (read timeout=%s)" % read_timeout)
+        if read_timeout is Timeout.DEFAULT_TIMEOUT:
+            read_timeout = socket.getdefaulttimeout()
 
         # Receive the response from the server
         try:
-            response = conn.send_request(request)
+            response = conn.send_request(request, read_timeout=read_timeout)
         except (SocketTimeout, BaseSSLError, SocketError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise

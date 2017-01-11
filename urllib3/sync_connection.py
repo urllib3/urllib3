@@ -156,7 +156,8 @@ class SyncHTTP1Connection(object):
 
         self._host = host
         self._port = port
-        self._timeout = timeout
+        self._connect_timeout = timeout
+        self._read_timeout = None
         self._socket_options = (
             socket_options if socket_options is not _DEFAULT_SOCKET_OPTIONS
             else self.default_socket_options
@@ -243,13 +244,13 @@ class SyncHTTP1Connection(object):
 
         return False
 
-    def _receive_bytes(self):
+    def _receive_bytes(self, read_timeout):
         """
         This method blocks until the socket is readable or the read times out
         (TODO), and then returns whatever data was read. Signals EOF the same
         way ``recv`` does: by returning the empty string.
         """
-        events = self._selector.select()[0][1]  # TODO: timeout!
+        events = self._selector.select(read_timeout)[0][1]
         assert events == selectors.EVENT_READ
         data = self._sock.recv(65536)
         return data
@@ -272,12 +273,12 @@ class SyncHTTP1Connection(object):
 
         try:
             conn = connection.create_connection(
-                (self._host, self._port), self._timeout, **extra_kw)
+                (self._host, self._port), self._connect_timeout, **extra_kw)
 
         except socket.timeout:
             raise ConnectTimeoutError(
                 self, "Connection to %s timed out. (connect timeout=%s)" %
-                (self._host, self._timeout))
+                (self._host, self._connect_timeout))
 
         except socket.error as e:
             raise NewConnectionError(
@@ -298,10 +299,13 @@ class SyncHTTP1Connection(object):
             self._sock, selectors.EVENT_READ | selectors.EVENT_WRITE
         )
 
-    def send_request(self, request):
+    def send_request(self, request, read_timeout):
         """
         Sends a single Request object. Returns a Response.
         """
+        # TODO: Replace read_timeout with something smarter.
+        self._read_timeout = read_timeout
+
         # Before we begin, confirm that the state machine is ok.
         assert self._state_machine.our_state is h11.IDLE
         assert self._state_machine.their_state is h11.IDLE
@@ -328,7 +332,7 @@ class SyncHTTP1Connection(object):
 
         response = None
         while response is None:
-            read_bytes = self._receive_bytes()
+            read_bytes = self._receive_bytes(read_timeout)
             response = _maybe_read_response(read_bytes, self._state_machine)
 
         version = b'HTTP/' + response.http_version
@@ -411,7 +415,7 @@ class SyncHTTP1Connection(object):
         while data is None:
             event = self._state_machine.next_event()
             if event is h11.NEED_DATA:
-                received_bytes = self._receive_bytes()
+                received_bytes = self._receive_bytes(self._read_timeout)
                 self._state_machine.receive_data(received_bytes)
             elif isinstance(event, h11.Data):
                 data = event.data
