@@ -367,17 +367,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          cert_reqs='CERT_NONE')
         https_pool.request('GET', '/')
 
-    def test_tunnel(self):
-        """ test the _tunnel behavior """
-        timeout = Timeout(total=None)
-        https_pool = HTTPSConnectionPool(self.host, self.port, timeout=timeout,
-                                         cert_reqs='CERT_NONE')
-        conn = https_pool._new_conn()
-        conn.set_tunnel(self.host, self.port)
-        conn._tunnel = mock.Mock()
-        https_pool._make_request(conn, 'GET', '/')
-        conn._tunnel.assert_called_once_with()
-
     @requires_network
     def test_enhanced_timeout(self):
         def new_pool(timeout, cert_reqs='CERT_REQUIRED'):
