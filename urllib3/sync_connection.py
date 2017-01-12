@@ -138,7 +138,7 @@ def _body_bytes(request, state_machine):
     iterable_body = _make_body_iterable(request.body)
 
     for chunk in iterable_body:
-        yield state_machine.send(h11.Data(chunk))
+        yield state_machine.send(h11.Data(data=chunk))
 
     yield state_machine.send(h11.EndOfMessage())
 
