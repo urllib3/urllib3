@@ -507,6 +507,9 @@ class SyncHTTP1Connection(object):
         """
         Iterate over the body bytes of the response until end of message.
         """
+        if self._state_machine is None:
+            raise StopIteration()
+
         data = None
 
         while data is None:
