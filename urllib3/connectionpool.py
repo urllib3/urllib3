@@ -570,6 +570,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # for future rewinds in the event of a redirect/retry.
         body_pos = set_file_position(body, body_pos)
 
+        # TODO: This is a gross hack and doesn't work well.
+        if (body is not None and
+            'content-length' not in headers and
+            'transfer-encoding' not in headers):
+            headers['transfer-encoding'] = 'chunked'
+
         try:
             # Request a connection from the queue.
             timeout_obj = self._get_timeout(timeout)
