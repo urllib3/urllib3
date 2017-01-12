@@ -301,6 +301,27 @@ class SyncHTTP1Connection(object):
             self.close()
             raise RuntimeError("Bad response!")
 
+    def _do_socket_connect(self, connect_timeout, connect_kw):
+        """
+        A low-level method that does the actual socket connection. This is
+        factored out from inside connect() to allow for easier overriding by
+        sublasses (like SOCKS).
+        """
+        try:
+            conn = connection.create_connection(
+                (self._host, self._port), connect_timeout, **connect_kw)
+
+        except socket.timeout:
+            raise ConnectTimeoutError(
+                self, "Connection to %s timed out. (connect timeout=%s)" %
+                (self._host, connect_timeout))
+
+        except socket.error as e:
+            raise NewConnectionError(
+                self, "Failed to establish a new connection: %s" % e)
+
+        return conn
+
     def connect(self, ssl_context=None,
                 fingerprint=None, assert_hostname=None, connect_timeout=None):
         """
@@ -321,18 +342,7 @@ class SyncHTTP1Connection(object):
         if self._socket_options:
             extra_kw['socket_options'] = self._socket_options
 
-        try:
-            conn = connection.create_connection(
-                (self._host, self._port), connect_timeout, **extra_kw)
-
-        except socket.timeout:
-            raise ConnectTimeoutError(
-                self, "Connection to %s timed out. (connect timeout=%s)" %
-                (self._host, connect_timeout))
-
-        except socket.error as e:
-            raise NewConnectionError(
-                self, "Failed to establish a new connection: %s" % e)
+        conn = self._do_socket_connect(connect_timeout, extra_kw)
 
         if self._tunnel_host is not None:
             self._tunnel()
