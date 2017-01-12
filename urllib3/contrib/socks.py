@@ -40,8 +40,8 @@ except ImportError:
 
 from socket import error as SocketError, timeout as SocketTimeout
 
-from ..connection import (
-    HTTPConnection, HTTPSConnection
+from ..sync_connection import (
+    SyncHTTP1Connection
 )
 from ..connectionpool import (
     HTTPConnectionPool, HTTPSConnectionPool
@@ -50,47 +50,35 @@ from ..exceptions import ConnectTimeoutError, NewConnectionError
 from ..poolmanager import PoolManager
 from ..util.url import parse_url
 
-try:
-    import ssl
-except ImportError:
-    ssl = None
 
-
-class SOCKSConnection(HTTPConnection):
+class SOCKSConnection(SyncHTTP1Connection):
     """
-    A plain-text HTTP connection that connects via a SOCKS proxy.
+    A HTTP connection that connects via a SOCKS proxy.
     """
     def __init__(self, *args, **kwargs):
         self._socks_options = kwargs.pop('_socks_options')
         super(SOCKSConnection, self).__init__(*args, **kwargs)
 
-    def _new_conn(self):
+    def _do_socket_connect(self, connect_timeout, connect_kw):
         """
         Establish a new connection via the SOCKS proxy.
         """
-        extra_kw = {}
-        if self.source_address:
-            extra_kw['source_address'] = self.source_address
-
-        if self.socket_options:
-            extra_kw['socket_options'] = self.socket_options
-
         try:
             conn = socks.create_connection(
-                (self.host, self.port),
+                (self._host, self._port),
                 proxy_type=self._socks_options['socks_version'],
                 proxy_addr=self._socks_options['proxy_host'],
                 proxy_port=self._socks_options['proxy_port'],
                 proxy_username=self._socks_options['username'],
                 proxy_password=self._socks_options['password'],
-                timeout=self.timeout,
-                **extra_kw
+                timeout=connect_timeout,
+                **connect_kw
             )
 
         except SocketTimeout as e:
             raise ConnectTimeoutError(
                 self, "Connection to %s timed out. (connect timeout=%s)" %
-                (self.host, self.timeout))
+                (self._host, connect_timeout))
 
         except socks.ProxyError as e:
             # This is fragile as hell, but it seems to be the only way to raise
@@ -101,7 +89,7 @@ class SOCKSConnection(HTTPConnection):
                     raise ConnectTimeoutError(
                         self,
                         "Connection to %s timed out. (connect timeout=%s)" %
-                        (self.host, self.timeout)
+                        (self._host, connect_timeout)
                     )
                 else:
                     raise NewConnectionError(
@@ -121,20 +109,12 @@ class SOCKSConnection(HTTPConnection):
         return conn
 
 
-# We don't need to duplicate the Verified/Unverified distinction from
-# urllib3/connection.py here because the HTTPSConnection will already have been
-# correctly set to either the Verified or Unverified form by that module. This
-# means the SOCKSHTTPSConnection will automatically be the correct type.
-class SOCKSHTTPSConnection(SOCKSConnection, HTTPSConnection):
-    pass
-
-
 class SOCKSHTTPConnectionPool(HTTPConnectionPool):
     ConnectionCls = SOCKSConnection
 
 
 class SOCKSHTTPSConnectionPool(HTTPSConnectionPool):
-    ConnectionCls = SOCKSHTTPSConnection
+    ConnectionCls = SOCKSConnection
 
 
 class SOCKSProxyManager(PoolManager):
