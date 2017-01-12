@@ -39,6 +39,40 @@ from .util import selectors, connection, ssl_ as ssl_util
 RECENT_DATE = datetime.date(2016, 1, 1)
 
 
+def _headers_to_native_string(headers):
+    """
+    A temporary shim to convert received headers to native strings, to match
+    the behaviour of httplib. We will reconsider this later in the process.
+    """
+    # TODO: revisit.
+    # This works because fundamentally we know that all headers coming from
+    # h11 are bytes, so if they aren't of type `str` then we must be on Python
+    # 3 and need to decode the headers using Latin1.
+    for n, v in headers:
+        if not isinstance(n, str):
+            n = n.decode('latin1')
+        if not isinstance(v, str):
+            v = v.decode('latin1')
+        yield (n, v)
+
+
+def _stringify_headers(headers):
+    """
+    A generator that transforms headers so they're suitable for sending by h11.
+    """
+    # TODO: revisit
+    for name, value in headers:
+        if isinstance(name, six.text_type):
+            name = name.encode('ascii')
+
+        if isinstance(value, six.text_type):
+            value = value.encode('latin-1')
+        elif isinstance(value, int):
+            value = str(value).encode('ascii')
+
+        yield (name, value)
+
+
 def _read_readable(readable):
     # TODO: reconsider this block size
     blocksize = 8192
@@ -92,7 +126,7 @@ def _request_to_bytes(request, state_machine):
     h11_request = h11.Request(
         method=request.method,
         target=request.target,
-        headers=request.headers.items()
+        headers=_stringify_headers(request.headers.items())
     )
     return state_machine.send(h11_request)
 
@@ -401,7 +435,7 @@ class SyncHTTP1Connection(object):
         version = b'HTTP/' + response.http_version
         our_response = Response(
             status_code=response.status_code,
-            headers=response.headers,
+            headers=_headers_to_native_string(response.headers),
             body=self,
             version=version
         )
