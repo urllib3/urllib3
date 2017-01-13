@@ -318,6 +318,32 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if 'timed out' in str(err) or 'did not complete (read)' in str(err):  # Python 2.6
             raise ReadTimeoutError(self, url, "Read timed out. (read timeout=%s)" % timeout_value)
 
+    def _getresponse(self, conn):
+        # Assume Python 2.7 HTTPConnection, use buffering of HTTP responses
+        try:
+            return conn.getresponse(buffering=True)
+        except TypeError:
+            # Python 3.x HTTPConnection, Python 2.6 and older, or custom
+            # Note: the __class__ check handles old-style classes
+            class_ok = (conn.__class__ == self.ConnectionCls or
+                        isinstance(conn, self.ConnectionCls))
+            if not class_ok:
+                msg = 'expected {0!r} connection, got {1!r}.'
+                raise TypeError(msg.format(self.ConnectionCls, conn.__class__))
+
+            # Don't try to use buffering when retrieving any future responses
+            # for this connection pool.
+            # Note: we can't use the unbound method directly, as that won't
+            # always work with Python 2.x classes
+            msg = ("TypeError in (%r).getresponse(buffering=True): "
+                   "shadowing (%r)._getresponse()")
+            log.debug(msg, conn, self)
+            def _unbuffered_get_response(conn):
+                return conn.getresponse()
+            self._getresponse = _unbuffered_get_response
+        # Retrieve response without chaining the above 'TypeError' on Python 3
+        return conn.getresponse()
+
     def _make_request(self, conn, method, url, timeout=_Default, chunked=False,
                       **httplib_request_kw):
         """
@@ -375,15 +401,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Receive the response from the server
         try:
-            try:  # Python 2.7, use buffering of HTTP responses
-                httplib_response = conn.getresponse(buffering=True)
-            except TypeError:  # Python 2.6 and older, Python 3
-                try:
-                    httplib_response = conn.getresponse()
-                except Exception as e:
-                    # Remove the TypeError from the exception chain in Python 3;
-                    # otherwise it looks like a programming error was the cause.
-                    six.raise_from(e, None)
+            httplib_response = self._getresponse(conn)
         except (SocketTimeout, BaseSSLError, SocketError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise

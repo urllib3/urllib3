@@ -3,9 +3,18 @@ import io
 import logging
 import socket
 import sys
-import unittest
-import time
 import warnings
+
+if str is bytes:
+    import unittest2 as unittest
+else:
+    import unittest
+
+from time import time as _get_absolute_time
+try:
+    from time import monotonic as _get_relative_time
+except ImportError:
+    _get_relative_time = _get_absolute_time
 
 from datetime import datetime
 from datetime import timedelta
@@ -47,7 +56,7 @@ log.addHandler(logging.StreamHandler(sys.stdout))
 
 
 SHORT_TIMEOUT = 0.001
-LONG_TIMEOUT = 0.01
+LONG_TIMEOUT = 0.02
 
 
 def wait_for_socket(ready_event):
@@ -115,20 +124,26 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
 
         conn = pool._get_conn()
         wait_for_socket(ready_event)
-        now = time.time()
+        now = _get_relative_time()
         self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', '/', timeout=timeout)
-        delta = time.time() - now
+        delta = _get_relative_time() - now
         block_event.set() # Release request
 
-        self.assertTrue(delta < LONG_TIMEOUT, "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT")
+        self.assertLess(delta, LONG_TIMEOUT, "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT")
+        # TEMPORARY CI DEBUGGING
+        # Pre-emptively close the connection & make a new one
+        conn.close()
+        pool._put_conn(conn)
+        conn = pool._get_conn()
+        # END TEMPORARY CI DEBUGGING
         pool._put_conn(conn)
 
         wait_for_socket(ready_event)
-        now = time.time()
+        now = _get_relative_time()
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/', timeout=timeout)
-        delta = time.time() - now
+        delta = _get_relative_time() - now
 
-        self.assertTrue(delta < LONG_TIMEOUT, "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT")
+        self.assertLess(delta, LONG_TIMEOUT, "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT")
         block_event.set() # Release request
 
         # Timeout int/float passed directly to request and _make_request should
@@ -854,24 +869,24 @@ class TestRetryAfter(HTTPDummyServerTestCase):
         r = self.pool.request('GET', '/redirect_after', retries=False)
         self.assertEqual(r.status, 303)
 
-        t = time.time()
+        t = _get_relative_time()
         r = self.pool.request('GET', '/redirect_after')
         self.assertEqual(r.status, 200)
-        delta = time.time() - t
+        delta = _get_relative_time() - t
         self.assertTrue(delta >= 1)
 
-        t = time.time()
-        timestamp = t + 2
+        t = _get_relative_time()
+        timestamp = _get_absolute_time() + 2
         r = self.pool.request('GET', '/redirect_after?date=' + str(timestamp))
         self.assertEqual(r.status, 200)
-        delta = time.time() - t
+        delta = _get_relative_time() - t
         self.assertTrue(delta >= 1)
 
         # Retry-After is past
-        t = time.time()
-        timestamp = t - 1
+        t = _get_relative_time()
+        timestamp = _get_absolute_time() - 1
         r = self.pool.request('GET', '/redirect_after?date=' + str(timestamp))
-        delta = time.time() - t
+        delta = _get_relative_time() - t
         self.assertEqual(r.status, 200)
         self.assertTrue(delta < 1)
 

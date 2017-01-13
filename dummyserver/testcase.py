@@ -1,4 +1,3 @@
-import unittest
 import socket
 import threading
 from nose.plugins.skip import SkipTest
@@ -12,6 +11,11 @@ from dummyserver.server import (
 )
 from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
+
+if str is bytes:
+    import unittest2 as unittest
+else:
+    import unittest
 
 
 def consume_socket(sock, chunks=65536):
