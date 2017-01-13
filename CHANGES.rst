@@ -32,6 +32,8 @@ dev (master)
   unnecessarily bloating the memory of programs that don't need it. (Pull
   #1076)
 
+* Add support for IPv6 literals with zone identifiers. (Pull #1013)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
