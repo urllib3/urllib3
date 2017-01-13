@@ -68,7 +68,7 @@ class ConnectionPool(object):
         if not host:
             raise LocationValueError("No host specified.")
 
-        self.host = _ipv6_host(host)
+        self.host = _ipv6_host(host).lower()
         self.port = port
 
     def __str__(self):
@@ -433,7 +433,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # TODO: Add optional support for socket.gethostbyname checking.
         scheme, host, port = get_host(url)
 
-        host = _ipv6_host(host)
+        host = _ipv6_host(host).lower()
 
         # Use explicit default port for comparison when none is given
         if self.port and not port:
