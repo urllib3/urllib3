@@ -221,5 +221,9 @@ In chronological order:
 * Moinuddin Quadri <moin18@gmail.com>
   * Lazily load idna package
 
+* Noam Meltzer <tsnoam@gmail.com>
+  * Fixed not setting connect timeout on HTTP connections.
+  * Fixed incorrect timeout on socket when using a new HTTPS connection.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

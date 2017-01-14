@@ -283,7 +283,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         Called right before a request is made, after the socket is created.
         """
-        pass
+        # Force connect early to allow us to set read timeout in time
+        if not getattr(conn, 'sock', None):  # AppEngine might not have  `.sock`
+            conn.connect()
 
     def _prepare_proxy(self, conn):
         # Nothing to do for HTTP connections.
@@ -347,6 +349,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Py2 raises this as a BaseSSLError, Py3 raises it as socket timeout.
             self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
             raise
+
+        # Set proper read timeout on the socket prior of performing the request
+        if conn.sock is not None:
+            conn.sock.settimeout(timeout_obj.read_timeout)
 
         # conn.request() calls httplib.*.request, not the method in
         # urllib3.request. It also calls makefile (recv) on the socket.
@@ -838,10 +844,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         Called right before a request is made, after the socket is created.
         """
         super(HTTPSConnectionPool, self)._validate_conn(conn)
-
-        # Force connect early to allow us to validate the connection.
-        if not getattr(conn, 'sock', None):  # AppEngine might not have  `.sock`
-            conn.connect()
 
         if not conn.is_verified:
             warnings.warn((
