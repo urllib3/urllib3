@@ -350,17 +350,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
             raise
 
-        # Set proper read timeout on the socket prior of performing the request
-        if conn.sock is not None:
-            conn.sock.settimeout(timeout_obj.read_timeout)
-
-        # conn.request() calls httplib.*.request, not the method in
-        # urllib3.request. It also calls makefile (recv) on the socket.
-        if chunked:
-            conn.request_chunked(method, url, **httplib_request_kw)
-        else:
-            conn.request(method, url, **httplib_request_kw)
-
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
 
@@ -378,6 +367,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 conn.sock.settimeout(socket.getdefaulttimeout())
             else:  # None or a value
                 conn.sock.settimeout(read_timeout)
+
+        # conn.request() calls httplib.*.request, not the method in
+        # urllib3.request. It also calls makefile (recv) on the socket.
+        if chunked:
+            conn.request_chunked(method, url, **httplib_request_kw)
+        else:
+            conn.request(method, url, **httplib_request_kw)
 
         # Receive the response from the server
         try:
