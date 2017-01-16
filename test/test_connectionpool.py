@@ -49,6 +49,16 @@ class TestConnectionPool(unittest.TestCase):
             ('http://google.com/', 'http://google.com:80/abracadabra'),
             ('https://google.com:443/', 'https://google.com/abracadabra'),
             ('https://google.com/', 'https://google.com:443/abracadabra'),
+            ('http://[2607:f8b0:4005:805::200e%25eth0]/',
+             'http://[2607:f8b0:4005:805::200e%eth0]/'
+            ),
+            ('https://[2607:f8b0:4005:805::200e%25eth0]:443/',
+             'https://[2607:f8b0:4005:805::200e%eth0]:443/'
+            ),
+            ('http://[::1]/', 'http://[::1]'),
+            ('http://[2001:558:fc00:200:f816:3eff:fef9:b954%lo]/',
+             'http://[2001:558:fc00:200:f816:3eff:fef9:b954%25lo]'
+            ),
         ]
 
         for a, b in same_host:
@@ -70,6 +80,9 @@ class TestConnectionPool(unittest.TestCase):
             ('https://google.com:80', 'http://google.com'),
             ('https://google.com:443', 'http://google.com'),
             ('http://google.com:80', 'https://google.com'),
+            # Zone identifiers are unique connection end points and should
+            # never be equivalent.
+            ('http://[dead::beef]', 'https://[dead::beef%en5]/'),
         ]
 
         for a, b in not_same_host:
