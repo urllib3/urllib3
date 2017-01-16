@@ -13,11 +13,26 @@ dev (master)
 * ConnectionPools now correctly consider hostnames to be case-insensitive.
   (Issue #1032)
 
+* Outdated versions of PyOpenSSL now cause the PyOpenSSL contrib module
+  to fail when it is injected, rather than at first use. (Pull #1063)
+
 * Outdated versions of cryptography now cause the PyOpenSSL contrib module
   to fail when it is injected, rather than at first use. (Issue #1044)
 
 * Automatically attempt to rewind a file-like body object when a request is
   retried or redirected. (Pull #1039)
+
+* Fix some bugs that occur when modules incautiously patch the queue module.
+  (Pull #1061)
+
+* Prevent retries from occuring on read timeouts for which the request method
+  was not in the method whitelist. (Issue #1059)
+
+* Changed the PyOpenSSL contrib module to lazily load idna to avoid
+  unnecessarily bloating the memory of programs that don't need it. (Pull
+  #1076)
+
+* Add support for IPv6 literals with zone identifiers. (Pull #1013)
 
 * ... [Short description of non-trivial change.] (Issue #)
 

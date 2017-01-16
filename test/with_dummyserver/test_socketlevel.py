@@ -152,6 +152,22 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         self.assertEqual(http.pool.qsize(), http.pool.maxsize)
 
+    def test_read_timeout_dont_retry_method_not_in_whitelist(self):
+        timed_out = Event()
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            sock.recv(65536)
+            timed_out.wait()
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001, retries=True)
+
+        try:
+            self.assertRaises(ReadTimeoutError, pool.request, 'POST', '/')
+        finally:
+            timed_out.set()
+
     def test_https_connection_read_timeout(self):
         """ Handshake timeouts should fail with a Timeout"""
         timed_out = Event()
