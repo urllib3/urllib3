@@ -28,7 +28,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         self.start_chunked_handler()
         chunks = [b'foo', b'bar', b'', b'bazzzzzzzzzzzzzzzzzzzzzz']
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        r = pool.urlopen('GET', '/', chunks, headers=dict(DNT='1'), chunked=True)
+        r = pool.urlopen('GET', '/', chunks, headers=dict(DNT='1'))
 
         self.assertTrue(b'transfer-encoding' in self.buffer)
         body = self.buffer.split(b'\r\n\r\n', 1)[1]
@@ -42,7 +42,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
     def _test_body(self, data):
         self.start_chunked_handler()
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        r = pool.urlopen('GET', '/', data, chunked=True)
+        r = pool.urlopen('GET', '/', data)
         header, body = self.buffer.split(b'\r\n\r\n', 1)
 
         self.assertTrue(b'transfer-encoding: chunked' in header.split(b'\r\n'))
@@ -80,7 +80,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         chunks = [b'foo', b'bar', b'', b'bazzzzzzzzzzzzzzzzzzzzzz']
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         pool.urlopen(
-            'GET', '/', chunks, headers={'Host': 'test.org'}, chunked=True
+            'GET', '/', chunks, headers={'Host': 'test.org'}
         )
 
         header_block = self.buffer.split(b'\r\n\r\n', 1)[0].lower()
@@ -93,7 +93,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         self.start_chunked_handler()
         chunks = [b'foo', b'bar', b'', b'bazzzzzzzzzzzzzzzzzzzzzz']
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        pool.urlopen('GET', '/', chunks, chunked=True)
+        pool.urlopen('GET', '/', chunks)
 
         header_block = self.buffer.split(b'\r\n\r\n', 1)[0].lower()
         header_lines = header_block.split(b'\r\n')[1:]
