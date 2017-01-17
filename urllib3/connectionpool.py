@@ -60,6 +60,24 @@ log = logging.getLogger(__name__)
 _Default = object()
 
 
+def _add_transport_headers(headers):
+    """
+    Adds the transport framing headers, if needed. Naturally, this method
+    cannot add a content-length header, so if there is no content-length header
+    then it will add Transfer-Encoding: chunked instead. Should only be called
+    if there is a body to upload.
+
+    This should be a bit smarter: in particular, it should allow for bad or
+    unexpected versions of these headers, particularly transfer-encoding.
+    """
+    transfer_headers = ('content-length', 'transfer-encoding')
+    for header_name in headers:
+        if header_name.lower() in transfer_headers:
+            return
+
+    headers['transfer-encoding'] = 'chunked'
+
+
 # Pool objects
 class ConnectionPool(object):
     """
@@ -572,11 +590,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # for future rewinds in the event of a redirect/retry.
         body_pos = set_file_position(body, body_pos)
 
-        # TODO: This is a gross hack and doesn't work well.
-        if (body is not None and
-            'content-length' not in headers and
-            'transfer-encoding' not in headers):
-            headers['transfer-encoding'] = 'chunked'
+        if body is not None:
+            _add_transport_headers(headers)
 
         try:
             # Request a connection from the queue.
