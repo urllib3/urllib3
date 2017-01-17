@@ -154,7 +154,7 @@ class HTTPResponse(io.IOBase):
     @property
     def data(self):
         # For backwords-compat with earlier urllib3 0.4 and earlier.
-        if self._body:
+        if self._body is not None:
             return self._body
 
         if self._fp:
