@@ -531,8 +531,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if not isinstance(retries, Retry):
             retries = Retry.from_int(retries, redirect=redirect, default=self.retries)
 
+        # TODO: I don't think we need release_conn at all anymore. I can see no
+        # value in keeping it around.
         if release_conn is None:
-            release_conn = response_kw.get('preload_content', True)
+            release_conn = False
 
         # Check host
         if assert_same_host and not self.is_same_host(url):
