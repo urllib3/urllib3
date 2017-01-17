@@ -63,7 +63,7 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     # The original create_connection function always returns all records.
     family = allowed_gai_family()
 
-    # If IPv6 and selectors are available, use the Happy Eyes algorithm.
+    # If IPv6 and selectors are available, use the Happy Eyeballs algorithm.
     # (RFC 6555 https://tools.ietf.org/html/rfc6555)
     if HAS_IPV6 and HAS_SELECT and _ENABLE_HAPPY_EYEBALLS:
         return happy_eyeballs_algorithm((host, port), timeout,
