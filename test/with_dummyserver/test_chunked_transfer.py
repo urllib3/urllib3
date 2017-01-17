@@ -66,9 +66,6 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         chunk = b'thisshouldbeonechunk\r\n\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f'.decode('utf-8')
         self._test_body(chunk)
 
-    def test_empty_body(self):
-        self._test_body(None)
-
     def test_empty_string_body(self):
         self._test_body('')
 
