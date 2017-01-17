@@ -48,6 +48,11 @@ from .util.ssl_ import (
 from .util.timeout import Timeout
 from .util.url import get_host, Url, parse_url
 
+try:
+    import ssl
+except ImportError:
+    ssl = None
+
 
 if six.PY2:
     # Queue is imported for side effects on MS Windows
@@ -765,6 +770,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         HTTPConnectionPool.__init__(self, host, port, timeout, maxsize,
                                     block, headers, retries, _proxy, _proxy_headers,
                                     **conn_kw)
+
+        if ssl is None:
+            raise SSLError("SSL module is not available")
 
         if ca_certs and cert_reqs is None:
             cert_reqs = 'CERT_REQUIRED'

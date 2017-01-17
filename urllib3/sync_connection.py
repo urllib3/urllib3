@@ -19,7 +19,6 @@ import datetime
 import io
 import itertools
 import socket
-import ssl
 import warnings
 
 import h11
@@ -31,6 +30,11 @@ from .exceptions import (
 )
 from .packages import six
 from .util import selectors, connection, ssl_ as ssl_util
+
+try:
+    import ssl
+except ImportError:
+    ssl = None
 
 
 # When updating RECENT_DATE, move it to
