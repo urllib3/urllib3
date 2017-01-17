@@ -118,6 +118,7 @@ class HTTPResponse(io.IOBase):
         self._fp = None
         self._original_response = original_response
         self._fp_bytes_read = 0
+        self._buffer = b''
 
         if body and isinstance(body, (basestring, binary_type)):
             self._body = body
@@ -289,6 +290,7 @@ class HTTPResponse(io.IOBase):
             after having ``.read()`` the file object. (Overridden if ``amt`` is
             set.)
         """
+        # TODO: refactor this method to better handle buffered output.
         self._init_decoder()
         if decode_content is None:
             decode_content = self.decode_content
@@ -297,16 +299,17 @@ class HTTPResponse(io.IOBase):
             return
 
         flush_decoder = False
-        data = None
+        data = self._buffer
 
         with self._error_catcher():
             if amt is None:
                 # cStringIO doesn't like amt=None
-                data = b''.join(self._fp)
+                data += b''.join(self._fp)
                 flush_decoder = True
+                self._buffer = b''
             else:
                 cache_content = False
-                chunks = []
+                chunks = [self._buffer]
                 data_len = 0
                 for chunk in self._fp:
                     chunks.append(chunk)
@@ -317,6 +320,8 @@ class HTTPResponse(io.IOBase):
                     flush_decoder = True
 
                 data = b''.join(chunks)
+                self._buffer = data[amt:]
+                data = data[:amt]
 
         if data:
             self._fp_bytes_read += len(data)
