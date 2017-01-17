@@ -557,7 +557,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         r1 = pool.request('POST', '/echo', fields=req_data, multipart_boundary=boundary, preload_content=False)
 
-        self.assertEqual(r1.read(first_chunk), resp_data[:first_chunk])
+        first_data = r1.read(first_chunk)
+        self.assertGreater(len(first_data), 0)
+        self.assertEqual(first_data, resp_data[:len(first_data)])
 
         try:
             r2 = pool.request('POST', '/echo', fields=req2_data, multipart_boundary=boundary,
@@ -566,14 +568,16 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             # This branch should generally bail here, but maybe someday it will
             # work? Perhaps by some sort of magic. Consider it a TODO.
 
-            self.assertEqual(r2.read(first_chunk), resp2_data[:first_chunk])
+            second_data = r2.read(first_chunk)
+            self.assertGreater(len(second_data), 0)
+            self.assertEqual(second_data, resp2_data[:len(second_data)])
 
-            self.assertEqual(r1.read(), resp_data[first_chunk:])
-            self.assertEqual(r2.read(), resp2_data[first_chunk:])
+            self.assertEqual(r1.read(), resp_data[len(first_data):])
+            self.assertEqual(r2.read(), resp2_data[len(second_data):])
             self.assertEqual(pool.num_requests, 2)
 
         except EmptyPoolError:
-            self.assertEqual(r1.read(), resp_data[first_chunk:])
+            self.assertEqual(r1.read(), resp_data[len(first_data):])
             self.assertEqual(pool.num_requests, 1)
 
         self.assertEqual(pool.num_connections, 1)
