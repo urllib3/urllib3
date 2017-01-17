@@ -34,6 +34,9 @@ dev (master)
 
 * Add support for IPv6 literals with zone identifiers. (Pull #1013)
 
+* Added support for socks5h:// and socks4a:// schemes when working with SOCKS
+  proxies, and controlled remote DNS appropriately. (Issue #1035)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

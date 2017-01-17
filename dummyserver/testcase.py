@@ -13,7 +13,7 @@ from dummyserver.server import (
 from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
 
-if sys.version_info > (2, 7):
+if sys.version_info >= (2, 7):
     import unittest
 else:
     import unittest2 as unittest
