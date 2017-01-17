@@ -83,7 +83,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
             pool.urlopen('GET', '/')
             self.fail("The request should fail with a timeout error.")
         except ReadTimeoutError:
-            if conn.sock:
+            if conn._sock:
                 self.assertRaises(socket.error, conn.sock.recv, 1024)
         finally:
             pool._put_conn(conn)
@@ -425,7 +425,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # because _get_conn() is where the check & reset occurs
         # pylint: disable-msg=W0212
         conn = pool.pool.get()
-        self.assertEqual(conn.sock, None)
+        self.assertEqual(conn._sock, None)
         pool._put_conn(conn)
 
         # Now with keep-alive
@@ -437,7 +437,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # The dummyserver responded with Connection:keep-alive, the connection
         # persists.
         conn = pool.pool.get()
-        self.assertNotEqual(conn.sock, None)
+        self.assertNotEqual(conn._sock, None)
         pool._put_conn(conn)
 
         # Another request asking the server to close the connection. This one
@@ -450,7 +450,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(r.status, 200)
 
         conn = pool.pool.get()
-        self.assertEqual(conn.sock, None)
+        self.assertEqual(conn._sock, None)
         pool._put_conn(conn)
 
         # Next request
