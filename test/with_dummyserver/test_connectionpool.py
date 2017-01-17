@@ -361,26 +361,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
         pool.request('GET', '/')
 
-    def test_tunnel(self):
-        # note the actual httplib.py has no tests for this functionality
-        timeout = Timeout(total=None)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
-        conn = pool._get_conn()
-        conn.set_tunnel(self.host, self.port)
-
-        conn._tunnel = mock.Mock(return_value=None)
-        pool._make_request(conn, 'GET', '/')
-        conn._tunnel.assert_called_once_with()
-
-        # test that it's not called when tunnel is not set
-        timeout = Timeout(total=None)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
-        conn = pool._get_conn()
-
-        conn._tunnel = mock.Mock(return_value=None)
-        pool._make_request(conn, 'GET', '/')
-        self.assertEqual(conn._tunnel.called, False)
-
     def test_redirect(self):
         r = self.pool.request('GET', '/redirect', fields={'target': '/'}, redirect=False)
         self.assertEqual(r.status, 303)
