@@ -9,6 +9,12 @@ def is_fp_closed(obj):
         The file-like object to check.
     """
     try:
+        # Check for our own base response class.
+        return obj.complete
+    except AttributeError:
+        pass
+
+    try:
         # Check via the official file-like-object way.
         return obj.closed
     except AttributeError:
