@@ -26,7 +26,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     def test_chunks(self):
         self.start_chunked_handler()
-        chunks = ['foo', 'bar', '', 'bazzzzzzzzzzzzzzzzzzzzzz']
+        chunks = [b'foo', b'bar', b'', b'bazzzzzzzzzzzzzzzzzzzzzz']
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         r = pool.urlopen('GET', '/', chunks, headers=dict(DNT='1'), chunked=True)
 
@@ -37,7 +37,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         # from terminating the transmission
         for i, chunk in enumerate([c for c in chunks if c]):
             self.assertEqual(lines[i * 2], hex(len(chunk))[2:].encode('utf-8'))
-            self.assertEqual(lines[i * 2 + 1], chunk.encode('utf-8'))
+            self.assertEqual(lines[i * 2 + 1], chunk)
 
     def _test_body(self, data):
         self.start_chunked_handler()
@@ -77,7 +77,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     def test_removes_duplicate_host_header(self):
         self.start_chunked_handler()
-        chunks = ['foo', 'bar', '', 'bazzzzzzzzzzzzzzzzzzzzzz']
+        chunks = [b'foo', b'bar', b'', b'bazzzzzzzzzzzzzzzzzzzzzz']
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         pool.urlopen(
             'GET', '/', chunks, headers={'Host': 'test.org'}, chunked=True
@@ -91,7 +91,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     def test_provides_default_host_header(self):
         self.start_chunked_handler()
-        chunks = ['foo', 'bar', '', 'bazzzzzzzzzzzzzzzzzzzzzz']
+        chunks = [b'foo', b'bar', b'', b'bazzzzzzzzzzzzzzzzzzzzzz']
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         pool.urlopen('GET', '/', chunks, chunked=True)
 
