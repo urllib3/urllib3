@@ -475,16 +475,19 @@ class SyncHTTP1Connection(object):
         # (IDLE, IDLE). If it's not, we'll get either ConnectionClosed or we'll
         # find that our state is MUST_CLOSE, and then we should close the
         # connection accordingly.
+        continue_states = (h11.IDLE, h11.DONE)
         event = self._state_machine.next_event()
         our_state = self._state_machine.our_state
         their_state = self._state_machine.their_state
         must_close = (
             event is not h11.NEED_DATA or
-            our_state is not h11.IDLE or
-            their_state is not h11.IDLE
+            our_state not in continue_states or
+            their_state not in continue_states
         )
         if must_close:
             self.close()
+        elif our_state is h11.DONE and their_state is h11.DONE:
+            self._state_machine.start_next_cycle()
 
     @property
     def complete(self):
