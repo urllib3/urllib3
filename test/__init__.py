@@ -88,6 +88,7 @@ def onlyPy3(test):
         return test(*args, **kwargs)
     return wrapper
 
+_requires_network_has_route = None
 def requires_network(test):
     """Helps you skip tests that require the network"""
 
@@ -95,23 +96,32 @@ def requires_network(test):
         return getattr(err, 'errno', None) in (errno.ENETUNREACH,
                                                errno.EHOSTUNREACH) # For OSX
 
+    def _has_route():
+        try:
+            sock = socket.create_connection((TARPIT_HOST, 80), 0.0001)
+            sock.close()
+            return True
+        except socket.timeout:
+            return True
+        except socket.error as e:
+            if _is_unreachable_err(e):
+                return False
+            else:
+                raise
+
     @functools.wraps(test)
     def wrapper(*args, **kwargs):
-        msg = "Can't run {name} because the network is unreachable".format(
-            name=test.__name__)
-        try:
+        global _requires_network_has_route
+
+        if _requires_network_has_route is None:
+            _requires_network_has_route = _has_route()
+
+        if _requires_network_has_route:
             return test(*args, **kwargs)
-        except socket.error as e:
-            # This test needs an initial network connection to attempt the
-            # connection to the TARPIT_HOST. This fails if you are in a place
-            # without an Internet connection, so we skip the test in that case.
-            if _is_unreachable_err(e):
-                raise SkipTest(msg)
-            raise
-        except MaxRetryError as e:
-            if _is_unreachable_err(e.reason):
-                raise SkipTest(msg)
-            raise
+        else:
+            msg = "Can't run {name} because the network is unreachable".format(
+                name=test.__name__)
+            raise SkipTest(msg)
     return wrapper
 
 

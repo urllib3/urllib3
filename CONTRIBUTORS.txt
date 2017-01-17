@@ -215,6 +215,12 @@ In chronological order:
 * Seth Michael Larson <sethmichaellarson@protonmail.com>
   * Created selectors backport that supports PEP 475.
 
+* Alexandre Dias <alex.dias@smarkets.com>
+  * Don't retry on timeout if method not in whitelist
+
+* Moinuddin Quadri <moin18@gmail.com>
+  * Lazily load idna package
+
 * Tom White <s6yg1ez3@mail2tor.com>
   * Made SOCKS handler differentiate socks5h from socks5 and socks4a from socks4.
 

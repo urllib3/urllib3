@@ -19,11 +19,11 @@ def _wait_for_io_events(socks, events, timeout=None):
         # Otherwise it might be a non-list iterable.
         else:
             socks = list(socks)
-    selector = DefaultSelector()
-    for sock in socks:
-        selector.register(sock, events)
-    return [key[0].fileobj for key in
-            selector.select(timeout) if key[1] & events]
+    with DefaultSelector() as selector:
+        for sock in socks:
+            selector.register(sock, events)
+        return [key[0].fileobj for key in
+                selector.select(timeout) if key[1] & events]
 
 
 def wait_for_read(socks, timeout=None):
