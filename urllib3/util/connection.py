@@ -11,6 +11,9 @@ from .selectors import HAS_SELECT, SelectorError
 # such as for debugging a connection.
 _ENABLE_HAPPY_EYEBALLS = True
 
+# List of addresses for 'loopback'
+_LOOPBACK_ADDRESSES = ['127.0.0.1', '::1']
+
 
 def is_connection_dropped(conn):  # Platform-specific
     """
@@ -62,10 +65,19 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     # us select whether to work with IPv4 DNS records, IPv6 records, or both.
     # The original create_connection function always returns all records.
     family = allowed_gai_family()
-
+    
+    # Don't connect using Happy Eyeballs if this is a loopback address.
+    is_loopback = False
+    for addr_family, _, _, _, addr_info in socket.getaddrinfo(host, port):
+        if addr_family == socket.AF_INET or addr_family == socket.AF_INET6:
+            addr = addr_info[0]
+            if addr in _LOOPBACK_ADDRESSES:
+                is_loopback = True
+                break
+                
     # If IPv6 and selectors are available, use the Happy Eyeballs algorithm.
     # (RFC 6555 https://tools.ietf.org/html/rfc6555)
-    if HAS_IPV6 and HAS_SELECT and _ENABLE_HAPPY_EYEBALLS:
+    if not is_loopback and HAS_IPV6 and HAS_SELECT and _ENABLE_HAPPY_EYEBALLS:
         return happy_eyeballs_algorithm((host, port), timeout,
                                         source_address, socket_options)
 
