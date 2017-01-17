@@ -46,7 +46,7 @@ from .util.ssl_ import (
     resolve_cert_reqs
 )
 from .util.timeout import Timeout
-from .util.url import get_host, Url
+from .util.url import get_host, Url, parse_url
 
 
 if six.PY2:
@@ -356,10 +356,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             raise
 
         # TODO: We need to encapsulate our proxy logic in here somewhere.
-        parsed_url = Url(url)
+        parsed_url = parse_url(url)
         request = Request(method=method, target=parsed_url.request_uri, headers=headers, body=body)
 
-        if parsed_url.host is not None:
+        if parsed_url.host:
             host = parsed_url.host
         else:
             host = self.host
