@@ -291,7 +291,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port)
         conn = pool._get_conn()
         pool._make_request(conn, 'GET', '/')
-        tcp_nodelay_setting = conn.sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
+        tcp_nodelay_setting = conn._sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
         self.assertTrue(tcp_nodelay_setting)
 
     def test_socket_options(self):
@@ -301,7 +301,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, socket_options=[
             (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         ])
-        s = pool._new_conn()._new_conn()  # Get the socket
+        conn = pool._new_conn()
+        conn.connect()
+        s = conn._sock
         using_keepalive = s.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE) > 0
         self.assertTrue(using_keepalive)
         s.close()
@@ -311,7 +313,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # This test needs to be here in order to be run. socket.create_connection actually tries to
         # connect to the host provided so we need a dummyserver to be running.
         pool = HTTPConnectionPool(self.host, self.port, socket_options=None)
-        s = pool._new_conn()._new_conn()
+        conn = pool._new_conn()
+        conn.connect()
+        s = conn._sock
         using_nagle = s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) == 0
         self.assertTrue(using_nagle)
         s.close()
@@ -325,7 +329,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         conn = pool._new_conn()
         # Update the default socket options
         conn.default_socket_options += [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
-        s = conn._new_conn()
+        conn.connect()
+        s = conn._sock
         nagle_disabled = s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) > 0
         using_keepalive = s.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE) > 0
         self.assertTrue(nagle_disabled)
