@@ -68,7 +68,11 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     
     # Don't connect using Happy Eyeballs if this is a loopback address.
     is_loopback = False
-    for addr_family, _, _, _, addr_info in socket.getaddrinfo(host, port):
+    
+    # Save this information as it may be used later.
+    all_addr_info = socket.getaddrinfo(host, port, family, socket.SOCK_STREAM)
+    
+    for addr_family, _, _, _, addr_info in all_addr_info:
         if addr_family == socket.AF_INET or addr_family == socket.AF_INET6:
             addr = addr_info[0]
             if addr in _LOOPBACK_ADDRESSES:
@@ -81,8 +85,7 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
         return happy_eyeballs_algorithm((host, port), timeout,
                                         source_address, socket_options)
 
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
-        af, socktype, proto, canonname, sa = res
+    for af, socktype, proto, canonname, sa in all_addr_info:
         sock = None
         try:
             sock = socket.socket(af, socktype, proto)
