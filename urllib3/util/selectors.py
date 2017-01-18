@@ -102,7 +102,7 @@ else:
                     errcode = e.errno
                 elif hasattr(e, "args"):
                     errcode = e.args[0]
-                    
+
                 # Also test for the Windows equivalent of EINTR.
                 is_interrupt = (errcode == errno.EINTR or (hasattr(errno, "WSAEINTR") and
                                                            errcode == errno.WSAEINTR))
