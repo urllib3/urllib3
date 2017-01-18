@@ -74,7 +74,7 @@ class TestResponse(unittest.TestCase):
 
     def test_default(self):
         r = HTTPResponse()
-        self.assertEqual(r.data, None)
+        self.assertEqual(r.data, b'')
 
     def test_none(self):
         r = HTTPResponse(None)
