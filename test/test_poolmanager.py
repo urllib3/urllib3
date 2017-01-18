@@ -15,7 +15,9 @@ from urllib3.exceptions import (
     ClosedPoolError,
     LocationValueError,
 )
-from urllib3.util import retry, timeout
+from urllib3.util import retry, timeout, ssl_
+
+from dummyserver.server import (DEFAULT_CA, DEFAULT_CERTS, DEFAULT_CA_DIR)
 
 
 class TestPoolManager(unittest.TestCase):
@@ -156,11 +158,13 @@ class TestPoolManager(unittest.TestCase):
             'retries': retry.Retry(total=6, connect=2),
             'block': True,
             'source_address': '127.0.0.1',
-            'key_file': '/root/totally_legit.key',
-            'cert_file': '/root/totally_legit.crt',
+            'key_file': DEFAULT_CERTS['keyfile'],
+            'cert_file': DEFAULT_CERTS['certfile'],
             'cert_reqs': 'CERT_REQUIRED',
-            'ca_certs': '/root/path_to_pem',
-            'ssl_version': 'SSLv23_METHOD',
+            'ca_certs': DEFAULT_CA,
+            'ca_cert_dir': DEFAULT_CA_DIR,
+            'ssl_version': 'SSLv23',
+            'ssl_context': ssl_.create_urllib3_context(),
         }
         p = PoolManager()
         conn_pools = [
@@ -210,20 +214,22 @@ class TestPoolManager(unittest.TestCase):
     def test_pools_keyed_with_from_host(self):
         """Assert pools are still keyed correctly with connection_from_host."""
         ssl_kw = {
-            'key_file': '/root/totally_legit.key',
-            'cert_file': '/root/totally_legit.crt',
+            'key_file': DEFAULT_CERTS['keyfile'],
+            'cert_file': DEFAULT_CERTS['certfile'],
             'cert_reqs': 'CERT_REQUIRED',
-            'ca_certs': '/root/path_to_pem',
-            'ssl_version': 'SSLv23_METHOD',
+            'ca_certs': DEFAULT_CA,
+            'ca_cert_dir': DEFAULT_CA_DIR,
+            'ssl_version': 'SSLv23',
+            'ssl_context': ssl_.create_urllib3_context(),
         }
-        p = PoolManager(5, **ssl_kw)
+        p = PoolManager()
         conns = []
         conns.append(
             p.connection_from_host('example.com', 443, scheme='https')
         )
 
-        for k in ssl_kw:
-            p.connection_pool_kw[k] = 'newval'
+        for k, v in ssl_kw.items():
+            p.connection_pool_kw[k] = v
             conns.append(
                 p.connection_from_host('example.com', 443, scheme='https')
             )
