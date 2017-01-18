@@ -78,7 +78,7 @@ class TestResponse(unittest.TestCase):
 
     def test_none(self):
         r = HTTPResponse(None)
-        self.assertEqual(r.data, None)
+        self.assertEqual(r.data, b'')
 
     def test_preload(self):
         fp = BytesIO(b'foo')
