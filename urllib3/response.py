@@ -296,7 +296,7 @@ class HTTPResponse(io.IOBase):
             decode_content = self.decode_content
 
         if self._fp is None:
-            return
+            return b''
 
         flush_decoder = False
         data = self._buffer
