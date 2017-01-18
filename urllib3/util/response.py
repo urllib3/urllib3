@@ -8,6 +8,10 @@ def is_fp_closed(obj):
     :param obj:
         The file-like object to check.
     """
+    # FPs that are None are always closed.
+    if obj is None:
+        return True
+
     try:
         # Check for our own base response class.
         return obj.complete

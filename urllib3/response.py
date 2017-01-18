@@ -307,6 +307,7 @@ class HTTPResponse(io.IOBase):
                 data += b''.join(self._fp)
                 flush_decoder = True
                 self._buffer = b''
+                self._fp = None
             else:
                 cache_content = False
                 chunks = [self._buffer]
@@ -318,6 +319,7 @@ class HTTPResponse(io.IOBase):
                         break
                 else:
                     flush_decoder = True
+                    self._fp = None
 
                 data = b''.join(chunks)
                 self._buffer = data[amt:]
