@@ -202,7 +202,11 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         timeout = Timeout(connect=SHORT_TIMEOUT, total=LONG_TIMEOUT)
         pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout, retries=False)
         conn = pool._new_conn()
-        self.assertRaises(ConnectTimeoutError, conn.connect)
+        self.assertRaises(
+            ConnectTimeoutError,
+            conn.connect,
+            connect_timeout=timeout.connect_timeout
+        )
 
 
 class TestConnectionPool(HTTPDummyServerTestCase):
