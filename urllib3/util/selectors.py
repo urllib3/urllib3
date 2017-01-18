@@ -10,8 +10,8 @@ import math
 import select
 import socket
 import sys
-from collections import namedtuple, Mapping
 import time
+from collections import namedtuple, Mapping
 
 try:
     monotonic = time.monotonic
@@ -65,8 +65,6 @@ if sys.version_info >= (3, 5):
             errcode = None
             if hasattr(e, "errno"):
                 errcode = e.errno
-            elif hasattr(e, "args"):
-                errcode = e.args[0]
             raise SelectorError(errcode)
 else:
     def _syscall_wrapper(func, recalc_timeout, *args, **kwargs):
@@ -102,7 +100,9 @@ else:
                 errcode = None
                 if hasattr(e, "errno"):
                     errcode = e.errno
-
+                elif hasattr(e, "args"):
+                    errcode = e.args[0]
+                    
                 # Also test for the Windows equivalent of EINTR.
                 is_interrupt = (errcode == errno.EINTR or (hasattr(errno, "WSAEINTR") and
                                                            errcode == errno.WSAEINTR))
