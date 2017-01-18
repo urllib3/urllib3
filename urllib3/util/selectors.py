@@ -51,6 +51,7 @@ def _fileobj_to_fd(fileobj):
         raise ValueError("Invalid file descriptor: {0}".format(fd))
     return fd
 
+
 # Determine which function to use to wrap system calls because Python 3.5+
 # already handles the case when system calls are interrupted.
 if sys.version_info >= (3, 5):
@@ -209,7 +210,7 @@ class BaseSelector(object):
             key = self._fd_to_key.pop(self._fileobj_lookup(fileobj))
         except KeyError:
             raise KeyError("{0!r} is not registered".format(fileobj))
-        
+
         # Getting the fileno of a closed socket on Windows errors with EBADF.
         except socket.error as e:  # Platform-specific: Windows.
             if e.errno != errno.EBADF:
