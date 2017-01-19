@@ -1,6 +1,49 @@
 Changes
 =======
 
+1.20 (2017-01-19)
+-----------------
+
+* Added support for waiting for I/O using selectors other than select,
+  improving urllib3's behaviour with large numbers of concurrent connections.
+  (Pull #1001)
+
+* Updated the date for the system clock check. (Issue #1005)
+
+* ConnectionPools now correctly consider hostnames to be case-insensitive.
+  (Issue #1032)
+
+* Outdated versions of PyOpenSSL now cause the PyOpenSSL contrib module
+  to fail when it is injected, rather than at first use. (Pull #1063)
+
+* Outdated versions of cryptography now cause the PyOpenSSL contrib module
+  to fail when it is injected, rather than at first use. (Issue #1044)
+
+* Automatically attempt to rewind a file-like body object when a request is
+  retried or redirected. (Pull #1039)
+
+* Fix some bugs that occur when modules incautiously patch the queue module.
+  (Pull #1061)
+
+* Prevent retries from occuring on read timeouts for which the request method
+  was not in the method whitelist. (Issue #1059)
+
+* Changed the PyOpenSSL contrib module to lazily load idna to avoid
+  unnecessarily bloating the memory of programs that don't need it. (Pull
+  #1076)
+
+* Add support for IPv6 literals with zone identifiers. (Pull #1013)
+
+* Added support for socks5h:// and socks4a:// schemes when working with SOCKS
+  proxies, and controlled remote DNS appropriately. (Issue #1035)
+
+
+1.19.1 (2016-11-16)
+-------------------
+
+* Fixed AppEngine import that didn't function on Python 3.5. (Pull #1025)
+
+
 1.19 (2016-11-03)
 -----------------
 
