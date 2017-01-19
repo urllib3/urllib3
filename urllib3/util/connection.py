@@ -18,8 +18,9 @@ _LOOPBACK_ADDRESSES = ['127.0.0.1', '::1']
 def is_connection_dropped(conn):  # Platform-specific
     """
     Returns True if the connection is dropped and should be closed.
-    :param conn:
-        :class:`httplib.HTTPConnection` object.
+
+    :param conn: :class:`httplib.HTTPConnection` object.
+
     Note: For platforms like AppEngine, this will always return ``False`` to
     let the platform handle connection recycling transparently for us.
     """
@@ -65,19 +66,19 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     # us select whether to work with IPv4 DNS records, IPv6 records, or both.
     # The original create_connection function always returns all records.
     family = allowed_gai_family()
-    
+
     # Don't connect using Happy Eyeballs if this is a loopback address.
     is_loopback = False
-    
+
     # Save this information as it may be used later.
     addr_info = socket.getaddrinfo(host, port, family, socket.SOCK_STREAM)
-    
+
     for af, _, _, _, sa in addr_info:
         if af == socket.AF_INET or af == socket.AF_INET6:
             if sa[0] in _LOOPBACK_ADDRESSES:
                 is_loopback = True
                 break
-                
+
     # If IPv6 and selectors are available, use the Happy Eyeballs algorithm.
     # (RFC 6555 https://tools.ietf.org/html/rfc6555)
     if not is_loopback and HAS_IPV6 and HAS_SELECT and _ENABLE_HAPPY_EYEBALLS:
