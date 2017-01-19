@@ -295,8 +295,8 @@ class TestResponse(unittest.TestCase):
                          preload_content=False)
         stream = resp.stream(2)
 
-        self.assertEqual(next(stream), b'f')
-        self.assertEqual(next(stream), b'oo')
+        self.assertEqual(next(stream), b'fo')
+        self.assertEqual(next(stream), b'o')
         self.assertRaises(StopIteration, next, stream)
 
     def test_gzipped_streaming_tell(self):
