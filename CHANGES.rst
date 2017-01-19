@@ -4,6 +4,12 @@ Changes
 dev (master)
 ------------
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.20 (2017-01-19)
+-----------------
+
 * Added support for waiting for I/O using selectors other than select,
   improving urllib3's behaviour with large numbers of concurrent connections.
   (Pull #1001)
@@ -36,8 +42,6 @@ dev (master)
 
 * Added support for socks5h:// and socks4a:// schemes when working with SOCKS
   proxies, and controlled remote DNS appropriately. (Issue #1035)
-
-* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.19.1 (2016-11-16)
