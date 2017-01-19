@@ -208,5 +208,22 @@ class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
         http = PoolManager()
         http.request('GET', self.base_url)
 
+
+class TestPoolManagerWithRFC6555(TestPoolManager):
+    def setUp(self):
+        super(TestPoolManagerWithRFC6555, self).setUp()
+        from urllib3.util import connection
+        loopback_addrs = connection._LOOPBACK_ADDRESSES
+        self.addCleanup(setattr, connection, '_LOOPBACK_ADDRESSES', loopback_addrs)
+        connection._LOOPBACK_ADDRESSES = []
+
+
+class TestIPv6PoolManagerWithRFC6555(TestIPv6PoolManager):
+    def setUp(self):
+        super(TestIPv6PoolManagerWithRFC6555, self).setUp()
+        from test import force_happy_eyeballs
+        force_happy_eyeballs(self)
+
+
 if __name__ == '__main__':
     unittest.main()

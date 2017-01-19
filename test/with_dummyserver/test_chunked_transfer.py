@@ -100,3 +100,10 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
         host_headers = [x for x in header_lines if x.startswith(b'host')]
         self.assertEqual(len(host_headers), 1)
+
+
+class TestChunkedTransferWithRFC6555(TestChunkedTransfer):
+    def setUp(self):
+        super(TestChunkedTransferWithRFC6555, self).setUp()
+        from test import force_happy_eyeballs
+        force_happy_eyeballs(self)

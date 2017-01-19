@@ -109,10 +109,8 @@ class _HappyEyeballs(object):
             if self._error:
                 raise self._error
 
-        # There should either be a result or an error,
-        # never an instance where there's both no result
-        # and nothing went wrong with connecting to sockets.
-        assert result is not None
+        if result is None:
+            raise socket.timeout()
 
         return result
 

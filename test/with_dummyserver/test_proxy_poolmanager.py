@@ -279,7 +279,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertNotEqual(sc2,sc3)
         self.assertEqual(sc3,sc4)
 
-
     @timed(0.5)
     @requires_network
     def test_https_proxy_timeout(self):
@@ -289,7 +288,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             self.fail("Failed to raise retry error.")
         except MaxRetryError as e:
            self.assertEqual(type(e.reason), ConnectTimeoutError)
-
 
     @timed(0.5)
     @requires_network
@@ -314,7 +312,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
 
 class TestIPv6HTTPProxyManager(IPv6HTTPDummyProxyTestCase):
-
     def setUp(self):
         self.http_url = 'http://%s:%d' % (self.http_host, self.http_port)
         self.http_url_alt = 'http://%s:%d' % (self.http_host_alt,
@@ -332,6 +329,21 @@ class TestIPv6HTTPProxyManager(IPv6HTTPDummyProxyTestCase):
 
         r = http.request('GET', '%s/' % self.https_url)
         self.assertEqual(r.status, 200)
+
+
+class TestHTTPProxyManagerWithRFC6555(TestHTTPProxyManager):
+    def setUp(self):
+        super(TestHTTPProxyManagerWithRFC6555, self).setUp()
+        from test import force_happy_eyeballs
+        force_happy_eyeballs(self)
+
+
+class TestIPv6HTTPProxyManagerWIthRFC655(TestIPv6HTTPProxyManager):
+    def setUp(self):
+        super(TestIPv6HTTPProxyManagerWIthRFC655, self).setUp()
+        from test import force_happy_eyeballs
+        force_happy_eyeballs(self)
+
 
 if __name__ == '__main__':
     unittest.main()

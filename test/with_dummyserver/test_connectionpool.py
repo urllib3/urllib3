@@ -870,6 +870,7 @@ class TestRetryAfter(HTTPDummyServerTestCase):
         self.assertEqual(r.status, 200)
         self.assertTrue(delta < 1)
 
+
 class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
     def setUp(self):
         self.pool = HTTPConnectionPool(self.host, self.port, timeout=0.1)
@@ -925,6 +926,117 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
             self.fail('PUT successful despite failed rewind.')
         except UnrewindableBodyError as e:
             self.assertTrue('Unable to record file position for' in str(e))
+
+
+class TestConnectionPoolWithRFC6555(TestConnectionPool):
+    def setUp(self):
+        super(TestConnectionPoolWithRFC6555, self).setUp()
+        from urllib3.util import connection
+        loopback_addrs = connection._LOOPBACK_ADDRESSES
+        self.addCleanup(setattr, connection, '_LOOPBACK_ADDRESSES', loopback_addrs)
+        connection._LOOPBACK_ADDRESSES = []
+
+
+class TestConnectionPoolTimeoutsWithRFC6555(TestConnectionPoolTimeouts):
+    def setUp(self):
+        super(TestConnectionPoolTimeoutsWithRFC6555, self).setUp()
+        from urllib3.util import connection
+        loopback_addrs = connection._LOOPBACK_ADDRESSES
+        self.addCleanup(setattr, connection, '_LOOPBACK_ADDRESSES', loopback_addrs)
+        connection._LOOPBACK_ADDRESSES = []
+
+
+class TestFileBodiesOnRetryOrRedirectWithRFC6555(TestFileBodiesOnRetryOrRedirect):
+    def setUp(self):
+        super(TestFileBodiesOnRetryOrRedirectWithRFC6555, self).setUp()
+        from urllib3.util import connection
+        loopback_addrs = connection._LOOPBACK_ADDRESSES
+        self.addCleanup(setattr, connection, '_LOOPBACK_ADDRESSES', loopback_addrs)
+        connection._LOOPBACK_ADDRESSES = []
+
+
+class TestRetryWithRFC6555(TestRetry):
+    def setUp(self):
+        super(TestRetryWithRFC6555, self).setUp()
+        from urllib3.util import connection
+        loopback_addrs = connection._LOOPBACK_ADDRESSES
+        self.addCleanup(setattr, connection, '_LOOPBACK_ADDRESSES', loopback_addrs)
+        connection._LOOPBACK_ADDRESSES = []
+
+    def test_read_retries(self):
+        """ Should retry for status codes in the whitelist """
+        retry = Retry(read=1, status_forcelist=[418])
+        resp = self.pool.request('GET', '/successful_retry',
+                                 headers={'test-name': 'test_read_retries_with_rfc6555'},
+                                 retries=retry)
+        self.assertEqual(resp.status, 200)
+
+    def test_read_total_retries(self):
+        """ HTTP response w/ status code in the whitelist should be retried """
+        headers = {'test-name': 'test_read_total_retries_with_rfc6555'}
+        retry = Retry(total=1, status_forcelist=[418])
+        resp = self.pool.request('GET', '/successful_retry',
+                                 headers=headers, retries=retry)
+        self.assertEqual(resp.status, 200)
+
+    def test_retries_wrong_whitelist(self):
+        """HTTP response w/ status code not in whitelist shouldn't be retried"""
+        retry = Retry(total=1, status_forcelist=[202])
+        resp = self.pool.request('GET', '/successful_retry',
+                                 headers={'test-name': 'test_wrong_whitelist_with_rfc6555'},
+                                 retries=retry)
+        self.assertEqual(resp.status, 418)
+
+    def test_default_method_whitelist_retried(self):
+        """ urllib3 should retry methods in the default method whitelist """
+        retry = Retry(total=1, status_forcelist=[418])
+        resp = self.pool.request('OPTIONS', '/successful_retry',
+                                 headers={'test-name': 'test_default_whitelist_with_rfc6555'},
+                                 retries=retry)
+        self.assertEqual(resp.status, 200)
+
+    def test_retries_wrong_method_list(self):
+        """Method not in our whitelist should not be retried, even if code matches"""
+        headers = {'test-name': 'test_wrong_method_whitelist_with_rfc6555'}
+        retry = Retry(total=1, status_forcelist=[418],
+                      method_whitelist=['POST'])
+        resp = self.pool.request('GET', '/successful_retry',
+                                 headers=headers, retries=retry)
+        self.assertEqual(resp.status, 418)
+
+    def test_read_retries_unsuccessful(self):
+        headers = {'test-name': 'test_read_retries_unsuccessful_with_rfc6555'}
+        resp = self.pool.request('GET', '/successful_retry',
+                                 headers=headers, retries=1)
+        self.assertEqual(resp.status, 418)
+
+    def test_retry_reuse_safe(self):
+        """ It should be possible to reuse a Retry object across requests """
+        headers = {'test-name': 'test_retry_safe_with_rfc6555'}
+        retry = Retry(total=1, status_forcelist=[418])
+        resp = self.pool.request('GET', '/successful_retry',
+                                 headers=headers, retries=retry)
+        self.assertEqual(resp.status, 200)
+        resp = self.pool.request('GET', '/successful_retry',
+                                 headers=headers, retries=retry)
+        self.assertEqual(resp.status, 200)
+
+    def test_retry_return_in_response(self):
+        headers = {'test-name': 'test_retry_return_in_response_with_rfc6555'}
+        retry = Retry(total=2, status_forcelist=[418])
+        resp = self.pool.request('GET', '/successful_retry',
+                                 headers=headers, retries=retry)
+        self.assertEqual(resp.status, 200)
+        self.assertEqual(resp.retries.total, 1)
+        self.assertEqual(resp.retries.history, (RequestHistory('GET', '/successful_retry', None, 418, None),))
+
+
+class TestRetryAfterWithRFC6555(TestRetryAfter):
+    def setUp(self):
+        super(TestRetryAfterWithRFC6555, self).setUp()
+        from test import force_happy_eyeballs
+        force_happy_eyeballs(self)
+
 
 if __name__ == '__main__':
     unittest.main()
