@@ -291,47 +291,59 @@ class HTTPResponse(io.IOBase):
             set.)
         """
         # TODO: refactor this method to better handle buffered output.
+        # This method is a weird one. We treat this read() like a buffered
+        # read, meaning that it never reads "short" unless there is an EOF
+        # condition at work. However, we have a decompressor in play here,
+        # which means our read() returns decompressed data.
+        #
+        # This means the buffer can only meaningfully buffer decompressed data.
+        # This makes this method prone to over-reading, and forcing too much
+        # data into the buffer. That's unfortunate, but right now I'm not smart
+        # enough to come up with a way to solve that problem.
         self._init_decoder()
         if decode_content is None:
             decode_content = self.decode_content
 
-        if self._fp is None:
+        if self._fp is None and not self._buffer:
             return b''
 
-        flush_decoder = False
         data = self._buffer
 
         with self._error_catcher():
             if amt is None:
-                # cStringIO doesn't like amt=None
-                data += b''.join(self._fp)
-                flush_decoder = True
+                raw_data = b''.join(self._fp)
+                self._fp_bytes_read += len(raw_data)
+                data += self._decode(
+                    raw_data, decode_content, flush_decoder=True
+                )
                 self._buffer = b''
                 self._fp = None
             else:
                 cache_content = False
-                chunks = [self._buffer]
-                data_len = 0
-                for chunk in self._fp:
-                    chunks.append(chunk)
-                    data_len += len(chunk)
+                data_len = len(data)
+                chunks = [data]
+                for raw_chunk in self._fp:
+                    self._fp_bytes_read += len(raw_chunk)
+                    decoded_chunk = self._decode(
+                        raw_chunk, decode_content, flush_decoder=False
+                    )
+                    chunks.append(decoded_chunk)
+                    data_len += len(decoded_chunk)
                     if data_len >= amt:
                         break
                 else:
-                    flush_decoder = True
+                    final_chunk = self._decode(
+                        b'', decode_content, flush_decoder=True
+                    )
+                    chunks.append(final_chunk)
                     self._fp = None
 
                 data = b''.join(chunks)
                 self._buffer = data[amt:]
                 data = data[:amt]
 
-        if data:
-            self._fp_bytes_read += len(data)
-
-            data = self._decode(data, decode_content, flush_decoder)
-
-            if cache_content:
-                self._body = data
+        if data and cache_content:
+            self._body = data
 
         return data
 
