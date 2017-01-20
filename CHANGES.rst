@@ -4,6 +4,9 @@ Changes
 dev (master)
 ------------
 
+* Improved performance of certain selector system calls on Python 3.5 and
+  later. (Pull #1095)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
