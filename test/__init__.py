@@ -157,3 +157,12 @@ class LogRecorder(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.uninstall()
         return False
+
+
+def force_happy_eyeballs(testcase):
+    """ Patches urllib3.util.connection to force
+    the use of RFC 6555 even on loopback hosts."""
+    from urllib3.util import connection
+    loopback_addrs = connection._LOOPBACK_ADDRESSES
+    testcase.addCleanup(setattr, connection, '_LOOPBACK_ADDRESSES', loopback_addrs)
+    connection._LOOPBACK_ADDRESSES = []
