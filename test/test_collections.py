@@ -339,5 +339,34 @@ www-authenticate: bla
         self.assertEqual(d['www-authenticate'], 'asdf, bla')
         self.assertEqual(d.getlist('www-authenticate'), ['asdf', 'bla'])
 
+    def test_from_httplib_py2_invalid_first_header(self):
+        if six.PY3:
+            raise SkipTest("python3 has a different internal header implementation")
+        msg = """
+ Fake Header: I shouldn't be here
+Server: nginx
+Content-Type: text/html; charset=windows-1251
+Connection: keep-alive
+X-Some-Multiline: asdf
+ asdf
+ asdf
+Set-Cookie: bb_lastvisit=1348253375; expires=Sat, 21-Sep-2013 18:49:35 GMT; path=/
+Set-Cookie: bb_lastactivity=0; expires=Sat, 21-Sep-2013 18:49:35 GMT; path=/
+www-authenticate: asdf
+www-authenticate: bla
+
+"""
+        buffer = six.moves.StringIO(msg.lstrip().replace('\n', '\r\n'))
+        msg = six.moves.http_client.HTTPMessage(buffer)
+        d = HTTPHeaderDict.from_httplib(msg)
+        self.assertEqual(d['server'], 'nginx')
+        cookies = d.getlist('set-cookie')
+        self.assertEqual(len(cookies), 2)
+        self.assertTrue(cookies[0].startswith("bb_lastvisit"))
+        self.assertTrue(cookies[1].startswith("bb_lastactivity"))
+        self.assertEqual(d['x-some-multiline'].split(), ['asdf', 'asdf', 'asdf'])
+        self.assertEqual(d['www-authenticate'], 'asdf, bla')
+        self.assertEqual(d.getlist('www-authenticate'), ['asdf', 'bla'])
+
 if __name__ == '__main__':
     unittest.main()
