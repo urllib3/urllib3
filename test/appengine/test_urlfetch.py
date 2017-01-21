@@ -21,6 +21,7 @@ class TestHTTP(AppEngineSandboxTest, TestWithoutSSL):
         with patch('google.appengine.api.urlfetch.fetch', return_value=resp) as fetchmock:
             import urllib3
             pool = urllib3.HTTPConnectionPool('www.google.com', '80')
+            self.addCleanup(pool.close)
             r = pool.request('GET', '/')
             self.assertEqual(r.status, 200, r.data)
             self.assertEqual(fetchmock.call_count, 1)
@@ -43,6 +44,7 @@ class TestHTTPS(AppEngineSandboxTest):
         with patch('google.appengine.api.urlfetch.fetch', return_value=resp) as fetchmock:
             import urllib3
             pool = urllib3.HTTPSConnectionPool('www.google.com', '443')
+            self.addCleanup(pool.close)
             pool.ConnectionCls = urllib3.connection.UnverifiedHTTPSConnection
             r = pool.request('GET', '/')
             self.assertEqual(r.status, 200, r.data)

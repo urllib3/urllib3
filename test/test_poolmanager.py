@@ -23,11 +23,14 @@ class TestPoolManager(unittest.TestCase):
         # Convince ourselves that normally we don't get the same object
         conn1 = connection_from_url('http://localhost:8081/foo')
         conn2 = connection_from_url('http://localhost:8081/bar')
+        self.addCleanup(conn1.close)
+        self.addCleanup(conn2.close)
 
         self.assertNotEqual(conn1, conn2)
 
         # Now try again using the PoolManager
         p = PoolManager(1)
+        self.addCleanup(p.clear)
 
         conn1 = p.connection_from_url('http://localhost:8081/foo')
         conn2 = p.connection_from_url('http://localhost:8081/bar')
@@ -49,6 +52,7 @@ class TestPoolManager(unittest.TestCase):
         connections = set()
 
         p = PoolManager(10)
+        self.addCleanup(p.clear)
 
         for url in urls:
             conn = p.connection_from_url(url)
@@ -58,6 +62,7 @@ class TestPoolManager(unittest.TestCase):
 
     def test_manager_clear(self):
         p = PoolManager(5)
+        self.addCleanup(p.clear)
 
         conn_pool = p.connection_from_url('http://google.com')
         self.assertEqual(len(p.pools), 1)
@@ -75,9 +80,9 @@ class TestPoolManager(unittest.TestCase):
 
         self.assertEqual(len(p.pools), 0)
 
-
     def test_nohost(self):
         p = PoolManager(5)
+        self.addCleanup(p.clear)
         self.assertRaises(LocationValueError, p.connection_from_url, 'http://@')
         self.assertRaises(LocationValueError, p.connection_from_url, None)
 
@@ -107,6 +112,7 @@ class TestPoolManager(unittest.TestCase):
             'source_address': '127.0.0.1',
         }
         p = PoolManager()
+        self.addCleanup(p.clear)
         conn_pools = [
             p.connection_from_url('http://example.com/'),
             p.connection_from_url('http://example.com:8000/'),
@@ -134,6 +140,7 @@ class TestPoolManager(unittest.TestCase):
     def test_http_pool_key_extra_kwargs(self):
         """Assert non-HTTPPoolKey fields are ignored when selecting a pool."""
         p = PoolManager()
+        self.addCleanup(p.clear)
         conn_pool = p.connection_from_url('http://example.com/')
         p.connection_pool_kw['some_kwarg'] = 'that should be ignored'
         other_conn_pool = p.connection_from_url('http://example.com/')
@@ -143,6 +150,7 @@ class TestPoolManager(unittest.TestCase):
     def test_http_pool_key_https_kwargs(self):
         """Assert HTTPSPoolKey fields are ignored when selecting a HTTP pool."""
         p = PoolManager()
+        self.addCleanup(p.clear)
         conn_pool = p.connection_from_url('http://example.com/')
         for key in SSL_KEYWORDS:
             p.connection_pool_kw[key] = 'this should be ignored'
@@ -165,6 +173,7 @@ class TestPoolManager(unittest.TestCase):
             'ssl_version': 'SSLv23_METHOD',
         }
         p = PoolManager()
+        self.addCleanup(p.clear)
         conn_pools = [
             p.connection_from_url('https://example.com/'),
             p.connection_from_url('https://example.com:4333/'),
@@ -197,6 +206,7 @@ class TestPoolManager(unittest.TestCase):
     def test_https_pool_key_extra_kwargs(self):
         """Assert non-HTTPSPoolKey fields are ignored when selecting a pool."""
         p = PoolManager()
+        self.addCleanup(p.clear)
         conn_pool = p.connection_from_url('https://example.com/')
         p.connection_pool_kw['some_kwarg'] = 'that should be ignored'
         other_conn_pool = p.connection_from_url('https://example.com/')
@@ -206,6 +216,7 @@ class TestPoolManager(unittest.TestCase):
     def test_default_pool_key_funcs_copy(self):
         """Assert each PoolManager gets a copy of ``pool_keys_by_scheme``."""
         p = PoolManager()
+        self.addCleanup(p.clear)
         self.assertEqual(p.key_fn_by_scheme, p.key_fn_by_scheme)
         self.assertFalse(p.key_fn_by_scheme is key_fn_by_scheme)
 
@@ -219,6 +230,7 @@ class TestPoolManager(unittest.TestCase):
             'ssl_version': 'SSLv23_METHOD',
         }
         p = PoolManager(5, **ssl_kw)
+        self.addCleanup(p.clear)
         conns = []
         conns.append(
             p.connection_from_host('example.com', 443, scheme='https')
@@ -242,6 +254,7 @@ class TestPoolManager(unittest.TestCase):
     def test_https_connection_from_url_case_insensitive(self):
         """Assert scheme case is ignored when pooling HTTPS connections."""
         p = PoolManager()
+        self.addCleanup(p.clear)
         pool = p.connection_from_url('https://example.com/')
         other_pool = p.connection_from_url('HTTPS://EXAMPLE.COM/')
 
@@ -252,6 +265,7 @@ class TestPoolManager(unittest.TestCase):
     def test_https_connection_from_host_case_insensitive(self):
         """Assert scheme case is ignored when getting the https key class."""
         p = PoolManager()
+        self.addCleanup(p.clear)
         pool = p.connection_from_host('example.com', scheme='https')
         other_pool = p.connection_from_host('EXAMPLE.COM', scheme='HTTPS')
 
@@ -262,6 +276,7 @@ class TestPoolManager(unittest.TestCase):
     def test_https_connection_from_context_case_insensitive(self):
         """Assert scheme case is ignored when getting the https key class."""
         p = PoolManager()
+        self.addCleanup(p.clear)
         context = {'scheme': 'https', 'host': 'example.com', 'port': '443'}
         other_context = {'scheme': 'HTTPS', 'host': 'EXAMPLE.COM', 'port': '443'}
         pool = p.connection_from_context(context)
@@ -284,6 +299,7 @@ class TestPoolManager(unittest.TestCase):
     def test_http_connection_from_host_case_insensitive(self):
         """Assert scheme case is ignored when getting the https key class."""
         p = PoolManager()
+        self.addCleanup(p.clear)
         pool = p.connection_from_host('example.com', scheme='http')
         other_pool = p.connection_from_host('EXAMPLE.COM', scheme='HTTP')
 
@@ -294,6 +310,7 @@ class TestPoolManager(unittest.TestCase):
     def test_http_connection_from_context_case_insensitive(self):
         """Assert scheme case is ignored when getting the https key class."""
         p = PoolManager()
+        self.addCleanup(p.clear)
         context = {'scheme': 'http', 'host': 'example.com', 'port': '8080'}
         other_context = {'scheme': 'HTTP', 'host': 'EXAMPLE.COM', 'port': '8080'}
         pool = p.connection_from_context(context)
@@ -307,6 +324,7 @@ class TestPoolManager(unittest.TestCase):
         """Assert it is possible to define addition pool key fields."""
         custom_key = namedtuple('CustomKey', HTTPPoolKey._fields + ('my_field',))
         p = PoolManager(10, my_field='barley')
+        self.addCleanup(p.clear)
 
         p.key_fn_by_scheme['http'] = functools.partial(_default_key_normalizer, custom_key)
         p.connection_from_url('http://example.com')

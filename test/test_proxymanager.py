@@ -6,6 +6,7 @@ from urllib3.poolmanager import ProxyManager
 class TestProxyManager(unittest.TestCase):
     def test_proxy_headers(self):
         p = ProxyManager('http://something:1234')
+        self.addCleanup(p.clear)
         url = 'http://pypi.python.org/test'
 
         # Verify default headers
@@ -34,8 +35,10 @@ class TestProxyManager(unittest.TestCase):
 
     def test_default_port(self):
         p = ProxyManager('http://something')
+        self.addCleanup(p.clear)
         self.assertEqual(p.proxy.port, 80)
         p = ProxyManager('https://something')
+        self.addCleanup(p.clear)
         self.assertEqual(p.proxy.port, 443)
 
     def test_invalid_scheme(self):

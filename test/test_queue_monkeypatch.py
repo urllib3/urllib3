@@ -22,6 +22,7 @@ class TestMonkeypatchResistance(unittest.TestCase):
     def test_queue_monkeypatching(self):
         with mock.patch.object(queue, 'Empty', BadError):
             http = urllib3.HTTPConnectionPool(host="localhost", block=True)
+            self.addCleanup(http.close)
             first_conn = http._get_conn(timeout=1)
             self.assertRaises(EmptyPoolError, http._get_conn, timeout=1)
 

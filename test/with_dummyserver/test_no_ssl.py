@@ -14,6 +14,7 @@ class TestHTTPWithoutSSL(HTTPDummyServerTestCase, TestWithoutSSL):
         import urllib3
 
         pool = urllib3.HTTPConnectionPool(self.host, self.port)
+        self.addCleanup(pool.close)
         r = pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
@@ -23,6 +24,7 @@ class TestHTTPSWithoutSSL(HTTPSDummyServerTestCase, TestWithoutSSL):
         import urllib3
 
         pool = urllib3.HTTPSConnectionPool(self.host, self.port)
+        self.addCleanup(pool.close)
         try:
             pool.request('GET', '/')
         except urllib3.exceptions.SSLError as e:

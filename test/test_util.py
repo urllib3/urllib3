@@ -48,6 +48,7 @@ from . import clear_warnings
 # numbers used for timeouts
 TIMEOUT_EPOCH = 1000
 
+
 class TestUtil(unittest.TestCase):
     def test_get_host(self):
         url_host_map = {
@@ -138,34 +139,34 @@ class TestUtil(unittest.TestCase):
             actual_normalized_url = parse_url(url).url
             self.assertEqual(actual_normalized_url, expected_normalized_url)
 
-    parse_url_host_map = {
-        'http://google.com/mail': Url('http', host='google.com', path='/mail'),
-        'http://google.com/mail/': Url('http', host='google.com', path='/mail/'),
-        'http://google.com/mail': Url('http', host='google.com', path='mail'),
-        'google.com/mail': Url(host='google.com', path='/mail'),
-        'http://google.com/': Url('http', host='google.com', path='/'),
-        'http://google.com': Url('http', host='google.com'),
-        'http://google.com?foo': Url('http', host='google.com', path='', query='foo'),
+    parse_url_host_map = [
+        ('http://google.com/mail', Url('http', host='google.com', path='/mail')),
+        ('http://google.com/mail/', Url('http', host='google.com', path='/mail/')),
+        ('http://google.com/mail', Url('http', host='google.com', path='mail')),
+        ('google.com/mail', Url(host='google.com', path='/mail')),
+        ('http://google.com/', Url('http', host='google.com', path='/')),
+        ('http://google.com', Url('http', host='google.com')),
+        ('http://google.com?foo', Url('http', host='google.com', path='', query='foo')),
 
         # Path/query/fragment
-        '': Url(),
-        '/': Url(path='/'),
-        '#?/!google.com/?foo#bar': Url(path='', fragment='?/!google.com/?foo#bar'),
-        '/foo': Url(path='/foo'),
-        '/foo?bar=baz': Url(path='/foo', query='bar=baz'),
-        '/foo?bar=baz#banana?apple/orange': Url(path='/foo', query='bar=baz', fragment='banana?apple/orange'),
+        ('', Url()),
+        ('/', Url(path='/')),
+        ('#?/!google.com/?foo#bar', Url(path='', fragment='?/!google.com/?foo#bar')),
+        ('/foo', Url(path='/foo')),
+        ('/foo?bar=baz', Url(path='/foo', query='bar=baz')),
+        ('/foo?bar=baz#banana?apple/orange', Url(path='/foo', query='bar=baz', fragment='banana?apple/orange')),
 
         # Port
-        'http://google.com/': Url('http', host='google.com', path='/'),
-        'http://google.com:80/': Url('http', host='google.com', port=80, path='/'),
-        'http://google.com:80': Url('http', host='google.com', port=80),
+        ('http://google.com/', Url('http', host='google.com', path='/')),
+        ('http://google.com:80/', Url('http', host='google.com', port=80, path='/')),
+        ('http://google.com:80', Url('http', host='google.com', port=80)),
 
         # Auth
-        'http://foo:bar@localhost/': Url('http', auth='foo:bar', host='localhost', path='/'),
-        'http://foo@localhost/': Url('http', auth='foo', host='localhost', path='/'),
-        'http://foo:bar@baz@localhost/': Url('http', auth='foo:bar@baz', host='localhost', path='/'),
-        'http://@': Url('http', host=None, auth='')
-    }
+        ('http://foo:bar@localhost/', Url('http', auth='foo:bar', host='localhost', path='/')),
+        ('http://foo@localhost/', Url('http', auth='foo', host='localhost', path='/')),
+        ('http://foo:bar@baz@localhost/', Url('http', auth='foo:bar@baz', host='localhost', path='/')),
+        ('http://@', Url('http', host=None, auth=''))
+    ]
 
     non_round_tripping_parse_url_host_map = {
         # Path/query/fragment
@@ -179,12 +180,12 @@ class TestUtil(unittest.TestCase):
         }
 
     def test_parse_url(self):
-        for url, expected_Url in chain(self.parse_url_host_map.items(), self.non_round_tripping_parse_url_host_map.items()):
+        for url, expected_Url in chain(self.parse_url_host_map, self.non_round_tripping_parse_url_host_map.items()):
             returned_Url = parse_url(url)
             self.assertEqual(returned_Url, expected_Url)
 
     def test_unparse_url(self):
-        for url, expected_Url in self.parse_url_host_map.items():
+        for url, expected_Url in self.parse_url_host_map:
             self.assertEqual(url, expected_Url.url)
 
     def test_parse_url_invalid_IPv6(self):
@@ -370,7 +371,6 @@ class TestUtil(unittest.TestCase):
             self.fail("string value should not be allowed")
         except ValueError as e:
             self.assertTrue('int, float or None' in str(e))
-
 
     @patch('urllib3.util.timeout.current_time')
     def test_timeout(self, current_time):
