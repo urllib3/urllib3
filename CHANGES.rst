@@ -4,6 +4,15 @@ Changes
 dev (master)
 ------------
 
+* Improved performance of certain selector system calls on Python 3.5 and
+  later. (Pull #1095)
+
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.20 (2017-01-19)
+-----------------
+
 * Added support for waiting for I/O using selectors other than select,
   improving urllib3's behaviour with large numbers of concurrent connections.
   (Pull #1001)
@@ -28,7 +37,14 @@ dev (master)
 * Prevent retries from occuring on read timeouts for which the request method
   was not in the method whitelist. (Issue #1059)
 
-* ... [Short description of non-trivial change.] (Issue #)
+* Changed the PyOpenSSL contrib module to lazily load idna to avoid
+  unnecessarily bloating the memory of programs that don't need it. (Pull
+  #1076)
+
+* Add support for IPv6 literals with zone identifiers. (Pull #1013)
+
+* Added support for socks5h:// and socks4a:// schemes when working with SOCKS
+  proxies, and controlled remote DNS appropriately. (Issue #1035)
 
 
 1.19.1 (2016-11-16)
