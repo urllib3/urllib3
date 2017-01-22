@@ -1,6 +1,10 @@
 import functools
-import unittest
 from collections import namedtuple
+import sys
+if sys.version >= (2, 7):
+    import unittest
+else:
+    import unittest2 as unittest
 
 from urllib3.poolmanager import (
     _default_key_normalizer,

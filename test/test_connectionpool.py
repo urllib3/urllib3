@@ -1,6 +1,10 @@
 from __future__ import absolute_import
 
-import unittest
+import sys
+if sys.version >= (2, 7):
+    import unittest
+else:
+    import unittest2 as unittest
 
 from urllib3.connectionpool import (
     connection_from_url,

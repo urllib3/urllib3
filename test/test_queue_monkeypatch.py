@@ -1,7 +1,11 @@
 from __future__ import absolute_import
 
 import mock
-import unittest
+import sys
+if sys.version >= (2, 7):
+    import unittest
+else:
+    import unittest2 as unittest
 
 import urllib3
 from urllib3.exceptions import EmptyPoolError
