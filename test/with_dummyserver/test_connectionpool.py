@@ -923,7 +923,7 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
         # which is unsupported by BytesIO.
         headers = {'Content-Length': '8'}
         try:
-            resp = self.pool.urlopen('PUT', url, headers=headers, body=body)
+            self.pool.urlopen('PUT', url, headers=headers, body=body)
             self.fail('PUT successful despite failed rewind.')
         except UnrewindableBodyError as e:
             self.assertTrue('Unable to record file position for' in str(e))

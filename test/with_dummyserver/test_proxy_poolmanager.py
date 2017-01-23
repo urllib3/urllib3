@@ -244,19 +244,19 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         http = proxy_from_url(self.proxy_url)
 
         for x in range(2):
-            r = http.urlopen('GET', self.http_url)
+            http.urlopen('GET', self.http_url)
         self.assertEqual(len(http.pools), 1)
 
         for x in range(2):
-            r = http.urlopen('GET', self.http_url_alt)
+            http.urlopen('GET', self.http_url_alt)
         self.assertEqual(len(http.pools), 1)
 
         for x in range(2):
-            r = http.urlopen('GET', self.https_url)
+            http.urlopen('GET', self.https_url)
         self.assertEqual(len(http.pools), 2)
 
         for x in range(2):
-            r = http.urlopen('GET', self.https_url_alt)
+            http.urlopen('GET', self.https_url_alt)
         self.assertEqual(len(http.pools), 3)
 
     def test_proxy_pooling_ext(self):

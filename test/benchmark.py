@@ -39,7 +39,7 @@ def urllib_get(url_list):
     assert url_list
     for url in url_list:
         now = time.time()
-        r = urllib.urlopen(url)
+        urllib.urlopen(url)
         elapsed = time.time() - now
         print("Got in %0.3f: %s" % (elapsed, url))
 
@@ -49,7 +49,7 @@ def pool_get(url_list):
     pool = urllib3.PoolManager()
     for url in url_list:
         now = time.time()
-        r = pool.request('GET', url, assert_same_host=False)
+        pool.request('GET', url, assert_same_host=False)
         elapsed = time.time() - now
         print("Got in %0.3fs: %s" % (elapsed, url))
 
