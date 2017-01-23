@@ -214,15 +214,16 @@ class TestResponse(unittest.TestCase):
         br.close()
         self.assertEqual(resp.closed, True)
 
-        b = b'fooandahalf'
+        b = b'!tenbytes!'
         fp = BytesIO(b)
         resp = HTTPResponse(fp, preload_content=False)
         br = BufferedReader(resp, 5)
 
         # This is necessary to make sure the "no bytes left" part of `readinto`
         # gets tested.
-        while not br.closed:
-            self.assertEqual(len(br.read(5)), 5)
+        self.assertEqual(len(br.read(5)), 5)
+        self.assertEqual(len(br.read(5)), 5)
+        self.assertEqual(len(br.read(5)), 0)
 
     def test_streaming(self):
         fp = BytesIO(b'foo')
@@ -302,14 +303,27 @@ class TestResponse(unittest.TestCase):
                 self.payloads = [
                     payload[i*payload_part_size:(i+1)*payload_part_size]
                     for i in range(NUMBER_OF_READS+1)]
+                self.consumed = 0
 
                 assert b"".join(self.payloads) == payload
 
             def read(self, _):
                 # Amount is unused.
                 if len(self.payloads) > 0:
-                    return self.payloads.pop(0)
+                    payload = self.payloads.pop(0)
+                    self.consumed += len(payload)
+                    return payload
                 return b""
+
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                if not self.payloads:
+                    raise StopIteration()
+                return self.read(None)
+
+            next = __next__
 
         uncompressed_data = zlib.decompress(ZLIB_PAYLOAD)
 
@@ -317,22 +331,20 @@ class TestResponse(unittest.TestCase):
         fp = MockCompressedDataReading(ZLIB_PAYLOAD, payload_part_size)
         resp = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
                             preload_content=False)
-        stream = resp.stream()
+        parts = []
+        stream = resp.stream(1)
 
-        parts_positions = [(part, resp.tell()) for part in stream]
+        for part in stream:
+            parts.append(part)
+            self.assertEqual(resp.tell(), fp.consumed)
+
         end_of_stream = resp.tell()
 
         self.assertRaises(StopIteration, next, stream)
 
-        parts, positions = zip(*parts_positions)
-
         # Check that the payload is equal to the uncompressed data
         payload = b"".join(parts)
         self.assertEqual(uncompressed_data, payload)
-
-        # Check that the positions in the stream are correct
-        expected = [(i+1)*payload_part_size for i in range(NUMBER_OF_READS)]
-        self.assertEqual(expected, list(positions))
 
         # Check that the end of the stream is in the correct place
         self.assertEqual(len(ZLIB_PAYLOAD), end_of_stream)
