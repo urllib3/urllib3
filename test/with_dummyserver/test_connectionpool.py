@@ -206,12 +206,12 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_get(self):
         r = self.pool.request('GET', '/specific_method',
-                               fields={'method': 'GET'})
+                              fields={'method': 'GET'})
         self.assertEqual(r.status, 200, r.data)
 
     def test_post_url(self):
         r = self.pool.request('POST', '/specific_method',
-                               fields={'method': 'POST'})
+                              fields={'method': 'POST'})
         self.assertEqual(r.status, 200, r.data)
 
     def test_urlopen_put(self):
@@ -221,11 +221,11 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     def test_wrong_specific_method(self):
         # To make sure the dummy server is actually returning failed responses
         r = self.pool.request('GET', '/specific_method',
-                               fields={'method': 'POST'})
+                              fields={'method': 'POST'})
         self.assertEqual(r.status, 400, r.data)
 
         r = self.pool.request('POST', '/specific_method',
-                               fields={'method': 'GET'})
+                              fields={'method': 'GET'})
         self.assertEqual(r.status, 400, r.data)
 
     def test_upload(self):
@@ -456,8 +456,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     def test_post_with_multipart(self):
         data = {'banana': 'hammock', 'lol': 'cat'}
         r = self.pool.request('POST', '/echo',
-                                    fields=data,
-                                    encode_multipart=True)
+                              fields=data,
+                              encode_multipart=True)
         body = r.data.split(b'\r\n')
 
         encoded_data = encode_multipart_formdata(data)[0]
@@ -480,13 +480,13 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_check_gzip(self):
         r = self.pool.request('GET', '/encodingrequest',
-                                   headers={'accept-encoding': 'gzip'})
+                              headers={'accept-encoding': 'gzip'})
         self.assertEqual(r.headers.get('content-encoding'), 'gzip')
         self.assertEqual(r.data, b'hello, world!')
 
     def test_check_deflate(self):
         r = self.pool.request('GET', '/encodingrequest',
-                                   headers={'accept-encoding': 'deflate'})
+                              headers={'accept-encoding': 'deflate'})
         self.assertEqual(r.headers.get('content-encoding'), 'deflate')
         self.assertEqual(r.data, b'hello, world!')
 
@@ -553,7 +553,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         try:
             r2 = pool.request('POST', '/echo', fields=req2_data, multipart_boundary=boundary,
-                                    preload_content=False, pool_timeout=0.001)
+                              preload_content=False, pool_timeout=0.001)
 
             # This branch should generally bail here, but maybe someday it will
             # work? Perhaps by some sort of magic. Consider it a TODO.
