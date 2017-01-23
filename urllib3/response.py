@@ -322,21 +322,24 @@ class HTTPResponse(io.IOBase):
                 cache_content = False
                 data_len = len(data)
                 chunks = [data]
-                for raw_chunk in self._fp:
+
+                while data_len < amt:
+                    try:
+                        raw_chunk = next(self._fp)
+                    except StopIteration:
+                        final_chunk = self._decode(
+                            b'', decode_content, flush_decoder=True
+                        )
+                        chunks.append(final_chunk)
+                        self._fp = None
+                        break
+
                     self._fp_bytes_read += len(raw_chunk)
                     decoded_chunk = self._decode(
                         raw_chunk, decode_content, flush_decoder=False
                     )
                     chunks.append(decoded_chunk)
                     data_len += len(decoded_chunk)
-                    if data_len >= amt:
-                        break
-                else:
-                    final_chunk = self._decode(
-                        b'', decode_content, flush_decoder=True
-                    )
-                    chunks.append(final_chunk)
-                    self._fp = None
 
                 data = b''.join(chunks)
                 self._buffer = data[amt:]
