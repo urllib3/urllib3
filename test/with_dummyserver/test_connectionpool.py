@@ -114,7 +114,8 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         delta = time.time() - now
         block_event.set()  # Release request
 
-        self.assertTrue(delta < LONG_TIMEOUT, "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT")
+        message = "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT"
+        self.assertTrue(delta < LONG_TIMEOUT, message)
         pool._put_conn(conn)
 
         wait_for_socket(ready_event)
@@ -122,7 +123,8 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/', timeout=timeout)
         delta = time.time() - now
 
-        self.assertTrue(delta < LONG_TIMEOUT, "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT")
+        message = "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT"
+        self.assertTrue(delta < LONG_TIMEOUT, message)
         block_event.set()  # Release request
 
         # Timeout int/float passed directly to request and _make_request should
@@ -134,7 +136,10 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         wait_for_socket(ready_event)
         conn = pool._new_conn()
         # FIXME: This assert flakes sometimes. Not sure why.
-        self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', '/', timeout=SHORT_TIMEOUT)
+        self.assertRaises(ReadTimeoutError,
+                          pool._make_request,
+                          conn, 'GET', '/',
+                          timeout=SHORT_TIMEOUT)
         block_event.set()  # Release request
 
     def test_connect_timeout(self):
@@ -155,7 +160,10 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         big_timeout = Timeout(read=LONG_TIMEOUT, connect=LONG_TIMEOUT)
         pool = HTTPConnectionPool(host, port, timeout=big_timeout, retries=False)
         conn = pool._get_conn()
-        self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', url, timeout=timeout)
+        self.assertRaises(ConnectTimeoutError,
+                          pool._make_request,
+                          conn, 'GET', url,
+                          timeout=timeout)
 
         pool._put_conn(conn)
         self.assertRaises(ConnectTimeoutError, pool.request, 'GET', url, timeout=timeout)
@@ -280,8 +288,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_nagle(self):
         """ Test that connections have TCP_NODELAY turned on """
-        # This test needs to be here in order to be run. socket.create_connection actually tries to
-        # connect to the host provided so we need a dummyserver to be running.
+        # This test needs to be here in order to be run. socket.create_connection actually tries
+        # to connect to the host provided so we need a dummyserver to be running.
         pool = HTTPConnectionPool(self.host, self.port)
         conn = pool._get_conn()
         pool._make_request(conn, 'GET', '/')
@@ -302,8 +310,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_disable_default_socket_options(self):
         """Test that passing None disables all socket options."""
-        # This test needs to be here in order to be run. socket.create_connection actually tries to
-        # connect to the host provided so we need a dummyserver to be running.
+        # This test needs to be here in order to be run. socket.create_connection actually tries
+        # to connect to the host provided so we need a dummyserver to be running.
         pool = HTTPConnectionPool(self.host, self.port, socket_options=None)
         s = pool._new_conn()._new_conn()
         using_nagle = s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) == 0
@@ -312,8 +320,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_defaults_are_applied(self):
         """Test that modifying the default socket options works."""
-        # This test needs to be here in order to be run. socket.create_connection actually tries to
-        # connect to the host provided so we need a dummyserver to be running.
+        # This test needs to be here in order to be run. socket.create_connection actually tries
+        # to connect to the host provided so we need a dummyserver to be running.
         pool = HTTPConnectionPool(self.host, self.port)
         # Get the HTTPConnection instance
         conn = pool._new_conn()
@@ -547,7 +555,10 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         req2_data = {'count': 'b' * payload_size}
         resp2_data = encode_multipart_formdata(req2_data, boundary=boundary)[0]
 
-        r1 = pool.request('POST', '/echo', fields=req_data, multipart_boundary=boundary, preload_content=False)
+        r1 = pool.request('POST', '/echo',
+                          fields=req_data,
+                          multipart_boundary=boundary,
+                          preload_content=False)
 
         self.assertEqual(r1.read(first_chunk), resp_data[:first_chunk])
 
@@ -628,7 +639,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         for addr in INVALID_SOURCE_ADDRESSES:
             pool = HTTPConnectionPool(self.host, self.port, source_address=addr, retries=False)
             # FIXME: This assert flakes sometimes. Not sure why.
-            self.assertRaises(NewConnectionError, pool.request, 'GET', '/source_address?{0}'.format(addr))
+            self.assertRaises(NewConnectionError,
+                              pool.request,
+                              'GET', '/source_address?{0}'.format(addr))
 
     def test_stream_keepalive(self):
         x = 2
@@ -676,7 +689,10 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                               'GET', '/redirect',
                               fields={'target': '/'}, release_conn=False, retries=0)
 
-            r = http.request('GET', '/redirect', fields={'target': '/'}, release_conn=False, retries=1)
+            r = http.request('GET', '/redirect',
+                             fields={'target': '/'},
+                             release_conn=False,
+                             retries=1)
             r.release_conn()
 
             # the pool should still contain poolsize elements
@@ -781,15 +797,19 @@ class TestRetry(HTTPDummyServerTestCase):
                                  headers=headers, retries=retry)
         self.assertEqual(resp.status, 200)
         self.assertEqual(resp.retries.total, 1)
-        self.assertEqual(resp.retries.history, (RequestHistory('GET', '/successful_retry', None, 418, None),))
+        self.assertEqual(resp.retries.history,
+                         (RequestHistory('GET', '/successful_retry', None, 418, None),))
 
     def test_retry_redirect_history(self):
         resp = self.pool.request('GET', '/redirect', fields={'target': '/'})
         self.assertEqual(resp.status, 200)
-        self.assertEqual(resp.retries.history, (RequestHistory('GET', '/redirect?target=%2F', None, 303, '/'),))
+        self.assertEqual(resp.retries.history,
+                         (RequestHistory('GET', '/redirect?target=%2F', None, 303, '/'),))
 
     def test_multi_redirect_history(self):
-        r = self.pool.request('GET', '/multi_redirect', fields={'redirect_codes': '303,302,200'}, redirect=False)
+        r = self.pool.request('GET', '/multi_redirect',
+                              fields={'redirect_codes': '303,302,200'},
+                              redirect=False)
         self.assertEqual(r.status, 303)
         self.assertEqual(r.retries.history, tuple())
 
@@ -797,13 +817,14 @@ class TestRetry(HTTPDummyServerTestCase):
                               fields={'redirect_codes': '303,302,301,307,302,200'})
         self.assertEqual(r.status, 200)
         self.assertEqual(r.data, b'Done redirecting')
-        self.assertEqual([(request_history.status, request_history.redirect_location) for request_history in r.retries.history], [
-            (303, '/multi_redirect?redirect_codes=302,301,307,302,200'),
-            (302, '/multi_redirect?redirect_codes=301,307,302,200'),
-            (301, '/multi_redirect?redirect_codes=307,302,200'),
-            (307, '/multi_redirect?redirect_codes=302,200'),
-            (302, '/multi_redirect?redirect_codes=200')
-        ])
+
+        expected = [(303, '/multi_redirect?redirect_codes=302,301,307,302,200'),
+                    (302, '/multi_redirect?redirect_codes=301,307,302,200'),
+                    (301, '/multi_redirect?redirect_codes=307,302,200'),
+                    (307, '/multi_redirect?redirect_codes=302,200'),
+                    (302, '/multi_redirect?redirect_codes=200')]
+        actual = [(history.status, history.redirect_location) for history in r.retries.history]
+        self.assertEqual(actual, expected)
 
 
 class TestRetryAfter(HTTPDummyServerTestCase):

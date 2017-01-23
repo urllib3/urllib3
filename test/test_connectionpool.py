@@ -322,7 +322,8 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(initial_pool_size, new_pool_size)
 
     def test_release_conn_param_is_respected_after_http_error_retry(self):
-        """For successful ```urlopen(release_conn=False)```, the connection isn't released, even after a retry.
+        """For successful ```urlopen(release_conn=False)```,
+        the connection isn't released, even after a retry.
 
         This is a regression test for issue #651 [1], where the connection
         would be released if the initial request failed, even if a retry

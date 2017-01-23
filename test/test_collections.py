@@ -160,7 +160,8 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertEqual(len(h), len(set(teststr)))
 
     def test_create_from_list(self):
-        h = HTTPHeaderDict([('ab', 'A'), ('cd', 'B'), ('cookie', 'C'), ('cookie', 'D'), ('cookie', 'E')])
+        headers = [('ab', 'A'), ('cd', 'B'), ('cookie', 'C'), ('cookie', 'D'), ('cookie', 'E')]
+        h = HTTPHeaderDict(headers)
         self.assertEqual(len(h), 3)
         self.assertTrue('ab' in h)
         clist = h.getlist('cookie')
@@ -169,7 +170,8 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertEqual(clist[-1], 'E')
 
     def test_create_from_headerdict(self):
-        org = HTTPHeaderDict([('ab', 'A'), ('cd', 'B'), ('cookie', 'C'), ('cookie', 'D'), ('cookie', 'E')])
+        headers = [('ab', 'A'), ('cd', 'B'), ('cookie', 'C'), ('cookie', 'D'), ('cookie', 'E')]
+        org = HTTPHeaderDict(headers)
         h = HTTPHeaderDict(org)
         self.assertEqual(len(h), 3)
         self.assertTrue('ab' in h)
@@ -299,7 +301,9 @@ class TestHTTPHeaderDict(unittest.TestCase):
 
     def test_dict_conversion(self):
         # Also tested in connectionpool, needs to preserve case
-        hdict = {'Content-Length': '0', 'Content-type': 'text/plain', 'Server': 'TornadoServer/1.2.3'}
+        hdict = {'Content-Length': '0',
+                 'Content-type': 'text/plain',
+                 'Server': 'TornadoServer/1.2.3'}
         h = dict(HTTPHeaderDict(hdict).items())
         self.assertEqual(hdict, h)
         self.assertEqual(hdict, dict(HTTPHeaderDict(hdict)))
