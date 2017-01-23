@@ -331,5 +331,6 @@ class TestIPv6HTTPProxyManager(IPv6HTTPDummyProxyTestCase):
         r = http.request('GET', '%s/' % self.https_url)
         self.assertEqual(r.status, 200)
 
+
 if __name__ == '__main__':
     unittest.main()

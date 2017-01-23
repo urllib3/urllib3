@@ -94,6 +94,7 @@ def onlyPy3(test):
         return test(*args, **kwargs)
     return wrapper
 
+
 _requires_network_has_route = None
 
 

@@ -339,5 +339,6 @@ www-authenticate: bla
         self.assertEqual(d['www-authenticate'], 'asdf, bla')
         self.assertEqual(d.getlist('www-authenticate'), ['asdf', 'bla'])
 
+
 if __name__ == '__main__':
     unittest.main()

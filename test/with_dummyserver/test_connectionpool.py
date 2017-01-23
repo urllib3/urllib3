@@ -928,5 +928,6 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
         except UnrewindableBodyError as e:
             self.assertTrue('Unable to record file position for' in str(e))
 
+
 if __name__ == '__main__':
     unittest.main()

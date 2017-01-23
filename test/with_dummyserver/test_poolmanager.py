@@ -208,5 +208,6 @@ class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
         http = PoolManager()
         http.request('GET', self.base_url)
 
+
 if __name__ == '__main__':
     unittest.main()
