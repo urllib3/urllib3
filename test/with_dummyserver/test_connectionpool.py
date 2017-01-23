@@ -626,7 +626,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                               NoIPv6Warning)
                 continue
             pool = HTTPConnectionPool(self.host, self.port,
-                    source_address=addr, retries=False)
+                                      source_address=addr, retries=False)
             r = pool.request('GET', '/source_address')
             self.assertEqual(r.data, b(addr[0]))
 
@@ -678,7 +678,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             # url. We won't get a response for this  and so the
             # conn won't be implicitly returned to the pool.
             self.assertRaises(MaxRetryError,
-                http.request, 'GET', '/redirect', fields={'target': '/'}, release_conn=False, retries=0)
+                              http.request,
+                              'GET', '/redirect',
+                              fields={'target': '/'}, release_conn=False, retries=0)
 
             r = http.request('GET', '/redirect', fields={'target': '/'}, release_conn=False, retries=1)
             r.release_conn()
@@ -699,8 +701,8 @@ class TestRetry(HTTPDummyServerTestCase):
     def test_max_retry(self):
         try:
             r = self.pool.request('GET', '/redirect',
-                              fields={'target': '/'},
-                              retries=0)
+                                  fields={'target': '/'},
+                                  retries=0)
             self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
         except MaxRetryError:
             pass
@@ -817,37 +819,37 @@ class TestRetryAfter(HTTPDummyServerTestCase):
     def test_retry_after(self):
         # Request twice in a second to get a 429 response.
         r = self.pool.request('GET', '/retry_after',
-                fields={'status': '429 Too Many Requests'},
-                retries=False)
+                              fields={'status': '429 Too Many Requests'},
+                              retries=False)
         r = self.pool.request('GET', '/retry_after',
-                fields={'status': '429 Too Many Requests'},
-                retries=False)
+                              fields={'status': '429 Too Many Requests'},
+                              retries=False)
         self.assertEqual(r.status, 429)
 
         r = self.pool.request('GET', '/retry_after',
-                fields={'status': '429 Too Many Requests'},
-                retries=True)
+                              fields={'status': '429 Too Many Requests'},
+                              retries=True)
         self.assertEqual(r.status, 200)
 
         # Request twice in a second to get a 503 response.
         r = self.pool.request('GET', '/retry_after',
-                fields={'status': '503 Service Unavailable'},
-                retries=False)
+                              fields={'status': '503 Service Unavailable'},
+                              retries=False)
         r = self.pool.request('GET', '/retry_after',
-                fields={'status': '503 Service Unavailable'},
-                retries=False)
+                              fields={'status': '503 Service Unavailable'},
+                              retries=False)
         self.assertEqual(r.status, 503)
 
         r = self.pool.request('GET', '/retry_after',
-                fields={'status': '503 Service Unavailable'},
-                retries=True)
+                              fields={'status': '503 Service Unavailable'},
+                              retries=True)
         self.assertEqual(r.status, 200)
 
         # Ignore Retry-After header on status which is not defined in
         # Retry.RETRY_AFTER_STATUS_CODES.
         r = self.pool.request('GET', '/retry_after',
-                fields={'status': "418 I'm a teapot"},
-                retries=True)
+                              fields={'status': "418 I'm a teapot"},
+                              retries=True)
         self.assertEqual(r.status, 418)
 
     def test_redirect_after(self):

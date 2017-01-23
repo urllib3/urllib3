@@ -275,7 +275,7 @@ class TestResponse(unittest.TestCase):
 
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
-                         preload_content=False)
+                            preload_content=False)
         stream = resp.stream(2)
 
         self.assertEqual(next(stream), b'f')
@@ -291,7 +291,7 @@ class TestResponse(unittest.TestCase):
 
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
-                         preload_content=False)
+                            preload_content=False)
         stream = resp.stream()
 
         # Read everything
@@ -360,7 +360,7 @@ class TestResponse(unittest.TestCase):
 
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
-                         preload_content=False)
+                            preload_content=False)
         stream = resp.stream(2)
 
         self.assertEqual(next(stream), b'f')
@@ -375,7 +375,7 @@ class TestResponse(unittest.TestCase):
 
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
-                         preload_content=False)
+                            preload_content=False)
         stream = resp.stream(2)
 
         self.assertEqual(next(stream), b'f')
@@ -698,7 +698,7 @@ class MockChunkedEncodingWithoutCRLFOnEnd(MockChunkedEncodingResponse):
 
     def _encode_chunk(self, chunk):
         return '%X\r\n%s%s' % (len(chunk), chunk.decode(),
-            "\r\n" if len(chunk) > 0 else "")
+                               "\r\n" if len(chunk) > 0 else "")
 
 
 class MockChunkedEncodingWithExtensions(MockChunkedEncodingResponse):

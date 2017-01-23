@@ -104,10 +104,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
                 body = 'Response %d' % i
                 sock.send(('HTTP/1.1 200 OK\r\n'
-                          'Content-Type: text/plain\r\n'
-                          'Content-Length: %d\r\n'
-                          '\r\n'
-                          '%s' % (len(body), body)).encode('utf-8'))
+                           'Content-Type: text/plain\r\n'
+                           'Content-Length: %d\r\n'
+                           '\r\n'
+                           '%s' % (len(body), body)).encode('utf-8'))
 
                 sock.close()  # simulate a server timing out, closing socket
                 done_closing.set()  # let the test know it can proceed
@@ -202,10 +202,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # Now respond immediately.
             body = 'Response 2'
             sock.send(('HTTP/1.1 200 OK\r\n'
-                      'Content-Type: text/plain\r\n'
-                      'Content-Length: %d\r\n'
-                      '\r\n'
-                      '%s' % (len(body), body)).encode('utf-8'))
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n'
+                       '%s' % (len(body), body)).encode('utf-8'))
 
             sock.close()
 
@@ -324,10 +324,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # send unknown http protocol
             body = "bad http 0.5 response"
             sock.send(('HTTP/0.5 200 OK\r\n'
-                      'Content-Type: text/plain\r\n'
-                      'Content-Length: %d\r\n'
-                      '\r\n'
-                      '%s' % (len(body), body)).encode('utf-8'))
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n'
+                       '%s' % (len(body), body)).encode('utf-8'))
             sock.close()
 
             # Second request.
@@ -338,10 +338,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
             # Now respond immediately.
             sock.send(('HTTP/1.1 200 OK\r\n'
-                      'Content-Type: text/plain\r\n'
-                      'Content-Length: %d\r\n'
-                      '\r\n'
-                      'foo' % (len('foo'))).encode('utf-8'))
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n'
+                       'foo' % (len('foo'))).encode('utf-8'))
 
             sock.close()  # Close the socket.
 
@@ -393,13 +393,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 buf = sock.recv(65536)
 
             # Send partial response and close socket.
-            sock.send((
-                'HTTP/1.1 200 OK\r\n'
-                'Content-Type: text/plain\r\n'
-                'Content-Length: %d\r\n'
-                '\r\n'
-                '%s' % (len(body), partial_body)).encode('utf-8')
-            )
+            sock.send(('HTTP/1.1 200 OK\r\n'
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n'
+                       '%s' % (len(body), partial_body)).encode('utf-8'))
             sock.close()
 
         self._start_server(socket_handler)
@@ -495,9 +493,9 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 buf = sock.recv(65536)
 
             sock.send(('HTTP/1.1 200 OK\r\n'
-                      'Content-Type: text/plain\r\n'
-                      'Content-Length: 0\r\n'
-                      '\r\n').encode('utf-8'))
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: 0\r\n'
+                       '\r\n').encode('utf-8'))
 
             # Wait for the socket to close.
             done_closing.wait(timeout=1)
@@ -595,10 +593,10 @@ class TestProxyManager(SocketDummyServerTestCase):
                 buf += sock.recv(65536)
 
             sock.send(('HTTP/1.1 200 OK\r\n'
-                      'Content-Type: text/plain\r\n'
-                      'Content-Length: %d\r\n'
-                      '\r\n'
-                      '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n'
+                       '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
             sock.close()
 
         self._start_server(echo_socket_handler)
@@ -630,10 +628,10 @@ class TestProxyManager(SocketDummyServerTestCase):
                 buf += sock.recv(65536)
 
             sock.send(('HTTP/1.1 200 OK\r\n'
-                      'Content-Type: text/plain\r\n'
-                      'Content-Length: %d\r\n'
-                      '\r\n'
-                      '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n'
+                       '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
             sock.close()
 
         self._start_server(echo_socket_handler)
@@ -669,10 +667,10 @@ class TestProxyManager(SocketDummyServerTestCase):
                 buf += sock.recv(65536)
 
             sock.send(('HTTP/1.1 200 OK\r\n'
-                      'Content-Type: text/plain\r\n'
-                      'Content-Length: %d\r\n'
-                      '\r\n'
-                      '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n'
+                       '%s' % (len(buf), buf.decode('utf-8'))).encode('utf-8'))
             sock.close()
             close_event.set()
 
@@ -688,8 +686,8 @@ class TestProxyManager(SocketDummyServerTestCase):
 
         close_event.wait(timeout=1)
         self.assertRaises(ProxyError, conn.urlopen, 'GET',
-                'http://www.google.com',
-                assert_same_host=False, retries=False)
+                          'http://www.google.com',
+                          assert_same_host=False, retries=False)
 
     def test_connect_reconn(self):
         def proxy_ssl_one(listener):

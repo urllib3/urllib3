@@ -428,8 +428,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         conn = VerifiedHTTPSConnection(self.host, self.port)
         https_pool = HTTPSConnectionPool(self.host, self.port,
-                cert_reqs='CERT_REQUIRED', ca_certs=DEFAULT_CA,
-                assert_fingerprint=fingerprint)
+                                         cert_reqs='CERT_REQUIRED',
+                                         ca_certs=DEFAULT_CA,
+                                         assert_fingerprint=fingerprint)
 
         https_pool._make_request(conn, 'GET', '/')
 
