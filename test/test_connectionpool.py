@@ -50,15 +50,12 @@ class TestConnectionPool(unittest.TestCase):
             ('https://google.com:443/', 'https://google.com/abracadabra'),
             ('https://google.com/', 'https://google.com:443/abracadabra'),
             ('http://[2607:f8b0:4005:805::200e%25eth0]/',
-             'http://[2607:f8b0:4005:805::200e%eth0]/'
-            ),
+             'http://[2607:f8b0:4005:805::200e%eth0]/'),
             ('https://[2607:f8b0:4005:805::200e%25eth0]:443/',
-             'https://[2607:f8b0:4005:805::200e%eth0]:443/'
-            ),
+             'https://[2607:f8b0:4005:805::200e%eth0]:443/'),
             ('http://[::1]/', 'http://[::1]'),
             ('http://[2001:558:fc00:200:f816:3eff:fef9:b954%lo]/',
-             'http://[2001:558:fc00:200:f816:3eff:fef9:b954%25lo]'
-            ),
+             'http://[2001:558:fc00:200:f816:3eff:fef9:b954%25lo]')
         ]
 
         for a, b in same_host:
