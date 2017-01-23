@@ -398,6 +398,7 @@ class HTTPResponse(io.IOBase):
     def close(self):
         if not self.closed:
             self._fp.close()
+            self._fp = None
 
         if self._connection:
             self._connection.close()
@@ -410,7 +411,7 @@ class HTTPResponse(io.IOBase):
         elif hasattr(self._fp, 'complete'):
             return self._fp.complete
         else:
-            return True
+            return False
 
     def fileno(self):
         # TODO: Do we need this?

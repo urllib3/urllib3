@@ -207,12 +207,6 @@ class TestResponse(unittest.TestCase):
         resp3 = HTTPResponse('foodata')
         self.assertRaises(IOError, resp3.fileno)
 
-        resp3._fp = 2
-        # A corner case where _fp is present but doesn't have `closed`,
-        # `isclosed`, or `fileno`.  Unlikely, but possible.
-        self.assertEqual(resp3.closed, True)
-        self.assertRaises(IOError, resp3.fileno)
-
     def test_io_closed_consistently(self):
         hlr = old_response(socket.socket())
         hlr._state_machine.receive_data(
