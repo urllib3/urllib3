@@ -9,10 +9,10 @@ import time
 import threading
 
 try:  # Python 2.6 unittest module doesn't have skip decorators.
-    from unittest import skip, skipIf, skipUnless
+    from unittest import skipIf, skipUnless
     import unittest
 except ImportError:
-    from unittest2 import skip, skipIf, skipUnless
+    from unittest2 import skipIf, skipUnless
     import unittest2 as unittest
 
 try:  # Python 2.x doesn't define time.perf_counter.
@@ -123,7 +123,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
     SELECTOR = selectors.DefaultSelector
 
     def make_socketpair(self):
-        rd, wr = socket.socketpair()
+        rd, wr = socketpair()
 
         # Make non-blocking so we get errors if the
         # sockets are interacted with but not ready.

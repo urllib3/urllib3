@@ -9,7 +9,6 @@ import mock
 
 from urllib3.connection import (
     CertificateError,
-    VerifiedHTTPSConnection,
     _match_hostname,
     RECENT_DATE
 )

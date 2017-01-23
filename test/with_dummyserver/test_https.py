@@ -21,7 +21,6 @@ from test import (
     onlyPy279OrNewer,
     requires_network,
     TARPIT_HOST,
-    clear_warnings,
 )
 from urllib3 import HTTPSConnectionPool
 from urllib3.connection import (
@@ -31,7 +30,6 @@ from urllib3.connection import (
 )
 from urllib3.exceptions import (
     SSLError,
-    ReadTimeoutError,
     ConnectTimeoutError,
     InsecureRequestWarning,
     SystemTimeWarning,

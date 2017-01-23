@@ -29,7 +29,6 @@ from urllib3.exceptions import (
     LocationParseError,
     TimeoutStateError,
     InsecureRequestWarning,
-    SSLError,
     SNIMissingWarning,
     InvalidHeader,
     UnrewindableBodyError,
