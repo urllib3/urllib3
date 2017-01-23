@@ -204,28 +204,6 @@ class TestResponse(unittest.TestCase):
         resp3 = HTTPResponse('foodata')
         self.assertRaises(IOError, resp3.fileno)
 
-    def test_io_closed_consistently(self):
-        hlr = old_response(socket.socket())
-        hlr._state_machine.receive_data(
-            b'HTTP/1.1 200 OK\r\n'
-            b'Server: test\r\n'
-            b'Content-Length: 3\r\n'
-            b'\r\n'
-        )
-        hlr._state_machine.next_event()
-        hlr.fp = BytesIO(b'foo')
-        hlr.fp.recv = hlr.fp.read
-        hlr.length = 3
-        resp = HTTPResponse(hlr, preload_content=False)
-
-        self.assertEqual(resp.closed, False)
-        self.assertEqual(resp._fp.closed, False)
-        self.assertEqual(is_fp_closed(resp._fp), False)
-        resp.read()
-        self.assertEqual(resp.closed, True)
-        self.assertEqual(resp._fp.closed, True)
-        self.assertEqual(is_fp_closed(resp._fp), True)
-
     def test_io_bufferedreader(self):
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)
