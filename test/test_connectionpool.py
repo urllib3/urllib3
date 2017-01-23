@@ -6,6 +6,7 @@ from urllib3.connection import OldHTTPResponse
 from urllib3.connectionpool import (
     connection_from_url,
     HTTPConnection,
+    SyncHTTP11Connection,
     HTTPConnectionPool,
     HTTPSConnectionPool,
 )
@@ -259,7 +260,7 @@ class TestConnectionPool(unittest.TestCase):
     def test_pool_timeouts(self):
         pool = HTTPConnectionPool(host='localhost')
         conn = pool._new_conn()
-        self.assertEqual(conn.__class__, HTTPConnection)
+        self.assertEqual(conn.__class__, SyncHTTP11Connection)
         self.assertEqual(pool.timeout.__class__, Timeout)
         self.assertEqual(pool.timeout._read, Timeout.DEFAULT_TIMEOUT)
         self.assertEqual(pool.timeout._connect, Timeout.DEFAULT_TIMEOUT)
