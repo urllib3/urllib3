@@ -306,7 +306,7 @@ class TestUtil(unittest.TestCase):
             self.assertEqual(output, expected)
 
     def test_add_stderr_logger(self):
-        handler = add_stderr_logger(level=logging.INFO) # Don't actually print debug
+        handler = add_stderr_logger(level=logging.INFO)  # Don't actually print debug
         logger = logging.getLogger('urllib3')
         self.assertTrue(handler in logger.handlers)
 

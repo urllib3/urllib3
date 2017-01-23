@@ -70,7 +70,7 @@ class TestSNI(SocketDummyServerTestCase):
         def socket_handler(listener):
             sock = listener.accept()[0]
 
-            self.buf = sock.recv(65536) # We only accept one packet
+            self.buf = sock.recv(65536)  # We only accept one packet
             done_receiving.set()  # let the test know it can proceed
             sock.close()
 
@@ -78,7 +78,7 @@ class TestSNI(SocketDummyServerTestCase):
         pool = HTTPSConnectionPool(self.host, self.port)
         try:
             pool.request('GET', '/', retries=0)
-        except SSLError: # We are violating the protocol
+        except SSLError:  # We are violating the protocol
             pass
         done_receiving.wait()
         self.assertTrue(self.host.encode('ascii') in self.buf,
@@ -884,7 +884,7 @@ class TestHeaders(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         HEADERS = {'Content-Length': '0', 'Content-type': 'text/plain'}
         r = pool.request('GET', '/')
-        self.assertEqual(HEADERS, dict(r.headers.items())) # to preserve case sensitivity
+        self.assertEqual(HEADERS, dict(r.headers.items()))  # to preserve case sensitivity
 
     def test_headers_are_sent_with_the_original_case(self):
         headers = {'foo': 'bar', 'bAz': 'quux'}

@@ -94,7 +94,7 @@ def requires_network(test):
 
     def _is_unreachable_err(err):
         return getattr(err, 'errno', None) in (errno.ENETUNREACH,
-                                               errno.EHOSTUNREACH) # For OSX
+                                               errno.EHOSTUNREACH)  # For OSX
 
     def _has_route():
         try:

@@ -109,7 +109,7 @@ class TestLRUContainer(unittest.TestCase):
         for i in xrange(5):
             d[i] = i
         self.assertEqual(list(d.keys()), list(xrange(5)))
-        self.assertEqual(evicted_items, []) # Nothing disposed
+        self.assertEqual(evicted_items, [])  # Nothing disposed
 
         d[5] = 5
         self.assertEqual(list(d.keys()), list(xrange(1, 6)))

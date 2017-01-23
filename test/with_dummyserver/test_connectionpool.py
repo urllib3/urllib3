@@ -65,11 +65,11 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, timeout=SHORT_TIMEOUT, retries=False)
         wait_for_socket(ready_event)
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/')
-        block_event.set() # Release block
+        block_event.set()  # Release block
 
         # Shouldn't raise this time
         wait_for_socket(ready_event)
-        block_event.set() # Pre-release block
+        block_event.set()  # Pre-release block
         pool.request('GET', '/')
 
     def test_conn_closed(self):
@@ -103,12 +103,12 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         conn = pool._get_conn()
         self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', '/')
         pool._put_conn(conn)
-        block_event.set() # Release request
+        block_event.set()  # Release request
 
         wait_for_socket(ready_event)
         block_event.clear()
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/')
-        block_event.set() # Release request
+        block_event.set()  # Release request
 
         # Request-specific timeouts should raise errors
         pool = HTTPConnectionPool(self.host, self.port, timeout=LONG_TIMEOUT, retries=False)
@@ -118,7 +118,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         now = time.time()
         self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', '/', timeout=timeout)
         delta = time.time() - now
-        block_event.set() # Release request
+        block_event.set()  # Release request
 
         self.assertTrue(delta < LONG_TIMEOUT, "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT")
         pool._put_conn(conn)
@@ -129,19 +129,19 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         delta = time.time() - now
 
         self.assertTrue(delta < LONG_TIMEOUT, "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT")
-        block_event.set() # Release request
+        block_event.set()  # Release request
 
         # Timeout int/float passed directly to request and _make_request should
         # raise a request timeout
         wait_for_socket(ready_event)
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/', timeout=SHORT_TIMEOUT)
-        block_event.set() # Release request
+        block_event.set()  # Release request
 
         wait_for_socket(ready_event)
         conn = pool._new_conn()
         # FIXME: This assert flakes sometimes. Not sure why.
         self.assertRaises(ReadTimeoutError, pool._make_request, conn, 'GET', '/', timeout=SHORT_TIMEOUT)
-        block_event.set() # Release request
+        block_event.set()  # Release request
 
     def test_connect_timeout(self):
         url = '/'
@@ -363,7 +363,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         conn = pool._get_conn()
         try:
             conn.set_tunnel(self.host, self.port)
-        except AttributeError: # python 2.6
+        except AttributeError:  # python 2.6
             conn._set_tunnel(self.host, self.port)
 
         conn._tunnel = mock.Mock(return_value=None)

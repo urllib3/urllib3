@@ -103,15 +103,15 @@ class RetryTest(unittest.TestCase):
         max_backoff = Retry.BACKOFF_MAX
 
         retry = Retry(total=100, backoff_factor=0.2)
-        self.assertEqual(retry.get_backoff_time(), 0) # First request
+        self.assertEqual(retry.get_backoff_time(), 0)  # First request
 
         retry = retry.increment(method='GET')
-        self.assertEqual(retry.get_backoff_time(), 0) # First retry
+        self.assertEqual(retry.get_backoff_time(), 0)  # First retry
 
         retry = retry.increment(method='GET')
         self.assertEqual(retry.backoff_factor, 0.2)
         self.assertEqual(retry.total, 98)
-        self.assertEqual(retry.get_backoff_time(), 0.4) # Start backoff
+        self.assertEqual(retry.get_backoff_time(), 0.4)  # Start backoff
 
         retry = retry.increment(method='GET')
         self.assertEqual(retry.get_backoff_time(), 0.8)

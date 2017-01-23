@@ -160,10 +160,10 @@ class TestConnectionPool(unittest.TestCase):
         pool = HTTPConnectionPool(host='localhost', maxsize=1, block=False)
 
         conn1 = pool._get_conn()
-        conn2 = pool._get_conn() # New because block=False
+        conn2 = pool._get_conn()  # New because block=False
 
         pool._put_conn(conn1)
-        pool._put_conn(conn2) # Should be discarded
+        pool._put_conn(conn2)  # Should be discarded
 
         self.assertEqual(conn1, pool._get_conn())
         self.assertNotEqual(conn2, pool._get_conn())
