@@ -241,13 +241,10 @@ class TestResponse(unittest.TestCase):
         resp = HTTPResponse(fp, preload_content=False)
         br = BufferedReader(resp, 5)
 
-        br.read(1)  # sets up the buffer, reading 5
-        self.assertEqual(len(fp.read()), len(b) - 5)
-
         # This is necessary to make sure the "no bytes left" part of `readinto`
         # gets tested.
         while not br.closed:
-            br.read(5)
+            self.assertEqual(len(br.read(5)), 5)
 
     def test_streaming(self):
         fp = BytesIO(b'foo')
