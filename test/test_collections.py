@@ -148,17 +148,17 @@ class TestHTTPHeaderDict(unittest.TestCase):
         h = HTTPHeaderDict(ab=1, cd=2, ef=3, gh=4)
         self.assertEqual(len(h), 4)
         self.assertTrue('ab' in h)
-    
+
     def test_create_from_dict(self):
         h = HTTPHeaderDict(dict(ab=1, cd=2, ef=3, gh=4))
         self.assertEqual(len(h), 4)
         self.assertTrue('ab' in h)
-    
+
     def test_create_from_iterator(self):
         teststr = 'urllib3ontherocks'
         h = HTTPHeaderDict((c, c*5) for c in teststr)
         self.assertEqual(len(h), len(set(teststr)))
-        
+
     def test_create_from_list(self):
         h = HTTPHeaderDict([('ab', 'A'), ('cd', 'B'), ('cookie', 'C'), ('cookie', 'D'), ('cookie', 'E')])
         self.assertEqual(len(h), 3)
@@ -219,7 +219,7 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertEqual(self.d['b'], '100')
         self.d.add('cookie', 'with, comma')
         self.assertEqual(self.d.getlist('cookie'), ['foo', 'bar', 'asdf', 'with, comma'])
-        
+
     def test_extend_from_container(self):
         h = NonMappingHeaderContainer(Cookie='foo', e='foofoo')
         self.d.extend(h)

@@ -916,7 +916,7 @@ class TestHeaders(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         pool.request('GET', '/', headers=HTTPHeaderDict(headers))
         self.assertEqual(expected_headers, parsed_headers)
-    
+
     def test_request_headers_are_sent_in_the_original_order(self):
         # NOTE: Probability this test gives a false negative is 1/(K!)
         K = 16
@@ -924,7 +924,7 @@ class TestHeaders(SocketDummyServerTestCase):
         #       so that if the internal implementation tries to sort them,
         #       a change will be detected.
         expected_request_headers = [(u'X-Header-%d' % i, str(i)) for i in reversed(range(K))]
-        
+
         actual_request_headers = []
 
         def socket_handler(listener):
@@ -954,7 +954,7 @@ class TestHeaders(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         pool.request('GET', '/', headers=OrderedDict(expected_request_headers))
         self.assertEqual(expected_request_headers, actual_request_headers)
-    
+
     def test_response_headers_are_returned_in_the_original_order(self):
         # NOTE: Probability this test gives a false negative is 1/(K!)
         K = 16
@@ -962,7 +962,7 @@ class TestHeaders(SocketDummyServerTestCase):
         #       so that if the internal implementation tries to sort them,
         #       a change will be detected.
         expected_response_headers = [('X-Header-%d' % i, str(i)) for i in reversed(range(K))]
-        
+
         def socket_handler(listener):
             sock = listener.accept()[0]
 
