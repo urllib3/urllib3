@@ -39,7 +39,6 @@ class TestMultipartEncoding(unittest.TestCase):
             encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
             self.assertEqual(encoded.count(b(BOUNDARY)), 3)
 
-
     def test_field_encoding(self):
         fieldsets = [
             [('k', 'v'), ('k2', 'v2')],
@@ -65,7 +64,6 @@ class TestMultipartEncoding(unittest.TestCase):
             self.assertEqual(content_type,
                 'multipart/form-data; boundary=' + str(BOUNDARY))
 
-
     def test_filename(self):
         fields = [('k', ('somename', b'v'))]
 
@@ -83,7 +81,6 @@ class TestMultipartEncoding(unittest.TestCase):
         self.assertEqual(content_type,
             'multipart/form-data; boundary=' + str(BOUNDARY))
 
-
     def test_textplain(self):
         fields = [('k', ('somefile.txt', b'v'))]
 
@@ -100,7 +97,6 @@ class TestMultipartEncoding(unittest.TestCase):
 
         self.assertEqual(content_type,
             'multipart/form-data; boundary=' + str(BOUNDARY))
-
 
     def test_explicit(self):
         fields = [('k', ('somefile.txt', b'v', 'image/jpeg'))]

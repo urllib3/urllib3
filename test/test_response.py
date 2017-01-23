@@ -119,7 +119,6 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(r.read(), b'')
         self.assertEqual(r.read(), b'')
 
-
     def test_chunked_decoding_deflate2(self):
         import zlib
         compress = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
@@ -136,7 +135,6 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(r.read(), b'')
         self.assertEqual(r.read(), b'')
 
-
     def test_chunked_decoding_gzip(self):
         import zlib
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
@@ -152,7 +150,6 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(r.read(2), b'oo')
         self.assertEqual(r.read(), b'')
         self.assertEqual(r.read(), b'')
-
 
     def test_body_blob(self):
         resp = HTTPResponse(b'foo')
@@ -232,7 +229,6 @@ class TestResponse(unittest.TestCase):
         # in `test_io_bufferedreader` like it does for all the other python
         # versions.  Probably this is because the `io` module in py2.6 is an
         # old version that has a different underlying implementation.
-
 
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)

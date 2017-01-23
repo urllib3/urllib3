@@ -371,7 +371,6 @@ class TestUtil(unittest.TestCase):
         except ValueError as e:
             self.assertTrue('int, float or None' in str(e))
 
-
     @patch('urllib3.util.timeout.current_time')
     def test_timeout(self, current_time):
         timeout = Timeout(total=3)
@@ -411,13 +410,11 @@ class TestUtil(unittest.TestCase):
         timeout = Timeout(5)
         self.assertEqual(timeout.total, 5)
 
-
     def test_timeout_str(self):
         timeout = Timeout(connect=1, read=2, total=3)
         self.assertEqual(str(timeout), "Timeout(connect=1, read=2, total=3)")
         timeout = Timeout(connect=1, read=None, total=3)
         self.assertEqual(str(timeout), "Timeout(connect=1, read=None, total=3)")
-
 
     @patch('urllib3.util.timeout.current_time')
     def test_timeout_elapsed(self, current_time):

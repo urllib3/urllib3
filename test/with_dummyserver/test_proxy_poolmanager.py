@@ -279,7 +279,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertNotEqual(sc2,sc3)
         self.assertEqual(sc3,sc4)
 
-
     @timed(0.5)
     @requires_network
     def test_https_proxy_timeout(self):
@@ -289,7 +288,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             self.fail("Failed to raise retry error.")
         except MaxRetryError as e:
            self.assertEqual(type(e.reason), ConnectTimeoutError)
-
 
     @timed(0.5)
     @requires_network

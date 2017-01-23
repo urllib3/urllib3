@@ -75,7 +75,6 @@ class TestPoolManager(unittest.TestCase):
 
         self.assertEqual(len(p.pools), 0)
 
-
     def test_nohost(self):
         p = PoolManager(5)
         self.assertRaises(LocationValueError, p.connection_from_url, 'http://@')

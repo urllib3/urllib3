@@ -52,7 +52,6 @@ log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
 
-
 class TestHTTPS(HTTPSDummyServerTestCase):
     def setUp(self):
         self._pool = HTTPSConnectionPool(self.host, self.port)
