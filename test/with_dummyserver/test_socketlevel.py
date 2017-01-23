@@ -728,7 +728,7 @@ class TestProxyManager(SocketDummyServerTestCase):
                            '\r\n'
                            'Hi').encode('utf-8'))
             ssl_sock.close()
-            
+
         def echo_socket_handler(listener):
             proxy_ssl_one(listener)
             proxy_ssl_one(listener)

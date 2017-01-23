@@ -571,7 +571,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(pool.num_connections, 1)
 
     def test_for_double_release(self):
-        MAXSIZE=5
+        MAXSIZE = 5
 
         # Check default state
         pool = HTTPConnectionPool(self.host, self.port, maxsize=MAXSIZE)
@@ -601,7 +601,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(pool.pool.qsize(), MAXSIZE-2)
 
     def test_release_conn_parameter(self):
-        MAXSIZE=5
+        MAXSIZE = 5
         pool = HTTPConnectionPool(self.host, self.port, maxsize=MAXSIZE)
         self.assertEqual(pool.pool.qsize(), MAXSIZE)
 
