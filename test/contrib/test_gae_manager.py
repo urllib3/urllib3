@@ -190,8 +190,8 @@ class TestGAERetry(TestRetry):
                                          self.pool._absolute_url('/successful_retry'),
                                          None, 418, None),))
 
-    #test_max_retry = None
-    #test_disabled_retry = None
+    # test_max_retry = None
+    # test_disabled_retry = None
     # We don't need these tests because URLFetch resolves its own redirects.
     test_retry_redirect_history = None
     test_multi_redirect_history = None

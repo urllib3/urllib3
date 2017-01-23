@@ -176,7 +176,7 @@ class TestResponse(unittest.TestCase):
         resp2.close()
         self.assertEqual(resp2.closed, True)
 
-        #also try when only data is present.
+        # also try when only data is present.
         resp3 = HTTPResponse('foodata')
         self.assertRaises(IOError, resp3.fileno)
 
