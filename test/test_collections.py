@@ -61,7 +61,7 @@ class TestLRUContainer(unittest.TestCase):
         # Keys should be ordered by access time
         self.assertEqual(list(d.keys()), [5, 6, 7, 8, 9])
 
-        new_order = [7,8,6,9,5]
+        new_order = [7, 8, 6, 9, 5]
         for k in new_order:
             d[k]
 

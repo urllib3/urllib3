@@ -151,7 +151,7 @@ class RetryTest(unittest.TestCase):
         retry.sleep()
 
     def test_status_forcelist(self):
-        retry = Retry(status_forcelist=xrange(500,600))
+        retry = Retry(status_forcelist=xrange(500, 600))
         self.assertFalse(retry.is_retry('GET', status_code=200))
         self.assertFalse(retry.is_retry('GET', status_code=400))
         self.assertTrue(retry.is_retry('GET', status_code=500))
