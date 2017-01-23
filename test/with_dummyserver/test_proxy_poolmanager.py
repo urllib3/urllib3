@@ -162,35 +162,35 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertEqual(returned_headers.get('Foo'), 'bar')
         self.assertEqual(returned_headers.get('Hickory'), 'dickory')
         self.assertEqual(returned_headers.get('Host'),
-                         '%s:%s'%(self.http_host, self.http_port))
+                         '%s:%s' % (self.http_host, self.http_port))
 
         r = http.request_encode_url('GET', '%s/headers' % self.http_url_alt)
         returned_headers = json.loads(r.data.decode())
         self.assertEqual(returned_headers.get('Foo'), 'bar')
         self.assertEqual(returned_headers.get('Hickory'), 'dickory')
         self.assertEqual(returned_headers.get('Host'),
-                         '%s:%s'%(self.http_host_alt, self.http_port))
+                         '%s:%s' % (self.http_host_alt, self.http_port))
 
         r = http.request_encode_url('GET', '%s/headers' % self.https_url)
         returned_headers = json.loads(r.data.decode())
         self.assertEqual(returned_headers.get('Foo'), 'bar')
         self.assertEqual(returned_headers.get('Hickory'), None)
         self.assertEqual(returned_headers.get('Host'),
-                         '%s:%s'%(self.https_host, self.https_port))
+                         '%s:%s' % (self.https_host, self.https_port))
 
         r = http.request_encode_url('GET', '%s/headers' % self.https_url_alt)
         returned_headers = json.loads(r.data.decode())
         self.assertEqual(returned_headers.get('Foo'), 'bar')
         self.assertEqual(returned_headers.get('Hickory'), None)
         self.assertEqual(returned_headers.get('Host'),
-                         '%s:%s'%(self.https_host_alt, self.https_port))
+                         '%s:%s' % (self.https_host_alt, self.https_port))
 
         r = http.request_encode_body('POST', '%s/headers' % self.http_url)
         returned_headers = json.loads(r.data.decode())
         self.assertEqual(returned_headers.get('Foo'), 'bar')
         self.assertEqual(returned_headers.get('Hickory'), 'dickory')
         self.assertEqual(returned_headers.get('Host'),
-                         '%s:%s'%(self.http_host, self.http_port))
+                         '%s:%s' % (self.http_host, self.http_port))
 
         r = http.request_encode_url('GET', '%s/headers' % self.http_url, headers={'Baz': 'quux'})
         returned_headers = json.loads(r.data.decode())
@@ -198,7 +198,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertEqual(returned_headers.get('Baz'), 'quux')
         self.assertEqual(returned_headers.get('Hickory'), 'dickory')
         self.assertEqual(returned_headers.get('Host'),
-                         '%s:%s'%(self.http_host, self.http_port))
+                         '%s:%s' % (self.http_host, self.http_port))
 
         r = http.request_encode_url('GET', '%s/headers' % self.https_url, headers={'Baz': 'quux'})
         returned_headers = json.loads(r.data.decode())
@@ -206,7 +206,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertEqual(returned_headers.get('Baz'), 'quux')
         self.assertEqual(returned_headers.get('Hickory'), None)
         self.assertEqual(returned_headers.get('Host'),
-                         '%s:%s'%(self.https_host, self.https_port))
+                         '%s:%s' % (self.https_host, self.https_port))
 
         r = http.request_encode_body('GET', '%s/headers' % self.http_url, headers={'Baz': 'quux'})
         returned_headers = json.loads(r.data.decode())
@@ -214,7 +214,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertEqual(returned_headers.get('Baz'), 'quux')
         self.assertEqual(returned_headers.get('Hickory'), 'dickory')
         self.assertEqual(returned_headers.get('Host'),
-                         '%s:%s'%(self.http_host, self.http_port))
+                         '%s:%s' % (self.http_host, self.http_port))
 
         r = http.request_encode_body('GET', '%s/headers' % self.https_url, headers={'Baz': 'quux'})
         returned_headers = json.loads(r.data.decode())
@@ -222,7 +222,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertEqual(returned_headers.get('Baz'), 'quux')
         self.assertEqual(returned_headers.get('Hickory'), None)
         self.assertEqual(returned_headers.get('Host'),
-                         '%s:%s'%(self.https_host, self.https_port))
+                         '%s:%s' % (self.https_host, self.https_port))
 
     def test_headerdict(self):
         default_headers = HTTPHeaderDict(a='b')
