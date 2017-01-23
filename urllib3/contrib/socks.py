@@ -71,6 +71,7 @@ class SOCKSConnection(SyncHTTP1Connection):
                 proxy_port=self._socks_options['proxy_port'],
                 proxy_username=self._socks_options['username'],
                 proxy_password=self._socks_options['password'],
+                proxy_rdns=self._socks_options['rdns'],
                 timeout=connect_timeout,
                 **connect_kw
             )
@@ -133,8 +134,16 @@ class SOCKSProxyManager(PoolManager):
 
         if parsed.scheme == 'socks5':
             socks_version = socks.PROXY_TYPE_SOCKS5
+            rdns = False
+        elif parsed.scheme == 'socks5h':
+            socks_version = socks.PROXY_TYPE_SOCKS5
+            rdns = True
         elif parsed.scheme == 'socks4':
             socks_version = socks.PROXY_TYPE_SOCKS4
+            rdns = False
+        elif parsed.scheme == 'socks4a':
+            socks_version = socks.PROXY_TYPE_SOCKS4
+            rdns = True
         else:
             raise ValueError(
                 "Unable to determine SOCKS version from %s" % proxy_url
@@ -148,6 +157,7 @@ class SOCKSProxyManager(PoolManager):
             'proxy_port': parsed.port,
             'username': username,
             'password': password,
+            'rdns': rdns
         }
         connection_pool_kw['_socks_options'] = socks_options
 
