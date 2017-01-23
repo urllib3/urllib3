@@ -51,13 +51,13 @@ class TestPoolManager(HTTPDummyServerTestCase):
         http = PoolManager()
 
         r = http.request('GET', '%s/redirect' % self.base_url,
-                         fields = {'target': '/redirect'},
-                         redirect = False)
+                         fields={'target': '/redirect'},
+                         redirect=False)
 
         self.assertEqual(r.status, 303)
 
         r = http.request('GET', '%s/redirect' % self.base_url,
-                         fields = {'target': '/redirect'})
+                         fields={'target': '/redirect'})
 
         self.assertEqual(r.status, 200)
         self.assertEqual(r.data, b'Dummy server!')
