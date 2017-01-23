@@ -133,6 +133,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
     def test_connection_read_timeout(self):
         timed_out = Event()
+
         def socket_handler(listener):
             sock = listener.accept()[0]
             while not sock.recv(65536).endswith(b'\r\n\r\n'):
@@ -153,6 +154,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
     def test_read_timeout_dont_retry_method_not_in_whitelist(self):
         timed_out = Event()
+
         def socket_handler(listener):
             sock = listener.accept()[0]
             sock.recv(65536)
@@ -170,6 +172,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
     def test_https_connection_read_timeout(self):
         """ Handshake timeouts should fail with a Timeout"""
         timed_out = Event()
+
         def socket_handler(listener):
             sock = listener.accept()[0]
             while not sock.recv(65536):
@@ -725,6 +728,7 @@ class TestProxyManager(SocketDummyServerTestCase):
                            '\r\n'
                            'Hi').encode('utf-8'))
             ssl_sock.close()
+            
         def echo_socket_handler(listener):
             proxy_ssl_one(listener)
             proxy_ssl_one(listener)
