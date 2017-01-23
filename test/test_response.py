@@ -243,11 +243,11 @@ class TestResponse(unittest.TestCase):
 
         position += len(next(stream))
         self.assertEqual(2, position)
-        self.assertEqual(position, resp.tell())
+        self.assertEqual(3, resp.tell())
 
         position += len(next(stream))
         self.assertEqual(3, position)
-        self.assertEqual(position, resp.tell())
+        self.assertEqual(3, resp.tell())
 
         self.assertRaises(StopIteration, next, stream)
 
