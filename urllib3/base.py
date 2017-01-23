@@ -12,6 +12,11 @@ to work with one of these objects.
 from ._collections import HTTPHeaderDict
 
 
+# This dictionary is used to store the default ports for specific schemes to
+# control whether the port is inserted into the Host header.
+_DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
 class Request(object):
     """
     The base, common, Request object.
@@ -42,7 +47,7 @@ class Request(object):
         #:    - A text string (not recommended, auto-encoded to UTF-8)
         self.body = body
 
-    def add_host(self, host):
+    def add_host(self, host, port, scheme):
         """
         Add the Host header, as needed.
 
@@ -59,7 +64,14 @@ class Request(object):
         that one.
         """
         if b'host' not in self.headers:
-            headers = HTTPHeaderDict(host=host)
+            # We test against a sentinel object here to forcibly always insert
+            # the port for schemes we don't understand.
+            if port is _DEFAULT_PORTS.get(scheme, object()):
+                header = host
+            else:
+                header = "{}:{}".format(host, port)
+
+            headers = HTTPHeaderDict(host=header)
             headers._copy_from(self.headers)
             self.headers = headers
 

@@ -873,7 +873,6 @@ class TestErrorWrapping(SocketDummyServerTestCase):
 
 class TestHeaders(SocketDummyServerTestCase):
 
-    @onlyPy3
     def test_headers_always_lowercase(self):
         self.start_response_handler(
            b'HTTP/1.1 200 OK\r\n'
@@ -911,8 +910,7 @@ class TestHeaders(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        expected_headers = {'accept-encoding': 'identity',
-                            'host': '{0}:{1}'.format(self.host, self.port)}
+        expected_headers = {'host': '{0}:{1}'.format(self.host, self.port)}
         for key, value in headers.items():
             expected_headers[key.lower()] = value
 
@@ -1015,8 +1013,7 @@ class TestHeaders(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        expected_headers = {'accept-encoding': 'identity',
-                            'host': '{0}:{1}'.format(self.host, self.port),
+        expected_headers = {'host': '{0}:{1}'.format(self.host, self.port),
                             'foo': '88'}
 
         pool = HTTPConnectionPool(self.host, self.port, retries=False)

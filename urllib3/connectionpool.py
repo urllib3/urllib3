@@ -374,13 +374,17 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # TODO: We need to encapsulate our proxy logic in here somewhere.
         parsed_url = parse_url(url)
-        request = Request(method=method, target=parsed_url.request_uri, headers=headers, body=body)
+        request = Request(
+            method=method,
+            target=parsed_url.request_uri,
+            headers=headers,
+            body=body
+        )
 
-        if parsed_url.host:
-            host = parsed_url.host
-        else:
-            host = self.host
-        request.add_host(host)
+        host = parsed_url.host or self.host
+        port = parsed_url.port or self.port
+        scheme = parsed_url.scheme or self.scheme
+        request.add_host(host, port, scheme)
 
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
