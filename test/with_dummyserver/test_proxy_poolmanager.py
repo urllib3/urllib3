@@ -287,7 +287,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             https.request('GET', self.http_url, timeout=0.001)
             self.fail("Failed to raise retry error.")
         except MaxRetryError as e:
-           self.assertEqual(type(e.reason), ConnectTimeoutError)
+            self.assertEqual(type(e.reason), ConnectTimeoutError)
 
     @timed(0.5)
     @requires_network
