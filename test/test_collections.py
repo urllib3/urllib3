@@ -4,10 +4,10 @@ from urllib3._collections import (
     HTTPHeaderDict,
     RecentlyUsedContainer as Container
 )
+from nose.plugins.skip import SkipTest
+
 from urllib3.packages import six
 xrange = six.moves.xrange
-
-from nose.plugins.skip import SkipTest
 
 
 class TestLRUContainer(unittest.TestCase):

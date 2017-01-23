@@ -11,7 +11,7 @@ import time
 import urllib
 
 sys.path.append('../')
-import urllib3
+import urllib3  # noqa: E402
 
 
 # URLs to download. Doesn't matter as long as they're from the same host, so we
