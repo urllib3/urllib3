@@ -868,6 +868,7 @@ class TestErrorWrapping(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         self.assertRaises(ProtocolError, pool.request, 'GET', '/')
 
+
 class TestHeaders(SocketDummyServerTestCase):
 
     @onlyPy3
@@ -1089,6 +1090,7 @@ class TestStream(SocketDummyServerTestCase):
         self.assertEqual([b'hello, world'], list(r.stream(None)))
 
         done_event.set()
+
 
 class TestBadContentLength(SocketDummyServerTestCase):
     def test_enforce_content_length_get(self):

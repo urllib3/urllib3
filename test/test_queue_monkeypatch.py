@@ -7,6 +7,7 @@ import urllib3
 from urllib3.exceptions import EmptyPoolError
 from urllib3.packages.six.moves import queue
 
+
 class BadError(Exception):
     """
     This should not be raised.

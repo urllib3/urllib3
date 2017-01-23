@@ -196,6 +196,7 @@ class TestGAERetry(TestRetry):
     test_retry_redirect_history = None
     test_multi_redirect_history = None
 
+
 class TestGAERetryAfter(TestRetryAfter):
     __test__ = True
 

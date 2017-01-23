@@ -871,6 +871,7 @@ class TestRetryAfter(HTTPDummyServerTestCase):
         self.assertEqual(r.status, 200)
         self.assertTrue(delta < 1)
 
+
 class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
     def setUp(self):
         self.pool = HTTPConnectionPool(self.host, self.port, timeout=0.1)

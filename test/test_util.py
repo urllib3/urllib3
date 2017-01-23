@@ -47,6 +47,7 @@ from . import clear_warnings
 # numbers used for timeouts
 TIMEOUT_EPOCH = 1000
 
+
 class TestUtil(unittest.TestCase):
     def test_get_host(self):
         url_host_map = {

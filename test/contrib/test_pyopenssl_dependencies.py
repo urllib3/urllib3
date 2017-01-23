@@ -11,6 +11,7 @@ except ImportError as e:
 
 from mock import patch, Mock
 
+
 class TestPyOpenSSLInjection(unittest.TestCase):
     """
     Tests for error handling in pyopenssl's 'inject_into urllib3'

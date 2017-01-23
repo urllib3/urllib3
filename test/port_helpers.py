@@ -9,6 +9,7 @@ import socket
 HOST = "127.0.0.1"
 HOSTv6 = "::1"
 
+
 def find_unused_port(family=socket.AF_INET, socktype=socket.SOCK_STREAM):
     """Returns an unused port that should be suitable for binding.  This is
     achieved by creating a temporary socket with the same family and type as
@@ -68,6 +69,7 @@ def find_unused_port(family=socket.AF_INET, socktype=socket.SOCK_STREAM):
     tempsock.close()
     del tempsock
     return port
+
 
 def bind_port(sock, host=HOST):
     """Bind the socket to a free port and return the port number.  Relies on
