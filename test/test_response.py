@@ -401,6 +401,16 @@ class TestResponse(unittest.TestCase):
             def close(self):
                 self.fp = None
 
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                if self.fp is None:
+                    raise StopIteration()
+                return self.read(1)
+
+            next = __next__
+
         bio = BytesIO(b'foo')
         fp = MockHTTPRequest()
         fp.fp = bio
