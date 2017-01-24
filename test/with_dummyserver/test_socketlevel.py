@@ -615,7 +615,6 @@ class TestProxyManager(SocketDummyServerTestCase):
                          sorted([
                              b'GET http://google.com/ HTTP/1.1',
                              b'host: google.com',
-                             b'accept-encoding: identity',
                              b'accept: */*',
                              b'',
                              b'',
