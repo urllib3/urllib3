@@ -240,7 +240,8 @@ class SyncHTTP1Connection(object):
                     'details.)'.format(self._host)),
                     SubjectAltNameWarning
                 )
-            ssl_util.match_hostname(cert, assert_hostname or self._host)
+            check_host = assert_hostname or self._tunnel_host or self._host
+            ssl_util.match_hostname(cert, check_host)
 
         self.is_verified = (
             ssl_context.verify_mode == ssl.CERT_REQUIRED and
