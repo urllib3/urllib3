@@ -291,7 +291,7 @@ class SyncHTTP1Connection(object):
         data = self._sock.recv(65536)
         return data
 
-    def _tunnel(self):
+    def _tunnel(self, conn):
         """
         This method establishes a CONNECT tunnel shortly after connection.
         """
@@ -320,7 +320,11 @@ class SyncHTTP1Connection(object):
         # readability *and* writability, because if the socket suddenly becomes
         # readable we need to stop our upload immediately. Then, send the
         # request.
-        self._selector.modify(
+        # Because this method is called before we have fully set the connection
+        # up, we need to briefly register the socket with the connection.
+        conn.setblocking(0)
+        self._sock = conn
+        self._selector.register(
             self._sock, selectors.EVENT_READ | selectors.EVENT_WRITE
         )
         self._send_unless_readable(bytes_to_send)
@@ -339,6 +343,12 @@ class SyncHTTP1Connection(object):
             # TODO: include the response here.
             self.close()
             raise RuntimeError("Bad response!")
+
+        # Re-establish our green state so that we can do TLS handshake if we
+        # need to.
+        self._selector.unregister(self._sock)
+        self._sock = None
+        conn.setblocking(1)
 
     def _do_socket_connect(self, connect_timeout, connect_kw):
         """
@@ -383,10 +393,10 @@ class SyncHTTP1Connection(object):
 
         conn = self._do_socket_connect(connect_timeout, extra_kw)
 
-        if self._tunnel_host is not None:
-            self._tunnel()
-
         if ssl_context is not None:
+            if self._tunnel_host is not None:
+                self._tunnel(conn)
+
             conn = self._wrap_socket(
                 conn, ssl_context, fingerprint, assert_hostname
             )
