@@ -42,7 +42,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         hc2 = http.connection_from_host(self.http_host, self.http_port)
         conn = hc2._get_conn()
         hc2._make_request(conn, 'GET', '/')
-        tcp_nodelay_setting = conn.sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
+        tcp_nodelay_setting = conn._sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
         self.assertEqual(tcp_nodelay_setting, 0,
                          ("Expected TCP_NODELAY for proxies to be set "
                           "to zero, instead was %s" % tcp_nodelay_setting))
