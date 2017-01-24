@@ -14,7 +14,7 @@ from ._collections import HTTPHeaderDict
 
 # This dictionary is used to store the default ports for specific schemes to
 # control whether the port is inserted into the Host header.
-_DEFAULT_PORTS = {"http": 80, "https": 443}
+DEFAULT_PORTS = {"http": 80, "https": 443}
 
 
 class Request(object):
@@ -66,7 +66,7 @@ class Request(object):
         if b'host' not in self.headers:
             # We test against a sentinel object here to forcibly always insert
             # the port for schemes we don't understand.
-            if port is _DEFAULT_PORTS.get(scheme, object()):
+            if port is DEFAULT_PORTS.get(scheme, object()):
                 header = host
             else:
                 header = "{}:{}".format(host, port)

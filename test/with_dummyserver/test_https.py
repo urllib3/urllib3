@@ -23,11 +23,7 @@ from test import (
     clear_warnings,
 )
 from urllib3 import HTTPSConnectionPool
-from urllib3.connection import (
-    VerifiedHTTPSConnection,
-    UnverifiedHTTPSConnection,
-    RECENT_DATE,
-)
+from urllib3.sync_connection import RECENT_DATE
 from urllib3.exceptions import (
     SSLError,
     ReadTimeoutError,
@@ -199,12 +195,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                             "Expected 'No root certificates specified' or "
                             "'certificate verify failed', "
                             "instead got: %r" % e)
-
-    def test_no_ssl(self):
-        pool = HTTPSConnectionPool(self.host, self.port)
-        pool.ConnectionCls = None
-        self.assertRaises(SSLError, pool._new_conn)
-        self.assertRaises(SSLError, pool.request, 'GET', '/')
 
     def test_unverified_ssl(self):
         """ Test that bare HTTPSConnection can connect, make requests """
@@ -448,9 +438,8 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
         self._pool.request('GET', '/')
 
     def test_set_cert_default_cert_required(self):
-        conn = VerifiedHTTPSConnection(self.host, self.port)
-        conn.set_cert(ca_certs=DEFAULT_CA)
-        self.assertEqual(conn.cert_reqs, 'CERT_REQUIRED')
+        pool = HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA)
+        self.assertEqual(pool.ssl_context.verify_mode, ssl.CERT_REQUIRED)
 
 
 class TestHTTPS_NoSAN(HTTPSDummyServerTestCase):

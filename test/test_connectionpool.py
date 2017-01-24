@@ -3,10 +3,8 @@ from __future__ import absolute_import
 import unittest
 
 from urllib3.base import Response
-from urllib3.connection import OldHTTPResponse
 from urllib3.connectionpool import (
     connection_from_url,
-    HTTPConnection,
     SyncHTTP1Connection,
     HTTPConnectionPool,
     HTTPSConnectionPool,

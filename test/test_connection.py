@@ -7,10 +7,7 @@ else:
 
 import mock
 
-from urllib3.connection import (
-    VerifiedHTTPSConnection,
-    RECENT_DATE
-)
+from urllib3.sync_connection import RECENT_DATE
 from urllib3.util.ssl_ import CertificateError, match_hostname
 
 

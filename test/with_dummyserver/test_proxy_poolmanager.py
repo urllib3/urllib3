@@ -13,7 +13,7 @@ from urllib3._collections import HTTPHeaderDict
 from urllib3.poolmanager import proxy_from_url, ProxyManager
 from urllib3.exceptions import (
     MaxRetryError, SSLError, ProxyError, ConnectTimeoutError)
-from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
+from urllib3.connectionpool import connection_from_url
 
 
 class TestHTTPProxyManager(HTTPDummyProxyTestCase):

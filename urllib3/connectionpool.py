@@ -10,7 +10,7 @@ import socket
 import h11
 
 
-from .base import Request
+from .base import Request, DEFAULT_PORTS
 from .exceptions import (
     ClosedPoolError,
     ProtocolError,
@@ -28,12 +28,6 @@ from .exceptions import (
 from .packages.ssl_match_hostname import CertificateError
 from .packages import six
 from .packages.six.moves import queue
-from .connection import (
-    port_by_scheme,
-    DummyConnection,
-    HTTPConnection, HTTPSConnection, VerifiedHTTPSConnection,
-    BaseSSLError
-)
 from .request import RequestMethods
 from .response import HTTPResponse
 from .sync_connection import SyncHTTP1Connection
@@ -43,7 +37,7 @@ from .util.request import set_file_position
 from .util.retry import Retry
 from .util.ssl_ import (
     create_urllib3_context, merge_context_settings, resolve_ssl_version,
-    resolve_cert_reqs
+    resolve_cert_reqs, BaseSSLError
 )
 from .util.timeout import Timeout
 from .util.url import get_host, Url, parse_url
@@ -447,8 +441,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Use explicit default port for comparison when none is given
         if self.port and not port:
-            port = port_by_scheme.get(scheme)
-        elif not self.port and port == port_by_scheme.get(scheme):
+            port = DEFAULT_PORTS.get(scheme)
+        elif not self.port and port == DEFAULT_PORTS.get(scheme):
             port = None
 
         return (scheme, host, port) == (self.scheme, self.host, self.port)
@@ -805,10 +799,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         log.debug("Starting new HTTPS connection (%d): %s",
                   self.num_connections, self.host)
 
-        if not self.ConnectionCls or self.ConnectionCls is DummyConnection:
-            raise SSLError("Can't connect to HTTPS URL because the SSL "
-                           "module is not available.")
-
         actual_host = self.host
         actual_port = self.port
         tunnel_host = None
@@ -869,7 +859,7 @@ def connection_from_url(url, **kw):
         >>> r = conn.request('GET', '/')
     """
     scheme, host, port = get_host(url)
-    port = port or port_by_scheme.get(scheme, 80)
+    port = port or DEFAULT_PORTS.get(scheme, 80)
     if scheme == 'https':
         return HTTPSConnectionPool(host, port=port, **kw)
     else:

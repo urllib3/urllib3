@@ -5,7 +5,7 @@ import h11
 
 from io import BytesIO, BufferedReader
 
-from urllib3.connection import OldHTTPResponse
+from urllib3.base import Response
 from urllib3.response import HTTPResponse
 from urllib3.exceptions import (
     DecodeError, ProtocolError, InvalidHeader
@@ -31,27 +31,13 @@ S5moAj5HexY/g/F8TctpxwsvyZp38dXeLDjSQvEQIkF7XR3YXbeZgKk3V34KGCPOAeeuQDIgyVhV
 nP4HF2uWHA==""")
 
 
-def old_response(socket):
-    return OldHTTPResponse(
-        socket, state_machine=h11.Connection(our_role=h11.CLIENT)
+def get_response():
+    return Response(
+        status_code=200,
+        headers={},
+        body=BytesIO(b'hello'),
+        version=b"HTTP/1.1"
     )
-
-
-def chunked_response(socket):
-    """
-    Prepares an OldHTTPResponse ready for use with chunked
-    transfer encoding.
-    """
-    # Prime the state machine.
-    conn = h11.Connection(our_role=h11.CLIENT)
-    conn.receive_data(
-        b'HTTP/1.1 200 OK\r\n'
-        b'Server: no such server\r\n'
-        b'Transfer-Encoding: chunked\r\n'
-        b'\r\n'
-    )
-    conn.next_event()
-    return OldHTTPResponse(socket, state_machine=conn)
 
 
 class TestLegacyResponse(unittest.TestCase):
@@ -193,9 +179,9 @@ class TestResponse(unittest.TestCase):
         resp.close()
         self.assertEqual(resp.closed, True)
 
-        # Try closing with an `OldHTTPResponse`
-        hlr = old_response(socket.socket())
-        resp2 = HTTPResponse(hlr, preload_content=False)
+        # Try closing with a base Response
+        hlr = get_response()
+        resp2 = HTTPResponse(hlr.body, preload_content=False)
         self.assertEqual(resp2.closed, False)
         resp2.close()
         self.assertEqual(resp2.closed, True)
