@@ -2,11 +2,12 @@ from __future__ import absolute_import
 
 import unittest
 
+from urllib3.base import Response
 from urllib3.connection import OldHTTPResponse
 from urllib3.connectionpool import (
     connection_from_url,
     HTTPConnection,
-    SyncHTTP11Connection,
+    SyncHTTP1Connection,
     HTTPConnectionPool,
     HTTPSConnectionPool,
 )
@@ -29,7 +30,7 @@ from .test_response import MockSock
 
 from io import BytesIO
 from socket import error as SocketError
-from ssl import SSLError as BaseSSLError
+from ssl import SSLError as BaseSSLError, CERT_REQUIRED
 
 from dummyserver.server import DEFAULT_CA
 
@@ -260,7 +261,7 @@ class TestConnectionPool(unittest.TestCase):
     def test_pool_timeouts(self):
         pool = HTTPConnectionPool(host='localhost')
         conn = pool._new_conn()
-        self.assertEqual(conn.__class__, SyncHTTP11Connection)
+        self.assertEqual(conn.__class__, SyncHTTP1Connection)
         self.assertEqual(pool.timeout.__class__, Timeout)
         self.assertEqual(pool.timeout._read, Timeout.DEFAULT_TIMEOUT)
         self.assertEqual(pool.timeout._connect, Timeout.DEFAULT_TIMEOUT)
@@ -300,8 +301,7 @@ class TestConnectionPool(unittest.TestCase):
 
     def test_ca_certs_default_cert_required(self):
         with connection_from_url('https://google.com:80', ca_certs=DEFAULT_CA) as pool:
-            conn = pool._get_conn()
-            self.assertEqual(conn.cert_reqs, 'CERT_REQUIRED')
+            self.assertEqual(pool.ssl_context.verify_mode, CERT_REQUIRED)
 
     def test_cleanup_on_extreme_connection_error(self):
         """
@@ -354,11 +354,12 @@ class TestConnectionPool(unittest.TestCase):
                 if self._ex:
                     ex, self._ex = self._ex, None
                     raise ex(*self._args)
-                response = OldHTTPResponse(
-                    MockSock, state_machine=h11.Connection(our_role=h11.CLIENT)
+                response = Response(
+                    status_code=200,
+                    headers={},
+                    body=BytesIO(b"foo"),
+                    version=b"HTTP/1.1"
                 )
-                response.fp = BytesIO(b"foo")
-                response.headers = response.msg = HTTPHeaderDict()
                 return response
 
         def _test(exception, *args):
@@ -394,12 +395,13 @@ class TestConnectionPool(unittest.TestCase):
             ResponseCls = CustomHTTPResponse
 
             def _make_request(self, *args, **kwargs):
-                httplib_response = OldHTTPResponse(
-                    MockSock, state_machine=h11.Connection(our_role=h11.CLIENT)
+                base_response = Response(
+                    status_code=200,
+                    headers={},
+                    body=BytesIO(b'foo'),
+                    version='HTTP/1.1'
                 )
-                httplib_response.fp = BytesIO(b"foo")
-                httplib_response.headers = httplib_response.msg = HTTPHeaderDict()
-                return httplib_response
+                return base_response
 
         pool = CustomConnectionPool(host='localhost', maxsize=1, block=True)
         response = pool.request('GET', '/', retries=False, chunked=True,
