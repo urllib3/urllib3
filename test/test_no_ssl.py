@@ -84,9 +84,9 @@ class TestImportWithoutSSL(TestWithoutSSL):
         # importlib.
         # 'import' inside 'lambda' is invalid syntax.
         def import_ssl():
-            import ssl
+            import ssl  # noqa: F401
 
         self.assertRaises(ImportError, import_ssl)
 
     def test_import_urllib3(self):
-        import urllib3
+        import urllib3  # noqa: F401

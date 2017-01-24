@@ -8,7 +8,6 @@ from urllib3.exceptions import (HTTPError, MaxRetryError, LocationParseError,
 from urllib3.connectionpool import HTTPConnectionPool
 
 
-
 class TestPickle(unittest.TestCase):
 
     def verify_pickling(self, item):

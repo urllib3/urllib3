@@ -54,15 +54,12 @@ class TestConnectionPool(unittest.TestCase):
             ('https://google.com:443/', 'https://google.com/abracadabra'),
             ('https://google.com/', 'https://google.com:443/abracadabra'),
             ('http://[2607:f8b0:4005:805::200e%25eth0]/',
-             'http://[2607:f8b0:4005:805::200e%eth0]/'
-            ),
+             'http://[2607:f8b0:4005:805::200e%eth0]/'),
             ('https://[2607:f8b0:4005:805::200e%25eth0]:443/',
-             'https://[2607:f8b0:4005:805::200e%eth0]:443/'
-            ),
+             'https://[2607:f8b0:4005:805::200e%eth0]:443/'),
             ('http://[::1]/', 'http://[::1]'),
             ('http://[2001:558:fc00:200:f816:3eff:fef9:b954%lo]/',
-             'http://[2001:558:fc00:200:f816:3eff:fef9:b954%25lo]'
-            ),
+             'http://[2001:558:fc00:200:f816:3eff:fef9:b954%25lo]')
         ]
 
         for a, b in same_host:
@@ -178,10 +175,10 @@ class TestConnectionPool(unittest.TestCase):
         self.addCleanup(pool.close)
 
         conn1 = pool._get_conn()
-        conn2 = pool._get_conn() # New because block=False
+        conn2 = pool._get_conn()  # New because block=False
 
         pool._put_conn(conn1)
-        pool._put_conn(conn2) # Should be discarded
+        pool._put_conn(conn2)  # Should be discarded
 
         self.assertEqual(conn1, pool._get_conn())
         self.assertNotEqual(conn2, pool._get_conn())
@@ -345,7 +342,8 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(initial_pool_size, new_pool_size)
 
     def test_release_conn_param_is_respected_after_http_error_retry(self):
-        """For successful ```urlopen(release_conn=False)```, the connection isn't released, even after a retry.
+        """For successful ```urlopen(release_conn=False)```,
+        the connection isn't released, even after a retry.
 
         This is a regression test for issue #651 [1], where the connection
         would be released if the initial request failed, even if a retry

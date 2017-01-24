@@ -7,7 +7,7 @@ from dummyserver.testcase import (HTTPDummyServerTestCase,
                                   IPv6HTTPDummyServerTestCase)
 from urllib3.poolmanager import PoolManager
 from urllib3.connectionpool import port_by_scheme
-from urllib3.exceptions import MaxRetryError, SSLError
+from urllib3.exceptions import MaxRetryError
 from urllib3.util.retry import Retry
 
 
@@ -44,7 +44,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
         self.assertEqual(r.status, 303)
 
         r = http.request('GET', '%s/redirect' % self.base_url,
-                         fields={'target': '%s/redirect?target=%s/' % (self.base_url, self.base_url)})
+                         fields={'target': '%s/redirect?target=%s/' % (self.base_url,
+                                                                       self.base_url)})
 
         self.assertEqual(r.status, 200)
         self.assertEqual(r.data, b'Dummy server!')
@@ -54,13 +55,13 @@ class TestPoolManager(HTTPDummyServerTestCase):
         self.addCleanup(http.clear)
 
         r = http.request('GET', '%s/redirect' % self.base_url,
-                         fields = {'target': '/redirect'},
-                         redirect = False)
+                         fields={'target': '/redirect'},
+                         redirect=False)
 
         self.assertEqual(r.status, 303)
 
         r = http.request('GET', '%s/redirect' % self.base_url,
-                         fields = {'target': '/redirect'})
+                         fields={'target': '/redirect'})
 
         self.assertEqual(r.status, 200)
         self.assertEqual(r.data, b'Dummy server!')
@@ -91,7 +92,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         try:
             r = http.request('GET', '%s/redirect' % self.base_url,
-                             fields={'target': '%s/redirect?target=%s/' % (self.base_url, self.base_url)},
+                             fields={'target': '%s/redirect?target=%s/' % (self.base_url,
+                                                                           self.base_url)},
                              retries=1)
             self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
         except MaxRetryError:
@@ -99,7 +101,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         try:
             r = http.request('GET', '%s/redirect' % self.base_url,
-                             fields={'target': '%s/redirect?target=%s/' % (self.base_url, self.base_url)},
+                             fields={'target': '%s/redirect?target=%s/' % (self.base_url,
+                                                                           self.base_url)},
                              retries=Retry(total=None, redirect=1))
             self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
         except MaxRetryError:
@@ -110,7 +113,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
         self.addCleanup(http.clear)
 
         r = http.request('GET', '%s/redirect' % self.base_url,
-                         fields={'target': '%s/redirect?target=%s/' % (self.base_url, self.base_url)},
+                         fields={'target': '%s/redirect?target=%s/' % (self.base_url,
+                                                                       self.base_url)},
                          retries=Retry(total=None, redirect=1, raise_on_redirect=False))
 
         self.assertEqual(r.status, 303)
@@ -132,7 +136,9 @@ class TestPoolManager(HTTPDummyServerTestCase):
             # raise explicitly
             r = http.request('GET', '%s/status' % self.base_url,
                              fields={'status': '500 Internal Server Error'},
-                             retries=Retry(total=1, status_forcelist=range(500, 600), raise_on_status=True))
+                             retries=Retry(total=1,
+                                           status_forcelist=range(500, 600),
+                                           raise_on_status=True))
             self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
         except MaxRetryError:
             pass
@@ -140,7 +146,9 @@ class TestPoolManager(HTTPDummyServerTestCase):
         # don't raise
         r = http.request('GET', '%s/status' % self.base_url,
                          fields={'status': '500 Internal Server Error'},
-                         retries=Retry(total=1, status_forcelist=range(500, 600), raise_on_status=False))
+                         retries=Retry(total=1,
+                                       status_forcelist=range(500, 600),
+                                       raise_on_status=False))
 
         self.assertEqual(r.status, 500)
 
@@ -218,6 +226,7 @@ class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
         http = PoolManager()
         self.addCleanup(http.clear)
         http.request('GET', self.base_url)
+
 
 if __name__ == '__main__':
     unittest.main()

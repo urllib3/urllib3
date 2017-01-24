@@ -29,7 +29,6 @@ from urllib3.exceptions import (
     LocationParseError,
     TimeoutStateError,
     InsecureRequestWarning,
-    SSLError,
     SNIMissingWarning,
     InvalidHeader,
     UnrewindableBodyError,
@@ -84,8 +83,10 @@ class TestUtil(unittest.TestCase):
             'http://[2a00:1450:4001:c01::67]:80/test': ('http', '[2a00:1450:4001:c01::67]', 80),
 
             # More IPv6 from http://www.ietf.org/rfc/rfc2732.txt
-            'http://[fedc:ba98:7654:3210:fedc:ba98:7654:3210]:8000/index.html': ('http', '[fedc:ba98:7654:3210:fedc:ba98:7654:3210]', 8000),
-            'http://[1080:0:0:0:8:800:200c:417a]/index.html': ('http', '[1080:0:0:0:8:800:200c:417a]', None),
+            'http://[fedc:ba98:7654:3210:fedc:ba98:7654:3210]:8000/index.html': (
+                'http', '[fedc:ba98:7654:3210:fedc:ba98:7654:3210]', 8000),
+            'http://[1080:0:0:0:8:800:200c:417a]/index.html': (
+                'http', '[1080:0:0:0:8:800:200c:417a]', None),
             'http://[3ffe:2a00:100:7031::1]': ('http', '[3ffe:2a00:100:7031::1]', None),
             'http://[1080::8:800:200c:417a]/foo': ('http', '[1080::8:800:200c:417a]', None),
             'http://[::192.9.5.5]/ipng': ('http', '[::192.9.5.5]', None),
@@ -120,8 +121,10 @@ class TestUtil(unittest.TestCase):
             '173.194.35.7': ('http', '173.194.35.7', None),
             'HTTP://173.194.35.7': ('http', '173.194.35.7', None),
             'HTTP://[2a00:1450:4001:c01::67]:80/test': ('http', '[2a00:1450:4001:c01::67]', 80),
-            'HTTP://[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]:8000/index.html': ('http', '[fedc:ba98:7654:3210:fedc:ba98:7654:3210]', 8000),
-            'HTTPS://[1080:0:0:0:8:800:200c:417A]/index.html': ('https', '[1080:0:0:0:8:800:200c:417a]', None),
+            'HTTP://[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]:8000/index.html': (
+                'http', '[fedc:ba98:7654:3210:fedc:ba98:7654:3210]', 8000),
+            'HTTPS://[1080:0:0:0:8:800:200c:417A]/index.html': (
+                'https', '[1080:0:0:0:8:800:200c:417a]', None),
         }
         for url, expected_host in url_host_map.items():
             returned_host = get_host(url)
@@ -131,7 +134,8 @@ class TestUtil(unittest.TestCase):
         """Assert parse_url normalizes the scheme/host, and only the scheme/host"""
         test_urls = [
             ('HTTP://GOOGLE.COM/MAIL/', 'http://google.com/MAIL/'),
-            ('HTTP://JeremyCline:Hunter2@Example.com:8080/', 'http://JeremyCline:Hunter2@example.com:8080/'),
+            ('HTTP://JeremyCline:Hunter2@Example.com:8080/',
+             'http://JeremyCline:Hunter2@example.com:8080/'),
             ('HTTPS://Example.Com/?Key=Value', 'https://example.com/?Key=Value'),
             ('Https://Example.Com/#Fragment', 'https://example.com/#Fragment'),
         ]
@@ -154,7 +158,9 @@ class TestUtil(unittest.TestCase):
         ('#?/!google.com/?foo#bar', Url(path='', fragment='?/!google.com/?foo#bar')),
         ('/foo', Url(path='/foo')),
         ('/foo?bar=baz', Url(path='/foo', query='bar=baz')),
-        ('/foo?bar=baz#banana?apple/orange', Url(path='/foo', query='bar=baz', fragment='banana?apple/orange')),
+        ('/foo?bar=baz#banana?apple/orange', Url(path='/foo',
+                                                 query='bar=baz',
+                                                 fragment='banana?apple/orange')),
 
         # Port
         ('http://google.com/', Url('http', host='google.com', path='/')),
@@ -164,7 +170,10 @@ class TestUtil(unittest.TestCase):
         # Auth
         ('http://foo:bar@localhost/', Url('http', auth='foo:bar', host='localhost', path='/')),
         ('http://foo@localhost/', Url('http', auth='foo', host='localhost', path='/')),
-        ('http://foo:bar@baz@localhost/', Url('http', auth='foo:bar@baz', host='localhost', path='/')),
+        ('http://foo:bar@baz@localhost/', Url('http',
+                                              auth='foo:bar@baz',
+                                              host='localhost',
+                                              path='/')),
         ('http://@', Url('http', host=None, auth=''))
     ]
 
@@ -180,7 +189,8 @@ class TestUtil(unittest.TestCase):
         }
 
     def test_parse_url(self):
-        for url, expected_Url in chain(self.parse_url_host_map, self.non_round_tripping_parse_url_host_map.items()):
+        for url, expected_Url in chain(self.parse_url_host_map,
+                                       self.non_round_tripping_parse_url_host_map.items()):
             returned_Url = parse_url(url)
             self.assertEqual(returned_Url, expected_Url)
 
@@ -307,7 +317,7 @@ class TestUtil(unittest.TestCase):
             self.assertEqual(output, expected)
 
     def test_add_stderr_logger(self):
-        handler = add_stderr_logger(level=logging.INFO) # Don't actually print debug
+        handler = add_stderr_logger(level=logging.INFO)  # Don't actually print debug
         logger = logging.getLogger('urllib3')
         self.assertTrue(handler in logger.handlers)
 
@@ -411,13 +421,11 @@ class TestUtil(unittest.TestCase):
         timeout = Timeout(5)
         self.assertEqual(timeout.total, 5)
 
-
     def test_timeout_str(self):
         timeout = Timeout(connect=1, read=2, total=3)
         self.assertEqual(str(timeout), "Timeout(connect=1, read=2, total=3)")
         timeout = Timeout(connect=1, read=None, total=3)
         self.assertEqual(str(timeout), "Timeout(connect=1, read=None, total=3)")
-
 
     @patch('urllib3.util.timeout.current_time')
     def test_timeout_elapsed(self, current_time):

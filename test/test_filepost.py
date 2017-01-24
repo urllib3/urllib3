@@ -39,7 +39,6 @@ class TestMultipartEncoding(unittest.TestCase):
             encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
             self.assertEqual(encoded.count(b(BOUNDARY)), 3)
 
-
     def test_field_encoding(self):
         fieldsets = [
             [('k', 'v'), ('k2', 'v2')],
@@ -49,85 +48,79 @@ class TestMultipartEncoding(unittest.TestCase):
 
         for fields in fieldsets:
             encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+            expected = (b'--' + b(BOUNDARY) + b'\r\n'
+                        b'Content-Disposition: form-data; name="k"\r\n'
+                        b'\r\n'
+                        b'v\r\n'
+                        b'--' + b(BOUNDARY) + b'\r\n'
+                        b'Content-Disposition: form-data; name="k2"\r\n'
+                        b'\r\n'
+                        b'v2\r\n'
+                        b'--' + b(BOUNDARY) + b'--\r\n')
 
-            self.assertEqual(encoded,
-                b'--' + b(BOUNDARY) + b'\r\n'
-                b'Content-Disposition: form-data; name="k"\r\n'
-                b'\r\n'
-                b'v\r\n'
-                b'--' + b(BOUNDARY) + b'\r\n'
-                b'Content-Disposition: form-data; name="k2"\r\n'
-                b'\r\n'
-                b'v2\r\n'
-                b'--' + b(BOUNDARY) + b'--\r\n'
-                , fields)
+            self.assertEqual(encoded, expected, fields)
 
             self.assertEqual(content_type,
-                'multipart/form-data; boundary=' + str(BOUNDARY))
-
+                             'multipart/form-data; boundary=' + str(BOUNDARY))
 
     def test_filename(self):
         fields = [('k', ('somename', b'v'))]
 
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        expected = (b'--' + b(BOUNDARY) + b'\r\n'
+                    b'Content-Disposition: form-data; name="k"; filename="somename"\r\n'
+                    b'Content-Type: application/octet-stream\r\n'
+                    b'\r\n'
+                    b'v\r\n'
+                    b'--' + b(BOUNDARY) + b'--\r\n')
 
-        self.assertEqual(encoded,
-            b'--' + b(BOUNDARY) + b'\r\n'
-            b'Content-Disposition: form-data; name="k"; filename="somename"\r\n'
-            b'Content-Type: application/octet-stream\r\n'
-            b'\r\n'
-            b'v\r\n'
-            b'--' + b(BOUNDARY) + b'--\r\n'
-            )
+        self.assertEqual(encoded, expected)
 
         self.assertEqual(content_type,
-            'multipart/form-data; boundary=' + str(BOUNDARY))
-
+                         'multipart/form-data; boundary=' + str(BOUNDARY))
 
     def test_textplain(self):
         fields = [('k', ('somefile.txt', b'v'))]
 
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        expected = (b'--' + b(BOUNDARY) + b'\r\n'
+                    b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
+                    b'Content-Type: text/plain\r\n'
+                    b'\r\n'
+                    b'v\r\n'
+                    b'--' + b(BOUNDARY) + b'--\r\n')
 
-        self.assertEqual(encoded,
-            b'--' + b(BOUNDARY) + b'\r\n'
-            b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
-            b'Content-Type: text/plain\r\n'
-            b'\r\n'
-            b'v\r\n'
-            b'--' + b(BOUNDARY) + b'--\r\n'
-            )
+        self.assertEqual(encoded, expected)
 
         self.assertEqual(content_type,
-            'multipart/form-data; boundary=' + str(BOUNDARY))
-
+                         'multipart/form-data; boundary=' + str(BOUNDARY))
 
     def test_explicit(self):
         fields = [('k', ('somefile.txt', b'v', 'image/jpeg'))]
 
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        expected = (b'--' + b(BOUNDARY) + b'\r\n'
+                    b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
+                    b'Content-Type: image/jpeg\r\n'
+                    b'\r\n'
+                    b'v\r\n'
+                    b'--' + b(BOUNDARY) + b'--\r\n')
 
-        self.assertEqual(encoded,
-            b'--' + b(BOUNDARY) + b'\r\n'
-            b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
-            b'Content-Type: image/jpeg\r\n'
-            b'\r\n'
-            b'v\r\n'
-            b'--' + b(BOUNDARY) + b'--\r\n'
-            )
+        self.assertEqual(encoded, expected)
 
         self.assertEqual(content_type,
-            'multipart/form-data; boundary=' + str(BOUNDARY))
+                         'multipart/form-data; boundary=' + str(BOUNDARY))
 
     def test_request_fields(self):
-      fields = [RequestField('k', b'v', filename='somefile.txt', headers={'Content-Type': 'image/jpeg'})]
+        fields = [RequestField('k', b'v',
+                               filename='somefile.txt',
+                               headers={'Content-Type': 'image/jpeg'})]
 
-      encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
+        expected = (b'--' + b(BOUNDARY) + b'\r\n'
+                    b'Content-Type: image/jpeg\r\n'
+                    b'\r\n'
+                    b'v\r\n'
+                    b'--' + b(BOUNDARY) + b'--\r\n')
 
-      self.assertEqual(encoded,
-          b'--' + b(BOUNDARY) + b'\r\n'
-          b'Content-Type: image/jpeg\r\n'
-          b'\r\n'
-          b'v\r\n'
-          b'--' + b(BOUNDARY) + b'--\r\n'
-          )
+        self.assertEqual(encoded, expected)
