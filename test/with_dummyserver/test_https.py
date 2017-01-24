@@ -21,7 +21,6 @@ from test import (
     onlyPy279OrNewer,
     requires_network,
     TARPIT_HOST,
-    clear_warnings,
 )
 from urllib3 import HTTPSConnectionPool
 from urllib3.connection import (
@@ -31,7 +30,6 @@ from urllib3.connection import (
 )
 from urllib3.exceptions import (
     SSLError,
-    ReadTimeoutError,
     ConnectTimeoutError,
     InsecureRequestWarning,
     SystemTimeWarning,
@@ -50,7 +48,6 @@ ResourceWarning = getattr(
 log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
-
 
 
 class TestHTTPS(HTTPSDummyServerTestCase):
@@ -381,7 +378,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         conn = https_pool._new_conn()
         try:
             conn.set_tunnel(self.host, self.port)
-        except AttributeError: # python 2.6
+        except AttributeError:  # python 2.6
             conn._set_tunnel(self.host, self.port)
         conn._tunnel = mock.Mock()
         https_pool._make_request(conn, 'GET', '/')
@@ -429,8 +426,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         conn = VerifiedHTTPSConnection(self.host, self.port)
         https_pool = HTTPSConnectionPool(self.host, self.port,
-                cert_reqs='CERT_REQUIRED', ca_certs=DEFAULT_CA,
-                assert_fingerprint=fingerprint)
+                                         cert_reqs='CERT_REQUIRED',
+                                         ca_certs=DEFAULT_CA,
+                                         assert_fingerprint=fingerprint)
 
         https_pool._make_request(conn, 'GET', '/')
 

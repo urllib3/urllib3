@@ -7,6 +7,7 @@ import urllib3
 from urllib3.exceptions import EmptyPoolError
 from urllib3.packages.six.moves import queue
 
+
 class BadError(Exception):
     """
     This should not be raised.
@@ -22,7 +23,7 @@ class TestMonkeypatchResistance(unittest.TestCase):
     def test_queue_monkeypatching(self):
         with mock.patch.object(queue, 'Empty', BadError):
             http = urllib3.HTTPConnectionPool(host="localhost", block=True)
-            first_conn = http._get_conn(timeout=1)
+            http._get_conn(timeout=1)
             self.assertRaises(EmptyPoolError, http._get_conn, timeout=1)
 
 
