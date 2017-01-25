@@ -1,10 +1,11 @@
 import sys
+
+from urllib3.poolmanager import ProxyManager
+
 if sys.version_info >= (2, 7):
     import unittest
 else:
     import unittest2 as unittest
-
-from urllib3.poolmanager import ProxyManager
 
 
 class TestProxyManager(unittest.TestCase):

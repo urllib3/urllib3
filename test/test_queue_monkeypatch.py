@@ -2,14 +2,15 @@ from __future__ import absolute_import
 
 import mock
 import sys
-if sys.version_info >= (2, 7):
-    import unittest
-else:
-    import unittest2 as unittest
 
 import urllib3
 from urllib3.exceptions import EmptyPoolError
 from urllib3.packages.six.moves import queue
+
+if sys.version_info >= (2, 7):
+    import unittest
+else:
+    import unittest2 as unittest
 
 
 class BadError(Exception):

@@ -1,10 +1,6 @@
 import functools
 from collections import namedtuple
 import sys
-if sys.version_info >= (2, 7):
-    import unittest
-else:
-    import unittest2 as unittest
 
 from urllib3.poolmanager import (
     _default_key_normalizer,
@@ -20,6 +16,11 @@ from urllib3.exceptions import (
     LocationValueError,
 )
 from urllib3.util import retry, timeout
+
+if sys.version_info >= (2, 7):
+    import unittest
+else:
+    import unittest2 as unittest
 
 
 class TestPoolManager(unittest.TestCase):

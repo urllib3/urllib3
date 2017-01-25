@@ -1,10 +1,6 @@
 from __future__ import absolute_import
 
 import sys
-if sys.version_info >= (2, 7):
-    import unittest
-else:
-    import unittest2 as unittest
 
 from urllib3.connectionpool import (
     connection_from_url,
@@ -34,6 +30,11 @@ from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 
 from dummyserver.server import DEFAULT_CA
+
+if sys.version_info >= (2, 7):
+    import unittest
+else:
+    import unittest2 as unittest
 
 
 class TestConnectionPool(unittest.TestCase):
