@@ -13,6 +13,9 @@ import sys
 import time
 from collections import namedtuple, Mapping
 
+# Set a canary to detect if the select module is monkey patched.
+select.__patch_canary = True
+
 try:
     monotonic = time.monotonic
 except (AttributeError, ImportError):  # Python 3.3<
@@ -23,6 +26,10 @@ EVENT_WRITE = (1 << 1)
 
 HAS_SELECT = True  # Variable that shows whether the platform has a selector.
 _SYSCALL_SENTINEL = object()  # Sentinel in case a system call returns None.
+
+
+def _no_selector(_):
+    raise ValueError("Platform does not have a selector")
 
 
 class SelectorError(Exception):
@@ -282,8 +289,9 @@ class BaseSelector(object):
 
 
 # Almost all platforms have select.select()
+SelectSelector = None
 if hasattr(select, "select"):
-    class SelectSelector(BaseSelector):
+    class _SelectSelector(BaseSelector):
         """ Select-based selector. """
         def __init__(self):
             super(SelectSelector, self).__init__()
@@ -331,9 +339,12 @@ if hasattr(select, "select"):
                     ready.append((key, events & key.events))
             return ready
 
+    SelectoSelector = _SelectSelector
 
+
+PollSelector = None
 if hasattr(select, "poll"):
-    class PollSelector(BaseSelector):
+    class _PollSelector(BaseSelector):
         """ Poll-based selector """
         def __init__(self):
             super(PollSelector, self).__init__()
@@ -384,9 +395,12 @@ if hasattr(select, "poll"):
 
             return ready
 
+    PollSelector = _PollSelector
 
+
+EpollSelector = None
 if hasattr(select, "epoll"):
-    class EpollSelector(BaseSelector):
+    class _EpollSelector(BaseSelector):
         """ Epoll-based selector """
         def __init__(self):
             super(EpollSelector, self).__init__()
@@ -451,9 +465,12 @@ if hasattr(select, "epoll"):
             self._epoll.close()
             super(EpollSelector, self).close()
 
+    EpollSelector = _EpollSelector
 
+
+KqueueSelector = None
 if hasattr(select, "kqueue"):
-    class KqueueSelector(BaseSelector):
+    class _KqueueSelector(BaseSelector):
         """ Kqueue / Kevent-based selector """
         def __init__(self):
             super(KqueueSelector, self).__init__()
@@ -534,20 +551,73 @@ if hasattr(select, "kqueue"):
             self._kqueue.close()
             super(KqueueSelector, self).close()
 
+    KqueueSelector = _KqueueSelector
 
-# Choose the best implementation, roughly:
-# kqueue == epoll > poll > select. Devpoll not supported. (See above)
-# select() also can't accept a FD > FD_SETSIZE (usually around 1024)
-if 'KqueueSelector' in globals():  # Platform-specific: Mac OS and BSD
-    DefaultSelector = KqueueSelector
-elif 'EpollSelector' in globals():  # Platform-specific: Linux
-    DefaultSelector = EpollSelector
-elif 'PollSelector' in globals():  # Platform-specific: Linux
-    DefaultSelector = PollSelector
-elif 'SelectSelector' in globals():  # Platform-specific: Windows
-    DefaultSelector = SelectSelector
-else:  # Platform-specific: AppEngine
-    def no_selector(_):
-        raise ValueError("Platform does not have a selector")
-    DefaultSelector = no_selector
-    HAS_SELECT = False
+
+def _detect_select_patch(*args, **kwargs):
+    # If monkey-patching occurs then the canary won't be
+    # defined within the new select module. Because the
+    # module was patched we now have to re-evaluate which
+    # selectors are available.
+    global DefaultSelector
+    global KqueueSelector
+    global EpollSelector
+    global PollSelector
+    global SelectSelector
+
+    global HAS_SELECT
+
+    patched = False
+    if not hasattr(select, '__patch_canary'):  # Platform-specific: Gevent, Eventlet
+        patched = True
+
+    # Choose the best implementation, roughly:
+    # kqueue == epoll > poll > select. Devpoll not supported. (See above)
+    # select() also can't accept a FD > FD_SETSIZE (usually around 1024)
+    DefaultSelector = None
+
+    if 'KqueueSelector' in globals():  # Platform-specific: Mac OS and BSD
+        if patched and not hasattr(select, 'kqueue'):
+            del KqueueSelector
+        else:
+            DefaultSelector = KqueueSelector
+
+    elif 'EpollSelector' in globals():  # Platform-specific: Linux
+        if patched and not hasattr(select, 'epoll'):
+            del EpollSelector
+        else:
+            DefaultSelector = EpollSelector
+
+    elif 'PollSelector' in globals():  # Platform-specific: Linux
+        if patched and not hasattr(select, 'poll'):
+            del PollSelector
+        else:
+            DefaultSelector = PollSelector
+
+    elif 'SelectSelector' in globals():  # Platform-specific: Windows
+        if patched and not hasattr(select, 'select'):
+            del SelectSelector
+        else:
+            DefaultSelector = SelectSelector
+
+    if DefaultSelector is None:  # Platform-specific: AppEngine
+        DefaultSelector = _no_selector
+        HAS_SELECT = False
+
+    return DefaultSelector()
+
+
+# Doesn't affect patching because if the base system before patching
+# does not support the method then the patched system won't support
+# it either.
+if KqueueSelector is None:
+    del KqueueSelector
+if EpollSelector is None:
+    del EpollSelector
+if PollSelector is None:
+    del PollSelector
+if SelectSelector is None:
+    del SelectSelector
+
+
+DefaultSelector = _detect_select_patch
