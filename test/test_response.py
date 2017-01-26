@@ -129,7 +129,6 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(r.read(), b'')
         self.assertEqual(r.read(), b'')
 
-
     def test_chunked_decoding_deflate2(self):
         import zlib
         compress = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
@@ -145,7 +144,6 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(r.read(), b'')
         self.assertEqual(r.read(), b'')
 
-
     def test_chunked_decoding_gzip(self):
         import zlib
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
@@ -160,7 +158,6 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(r.read(2), b'oo')
         self.assertEqual(r.read(), b'')
         self.assertEqual(r.read(), b'')
-
 
     def test_body_blob(self):
         resp = HTTPResponse(b'foo')
@@ -186,7 +183,7 @@ class TestResponse(unittest.TestCase):
         resp2.close()
         self.assertEqual(resp2.closed, True)
 
-        #also try when only data is present.
+        # also try when only data is present.
         resp3 = HTTPResponse('foodata')
         self.assertRaises(IOError, resp3.fileno)
 
@@ -245,7 +242,7 @@ class TestResponse(unittest.TestCase):
 
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
-                         preload_content=False)
+                            preload_content=False)
         stream = resp.stream(2)
 
         self.assertEqual(next(stream), b'fo')
@@ -261,7 +258,7 @@ class TestResponse(unittest.TestCase):
 
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
-                         preload_content=False)
+                            preload_content=False)
         stream = resp.stream()
 
         # Read everything
@@ -341,7 +338,7 @@ class TestResponse(unittest.TestCase):
 
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
-                         preload_content=False)
+                            preload_content=False)
         stream = resp.stream(2)
 
         self.assertEqual(next(stream), b'fo')
@@ -356,7 +353,7 @@ class TestResponse(unittest.TestCase):
 
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
-                         preload_content=False)
+                            preload_content=False)
         stream = resp.stream(2)
 
         self.assertEqual(next(stream), b'fo')

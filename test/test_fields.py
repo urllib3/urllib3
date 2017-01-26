@@ -1,7 +1,7 @@
 import unittest
 
 from urllib3.fields import guess_content_type, RequestField
-from urllib3.packages.six import u, PY3
+from urllib3.packages.six import u
 from . import onlyPy2
 
 
