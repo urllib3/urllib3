@@ -908,7 +908,7 @@ class TestHeaders(SocketDummyServerTestCase):
         )
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         self.addCleanup(pool.close)
-        HEADERS = {'Content-Length': '0', 'Content-type': 'text/plain'}
+        HEADERS = {'content-length': '0', 'content-type': 'text/plain'}
         r = pool.request('GET', '/')
         self.assertEqual(HEADERS, dict(r.headers.items()))  # to preserve case sensitivity
 
