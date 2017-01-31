@@ -26,7 +26,7 @@ import h11
 from .base import Response
 from .exceptions import (
     ConnectTimeoutError, NewConnectionError, SubjectAltNameWarning,
-    SystemTimeWarning
+    SystemTimeWarning, BadVersionError
 )
 from .packages import six
 from .util import selectors, connection, ssl_ as ssl_util
@@ -41,6 +41,8 @@ except ImportError:
 # within two years of the current date, and no
 # earlier than 6 months ago.
 RECENT_DATE = datetime.date(2016, 1, 1)
+
+_SUPPORTED_VERSIONS = frozenset([b'1.0', b'1.1'])
 
 
 def _headers_to_native_string(headers):
@@ -446,6 +448,9 @@ class SyncHTTP1Connection(object):
         while response is None:
             read_bytes = self._receive_bytes(read_timeout)
             response = _maybe_read_response(read_bytes, self._state_machine)
+
+        if response.http_version not in _SUPPORTED_VERSIONS:
+            raise BadVersionError(response.http_version)
 
         version = b'HTTP/' + response.http_version
         our_response = Response(

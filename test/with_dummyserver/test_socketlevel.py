@@ -9,6 +9,7 @@ from urllib3.exceptions import (
         ReadTimeoutError,
         SSLError,
         ProtocolError,
+        BadVersionError
 )
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util.timeout import Timeout
@@ -369,6 +370,35 @@ class TestSocketClosing(SocketDummyServerTestCase):
         response = pool.request('GET', '/', retries=retry)
         self.assertEqual(response.status, 200)
         self.assertEqual(response.data, b'foo')
+
+    def test_dont_tolerate_bad_versions(self):
+        """We don't tolerate weird versions of HTTP"""
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            # First request.
+            # Pause before responding so the first request times out.
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            # send bad response
+            body = "bad http response"
+            sock.send(('HTTP/1.2 200 OK\r\n'
+                      'Content-Type: text/plain\r\n'
+                      'Content-Length: %d\r\n'
+                      '\r\n'
+                      '%s' % (len(body), body)).encode('utf-8'))
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port)
+        self.addCleanup(pool.close)
+
+        with self.assertRaises(MaxRetryError) as cm:
+            pool.request('GET', '/', retries=0)
+
+        self.assertIsInstance(cm.exception.reason, BadVersionError)
 
     def test_connection_cleanup_on_read_timeout(self):
         timed_out = Event()
