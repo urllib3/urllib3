@@ -631,6 +631,53 @@ class TestSocketClosing(SocketDummyServerTestCase):
             self.assertEqual(pool.pool.qsize(), 1)
             self.assertTrue(response.connection is None)
 
+    def test_early_response(self):
+        """
+        When the server responds to a request before we've finished sending it,
+        we stop our upload immediately.
+        """
+        client_send_event = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            body = b''
+            while not body.endswith(b'a\r\nfirst data\r\n'):
+                body += sock.recv(65536)
+
+            body = body.split(b'\r\n\r\n', 1)[1]
+            body = body.decode('utf-8')
+
+            # send response containing the body we've received
+            sock.sendall(('HTTP/1.1 400 CLIENT ERROR\r\n'
+                          'Content-Type: text/plain\r\n'
+                          'Content-Length: %d\r\n'
+                          '\r\n'
+                          '%s' % (len(body), body)).encode('utf-8'))
+
+            sock.close()
+
+            # Tell the client it is now allowed to send. We deliberately do
+            # this after the close so that the client will encounter a closed
+            # pipe error if it screws up.
+            client_send_event.set()
+
+        def body_uploader():
+            yield b"first data"
+            client_send_event.wait(0.5)
+            yield b"second data"
+            yield b"third data"
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port)
+        self.addCleanup(pool.close)
+
+        response = pool.request("POST", "/", body=body_uploader(), retries=0)
+
+        # Only the first data should have been received by the server.
+        self.assertEqual(response.status, 400)
+        self.assertEqual(response.data, b"a\r\nfirst data\r\n")
+
 
 class TestProxyManager(SocketDummyServerTestCase):
 
