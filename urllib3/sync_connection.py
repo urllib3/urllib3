@@ -82,14 +82,10 @@ def _stringify_headers(headers):
 def _read_readable(readable):
     # TODO: reconsider this block size
     blocksize = 8192
-    # TODO: is this acceptable? Is it too optimistic?
-    encode = isinstance(readable, io.TextIOBase)
     while True:
         datablock = readable.read(blocksize)
         if not datablock:
             break
-        if encode:
-            datablock = datablock.encode("utf-8")
         yield datablock
 
 
