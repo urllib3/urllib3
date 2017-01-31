@@ -426,10 +426,6 @@ class HTTPResponse(io.IOBase):
             raise IOError("The file-like object this HTTPResponse is wrapped "
                           "around has no file descriptor")
 
-    def flush(self):
-        if self._fp is not None and hasattr(self._fp, 'flush'):
-            return self._fp.flush()
-
     def readable(self):
         # This method is required for `io` module compatibility.
         return True
