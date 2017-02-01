@@ -44,6 +44,7 @@ set the ``urllib3.contrib.pyopenssl.DEFAULT_SSL_CIPHER_LIST`` variable.
 from __future__ import absolute_import
 
 import OpenSSL.SSL
+from OpenSSL.crypto import (PKey, X509)
 from cryptography import x509
 from cryptography.hazmat.backends.openssl import backend as openssl_backend
 from cryptography.hazmat.backends.openssl.x509 import _Certificate
@@ -412,11 +413,20 @@ class PyOpenSSLContext(object):
         if cadata is not None:
             self._ctx.load_verify_locations(BytesIO(cadata))
 
-    def load_cert_chain(self, certfile, keyfile=None, password=None):
-        self._ctx.use_certificate_file(certfile)
+    def load_cert_chain(self, cert, key=None, password=None):
+
+        if isinstance(cert, X509):
+            self._ctx.use_certificate(cert)
+        else:
+            self._ctx.use_certificate_file(cert)
+
         if password is not None:
             self._ctx.set_passwd_cb(lambda max_length, prompt_twice, userdata: password)
-        self._ctx.use_privatekey_file(keyfile or certfile)
+
+        if isinstance(key, PKey):
+            self._ctx.use_privatekey(key)
+        else:
+            self._ctx.use_privatekey_file(key or cert)
 
     def wrap_socket(self, sock, server_side=False,
                     do_handshake_on_connect=True, suppress_ragged_eofs=True,
