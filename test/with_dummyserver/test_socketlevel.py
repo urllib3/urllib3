@@ -9,7 +9,8 @@ from urllib3.exceptions import (
         ReadTimeoutError,
         SSLError,
         ProtocolError,
-        BadVersionError
+        BadVersionError,
+        FailedTunnelError,
 )
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util.timeout import Timeout
@@ -842,6 +843,41 @@ class TestProxyManager(SocketDummyServerTestCase):
         self.assertEqual(r.status, 200)
         r = conn.urlopen('GET', url, retries=0)
         self.assertEqual(r.status, 200)
+
+    def test_connect_failing(self):
+        def handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+            s = buf.decode('utf-8')
+            sock.sendall(
+                b'HTTP/1.1 401 Unauthorized\r\n'
+                b'Connection: close\r\n'
+                b'Server: testsocket\r\n'
+                b'X-Custom-Header: yougotit\r\n'
+                b'\r\n'
+            )
+            sock.close()
+
+        self._start_server(handler)
+        base_url = 'http://%s:%d' % (self.host, self.port)
+
+        proxy = proxy_from_url(base_url)
+        self.addCleanup(proxy.clear)
+
+        url = 'https://{0}'.format(self.host)
+        conn = proxy.connection_from_url(url)
+
+        with self.assertRaises(FailedTunnelError) as cm:
+            conn.urlopen('GET', url, retries=0)
+
+        exception = cm.exception
+        self.assertEqual(exception.response.status_code, 401)
+        self.assertEqual(
+            exception.response.headers['x-custom-header'], 'yougotit'
+        )
 
 
 class TestSSL(SocketDummyServerTestCase):

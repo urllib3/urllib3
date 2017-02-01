@@ -26,7 +26,7 @@ import h11
 from .base import Response
 from .exceptions import (
     ConnectTimeoutError, NewConnectionError, SubjectAltNameWarning,
-    SystemTimeWarning, BadVersionError
+    SystemTimeWarning, BadVersionError, FailedTunnelError
 )
 from .packages import six
 from .util import selectors, connection, ssl_ as ssl_util
@@ -338,9 +338,18 @@ class SyncHTTP1Connection(object):
             response = _maybe_read_response(read_bytes, tunnel_state_machine)
 
         if response.status_code != 200:
-            # TODO: include the response here.
+            # TODO: This is duplicate code
+            version = b'HTTP/' + response.http_version
+            response = Response(
+                status_code=response.status_code,
+                headers=_headers_to_native_string(response.headers),
+                body=self,
+                version=version
+            )
             self.close()
-            raise RuntimeError("Bad response!")
+            raise FailedTunnelError(
+                "Unable to establish CONNECT tunnel", response
+            )
 
         # Re-establish our green state so that we can do TLS handshake if we
         # need to.
