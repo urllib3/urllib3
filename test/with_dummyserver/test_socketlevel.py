@@ -1319,7 +1319,7 @@ class TestBadContentLength(SocketDummyServerTestCase):
         conn = HTTPConnectionPool(self.host, self.port, maxsize=1)
         self.addCleanup(conn.close)
 
-        #Test stream on 0 length body
+        # Test stream on 0 length body
         head_response = conn.request('HEAD', url='/', preload_content=False)
         data = [chunk for chunk in head_response.stream(1)]
         self.assertEqual(len(data), 0)

@@ -8,7 +8,7 @@ import sys
 import time
 import threading
 
-from unittest import skip, skipIf, skipUnless
+from unittest import skipIf, skipUnless
 import unittest
 
 try:  # Python 2.x doesn't define time.perf_counter.
