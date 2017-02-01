@@ -4,10 +4,10 @@ from urllib3._collections import (
     HTTPHeaderDict,
     RecentlyUsedContainer as Container
 )
+from nose.plugins.skip import SkipTest
+
 from urllib3.packages import six
 xrange = six.moves.xrange
-
-from nose.plugins.skip import SkipTest
 
 
 class TestLRUContainer(unittest.TestCase):
@@ -61,7 +61,7 @@ class TestLRUContainer(unittest.TestCase):
         # Keys should be ordered by access time
         self.assertEqual(list(d.keys()), [5, 6, 7, 8, 9])
 
-        new_order = [7,8,6,9,5]
+        new_order = [7, 8, 6, 9, 5]
         for k in new_order:
             d[k]
 
@@ -109,7 +109,7 @@ class TestLRUContainer(unittest.TestCase):
         for i in xrange(5):
             d[i] = i
         self.assertEqual(list(d.keys()), list(xrange(5)))
-        self.assertEqual(evicted_items, []) # Nothing disposed
+        self.assertEqual(evicted_items, [])  # Nothing disposed
 
         d[5] = 5
         self.assertEqual(list(d.keys()), list(xrange(1, 6)))
@@ -148,19 +148,20 @@ class TestHTTPHeaderDict(unittest.TestCase):
         h = HTTPHeaderDict(ab=1, cd=2, ef=3, gh=4)
         self.assertEqual(len(h), 4)
         self.assertTrue('ab' in h)
-    
+
     def test_create_from_dict(self):
         h = HTTPHeaderDict(dict(ab=1, cd=2, ef=3, gh=4))
         self.assertEqual(len(h), 4)
         self.assertTrue('ab' in h)
-    
+
     def test_create_from_iterator(self):
         teststr = 'urllib3ontherocks'
         h = HTTPHeaderDict((c, c*5) for c in teststr)
         self.assertEqual(len(h), len(set(teststr)))
-        
+
     def test_create_from_list(self):
-        h = HTTPHeaderDict([('ab', 'A'), ('cd', 'B'), ('cookie', 'C'), ('cookie', 'D'), ('cookie', 'E')])
+        headers = [('ab', 'A'), ('cd', 'B'), ('cookie', 'C'), ('cookie', 'D'), ('cookie', 'E')]
+        h = HTTPHeaderDict(headers)
         self.assertEqual(len(h), 3)
         self.assertTrue('ab' in h)
         clist = h.getlist('cookie')
@@ -169,7 +170,8 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertEqual(clist[-1], 'E')
 
     def test_create_from_headerdict(self):
-        org = HTTPHeaderDict([('ab', 'A'), ('cd', 'B'), ('cookie', 'C'), ('cookie', 'D'), ('cookie', 'E')])
+        headers = [('ab', 'A'), ('cd', 'B'), ('cookie', 'C'), ('cookie', 'D'), ('cookie', 'E')]
+        org = HTTPHeaderDict(headers)
         h = HTTPHeaderDict(org)
         self.assertEqual(len(h), 3)
         self.assertTrue('ab' in h)
@@ -219,7 +221,7 @@ class TestHTTPHeaderDict(unittest.TestCase):
         self.assertEqual(self.d['b'], '100')
         self.d.add('cookie', 'with, comma')
         self.assertEqual(self.d.getlist('cookie'), ['foo', 'bar', 'asdf', 'with, comma'])
-        
+
     def test_extend_from_container(self):
         h = NonMappingHeaderContainer(Cookie='foo', e='foofoo')
         self.d.extend(h)
@@ -299,7 +301,9 @@ class TestHTTPHeaderDict(unittest.TestCase):
 
     def test_dict_conversion(self):
         # Also tested in connectionpool, needs to preserve case
-        hdict = {'Content-Length': '0', 'Content-type': 'text/plain', 'Server': 'TornadoServer/1.2.3'}
+        hdict = {'Content-Length': '0',
+                 'Content-type': 'text/plain',
+                 'Server': 'TornadoServer/1.2.3'}
         h = dict(HTTPHeaderDict(hdict).items())
         self.assertEqual(hdict, h)
         self.assertEqual(hdict, dict(HTTPHeaderDict(hdict)))
@@ -338,6 +342,7 @@ www-authenticate: bla
         self.assertEqual(d['x-some-multiline'].split(), ['asdf', 'asdf', 'asdf'])
         self.assertEqual(d['www-authenticate'], 'asdf, bla')
         self.assertEqual(d.getlist('www-authenticate'), ['asdf', 'bla'])
+
 
 if __name__ == '__main__':
     unittest.main()

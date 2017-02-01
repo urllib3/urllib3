@@ -103,15 +103,15 @@ class RetryTest(unittest.TestCase):
         max_backoff = Retry.BACKOFF_MAX
 
         retry = Retry(total=100, backoff_factor=0.2)
-        self.assertEqual(retry.get_backoff_time(), 0) # First request
+        self.assertEqual(retry.get_backoff_time(), 0)  # First request
 
         retry = retry.increment(method='GET')
-        self.assertEqual(retry.get_backoff_time(), 0) # First retry
+        self.assertEqual(retry.get_backoff_time(), 0)  # First retry
 
         retry = retry.increment(method='GET')
         self.assertEqual(retry.backoff_factor, 0.2)
         self.assertEqual(retry.total, 98)
-        self.assertEqual(retry.get_backoff_time(), 0.4) # Start backoff
+        self.assertEqual(retry.get_backoff_time(), 0.4)  # Start backoff
 
         retry = retry.increment(method='GET')
         self.assertEqual(retry.get_backoff_time(), 0.8)
@@ -151,7 +151,7 @@ class RetryTest(unittest.TestCase):
         retry.sleep()
 
     def test_status_forcelist(self):
-        retry = Retry(status_forcelist=xrange(500,600))
+        retry = Retry(status_forcelist=xrange(500, 600))
         self.assertFalse(retry.is_retry('GET', status_code=200))
         self.assertFalse(retry.is_retry('GET', status_code=400))
         self.assertTrue(retry.is_retry('GET', status_code=500))
@@ -187,7 +187,8 @@ class RetryTest(unittest.TestCase):
     def test_error_message(self):
         retry = Retry(total=0)
         try:
-            retry = retry.increment(method='GET', error=ReadTimeoutError(None, "/", "read timed out"))
+            retry = retry.increment(method='GET',
+                                    error=ReadTimeoutError(None, "/", "read timed out"))
             raise AssertionError("Should have raised a MaxRetryError")
         except MaxRetryError as e:
             assert 'Caused by redirect' not in str(e)
@@ -229,16 +230,21 @@ class RetryTest(unittest.TestCase):
         self.assertEqual(retry.history, tuple())
         connection_error = ConnectTimeoutError('conntimeout')
         retry = retry.increment('GET', '/test1', None, connection_error)
-        self.assertEqual(retry.history, (RequestHistory('GET', '/test1', connection_error, None, None),))
+        history = (RequestHistory('GET', '/test1', connection_error, None, None),)
+        self.assertEqual(retry.history, history)
+
         read_error = ReadTimeoutError(None, "/test2", "read timed out")
         retry = retry.increment('POST', '/test2', None, read_error)
-        self.assertEqual(retry.history, (RequestHistory('GET', '/test1', connection_error, None, None),
-                                         RequestHistory('POST', '/test2', read_error, None, None)))
+        history = (RequestHistory('GET', '/test1', connection_error, None, None),
+                   RequestHistory('POST', '/test2', read_error, None, None))
+        self.assertEqual(retry.history, history)
+
         response = HTTPResponse(status=500)
         retry = retry.increment('GET', '/test3', response, None)
-        self.assertEqual(retry.history, (RequestHistory('GET', '/test1', connection_error, None, None),
-                                         RequestHistory('POST', '/test2', read_error, None, None),
-                                         RequestHistory('GET', '/test3', None, 500, None)))
+        history = (RequestHistory('GET', '/test1', connection_error, None, None),
+                   RequestHistory('POST', '/test2', read_error, None, None),
+                   RequestHistory('GET', '/test3', None, 500, None))
+        self.assertEqual(retry.history, history)
 
     def test_retry_method_not_in_whitelist(self):
         error = ReadTimeoutError(None, "/", "read timed out")

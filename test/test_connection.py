@@ -1,18 +1,17 @@
 import datetime
+import mock
 import sys
+
+from urllib3.connection import (
+    CertificateError,
+    _match_hostname,
+    RECENT_DATE
+)
+
 if sys.version_info >= (2, 7):
     import unittest
 else:
     import unittest2 as unittest
-
-import mock
-
-from urllib3.connection import (
-    CertificateError,
-    VerifiedHTTPSConnection,
-    _match_hostname,
-    RECENT_DATE
-)
 
 
 class TestConnection(unittest.TestCase):
