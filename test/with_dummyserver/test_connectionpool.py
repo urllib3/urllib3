@@ -6,8 +6,6 @@ import unittest
 import time
 import warnings
 
-import mock
-
 from .. import (
     TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES,
 )

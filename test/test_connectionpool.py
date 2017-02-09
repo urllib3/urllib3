@@ -23,8 +23,6 @@ from urllib3.exceptions import (
     SSLError,
     TimeoutError,
 )
-from urllib3._collections import HTTPHeaderDict
-from .test_response import MockSock
 
 from io import BytesIO
 from socket import error as SocketError

@@ -40,7 +40,7 @@ from .util.ssl_ import (
     resolve_cert_reqs, BaseSSLError
 )
 from .util.timeout import Timeout
-from .util.url import get_host, Url, parse_url
+from .util.url import get_host, Url
 
 try:
     import ssl
@@ -595,12 +595,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             base_response = self._make_request(conn, method, url,
                                                timeout=timeout_obj,
                                                body=body, headers=headers)
-
-            # If we're going to release the connection in ``finally:``, then
-            # the response doesn't need to know about the connection. Otherwise
-            # it will also try to release it and we'll have a double-release
-            # mess.
-            response_conn = conn if not release_conn else None
 
             # Pass method to Response for length checking
             response_kw['request_method'] = method

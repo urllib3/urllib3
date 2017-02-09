@@ -21,8 +21,6 @@ from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from dummyserver.server import (
     DEFAULT_CERTS, DEFAULT_CA, get_unreachable_address)
 
-from .. import onlyPy3, LogRecorder
-
 from nose.plugins.skip import SkipTest
 try:
     from mimetools import Message as MimeToolMessage
@@ -343,10 +341,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # send bad response
             body = "bad http response"
             sock.send(('HTTP0.5 200 OK\r\n'
-                      'Content-Type: text/plain\r\n'
-                      'Content-Length: %d\r\n'
-                      '\r\n'
-                      '%s' % (len(body), body)).encode('utf-8'))
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n'
+                       '%s' % (len(body), body)).encode('utf-8'))
             sock.close()
 
             # Second request.
@@ -386,10 +384,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # send bad response
             body = "bad http response"
             sock.send(('HTTP/1.2 200 OK\r\n'
-                      'Content-Type: text/plain\r\n'
-                      'Content-Length: %d\r\n'
-                      '\r\n'
-                      '%s' % (len(body), body)).encode('utf-8'))
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n'
+                       '%s' % (len(body), body)).encode('utf-8'))
             sock.close()
 
         self._start_server(socket_handler)
@@ -851,7 +849,6 @@ class TestProxyManager(SocketDummyServerTestCase):
             buf = b''
             while not buf.endswith(b'\r\n\r\n'):
                 buf += sock.recv(65536)
-            s = buf.decode('utf-8')
             sock.sendall(
                 b'HTTP/1.1 401 Unauthorized\r\n'
                 b'Connection: close\r\n'
@@ -1162,7 +1159,6 @@ class TestHeaders(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         pool.request('GET', '/', headers=HTTPHeaderDict(headers))
         self.assertEqual(expected_headers, parsed_headers)
-
 
 
 class TestBrokenHeaders(SocketDummyServerTestCase):

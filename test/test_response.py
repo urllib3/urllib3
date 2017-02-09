@@ -1,17 +1,11 @@
 import unittest
-import socket
-
-import h11
 
 from io import BytesIO, BufferedReader
 
 from urllib3.base import Response
 from urllib3.response import HTTPResponse
-from urllib3.exceptions import (
-    DecodeError, ProtocolError, InvalidHeader
-)
+from urllib3.exceptions import DecodeError
 from urllib3.util.retry import Retry
-from urllib3.util.response import is_fp_closed
 
 from base64 import b64decode
 

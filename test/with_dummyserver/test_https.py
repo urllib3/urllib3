@@ -64,8 +64,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
 
-        conn = https_pool._new_conn()
-
         with mock.patch('warnings.warn') as warn:
             r = https_pool.request('GET', '/')
             self.assertEqual(r.status, 200)
@@ -89,8 +87,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          ssl_context=ctx)
         self.addCleanup(https_pool.close)
-
-        conn = https_pool._new_conn()
 
         with mock.patch('warnings.warn') as warn:
             r = https_pool.request('GET', '/')
@@ -116,8 +112,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          ssl_context=ctx)
         self.addCleanup(https_pool.close)
 
-        conn = https_pool._new_conn()
-
         with mock.patch('warnings.warn') as warn:
             r = https_pool.request('GET', '/')
             self.assertEqual(r.status, 200)
@@ -141,8 +135,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          cert_reqs='CERT_REQUIRED',
                                          ca_cert_dir=DEFAULT_CA_DIR)
         self.addCleanup(https_pool.close)
-
-        conn = https_pool._new_conn()
 
         with mock.patch('warnings.warn') as warn:
             r = https_pool.request('GET', '/')
