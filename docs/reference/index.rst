@@ -19,7 +19,7 @@ Submodules
 urllib3.connection module
 -------------------------
 
-.. automodule:: urllib3.connection
+.. automodule:: urllib3.sync_connection
     :members:
     :undoc-members:
     :show-inheritance:
