@@ -252,17 +252,7 @@ class HTTPResponse(io.IOBase):
             # If we didn't terminate cleanly, we need to throw away our
             # connection.
             if not clean_exit:
-                # The response may not be closed but we're not going to use it
-                # anymore so close it now to ensure that the connection is
-                # released back to the pool.
-                if self._original_response:
-                    self._original_response.body.close()
-
-                # Closing the response may not actually be sufficient to close
-                # everything, so if we have a hold of the connection close that
-                # too.
-                if self._connection:
-                    self._connection.close()
+                self.close()
 
             # If we hold the original response but it's finished now, we should
             # return the connection back to the pool.
