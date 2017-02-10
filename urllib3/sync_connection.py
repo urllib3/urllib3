@@ -545,7 +545,7 @@ class SyncHTTP1Connection(object):
                 received_bytes = self._receive_bytes(self._read_timeout)
                 self._state_machine.receive_data(received_bytes)
             elif isinstance(event, h11.Data):
-                data = event.data
+                data = bytes(event.data)
             elif isinstance(event, h11.EndOfMessage):
                 self._reset()
                 raise StopIteration()
