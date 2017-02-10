@@ -77,6 +77,24 @@ def _add_transport_headers(headers):
     headers['transfer-encoding'] = 'chunked'
 
 
+def _build_context(context, keyfile, certfile, cert_reqs,
+                   ca_certs, ca_cert_dir, ssl_version):
+    """
+    Creates a urllib3 context suitable for a given request based on a
+    collection of possible properties of that context.
+    """
+    if context is None:
+        context = create_urllib3_context(
+            ssl_version=resolve_ssl_version(ssl_version),
+            cert_reqs=resolve_cert_reqs(cert_reqs)
+        )
+    context = merge_context_settings(
+        context, keyfile=keyfile, certfile=certfile,
+        cert_reqs=cert_reqs, ca_certs=ca_certs, ca_cert_dir=ca_cert_dir
+    )
+    return context
+
+
 # Pool objects
 class ConnectionPool(object):
     """
@@ -757,26 +775,13 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         if ca_certs and cert_reqs is None:
             cert_reqs = 'CERT_REQUIRED'
 
-        self.ssl_context = self._build_context(
+        self.ssl_context = _build_context(
             ssl_context, keyfile=key_file, certfile=cert_file,
             cert_reqs=cert_reqs, ca_certs=ca_certs, ca_cert_dir=ca_cert_dir,
             ssl_version=ssl_version
         )
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
-
-    def _build_context(self, context, keyfile, certfile, cert_reqs,
-                       ca_certs, ca_cert_dir, ssl_version):
-        if context is None:
-            context = create_urllib3_context(
-                ssl_version=resolve_ssl_version(ssl_version),
-                cert_reqs=resolve_cert_reqs(cert_reqs)
-            )
-        context = merge_context_settings(
-            context, keyfile=keyfile, certfile=certfile,
-            cert_reqs=cert_reqs, ca_certs=ca_certs, ca_cert_dir=ca_cert_dir
-        )
-        return context
 
     def _new_conn(self):
         """
