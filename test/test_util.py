@@ -111,7 +111,10 @@ class TestUtil(unittest.TestCase):
             self.assertRaises(LocationParseError, get_host, location)
 
     def test_host_normalization(self):
-        """Asserts the scheme and host is normalized to lower-case."""
+        """
+        Asserts the scheme and hosts with a normalizable scheme are
+        converted to lower-case.
+        """
         url_host_map = {
             # Hosts
             'HTTP://GOOGLE.COM/mail/': ('http', 'google.com', None),
@@ -125,6 +128,9 @@ class TestUtil(unittest.TestCase):
                 'http', '[fedc:ba98:7654:3210:fedc:ba98:7654:3210]', 8000),
             'HTTPS://[1080:0:0:0:8:800:200c:417A]/index.html': (
                 'https', '[1080:0:0:0:8:800:200c:417a]', None),
+            'abOut://eXamPlE.com?info=1': ('about', 'eXamPlE.com', None),
+            'http+UNIX://%2fvar%2frun%2fSOCKET/path': (
+                'http+unix', '%2fvar%2frun%2fSOCKET', None),
         }
         for url, expected_host in url_host_map.items():
             returned_host = get_host(url)
