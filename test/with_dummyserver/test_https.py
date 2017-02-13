@@ -39,6 +39,8 @@ from urllib3.packages import six
 from urllib3.util.timeout import Timeout
 import urllib3.util as util
 
+from ..tls_helpers import TLS_VERSION
+
 
 ResourceWarning = getattr(
         six.moves.builtins,
@@ -59,8 +61,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
-    def test_set_ssl_version_to_tlsv1(self):
-        self._pool.ssl_version = ssl.PROTOCOL_TLSv1
+    def test_set_ssl_version_specific(self):
+        self._pool.ssl_version = TLS_VERSION
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
@@ -488,9 +490,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         return [x for x in w if not isinstance(x.message, ResourceWarning)]
 
 
-class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
+class TestHTTPS_SpecificVersion(HTTPSDummyServerTestCase):
     certs = DEFAULT_CERTS.copy()
-    certs['ssl_version'] = ssl.PROTOCOL_TLSv1
+    certs['ssl_version'] = TLS_VERSION
 
     def setUp(self):
         self._pool = HTTPSConnectionPool(self.host, self.port)

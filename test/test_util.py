@@ -41,6 +41,7 @@ from urllib3.util import is_fp_closed, ssl_
 from urllib3.packages import six
 
 from . import clear_warnings
+from .tls_helpers import TLS_VERSION, TLS_VERSION_STRING
 
 # This number represents a time in seconds, it doesn't mean anything in
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller
@@ -455,9 +456,9 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(resolve_cert_reqs('CERT_REQUIRED'), ssl.CERT_REQUIRED)
 
     def test_resolve_ssl_version(self):
-        self.assertEqual(resolve_ssl_version(ssl.PROTOCOL_TLSv1), ssl.PROTOCOL_TLSv1)
-        self.assertEqual(resolve_ssl_version("PROTOCOL_TLSv1"), ssl.PROTOCOL_TLSv1)
-        self.assertEqual(resolve_ssl_version("TLSv1"), ssl.PROTOCOL_TLSv1)
+        self.assertEqual(resolve_ssl_version(TLS_VERSION), TLS_VERSION)
+        self.assertEqual(resolve_ssl_version(TLS_VERSION_STRING), TLS_VERSION)
+        self.assertEqual(resolve_ssl_version(TLS_VERSION_STRING.split('_', 1)[1]), TLS_VERSION)
         self.assertEqual(resolve_ssl_version(ssl.PROTOCOL_SSLv23), ssl.PROTOCOL_SSLv23)
 
     def test_is_fp_closed_object_supports_closed(self):
