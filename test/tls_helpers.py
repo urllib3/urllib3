@@ -9,10 +9,12 @@ __all__ = ["TLS_VERSION", "TLS_VERSION_STRING"]
 # Several tests use specific TLS versions to confirm that they work. This can
 # be a bit risky, because not all implementations have the same set of TLS
 # versions. For this reason, we pick one early on that *is* present on this
-# implementation and use it.
+# implementation and use it. We also use the *lowest* version that is present
+# because some Python implementations define constants they cannot actually
+# use.
 _options = [
-    "PROTOCOL_TLSv1_2", "PROTOCOL_TLSv1_1", "PROTOCOL_TLSv1", "PROTOCOL_SSLv3",
-    "PROTOCOL_SSLv2"
+    "PROTOCOL_SSLv2", "PROTOCOL_SSLv3", "PROTOCOL_TLSv1", "PROTOCOL_TLSv1_1",
+    "PROTOCOL_TLSv1_2",
 ]
 for option in _options:
     try:
