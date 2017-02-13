@@ -1,17 +1,11 @@
 import unittest
-import socket
-
-import h11
 
 from io import BytesIO, BufferedReader
 
-from urllib3.connection import OldHTTPResponse
+from urllib3.base import Response
 from urllib3.response import HTTPResponse
-from urllib3.exceptions import (
-    DecodeError, ProtocolError, InvalidHeader
-)
+from urllib3.exceptions import DecodeError
 from urllib3.util.retry import Retry
-from urllib3.util.response import is_fp_closed
 
 from base64 import b64decode
 
@@ -31,27 +25,13 @@ S5moAj5HexY/g/F8TctpxwsvyZp38dXeLDjSQvEQIkF7XR3YXbeZgKk3V34KGCPOAeeuQDIgyVhV
 nP4HF2uWHA==""")
 
 
-def old_response(socket):
-    return OldHTTPResponse(
-        socket, state_machine=h11.Connection(our_role=h11.CLIENT)
+def get_response():
+    return Response(
+        status_code=200,
+        headers={},
+        body=BytesIO(b'hello'),
+        version=b"HTTP/1.1"
     )
-
-
-def chunked_response(socket):
-    """
-    Prepares an OldHTTPResponse ready for use with chunked
-    transfer encoding.
-    """
-    # Prime the state machine.
-    conn = h11.Connection(our_role=h11.CLIENT)
-    conn.receive_data(
-        b'HTTP/1.1 200 OK\r\n'
-        b'Server: no such server\r\n'
-        b'Transfer-Encoding: chunked\r\n'
-        b'\r\n'
-    )
-    conn.next_event()
-    return OldHTTPResponse(socket, state_machine=conn)
 
 
 class TestLegacyResponse(unittest.TestCase):
@@ -74,11 +54,11 @@ class TestResponse(unittest.TestCase):
 
     def test_default(self):
         r = HTTPResponse()
-        self.assertEqual(r.data, None)
+        self.assertEqual(r.data, b'')
 
     def test_none(self):
         r = HTTPResponse(None)
-        self.assertEqual(r.data, None)
+        self.assertEqual(r.data, b'')
 
     def test_preload(self):
         fp = BytesIO(b'foo')
@@ -138,7 +118,6 @@ class TestResponse(unittest.TestCase):
         r = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
                          preload_content=False)
 
-        self.assertEqual(r.read(3), b'')
         self.assertEqual(r.read(1), b'f')
         self.assertEqual(r.read(2), b'oo')
         self.assertEqual(r.read(), b'')
@@ -154,7 +133,6 @@ class TestResponse(unittest.TestCase):
         r = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
                          preload_content=False)
 
-        self.assertEqual(r.read(1), b'')
         self.assertEqual(r.read(1), b'f')
         self.assertEqual(r.read(2), b'oo')
         self.assertEqual(r.read(), b'')
@@ -170,7 +148,6 @@ class TestResponse(unittest.TestCase):
         r = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
                          preload_content=False)
 
-        self.assertEqual(r.read(11), b'')
         self.assertEqual(r.read(1), b'f')
         self.assertEqual(r.read(2), b'oo')
         self.assertEqual(r.read(), b'')
@@ -193,9 +170,9 @@ class TestResponse(unittest.TestCase):
         resp.close()
         self.assertEqual(resp.closed, True)
 
-        # Try closing with an `OldHTTPResponse`
-        hlr = old_response(socket.socket())
-        resp2 = HTTPResponse(hlr, preload_content=False)
+        # Try closing with a base Response
+        hlr = get_response()
+        resp2 = HTTPResponse(hlr.body, preload_content=False)
         self.assertEqual(resp2.closed, False)
         resp2.close()
         self.assertEqual(resp2.closed, True)
@@ -203,34 +180,6 @@ class TestResponse(unittest.TestCase):
         # also try when only data is present.
         resp3 = HTTPResponse('foodata')
         self.assertRaises(IOError, resp3.fileno)
-
-        resp3._fp = 2
-        # A corner case where _fp is present but doesn't have `closed`,
-        # `isclosed`, or `fileno`.  Unlikely, but possible.
-        self.assertEqual(resp3.closed, True)
-        self.assertRaises(IOError, resp3.fileno)
-
-    def test_io_closed_consistently(self):
-        hlr = old_response(socket.socket())
-        hlr._state_machine.receive_data(
-            b'HTTP/1.1 200 OK\r\n'
-            b'Server: test\r\n'
-            b'Content-Length: 3\r\n'
-            b'\r\n'
-        )
-        hlr._state_machine.next_event()
-        hlr.fp = BytesIO(b'foo')
-        hlr.fp.recv = hlr.fp.read
-        hlr.length = 3
-        resp = HTTPResponse(hlr, preload_content=False)
-
-        self.assertEqual(resp.closed, False)
-        self.assertEqual(resp._fp.closed, False)
-        self.assertEqual(is_fp_closed(resp._fp), False)
-        resp.read()
-        self.assertEqual(resp.closed, True)
-        self.assertEqual(resp._fp.closed, True)
-        self.assertEqual(is_fp_closed(resp._fp), True)
 
     def test_io_bufferedreader(self):
         fp = BytesIO(b'foo')
@@ -242,18 +191,16 @@ class TestResponse(unittest.TestCase):
         br.close()
         self.assertEqual(resp.closed, True)
 
-        b = b'fooandahalf'
+        b = b'!tenbytes!'
         fp = BytesIO(b)
         resp = HTTPResponse(fp, preload_content=False)
         br = BufferedReader(resp, 5)
 
-        br.read(1)  # sets up the buffer, reading 5
-        self.assertEqual(len(fp.read()), len(b) - 5)
-
         # This is necessary to make sure the "no bytes left" part of `readinto`
         # gets tested.
-        while not br.closed:
-            br.read(5)
+        self.assertEqual(len(br.read(5)), 5)
+        self.assertEqual(len(br.read(5)), 5)
+        self.assertEqual(len(br.read(5)), 0)
 
     def test_streaming(self):
         fp = BytesIO(b'foo')
@@ -273,11 +220,11 @@ class TestResponse(unittest.TestCase):
 
         position += len(next(stream))
         self.assertEqual(2, position)
-        self.assertEqual(position, resp.tell())
+        self.assertEqual(3, resp.tell())
 
         position += len(next(stream))
         self.assertEqual(3, position)
-        self.assertEqual(position, resp.tell())
+        self.assertEqual(3, resp.tell())
 
         self.assertRaises(StopIteration, next, stream)
 
@@ -292,8 +239,8 @@ class TestResponse(unittest.TestCase):
                             preload_content=False)
         stream = resp.stream(2)
 
-        self.assertEqual(next(stream), b'f')
-        self.assertEqual(next(stream), b'oo')
+        self.assertEqual(next(stream), b'fo')
+        self.assertEqual(next(stream), b'o')
         self.assertRaises(StopIteration, next, stream)
 
     def test_gzipped_streaming_tell(self):
@@ -333,14 +280,27 @@ class TestResponse(unittest.TestCase):
                 self.payloads = [
                     payload[i*payload_part_size:(i+1)*payload_part_size]
                     for i in range(NUMBER_OF_READS+1)]
+                self.consumed = 0
 
                 assert b"".join(self.payloads) == payload
 
             def read(self, _):
                 # Amount is unused.
                 if len(self.payloads) > 0:
-                    return self.payloads.pop(0)
+                    payload = self.payloads.pop(0)
+                    self.consumed += len(payload)
+                    return payload
                 return b""
+
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                if not self.payloads:
+                    raise StopIteration()
+                return self.read(None)
+
+            next = __next__
 
         uncompressed_data = zlib.decompress(ZLIB_PAYLOAD)
 
@@ -348,22 +308,20 @@ class TestResponse(unittest.TestCase):
         fp = MockCompressedDataReading(ZLIB_PAYLOAD, payload_part_size)
         resp = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
                             preload_content=False)
-        stream = resp.stream()
+        parts = []
+        stream = resp.stream(1)
 
-        parts_positions = [(part, resp.tell()) for part in stream]
+        for part in stream:
+            parts.append(part)
+            self.assertEqual(resp.tell(), fp.consumed)
+
         end_of_stream = resp.tell()
 
         self.assertRaises(StopIteration, next, stream)
 
-        parts, positions = zip(*parts_positions)
-
         # Check that the payload is equal to the uncompressed data
         payload = b"".join(parts)
         self.assertEqual(uncompressed_data, payload)
-
-        # Check that the positions in the stream are correct
-        expected = [(i+1)*payload_part_size for i in range(NUMBER_OF_READS)]
-        self.assertEqual(expected, list(positions))
 
         # Check that the end of the stream is in the correct place
         self.assertEqual(len(ZLIB_PAYLOAD), end_of_stream)
@@ -377,8 +335,8 @@ class TestResponse(unittest.TestCase):
                             preload_content=False)
         stream = resp.stream(2)
 
-        self.assertEqual(next(stream), b'f')
-        self.assertEqual(next(stream), b'oo')
+        self.assertEqual(next(stream), b'fo')
+        self.assertEqual(next(stream), b'o')
         self.assertRaises(StopIteration, next, stream)
 
     def test_deflate2_streaming(self):
@@ -392,8 +350,8 @@ class TestResponse(unittest.TestCase):
                             preload_content=False)
         stream = resp.stream(2)
 
-        self.assertEqual(next(stream), b'f')
-        self.assertEqual(next(stream), b'oo')
+        self.assertEqual(next(stream), b'fo')
+        self.assertEqual(next(stream), b'o')
         self.assertRaises(StopIteration, next, stream)
 
     def test_empty_stream(self):
@@ -419,6 +377,16 @@ class TestResponse(unittest.TestCase):
 
             def close(self):
                 self.fp = None
+
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                if self.fp is None:
+                    raise StopIteration()
+                return self.read(1)
+
+            next = __next__
 
         bio = BytesIO(b'foo')
         fp = MockHTTPRequest()

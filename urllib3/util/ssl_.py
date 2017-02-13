@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import errno
+import logging
 import warnings
 import hmac
 
@@ -7,6 +8,10 @@ from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
 from ..exceptions import SSLError, InsecurePlatformWarning, SNIMissingWarning
+from ..packages.ssl_match_hostname import (
+    match_hostname as _match_hostname,
+    CertificateError
+)
 
 
 SSLContext = None
@@ -19,6 +24,9 @@ HASHFUNC_MAP = {
     40: sha1,
     64: sha256,
 }
+
+
+log = logging.getLogger(__name__)
 
 
 def _const_compare_digest_backport(a, b):
@@ -42,8 +50,10 @@ try:  # Test for SSL features
     import ssl
     from ssl import wrap_socket, CERT_NONE, PROTOCOL_SSLv23
     from ssl import HAS_SNI  # Has SNI?
+    from ssl import SSLError as BaseSSLError
 except ImportError:
-    pass
+    class BaseSSLError(Exception):
+        pass
 
 
 try:
@@ -262,6 +272,35 @@ def create_urllib3_context(ssl_version=None, cert_reqs=None,
     return context
 
 
+def merge_context_settings(context, keyfile=None, certfile=None,
+                           cert_reqs=None, ca_certs=None, ca_cert_dir=None):
+    """
+    Merges provided settings into an SSL Context.
+    """
+    if cert_reqs is not None:
+        context.verify_mode = resolve_cert_reqs(cert_reqs)
+
+    if ca_certs or ca_cert_dir:
+        try:
+            context.load_verify_locations(ca_certs, ca_cert_dir)
+        except IOError as e:  # Platform-specific: Python 2.6, 2.7, 3.2
+            raise SSLError(e)
+        # Py33 raises FileNotFoundError which subclasses OSError
+        # These are not equivalent unless we check the errno attribute
+        except OSError as e:  # Platform-specific: Python 3.3 and beyond
+            if e.errno == errno.ENOENT:
+                raise SSLError(e)
+            raise
+    elif getattr(context, 'load_default_certs', None) is not None:
+        # try to load OS default certs; works well on Windows (require Python3.4+)
+        context.load_default_certs()
+
+    if certfile:
+        context.load_cert_chain(certfile, keyfile)
+
+    return context
+
+
 def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                     ca_certs=None, server_hostname=None,
                     ssl_version=None, ciphers=None, ssl_context=None,
@@ -321,3 +360,17 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         SNIMissingWarning
     )
     return context.wrap_socket(sock)
+
+
+def match_hostname(cert, asserted_hostname):
+    try:
+        _match_hostname(cert, asserted_hostname)
+    except CertificateError as e:
+        log.error(
+            'Certificate did not match expected hostname: %s. '
+            'Certificate: %s', asserted_hostname, cert
+        )
+        # Add cert to exception and reraise so client code can inspect
+        # the cert when catching the exception, if they want to
+        e._peer_cert = cert
+        raise

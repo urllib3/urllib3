@@ -4,8 +4,8 @@ import functools
 import logging
 
 from ._collections import RecentlyUsedContainer
+from .base import DEFAULT_PORTS
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
-from .connectionpool import port_by_scheme
 from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
 from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
@@ -23,7 +23,7 @@ SSL_KEYWORDS = ('key_file', 'cert_file', 'cert_reqs', 'ca_certs',
 
 # The base fields to use when determining what pool to get a connection from;
 # these do not rely on the ``connection_pool_kw`` and can be determined by the
-# URL and potentially the ``urllib3.connection.port_by_scheme`` dictionary.
+# URL and potentially the ``urllib3.base.DEFAULT_PORTS`` dictionary.
 #
 # All custom key schemes should include the fields in this key at a minimum.
 BasePoolKey = collections.namedtuple('BasePoolKey', ('scheme', 'host', 'port'))
@@ -160,7 +160,7 @@ class PoolManager(RequestMethods):
         Get a :class:`ConnectionPool` based on the host, port, and scheme.
 
         If ``port`` isn't given, it will be derived from the ``scheme`` using
-        ``urllib3.connectionpool.port_by_scheme``.
+        ``urllib3.base.DEFAULT_PORTS``.
         """
 
         if not host:
@@ -169,7 +169,7 @@ class PoolManager(RequestMethods):
         request_context = self.connection_pool_kw.copy()
         request_context['scheme'] = scheme or 'http'
         if not port:
-            port = port_by_scheme.get(request_context['scheme'].lower(), 80)
+            port = DEFAULT_PORTS.get(request_context['scheme'].lower(), 80)
         request_context['port'] = port
         request_context['host'] = host
 
@@ -307,7 +307,7 @@ class ProxyManager(PoolManager):
                                         proxy_url.port)
         proxy = parse_url(proxy_url)
         if not proxy.port:
-            port = port_by_scheme.get(proxy.scheme, 80)
+            port = DEFAULT_PORTS.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
 
         if proxy.scheme not in ("http", "https"):

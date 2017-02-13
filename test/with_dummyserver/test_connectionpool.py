@@ -6,8 +6,6 @@ import unittest
 import time
 import warnings
 
-import mock
-
 from .. import (
     TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES,
 )
@@ -79,7 +77,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
             pool.urlopen('GET', '/')
             self.fail("The request should fail with a timeout error.")
         except ReadTimeoutError:
-            if conn.sock:
+            if conn._sock:
                 self.assertRaises(socket.error, conn.sock.recv, 1024)
         finally:
             pool._put_conn(conn)
@@ -215,7 +213,11 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout, retries=False)
         self.addCleanup(pool.close)
         conn = pool._new_conn()
-        self.assertRaises(ConnectTimeoutError, conn.connect)
+        self.assertRaises(
+            ConnectTimeoutError,
+            conn.connect,
+            connect_timeout=timeout.connect_timeout
+        )
 
 
 class TestConnectionPool(HTTPDummyServerTestCase):
@@ -305,7 +307,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port)
         conn = pool._get_conn()
         pool._make_request(conn, 'GET', '/')
-        tcp_nodelay_setting = conn.sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
+        tcp_nodelay_setting = conn._sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
         self.assertTrue(tcp_nodelay_setting)
 
     def test_socket_options(self):
@@ -315,7 +317,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, socket_options=[
             (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         ])
-        s = pool._new_conn()._new_conn()  # Get the socket
+        conn = pool._new_conn()
+        conn.connect()
+        s = conn._sock
         using_keepalive = s.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE) > 0
         self.assertTrue(using_keepalive)
         s.close()
@@ -325,7 +329,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # This test needs to be here in order to be run. socket.create_connection actually tries
         # to connect to the host provided so we need a dummyserver to be running.
         pool = HTTPConnectionPool(self.host, self.port, socket_options=None)
-        s = pool._new_conn()._new_conn()
+        conn = pool._new_conn()
+        conn.connect()
+        s = conn._sock
         using_nagle = s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) == 0
         self.assertTrue(using_nagle)
         s.close()
@@ -339,7 +345,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         conn = pool._new_conn()
         # Update the default socket options
         conn.default_socket_options += [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
-        s = conn._new_conn()
+        conn.connect()
+        s = conn._sock
         nagle_disabled = s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) > 0
         using_keepalive = s.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE) > 0
         self.assertTrue(nagle_disabled)
@@ -369,26 +376,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         timeout = Timeout(total=None)
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
         pool.request('GET', '/')
-
-    def test_tunnel(self):
-        # note the actual httplib.py has no tests for this functionality
-        timeout = Timeout(total=None)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
-        conn = pool._get_conn()
-        conn.set_tunnel(self.host, self.port)
-
-        conn._tunnel = mock.Mock(return_value=None)
-        pool._make_request(conn, 'GET', '/')
-        conn._tunnel.assert_called_once_with()
-
-        # test that it's not called when tunnel is not set
-        timeout = Timeout(total=None)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
-        conn = pool._get_conn()
-
-        conn._tunnel = mock.Mock(return_value=None)
-        pool._make_request(conn, 'GET', '/')
-        self.assertEqual(conn._tunnel.called, False)
 
     def test_redirect(self):
         r = self.pool.request('GET', '/redirect', fields={'target': '/'}, redirect=False)
@@ -434,7 +421,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # because _get_conn() is where the check & reset occurs
         # pylint: disable-msg=W0212
         conn = pool.pool.get()
-        self.assertEqual(conn.sock, None)
+        self.assertEqual(conn._sock, None)
         pool._put_conn(conn)
 
         # Now with keep-alive
@@ -446,7 +433,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # The dummyserver responded with Connection:keep-alive, the connection
         # persists.
         conn = pool.pool.get()
-        self.assertNotEqual(conn.sock, None)
+        self.assertNotEqual(conn._sock, None)
         pool._put_conn(conn)
 
         # Another request asking the server to close the connection. This one
@@ -459,7 +446,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(r.status, 200)
 
         conn = pool.pool.get()
-        self.assertEqual(conn.sock, None)
+        self.assertEqual(conn._sock, None)
         pool._put_conn(conn)
 
         # Next request
@@ -569,7 +556,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                           multipart_boundary=boundary,
                           preload_content=False)
 
-        self.assertEqual(r1.read(first_chunk), resp_data[:first_chunk])
+        first_data = r1.read(first_chunk)
+        self.assertGreater(len(first_data), 0)
+        self.assertEqual(first_data, resp_data[:len(first_data)])
 
         try:
             r2 = pool.request('POST', '/echo', fields=req2_data, multipart_boundary=boundary,
@@ -578,14 +567,16 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             # This branch should generally bail here, but maybe someday it will
             # work? Perhaps by some sort of magic. Consider it a TODO.
 
-            self.assertEqual(r2.read(first_chunk), resp2_data[:first_chunk])
+            second_data = r2.read(first_chunk)
+            self.assertGreater(len(second_data), 0)
+            self.assertEqual(second_data, resp2_data[:len(second_data)])
 
-            self.assertEqual(r1.read(), resp_data[first_chunk:])
-            self.assertEqual(r2.read(), resp2_data[first_chunk:])
+            self.assertEqual(r1.read(), resp_data[len(first_data):])
+            self.assertEqual(r2.read(), resp2_data[len(second_data):])
             self.assertEqual(pool.num_requests, 2)
 
         except EmptyPoolError:
-            self.assertEqual(r1.read(), resp_data[first_chunk:])
+            self.assertEqual(r1.read(), resp_data[len(first_data):])
             self.assertEqual(pool.num_requests, 1)
 
         self.assertEqual(pool.num_connections, 1)

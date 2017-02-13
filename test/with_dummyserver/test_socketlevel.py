@@ -9,6 +9,8 @@ from urllib3.exceptions import (
         ReadTimeoutError,
         SSLError,
         ProtocolError,
+        BadVersionError,
+        FailedTunnelError,
 )
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util.timeout import Timeout
@@ -18,8 +20,6 @@ from urllib3._collections import HTTPHeaderDict, OrderedDict
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from dummyserver.server import (
     DEFAULT_CERTS, DEFAULT_CA, get_unreachable_address)
-
-from .. import onlyPy3, LogRecorder
 
 from nose.plugins.skip import SkipTest
 try:
@@ -338,9 +338,9 @@ class TestSocketClosing(SocketDummyServerTestCase):
             while not buf.endswith(b'\r\n\r\n'):
                 buf += sock.recv(65536)
 
-            # send unknown http protocol
-            body = "bad http 0.5 response"
-            sock.send(('HTTP/0.5 200 OK\r\n'
+            # send bad response
+            body = "bad http response"
+            sock.send(('HTTP0.5 200 OK\r\n'
                        'Content-Type: text/plain\r\n'
                        'Content-Length: %d\r\n'
                        '\r\n'
@@ -369,6 +369,35 @@ class TestSocketClosing(SocketDummyServerTestCase):
         response = pool.request('GET', '/', retries=retry)
         self.assertEqual(response.status, 200)
         self.assertEqual(response.data, b'foo')
+
+    def test_dont_tolerate_bad_versions(self):
+        """We don't tolerate weird versions of HTTP"""
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            # First request.
+            # Pause before responding so the first request times out.
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            # send bad response
+            body = "bad http response"
+            sock.send(('HTTP/1.2 200 OK\r\n'
+                       'Content-Type: text/plain\r\n'
+                       'Content-Length: %d\r\n'
+                       '\r\n'
+                       '%s' % (len(body), body)).encode('utf-8'))
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port)
+        self.addCleanup(pool.close)
+
+        with self.assertRaises(MaxRetryError) as cm:
+            pool.request('GET', '/', retries=0)
+
+        self.assertIsInstance(cm.exception.reason, BadVersionError)
 
     def test_connection_cleanup_on_read_timeout(self):
         timed_out = Event()
@@ -601,6 +630,53 @@ class TestSocketClosing(SocketDummyServerTestCase):
             self.assertEqual(pool.pool.qsize(), 1)
             self.assertTrue(response.connection is None)
 
+    def test_early_response(self):
+        """
+        When the server responds to a request before we've finished sending it,
+        we stop our upload immediately.
+        """
+        client_send_event = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            body = b''
+            while not body.endswith(b'a\r\nfirst data\r\n'):
+                body += sock.recv(65536)
+
+            body = body.split(b'\r\n\r\n', 1)[1]
+            body = body.decode('utf-8')
+
+            # send response containing the body we've received
+            sock.sendall(('HTTP/1.1 400 CLIENT ERROR\r\n'
+                          'Content-Type: text/plain\r\n'
+                          'Content-Length: %d\r\n'
+                          '\r\n'
+                          '%s' % (len(body), body)).encode('utf-8'))
+
+            sock.close()
+
+            # Tell the client it is now allowed to send. We deliberately do
+            # this after the close so that the client will encounter a closed
+            # pipe error if it screws up.
+            client_send_event.set()
+
+        def body_uploader():
+            yield b"first data"
+            client_send_event.wait(0.5)
+            yield b"second data"
+            yield b"third data"
+
+        self._start_server(socket_handler)
+        pool = HTTPConnectionPool(self.host, self.port)
+        self.addCleanup(pool.close)
+
+        response = pool.request("POST", "/", body=body_uploader(), retries=0)
+
+        # Only the first data should have been received by the server.
+        self.assertEqual(response.status, 400)
+        self.assertEqual(response.data, b"a\r\nfirst data\r\n")
+
 
 class TestProxyManager(SocketDummyServerTestCase):
 
@@ -634,7 +710,6 @@ class TestProxyManager(SocketDummyServerTestCase):
                          sorted([
                              b'GET http://google.com/ HTTP/1.1',
                              b'host: google.com',
-                             b'accept-encoding: identity',
                              b'accept: */*',
                              b'',
                              b'',
@@ -766,6 +841,40 @@ class TestProxyManager(SocketDummyServerTestCase):
         self.assertEqual(r.status, 200)
         r = conn.urlopen('GET', url, retries=0)
         self.assertEqual(r.status, 200)
+
+    def test_connect_failing(self):
+        def handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+            sock.sendall(
+                b'HTTP/1.1 401 Unauthorized\r\n'
+                b'Connection: close\r\n'
+                b'Server: testsocket\r\n'
+                b'X-Custom-Header: yougotit\r\n'
+                b'\r\n'
+            )
+            sock.close()
+
+        self._start_server(handler)
+        base_url = 'http://%s:%d' % (self.host, self.port)
+
+        proxy = proxy_from_url(base_url)
+        self.addCleanup(proxy.clear)
+
+        url = 'https://{0}'.format(self.host)
+        conn = proxy.connection_from_url(url)
+
+        with self.assertRaises(FailedTunnelError) as cm:
+            conn.urlopen('GET', url, retries=0)
+
+        exception = cm.exception
+        self.assertEqual(exception.response.status_code, 401)
+        self.assertEqual(
+            exception.response.headers['x-custom-header'], 'yougotit'
+        )
 
 
 class TestSSL(SocketDummyServerTestCase):
@@ -900,7 +1009,6 @@ class TestErrorWrapping(SocketDummyServerTestCase):
 
 
 class TestHeaders(SocketDummyServerTestCase):
-    @onlyPy3
     def test_headers_always_lowercase(self):
         self.start_response_handler(
            b'HTTP/1.1 200 OK\r\n'
@@ -909,8 +1017,8 @@ class TestHeaders(SocketDummyServerTestCase):
            b'\r\n'
         )
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        HEADERS = {'content-length': '0', 'content-type': 'text/plain'}
         self.addCleanup(pool.close)
+        HEADERS = {'content-length': '0', 'content-type': 'text/plain'}
         r = pool.request('GET', '/')
         self.assertEqual(HEADERS, dict(r.headers.items()))  # to preserve case sensitivity
 
@@ -939,8 +1047,7 @@ class TestHeaders(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        expected_headers = {'accept-encoding': 'identity',
-                            'host': '{0}:{1}'.format(self.host, self.port)}
+        expected_headers = {'host': '{0}:{1}'.format(self.host, self.port)}
         for key, value in headers.items():
             expected_headers[key.lower()] = value
 
@@ -1046,14 +1153,12 @@ class TestHeaders(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        expected_headers = {'accept-encoding': 'identity',
-                            'host': '{0}:{1}'.format(self.host, self.port),
+        expected_headers = {'host': '{0}:{1}'.format(self.host, self.port),
                             'foo': '88'}
 
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         pool.request('GET', '/', headers=HTTPHeaderDict(headers))
         self.assertEqual(expected_headers, parsed_headers)
-
 
 
 class TestBrokenHeaders(SocketDummyServerTestCase):

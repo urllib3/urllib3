@@ -221,3 +221,12 @@ class HeaderParsingError(HTTPError):
 class UnrewindableBodyError(HTTPError):
     "urllib3 encountered an error when trying to rewind a body"
     pass
+
+
+class FailedTunnelError(HTTPError):
+    """
+    An attempt was made to set up a CONNECT tunnel, but that attempt failed.
+    """
+    def __init__(self, message, response):
+        super(FailedTunnelError, self).__init__(message)
+        self.response = response

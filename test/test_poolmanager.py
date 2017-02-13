@@ -15,7 +15,9 @@ from urllib3.exceptions import (
     ClosedPoolError,
     LocationValueError,
 )
-from urllib3.util import retry, timeout
+from urllib3.util import retry, timeout, ssl_
+
+from dummyserver.server import (DEFAULT_CA, DEFAULT_CERTS, DEFAULT_CA_DIR)
 
 if sys.version_info >= (2, 7):
     import unittest
@@ -164,17 +166,19 @@ class TestPoolManager(unittest.TestCase):
 
     def test_https_pool_key_fields(self):
         """Assert the HTTPSPoolKey fields are honored when selecting a pool."""
-        connection_pool_kw = {
-            'timeout': timeout.Timeout(3.14),
-            'retries': retry.Retry(total=6, connect=2),
-            'block': True,
-            'source_address': '127.0.0.1',
-            'key_file': '/root/totally_legit.key',
-            'cert_file': '/root/totally_legit.crt',
-            'cert_reqs': 'CERT_REQUIRED',
-            'ca_certs': '/root/path_to_pem',
-            'ssl_version': 'SSLv23_METHOD',
-        }
+        connection_pool_kw = [
+            ('timeout', timeout.Timeout(3.14)),
+            ('retries', retry.Retry(total=6, connect=2)),
+            ('block', True),
+            ('source_address', '127.0.0.1'),
+            ('key_file', DEFAULT_CERTS['keyfile']),
+            ('cert_file', DEFAULT_CERTS['certfile']),
+            ('cert_reqs', 'CERT_REQUIRED'),
+            ('ca_certs', DEFAULT_CA),
+            ('ca_cert_dir', DEFAULT_CA_DIR),
+            ('ssl_version', 'SSLv23'),
+            ('ssl_context', ssl_.create_urllib3_context()),
+        ]
         p = PoolManager()
         self.addCleanup(p.clear)
         conn_pools = [
@@ -186,7 +190,7 @@ class TestPoolManager(unittest.TestCase):
         # existing pool.
         dup_pools = []
 
-        for key, value in connection_pool_kw.items():
+        for key, value in connection_pool_kw:
             p.connection_pool_kw[key] = value
             conn_pools.append(p.connection_from_url('https://example.com/'))
             dup_pools.append(p.connection_from_url('https://example.com/'))
@@ -225,22 +229,24 @@ class TestPoolManager(unittest.TestCase):
 
     def test_pools_keyed_with_from_host(self):
         """Assert pools are still keyed correctly with connection_from_host."""
-        ssl_kw = {
-            'key_file': '/root/totally_legit.key',
-            'cert_file': '/root/totally_legit.crt',
-            'cert_reqs': 'CERT_REQUIRED',
-            'ca_certs': '/root/path_to_pem',
-            'ssl_version': 'SSLv23_METHOD',
-        }
-        p = PoolManager(5, **ssl_kw)
+        ssl_kw = [
+            ('key_file', DEFAULT_CERTS['keyfile']),
+            ('cert_file', DEFAULT_CERTS['certfile']),
+            ('cert_reqs', 'CERT_REQUIRED'),
+            ('ca_certs', DEFAULT_CA),
+            ('ca_cert_dir', DEFAULT_CA_DIR),
+            ('ssl_version', 'SSLv23'),
+            ('ssl_context', ssl_.create_urllib3_context()),
+        ]
+        p = PoolManager()
         self.addCleanup(p.clear)
         conns = []
         conns.append(
             p.connection_from_host('example.com', 443, scheme='https')
         )
 
-        for k in ssl_kw:
-            p.connection_pool_kw[k] = 'newval'
+        for k, v in ssl_kw:
+            p.connection_pool_kw[k] = v
             conns.append(
                 p.connection_from_host('example.com', 443, scheme='https')
             )

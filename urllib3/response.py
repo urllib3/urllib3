@@ -13,8 +13,8 @@ from .exceptions import (
     ProtocolError, DecodeError, ReadTimeoutError
 )
 from .packages.six import string_types as basestring, binary_type
-from .connection import BaseSSLError
 from .util.response import is_fp_closed
+from .util.ssl_ import BaseSSLError
 
 log = logging.getLogger(__name__)
 
@@ -89,11 +89,6 @@ class HTTPResponse(io.IOBase):
         (like 'gzip' and 'deflate') will be skipped and raw data will be used
         instead.
 
-    :param original_response:
-        When this HTTPResponse wrapper is generated from an httplib.HTTPResponse
-        object, it's convenient to include the original for debug purposes. It's
-        otherwise unused.
-
     :param retries:
         The retries contains the last :class:`~urllib3.util.retry.Retry` that
         was used during the request.
@@ -123,15 +118,15 @@ class HTTPResponse(io.IOBase):
         self._fp = None
         self._original_response = original_response
         self._fp_bytes_read = 0
+        self._buffer = b''
 
         if body and isinstance(body, (basestring, binary_type)):
             self._body = body
+        else:
+            self._fp = body
 
         self._pool = pool
         self._connection = connection
-
-        if hasattr(body, 'read'):
-            self._fp = body
 
         # If requested, preload the body.
         if preload_content and not self._body:
@@ -160,7 +155,7 @@ class HTTPResponse(io.IOBase):
     @property
     def data(self):
         # For backwords-compat with earlier urllib3 0.4 and earlier.
-        if self._body:
+        if self._body is not None:
             return self._body
 
         if self._fp:
@@ -257,21 +252,11 @@ class HTTPResponse(io.IOBase):
             # If we didn't terminate cleanly, we need to throw away our
             # connection.
             if not clean_exit:
-                # The response may not be closed but we're not going to use it
-                # anymore so close it now to ensure that the connection is
-                # released back to the pool.
-                if self._original_response:
-                    self._original_response.close()
+                self.close()
 
-                # Closing the response may not actually be sufficient to close
-                # everything, so if we have a hold of the connection close that
-                # too.
-                if self._connection:
-                    self._connection.close()
-
-            # If we hold the original response but it's closed now, we should
+            # If we hold the original response but it's finished now, we should
             # return the connection back to the pool.
-            if self._original_response and self._original_response.closed:
+            if self._original_response and self._original_response.complete:
                 self.release_conn()
 
     def read(self, amt=None, decode_content=None, cache_content=False):
@@ -295,43 +280,63 @@ class HTTPResponse(io.IOBase):
             after having ``.read()`` the file object. (Overridden if ``amt`` is
             set.)
         """
+        # TODO: refactor this method to better handle buffered output.
+        # This method is a weird one. We treat this read() like a buffered
+        # read, meaning that it never reads "short" unless there is an EOF
+        # condition at work. However, we have a decompressor in play here,
+        # which means our read() returns decompressed data.
+        #
+        # This means the buffer can only meaningfully buffer decompressed data.
+        # This makes this method prone to over-reading, and forcing too much
+        # data into the buffer. That's unfortunate, but right now I'm not smart
+        # enough to come up with a way to solve that problem.
         self._init_decoder()
         if decode_content is None:
             decode_content = self.decode_content
 
-        if self._fp is None:
-            return
+        if self._fp is None and not self._buffer:
+            return b''
 
-        flush_decoder = False
-        data = None
+        data = self._buffer
 
         with self._error_catcher():
             if amt is None:
-                # cStringIO doesn't like amt=None
-                data = self._fp.read()
-                flush_decoder = True
+                raw_data = b''.join(self._fp)
+                self._fp_bytes_read += len(raw_data)
+                data += self._decode(
+                    raw_data, decode_content, flush_decoder=True
+                )
+                self._buffer = b''
+                self._fp = None
             else:
                 cache_content = False
-                data = self._fp.read(amt)
-                if amt != 0 and not data:
-                    # Close the connection when no data is returned
-                    #
-                    # TODO: While we no longer use httplib, and so technically
-                    # don't need this close, some tests implicitly rely on it.
-                    # Most notably, those tests that patch in things like
-                    # BytesIO as the _fp. We shouldn't actually need the close
-                    # anymore if we can rewrite those tests to use actual
-                    # HTTP responses.
-                    self._fp.close()
-                    flush_decoder = True
+                data_len = len(data)
+                chunks = [data]
 
-        if data:
-            self._fp_bytes_read += len(data)
+                while data_len < amt:
+                    try:
+                        raw_chunk = next(self._fp)
+                    except StopIteration:
+                        final_chunk = self._decode(
+                            b'', decode_content, flush_decoder=True
+                        )
+                        chunks.append(final_chunk)
+                        self._fp = None
+                        break
 
-            data = self._decode(data, decode_content, flush_decoder)
+                    self._fp_bytes_read += len(raw_chunk)
+                    decoded_chunk = self._decode(
+                        raw_chunk, decode_content, flush_decoder=False
+                    )
+                    chunks.append(decoded_chunk)
+                    data_len += len(decoded_chunk)
 
-            if cache_content:
-                self._body = data
+                data = b''.join(chunks)
+                self._buffer = data[amt:]
+                data = data[:amt]
+
+        if data and cache_content:
+            self._body = data
 
         return data
 
@@ -358,28 +363,20 @@ class HTTPResponse(io.IOBase):
                 yield data
 
     @classmethod
-    def from_httplib(ResponseCls, r, **response_kw):
+    def from_base(ResponseCls, r, **response_kw):
         """
-        Given an :class:`httplib.HTTPResponse` instance ``r``, return a
+        Given an :class:`urllib3.base.Response` instance ``r``, return a
         corresponding :class:`urllib3.response.HTTPResponse` object.
 
         Remaining parameters are passed to the HTTPResponse constructor, along
         with ``original_response=r``.
         """
-        headers = r.msg
-
-        if not isinstance(headers, HTTPHeaderDict):
-            headers = HTTPHeaderDict(headers.items())
-
-        # HTTPResponse objects in Python 3 don't have a .strict attribute
-        strict = getattr(r, 'strict', 0)
-        resp = ResponseCls(body=r,
-                           headers=headers,
-                           status=r.status,
+        resp = ResponseCls(body=r.body,
+                           headers=r.headers,
+                           status=r.status_code,
                            version=r.version,
-                           reason=r.reason,
-                           strict=strict,
                            original_response=r,
+                           connection=r.body,
                            **response_kw)
         return resp
 
@@ -394,20 +391,23 @@ class HTTPResponse(io.IOBase):
     def close(self):
         if not self.closed:
             self._fp.close()
+            self._fp = None
 
         if self._connection:
             self._connection.close()
 
     @property
     def closed(self):
+        # TODO: Do we need this?
         if self._fp is None:
             return True
-        elif hasattr(self._fp, 'closed'):
-            return self._fp.closed
+        elif hasattr(self._fp, 'complete'):
+            return self._fp.complete
         else:
-            return True
+            return False
 
     def fileno(self):
+        # TODO: Do we need this?
         if self._fp is None:
             raise IOError("HTTPResponse has no file to get a fileno from")
         elif hasattr(self._fp, "fileno"):
@@ -415,10 +415,6 @@ class HTTPResponse(io.IOBase):
         else:
             raise IOError("The file-like object this HTTPResponse is wrapped "
                           "around has no file descriptor")
-
-    def flush(self):
-        if self._fp is not None and hasattr(self._fp, 'flush'):
-            return self._fp.flush()
 
     def readable(self):
         # This method is required for `io` module compatibility.
