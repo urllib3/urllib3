@@ -18,7 +18,7 @@ from urllib3._collections import HTTPHeaderDict, OrderedDict
 
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from dummyserver.server import (
-    DEFAULT_CERTS, DEFAULT_CA, get_unreachable_address)
+    DEFAULT_CERTS, DEFAULT_CA, COMBINED_CERT_AND_KEY, get_unreachable_address)
 
 from .. import onlyPy3, LogRecorder
 
@@ -84,6 +84,147 @@ class TestSNI(SocketDummyServerTestCase):
         done_receiving.wait()
         self.assertTrue(self.host.encode('ascii') in self.buf,
                         "missing hostname in SSL handshake")
+
+
+class TestClientCerts(SocketDummyServerTestCase):
+    """
+    Tests for client certificate support.
+    """
+    def _wrap_in_ssl(self, sock):
+        """
+        Given a single socket, wraps it in TLS.
+        """
+        return ssl.wrap_socket(
+            sock,
+            ssl_version=ssl.PROTOCOL_SSLv23,
+            cert_reqs=ssl.CERT_REQUIRED,
+            ca_certs=DEFAULT_CA,
+            certfile=DEFAULT_CERTS['certfile'],
+            keyfile=DEFAULT_CERTS['keyfile'],
+            server_side=True
+        )
+
+    def test_client_certs_two_files(self):
+        """
+        Having a client cert in a separate file to its associated key works
+        properly.
+        """
+        done_receiving = Event()
+        client_certs = []
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            sock = self._wrap_in_ssl(sock)
+
+            client_certs.append(sock.getpeercert())
+
+            data = b''
+            while not data.endswith(b'\r\n\r\n'):
+                data += sock.recv(8192)
+
+            sock.sendall(
+                b'HTTP/1.1 200 OK\r\n'
+                b'Server: testsocket\r\n'
+                b'Connection: close\r\n'
+                b'Content-Length: 6\r\n'
+                b'\r\n'
+                b'Valid!'
+            )
+
+            done_receiving.wait(5)
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPSConnectionPool(
+            self.host,
+            self.port,
+            cert_file=DEFAULT_CERTS['certfile'],
+            key_file=DEFAULT_CERTS['keyfile'],
+            cert_reqs='REQUIRED',
+            ca_certs=DEFAULT_CA,
+        )
+        self.addCleanup(pool.close)
+        pool.request('GET', '/', retries=0)
+        done_receiving.set()
+
+        self.assertEqual(len(client_certs), 1)
+
+    def test_client_certs_one_file(self):
+        """
+        Having a client cert and its associated private key in just one file
+        works properly.
+        """
+        done_receiving = Event()
+        client_certs = []
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            sock = self._wrap_in_ssl(sock)
+
+            client_certs.append(sock.getpeercert())
+
+            data = b''
+            while not data.endswith(b'\r\n\r\n'):
+                data += sock.recv(8192)
+
+            sock.sendall(
+                b'HTTP/1.1 200 OK\r\n'
+                b'Server: testsocket\r\n'
+                b'Connection: close\r\n'
+                b'Content-Length: 6\r\n'
+                b'\r\n'
+                b'Valid!'
+            )
+
+            done_receiving.wait(5)
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPSConnectionPool(
+            self.host,
+            self.port,
+            cert_file=COMBINED_CERT_AND_KEY,
+            cert_reqs='REQUIRED',
+            ca_certs=DEFAULT_CA,
+        )
+        self.addCleanup(pool.close)
+        pool.request('GET', '/', retries=0)
+        done_receiving.set()
+
+        self.assertEqual(len(client_certs), 1)
+
+    def test_missing_client_certs_raises_error(self):
+        """
+        Having client certs not be present causes an error.
+        """
+        done_receiving = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            try:
+                self._wrap_in_ssl(sock)
+            except ssl.SSLError:
+                pass
+
+            done_receiving.wait(5)
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPSConnectionPool(
+            self.host,
+            self.port,
+            cert_reqs='REQUIRED',
+            ca_certs=DEFAULT_CA,
+        )
+        self.addCleanup(pool.close)
+        try:
+            pool.request('GET', '/', retries=0)
+        except SSLError:
+            done_receiving.set()
+        else:
+            done_receiving.set()
+            self.fail("TLS handshake succeeded")
 
 
 class TestSocketClosing(SocketDummyServerTestCase):

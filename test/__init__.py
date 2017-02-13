@@ -9,6 +9,7 @@ from nose.plugins.skip import SkipTest
 
 from urllib3.exceptions import HTTPWarning
 from urllib3.packages import six
+from urllib3.util import ssl_
 
 # We need a host that will not immediately close the connection with a TCP
 # Reset. SO suggests this hostname
@@ -90,6 +91,18 @@ def onlyPy3(test):
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python3.x to run".format(name=test.__name__)
         if not six.PY3:
+            raise SkipTest(msg)
+        return test(*args, **kwargs)
+    return wrapper
+
+
+def notSecureTransport(test):
+    """Skips this test when SecureTransport is in use."""
+
+    @functools.wraps(test)
+    def wrapper(*args, **kwargs):
+        msg = "{name} does not run with SecureTransport".format(name=test.__name__)
+        if ssl_.IS_SECURETRANSPORT:
             raise SkipTest(msg)
         return test(*args, **kwargs)
     return wrapper
