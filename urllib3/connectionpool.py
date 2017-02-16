@@ -802,12 +802,21 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         except AttributeError:  # Platform-specific: Python 2.6
             set_tunnel = conn._set_tunnel
 
+        proxy_sock = None
+        if self.proxy.scheme == 'https':
+            self._validate_conn(conn)
+            proxy_sock = conn.sock
+            conn.sock = None
+
         if sys.version_info <= (2, 6, 4) and not self.proxy_headers:  # Python 2.6.4 and older
             set_tunnel(self.host, self.port)
         else:
             set_tunnel(self.host, self.port, self.proxy_headers)
 
-        conn.connect()
+        if proxy_sock is not None:
+            conn.sock = proxy_sock
+        else:
+            conn.connect()
 
     def _new_conn(self):
         """
