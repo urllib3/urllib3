@@ -6,6 +6,9 @@ dev (master)
 
 * Improved performance of certain selector system calls on Python 3.5 and
   later. (Pull #1095)
+  
+* Resolved issue where the PyOpenSSL backend would not wrap SysCallError
+  exceptions appropriately when sending data. (Pull #1125)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
