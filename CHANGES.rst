@@ -4,6 +4,107 @@ Changes
 dev (master)
 ------------
 
+* Improved performance of certain selector system calls on Python 3.5 and
+  later. (Pull #1095)
+
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.20 (2017-01-19)
+-----------------
+
+* Added support for waiting for I/O using selectors other than select,
+  improving urllib3's behaviour with large numbers of concurrent connections.
+  (Pull #1001)
+
+* Updated the date for the system clock check. (Issue #1005)
+
+* ConnectionPools now correctly consider hostnames to be case-insensitive.
+  (Issue #1032)
+
+* Outdated versions of PyOpenSSL now cause the PyOpenSSL contrib module
+  to fail when it is injected, rather than at first use. (Pull #1063)
+
+* Outdated versions of cryptography now cause the PyOpenSSL contrib module
+  to fail when it is injected, rather than at first use. (Issue #1044)
+
+* Automatically attempt to rewind a file-like body object when a request is
+  retried or redirected. (Pull #1039)
+
+* Fix some bugs that occur when modules incautiously patch the queue module.
+  (Pull #1061)
+
+* Prevent retries from occuring on read timeouts for which the request method
+  was not in the method whitelist. (Issue #1059)
+
+* Changed the PyOpenSSL contrib module to lazily load idna to avoid
+  unnecessarily bloating the memory of programs that don't need it. (Pull
+  #1076)
+
+* Add support for IPv6 literals with zone identifiers. (Pull #1013)
+
+* Added support for socks5h:// and socks4a:// schemes when working with SOCKS
+  proxies, and controlled remote DNS appropriately. (Issue #1035)
+
+
+1.19.1 (2016-11-16)
+-------------------
+
+* Fixed AppEngine import that didn't function on Python 3.5. (Pull #1025)
+
+
+1.19 (2016-11-03)
+-----------------
+
+* urllib3 now respects Retry-After headers on 413, 429, and 503 responses when
+  using the default retry logic. (Pull #955)
+
+* Remove markers from setup.py to assist ancient setuptools versions. (Issue
+  #986)
+
+* Disallow superscripts and other integerish things in URL ports. (Issue #989)
+
+* Allow urllib3's HTTPResponse.stream() method to continue to work with
+  non-httplib underlying FPs. (Pull #990)
+
+* Empty filenames in multipart headers are now emitted as such, rather than
+  being supressed. (Issue #1015)
+
+* Prefer user-supplied Host headers on chunked uploads. (Issue #1009)
+
+
+1.18.1 (2016-10-27)
+-------------------
+
+* CVE-2016-9015. Users who are using urllib3 version 1.17 or 1.18 along with
+  PyOpenSSL injection and OpenSSL 1.1.0 *must* upgrade to this version. This
+  release fixes a vulnerability whereby urllib3 in the above configuration
+  would silently fail to validate TLS certificates due to erroneously setting
+  invalid flags in OpenSSL's ``SSL_CTX_set_verify`` function. These erroneous
+  flags do not cause a problem in OpenSSL versions before 1.1.0, which
+  interprets the presence of any flag as requesting certificate validation.
+
+  There is no PR for this patch, as it was prepared for simultaneous disclosure
+  and release. The master branch received the same fix in PR #1010.
+
+
+1.18 (2016-09-26)
+-----------------
+
+* Fixed incorrect message for IncompleteRead exception. (PR #973)
+
+* Accept ``iPAddress`` subject alternative name fields in TLS certificates.
+  (Issue #258)
+
+* Fixed consistency of ``HTTPResponse.closed`` between Python 2 and 3.
+  (Issue #977)
+
+* Fixed handling of wildcard certificates when using PyOpenSSL. (Issue #979)
+
+
+1.17 (2016-09-06)
+-----------------
+
 * Accept ``SSLContext`` objects for use in SSL/TLS negotiation. (Issue #835)
 
 * ConnectionPool debug log now includes scheme, host, and port. (Issue #897)
@@ -43,7 +144,8 @@ dev (master)
 * Implemented ``enforce_content_length`` to enable exceptions when
   incomplete data chunks are received. (PR #949)
 
-* ... [Short description of non-trivial change.] (Issue #)
+* Dropped connection start, dropped connection reset, redirect, forced retry,
+  and new HTTPS connection log levels to DEBUG, from INFO. (PR #967)
 
 
 1.16 (2016-06-11)

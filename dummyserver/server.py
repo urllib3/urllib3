@@ -14,6 +14,7 @@ import sys
 import threading
 import socket
 import warnings
+from datetime import datetime
 
 from urllib3.exceptions import HTTPWarning
 
@@ -32,6 +33,10 @@ DEFAULT_CERTS = {
 }
 NO_SAN_CERTS = {
     'certfile': os.path.join(CERTS_PATH, 'server.no_san.crt'),
+    'keyfile': DEFAULT_CERTS['keyfile']
+}
+IP_SAN_CERTS = {
+    'certfile': os.path.join(CERTS_PATH, 'server.ip_san.crt'),
     'keyfile': DEFAULT_CERTS['keyfile']
 }
 IPV6_ADDR_CERTS = {
@@ -66,6 +71,7 @@ def _has_ipv6(host):
     if sock:
         sock.close()
     return has_ipv6
+
 
 # Some systems may have IPv6 support but DNS may not be configured
 # properly. We can not count that localhost will resolve to ::1 on all
@@ -114,7 +120,7 @@ class SocketServerThread(threading.Thread):
         self.port = sock.getsockname()[1]
 
         # Once listen() returns, the server socket is ready
-        sock.listen(0)
+        sock.listen(1)
 
         if self.ready_event:
             self.ready_event.set()
@@ -204,6 +210,8 @@ def bind_sockets(port, address=None, family=socket.AF_UNSPEC, backlog=128,
 
 
 def run_tornado_app(app, io_loop, certs, scheme, host):
+    app.last_req = datetime.fromtimestamp(0)
+
     if scheme == 'https':
         http_server = tornado.httpserver.HTTPServer(app, ssl_options=certs,
                                                     io_loop=io_loop)

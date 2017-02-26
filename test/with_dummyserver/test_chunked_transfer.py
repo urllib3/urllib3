@@ -28,7 +28,8 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         self.start_chunked_handler()
         chunks = ['foo', 'bar', '', 'bazzzzzzzzzzzzzzzzzzzzzz']
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        r = pool.urlopen('GET', '/', chunks, headers=dict(DNT='1'), chunked=True)
+        pool.urlopen('GET', '/', chunks, headers=dict(DNT='1'), chunked=True)
+        self.addCleanup(pool.close)
 
         self.assertTrue(b'Transfer-Encoding' in self.buffer)
         body = self.buffer.split(b'\r\n\r\n', 1)[1]
@@ -42,7 +43,9 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
     def _test_body(self, data):
         self.start_chunked_handler()
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        r = pool.urlopen('GET', '/', data, chunked=True)
+        self.addCleanup(pool.close)
+
+        pool.urlopen('GET', '/', data, chunked=True)
         header, body = self.buffer.split(b'\r\n\r\n', 1)
 
         self.assertTrue(b'Transfer-Encoding: chunked' in header.split(b'\r\n'))
@@ -74,3 +77,31 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
     def test_empty_iterable_body(self):
         self._test_body([])
+
+    def test_removes_duplicate_host_header(self):
+        self.start_chunked_handler()
+        chunks = ['foo', 'bar', '', 'bazzzzzzzzzzzzzzzzzzzzzz']
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        self.addCleanup(pool.close)
+        pool.urlopen(
+            'GET', '/', chunks, headers={'Host': 'test.org'}, chunked=True
+        )
+
+        header_block = self.buffer.split(b'\r\n\r\n', 1)[0].lower()
+        header_lines = header_block.split(b'\r\n')[1:]
+
+        host_headers = [x for x in header_lines if x.startswith(b'host')]
+        self.assertEqual(len(host_headers), 1)
+
+    def test_provides_default_host_header(self):
+        self.start_chunked_handler()
+        chunks = ['foo', 'bar', '', 'bazzzzzzzzzzzzzzzzzzzzzz']
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        self.addCleanup(pool.close)
+        pool.urlopen('GET', '/', chunks, chunked=True)
+
+        header_block = self.buffer.split(b'\r\n\r\n', 1)[0].lower()
+        header_lines = header_block.split(b'\r\n')[1:]
+
+        host_headers = [x for x in header_lines if x.startswith(b'host')]
+        self.assertEqual(len(host_headers), 1)

@@ -8,7 +8,7 @@ from socket import error as SocketError
 
 from ._collections import HTTPHeaderDict
 from .exceptions import (
-    ProtocolError, DecodeError, ReadTimeoutError,
+    BodyNotHttplibCompatible, ProtocolError, DecodeError, ReadTimeoutError,
     ResponseNotChunked, IncompleteRead, InvalidHeader
 )
 from .packages.six import string_types as basestring, binary_type, PY3
@@ -424,7 +424,7 @@ class HTTPResponse(io.IOBase):
             If True, will attempt to decode the body based on the
             'content-encoding' header.
         """
-        if self.chunked:
+        if self.chunked and self.supports_chunked_reads():
             for line in self.read_chunked(amt, decode_content=decode_content):
                 yield line
         else:
@@ -482,10 +482,10 @@ class HTTPResponse(io.IOBase):
     def closed(self):
         if self._fp is None:
             return True
+        elif hasattr(self._fp, 'isclosed'):
+            return self._fp.isclosed()
         elif hasattr(self._fp, 'closed'):
             return self._fp.closed
-        elif hasattr(self._fp, 'isclosed'):  # Python 2
-            return self._fp.isclosed()
         else:
             return True
 
@@ -514,6 +514,15 @@ class HTTPResponse(io.IOBase):
         else:
             b[:len(temp)] = temp
             return len(temp)
+
+    def supports_chunked_reads(self):
+        """
+        Checks if the underlying file-like object looks like a
+        httplib.HTTPResponse object. We do this by testing for the fp
+        attribute. If it is present we assume it returns raw chunks as
+        processed by read_chunked().
+        """
+        return hasattr(self._fp, 'fp')
 
     def _update_chunk_length(self):
         # First, we'll figure out length of a chunk and then
@@ -566,6 +575,10 @@ class HTTPResponse(io.IOBase):
             raise ResponseNotChunked(
                 "Response is not chunked. "
                 "Header 'transfer-encoding: chunked' is missing.")
+        if not self.supports_chunked_reads():
+            raise BodyNotHttplibCompatible(
+                "Body should be httplib.HTTPResponse like. "
+                "It should have have an fp attribute which returns raw chunks.")
 
         # Don't bother reading the body of a HEAD request.
         if self._original_response and is_response_to_head(self._original_response):

@@ -196,6 +196,14 @@ class ResponseNotChunked(ProtocolError, ValueError):
     pass
 
 
+class BodyNotHttplibCompatible(HTTPError):
+    """
+    Body should be httplib.HTTPResponse like (have an fp attribute which
+    returns raw chunks) for read_chunked().
+    """
+    pass
+
+
 class IncompleteRead(HTTPError, httplib_IncompleteRead):
     """
     Response length doesn't match expected Content-Length
@@ -205,9 +213,11 @@ class IncompleteRead(HTTPError, httplib_IncompleteRead):
     reads.
     """
     def __init__(self, partial, expected):
-        message = ('IncompleteRead(%i bytes read, '
-                   '%i more expected)' % (partial, expected))
-        httplib_IncompleteRead.__init__(self, message)
+        super(IncompleteRead, self).__init__(partial, expected)
+
+    def __repr__(self):
+        return ('IncompleteRead(%i bytes read, '
+                '%i more expected)' % (self.partial, self.expected))
 
 
 class InvalidHeader(HTTPError):
@@ -229,3 +239,8 @@ class HeaderParsingError(HTTPError):
     def __init__(self, defects, unparsed_data):
         message = '%s, unparsed data: %r' % (defects or 'Unknown', unparsed_data)
         super(HeaderParsingError, self).__init__(message)
+
+
+class UnrewindableBodyError(HTTPError):
+    "urllib3 encountered an error when trying to rewind a body"
+    pass

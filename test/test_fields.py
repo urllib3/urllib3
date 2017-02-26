@@ -1,7 +1,7 @@
 import unittest
 
 from urllib3.fields import guess_content_type, RequestField
-from urllib3.packages.six import u, PY3
+from urllib3.packages.six import u
 from . import onlyPy2
 
 
@@ -34,6 +34,15 @@ class TestRequestField(unittest.TestCase):
             'Content-Disposition: form-data; name="somename"\r\n'
             'Content-Type: image/jpg\r\n'
             'Content-Location: /test\r\n'
+            '\r\n')
+
+    def test_make_multipart_empty_filename(self):
+        field = RequestField('somename', 'data', '')
+        field.make_multipart(content_type='application/octet-stream')
+        self.assertEqual(
+            field.render_headers(),
+            'Content-Disposition: form-data; name="somename"; filename=""\r\n'
+            'Content-Type: application/octet-stream\r\n'
             '\r\n')
 
     def test_render_parts(self):

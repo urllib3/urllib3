@@ -11,6 +11,9 @@ import zlib
 
 from io import BytesIO
 from tornado.web import RequestHandler
+from tornado import httputil
+from datetime import datetime
+from datetime import timedelta
 
 from urllib3.packages.six.moves.http_client import responses
 from urllib3.packages.six.moves.urllib.parse import urlsplit
@@ -155,8 +158,12 @@ class TestingApp(RequestHandler):
     def redirect(self, request):
         "Perform a redirect to ``target``"
         target = request.params.get('target', '/')
+        status = request.params.get('status', '303 See Other')
+        if len(status) == 3:
+            status = '%s Redirect' % status.decode('latin-1')
+
         headers = [('Location', target)]
-        return Response(status='303 See Other', headers=headers)
+        return Response(status=status, headers=headers)
 
     def multi_redirect(self, request):
         "Performs a redirect chain based on ``redirect_codes``"
@@ -260,6 +267,29 @@ class TestingApp(RequestHandler):
 
         return Response(status=status)
 
+    def retry_after(self, request):
+        if datetime.now() - self.application.last_req < timedelta(seconds=1):
+            status = request.params.get("status", "429 Too Many Requests")
+            return Response(
+                    status=status.decode('utf-8'),
+                    headers=[('Retry-After', '1')])
+
+        self.application.last_req = datetime.now()
+
+        return Response(status="200 OK")
+
+    def redirect_after(self, request):
+        "Perform a redirect to ``target``"
+        date = request.params.get('date')
+        if date:
+            retry_after = str(httputil.format_timestamp(
+                    datetime.fromtimestamp(float(date))))
+        else:
+            retry_after = '1'
+        target = request.params.get('target', '/')
+        headers = [('Location', target), ('Retry-After', retry_after)]
+        return Response(status='303 See Other', headers=headers)
+
     def shutdown(self, request):
         sys.exit()
 
@@ -300,6 +330,7 @@ def _parse_header(line):
             value = value[1:-1]
         pdict[name] = value
     return key, pdict
+
 
 # TODO: make the following conditional as soon as we know a version
 #       which does not require this fix.

@@ -59,9 +59,10 @@ setup(name='urllib3',
               'cryptography>=1.3.4',
               'idna>=2.0.0',
               'certifi',
+              "ipaddress",
           ],
           'socks': [
-              'PySocks>=1.5.6,<2.0',
+              'PySocks>=1.5.6,<2.0,!=1.5.7',
           ]
       },
       )

@@ -1,6 +1,7 @@
 import hashlib
 import warnings
 import logging
+import io
 import unittest
 import ssl
 import socket
@@ -9,7 +10,8 @@ from itertools import chain
 from mock import patch, Mock
 
 from urllib3 import add_stderr_logger, disable_warnings
-from urllib3.util.request import make_headers
+from urllib3.util.request import make_headers, rewind_body, _FAILEDTELL
+from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
 from urllib3.util.url import (
     get_host,
@@ -19,6 +21,7 @@ from urllib3.util.url import (
 )
 from urllib3.util.ssl_ import (
     resolve_cert_reqs,
+    resolve_ssl_version,
     ssl_wrap_socket,
     _const_compare_digest_backport,
 )
@@ -26,14 +29,16 @@ from urllib3.exceptions import (
     LocationParseError,
     TimeoutStateError,
     InsecureRequestWarning,
-    SSLError,
     SNIMissingWarning,
+    InvalidHeader,
+    UnrewindableBodyError,
 )
 from urllib3.util.connection import (
     allowed_gai_family,
     _has_ipv6
 )
 from urllib3.util import is_fp_closed, ssl_
+from urllib3.packages import six
 
 from . import clear_warnings
 
@@ -41,6 +46,7 @@ from . import clear_warnings
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller
 # numbers used for timeouts
 TIMEOUT_EPOCH = 1000
+
 
 class TestUtil(unittest.TestCase):
     def test_get_host(self):
@@ -77,8 +83,10 @@ class TestUtil(unittest.TestCase):
             'http://[2a00:1450:4001:c01::67]:80/test': ('http', '[2a00:1450:4001:c01::67]', 80),
 
             # More IPv6 from http://www.ietf.org/rfc/rfc2732.txt
-            'http://[fedc:ba98:7654:3210:fedc:ba98:7654:3210]:8000/index.html': ('http', '[fedc:ba98:7654:3210:fedc:ba98:7654:3210]', 8000),
-            'http://[1080:0:0:0:8:800:200c:417a]/index.html': ('http', '[1080:0:0:0:8:800:200c:417a]', None),
+            'http://[fedc:ba98:7654:3210:fedc:ba98:7654:3210]:8000/index.html': (
+                'http', '[fedc:ba98:7654:3210:fedc:ba98:7654:3210]', 8000),
+            'http://[1080:0:0:0:8:800:200c:417a]/index.html': (
+                'http', '[1080:0:0:0:8:800:200c:417a]', None),
             'http://[3ffe:2a00:100:7031::1]': ('http', '[3ffe:2a00:100:7031::1]', None),
             'http://[1080::8:800:200c:417a]/foo': ('http', '[1080::8:800:200c:417a]', None),
             'http://[::192.9.5.5]/ipng': ('http', '[::192.9.5.5]', None),
@@ -95,13 +103,18 @@ class TestUtil(unittest.TestCase):
             'http://google.com:foo',
             'http://::1/',
             'http://::1:80/',
+            'http://google.com:-80',
+            six.u('http://google.com:\xb2\xb2'),  # \xb2 = ^2
         ]
 
         for location in invalid_host:
             self.assertRaises(LocationParseError, get_host, location)
 
     def test_host_normalization(self):
-        """Asserts the scheme and host is normalized to lower-case."""
+        """
+        Asserts the scheme and hosts with a normalizable scheme are
+        converted to lower-case.
+        """
         url_host_map = {
             # Hosts
             'HTTP://GOOGLE.COM/mail/': ('http', 'google.com', None),
@@ -111,8 +124,13 @@ class TestUtil(unittest.TestCase):
             '173.194.35.7': ('http', '173.194.35.7', None),
             'HTTP://173.194.35.7': ('http', '173.194.35.7', None),
             'HTTP://[2a00:1450:4001:c01::67]:80/test': ('http', '[2a00:1450:4001:c01::67]', 80),
-            'HTTP://[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]:8000/index.html': ('http', '[fedc:ba98:7654:3210:fedc:ba98:7654:3210]', 8000),
-            'HTTPS://[1080:0:0:0:8:800:200c:417A]/index.html': ('https', '[1080:0:0:0:8:800:200c:417a]', None),
+            'HTTP://[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]:8000/index.html': (
+                'http', '[fedc:ba98:7654:3210:fedc:ba98:7654:3210]', 8000),
+            'HTTPS://[1080:0:0:0:8:800:200c:417A]/index.html': (
+                'https', '[1080:0:0:0:8:800:200c:417a]', None),
+            'abOut://eXamPlE.com?info=1': ('about', 'eXamPlE.com', None),
+            'http+UNIX://%2fvar%2frun%2fSOCKET/path': (
+                'http+unix', '%2fvar%2frun%2fSOCKET', None),
         }
         for url, expected_host in url_host_map.items():
             returned_host = get_host(url)
@@ -122,7 +140,8 @@ class TestUtil(unittest.TestCase):
         """Assert parse_url normalizes the scheme/host, and only the scheme/host"""
         test_urls = [
             ('HTTP://GOOGLE.COM/MAIL/', 'http://google.com/MAIL/'),
-            ('HTTP://JeremyCline:Hunter2@Example.com:8080/', 'http://JeremyCline:Hunter2@example.com:8080/'),
+            ('HTTP://JeremyCline:Hunter2@Example.com:8080/',
+             'http://JeremyCline:Hunter2@example.com:8080/'),
             ('HTTPS://Example.Com/?Key=Value', 'https://example.com/?Key=Value'),
             ('Https://Example.Com/#Fragment', 'https://example.com/#Fragment'),
         ]
@@ -130,34 +149,39 @@ class TestUtil(unittest.TestCase):
             actual_normalized_url = parse_url(url).url
             self.assertEqual(actual_normalized_url, expected_normalized_url)
 
-    parse_url_host_map = {
-        'http://google.com/mail': Url('http', host='google.com', path='/mail'),
-        'http://google.com/mail/': Url('http', host='google.com', path='/mail/'),
-        'http://google.com/mail': Url('http', host='google.com', path='mail'),
-        'google.com/mail': Url(host='google.com', path='/mail'),
-        'http://google.com/': Url('http', host='google.com', path='/'),
-        'http://google.com': Url('http', host='google.com'),
-        'http://google.com?foo': Url('http', host='google.com', path='', query='foo'),
+    parse_url_host_map = [
+        ('http://google.com/mail', Url('http', host='google.com', path='/mail')),
+        ('http://google.com/mail/', Url('http', host='google.com', path='/mail/')),
+        ('http://google.com/mail', Url('http', host='google.com', path='mail')),
+        ('google.com/mail', Url(host='google.com', path='/mail')),
+        ('http://google.com/', Url('http', host='google.com', path='/')),
+        ('http://google.com', Url('http', host='google.com')),
+        ('http://google.com?foo', Url('http', host='google.com', path='', query='foo')),
 
         # Path/query/fragment
-        '': Url(),
-        '/': Url(path='/'),
-        '#?/!google.com/?foo#bar': Url(path='', fragment='?/!google.com/?foo#bar'),
-        '/foo': Url(path='/foo'),
-        '/foo?bar=baz': Url(path='/foo', query='bar=baz'),
-        '/foo?bar=baz#banana?apple/orange': Url(path='/foo', query='bar=baz', fragment='banana?apple/orange'),
+        ('', Url()),
+        ('/', Url(path='/')),
+        ('#?/!google.com/?foo#bar', Url(path='', fragment='?/!google.com/?foo#bar')),
+        ('/foo', Url(path='/foo')),
+        ('/foo?bar=baz', Url(path='/foo', query='bar=baz')),
+        ('/foo?bar=baz#banana?apple/orange', Url(path='/foo',
+                                                 query='bar=baz',
+                                                 fragment='banana?apple/orange')),
 
         # Port
-        'http://google.com/': Url('http', host='google.com', path='/'),
-        'http://google.com:80/': Url('http', host='google.com', port=80, path='/'),
-        'http://google.com:80': Url('http', host='google.com', port=80),
+        ('http://google.com/', Url('http', host='google.com', path='/')),
+        ('http://google.com:80/', Url('http', host='google.com', port=80, path='/')),
+        ('http://google.com:80', Url('http', host='google.com', port=80)),
 
         # Auth
-        'http://foo:bar@localhost/': Url('http', auth='foo:bar', host='localhost', path='/'),
-        'http://foo@localhost/': Url('http', auth='foo', host='localhost', path='/'),
-        'http://foo:bar@baz@localhost/': Url('http', auth='foo:bar@baz', host='localhost', path='/'),
-        'http://@': Url('http', host=None, auth='')
-    }
+        ('http://foo:bar@localhost/', Url('http', auth='foo:bar', host='localhost', path='/')),
+        ('http://foo@localhost/', Url('http', auth='foo', host='localhost', path='/')),
+        ('http://foo:bar@baz@localhost/', Url('http',
+                                              auth='foo:bar@baz',
+                                              host='localhost',
+                                              path='/')),
+        ('http://@', Url('http', host=None, auth=''))
+    ]
 
     non_round_tripping_parse_url_host_map = {
         # Path/query/fragment
@@ -171,12 +195,13 @@ class TestUtil(unittest.TestCase):
         }
 
     def test_parse_url(self):
-        for url, expected_Url in chain(self.parse_url_host_map.items(), self.non_round_tripping_parse_url_host_map.items()):
+        for url, expected_Url in chain(self.parse_url_host_map,
+                                       self.non_round_tripping_parse_url_host_map.items()):
             returned_Url = parse_url(url)
             self.assertEqual(returned_Url, expected_Url)
 
     def test_unparse_url(self):
-        for url, expected_Url in self.parse_url_host_map.items():
+        for url, expected_Url in self.parse_url_host_map:
             self.assertEqual(url, expected_Url.url)
 
     def test_parse_url_invalid_IPv6(self):
@@ -250,6 +275,41 @@ class TestUtil(unittest.TestCase):
             make_headers(disable_cache=True),
             {'cache-control': 'no-cache'})
 
+    def test_rewind_body(self):
+        body = io.BytesIO(b'test data')
+        self.assertEqual(body.read(), b'test data')
+
+        # Assert the file object has been consumed
+        self.assertEqual(body.read(), b'')
+
+        # Rewind it back to just be b'data'
+        rewind_body(body, 5)
+        self.assertEqual(body.read(), b'data')
+
+    def test_rewind_body_failed_tell(self):
+        body = io.BytesIO(b'test data')
+        body.read()  # Consume body
+
+        # Simulate failed tell()
+        body_pos = _FAILEDTELL
+        self.assertRaises(UnrewindableBodyError, rewind_body, body, body_pos)
+
+    def test_rewind_body_bad_position(self):
+        body = io.BytesIO(b'test data')
+        body.read()  # Consume body
+
+        # Pass non-integer position
+        self.assertRaises(ValueError, rewind_body, body, None)
+        self.assertRaises(ValueError, rewind_body, body, object())
+
+    def test_rewind_body_failed_seek(self):
+        class BadSeek():
+
+            def seek(self, pos, offset=0):
+                raise IOError
+
+        self.assertRaises(UnrewindableBodyError, rewind_body, BadSeek(), 2)
+
     def test_split_first(self):
         test_cases = {
             ('abcd', 'b'): ('a', 'cd', 'b'),
@@ -263,7 +323,7 @@ class TestUtil(unittest.TestCase):
             self.assertEqual(output, expected)
 
     def test_add_stderr_logger(self):
-        handler = add_stderr_logger(level=logging.INFO) # Don't actually print debug
+        handler = add_stderr_logger(level=logging.INFO)  # Don't actually print debug
         logger = logging.getLogger('urllib3')
         self.assertTrue(handler in logger.handlers)
 
@@ -328,7 +388,6 @@ class TestUtil(unittest.TestCase):
         except ValueError as e:
             self.assertTrue('int, float or None' in str(e))
 
-
     @patch('urllib3.util.timeout.current_time')
     def test_timeout(self, current_time):
         timeout = Timeout(total=3)
@@ -368,13 +427,11 @@ class TestUtil(unittest.TestCase):
         timeout = Timeout(5)
         self.assertEqual(timeout.total, 5)
 
-
     def test_timeout_str(self):
         timeout = Timeout(connect=1, read=2, total=3)
         self.assertEqual(str(timeout), "Timeout(connect=1, read=2, total=3)")
         timeout = Timeout(connect=1, read=None, total=3)
         self.assertEqual(str(timeout), "Timeout(connect=1, read=None, total=3)")
-
 
     @patch('urllib3.util.timeout.current_time')
     def test_timeout_elapsed(self, current_time):
@@ -396,6 +453,12 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(resolve_cert_reqs(ssl.CERT_REQUIRED), ssl.CERT_REQUIRED)
         self.assertEqual(resolve_cert_reqs('REQUIRED'), ssl.CERT_REQUIRED)
         self.assertEqual(resolve_cert_reqs('CERT_REQUIRED'), ssl.CERT_REQUIRED)
+
+    def test_resolve_ssl_version(self):
+        self.assertEqual(resolve_ssl_version(ssl.PROTOCOL_TLSv1), ssl.PROTOCOL_TLSv1)
+        self.assertEqual(resolve_ssl_version("PROTOCOL_TLSv1"), ssl.PROTOCOL_TLSv1)
+        self.assertEqual(resolve_ssl_version("TLSv1"), ssl.PROTOCOL_TLSv1)
+        self.assertEqual(resolve_ssl_version(ssl.PROTOCOL_SSLv23), ssl.PROTOCOL_SSLv23)
 
     def test_is_fp_closed_object_supports_closed(self):
         class ClosedFile(object):
@@ -524,3 +587,19 @@ class TestUtil(unittest.TestCase):
     def test_ip_family_ipv6_disabled(self):
         with patch('urllib3.util.connection.HAS_IPV6', False):
             self.assertEqual(allowed_gai_family(), socket.AF_INET)
+
+    def test_parse_retry_after(self):
+        invalid = [
+            "-1",
+            "+1",
+            "1.0",
+            six.u("\xb2"),  # \xb2 = ^2
+        ]
+        retry = Retry()
+
+        for value in invalid:
+            self.assertRaises(InvalidHeader, retry.parse_retry_after, value)
+
+        self.assertEqual(retry.parse_retry_after("0"), 0)
+        self.assertEqual(retry.parse_retry_after("1000"), 1000)
+        self.assertEqual(retry.parse_retry_after("\t42 "), 42)
