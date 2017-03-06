@@ -547,13 +547,13 @@ def _default_selector(*_):
     detect if the select module is being monkey-patched incorrectly
     by eventlet, greenlet, and preserve proper behavior. """
     global DefaultSelector
-    if hasattr(select, 'kqueue'):
+    if hasattr(select, 'kqueue'):  # Platform-specific: Mac OS
         selector_type = KqueueSelector
-    elif hasattr(select, 'epoll'):
+    elif hasattr(select, 'epoll'):  # Platform-specific: Linux
         selector_type = EpollSelector
-    elif hasattr(select, 'poll'):
+    elif hasattr(select, 'poll'):  # Platform-specific: Linux
         selector_type = PollSelector
-    elif hasattr(select, 'select'):
+    elif hasattr(select, 'select'):  # Platform-specific: Windows
         selector_type = SelectSelector
     else:  # Platform-specific: AppEngine
         raise ValueError('Platform does not have a selector')
