@@ -534,7 +534,8 @@ if hasattr(select, "kqueue"):
             self._kqueue.close()
             super(KqueueSelector, self).close()
 
-if not hasattr(select, 'select'):
+
+if not hasattr(select, 'select'):  # Platform-specific: AppEngine
     HAS_SELECT = False
 
 
@@ -554,7 +555,7 @@ def _default_selector(*_):
         selector_type = PollSelector
     elif hasattr(select, 'select'):
         selector_type = SelectSelector
-    else:
+    else:  # Platform-specific: AppEngine
         raise ValueError('Platform does not have a selector')
     DefaultSelector = selector_type
     return selector_type()
