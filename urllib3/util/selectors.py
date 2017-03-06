@@ -534,20 +534,31 @@ if hasattr(select, "kqueue"):
             self._kqueue.close()
             super(KqueueSelector, self).close()
 
+if not hasattr(select, 'select'):
+    HAS_SELECT = False
+
 
 # Choose the best implementation, roughly:
 # kqueue == epoll > poll > select. Devpoll not supported. (See above)
 # select() also can't accept a FD > FD_SETSIZE (usually around 1024)
-if 'KqueueSelector' in globals():  # Platform-specific: Mac OS and BSD
-    DefaultSelector = KqueueSelector
-elif 'EpollSelector' in globals():  # Platform-specific: Linux
-    DefaultSelector = EpollSelector
-elif 'PollSelector' in globals():  # Platform-specific: Linux
-    DefaultSelector = PollSelector
-elif 'SelectSelector' in globals():  # Platform-specific: Windows
-    DefaultSelector = SelectSelector
-else:  # Platform-specific: AppEngine
-    def no_selector(_):
-        raise ValueError("Platform does not have a selector")
-    DefaultSelector = no_selector
-    HAS_SELECT = False
+def _default_selector(*_):
+    """ This function serves as a first call for DefaultSelector to
+    detect if the select module is being monkey-patched incorrectly 
+    by eventlet, greenlet, and preserve proper behavior. """
+    global DefaultSelector
+    if hasattr(select, 'kqueue'):
+        selector_type = KqueueSelector
+    elif hasattr(select, 'epoll'):
+        selector_type = EpollSelector
+    elif hasattr(select, 'poll'):
+        selector_type = PollSelector
+    elif hasattr(select, 'select'):
+        selector_type = SelectSelector
+    else:
+        raise ValueError('Platform does not have a selector')
+    DefaultSelector = selector_type
+    return selector_type()
+
+
+DefaultSelector = _default_selector
+
