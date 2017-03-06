@@ -544,7 +544,7 @@ if not hasattr(select, 'select'):  # Platform-specific: AppEngine
 # select() also can't accept a FD > FD_SETSIZE (usually around 1024)
 def _default_selector(*_):
     """ This function serves as a first call for DefaultSelector to
-    detect if the select module is being monkey-patched incorrectly 
+    detect if the select module is being monkey-patched incorrectly
     by eventlet, greenlet, and preserve proper behavior. """
     global DefaultSelector
     if hasattr(select, 'kqueue'):
@@ -562,4 +562,3 @@ def _default_selector(*_):
 
 
 DefaultSelector = _default_selector
-
