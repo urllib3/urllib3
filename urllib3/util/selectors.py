@@ -336,7 +336,9 @@ if hasattr(select, "poll"):
     try:
         # Test if poll is supported by underlying OS
         select.poll()
-
+    except OSError:
+        pass
+    else:
         class PollSelector(BaseSelector):
             """ Poll-based selector """
             def __init__(self):
@@ -388,15 +390,14 @@ if hasattr(select, "poll"):
 
                 return ready
 
-    except OSError:
-        pass
-
 
 if hasattr(select, "epoll"):
     try:
         # Test if epoll is supported underlying OS
         select.epoll()
-
+    except OSError:
+        pass
+    else:
         class EpollSelector(BaseSelector):
             """ Epoll-based selector """
             def __init__(self):
@@ -462,15 +463,14 @@ if hasattr(select, "epoll"):
                 self._epoll.close()
                 super(EpollSelector, self).close()
 
-    except OSError:
-        pass
-
 
 if hasattr(select, "kqueue"):
     try:
         # Test if kqueue is supported underlying OS
         select.kqueue()
-
+    except OSError:
+        pass
+    else:
         class KqueueSelector(BaseSelector):
             """ Kqueue / Kevent-based selector """
             def __init__(self):
@@ -551,9 +551,6 @@ if hasattr(select, "kqueue"):
             def close(self):
                 self._kqueue.close()
                 super(KqueueSelector, self).close()
-
-    except OSError:
-        pass
 
 
 # Choose the best implementation, roughly:
