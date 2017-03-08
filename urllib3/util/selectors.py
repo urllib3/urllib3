@@ -333,206 +333,227 @@ if hasattr(select, "select"):
 
 
 if hasattr(select, "poll"):
-    class PollSelector(BaseSelector):
-        """ Poll-based selector """
-        def __init__(self):
-            super(PollSelector, self).__init__()
-            self._poll = select.poll()
+    try:
+        # Test if poll is supported by underlying OS
+        select.poll()
 
-        def register(self, fileobj, events, data=None):
-            key = super(PollSelector, self).register(fileobj, events, data)
-            event_mask = 0
-            if events & EVENT_READ:
-                event_mask |= select.POLLIN
-            if events & EVENT_WRITE:
-                event_mask |= select.POLLOUT
-            self._poll.register(key.fd, event_mask)
-            return key
+        class PollSelector(BaseSelector):
+            """ Poll-based selector """
+            def __init__(self):
+                super(PollSelector, self).__init__()
+                self._poll = select.poll()
 
-        def unregister(self, fileobj):
-            key = super(PollSelector, self).unregister(fileobj)
-            self._poll.unregister(key.fd)
-            return key
+            def register(self, fileobj, events, data=None):
+                key = super(PollSelector, self).register(fileobj, events, data)
+                event_mask = 0
+                if events & EVENT_READ:
+                    event_mask |= select.POLLIN
+                if events & EVENT_WRITE:
+                    event_mask |= select.POLLOUT
+                self._poll.register(key.fd, event_mask)
+                return key
 
-        def _wrap_poll(self, timeout=None):
-            """ Wrapper function for select.poll.poll() so that
-            _syscall_wrapper can work with only seconds. """
-            if timeout is not None:
-                if timeout <= 0:
-                    timeout = 0
-                else:
-                    # select.poll.poll() has a resolution of 1 millisecond,
-                    # round away from zero to wait *at least* timeout seconds.
-                    timeout = math.ceil(timeout * 1e3)
+            def unregister(self, fileobj):
+                key = super(PollSelector, self).unregister(fileobj)
+                self._poll.unregister(key.fd)
+                return key
 
-            result = self._poll.poll(timeout)
-            return result
+            def _wrap_poll(self, timeout=None):
+                """ Wrapper function for select.poll.poll() so that
+                _syscall_wrapper can work with only seconds. """
+                if timeout is not None:
+                    if timeout <= 0:
+                        timeout = 0
+                    else:
+                        # select.poll.poll() has a resolution of 1 millisecond,
+                        # round away from zero to wait *at least* timeout seconds.
+                        timeout = math.ceil(timeout * 1e3)
 
-        def select(self, timeout=None):
-            ready = []
-            fd_events = _syscall_wrapper(self._wrap_poll, True, timeout=timeout)
-            for fd, event_mask in fd_events:
-                events = 0
-                if event_mask & ~select.POLLIN:
-                    events |= EVENT_WRITE
-                if event_mask & ~select.POLLOUT:
-                    events |= EVENT_READ
+                result = self._poll.poll(timeout)
+                return result
 
-                key = self._key_from_fd(fd)
-                if key:
-                    ready.append((key, events & key.events))
+            def select(self, timeout=None):
+                ready = []
+                fd_events = _syscall_wrapper(self._wrap_poll, True, timeout=timeout)
+                for fd, event_mask in fd_events:
+                    events = 0
+                    if event_mask & ~select.POLLIN:
+                        events |= EVENT_WRITE
+                    if event_mask & ~select.POLLOUT:
+                        events |= EVENT_READ
 
-            return ready
+                    key = self._key_from_fd(fd)
+                    if key:
+                        ready.append((key, events & key.events))
+
+                return ready
+
+    except OSError:
+        pass
 
 
 if hasattr(select, "epoll"):
-    class EpollSelector(BaseSelector):
-        """ Epoll-based selector """
-        def __init__(self):
-            super(EpollSelector, self).__init__()
-            self._epoll = select.epoll()
+    try:
+        # Test if epoll is supported underlying OS
+        select.epoll()
 
-        def fileno(self):
-            return self._epoll.fileno()
+        class EpollSelector(BaseSelector):
+            """ Epoll-based selector """
+            def __init__(self):
+                super(EpollSelector, self).__init__()
+                self._epoll = select.epoll()
 
-        def register(self, fileobj, events, data=None):
-            key = super(EpollSelector, self).register(fileobj, events, data)
-            events_mask = 0
-            if events & EVENT_READ:
-                events_mask |= select.EPOLLIN
-            if events & EVENT_WRITE:
-                events_mask |= select.EPOLLOUT
-            _syscall_wrapper(self._epoll.register, False, key.fd, events_mask)
-            return key
+            def fileno(self):
+                return self._epoll.fileno()
 
-        def unregister(self, fileobj):
-            key = super(EpollSelector, self).unregister(fileobj)
-            try:
-                _syscall_wrapper(self._epoll.unregister, False, key.fd)
-            except SelectorError:
-                # This can occur when the fd was closed since registry.
-                pass
-            return key
+            def register(self, fileobj, events, data=None):
+                key = super(EpollSelector, self).register(fileobj, events, data)
+                events_mask = 0
+                if events & EVENT_READ:
+                    events_mask |= select.EPOLLIN
+                if events & EVENT_WRITE:
+                    events_mask |= select.EPOLLOUT
+                _syscall_wrapper(self._epoll.register, False, key.fd, events_mask)
+                return key
 
-        def select(self, timeout=None):
-            if timeout is not None:
-                if timeout <= 0:
-                    timeout = 0.0
+            def unregister(self, fileobj):
+                key = super(EpollSelector, self).unregister(fileobj)
+                try:
+                    _syscall_wrapper(self._epoll.unregister, False, key.fd)
+                except SelectorError:
+                    # This can occur when the fd was closed since registry.
+                    pass
+                return key
+
+            def select(self, timeout=None):
+                if timeout is not None:
+                    if timeout <= 0:
+                        timeout = 0.0
+                    else:
+                        # select.epoll.poll() has a resolution of 1 millisecond
+                        # but luckily takes seconds so we don't need a wrapper
+                        # like PollSelector. Just for better rounding.
+                        timeout = math.ceil(timeout * 1e3) * 1e-3
+                    timeout = float(timeout)
                 else:
-                    # select.epoll.poll() has a resolution of 1 millisecond
-                    # but luckily takes seconds so we don't need a wrapper
-                    # like PollSelector. Just for better rounding.
-                    timeout = math.ceil(timeout * 1e3) * 1e-3
-                timeout = float(timeout)
-            else:
-                timeout = -1.0  # epoll.poll() must have a float.
+                    timeout = -1.0  # epoll.poll() must have a float.
 
-            # We always want at least 1 to ensure that select can be called
-            # with no file descriptors registered. Otherwise will fail.
-            max_events = max(len(self._fd_to_key), 1)
+                # We always want at least 1 to ensure that select can be called
+                # with no file descriptors registered. Otherwise will fail.
+                max_events = max(len(self._fd_to_key), 1)
 
-            ready = []
-            fd_events = _syscall_wrapper(self._epoll.poll, True,
-                                         timeout=timeout,
-                                         maxevents=max_events)
-            for fd, event_mask in fd_events:
-                events = 0
-                if event_mask & ~select.EPOLLIN:
-                    events |= EVENT_WRITE
-                if event_mask & ~select.EPOLLOUT:
-                    events |= EVENT_READ
+                ready = []
+                fd_events = _syscall_wrapper(self._epoll.poll, True,
+                                             timeout=timeout,
+                                             maxevents=max_events)
+                for fd, event_mask in fd_events:
+                    events = 0
+                    if event_mask & ~select.EPOLLIN:
+                        events |= EVENT_WRITE
+                    if event_mask & ~select.EPOLLOUT:
+                        events |= EVENT_READ
 
-                key = self._key_from_fd(fd)
-                if key:
-                    ready.append((key, events & key.events))
-            return ready
+                    key = self._key_from_fd(fd)
+                    if key:
+                        ready.append((key, events & key.events))
+                return ready
 
-        def close(self):
-            self._epoll.close()
-            super(EpollSelector, self).close()
+            def close(self):
+                self._epoll.close()
+                super(EpollSelector, self).close()
+
+    except OSError:
+        pass
 
 
 if hasattr(select, "kqueue"):
-    class KqueueSelector(BaseSelector):
-        """ Kqueue / Kevent-based selector """
-        def __init__(self):
-            super(KqueueSelector, self).__init__()
-            self._kqueue = select.kqueue()
+    try:
+        # Test if kqueue is supported underlying OS
+        select.kqueue()
 
-        def fileno(self):
-            return self._kqueue.fileno()
+        class KqueueSelector(BaseSelector):
+            """ Kqueue / Kevent-based selector """
+            def __init__(self):
+                super(KqueueSelector, self).__init__()
+                self._kqueue = select.kqueue()
 
-        def register(self, fileobj, events, data=None):
-            key = super(KqueueSelector, self).register(fileobj, events, data)
-            if events & EVENT_READ:
-                kevent = select.kevent(key.fd,
-                                       select.KQ_FILTER_READ,
-                                       select.KQ_EV_ADD)
+            def fileno(self):
+                return self._kqueue.fileno()
 
-                _syscall_wrapper(self._kqueue.control, False, [kevent], 0, 0)
+            def register(self, fileobj, events, data=None):
+                key = super(KqueueSelector, self).register(fileobj, events, data)
+                if events & EVENT_READ:
+                    kevent = select.kevent(key.fd,
+                                           select.KQ_FILTER_READ,
+                                           select.KQ_EV_ADD)
 
-            if events & EVENT_WRITE:
-                kevent = select.kevent(key.fd,
-                                       select.KQ_FILTER_WRITE,
-                                       select.KQ_EV_ADD)
-
-                _syscall_wrapper(self._kqueue.control, False, [kevent], 0, 0)
-
-            return key
-
-        def unregister(self, fileobj):
-            key = super(KqueueSelector, self).unregister(fileobj)
-            if key.events & EVENT_READ:
-                kevent = select.kevent(key.fd,
-                                       select.KQ_FILTER_READ,
-                                       select.KQ_EV_DELETE)
-                try:
                     _syscall_wrapper(self._kqueue.control, False, [kevent], 0, 0)
-                except SelectorError:
-                    pass
-            if key.events & EVENT_WRITE:
-                kevent = select.kevent(key.fd,
-                                       select.KQ_FILTER_WRITE,
-                                       select.KQ_EV_DELETE)
-                try:
+
+                if events & EVENT_WRITE:
+                    kevent = select.kevent(key.fd,
+                                           select.KQ_FILTER_WRITE,
+                                           select.KQ_EV_ADD)
+
                     _syscall_wrapper(self._kqueue.control, False, [kevent], 0, 0)
-                except SelectorError:
-                    pass
 
-            return key
+                return key
 
-        def select(self, timeout=None):
-            if timeout is not None:
-                timeout = max(timeout, 0)
+            def unregister(self, fileobj):
+                key = super(KqueueSelector, self).unregister(fileobj)
+                if key.events & EVENT_READ:
+                    kevent = select.kevent(key.fd,
+                                           select.KQ_FILTER_READ,
+                                           select.KQ_EV_DELETE)
+                    try:
+                        _syscall_wrapper(self._kqueue.control, False, [kevent], 0, 0)
+                    except SelectorError:
+                        pass
+                if key.events & EVENT_WRITE:
+                    kevent = select.kevent(key.fd,
+                                           select.KQ_FILTER_WRITE,
+                                           select.KQ_EV_DELETE)
+                    try:
+                        _syscall_wrapper(self._kqueue.control, False, [kevent], 0, 0)
+                    except SelectorError:
+                        pass
 
-            max_events = len(self._fd_to_key) * 2
-            ready_fds = {}
+                return key
 
-            kevent_list = _syscall_wrapper(self._kqueue.control, True,
-                                           None, max_events, timeout)
+            def select(self, timeout=None):
+                if timeout is not None:
+                    timeout = max(timeout, 0)
 
-            for kevent in kevent_list:
-                fd = kevent.ident
-                event_mask = kevent.filter
-                events = 0
-                if event_mask == select.KQ_FILTER_READ:
-                    events |= EVENT_READ
-                if event_mask == select.KQ_FILTER_WRITE:
-                    events |= EVENT_WRITE
+                max_events = len(self._fd_to_key) * 2
+                ready_fds = {}
 
-                key = self._key_from_fd(fd)
-                if key:
-                    if key.fd not in ready_fds:
-                        ready_fds[key.fd] = (key, events & key.events)
-                    else:
-                        old_events = ready_fds[key.fd][1]
-                        ready_fds[key.fd] = (key, (events | old_events) & key.events)
+                kevent_list = _syscall_wrapper(self._kqueue.control, True,
+                                               None, max_events, timeout)
 
-            return list(ready_fds.values())
+                for kevent in kevent_list:
+                    fd = kevent.ident
+                    event_mask = kevent.filter
+                    events = 0
+                    if event_mask == select.KQ_FILTER_READ:
+                        events |= EVENT_READ
+                    if event_mask == select.KQ_FILTER_WRITE:
+                        events |= EVENT_WRITE
 
-        def close(self):
-            self._kqueue.close()
-            super(KqueueSelector, self).close()
+                    key = self._key_from_fd(fd)
+                    if key:
+                        if key.fd not in ready_fds:
+                            ready_fds[key.fd] = (key, events & key.events)
+                        else:
+                            old_events = ready_fds[key.fd][1]
+                            ready_fds[key.fd] = (key, (events | old_events) & key.events)
+
+                return list(ready_fds.values())
+
+            def close(self):
+                self._kqueue.close()
+                super(KqueueSelector, self).close()
+
+    except OSError:
+        pass
 
 
 # Choose the best implementation, roughly:
