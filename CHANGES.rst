@@ -13,6 +13,9 @@ dev (master)
 * Selectors now detects a monkey-patched select module after import for modules
   that patch the select module like eventlet, greenlet. (Pull #1128)
 
+* Reduced memory consumption when streaming zlib-compressed responses
+  (as opposed to raw deflate streams). (Pull #1129)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
