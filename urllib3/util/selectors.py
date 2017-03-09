@@ -540,14 +540,21 @@ if not hasattr(select, 'select'):  # Platform-specific: AppEngine
 
 
 def _can_allocate(struct):
-    """ Checks that select structs can be allocated
-    by the underlying operating system, not just
-    advertised by the select module. We don't check
-    select() because we'll be hopeful that most 
-    platforms that don't have it available will not
-    advertise it. (ie: GAE) """
+    """ Checks that select structs can be allocated by the underlying
+    operating system, not just advertised by the select module. We don't
+    check select() because we'll be hopeful that most platforms that
+    don't have it available will not advertise it. (ie: GAE) """
     try:
-        getattr(select, struct)().close()
+        # select.poll() objects won't fail until used.
+        if struct == 'poll':
+            poll = getattr(select, struct)()
+            try:
+                poll.poll()
+            finally:
+                poll.close()
+        # All others will fail on allocation.
+        else:
+            getattr(select, struct)().close()
         return True
     except (OSError, AttributeError):
         return False
@@ -561,11 +568,11 @@ def _default_selector(*_):
     detect if the select module is being monkey-patched incorrectly
     by eventlet, greenlet, and preserve proper behavior. """
     global DefaultSelector
-    if hasattr(select, 'kqueue') and _can_allocate('kqueue'):  # Platform-specific: Mac OS
+    if _can_allocate('kqueue'):  # Platform-specific: Mac OS
         selector_type = KqueueSelector
-    elif hasattr(select, 'epoll') and _can_allocate('epoll'):  # Platform-specific: Linux
+    elif _can_allocate('epoll'):  # Platform-specific: Linux
         selector_type = EpollSelector
-    elif hasattr(select, 'poll') and _can_allocate('poll'):  # Platform-specific: Linux
+    elif _can_allocate('poll'):  # Platform-specific: Linux
         selector_type = PollSelector
     elif hasattr(select, 'select'):  # Platform-specific: Windows
         selector_type = SelectSelector
