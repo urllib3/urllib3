@@ -1,21 +1,55 @@
 from __future__ import absolute_import
-from collections import Mapping, MutableMapping
+
+from collections import Mapping
+
+from .util.typing import (
+    Generic, TypeVar, List, Union, Tuple, Any,
+)
+from .util.typing import Callable  # noqa: unused in this module
+from .util.typing import Iterable  # noqa: unused in this module
+from .util.typing import Iterator  # noqa: unused in this module
+from .util.typing import MutableMapping  # noqa: unused in this module
+from .util.typing import Optional  # noqa: unused in this module
+from types import TracebackType  # noqa: unused in this module
+
+from .packages.six import iterkeys, itervalues, PY3
+
+import collections
+try:
+    from collections import OrderedDict
+except ImportError:
+    from .packages.ordered_dict import OrderedDict
+
 try:
     from threading import RLock
 except ImportError:  # Platform-specific: No threads available
     class RLock:
         def __enter__(self):
+            # type: () -> RLock
             pass
 
         def __exit__(self, exc_type, exc_value, traceback):
+            # type: (Optional[type], Optional[Exception], Optional[TracebackType]) -> bool
             pass
 
+try:  # Platform-specific
+    import typing   # noqa: unused in this module
 
-try:  # Python 2.7+
-    from collections import OrderedDict
+    # TODO uncomment when mypy handle conditionals
+    # if sys.version_info <= (2,):
+    #     import httplib
+    #     _MessageType = httplib.HTTPMessage
+    # else:
+    #     _MessageType = Any
+    _MessageType = Any
+
+    _T = TypeVar('_T')
+    _K = TypeVar('_K')
+    _V = TypeVar('_V')
+    _HTTPHeaderVT = Union[Tuple[str, str], List[str]]
 except ImportError:
-    from .packages.ordered_dict import OrderedDict
-from .packages.six import iterkeys, itervalues, PY3
+    _K = None
+    _V = None
 
 
 __all__ = ['RecentlyUsedContainer', 'HTTPHeaderDict']
@@ -24,7 +58,7 @@ __all__ = ['RecentlyUsedContainer', 'HTTPHeaderDict']
 _Null = object()
 
 
-class RecentlyUsedContainer(MutableMapping):
+class RecentlyUsedContainer(collections.MutableMapping, Generic[_K, _V]):
     """
     Provides a thread-safe dict-like container which maintains up to
     ``maxsize`` keys while throwing away the least-recently-used keys beyond
@@ -38,16 +72,19 @@ class RecentlyUsedContainer(MutableMapping):
         ``dispose_func(value)`` is called.  Callback which will get called
     """
 
-    ContainerCls = OrderedDict
+    # TODO be more precise about class type
+    ContainerCls = OrderedDict  # type: type
 
     def __init__(self, maxsize=10, dispose_func=None):
+        # type: (int, Optional[Callable[[_V], None]]) -> None
         self._maxsize = maxsize
         self.dispose_func = dispose_func
 
-        self._container = self.ContainerCls()
+        self._container = self.ContainerCls()  # type: OrderedDict[_K, _V]
         self.lock = RLock()
 
     def __getitem__(self, key):
+        # type: (_K) -> _V
         # Re-insert the item, moving it to the end of the eviction line.
         with self.lock:
             item = self._container.pop(key)
@@ -55,10 +92,12 @@ class RecentlyUsedContainer(MutableMapping):
             return item
 
     def __setitem__(self, key, value):
+        # type: (_K, _V) -> None
         evicted_value = _Null
         with self.lock:
             # Possibly evict the existing value of 'key'
-            evicted_value = self._container.get(key, _Null)
+            # TODO remove ignore when python/mypy#1576 and python/typeshed#223
+            evicted_value = self._container.get(key, _Null)  # type: ignore
             self._container[key] = value
 
             # If we didn't evict an existing value, we might have to evict the
@@ -70,6 +109,7 @@ class RecentlyUsedContainer(MutableMapping):
             self.dispose_func(evicted_value)
 
     def __delitem__(self, key):
+        # type: (_K) -> None
         with self.lock:
             value = self._container.pop(key)
 
@@ -77,13 +117,16 @@ class RecentlyUsedContainer(MutableMapping):
             self.dispose_func(value)
 
     def __len__(self):
+        # type: () -> int
         with self.lock:
             return len(self._container)
 
     def __iter__(self):
+        # type: () -> Iterator[_K]
         raise NotImplementedError('Iteration over this class is unlikely to be threadsafe.')
 
     def clear(self):
+        # type: () -> None
         with self.lock:
             # Copy pointers to all values, then wipe the mapping
             values = list(itervalues(self._container))
@@ -94,11 +137,12 @@ class RecentlyUsedContainer(MutableMapping):
                 self.dispose_func(value)
 
     def keys(self):
+        # type: () -> List[_K]
         with self.lock:
             return list(iterkeys(self._container))
 
 
-class HTTPHeaderDict(MutableMapping):
+class HTTPHeaderDict(collections.MutableMapping):
     """
     :param headers:
         An iterable of field-value pairs. Must not contain multiple field names
@@ -133,8 +177,9 @@ class HTTPHeaderDict(MutableMapping):
     """
 
     def __init__(self, headers=None, **kwargs):
+        # type: (Optional[Iterable[Tuple[str, str]]], **str) -> None
         super(HTTPHeaderDict, self).__init__()
-        self._container = OrderedDict()
+        self._container = OrderedDict()  # type: OrderedDict[str, _HTTPHeaderVT]
         if headers is not None:
             if isinstance(headers, HTTPHeaderDict):
                 self._copy_from(headers)
@@ -144,20 +189,26 @@ class HTTPHeaderDict(MutableMapping):
             self.extend(kwargs)
 
     def __setitem__(self, key, val):
+        # type: (str, str) -> Union[Tuple[str, str], List[str]]
         self._container[key.lower()] = (key, val)
         return self._container[key.lower()]
 
     def __getitem__(self, key):
+        # type: (str) -> str
         val = self._container[key.lower()]
-        return ', '.join(val[1:])
+        # TODO remove ignore when python/mypy#1579
+        return ', '.join(val[1:])  # type: ignore
 
     def __delitem__(self, key):
+        # type: (str) -> None
         del self._container[key.lower()]
 
     def __contains__(self, key):
+        # type: (Any) -> bool
         return key.lower() in self._container
 
     def __eq__(self, other):
+        # type: (Any) -> bool
         if not isinstance(other, Mapping) and not hasattr(other, 'keys'):
             return False
         if not isinstance(other, type(self)):
@@ -166,23 +217,29 @@ class HTTPHeaderDict(MutableMapping):
                 dict((k.lower(), v) for k, v in other.itermerged()))
 
     def __ne__(self, other):
+        # type: (Any) -> bool
         return not self.__eq__(other)
 
     if not PY3:  # Python 2
-        iterkeys = MutableMapping.iterkeys
-        itervalues = MutableMapping.itervalues
+        iterkeys = collections.MutableMapping.iterkeys
+        itervalues = collections.MutableMapping.itervalues
 
     __marker = object()
 
     def __len__(self):
+        # type: () -> int
         return len(self._container)
 
     def __iter__(self):
+        # type: () -> Iterator[str]
         # Only provide the originally cased names
         for vals in self._container.values():
-            yield vals[0]
+            # TODO remove ignore when python/mypy#1579
+            yield vals[0]  # type: ignore
 
     def pop(self, key, default=__marker):
+        # type: (str, _T) -> Union[str, _T]
+        # TODO will work when python/mypy#1576 and python/typeshed#223
         '''D.pop(k[,d]) -> v, remove specified key and return the corresponding value.
           If key is not found, d is returned if given, otherwise KeyError is raised.
         '''
@@ -200,12 +257,14 @@ class HTTPHeaderDict(MutableMapping):
             return value
 
     def discard(self, key):
+        # type: (str) -> None
         try:
             del self[key]
         except KeyError:
             pass
 
     def add(self, key, val):
+        # type: (str, str) -> None
         """Adds a (name, value) pair, doesn't overwrite the value if it already
         exists.
 
@@ -229,6 +288,8 @@ class HTTPHeaderDict(MutableMapping):
                 self._container[key_lower] = [vals[0], vals[1], val]
 
     def extend(self, *args, **kwargs):
+        # type: (*Any, **str) -> None
+        # TODO be more precise on accepted type of *args
         """Generic import function for any type of header-like object.
         Adapted version of MutableMapping.update in order to insert items
         with self.add instead of self.__setitem__
@@ -255,6 +316,7 @@ class HTTPHeaderDict(MutableMapping):
             self.add(key, value)
 
     def getlist(self, key):
+        # type: (str) -> List[str]
         """Returns a list of all the values for the named field. Returns an
         empty list if the key doesn't exist."""
         try:
@@ -263,7 +325,8 @@ class HTTPHeaderDict(MutableMapping):
             return []
         else:
             if isinstance(vals, tuple):
-                return [vals[1]]
+                # TODO remove ignore when python/mypy#1579
+                return [vals[1]]  # type: ignore
             else:
                 return vals[1:]
 
@@ -273,9 +336,11 @@ class HTTPHeaderDict(MutableMapping):
     iget = getlist
 
     def __repr__(self):
+        # type: () -> str
         return "%s(%s)" % (type(self).__name__, dict(self.itermerged()))
 
     def _copy_from(self, other):
+        # type: (HTTPHeaderDict) -> None
         for key in other:
             val = other.getlist(key)
             if isinstance(val, list):
@@ -284,38 +349,46 @@ class HTTPHeaderDict(MutableMapping):
             self._container[key.lower()] = [key] + val
 
     def copy(self):
+        # type: () -> HTTPHeaderDict
         clone = type(self)()
         clone._copy_from(self)
         return clone
 
     def iteritems(self):
+        # type: () -> Iterator[Tuple[str, str]]
         """Iterate over all header lines, including duplicate ones."""
         for key in self:
             vals = self._container[key.lower()]
             for val in vals[1:]:
-                yield vals[0], val
+                # TODO remove ignore when python/mypy#1578
+                yield vals[0], val  # type: ignore
 
     def itermerged(self):
+        # type: () -> Iterator[Tuple[str, str]]
         """Iterate over all headers, merging duplicate ones together."""
         for key in self:
             val = self._container[key.lower()]
-            yield val[0], ', '.join(val[1:])
+            # TODO remove ignore when python/mypy#1579
+            yield val[0], ', '.join(val[1:])  # type: ignore
 
     def items(self):
+        # type: () -> List[Tuple[str, str]]
         return list(self.iteritems())
 
     @classmethod
     def from_httplib(cls, message):  # Python 2
+        # type: (_MessageType) -> 'HTTPHeaderDict'
         """Read headers from a Python 2 httplib message object."""
         # python2.7 does not expose a proper API for exporting multiheaders
         # efficiently. This function re-reads raw lines from the message
         # object and extracts the multiheaders properly.
-        headers = []
+        headers = []  # type: List[Tuple[str, str]]
 
         for line in message.headers:
             if line.startswith((' ', '\t')):
                 key, value = headers[-1]
-                headers[-1] = (key, value + '\r\n' + line.rstrip())
+                # TODO remove ignore when python/mypy#1578
+                headers[-1] = (key, value + '\r\n' + line.rstrip())  # type: ignore
                 continue
 
             key, value = line.split(':', 1)

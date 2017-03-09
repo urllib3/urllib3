@@ -27,6 +27,7 @@ try:  # Python 2.7+
 except ImportError:
     class NullHandler(logging.Handler):
         def emit(self, record):
+            # type: (logging.LogRecord) -> None
             pass
 
 __author__ = 'Andrey Petrov (andrey.petrov@shazow.net)'
@@ -54,6 +55,7 @@ logging.getLogger(__name__).addHandler(NullHandler())
 
 
 def add_stderr_logger(level=logging.DEBUG):
+    # type: (int) -> logging.Handler
     """
     Helper for quickly adding a StreamHandler to the logger. Useful for
     debugging.
@@ -90,6 +92,8 @@ warnings.simplefilter('default', exceptions.SNIMissingWarning, append=True)
 
 
 def disable_warnings(category=exceptions.HTTPWarning):
+    # type: (type) -> None
+    # TODO be more precise about which type is accepted
     """
     Helper for quickly disabling all urllib3 warnings.
     """
