@@ -1,5 +1,5 @@
-import unittest
 import socket
+import sys
 
 from io import BytesIO, BufferedReader
 
@@ -12,6 +12,11 @@ from urllib3.util.retry import Retry
 from urllib3.util.response import is_fp_closed
 
 from base64 import b64decode
+
+if sys.version_info >= (2, 7):
+    import unittest
+else:
+    import unittest2 as unittest
 
 # A known random (i.e, not-too-compressible) payload generated with:
 #    "".join(random.choice(string.printable) for i in xrange(512))
@@ -114,7 +119,11 @@ class TestResponse(unittest.TestCase):
                          preload_content=False)
 
         self.assertEqual(r.read(3), b'')
+        # Buffer in case we need to switch to the raw stream
+        self.assertIsNotNone(r._decoder._data)
         self.assertEqual(r.read(1), b'f')
+        # Now that we've decoded data, we just stream through the decoder
+        self.assertIsNone(r._decoder._data)
         self.assertEqual(r.read(2), b'oo')
         self.assertEqual(r.read(), b'')
         self.assertEqual(r.read(), b'')
@@ -131,6 +140,8 @@ class TestResponse(unittest.TestCase):
 
         self.assertEqual(r.read(1), b'')
         self.assertEqual(r.read(1), b'f')
+        # Once we've decoded data, we just stream to the decoder; no buffering
+        self.assertIsNone(r._decoder._data)
         self.assertEqual(r.read(2), b'oo')
         self.assertEqual(r.read(), b'')
         self.assertEqual(r.read(), b'')
