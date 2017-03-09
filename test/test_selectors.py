@@ -2,6 +2,7 @@ from __future__ import with_statement
 import errno
 import os
 import psutil
+import select
 import signal
 import socket
 import sys
@@ -120,7 +121,6 @@ class TimerMixin(object):
 @skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector")
 class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
     """ Implements the tests that each type of selector must pass. """
-    SELECTOR = selectors.DefaultSelector
 
     def make_socketpair(self):
         rd, wr = socketpair()
@@ -135,9 +135,17 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         return rd, wr
 
     def make_selector(self):
-        s = self.SELECTOR()
+        s = selectors.DefaultSelector()
         self.addCleanup(s.close)
         return s
+
+    def setup_select_module(self, selector):
+        selectors._DEFAULT_SELECTOR = None
+        for s in ['select', 'poll', 'epoll', 'kqueue']:
+            if s != selector and hasattr(select, s):
+                old_selector = getattr(select, s)
+                delattr(select, s)
+                self.addCleanup(setattr, select, s, old_selector)
 
     def standard_setup(self):
         s = self.make_selector()
@@ -681,24 +689,93 @@ class ScalableSelectorMixin(object):
         self.assertEqual(limit_nofile // 2, len(s.select()))
 
 
+@skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector.")
+class TestUniqueSelectScenarios(BaseSelectorTestCase):
+    def test_select_module_patched_after_import(self):
+        # This test is to make sure that after import time
+        # calling DefaultSelector() will still give a good
+        # return value. This issue is caused by gevent, eventlet.
+
+        # Now remove all selectors except `select.select`.
+        self.setup_select_module('select')
+
+        # Make sure that the selector returned only uses the selector available.
+        selector = self.make_selector()
+        self.assertIsInstance(selector, selectors.SelectSelector)
+
+    @skipUnless(hasattr(errno, 'ENOSYS'), 'Platform does not have errno.ENOSYS.')
+    def test_select_module_defines_does_not_implement_poll(self):
+        # This test is to make sure that if a platform defines
+        # a selector as being available but does not actually
+        # implement it (kennethreitz/requests#3906) does not
+        # make DefaultSelector() fail.
+
+        # Reset the _DEFAULT_SELECTOR value as if using for the first time.
+        selectors._DEFAULT_SELECTOR = None
+
+        had_poll = hasattr(select, 'poll')
+
+        # Remove all selectors except `select.select`.
+        self.setup_select_module('select')
+
+        # Now we're going to patch in a bad `poll`.
+        class BadPoll(object):
+            def poll(self, timeout):
+                raise OSError(errno.ENOSYS)
+
+        select.poll = BadPoll
+        if not had_poll:
+            self.addCleanup(delattr, select, 'poll')
+
+        selector = self.make_selector()
+        self.assertIsInstance(selector, selectors.SelectSelector)
+
+    @skipUnless(hasattr(errno, 'ENOSYS'), 'Platform does not have errno.ENOSYS.')
+    def test_select_module_defines_does_not_implement_epoll(self):
+        # Same as above test except with `select.epoll`.
+
+        # Reset the _DEFAULT_SELECTOR value as if using for the first time.
+        selectors._DEFAULT_SELECTOR = None
+
+        had_epoll = hasattr(select, 'epoll')
+
+        # Remove all selectors except `select.select`.
+        self.setup_select_module('select')
+
+        # Now we're going to patch in a bad `epoll`.
+        def bad_epoll(*args, **kwargs):
+            raise OSError(errno.ENOSYS)
+
+        select.epoll = bad_epoll
+        if not had_epoll:
+            self.addCleanup(delattr, select, 'epoll')
+
+        selector = self.make_selector()
+        self.assertIsInstance(selector, selectors.SelectSelector)
+
+
 @skipUnless(hasattr(selectors, "SelectSelector"), "Platform doesn't have a SelectSelector")
 class SelectSelectorTestCase(BaseSelectorTestCase):
-    SELECTOR = getattr(selectors, "SelectSelector", None)
+    def setUp(self):
+        self.setup_select_module('select')
 
 
 @skipUnless(hasattr(selectors, "PollSelector"), "Platform doesn't have a PollSelector")
 class PollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
-    SELECTOR = getattr(selectors, "PollSelector", None)
+    def setUp(self):
+        self.setup_select_module('poll')
 
 
 @skipUnless(hasattr(selectors, "EpollSelector"), "Platform doesn't have an EpollSelector")
 class EpollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
-    SELECTOR = getattr(selectors, "EpollSelector", None)
+    def setUp(self):
+        self.setup_select_module('epoll')
 
 
 @skipUnless(hasattr(selectors, "KqueueSelector"), "Platform doesn't have a KqueueSelector")
 class KqueueSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
-    SELECTOR = getattr(selectors, "KqueueSelector", None)
+    def setUp(self):
+        self.setup_select_module('kqueue')
 
 
 @skipUnless(hasattr(selectors, "SelectSelector"), "Platform doesn't have a SelectSelector")

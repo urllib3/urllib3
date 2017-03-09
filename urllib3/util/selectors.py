@@ -23,6 +23,7 @@ EVENT_WRITE = (1 << 1)
 
 HAS_SELECT = True  # Variable that shows whether the platform has a selector.
 _SYSCALL_SENTINEL = object()  # Sentinel in case a system call returns None.
+_DEFAULT_SELECTOR = None
 
 
 class SelectorError(Exception):
@@ -547,39 +548,34 @@ def _can_allocate(struct):
     try:
         # select.poll() objects won't fail until used.
         if struct == 'poll':
-            poll = getattr(select, struct)()
-            try:
-                poll.poll()
-            finally:
-                poll.close()
+            p = select.poll()
+            p.poll(0)
+
         # All others will fail on allocation.
         else:
             getattr(select, struct)().close()
         return True
-    except (OSError, AttributeError):
+    except (OSError, AttributeError) as e:
         return False
 
 
 # Choose the best implementation, roughly:
 # kqueue == epoll > poll > select. Devpoll not supported. (See above)
 # select() also can't accept a FD > FD_SETSIZE (usually around 1024)
-def _default_selector(*_):
+def DefaultSelector(*_):
     """ This function serves as a first call for DefaultSelector to
     detect if the select module is being monkey-patched incorrectly
     by eventlet, greenlet, and preserve proper behavior. """
-    global DefaultSelector
-    if _can_allocate('kqueue'):  # Platform-specific: Mac OS
-        selector_type = KqueueSelector
-    elif _can_allocate('epoll'):  # Platform-specific: Linux
-        selector_type = EpollSelector
-    elif _can_allocate('poll'):  # Platform-specific: Linux
-        selector_type = PollSelector
-    elif hasattr(select, 'select'):  # Platform-specific: Windows
-        selector_type = SelectSelector
-    else:  # Platform-specific: AppEngine
-        raise ValueError('Platform does not have a selector')
-    DefaultSelector = selector_type
-    return selector_type()
-
-
-DefaultSelector = _default_selector
+    global _DEFAULT_SELECTOR
+    if _DEFAULT_SELECTOR is None:
+        if _can_allocate('kqueue'):  # Platform-specific: Mac OS
+            _DEFAULT_SELECTOR = KqueueSelector
+        elif _can_allocate('epoll'):  # Platform-specific: Linux
+            _DEFAULT_SELECTOR = EpollSelector
+        elif _can_allocate('poll'):  # Platform-specific: Linux
+            _DEFAULT_SELECTOR = PollSelector
+        elif hasattr(select, 'select'):  # Platform-specific: Windows
+            _DEFAULT_SELECTOR = SelectSelector
+        else:  # Platform-specific: AppEngine
+            raise ValueError('Platform does not have a selector')
+    return _DEFAULT_SELECTOR()
