@@ -224,7 +224,10 @@ class TestClientCerts(SocketDummyServerTestCase):
             done_receiving.set()
         else:
             done_receiving.set()
-            self.fail("TLS handshake succeeded")
+            self.fail(
+                "Expected server to reject connection due to missing client "
+                "certificates"
+            )
 
 
 class TestSocketClosing(SocketDummyServerTestCase):

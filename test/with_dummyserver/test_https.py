@@ -212,8 +212,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.assertTrue('No root certificates specified' in str(e) or
                             'certificate verify failed' in str(e) or
                             'invalid certificate chain' in str(e),
-                            "Expected 'No root certificates specified' or "
-                            "'certificate verify failed', "
+                            "Expected 'No root certificates specified',  "
+                            "'certificate verify failed', or "
+                            "'invalid certificate chain', "
                             "instead got: %r" % e)
 
     def test_no_ssl(self):
