@@ -679,7 +679,7 @@ class SecureTransportContext(object):
     """
     I am a wrapper class for the SecureTransport library, to translate the
     interface of the standard library ``SSLContext`` object to calls into
-    PyOpenSSL.
+    SecureTransport.
     """
     def __init__(self, protocol):
         self._min_version, self._max_version = _protocol_to_min_max[protocol]
