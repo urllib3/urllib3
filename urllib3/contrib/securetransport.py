@@ -142,6 +142,8 @@ if hasattr(ssl, "PROTOCOL_TLSv1_2"):
     _protocol_to_min_max[ssl.PROTOCOL_TLSv1_2] = (
         SecurityConst.kTLSProtocol12, SecurityConst.kTLSProtocol12
     )
+if hasattr(ssl, "PROTOCOL_TLS"):
+    _protocol_to_min_max[ssl.PROTOCOL_TLS] = _protocol_to_min_max[ssl.PROTOCOL_SSLv23]
 
 
 def inject_into_urllib3():
