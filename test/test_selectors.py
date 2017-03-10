@@ -50,6 +50,11 @@ TOLERANCE = 0.75
 TRAVIS_CI = "TRAVIS" in os.environ
 
 
+skipUnlessHasSelector = skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector")
+skipUnlessHasENOSYS = skipUnless(hasattr(errno, 'ENOSYS'), "Platform doesn't have errno.ENOSYS")
+skipUnlessHasAlarm = skipUnless(hasattr(signal, 'alarm'), "Platform doesn't have signal.alarm()")
+
+
 class AlarmThread(threading.Thread):
     def __init__(self, timeout):
         super(AlarmThread, self).__init__(group=None)
@@ -70,8 +75,6 @@ class AlarmMixin(object):
     alarm_thread = None
 
     def _begin_alarm_thread(self, timeout):
-        if not HAS_ALARM:
-            self.skipTest("Platform doesn't have signal.SIGALRM")
         self.addCleanup(self._cancel_alarm_thread)
         self.alarm_thread = AlarmThread(timeout)
         self.alarm_thread.start()
@@ -118,7 +121,7 @@ class TimerMixin(object):
         return TimerContext(self, lower=lower, upper=upper)
 
 
-@skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector")
+@skipUnlessHasSelector
 class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
     """ Implements the tests that each type of selector must pass. """
 
@@ -139,13 +142,26 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         self.addCleanup(s.close)
         return s
 
-    def setup_select_module(self, selector):
+    def patch_select_module(self, *keep, **replace):
+        """ Helper function that removes all selectors from the select module
+        except those listed in *keep and **replace. Those in keep will be kept
+        if they exist in the select module and those in replace will be patched
+        with the value that is given regardless if they exist or not. Cleanup
+        will restore previous state. This helper also resets the selectors module
+        so that a call to DefaultSelector() will do feature detection again. """
         selectors._DEFAULT_SELECTOR = None
         for s in ['select', 'poll', 'epoll', 'kqueue']:
-            if s != selector and hasattr(select, s):
+            if s in replace:
+                if hasattr(select, s):
+                    old_selector = getattr(select, s)
+                    self.addCleanup(setattr, select, s, old_selector)
+                else:
+                    self.addCleanup(delattr, select, s)
+                setattr(select, s, replace[s])
+            elif s not in keep and hasattr(select, s):
                 old_selector = getattr(select, s)
-                delattr(select, s)
                 self.addCleanup(setattr, select, s, old_selector)
+                delattr(select, s)
 
     def standard_setup(self):
         s = self.make_selector()
@@ -426,7 +442,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
             self.assertEqual(0, len(s.select(timeout=SHORT_SELECT)))
 
-    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
+    @skipUnlessHasAlarm
     def test_select_timing(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
@@ -438,7 +454,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
             ready = s.select(LONG_SELECT)
         self.assertEqual([(key, selectors.EVENT_READ)], ready)
 
-    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
+    @skipUnlessHasAlarm
     def test_select_interrupt_no_event(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
@@ -449,7 +465,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         with self.assertTakesTime(lower=LONG_SELECT, upper=LONG_SELECT):
             self.assertEqual([], s.select(LONG_SELECT))
 
-    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
+    @skipUnlessHasAlarm
     def test_select_interrupt_with_event(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
@@ -462,7 +478,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
             self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
         self.assertEqual(rd.recv(1), b'x')
 
-    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
+    @skipUnlessHasAlarm
     def test_select_multiple_interrupts_with_event(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
@@ -482,7 +498,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
             self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
         self.assertEqual(rd.recv(1), b'x')
 
-    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
+    @skipUnlessHasAlarm
     def test_selector_error(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
@@ -506,7 +522,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 
     # Test ensures that _syscall_wrapper properly raises the
     # exception that is raised from an interrupt handler.
-    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
+    @skipUnlessHasAlarm
     def test_select_interrupt_exception(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
@@ -627,7 +643,7 @@ class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
         wait.wait_for_write([rd, wr], 0.001)
         self.assertIs(selector._map, None)
 
-    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
+    @skipUnlessHasAlarm
     def test_interrupt_wait_for_read_no_event(self):
         rd, wr = self.make_socketpair()
 
@@ -635,7 +651,7 @@ class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
         with self.assertTakesTime(lower=LONG_SELECT, upper=LONG_SELECT):
             self.assertEqual([], wait.wait_for_read(rd, timeout=LONG_SELECT))
 
-    @skipUnless(HAS_ALARM, "Platform doesn't have signal.alarm()")
+    @skipUnlessHasAlarm
     def test_interrupt_wait_for_read_with_event(self):
         rd, wr = self.make_socketpair()
 
@@ -689,7 +705,7 @@ class ScalableSelectorMixin(object):
         self.assertEqual(limit_nofile // 2, len(s.select()))
 
 
-@skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector.")
+@skipUnlessHasSelector
 class TestUniqueSelectScenarios(BaseSelectorTestCase):
     def test_select_module_patched_after_import(self):
         # This test is to make sure that after import time
@@ -697,13 +713,13 @@ class TestUniqueSelectScenarios(BaseSelectorTestCase):
         # return value. This issue is caused by gevent, eventlet.
 
         # Now remove all selectors except `select.select`.
-        self.setup_select_module('select')
+        self.patch_select_module('select')
 
         # Make sure that the selector returned only uses the selector available.
         selector = self.make_selector()
         self.assertIsInstance(selector, selectors.SelectSelector)
 
-    @skipUnless(hasattr(errno, 'ENOSYS'), 'Platform does not have errno.ENOSYS.')
+    @skipUnlessHasENOSYS
     def test_select_module_defines_does_not_implement_poll(self):
         # This test is to make sure that if a platform defines
         # a selector as being available but does not actually
@@ -713,42 +729,30 @@ class TestUniqueSelectScenarios(BaseSelectorTestCase):
         # Reset the _DEFAULT_SELECTOR value as if using for the first time.
         selectors._DEFAULT_SELECTOR = None
 
-        had_poll = hasattr(select, 'poll')
-
-        # Remove all selectors except `select.select`.
-        self.setup_select_module('select')
-
         # Now we're going to patch in a bad `poll`.
         class BadPoll(object):
             def poll(self, timeout):
                 raise OSError(errno.ENOSYS)
 
-        select.poll = BadPoll
-        if not had_poll:
-            self.addCleanup(delattr, select, 'poll')
+        # Remove all selectors except `select.select` and replace `select.poll`.
+        self.patch_select_module('select', poll=BadPoll)
 
         selector = self.make_selector()
         self.assertIsInstance(selector, selectors.SelectSelector)
 
-    @skipUnless(hasattr(errno, 'ENOSYS'), 'Platform does not have errno.ENOSYS.')
+    @skipUnlessHasENOSYS
     def test_select_module_defines_does_not_implement_epoll(self):
         # Same as above test except with `select.epoll`.
 
         # Reset the _DEFAULT_SELECTOR value as if using for the first time.
         selectors._DEFAULT_SELECTOR = None
 
-        had_epoll = hasattr(select, 'epoll')
-
-        # Remove all selectors except `select.select`.
-        self.setup_select_module('select')
-
         # Now we're going to patch in a bad `epoll`.
         def bad_epoll(*args, **kwargs):
             raise OSError(errno.ENOSYS)
 
-        select.epoll = bad_epoll
-        if not had_epoll:
-            self.addCleanup(delattr, select, 'epoll')
+        # Remove all selectors except `select.select` and replace `select.epoll`.
+        self.patch_select_module('select', epoll=bad_epoll)
 
         selector = self.make_selector()
         self.assertIsInstance(selector, selectors.SelectSelector)
@@ -757,25 +761,25 @@ class TestUniqueSelectScenarios(BaseSelectorTestCase):
 @skipUnless(hasattr(selectors, "SelectSelector"), "Platform doesn't have a SelectSelector")
 class SelectSelectorTestCase(BaseSelectorTestCase):
     def setUp(self):
-        self.setup_select_module('select')
+        self.patch_select_module('select')
 
 
 @skipUnless(hasattr(selectors, "PollSelector"), "Platform doesn't have a PollSelector")
 class PollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     def setUp(self):
-        self.setup_select_module('poll')
+        self.patch_select_module('poll')
 
 
 @skipUnless(hasattr(selectors, "EpollSelector"), "Platform doesn't have an EpollSelector")
 class EpollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     def setUp(self):
-        self.setup_select_module('epoll')
+        self.patch_select_module('epoll')
 
 
 @skipUnless(hasattr(selectors, "KqueueSelector"), "Platform doesn't have a KqueueSelector")
 class KqueueSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     def setUp(self):
-        self.setup_select_module('kqueue')
+        self.patch_select_module('kqueue')
 
 
 @skipUnless(hasattr(selectors, "SelectSelector"), "Platform doesn't have a SelectSelector")
