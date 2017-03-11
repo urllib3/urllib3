@@ -568,13 +568,13 @@ def DefaultSelector(*_):
     by eventlet, greenlet, and preserve proper behavior. """
     global _DEFAULT_SELECTOR
     if _DEFAULT_SELECTOR is None:
-        if _can_allocate('kqueue'):  # Platform-specific: Mac OS
+        if _can_allocate('kqueue'):
             _DEFAULT_SELECTOR = KqueueSelector
-        elif _can_allocate('epoll'):  # Platform-specific: Linux
+        elif _can_allocate('epoll'):
             _DEFAULT_SELECTOR = EpollSelector
-        elif _can_allocate('poll'):  # Platform-specific: Linux
+        elif _can_allocate('poll'):
             _DEFAULT_SELECTOR = PollSelector
-        elif hasattr(select, 'select'):  # Platform-specific: Windows
+        elif hasattr(select, 'select'):
             _DEFAULT_SELECTOR = SelectSelector
         else:  # Platform-specific: AppEngine
             raise ValueError('Platform does not have a selector')
