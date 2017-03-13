@@ -723,8 +723,8 @@ class TestUniqueSelectScenarios(BaseSelectorTestCase):
     def test_select_module_defines_does_not_implement_poll(self):
         # This test is to make sure that if a platform defines
         # a selector as being available but does not actually
-        # implement it (kennethreitz/requests#3906) does not
-        # make DefaultSelector() fail.
+        # implement it (kennethreitz/requests#3906) then
+        # DefaultSelector() does not fail.
 
         # Reset the _DEFAULT_SELECTOR value as if using for the first time.
         selectors._DEFAULT_SELECTOR = None
