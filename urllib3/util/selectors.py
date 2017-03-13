@@ -562,7 +562,7 @@ def _can_allocate(struct):
 # Choose the best implementation, roughly:
 # kqueue == epoll > poll > select. Devpoll not supported. (See above)
 # select() also can't accept a FD > FD_SETSIZE (usually around 1024)
-def DefaultSelector(*_):
+def DefaultSelector():
     """ This function serves as a first call for DefaultSelector to
     detect if the select module is being monkey-patched incorrectly
     by eventlet, greenlet, and preserve proper behavior. """

@@ -55,6 +55,28 @@ skipUnlessHasENOSYS = skipUnless(hasattr(errno, 'ENOSYS'), "Platform doesn't hav
 skipUnlessHasAlarm = skipUnless(hasattr(signal, 'alarm'), "Platform doesn't have signal.alarm()")
 
 
+def patch_select_module(testcase, *keep, **replace):
+    """ Helper function that removes all selectors from the select module
+    except those listed in *keep and **replace. Those in keep will be kept
+    if they exist in the select module and those in replace will be patched
+    with the value that is given regardless if they exist or not. Cleanup
+    will restore previous state. This helper also resets the selectors module
+    so that a call to DefaultSelector() will do feature detection again. """
+    selectors._DEFAULT_SELECTOR = None
+    for s in ['select', 'poll', 'epoll', 'kqueue']:
+        if s in replace:
+            if hasattr(select, s):
+                old_selector = getattr(select, s)
+                testcase.addCleanup(setattr, select, s, old_selector)
+            else:
+                testcase.addCleanup(delattr, select, s)
+            setattr(select, s, replace[s])
+        elif s not in keep and hasattr(select, s):
+            old_selector = getattr(select, s)
+            testcase.addCleanup(setattr, select, s, old_selector)
+            delattr(select, s)
+
+
 class AlarmThread(threading.Thread):
     def __init__(self, timeout):
         super(AlarmThread, self).__init__(group=None)
@@ -141,27 +163,6 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         s = selectors.DefaultSelector()
         self.addCleanup(s.close)
         return s
-
-    def patch_select_module(self, *keep, **replace):
-        """ Helper function that removes all selectors from the select module
-        except those listed in *keep and **replace. Those in keep will be kept
-        if they exist in the select module and those in replace will be patched
-        with the value that is given regardless if they exist or not. Cleanup
-        will restore previous state. This helper also resets the selectors module
-        so that a call to DefaultSelector() will do feature detection again. """
-        selectors._DEFAULT_SELECTOR = None
-        for s in ['select', 'poll', 'epoll', 'kqueue']:
-            if s in replace:
-                if hasattr(select, s):
-                    old_selector = getattr(select, s)
-                    self.addCleanup(setattr, select, s, old_selector)
-                else:
-                    self.addCleanup(delattr, select, s)
-                setattr(select, s, replace[s])
-            elif s not in keep and hasattr(select, s):
-                old_selector = getattr(select, s)
-                self.addCleanup(setattr, select, s, old_selector)
-                delattr(select, s)
 
     def standard_setup(self):
         s = self.make_selector()
@@ -567,13 +568,6 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 
 
 class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
-    SELECTOR = selectors.DefaultSelector
-
-    def setUp(self):
-        old_selector = wait.DefaultSelector
-        wait.DefaultSelector = self.SELECTOR
-        self.addCleanup(setattr, wait, "DefaultSelector", old_selector)
-
     def make_socketpair(self):
         rd, wr = socket.socketpair()
 
@@ -585,11 +579,6 @@ class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
         self.addCleanup(rd.close)
         self.addCleanup(wr.close)
         return rd, wr
-
-    def make_selector(self):
-        s = self.SELECTOR()
-        self.addCleanup(s.close)
-        return s
 
     def test_wait_for_read_single_socket(self):
         rd, wr = self.make_socketpair()
@@ -629,10 +618,10 @@ class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
             wait.wait_for_read([rd], timeout=SHORT_SELECT)
 
     def test_wait_io_close_is_called(self):
-        selector = self.SELECTOR()
+        selector = selectors.DefaultSelector()
         self.addCleanup(selector.close)
 
-        def fake_constructor(*args, **kwargs):
+        def fake_constructor():
             return selector
 
         old_selector = wait.DefaultSelector
@@ -713,7 +702,7 @@ class TestUniqueSelectScenarios(BaseSelectorTestCase):
         # return value. This issue is caused by gevent, eventlet.
 
         # Now remove all selectors except `select.select`.
-        self.patch_select_module('select')
+        patch_select_module(self, 'select')
 
         # Make sure that the selector returned only uses the selector available.
         selector = self.make_selector()
@@ -735,7 +724,7 @@ class TestUniqueSelectScenarios(BaseSelectorTestCase):
                 raise OSError(errno.ENOSYS)
 
         # Remove all selectors except `select.select` and replace `select.poll`.
-        self.patch_select_module('select', poll=BadPoll)
+        patch_select_module(self, 'select', poll=BadPoll)
 
         selector = self.make_selector()
         self.assertIsInstance(selector, selectors.SelectSelector)
@@ -752,7 +741,7 @@ class TestUniqueSelectScenarios(BaseSelectorTestCase):
             raise OSError(errno.ENOSYS)
 
         # Remove all selectors except `select.select` and replace `select.epoll`.
-        self.patch_select_module('select', epoll=bad_epoll)
+        patch_select_module(self, 'select', epoll=bad_epoll)
 
         selector = self.make_selector()
         self.assertIsInstance(selector, selectors.SelectSelector)
@@ -761,42 +750,46 @@ class TestUniqueSelectScenarios(BaseSelectorTestCase):
 @skipUnless(hasattr(selectors, "SelectSelector"), "Platform doesn't have a SelectSelector")
 class SelectSelectorTestCase(BaseSelectorTestCase):
     def setUp(self):
-        self.patch_select_module('select')
+        patch_select_module(self, 'select')
 
 
 @skipUnless(hasattr(selectors, "PollSelector"), "Platform doesn't have a PollSelector")
 class PollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     def setUp(self):
-        self.patch_select_module('poll')
+        patch_select_module(self, 'poll')
 
 
 @skipUnless(hasattr(selectors, "EpollSelector"), "Platform doesn't have an EpollSelector")
 class EpollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     def setUp(self):
-        self.patch_select_module('epoll')
+        patch_select_module(self, 'epoll')
 
 
 @skipUnless(hasattr(selectors, "KqueueSelector"), "Platform doesn't have a KqueueSelector")
 class KqueueSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     def setUp(self):
-        self.patch_select_module('kqueue')
+        patch_select_module(self, 'kqueue')
 
 
 @skipUnless(hasattr(selectors, "SelectSelector"), "Platform doesn't have a SelectSelector")
 class SelectWaitForTestCase(BaseWaitForTestCase):
-    SELECTOR = getattr(selectors, "SelectSelector", None)
+    def setUp(self):
+        patch_select_module(self, 'select')
 
 
 @skipUnless(hasattr(selectors, "PollSelector"), "Platform doesn't have a PollSelector")
 class PollWaitForTestCase(BaseWaitForTestCase):
-    SELECTOR = getattr(selectors, "PollSelector", None)
+    def setUp(self):
+        patch_select_module(self, 'poll')
 
 
 @skipUnless(hasattr(selectors, "EpollSelector"), "Platform doesn't have an EpollSelector")
 class EpollWaitForTestCase(BaseWaitForTestCase):
-    SELECTOR = getattr(selectors, "EpollSelector", None)
+    def setUp(self):
+        patch_select_module(self, 'epoll')
 
 
 @skipUnless(hasattr(selectors, "KqueueSelector"), "Platform doesn't have a KqueueSelector")
 class KqueueWaitForTestCase(BaseWaitForTestCase):
-    SELECTOR = getattr(selectors, "KqueueSelector", None)
+    def setUp(self):
+        patch_select_module(self, 'kqueue')
