@@ -11,6 +11,10 @@ except ImportError as e:
     raise SkipTest('Could not import PyOpenSSL: %r' % e)
 
 
+from ..with_dummyserver.test_https import TestHTTPS, TestHTTPS_TLSv1  # noqa: F401
+from ..with_dummyserver.test_socketlevel import TestSNI, TestSocketClosing  # noqa: F401
+
+
 def setup_module():
     inject_into_urllib3()
 

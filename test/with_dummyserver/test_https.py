@@ -479,6 +479,11 @@ class TestHTTPS_IPSAN(HTTPSDummyServerTestCase):
 
     def test_can_validate_ip_san(self):
         """Ensure that urllib3 can validate SANs with IP addresses in them."""
+        try:
+            import ipaddress  # noqa: F401
+        except ImportError:
+            raise SkipTest("Only runs on systems with an ipaddress module")
+
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)

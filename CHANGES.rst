@@ -32,6 +32,15 @@ dev (master)
 
 * Improved performance of certain selector system calls on Python 3.5 and
   later. (Pull #1095)
+  
+* Resolved issue where the PyOpenSSL backend would not wrap SysCallError
+  exceptions appropriately when sending data. (Pull #1125)
+
+* Selectors now detects a monkey-patched select module after import for modules
+  that patch the select module like eventlet, greenlet. (Pull #1128)
+
+* Reduced memory consumption when streaming zlib-compressed responses
+  (as opposed to raw deflate streams). (Pull #1129)
 
 * ... [Short description of non-trivial change.] (Issue #)
 

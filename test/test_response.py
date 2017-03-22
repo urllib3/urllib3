@@ -119,6 +119,8 @@ class TestResponse(unittest.TestCase):
                          preload_content=False)
 
         self.assertEqual(r.read(1), b'f')
+        # Buffer in case we need to switch to the raw stream
+        self.assertIsNone(r._decoder._data)
         self.assertEqual(r.read(2), b'oo')
         self.assertEqual(r.read(), b'')
         self.assertEqual(r.read(), b'')
@@ -134,6 +136,8 @@ class TestResponse(unittest.TestCase):
                          preload_content=False)
 
         self.assertEqual(r.read(1), b'f')
+        # Once we've decoded data, we just stream to the decoder; no buffering
+        self.assertIsNone(r._decoder._data)
         self.assertEqual(r.read(2), b'oo')
         self.assertEqual(r.read(), b'')
         self.assertEqual(r.read(), b'')
