@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 from .filepost import encode_multipart_formdata
+from .packages import six
 from .packages.six.moves.urllib.parse import urlencode
 
 
@@ -138,6 +139,9 @@ class RequestMethods(object):
                 body, content_type = encode_multipart_formdata(fields, boundary=multipart_boundary)
             else:
                 body, content_type = urlencode(fields), 'application/x-www-form-urlencoded'
+
+            if isinstance(body, six.text_type):
+                body = body.encode('utf-8')
 
             extra_kw['body'] = body
             extra_kw['headers'] = {'Content-Type': content_type}

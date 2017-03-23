@@ -230,3 +230,11 @@ class FailedTunnelError(HTTPError):
     def __init__(self, message, response):
         super(FailedTunnelError, self).__init__(message)
         self.response = response
+
+
+class InvalidBodyError(HTTPError):
+    """
+    An attempt was made to send a request with a body object that urllib3 does
+    not support.
+    """
+    pass
