@@ -25,7 +25,7 @@ import h11
 from .base import Response
 from .exceptions import (
     ConnectTimeoutError, NewConnectionError, SubjectAltNameWarning,
-    SystemTimeWarning, BadVersionError, FailedTunnelError
+    SystemTimeWarning, BadVersionError, FailedTunnelError, InvalidBodyError
 )
 from .packages import six
 from .util import selectors, connection, ssl_ as ssl_util
@@ -96,28 +96,25 @@ def _make_body_iterable(body):
 
     The basic logic here is:
         - byte strings are turned into single-element lists
-        - unicode strings are encoded and turned into single-element lists
         - readables are wrapped in an iterable that repeatedly calls read until
           nothing is returned anymore
         - other iterables are used directly
         - anything else is not acceptable
+
+    In particular, note that we do not support *text* data of any kind. This
+    is deliberate: users must make choices about the encoding of the data they
+    use.
     """
     if body is None:
         return []
     elif isinstance(body, six.binary_type):
         return [body]
-    elif isinstance(body, six.text_type):
-        # TODO: Consider raising warnings on auto-encode?
-        body = body.encode('utf-8')
-        return [body]
     elif hasattr(body, "read"):
         return _read_readable(body)
-    elif isinstance(body, collections.Iterable):
-        # TODO: Should we wrap this in an iterable that auto-encodes text?
+    elif isinstance(body, collections.Iterable) and not isinstance(body, six.text_type):
         return body
     else:
-        # TODO: Better exception.
-        raise RuntimeError("Unacceptable body type")
+        raise InvalidBodyError("Unacceptable body type: %s" % type(body))
 
 
 def _request_to_bytes(request, state_machine):
