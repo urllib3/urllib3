@@ -54,11 +54,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
-    def test_set_ssl_version_to_tlsv1(self):
-        self._pool.ssl_version = ssl.PROTOCOL_TLSv1
-        r = self._pool.request('GET', '/')
-        self.assertEqual(r.status, 200, r.data)
-
     def test_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_reqs='CERT_REQUIRED',
@@ -359,7 +354,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          timeout=timeout, retries=False,
                                          cert_reqs='CERT_REQUIRED')
         self.addCleanup(https_pool.close)
-        https_pool.ca_certs = DEFAULT_CA
         https_pool.assert_fingerprint = '92:81:FE:85:F7:0C:26:60:EC:D6:B3:' \
                                         'BF:93:CF:F9:71:CC:07:7D:0A'
 
