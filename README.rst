@@ -12,6 +12,10 @@ urllib3
 .. image:: https://readthedocs.org/projects/urllib3/badge/?version=latest
         :alt: Documentation Status
         :target: https://urllib3.readthedocs.io/en/latest/
+        
+.. image:: https://img.shields.io/codecov/c/github/shazow/urllib3.svg
+        :alt: Coverage Status
+        :target: https://codecov.io/gh/shazow/urllib3
 
 .. image:: https://img.shields.io/pypi/v/urllib3.svg?maxAge=86400
         :alt: PyPI version

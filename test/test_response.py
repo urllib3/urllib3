@@ -1,5 +1,5 @@
-import unittest
 import socket
+import sys
 
 from io import BytesIO, BufferedReader
 
@@ -12,6 +12,11 @@ from urllib3.util.retry import Retry
 from urllib3.util.response import is_fp_closed
 
 from base64 import b64decode
+
+if sys.version_info >= (2, 7):
+    import unittest
+else:
+    import unittest2 as unittest
 
 # A known random (i.e, not-too-compressible) payload generated with:
 #    "".join(random.choice(string.printable) for i in xrange(512))
@@ -114,11 +119,14 @@ class TestResponse(unittest.TestCase):
                          preload_content=False)
 
         self.assertEqual(r.read(3), b'')
+        # Buffer in case we need to switch to the raw stream
+        self.assertIsNotNone(r._decoder._data)
         self.assertEqual(r.read(1), b'f')
+        # Now that we've decoded data, we just stream through the decoder
+        self.assertIsNone(r._decoder._data)
         self.assertEqual(r.read(2), b'oo')
         self.assertEqual(r.read(), b'')
         self.assertEqual(r.read(), b'')
-
 
     def test_chunked_decoding_deflate2(self):
         import zlib
@@ -132,10 +140,11 @@ class TestResponse(unittest.TestCase):
 
         self.assertEqual(r.read(1), b'')
         self.assertEqual(r.read(1), b'f')
+        # Once we've decoded data, we just stream to the decoder; no buffering
+        self.assertIsNone(r._decoder._data)
         self.assertEqual(r.read(2), b'oo')
         self.assertEqual(r.read(), b'')
         self.assertEqual(r.read(), b'')
-
 
     def test_chunked_decoding_gzip(self):
         import zlib
@@ -152,7 +161,6 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(r.read(2), b'oo')
         self.assertEqual(r.read(), b'')
         self.assertEqual(r.read(), b'')
-
 
     def test_body_blob(self):
         resp = HTTPResponse(b'foo')
@@ -179,7 +187,7 @@ class TestResponse(unittest.TestCase):
         resp2.close()
         self.assertEqual(resp2.closed, True)
 
-        #also try when only data is present.
+        # also try when only data is present.
         resp3 = HTTPResponse('foodata')
         self.assertRaises(IOError, resp3.fileno)
 
@@ -233,7 +241,6 @@ class TestResponse(unittest.TestCase):
         # versions.  Probably this is because the `io` module in py2.6 is an
         # old version that has a different underlying implementation.
 
-
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)
 
@@ -279,7 +286,7 @@ class TestResponse(unittest.TestCase):
 
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
-                         preload_content=False)
+                            preload_content=False)
         stream = resp.stream(2)
 
         self.assertEqual(next(stream), b'f')
@@ -295,7 +302,7 @@ class TestResponse(unittest.TestCase):
 
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
-                         preload_content=False)
+                            preload_content=False)
         stream = resp.stream()
 
         # Read everything
@@ -364,7 +371,7 @@ class TestResponse(unittest.TestCase):
 
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
-                         preload_content=False)
+                            preload_content=False)
         stream = resp.stream(2)
 
         self.assertEqual(next(stream), b'f')
@@ -379,7 +386,7 @@ class TestResponse(unittest.TestCase):
 
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
-                         preload_content=False)
+                            preload_content=False)
         stream = resp.stream(2)
 
         self.assertEqual(next(stream), b'f')
@@ -702,7 +709,7 @@ class MockChunkedEncodingWithoutCRLFOnEnd(MockChunkedEncodingResponse):
 
     def _encode_chunk(self, chunk):
         return '%X\r\n%s%s' % (len(chunk), chunk.decode(),
-            "\r\n" if len(chunk) > 0 else "")
+                               "\r\n" if len(chunk) > 0 else "")
 
 
 class MockChunkedEncodingWithExtensions(MockChunkedEncodingResponse):

@@ -221,5 +221,11 @@ In chronological order:
 * Moinuddin Quadri <moin18@gmail.com>
   * Lazily load idna package
 
+* Tom White <s6yg1ez3@mail2tor.com>
+  * Made SOCKS handler differentiate socks5h from socks5 and socks4a from socks4.
+
+* Tim Burke <tim.burke@gmail.com>
+  * Stop buffering entire deflate-encoded responses.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

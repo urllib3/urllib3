@@ -7,7 +7,7 @@ import socket
 
 from nose.plugins.skip import SkipTest
 
-from urllib3.exceptions import MaxRetryError, HTTPWarning
+from urllib3.exceptions import HTTPWarning
 from urllib3.packages import six
 
 # We need a host that will not immediately close the connection with a TCP
@@ -29,9 +29,11 @@ def clear_warnings(cls=HTTPWarning):
         new_filters.append(f)
     warnings.filters[:] = new_filters
 
+
 def setUp():
     clear_warnings()
     warnings.simplefilter('ignore', HTTPWarning)
+
 
 def onlyPy26OrOlder(test):
     """Skips this test unless you are on Python2.6.x or earlier."""
@@ -44,6 +46,7 @@ def onlyPy26OrOlder(test):
         return test(*args, **kwargs)
     return wrapper
 
+
 def onlyPy27OrNewer(test):
     """Skips this test unless you are on Python 2.7.x or later."""
 
@@ -54,6 +57,7 @@ def onlyPy27OrNewer(test):
             raise SkipTest(msg)
         return test(*args, **kwargs)
     return wrapper
+
 
 def onlyPy279OrNewer(test):
     """Skips this test unless you are on Python 2.7.9 or later."""
@@ -66,6 +70,7 @@ def onlyPy279OrNewer(test):
         return test(*args, **kwargs)
     return wrapper
 
+
 def onlyPy2(test):
     """Skips this test unless you are on Python 2.x"""
 
@@ -76,6 +81,7 @@ def onlyPy2(test):
             raise SkipTest(msg)
         return test(*args, **kwargs)
     return wrapper
+
 
 def onlyPy3(test):
     """Skips this test unless you are on Python3.x"""
@@ -88,13 +94,16 @@ def onlyPy3(test):
         return test(*args, **kwargs)
     return wrapper
 
+
 _requires_network_has_route = None
+
+
 def requires_network(test):
     """Helps you skip tests that require the network"""
 
     def _is_unreachable_err(err):
         return getattr(err, 'errno', None) in (errno.ENETUNREACH,
-                                               errno.EHOSTUNREACH) # For OSX
+                                               errno.EHOSTUNREACH)  # For OSX
 
     def _has_route():
         try:

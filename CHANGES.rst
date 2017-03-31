@@ -4,6 +4,31 @@ Changes
 dev (master)
 ------------
 
+* Improved performance of certain selector system calls on Python 3.5 and
+  later. (Pull #1095)
+  
+* Resolved issue where the PyOpenSSL backend would not wrap SysCallError
+  exceptions appropriately when sending data. (Pull #1125)
+
+* Selectors now detects a monkey-patched select module after import for modules
+  that patch the select module like eventlet, greenlet. (Pull #1128)
+
+* Reduced memory consumption when streaming zlib-compressed responses
+  (as opposed to raw deflate streams). (Pull #1129)
+
+* Connection pools now use the entire request context when constructing the
+  pool key. (Pull #1016)
+
+* ``PoolManager.connection_from_*`` methods now accept a new keyword argument,
+  ``pool_kwargs``, which are merged with the existing ``connection_pool_kw``.
+  (Pull #1016)
+
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.20 (2017-01-19)
+-----------------
+
 * Added support for waiting for I/O using selectors other than select,
   improving urllib3's behaviour with large numbers of concurrent connections.
   (Pull #1001)
@@ -34,7 +59,8 @@ dev (master)
 
 * Add support for IPv6 literals with zone identifiers. (Pull #1013)
 
-* ... [Short description of non-trivial change.] (Issue #)
+* Added support for socks5h:// and socks4a:// schemes when working with SOCKS
+  proxies, and controlled remote DNS appropriately. (Issue #1035)
 
 
 1.19.1 (2016-11-16)
