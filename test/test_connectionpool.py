@@ -385,8 +385,7 @@ class TestConnectionPool(unittest.TestCase):
             # released back into the pool.
             pool._make_request = _raise_once_make_request_function(exception, *args)
             response = pool.urlopen('GET', '/', retries=1,
-                                    preload_content=False,
-                                    chunked=True)
+                                    preload_content=False)
             self.assertEqual(pool.pool.qsize(), 0)
             self.assertEqual(pool.num_connections, 2)
             self.assertTrue(response.connection is not None)
@@ -420,7 +419,7 @@ class TestConnectionPool(unittest.TestCase):
 
         pool = CustomConnectionPool(host='localhost', maxsize=1, block=True)
         self.addCleanup(pool.close)
-        response = pool.request('GET', '/', retries=False, chunked=True,
+        response = pool.request('GET', '/', retries=False,
                                 preload_content=False)
         self.assertTrue(isinstance(response, CustomHTTPResponse))
 
