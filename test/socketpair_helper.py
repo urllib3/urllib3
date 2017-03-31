@@ -1,5 +1,10 @@
 import socket
 
+try:
+    _CONNECT_ERROR = (BlockingIOError, InterruptedError)
+except:
+    _CONNECT_ERROR = (OSError,)
+    
 if hasattr(socket, 'socketpair'):
     # Since Python 3.5, socket.socketpair() is now also available on Windows
     socketpair = socket.socketpair
