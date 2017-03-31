@@ -570,8 +570,8 @@ class TestSocketClosing(SocketDummyServerTestCase):
             self.fail("Timed out waiting for connection close")
 
     def test_release_conn_param_is_respected_after_timeout_retry(self):
-        """For successful ```urlopen(release_conn=False)```,
-        the connection isn't released, even after a retry.
+        """For successful ```urlopen()```, the connection isn't released, even
+        after a retry.
 
         This test allows a retry: one request fails, the next request succeeds.
 
@@ -616,7 +616,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # First request should fail, but the timeout and `retries=1` should
             # save it.
             response = pool.urlopen('GET', '/', retries=1,
-                                    release_conn=False, preload_content=False,
+                                    preload_content=False,
                                     timeout=Timeout(connect=1, read=0.001))
 
             # The connection should still be on the response object, and none
