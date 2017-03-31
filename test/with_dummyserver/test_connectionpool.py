@@ -611,13 +611,12 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool.urlopen('GET', '/')
         self.assertEqual(pool.pool.qsize(), MAXSIZE-2)
 
-    def test_release_conn_parameter(self):
+    def test_connections_arent_released(self):
         MAXSIZE = 5
         pool = HTTPConnectionPool(self.host, self.port, maxsize=MAXSIZE)
         self.assertEqual(pool.pool.qsize(), MAXSIZE)
 
-        # Make request without releasing connection
-        pool.request('GET', '/', release_conn=False, preload_content=False)
+        pool.request('GET', '/', preload_content=False)
         self.assertEqual(pool.pool.qsize(), MAXSIZE-1)
 
     def test_dns_error(self):
@@ -687,11 +686,10 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             self.assertRaises(MaxRetryError,
                               http.request,
                               'GET', '/redirect',
-                              fields={'target': '/'}, release_conn=False, retries=0)
+                              fields={'target': '/'}, retries=0)
 
             r = http.request('GET', '/redirect',
                              fields={'target': '/'},
-                             release_conn=False,
                              retries=1)
             r.release_conn()
 

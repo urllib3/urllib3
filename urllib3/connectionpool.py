@@ -460,8 +460,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def urlopen(self, method, url, body=None, headers=None, retries=None,
                 redirect=True, assert_same_host=True, timeout=_Default,
-                pool_timeout=None, release_conn=None, chunked=False,
-                body_pos=None, **response_kw):
+                pool_timeout=None, chunked=False, body_pos=None,
+                **response_kw):
         """
         Get a connection from the pool and perform an HTTP request. This is the
         lowest level call for making a request, so you'll need to specify all
@@ -471,13 +471,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
            More commonly, it's appropriate to use a convenience method provided
            by :class:`.RequestMethods`, such as :meth:`request`.
-
-        .. note::
-
-           `release_conn` will only behave as expected if
-           `preload_content=False` because we want to make
-           `preload_content=False` the default behaviour someday soon without
-           breaking backwards compatibility.
 
         :param method:
             HTTP request method (such as GET, POST, PUT, etc.)
@@ -528,16 +521,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             block for ``pool_timeout`` seconds and raise EmptyPoolError if no
             connection is available within the time period.
 
-        :param release_conn:
-            If False, then the urlopen call will not release the connection
-            back into the pool once a response is received (but will release if
-            you read the entire contents of the response such as when
-            `preload_content=True`). This is useful if you're not preloading
-            the response's content immediately. You will need to call
-            ``r.release_conn()`` on the response ``r`` to return the connection
-            back into the pool. If None, it takes the value of
-            ``response_kw.get('preload_content', True)``.
-
         :param chunked:
             If True, urllib3 will send the body using chunked transfer
             encoding. Otherwise, urllib3 will send the body using the standard
@@ -558,11 +541,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if not isinstance(retries, Retry):
             retries = Retry.from_int(retries, redirect=redirect, default=self.retries)
 
-        # TODO: I don't think we need release_conn at all anymore. I can see no
-        # value in keeping it around.
-        if release_conn is None:
-            release_conn = False
-
         # Check host
         if assert_same_host and not self.is_same_host(url):
             raise HostChangedError(self, url, retries)
@@ -570,15 +548,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn = None
 
         # Track whether `conn` needs to be released before
-        # returning/raising/recursing. Update this variable if necessary, and
-        # leave `release_conn` constant throughout the function. That way, if
-        # the function recurses, the original value of `release_conn` will be
-        # passed down into the recursive call, and its value will be respected.
-        #
-        # See issue #651 [1] for details.
-        #
-        # [1] <https://github.com/shazow/urllib3/issues/651>
-        release_this_conn = release_conn
+        # returning/raising/recursing.
+        release_this_conn = False
 
         # Merge the proxy headers. Only do this in HTTP. We have to copy the
         # headers dict so we can safely change it without those changes being
@@ -682,8 +653,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             return self.urlopen(method, url, body, headers, retries,
                                 redirect, assert_same_host,
                                 timeout=timeout, pool_timeout=pool_timeout,
-                                release_conn=release_conn, body_pos=body_pos,
-                                **response_kw)
+                                body_pos=body_pos, **response_kw)
 
         # Handle redirect?
         redirect_location = redirect and response.get_redirect_location()
@@ -708,8 +678,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 retries=retries, redirect=redirect,
                 assert_same_host=assert_same_host,
                 timeout=timeout, pool_timeout=pool_timeout,
-                release_conn=release_conn, body_pos=body_pos,
-                **response_kw)
+                body_pos=body_pos, **response_kw)
 
         # Check if we should retry the HTTP response.
         has_retry_after = bool(response.getheader('Retry-After'))
@@ -730,7 +699,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 retries=retries, redirect=redirect,
                 assert_same_host=assert_same_host,
                 timeout=timeout, pool_timeout=pool_timeout,
-                release_conn=release_conn,
                 body_pos=body_pos, **response_kw)
 
         return response
