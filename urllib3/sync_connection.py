@@ -478,6 +478,23 @@ class SyncHTTP1Connection(object):
 
         self._state_machine = None
 
+    def is_dropped(self):
+        """
+        Returns True if the connection is closed: returns False otherwise. This
+        includes closures that do not mark the FD as closed, such as when the
+        remote peer has sent EOF but we haven't read it yet.
+        """
+        if self._sock is None:
+            return True
+
+        # We check for droppedness by checking the socket for readability. If
+        # it's not readable, it's not dropped. If it is readable, then we
+        # assume that the thing we'd read from the socket is EOF. It might not
+        # be, but if it's not then the server has busted its HTTP/1.1 framing
+        # and so we want to drop the connection anyway.
+        self._selector.modify(self._sock, selectors.EVENT_READ)
+        return bool(self._selector.select(0))
+
     def _reset(self):
         """
         Called once we hit EndOfMessage, and checks whether we can re-use this
