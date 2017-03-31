@@ -460,8 +460,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def urlopen(self, method, url, body=None, headers=None, retries=None,
                 redirect=True, assert_same_host=True, timeout=_Default,
-                pool_timeout=None, chunked=False, body_pos=None,
-                **response_kw):
+                pool_timeout=None, body_pos=None, **response_kw):
         """
         Get a connection from the pool and perform an HTTP request. This is the
         lowest level call for making a request, so you'll need to specify all
@@ -520,11 +519,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             If set and the pool is set to block=True, then this method will
             block for ``pool_timeout`` seconds and raise EmptyPoolError if no
             connection is available within the time period.
-
-        :param chunked:
-            If True, urllib3 will send the body using chunked transfer
-            encoding. Otherwise, urllib3 will send the body using the standard
-            content-length form. Defaults to False.
 
         :param int body_pos:
             Position to seek to in file-like body in the event of a retry or
