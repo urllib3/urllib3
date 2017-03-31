@@ -569,7 +569,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 
 class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
     def make_socketpair(self):
-        rd, wr = socket.socketpair()
+        rd, wr = socketpair()
 
         # Make non-blocking so we get errors if the
         # sockets are interacted with but not ready.
