@@ -4,7 +4,6 @@ import os
 import psutil
 import select
 import signal
-import socket
 import sys
 import time
 import threading

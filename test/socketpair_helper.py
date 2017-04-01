@@ -4,10 +4,10 @@ try:
     _CONNECT_ERROR = (BlockingIOError, InterruptedError)
 except:
     try:
-        _CONNECT_ERROR = (WinError, OSError, socket.error)
+        _CONNECT_ERROR = (WinError, OSError, socket.error)  # noqa: F821
     except:
         _CONNECT_ERROR = (OSError, socket.error)
-    
+
 if hasattr(socket, 'socketpair'):
     # Since Python 3.5, socket.socketpair() is now also available on Windows
     socketpair = socket.socketpair

@@ -4,6 +4,7 @@ import errno
 import functools
 import logging
 import socket
+import platform
 
 from nose.plugins.skip import SkipTest
 
@@ -90,6 +91,17 @@ def onlyPy3(test):
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python3.x to run".format(name=test.__name__)
         if not six.PY3:
+            raise SkipTest(msg)
+        return test(*args, **kwargs)
+    return wrapper
+
+
+def onlyPy27OrNewerOrNonWindows(test):
+    """Skips this test unless you are on Python2.7+ or non-Windows"""
+    @functools.wraps(test)
+    def wrapper(*args, **kwargs):
+        msg = "{name} requires Python2.7+ or non-Windows to run".format(name=test.__name__)
+        if sys.version_info < (2, 7) and platform.system() == 'Windows':
             raise SkipTest(msg)
         return test(*args, **kwargs)
     return wrapper
