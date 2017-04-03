@@ -2,10 +2,10 @@ import socket
 
 try:
     _CONNECT_ERROR = (BlockingIOError, InterruptedError)
-except:
+except NameError:
     try:
         _CONNECT_ERROR = (WinError, OSError, socket.error)  # noqa: F821
-    except:
+    except NameError:
         _CONNECT_ERROR = (OSError, socket.error)
 
 if hasattr(socket, 'socketpair'):
