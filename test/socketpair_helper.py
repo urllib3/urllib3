@@ -1,5 +1,19 @@
 import socket
 
+# Figuring out what errors could come out of a socket. There are three
+# different situations. Python 3 post-PEP3151 will define and use
+# BlockingIOError and InterruptedError from sockets. For Python pre-PEP3151
+# both OSError and socket.error can be raised except on Windows where
+# WindowsError can also be raised. We want to catch all of these possible
+# exceptions so we catch WindowsError if it's defined.
+try:
+    _CONNECT_ERROR = (BlockingIOError, InterruptedError)
+except NameError:
+    try:
+        _CONNECT_ERROR = (WindowsError, OSError, socket.error)  # noqa: F821
+    except NameError:
+        _CONNECT_ERROR = (OSError, socket.error)
+
 if hasattr(socket, 'socketpair'):
     # Since Python 3.5, socket.socketpair() is now also available on Windows
     socketpair = socket.socketpair
@@ -36,7 +50,7 @@ else:
                 csock.setblocking(False)
                 try:
                     csock.connect((addr, port))
-                except (BlockingIOError, InterruptedError):
+                except _CONNECT_ERROR:
                     pass
                 csock.setblocking(True)
                 ssock, _ = lsock.accept()
