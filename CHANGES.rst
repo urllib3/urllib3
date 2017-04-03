@@ -42,6 +42,13 @@ dev (master)
 * Reduced memory consumption when streaming zlib-compressed responses
   (as opposed to raw deflate streams). (Pull #1129)
 
+* Connection pools now use the entire request context when constructing the
+  pool key. (Pull #1016)
+
+* ``PoolManager.connection_from_*`` methods now accept a new keyword argument,
+  ``pool_kwargs``, which are merged with the existing ``connection_pool_kw``.
+  (Pull #1016)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

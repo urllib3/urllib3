@@ -4,7 +4,6 @@ import os
 import psutil
 import select
 import signal
-import socket
 import sys
 import time
 import threading
@@ -37,10 +36,11 @@ SHORT_SELECT = 0.01
 # Tolerance values for timer/speed fluctuations.
 TOLERANCE = 0.75
 
-# Detect whether we're running on Travis.  This is used
-# to skip some verification points inside of tests to
+# Detect whether we're running on Travis or AppVeyor.  This
+# is used to skip some verification points inside of tests to
 # not randomly fail our CI due to wild timer/speed differences.
 TRAVIS_CI = "TRAVIS" in os.environ
+APPVEYOR = "APPVEYOR" in os.environ
 
 
 skipUnlessHasSelector = skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector")
@@ -122,7 +122,7 @@ class TimerContext(object):
         total_time = self.end_time - self.start_time
 
         # Skip timing on CI due to flakiness.
-        if TRAVIS_CI:
+        if TRAVIS_CI or APPVEYOR:
             return
 
         if self.lower is not None:
@@ -562,7 +562,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 
 class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
     def make_socketpair(self):
-        rd, wr = socket.socketpair()
+        rd, wr = socketpair()
 
         # Make non-blocking so we get errors if the
         # sockets are interacted with but not ready.

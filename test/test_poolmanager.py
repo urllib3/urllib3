@@ -1,14 +1,9 @@
-import functools
-from collections import namedtuple
 import sys
 
 from urllib3.poolmanager import (
-    _default_key_normalizer,
-    HTTPPoolKey,
-    HTTPSPoolKey,
+    PoolKey,
     key_fn_by_scheme,
     PoolManager,
-    SSL_KEYWORDS,
 )
 from urllib3 import connection_from_url
 from urllib3.exceptions import (
@@ -139,30 +134,9 @@ class TestPoolManager(unittest.TestCase):
         )
         self.assertTrue(
             all(
-                isinstance(key, HTTPPoolKey)
+                isinstance(key, PoolKey)
                 for key in p.pools.keys())
         )
-
-    def test_http_pool_key_extra_kwargs(self):
-        """Assert non-HTTPPoolKey fields are ignored when selecting a pool."""
-        p = PoolManager()
-        self.addCleanup(p.clear)
-        conn_pool = p.connection_from_url('http://example.com/')
-        p.connection_pool_kw['some_kwarg'] = 'that should be ignored'
-        other_conn_pool = p.connection_from_url('http://example.com/')
-
-        self.assertTrue(conn_pool is other_conn_pool)
-
-    def test_http_pool_key_https_kwargs(self):
-        """Assert HTTPSPoolKey fields are ignored when selecting a HTTP pool."""
-        p = PoolManager()
-        self.addCleanup(p.clear)
-        conn_pool = p.connection_from_url('http://example.com/')
-        for key in SSL_KEYWORDS:
-            p.connection_pool_kw[key] = 'this should be ignored'
-        other_conn_pool = p.connection_from_url('http://example.com/')
-
-        self.assertTrue(conn_pool is other_conn_pool)
 
     def test_https_pool_key_fields(self):
         """Assert the HTTPSPoolKey fields are honored when selecting a pool."""
@@ -206,19 +180,9 @@ class TestPoolManager(unittest.TestCase):
         self.assertTrue(all(pool in conn_pools for pool in dup_pools))
         self.assertTrue(
             all(
-                isinstance(key, HTTPSPoolKey)
+                isinstance(key, PoolKey)
                 for key in p.pools.keys())
         )
-
-    def test_https_pool_key_extra_kwargs(self):
-        """Assert non-HTTPSPoolKey fields are ignored when selecting a pool."""
-        p = PoolManager()
-        self.addCleanup(p.clear)
-        conn_pool = p.connection_from_url('https://example.com/')
-        p.connection_pool_kw['some_kwarg'] = 'that should be ignored'
-        other_conn_pool = p.connection_from_url('https://example.com/')
-
-        self.assertTrue(conn_pool is other_conn_pool)
 
     def test_default_pool_key_funcs_copy(self):
         """Assert each PoolManager gets a copy of ``pool_keys_by_scheme``."""
@@ -269,7 +233,7 @@ class TestPoolManager(unittest.TestCase):
 
         self.assertEqual(1, len(p.pools))
         self.assertTrue(pool is other_pool)
-        self.assertTrue(all(isinstance(key, HTTPSPoolKey) for key in p.pools.keys()))
+        self.assertTrue(all(isinstance(key, PoolKey) for key in p.pools.keys()))
 
     def test_https_connection_from_host_case_insensitive(self):
         """Assert scheme case is ignored when getting the https key class."""
@@ -280,7 +244,7 @@ class TestPoolManager(unittest.TestCase):
 
         self.assertEqual(1, len(p.pools))
         self.assertTrue(pool is other_pool)
-        self.assertTrue(all(isinstance(key, HTTPSPoolKey) for key in p.pools.keys()))
+        self.assertTrue(all(isinstance(key, PoolKey) for key in p.pools.keys()))
 
     def test_https_connection_from_context_case_insensitive(self):
         """Assert scheme case is ignored when getting the https key class."""
@@ -293,7 +257,7 @@ class TestPoolManager(unittest.TestCase):
 
         self.assertEqual(1, len(p.pools))
         self.assertTrue(pool is other_pool)
-        self.assertTrue(all(isinstance(key, HTTPSPoolKey) for key in p.pools.keys()))
+        self.assertTrue(all(isinstance(key, PoolKey) for key in p.pools.keys()))
 
     def test_http_connection_from_url_case_insensitive(self):
         """Assert scheme case is ignored when pooling HTTP connections."""
@@ -303,7 +267,7 @@ class TestPoolManager(unittest.TestCase):
 
         self.assertEqual(1, len(p.pools))
         self.assertTrue(pool is other_pool)
-        self.assertTrue(all(isinstance(key, HTTPPoolKey) for key in p.pools.keys()))
+        self.assertTrue(all(isinstance(key, PoolKey) for key in p.pools.keys()))
 
     def test_http_connection_from_host_case_insensitive(self):
         """Assert scheme case is ignored when getting the https key class."""
@@ -314,7 +278,7 @@ class TestPoolManager(unittest.TestCase):
 
         self.assertEqual(1, len(p.pools))
         self.assertTrue(pool is other_pool)
-        self.assertTrue(all(isinstance(key, HTTPPoolKey) for key in p.pools.keys()))
+        self.assertTrue(all(isinstance(key, PoolKey) for key in p.pools.keys()))
 
     def test_http_connection_from_context_case_insensitive(self):
         """Assert scheme case is ignored when getting the https key class."""
@@ -327,20 +291,84 @@ class TestPoolManager(unittest.TestCase):
 
         self.assertEqual(1, len(p.pools))
         self.assertTrue(pool is other_pool)
-        self.assertTrue(all(isinstance(key, HTTPPoolKey) for key in p.pools.keys()))
+        self.assertTrue(all(isinstance(key, PoolKey) for key in p.pools.keys()))
 
     def test_custom_pool_key(self):
-        """Assert it is possible to define addition pool key fields."""
-        custom_key = namedtuple('CustomKey', HTTPPoolKey._fields + ('my_field',))
-        p = PoolManager(10, my_field='barley')
+        """Assert it is possible to define a custom key function."""
+        p = PoolManager(10)
         self.addCleanup(p.clear)
 
-        p.key_fn_by_scheme['http'] = functools.partial(_default_key_normalizer, custom_key)
-        p.connection_from_url('http://example.com')
-        p.connection_pool_kw['my_field'] = 'wheat'
-        p.connection_from_url('http://example.com')
+        p.key_fn_by_scheme['http'] = lambda x: tuple(x['key'])
+        pool1 = p.connection_from_url(
+            'http://example.com', pool_kwargs={'key': 'value'})
+        pool2 = p.connection_from_url(
+            'http://example.com', pool_kwargs={'key': 'other'})
+        pool3 = p.connection_from_url(
+            'http://example.com', pool_kwargs={'key': 'value', 'x': 'y'})
 
         self.assertEqual(2, len(p.pools))
+        self.assertTrue(pool1 is pool3)
+        self.assertFalse(pool1 is pool2)
+
+    def test_override_pool_kwargs_url(self):
+        """Assert overriding pool kwargs works with connection_from_url."""
+        p = PoolManager(strict=True)
+        pool_kwargs = {'strict': False, 'retries': 100, 'block': True}
+
+        default_pool = p.connection_from_url('http://example.com/')
+        override_pool = p.connection_from_url(
+            'http://example.com/', pool_kwargs=pool_kwargs)
+
+        self.assertTrue(default_pool.strict)
+        self.assertEqual(retry.Retry.DEFAULT, default_pool.retries)
+        self.assertFalse(default_pool.block)
+
+        self.assertFalse(override_pool.strict)
+        self.assertEqual(100, override_pool.retries)
+        self.assertTrue(override_pool.block)
+
+    def test_override_pool_kwargs_host(self):
+        """Assert overriding pool kwargs works with connection_from_host"""
+        p = PoolManager(strict=True)
+        pool_kwargs = {'strict': False, 'retries': 100, 'block': True}
+
+        default_pool = p.connection_from_host('example.com', scheme='http')
+        override_pool = p.connection_from_host('example.com', scheme='http',
+                                               pool_kwargs=pool_kwargs)
+
+        self.assertTrue(default_pool.strict)
+        self.assertEqual(retry.Retry.DEFAULT, default_pool.retries)
+        self.assertFalse(default_pool.block)
+
+        self.assertFalse(override_pool.strict)
+        self.assertEqual(100, override_pool.retries)
+        self.assertTrue(override_pool.block)
+
+    def test_merge_pool_kwargs(self):
+        """Assert _merge_pool_kwargs works in the happy case"""
+        p = PoolManager(strict=True)
+        merged = p._merge_pool_kwargs({'new_key': 'value'})
+        self.assertEqual({'strict': True, 'new_key': 'value'}, merged)
+
+    def test_merge_pool_kwargs_none(self):
+        """Assert false-y values to _merge_pool_kwargs result in defaults"""
+        p = PoolManager(strict=True)
+        merged = p._merge_pool_kwargs({})
+        self.assertEqual(p.connection_pool_kw, merged)
+        merged = p._merge_pool_kwargs(None)
+        self.assertEqual(p.connection_pool_kw, merged)
+
+    def test_merge_pool_kwargs_remove_key(self):
+        """Assert keys can be removed with _merge_pool_kwargs"""
+        p = PoolManager(strict=True)
+        merged = p._merge_pool_kwargs({'strict': None})
+        self.assertTrue('strict' not in merged)
+
+    def test_merge_pool_kwargs_invalid_key(self):
+        """Assert removing invalid keys with _merge_pool_kwargs doesn't break"""
+        p = PoolManager(strict=True)
+        merged = p._merge_pool_kwargs({'invalid_key': None})
+        self.assertEqual(p.connection_pool_kw, merged)
 
 
 if __name__ == '__main__':
