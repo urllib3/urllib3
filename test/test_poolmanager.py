@@ -312,43 +312,39 @@ class TestPoolManager(unittest.TestCase):
 
     def test_override_pool_kwargs_url(self):
         """Assert overriding pool kwargs works with connection_from_url."""
-        p = PoolManager(strict=True)
-        pool_kwargs = {'strict': False, 'retries': 100, 'block': True}
+        p = PoolManager(block=False)
+        pool_kwargs = {'retries': 100, 'block': True}
 
         default_pool = p.connection_from_url('http://example.com/')
         override_pool = p.connection_from_url(
             'http://example.com/', pool_kwargs=pool_kwargs)
 
-        self.assertTrue(default_pool.strict)
         self.assertEqual(retry.Retry.DEFAULT, default_pool.retries)
         self.assertFalse(default_pool.block)
 
-        self.assertFalse(override_pool.strict)
         self.assertEqual(100, override_pool.retries)
         self.assertTrue(override_pool.block)
 
     def test_override_pool_kwargs_host(self):
         """Assert overriding pool kwargs works with connection_from_host"""
-        p = PoolManager(strict=True)
-        pool_kwargs = {'strict': False, 'retries': 100, 'block': True}
+        p = PoolManager(block=False)
+        pool_kwargs = {'retries': 100, 'block': True}
 
         default_pool = p.connection_from_host('example.com', scheme='http')
         override_pool = p.connection_from_host('example.com', scheme='http',
                                                pool_kwargs=pool_kwargs)
 
-        self.assertTrue(default_pool.strict)
         self.assertEqual(retry.Retry.DEFAULT, default_pool.retries)
         self.assertFalse(default_pool.block)
 
-        self.assertFalse(override_pool.strict)
         self.assertEqual(100, override_pool.retries)
         self.assertTrue(override_pool.block)
 
     def test_merge_pool_kwargs(self):
         """Assert _merge_pool_kwargs works in the happy case"""
-        p = PoolManager(strict=True)
+        p = PoolManager(block=False)
         merged = p._merge_pool_kwargs({'new_key': 'value'})
-        self.assertEqual({'strict': True, 'new_key': 'value'}, merged)
+        self.assertEqual({'block': False, 'new_key': 'value'}, merged)
 
     def test_merge_pool_kwargs_none(self):
         """Assert false-y values to _merge_pool_kwargs result in defaults"""
