@@ -22,7 +22,7 @@ import warnings
 
 import h11
 
-from .base import Response
+from .base import Request, Response
 from .exceptions import (
     ConnectTimeoutError, NewConnectionError, SubjectAltNameWarning,
     SystemTimeWarning, BadVersionError, FailedTunnelError, InvalidBodyError
@@ -173,6 +173,28 @@ def _response_from_h11(h11_response, body_object):
     return our_response
 
 
+def _build_tunnel_request(host, port, headers):
+    """
+    Builds a urllib3 Request object that is set up correctly to request a proxy
+    to establish a TCP tunnel to the remote host.
+    """
+    target = "%s:%d" % (host, port)
+    if not isinstance(target, bytes):
+        target = target.encode('latin1')
+
+    tunnel_request = Request(
+        method=b"CONNECT",
+        target=target,
+        headers=headers
+    )
+    tunnel_request.add_host(
+        host=host,
+        port=port,
+        scheme='http'
+    )
+    return tunnel_request
+
+
 _DEFAULT_SOCKET_OPTIONS = object()
 
 
@@ -306,22 +328,12 @@ class SyncHTTP1Connection(object):
         # Basic sanity check that _tunnel is only called at appropriate times.
         assert self._state_machine.our_state is h11.IDLE
 
-        target = "%s:%d" % (self._tunnel_host, self._tunnel_port)
-        if not isinstance(target, bytes):
-            target = target.encode('latin1')
-
-        # We need to set the Host header.
-        headers = dict(self._tunnel_headers.items())
-        if b"host" not in frozenset(k.lower() for k in headers):
-            headers[b"host"] = target
+        tunnel_request = _build_tunnel_request(
+            self._tunnel_host, self._tunnel_port, self._tunnel_headers
+        )
 
         tunnel_state_machine = h11.Connection(our_role=h11.CLIENT)
-        request = h11.Request(
-            method=b"CONNECT",
-            target=target,
-            headers=headers.items(),
-        )
-        bytes_to_send = tunnel_state_machine.send(request)
+        bytes_to_send = _request_to_bytes(tunnel_request, tunnel_state_machine)
         bytes_to_send += tunnel_state_machine.send(h11.EndOfMessage())
 
         # First, register the socket with the selector. We want to look for
