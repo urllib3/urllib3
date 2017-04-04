@@ -159,6 +159,20 @@ def _maybe_read_response(data, state_machine):
     return response
 
 
+def _response_from_h11(h11_response, body_object):
+    """
+    Given a h11 Response object, build a urllib3 response object and return it.
+    """
+    version = b'HTTP/' + h11_response.http_version
+    our_response = Response(
+        status_code=h11_response.status_code,
+        headers=_headers_to_native_string(h11_response.headers),
+        body=body_object,
+        version=version
+    )
+    return our_response
+
+
 _DEFAULT_SOCKET_OPTIONS = object()
 
 
@@ -334,14 +348,7 @@ class SyncHTTP1Connection(object):
             response = _maybe_read_response(read_bytes, tunnel_state_machine)
 
         if response.status_code != 200:
-            # TODO: This is duplicate code
-            version = b'HTTP/' + response.http_version
-            response = Response(
-                status_code=response.status_code,
-                headers=_headers_to_native_string(response.headers),
-                body=self,
-                version=version
-            )
+            response = _response_from_h11(response, self)
             self.close()
             raise FailedTunnelError(
                 "Unable to establish CONNECT tunnel", response
@@ -453,14 +460,7 @@ class SyncHTTP1Connection(object):
         if response.http_version not in _SUPPORTED_VERSIONS:
             raise BadVersionError(response.http_version)
 
-        version = b'HTTP/' + response.http_version
-        our_response = Response(
-            status_code=response.status_code,
-            headers=_headers_to_native_string(response.headers),
-            body=self,
-            version=version
-        )
-        return our_response
+        return _response_from_h11(response, self)
 
     def close(self):
         """

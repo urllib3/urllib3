@@ -16,7 +16,10 @@ try:  # Python 2.x doesn't define time.perf_counter.
 except ImportError:
     from time import time as get_time
 
-import resource
+try:  # Windows doesn't have the resource module.
+    import resource
+except ImportError:
+    resource = None
 
 try:  # Windows doesn't support socketpair on Python 3.5<
     from socket import socketpair
