@@ -202,9 +202,7 @@ class TestResponse(unittest.TestCase):
 
         # This is necessary to make sure the "no bytes left" part of `readinto`
         # gets tested.
-        print("First read")
         self.assertEqual(len(br.read(5)), 5)
-        print("Second read")
         self.assertEqual(len(br.read(5)), 5)
         self.assertEqual(len(br.read(5)), 0)
 
