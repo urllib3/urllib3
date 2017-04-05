@@ -299,10 +299,6 @@ class HTTPResponse(io.IOBase):
         # This makes this method prone to over-reading, and forcing too much
         # data into the buffer. That's unfortunate, but right now I'm not smart
         # enough to come up with a way to solve that problem.
-        self._init_decoder()
-        if decode_content is None:
-            decode_content = self.decode_content
-
         if self._fp is None and not self._buffer:
             return b''
 
@@ -310,66 +306,63 @@ class HTTPResponse(io.IOBase):
 
         with self._error_catcher():
             if amt is None:
-                raw_data = b''.join(self._fp)
-                self._fp_bytes_read += len(raw_data)
-                data += self._decode(
-                    raw_data, decode_content, flush_decoder=True
-                )
+                data += b''.join(self.stream(decode_content))
                 self._buffer = b''
-                self._fp = None
+
+                # We only cache the body data for simple read calls.
+                self._body = data
             else:
-                cache_content = False
                 data_len = len(data)
                 chunks = [data]
+                streamer = self.stream(decode_content)
 
                 while data_len < amt:
                     try:
-                        raw_chunk = next(self._fp)
+                        chunk = next(streamer)
                     except StopIteration:
-                        final_chunk = self._decode(
-                            b'', decode_content, flush_decoder=True
-                        )
-                        chunks.append(final_chunk)
-                        self._fp = None
                         break
-
-                    self._fp_bytes_read += len(raw_chunk)
-                    decoded_chunk = self._decode(
-                        raw_chunk, decode_content, flush_decoder=False
-                    )
-                    chunks.append(decoded_chunk)
-                    data_len += len(decoded_chunk)
+                    else:
+                        chunks.append(chunk)
+                        data_len += len(chunk)
 
                 data = b''.join(chunks)
                 self._buffer = data[amt:]
                 data = data[:amt]
 
-        if data and cache_content:
-            self._body = data
-
         return data
 
-    def stream(self, amt=2**16, decode_content=None):
+    def stream(self, decode_content=None):
         """
-        A generator wrapper for the read() method. A call will block until
-        ``amt`` bytes have been read from the connection or until the
-        connection is closed.
-
-        :param amt:
-            How much of the content to read. The generator will return up to
-            much data per iteration, but may return less. This is particularly
-            likely when using compressed data. However, the empty string will
-            never be returned.
+        A generator wrapper for the read() method.
 
         :param decode_content:
             If True, will attempt to decode the body based on the
             'content-encoding' header.
         """
-        while not is_fp_closed(self._fp):
-            data = self.read(amt=amt, decode_content=decode_content)
+        # Short-circuit evaluation for exhausted responses.
+        if self._fp is None:
+            return
 
-            if data:
-                yield data
+        self._init_decoder()
+        if decode_content is None:
+            decode_content = self.decode_content
+
+        with self._error_catcher():
+            for raw_chunk in self._fp:
+                self._fp_bytes_read += len(raw_chunk)
+                decoded_chunk = self._decode(
+                    raw_chunk, decode_content, flush_decoder=False
+                )
+                if decoded_chunk:
+                    yield decoded_chunk
+
+            final_chunk = self._decode(
+                b'', decode_content, flush_decoder=True
+            )
+            if final_chunk:
+                yield final_chunk
+
+            self._fp = None
 
     @classmethod
     def from_base(ResponseCls, r, **response_kw):
