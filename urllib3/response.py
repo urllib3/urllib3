@@ -400,6 +400,7 @@ class HTTPResponse(io.IOBase):
     def close(self):
         if not self.closed:
             self._fp.close()
+            self._buffer = b''
             self._fp = None
 
         if self._connection:
@@ -408,7 +409,7 @@ class HTTPResponse(io.IOBase):
     @property
     def closed(self):
         # TODO: Do we need this?
-        if self._fp is None:
+        if self._fp is None and not self._buffer:
             return True
         elif hasattr(self._fp, 'complete'):
             return self._fp.complete
