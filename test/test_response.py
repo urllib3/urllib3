@@ -233,6 +233,35 @@ class TestResponse(unittest.TestCase):
         resp.close()
         self.assertRaises(StopIteration, next, resp.stream())
 
+    def test_close_midstream(self):
+        # A mock fp object that wraps a list and allows closing.
+        class MockFP(object):
+            self.list = None
+
+            def close(self):
+                self.list = None
+
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                if not self.list:
+                    raise StopIteration()
+                return self.list.pop(0)
+
+            next = __next__
+
+        data = [b'fo', b'o']
+        fp = MockFP()
+        fp.list = data
+        resp = HTTPResponse(fp, preload_content=False)
+        stream = resp.stream()
+
+        self.assertEqual(next(stream), b'fo')
+        resp.close()
+        self.assertRaises(StopIteration, next, stream)
+
+
     def test_streaming_tell(self):
         fp = [b'fo', b'o']
         resp = HTTPResponse(fp, preload_content=False)
@@ -406,7 +435,6 @@ class TestResponse(unittest.TestCase):
                 return self.read(1)
 
             next = __next__
-
         bio = BytesIO(b'foo')
         fp = MockHTTPRequest()
         fp.fp = bio
