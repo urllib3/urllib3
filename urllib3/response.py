@@ -356,10 +356,17 @@ class HTTPResponse(io.IOBase):
                 if decoded_chunk:
                     yield decoded_chunk
 
+            # This branch is speculative: most decoders do not need to flush,
+            # and so this produces no output. However, it's here because
+            # anecdotally some platforms on which we do not test (like Jython)
+            # do require the flush. For this reason, we exclude this from code
+            # coverage. Happily, the code here is so simple that testing the
+            # branch we don't enter is basically entirely unnecessary (it's
+            # just a yield statement).
             final_chunk = self._decode(
                 b'', decode_content, flush_decoder=True
             )
-            if final_chunk:
+            if final_chunk:  # Platform-specific: Jython
                 yield final_chunk
 
             self._fp = None
