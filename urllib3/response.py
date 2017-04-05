@@ -408,7 +408,7 @@ class HTTPResponse(io.IOBase):
 
     @property
     def closed(self):
-        # TODO: Do we need this?
+        # This method is required for `io` module compatibility.
         if self._fp is None and not self._buffer:
             return True
         elif hasattr(self._fp, 'complete'):
@@ -417,7 +417,7 @@ class HTTPResponse(io.IOBase):
             return False
 
     def fileno(self):
-        # TODO: Do we need this?
+        # This method is required for `io` module compatibility.
         if self._fp is None:
             raise IOError("HTTPResponse has no file to get a fileno from")
         elif hasattr(self._fp, "fileno"):
