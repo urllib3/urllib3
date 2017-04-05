@@ -1284,6 +1284,11 @@ class TestBadContentLength(SocketDummyServerTestCase):
         # Test stream read when content length less than headers claim
         get_response = conn.request('GET', url='/', preload_content=False)
         data = get_response.stream(100)
+
+        # The first read will work fine.
+        next(data)
+
+        # The second one will see the EOF condition and barf.
         try:
             next(data)
             self.assertFail()

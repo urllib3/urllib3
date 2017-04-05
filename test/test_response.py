@@ -202,29 +202,31 @@ class TestResponse(unittest.TestCase):
 
         # This is necessary to make sure the "no bytes left" part of `readinto`
         # gets tested.
+        print("First read")
         self.assertEqual(len(br.read(5)), 5)
+        print("Second read")
         self.assertEqual(len(br.read(5)), 5)
         self.assertEqual(len(br.read(5)), 0)
 
     def test_streaming(self):
-        fp = BytesIO(b'foo')
+        fp = [b'fo', b'o']
         resp = HTTPResponse(fp, preload_content=False)
-        stream = resp.stream(2, decode_content=False)
+        stream = resp.stream(decode_content=False)
 
         self.assertEqual(next(stream), b'fo')
         self.assertEqual(next(stream), b'o')
         self.assertRaises(StopIteration, next, stream)
 
     def test_streaming_tell(self):
-        fp = BytesIO(b'foo')
+        fp = [b'fo', b'o']
         resp = HTTPResponse(fp, preload_content=False)
-        stream = resp.stream(2, decode_content=False)
+        stream = resp.stream(decode_content=False)
 
         position = 0
 
         position += len(next(stream))
         self.assertEqual(2, position)
-        self.assertEqual(3, resp.tell())
+        self.assertEqual(2, resp.tell())
 
         position += len(next(stream))
         self.assertEqual(3, position)
@@ -241,10 +243,9 @@ class TestResponse(unittest.TestCase):
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
                             preload_content=False)
-        stream = resp.stream(2)
+        stream = resp.stream()
 
-        self.assertEqual(next(stream), b'fo')
-        self.assertEqual(next(stream), b'o')
+        self.assertEqual(next(stream), b'foo')
         self.assertRaises(StopIteration, next, stream)
 
     def test_gzipped_streaming_tell(self):
@@ -337,10 +338,9 @@ class TestResponse(unittest.TestCase):
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
                             preload_content=False)
-        stream = resp.stream(2)
+        stream = resp.stream()
 
-        self.assertEqual(next(stream), b'fo')
-        self.assertEqual(next(stream), b'o')
+        self.assertEqual(next(stream), b'foo')
         self.assertRaises(StopIteration, next, stream)
 
     def test_deflate2_streaming(self):
@@ -352,16 +352,15 @@ class TestResponse(unittest.TestCase):
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
                             preload_content=False)
-        stream = resp.stream(2)
+        stream = resp.stream()
 
-        self.assertEqual(next(stream), b'fo')
-        self.assertEqual(next(stream), b'o')
+        self.assertEqual(next(stream), b'foo')
         self.assertRaises(StopIteration, next, stream)
 
     def test_empty_stream(self):
         fp = BytesIO(b'')
         resp = HTTPResponse(fp, preload_content=False)
-        stream = resp.stream(2, decode_content=False)
+        stream = resp.stream(decode_content=False)
 
         self.assertRaises(StopIteration, next, stream)
 
@@ -396,9 +395,10 @@ class TestResponse(unittest.TestCase):
         fp = MockHTTPRequest()
         fp.fp = bio
         resp = HTTPResponse(fp, preload_content=False)
-        stream = resp.stream(2)
+        stream = resp.stream()
 
-        self.assertEqual(next(stream), b'fo')
+        self.assertEqual(next(stream), b'f')
+        self.assertEqual(next(stream), b'o')
         self.assertEqual(next(stream), b'o')
         self.assertRaises(StopIteration, next, stream)
 
