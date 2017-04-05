@@ -249,6 +249,11 @@ class HTTPResponse(io.IOBase):
                 # This includes IncompleteRead.
                 raise ProtocolError('Connection broken: %r' % e, e)
 
+            except GeneratorExit:
+                # We swallow GeneratorExit when it is emitted: this allows the
+                # use of the error checker inside stream()
+                pass
+
             # If no exception is thrown, we should avoid cleaning up
             # unnecessarily.
             clean_exit = True
