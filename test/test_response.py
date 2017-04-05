@@ -259,7 +259,6 @@ class TestResponse(unittest.TestCase):
         resp.close()
         self.assertRaises(StopIteration, next, stream)
 
-
     def test_streaming_tell(self):
         fp = [b'fo', b'o']
         resp = HTTPResponse(fp, preload_content=False)

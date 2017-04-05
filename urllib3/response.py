@@ -13,7 +13,6 @@ from .exceptions import (
     ProtocolError, DecodeError, ReadTimeoutError
 )
 from .packages.six import string_types as basestring, binary_type
-from .util.response import is_fp_closed
 from .util.ssl_ import BaseSSLError
 
 log = logging.getLogger(__name__)
