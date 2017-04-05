@@ -217,6 +217,22 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(next(stream), b'o')
         self.assertRaises(StopIteration, next, stream)
 
+    def test_double_streaming(self):
+        fp = [b'fo', b'o']
+        resp = HTTPResponse(fp, preload_content=False)
+
+        stream = list(resp.stream(decode_content=False))
+        self.assertEqual(stream, fp)
+
+        stream = list(resp.stream(decode_content=False))
+        self.assertEqual(stream, [])
+
+    def test_closed_streaming(self):
+        fp = BytesIO(b'foo')
+        resp = HTTPResponse(fp, preload_content=False)
+        resp.close()
+        self.assertRaises(StopIteration, next, resp.stream())
+
     def test_streaming_tell(self):
         fp = [b'fo', b'o']
         resp = HTTPResponse(fp, preload_content=False)
