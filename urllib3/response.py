@@ -13,7 +13,6 @@ from .exceptions import (
     ProtocolError, DecodeError, ReadTimeoutError
 )
 from .packages.six import string_types as basestring, binary_type
-from .util.response import is_fp_closed
 from .util.ssl_ import BaseSSLError
 
 log = logging.getLogger(__name__)
@@ -249,6 +248,11 @@ class HTTPResponse(io.IOBase):
                 # This includes IncompleteRead.
                 raise ProtocolError('Connection broken: %r' % e, e)
 
+            except GeneratorExit:
+                # We swallow GeneratorExit when it is emitted: this allows the
+                # use of the error checker inside stream()
+                pass
+
             # If no exception is thrown, we should avoid cleaning up
             # unnecessarily.
             clean_exit = True
@@ -294,10 +298,6 @@ class HTTPResponse(io.IOBase):
         # This makes this method prone to over-reading, and forcing too much
         # data into the buffer. That's unfortunate, but right now I'm not smart
         # enough to come up with a way to solve that problem.
-        self._init_decoder()
-        if decode_content is None:
-            decode_content = self.decode_content
-
         if self._fp is None and not self._buffer:
             return b''
 
@@ -305,66 +305,70 @@ class HTTPResponse(io.IOBase):
 
         with self._error_catcher():
             if amt is None:
-                raw_data = b''.join(self._fp)
-                self._fp_bytes_read += len(raw_data)
-                data += self._decode(
-                    raw_data, decode_content, flush_decoder=True
-                )
+                data += b''.join(self.stream(decode_content))
                 self._buffer = b''
-                self._fp = None
+
+                # We only cache the body data for simple read calls.
+                self._body = data
             else:
-                cache_content = False
                 data_len = len(data)
                 chunks = [data]
+                streamer = self.stream(decode_content)
 
                 while data_len < amt:
                     try:
-                        raw_chunk = next(self._fp)
+                        chunk = next(streamer)
                     except StopIteration:
-                        final_chunk = self._decode(
-                            b'', decode_content, flush_decoder=True
-                        )
-                        chunks.append(final_chunk)
-                        self._fp = None
                         break
-
-                    self._fp_bytes_read += len(raw_chunk)
-                    decoded_chunk = self._decode(
-                        raw_chunk, decode_content, flush_decoder=False
-                    )
-                    chunks.append(decoded_chunk)
-                    data_len += len(decoded_chunk)
+                    else:
+                        chunks.append(chunk)
+                        data_len += len(chunk)
 
                 data = b''.join(chunks)
                 self._buffer = data[amt:]
                 data = data[:amt]
 
-        if data and cache_content:
-            self._body = data
-
         return data
 
-    def stream(self, amt=2**16, decode_content=None):
+    def stream(self, decode_content=None):
         """
-        A generator wrapper for the read() method. A call will block until
-        ``amt`` bytes have been read from the connection or until the
-        connection is closed.
-
-        :param amt:
-            How much of the content to read. The generator will return up to
-            much data per iteration, but may return less. This is particularly
-            likely when using compressed data. However, the empty string will
-            never be returned.
+        A generator wrapper for the read() method.
 
         :param decode_content:
             If True, will attempt to decode the body based on the
             'content-encoding' header.
         """
-        while not is_fp_closed(self._fp):
-            data = self.read(amt=amt, decode_content=decode_content)
+        # Short-circuit evaluation for exhausted responses.
+        if self._fp is None:
+            return
 
-            if data:
-                yield data
+        self._init_decoder()
+        if decode_content is None:
+            decode_content = self.decode_content
+
+        with self._error_catcher():
+            for raw_chunk in self._fp:
+                self._fp_bytes_read += len(raw_chunk)
+                decoded_chunk = self._decode(
+                    raw_chunk, decode_content, flush_decoder=False
+                )
+                if decoded_chunk:
+                    yield decoded_chunk
+
+            # This branch is speculative: most decoders do not need to flush,
+            # and so this produces no output. However, it's here because
+            # anecdotally some platforms on which we do not test (like Jython)
+            # do require the flush. For this reason, we exclude this from code
+            # coverage. Happily, the code here is so simple that testing the
+            # branch we don't enter is basically entirely unnecessary (it's
+            # just a yield statement).
+            final_chunk = self._decode(
+                b'', decode_content, flush_decoder=True
+            )
+            if final_chunk:  # Platform-specific: Jython
+                yield final_chunk
+
+            self._fp = None
 
     @classmethod
     def from_base(ResponseCls, r, **response_kw):
@@ -395,6 +399,7 @@ class HTTPResponse(io.IOBase):
     def close(self):
         if not self.closed:
             self._fp.close()
+            self._buffer = b''
             self._fp = None
 
         if self._connection:
@@ -402,8 +407,8 @@ class HTTPResponse(io.IOBase):
 
     @property
     def closed(self):
-        # TODO: Do we need this?
-        if self._fp is None:
+        # This method is required for `io` module compatibility.
+        if self._fp is None and not self._buffer:
             return True
         elif hasattr(self._fp, 'complete'):
             return self._fp.complete
@@ -411,7 +416,7 @@ class HTTPResponse(io.IOBase):
             return False
 
     def fileno(self):
-        # TODO: Do we need this?
+        # This method is required for `io` module compatibility.
         if self._fp is None:
             raise IOError("HTTPResponse has no file to get a fileno from")
         elif hasattr(self._fp, "fileno"):

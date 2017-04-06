@@ -207,24 +207,68 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(len(br.read(5)), 0)
 
     def test_streaming(self):
-        fp = BytesIO(b'foo')
+        fp = [b'fo', b'o']
         resp = HTTPResponse(fp, preload_content=False)
-        stream = resp.stream(2, decode_content=False)
+        stream = resp.stream(decode_content=False)
 
         self.assertEqual(next(stream), b'fo')
         self.assertEqual(next(stream), b'o')
         self.assertRaises(StopIteration, next, stream)
 
-    def test_streaming_tell(self):
+    def test_double_streaming(self):
+        fp = [b'fo', b'o']
+        resp = HTTPResponse(fp, preload_content=False)
+
+        stream = list(resp.stream(decode_content=False))
+        self.assertEqual(stream, fp)
+
+        stream = list(resp.stream(decode_content=False))
+        self.assertEqual(stream, [])
+
+    def test_closed_streaming(self):
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)
-        stream = resp.stream(2, decode_content=False)
+        resp.close()
+        self.assertRaises(StopIteration, next, resp.stream())
+
+    def test_close_midstream(self):
+        # A mock fp object that wraps a list and allows closing.
+        class MockFP(object):
+            self.list = None
+
+            def close(self):
+                self.list = None
+
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                if not self.list:
+                    raise StopIteration()
+                return self.list.pop(0)
+
+            next = __next__
+
+        data = [b'fo', b'o']
+        fp = MockFP()
+        fp.list = data
+        resp = HTTPResponse(fp, preload_content=False)
+        stream = resp.stream()
+
+        self.assertEqual(next(stream), b'fo')
+        resp.close()
+        self.assertRaises(StopIteration, next, stream)
+
+    def test_streaming_tell(self):
+        fp = [b'fo', b'o']
+        resp = HTTPResponse(fp, preload_content=False)
+        stream = resp.stream(decode_content=False)
 
         position = 0
 
         position += len(next(stream))
         self.assertEqual(2, position)
-        self.assertEqual(3, resp.tell())
+        self.assertEqual(2, resp.tell())
 
         position += len(next(stream))
         self.assertEqual(3, position)
@@ -241,10 +285,9 @@ class TestResponse(unittest.TestCase):
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
                             preload_content=False)
-        stream = resp.stream(2)
+        stream = resp.stream()
 
-        self.assertEqual(next(stream), b'fo')
-        self.assertEqual(next(stream), b'o')
+        self.assertEqual(next(stream), b'foo')
         self.assertRaises(StopIteration, next, stream)
 
     def test_gzipped_streaming_tell(self):
@@ -337,10 +380,9 @@ class TestResponse(unittest.TestCase):
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
                             preload_content=False)
-        stream = resp.stream(2)
+        stream = resp.stream()
 
-        self.assertEqual(next(stream), b'fo')
-        self.assertEqual(next(stream), b'o')
+        self.assertEqual(next(stream), b'foo')
         self.assertRaises(StopIteration, next, stream)
 
     def test_deflate2_streaming(self):
@@ -352,16 +394,15 @@ class TestResponse(unittest.TestCase):
         fp = BytesIO(data)
         resp = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
                             preload_content=False)
-        stream = resp.stream(2)
+        stream = resp.stream()
 
-        self.assertEqual(next(stream), b'fo')
-        self.assertEqual(next(stream), b'o')
+        self.assertEqual(next(stream), b'foo')
         self.assertRaises(StopIteration, next, stream)
 
     def test_empty_stream(self):
         fp = BytesIO(b'')
         resp = HTTPResponse(fp, preload_content=False)
-        stream = resp.stream(2, decode_content=False)
+        stream = resp.stream(decode_content=False)
 
         self.assertRaises(StopIteration, next, stream)
 
@@ -391,14 +432,14 @@ class TestResponse(unittest.TestCase):
                 return self.read(1)
 
             next = __next__
-
         bio = BytesIO(b'foo')
         fp = MockHTTPRequest()
         fp.fp = bio
         resp = HTTPResponse(fp, preload_content=False)
-        stream = resp.stream(2)
+        stream = resp.stream()
 
-        self.assertEqual(next(stream), b'fo')
+        self.assertEqual(next(stream), b'f')
+        self.assertEqual(next(stream), b'o')
         self.assertEqual(next(stream), b'o')
         self.assertRaises(StopIteration, next, stream)
 
