@@ -459,8 +459,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         return (scheme, host, port) == (self.scheme, self.host, self.port)
 
     def urlopen(self, method, url, body=None, headers=None, retries=None,
-                redirect=True, assert_same_host=True, timeout=_Default,
-                pool_timeout=None, body_pos=None, **response_kw):
+                timeout=_Default, pool_timeout=None, body_pos=None, **response_kw):
         """
         Get a connection from the pool and perform an HTTP request. This is the
         lowest level call for making a request, so you'll need to specify all
@@ -500,16 +499,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         :type retries: :class:`~urllib3.util.retry.Retry`, False, or an int.
 
-        :param redirect:
-            If True, automatically handle redirects (status codes 301, 302,
-            303, 307, 308). Each redirect counts as a retry. Disabling retries
-            will disable redirect, too.
-
-        :param assert_same_host:
-            If ``True``, will make sure that the host of the pool requests is
-            consistent else will raise HostChangedError. When False, you can
-            use the pool on an HTTP proxy and request foreign hosts.
-
         :param timeout:
             If specified, overrides the default timeout for this one
             request. It may be a float (in seconds) or an instance of
@@ -533,11 +522,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             headers = self.headers
 
         if not isinstance(retries, Retry):
-            retries = Retry.from_int(retries, redirect=redirect, default=self.retries)
-
-        # Check host
-        if assert_same_host and not self.is_same_host(url):
-            raise HostChangedError(self, url, retries)
+            retries = Retry.from_int(retries, default=self.retries)
 
         conn = None
 
@@ -645,7 +630,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             log.warning("Retrying (%r) after connection "
                         "broken by '%r': %s", retries, err, url)
             return self.urlopen(method, url, body, headers, retries,
-                                redirect, assert_same_host,
                                 timeout=timeout, pool_timeout=pool_timeout,
                                 body_pos=body_pos, **response_kw)
 
@@ -665,9 +649,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             log.debug("Retry: %s", url)
             return self.urlopen(
                 method, url, body, headers,
-                retries=retries, redirect=redirect,
-                assert_same_host=assert_same_host,
-                timeout=timeout, pool_timeout=pool_timeout,
+                retries=retries, timeout=timeout, pool_timeout=pool_timeout,
                 body_pos=body_pos, **response_kw)
 
         return response

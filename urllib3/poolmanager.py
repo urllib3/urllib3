@@ -308,8 +308,6 @@ class PoolManager(RequestMethods):
         body_pos = kw.get('body_pos')
         kw['body_pos'] = set_file_position(body, body_pos)
 
-        kw['assert_same_host'] = False
-        kw['redirect'] = False
         if 'headers' not in kw:
             kw['headers'] = self.headers
 
