@@ -343,6 +343,7 @@ class PoolManager(RequestMethods):
         kw['retries'] = retries
         kw['redirect'] = redirect
 
+        retries.sleep_for_retry(response)
         log.info("Redirecting %s -> %s", url, redirect_location)
         return self.urlopen(method, redirect_location, **kw)
 
