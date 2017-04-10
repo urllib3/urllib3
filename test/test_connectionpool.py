@@ -238,13 +238,6 @@ class TestConnectionPool(unittest.TestCase):
                           'GET', '/', retries=1, pool_timeout=0.01)
         self.assertEqual(pool.pool.qsize(), POOL_SIZE)
 
-    def test_assert_same_host(self):
-        c = connection_from_url('http://google.com:80')
-        self.addCleanup(c.close)
-
-        self.assertRaises(HostChangedError, c.request,
-                          'GET', 'http://yahoo.com:80', assert_same_host=True)
-
     def test_pool_close(self):
         pool = connection_from_url('http://google.com:80')
 

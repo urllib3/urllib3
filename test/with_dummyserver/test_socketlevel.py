@@ -740,7 +740,7 @@ class TestProxyManager(SocketDummyServerTestCase):
 
         conn = proxy.connection_from_url('http://www.google.com/')
 
-        r = conn.urlopen('GET', 'http://www.google.com/', assert_same_host=False)
+        r = conn.urlopen('GET', 'http://www.google.com/')
 
         self.assertEqual(r.status, 200)
         # FIXME: The order of the headers is not predictable right now. We
@@ -779,13 +779,13 @@ class TestProxyManager(SocketDummyServerTestCase):
         conn = proxy.connection_from_url('http://www.google.com')
 
         r = conn.urlopen('GET', 'http://www.google.com',
-                         assert_same_host=False, retries=1)
+                         retries=1)
         self.assertEqual(r.status, 200)
 
         close_event.wait(timeout=1)
         self.assertRaises(ProxyError, conn.urlopen, 'GET',
                           'http://www.google.com',
-                          assert_same_host=False, retries=False)
+                          retries=False)
 
     def test_connect_reconn(self):
         def proxy_ssl_one(listener):
