@@ -10,6 +10,7 @@ from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
 from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
 from .util.url import parse_url
+from .util.request import set_file_position
 from .util.retry import Retry
 
 
@@ -300,6 +301,12 @@ class PoolManager(RequestMethods):
         """
         u = parse_url(url)
         conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
+
+        # Rewind body position, if needed. Record current position
+        # for future rewinds in the event of a redirect/retry.
+        body = kw.get('body')
+        body_pos = kw.get('body_pos')
+        kw['body_pos'] = set_file_position(body, body_pos)
 
         kw['assert_same_host'] = False
         kw['redirect'] = False
