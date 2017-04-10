@@ -649,31 +649,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                 timeout=timeout, pool_timeout=pool_timeout,
                                 body_pos=body_pos, **response_kw)
 
-        # Handle redirect?
-        redirect_location = redirect and response.get_redirect_location()
-        if redirect_location:
-            if response.status == 303:
-                method = 'GET'
-
-            try:
-                retries = retries.increment(method, url, response=response, _pool=self)
-            except MaxRetryError:
-                if retries.raise_on_redirect:
-                    # Release the connection for this response, since we're not
-                    # returning it to be released manually.
-                    response.release_conn()
-                    raise
-                return response
-
-            retries.sleep_for_retry(response)
-            log.debug("Redirecting %s -> %s", url, redirect_location)
-            return self.urlopen(
-                method, redirect_location, body, headers,
-                retries=retries, redirect=redirect,
-                assert_same_host=assert_same_host,
-                timeout=timeout, pool_timeout=pool_timeout,
-                body_pos=body_pos, **response_kw)
-
         # Check if we should retry the HTTP response.
         has_retry_after = bool(response.getheader('Retry-After'))
         if retries.is_retry(method, response.status, has_retry_after):
