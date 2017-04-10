@@ -377,14 +377,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
         pool.request('GET', '/')
 
-    def test_redirect(self):
-        r = self.pool.request('GET', '/redirect', fields={'target': '/'}, redirect=False)
-        self.assertEqual(r.status, 303)
-
-        r = self.pool.request('GET', '/redirect', fields={'target': '/'})
-        self.assertEqual(r.status, 200)
-        self.assertEqual(r.data, b'Dummy server!')
-
     def test_bad_connect(self):
         pool = HTTPConnectionPool('badhost.invalid', self.port)
         try:
