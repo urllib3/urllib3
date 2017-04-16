@@ -41,7 +41,7 @@ clean:
 
 .PHONY: test
 test: requirements
-	nosetests
+	nosetests test
 
 .PHONY: test-all
 test-all: requirements
