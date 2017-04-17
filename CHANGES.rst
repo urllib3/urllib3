@@ -6,7 +6,7 @@ dev (master)
 
 * Improved performance of certain selector system calls on Python 3.5 and
   later. (Pull #1095)
-  
+
 * Resolved issue where the PyOpenSSL backend would not wrap SysCallError
   exceptions appropriately when sending data. (Pull #1125)
 
@@ -22,6 +22,8 @@ dev (master)
 * ``PoolManager.connection_from_*`` methods now accept a new keyword argument,
   ``pool_kwargs``, which are merged with the existing ``connection_pool_kw``.
   (Pull #1016)
+
+* Add retry counter for ``status_forcelist``. (Issue #1147)
 
 * ... [Short description of non-trivial change.] (Issue #)
 

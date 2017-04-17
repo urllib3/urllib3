@@ -227,5 +227,8 @@ In chronological order:
 * Tim Burke <tim.burke@gmail.com>
   * Stop buffering entire deflate-encoded responses.
 
+* Tuukka Mustonen <tuukka.mustonen@gmail.com>
+  * Add counter for status_forcelist retries.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
