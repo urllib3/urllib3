@@ -521,7 +521,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             headers = self.headers
 
         if not isinstance(retries, Retry):
-            retries = Retry.from_int(retries, default=self.retries)
+            retries = Retry.from_int(retries, default=self.retries, redirect=False)
 
         conn = None
 

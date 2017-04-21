@@ -293,8 +293,8 @@ class PoolManager(RequestMethods):
     def urlopen(self, method, url, redirect=True, **kw):
         """
         Same as :meth:`urllib3.connectionpool.HTTPConnectionPool.urlopen`
-        with custom cross-host redirect logic and only sends the request-uri
-        portion of the ``url``.
+        with redirect logic and only sends the request-uri portion of the
+        ``url``.
 
         The given ``url`` parameter must be absolute, such that an appropriate
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
