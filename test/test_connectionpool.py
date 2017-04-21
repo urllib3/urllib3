@@ -16,7 +16,6 @@ from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
     ClosedPoolError,
     EmptyPoolError,
-    HostChangedError,
     LocationValueError,
     MaxRetryError,
     ProtocolError,
