@@ -16,10 +16,12 @@ class RetryTest(unittest.TestCase):
     def test_string(self):
         """ Retry string representation looks the way we expect """
         retry = Retry()
-        self.assertEqual(str(retry), 'Retry(total=10, connect=None, read=None, redirect=None)')
+        self.assertEqual(str(retry),
+                         'Retry(total=10, connect=None, read=None, redirect=None, status=None)')
         for _ in range(3):
             retry = retry.increment(method='GET')
-        self.assertEqual(str(retry), 'Retry(total=7, connect=None, read=None, redirect=None)')
+        self.assertEqual(str(retry),
+                         'Retry(total=7, connect=None, read=None, redirect=None, status=None)')
 
     def test_retry_both_specified(self):
         """Total can win if it's lower than the connect value"""
@@ -97,6 +99,18 @@ class RetryTest(unittest.TestCase):
             self.fail("Failed to raise error.")
         except MaxRetryError as e:
             self.assertEqual(e.reason, error)
+
+    def test_status_counter(self):
+        resp = HTTPResponse(status=400)
+        retry = Retry(status=2)
+        retry = retry.increment(response=resp)
+        retry = retry.increment(response=resp)
+        try:
+            retry.increment(response=resp)
+            self.fail("Failed to raise error.")
+        except MaxRetryError as e:
+            self.assertEqual(str(e.reason),
+                             ResponseError.SPECIFIC_ERROR.format(status_code=400))
 
     def test_backoff(self):
         """ Backoff is computed correctly """

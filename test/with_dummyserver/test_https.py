@@ -20,6 +20,7 @@ from test import (
     onlyPy26OrOlder,
     onlyPy279OrNewer,
     notSecureTransport,
+    onlyPy27OrNewerOrNonWindows,
     requires_network,
     TARPIT_HOST,
 )
@@ -508,7 +509,11 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
         self._pool = HTTPSConnectionPool(self.host, self.port)
         self.addCleanup(self._pool.close)
 
+    @onlyPy27OrNewerOrNonWindows
     def test_discards_connection_on_sslerror(self):
+        # This test is skipped on Windows for Python 2.6 because we suspect there
+        # is an issue with the OpenSSL for Python 2.6 on Windows.
+
         self._pool.cert_reqs = 'CERT_REQUIRED'
         self.assertRaises(SSLError, self._pool.request, 'GET', '/')
         self._pool.ca_certs = DEFAULT_CA

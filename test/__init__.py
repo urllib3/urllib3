@@ -4,6 +4,7 @@ import errno
 import functools
 import logging
 import socket
+import platform
 
 from nose.plugins.skip import SkipTest
 
@@ -103,6 +104,17 @@ def notSecureTransport(test):
     def wrapper(*args, **kwargs):
         msg = "{name} does not run with SecureTransport".format(name=test.__name__)
         if ssl_.IS_SECURETRANSPORT:
+            raise SkipTest(msg)
+        return test(*args, **kwargs)
+    return wrapper
+
+
+def onlyPy27OrNewerOrNonWindows(test):
+    """Skips this test unless you are on Python2.7+ or non-Windows"""
+    @functools.wraps(test)
+    def wrapper(*args, **kwargs):
+        msg = "{name} requires Python2.7+ or non-Windows to run".format(name=test.__name__)
+        if sys.version_info < (2, 7) and platform.system() == 'Windows':
             raise SkipTest(msg)
         return test(*args, **kwargs)
     return wrapper
