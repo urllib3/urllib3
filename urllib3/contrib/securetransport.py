@@ -531,10 +531,14 @@ class WrappedSocket(object):
         # There are some result codes that we want to treat as "not always
         # errors". Specifically, those are errSSLWouldBlock,
         # errSSLClosedGraceful, and errSSLClosedNoNotify.
-        if (result == SecurityConst.errSSLWouldBlock and
-                processed_bytes.value == 0):
-            # Timed out
-            raise socket.timeout("recv timed out")
+        if (result == SecurityConst.errSSLWouldBlock):
+            # If we didn't process any bytes, then this was just a time out.
+            # However, we can get errSSLWouldBlock in situations when we *did*
+            # read some data, and in those cases we should just read "short"
+            # and return.
+            if processed_bytes.value == 0:
+                # Timed out, no data read.
+                raise socket.timeout("recv timed out")
         elif result in (SecurityConst.errSSLClosedGraceful, SecurityConst.errSSLClosedNoNotify):
             # The remote peer has closed this connection. We should do so as
             # well. Note that we don't actually return here because in
