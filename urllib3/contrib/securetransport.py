@@ -517,6 +517,10 @@ class WrappedSocket(object):
         return data
 
     def recv_into(self, buffer, nbytes=None):
+        # Read short on EOF.
+        if self._closed:
+            return 0
+
         if nbytes is None:
             nbytes = len(buffer)
 
