@@ -25,6 +25,9 @@ dev (master)
 
 * Add retry counter for ``status_forcelist``. (Issue #1147)
 
+* Added ``contrib`` module for using SecureTransport on macOS:
+  ``urllib3.contrib.securetransport``.  (Pull #1122)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
