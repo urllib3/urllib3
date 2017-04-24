@@ -1,7 +1,7 @@
 urllib3
 =======
 
-.. image:: https://travis-ci.org/shazow/urllib3.png?branch=master
+.. image:: https://travis-ci.org/shazow/urllib3.svg?branch=master
         :alt: Build status on Travis
         :target: https://travis-ci.org/shazow/urllib3
 
