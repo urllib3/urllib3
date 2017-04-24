@@ -210,7 +210,9 @@ def bind_sockets(port, address=None, family=socket.AF_UNSPEC, backlog=128,
 
 
 def run_tornado_app(app, io_loop, certs, scheme, host):
-    app.last_req = datetime.fromtimestamp(0)
+    # We can't use fromtimestamp(0) because of CPython issue 29097, so we'll
+    # just construct the datetime object directly.
+    app.last_req = datetime(1970, 1, 1)
 
     if scheme == 'https':
         http_server = tornado.httpserver.HTTPServer(app, ssl_options=certs,
