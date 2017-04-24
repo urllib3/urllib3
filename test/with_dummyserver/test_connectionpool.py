@@ -1,4 +1,3 @@
-import io
 import logging
 import socket
 import sys
@@ -21,11 +20,10 @@ from urllib3.exceptions import (
     MaxRetryError,
     ReadTimeoutError,
     NewConnectionError,
-    UnrewindableBodyError,
 )
 from urllib3.packages.six import b, u
 from urllib3.packages.six.moves.urllib.parse import urlencode
-from urllib3.util.retry import Retry, RequestHistory
+from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
 
 from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
@@ -377,14 +375,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
         pool.request('GET', '/')
 
-    def test_redirect(self):
-        r = self.pool.request('GET', '/redirect', fields={'target': '/'}, redirect=False)
-        self.assertEqual(r.status, 303)
-
-        r = self.pool.request('GET', '/redirect', fields={'target': '/'})
-        self.assertEqual(r.status, 200)
-        self.assertEqual(r.data, b'Dummy server!')
-
     def test_bad_connect(self):
         pool = HTTPConnectionPool('badhost.invalid', self.port)
         try:
@@ -671,281 +661,10 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         self.assertEqual(b'123' * 4, response.read())
 
-    def test_cleanup_on_connection_error(self):
-        '''
-        Test that connections are recycled to the pool on
-        connection errors where no http response is received.
-        '''
-        poolsize = 3
-        with HTTPConnectionPool(self.host, self.port, maxsize=poolsize, block=True) as http:
-            self.assertEqual(http.pool.qsize(), poolsize)
-
-            # force a connection error by supplying a non-existent
-            # url. We won't get a response for this  and so the
-            # conn won't be implicitly returned to the pool.
-            self.assertRaises(MaxRetryError,
-                              http.request,
-                              'GET', '/redirect',
-                              fields={'target': '/'}, retries=0)
-
-            r = http.request('GET', '/redirect',
-                             fields={'target': '/'},
-                             retries=1)
-            r.release_conn()
-
-            # the pool should still contain poolsize elements
-            self.assertEqual(http.pool.qsize(), http.pool.maxsize)
-
     def test_mixed_case_hostname(self):
         pool = HTTPConnectionPool("LoCaLhOsT", self.port)
         response = pool.request('GET', "http://LoCaLhOsT:%d/" % self.port)
         self.assertEqual(response.status, 200)
-
-
-class TestRetry(HTTPDummyServerTestCase):
-    def setUp(self):
-        self.pool = HTTPConnectionPool(self.host, self.port)
-
-    def test_max_retry(self):
-        try:
-            r = self.pool.request('GET', '/redirect',
-                                  fields={'target': '/'},
-                                  retries=0)
-            self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
-        except MaxRetryError:
-            pass
-
-    def test_disabled_retry(self):
-        """ Disabled retries should disable redirect handling. """
-        r = self.pool.request('GET', '/redirect',
-                              fields={'target': '/'},
-                              retries=False)
-        self.assertEqual(r.status, 303)
-
-        r = self.pool.request('GET', '/redirect',
-                              fields={'target': '/'},
-                              retries=Retry(redirect=False))
-        self.assertEqual(r.status, 303)
-
-        pool = HTTPConnectionPool('thishostdoesnotexist.invalid', self.port, timeout=0.001)
-        self.assertRaises(NewConnectionError, pool.request, 'GET', '/test', retries=False)
-
-    def test_read_retries(self):
-        """ Should retry for status codes in the whitelist """
-        retry = Retry(read=1, status_forcelist=[418])
-        resp = self.pool.request('GET', '/successful_retry',
-                                 headers={'test-name': 'test_read_retries'},
-                                 retries=retry)
-        self.assertEqual(resp.status, 200)
-
-    def test_read_total_retries(self):
-        """ HTTP response w/ status code in the whitelist should be retried """
-        headers = {'test-name': 'test_read_total_retries'}
-        retry = Retry(total=1, status_forcelist=[418])
-        resp = self.pool.request('GET', '/successful_retry',
-                                 headers=headers, retries=retry)
-        self.assertEqual(resp.status, 200)
-
-    def test_retries_wrong_whitelist(self):
-        """HTTP response w/ status code not in whitelist shouldn't be retried"""
-        retry = Retry(total=1, status_forcelist=[202])
-        resp = self.pool.request('GET', '/successful_retry',
-                                 headers={'test-name': 'test_wrong_whitelist'},
-                                 retries=retry)
-        self.assertEqual(resp.status, 418)
-
-    def test_default_method_whitelist_retried(self):
-        """ urllib3 should retry methods in the default method whitelist """
-        retry = Retry(total=1, status_forcelist=[418])
-        resp = self.pool.request('OPTIONS', '/successful_retry',
-                                 headers={'test-name': 'test_default_whitelist'},
-                                 retries=retry)
-        self.assertEqual(resp.status, 200)
-
-    def test_retries_wrong_method_list(self):
-        """Method not in our whitelist should not be retried, even if code matches"""
-        headers = {'test-name': 'test_wrong_method_whitelist'}
-        retry = Retry(total=1, status_forcelist=[418],
-                      method_whitelist=['POST'])
-        resp = self.pool.request('GET', '/successful_retry',
-                                 headers=headers, retries=retry)
-        self.assertEqual(resp.status, 418)
-
-    def test_read_retries_unsuccessful(self):
-        headers = {'test-name': 'test_read_retries_unsuccessful'}
-        resp = self.pool.request('GET', '/successful_retry',
-                                 headers=headers, retries=1)
-        self.assertEqual(resp.status, 418)
-
-    def test_retry_reuse_safe(self):
-        """ It should be possible to reuse a Retry object across requests """
-        headers = {'test-name': 'test_retry_safe'}
-        retry = Retry(total=1, status_forcelist=[418])
-        resp = self.pool.request('GET', '/successful_retry',
-                                 headers=headers, retries=retry)
-        self.assertEqual(resp.status, 200)
-        resp = self.pool.request('GET', '/successful_retry',
-                                 headers=headers, retries=retry)
-        self.assertEqual(resp.status, 200)
-
-    def test_retry_return_in_response(self):
-        headers = {'test-name': 'test_retry_return_in_response'}
-        retry = Retry(total=2, status_forcelist=[418])
-        resp = self.pool.request('GET', '/successful_retry',
-                                 headers=headers, retries=retry)
-        self.assertEqual(resp.status, 200)
-        self.assertEqual(resp.retries.total, 1)
-        self.assertEqual(resp.retries.history,
-                         (RequestHistory('GET', '/successful_retry', None, 418, None),))
-
-    def test_retry_redirect_history(self):
-        resp = self.pool.request('GET', '/redirect', fields={'target': '/'})
-        self.assertEqual(resp.status, 200)
-        self.assertEqual(resp.retries.history,
-                         (RequestHistory('GET', '/redirect?target=%2F', None, 303, '/'),))
-
-    def test_multi_redirect_history(self):
-        r = self.pool.request('GET', '/multi_redirect',
-                              fields={'redirect_codes': '303,302,200'},
-                              redirect=False)
-        self.assertEqual(r.status, 303)
-        self.assertEqual(r.retries.history, tuple())
-
-        r = self.pool.request('GET', '/multi_redirect', retries=10,
-                              fields={'redirect_codes': '303,302,301,307,302,200'})
-        self.assertEqual(r.status, 200)
-        self.assertEqual(r.data, b'Done redirecting')
-
-        expected = [(303, '/multi_redirect?redirect_codes=302,301,307,302,200'),
-                    (302, '/multi_redirect?redirect_codes=301,307,302,200'),
-                    (301, '/multi_redirect?redirect_codes=307,302,200'),
-                    (307, '/multi_redirect?redirect_codes=302,200'),
-                    (302, '/multi_redirect?redirect_codes=200')]
-        actual = [(history.status, history.redirect_location) for history in r.retries.history]
-        self.assertEqual(actual, expected)
-
-
-class TestRetryAfter(HTTPDummyServerTestCase):
-    def setUp(self):
-        self.pool = HTTPConnectionPool(self.host, self.port)
-
-    def test_retry_after(self):
-        # Request twice in a second to get a 429 response.
-        r = self.pool.request('GET', '/retry_after',
-                              fields={'status': '429 Too Many Requests'},
-                              retries=False)
-        r = self.pool.request('GET', '/retry_after',
-                              fields={'status': '429 Too Many Requests'},
-                              retries=False)
-        self.assertEqual(r.status, 429)
-
-        r = self.pool.request('GET', '/retry_after',
-                              fields={'status': '429 Too Many Requests'},
-                              retries=True)
-        self.assertEqual(r.status, 200)
-
-        # Request twice in a second to get a 503 response.
-        r = self.pool.request('GET', '/retry_after',
-                              fields={'status': '503 Service Unavailable'},
-                              retries=False)
-        r = self.pool.request('GET', '/retry_after',
-                              fields={'status': '503 Service Unavailable'},
-                              retries=False)
-        self.assertEqual(r.status, 503)
-
-        r = self.pool.request('GET', '/retry_after',
-                              fields={'status': '503 Service Unavailable'},
-                              retries=True)
-        self.assertEqual(r.status, 200)
-
-        # Ignore Retry-After header on status which is not defined in
-        # Retry.RETRY_AFTER_STATUS_CODES.
-        r = self.pool.request('GET', '/retry_after',
-                              fields={'status': "418 I'm a teapot"},
-                              retries=True)
-        self.assertEqual(r.status, 418)
-
-    def test_redirect_after(self):
-        r = self.pool.request('GET', '/redirect_after', retries=False)
-        self.assertEqual(r.status, 303)
-
-        t = time.time()
-        r = self.pool.request('GET', '/redirect_after')
-        self.assertEqual(r.status, 200)
-        delta = time.time() - t
-        self.assertTrue(delta >= 1)
-
-        t = time.time()
-        timestamp = t + 2
-        r = self.pool.request('GET', '/redirect_after?date=' + str(timestamp))
-        self.assertEqual(r.status, 200)
-        delta = time.time() - t
-        self.assertTrue(delta >= 1)
-
-        # Retry-After is past
-        t = time.time()
-        timestamp = t - 1
-        r = self.pool.request('GET', '/redirect_after?date=' + str(timestamp))
-        delta = time.time() - t
-        self.assertEqual(r.status, 200)
-        self.assertTrue(delta < 1)
-
-
-class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
-    def setUp(self):
-        self.pool = HTTPConnectionPool(self.host, self.port, timeout=0.1)
-
-    def test_retries_put_filehandle(self):
-        """HTTP PUT retry with a file-like object should not timeout"""
-        retry = Retry(total=3, status_forcelist=[418])
-        # httplib reads in 8k chunks; use a larger content length
-        content_length = 65535
-        data = b'A' * content_length
-        uploaded_file = io.BytesIO(data)
-        headers = {'test-name': 'test_retries_put_filehandle',
-                   'Content-Length': str(content_length)}
-        resp = self.pool.urlopen('PUT', '/successful_retry',
-                                 headers=headers,
-                                 retries=retry,
-                                 body=uploaded_file,
-                                 assert_same_host=False, redirect=False)
-        self.assertEqual(resp.status, 200)
-
-    def test_redirect_put_file(self):
-        """PUT with file object should work with a redirection response"""
-        retry = Retry(total=3, status_forcelist=[418])
-        # httplib reads in 8k chunks; use a larger content length
-        content_length = 65535
-        data = b'A' * content_length
-        uploaded_file = io.BytesIO(data)
-        headers = {'test-name': 'test_redirect_put_file',
-                   'Content-Length': str(content_length)}
-        url = '/redirect?target=/echo&status=307'
-        resp = self.pool.urlopen('PUT', url,
-                                 headers=headers,
-                                 retries=retry,
-                                 body=uploaded_file,
-                                 assert_same_host=False, redirect=True)
-        self.assertEqual(resp.status, 200)
-        self.assertEqual(resp.data, data)
-
-    def test_redirect_with_failed_tell(self):
-        """Abort request if failed to get a position from tell()"""
-        class BadTellObject(io.BytesIO):
-
-            def tell(self):
-                raise IOError
-
-        body = BadTellObject(b'the data')
-        url = '/redirect?target=/successful_retry'
-        # httplib uses fileno if Content-Length isn't supplied,
-        # which is unsupported by BytesIO.
-        headers = {'Content-Length': '8'}
-        try:
-            self.pool.urlopen('PUT', url, headers=headers, body=body)
-            self.fail('PUT successful despite failed rewind.')
-        except UnrewindableBodyError as e:
-            self.assertTrue('Unable to record file position for' in str(e))
 
 
 if __name__ == '__main__':

@@ -10,6 +10,7 @@ from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
 from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
 from .util.url import parse_url
+from .util.request import set_file_position
 from .util.retry import Retry
 
 
@@ -292,8 +293,8 @@ class PoolManager(RequestMethods):
     def urlopen(self, method, url, redirect=True, **kw):
         """
         Same as :meth:`urllib3.connectionpool.HTTPConnectionPool.urlopen`
-        with custom cross-host redirect logic and only sends the request-uri
-        portion of the ``url``.
+        with redirect logic and only sends the request-uri portion of the
+        ``url``.
 
         The given ``url`` parameter must be absolute, such that an appropriate
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
@@ -301,8 +302,12 @@ class PoolManager(RequestMethods):
         u = parse_url(url)
         conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
-        kw['assert_same_host'] = False
-        kw['redirect'] = False
+        # Rewind body position, if needed. Record current position
+        # for future rewinds in the event of a redirect/retry.
+        body = kw.get('body')
+        body_pos = kw.get('body_pos')
+        kw['body_pos'] = set_file_position(body, body_pos)
+
         if 'headers' not in kw:
             kw['headers'] = self.headers
 
@@ -336,6 +341,7 @@ class PoolManager(RequestMethods):
         kw['retries'] = retries
         kw['redirect'] = redirect
 
+        retries.sleep_for_retry(response)
         log.info("Redirecting %s -> %s", url, redirect_location)
         return self.urlopen(method, redirect_location, **kw)
 
