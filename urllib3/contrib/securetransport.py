@@ -16,6 +16,13 @@ The hope is that PEP 543 will eventually solve this issue for us, at which
 point we can retire this contrib module. But in the short term, we need to
 solve the impending tire fire that is Python on Mac without this kind of
 contrib module. So...here we are.
+
+To use this module, simply import and inject it::
+
+    import urllib3.contrib.securetransport
+    urllib3.contrib.securetransport.inject_into_urllib3()
+
+Happy TLSing!
 """
 from __future__ import absolute_import
 
