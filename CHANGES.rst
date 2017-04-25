@@ -30,9 +30,15 @@ Upcoming 2.0 Changes
 dev (master)
 ------------
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.21 (2017-04-25)
+-----------------
+
 * Improved performance of certain selector system calls on Python 3.5 and
   later. (Pull #1095)
-  
+
 * Resolved issue where the PyOpenSSL backend would not wrap SysCallError
   exceptions appropriately when sending data. (Pull #1125)
 
@@ -48,6 +54,16 @@ dev (master)
 * ``PoolManager.connection_from_*`` methods now accept a new keyword argument,
   ``pool_kwargs``, which are merged with the existing ``connection_pool_kw``.
   (Pull #1016)
+
+* Add retry counter for ``status_forcelist``. (Issue #1147)
+
+* Added ``contrib`` module for using SecureTransport on macOS:
+  ``urllib3.contrib.securetransport``.  (Pull #1122)
+
+* urllib3 now only normalizes the case of ``http://`` and ``https://`` schemes:
+  for schemes it does not recognise, it assumes they are case-sensitive and
+  leaves them unchanged.
+  (Issue #1080)
 
 * ... [Short description of non-trivial change.] (Issue #)
 

@@ -17,6 +17,7 @@ from ..packages.ssl_match_hostname import (
 SSLContext = None
 HAS_SNI = False
 IS_PYOPENSSL = False
+IS_SECURETRANSPORT = False
 
 # Maps the length of a digest to a possible hash function producing this digest
 HASHFUNC_MAP = {
