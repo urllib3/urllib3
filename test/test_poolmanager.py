@@ -277,6 +277,16 @@ class TestPoolManager(unittest.TestCase):
         self.assertTrue(pool is other_pool)
         self.assertTrue(all(isinstance(key, PoolKey) for key in p.pools.keys()))
 
+    def test_assert_hostname_and_fingerprint_flag(self):
+        """Assert that pool manager can accept hostname and fingerprint flags."""
+        fingerprint = '92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A'
+        p = PoolManager(assert_hostname=True, assert_fingerprint=fingerprint)
+        self.addCleanup(p.clear)
+        pool = p.connection_from_url('https://example.com/')
+        self.assertEqual(1, len(p.pools))
+        self.assertTrue(pool.assert_hostname)
+        self.assertEqual(fingerprint, pool.assert_fingerprint)
+
     def test_http_connection_from_context_case_insensitive(self):
         """Assert scheme case is ignored when getting the https key class."""
         p = PoolManager()
