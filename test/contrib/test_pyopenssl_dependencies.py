@@ -11,6 +11,7 @@ except ImportError as e:
 
 from mock import patch, Mock
 
+
 class TestPyOpenSSLInjection(unittest.TestCase):
     """
     Tests for error handling in pyopenssl's 'inject_into urllib3'
@@ -36,7 +37,7 @@ class TestPyOpenSSLInjection(unittest.TestCase):
         try:
             return_val = Mock()
             del return_val._x509
-            with patch("OpenSSL.crypto.X509", return_value=return_val) as mock:
+            with patch("OpenSSL.crypto.X509", return_value=return_val):
                 self.assertRaises(ImportError, inject_into_urllib3)
         finally:
             # `inject_into_urllib3` is not supposed to succeed.

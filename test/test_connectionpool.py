@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-import unittest
+import sys
 
 from urllib3.connectionpool import (
     connection_from_url,
@@ -31,6 +31,11 @@ from ssl import SSLError as BaseSSLError
 
 from dummyserver.server import DEFAULT_CA
 
+if sys.version_info >= (2, 7):
+    import unittest
+else:
+    import unittest2 as unittest
+
 
 class TestConnectionPool(unittest.TestCase):
     """
@@ -50,19 +55,17 @@ class TestConnectionPool(unittest.TestCase):
             ('https://google.com:443/', 'https://google.com/abracadabra'),
             ('https://google.com/', 'https://google.com:443/abracadabra'),
             ('http://[2607:f8b0:4005:805::200e%25eth0]/',
-             'http://[2607:f8b0:4005:805::200e%eth0]/'
-            ),
+             'http://[2607:f8b0:4005:805::200e%eth0]/'),
             ('https://[2607:f8b0:4005:805::200e%25eth0]:443/',
-             'https://[2607:f8b0:4005:805::200e%eth0]:443/'
-            ),
+             'https://[2607:f8b0:4005:805::200e%eth0]:443/'),
             ('http://[::1]/', 'http://[::1]'),
             ('http://[2001:558:fc00:200:f816:3eff:fef9:b954%lo]/',
-             'http://[2001:558:fc00:200:f816:3eff:fef9:b954%25lo]'
-            ),
+             'http://[2001:558:fc00:200:f816:3eff:fef9:b954%25lo]')
         ]
 
         for a, b in same_host:
             c = connection_from_url(a)
+            self.addCleanup(c.close)
             self.assertTrue(c.is_same_host(b), "%s =? %s" % (a, b))
 
         not_same_host = [
@@ -87,8 +90,10 @@ class TestConnectionPool(unittest.TestCase):
 
         for a, b in not_same_host:
             c = connection_from_url(a)
+            self.addCleanup(c.close)
             self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
             c = connection_from_url(b)
+            self.addCleanup(c.close)
             self.assertFalse(c.is_same_host(a), "%s =? %s" % (b, a))
 
     def test_same_host_no_port(self):
@@ -113,9 +118,11 @@ class TestConnectionPool(unittest.TestCase):
 
         for a, b in same_host_http:
             c = HTTPConnectionPool(a)
+            self.addCleanup(c.close)
             self.assertTrue(c.is_same_host(b), "%s =? %s" % (a, b))
         for a, b in same_host_https:
             c = HTTPSConnectionPool(a)
+            self.addCleanup(c.close)
             self.assertTrue(c.is_same_host(b), "%s =? %s" % (a, b))
 
         not_same_host_http = [
@@ -131,17 +138,22 @@ class TestConnectionPool(unittest.TestCase):
 
         for a, b in not_same_host_http:
             c = HTTPConnectionPool(a)
+            self.addCleanup(c.close)
             self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
             c = HTTPConnectionPool(b)
+            self.addCleanup(c.close)
             self.assertFalse(c.is_same_host(a), "%s =? %s" % (b, a))
         for a, b in not_same_host_https:
             c = HTTPSConnectionPool(a)
+            self.addCleanup(c.close)
             self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
             c = HTTPSConnectionPool(b)
+            self.addCleanup(c.close)
             self.assertFalse(c.is_same_host(a), "%s =? %s" % (b, a))
 
     def test_max_connections(self):
         pool = HTTPConnectionPool(host='localhost', maxsize=1, block=True)
+        self.addCleanup(pool.close)
 
         pool._get_conn(timeout=0.01)
 
@@ -161,12 +173,13 @@ class TestConnectionPool(unittest.TestCase):
 
     def test_pool_edgecases(self):
         pool = HTTPConnectionPool(host='localhost', maxsize=1, block=False)
+        self.addCleanup(pool.close)
 
         conn1 = pool._get_conn()
-        conn2 = pool._get_conn() # New because block=False
+        conn2 = pool._get_conn()  # New because block=False
 
         pool._put_conn(conn1)
-        pool._put_conn(conn2) # Should be discarded
+        pool._put_conn(conn2)  # Should be discarded
 
         self.assertEqual(conn1, pool._get_conn())
         self.assertNotEqual(conn2, pool._get_conn())
@@ -196,10 +209,10 @@ class TestConnectionPool(unittest.TestCase):
             "Max retries exceeded with url: Test. "
             "(Caused by %r)" % err)
 
-
     def test_pool_size(self):
         POOL_SIZE = 1
         pool = HTTPConnectionPool(host='localhost', maxsize=POOL_SIZE, block=True)
+        self.addCleanup(pool.close)
 
         def _raise(ex):
             raise ex()
@@ -226,6 +239,7 @@ class TestConnectionPool(unittest.TestCase):
 
     def test_assert_same_host(self):
         c = connection_from_url('http://google.com:80')
+        self.addCleanup(c.close)
 
         self.assertRaises(HostChangedError, c.request,
                           'GET', 'http://yahoo.com:80', assert_same_host=True)
@@ -255,6 +269,7 @@ class TestConnectionPool(unittest.TestCase):
 
     def test_pool_timeouts(self):
         pool = HTTPConnectionPool(host='localhost')
+        self.addCleanup(pool.close)
         conn = pool._new_conn()
         self.assertEqual(conn.__class__, HTTPConnection)
         self.assertEqual(pool.timeout.__class__, Timeout)
@@ -290,6 +305,7 @@ class TestConnectionPool(unittest.TestCase):
 
     def test_absolute_url(self):
         c = connection_from_url('http://google.com:80')
+        self.addCleanup(c.close)
         self.assertEqual(
                 'http://google.com:80/path?query=foo',
                 c._absolute_url('path?query=foo'))
@@ -312,6 +328,7 @@ class TestConnectionPool(unittest.TestCase):
             raise RealBad()
 
         c = connection_from_url('http://localhost:80')
+        self.addCleanup(c.close)
         c._make_request = kaboom
 
         initial_pool_size = c.pool.qsize()
@@ -326,7 +343,8 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(initial_pool_size, new_pool_size)
 
     def test_release_conn_param_is_respected_after_http_error_retry(self):
-        """For successful ```urlopen(release_conn=False)```, the connection isn't released, even after a retry.
+        """For successful ```urlopen(release_conn=False)```,
+        the connection isn't released, even after a retry.
 
         This is a regression test for issue #651 [1], where the connection
         would be released if the initial request failed, even if a retry
@@ -356,6 +374,7 @@ class TestConnectionPool(unittest.TestCase):
 
         def _test(exception):
             pool = HTTPConnectionPool(host='localhost', maxsize=1, block=True)
+            self.addCleanup(pool.close)
 
             # Verify that the request succeeds after two attempts, and that the
             # connection is left on the response object, instead of being
@@ -393,6 +412,7 @@ class TestConnectionPool(unittest.TestCase):
                 return httplib_response
 
         pool = CustomConnectionPool(host='localhost', maxsize=1, block=True)
+        self.addCleanup(pool.close)
         response = pool.request('GET', '/', retries=False, chunked=True,
                                 preload_content=False)
         self.assertTrue(isinstance(response, CustomHTTPResponse))

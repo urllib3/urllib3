@@ -184,12 +184,6 @@ keychain then the connection will succeed.
 `This article <https://hynek.me/articles/apple-openssl-verification-surprises/>`_
 has more in-depth analysis and explanation.
 
-If you have `homebrew <http://brew.sh>`_, you can configure homebrew Python to
-use homebrew's OpenSSL instead of the system OpenSSL::
-
-    brew install openssl
-    brew install python --with-brewed-openssl
-
 .. _ssl_warnings:
 
 SSL Warnings

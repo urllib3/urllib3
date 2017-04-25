@@ -7,6 +7,8 @@ omit =
     urllib3/contrib/appengine.py
     urllib3/contrib/ntlmpool.py
     urllib3/contrib/pyopenssl.py
+    urllib3/contrib/securetransport.py
+    urllib3/contrib/_securetransport/*
 
 [report]
 exclude_lines =

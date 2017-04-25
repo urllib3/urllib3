@@ -48,6 +48,7 @@ DEFAULT_CA_BAD = os.path.join(CERTS_PATH, 'client_bad.pem')
 NO_SAN_CA = os.path.join(CERTS_PATH, 'cacert.no_san.pem')
 DEFAULT_CA_DIR = os.path.join(CERTS_PATH, 'ca_path_test')
 IPV6_ADDR_CA = os.path.join(CERTS_PATH, 'server.ipv6addr.crt')
+COMBINED_CERT_AND_KEY = os.path.join(CERTS_PATH, 'server.combined.pem')
 
 
 def _has_ipv6(host):
@@ -210,7 +211,9 @@ def bind_sockets(port, address=None, family=socket.AF_UNSPEC, backlog=128,
 
 
 def run_tornado_app(app, io_loop, certs, scheme, host):
-    app.last_req = datetime.fromtimestamp(0)
+    # We can't use fromtimestamp(0) because of CPython issue 29097, so we'll
+    # just construct the datetime object directly.
+    app.last_req = datetime(1970, 1, 1)
 
     if scheme == 'https':
         http_server = tornado.httpserver.HTTPServer(app, ssl_options=certs,

@@ -4,11 +4,13 @@ import errno
 import functools
 import logging
 import socket
+import platform
 
 from nose.plugins.skip import SkipTest
 
-from urllib3.exceptions import MaxRetryError, HTTPWarning
+from urllib3.exceptions import HTTPWarning
 from urllib3.packages import six
+from urllib3.util import ssl_
 
 # We need a host that will not immediately close the connection with a TCP
 # Reset. SO suggests this hostname
@@ -29,9 +31,11 @@ def clear_warnings(cls=HTTPWarning):
         new_filters.append(f)
     warnings.filters[:] = new_filters
 
+
 def setUp():
     clear_warnings()
     warnings.simplefilter('ignore', HTTPWarning)
+
 
 def onlyPy26OrOlder(test):
     """Skips this test unless you are on Python2.6.x or earlier."""
@@ -44,6 +48,7 @@ def onlyPy26OrOlder(test):
         return test(*args, **kwargs)
     return wrapper
 
+
 def onlyPy27OrNewer(test):
     """Skips this test unless you are on Python 2.7.x or later."""
 
@@ -54,6 +59,7 @@ def onlyPy27OrNewer(test):
             raise SkipTest(msg)
         return test(*args, **kwargs)
     return wrapper
+
 
 def onlyPy279OrNewer(test):
     """Skips this test unless you are on Python 2.7.9 or later."""
@@ -66,6 +72,7 @@ def onlyPy279OrNewer(test):
         return test(*args, **kwargs)
     return wrapper
 
+
 def onlyPy2(test):
     """Skips this test unless you are on Python 2.x"""
 
@@ -76,6 +83,7 @@ def onlyPy2(test):
             raise SkipTest(msg)
         return test(*args, **kwargs)
     return wrapper
+
 
 def onlyPy3(test):
     """Skips this test unless you are on Python3.x"""
@@ -88,13 +96,39 @@ def onlyPy3(test):
         return test(*args, **kwargs)
     return wrapper
 
+
+def notSecureTransport(test):
+    """Skips this test when SecureTransport is in use."""
+
+    @functools.wraps(test)
+    def wrapper(*args, **kwargs):
+        msg = "{name} does not run with SecureTransport".format(name=test.__name__)
+        if ssl_.IS_SECURETRANSPORT:
+            raise SkipTest(msg)
+        return test(*args, **kwargs)
+    return wrapper
+
+
+def onlyPy27OrNewerOrNonWindows(test):
+    """Skips this test unless you are on Python2.7+ or non-Windows"""
+    @functools.wraps(test)
+    def wrapper(*args, **kwargs):
+        msg = "{name} requires Python2.7+ or non-Windows to run".format(name=test.__name__)
+        if sys.version_info < (2, 7) and platform.system() == 'Windows':
+            raise SkipTest(msg)
+        return test(*args, **kwargs)
+    return wrapper
+
+
 _requires_network_has_route = None
+
+
 def requires_network(test):
     """Helps you skip tests that require the network"""
 
     def _is_unreachable_err(err):
         return getattr(err, 'errno', None) in (errno.ENETUNREACH,
-                                               errno.EHOSTUNREACH) # For OSX
+                                               errno.EHOSTUNREACH)  # For OSX
 
     def _has_route():
         try:

@@ -1,6 +1,41 @@
 Changes
 =======
 
+1.21 (2017-04-25)
+-----------------
+
+* Improved performance of certain selector system calls on Python 3.5 and
+  later. (Pull #1095)
+
+* Resolved issue where the PyOpenSSL backend would not wrap SysCallError
+  exceptions appropriately when sending data. (Pull #1125)
+
+* Selectors now detects a monkey-patched select module after import for modules
+  that patch the select module like eventlet, greenlet. (Pull #1128)
+
+* Reduced memory consumption when streaming zlib-compressed responses
+  (as opposed to raw deflate streams). (Pull #1129)
+
+* Connection pools now use the entire request context when constructing the
+  pool key. (Pull #1016)
+
+* ``PoolManager.connection_from_*`` methods now accept a new keyword argument,
+  ``pool_kwargs``, which are merged with the existing ``connection_pool_kw``.
+  (Pull #1016)
+
+* Add retry counter for ``status_forcelist``. (Issue #1147)
+
+* Added ``contrib`` module for using SecureTransport on macOS:
+  ``urllib3.contrib.securetransport``.  (Pull #1122)
+
+* urllib3 now only normalizes the case of ``http://`` and ``https://`` schemes:
+  for schemes it does not recognise, it assumes they are case-sensitive and
+  leaves them unchanged.
+  (Issue #1080)
+
+* ... [Short description of non-trivial change.] (Issue #)
+
+
 1.20 (2017-01-19)
 -----------------
 
