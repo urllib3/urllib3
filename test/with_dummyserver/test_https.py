@@ -19,6 +19,7 @@ from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
 from test import (
     onlyPy26OrOlder,
     onlyPy279OrNewer,
+    notSecureTransport,
     onlyPy27OrNewerOrNonWindows,
     requires_network,
     TARPIT_HOST,
@@ -145,6 +146,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 self.assertEqual(error, InsecurePlatformWarning)
 
     @onlyPy279OrNewer
+    @notSecureTransport
     def test_ca_dir_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_reqs='CERT_REQUIRED',
@@ -176,7 +178,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             https_pool.request('GET', '/')
             self.fail("Didn't raise SSL invalid common name")
         except SSLError as e:
-            self.assertTrue("doesn't match" in str(e))
+            self.assertTrue(
+                "doesn't match" in str(e) or
+                "certificate verify failed" in str(e)
+            )
 
     def test_verified_with_bad_ca_certs(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
@@ -206,9 +211,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             # there is a different error message depending on whether or
             # not pyopenssl is injected
             self.assertTrue('No root certificates specified' in str(e) or
-                            'certificate verify failed' in str(e),
-                            "Expected 'No root certificates specified' or "
-                            "'certificate verify failed', "
+                            'certificate verify failed' in str(e) or
+                            'invalid certificate chain' in str(e),
+                            "Expected 'No root certificates specified',  "
+                            "'certificate verify failed', or "
+                            "'invalid certificate chain', "
                             "instead got: %r" % e)
 
     def test_no_ssl(self):
@@ -355,7 +362,12 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                         'BF:93:CF:F9:71:CC:07:7D:0A'
         https_pool.request('GET', '/')
 
+    @notSecureTransport
     def test_good_fingerprint_and_hostname_mismatch(self):
+        # This test doesn't run with SecureTransport because we don't turn off
+        # hostname validation without turning off all validation, which this
+        # test doesn't do (deliberately). We should revisit this if we make
+        # new decisions.
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)

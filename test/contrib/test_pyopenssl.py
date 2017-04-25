@@ -12,7 +12,9 @@ except ImportError as e:
 
 
 from ..with_dummyserver.test_https import TestHTTPS, TestHTTPS_TLSv1  # noqa: F401
-from ..with_dummyserver.test_socketlevel import TestSNI, TestSocketClosing  # noqa: F401
+from ..with_dummyserver.test_socketlevel import (  # noqa: F401
+    TestSNI, TestSocketClosing, TestClientCerts
+)
 
 
 def setup_module():
