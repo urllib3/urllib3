@@ -4,6 +4,12 @@ Changes
 dev (master)
 ------------
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.21 (2017-04-25)
+-----------------
+
 * Improved performance of certain selector system calls on Python 3.5 and
   later. (Pull #1095)
 
@@ -27,6 +33,11 @@ dev (master)
 
 * Added ``contrib`` module for using SecureTransport on macOS:
   ``urllib3.contrib.securetransport``.  (Pull #1122)
+
+* urllib3 now only normalizes the case of ``http://`` and ``https://`` schemes:
+  for schemes it does not recognise, it assumes they are case-sensitive and
+  leaves them unchanged.
+  (Issue #1080)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
