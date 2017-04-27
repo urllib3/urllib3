@@ -27,7 +27,7 @@ def teardown_module(module):
     extract_from_urllib3()
 
 
-@pytest.mark.skipif(not HAS_PYOPENSSL, 'Tests require PyOpenSSL')
+@pytest.mark.skipif(not HAS_PYOPENSSL, reason='Tests require PyOpenSSL')
 class TestPyOpenSSLHelpers(unittest.TestCase):
     """
     Tests for PyOpenSSL helper functions.

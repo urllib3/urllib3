@@ -29,6 +29,7 @@ def setup_module(module):
     if not HAS_APPENGINE_SDK:
         pytest.skip('Tests require Google AppEngine SDK.')
 
+
 # This class is used so we can re-use the tests from the connection pool.
 # It proxies all requests to the manager.
 class MockPool(object):
