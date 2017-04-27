@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 import unittest
-
-from nose.plugins.skip import SkipTest
+import pytest
 
 try:
     from urllib3.contrib.pyopenssl import (inject_into_urllib3,
                                            extract_from_urllib3,
                                            _dnsname_to_stdlib)
+    HAS_PYOPENSSL = True
 except ImportError as e:
-    raise SkipTest('Could not import PyOpenSSL: %r' % e)
+    HAS_PYOPENSSL = False
 
 
 from ..with_dummyserver.test_https import TestHTTPS, TestHTTPS_TLSv1  # noqa: F401
@@ -17,14 +17,17 @@ from ..with_dummyserver.test_socketlevel import (  # noqa: F401
 )
 
 
-def setup_module():
+def setup_module(module):
+    if not HAS_PYOPENSSL:
+        pytest.skip('Tests require PyOpenSSL.')
     inject_into_urllib3()
 
 
-def teardown_module():
+def teardown_module(module):
     extract_from_urllib3()
 
 
+@pytest.mark.skipif(not HAS_PYOPENSSL, 'Tests require PyOpenSSL')
 class TestPyOpenSSLHelpers(unittest.TestCase):
     """
     Tests for PyOpenSSL helper functions.

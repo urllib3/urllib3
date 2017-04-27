@@ -1,7 +1,7 @@
 import unittest
 import json
 
-from nose.plugins.skip import SkipTest
+import pytest
 from dummyserver.server import HAS_IPV6
 from dummyserver.testcase import (HTTPDummyServerTestCase,
                                   IPv6HTTPDummyServerTestCase)
@@ -215,10 +215,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
         self.assertEqual(r.status, 200)
 
 
+@pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system.")
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
-    if not HAS_IPV6:
-        raise SkipTest("IPv6 is not supported on this system.")
-
     def setUp(self):
         self.base_url = 'http://[%s]:%d' % (self.host, self.port)
 

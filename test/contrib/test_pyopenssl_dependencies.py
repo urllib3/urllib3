@@ -1,15 +1,22 @@
 # -*- coding: utf-8 -*-
 import unittest
 
-from nose.plugins.skip import SkipTest
+import pytest
 
 try:
     from urllib3.contrib.pyopenssl import (inject_into_urllib3,
-                                           extract_from_urllib3)
+                                           extract_from_urllib3,
+                                           _dnsname_to_stdlib)
+    HAS_PYOPENSSL = True
 except ImportError as e:
-    raise SkipTest('Could not import PyOpenSSL: %r' % e)
+    HAS_PYOPENSSL = False
 
 from mock import patch, Mock
+
+
+def setup_module(module):
+    if not HAS_PYOPENSSL:
+        pytest.skip('Tests require PyOpenSSL.')
 
 
 class TestPyOpenSSLInjection(unittest.TestCase):

@@ -1,7 +1,7 @@
 import os
 import sys
 import unittest
-from nose.plugins.skip import SkipTest
+import pytest
 
 
 def activate_sandbox():
@@ -39,15 +39,15 @@ class AppEngineSandboxTest(unittest.TestCase):
     def setUpClass(cls):
 
         if sys.version_info[:2] != (2, 7):
-            raise SkipTest("App Engine only tests on py2.7")
+            pytest.skip("App Engine only tests on py2.7")
 
         if 'APPLICATION_ID' not in os.environ:
-            raise SkipTest("NoseGAE plugin not used.")
+            pytest.skip("NoseGAE plugin not used.")
 
         try:
             activate_sandbox()
         except ImportError:
-            raise SkipTest("App Engine SDK not available.")
+            pytest.skip("App Engine SDK not available.")
 
     @classmethod
     def tearDownClass(self):

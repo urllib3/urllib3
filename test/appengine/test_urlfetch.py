@@ -1,13 +1,11 @@
 from . import AppEngineSandboxTest, MockResponse
 
+import pytest
 from mock import patch
-from nose.plugins.skip import SkipTest
 from ..test_no_ssl import TestWithoutSSL
 
 
 class TestHTTP(AppEngineSandboxTest, TestWithoutSSL):
-    nosegae_urlfetch = True
-
     def test_urlfetch_called_with_http(self):
         """
         Check that URLFetch is used to fetch non-https resources
@@ -27,13 +25,11 @@ class TestHTTP(AppEngineSandboxTest, TestWithoutSSL):
 
 
 class TestHTTPS(AppEngineSandboxTest):
-    nosegae_urlfetch = True
-
     def test_urlfetch_called_with_https(self):
         """
         Check that URLFetch is used when fetching https resources
         """
-        raise SkipTest()  # Skipped for now because it fails.
+        pytest.mark.skip('This test fails.')
         resp = MockResponse(
             'OK',
             200,

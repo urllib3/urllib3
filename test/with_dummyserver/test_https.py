@@ -6,7 +6,7 @@ import unittest
 import warnings
 
 import mock
-from nose.plugins.skip import SkipTest
+import pytest
 
 from dummyserver.testcase import (
     HTTPSDummyServerTestCase, IPV6HTTPSDummyServerTestCase
@@ -549,7 +549,7 @@ class TestHTTPS_IPSAN(HTTPSDummyServerTestCase):
         try:
             import ipaddress  # noqa: F401
         except ImportError:
-            raise SkipTest("Only runs on systems with an ipaddress module")
+            pytest.skip("Only runs on systems with an ipaddress module")
 
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_REQUIRED',
@@ -565,7 +565,7 @@ class TestHTTPS_IPv6Addr(IPV6HTTPSDummyServerTestCase):
     def test_strip_square_brackets_before_validating(self):
         """Test that the fix for #760 works."""
         if not HAS_IPV6:
-            raise SkipTest("Only runs on IPv6 systems")
+            pytest.skip("Only runs on IPv6 systems")
         https_pool = HTTPSConnectionPool('[::1]', self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=IPV6_ADDR_CA)
