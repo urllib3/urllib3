@@ -1,1 +1,1 @@
-NoseGAE==0.5.7
+pytest_gae==0.2.4
