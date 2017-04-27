@@ -472,6 +472,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         https_pool._make_request(conn, 'GET', '/')
 
+    @onlyPy279OrNewer
     def test_ssl_correct_system_time(self):
         self._pool.cert_reqs = 'CERT_REQUIRED'
         self._pool.ca_certs = DEFAULT_CA
@@ -479,6 +480,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         w = self._request_without_resource_warnings('GET', '/')
         self.assertEqual([], w)
 
+    @onlyPy279OrNewer
     def test_ssl_wrong_system_time(self):
         self._pool.cert_reqs = 'CERT_REQUIRED'
         self._pool.ca_certs = DEFAULT_CA
