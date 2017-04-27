@@ -30,6 +30,9 @@ Upcoming 2.0 Changes
 dev (master)
 ------------
 
+* Fixed SecureTransport issue that would cause long delays in response body
+  delivery. (Pull #1154)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
