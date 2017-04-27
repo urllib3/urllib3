@@ -494,7 +494,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.assertTrue(str(RECENT_DATE) in warning.message.args[0])
 
     def _request_without_resource_warnings(self, method, url):
-        with warnings.catch_warnings(record=True) as w:
+        with pytest.warns(None) as w:
             warnings.simplefilter('always')
             self._pool.request(method, url)
 

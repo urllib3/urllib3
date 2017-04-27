@@ -7,6 +7,7 @@ import ssl
 import socket
 from itertools import chain
 
+import pytest
 from mock import patch, Mock
 
 from urllib3 import add_stderr_logger, disable_warnings
@@ -331,7 +332,7 @@ class TestUtil(unittest.TestCase):
         logger.removeHandler(handler)
 
     def test_disable_warnings(self):
-        with warnings.catch_warnings(record=True) as w:
+        with pytest.warns(None) as w:
             clear_warnings()
             warnings.warn('This is a test.', InsecureRequestWarning)
             self.assertEqual(len(w), 1)
