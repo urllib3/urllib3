@@ -62,14 +62,17 @@ class ConnectionPool(object):
     """
 
     scheme = None
-    QueueCls = queue.LifoQueue
 
-    def __init__(self, host, port=None):
+    def __init__(self, host, port=None, fifo_queue=False):
         if not host:
             raise LocationValueError("No host specified.")
 
         self.host = _ipv6_host(host).lower()
         self.port = port
+        if fifo_queue:
+            self.QueueCls = queue.Queue
+        else:
+            self.QueueCls = queue.LifoQueue
 
     def __str__(self):
         return '%s(host=%r, port=%r)' % (type(self).__name__,
@@ -149,6 +152,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         A dictionary with proxy headers, should not be used directly,
         instead, see :class:`urllib3.connectionpool.ProxyManager`"
 
+    :param fifo_queue:
+        If True, this connection pool will use a FIFO queue to store its connections,
+        instead of the default stack (LIFO) implementation
+
     :param \\**conn_kw:
         Additional parameters are used to create fresh :class:`urllib3.connection.HTTPConnection`,
         :class:`urllib3.connection.HTTPSConnection` instances.
@@ -161,9 +168,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     def __init__(self, host, port=None, strict=False,
                  timeout=Timeout.DEFAULT_TIMEOUT, maxsize=1, block=False,
                  headers=None, retries=None,
-                 _proxy=None, _proxy_headers=None,
+                 _proxy=None, _proxy_headers=None, fifo_queue=False,
                  **conn_kw):
-        ConnectionPool.__init__(self, host, port)
+        ConnectionPool.__init__(self, host, port, fifo_queue)
         RequestMethods.__init__(self, headers)
 
         self.strict = strict
