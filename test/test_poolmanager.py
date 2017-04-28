@@ -1,3 +1,4 @@
+import socket
 import sys
 
 from urllib3.poolmanager import (
@@ -339,6 +340,25 @@ class TestPoolManager(unittest.TestCase):
         self.assertFalse(override_pool.strict)
         self.assertEqual(100, override_pool.retries)
         self.assertTrue(override_pool.block)
+
+    def test_pool_kwargs_socket_options(self):
+        """Assert passing socket options works with connection_from_host"""
+        p = PoolManager(socket_options=[])
+        override_opts = [
+            (socket.SOL_SOCKET, socket.SO_REUSEADDR, 1),
+            (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        ]
+        pool_kwargs = {'socket_options': override_opts}
+
+        default_pool = p.connection_from_host('example.com', scheme='http')
+        override_pool = p.connection_from_host(
+            'example.com', scheme='http', pool_kwargs=pool_kwargs
+        )
+
+        self.assertEqual(default_pool.conn_kw['socket_options'], [])
+        self.assertEqual(
+            override_pool.conn_kw['socket_options'], override_opts
+        )
 
     def test_merge_pool_kwargs(self):
         """Assert _merge_pool_kwargs works in the happy case"""
