@@ -6,7 +6,7 @@ from ..test_no_ssl import TestWithoutSSL
 
 
 class TestHTTP(AppEngineSandboxTest, TestWithoutSSL):
-    def test_urlfetch_called_with_http(self):
+    def test_urlfetch_called_with_http(self, urlfetch):
         """
         Check that URLFetch is used to fetch non-https resources
         """
@@ -25,7 +25,7 @@ class TestHTTP(AppEngineSandboxTest, TestWithoutSSL):
 
 
 class TestHTTPS(AppEngineSandboxTest):
-    def test_urlfetch_called_with_https(self):
+    def test_urlfetch_called_with_https(self, urlfetch):
         """
         Check that URLFetch is used when fetching https resources
         """

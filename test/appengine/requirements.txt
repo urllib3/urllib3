@@ -1,1 +1,1 @@
-pytest_gae==0.2.4
+pytest-beds==0.3.0
