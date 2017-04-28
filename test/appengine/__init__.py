@@ -11,10 +11,6 @@ def activate_sandbox():
     Inserts the stub module import hook which causes the usage of appengine-specific
     httplib, httplib2, socket, etc.
     """
-    import dev_appserver
-    dev_appserver.fix_sys_path()
-
-
     from google.appengine.tools.devappserver2.python import sandbox
     from google.appengine.ext import testbed
 
@@ -51,12 +47,11 @@ class AppEngineSandboxTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        import dev_appserver
+        dev_appserver.fix_sys_path()
 
         if sys.version_info[:2] != (2, 7):
             pytest.skip("App Engine only tests on py2.7")
-
-        if 'APPLICATION_ID' not in os.environ:
-            pytest.skip("NoseGAE plugin not used.")
 
         try:
             self.bed = activate_sandbox()
