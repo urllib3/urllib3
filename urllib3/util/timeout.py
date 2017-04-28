@@ -71,7 +71,7 @@ class Timeout(object):
         For example, Python's DNS resolver does not obey the timeout specified
         on the socket. Other factors that can affect total request time include
         high CPU load, high swap, the program running at a low priority level,
-        or other behaviors.
+        or other behaviours.
 
         In addition, the read and total timeouts only measure the time between
         read operations on the socket connecting the client and the server,

@@ -13,7 +13,7 @@ class RequestMethods(object):
     as :class:`~urllib3.connectionpool.HTTPConnectionPool` and
     :class:`~urllib3.poolmanager.PoolManager`.
 
-    Provides behavior for making common types of HTTP request methods and
+    Provides behaviour for making common types of HTTP request methods and
     decides which type of request field encoding to use.
 
     Specifically,
