@@ -5,7 +5,6 @@ from mock import patch
 from ..test_no_ssl import TestWithoutSSL
 
 
-
 class TestHTTP(AppEngineSandboxTest, TestWithoutSSL):
     def test_urlfetch_called_with_http(self):
         """
