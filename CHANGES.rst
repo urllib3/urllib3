@@ -45,8 +45,6 @@ dev (master)
   leaves them unchanged.
   (Issue #1080)
 
-* ... [Short description of non-trivial change.] (Issue #)
-
 
 1.20 (2017-01-19)
 -----------------
