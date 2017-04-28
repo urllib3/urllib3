@@ -88,7 +88,7 @@ class TestGAEConnectionManager(TestConnectionPool):
         deactivate_urlfetch(self.bed)
 
     # Tests specific to AppEngineManager
-    def test_exceptions(self, urlfetch):
+    def test_exceptions(self):
         # DeadlineExceededError -> TimeoutError
         self.assertRaises(
             TimeoutError,
@@ -170,7 +170,7 @@ class TestGAEConnectionManagerWithSSL(HTTPSDummyServerTestCase):
     def tearDown(self):
         deactivate_urlfetch(self.bed)
 
-    def test_exceptions(self, urlfetch):
+    def test_exceptions(self):
         # SSLCertificateError -> SSLError
         # SSLError is raised with dummyserver because URLFetch doesn't allow
         # self-signed certs.
