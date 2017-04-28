@@ -30,6 +30,21 @@ def setup_module(module):
         pytest.skip('Tests require Google AppEngine SDK.')
 
 
+def activate_urlfetch():
+    from google.appengine.ext import testbed
+
+    bed = testbed.Testbed()
+    bed.activate()
+    bed.init_urlfetch_stub()
+
+    return bed
+
+
+def deactivate_urlfetch(bed):
+    if bed is not None:
+        bed.deactivate()
+
+
 # This class is used so we can re-use the tests from the connection pool.
 # It proxies all requests to the manager.
 class MockPool(object):
@@ -64,10 +79,13 @@ class TestGAEConnectionManager(TestConnectionPool):
     def setUp(self):
         self.manager = AppEngineManager()
         self.pool = MockPool(self.host, self.port, self.manager)
+        self.bed = activate_urlfetch()
+
+    def tearDown(self):
+        deactivate_urlfetch(self.bed)
 
     # Tests specific to AppEngineManager
-
-    def test_exceptions(self):
+    def test_exceptions(self, urlfetch):
         # DeadlineExceededError -> TimeoutError
         self.assertRaises(
             TimeoutError,
@@ -144,8 +162,12 @@ class TestGAEConnectionManagerWithSSL(HTTPSDummyServerTestCase):
     def setUp(self):
         self.manager = AppEngineManager()
         self.pool = MockPool(self.host, self.port, self.manager, 'https')
+        self.bed = activate_urlfetch()
 
-    def test_exceptions(self):
+    def tearDown(self):
+        deactivate_urlfetch(self.bed)
+
+    def test_exceptions(self, urlfetch):
         # SSLCertificateError -> SSLError
         # SSLError is raised with dummyserver because URLFetch doesn't allow
         # self-signed certs.
@@ -162,6 +184,10 @@ class TestGAERetry(TestRetry):
     def setUp(self):
         self.manager = AppEngineManager()
         self.pool = MockPool(self.host, self.port, self.manager)
+        self.bed = activate_urlfetch()
+
+    def tearDown(self):
+        deactivate_urlfetch(self.bed)
 
     def test_default_method_whitelist_retried(self):
         """ urllib3 should retry methods in the default method whitelist """
@@ -200,6 +226,10 @@ class TestGAERetryAfter(TestRetryAfter):
         # Disable urlfetch which doesn't respect Retry-After header.
         self.manager = AppEngineManager(urlfetch_retries=False)
         self.pool = MockPool(self.host, self.port, self.manager)
+        self.bed = activate_urlfetch()
+
+    def tearDown(self):
+        deactivate_urlfetch(self.bed)
 
 
 if __name__ == '__main__':

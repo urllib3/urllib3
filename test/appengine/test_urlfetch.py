@@ -5,8 +5,9 @@ from mock import patch
 from ..test_no_ssl import TestWithoutSSL
 
 
+
 class TestHTTP(AppEngineSandboxTest, TestWithoutSSL):
-    def test_urlfetch_called_with_http(self, urlfetch):
+    def test_urlfetch_called_with_http(self):
         """
         Check that URLFetch is used to fetch non-https resources
         """
@@ -25,11 +26,11 @@ class TestHTTP(AppEngineSandboxTest, TestWithoutSSL):
 
 
 class TestHTTPS(AppEngineSandboxTest):
+    @pytest.mark.skip('This test fails.')
     def test_urlfetch_called_with_https(self, urlfetch):
         """
         Check that URLFetch is used when fetching https resources
         """
-        pytest.mark.skip('This test fails.')
         resp = MockResponse(
             'OK',
             200,

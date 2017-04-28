@@ -3,6 +3,8 @@ import sys
 import unittest
 import pytest
 
+_TEST_BED = None
+
 
 def activate_sandbox():
     """
@@ -12,6 +14,7 @@ def activate_sandbox():
     httplib, httplib2, socket, etc.
     """
     from google.appengine.tools.devappserver2.python import sandbox
+    from google.appengine.ext import testbed
 
     for name in list(sys.modules):
         if name in sandbox.dist27.MODULE_OVERRIDES:
@@ -19,8 +22,14 @@ def activate_sandbox():
     sys.meta_path.insert(0, sandbox.StubModuleImportHook())
     sys.path_importer_cache = {}
 
+    bed = testbed.Testbed()
+    bed.activate()
+    bed.init_urlfetch_stub()
 
-def deactivate_sandbox():
+    return bed
+
+
+def deactivate_sandbox(bed):
     from google.appengine.tools.devappserver2.python import sandbox
 
     sys.meta_path = [
@@ -31,6 +40,9 @@ def deactivate_sandbox():
     for name in list(sys.modules):
         if name in sandbox.dist27.MODULE_OVERRIDES:
             del sys.modules[name]
+
+    if bed is not None:
+        bed.deactivate()
 
 
 class AppEngineSandboxTest(unittest.TestCase):
@@ -45,14 +57,14 @@ class AppEngineSandboxTest(unittest.TestCase):
             pytest.skip("NoseGAE plugin not used.")
 
         try:
-            activate_sandbox()
+            self.bed = activate_sandbox()
         except ImportError:
             pytest.skip("App Engine SDK not available.")
 
     @classmethod
     def tearDownClass(self):
         try:
-            deactivate_sandbox()
+            deactivate_sandbox(self.bed)
         except ImportError:
             pass
 
