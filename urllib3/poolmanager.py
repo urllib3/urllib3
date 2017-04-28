@@ -82,6 +82,12 @@ def _default_key_normalizer(key_class, request_context):
         if key in context and context[key] is not None:
             context[key] = frozenset(context[key].items())
 
+    # The socket_options key may be a list and needs to be transformed into a
+    # tuple.
+    socket_opts = context.get('socket_options')
+    if socket_opts is not None:
+        context['socket_options'] = tuple(socket_opts)
+
     # Map the kwargs to the names in the namedtuple - this is necessary since
     # namedtuples can't have fields starting with '_'.
     for key in list(context.keys()):
