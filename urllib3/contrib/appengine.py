@@ -59,6 +59,11 @@ from ..response import HTTPResponse
 from ..util.timeout import Timeout
 from ..util.retry import Retry
 
+try:
+    from google.appengine.api import urlfetch
+except ImportError:
+    urlfetch = None
+
 
 log = logging.getLogger(__name__)
 
@@ -93,9 +98,7 @@ class AppEngineManager(RequestMethods):
 
     def __init__(self, headers=None, retries=None, validate_certificate=True,
                  urlfetch_retries=True):
-        try:
-            from google.appengine.api import urlfetch
-        except ImportError:
+        if not urlfetch:
             raise AppEnginePlatformError(
                 "URLFetch is not available in this environment.")
 
@@ -112,8 +115,6 @@ class AppEngineManager(RequestMethods):
             AppEnginePlatformWarning)
 
         RequestMethods.__init__(self, headers)
-
-        self._urlfetch = urlfetch
         self.validate_certificate = validate_certificate
         self.urlfetch_retries = urlfetch_retries
 
@@ -137,7 +138,7 @@ class AppEngineManager(RequestMethods):
                     redirect and
                     retries.redirect != 0 and
                     retries.total)
-            response = self._urlfetch.fetch(
+            response = urlfetch.fetch(
                 url,
                 payload=body,
                 method=method,
@@ -147,30 +148,30 @@ class AppEngineManager(RequestMethods):
                 deadline=self._get_absolute_timeout(timeout),
                 validate_certificate=self.validate_certificate,
             )
-        except self._urlfetch.DeadlineExceededError as e:
+        except urlfetch.DeadlineExceededError as e:
             raise TimeoutError(self, e)
 
-        except self._urlfetch.InvalidURLError as e:
+        except urlfetch.InvalidURLError as e:
             if 'too large' in str(e):
                 raise AppEnginePlatformError(
                     "URLFetch request too large, URLFetch only "
                     "supports requests up to 10mb in size.", e)
             raise ProtocolError(e)
 
-        except self._urlfetch.DownloadError as e:
+        except urlfetch.DownloadError as e:
             if 'Too many redirects' in str(e):
                 raise MaxRetryError(self, url, reason=e)
             raise ProtocolError(e)
 
-        except self._urlfetch.ResponseTooLargeError as e:
+        except urlfetch.ResponseTooLargeError as e:
             raise AppEnginePlatformError(
                 "URLFetch response too large, URLFetch only supports"
                 "responses up to 32mb in size.", e)
 
-        except self._urlfetch.SSLCertificateError as e:
+        except urlfetch.SSLCertificateError as e:
             raise SSLError(e)
 
-        except self._urlfetch.InvalidMethodError as e:
+        except urlfetch.InvalidMethodError as e:
             raise AppEnginePlatformError(
                 "URLFetch does not support method: %s" % method, e)
 
