@@ -47,19 +47,22 @@ class AppEngineSandboxTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import dev_appserver
-        dev_appserver.fix_sys_path()
+        try:
+            import dev_appserver
+            dev_appserver.fix_sys_path()
+        except ImportError:
+            pytest.skip("App Engine SDK not available.")
 
         if sys.version_info[:2] != (2, 7):
             pytest.skip("App Engine only tests on py2.7")
 
+    def setUp(self):
         try:
             self.bed = activate_sandbox()
         except ImportError:
             pytest.skip("App Engine SDK not available.")
 
-    @classmethod
-    def tearDownClass(self):
+    def tearDown(self):
         try:
             deactivate_sandbox(self.bed)
         except ImportError:
