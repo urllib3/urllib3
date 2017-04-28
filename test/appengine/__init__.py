@@ -3,8 +3,6 @@ import sys
 import unittest
 import pytest
 
-_TEST_BED = None
-
 
 def activate_sandbox():
     """
@@ -13,6 +11,10 @@ def activate_sandbox():
     Inserts the stub module import hook which causes the usage of appengine-specific
     httplib, httplib2, socket, etc.
     """
+    import dev_appserver
+    dev_appserver.fix_sys_path()
+
+
     from google.appengine.tools.devappserver2.python import sandbox
     from google.appengine.ext import testbed
 

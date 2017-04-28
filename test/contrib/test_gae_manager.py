@@ -31,6 +31,9 @@ def setup_module(module):
 
 
 def activate_urlfetch():
+    import dev_appserver
+    dev_appserver.fix_sys_path()
+
     from google.appengine.ext import testbed
 
     bed = testbed.Testbed()
