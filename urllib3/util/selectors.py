@@ -333,7 +333,7 @@ if hasattr(select, "select"):
                     ready.append((key, events & key.events))
             return ready
 
-    if platform.system() == 'Java':
+    if _IS_JYTHON:
         class _JythonSelectorMapping(object):
             """ This is an implementation of _SelectorMapping that is built
             for use specifically with Jython, which does not provide a hashable
