@@ -7,6 +7,9 @@ dev (master)
 * Fixed SecureTransport issue that would cause long delays in response body
   delivery. (Pull #1154)
 
+* Fixed regression in 1.21 that threw exceptions when users passed the
+  ``socket_options`` flag to the ``PoolManager``.  (Issue #1165)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
@@ -41,8 +44,6 @@ dev (master)
   for schemes it does not recognise, it assumes they are case-sensitive and
   leaves them unchanged.
   (Issue #1080)
-
-* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.20 (2017-01-19)
