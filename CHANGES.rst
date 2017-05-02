@@ -4,6 +4,12 @@ Changes
 dev (master)
 ------------
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.21.1 (2017-05-02)
+-------------------
+
 * Fixed SecureTransport issue that would cause long delays in response body
   delivery. (Pull #1154)
 
@@ -11,9 +17,8 @@ dev (master)
   ``socket_options`` flag to the ``PoolManager``.  (Issue #1165)
 
 * Fixed regression in 1.21 that threw exceptions when users passed the
-  ``assert_hostname`` or ```assert_fingerprint`flag to the ``PoolManager``.
-
-* ... [Short description of non-trivial change.] (Issue #)
+  ``assert_hostname`` or ``assert_fingerprint`` flag to the ``PoolManager``.
+  (Pull #1157)
 
 
 1.21 (2017-04-25)
