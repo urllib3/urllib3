@@ -8,6 +8,9 @@ if [ -n "$JYTHON" ]; then
     jip install $JYTHON
     OLD_VIRTUAL_ENV=$VIRTUAL_ENV
     java -jar $OLD_VIRTUAL_ENV/javalib/jython-installer-2.7.0.jar -s -d $HOME/jython
+
+    # Required for --distribute option.
+    pip install virtualenv==1.9.1
     virtualenv --distribute -p $HOME/jython/bin/jython $HOME/jenv
 fi
 
