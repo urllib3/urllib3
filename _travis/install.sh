@@ -3,6 +3,15 @@
 set -e
 set -x
 
+if [ -n "$JYTHON" ]; then
+    pip install jip
+    jip install $JYTHON
+    _JYTHON_BASENAME=${NON_GROUP_ID/:/-}
+    OLD_VIRTUAL_ENV=$VIRTUAL_ENV
+    java -jar $OLD_VIRTUAL_ENV/javalib/${_JYTHON_BASENAME}.jar -s -d $HOME/jython
+    virtualenv --distribute -p $HOME/jython/bin/jython $HOME/jenv
+fi
+
 if [[ "$(uname -s)" == 'Darwin' ]]; then
     sw_vers
     brew update || brew update
