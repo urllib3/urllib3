@@ -10,6 +10,9 @@ dev (master)
 * Fixed regression in 1.21 that threw exceptions when users passed the
   ``socket_options`` flag to the ``PoolManager``.  (Issue #1165)
 
+* Fixed regression in 1.21 that threw exceptions when users passed the
+  ``assert_hostname`` or ```assert_fingerprint`flag to the ``PoolManager``.
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
