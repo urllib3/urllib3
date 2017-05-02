@@ -13,9 +13,8 @@ if [ -n "$JYTHON" ]; then
     pip install virtualenv==1.9.1
     virtualenv --distribute -p $HOME/jython/bin/jython $HOME/jenv
     source $HOME/jenv/bin/activate
-fi
 
-if [[ "$(uname -s)" == 'Darwin' ]]; then
+elif [[ "$(uname -s)" == 'Darwin' ]]; then
     sw_vers
     brew update || brew update
 
