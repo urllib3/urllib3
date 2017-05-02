@@ -12,6 +12,7 @@ if [ -n "$JYTHON" ]; then
     # Required for --distribute option.
     pip install virtualenv==1.9.1
     virtualenv --distribute -p $HOME/jython/bin/jython $HOME/jenv
+    source $HOME/jenv/bin/activate
 fi
 
 if [[ "$(uname -s)" == 'Darwin' ]]; then
