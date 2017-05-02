@@ -1,3 +1,4 @@
+import socket
 import sys
 
 from urllib3.poolmanager import (
@@ -276,6 +277,16 @@ class TestPoolManager(unittest.TestCase):
         self.assertTrue(pool is other_pool)
         self.assertTrue(all(isinstance(key, PoolKey) for key in p.pools.keys()))
 
+    def test_assert_hostname_and_fingerprint_flag(self):
+        """Assert that pool manager can accept hostname and fingerprint flags."""
+        fingerprint = '92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A'
+        p = PoolManager(assert_hostname=True, assert_fingerprint=fingerprint)
+        self.addCleanup(p.clear)
+        pool = p.connection_from_url('https://example.com/')
+        self.assertEqual(1, len(p.pools))
+        self.assertTrue(pool.assert_hostname)
+        self.assertEqual(fingerprint, pool.assert_fingerprint)
+
     def test_http_connection_from_context_case_insensitive(self):
         """Assert scheme case is ignored when getting the https key class."""
         p = PoolManager()
@@ -339,6 +350,25 @@ class TestPoolManager(unittest.TestCase):
         self.assertFalse(override_pool.strict)
         self.assertEqual(100, override_pool.retries)
         self.assertTrue(override_pool.block)
+
+    def test_pool_kwargs_socket_options(self):
+        """Assert passing socket options works with connection_from_host"""
+        p = PoolManager(socket_options=[])
+        override_opts = [
+            (socket.SOL_SOCKET, socket.SO_REUSEADDR, 1),
+            (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        ]
+        pool_kwargs = {'socket_options': override_opts}
+
+        default_pool = p.connection_from_host('example.com', scheme='http')
+        override_pool = p.connection_from_host(
+            'example.com', scheme='http', pool_kwargs=pool_kwargs
+        )
+
+        self.assertEqual(default_pool.conn_kw['socket_options'], [])
+        self.assertEqual(
+            override_pool.conn_kw['socket_options'], override_opts
+        )
 
     def test_merge_pool_kwargs(self):
         """Assert _merge_pool_kwargs works in the happy case"""
