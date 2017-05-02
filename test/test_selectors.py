@@ -2,6 +2,7 @@ from __future__ import with_statement
 import errno
 import os
 import psutil
+import platform
 import select
 import signal
 import sys
@@ -53,6 +54,7 @@ APPVEYOR = "APPVEYOR" in os.environ
 skipUnlessHasSelector = skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector")
 skipUnlessHasENOSYS = skipUnless(hasattr(errno, 'ENOSYS'), "Platform doesn't have errno.ENOSYS")
 skipUnlessHasAlarm = skipUnless(hasattr(signal, 'alarm'), "Platform doesn't have signal.alarm()")
+skipUnlessJython = skipUnless(platform.system() == 'Jython', "Platform is not Jython")
 
 
 def patch_select_module(testcase, *keep, **replace):
@@ -769,6 +771,13 @@ class EpollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
 class KqueueSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     def setUp(self):
         patch_select_module(self, 'kqueue')
+
+
+@skipUnlessJython
+@skipUnless(hasattr(selectors, "JythonSelectSelector"), "Platform doesn't have a SelectSelector")
+class JythonSelectSelectorTestBase(BaseSelectorTestCase):
+    def setUp(self):
+        patch_select_module(self, 'select')
 
 
 @skipUnless(hasattr(selectors, "SelectSelector"), "Platform doesn't have a SelectSelector")
