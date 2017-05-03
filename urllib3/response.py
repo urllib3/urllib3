@@ -139,6 +139,10 @@ class HTTPResponse(io.IOBase):
         self._pool = pool
         self._connection = connection
 
+        if getattr(connection, 'sock', False) and\
+            getattr(connection.sock, 'getpeercert', False):
+            self.peer_cert = connection.sock.getpeercert(binary_form=True)
+
         if hasattr(body, 'read'):
             self._fp = body
 
