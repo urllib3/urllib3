@@ -208,13 +208,7 @@ def _recv_or_eagain(sock):
     except ssl.SSLWantReadError:
         return _EAGAIN
     except (OSError, socket.error) as e:
-        errcode = None
-        if hasattr(e, "errno"):
-            errcode = e.errno
-        elif hasattr(e, "args"):
-            errcode = e.args[0]
-
-        if errcode == errno.EAGAIN:
+        if e.errno == errno.EAGAIN:
             return _EAGAIN
         raise
 
@@ -229,13 +223,7 @@ def _write_or_eagain(sock, data):
     except ssl.SSLWantWriteError:
         return _EAGAIN
     except (OSError, socket.error) as e:
-        errcode = None
-        if hasattr(e, "errno"):
-            errcode = e.errno
-        elif hasattr(e, "args"):
-            errcode = e.args[0]
-
-        if errcode == errno.EAGAIN:
+        if e.errno == errno.EAGAIN:
             return _EAGAIN
         raise
 
