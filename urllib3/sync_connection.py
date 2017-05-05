@@ -205,6 +205,8 @@ def _recv_or_eagain(sock):
     """
     try:
         return sock.recv(65536)
+    except ssl.SSLWantReadError:
+        return _EAGAIN
     except (OSError, socket.error) as e:
         errcode = None
         if hasattr(e, "errno"):
@@ -215,8 +217,6 @@ def _recv_or_eagain(sock):
         if errcode == errno.EAGAIN:
             return _EAGAIN
         raise
-    except ssl.SSLWantReadError:
-        return _EAGAIN
 
 
 def _write_or_eagain(sock, data):
@@ -226,6 +226,8 @@ def _write_or_eagain(sock, data):
     """
     try:
         return sock.send(data)
+    except ssl.SSLWantWriteError:
+        return _EAGAIN
     except (OSError, socket.error) as e:
         errcode = None
         if hasattr(e, "errno"):
@@ -236,8 +238,6 @@ def _write_or_eagain(sock, data):
         if errcode == errno.EAGAIN:
             return _EAGAIN
         raise
-    except ssl.SSLWantWriteError:
-        return _EAGAIN
 
 
 _DEFAULT_SOCKET_OPTIONS = object()
