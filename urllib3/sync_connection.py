@@ -372,20 +372,25 @@ class SyncHTTP1Connection(object):
                 return True
 
             if events & selectors.EVENT_WRITE:
-                try:
-                    bytes_written = _write_or_eagain(self._sock, chunk)
-                except ssl.SSLWantReadError:
-                    # This is unlikely, but we should still tolerate it.
-                    _wait_for_event(
-                        self._selector,
-                        self._sock,
-                        selectors.EVENT_READ,
-                        None  # TODO: Timeout!
-                    )
-                    continue
-
-                if bytes_written is not _EAGAIN:
-                    chunk = chunk[bytes_written:]
+                # This `while` loop is present to prevent us doing too much
+                # selector polling. We already know the selector is writable:
+                # we don't need to ask again until a write actually succeeds or
+                # we get EAGAIN.
+                bytes_written = None
+                while bytes_written is None:
+                    try:
+                        bytes_written = _write_or_eagain(self._sock, chunk)
+                    except ssl.SSLWantReadError:
+                        # This is unlikely, but we should still tolerate it.
+                        _wait_for_event(
+                            self._selector,
+                            self._sock,
+                            selectors.EVENT_READ,
+                            None  # TODO: Timeout!
+                        )
+                    else:
+                        if bytes_written is not _EAGAIN:
+                            chunk = chunk[bytes_written:]
 
         return False
 
@@ -464,20 +469,25 @@ class SyncHTTP1Connection(object):
                 # TODO: Raise our own timeouts later.
                 raise socket.timeout()
 
-            try:
-                read_bytes = _recv_or_eagain(self._sock)
-            except ssl.SSLWantWriteError:
-                _wait_for_event(
-                    self._selector,
-                    self._sock,
-                    selectors.EVENT_WRITE,
-                    read_timeout
-                )
-                continue
-
-            if read_bytes is not _EAGAIN:
-                state_machine.receive_data(read_bytes)
-                event = state_machine.next_event()
+            # This `while` loop is present to prevent us doing too much
+            # selector polling. We already know the selector is readable: we
+            # don't need to ask again until a read actually succeeds or we get
+            # EAGAIN.
+            read_bytes = None
+            while read_bytes is None:
+                try:
+                    read_bytes = _recv_or_eagain(self._sock)
+                except ssl.SSLWantWriteError:
+                    _wait_for_event(
+                        self._selector,
+                        self._sock,
+                        selectors.EVENT_WRITE,
+                        read_timeout
+                    )
+                else:
+                    if read_bytes is not _EAGAIN:
+                        state_machine.receive_data(read_bytes)
+                        event = state_machine.next_event()
 
         return event
 
