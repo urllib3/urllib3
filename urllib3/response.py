@@ -178,6 +178,13 @@ class HTTPResponse(io.IOBase):
         self._pool._put_conn(self._connection)
         self._connection = None
 
+    def discard_conn(self):
+        if not self._pool or not self._connection:
+            return
+
+        self._connection = self._connection and self._connection.close()
+        self._pool._put_conn(self._connection)
+
     @property
     def data(self):
         # For backwords-compat with earlier urllib3 0.4 and earlier.

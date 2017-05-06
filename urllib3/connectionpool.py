@@ -687,11 +687,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 retries = retries.increment(method, url, response=response, _pool=self)
             except MaxRetryError:
                 if retries.raise_on_redirect:
-                    # Release the connection for this response, since we're not
-                    # returning it to be released manually.
-                    response.release_conn()
+                    # Discarding the connection for this response, since we're
+                    # not returning it to be released manually.
+                    response.discard_conn()
                     raise
                 return response
+
+            response.discard_conn()
 
             retries.sleep_for_retry(response)
             log.debug("Redirecting %s -> %s", url, redirect_location)
@@ -710,11 +712,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 retries = retries.increment(method, url, response=response, _pool=self)
             except MaxRetryError:
                 if retries.raise_on_status:
-                    # Release the connection for this response, since we're not
+                    # Discarding the connection for this response, since we're not
                     # returning it to be released manually.
-                    response.release_conn()
+                    response.discard_conn()
                     raise
                 return response
+
+            response.discard_conn()
+
             retries.sleep(response)
             log.debug("Retry: %s", url)
             return self.urlopen(
