@@ -384,7 +384,7 @@ class SyncHTTP1Connection(object):
 
     def send_request(self, request, read_timeout):
         """
-        Just a stub to work out what the hell the sending loop should be.
+        Given a Request object, performs the logic required to get a response.
         """
         # Step 1: Send Request.
         # TODO: Replace read_timeout with something smarter.
