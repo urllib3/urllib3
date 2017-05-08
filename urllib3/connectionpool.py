@@ -682,6 +682,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     raise
                 return response
 
+            # drain and return the connection to the pool before recursing
+            response.read()
+            response.release_conn()
+
             retries.sleep_for_retry(response)
             log.debug("Redirecting %s -> %s", url, redirect_location)
             return self.urlopen(
@@ -704,6 +708,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     response.release_conn()
                     raise
                 return response
+
+            # drain and return the connection to the pool before recursing
+            response.read()
+            response.release_conn()
+
             retries.sleep(response)
             log.debug("Retry: %s", url)
             return self.urlopen(
