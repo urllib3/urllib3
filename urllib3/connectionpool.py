@@ -676,8 +676,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 retries = retries.increment(method, url, response=response, _pool=self)
             except MaxRetryError:
                 if retries.raise_on_redirect:
-                    # Release the connection for this response, since we're not
-                    # returning it to be released manually.
+                    # Drain and release the connection for this response, since
+                    # we're not returning it to be released manually.
+                    response.read()
                     response.release_conn()
                     raise
                 return response
@@ -703,8 +704,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 retries = retries.increment(method, url, response=response, _pool=self)
             except MaxRetryError:
                 if retries.raise_on_status:
-                    # Release the connection for this response, since we're not
-                    # returning it to be released manually.
+                    # Drain and release the connection for this response, since
+                    # we're not returning it to be released manually.
+                    response.read()
                     response.release_conn()
                     raise
                 return response
