@@ -54,7 +54,7 @@ APPVEYOR = "APPVEYOR" in os.environ
 skipUnlessHasSelector = skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector")
 skipUnlessHasENOSYS = skipUnless(hasattr(errno, 'ENOSYS'), "Platform doesn't have errno.ENOSYS")
 skipUnlessHasAlarm = skipUnless(hasattr(signal, 'alarm'), "Platform doesn't have signal.alarm()")
-skipUnlessJython = skipUnless(platform.system() == 'Jython', "Platform is not Jython")
+skipUnlessJython = skipUnless(platform.system() == 'Java', "Platform is not Jython")
 
 
 def patch_select_module(testcase, *keep, **replace):
