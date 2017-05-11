@@ -666,6 +666,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                 release_conn=release_conn, body_pos=body_pos,
                                 **response_kw)
 
+        def drain_and_release_conn(response):
+            response.read()
+            response.release_conn()
+
         # Handle redirect?
         redirect_location = redirect and response.get_redirect_location()
         if redirect_location:
@@ -678,14 +682,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 if retries.raise_on_redirect:
                     # Drain and release the connection for this response, since
                     # we're not returning it to be released manually.
-                    response.read()
-                    response.release_conn()
+                    drain_and_release_conn(response)
                     raise
                 return response
 
             # drain and return the connection to the pool before recursing
-            response.read()
-            response.release_conn()
+            drain_and_release_conn(response)
 
             retries.sleep_for_retry(response)
             log.debug("Redirecting %s -> %s", url, redirect_location)
@@ -706,14 +708,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 if retries.raise_on_status:
                     # Drain and release the connection for this response, since
                     # we're not returning it to be released manually.
-                    response.read()
-                    response.release_conn()
+                    drain_and_release_conn(response)
                     raise
                 return response
 
             # drain and return the connection to the pool before recursing
-            response.read()
-            response.release_conn()
+            drain_and_release_conn(response)
 
             retries.sleep(response)
             log.debug("Retry: %s", url)
