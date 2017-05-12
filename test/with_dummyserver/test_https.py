@@ -12,6 +12,8 @@ from dummyserver.testcase import (
     HTTPSDummyServerTestCase, IPV6HTTPSDummyServerTestCase
 )
 from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
+                                DEFAULT_CLIENT_CERTS,
+                                DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS,
                                 NO_SAN_CERTS, NO_SAN_CA, DEFAULT_CA_DIR,
                                 IPV6_ADDR_CERTS, IPV6_ADDR_CA, HAS_IPV6,
                                 IP_SAN_CERTS)
@@ -65,6 +67,29 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self._pool.ssl_version = ssl.PROTOCOL_TLSv1
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
+
+    def test_client_intermediate(self):
+        client_cert, client_key = DEFAULT_CLIENT_CERTS['certfile'], \
+                                  DEFAULT_CLIENT_CERTS['keyfile']
+        serial = b'16180339887498948482045868343656381177203091798' + \
+                 b'05762862135448622705260\\'
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         key_file=client_key,
+                                         cert_file=client_cert)
+        r = https_pool.request('GET', '/certificate')
+        self.assertEqual(r.data, serial, r.data)
+
+    def test_client_no_intermediate(self):
+        client_cert, client_key = \
+                DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS['certfile'], \
+                DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS['keyfile']
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_file=client_cert,
+                                         key_file=client_key)
+        try:
+            https_pool.request('GET', '/certificate')
+        except SSLError as e:
+            self.assertTrue('alert unknown ca' in str(e))
 
     def test_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
