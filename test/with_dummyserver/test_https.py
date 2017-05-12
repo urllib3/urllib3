@@ -90,7 +90,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         try:
             https_pool.request('GET', '/certificate')
         except SSLError as e:
-            self.assertTrue('alert unknown ca' in str(e))
+            self.assertTrue('alert unknown ca' in str(e) or
+                            'certificate verify failed' in str(e))
 
     def test_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
