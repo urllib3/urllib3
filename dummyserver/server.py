@@ -16,6 +16,11 @@ import socket
 import warnings
 from datetime import datetime
 
+try:
+    from ssl import CERT_OPTIONAL
+except:
+    CERT_OPTIONAL = None
+
 from urllib3.exceptions import HTTPWarning
 
 from tornado.platform.auto import set_close_exec
@@ -30,6 +35,16 @@ CERTS_PATH = os.path.join(os.path.dirname(__file__), 'certs')
 DEFAULT_CERTS = {
     'certfile': os.path.join(CERTS_PATH, 'server.crt'),
     'keyfile': os.path.join(CERTS_PATH, 'server.key'),
+    'cert_reqs': CERT_OPTIONAL,
+    'ca_certs': os.path.join(CERTS_PATH, 'cacert.pem'),
+}
+DEFAULT_CLIENT_CERTS = {
+    'certfile': os.path.join(CERTS_PATH, 'client_intermediate.pem'),
+    'keyfile': os.path.join(CERTS_PATH, 'client_intermediate.key'),
+}
+DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS = {
+    'certfile': os.path.join(CERTS_PATH, 'client_no_intermediate.pem'),
+    'keyfile': os.path.join(CERTS_PATH, 'client_intermediate.key'),
 }
 NO_SAN_CERTS = {
     'certfile': os.path.join(CERTS_PATH, 'server.no_san.crt'),
