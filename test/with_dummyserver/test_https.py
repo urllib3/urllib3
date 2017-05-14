@@ -70,20 +70,22 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.assertEqual(r.status, 200, r.data)
 
     def test_client_intermediate(self):
-        client_cert, client_key = DEFAULT_CLIENT_CERTS['certfile'], \
-                                  DEFAULT_CLIENT_CERTS['keyfile']
-        serial = b'16180339887498948482045868343656381177203091798' + \
-                 b'05762862135448622705260\\'
+        client_cert, client_key, client_serial = (
+            DEFAULT_CLIENT_CERTS['certfile'],
+            DEFAULT_CLIENT_CERTS['keyfile'],
+            DEFAULT_CLIENT_CERTS['serial']
+        )
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          key_file=client_key,
                                          cert_file=client_cert)
         r = https_pool.request('GET', '/certificate')
-        self.assertEqual(r.data, serial, r.data)
+        self.assertEqual(r.data, client_serial, r.data)
 
     def test_client_no_intermediate(self):
-        client_cert, client_key = \
-                DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS['certfile'], \
-                DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS['keyfile']
+        client_cert, client_key = (
+            DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS['certfile'],
+            DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS['keyfile']
+        )
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_file=client_cert,
                                          key_file=client_key)
