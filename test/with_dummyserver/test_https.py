@@ -36,7 +36,7 @@ from urllib3.exceptions import (
     InsecureRequestWarning,
     SystemTimeWarning,
     InsecurePlatformWarning,
-)
+    MaxRetryError)
 from urllib3.packages import six
 from urllib3.util.timeout import Timeout
 import urllib3.util as util
@@ -171,10 +171,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         try:
             https_pool.request('GET', '/')
             self.fail("Didn't raise SSL invalid common name")
-        except SSLError as e:
+        except MaxRetryError as e:
+            self.assertIsInstance(e.reason, SSLError)
             self.assertTrue(
-                "doesn't match" in str(e) or
-                "certificate verify failed" in str(e)
+                "doesn't match" in str(e.reason) or
+                "certificate verify failed" in str(e.reason)
             )
 
     def test_verified_with_bad_ca_certs(self):
@@ -186,10 +187,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         try:
             https_pool.request('GET', '/')
             self.fail("Didn't raise SSL error with bad CA certs")
-        except SSLError as e:
-            self.assertTrue('certificate verify failed' in str(e),
+        except MaxRetryError as e:
+            self.assertIsInstance(e.reason, SSLError)
+            self.assertTrue('certificate verify failed' in str(e.reason),
                             "Expected 'certificate verify failed',"
-                            "instead got: %r" % e)
+                            "instead got: %r" % e.reason)
 
     def test_verified_without_ca_certs(self):
         # default is cert_reqs=None which is ssl.CERT_NONE
@@ -201,23 +203,26 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             https_pool.request('GET', '/')
             self.fail("Didn't raise SSL error with no CA certs when"
                       "CERT_REQUIRED is set")
-        except SSLError as e:
+        except MaxRetryError as e:
+            self.assertIsInstance(e.reason, SSLError)
             # there is a different error message depending on whether or
             # not pyopenssl is injected
-            self.assertTrue('No root certificates specified' in str(e) or
-                            'certificate verify failed' in str(e) or
-                            'invalid certificate chain' in str(e),
+            self.assertTrue('No root certificates specified' in str(e.reason) or
+                            'certificate verify failed' in str(e.reason) or
+                            'invalid certificate chain' in str(e.reason),
                             "Expected 'No root certificates specified',  "
                             "'certificate verify failed', or "
                             "'invalid certificate chain', "
-                            "instead got: %r" % e)
+                            "instead got: %r" % e.reason)
 
     def test_no_ssl(self):
         pool = HTTPSConnectionPool(self.host, self.port)
         pool.ConnectionCls = None
         self.addCleanup(pool.close)
         self.assertRaises(SSLError, pool._new_conn)
-        self.assertRaises(SSLError, pool.request, 'GET', '/')
+        with self.assertRaises(MaxRetryError) as cm:
+            pool.request('GET', '/', retries=0)
+        self.assertIsInstance(cm.exception.reason, SSLError)
 
     def test_unverified_ssl(self):
         """ Test that bare HTTPSConnection can connect, make requests """
@@ -324,17 +329,22 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_fingerprint = 'AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:' \
                                         'AA:AA:AA:AA:AA:AA:AA:AA:AA'
 
-        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+        def _test_request():
+            with self.assertRaises(MaxRetryError) as cm:
+                https_pool.request('GET', '/', retries=0)
+            self.assertIsInstance(cm.exception.reason, SSLError)
+
+        _test_request()
         https_pool._get_conn()
 
         # Uneven length
         https_pool.assert_fingerprint = 'AA:A'
-        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+        _test_request()
         https_pool._get_conn()
 
         # Invalid length
         https_pool.assert_fingerprint = 'AA'
-        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+        _test_request()
 
     def test_verify_none_and_bad_fingerprint(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
@@ -344,7 +354,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         https_pool.assert_fingerprint = 'AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:' \
                                         'AA:AA:AA:AA:AA:AA:AA:AA:AA'
-        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+        with self.assertRaises(MaxRetryError) as cm:
+            https_pool.request('GET', '/', retries=0)
+        self.assertIsInstance(cm.exception.reason, SSLError)
 
     def test_verify_none_and_good_fingerprint(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
@@ -510,7 +522,9 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
         # is an issue with the OpenSSL for Python 2.6 on Windows.
 
         self._pool.cert_reqs = 'CERT_REQUIRED'
-        self.assertRaises(SSLError, self._pool.request, 'GET', '/')
+        with self.assertRaises(MaxRetryError) as cm:
+            self._pool.request('GET', '/', retries=0)
+        self.assertIsInstance(cm.exception.reason, SSLError)
         self._pool.ca_certs = DEFAULT_CA
         self._pool.request('GET', '/')
 

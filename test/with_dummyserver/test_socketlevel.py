@@ -79,7 +79,7 @@ class TestSNI(SocketDummyServerTestCase):
         self.addCleanup(pool.close)
         try:
             pool.request('GET', '/', retries=0)
-        except SSLError:  # We are violating the protocol
+        except MaxRetryError:  # We are violating the protocol
             pass
         done_receiving.wait()
         self.assertTrue(self.host.encode('ascii') in self.buf,
@@ -220,7 +220,7 @@ class TestClientCerts(SocketDummyServerTestCase):
         self.addCleanup(pool.close)
         try:
             pool.request('GET', '/', retries=0)
-        except SSLError:
+        except MaxRetryError:
             done_receiving.set()
         else:
             done_receiving.set()
@@ -942,7 +942,9 @@ class TestSSL(SocketDummyServerTestCase):
         pool = HTTPSConnectionPool(self.host, self.port)
         self.addCleanup(pool.close)
 
-        self.assertRaises(SSLError, pool.request, 'GET', '/', retries=0)
+        with self.assertRaises(MaxRetryError) as cm:
+            pool.request('GET', '/', retries=0)
+        self.assertIsInstance(cm.exception.reason, SSLError)
 
     def test_ssl_read_timeout(self):
         timed_out = Event()
@@ -1010,14 +1012,17 @@ class TestSSL(SocketDummyServerTestCase):
                                        assert_fingerprint=fingerprint)
             try:
                 response = pool.urlopen('GET', '/', preload_content=False,
-                                        timeout=Timeout(connect=1, read=0.001))
+                                        timeout=Timeout(connect=1, read=0.001),
+                                        retries=0)
                 response.read()
             finally:
                 pool.close()
 
-        self.assertRaises(SSLError, request)
+        with self.assertRaises(MaxRetryError) as cm:
+            request()
+        self.assertIsInstance(cm.exception.reason, SSLError)
         # Should not hang, see https://github.com/shazow/urllib3/issues/529
-        self.assertRaises(SSLError, request)
+        self.assertRaises(MaxRetryError, request)
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):
