@@ -88,7 +88,8 @@ DEFAULT_CIPHERS = ':'.join([
 ])
 
 try:
-    from ssl import SSLContext  # Modern SSL?
+    import ssl
+    SSLContext = lambda *args, **kw: ssl.SSLContext(*args, **kw)
 except ImportError:
     import sys
 
