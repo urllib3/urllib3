@@ -1024,6 +1024,51 @@ class TestSSL(SocketDummyServerTestCase):
         # Should not hang, see https://github.com/shazow/urllib3/issues/529
         self.assertRaises(MaxRetryError, request)
 
+    def test_retry_ssl_error(self):
+        def socket_handler(listener):
+            # first request, trigger an SSLError
+            sock = listener.accept()[0]
+            sock2 = sock.dup()
+            ssl_sock = ssl.wrap_socket(sock,
+                                       server_side=True,
+                                       keyfile=DEFAULT_CERTS['keyfile'],
+                                       certfile=DEFAULT_CERTS['certfile'])
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += ssl_sock.recv(65536)
+
+            # Deliberately send from the non-SSL socket to trigger an SSLError
+            sock2.send((
+                'HTTP/1.1 200 OK\r\n'
+                'Content-Type: text/plain\r\n'
+                'Content-Length: 4\r\n'
+                '\r\n'
+                'Fail').encode('utf-8'))
+            sock2.close()
+            ssl_sock.close()
+
+            # retried request
+            sock = listener.accept()[0]
+            ssl_sock = ssl.wrap_socket(sock,
+                                       server_side=True,
+                                       keyfile=DEFAULT_CERTS['keyfile'],
+                                       certfile=DEFAULT_CERTS['certfile'])
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += ssl_sock.recv(65536)
+            ssl_sock.send(b'HTTP/1.1 200 OK\r\n'
+                          b'Content-Type: text/plain\r\n'
+                          b'Content-Length: 7\r\n\r\n'
+                          b'Success')
+            ssl_sock.close()
+
+        self._start_server(socket_handler)
+
+        pool = HTTPSConnectionPool(self.host, self.port)
+        self.addCleanup(pool.close)
+        response = pool.urlopen('GET', '/', retries=1)
+        self.assertEqual(response.data, b'Success')
+
 
 class TestErrorWrapping(SocketDummyServerTestCase):
 

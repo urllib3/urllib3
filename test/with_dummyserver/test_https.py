@@ -36,7 +36,8 @@ from urllib3.exceptions import (
     InsecureRequestWarning,
     SystemTimeWarning,
     InsecurePlatformWarning,
-    MaxRetryError)
+    MaxRetryError,
+)
 from urllib3.packages import six
 from urllib3.util.timeout import Timeout
 import urllib3.util as util
@@ -329,22 +330,22 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_fingerprint = 'AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:' \
                                         'AA:AA:AA:AA:AA:AA:AA:AA:AA'
 
-        def _test_request():
+        def _test_request(pool):
             with self.assertRaises(MaxRetryError) as cm:
-                https_pool.request('GET', '/', retries=0)
+                pool.request('GET', '/', retries=0)
             self.assertIsInstance(cm.exception.reason, SSLError)
 
-        _test_request()
+        _test_request(https_pool)
         https_pool._get_conn()
 
         # Uneven length
         https_pool.assert_fingerprint = 'AA:A'
-        _test_request()
+        _test_request(https_pool)
         https_pool._get_conn()
 
         # Invalid length
         https_pool.assert_fingerprint = 'AA'
-        _test_request()
+        _test_request(https_pool)
 
     def test_verify_none_and_bad_fingerprint(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
