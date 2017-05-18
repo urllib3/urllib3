@@ -4,6 +4,9 @@ Changes
 dev (master)
 ------------
 
+* Made the connection pool retry on ``SSLError``.  The original ``SSLError``
+  is available on ``MaxRetryError.reason``. (Issue #1112)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
