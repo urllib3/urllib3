@@ -1,7 +1,7 @@
 import os
 import sys
 import unittest
-from nose.plugins.skip import SkipTest
+import pytest
 
 
 def activate_sandbox():
@@ -12,6 +12,7 @@ def activate_sandbox():
     httplib, httplib2, socket, etc.
     """
     from google.appengine.tools.devappserver2.python import sandbox
+    from google.appengine.ext import testbed
 
     for name in list(sys.modules):
         if name in sandbox.dist27.MODULE_OVERRIDES:
@@ -19,8 +20,14 @@ def activate_sandbox():
     sys.meta_path.insert(0, sandbox.StubModuleImportHook())
     sys.path_importer_cache = {}
 
+    bed = testbed.Testbed()
+    bed.activate()
+    bed.init_urlfetch_stub()
 
-def deactivate_sandbox():
+    return bed
+
+
+def deactivate_sandbox(bed):
     from google.appengine.tools.devappserver2.python import sandbox
 
     sys.meta_path = [
@@ -32,27 +39,32 @@ def deactivate_sandbox():
         if name in sandbox.dist27.MODULE_OVERRIDES:
             del sys.modules[name]
 
+    if bed is not None:
+        bed.deactivate()
+
 
 class AppEngineSandboxTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        try:
+            import dev_appserver
+            dev_appserver.fix_sys_path()
+        except ImportError:
+            pytest.skip("App Engine SDK not available.")
 
         if sys.version_info[:2] != (2, 7):
-            raise SkipTest("App Engine only tests on py2.7")
+            pytest.skip("App Engine only tests on py2.7")
 
-        if 'APPLICATION_ID' not in os.environ:
-            raise SkipTest("NoseGAE plugin not used.")
-
+    def setUp(self):
         try:
-            activate_sandbox()
+            self.bed = activate_sandbox()
         except ImportError:
-            raise SkipTest("App Engine SDK not available.")
+            pytest.skip("App Engine SDK not available.")
 
-    @classmethod
-    def tearDownClass(self):
+    def tearDown(self):
         try:
-            deactivate_sandbox()
+            deactivate_sandbox(self.bed)
         except ImportError:
             pass
 

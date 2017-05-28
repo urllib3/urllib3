@@ -6,7 +6,7 @@ import unittest
 import warnings
 
 import mock
-from nose.plugins.skip import SkipTest
+import pytest
 
 from dummyserver.testcase import (
     HTTPSDummyServerTestCase, IPV6HTTPSDummyServerTestCase
@@ -472,6 +472,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         https_pool._make_request(conn, 'GET', '/')
 
+    @onlyPy279OrNewer
     def test_ssl_correct_system_time(self):
         self._pool.cert_reqs = 'CERT_REQUIRED'
         self._pool.ca_certs = DEFAULT_CA
@@ -479,6 +480,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         w = self._request_without_resource_warnings('GET', '/')
         self.assertEqual([], w)
 
+    @onlyPy279OrNewer
     def test_ssl_wrong_system_time(self):
         self._pool.cert_reqs = 'CERT_REQUIRED'
         self._pool.ca_certs = DEFAULT_CA
@@ -494,7 +496,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.assertTrue(str(RECENT_DATE) in warning.message.args[0])
 
     def _request_without_resource_warnings(self, method, url):
-        with warnings.catch_warnings(record=True) as w:
+        with pytest.warns(None) as w:
             warnings.simplefilter('always')
             self._pool.request(method, url)
 
@@ -549,7 +551,7 @@ class TestHTTPS_IPSAN(HTTPSDummyServerTestCase):
         try:
             import ipaddress  # noqa: F401
         except ImportError:
-            raise SkipTest("Only runs on systems with an ipaddress module")
+            pytest.skip("Only runs on systems with an ipaddress module")
 
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_REQUIRED',
@@ -565,7 +567,7 @@ class TestHTTPS_IPv6Addr(IPV6HTTPSDummyServerTestCase):
     def test_strip_square_brackets_before_validating(self):
         """Test that the fix for #760 works."""
         if not HAS_IPV6:
-            raise SkipTest("Only runs on IPv6 systems")
+            pytest.skip("Only runs on IPv6 systems")
         https_pool = HTTPSConnectionPool('[::1]', self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=IPV6_ADDR_CA)

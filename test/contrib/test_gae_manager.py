@@ -1,13 +1,14 @@
 import unittest
 
 from dummyserver.testcase import HTTPSDummyServerTestCase
-from nose.plugins.skip import SkipTest
+import pytest
 
 try:
     from google.appengine.api import urlfetch
     (urlfetch)
+    HAS_APPENGINE_SDK = True
 except ImportError:
-    raise SkipTest("App Engine SDK not available.")
+    HAS_APPENGINE_SDK = False
 
 from urllib3.contrib.appengine import AppEngineManager, AppEnginePlatformError
 from urllib3.exceptions import (
@@ -20,10 +21,31 @@ from urllib3.util.retry import Retry, RequestHistory
 from test.with_dummyserver.test_connectionpool import (
     TestConnectionPool, TestRetry, TestRetryAfter)
 
-
-# Prevent nose from running these test.
 TestConnectionPool.__test__ = False
 TestRetry.__test__ = False
+
+
+def setup_module(module):
+    if not HAS_APPENGINE_SDK:
+        pytest.skip('Tests require Google AppEngine SDK.')
+
+
+def activate_urlfetch():
+    import dev_appserver
+    dev_appserver.fix_sys_path()
+
+    from google.appengine.ext import testbed
+
+    bed = testbed.Testbed()
+    bed.activate()
+    bed.init_urlfetch_stub()
+
+    return bed
+
+
+def deactivate_urlfetch(bed):
+    if bed is not None:
+        bed.deactivate()
 
 
 # This class is used so we can re-use the tests from the connection pool.
@@ -57,15 +79,15 @@ class MockPool(object):
 class TestGAEConnectionManager(TestConnectionPool):
     __test__ = True
 
-    # Magic class variable that tells NoseGAE to enable the URLFetch stub.
-    nosegae_urlfetch = True
-
     def setUp(self):
         self.manager = AppEngineManager()
         self.pool = MockPool(self.host, self.port, self.manager)
+        self.bed = activate_urlfetch()
+
+    def tearDown(self):
+        deactivate_urlfetch(self.bed)
 
     # Tests specific to AppEngineManager
-
     def test_exceptions(self):
         # DeadlineExceededError -> TimeoutError
         self.assertRaises(
@@ -140,11 +162,13 @@ class TestGAEConnectionManager(TestConnectionPool):
 
 
 class TestGAEConnectionManagerWithSSL(HTTPSDummyServerTestCase):
-    nosegae_urlfetch = True
-
     def setUp(self):
         self.manager = AppEngineManager()
         self.pool = MockPool(self.host, self.port, self.manager, 'https')
+        self.bed = activate_urlfetch()
+
+    def tearDown(self):
+        deactivate_urlfetch(self.bed)
 
     def test_exceptions(self):
         # SSLCertificateError -> SSLError
@@ -160,12 +184,13 @@ class TestGAEConnectionManagerWithSSL(HTTPSDummyServerTestCase):
 class TestGAERetry(TestRetry):
     __test__ = True
 
-    # Magic class variable that tells NoseGAE to enable the URLFetch stub.
-    nosegae_urlfetch = True
-
     def setUp(self):
         self.manager = AppEngineManager()
         self.pool = MockPool(self.host, self.port, self.manager)
+        self.bed = activate_urlfetch()
+
+    def tearDown(self):
+        deactivate_urlfetch(self.bed)
 
     def test_default_method_whitelist_retried(self):
         """ urllib3 should retry methods in the default method whitelist """
@@ -200,13 +225,14 @@ class TestGAERetry(TestRetry):
 class TestGAERetryAfter(TestRetryAfter):
     __test__ = True
 
-    # Magic class variable that tells NoseGAE to enable the URLFetch stub.
-    nosegae_urlfetch = True
-
     def setUp(self):
         # Disable urlfetch which doesn't respect Retry-After header.
         self.manager = AppEngineManager(urlfetch_retries=False)
         self.pool = MockPool(self.host, self.port, self.manager)
+        self.bed = activate_urlfetch()
+
+    def tearDown(self):
+        deactivate_urlfetch(self.bed)
 
 
 if __name__ == '__main__':

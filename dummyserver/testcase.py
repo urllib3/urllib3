@@ -1,7 +1,7 @@
 import sys
 import socket
 import threading
-from nose.plugins.skip import SkipTest
+import pytest
 from tornado import ioloop, web
 
 from dummyserver.server import (
@@ -139,7 +139,7 @@ class IPV6HTTPSDummyServerTestCase(HTTPSDummyServerTestCase):
     @classmethod
     def setUpClass(cls):
         if not socket.has_ipv6:
-            raise SkipTest('IPv6 not available')
+            pytest.skip('IPv6 not available')
         else:
             super(IPV6HTTPSDummyServerTestCase, cls).setUpClass()
 
@@ -189,7 +189,7 @@ class IPv6HTTPDummyServerTestCase(HTTPDummyServerTestCase):
     @classmethod
     def setUpClass(cls):
         if not socket.has_ipv6:
-            raise SkipTest('IPv6 not available')
+            pytest.skip('IPv6 not available')
         else:
             super(IPv6HTTPDummyServerTestCase, cls).setUpClass()
 

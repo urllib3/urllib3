@@ -4,7 +4,7 @@ from urllib3._collections import (
     HTTPHeaderDict,
     RecentlyUsedContainer as Container
 )
-from nose.plugins.skip import SkipTest
+import pytest
 
 from urllib3.packages import six
 xrange = six.moves.xrange
@@ -317,7 +317,7 @@ class TestHTTPHeaderDict(unittest.TestCase):
 
     def test_from_httplib_py2(self):
         if six.PY3:
-            raise SkipTest("python3 has a different internal header implementation")
+            pytest.skip("python3 has a different internal header implementation")
         msg = """
 Server: nginx
 Content-Type: text/html; charset=windows-1251

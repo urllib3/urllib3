@@ -1,8 +1,7 @@
 import json
 import socket
 import unittest
-
-from nose.tools import timed
+import pytest
 
 from dummyserver.testcase import HTTPDummyProxyTestCase, IPv6HTTPDummyProxyTestCase
 from dummyserver.server import (
@@ -292,7 +291,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertNotEqual(sc2, sc3)
         self.assertEqual(sc3, sc4)
 
-    @timed(0.5)
+    @pytest.mark.timeout(timeout=0.5)
     @requires_network
     def test_https_proxy_timeout(self):
         https = proxy_from_url('https://{host}'.format(host=TARPIT_HOST))
@@ -303,7 +302,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         except MaxRetryError as e:
             self.assertEqual(type(e.reason), ConnectTimeoutError)
 
-    @timed(0.5)
+    @pytest.mark.timeout(timeout=0.5)
     @requires_network
     def test_https_proxy_pool_timeout(self):
         https = proxy_from_url('https://{host}'.format(host=TARPIT_HOST),

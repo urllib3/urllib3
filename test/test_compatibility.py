@@ -1,3 +1,4 @@
+import pytest
 import unittest
 import warnings
 
@@ -6,7 +7,7 @@ from urllib3.connection import HTTPConnection
 
 class TestVersionCompatibility(unittest.TestCase):
     def test_connection_strict(self):
-        with warnings.catch_warnings(record=True) as w:
+        with pytest.warns(None) as w:
             warnings.simplefilter("always")
 
             # strict=True is deprecated in Py33+
