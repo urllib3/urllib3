@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import errno
+import logging
 import warnings
 import hmac
 
@@ -7,6 +8,10 @@ from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
 from ..exceptions import SSLError, InsecurePlatformWarning, SNIMissingWarning
+from ..packages.ssl_match_hostname import (
+    match_hostname as _match_hostname,
+    CertificateError
+)
 
 
 SSLContext = None
@@ -20,6 +25,9 @@ HASHFUNC_MAP = {
     40: sha1,
     64: sha256,
 }
+
+
+log = logging.getLogger(__name__)
 
 
 def _const_compare_digest_backport(a, b):
@@ -43,8 +51,10 @@ try:  # Test for SSL features
     import ssl
     from ssl import wrap_socket, CERT_NONE, PROTOCOL_SSLv23
     from ssl import HAS_SNI  # Has SNI?
+    from ssl import SSLError as BaseSSLError
 except ImportError:
-    pass
+    class BaseSSLError(Exception):
+        pass
 
 
 try:
@@ -90,12 +100,10 @@ DEFAULT_CIPHERS = ':'.join([
 try:
     from ssl import SSLContext  # Modern SSL?
 except ImportError:
-    import sys
 
+    # TODO: Can we remove this by choosing to support only platforms with
+    # actual SSLContext objects?
     class SSLContext(object):  # Platform-specific: Python 2 & 3.1
-        supports_set_ciphers = ((2, 7) <= sys.version_info < (3,) or
-                                (3, 2) <= sys.version_info)
-
         def __init__(self, protocol_version):
             self.protocol = protocol_version
             # Use default values from a real SSLContext
@@ -118,12 +126,6 @@ except ImportError:
                 raise SSLError("CA directories not supported in older Pythons")
 
         def set_ciphers(self, cipher_suite):
-            if not self.supports_set_ciphers:
-                raise TypeError(
-                    'Your version of Python does not support setting '
-                    'a custom cipher suite. Please upgrade to Python '
-                    '2.7, 3.2, or later if you need this functionality.'
-                )
             self.ciphers = cipher_suite
 
         def wrap_socket(self, socket, server_hostname=None, server_side=False):
@@ -144,10 +146,7 @@ except ImportError:
                 'ssl_version': self.protocol,
                 'server_side': server_side,
             }
-            if self.supports_set_ciphers:  # Platform-specific: Python 2.7+
-                return wrap_socket(socket, ciphers=self.ciphers, **kwargs)
-            else:  # Platform-specific: Python 2.6
-                return wrap_socket(socket, **kwargs)
+            return wrap_socket(socket, ciphers=self.ciphers, **kwargs)
 
 
 def assert_fingerprint(cert, fingerprint):
@@ -268,14 +267,42 @@ def create_urllib3_context(ssl_version=None, cert_reqs=None,
 
     context.options |= options
 
-    if getattr(context, 'supports_set_ciphers', True):  # Platform-specific: Python 2.6
-        context.set_ciphers(ciphers or DEFAULT_CIPHERS)
+    context.set_ciphers(ciphers or DEFAULT_CIPHERS)
 
     context.verify_mode = cert_reqs
     if getattr(context, 'check_hostname', None) is not None:  # Platform-specific: Python 3.2
         # We do our own verification, including fingerprints and alternative
         # hostnames. So disable it here
         context.check_hostname = False
+    return context
+
+
+def merge_context_settings(context, keyfile=None, certfile=None,
+                           cert_reqs=None, ca_certs=None, ca_cert_dir=None):
+    """
+    Merges provided settings into an SSL Context.
+    """
+    if cert_reqs is not None:
+        context.verify_mode = resolve_cert_reqs(cert_reqs)
+
+    if ca_certs or ca_cert_dir:
+        try:
+            context.load_verify_locations(ca_certs, ca_cert_dir)
+        except IOError as e:  # Platform-specific: Python 2.6, 2.7, 3.2
+            raise SSLError(e)
+        # Py33 raises FileNotFoundError which subclasses OSError
+        # These are not equivalent unless we check the errno attribute
+        except OSError as e:  # Platform-specific: Python 3.3 and beyond
+            if e.errno == errno.ENOENT:
+                raise SSLError(e)
+            raise
+    elif getattr(context, 'load_default_certs', None) is not None:
+        # try to load OS default certs; works well on Windows (require Python3.4+)
+        context.load_default_certs()
+
+    if certfile:
+        context.load_cert_chain(certfile, keyfile)
+
     return context
 
 
@@ -293,8 +320,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         A pre-made :class:`SSLContext` object. If none is provided, one will
         be created using :func:`create_urllib3_context`.
     :param ciphers:
-        A string of ciphers we wish the client to support. This is not
-        supported on Python 2.6 as the ssl module does not support it.
+        A string of ciphers we wish the client to support.
     :param ca_cert_dir:
         A directory containing CA certificates in multiple separate files, as
         supported by OpenSSL's -CApath flag or the capath argument to
@@ -339,3 +365,17 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         SNIMissingWarning
     )
     return context.wrap_socket(sock)
+
+
+def match_hostname(cert, asserted_hostname):
+    try:
+        _match_hostname(cert, asserted_hostname)
+    except CertificateError as e:
+        log.error(
+            'Certificate did not match expected hostname: %s. '
+            'Certificate: %s', asserted_hostname, cert
+        )
+        # Add cert to exception and reraise so client code can inspect
+        # the cert when catching the exception, if they want to
+        e._peer_cert = cert
+        raise

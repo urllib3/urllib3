@@ -4,12 +4,13 @@ import functools
 import logging
 
 from ._collections import RecentlyUsedContainer
+from .base import DEFAULT_PORTS
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
-from .connectionpool import port_by_scheme
 from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
 from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
 from .util.url import parse_url
+from .util.request import set_file_position
 from .util.retry import Retry
 
 
@@ -29,7 +30,6 @@ _key_fields = (
     'key_port',  # int
     'key_timeout',  # int or float or Timeout
     'key_retries',  # int or Retry
-    'key_strict',  # bool
     'key_block',  # bool
     'key_source_address',  # str
     'key_key_file',  # str
@@ -220,7 +220,7 @@ class PoolManager(RequestMethods):
         request_context = self._merge_pool_kwargs(pool_kwargs)
         request_context['scheme'] = scheme or 'http'
         if not port:
-            port = port_by_scheme.get(request_context['scheme'].lower(), 80)
+            port = DEFAULT_PORTS.get(request_context['scheme'].lower(), 80)
         request_context['port'] = port
         request_context['host'] = host
 
@@ -301,8 +301,8 @@ class PoolManager(RequestMethods):
     def urlopen(self, method, url, redirect=True, **kw):
         """
         Same as :meth:`urllib3.connectionpool.HTTPConnectionPool.urlopen`
-        with custom cross-host redirect logic and only sends the request-uri
-        portion of the ``url``.
+        with redirect logic and only sends the request-uri portion of the
+        ``url``.
 
         The given ``url`` parameter must be absolute, such that an appropriate
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
@@ -310,8 +310,12 @@ class PoolManager(RequestMethods):
         u = parse_url(url)
         conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
-        kw['assert_same_host'] = False
-        kw['redirect'] = False
+        # Rewind body position, if needed. Record current position
+        # for future rewinds in the event of a redirect/retry.
+        body = kw.get('body')
+        body_pos = kw.get('body_pos')
+        kw['body_pos'] = set_file_position(body, body_pos)
+
         if 'headers' not in kw:
             kw['headers'] = self.headers
 
@@ -345,6 +349,7 @@ class PoolManager(RequestMethods):
         kw['retries'] = retries
         kw['redirect'] = redirect
 
+        retries.sleep_for_retry(response)
         log.info("Redirecting %s -> %s", url, redirect_location)
         return self.urlopen(method, redirect_location, **kw)
 
@@ -384,7 +389,7 @@ class ProxyManager(PoolManager):
                                         proxy_url.port)
         proxy = parse_url(proxy_url)
         if not proxy.port:
-            port = port_by_scheme.get(proxy.scheme, 80)
+            port = DEFAULT_PORTS.get(proxy.scheme, 80)
             proxy = proxy._replace(port=port)
 
         if proxy.scheme not in ("http", "https"):

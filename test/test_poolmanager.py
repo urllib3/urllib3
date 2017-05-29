@@ -11,7 +11,9 @@ from urllib3.exceptions import (
     ClosedPoolError,
     LocationValueError,
 )
-from urllib3.util import retry, timeout
+from urllib3.util import retry, timeout, ssl_
+
+from dummyserver.server import (DEFAULT_CA, DEFAULT_CERTS, DEFAULT_CA_DIR)
 
 if sys.version_info >= (2, 7):
     import unittest
@@ -109,7 +111,6 @@ class TestPoolManager(unittest.TestCase):
             'timeout': timeout.Timeout(3.14),
             'retries': retry.Retry(total=6, connect=2),
             'block': True,
-            'strict': True,
             'source_address': '127.0.0.1',
         }
         p = PoolManager()
@@ -140,18 +141,19 @@ class TestPoolManager(unittest.TestCase):
 
     def test_https_pool_key_fields(self):
         """Assert the HTTPSPoolKey fields are honored when selecting a pool."""
-        connection_pool_kw = {
-            'timeout': timeout.Timeout(3.14),
-            'retries': retry.Retry(total=6, connect=2),
-            'block': True,
-            'strict': True,
-            'source_address': '127.0.0.1',
-            'key_file': '/root/totally_legit.key',
-            'cert_file': '/root/totally_legit.crt',
-            'cert_reqs': 'CERT_REQUIRED',
-            'ca_certs': '/root/path_to_pem',
-            'ssl_version': 'SSLv23_METHOD',
-        }
+        connection_pool_kw = [
+            ('timeout', timeout.Timeout(3.14)),
+            ('retries', retry.Retry(total=6, connect=2)),
+            ('block', True),
+            ('source_address', '127.0.0.1'),
+            ('key_file', DEFAULT_CERTS['keyfile']),
+            ('cert_file', DEFAULT_CERTS['certfile']),
+            ('cert_reqs', 'CERT_REQUIRED'),
+            ('ca_certs', DEFAULT_CA),
+            ('ca_cert_dir', DEFAULT_CA_DIR),
+            ('ssl_version', 'SSLv23'),
+            ('ssl_context', ssl_.create_urllib3_context()),
+        ]
         p = PoolManager()
         self.addCleanup(p.clear)
         conn_pools = [
@@ -163,7 +165,7 @@ class TestPoolManager(unittest.TestCase):
         # existing pool.
         dup_pools = []
 
-        for key, value in connection_pool_kw.items():
+        for key, value in connection_pool_kw:
             p.connection_pool_kw[key] = value
             conn_pools.append(p.connection_from_url('https://example.com/'))
             dup_pools.append(p.connection_from_url('https://example.com/'))
@@ -192,22 +194,24 @@ class TestPoolManager(unittest.TestCase):
 
     def test_pools_keyed_with_from_host(self):
         """Assert pools are still keyed correctly with connection_from_host."""
-        ssl_kw = {
-            'key_file': '/root/totally_legit.key',
-            'cert_file': '/root/totally_legit.crt',
-            'cert_reqs': 'CERT_REQUIRED',
-            'ca_certs': '/root/path_to_pem',
-            'ssl_version': 'SSLv23_METHOD',
-        }
-        p = PoolManager(5, **ssl_kw)
+        ssl_kw = [
+            ('key_file', DEFAULT_CERTS['keyfile']),
+            ('cert_file', DEFAULT_CERTS['certfile']),
+            ('cert_reqs', 'CERT_REQUIRED'),
+            ('ca_certs', DEFAULT_CA),
+            ('ca_cert_dir', DEFAULT_CA_DIR),
+            ('ssl_version', 'SSLv23'),
+            ('ssl_context', ssl_.create_urllib3_context()),
+        ]
+        p = PoolManager()
         self.addCleanup(p.clear)
         conns = []
         conns.append(
             p.connection_from_host('example.com', 443, scheme='https')
         )
 
-        for k in ssl_kw:
-            p.connection_pool_kw[k] = 'newval'
+        for k, v in ssl_kw:
+            p.connection_pool_kw[k] = v
             conns.append(
                 p.connection_from_host('example.com', 443, scheme='https')
             )
@@ -319,35 +323,31 @@ class TestPoolManager(unittest.TestCase):
 
     def test_override_pool_kwargs_url(self):
         """Assert overriding pool kwargs works with connection_from_url."""
-        p = PoolManager(strict=True)
-        pool_kwargs = {'strict': False, 'retries': 100, 'block': True}
+        p = PoolManager(block=False)
+        pool_kwargs = {'retries': 100, 'block': True}
 
         default_pool = p.connection_from_url('http://example.com/')
         override_pool = p.connection_from_url(
             'http://example.com/', pool_kwargs=pool_kwargs)
 
-        self.assertTrue(default_pool.strict)
         self.assertEqual(retry.Retry.DEFAULT, default_pool.retries)
         self.assertFalse(default_pool.block)
 
-        self.assertFalse(override_pool.strict)
         self.assertEqual(100, override_pool.retries)
         self.assertTrue(override_pool.block)
 
     def test_override_pool_kwargs_host(self):
         """Assert overriding pool kwargs works with connection_from_host"""
-        p = PoolManager(strict=True)
-        pool_kwargs = {'strict': False, 'retries': 100, 'block': True}
+        p = PoolManager(block=False)
+        pool_kwargs = {'retries': 100, 'block': True}
 
         default_pool = p.connection_from_host('example.com', scheme='http')
         override_pool = p.connection_from_host('example.com', scheme='http',
                                                pool_kwargs=pool_kwargs)
 
-        self.assertTrue(default_pool.strict)
         self.assertEqual(retry.Retry.DEFAULT, default_pool.retries)
         self.assertFalse(default_pool.block)
 
-        self.assertFalse(override_pool.strict)
         self.assertEqual(100, override_pool.retries)
         self.assertTrue(override_pool.block)
 
@@ -372,9 +372,9 @@ class TestPoolManager(unittest.TestCase):
 
     def test_merge_pool_kwargs(self):
         """Assert _merge_pool_kwargs works in the happy case"""
-        p = PoolManager(strict=True)
+        p = PoolManager(block=False)
         merged = p._merge_pool_kwargs({'new_key': 'value'})
-        self.assertEqual({'strict': True, 'new_key': 'value'}, merged)
+        self.assertEqual({'block': False, 'new_key': 'value'}, merged)
 
     def test_merge_pool_kwargs_none(self):
         """Assert false-y values to _merge_pool_kwargs result in defaults"""

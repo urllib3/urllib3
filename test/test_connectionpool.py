@@ -2,34 +2,34 @@ from __future__ import absolute_import
 
 import sys
 
+from urllib3.base import Response
 from urllib3.connectionpool import (
     connection_from_url,
-    HTTPConnection,
+    SyncHTTP1Connection,
     HTTPConnectionPool,
     HTTPSConnectionPool,
 )
-from urllib3.response import httplib, HTTPResponse
+from urllib3.response import HTTPResponse
 from urllib3.util.timeout import Timeout
-from urllib3.packages.six.moves.http_client import HTTPException
 from urllib3.packages.six.moves.queue import Empty
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
     ClosedPoolError,
     EmptyPoolError,
-    HostChangedError,
     LocationValueError,
     MaxRetryError,
     ProtocolError,
     SSLError,
     TimeoutError,
 )
-from urllib3._collections import HTTPHeaderDict
-from .test_response import MockChunkedEncodingResponse, MockSock
 
+from io import BytesIO
 from socket import error as SocketError
-from ssl import SSLError as BaseSSLError
+from ssl import SSLError as BaseSSLError, CERT_REQUIRED
 
 from dummyserver.server import DEFAULT_CA
+
+import h11
 
 if sys.version_info >= (2, 7):
     import unittest
@@ -214,8 +214,8 @@ class TestConnectionPool(unittest.TestCase):
         pool = HTTPConnectionPool(host='localhost', maxsize=POOL_SIZE, block=True)
         self.addCleanup(pool.close)
 
-        def _raise(ex):
-            raise ex()
+        def _raise(ex, *args):
+            raise ex(*args)
 
         def _test(exception, expect):
             pool._make_request = lambda *args, **kwargs: _raise(exception)
@@ -232,17 +232,10 @@ class TestConnectionPool(unittest.TestCase):
         # a retry will be triggered, but that retry will fail, eventually raising
         # MaxRetryError, not EmptyPoolError
         # See: https://github.com/shazow/urllib3/issues/76
-        pool._make_request = lambda *args, **kwargs: _raise(HTTPException)
+        pool._make_request = lambda *args, **kwargs: _raise(h11.RemoteProtocolError, "")
         self.assertRaises(MaxRetryError, pool.request,
                           'GET', '/', retries=1, pool_timeout=0.01)
         self.assertEqual(pool.pool.qsize(), POOL_SIZE)
-
-    def test_assert_same_host(self):
-        c = connection_from_url('http://google.com:80')
-        self.addCleanup(c.close)
-
-        self.assertRaises(HostChangedError, c.request,
-                          'GET', 'http://yahoo.com:80', assert_same_host=True)
 
     def test_pool_close(self):
         pool = connection_from_url('http://google.com:80')
@@ -271,7 +264,7 @@ class TestConnectionPool(unittest.TestCase):
         pool = HTTPConnectionPool(host='localhost')
         self.addCleanup(pool.close)
         conn = pool._new_conn()
-        self.assertEqual(conn.__class__, HTTPConnection)
+        self.assertEqual(conn.__class__, SyncHTTP1Connection)
         self.assertEqual(pool.timeout.__class__, Timeout)
         self.assertEqual(pool.timeout._read, Timeout.DEFAULT_TIMEOUT)
         self.assertEqual(pool.timeout._connect, Timeout.DEFAULT_TIMEOUT)
@@ -312,8 +305,7 @@ class TestConnectionPool(unittest.TestCase):
 
     def test_ca_certs_default_cert_required(self):
         with connection_from_url('https://google.com:80', ca_certs=DEFAULT_CA) as pool:
-            conn = pool._get_conn()
-            self.assertEqual(conn.cert_reqs, 'CERT_REQUIRED')
+            self.assertEqual(pool.ssl_context.verify_mode, CERT_REQUIRED)
 
     def test_cleanup_on_extreme_connection_error(self):
         """
@@ -343,8 +335,8 @@ class TestConnectionPool(unittest.TestCase):
         self.assertEqual(initial_pool_size, new_pool_size)
 
     def test_release_conn_param_is_respected_after_http_error_retry(self):
-        """For successful ```urlopen(release_conn=False)```,
-        the connection isn't released, even after a retry.
+        """For successful ```urlopen()```, the connection isn't released, even
+        after a retry.
 
         This is a regression test for issue #651 [1], where the connection
         would be released if the initial request failed, even if a retry
@@ -359,30 +351,33 @@ class TestConnectionPool(unittest.TestCase):
             Raises the given exception on its first call, but returns a
             successful response on subsequent calls.
             """
-            def __init__(self, ex):
+            def __init__(self, ex, *args):
                 super(_raise_once_make_request_function, self).__init__()
                 self._ex = ex
+                self._args = args
 
             def __call__(self, *args, **kwargs):
                 if self._ex:
                     ex, self._ex = self._ex, None
-                    raise ex()
-                response = httplib.HTTPResponse(MockSock)
-                response.fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
-                response.headers = response.msg = HTTPHeaderDict()
+                    raise ex(*self._args)
+                response = Response(
+                    status_code=200,
+                    headers={},
+                    body=BytesIO(b"foo"),
+                    version=b"HTTP/1.1"
+                )
                 return response
 
-        def _test(exception):
+        def _test(exception, *args):
             pool = HTTPConnectionPool(host='localhost', maxsize=1, block=True)
             self.addCleanup(pool.close)
 
             # Verify that the request succeeds after two attempts, and that the
             # connection is left on the response object, instead of being
             # released back into the pool.
-            pool._make_request = _raise_once_make_request_function(exception)
+            pool._make_request = _raise_once_make_request_function(exception, *args)
             response = pool.urlopen('GET', '/', retries=1,
-                                    release_conn=False, preload_content=False,
-                                    chunked=True)
+                                    preload_content=False)
             self.assertEqual(pool.pool.qsize(), 0)
             self.assertEqual(pool.num_connections, 2)
             self.assertTrue(response.connection is not None)
@@ -393,7 +388,7 @@ class TestConnectionPool(unittest.TestCase):
 
         # Run the test case for all the retriable exceptions.
         _test(TimeoutError)
-        _test(HTTPException)
+        _test(h11.RemoteProtocolError, "")
         _test(SocketError)
         _test(ProtocolError)
 
@@ -406,14 +401,17 @@ class TestConnectionPool(unittest.TestCase):
             ResponseCls = CustomHTTPResponse
 
             def _make_request(self, *args, **kwargs):
-                httplib_response = httplib.HTTPResponse(MockSock)
-                httplib_response.fp = MockChunkedEncodingResponse([b'f', b'o', b'o'])
-                httplib_response.headers = httplib_response.msg = HTTPHeaderDict()
-                return httplib_response
+                base_response = Response(
+                    status_code=200,
+                    headers={},
+                    body=BytesIO(b'foo'),
+                    version='HTTP/1.1'
+                )
+                return base_response
 
         pool = CustomConnectionPool(host='localhost', maxsize=1, block=True)
         self.addCleanup(pool.close)
-        response = pool.request('GET', '/', retries=False, chunked=True,
+        response = pool.request('GET', '/', retries=False,
                                 preload_content=False)
         self.assertTrue(isinstance(response, CustomHTTPResponse))
 

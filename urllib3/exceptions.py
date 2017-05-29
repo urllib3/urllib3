@@ -1,7 +1,4 @@
 from __future__ import absolute_import
-from .packages.six.moves.http_client import (
-    IncompleteRead as httplib_IncompleteRead
-)
 # Base Exceptions
 
 
@@ -80,15 +77,6 @@ class MaxRetryError(RequestError):
             url, reason)
 
         RequestError.__init__(self, pool, url, message)
-
-
-class HostChangedError(RequestError):
-    "Raised when an existing pool gets a request for a foreign host."
-
-    def __init__(self, pool, url, retries=3):
-        message = "Tried to open a foreign host with url: %s" % url
-        RequestError.__init__(self, pool, url, message)
-        self.retries = retries
 
 
 class TimeoutStateError(HTTPError):
@@ -191,38 +179,18 @@ class DependencyWarning(HTTPWarning):
     pass
 
 
-class ResponseNotChunked(ProtocolError, ValueError):
-    "Response needs to be chunked in order to read it as chunks."
-    pass
-
-
-class BodyNotHttplibCompatible(HTTPError):
-    """
-    Body should be httplib.HTTPResponse like (have an fp attribute which
-    returns raw chunks) for read_chunked().
-    """
-    pass
-
-
-class IncompleteRead(HTTPError, httplib_IncompleteRead):
-    """
-    Response length doesn't match expected Content-Length
-
-    Subclass of http_client.IncompleteRead to allow int value
-    for `partial` to avoid creating large objects on streamed
-    reads.
-    """
-    def __init__(self, partial, expected):
-        super(IncompleteRead, self).__init__(partial, expected)
-
-    def __repr__(self):
-        return ('IncompleteRead(%i bytes read, '
-                '%i more expected)' % (self.partial, self.expected))
-
-
 class InvalidHeader(HTTPError):
     "The header provided was somehow invalid."
     pass
+
+
+class BadVersionError(ProtocolError):
+    """
+    The HTTP version in the response is unsupported.
+    """
+    def __init__(self, version):
+        message = "HTTP version {} is unsupported".format(version)
+        super(BadVersionError, self).__init__(message)
 
 
 class ProxySchemeUnknown(AssertionError, ValueError):
@@ -243,4 +211,21 @@ class HeaderParsingError(HTTPError):
 
 class UnrewindableBodyError(HTTPError):
     "urllib3 encountered an error when trying to rewind a body"
+    pass
+
+
+class FailedTunnelError(HTTPError):
+    """
+    An attempt was made to set up a CONNECT tunnel, but that attempt failed.
+    """
+    def __init__(self, message, response):
+        super(FailedTunnelError, self).__init__(message)
+        self.response = response
+
+
+class InvalidBodyError(HTTPError):
+    """
+    An attempt was made to send a request with a body object that urllib3 does
+    not support.
+    """
     pass

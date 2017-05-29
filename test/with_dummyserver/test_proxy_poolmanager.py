@@ -13,7 +13,7 @@ from urllib3._collections import HTTPHeaderDict
 from urllib3.poolmanager import proxy_from_url, ProxyManager
 from urllib3.exceptions import (
     MaxRetryError, SSLError, ProxyError, ConnectTimeoutError)
-from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
+from urllib3.connectionpool import connection_from_url
 
 
 class TestHTTPProxyManager(HTTPDummyProxyTestCase):
@@ -44,7 +44,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         hc2 = http.connection_from_host(self.http_host, self.http_port)
         conn = hc2._get_conn()
         hc2._make_request(conn, 'GET', '/')
-        tcp_nodelay_setting = conn.sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
+        tcp_nodelay_setting = conn._sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
         self.assertEqual(tcp_nodelay_setting, 0,
                          ("Expected TCP_NODELAY for proxies to be set "
                           "to zero, instead was %s" % tcp_nodelay_setting))
@@ -93,8 +93,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         https_pool = http._new_pool('https', self.https_host,
                                     self.https_port)
 
-        conn = https_pool._new_conn()
-        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
         https_pool.request('GET', '/')  # Should succeed without exceptions.
 
         http = proxy_from_url(self.proxy_url, cert_reqs='REQUIRED',

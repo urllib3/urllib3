@@ -3,8 +3,8 @@ import pickle
 
 from urllib3.exceptions import (HTTPError, MaxRetryError, LocationParseError,
                                 ClosedPoolError, EmptyPoolError,
-                                HostChangedError, ReadTimeoutError,
-                                ConnectTimeoutError, HeaderParsingError)
+                                ReadTimeoutError, ConnectTimeoutError,
+                                HeaderParsingError)
 from urllib3.connectionpool import HTTPConnectionPool
 
 
@@ -37,9 +37,6 @@ class TestPickle(unittest.TestCase):
 
         assert self.verify_pickling(
             EmptyPoolError(HTTPConnectionPool('localhost'), None))
-
-        assert self.verify_pickling(
-            HostChangedError(HTTPConnectionPool('localhost'), '/', None))
 
         assert self.verify_pickling(
             ReadTimeoutError(HTTPConnectionPool('localhost'), '/', None))

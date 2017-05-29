@@ -1,32 +1,13 @@
 from __future__ import absolute_import
 import socket
-from .wait import wait_for_read
-from .selectors import HAS_SELECT, SelectorError
 
 
 def is_connection_dropped(conn):  # Platform-specific
     """
     Returns True if the connection is dropped and should be closed.
-
-    :param conn:
-        :class:`httplib.HTTPConnection` object.
-
-    Note: For platforms like AppEngine, this will always return ``False`` to
-    let the platform handle connection recycling transparently for us.
     """
-    sock = getattr(conn, 'sock', False)
-    if sock is False:  # Platform-specific: AppEngine
-        return False
-    if sock is None:  # Connection already closed (such as by httplib).
-        return True
-
-    if not HAS_SELECT:
-        return False
-
-    try:
-        return bool(wait_for_read(sock, timeout=0.0))
-    except SelectorError:
-        return True
+    # TODO: Need to restore AppEngine behaviour here at some point.
+    return conn.is_dropped()
 
 
 # This function is copied from socket.py in the Python 2.7 standard

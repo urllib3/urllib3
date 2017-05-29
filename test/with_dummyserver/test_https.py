@@ -17,7 +17,6 @@ from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
                                 IP_SAN_CERTS)
 
 from test import (
-    onlyPy26OrOlder,
     onlyPy279OrNewer,
     notSecureTransport,
     onlyPy27OrNewerOrNonWindows,
@@ -25,11 +24,7 @@ from test import (
     TARPIT_HOST,
 )
 from urllib3 import HTTPSConnectionPool
-from urllib3.connection import (
-    VerifiedHTTPSConnection,
-    UnverifiedHTTPSConnection,
-    RECENT_DATE,
-)
+from urllib3.sync_connection import RECENT_DATE
 from urllib3.exceptions import (
     SSLError,
     ConnectTimeoutError,
@@ -61,18 +56,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
-    def test_set_ssl_version_to_tlsv1(self):
-        self._pool.ssl_version = ssl.PROTOCOL_TLSv1
-        r = self._pool.request('GET', '/')
-        self.assertEqual(r.status, 200, r.data)
-
     def test_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
-
-        conn = https_pool._new_conn()
-        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
 
         with mock.patch('warnings.warn') as warn:
             r = https_pool.request('GET', '/')
@@ -98,9 +85,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          ssl_context=ctx)
         self.addCleanup(https_pool.close)
 
-        conn = https_pool._new_conn()
-        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
-
         with mock.patch('warnings.warn') as warn:
             r = https_pool.request('GET', '/')
             self.assertEqual(r.status, 200)
@@ -124,9 +108,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          ca_certs=DEFAULT_CA,
                                          ssl_context=ctx)
         self.addCleanup(https_pool.close)
-
-        conn = https_pool._new_conn()
-        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
 
         with mock.patch('warnings.warn') as warn:
             r = https_pool.request('GET', '/')
@@ -152,9 +133,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          cert_reqs='CERT_REQUIRED',
                                          ca_cert_dir=DEFAULT_CA_DIR)
         self.addCleanup(https_pool.close)
-
-        conn = https_pool._new_conn()
-        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
 
         with mock.patch('warnings.warn') as warn:
             r = https_pool.request('GET', '/')
@@ -218,17 +196,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                             "'invalid certificate chain', "
                             "instead got: %r" % e)
 
-    def test_no_ssl(self):
-        pool = HTTPSConnectionPool(self.host, self.port)
-        pool.ConnectionCls = None
-        self.addCleanup(pool.close)
-        self.assertRaises(SSLError, pool._new_conn)
-        self.assertRaises(SSLError, pool.request, 'GET', '/')
-
     def test_unverified_ssl(self):
         """ Test that bare HTTPSConnection can connect, make requests """
         pool = HTTPSConnectionPool(self.host, self.port)
-        pool.ConnectionCls = UnverifiedHTTPSConnection
         self.addCleanup(pool.close)
 
         with mock.patch('warnings.warn') as warn:
@@ -397,7 +367,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          timeout=timeout, retries=False,
                                          cert_reqs='CERT_REQUIRED')
         self.addCleanup(https_pool.close)
-        https_pool.ca_certs = DEFAULT_CA
         https_pool.assert_fingerprint = '92:81:FE:85:F7:0C:26:60:EC:D6:B3:' \
                                         'BF:93:CF:F9:71:CC:07:7D:0A'
 
@@ -406,33 +375,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          cert_reqs='CERT_NONE')
         self.addCleanup(https_pool.close)
         https_pool.request('GET', '/')
-
-    def test_tunnel(self):
-        """ test the _tunnel behavior """
-        timeout = Timeout(total=None)
-        https_pool = HTTPSConnectionPool(self.host, self.port, timeout=timeout,
-                                         cert_reqs='CERT_NONE')
-        self.addCleanup(https_pool.close)
-        conn = https_pool._new_conn()
-        try:
-            conn.set_tunnel(self.host, self.port)
-        except AttributeError:  # python 2.6
-            conn._set_tunnel(self.host, self.port)
-        conn._tunnel = mock.Mock()
-        https_pool._make_request(conn, 'GET', '/')
-        conn._tunnel.assert_called_once_with()
-
-    @onlyPy26OrOlder
-    def test_tunnel_old_python(self):
-        """HTTPSConnection can still make connections if _tunnel_host isn't set
-
-        The _tunnel_host attribute was added in 2.6.3 - because our test runners
-        generally use the latest Python 2.6, we simulate the old version by
-        deleting the attribute from the HTTPSConnection.
-        """
-        conn = self._pool._new_conn()
-        del conn._tunnel_host
-        self._pool._make_request(conn, 'GET', '/')
 
     @requires_network
     def test_enhanced_timeout(self):
@@ -463,26 +405,20 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     def test_enhanced_ssl_connection(self):
         fingerprint = '92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A'
 
-        conn = VerifiedHTTPSConnection(self.host, self.port)
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA,
                                          assert_fingerprint=fingerprint)
         self.addCleanup(https_pool.close)
 
-        https_pool._make_request(conn, 'GET', '/')
+        https_pool.urlopen('GET', '/')
 
     def test_ssl_correct_system_time(self):
-        self._pool.cert_reqs = 'CERT_REQUIRED'
-        self._pool.ca_certs = DEFAULT_CA
-
         w = self._request_without_resource_warnings('GET', '/')
         self.assertEqual([], w)
 
     def test_ssl_wrong_system_time(self):
-        self._pool.cert_reqs = 'CERT_REQUIRED'
-        self._pool.ca_certs = DEFAULT_CA
-        with mock.patch('urllib3.connection.datetime') as mock_date:
+        with mock.patch('urllib3.sync_connection.datetime') as mock_date:
             mock_date.date.today.return_value = datetime.date(1970, 1, 1)
 
             w = self._request_without_resource_warnings('GET', '/')
@@ -494,9 +430,13 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.assertTrue(str(RECENT_DATE) in warning.message.args[0])
 
     def _request_without_resource_warnings(self, method, url):
+        pool = HTTPSConnectionPool(
+            self.host, self.port, cert_reqs='CERT_REQUIRED',
+            ca_certs=DEFAULT_CA
+        )
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('always')
-            self._pool.request(method, url)
+            pool.request(method, url)
 
         return [x for x in w if not isinstance(x.message, ResourceWarning)]
 
@@ -514,15 +454,19 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
         # This test is skipped on Windows for Python 2.6 because we suspect there
         # is an issue with the OpenSSL for Python 2.6 on Windows.
 
-        self._pool.cert_reqs = 'CERT_REQUIRED'
-        self.assertRaises(SSLError, self._pool.request, 'GET', '/')
-        self._pool.ca_certs = DEFAULT_CA
+        pool = HTTPSConnectionPool(
+            self.host, self.port, cert_reqs='CERT_REQUIRED'
+        )
+        self.assertRaises(SSLError, pool.request, 'GET', '/')
+        pool = HTTPSConnectionPool(
+            self.host, self.port, cert_reqs='CERT_REQUIRED',
+            ca_certs=DEFAULT_CA
+        )
         self._pool.request('GET', '/')
 
     def test_set_cert_default_cert_required(self):
-        conn = VerifiedHTTPSConnection(self.host, self.port)
-        conn.set_cert(ca_certs=DEFAULT_CA)
-        self.assertEqual(conn.cert_reqs, 'CERT_REQUIRED')
+        pool = HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA)
+        self.assertEqual(pool.ssl_context.verify_mode, ssl.CERT_REQUIRED)
 
 
 class TestHTTPS_NoSAN(HTTPSDummyServerTestCase):
