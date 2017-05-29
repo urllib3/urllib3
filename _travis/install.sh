@@ -55,6 +55,7 @@ fi
 
 pip install tox
 
-if [[ "${TOXENV}" == "gae" && ! -d ${GAE_PYTHONPATH} ]]; then
-  python _travis/fetch_gae_sdk.py ;
+if [[ "${TOXENV}" == "gae" ]]; then
+    pip install gcp-devrel-py-tools
+    gcp-devrel-py-tools download-appengine-sdk ${GAE_PYTHONPATH}
 fi
