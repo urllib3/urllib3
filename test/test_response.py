@@ -181,7 +181,8 @@ class TestResponse(unittest.TestCase):
 
         # Try closing with an `httplib.HTTPResponse`, because it has an
         # `isclosed` method.
-        hlr = httplib.HTTPResponse(socket.socket())
+        sock = socket.socket()
+        hlr = httplib.HTTPResponse(sock)
         resp2 = HTTPResponse(hlr, preload_content=False)
         self.assertEqual(resp2.closed, False)
         resp2.close()
@@ -196,9 +197,11 @@ class TestResponse(unittest.TestCase):
         # `isclosed`, or `fileno`.  Unlikely, but possible.
         self.assertEqual(resp3.closed, True)
         self.assertRaises(IOError, resp3.fileno)
+        sock.close()
 
     def test_io_closed_consistently(self):
-        hlr = httplib.HTTPResponse(socket.socket())
+        sock = socket.socket()
+        hlr = httplib.HTTPResponse(sock)
         hlr.fp = BytesIO(b'foo')
         hlr.chunked = 0
         hlr.length = 3
@@ -211,6 +214,7 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(resp.closed, True)
         self.assertEqual(resp._fp.isclosed(), True)
         self.assertEqual(is_fp_closed(resp._fp), True)
+        sock.close()
 
     def test_io_bufferedreader(self):
         fp = BytesIO(b'foo')
