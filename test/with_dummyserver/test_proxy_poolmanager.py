@@ -43,6 +43,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.addCleanup(http.clear)
         hc2 = http.connection_from_host(self.http_host, self.http_port)
         conn = hc2._get_conn()
+        self.addCleanup(conn.close)
         hc2._make_request(conn, 'GET', '/')
         tcp_nodelay_setting = conn.sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
         self.assertEqual(tcp_nodelay_setting, 0,
