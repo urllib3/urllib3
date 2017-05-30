@@ -160,14 +160,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with mock.patch('warnings.warn') as warn:
             r = https_pool.request('GET', '/')
             self.assertEqual(r.status, 200)
-
-            if sys.version_info >= (2, 7, 9):
-                self.assertFalse(warn.called, warn.call_args_list)
-            else:
-                self.assertTrue(warn.called)
-                call, = warn.call_args_list
-                error = call[0][1]
-                self.assertEqual(error, InsecurePlatformWarning)
+            self.assertFalse(warn.called, warn.call_args_list)
 
     def test_invalid_common_name(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
