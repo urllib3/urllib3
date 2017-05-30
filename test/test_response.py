@@ -30,6 +30,16 @@ S5moAj5HexY/g/F8TctpxwsvyZp38dXeLDjSQvEQIkF7XR3YXbeZgKk3V34KGCPOAeeuQDIgyVhV
 nP4HF2uWHA==""")
 
 
+@pytest.fixture
+def sock():
+    """
+    An instance of ``socket.socket`` that is closed at the end of the test run.
+    """
+    sock = socket.socket()
+    yield sock
+    sock.close()
+
+
 class TestLegacyResponse(object):
     def test_getheaders(self):
         headers = {'host': 'example.com'}
@@ -162,7 +172,7 @@ class TestResponse(object):
         assert resp.data == b'foo'
         assert resp.closed
 
-    def test_io(self):
+    def test_io(self, sock):
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)
 
@@ -177,7 +187,6 @@ class TestResponse(object):
 
         # Try closing with an `httplib.HTTPResponse`, because it has an
         # `isclosed` method.
-        sock = socket.socket()
         hlr = httplib.HTTPResponse(sock)
         resp2 = HTTPResponse(hlr, preload_content=False)
         assert not resp2.closed
@@ -195,10 +204,8 @@ class TestResponse(object):
         assert resp3.closed
         with pytest.raises(IOError):
             resp3.fileno()
-        sock.close()
 
-    def test_io_closed_consistently(self):
-        sock = socket.socket()
+    def test_io_closed_consistently(self, sock):
         hlr = httplib.HTTPResponse(sock)
         hlr.fp = BytesIO(b'foo')
         hlr.chunked = 0
@@ -212,7 +219,6 @@ class TestResponse(object):
         assert resp.closed
         assert resp._fp.isclosed()
         assert is_fp_closed(resp._fp)
-        sock.close()
 
     def test_io_bufferedreader(self):
         fp = BytesIO(b'foo')
