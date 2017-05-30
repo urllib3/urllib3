@@ -181,12 +181,14 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(host, port, timeout=timeout)
         self.addCleanup(pool.close)
         conn = pool._get_conn()
+        self.addCleanup(conn.close)
         self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', '/')
 
         timeout = Timeout(connect=3, read=5, total=SHORT_TIMEOUT)
         pool = HTTPConnectionPool(host, port, timeout=timeout)
         self.addCleanup(pool.close)
         conn = pool._get_conn()
+        self.addCleanup(conn.close)
         self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', '/')
 
     def test_total_timeout(self):
@@ -303,7 +305,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # This test needs to be here in order to be run. socket.create_connection actually tries
         # to connect to the host provided so we need a dummyserver to be running.
         pool = HTTPConnectionPool(self.host, self.port)
+        self.addCleanup(pool.close)
         conn = pool._get_conn()
+        self.addCleanup(conn.close)
         pool._make_request(conn, 'GET', '/')
         tcp_nodelay_setting = conn.sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
         self.assertTrue(tcp_nodelay_setting)
@@ -335,11 +339,14 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # This test needs to be here in order to be run. socket.create_connection actually tries
         # to connect to the host provided so we need a dummyserver to be running.
         pool = HTTPConnectionPool(self.host, self.port)
+        self.addCleanup(pool.close)
         # Get the HTTPConnection instance
         conn = pool._new_conn()
+        self.addCleanup(conn.close)
         # Update the default socket options
         conn.default_socket_options += [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
         s = conn._new_conn()
+        self.addCleanup(s.close)
         nagle_disabled = s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) > 0
         using_keepalive = s.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE) > 0
         self.assertTrue(nagle_disabled)
@@ -358,23 +365,28 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     def test_timeout_success(self):
         timeout = Timeout(connect=3, read=5, total=None)
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        self.addCleanup(pool.close)
         pool.request('GET', '/')
         # This should not raise a "Timeout already started" error
         pool.request('GET', '/')
 
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        self.addCleanup(pool.close)
         # This should also not raise a "Timeout already started" error
         pool.request('GET', '/')
 
         timeout = Timeout(total=None)
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        self.addCleanup(pool.close)
         pool.request('GET', '/')
 
     def test_tunnel(self):
         # note the actual httplib.py has no tests for this functionality
         timeout = Timeout(total=None)
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        self.addCleanup(pool.close)
         conn = pool._get_conn()
+        self.addCleanup(conn.close)
         try:
             conn.set_tunnel(self.host, self.port)
         except AttributeError:  # python 2.6
@@ -387,7 +399,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # test that it's not called when tunnel is not set
         timeout = Timeout(total=None)
         pool = HTTPConnectionPool(self.host, self.port, timeout=timeout)
+        self.addCleanup(pool.close)
         conn = pool._get_conn()
+        self.addCleanup(conn.close)
 
         conn._tunnel = mock.Mock(return_value=None)
         pool._make_request(conn, 'GET', '/')
@@ -411,6 +425,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_keepalive(self):
         pool = HTTPConnectionPool(self.host, self.port, block=True, maxsize=1)
+        self.addCleanup(pool.close)
 
         r = pool.request('GET', '/keepalive?close=0')
         r = pool.request('GET', '/keepalive?close=0')
@@ -422,6 +437,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     def test_keepalive_close(self):
         pool = HTTPConnectionPool(self.host, self.port,
                                   block=True, maxsize=1, timeout=2)
+        self.addCleanup(pool.close)
 
         r = pool.request('GET', '/keepalive?close=1', retries=0,
                          headers={
@@ -521,6 +537,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_connection_count(self):
         pool = HTTPConnectionPool(self.host, self.port, maxsize=1)
+        self.addCleanup(pool.close)
 
         pool.request('GET', '/')
         pool.request('GET', '/')
@@ -531,6 +548,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_connection_count_bigpool(self):
         http_pool = HTTPConnectionPool(self.host, self.port, maxsize=16)
+        self.addCleanup(http_pool.close)
 
         http_pool.request('GET', '/')
         http_pool.request('GET', '/')
@@ -541,6 +559,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_partial_response(self):
         pool = HTTPConnectionPool(self.host, self.port, maxsize=1)
+        self.addCleanup(pool.close)
 
         req_data = {'lol': 'cat'}
         resp_data = urlencode(req_data).encode('utf-8')
@@ -598,6 +617,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         # Check default state
         pool = HTTPConnectionPool(self.host, self.port, maxsize=MAXSIZE)
+        self.addCleanup(pool.close)
         self.assertEqual(pool.num_connections, 0)
         self.assertEqual(pool.pool.qsize(), MAXSIZE)
 
@@ -644,6 +664,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                 continue
             pool = HTTPConnectionPool(self.host, self.port,
                                       source_address=addr, retries=False)
+            self.addCleanup(pool.close)
             r = pool.request('GET', '/source_address')
             self.assertEqual(r.data, b(addr[0]))
 
@@ -712,6 +733,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_mixed_case_hostname(self):
         pool = HTTPConnectionPool("LoCaLhOsT", self.port)
+        self.addCleanup(pool.close)
         response = pool.request('GET', "http://LoCaLhOsT:%d/" % self.port)
         self.assertEqual(response.status, 200)
 
@@ -719,6 +741,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 class TestRetry(HTTPDummyServerTestCase):
     def setUp(self):
         self.pool = HTTPConnectionPool(self.host, self.port)
+        self.addCleanup(self.pool.close)
 
     def test_max_retry(self):
         try:
@@ -842,6 +865,7 @@ class TestRetry(HTTPDummyServerTestCase):
 class TestRetryAfter(HTTPDummyServerTestCase):
     def setUp(self):
         self.pool = HTTPConnectionPool(self.host, self.port)
+        self.addCleanup(self.pool.close)
 
     def test_retry_after(self):
         # Request twice in a second to get a 429 response.
@@ -908,6 +932,7 @@ class TestRetryAfter(HTTPDummyServerTestCase):
 class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
     def setUp(self):
         self.pool = HTTPConnectionPool(self.host, self.port, timeout=0.1)
+        self.addCleanup(self.pool.close)
 
     def test_retries_put_filehandle(self):
         """HTTP PUT retry with a file-like object should not timeout"""

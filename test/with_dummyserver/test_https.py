@@ -70,6 +70,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
+        self.addCleanup(https_pool.close)
 
         conn = https_pool._new_conn()
         self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
@@ -414,6 +415,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          cert_reqs='CERT_NONE')
         self.addCleanup(https_pool.close)
         conn = https_pool._new_conn()
+        self.addCleanup(conn.close)
         try:
             conn.set_tunnel(self.host, self.port)
         except AttributeError:  # python 2.6
