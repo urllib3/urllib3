@@ -7,6 +7,8 @@ try:
 except ImportError as e:
     raise SkipTest('Could not import SecureTransport: %r' % e)
 
+raise SkipTest('SecureTransport currently not supported in v2!')
+
 from ..with_dummyserver.test_https import TestHTTPS, TestHTTPS_TLSv1  # noqa: F401
 from ..with_dummyserver.test_socketlevel import (  # noqa: F401
     TestSNI, TestSocketClosing, TestClientCerts

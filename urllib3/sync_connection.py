@@ -16,6 +16,7 @@ from __future__ import absolute_import
 
 import collections
 import datetime
+import errno
 import itertools
 import socket
 import warnings
@@ -25,7 +26,8 @@ import h11
 from .base import Request, Response
 from .exceptions import (
     ConnectTimeoutError, NewConnectionError, SubjectAltNameWarning,
-    SystemTimeWarning, BadVersionError, FailedTunnelError, InvalidBodyError
+    SystemTimeWarning, BadVersionError, FailedTunnelError, InvalidBodyError,
+    ProtocolError
 )
 from .packages import six
 from .util import selectors, connection, ssl_ as ssl_util
@@ -42,6 +44,9 @@ except ImportError:
 RECENT_DATE = datetime.date(2016, 1, 1)
 
 _SUPPORTED_VERSIONS = frozenset([b'1.0', b'1.1'])
+
+# A sentinel object returned when some syscalls return EAGAIN.
+_EAGAIN = object()
 
 
 def _headers_to_native_string(headers):
@@ -141,24 +146,6 @@ def _body_bytes(request, state_machine):
     yield state_machine.send(h11.EndOfMessage())
 
 
-def _maybe_read_response(data, state_machine):
-    """
-    Feeds some more data into the state machine and potentially returns a
-    response object.
-    """
-    response = None
-    event = None
-    state_machine.receive_data(data)
-
-    while event is not h11.NEED_DATA:
-        event = state_machine.next_event()
-        if isinstance(event, h11.Response):
-            response = event
-            break
-
-    return response
-
-
 def _response_from_h11(h11_response, body_object):
     """
     Given a h11 Response object, build a urllib3 response object and return it.
@@ -193,6 +180,52 @@ def _build_tunnel_request(host, port, headers):
         scheme='http'
     )
     return tunnel_request
+
+
+def _wait_for_event(selector, sock, event, timeout):
+    """
+    Waits for a specific event on a socket for no more than the time in
+    timeout. Throws an exception if the timeout is exceeded.
+    """
+    old_events = selector.get_key(sock).events
+    try:
+        selector.modify(sock, event)
+        if not selector.select(timeout=timeout):
+            # TODO: Raise our own timeouts later
+            raise sock.timeout()
+        return
+    finally:
+        selector.modify(sock, old_events)
+
+
+def _recv_or_eagain(sock):
+    """
+    Calls recv on a non-blocking socket. Returns the number of bytes read or
+    the sentinel object _EAGAIN.
+    """
+    try:
+        return sock.recv(65536)
+    except ssl.SSLWantReadError:
+        return _EAGAIN
+    except (OSError, socket.error) as e:
+        if e.errno == errno.EAGAIN:
+            return _EAGAIN
+        raise
+
+
+def _write_or_eagain(sock, data):
+    """
+    Calls send on a non-blocking socket. Returns the number of bytes written or
+    the sentinel object _EAGAIN.
+    """
+    try:
+        return sock.send(data)
+    except ssl.SSLWantWriteError:
+        return _EAGAIN
+    except (OSError, socket.error) as e:
+        if e.errno == errno.EAGAIN:
+            return _EAGAIN
+        raise
 
 
 _DEFAULT_SOCKET_OPTIONS = object()
@@ -280,7 +313,7 @@ class SyncHTTP1Connection(object):
 
         return conn
 
-    def _send_unless_readable(self, data):
+    def _send_unless_readable(self, state_machine, data):
         """
         This method sends the data in ``data`` on the given socket. It will
         abort early if the socket became readable for any reason.
@@ -288,6 +321,10 @@ class SyncHTTP1Connection(object):
         If the socket became readable, this returns True. Otherwise, returns
         False.
         """
+        # First, register the socket with the selector.
+        self._selector.modify(
+            self._sock, selectors.EVENT_READ | selectors.EVENT_WRITE
+        )
         # We take a memoryview here because if the chunk is very large we're
         # going to slice it a few times, and we'd like to avoid doing copies as
         # we do that.
@@ -296,30 +333,151 @@ class SyncHTTP1Connection(object):
         while chunk:
             events = self._selector.select()[0][1]  # TODO: timeout!
 
-            # If the socket is readable, we stop uploading.
+            # The "happy path" here is that the socket has become marked
+            # writable. If that happens, we just call send. If this returns
+            # EAGAIN or SSL_WANT_WRITE, that's fine, we just spin around again.
+            #
+            # The less happy path here is that the socket has become marked
+            # *readable*. That is...problematic. It may be the case that there
+            # is data to receive from the remote peer. If there is, we want to
+            # stop uploading. However, in the TLS case this data may be
+            # triggering a TLS renegotiation, so the simple fact that the
+            # socket is readable is not a bug. So what we do is attempt to call
+            # recv. If it returns data, we shove it into our state machine and
+            # then break from the loop. If it returns EAGAIN, we assume that
+            # it was just TLS stuff and move on.
+            #
+            # Note that we only *actually* break from the loop if and when we
+            # get an actual final response header block. Prior to that point we
+            # will keep sending data. This allows 1XX header blocks to also be
+            # ignored.
             if events & selectors.EVENT_READ:
-                return True
-            assert events & selectors.EVENT_WRITE
+                data = _recv_or_eagain(self._sock)
+                if data is _EAGAIN:
+                    continue
 
-            chunk_sent = self._sock.send(chunk)
-            chunk = chunk[chunk_sent:]
+                state_machine.receive_data(data)
+                return True
+
+            if events & selectors.EVENT_WRITE:
+                # This `while` loop is present to prevent us doing too much
+                # selector polling. We already know the selector is writable:
+                # we don't need to ask again until a write actually succeeds or
+                # we get EAGAIN.
+                bytes_written = None
+                while bytes_written is None:
+                    try:
+                        bytes_written = _write_or_eagain(self._sock, chunk)
+                    except ssl.SSLWantReadError:
+                        # This is unlikely, but we should still tolerate it.
+                        _wait_for_event(
+                            self._selector,
+                            self._sock,
+                            selectors.EVENT_READ,
+                            None  # TODO: Timeout!
+                        )
+                    else:
+                        if bytes_written is not _EAGAIN:
+                            chunk = chunk[bytes_written:]
 
         return False
 
-    def _receive_bytes(self, read_timeout):
+    def send_request(self, request, read_timeout):
         """
-        This method blocks until the socket is readable or the read times out
-        (TODO), and then returns whatever data was read. Signals EOF the same
-        way ``recv`` does: by returning the empty string.
+        Given a Request object, performs the logic required to get a response.
         """
-        keys = self._selector.select(read_timeout)
-        if not keys:
-            # TODO: Raise our own timeouts later.
-            raise socket.timeout()
-        events = keys[0][1]
-        assert events == selectors.EVENT_READ
-        data = self._sock.recv(65536)
-        return data
+        # Step 1: Send Request.
+        # TODO: Replace read_timeout with something smarter.
+        self._read_timeout = read_timeout
+
+        # Before we begin, confirm that the state machine is ok.
+        if (self._state_machine.our_state is not h11.IDLE or
+                self._state_machine.their_state is not h11.IDLE):
+            raise ProtocolError("Invalid internal state transition")
+
+        header_bytes = _request_to_bytes(request, self._state_machine)
+        body_chunks = _body_bytes(request, self._state_machine)
+        request_chunks = itertools.chain([header_bytes], body_chunks)
+        response = None
+
+        # First, register the socket with the selector.
+        self._selector.modify(
+            self._sock, selectors.EVENT_READ | selectors.EVENT_WRITE
+        )
+
+        # Next, send the body.
+        for chunk in request_chunks:
+            did_read = self._send_unless_readable(self._state_machine, chunk)
+            if did_read:
+                break
+
+        # Ok, we've sent the request. Now we want to read the response. This
+        # needs a different loop, slightly.
+        #
+        # While reading, we are again looping around in select(). By default,
+        # we do not look for writability, because for large responses to small
+        # requests the socket will inevitably be writable. Each time the
+        # selector marks the socket as readable, we will attempt to read. This
+        # may raise EAGAIN or WANT_READ, either of which causes us to just loop
+        # again. However it may *also* raise WANT_WRITE. If it does, we will
+        # block the event loop until the socket returns *writable*, and then
+        # loop back around again.
+        self._selector.modify(self._sock, selectors.EVENT_READ)
+        response = None
+        while not isinstance(response, h11.Response):
+            response = self._read_until_event(
+                self._state_machine, self._read_timeout
+            )
+
+        if response.http_version not in _SUPPORTED_VERSIONS:
+            raise BadVersionError(response.http_version)
+
+        return _response_from_h11(response, self)
+
+    def _read_until_event(self, state_machine, read_timeout):
+        """
+        A selector loop that spins over the selector and socket, issuing reads
+        and feeding the data into h11 and checking whether h11 has an event for
+        us. The moment there is an event other than h11.NEED_DATA, this
+        function returns that event.
+        """
+        # While reading, we are looping around in select(). By default, we do
+        # not look for writability, because for large responses to small
+        # requests the socket will inevitably be writable. Each time the
+        # selector marks the socket as readable, we will attempt to read. This
+        # may raise EAGAIN or WANT_READ, either of which causes us to just loop
+        # again. However, it may *also* raise WANT_WRITE. If it does, we will
+        # block the event loop until the socket returns *writable*, and then
+        # loop back around again.
+        event = state_machine.next_event()
+        self._selector.modify(self._sock, selectors.EVENT_READ)
+        while event is h11.NEED_DATA:
+            selector_events = self._selector.select(read_timeout)
+            if not selector_events:
+                # TODO: Raise our own timeouts later.
+                raise socket.timeout()
+
+            # This `while` loop is present to prevent us doing too much
+            # selector polling. We already know the selector is readable: we
+            # don't need to ask again until a read actually succeeds or we get
+            # EAGAIN.
+            read_bytes = None
+            while read_bytes is None:
+                try:
+                    read_bytes = _recv_or_eagain(self._sock)
+                except ssl.SSLWantWriteError:
+                    _wait_for_event(
+                        self._selector,
+                        self._sock,
+                        selectors.EVENT_WRITE,
+                        read_timeout
+                    )
+                else:
+                    if read_bytes is not _EAGAIN:
+                        state_machine.receive_data(read_bytes)
+                        event = state_machine.next_event()
+
+        return event
 
     def _tunnel(self, conn):
         """
@@ -347,17 +505,18 @@ class SyncHTTP1Connection(object):
         self._selector.register(
             self._sock, selectors.EVENT_READ | selectors.EVENT_WRITE
         )
-        self._send_unless_readable(bytes_to_send)
+        self._send_unless_readable(tunnel_state_machine, bytes_to_send)
 
         # At this point we no longer care if the socket is writable.
         self._selector.modify(self._sock, selectors.EVENT_READ)
 
         response = None
-        while response is None:
-            # TODO: Add a timeout here.
-            # TODO: Error handling.
-            read_bytes = self._receive_bytes(read_timeout=None)
-            response = _maybe_read_response(read_bytes, tunnel_state_machine)
+        while not isinstance(response, h11.Response):
+            # TODO: add a timeout here
+            # TODO: Error handling
+            response = self._read_until_event(
+                tunnel_state_machine, read_timeout=None
+            )
 
         if response.status_code != 200:
             response = _response_from_h11(response, self)
@@ -432,47 +591,6 @@ class SyncHTTP1Connection(object):
         self._selector.register(
             self._sock, selectors.EVENT_READ | selectors.EVENT_WRITE
         )
-
-    def send_request(self, request, read_timeout):
-        """
-        Sends a single Request object. Returns a Response.
-        """
-        # TODO: Replace read_timeout with something smarter.
-        self._read_timeout = read_timeout
-
-        # Before we begin, confirm that the state machine is ok.
-        assert self._state_machine.our_state is h11.IDLE
-        assert self._state_machine.their_state is h11.IDLE
-
-        # First, register the socket with the selector. We want to look for
-        # readability *and* writability, because if the socket suddenly becomes
-        # readable we need to stop our upload immediately.
-        self._selector.modify(
-            self._sock, selectors.EVENT_READ | selectors.EVENT_WRITE
-        )
-        header_bytes = _request_to_bytes(request, self._state_machine)
-        body_chunks = _body_bytes(request, self._state_machine)
-        request_chunks = itertools.chain([header_bytes], body_chunks)
-
-        for chunk in request_chunks:
-            # If the socket becomes readable we don't need to error out or
-            # anything: we can just continue with our current logic.
-            readable = self._send_unless_readable(chunk)
-            if readable:
-                break
-
-        # At this point we no longer care if the socket is writable.
-        self._selector.modify(self._sock, selectors.EVENT_READ)
-
-        response = None
-        while response is None:
-            read_bytes = self._receive_bytes(read_timeout)
-            response = _maybe_read_response(read_bytes, self._state_machine)
-
-        if response.http_version not in _SUPPORTED_VERSIONS:
-            raise BadVersionError(response.http_version)
-
-        return _response_from_h11(response, self)
 
     def close(self):
         """
@@ -563,18 +681,14 @@ class SyncHTTP1Connection(object):
         if self._state_machine is None:
             raise StopIteration()
 
-        data = None
-
-        while data is None:
-            event = self._state_machine.next_event()
-            if event is h11.NEED_DATA:
-                received_bytes = self._receive_bytes(self._read_timeout)
-                self._state_machine.receive_data(received_bytes)
-            elif isinstance(event, h11.Data):
-                data = bytes(event.data)
-            elif isinstance(event, h11.EndOfMessage):
-                self._reset()
-                raise StopIteration()
+        event = self._read_until_event(
+            self._state_machine, read_timeout=self._read_timeout
+        )
+        if isinstance(event, h11.Data):
+            data = bytes(event.data)
+        elif isinstance(event, h11.EndOfMessage):
+            self._reset()
+            raise StopIteration()
 
         return data
 
