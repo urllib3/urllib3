@@ -198,6 +198,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # list.
             self.conn_kw.setdefault('socket_options', [])
 
+    def __del__(self):
+        # If there's an exception during __init__, then self.pool may be None
+        # in which case we don't need to clear it out.
+        if self.pool:
+            self.close()
+
     def _new_conn(self):
         """
         Return a fresh :class:`HTTPConnection`.
