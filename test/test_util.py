@@ -8,7 +8,6 @@ import socket
 from itertools import chain
 
 from mock import patch, Mock
-import pytest
 
 from urllib3 import add_stderr_logger, disable_warnings
 from urllib3.util.request import make_headers, rewind_body, _FAILEDTELL
@@ -532,13 +531,15 @@ class TestUtil(unittest.TestCase):
         # Ugly preservation of original value
         HAS_SNI = ssl_.HAS_SNI
         ssl_.HAS_SNI = False
-
-        with pytest.warns(SNIMissingWarning):
-            with warnings.catch_warnings():
-                warnings.simplefilter("always")
+        try:
+            with patch('warnings.warn') as warn:
                 ssl_wrap_socket(ssl_context=mock_context, sock=socket)
-
-        ssl_.HAS_SNI = HAS_SNI
+            mock_context.wrap_socket.assert_called_once_with(socket)
+            assert warn.call_count >= 1
+            warnings = [call[0][1] for call in warn.call_args_list]
+            assert SNIMissingWarning in warnings
+        finally:
+            ssl_.HAS_SNI = HAS_SNI
 
     def test_const_compare_digest_fallback(self):
         target = hashlib.sha256(b'abcdef').digest()
