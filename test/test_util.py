@@ -8,6 +8,7 @@ import socket
 from itertools import chain
 
 from mock import patch, Mock
+import pytest
 
 from urllib3 import add_stderr_logger, disable_warnings
 from urllib3.util.request import make_headers, rewind_body, _FAILEDTELL
@@ -525,29 +526,17 @@ class TestUtil(unittest.TestCase):
         mock_context.load_verify_locations.assert_called_once_with(
             None, '/path/to/pems')
 
-    def test_ssl_wrap_socket_with_no_sni(self):
-        socket = object()
-        mock_context = Mock()
-        # Ugly preservation of original value
-        HAS_SNI = ssl_.HAS_SNI
-        ssl_.HAS_SNI = False
-        ssl_wrap_socket(ssl_context=mock_context, sock=socket)
-        mock_context.wrap_socket.assert_called_once_with(socket)
-        ssl_.HAS_SNI = HAS_SNI
-
     def test_ssl_wrap_socket_with_no_sni_warns(self):
         socket = object()
         mock_context = Mock()
         # Ugly preservation of original value
         HAS_SNI = ssl_.HAS_SNI
         ssl_.HAS_SNI = False
-        with patch('warnings.warn') as warn:
+
+        with pytest.warns(SNIMissingWarning):
             ssl_wrap_socket(ssl_context=mock_context, sock=socket)
-        mock_context.wrap_socket.assert_called_once_with(socket)
+
         ssl_.HAS_SNI = HAS_SNI
-        self.assertTrue(warn.call_count >= 1)
-        warnings = [call[0][1] for call in warn.call_args_list]
-        self.assertTrue(SNIMissingWarning in warnings)
 
     def test_const_compare_digest_fallback(self):
         target = hashlib.sha256(b'abcdef').digest()
