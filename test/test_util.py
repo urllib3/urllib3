@@ -534,7 +534,9 @@ class TestUtil(unittest.TestCase):
         ssl_.HAS_SNI = False
 
         with pytest.warns(SNIMissingWarning):
-            ssl_wrap_socket(ssl_context=mock_context, sock=socket)
+            with warnings.catch_warnings():
+                warnings.simplefilter("always")
+                ssl_wrap_socket(ssl_context=mock_context, sock=socket)
 
         ssl_.HAS_SNI = HAS_SNI
 
