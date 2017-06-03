@@ -417,6 +417,10 @@ class TestConnectionPool(unittest.TestCase):
                                 preload_content=False)
         self.assertTrue(isinstance(response, CustomHTTPResponse))
 
+    def test_fifo_queue(self):
+        pool = HTTPConnectionPool(host='localhost', fifo_queue=True, maxsize=1, block=True)
+        self.addCleanup(pool.close)
+        self.assertEqual(pool.QueueCls.__name__, 'Queue')
 
 if __name__ == '__main__':
     unittest.main()

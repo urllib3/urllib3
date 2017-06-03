@@ -230,5 +230,8 @@ In chronological order:
 * Tuukka Mustonen <tuukka.mustonen@gmail.com>
   * Add counter for status_forcelist retries.
 
+* João Alves <joao.moa@gmail.com>
+  * Add fifo queue as an alternative for connection pool data structure.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
