@@ -7,10 +7,13 @@ from . import onlyPy2
 
 class TestRequestField(object):
 
-    def test_guess_content_type(self):
-        assert guess_content_type('image.jpg') in ['image/jpeg', 'image/pjpeg']
-        assert guess_content_type('notsure') == 'application/octet-stream'
-        assert guess_content_type(None) == 'application/octet-stream'
+    @pytest.mark.parametrize('filename, content_types', [
+        ('image.jpg', ['image/jpeg', 'image/pjpeg']),
+        ('notsure', ['application/octet-stream']),
+        (None, ['application/octet-stream']),
+    ])
+    def test_guess_content_type(self, filename, content_types):
+        assert guess_content_type(filename) in content_types
 
     def test_create(self):
         simple_field = RequestField('somename', 'data')
