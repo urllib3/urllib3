@@ -45,6 +45,10 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     is used.  If *source_address* is set it must be a tuple of (host, port)
     for the socket to bind as a source address before making the connection.
     An host of '' or port 0 tells the OS to use the default.
+
+    :raises socket.gaierror:
+    :raises SocketTimeout:
+    :raises SocketError:
     """
 
     host, port = address
@@ -57,8 +61,14 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
     # The original create_connection function always returns all records.
     family = allowed_gai_family()
 
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
-        af, socktype, proto, canonname, sa = res
+    try:
+        addrlist = socket.getaddrinfo(host, port, family, socket.SOCK_STREAM)
+    except socket.gaierror as e:
+        # Windows gives "socket.gaierror: [Errno 11001] getaddrinfo failed"
+        #   if DNS lookup fails
+        raise
+
+    for af, socktype, proto, canonname, sa in addrlist:
         sock = None
         try:
             sock = socket.socket(af, socktype, proto)
