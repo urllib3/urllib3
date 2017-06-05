@@ -26,7 +26,8 @@ class TestPickle(object):
         ReadTimeoutError(HTTPConnectionPool('localhost'), '/', None),
     ])
     def test_exceptions(self, exception):
-        assert pickle.loads(pickle.dumps(exception))
+        result = pickle.loads(pickle.dumps(exception))
+        assert isinstance(result, type(exception))
 
 
 class TestFormat(object):
