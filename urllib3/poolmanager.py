@@ -133,7 +133,8 @@ class PoolManager(RequestMethods):
 
     :param hijacked_dns_resolver:
         A dict used in order to bypass the DNS resolver. It should contain
-        pairs of host and an ip used to make the connection.
+        pairs of host (with or without :port) and an ip used to make the
+        connection.
 
     :param \\**connection_pool_kw:
         Additional parameters are used to create fresh
@@ -156,9 +157,9 @@ class PoolManager(RequestMethods):
                  **connection_pool_kw):
         RequestMethods.__init__(self, headers)
 
-        self.hijacked_dns_resolver = hijacked_dns_resolver or {}
+        self.hijacked_dns_resolver = hijacked_dns_resolver
         if not isinstance(self.hijacked_dns_resolver, dict):
-            log.info('hijacked_dns_resolver needs to be a dict')
+            self.hijacked_dns_resolver = {}
 
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools,
@@ -227,8 +228,9 @@ class PoolManager(RequestMethods):
         if not host:
             raise LocationValueError("No host specified.")
 
-        if (isinstance(self.hijacked_dns_resolver, dict) and
-                host in self.hijacked_dns_resolver):
+        if "%s:%s" % (host, port) in self.hijacked_dns_resolver:
+            host = self.hijacked_dns_resolver["%s:%s" % (host, port)]
+        elif host in self.hijacked_dns_resolver:
             host = self.hijacked_dns_resolver[host]
 
         request_context = self._merge_pool_kwargs(pool_kwargs)
