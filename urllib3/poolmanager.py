@@ -131,6 +131,10 @@ class PoolManager(RequestMethods):
         Headers to include with all requests, unless other headers are given
         explicitly.
 
+    :param hijacked_dns_resolver:
+        A dict used in order to bypass the DNS resolver. It should contain
+        pairs of host and an ip used to make the connection.
+
     :param \\**connection_pool_kw:
         Additional parameters are used to create fresh
         :class:`urllib3.connectionpool.ConnectionPool` instances.
@@ -148,8 +152,14 @@ class PoolManager(RequestMethods):
 
     proxy = None
 
-    def __init__(self, num_pools=10, headers=None, **connection_pool_kw):
+    def __init__(self, num_pools=10, headers=None, hijacked_dns_resolver=None,
+                 **connection_pool_kw):
         RequestMethods.__init__(self, headers)
+
+        self.hijacked_dns_resolver = hijacked_dns_resolver or {}
+        if not isinstance(self.hijacked_dns_resolver, dict):
+            log.info('hijacked_dns_resolver needs to be a dict')
+
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools,
                                            dispose_func=lambda p: p.close())
@@ -216,6 +226,10 @@ class PoolManager(RequestMethods):
 
         if not host:
             raise LocationValueError("No host specified.")
+
+        if (isinstance(self.hijacked_dns_resolver, dict) and
+                host in self.hijacked_dns_resolver):
+            host = self.hijacked_dns_resolver[host]
 
         request_context = self._merge_pool_kwargs(pool_kwargs)
         request_context['scheme'] = scheme or 'http'
