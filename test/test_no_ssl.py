@@ -6,10 +6,8 @@ Test what happens if Python was built without SSL
 """
 
 import sys
-if sys.version_info >= (2, 7):
-    import unittest
-else:
-    import unittest2 as unittest
+
+import pytest
 
 
 class ImportBlocker(object):
@@ -65,28 +63,22 @@ ssl_blocker = ImportBlocker('ssl', '_ssl')
 module_stash = ModuleStash('urllib3')
 
 
-class TestWithoutSSL(unittest.TestCase):
-    def setUp(self):
-        sys.modules.pop('ssl', None)
-        sys.modules.pop('_ssl', None)
+@pytest.fixture
+def no_ssl():
+    sys.modules.pop('ssl', None)
+    sys.modules.pop('_ssl', None)
 
-        module_stash.stash()
-        sys.meta_path.insert(0, ssl_blocker)
+    module_stash.stash()
+    sys.meta_path.insert(0, ssl_blocker)
+    yield
+    sys.meta_path.remove(ssl_blocker)
+    module_stash.pop()
 
-    def tearDown(self):
-        sys.meta_path.remove(ssl_blocker)
-        module_stash.pop()
 
-
-class TestImportWithoutSSL(TestWithoutSSL):
-    def test_cannot_import_ssl(self):
-        # python26 has neither contextmanagers (for assertRaises) nor
-        # importlib.
-        # 'import' inside 'lambda' is invalid syntax.
-        def import_ssl():
+class TestImportWithoutSSL(object):
+    def test_cannot_import_ssl(self, no_ssl):
+        with pytest.raises(ImportError):
             import ssl  # noqa: F401
 
-        self.assertRaises(ImportError, import_ssl)
-
-    def test_import_urllib3(self):
+    def test_import_urllib3(self, no_ssl):
         import urllib3  # noqa: F401
