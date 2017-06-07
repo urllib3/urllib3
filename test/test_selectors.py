@@ -389,7 +389,14 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         readers = []
         writers = []
         for _ in range(32):
-            rd, wr = self.make_socketpair()
+            try:
+                rd, wr = self.make_socketpair()
+            except OSError as e:
+                if e.errno == 24 and 'TRAVIS' in os.environ:
+                    self.skipTest(('Could not open enough sockets. This occurs '
+                                   'sometimes on Mac OS Travis builders.'))
+                else:
+                    raise
             readers.append(rd)
             writers.append(wr)
             s.register(rd, selectors.EVENT_READ)
