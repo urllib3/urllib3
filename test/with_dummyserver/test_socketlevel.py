@@ -79,7 +79,7 @@ class TestSNI(SocketDummyServerTestCase):
         self.addCleanup(pool.close)
         try:
             pool.request('GET', '/', retries=0)
-        except SSLError:  # We are violating the protocol
+        except MaxRetryError:  # We are violating the protocol
             pass
         done_receiving.wait()
         self.assertTrue(self.host.encode('ascii') in self.buf,
@@ -220,7 +220,7 @@ class TestClientCerts(SocketDummyServerTestCase):
         self.addCleanup(pool.close)
         try:
             pool.request('GET', '/', retries=0)
-        except SSLError:
+        except MaxRetryError:
             done_receiving.set()
         else:
             done_receiving.set()
@@ -942,7 +942,9 @@ class TestSSL(SocketDummyServerTestCase):
         pool = HTTPSConnectionPool(self.host, self.port)
         self.addCleanup(pool.close)
 
-        self.assertRaises(SSLError, pool.request, 'GET', '/', retries=0)
+        with self.assertRaises(MaxRetryError) as cm:
+            pool.request('GET', '/', retries=0)
+        self.assertIsInstance(cm.exception.reason, SSLError)
 
     def test_ssl_read_timeout(self):
         timed_out = Event()
@@ -1010,14 +1012,62 @@ class TestSSL(SocketDummyServerTestCase):
                                        assert_fingerprint=fingerprint)
             try:
                 response = pool.urlopen('GET', '/', preload_content=False,
-                                        timeout=Timeout(connect=1, read=0.001))
+                                        timeout=Timeout(connect=1, read=0.001),
+                                        retries=0)
                 response.read()
             finally:
                 pool.close()
 
-        self.assertRaises(SSLError, request)
+        with self.assertRaises(MaxRetryError) as cm:
+            request()
+        self.assertIsInstance(cm.exception.reason, SSLError)
         # Should not hang, see https://github.com/shazow/urllib3/issues/529
-        self.assertRaises(SSLError, request)
+        self.assertRaises(MaxRetryError, request)
+
+    def test_retry_ssl_error(self):
+        def socket_handler(listener):
+            # first request, trigger an SSLError
+            sock = listener.accept()[0]
+            sock2 = sock.dup()
+            ssl_sock = ssl.wrap_socket(sock,
+                                       server_side=True,
+                                       keyfile=DEFAULT_CERTS['keyfile'],
+                                       certfile=DEFAULT_CERTS['certfile'])
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += ssl_sock.recv(65536)
+
+            # Deliberately send from the non-SSL socket to trigger an SSLError
+            sock2.send((
+                'HTTP/1.1 200 OK\r\n'
+                'Content-Type: text/plain\r\n'
+                'Content-Length: 4\r\n'
+                '\r\n'
+                'Fail').encode('utf-8'))
+            sock2.close()
+            ssl_sock.close()
+
+            # retried request
+            sock = listener.accept()[0]
+            ssl_sock = ssl.wrap_socket(sock,
+                                       server_side=True,
+                                       keyfile=DEFAULT_CERTS['keyfile'],
+                                       certfile=DEFAULT_CERTS['certfile'])
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += ssl_sock.recv(65536)
+            ssl_sock.send(b'HTTP/1.1 200 OK\r\n'
+                          b'Content-Type: text/plain\r\n'
+                          b'Content-Length: 7\r\n\r\n'
+                          b'Success')
+            ssl_sock.close()
+
+        self._start_server(socket_handler)
+
+        pool = HTTPSConnectionPool(self.host, self.port)
+        self.addCleanup(pool.close)
+        response = pool.urlopen('GET', '/', retries=1)
+        self.assertEqual(response.data, b'Success')
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):
