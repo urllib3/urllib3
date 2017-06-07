@@ -80,6 +80,10 @@ class RecentlyUsedContainer(MutableMapping):
         with self.lock:
             return len(self._container)
 
+    def __str__(self):
+        with self.lock:
+            return(str(self._container)[11:])
+
     def __iter__(self):
         raise NotImplementedError('Iteration over this class is unlikely to be threadsafe.')
 
