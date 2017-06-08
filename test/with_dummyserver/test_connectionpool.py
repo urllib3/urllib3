@@ -990,16 +990,17 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
 class TestRetryPoolSize(HTTPDummyServerTestCase):
     def setUp(self):
         retries = Retry(
-            total = 3,
-            backoff_factor = 0.01,
-            raise_on_status = False,
-            status_forcelist = [404],
+            total=3,
+            backoff_factor=0.01,
+            raise_on_status=False,
+            status_forcelist=[404],
         )
-        self.pool = HTTPConnectionPool(self.host, self.port, maxsize=10, retries=retries, block=True)
+        self.pool = HTTPConnectionPool(self.host, self.port, maxsize=10,
+                                       retries=retries, block=True)
         self.addCleanup(self.pool.close)
 
     def test_pool_size_retry(self):
-        resp = self.pool.urlopen('GET', '/not_found', preload_content=False)
+        self.pool.urlopen('GET', '/not_found', preload_content=False)
         self.assertEquals(self.pool.num_connections, 1)
 
 
@@ -1009,7 +1010,7 @@ class TestRedirectPoolSize(HTTPDummyServerTestCase):
         self.addCleanup(self.pool.close)
 
     def test_pool_size_redirect(self):
-        resp = self.pool.urlopen('GET', '/redirect', preload_content=False)
+        self.pool.urlopen('GET', '/redirect', preload_content=False)
         self.assertEquals(self.pool.num_connections, 1)
 
 
