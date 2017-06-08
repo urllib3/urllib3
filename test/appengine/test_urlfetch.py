@@ -36,7 +36,8 @@ class TestHTTP(TestWithoutSSL):
             'http://www.google.com',
             {'content-type': 'text/plain'})
         fetch_patch = patch(
-            'google.appengine.api.urlfetch.fetch', return_value=resp)
+            'google.appengine.api.urlfetch.fetch', return_value=resp
+        )
         with fetch_patch as fetch_mock:
             import urllib3
             pool = urllib3.HTTPConnectionPool('www.google.com', '80')
@@ -61,7 +62,8 @@ class TestHTTPS(unittest.TestCase):
             'https://www.google.com',
             {'content-type': 'text/plain'})
         fetch_patch = patch(
-            'google.appengine.api.urlfetch.fetch', return_value=resp)
+            'google.appengine.api.urlfetch.fetch', return_value=resp
+        )
         with fetch_patch as fetch_mock:
             import urllib3
             pool = urllib3.HTTPSConnectionPool('www.google.com', '443')
