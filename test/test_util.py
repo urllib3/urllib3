@@ -50,67 +50,67 @@ TIMEOUT_EPOCH = 1000
 
 class TestUtil(object):
 
-    url_host_map = {
+    url_host_map = [
         # Hosts
-        'http://google.com/mail': ('http', 'google.com', None),
-        'http://google.com/mail/': ('http', 'google.com', None),
-        'google.com/mail': ('http', 'google.com', None),
-        'http://google.com/': ('http', 'google.com', None),
-        'http://google.com': ('http', 'google.com', None),
-        'http://www.google.com': ('http', 'www.google.com', None),
-        'http://mail.google.com': ('http', 'mail.google.com', None),
-        'http://google.com:8000/mail/': ('http', 'google.com', 8000),
-        'http://google.com:8000': ('http', 'google.com', 8000),
-        'https://google.com': ('https', 'google.com', None),
-        'https://google.com:8000': ('https', 'google.com', 8000),
-        'http://user:password@127.0.0.1:1234': ('http', '127.0.0.1', 1234),
-        'http://google.com/foo=http://bar:42/baz': ('http', 'google.com', None),
-        'http://google.com?foo=http://bar:42/baz': ('http', 'google.com', None),
-        'http://google.com#foo=http://bar:42/baz': ('http', 'google.com', None),
+        ('http://google.com/mail', ('http', 'google.com', None)),
+        ('http://google.com/mail/', ('http', 'google.com', None)),
+        ('google.com/mail', ('http', 'google.com', None)),
+        ('http://google.com/', ('http', 'google.com', None)),
+        ('http://google.com', ('http', 'google.com', None)),
+        ('http://www.google.com', ('http', 'www.google.com', None)),
+        ('http://mail.google.com', ('http', 'mail.google.com', None)),
+        ('http://google.com:8000/mail/', ('http', 'google.com', 8000)),
+        ('http://google.com:8000', ('http', 'google.com', 8000)),
+        ('https://google.com', ('https', 'google.com', None)),
+        ('https://google.com:8000', ('https', 'google.com', 8000)),
+        ('http://user:password@127.0.0.1:1234', ('http', '127.0.0.1', 1234)),
+        ('http://google.com/foo=http://bar:42/baz', ('http', 'google.com', None)),
+        ('http://google.com?foo=http://bar:42/baz', ('http', 'google.com', None)),
+        ('http://google.com#foo=http://bar:42/baz', ('http', 'google.com', None)),
 
         # IPv4
-        '173.194.35.7': ('http', '173.194.35.7', None),
-        'http://173.194.35.7': ('http', '173.194.35.7', None),
-        'http://173.194.35.7/test': ('http', '173.194.35.7', None),
-        'http://173.194.35.7:80': ('http', '173.194.35.7', 80),
-        'http://173.194.35.7:80/test': ('http', '173.194.35.7', 80),
+        ('173.194.35.7', ('http', '173.194.35.7', None)),
+        ('http://173.194.35.7', ('http', '173.194.35.7', None)),
+        ('http://173.194.35.7/test', ('http', '173.194.35.7', None)),
+        ('http://173.194.35.7:80', ('http', '173.194.35.7', 80)),
+        ('http://173.194.35.7:80/test', ('http', '173.194.35.7', 80)),
 
         # IPv6
-        '[2a00:1450:4001:c01::67]': ('http', '[2a00:1450:4001:c01::67]', None),
-        'http://[2a00:1450:4001:c01::67]': ('http', '[2a00:1450:4001:c01::67]', None),
-        'http://[2a00:1450:4001:c01::67]/test': ('http', '[2a00:1450:4001:c01::67]', None),
-        'http://[2a00:1450:4001:c01::67]:80': ('http', '[2a00:1450:4001:c01::67]', 80),
-        'http://[2a00:1450:4001:c01::67]:80/test': ('http', '[2a00:1450:4001:c01::67]', 80),
+        ('[2a00:1450:4001:c01::67]', ('http', '[2a00:1450:4001:c01::67]', None)),
+        ('http://[2a00:1450:4001:c01::67]', ('http', '[2a00:1450:4001:c01::67]', None)),
+        ('http://[2a00:1450:4001:c01::67]/test', ('http', '[2a00:1450:4001:c01::67]', None)),
+        ('http://[2a00:1450:4001:c01::67]:80', ('http', '[2a00:1450:4001:c01::67]', 80)),
+        ('http://[2a00:1450:4001:c01::67]:80/test', ('http', '[2a00:1450:4001:c01::67]', 80)),
 
         # More IPv6 from http://www.ietf.org/rfc/rfc2732.txt
-        'http://[fedc:ba98:7654:3210:fedc:ba98:7654:3210]:8000/index.html': (
-            'http', '[fedc:ba98:7654:3210:fedc:ba98:7654:3210]', 8000),
-        'http://[1080:0:0:0:8:800:200c:417a]/index.html': (
-            'http', '[1080:0:0:0:8:800:200c:417a]', None),
-        'http://[3ffe:2a00:100:7031::1]': ('http', '[3ffe:2a00:100:7031::1]', None),
-        'http://[1080::8:800:200c:417a]/foo': ('http', '[1080::8:800:200c:417a]', None),
-        'http://[::192.9.5.5]/ipng': ('http', '[::192.9.5.5]', None),
-        'http://[::ffff:129.144.52.38]:42/index.html': ('http', '[::ffff:129.144.52.38]', 42),
-        'http://[2010:836b:4179::836b:4179]': ('http', '[2010:836b:4179::836b:4179]', None),
+        ('http://[fedc:ba98:7654:3210:fedc:ba98:7654:3210]:8000/index.html', (
+            'http', '[fedc:ba98:7654:3210:fedc:ba98:7654:3210]', 8000)),
+        ('http://[1080:0:0:0:8:800:200c:417a]/index.html', (
+            'http', '[1080:0:0:0:8:800:200c:417a]', None)),
+        ('http://[3ffe:2a00:100:7031::1]', ('http', '[3ffe:2a00:100:7031::1]', None)),
+        ('http://[1080::8:800:200c:417a]/foo', ('http', '[1080::8:800:200c:417a]', None)),
+        ('http://[::192.9.5.5]/ipng', ('http', '[::192.9.5.5]', None)),
+        ('http://[::ffff:129.144.52.38]:42/index.html', ('http', '[::ffff:129.144.52.38]', 42)),
+        ('http://[2010:836b:4179::836b:4179]', ('http', '[2010:836b:4179::836b:4179]', None)),
 
         # Hosts
-        'HTTP://GOOGLE.COM/mail/': ('http', 'google.com', None),
-        'GOogle.COM/mail': ('http', 'google.com', None),
-        'HTTP://GoOgLe.CoM:8000/mail/': ('http', 'google.com', 8000),
-        'HTTP://user:password@EXAMPLE.COM:1234': ('http', 'example.com', 1234),
-        '173.194.35.7': ('http', '173.194.35.7', None),
-        'HTTP://173.194.35.7': ('http', '173.194.35.7', None),
-        'HTTP://[2a00:1450:4001:c01::67]:80/test': ('http', '[2a00:1450:4001:c01::67]', 80),
-        'HTTP://[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]:8000/index.html': (
-            'http', '[fedc:ba98:7654:3210:fedc:ba98:7654:3210]', 8000),
-        'HTTPS://[1080:0:0:0:8:800:200c:417A]/index.html': (
-            'https', '[1080:0:0:0:8:800:200c:417a]', None),
-        'abOut://eXamPlE.com?info=1': ('about', 'eXamPlE.com', None),
-        'http+UNIX://%2fvar%2frun%2fSOCKET/path': (
-            'http+unix', '%2fvar%2frun%2fSOCKET', None),
-    }
+        ('HTTP://GOOGLE.COM/mail/', ('http', 'google.com', None)),
+        ('GOogle.COM/mail', ('http', 'google.com', None)),
+        ('HTTP://GoOgLe.CoM:8000/mail/', ('http', 'google.com', 8000)),
+        ('HTTP://user:password@EXAMPLE.COM:1234', ('http', 'example.com', 1234)),
+        ('173.194.35.7', ('http', '173.194.35.7', None)),
+        ('HTTP://173.194.35.7', ('http', '173.194.35.7', None)),
+        ('HTTP://[2a00:1450:4001:c01::67]:80/test', ('http', '[2a00:1450:4001:c01::67]', 80)),
+        ('HTTP://[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]:8000/index.html', (
+            'http', '[fedc:ba98:7654:3210:fedc:ba98:7654:3210]', 8000)),
+        ('HTTPS://[1080:0:0:0:8:800:200c:417A]/index.html', (
+            'https', '[1080:0:0:0:8:800:200c:417a]', None)),
+        ('abOut://eXamPlE.com?info=1', ('about', 'eXamPlE.com', None)),
+        ('http+UNIX://%2fvar%2frun%2fSOCKET/path', (
+            'http+unix', '%2fvar%2frun%2fSOCKET', None)),
+    ]
 
-    @pytest.mark.parametrize('url, expected_host', url_host_map.items())
+    @pytest.mark.parametrize('url, expected_host', url_host_map)
     def test_get_host(self, url, expected_host):
         returned_host = get_host(url)
         assert returned_host == expected_host
@@ -173,19 +173,19 @@ class TestUtil(object):
         ('http://@', Url('http', host=None, auth=''))
     ]
 
-    non_round_tripping_parse_url_host_map = {
+    non_round_tripping_parse_url_host_map = [
         # Path/query/fragment
-        '?': Url(path='', query=''),
-        '#': Url(path='', fragment=''),
+        ('?', Url(path='', query='')),
+        ('#', Url(path='', fragment='')),
 
         # Empty Port
-        'http://google.com:': Url('http', host='google.com'),
-        'http://google.com:/': Url('http', host='google.com', path='/'),
-    }
+        ('http://google.com:', Url('http', host='google.com')),
+        ('http://google.com:/', Url('http', host='google.com', path='/')),
+    ]
 
     @pytest.mark.parametrize(
         'url, expected_Url',
-        chain(parse_url_host_map, non_round_tripping_parse_url_host_map.items())
+        chain(parse_url_host_map, non_round_tripping_parse_url_host_map)
     )
     def test_parse_url(self, url, expected_Url):
         returned_Url = parse_url(url)
@@ -203,31 +203,31 @@ class TestUtil(object):
         U = Url('http', host='google.com')
         assert str(U) == U.url
 
-    request_uri_map = {
-        'http://google.com/mail': '/mail',
-        'http://google.com/mail/': '/mail/',
-        'http://google.com/': '/',
-        'http://google.com': '/',
-        '': '/',
-        '/': '/',
-        '?': '/?',
-        '#': '/',
-        '/foo?bar=baz': '/foo?bar=baz',
-    }
+    request_uri_map = [
+        ('http://google.com/mail', '/mail'),
+        ('http://google.com/mail/', '/mail/'),
+        ('http://google.com/', '/'),
+        ('http://google.com', '/'),
+        ('', '/'),
+        ('/', '/'),
+        ('?', '/?'),
+        ('#', '/'),
+        ('/foo?bar=baz', '/foo?bar=baz'),
+    ]
 
-    @pytest.mark.parametrize('url, expected_request_uri', request_uri_map.items())
+    @pytest.mark.parametrize('url, expected_request_uri', request_uri_map)
     def test_request_uri(self, url, expected_request_uri):
         returned_url = parse_url(url)
         assert returned_url.request_uri == expected_request_uri
 
-    url_netloc_map = {
-        'http://google.com/mail': 'google.com',
-        'http://google.com:80/mail': 'google.com:80',
-        'google.com/foobar': 'google.com',
-        'google.com:12345': 'google.com:12345',
-    }
+    url_netloc_map = [
+        ('http://google.com/mail', 'google.com'),
+        ('http://google.com:80/mail', 'google.com:80'),
+        ('google.com/foobar', 'google.com'),
+        ('google.com:12345', 'google.com:12345'),
+    ]
 
-    @pytest.mark.parametrize('url, expected_netloc', url_netloc_map.items())
+    @pytest.mark.parametrize('url, expected_netloc', url_netloc_map)
     def test_netloc(self, url, expected_netloc):
         assert parse_url(url).netloc == expected_netloc
 
@@ -293,13 +293,13 @@ class TestUtil(object):
         with pytest.raises(UnrewindableBodyError):
             rewind_body(BadSeek(), body_pos=2)
 
-    @pytest.mark.parametrize('input, expected', {
-        ('abcd', 'b'): ('a', 'cd', 'b'),
-        ('abcd', 'cb'): ('a', 'cd', 'b'),
-        ('abcd', ''): ('abcd', '', None),
-        ('abcd', 'a'): ('', 'bcd', 'a'),
-        ('abcd', 'ab'): ('', 'bcd', 'a'),
-    }.items())
+    @pytest.mark.parametrize('input, expected', [
+        (('abcd', 'b'),  ('a', 'cd', 'b')),
+        (('abcd', 'cb'), ('a', 'cd', 'b')),
+        (('abcd', ''),   ('abcd', '', None)),
+        (('abcd', 'a'),  ('', 'bcd', 'a')),
+        (('abcd', 'ab'), ('', 'bcd', 'a')),
+    ])
     def test_split_first(self, input, expected):
         output = split_first(*input)
         assert output == expected
