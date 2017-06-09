@@ -184,16 +184,16 @@ class TestUtil(object):
     ]
 
     @pytest.mark.parametrize(
-        'url, expected_Url',
+        'url, expected_url',
         chain(parse_url_host_map, non_round_tripping_parse_url_host_map)
     )
-    def test_parse_url(self, url, expected_Url):
-        returned_Url = parse_url(url)
-        assert returned_Url == expected_Url
+    def test_parse_url(self, url, expected_url):
+        returned_url = parse_url(url)
+        assert returned_url == expected_url
 
-    @pytest.mark.parametrize('url, expected_Url', parse_url_host_map)
-    def test_unparse_url(self, url, expected_Url):
-        assert url == expected_Url.url
+    @pytest.mark.parametrize('url, expected_url', parse_url_host_map)
+    def test_unparse_url(self, url, expected_url):
+        assert url == expected_url.url
 
     def test_parse_url_invalid_IPv6(self):
         with pytest.raises(ValueError):
