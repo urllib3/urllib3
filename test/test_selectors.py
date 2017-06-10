@@ -708,6 +708,34 @@ class TestUniqueSelectScenarios(BaseSelectorTestCase):
         selector = self.make_selector()
         self.assertIsInstance(selector, selectors.SelectSelector)
 
+    def test_syscall_wrapper_select_timeout(self):
+        # This test is to make sure that if our select call times out
+        # we correctly raise an OSError.
+
+        our_timeout = 0.1
+
+        def bad_select(*args, **kwargs):
+            # We only need to sleep slightly longer than our timeout
+            time.sleep(our_timeout + 0.2)
+            raise OSError(errno.EINTR, "Interrupted system call")
+
+        # Now replace `select.select`.
+        patch_select_module(self, select=bad_select)
+
+        # Make sure that the select raises the correct OSError
+        try:
+            selector = self.make_selector()
+            # Selecting on empty lists on Windows is skipped, so we add
+            # nonsense to the readers so the test will run.
+            selector._readers.add(None)
+            result = selector.select(timeout=our_timeout)
+        except OSError as e:
+            self.assertEqual(e.errno, errno.ETIMEDOUT)
+        except Exception as e:
+            self.fail("Raised incorrect exception: " + repr(e))
+        else:
+            self.fail("select() didn't raise OSError, got: " + repr(result))
+
     @skipUnlessHasENOSYS
     def test_select_module_defines_does_not_implement_poll(self):
         # This test is to make sure that if a platform defines
