@@ -72,7 +72,26 @@ else:
         """ Wrapper function for syscalls that could fail due to EINTR.
         All functions should be retried if there is time left in the timeout
         in accordance with PEP 475. """
-        timeout = kwargs.get("timeout", None)
+        # FIXME: We are not checking (testing) that select call args
+        #        are being passed to us as (rlist, wlist, xlist[, timeout])
+        #        Currently we're sometimes being passed (rlist, wlist, timeout)
+        #        (Other times it's being passed in kwargs, which should work fine)
+
+        # timeout may be positional or a keyword argument
+        if "timeout" in kwargs:
+            timeout = kwargs["timeout"]
+        elif len(args) > 2:
+            # FIXME: Is this true for the other syscalls we wrap?
+            #        Answer: no - select is the only one with a timeout
+            #        (poll, epoll, and kqueue do not have timeouts)
+            #        therefore our true test should be to see if the func
+            #        we're being passed is select.select, and only then
+            #        determine positionally the timeout
+            timeout = args[2]
+        else:
+            timeout = None
+
+        # Based on the timeout, determine call expiry time
         if timeout is None:
             expires = None
             recalc_timeout = False
@@ -84,7 +103,7 @@ else:
                 expires = monotonic() + timeout
 
         args = list(args)
-        if recalc_timeout and "timeout" not in kwargs:
+        if recalc_timeout and timeout is None:
             raise ValueError(
                 "Timeout must be in args or kwargs to be recalculated")
 
@@ -99,7 +118,7 @@ else:
             except (OSError, IOError, select.error) as e:
                 # select.error wasn't a subclass of OSError in the past.
                 errcode = None
-                if hasattr(e, "errno"):
+                if hasattr(e, "errno") and e.errno is not None:
                     errcode = e.errno
                 elif hasattr(e, "args"):
                     errcode = e.args[0]
@@ -112,10 +131,15 @@ else:
                     if expires is not None:
                         current_time = monotonic()
                         if current_time > expires:
-                            raise OSError(errno.ETIMEDOUT)
+                            raise OSError(errno.ETIMEDOUT, "Connection timed out")
                         if recalc_timeout:
-                            if "timeout" in kwargs:
-                                kwargs["timeout"] = expires - current_time
+                            # FIXME: we're now not updating the timeout argument in kwargs
+                            #        (We never updated it in args)
+                            #        Note that we're not currently testing to see if
+                            #        a passed-in timeout is reaching the select.select
+                            #        (I strongly suspect it is not in some cases)
+                            if timeout is not None:
+                                timeout = expires - current_time
                     continue
                 if errcode:
                     raise SelectorError(errcode)
