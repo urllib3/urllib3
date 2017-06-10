@@ -72,24 +72,13 @@ else:
         """ Wrapper function for syscalls that could fail due to EINTR.
         All functions should be retried if there is time left in the timeout
         in accordance with PEP 475. """
-        # FIXME: We are not checking (testing) that select call args
-        #        are being passed to us as (rlist, wlist, xlist[, timeout])
-        #        Currently we're sometimes being passed (rlist, wlist, timeout)
-        #        (Other times it's being passed in kwargs, which should work fine)
 
-        # timeout may be positional or a keyword argument
-        if "timeout" in kwargs:
-            timeout = kwargs["timeout"]
-        elif len(args) > 2:
-            # FIXME: Is this true for the other syscalls we wrap?
-            #        Answer: no - select is the only one with a timeout
-            #        (poll, epoll, and kqueue do not have timeouts)
-            #        therefore our true test should be to see if the func
-            #        we're being passed is select.select, and only then
-            #        determine positionally the timeout
-            timeout = args[2]
-        else:
-            timeout = None
+        if recalc_timeout and "timeout" not in kwargs:
+            raise ValueError(
+                "Timeout must be in kwargs to be recalculated")
+
+        # timeout for recalcultion must be a keyword argument
+        timeout = kwargs.get("timeout", None)
 
         # Based on the timeout, determine call expiry time
         if timeout is None:
@@ -103,9 +92,6 @@ else:
                 expires = monotonic() + timeout
 
         args = list(args)
-        if recalc_timeout and timeout is None:
-            raise ValueError(
-                "Timeout must be in args or kwargs to be recalculated")
 
         result = _SYSCALL_SENTINEL
         while result is _SYSCALL_SENTINEL:
@@ -133,13 +119,7 @@ else:
                         if current_time > expires:
                             raise OSError(errno.ETIMEDOUT, "Connection timed out")
                         if recalc_timeout:
-                            # FIXME: we're now not updating the timeout argument in kwargs
-                            #        (We never updated it in args)
-                            #        Note that we're not currently testing to see if
-                            #        a passed-in timeout is reaching the select.select
-                            #        (I strongly suspect it is not in some cases)
-                            if timeout is not None:
-                                timeout = expires - current_time
+                            kwargs["timeout"] = expires - current_time
                     continue
                 if errcode:
                     raise SelectorError(errcode)
@@ -341,7 +321,7 @@ if hasattr(select, "select"):
             timeout = None if timeout is None else max(timeout, 0.0)
             ready = []
             r, w, _ = _syscall_wrapper(self._select, True, self._readers,
-                                       self._writers, timeout)
+                                       self._writers, timeout=timeout)
             r = set(r)
             w = set(w)
             for fd in r | w:
@@ -534,7 +514,7 @@ if hasattr(select, "kqueue"):
             ready_fds = {}
 
             kevent_list = _syscall_wrapper(self._kqueue.control, True,
-                                           None, max_events, timeout)
+                                           None, max_events, timeout=timeout)
 
             for kevent in kevent_list:
                 fd = kevent.ident
