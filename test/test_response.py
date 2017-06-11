@@ -184,6 +184,7 @@ class TestResponse(unittest.TestCase):
         sock = socket.socket()
         self.addCleanup(sock.close)
         hlr = httplib.HTTPResponse(sock)
+        self.addCleanup(hlr.close)
         resp2 = HTTPResponse(hlr, preload_content=False)
         self.assertEqual(resp2.closed, False)
         resp2.close()
@@ -203,6 +204,7 @@ class TestResponse(unittest.TestCase):
         sock = socket.socket()
         self.addCleanup(sock.close)
         hlr = httplib.HTTPResponse(sock)
+        self.addCleanup(hlr.close)
         hlr.fp = BytesIO(b'foo')
         hlr.chunked = 0
         hlr.length = 3
