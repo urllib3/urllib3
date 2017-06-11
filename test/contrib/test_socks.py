@@ -666,6 +666,7 @@ class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
                         b'Content-Length: 0\r\n'
                         b'\r\n')
             tls.close()
+            sock.close()
 
         self._start_server(request_handler)
         proxy_url = "socks5h://%s:%s" % (self.host, self.port)
