@@ -184,11 +184,14 @@ class TestResponse(object):
 
         # Try closing with an `httplib.HTTPResponse`, because it has an
         # `isclosed` method.
-        with httplib.HTTPResponse(sock) as hlr:
+        try:
+            hlr = httplib.HTTPResponse(sock)
             resp2 = HTTPResponse(hlr, preload_content=False)
             assert not resp2.closed
             resp2.close()
             assert resp2.closed
+        finally:
+            hlr.close()
 
         # also try when only data is present.
         resp3 = HTTPResponse('foodata')
