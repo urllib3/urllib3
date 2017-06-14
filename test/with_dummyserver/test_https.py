@@ -472,6 +472,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         fingerprint = '92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A'
 
         conn = VerifiedHTTPSConnection(self.host, self.port)
+        self.addCleanup(conn.close)
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA,
