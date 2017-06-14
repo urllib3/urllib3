@@ -206,7 +206,8 @@ class TestResponse(object):
             resp3.fileno()
 
     def test_io_closed_consistently(self, sock):
-        with httplib.HTTPResponse(sock) as hlr:
+        try:
+            hlr = httplib.HTTPResponse(sock)
             hlr.fp = BytesIO(b'foo')
             hlr.chunked = 0
             hlr.length = 3
@@ -218,6 +219,8 @@ class TestResponse(object):
                 assert resp.closed
                 assert resp._fp.isclosed()
                 assert is_fp_closed(resp._fp)
+        finally:
+            hlr.close()
 
     def test_io_bufferedreader(self):
         fp = BytesIO(b'foo')
