@@ -612,7 +612,7 @@ class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
     def test_wait_for_write_multiple_socket(self):
         wr, wr2 = self.make_socketpair()
         result = wait.wait_for_write([wr, wr2], timeout=SHORT_SELECT)
-        assert [wr, wr2] == result
+        assert sorted([wr, wr2]) == sorted(result)
 
     def test_wait_for_write_empty(self):
         assert [] == wait.wait_for_write([], timeout=SHORT_SELECT)
