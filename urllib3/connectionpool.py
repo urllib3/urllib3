@@ -396,7 +396,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         try:
             assert_header_parsing(httplib_response.msg)
-        except HeaderParsingError as hpe:  # Platform-specific: Python 3
+        except (HeaderParsingError, TypeError) as hpe:  # Platform-specific: Python 3
             log.warning(
                 'Failed to parse headers (url=%s): %s',
                 self._absolute_url(url), hpe, exc_info=True)
