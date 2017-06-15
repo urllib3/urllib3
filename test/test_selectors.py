@@ -708,6 +708,7 @@ class TestUniqueSelectScenarios(BaseSelectorTestCase):
         selector = self.make_selector()
         self.assertIsInstance(selector, selectors.SelectSelector)
 
+    @skipUnless(sys.version_info < (3, 5), "We only have a custom timeout on older Python versions")
     def test_syscall_wrapper_select_timeout(self):
         # This test is to make sure that if our select call times out
         # we correctly raise an OSError.
