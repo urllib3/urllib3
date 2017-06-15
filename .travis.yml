@@ -14,7 +14,7 @@ notifications:
   email: false
 env:
   global:
-    - GAE_PYTHONPATH=${HOME}/.cache/google_appengine
+    - GAE_SDK_PATH=${HOME}/.cache/google_appengine
     - PYTHONWARNINGS=always::DeprecationWarning
   matrix:
     - TOXENV=flake8-py3
