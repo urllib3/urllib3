@@ -91,8 +91,6 @@ else:
             else:
                 expires = monotonic() + timeout
 
-        args = list(args)
-
         result = _SYSCALL_SENTINEL
         while result is _SYSCALL_SENTINEL:
             try:
