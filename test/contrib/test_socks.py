@@ -255,6 +255,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         self._start_server(request_handler)
         proxy_url = "socks5://%s:%s" % (self.host, self.port)
         pm = socks.SOCKSProxyManager(proxy_url)
+        self.addCleanup(pm.clear)
         response = pm.request('GET', 'http://localhost')
 
         self.assertEqual(response.status, 200)
@@ -511,6 +512,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         self._start_server(request_handler)
         proxy_url = "socks4://%s:%s" % (self.host, self.port)
         pm = socks.SOCKSProxyManager(proxy_url)
+        self.addCleanup(pm.clear)
         response = pm.request('GET', 'http://localhost')
 
         self.assertEqual(response.status, 200)
@@ -664,6 +666,7 @@ class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
                         b'Content-Length: 0\r\n'
                         b'\r\n')
             tls.close()
+            sock.close()
 
         self._start_server(request_handler)
         proxy_url = "socks5h://%s:%s" % (self.host, self.port)
