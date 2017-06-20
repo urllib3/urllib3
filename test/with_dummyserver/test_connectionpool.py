@@ -991,7 +991,6 @@ class TestRetryPoolSize(HTTPDummyServerTestCase):
     def setUp(self):
         retries = Retry(
             total=3,
-            backoff_factor=0.01,
             raise_on_status=False,
             status_forcelist=[404],
         )
