@@ -1009,7 +1009,7 @@ class TestRedirectPoolSize(HTTPDummyServerTestCase):
             total=3,
             raise_on_status=False,
             status_forcelist=[404],
-            redirect = True,
+            redirect=True,
         )
         self.pool = HTTPConnectionPool(self.host, self.port, maxsize=10,
                                        retries=retries, block=True)
