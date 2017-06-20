@@ -911,6 +911,51 @@ class TestProxyManager(SocketDummyServerTestCase):
         r = conn.urlopen('GET', url, retries=0)
         self.assertEqual(r.status, 200)
 
+    def test_connect_ipv6_addr(self):
+        ipv6_addr = '2001:4998:c:a06::2:4008'
+
+        def echo_socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+            s = buf.decode('utf-8')
+
+            if s.startswith('CONNECT [%s]:443' % (ipv6_addr,)):
+                sock.send(b'HTTP/1.1 200 Connection Established\r\n\r\n')
+                ssl_sock = ssl.wrap_socket(sock,
+                                           server_side=True,
+                                           keyfile=DEFAULT_CERTS['keyfile'],
+                                           certfile=DEFAULT_CERTS['certfile'])
+                buf = b''
+                while not buf.endswith(b'\r\n\r\n'):
+                    buf += ssl_sock.recv(65536)
+
+                ssl_sock.send(b'HTTP/1.1 200 OK\r\n'
+                              b'Content-Type: text/plain\r\n'
+                              b'Content-Length: 2\r\n'
+                              b'Connection: close\r\n'
+                              b'\r\n'
+                              b'Hi')
+                ssl_sock.close()
+            else:
+                sock.close()
+
+        self._start_server(echo_socket_handler)
+        base_url = 'http://%s:%d' % (self.host, self.port)
+
+        proxy = proxy_from_url(base_url)
+        self.addCleanup(proxy.clear)
+
+        url = 'https://[{0}]'.format(ipv6_addr)
+        conn = proxy.connection_from_url(url)
+        try:
+            r = conn.urlopen('GET', url, retries=0)
+            self.assertEqual(r.status, 200)
+        except MaxRetryError:
+            self.fail('Invalid IPv6 format in HTTP CONNECT request')
+
 
 class TestSSL(SocketDummyServerTestCase):
 

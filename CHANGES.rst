@@ -4,6 +4,9 @@ Changes
 dev (master)
 ------------
 
+* Fixed missing brackets in ``HTTP CONNECT`` when connecting to IPv6 address via
+  IPv6 proxy. (Issue #1222)
+
 * Made the connection pool retry on ``SSLError``.  The original ``SSLError``
   is available on ``MaxRetryError.reason``. (Issue #1112)
 
