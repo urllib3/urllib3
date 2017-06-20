@@ -667,8 +667,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                 **response_kw)
 
         def drain_and_release_conn(response):
-            response.read()
-            response.release_conn()
+            try:
+                # discard any remaining response body, the connection will be
+                # released back to the pool once the entire response is read
+                response.read()
+            except (TimeoutError, HTTPException, SocketError, ProtocolError,
+                    BaseSSLError, SSLError) as e:
+                pass
 
         # Handle redirect?
         redirect_location = redirect and response.get_redirect_location()
