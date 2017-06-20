@@ -1005,7 +1005,13 @@ class TestRetryPoolSize(HTTPDummyServerTestCase):
 
 class TestRedirectPoolSize(HTTPDummyServerTestCase):
     def setUp(self):
-        self.pool = HTTPConnectionPool(self.host, self.port, maxsize=10, retries=5, block=True)
+        retries = Retry(
+            total=3,
+            raise_on_status=False,
+            status_forcelist=[404],
+        )
+        self.pool = HTTPConnectionPool(self.host, self.port, maxsize=10,
+                                       retries=retries, block=True)
         self.addCleanup(self.pool.close)
 
     def test_pool_size_redirect(self):
