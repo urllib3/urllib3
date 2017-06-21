@@ -990,7 +990,7 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
 class TestRetryPoolSize(HTTPDummyServerTestCase):
     def setUp(self):
         retries = Retry(
-            total=3,
+            total=1,
             raise_on_status=False,
             status_forcelist=[404],
         )
@@ -1006,7 +1006,7 @@ class TestRetryPoolSize(HTTPDummyServerTestCase):
 class TestRedirectPoolSize(HTTPDummyServerTestCase):
     def setUp(self):
         retries = Retry(
-            total=3,
+            total=1,
             raise_on_status=False,
             status_forcelist=[404],
             redirect=True,
