@@ -1399,7 +1399,7 @@ class TestRetryPoolSizeDrainFail(SocketDummyServerTestCase):
 
     def test_pool_size_retry_drain_fail(self):
         def socket_handler(listener):
-            for _ in xrange(2):
+            for _ in range(2):
                 sock = listener.accept()[0]
                 while not sock.recv(65536).endswith(b'\r\n\r\n'):
                     pass
