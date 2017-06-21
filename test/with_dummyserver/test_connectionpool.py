@@ -1002,33 +1002,6 @@ class TestRetryPoolSize(HTTPDummyServerTestCase):
         self.pool.urlopen('GET', '/not_found', preload_content=False)
         self.assertEquals(self.pool.num_connections, 1)
 
-class TestRetryPoolSizeDrainFail(SocketDummyServerTestCase):
-
-    def test_pool_size_retry_drain_fail(self):
-        def socket_handler(listener):
-            while 1:
-                sock = listener.accept()[0]
-                while not sock.recv(65536).endswith(b'\r\n\r\n'):
-                    pass
-
-                # send a response with an invalid content length -- this causes
-                # a ProtocolError to raise when trying to drain the connection
-                sock.send(b'HTTP/1.1 404 NOT FOUND\r\nContent-Type: text/plain\r\nConnection: keep-alive\r\nContent-Length: 1000\r\n\r\n')
-                sock.close()
-
-        self._start_server(socket_handler)
-        retries = Retry(
-            total=3,
-            raise_on_status=False,
-            status_forcelist=[404],
-        )
-        pool = HTTPConnectionPool(self.host, self.port, maxsize=10,
-                                       retries=retries, block=True)
-        self.addCleanup(pool.close)
-
-        pool.urlopen('GET', '/not_found', preload_content=False)
-        self.assertEquals(pool.num_connections, 1)
-
 class TestRedirectPoolSize(HTTPDummyServerTestCase):
     def setUp(self):
         retries = Retry(
