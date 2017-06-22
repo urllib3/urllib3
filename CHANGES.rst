@@ -7,6 +7,9 @@ dev (master)
 * Made the connection pool retry on ``SSLError``.  The original ``SSLError``
   is available on ``MaxRetryError.reason``. (Issue #1112)
 
+* Drain and release connection before recursing on retry/redirect.  Fixes
+  deadlocks with a blocking connectionpool. (Issue #1167)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

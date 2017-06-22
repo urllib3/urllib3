@@ -165,6 +165,9 @@ class TestingApp(RequestHandler):
         headers = [('Location', target)]
         return Response(status=status, headers=headers)
 
+    def not_found(self, request):
+        return Response('Not found', status='404 Not Found')
+
     def multi_redirect(self, request):
         "Performs a redirect chain based on ``redirect_codes``"
         codes = request.params.get('redirect_codes', '200').decode('utf-8')

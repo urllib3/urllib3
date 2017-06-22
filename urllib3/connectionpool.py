@@ -666,6 +666,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                 release_conn=release_conn, body_pos=body_pos,
                                 **response_kw)
 
+        def drain_and_release_conn(response):
+            try:
+                # discard any remaining response body, the connection will be
+                # released back to the pool once the entire response is read
+                response.read()
+            except (TimeoutError, HTTPException, SocketError, ProtocolError,
+                    BaseSSLError, SSLError) as e:
+                pass
+
         # Handle redirect?
         redirect_location = redirect and response.get_redirect_location()
         if redirect_location:
@@ -676,11 +685,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 retries = retries.increment(method, url, response=response, _pool=self)
             except MaxRetryError:
                 if retries.raise_on_redirect:
-                    # Release the connection for this response, since we're not
-                    # returning it to be released manually.
-                    response.release_conn()
+                    # Drain and release the connection for this response, since
+                    # we're not returning it to be released manually.
+                    drain_and_release_conn(response)
                     raise
                 return response
+
+            # drain and return the connection to the pool before recursing
+            drain_and_release_conn(response)
 
             retries.sleep_for_retry(response)
             log.debug("Redirecting %s -> %s", url, redirect_location)
@@ -699,11 +711,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 retries = retries.increment(method, url, response=response, _pool=self)
             except MaxRetryError:
                 if retries.raise_on_status:
-                    # Release the connection for this response, since we're not
-                    # returning it to be released manually.
-                    response.release_conn()
+                    # Drain and release the connection for this response, since
+                    # we're not returning it to be released manually.
+                    drain_and_release_conn(response)
                     raise
                 return response
+
+            # drain and return the connection to the pool before recursing
+            drain_and_release_conn(response)
+
             retries.sleep(response)
             log.debug("Retry: %s", url)
             return self.urlopen(
