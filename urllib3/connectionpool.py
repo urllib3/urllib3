@@ -69,6 +69,7 @@ class ConnectionPool(object):
             raise LocationValueError("No host specified.")
 
         self.host = _ipv6_host(host).lower()
+        self._proxy_host = host.lower()
         self.port = port
 
     def __str__(self):
@@ -808,9 +809,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             set_tunnel = conn._set_tunnel
 
         if sys.version_info <= (2, 6, 4) and not self.proxy_headers:  # Python 2.6.4 and older
-            set_tunnel(self.host, self.port)
+            set_tunnel(self._proxy_host, self.port)
         else:
-            set_tunnel(self.host, self.port, self.proxy_headers)
+            set_tunnel(self._proxy_host, self.port, self.proxy_headers)
 
         conn.connect()
 
