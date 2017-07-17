@@ -418,7 +418,7 @@ class PyOpenSSLContext(object):
             self._ctx.load_verify_locations(BytesIO(cadata))
 
     def load_cert_chain(self, certfile, keyfile=None, password=None):
-        self._ctx.use_certificate_file(certfile)
+        self._ctx.use_certificate_chain_file(certfile)
         if password is not None:
             self._ctx.set_passwd_cb(lambda max_length, prompt_twice, userdata: password)
         self._ctx.use_privatekey_file(keyfile or certfile)

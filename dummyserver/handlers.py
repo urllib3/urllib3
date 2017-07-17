@@ -106,6 +106,12 @@ class TestingApp(RequestHandler):
         "Render simple message"
         return Response("Dummy server!")
 
+    def certificate(self, request):
+        """Return the requester's certificate."""
+        cert = request.get_ssl_certificate()
+        serial = cert['serialNumber'].strip() if cert is not None else None
+        return Response(str(serial))
+
     def source_address(self, request):
         """Return the requester's IP address."""
         return Response(request.remote_ip)
