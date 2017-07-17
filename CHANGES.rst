@@ -13,6 +13,8 @@ dev (master)
 * Drain and release connection before recursing on retry/redirect.  Fixes
   deadlocks with a blocking connectionpool. (Issue #1167)
 
+* Fixed compatibility for cookiejar. (Issue #1229)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
