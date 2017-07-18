@@ -9,6 +9,8 @@ from dummyserver.testcase import (
         HTTPDummyServerTestCase, HTTPSDummyServerTestCase)
 
 import urllib3
+from urllib3 import disable_warnings
+from urllib3.exceptions import InsecureRequestWarning
 
 
 class TestHTTPWithoutSSL(HTTPDummyServerTestCase, TestWithoutSSL):
@@ -21,6 +23,7 @@ class TestHTTPWithoutSSL(HTTPDummyServerTestCase, TestWithoutSSL):
 
 class TestHTTPSWithoutSSL(HTTPSDummyServerTestCase, TestWithoutSSL):
     def test_simple(self):
+        disable_warnings(InsecureRequestWarning)
         pool = urllib3.HTTPSConnectionPool(self.host, self.port)
         self.addCleanup(pool.close)
         try:
