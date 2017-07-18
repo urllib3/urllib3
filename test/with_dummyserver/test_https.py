@@ -24,7 +24,7 @@ from test import (
     requires_network,
     TARPIT_HOST,
 )
-from urllib3 import HTTPSConnectionPool
+from urllib3 import disable_warnings, HTTPSConnectionPool
 from urllib3.connection import (
     VerifiedHTTPSConnection,
     UnverifiedHTTPSConnection,
@@ -37,6 +37,7 @@ from urllib3.exceptions import (
     SystemTimeWarning,
     InsecurePlatformWarning,
     MaxRetryError,
+    SubjectAltNameWarning,
 )
 from urllib3.packages import six
 from urllib3.util.timeout import Timeout
@@ -59,10 +60,12 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.addCleanup(self._pool.close)
 
     def test_simple(self):
+        disable_warnings(InsecureRequestWarning)
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
     def test_set_ssl_version_to_tlsv1(self):
+        disable_warnings(InsecureRequestWarning)
         self._pool.ssl_version = ssl.PROTOCOL_TLSv1
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
@@ -386,6 +389,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @requires_network
     def test_https_timeout(self):
+        disable_warnings(InsecureRequestWarning)
+
         timeout = Timeout(connect=0.001)
         https_pool = HTTPSConnectionPool(TARPIT_HOST, self.port,
                                          timeout=timeout, retries=False,
@@ -416,6 +421,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def test_tunnel(self):
         """ test the _tunnel behavior """
+        disable_warnings(InsecureRequestWarning)
         timeout = Timeout(total=None)
         https_pool = HTTPSConnectionPool(self.host, self.port, timeout=timeout,
                                          cert_reqs='CERT_NONE')
@@ -469,6 +475,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                           timeout=Timeout(total=None, connect=0.001))
 
     def test_enhanced_ssl_connection(self):
+        disable_warnings(InsecureRequestWarning)
+
         fingerprint = '92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A'
 
         conn = VerifiedHTTPSConnection(self.host, self.port)
@@ -575,6 +583,8 @@ class TestHTTPS_IPv6Addr(IPV6HTTPSDummyServerTestCase):
 
     def test_strip_square_brackets_before_validating(self):
         """Test that the fix for #760 works."""
+        disable_warnings(SubjectAltNameWarning)
+
         if not HAS_IPV6:
             raise SkipTest("Only runs on IPv6 systems")
         https_pool = HTTPSConnectionPool('[::1]', self.port,
