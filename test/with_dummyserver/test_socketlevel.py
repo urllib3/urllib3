@@ -1470,4 +1470,4 @@ class TestRetryPoolSizeDrainFail(SocketDummyServerTestCase):
         self.addCleanup(pool.close)
 
         pool.urlopen('GET', '/not_found', preload_content=False)
-        self.assertEquals(pool.num_connections, 1)
+        self.assertEqual(pool.num_connections, 1)
