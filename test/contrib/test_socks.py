@@ -1,10 +1,14 @@
 import threading
 import socket
+import sys
 
 from urllib3 import disable_warnings
 from urllib3.contrib import socks
 from urllib3.exceptions import (
-    ConnectTimeoutError, InsecureRequestWarning, NewConnectionError,
+    ConnectTimeoutError,
+    InsecurePlatformWarning,
+    InsecureRequestWarning,
+    NewConnectionError,
 )
 
 from dummyserver.server import DEFAULT_CERTS, NoIPv6Warning
@@ -668,6 +672,8 @@ class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
     def test_basic_request(self):
         disable_warnings(InsecureRequestWarning)
         disable_warnings(NoIPv6Warning)
+        if sys.version_info < (2, 7):
+            disable_warnings(InsecurePlatformWarning)
 
         if not HAS_SSL:
             raise SkipTest("No TLS available")

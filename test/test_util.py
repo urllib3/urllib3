@@ -4,6 +4,7 @@ import logging
 import io
 import ssl
 import socket
+import sys
 from itertools import chain
 
 from mock import patch, Mock
@@ -454,6 +455,8 @@ class TestUtil(object):
             is_fp_closed(NotReallyAFile())
 
     def test_ssl_wrap_socket_loads_the_cert_chain(self):
+        if sys.version_info < (2, 7):
+            disable_warnings(SNIMissingWarning)
         socket = object()
         mock_context = Mock()
         ssl_wrap_socket(ssl_context=mock_context, sock=socket,
