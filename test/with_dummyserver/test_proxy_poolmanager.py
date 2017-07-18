@@ -9,10 +9,16 @@ from dummyserver.server import (
     DEFAULT_CA, DEFAULT_CA_BAD, get_unreachable_address)
 from .. import TARPIT_HOST, requires_network
 
+from urllib3 import disable_warnings
 from urllib3._collections import HTTPHeaderDict
 from urllib3.poolmanager import proxy_from_url, ProxyManager
 from urllib3.exceptions import (
-    MaxRetryError, SSLError, ProxyError, ConnectTimeoutError)
+    ConnectTimeoutError,
+    InsecureRequestWarning,
+    MaxRetryError,
+    ProxyError,
+    SSLError,
+)
 from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
 
 
@@ -28,6 +34,8 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.proxy_url = 'http://%s:%d' % (self.proxy_host, self.proxy_port)
 
     def test_basic_proxy(self):
+        disable_warnings(InsecureRequestWarning)
+
         http = proxy_from_url(self.proxy_url)
         self.addCleanup(http.clear)
 
@@ -66,6 +74,8 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             self.assertEqual(type(e.reason), ProxyError)
 
     def test_oldapi(self):
+        disable_warnings(InsecureRequestWarning)
+
         http = ProxyManager(connection_from_url(self.proxy_url))
         self.addCleanup(http.clear)
 
@@ -94,6 +104,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                               ca_certs=DEFAULT_CA)
         https_pool = http._new_pool('https', self.https_host,
                                     self.https_port)
+        self.addCleanup(https_pool.close)
 
         conn = https_pool._new_conn()
         self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
@@ -146,6 +157,8 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertNotEqual(r._pool.host, self.http_host_alt)
 
     def test_cross_protocol_redirect(self):
+        disable_warnings(InsecureRequestWarning)
+
         http = proxy_from_url(self.proxy_url)
         self.addCleanup(http.clear)
 
@@ -165,6 +178,8 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertEqual(r._pool.host, self.https_host)
 
     def test_headers(self):
+        disable_warnings(InsecureRequestWarning)
+
         http = proxy_from_url(self.proxy_url, headers={'Foo': 'bar'},
                               proxy_headers={'Hickory': 'dickory'})
         self.addCleanup(http.clear)
@@ -254,6 +269,8 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertEqual(returned_headers.get('Baz'), 'quux')
 
     def test_proxy_pooling(self):
+        disable_warnings(InsecureRequestWarning)
+
         http = proxy_from_url(self.proxy_url)
         self.addCleanup(http.clear)
 
@@ -320,6 +337,8 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_scheme_host_case_insensitive(self):
         """Assert that upper-case schemes and hosts are normalized."""
+        disable_warnings(InsecureRequestWarning)
+
         http = proxy_from_url(self.proxy_url.upper())
         self.addCleanup(http.clear)
 
@@ -342,6 +361,8 @@ class TestIPv6HTTPProxyManager(IPv6HTTPDummyProxyTestCase):
         self.proxy_url = 'http://[%s]:%d' % (self.proxy_host, self.proxy_port)
 
     def test_basic_ipv6_proxy(self):
+        disable_warnings(InsecureRequestWarning)
+
         http = proxy_from_url(self.proxy_url)
         self.addCleanup(http.clear)
 
