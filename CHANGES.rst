@@ -15,6 +15,8 @@ dev (master)
 
 * Fixed compatibility for cookiejar. (Issue #1229)
 
+* pyopenssl: Use vendored version of ``six``.
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
