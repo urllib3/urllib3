@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-import sys
+import pytest
 
 from urllib3.connectionpool import (
     connection_from_url,
@@ -31,170 +31,147 @@ from ssl import SSLError as BaseSSLError
 
 from dummyserver.server import DEFAULT_CA
 
-if sys.version_info >= (2, 7):
-    import unittest
-else:
-    import unittest2 as unittest
 
-
-class TestConnectionPool(unittest.TestCase):
+class TestConnectionPool(object):
     """
     Tests in this suite should exercise the ConnectionPool functionality
     without actually making any network requests or connections.
     """
-    def test_same_host(self):
-        same_host = [
-            ('http://google.com/', '/'),
-            ('http://google.com/', 'http://google.com/'),
-            ('http://google.com/', 'http://google.com'),
-            ('http://google.com/', 'http://google.com/abra/cadabra'),
-            ('http://google.com:42/', 'http://google.com:42/abracadabra'),
-            # Test comparison using default ports
-            ('http://google.com:80/', 'http://google.com/abracadabra'),
-            ('http://google.com/', 'http://google.com:80/abracadabra'),
-            ('https://google.com:443/', 'https://google.com/abracadabra'),
-            ('https://google.com/', 'https://google.com:443/abracadabra'),
-            ('http://[2607:f8b0:4005:805::200e%25eth0]/',
-             'http://[2607:f8b0:4005:805::200e%eth0]/'),
-            ('https://[2607:f8b0:4005:805::200e%25eth0]:443/',
-             'https://[2607:f8b0:4005:805::200e%eth0]:443/'),
-            ('http://[::1]/', 'http://[::1]'),
-            ('http://[2001:558:fc00:200:f816:3eff:fef9:b954%lo]/',
-             'http://[2001:558:fc00:200:f816:3eff:fef9:b954%25lo]')
-        ]
+    @pytest.mark.parametrize('a, b', [
+        ('http://google.com/', '/'),
+        ('http://google.com/', 'http://google.com/'),
+        ('http://google.com/', 'http://google.com'),
+        ('http://google.com/', 'http://google.com/abra/cadabra'),
+        ('http://google.com:42/', 'http://google.com:42/abracadabra'),
+        # Test comparison using default ports
+        ('http://google.com:80/', 'http://google.com/abracadabra'),
+        ('http://google.com/', 'http://google.com:80/abracadabra'),
+        ('https://google.com:443/', 'https://google.com/abracadabra'),
+        ('https://google.com/', 'https://google.com:443/abracadabra'),
+        ('http://[2607:f8b0:4005:805::200e%25eth0]/',
+         'http://[2607:f8b0:4005:805::200e%eth0]/'),
+        ('https://[2607:f8b0:4005:805::200e%25eth0]:443/',
+         'https://[2607:f8b0:4005:805::200e%eth0]:443/'),
+        ('http://[::1]/', 'http://[::1]'),
+        ('http://[2001:558:fc00:200:f816:3eff:fef9:b954%lo]/',
+         'http://[2001:558:fc00:200:f816:3eff:fef9:b954%25lo]')
+    ])
+    def test_same_host(self, a, b):
+        with connection_from_url(a) as c:
+            assert c.is_same_host(b)
 
-        for a, b in same_host:
-            c = connection_from_url(a)
-            self.addCleanup(c.close)
-            self.assertTrue(c.is_same_host(b), "%s =? %s" % (a, b))
+    @pytest.mark.parametrize('a, b', [
+        ('https://google.com/', 'http://google.com/'),
+        ('http://google.com/', 'https://google.com/'),
+        ('http://yahoo.com/', 'http://google.com/'),
+        ('http://google.com:42', 'https://google.com/abracadabra'),
+        ('http://google.com', 'https://google.net/'),
+        # Test comparison with default ports
+        ('http://google.com:42', 'http://google.com'),
+        ('https://google.com:42', 'https://google.com'),
+        ('http://google.com:443', 'http://google.com'),
+        ('https://google.com:80', 'https://google.com'),
+        ('http://google.com:443', 'https://google.com'),
+        ('https://google.com:80', 'http://google.com'),
+        ('https://google.com:443', 'http://google.com'),
+        ('http://google.com:80', 'https://google.com'),
+        # Zone identifiers are unique connection end points and should
+        # never be equivalent.
+        ('http://[dead::beef]', 'https://[dead::beef%en5]/'),
+    ])
+    def test_not_same_host(self, a, b):
+        with connection_from_url(a) as c:
+            assert not c.is_same_host(b)
 
-        not_same_host = [
-            ('https://google.com/', 'http://google.com/'),
-            ('http://google.com/', 'https://google.com/'),
-            ('http://yahoo.com/', 'http://google.com/'),
-            ('http://google.com:42', 'https://google.com/abracadabra'),
-            ('http://google.com', 'https://google.net/'),
-            # Test comparison with default ports
-            ('http://google.com:42', 'http://google.com'),
-            ('https://google.com:42', 'https://google.com'),
-            ('http://google.com:443', 'http://google.com'),
-            ('https://google.com:80', 'https://google.com'),
-            ('http://google.com:443', 'https://google.com'),
-            ('https://google.com:80', 'http://google.com'),
-            ('https://google.com:443', 'http://google.com'),
-            ('http://google.com:80', 'https://google.com'),
-            # Zone identifiers are unique connection end points and should
-            # never be equivalent.
-            ('http://[dead::beef]', 'https://[dead::beef%en5]/'),
-        ]
+        with connection_from_url(b) as c:
+            assert not c.is_same_host(a)
 
-        for a, b in not_same_host:
-            c = connection_from_url(a)
-            self.addCleanup(c.close)
-            self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
-            c = connection_from_url(b)
-            self.addCleanup(c.close)
-            self.assertFalse(c.is_same_host(a), "%s =? %s" % (b, a))
-
-    def test_same_host_no_port(self):
+    @pytest.mark.parametrize('a, b', [
+        ('google.com', '/'),
+        ('google.com', 'http://google.com/'),
+        ('google.com', 'http://google.com'),
+        ('google.com', 'http://google.com/abra/cadabra'),
+        # Test comparison using default ports
+        ('google.com', 'http://google.com:80/abracadabra'),
+    ])
+    def test_same_host_no_port_http(self, a, b):
         # This test was introduced in #801 to deal with the fact that urllib3
         # never initializes ConnectionPool objects with port=None.
-        same_host_http = [
-            ('google.com', '/'),
-            ('google.com', 'http://google.com/'),
-            ('google.com', 'http://google.com'),
-            ('google.com', 'http://google.com/abra/cadabra'),
-            # Test comparison using default ports
-            ('google.com', 'http://google.com:80/abracadabra'),
-        ]
-        same_host_https = [
-            ('google.com', '/'),
-            ('google.com', 'https://google.com/'),
-            ('google.com', 'https://google.com'),
-            ('google.com', 'https://google.com/abra/cadabra'),
-            # Test comparison using default ports
-            ('google.com', 'https://google.com:443/abracadabra'),
-        ]
+        with HTTPConnectionPool(a) as c:
+            assert c.is_same_host(b)
 
-        for a, b in same_host_http:
-            c = HTTPConnectionPool(a)
-            self.addCleanup(c.close)
-            self.assertTrue(c.is_same_host(b), "%s =? %s" % (a, b))
-        for a, b in same_host_https:
-            c = HTTPSConnectionPool(a)
-            self.addCleanup(c.close)
-            self.assertTrue(c.is_same_host(b), "%s =? %s" % (a, b))
+    @pytest.mark.parametrize('a, b', [
+        ('google.com', '/'),
+        ('google.com', 'https://google.com/'),
+        ('google.com', 'https://google.com'),
+        ('google.com', 'https://google.com/abra/cadabra'),
+        # Test comparison using default ports
+        ('google.com', 'https://google.com:443/abracadabra'),
+    ])
+    def test_same_host_no_port_https(self, a, b):
+        # This test was introduced in #801 to deal with the fact that urllib3
+        # never initializes ConnectionPool objects with port=None.
+        with HTTPSConnectionPool(a) as c:
+            assert c.is_same_host(b)
 
-        not_same_host_http = [
-            ('google.com', 'https://google.com/'),
-            ('yahoo.com', 'http://google.com/'),
-            ('google.com', 'https://google.net/'),
-        ]
-        not_same_host_https = [
-            ('google.com', 'http://google.com/'),
-            ('yahoo.com', 'https://google.com/'),
-            ('google.com', 'https://google.net/'),
-        ]
+    @pytest.mark.parametrize('a, b', [
+        ('google.com', 'https://google.com/'),
+        ('yahoo.com', 'http://google.com/'),
+        ('google.com', 'https://google.net/'),
+    ])
+    def test_not_same_host_no_port_http(self, a, b):
+        with HTTPConnectionPool(a) as c:
+            assert not c.is_same_host(b)
 
-        for a, b in not_same_host_http:
-            c = HTTPConnectionPool(a)
-            self.addCleanup(c.close)
-            self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
-            c = HTTPConnectionPool(b)
-            self.addCleanup(c.close)
-            self.assertFalse(c.is_same_host(a), "%s =? %s" % (b, a))
-        for a, b in not_same_host_https:
-            c = HTTPSConnectionPool(a)
-            self.addCleanup(c.close)
-            self.assertFalse(c.is_same_host(b), "%s =? %s" % (a, b))
-            c = HTTPSConnectionPool(b)
-            self.addCleanup(c.close)
-            self.assertFalse(c.is_same_host(a), "%s =? %s" % (b, a))
+        with HTTPConnectionPool(b) as c:
+            assert not c.is_same_host(a)
+
+    @pytest.mark.parametrize('a, b', [
+        ('google.com', 'http://google.com/'),
+        ('yahoo.com', 'https://google.com/'),
+        ('google.com', 'https://google.net/'),
+    ])
+    def test_not_same_host_no_port_https(self, a, b):
+        with HTTPSConnectionPool(a) as c:
+            assert not c.is_same_host(b)
+
+        with HTTPSConnectionPool(b) as c:
+            assert not c.is_same_host(a)
 
     def test_max_connections(self):
-        pool = HTTPConnectionPool(host='localhost', maxsize=1, block=True)
-        self.addCleanup(pool.close)
-
-        pool._get_conn(timeout=0.01)
-
-        try:
+        with HTTPConnectionPool(host='localhost', maxsize=1, block=True) as pool:
             pool._get_conn(timeout=0.01)
-            self.fail("Managed to get a connection without EmptyPoolError")
-        except EmptyPoolError:
-            pass
 
-        try:
-            pool.request('GET', '/', pool_timeout=0.01)
-            self.fail("Managed to get a connection without EmptyPoolError")
-        except EmptyPoolError:
-            pass
+            with pytest.raises(EmptyPoolError):
+                pool._get_conn(timeout=0.01)
 
-        self.assertEqual(pool.num_connections, 1)
+            with pytest.raises(EmptyPoolError):
+                pool.request('GET', '/', pool_timeout=0.01)
+
+            assert pool.num_connections == 1
 
     def test_pool_edgecases(self):
-        pool = HTTPConnectionPool(host='localhost', maxsize=1, block=False)
-        self.addCleanup(pool.close)
+        with HTTPConnectionPool(host='localhost', maxsize=1, block=False) as pool:
+            conn1 = pool._get_conn()
+            conn2 = pool._get_conn()  # New because block=False
 
-        conn1 = pool._get_conn()
-        conn2 = pool._get_conn()  # New because block=False
+            pool._put_conn(conn1)
+            pool._put_conn(conn2)  # Should be discarded
 
-        pool._put_conn(conn1)
-        pool._put_conn(conn2)  # Should be discarded
+            assert conn1 == pool._get_conn()
+            assert conn2 != pool._get_conn()
 
-        self.assertEqual(conn1, pool._get_conn())
-        self.assertNotEqual(conn2, pool._get_conn())
-
-        self.assertEqual(pool.num_connections, 3)
+            assert pool.num_connections == 3
 
     def test_exception_str(self):
-        self.assertEqual(
-            str(EmptyPoolError(HTTPConnectionPool(host='localhost'), "Test.")),
+        assert (
+            str(EmptyPoolError(HTTPConnectionPool(host='localhost'), "Test.")) ==
             "HTTPConnectionPool(host='localhost', port=None): Test.")
 
     def test_retry_exception_str(self):
-        self.assertEqual(
+        assert (
             str(MaxRetryError(
-                HTTPConnectionPool(host='localhost'), "Test.", None)),
+                HTTPConnectionPool(host='localhost'), "Test.", None)) ==
             "HTTPConnectionPool(host='localhost', port=None): "
             "Max retries exceeded with url: Test. (Caused by None)")
 
@@ -202,47 +179,47 @@ class TestConnectionPool(unittest.TestCase):
 
         # using err.__class__ here, as socket.error is an alias for OSError
         # since Py3.3 and gets printed as this
-        self.assertEqual(
+        assert (
             str(MaxRetryError(
-                HTTPConnectionPool(host='localhost'), "Test.", err)),
+                HTTPConnectionPool(host='localhost'), "Test.", err)) ==
             "HTTPConnectionPool(host='localhost', port=None): "
             "Max retries exceeded with url: Test. "
             "(Caused by %r)" % err)
 
     def test_pool_size(self):
         POOL_SIZE = 1
-        pool = HTTPConnectionPool(host='localhost', maxsize=POOL_SIZE, block=True)
-        self.addCleanup(pool.close)
+        with HTTPConnectionPool(host='localhost', maxsize=POOL_SIZE, block=True) as pool:
 
-        def _raise(ex):
-            raise ex()
+            def _raise(ex):
+                raise ex()
 
-        def _test(exception, expect):
-            pool._make_request = lambda *args, **kwargs: _raise(exception)
-            self.assertRaises(expect, pool.request, 'GET', '/')
+            def _test(exception, expect, reason=None):
+                pool._make_request = lambda *args, **kwargs: _raise(exception)
+                with pytest.raises(expect) as excinfo:
+                    pool.request('GET', '/')
+                if reason is not None:
+                    assert isinstance(excinfo.value.reason, reason)
+                assert pool.pool.qsize() == POOL_SIZE
 
-            self.assertEqual(pool.pool.qsize(), POOL_SIZE)
+            # Make sure that all of the exceptions return the connection
+            # to the pool
+            _test(Empty, EmptyPoolError)
+            _test(BaseSSLError, MaxRetryError, SSLError)
+            _test(CertificateError, MaxRetryError, SSLError)
 
-        # Make sure that all of the exceptions return the connection to the pool
-        _test(Empty, EmptyPoolError)
-        _test(BaseSSLError, SSLError)
-        _test(CertificateError, SSLError)
-
-        # The pool should never be empty, and with these two exceptions being raised,
-        # a retry will be triggered, but that retry will fail, eventually raising
-        # MaxRetryError, not EmptyPoolError
-        # See: https://github.com/shazow/urllib3/issues/76
-        pool._make_request = lambda *args, **kwargs: _raise(HTTPException)
-        self.assertRaises(MaxRetryError, pool.request,
-                          'GET', '/', retries=1, pool_timeout=0.01)
-        self.assertEqual(pool.pool.qsize(), POOL_SIZE)
+            # The pool should never be empty, and with these two exceptions
+            # being raised, a retry will be triggered, but that retry will
+            # fail, eventually raising MaxRetryError, not EmptyPoolError
+            # See: https://github.com/shazow/urllib3/issues/76
+            pool._make_request = lambda *args, **kwargs: _raise(HTTPException)
+            with pytest.raises(MaxRetryError):
+                pool.request('GET', '/', retries=1, pool_timeout=0.01)
+            assert pool.pool.qsize() == POOL_SIZE
 
     def test_assert_same_host(self):
-        c = connection_from_url('http://google.com:80')
-        self.addCleanup(c.close)
-
-        self.assertRaises(HostChangedError, c.request,
-                          'GET', 'http://yahoo.com:80', assert_same_host=True)
+        with connection_from_url('http://google.com:80') as c:
+            with pytest.raises(HostChangedError):
+                c.request('GET', 'http://yahoo.com:80', assert_same_host=True)
 
     def test_pool_close(self):
         pool = connection_from_url('http://google.com:80')
@@ -257,33 +234,36 @@ class TestConnectionPool(unittest.TestCase):
         old_pool_queue = pool.pool
 
         pool.close()
-        self.assertEqual(pool.pool, None)
+        assert pool.pool is None
 
-        self.assertRaises(ClosedPoolError, pool._get_conn)
+        with pytest.raises(ClosedPoolError):
+            pool._get_conn()
 
         pool._put_conn(conn3)
 
-        self.assertRaises(ClosedPoolError, pool._get_conn)
+        with pytest.raises(ClosedPoolError):
+            pool._get_conn()
 
-        self.assertRaises(Empty, old_pool_queue.get, block=False)
+        with pytest.raises(Empty):
+            old_pool_queue.get(block=False)
 
     def test_pool_timeouts(self):
-        pool = HTTPConnectionPool(host='localhost')
-        self.addCleanup(pool.close)
-        conn = pool._new_conn()
-        self.assertEqual(conn.__class__, HTTPConnection)
-        self.assertEqual(pool.timeout.__class__, Timeout)
-        self.assertEqual(pool.timeout._read, Timeout.DEFAULT_TIMEOUT)
-        self.assertEqual(pool.timeout._connect, Timeout.DEFAULT_TIMEOUT)
-        self.assertEqual(pool.timeout.total, None)
+        with HTTPConnectionPool(host='localhost') as pool:
+            conn = pool._new_conn()
+            assert conn.__class__ == HTTPConnection
+            assert pool.timeout.__class__ == Timeout
+            assert pool.timeout._read == Timeout.DEFAULT_TIMEOUT
+            assert pool.timeout._connect == Timeout.DEFAULT_TIMEOUT
+            assert pool.timeout.total is None
 
-        pool = HTTPConnectionPool(host='localhost', timeout=3)
-        self.assertEqual(pool.timeout._read, 3)
-        self.assertEqual(pool.timeout._connect, 3)
-        self.assertEqual(pool.timeout.total, None)
+            pool = HTTPConnectionPool(host='localhost', timeout=3)
+            assert pool.timeout._read == 3
+            assert pool.timeout._connect == 3
+            assert pool.timeout.total is None
 
     def test_no_host(self):
-        self.assertRaises(LocationValueError, HTTPConnectionPool, None)
+        with pytest.raises(LocationValueError):
+            HTTPConnectionPool(None)
 
     def test_contextmanager(self):
         with connection_from_url('http://google.com:80') as pool:
@@ -296,24 +276,24 @@ class TestConnectionPool(unittest.TestCase):
 
             old_pool_queue = pool.pool
 
-        self.assertEqual(pool.pool, None)
-        self.assertRaises(ClosedPoolError, pool._get_conn)
+        assert pool.pool is None
+        with pytest.raises(ClosedPoolError):
+            pool._get_conn()
 
         pool._put_conn(conn3)
-        self.assertRaises(ClosedPoolError, pool._get_conn)
-        self.assertRaises(Empty, old_pool_queue.get, block=False)
+        with pytest.raises(ClosedPoolError):
+            pool._get_conn()
+        with pytest.raises(Empty):
+            old_pool_queue.get(block=False)
 
     def test_absolute_url(self):
-        c = connection_from_url('http://google.com:80')
-        self.addCleanup(c.close)
-        self.assertEqual(
-                'http://google.com:80/path?query=foo',
-                c._absolute_url('path?query=foo'))
+        with connection_from_url('http://google.com:80') as c:
+            assert 'http://google.com:80/path?query=foo' == c._absolute_url('path?query=foo')
 
     def test_ca_certs_default_cert_required(self):
         with connection_from_url('https://google.com:80', ca_certs=DEFAULT_CA) as pool:
             conn = pool._get_conn()
-            self.assertEqual(conn.cert_reqs, 'CERT_REQUIRED')
+            assert conn.cert_reqs == 'CERT_REQUIRED'
 
     def test_cleanup_on_extreme_connection_error(self):
         """
@@ -327,20 +307,20 @@ class TestConnectionPool(unittest.TestCase):
         def kaboom(*args, **kwargs):
             raise RealBad()
 
-        c = connection_from_url('http://localhost:80')
-        self.addCleanup(c.close)
-        c._make_request = kaboom
+        with connection_from_url('http://localhost:80') as c:
+            c._make_request = kaboom
 
-        initial_pool_size = c.pool.qsize()
+            initial_pool_size = c.pool.qsize()
 
-        try:
-            # We need to release_conn this way or we'd put it away regardless.
-            c.urlopen('GET', '/', release_conn=False)
-        except RealBad:
-            pass
+            try:
+                # We need to release_conn this way or we'd put it away
+                # regardless.
+                c.urlopen('GET', '/', release_conn=False)
+            except RealBad:
+                pass
 
-        new_pool_size = c.pool.qsize()
-        self.assertEqual(initial_pool_size, new_pool_size)
+            new_pool_size = c.pool.qsize()
+            assert initial_pool_size == new_pool_size
 
     def test_release_conn_param_is_respected_after_http_error_retry(self):
         """For successful ```urlopen(release_conn=False)```,
@@ -373,23 +353,22 @@ class TestConnectionPool(unittest.TestCase):
                 return response
 
         def _test(exception):
-            pool = HTTPConnectionPool(host='localhost', maxsize=1, block=True)
-            self.addCleanup(pool.close)
+            with HTTPConnectionPool(host='localhost', maxsize=1, block=True) as pool:
 
-            # Verify that the request succeeds after two attempts, and that the
-            # connection is left on the response object, instead of being
-            # released back into the pool.
-            pool._make_request = _raise_once_make_request_function(exception)
-            response = pool.urlopen('GET', '/', retries=1,
-                                    release_conn=False, preload_content=False,
-                                    chunked=True)
-            self.assertEqual(pool.pool.qsize(), 0)
-            self.assertEqual(pool.num_connections, 2)
-            self.assertTrue(response.connection is not None)
+                # Verify that the request succeeds after two attempts, and that the
+                # connection is left on the response object, instead of being
+                # released back into the pool.
+                pool._make_request = _raise_once_make_request_function(exception)
+                response = pool.urlopen('GET', '/', retries=1,
+                                        release_conn=False, preload_content=False,
+                                        chunked=True)
+                assert pool.pool.qsize() == 0
+                assert pool.num_connections == 2
+                assert response.connection is not None
 
-            response.release_conn()
-            self.assertEqual(pool.pool.qsize(), 1)
-            self.assertTrue(response.connection is None)
+                response.release_conn()
+                assert pool.pool.qsize() == 1
+                assert response.connection is None
 
         # Run the test case for all the retriable exceptions.
         _test(TimeoutError)
@@ -411,12 +390,7 @@ class TestConnectionPool(unittest.TestCase):
                 httplib_response.headers = httplib_response.msg = HTTPHeaderDict()
                 return httplib_response
 
-        pool = CustomConnectionPool(host='localhost', maxsize=1, block=True)
-        self.addCleanup(pool.close)
-        response = pool.request('GET', '/', retries=False, chunked=True,
-                                preload_content=False)
-        self.assertTrue(isinstance(response, CustomHTTPResponse))
-
-
-if __name__ == '__main__':
-    unittest.main()
+        with CustomConnectionPool(host='localhost', maxsize=1, block=True) as pool:
+            response = pool.request('GET', '/', retries=False, chunked=True,
+                                    preload_content=False)
+            assert isinstance(response, CustomHTTPResponse)

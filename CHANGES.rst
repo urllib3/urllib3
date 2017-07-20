@@ -1,6 +1,23 @@
 Changes
 =======
 
+1.22 (2017-07-20)
+-----------------
+
+* Fixed missing brackets in ``HTTP CONNECT`` when connecting to IPv6 address via
+  IPv6 proxy. (Issue #1222)
+
+* Made the connection pool retry on ``SSLError``.  The original ``SSLError``
+  is available on ``MaxRetryError.reason``. (Issue #1112)
+
+* Drain and release connection before recursing on retry/redirect.  Fixes
+  deadlocks with a blocking connectionpool. (Issue #1167)
+
+* Fixed compatibility for cookiejar. (Issue #1229)
+
+* pyopenssl: Use vendored version of ``six``. (Issue #1231)
+
+
 1.21.1 (2017-05-02)
 -------------------
 

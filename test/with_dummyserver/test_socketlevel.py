@@ -79,7 +79,7 @@ class TestSNI(SocketDummyServerTestCase):
         self.addCleanup(pool.close)
         try:
             pool.request('GET', '/', retries=0)
-        except SSLError:  # We are violating the protocol
+        except MaxRetryError:  # We are violating the protocol
             pass
         done_receiving.wait()
         self.assertTrue(self.host.encode('ascii') in self.buf,
@@ -220,7 +220,7 @@ class TestClientCerts(SocketDummyServerTestCase):
         self.addCleanup(pool.close)
         try:
             pool.request('GET', '/', retries=0)
-        except SSLError:
+        except MaxRetryError:
             done_receiving.set()
         else:
             done_receiving.set()
@@ -911,6 +911,51 @@ class TestProxyManager(SocketDummyServerTestCase):
         r = conn.urlopen('GET', url, retries=0)
         self.assertEqual(r.status, 200)
 
+    def test_connect_ipv6_addr(self):
+        ipv6_addr = '2001:4998:c:a06::2:4008'
+
+        def echo_socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+            s = buf.decode('utf-8')
+
+            if s.startswith('CONNECT [%s]:443' % (ipv6_addr,)):
+                sock.send(b'HTTP/1.1 200 Connection Established\r\n\r\n')
+                ssl_sock = ssl.wrap_socket(sock,
+                                           server_side=True,
+                                           keyfile=DEFAULT_CERTS['keyfile'],
+                                           certfile=DEFAULT_CERTS['certfile'])
+                buf = b''
+                while not buf.endswith(b'\r\n\r\n'):
+                    buf += ssl_sock.recv(65536)
+
+                ssl_sock.send(b'HTTP/1.1 200 OK\r\n'
+                              b'Content-Type: text/plain\r\n'
+                              b'Content-Length: 2\r\n'
+                              b'Connection: close\r\n'
+                              b'\r\n'
+                              b'Hi')
+                ssl_sock.close()
+            else:
+                sock.close()
+
+        self._start_server(echo_socket_handler)
+        base_url = 'http://%s:%d' % (self.host, self.port)
+
+        proxy = proxy_from_url(base_url)
+        self.addCleanup(proxy.clear)
+
+        url = 'https://[{0}]'.format(ipv6_addr)
+        conn = proxy.connection_from_url(url)
+        try:
+            r = conn.urlopen('GET', url, retries=0)
+            self.assertEqual(r.status, 200)
+        except MaxRetryError:
+            self.fail('Invalid IPv6 format in HTTP CONNECT request')
+
 
 class TestSSL(SocketDummyServerTestCase):
 
@@ -942,7 +987,9 @@ class TestSSL(SocketDummyServerTestCase):
         pool = HTTPSConnectionPool(self.host, self.port)
         self.addCleanup(pool.close)
 
-        self.assertRaises(SSLError, pool.request, 'GET', '/', retries=0)
+        with self.assertRaises(MaxRetryError) as cm:
+            pool.request('GET', '/', retries=0)
+        self.assertIsInstance(cm.exception.reason, SSLError)
 
     def test_ssl_read_timeout(self):
         timed_out = Event()
@@ -1010,14 +1057,62 @@ class TestSSL(SocketDummyServerTestCase):
                                        assert_fingerprint=fingerprint)
             try:
                 response = pool.urlopen('GET', '/', preload_content=False,
-                                        timeout=Timeout(connect=1, read=0.001))
+                                        timeout=Timeout(connect=1, read=0.001),
+                                        retries=0)
                 response.read()
             finally:
                 pool.close()
 
-        self.assertRaises(SSLError, request)
+        with self.assertRaises(MaxRetryError) as cm:
+            request()
+        self.assertIsInstance(cm.exception.reason, SSLError)
         # Should not hang, see https://github.com/shazow/urllib3/issues/529
-        self.assertRaises(SSLError, request)
+        self.assertRaises(MaxRetryError, request)
+
+    def test_retry_ssl_error(self):
+        def socket_handler(listener):
+            # first request, trigger an SSLError
+            sock = listener.accept()[0]
+            sock2 = sock.dup()
+            ssl_sock = ssl.wrap_socket(sock,
+                                       server_side=True,
+                                       keyfile=DEFAULT_CERTS['keyfile'],
+                                       certfile=DEFAULT_CERTS['certfile'])
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += ssl_sock.recv(65536)
+
+            # Deliberately send from the non-SSL socket to trigger an SSLError
+            sock2.send((
+                'HTTP/1.1 200 OK\r\n'
+                'Content-Type: text/plain\r\n'
+                'Content-Length: 4\r\n'
+                '\r\n'
+                'Fail').encode('utf-8'))
+            sock2.close()
+            ssl_sock.close()
+
+            # retried request
+            sock = listener.accept()[0]
+            ssl_sock = ssl.wrap_socket(sock,
+                                       server_side=True,
+                                       keyfile=DEFAULT_CERTS['keyfile'],
+                                       certfile=DEFAULT_CERTS['certfile'])
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += ssl_sock.recv(65536)
+            ssl_sock.send(b'HTTP/1.1 200 OK\r\n'
+                          b'Content-Type: text/plain\r\n'
+                          b'Content-Length: 7\r\n\r\n'
+                          b'Success')
+            ssl_sock.close()
+
+        self._start_server(socket_handler)
+
+        pool = HTTPSConnectionPool(self.host, self.port)
+        self.addCleanup(pool.close)
+        response = pool.urlopen('GET', '/', retries=1)
+        self.assertEqual(response.data, b'Success')
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):
@@ -1343,3 +1438,36 @@ class TestBadContentLength(SocketDummyServerTestCase):
         self.assertEqual(len(data), 0)
 
         done_event.set()
+
+
+class TestRetryPoolSizeDrainFail(SocketDummyServerTestCase):
+
+    def test_pool_size_retry_drain_fail(self):
+        def socket_handler(listener):
+            for _ in range(2):
+                sock = listener.accept()[0]
+                while not sock.recv(65536).endswith(b'\r\n\r\n'):
+                    pass
+
+                # send a response with an invalid content length -- this causes
+                # a ProtocolError to raise when trying to drain the connection
+                sock.send(
+                    b'HTTP/1.1 404 NOT FOUND\r\n'
+                    b'Content-Length: 1000\r\n'
+                    b'Content-Type: text/plain\r\n'
+                    b'\r\n'
+                )
+                sock.close()
+
+        self._start_server(socket_handler)
+        retries = Retry(
+            total=1,
+            raise_on_status=False,
+            status_forcelist=[404],
+        )
+        pool = HTTPConnectionPool(self.host, self.port, maxsize=10,
+                                  retries=retries, block=True)
+        self.addCleanup(pool.close)
+
+        pool.urlopen('GET', '/not_found', preload_content=False)
+        self.assertEquals(pool.num_connections, 1)
