@@ -4,6 +4,12 @@ Changes
 dev (master)
 ------------
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.22 (2017-07-20)
+-----------------
+
 * Fixed missing brackets in ``HTTP CONNECT`` when connecting to IPv6 address via
   IPv6 proxy. (Issue #1222)
 
@@ -16,8 +22,6 @@ dev (master)
 * Fixed compatibility for cookiejar. (Issue #1229)
 
 * pyopenssl: Use vendored version of ``six``. (Issue #1231)
-
-* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.21.1 (2017-05-02)
