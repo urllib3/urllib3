@@ -4,6 +4,9 @@ Changes
 dev (master)
 ------------
 
+* Put the connection back in the pool when calling stream() or read_chunked() on
+  a chunked HEAD response. (Issue #1234)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
