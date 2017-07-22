@@ -3,6 +3,7 @@ import socket
 from io import BytesIO, BufferedReader
 
 import pytest
+import mock
 
 from urllib3.response import HTTPResponse
 from urllib3.exceptions import (
@@ -605,6 +606,22 @@ class TestResponse(object):
         r.chunk_left = None
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
         assert stream == list(resp.stream())
+
+    def test_chunked_head_response(self):
+        r = httplib.HTTPResponse(MockSock, method='HEAD')
+        r.chunked = True
+        r.chunk_left = None
+        resp = HTTPResponse('',
+                            preload_content=False,
+                            headers={'transfer-encoding': 'chunked'},
+                            original_response=r)
+        assert resp.chunked is True
+
+        resp.supports_chunked_reads = lambda: True
+        resp.release_conn = mock.Mock()
+        for _ in resp.stream():
+            continue
+        resp.release_conn.assert_called_once_with()
 
     def test_get_case_insensitive_headers(self):
         headers = {'host': 'example.com'}
