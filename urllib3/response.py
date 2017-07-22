@@ -588,12 +588,12 @@ class HTTPResponse(io.IOBase):
                 "Body should be httplib.HTTPResponse like. "
                 "It should have have an fp attribute which returns raw chunks.")
 
-        # Don't bother reading the body of a HEAD request.
-        if self._original_response and is_response_to_head(self._original_response):
-            self._original_response.close()
-            return
-
         with self._error_catcher():
+            # Don't bother reading the body of a HEAD request.
+            if self._original_response and is_response_to_head(self._original_response):
+                self._original_response.close()
+                return
+
             while True:
                 self._update_chunk_length()
                 if self.chunk_left == 0:
