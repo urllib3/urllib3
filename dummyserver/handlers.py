@@ -225,7 +225,7 @@ class TestingApp(RequestHandler):
         return Response(data, headers=headers)
 
     def headers(self, request):
-        return Response(json.dumps(request.headers))
+        return Response(json.dumps(dict(request.headers)))
 
     def successful_retry(self, request):
         """ Handler which will return an error and then success
