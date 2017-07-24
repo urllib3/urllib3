@@ -16,4 +16,9 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
     export CFLAGS="-I$(brew --prefix openssl@1.1)/include"
 fi
 
+if [ -n "$JYTHON" ]; then
+    source $HOME/jenv/bin/activate
+    export CLASSPATH=$VIRTUAL_ENV/javalib/*
+fi
+
 tox

@@ -27,6 +27,9 @@ env:
 # https://github.com/travis-ci/travis-ci/issues/4794
 matrix:
   include:
+    - python: 2.7
+      env:
+        - TOXENV=jython JYTHON=org.python:jython-installer:2.7.0
     - python: 3.5
       env: TOXENV=py35
     - python: 3.6

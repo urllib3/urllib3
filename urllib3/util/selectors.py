@@ -11,6 +11,7 @@ import select
 import socket
 import sys
 import time
+import platform
 from collections import namedtuple, Mapping
 
 try:
@@ -24,6 +25,7 @@ EVENT_WRITE = (1 << 1)
 HAS_SELECT = True  # Variable that shows whether the platform has a selector.
 _SYSCALL_SENTINEL = object()  # Sentinel in case a system call returns None.
 _DEFAULT_SELECTOR = None
+_IS_JYTHON = platform.system() == 'Java'
 
 
 class SelectorError(Exception):
@@ -332,6 +334,100 @@ if hasattr(select, "select"):
                     ready.append((key, events & key.events))
             return ready
 
+    class _JythonSelectorMapping(object):
+        """ This is an implementation of _SelectorMapping that is built
+        for use specifically with Jython, which does not provide a hashable
+        value from socket.socket.fileno(). """
+        def __init__(self, selector):
+            assert isinstance(selector, JythonSelectSelector)
+            self._selector = selector
+
+        def __len__(self):
+            return len(self._selector._sockets)
+
+        def __getitem__(self, fileobj):
+            for sock, key in self._selector._sockets:
+                if sock is fileobj:
+                    return key
+            else:
+                raise KeyError("{0!r} is not registered.".format(fileobj))
+
+    class JythonSelectSelector(SelectSelector):
+        """ This is an implementation of SelectSelector that is for Jython
+        which works around that Jython's socket.socket.fileno() does not
+        return an integer fd value. All SelectorKey.fd will be equal to -1
+        and should not be used. This instead uses object id to compare fileobj
+        and will only use select.select as it's the only selector that allows
+        directly passing in socket objects rather than registering fds.
+
+        See: https://github.com/kennethreitz/requests/issues/3992
+             http://bugs.jython.org/issue1678
+             https://wiki.python.org/jython/NewSocketModule#socket.fileno.28.29_does_not_return_an_integer
+        """
+        def __init__(self):
+            super(JythonSelectSelector, self).__init__()
+
+            self._sockets = []  # Uses a list of tuples instead of dictionary.
+            self._map = _JythonSelectorMapping(self)
+            self._readers = []
+            self._writers = []
+
+        def register(self, fileobj, events, data=None):
+            for sock, _ in self._sockets:
+                if sock is fileobj:
+                    raise KeyError("{0!r} is already registered"
+                                   .format(fileobj, sock))
+
+            key = SelectorKey(fileobj, -1, events, data)
+            self._sockets.append((fileobj, key))
+
+            if events & EVENT_READ:
+                self._readers.append(fileobj)
+            if events & EVENT_WRITE:
+                self._writers.append(fileobj)
+            return key
+
+        def unregister(self, fileobj):
+            for i, (sock, key) in enumerate(self._sockets):
+                if sock is fileobj:
+                    break
+            else:
+                raise KeyError("{0!r} is not registered.".format(fileobj))
+
+            if key.events & EVENT_READ:
+                self._readers.remove(fileobj)
+            if key.events & EVENT_WRITE:
+                self._writers.remove(fileobj)
+
+            del self._sockets[i]
+            return key
+
+        def select(self, timeout=None):
+            if not len(self._readers) and not len(self._writers):
+                return []
+
+            timeout = None if timeout is None else max(timeout, 0.0)
+            ready = []
+            r, w, _ = _syscall_wrapper(self._select, True, self._readers,
+                                       self._writers, timeout)
+
+            seen = []
+            for sock in r + w:
+                if sock in seen:
+                    continue
+                seen.append(sock)
+                events = 0
+                if sock in r:
+                    events |= EVENT_READ
+                if sock in w:
+                    events |= EVENT_WRITE
+
+                for fileobj, key in self._sockets:
+                    if fileobj is sock:
+                        ready.append((key, events & key.events))
+
+            return ready
+
 
 if hasattr(select, "poll"):
     class PollSelector(BaseSelector):
@@ -568,7 +664,9 @@ def DefaultSelector():
     by eventlet, greenlet, and preserve proper behavior. """
     global _DEFAULT_SELECTOR
     if _DEFAULT_SELECTOR is None:
-        if _can_allocate('kqueue'):
+        if _IS_JYTHON:  # Platform-specific: Jython
+            _DEFAULT_SELECTOR = JythonSelectSelector
+        elif _can_allocate('kqueue'):
             _DEFAULT_SELECTOR = KqueueSelector
         elif _can_allocate('epoll'):
             _DEFAULT_SELECTOR = EpollSelector
