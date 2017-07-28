@@ -1,0 +1,2 @@
+class LoopAbort(Exception):
+    pass

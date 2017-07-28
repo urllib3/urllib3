@@ -1,0 +1,76 @@
+import trio
+
+from . import LoopAbort
+from ._util import is_readable
+
+class TrioBackend:
+    async def connect(
+            self, host, port, source_address=None, socket_options=None):
+        if source_address is not None:
+            # You can't really combine source_address= and happy eyeballs
+            # (can we get rid of source_address? or at least make it a source
+            # ip, no port?)
+            raise NotImplementedError(
+                "trio backend doesn't support setting source_address")
+
+        stream = await trio.open_tcp_stream(host, port)
+        for (level, optname, value) in socket_options:
+            stream.setsockopt(level, optname, value)
+
+        return TrioSocket(stream)
+
+# XX assumes that SSLSocket has been made robust against cancellation during
+# send_all
+class TrioSocket:
+    def __init__(self, stream):
+        self._stream = stream
+
+    async def start_tls(self, server_hostname, ssl_context):
+        wrapped = trio.ssl.SSLStream(
+            self._stream, ssl_context,
+            server_hostname=server_hostname,
+            https_compatible=True)
+        return TrioSocket(wrapped)
+
+    def getpeercert(self, binary=False):
+        return self._stream.getpeercert(binary=binary)
+
+    async def receive_some(self):
+        return await self._stream.receive_some(BUFSIZE)
+
+    async def send_and_receive_for_a_while(get_send_bytes, handle_receive_bytes):
+        async def sender():
+            while True:
+                outgoing = await get_send_bytes()
+                if outgoing is None:
+                    break
+                await self._stream.send_all(outgoing)
+
+        async def receiver():
+            while True:
+                incoming = await stream.receive_some(BUFSIZE)
+                handle_receive_bytes(incoming)
+
+        try:
+            async with trio.open_nursery() as nursery:
+                nursery.spawn(sender)
+                nursery.spawn(receiver)
+        except LoopAbort:
+            pass
+
+    def forceful_close(self):
+        self._stream.forceful_close()
+
+    def is_readable(self):
+        # This is a bit of a hack, but I can't think of a better API that trio
+        # *could* provide, since what we want to check here is such an odd
+        # thing.
+        sock_stream = self._stream
+        # Strip off SSLStream wrappings
+        while hasattr(sock_stream, "transport_stream"):
+            sock_stream = sock_stream.transport_stream
+        sock = sock_stream.socket
+        return is_readable(sock)
+        
+    def set_readable_watch_state(self, enabled):
+        pass

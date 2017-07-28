@@ -1,0 +1,126 @@
+most (all) of the I/O code is in sync_connection.py
+it's currently really nasty because non-blocking SSL I/O is intermixed with control flow
+
+I think the abstraction we want is something like
+
+#+BEGIN_SRC python
+  # The idea here is to be *just* enough primitives to make it easy to do what
+  # urllib3 needs to do
+  # and at the same time, as easy as possible to implement on different backends
+  # (initial targets: sync nonblocking, trio, twisted)
+  class AbstractBackend:
+      async def connect(self, host, port):
+          """Makes a TCP connection and then returns an opaque object
+          representing it."""
+
+  class AbstractSocket:
+      async def start_tls(self, ...):
+          """Do the tls handshake. Blocks until getpeercert ready."""
+
+      def getpeercert(self, binary=False):
+          """Like ssl module's getpeercert"""
+
+      async def receive_some(self):
+          """Block until some data is received, then return it."""
+
+      async def send_and_receive_for_a_while(get_send_bytes, handle_receive_bytes):
+          """This does concurrently:
+
+            # send loop
+            while True:
+                data = await get_send_bytes()
+                if data is None:
+                    break
+                await send_all(data)
+
+            # receive loop
+            while True:
+                data = await receive_some()
+                try:
+                    handle_receive_bytes(data)
+                except LoopAbort:
+                    cancel_send_loop()
+                    break
+
+          Here "cancel_send_loop" is a function that cancels the send loop at
+          the next cancellation point. For synchronous execution, this means the
+          next call to send_all. For asynchronous, it means that, or possibly
+          something inside get_send_bytes(), in case the user provided some
+          async byte source for a streaming upload and the backend has a concept
+          of cancellation.
+
+          Other errors should cause both loops to be cancelled, and then
+          propagate out.
+
+          """
+
+      def forceful_close(self, opaque_sock):
+          """throw away this connection immediately and release its resources"""
+
+      def is_readable(self):
+          """true if socket has been closed or has data ready to read. At the
+          transport layer, if this is HTTPS-wrapped.
+          False, otherwise.
+
+          Only guaranteed to work if set_readable_watch_state(True) has been
+          called.
+          """
+
+      def set_readable_watch_state(self, enabled):
+          """if enabled=True, start watching for is_readable.
+
+          You must set this back to False before doing anything else with this
+          socket. 
+
+          The socket starts in the enabled=False state.
+
+          This is needed for twisted support.
+          """
+
+#+END_SRC
+
+in sync mode, these are pretty straightforward using select (and at least will get the select nonsense out of the main control flow!). (except on unix we should use poll instead to avoid the maximum-FD limit.)
+
+in trio, we would need to allow cancellation of send_all on SSLStream, but then it becomes pretty straightforward
+
+and I think on twisted it's not so bad either - we keep the transport in pauseProducing mode except when we're in send_and_receive_for_a_while or receive_some
+and we track whether they have us in pauseProducing mode and whenever we're not and we're in send_and_receive_for_a_while, we repeatedly call get_send_bytes until we enter pauseProducing mode
+(also a nice thing is that if I'm reading this right you can just call .startTLS() on any twisted transport at any time, so that part's trivial. I'm not so sure how you pull out the certificate though. I mean, you call [[https://twistedmatrix.com/documents/16.1.0/api/twisted.internet.interfaces.ISSLTransport.html#getPeerCertificate][getPeerCertificate]], that part's fine, but what I mean is I'm not sure how you know when the handshake is complete. I guess wait for resumeProducing to be called, maybe? Oh, or reading through the code in twisted/protocols/tls.py:_checkHandshakeStatus, the protocol can declare that it implements IHandshakeListener and then it gets notified by having handshakeCompleted called.)
+
+error handling is probably the trickiest bit -- I guess we need some standard exceptions, and a mechanism to push any errors back from the twisted callback world into the async/await world
+
+I should add a method like send_failed() to h11.Connection, which just forcibly causes conn.our_state = h11.ERROR. the idea is that this is how you tell h11 that well, you *said* you'd send those bytes, but actually you didn't and aren't going to. this way it knows what's going on and can correctly fail any attempt to send more stuff or start_next_cycle()
+
+
+slightly alternative approach: make most of those methods on opaque_sock, and then we don't need to pass around the strategy object everywhere
+
+
+Jun 05 02:00:34 <lukasa>        Don't spike it with curio: it's cheating. ;) Spike it with Twisted.
+Jun 05 02:01:30 <njs>   my guess is that 95% of the cost of spiking it would be reworking the urllib3 code to support pluggable I/O backends, and then the backends themselves would be relatively easy
+Jun 05 02:02:04 <njs>   but yeah, sync + curio/trio + twisted/asyncio would be the 3 main classes that one would want to validate the proof-of-concept
+Jun 05 02:03:36 <njs>   would asyncio be an acceptable substitute for twisted? I am just lazy enough that I don't want to have to fight with producers/consumers (asyncio's equivalent is simpler)
+Jun 05 02:07:09 <lukasa>        njs: Yeah, sure.
+
+
+Jun 05 02:53:07 <njs>   lukasa: in the urllib3 v2 branch, urllib3.sync_connection.SyncHTTP1Connection._send_unless_readable, there's a comment saying: "Note that we only *actually* break from the loop if and when we get an actual final response header block. Prior to that point we will keep sending data." Am I reading correctly that ATM that comment is a
+lie?
+Jun 05 03:28:09 <lukasa>        njs: Yeah, that's not right
+Jun 05 03:28:38 <lukasa>        But it describes the intended behaviour
+
+
+Jun 05 03:45:48 <njs>   lukasa: do I correctly understand that the desired semantics are: try to send the whole request and then switch into response mode, except, if we get a response while the request is being sent, stop sending and switch into response mode early, and also mark the connection as must-close?
+Jun 05 03:46:07 <lukasa>        njs: Yes, correct.
+
+
+https://twistedmatrix.com/documents/current/core/howto/producers.html
+https://ashfall.github.io/blog/2012/05/29/twisted-producer-and-consumer-system/
+
+<glyph> IPushProducer is the good one. IProducer and IPullProducer are dumb historical details :-\
+
+<glyph> https://twistedmatrix.com/documents/16.4.1/api/twisted.internet.abstract.FileDescriptor.html is the superclass of just about every transport in Twisted
+
+so basically, transports implement IPushProducer and IConsumer
+so you call pauseProducing/resumeProducing when you want to stop/start reading data, and after registerProducer() then the consumer will call our pauseProducing/resumeProducing when we should stop/start sending data
+
+
+https://github.com/Lukasa/sync-async-experiment/tree/master/experiment
