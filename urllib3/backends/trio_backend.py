@@ -19,8 +19,10 @@ class TrioBackend:
 
         return TrioSocket(stream)
 
-# XX assumes that SSLSocket has been made robust against cancellation during
-# send_all
+# XX it turns out that we don't need SSLStream to be robustified against
+# cancellation, but we probably should do something to detect when the stream
+# has been broken by cancellation (e.g. a timeout) and make is_readable return
+# True so the connection won't be reused.
 class TrioSocket:
     def __init__(self, stream):
         self._stream = stream
