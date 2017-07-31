@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 from collections import Mapping, MutableMapping
+from contextlib import contextmanager
 try:
-    from threading import RLock
+    from threading import RLock, Condition
 except ImportError:  # Platform-specific: No threads available
     class RLock:
         def __enter__(self):
@@ -18,7 +19,8 @@ except ImportError:
 from .packages.six import iterkeys, itervalues, PY3
 
 
-__all__ = ['RecentlyUsedContainer', 'HTTPHeaderDict']
+__all__ = ['RecentlyUsedContainer', 'BlockingRecentlyUsedContainer',
+           'HTTPHeaderDict']
 
 
 _Null = object()
@@ -96,6 +98,129 @@ class RecentlyUsedContainer(MutableMapping):
     def keys(self):
         with self.lock:
             return list(iterkeys(self._container))
+
+
+class BlockingRecentlyUsedContainer(object):
+    """
+    Provides a thread-safe container which maintains up to ``maxsize`` keys.
+    Key access is done through acquiring leases, which have to be released
+    afterwards. Inserting keys beyond ``maxsize`` throw away old keys, but not
+    before ensuring that all leases on such keys have been released.
+
+    Note: eviction/disposal is triggered on inserting new keys, not on
+    releasing of the last lease. In the case of connection pooling, this means
+    we will maintain the connections as long as possible.
+
+    This does not expose any means to clear the pool, because it would involve
+    waiting for all leases to be released. If there are concurrent acquisition
+    of leases, the clear method may block indefinitely.
+
+    :param maxsize:
+        Maximum number of recent elements to retain.
+
+    :param dispose_func:
+        Every time an item is evicted from the container,
+        ``dispose_func(value)`` is called.  Callback which will get called
+    """
+    ContainerCls = OrderedDict
+
+    def __init__(self, maxsize=10, dispose_func=None):
+        self._maxsize = maxsize
+        self._dispose_func = dispose_func
+
+        self._container = self.ContainerCls()
+        self.lock = RLock()
+
+        self._freelist = self.ContainerCls()
+        self._nwaiters = 0
+        self._container_not_full = Condition(self.lock)
+        self._victim = None
+
+    def acquire(self, key, constructor):
+        """
+        Acquires a lease on ``key`` inside this pool, if it has already
+        existed. If it hasn't, ``constructor`` is called to generate the value
+        and it is inserted into the pool beforehand.
+
+        If the insertion is done while the pool is full, another key is
+        evicted in a FIFO order, but not before all leases on the key have been
+        released.
+
+        :param key:
+            Key to acquire lease upon.
+
+        :param constructor:
+            Function-like, used to construct the new item to lease on if it
+            hasn't existed yet.
+
+        :returns value:
+            Value associated with key, or the value created by ``constructor``
+            if no such item can be found.
+        """
+        with self.lock:
+            result = self._container.get(key, _Null)
+
+            if result is not _Null:
+                refcount, value = self._container.pop(key)
+                self._container[key] = [refcount + 1, value]
+                _ = self._freelist.pop(key, _Null)
+                return value
+            else:
+                item = constructor()
+
+                if len(self._container) < self._maxsize:
+                    self._container[key] = [1, item]
+                else:
+                    evicted_value = _Null
+                    if len(self._freelist) > 0:
+                        _, evicted_value = self._freelist.popitem(last=False)
+                    else:
+                        self._nwaiters += 1
+                        self._container_not_full.wait()
+                        _, evicted_value = self._container.pop(self._victim)
+                        self._nwaiters -= 1
+
+                    self._container[key] = [1, item]
+                    if self._dispose_func and evicted_value is not _Null:
+                        self._dispose_func(evicted_value)
+
+                return item
+
+    def release(self, key, silent=False):
+        """
+        Release the lease on ``key``.
+        If other threads are waiting for for an eviction victim, notify them.
+
+        :param key:
+            Key to release lease from
+
+        :param silent:
+            If True, may raise RuntimeError if user release more times than
+            the number of times this key is acquired.
+        """
+        with self.lock:
+            refcount, item = self._container[key]
+            refcount -= 1
+            self._container[key][0] = refcount
+
+            if refcount == 0:
+                if self._nwaiters > 0:
+                    self._victim = key
+                    self._container_not_full.notify()
+                else:
+                    # Mark key as free for future eviction
+                    self._freelist[key] = item
+            elif refcount < 0 and not silent:
+                raise RuntimeError("Release of unacquired key")
+
+    @contextmanager
+    def acquire_then_release(self, key, constructor, silent=False):
+        value = self.acquire(key, constructor)
+        try:
+            yield value
+        except Exception:
+            raise
+        self.release(key, silent)
 
 
 class HTTPHeaderDict(MutableMapping):
