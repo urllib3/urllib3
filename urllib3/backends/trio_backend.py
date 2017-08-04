@@ -40,10 +40,10 @@ class TrioSocket:
     async def receive_some(self):
         return await self._stream.receive_some(BUFSIZE)
 
-    async def send_and_receive_for_a_while(get_send_bytes, handle_receive_bytes):
+    async def send_and_receive_for_a_while(produce_bytes, consume_bytes):
         async def sender():
             while True:
-                outgoing = await get_send_bytes()
+                outgoing = await produce_bytes()
                 if outgoing is None:
                     break
                 await self._stream.send_all(outgoing)
@@ -51,7 +51,7 @@ class TrioSocket:
         async def receiver():
             while True:
                 incoming = await stream.receive_some(BUFSIZE)
-                handle_receive_bytes(incoming)
+                consume_bytes(incoming)
 
         try:
             async with trio.open_nursery() as nursery:

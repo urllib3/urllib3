@@ -173,10 +173,10 @@ class TwistedSocket:
     async def receive_some(self):
         return await self._protocol.receive_some()
 
-    async def send_and_receive_for_a_while(get_send_bytes, handle_receive_bytes):
+    async def send_and_receive_for_a_while(produce_bytes, consume_bytes):
         async def sender():
             while True:
-                outgoing = await get_send_bytes()
+                outgoing = await produce_bytes()
                 if outgoing is None:
                     break
                 await self._protocol.send_all(outgoing)
@@ -185,7 +185,7 @@ class TwistedSocket:
             while True:
                 incoming = await self._protocol.receive_some()
                 try:
-                    handle_receive_bytes(incoming)
+                    consume_bytes(incoming)
                 except LoopAbort:
                     break
 

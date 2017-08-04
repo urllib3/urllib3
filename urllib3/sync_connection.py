@@ -211,7 +211,7 @@ async def _start_http_request(self, request, state_machine, conn):
             return None
 
     h11_response = None
-    def handle_receive_bytes(data):
+    def consume_bytes(data):
         nonlocal h11_response
 
         state_machine.receive_data(data)
@@ -231,7 +231,7 @@ async def _start_http_request(self, request, state_machine, conn):
                 raise RuntimeError("Unexpected h11 event {}".format(event))
             
     await conn.send_and_receive_for_a_while(
-        next_bytes_to_send, handle_receive_bytes)
+        next_bytes_to_send, consume_bytes)
     assert h11_response is not None
 
     if send_aborted:

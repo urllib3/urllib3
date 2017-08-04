@@ -23,12 +23,12 @@ I think the abstraction we want is something like
       async def receive_some(self):
           """Block until some data is received, then return it."""
 
-      async def send_and_receive_for_a_while(get_send_bytes, handle_receive_bytes):
+      async def send_and_receive_for_a_while(produce_bytes, consume_bytes):
           """This does concurrently:
 
             # send loop
             while True:
-                data = await get_send_bytes()
+                data = await produce_bytes()
                 if data is None:
                     break
                 await send_all(data)
@@ -37,7 +37,7 @@ I think the abstraction we want is something like
             while True:
                 data = await receive_some()
                 try:
-                    handle_receive_bytes(data)
+                    consume_bytes(data)
                 except LoopAbort:
                     cancel_send_loop()
                     break
@@ -45,7 +45,7 @@ I think the abstraction we want is something like
           Here "cancel_send_loop" is a function that cancels the send loop at
           the next cancellation point. For synchronous execution, this means the
           next call to send_all. For asynchronous, it means that, or possibly
-          something inside get_send_bytes(), in case the user provided some
+          something inside produce_bytes(), in case the user provided some
           async byte source for a streaming upload and the backend has a concept
           of cancellation.
 
@@ -73,7 +73,7 @@ I think the abstraction we want is something like
           """if enabled=True, start watching for is_readable.
 
           You must set this back to False before doing anything else with this
-          socket. 
+          socket.
 
           The socket starts in the enabled=False state.
 
@@ -87,7 +87,7 @@ in sync mode, these are pretty straightforward using select (and at least will g
 in trio, we would need to allow cancellation of send_all on SSLStream, but then it becomes pretty straightforward
 
 and I think on twisted it's not so bad either - we keep the transport in pauseProducing mode except when we're in send_and_receive_for_a_while or receive_some
-and we track whether they have us in pauseProducing mode and whenever we're not and we're in send_and_receive_for_a_while, we repeatedly call get_send_bytes until we enter pauseProducing mode
+and we track whether they have us in pauseProducing mode and whenever we're not and we're in send_and_receive_for_a_while, we repeatedly call produce_bytes until we enter pauseProducing mode
 (also a nice thing is that if I'm reading this right you can just call .startTLS() on any twisted transport at any time, so that part's trivial. I'm not so sure how you pull out the certificate though. I mean, you call [[https://twistedmatrix.com/documents/16.1.0/api/twisted.internet.interfaces.ISSLTransport.html#getPeerCertificate][getPeerCertificate]], that part's fine, but what I mean is I'm not sure how you know when the handshake is complete. I guess wait for resumeProducing to be called, maybe? Oh, or reading through the code in twisted/protocols/tls.py:_checkHandshakeStatus, the protocol can declare that it implements IHandshakeListener and then it gets notified by having handshakeCompleted called.)
 
 error handling is probably the trickiest bit -- I guess we need some standard exceptions, and a mechanism to push any errors back from the twisted callback world into the async/await world

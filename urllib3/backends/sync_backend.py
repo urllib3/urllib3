@@ -72,14 +72,14 @@ class SyncSocket(object):
                 else:
                     raise
 
-    async def send_and_receive_for_a_while(get_send_bytes, handle_receive_bytes):
+    async def send_and_receive_for_a_while(produce_bytes, consume_bytes):
         outgoing_finished = False
         outgoing = b""
         try:
             while True:
                 if not outgoing_finished and not outgoing:
                     # Can exit loop here with error
-                    outgoing = memoryview(await get_send_bytes())
+                    outgoing = memoryview(await produce_bytes())
                     if outgoing is None:
                         outgoing_finished = True
 
@@ -97,7 +97,7 @@ class SyncSocket(object):
                         want_read = True
                 else:
                     # Can exit loop here with LoopAbort
-                    handle_receive_bytes(incoming)
+                    consume_bytes(incoming)
 
                 if not outgoing_finished:
                     try:
