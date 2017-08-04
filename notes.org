@@ -58,12 +58,15 @@ I think the abstraction we want is something like
           """throw away this connection immediately and release its resources"""
 
       def is_readable(self):
-          """true if socket has been closed or has data ready to read. At the
-          transport layer, if this is HTTPS-wrapped.
-          False, otherwise.
+          """True if socket has been closed or has data ready to read. False,
+          otherwise.
+
+          If this socket is TLS-wrapped, then this reports readability at the
+          ,*raw, transport* layer, *not* at the TLS layer.
 
           Only guaranteed to work if set_readable_watch_state(True) has been
           called.
+
           """
 
       def set_readable_watch_state(self, enabled):
