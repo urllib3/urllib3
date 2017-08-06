@@ -22,7 +22,6 @@ from dummyserver.server import (
 
 from .. import onlyPy3, LogRecorder
 
-from nose.plugins.skip import SkipTest
 try:
     from mimetools import Message as MimeToolMessage
 except ImportError:
@@ -32,6 +31,8 @@ from threading import Event
 import select
 import socket
 import ssl
+
+import pytest
 
 
 class TestCookies(SocketDummyServerTestCase):
@@ -60,10 +61,8 @@ class TestCookies(SocketDummyServerTestCase):
 
 class TestSNI(SocketDummyServerTestCase):
 
+    @pytest.mark.skipif(not HAS_SNI, reason='SNI-support not available')
     def test_hostname_in_first_request_packet(self):
-        if not HAS_SNI:
-            raise SkipTest('SNI-support not available')
-
         done_receiving = Event()
         self.buf = b''
 
@@ -1260,12 +1259,11 @@ class TestHeaders(SocketDummyServerTestCase):
         self.assertEqual(expected_response_headers, actual_response_headers)
 
 
+@pytest.mark.skipif(
+    issubclass(httplib.HTTPMessage, MimeToolMessage),
+    reason='Header parsing errors not available'
+)
 class TestBrokenHeaders(SocketDummyServerTestCase):
-    def setUp(self):
-        if issubclass(httplib.HTTPMessage, MimeToolMessage):
-            raise SkipTest('Header parsing errors not available')
-
-        super(TestBrokenHeaders, self).setUp()
 
     def _test_broken_header_parsing(self, headers):
         self.start_response_handler((
