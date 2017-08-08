@@ -228,7 +228,7 @@ In chronological order:
   * Stop buffering entire deflate-encoded responses.
 
 * Tuukka Mustonen <tuukka.mustonen@gmail.com>
-  * Add counter for status_forcelist retries.
+  * Add 'status' and 'other' counters.
 
 * Erik Rose <erik@mozilla.com>
   * Bugfix to pyopenssl vendoring
