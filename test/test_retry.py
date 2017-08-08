@@ -8,7 +8,7 @@ from urllib3.exceptions import (
     MaxRetryError,
     ReadTimeoutError,
     ResponseError,
-)
+    ProxyError)
 
 
 class TestRetry(object):
@@ -16,10 +16,10 @@ class TestRetry(object):
     def test_string(self):
         """ Retry string representation looks the way we expect """
         retry = Retry()
-        assert str(retry) == 'Retry(total=10, connect=None, read=None, redirect=None, status=None)'
+        assert str(retry) == 'Retry(total=10, connect=None, read=None, redirect=None, status=None, other=None)'
         for _ in range(3):
             retry = retry.increment(method='GET')
-        assert str(retry) == 'Retry(total=7, connect=None, read=None, redirect=None, status=None)'
+        assert str(retry) == 'Retry(total=7, connect=None, read=None, redirect=None, status=None, other=None)'
 
     def test_retry_both_specified(self):
         """Total can win if it's lower than the connect value"""
@@ -103,6 +103,14 @@ class TestRetry(object):
         with pytest.raises(MaxRetryError) as e:
             retry.increment(response=resp)
         assert str(e.value.reason) == ResponseError.SPECIFIC_ERROR.format(status_code=400)
+
+    def test_other_counter(self):
+        error = ProxyError()
+        retry = Retry(other=2)
+        retry = retry.increment(error=error)
+        retry = retry.increment(error=error)
+        with pytest.raises(MaxRetryError):
+            retry.increment(error=error)
 
     def test_backoff(self):
         """ Backoff is computed correctly """
