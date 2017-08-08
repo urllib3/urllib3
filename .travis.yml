@@ -20,7 +20,6 @@ env:
     - TOXENV=flake8-py3
     - TOXENV=py26
     - TOXENV=py27
-    - TOXENV=py33
     - TOXENV=py34
     - TOXENV=gae
     - TOXENV=docs
@@ -39,9 +38,6 @@ matrix:
     - language: generic
       os: osx
       env: TOXENV=py27
-    - language: generic
-      os: osx
-      env: TOXENV=py33
     - language: generic
       os: osx
       env: TOXENV=py34
