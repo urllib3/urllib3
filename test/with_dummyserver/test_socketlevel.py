@@ -1,9 +1,10 @@
 # TODO: Break this module up into pieces. Maybe group by functionality tested
 # rather than the socket level-ness of it.
 
-from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
+from urllib3 import disable_warnings, HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
 from urllib3.exceptions import (
+        InsecureRequestWarning,
         MaxRetryError,
         ProxyError,
         ReadTimeoutError,
@@ -857,6 +858,8 @@ class TestProxyManager(SocketDummyServerTestCase):
                           assert_same_host=False, retries=False)
 
     def test_connect_reconn(self):
+        disable_warnings(InsecureRequestWarning)
+
         def proxy_ssl_one(listener):
             sock = listener.accept()[0]
 
@@ -912,6 +915,8 @@ class TestProxyManager(SocketDummyServerTestCase):
         self.assertEqual(r.status, 200)
 
     def test_connect_ipv6_addr(self):
+        disable_warnings(InsecureRequestWarning)
+
         ipv6_addr = '2001:4998:c:a06::2:4008'
 
         def echo_socket_handler(listener):
@@ -960,6 +965,8 @@ class TestProxyManager(SocketDummyServerTestCase):
 class TestSSL(SocketDummyServerTestCase):
 
     def test_ssl_failure_midway_through_conn(self):
+        disable_warnings(InsecureRequestWarning)
+
         def socket_handler(listener):
             sock = listener.accept()[0]
             sock2 = sock.dup()
@@ -992,6 +999,8 @@ class TestSSL(SocketDummyServerTestCase):
         self.assertIsInstance(cm.exception.reason, SSLError)
 
     def test_ssl_read_timeout(self):
+        disable_warnings(InsecureRequestWarning)
+
         timed_out = Event()
 
         def socket_handler(listener):
@@ -1070,6 +1079,8 @@ class TestSSL(SocketDummyServerTestCase):
         self.assertRaises(MaxRetryError, request)
 
     def test_retry_ssl_error(self):
+        disable_warnings(InsecureRequestWarning)
+
         def socket_handler(listener):
             # first request, trigger an SSLError
             sock = listener.accept()[0]
@@ -1317,6 +1328,7 @@ class TestHEAD(SocketDummyServerTestCase):
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
         self.addCleanup(pool.close)
         r = pool.request('HEAD', '/', timeout=1, preload_content=False)
+        self.addCleanup(r.close)
 
         # stream will use the read_chunked method here.
         self.assertEqual([], list(r.stream()))
@@ -1470,4 +1482,4 @@ class TestRetryPoolSizeDrainFail(SocketDummyServerTestCase):
         self.addCleanup(pool.close)
 
         pool.urlopen('GET', '/not_found', preload_content=False)
-        self.assertEquals(pool.num_connections, 1)
+        self.assertEqual(pool.num_connections, 1)

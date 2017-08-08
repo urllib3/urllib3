@@ -1,10 +1,17 @@
 import threading
 import socket
+import sys
 
+from urllib3 import disable_warnings
 from urllib3.contrib import socks
-from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
+from urllib3.exceptions import (
+    ConnectTimeoutError,
+    InsecurePlatformWarning,
+    InsecureRequestWarning,
+    NewConnectionError,
+)
 
-from dummyserver.server import DEFAULT_CERTS
+from dummyserver.server import DEFAULT_CERTS, NoIPv6Warning
 from dummyserver.testcase import IPV4SocketDummyServerTestCase
 
 from nose.plugins.skip import SkipTest
@@ -199,6 +206,8 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
     Test the SOCKS proxy in SOCKS5 mode.
     """
     def test_basic_request(self):
+        disable_warnings(NoIPv6Warning)
+
         def request_handler(listener):
             sock = listener.accept()[0]
 
@@ -231,6 +240,8 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         self.assertEqual(response.headers['Server'], 'SocksTestServer')
 
     def test_local_dns(self):
+        disable_warnings(NoIPv6Warning)
+
         def request_handler(listener):
             sock = listener.accept()[0]
 
@@ -263,6 +274,8 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         self.assertEqual(response.headers['Server'], 'SocksTestServer')
 
     def test_correct_header_line(self):
+        disable_warnings(NoIPv6Warning)
+
         def request_handler(listener):
             sock = listener.accept()[0]
 
@@ -296,6 +309,8 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         self.assertEqual(response.status, 200)
 
     def test_connection_timeouts(self):
+        disable_warnings(NoIPv6Warning)
+
         event = threading.Event()
 
         def request_handler(listener):
@@ -313,6 +328,8 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         event.set()
 
     def test_connection_failure(self):
+        disable_warnings(NoIPv6Warning)
+
         event = threading.Event()
 
         def request_handler(listener):
@@ -331,6 +348,8 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         )
 
     def test_proxy_rejection(self):
+        disable_warnings(NoIPv6Warning)
+
         evt = threading.Event()
 
         def request_handler(listener):
@@ -355,6 +374,8 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         evt.set()
 
     def test_socks_with_password(self):
+        disable_warnings(NoIPv6Warning)
+
         def request_handler(listener):
             sock = listener.accept()[0]
 
@@ -391,6 +412,8 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         self.assertEqual(response.headers['Server'], 'SocksTestServer')
 
     def test_socks_with_invalid_password(self):
+        disable_warnings(NoIPv6Warning)
+
         def request_handler(listener):
             sock = listener.accept()[0]
 
@@ -413,6 +436,8 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             self.fail("Did not raise")
 
     def test_source_address_works(self):
+        disable_warnings(NoIPv6Warning)
+
         expected_port = _get_free_port(self.host)
 
         def request_handler(listener):
@@ -456,6 +481,8 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
     negotiation is done the two cases behave identically.
     """
     def test_basic_request(self):
+        disable_warnings(NoIPv6Warning)
+
         def request_handler(listener):
             sock = listener.accept()[0]
 
@@ -488,6 +515,8 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         self.assertEqual(response.data, b'')
 
     def test_local_dns(self):
+        disable_warnings(NoIPv6Warning)
+
         def request_handler(listener):
             sock = listener.accept()[0]
 
@@ -520,6 +549,8 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         self.assertEqual(response.data, b'')
 
     def test_correct_header_line(self):
+        disable_warnings(NoIPv6Warning)
+
         def request_handler(listener):
             sock = listener.accept()[0]
 
@@ -553,6 +584,8 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         self.assertEqual(response.status, 200)
 
     def test_proxy_rejection(self):
+        disable_warnings(NoIPv6Warning)
+
         evt = threading.Event()
 
         def request_handler(listener):
@@ -577,6 +610,8 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         evt.set()
 
     def test_socks4_with_username(self):
+        disable_warnings(NoIPv6Warning)
+
         def request_handler(listener):
             sock = listener.accept()[0]
 
@@ -609,6 +644,8 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         self.assertEqual(response.headers['Server'], 'SocksTestServer')
 
     def test_socks_with_invalid_username(self):
+        disable_warnings(NoIPv6Warning)
+
         def request_handler(listener):
             sock = listener.accept()[0]
 
@@ -633,6 +670,11 @@ class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
     Test that TLS behaves properly for SOCKS proxies.
     """
     def test_basic_request(self):
+        disable_warnings(InsecureRequestWarning)
+        disable_warnings(NoIPv6Warning)
+        if sys.version_info < (2, 7):
+            disable_warnings(InsecurePlatformWarning)
+
         if not HAS_SSL:
             raise SkipTest("No TLS available")
 
