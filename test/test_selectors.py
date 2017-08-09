@@ -6,7 +6,12 @@ import signal
 import sys
 import time
 import threading
-import unittest
+
+# Python 2.6 doesn't have addCleanup in unittest
+if sys.version_info < (2, 7):
+    import unittest2 as unittest
+else:
+    import unittest
 
 try:  # Python 2.x doesn't define time.perf_counter.
     from time import perf_counter as get_time
