@@ -119,8 +119,7 @@ class AlarmMixin(object):
 
 
 class TimerContext(object):
-    def __init__(self, testcase, lower=None, upper=None):
-        self.testcase = testcase
+    def __init__(self, lower=None, upper=None):
         self.lower = lower
         self.upper = upper
         self.start_time = None
@@ -138,18 +137,13 @@ class TimerContext(object):
             return
 
         if self.lower is not None:
-            self.testcase.assertGreaterEqual(total_time, self.lower * (1.0 - TOLERANCE))
+            assert total_time >= self.lower * (1.0 - TOLERANCE)
         if self.upper is not None:
-            self.testcase.assertLessEqual(total_time, self.upper * (1.0 + TOLERANCE))
-
-
-class TimerMixin(object):
-    def assertTakesTime(self, lower=None, upper=None):
-        return TimerContext(self, lower=lower, upper=upper)
+            assert total_time <= self.upper * (1.0 + TOLERANCE)
 
 
 @skipUnlessHasSelector
-class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
+class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
     """ Implements the tests that each type of selector must pass. """
 
     def make_socketpair(self):
@@ -429,13 +423,13 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         rd, wr = self.make_socketpair()
         s.register(wr, selectors.EVENT_WRITE)
 
-        with self.assertTakesTime(upper=SHORT_SELECT):
+        with TimerContext(upper=SHORT_SELECT):
             self.assertEqual(1, len(s.select(timeout=None)))
 
     def test_select_timeout_ready(self):
         s, rd, wr = self.standard_setup()
 
-        with self.assertTakesTime(upper=SHORT_SELECT):
+        with TimerContext(upper=SHORT_SELECT):
             self.assertEqual(1, len(s.select(timeout=0)))
             self.assertEqual(1, len(s.select(timeout=-1)))
             self.assertEqual(1, len(s.select(timeout=0.001)))
@@ -445,10 +439,10 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         rd, wr = self.make_socketpair()
         s.register(rd, selectors.EVENT_READ)
 
-        with self.assertTakesTime(upper=SHORT_SELECT):
+        with TimerContext(upper=SHORT_SELECT):
             self.assertEqual(0, len(s.select(timeout=0)))
 
-        with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
+        with TimerContext(lower=SHORT_SELECT, upper=SHORT_SELECT):
             self.assertEqual(0, len(s.select(timeout=SHORT_SELECT)))
 
     @skipUnlessHasAlarm
@@ -459,7 +453,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 
         self.set_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
 
-        with self.assertTakesTime(upper=SHORT_SELECT):
+        with TimerContext(upper=SHORT_SELECT):
             ready = s.select(LONG_SELECT)
         self.assertEqual([(key, selectors.EVENT_READ)], ready)
 
@@ -471,7 +465,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 
         self.set_alarm(SHORT_SELECT, lambda *args: None)
 
-        with self.assertTakesTime(lower=LONG_SELECT, upper=LONG_SELECT):
+        with TimerContext(lower=LONG_SELECT, upper=LONG_SELECT):
             self.assertEqual([], s.select(LONG_SELECT))
 
     @skipUnlessHasAlarm
@@ -483,7 +477,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 
         self.set_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
 
-        with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
+        with TimerContext(lower=SHORT_SELECT, upper=SHORT_SELECT):
             self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
         self.assertEqual(rd.recv(1), b'x')
 
@@ -503,7 +497,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 
         self.set_alarm(SHORT_SELECT, first_alarm)
 
-        with self.assertTakesTime(lower=SHORT_SELECT * 2, upper=SHORT_SELECT * 2):
+        with TimerContext(lower=SHORT_SELECT * 2, upper=SHORT_SELECT * 2):
             self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
         self.assertEqual(rd.recv(1), b'x')
 
@@ -545,7 +539,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 
         self.set_alarm(SHORT_SELECT, alarm_exception)
 
-        with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
+        with TimerContext(lower=SHORT_SELECT, upper=SHORT_SELECT):
             self.assertRaises(AlarmInterrupt, s.select, LONG_SELECT)
 
     def test_fileno(self):
@@ -578,7 +572,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
         self.assertEqual(err.__str__(), "<SelectorError errno=1>")
 
 
-class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
+class BaseWaitForTestCase(unittest.TestCase, AlarmMixin):
     def make_socketpair(self):
         rd, wr = socketpair()
 
@@ -625,7 +619,7 @@ class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
 
     def test_wait_timeout(self):
         rd, wr = self.make_socketpair()
-        with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
+        with TimerContext(lower=SHORT_SELECT, upper=SHORT_SELECT):
             wait.wait_for_read([rd], timeout=SHORT_SELECT)
 
     def test_wait_io_close_is_called(self):
@@ -648,7 +642,7 @@ class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
         rd, wr = self.make_socketpair()
 
         self.set_alarm(SHORT_SELECT, lambda *args: None)
-        with self.assertTakesTime(lower=LONG_SELECT, upper=LONG_SELECT):
+        with TimerContext(lower=LONG_SELECT, upper=LONG_SELECT):
             self.assertEqual([], wait.wait_for_read(rd, timeout=LONG_SELECT))
 
     @skipUnlessHasAlarm
@@ -656,7 +650,7 @@ class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
         rd, wr = self.make_socketpair()
 
         self.set_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
-        with self.assertTakesTime(lower=SHORT_SELECT, upper=SHORT_SELECT):
+        with TimerContext(lower=SHORT_SELECT, upper=SHORT_SELECT):
             self.assertEqual([rd], wait.wait_for_read(rd, timeout=LONG_SELECT))
         self.assertEqual(rd.recv(1), b'x')
 
