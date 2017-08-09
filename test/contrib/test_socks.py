@@ -7,7 +7,7 @@ from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 from dummyserver.server import DEFAULT_CERTS
 from dummyserver.testcase import IPV4SocketDummyServerTestCase
 
-from nose.plugins.skip import SkipTest
+import pytest
 
 try:
     import ssl
@@ -632,10 +632,8 @@ class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
     """
     Test that TLS behaves properly for SOCKS proxies.
     """
+    @pytest.mark.skipif(not HAS_SSL, reason='No TLS available')
     def test_basic_request(self):
-        if not HAS_SSL:
-            raise SkipTest("No TLS available")
-
         def request_handler(listener):
             sock = listener.accept()[0]
 

@@ -56,7 +56,6 @@ setup(name='urllib3',
           # These are a less-specific subset of dev-requirements.txt, for the
           # convenience of distro package maintainers.
           'pytest',
-          'nose',
           'mock',
           'tornado',
       ],
