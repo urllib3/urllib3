@@ -7,13 +7,7 @@ import signal
 import sys
 import time
 import threading
-
-try:  # Python 2.6 unittest module doesn't have skip decorators.
-    from unittest import skipIf, skipUnless
-    import unittest
-except ImportError:
-    from unittest2 import skipIf, skipUnless
-    import unittest2 as unittest
+import unittest
 
 try:  # Python 2.x doesn't define time.perf_counter.
     from time import perf_counter as get_time
@@ -29,6 +23,8 @@ try:  # Windows doesn't support socketpair on Python 3.5<
     from socket import socketpair
 except ImportError:
     from .socketpair_helper import socketpair
+
+import pytest
 
 from urllib3.util import (
     selectors,
@@ -50,9 +46,18 @@ TRAVIS_CI = "TRAVIS" in os.environ
 APPVEYOR = "APPVEYOR" in os.environ
 
 
-skipUnlessHasSelector = skipUnless(selectors.HAS_SELECT, "Platform doesn't have a selector")
-skipUnlessHasENOSYS = skipUnless(hasattr(errno, 'ENOSYS'), "Platform doesn't have errno.ENOSYS")
-skipUnlessHasAlarm = skipUnless(hasattr(signal, 'alarm'), "Platform doesn't have signal.alarm()")
+skipUnlessHasSelector = pytest.mark.skipif(
+    not selectors.HAS_SELECT,
+    reason="Platform doesn't have a selector"
+)
+skipUnlessHasENOSYS = pytest.mark.skipif(
+    not hasattr(errno, 'ENOSYS'),
+    reason="Platform doesn't have errno.ENOSYS"
+)
+skipUnlessHasAlarm = pytest.mark.skipif(
+    not hasattr(signal, 'alarm'),
+    reason="Platform doesn't have signal.alarm()"
+)
 
 
 def patch_select_module(testcase, *keep, **replace):
@@ -305,7 +310,10 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
 
         self.assertEqual(0, len(s.get_map()))
 
-    @skipUnless(os.name == "posix", "Platform doesn't support os.dup2")
+    @pytest.mark.skipif(
+        os.name != "posix",
+        reason="Platform doesn't support os.dup2"
+    )
     def test_unregister_after_reuse_fd(self):
         s, rd, wr = self.standard_setup()
         rdfd = rd.fileno()
@@ -552,7 +560,10 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin, TimerMixin):
     # According to the psutil docs, open_files() has strange behavior
     # on Windows including giving back incorrect results so to
     # stop random failures from occurring we're skipping on Windows.
-    @skipIf(sys.platform == "win32", "psutil.Process.open_files() is unstable on Windows.")
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="psutil.Process.open_files() is unstable on Windows."
+    )
     def test_leaking_fds(self):
         proc = psutil.Process()
         before_fds = len(proc.open_files())
@@ -652,7 +663,10 @@ class BaseWaitForTestCase(unittest.TestCase, TimerMixin, AlarmMixin):
 
 class ScalableSelectorMixin(object):
     """ Mixin to test selectors that allow more fds than FD_SETSIZE """
-    @skipUnless(resource, "Could not import the resource module")
+    @pytest.mark.skipif(
+        not resource,
+        reason="Could not import the resource module"
+    )
     def test_above_fd_setsize(self):
         # A scalable implementation should have no problem with more than
         # FD_SETSIZE file descriptors. Since we don't know the value, we just
@@ -747,49 +761,73 @@ class TestUniqueSelectScenarios(BaseSelectorTestCase):
         self.assertIsInstance(selector, selectors.SelectSelector)
 
 
-@skipUnless(hasattr(selectors, "SelectSelector"), "Platform doesn't have a SelectSelector")
+@pytest.mark.skipif(
+    not hasattr(selectors, "SelectSelector"),
+    reason="Platform doesn't have a SelectSelector"
+)
 class SelectSelectorTestCase(BaseSelectorTestCase):
     def setUp(self):
         patch_select_module(self, 'select')
 
 
-@skipUnless(hasattr(selectors, "PollSelector"), "Platform doesn't have a PollSelector")
+@pytest.mark.skipif(
+    not hasattr(selectors, "PollSelector"),
+    reason="Platform doesn't have a PollSelector"
+)
 class PollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     def setUp(self):
         patch_select_module(self, 'poll')
 
 
-@skipUnless(hasattr(selectors, "EpollSelector"), "Platform doesn't have an EpollSelector")
+@pytest.mark.skipif(
+    not hasattr(selectors, "EpollSelector"),
+    reason="Platform doesn't have an EpollSelector"
+)
 class EpollSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     def setUp(self):
         patch_select_module(self, 'epoll')
 
 
-@skipUnless(hasattr(selectors, "KqueueSelector"), "Platform doesn't have a KqueueSelector")
+@pytest.mark.skipif(
+    not hasattr(selectors, "KqueueSelector"),
+    reason="Platform doesn't have a KqueueSelector"
+)
 class KqueueSelectorTestCase(BaseSelectorTestCase, ScalableSelectorMixin):
     def setUp(self):
         patch_select_module(self, 'kqueue')
 
 
-@skipUnless(hasattr(selectors, "SelectSelector"), "Platform doesn't have a SelectSelector")
+@pytest.mark.skipif(
+    not hasattr(selectors, "SelectSelector"),
+    reason="Platform doesn't have a SelectSelector"
+)
 class SelectWaitForTestCase(BaseWaitForTestCase):
     def setUp(self):
         patch_select_module(self, 'select')
 
 
-@skipUnless(hasattr(selectors, "PollSelector"), "Platform doesn't have a PollSelector")
+@pytest.mark.skipif(
+    not hasattr(selectors, "PollSelector"),
+    reason="Platform doesn't have a PollSelector"
+)
 class PollWaitForTestCase(BaseWaitForTestCase):
     def setUp(self):
         patch_select_module(self, 'poll')
 
 
-@skipUnless(hasattr(selectors, "EpollSelector"), "Platform doesn't have an EpollSelector")
+@pytest.mark.skipif(
+    not hasattr(selectors, "EpollSelector"),
+    reason="Platform doesn't have an EpollSelector"
+)
 class EpollWaitForTestCase(BaseWaitForTestCase):
     def setUp(self):
         patch_select_module(self, 'epoll')
 
 
-@skipUnless(hasattr(selectors, "KqueueSelector"), "Platform doesn't have a KqueueSelector")
+@pytest.mark.skipif(
+    not hasattr(selectors, "KqueueSelector"),
+    reason="Platform doesn't have a KqueueSelector"
+)
 class KqueueWaitForTestCase(BaseWaitForTestCase):
     def setUp(self):
         patch_select_module(self, 'kqueue')
