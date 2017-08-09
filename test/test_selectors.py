@@ -174,35 +174,37 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         rd, wr = self.make_socketpair()
 
         key = s.register(rd, selectors.EVENT_READ, "data")
-        self.assertEqual(key, s.get_key(rd))
+        assert key == s.get_key(rd)
 
         # Unknown fileobj
-        self.assertRaises(KeyError, s.get_key, 999999)
+        with pytest.raises(KeyError):
+            s.get_key(999999)
 
     def test_get_map(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
 
         keys = s.get_map()
-        self.assertFalse(keys)
-        self.assertEqual(len(keys), 0)
-        self.assertEqual(list(keys), [])
+        assert not keys
+        assert len(keys) == 0
+        assert list(keys) == []
         key = s.register(rd, selectors.EVENT_READ, "data")
-        self.assertIn(rd, keys)
-        self.assertEqual(key, keys[rd])
-        self.assertEqual(len(keys), 1)
-        self.assertEqual(list(keys), [rd.fileno()])
-        self.assertEqual(list(keys.values()), [key])
+        assert rd in keys
+        assert key == keys[rd]
+        assert len(keys) == 1
+        assert list(keys) == [rd.fileno()]
+        assert list(keys.values()) == [key]
 
         # Unknown fileobj
-        self.assertRaises(KeyError, keys.__getitem__, 999999)
+        with pytest.raises(KeyError):
+            keys[999999]
 
         # Read-only mapping
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             del keys[rd]
 
         # Doesn't define __setitem__
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             keys[rd] = key
 
     def test_register(self):
@@ -210,43 +212,50 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         rd, wr = self.make_socketpair()
 
         # Ensure that the file is not yet added.
-        self.assertEqual(0, len(s.get_map()))
-        self.assertRaises(KeyError, lambda: s.get_map()[rd.fileno()])
-        self.assertRaises(KeyError, s.get_key, rd)
-        self.assertEqual(None, s._key_from_fd(rd.fileno()))
+        assert 0 == len(s.get_map())
+        with pytest.raises(KeyError):
+            s.get_map()[rd.fileno()]
+        with pytest.raises(KeyError):
+            s.get_key(rd)
+        assert None is s._key_from_fd(rd.fileno())
 
         data = object()
         key = s.register(rd, selectors.EVENT_READ, data)
-        self.assertIsInstance(key, selectors.SelectorKey)
-        self.assertEqual(key.fileobj, rd)
-        self.assertEqual(key.fd, rd.fileno())
-        self.assertEqual(key.events, selectors.EVENT_READ)
-        self.assertIs(key.data, data)
-        self.assertEqual(1, len(s.get_map()))
+        assert isinstance(key, selectors.SelectorKey)
+        assert key.fileobj == rd
+        assert key.fd == rd.fileno()
+        assert key.events == selectors.EVENT_READ
+        assert key.data is data
+        assert 1 == len(s.get_map())
         for fd in s.get_map():
-            self.assertEqual(fd, rd.fileno())
+            assert fd == rd.fileno()
 
     def test_register_bad_event(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
 
-        self.assertRaises(ValueError, s.register, rd, 99999)
+        with pytest.raises(ValueError):
+            s.register(rd, 99999)
 
     def test_register_negative_fd(self):
         s = self.make_selector()
-        self.assertRaises(ValueError, s.register, -1, selectors.EVENT_READ)
+        with pytest.raises(ValueError):
+            s.register(-1, selectors.EVENT_READ)
 
     def test_register_invalid_fileobj(self):
         s = self.make_selector()
-        self.assertRaises(ValueError, s.register, "string", selectors.EVENT_READ)
+        with pytest.raises(KeyError):
+            s.register("string", selectors.EVENT_READ)
 
     def test_reregister_fd_same_fileobj(self):
         s, rd, wr = self.standard_setup()
-        self.assertRaises(KeyError, s.register, rd, selectors.EVENT_READ)
+        with pytest.raises(KeyError):
+            s.register(rd, selectors.EVENT_READ)
 
     def test_reregister_fd_different_fileobj(self):
         s, rd, wr = self.standard_setup()
-        self.assertRaises(KeyError, s.register, rd.fileno(), selectors.EVENT_READ)
+        with pytest.raises(KeyError):
+            s.register(rd.fileno(), selectors.EVENT_READ)
 
     def test_context_manager(self):
         s = self.make_selector()
@@ -255,23 +264,27 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         with s as sel:
             rd_key = sel.register(rd, selectors.EVENT_READ)
             wr_key = sel.register(wr, selectors.EVENT_WRITE)
-            self.assertEqual(rd_key, sel.get_key(rd))
-            self.assertEqual(wr_key, sel.get_key(wr))
+            assert rd_key == sel.get_key(rd)
+            assert wr_key == sel.get_key(wr)
 
-        self.assertRaises(RuntimeError, s.get_key, rd)
-        self.assertRaises(RuntimeError, s.get_key, wr)
+        with pytest.raises(RuntimeError):
+            s.get_key(rd)
+        with pytest.raises(RuntimeError):
+            s.get_key(wr)
 
     def test_unregister(self):
         s, rd, wr = self.standard_setup()
         s.unregister(rd)
 
-        self.assertRaises(KeyError, s.unregister, 99999)
+        with pytest.raises(KeyError):
+            s.unregister(99999)
 
     def test_reunregister(self):
         s, rd, wr = self.standard_setup()
         s.unregister(rd)
 
-        self.assertRaises(KeyError, s.unregister, rd)
+        with pytest.raises(KeyError):
+            s.unregister(rd)
 
     def test_unregister_after_fd_close(self):
         s = self.make_selector()
@@ -287,7 +300,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         s.unregister(rdfd)
         s.unregister(wrfd)
 
-        self.assertEqual(0, len(s.get_map()))
+        assert 0 == len(s.get_map())
 
     def test_unregister_after_fileobj_close(self):
         s = self.make_selector()
@@ -301,7 +314,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         s.unregister(rd)
         s.unregister(wr)
 
-        self.assertEqual(0, len(s.get_map()))
+        assert 0 == len(s.get_map())
 
     @pytest.mark.skipif(
         os.name != "posix",
@@ -321,7 +334,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         s.unregister(rdfd)
         s.unregister(wrfd)
 
-        self.assertEqual(0, len(s.get_map()))
+        assert 0 == len(s.get_map())
 
     def test_modify(self):
         s = self.make_selector()
@@ -331,8 +344,8 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
 
         # Modify events
         key2 = s.modify(rd, selectors.EVENT_WRITE)
-        self.assertNotEqual(key.events, key2.events)
-        self.assertEqual(key2, s.get_key(rd))
+        assert key.events != key2.events
+        assert key2 == s.get_key(rd)
 
         s.unregister(rd)
 
@@ -342,17 +355,18 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
 
         key = s.register(rd, selectors.EVENT_READ, d1)
         key2 = s.modify(rd, selectors.EVENT_READ, d2)
-        self.assertEqual(key.events, key2.events)
-        self.assertIsNot(key.data, key2.data)
-        self.assertEqual(key2, s.get_key(rd))
-        self.assertIs(key2.data, d2)
+        assert key.events == key2.events
+        assert key.data is not key2.data
+        assert key2 == s.get_key(rd)
+        assert key2.data is d2
 
         # Modify invalid fileobj
-        self.assertRaises(KeyError, s.modify, 999999, selectors.EVENT_READ)
+        with pytest.raises(KeyError):
+            s.modify(999999, selectors.EVENT_READ)
 
     def test_empty_select(self):
         s = self.make_selector()
-        self.assertEqual([], s.select(timeout=SHORT_SELECT))
+        assert [] == s.select(timeout=SHORT_SELECT)
 
     def test_select_multiple_event_types(self):
         s = self.make_selector()
@@ -360,12 +374,12 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         rd, wr = self.make_socketpair()
         key = s.register(rd, selectors.EVENT_READ | selectors.EVENT_WRITE)
 
-        self.assertEqual([(key, selectors.EVENT_WRITE)], s.select(0.001))
+        assert [(key, selectors.EVENT_WRITE)] == s.select(0.001)
 
         wr.send(b'x')
         time.sleep(0.01)  # Wait for the write to flush.
 
-        self.assertEqual([(key, selectors.EVENT_READ | selectors.EVENT_WRITE)], s.select(0.001))
+        assert [(key, selectors.EVENT_READ | selectors.EVENT_WRITE)] == s.select(0.001)
 
     def test_select_multiple_selectors(self):
         s1 = self.make_selector()
@@ -377,13 +391,14 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         wr.send(b'x')
         time.sleep(0.01)  # Wait for the write to flush.
 
-        self.assertEqual([(key1, selectors.EVENT_READ)], s1.select(timeout=0.001))
-        self.assertEqual([(key2, selectors.EVENT_READ)], s2.select(timeout=0.001))
+        assert [(key1, selectors.EVENT_READ)] == s1.select(timeout=0.001)
+        assert [(key2, selectors.EVENT_READ)] == s2.select(timeout=0.001)
 
     def test_select_no_event_types(self):
         s = self.make_selector()
         rd, wr = self.make_socketpair()
-        self.assertRaises(ValueError, s.register, rd, 0)
+        with pytest.raises(ValueError):
+            s.register(rd, 0)
 
     def test_select_many_events(self):
         s = self.make_selector()
@@ -395,7 +410,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
             writers.append(wr)
             s.register(rd, selectors.EVENT_READ)
 
-        self.assertEqual(0, len(s.select(0.001)))
+        assert 0 == len(s.select(0.001))
 
         # Write a byte to each end.
         for wr in writers:
@@ -405,17 +420,17 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         time.sleep(0.01)
 
         ready = s.select(0.001)
-        self.assertEqual(32, len(ready))
+        assert 32 == len(ready)
         for key, events in ready:
-            self.assertEqual(selectors.EVENT_READ, events)
-            self.assertIn(key.fileobj, readers)
+            assert selectors.EVENT_READ == events
+            assert key.fileobj in readers
 
         # Now read the byte from each endpoint.
         for rd in readers:
             data = rd.recv(1)
-            self.assertEqual(b'x', data)
+            assert b'x' == data
 
-        self.assertEqual(0, len(s.select(0.001)))
+        assert 0 == len(s.select(0.001))
 
     def test_select_timeout_none(self):
         s = self.make_selector()
@@ -423,15 +438,15 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         s.register(wr, selectors.EVENT_WRITE)
 
         with TimerContext(upper=SHORT_SELECT):
-            self.assertEqual(1, len(s.select(timeout=None)))
+            assert 1 == len(s.select(timeout=None))
 
     def test_select_timeout_ready(self):
         s, rd, wr = self.standard_setup()
 
         with TimerContext(upper=SHORT_SELECT):
-            self.assertEqual(1, len(s.select(timeout=0)))
-            self.assertEqual(1, len(s.select(timeout=-1)))
-            self.assertEqual(1, len(s.select(timeout=0.001)))
+            assert 1 == len(s.select(timeout=0))
+            assert 1 == len(s.select(timeout=-1))
+            assert 1 == len(s.select(timeout=0.001))
 
     def test_select_timeout_not_ready(self):
         s = self.make_selector()
@@ -439,10 +454,10 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         s.register(rd, selectors.EVENT_READ)
 
         with TimerContext(upper=SHORT_SELECT):
-            self.assertEqual(0, len(s.select(timeout=0)))
+            assert 0 == len(s.select(timeout=0))
 
         with TimerContext(lower=SHORT_SELECT, upper=SHORT_SELECT):
-            self.assertEqual(0, len(s.select(timeout=SHORT_SELECT)))
+            assert 0 == len(s.select(timeout=SHORT_SELECT))
 
     @skipUnlessHasAlarm
     def test_select_timing(self):
@@ -454,7 +469,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
 
         with TimerContext(upper=SHORT_SELECT):
             ready = s.select(LONG_SELECT)
-        self.assertEqual([(key, selectors.EVENT_READ)], ready)
+        assert [(key, selectors.EVENT_READ)] == ready
 
     @skipUnlessHasAlarm
     def test_select_interrupt_no_event(self):
@@ -465,7 +480,7 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         self.set_alarm(SHORT_SELECT, lambda *args: None)
 
         with TimerContext(lower=LONG_SELECT, upper=LONG_SELECT):
-            self.assertEqual([], s.select(LONG_SELECT))
+            assert [] == s.select(LONG_SELECT)
 
     @skipUnlessHasAlarm
     def test_select_interrupt_with_event(self):
@@ -477,8 +492,8 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         self.set_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
 
         with TimerContext(lower=SHORT_SELECT, upper=SHORT_SELECT):
-            self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
-        self.assertEqual(rd.recv(1), b'x')
+            assert [(key, selectors.EVENT_READ)] == s.select(LONG_SELECT)
+        assert rd.recv(1) == b'x'
 
     @skipUnlessHasAlarm
     def test_select_multiple_interrupts_with_event(self):
@@ -497,8 +512,8 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         self.set_alarm(SHORT_SELECT, first_alarm)
 
         with TimerContext(lower=SHORT_SELECT * 2, upper=SHORT_SELECT * 2):
-            self.assertEqual([(key, selectors.EVENT_READ)], s.select(LONG_SELECT))
-        self.assertEqual(rd.recv(1), b'x')
+            assert [(key, selectors.EVENT_READ)] == s.select(LONG_SELECT)
+        assert rd.recv(1) == b'x'
 
     @skipUnlessHasAlarm
     def test_selector_error(self):
@@ -513,14 +528,9 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
 
         self.set_alarm(SHORT_SELECT, alarm_exception)
 
-        try:
+        with pytest.raises(selectors.SelectorError) as e:
             s.select(LONG_SELECT)
-        except selectors.SelectorError as e:
-            self.assertEqual(e.errno, errno.EACCES)
-        except Exception as e:
-            self.fail("Raised incorrect exception: " + str(e))
-        else:
-            self.fail("select() didn't raise SelectorError")
+        assert e.errno == errno.EACCES
 
     # Test ensures that _syscall_wrapper properly raises the
     # exception that is raised from an interrupt handler.
@@ -539,16 +549,17 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         self.set_alarm(SHORT_SELECT, alarm_exception)
 
         with TimerContext(lower=SHORT_SELECT, upper=SHORT_SELECT):
-            self.assertRaises(AlarmInterrupt, s.select, LONG_SELECT)
+            with pytest.raises(AlarmInterrupt):
+                s.select(LONG_SELECT)
 
     def test_fileno(self):
         s = self.make_selector()
         if hasattr(s, "fileno"):
             fd = s.fileno()
-            self.assertTrue(isinstance(fd, int))
-            self.assertGreaterEqual(fd, 0)
+            assert isinstance(fd, int)
+            assert fd >= 0
         else:
-            self.skipTest("Selector doesn't implement fileno()")
+            pytest.skip("Selector doesn't implement fileno()")
 
     # According to the psutil docs, open_files() has strange behavior
     # on Windows including giving back incorrect results so to
@@ -563,12 +574,12 @@ class BaseSelectorTestCase(unittest.TestCase, AlarmMixin):
         s = self.make_selector()
         s.close()
         after_fds = len(proc.open_files())
-        self.assertEqual(before_fds, after_fds)
+        assert before_fds == after_fds
 
     def test_selector_error_exception(self):
         err = selectors.SelectorError(1)
-        self.assertEqual(err.__repr__(), "<SelectorError errno=1>")
-        self.assertEqual(err.__str__(), "<SelectorError errno=1>")
+        assert err.__repr__() == "<SelectorError errno=1>"
+        assert err.__str__() == "<SelectorError errno=1>"
 
 
 class BaseWaitForTestCase(unittest.TestCase, AlarmMixin):
@@ -586,35 +597,31 @@ class BaseWaitForTestCase(unittest.TestCase, AlarmMixin):
 
     def test_wait_for_read_single_socket(self):
         rd, wr = self.make_socketpair()
-        self.assertEqual([], wait.wait_for_read(rd, timeout=SHORT_SELECT))
+        assert [] == wait.wait_for_read(rd, timeout=SHORT_SELECT)
 
     def test_wait_for_read_multiple_socket(self):
         rd, rd2 = self.make_socketpair()
-        self.assertEqual([], wait.wait_for_read([rd, rd2], timeout=SHORT_SELECT))
+        assert [] == wait.wait_for_read([rd, rd2], timeout=SHORT_SELECT)
 
     def test_wait_for_read_empty(self):
-        self.assertEqual([], wait.wait_for_read([], timeout=SHORT_SELECT))
+        assert [] == wait.wait_for_read([], timeout=SHORT_SELECT)
 
     def test_wait_for_write_single_socket(self):
         wr, wr2 = self.make_socketpair()
-        self.assertEqual([wr], wait.wait_for_write(wr, timeout=SHORT_SELECT))
+        assert [wr] == wait.wait_for_write(wr, timeout=SHORT_SELECT)
 
     def test_wait_for_write_multiple_socket(self):
         wr, wr2 = self.make_socketpair()
         result = wait.wait_for_write([wr, wr2], timeout=SHORT_SELECT)
-        # assertItemsEqual renamed in Python 3.x
-        if hasattr(self, "assertItemsEqual"):
-            self.assertItemsEqual([wr, wr2], result)
-        else:
-            self.assertCountEqual([wr, wr2], result)
+        assert (result == [wr, wr2]) or (result == [wr2, wr])
 
     def test_wait_for_write_empty(self):
-        self.assertEqual([], wait.wait_for_write([], timeout=SHORT_SELECT))
+        assert [] == wait.wait_for_write([], timeout=SHORT_SELECT)
 
     def test_wait_for_non_list_iterable(self):
         rd, wr = self.make_socketpair()
         iterable = {'rd': rd}.values()
-        self.assertEqual([], wait.wait_for_read(iterable, timeout=SHORT_SELECT))
+        assert [] == wait.wait_for_read(iterable, timeout=SHORT_SELECT)
 
     def test_wait_timeout(self):
         rd, wr = self.make_socketpair()
@@ -634,7 +641,7 @@ class BaseWaitForTestCase(unittest.TestCase, AlarmMixin):
 
         rd, wr = self.make_socketpair()
         wait.wait_for_write([rd, wr], 0.001)
-        self.assertIs(selector._map, None)
+        assert selector._map is None
 
     @skipUnlessHasAlarm
     def test_interrupt_wait_for_read_no_event(self):
@@ -642,7 +649,7 @@ class BaseWaitForTestCase(unittest.TestCase, AlarmMixin):
 
         self.set_alarm(SHORT_SELECT, lambda *args: None)
         with TimerContext(lower=LONG_SELECT, upper=LONG_SELECT):
-            self.assertEqual([], wait.wait_for_read(rd, timeout=LONG_SELECT))
+            assert [] == wait.wait_for_read(rd, timeout=LONG_SELECT)
 
     @skipUnlessHasAlarm
     def test_interrupt_wait_for_read_with_event(self):
@@ -650,8 +657,8 @@ class BaseWaitForTestCase(unittest.TestCase, AlarmMixin):
 
         self.set_alarm(SHORT_SELECT, lambda *args: wr.send(b'x'))
         with TimerContext(lower=SHORT_SELECT, upper=SHORT_SELECT):
-            self.assertEqual([rd], wait.wait_for_read(rd, timeout=LONG_SELECT))
-        self.assertEqual(rd.recv(1), b'x')
+            assert [rd] == wait.wait_for_read(rd, timeout=LONG_SELECT)
+        assert rd.recv(1) == b'x'
 
 
 class ScalableSelectorMixin(object):
@@ -666,12 +673,12 @@ class ScalableSelectorMixin(object):
         # try to set the soft RLIMIT_NOFILE to the hard RLIMIT_NOFILE ceiling.
         soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
         if hard == resource.RLIM_INFINITY:
-            self.skipTest("RLIMIT_NOFILE is infinite")
+            pytest.skip("RLIMIT_NOFILE is infinite")
 
         try:  # If we're on a *BSD system, the limit tag is different.
             _, bsd_hard = resource.getrlimit(resource.RLIMIT_OFILE)
             if bsd_hard == resource.RLIM_INFINITY:
-                self.skipTest("RLIMIT_OFILE is infinite")
+                pytest.skip("RLIMIT_OFILE is infinite")
             if bsd_hard < hard:
                 hard = bsd_hard
 
@@ -693,12 +700,12 @@ class ScalableSelectorMixin(object):
 
         s = self.make_selector()
 
-        for i in range(limit_nofile // 2):
+        for _ in range(limit_nofile // 2):
             rd, wr = self.make_socketpair()
             s.register(rd, selectors.EVENT_READ)
             s.register(wr, selectors.EVENT_WRITE)
 
-        self.assertEqual(limit_nofile // 2, len(s.select()))
+        assert limit_nofile // 2 == len(s.select())
 
 
 @skipUnlessHasSelector
@@ -713,7 +720,7 @@ class TestUniqueSelectScenarios(BaseSelectorTestCase):
 
         # Make sure that the selector returned only uses the selector available.
         selector = self.make_selector()
-        self.assertIsInstance(selector, selectors.SelectSelector)
+        assert isinstance(selector, selectors.SelectSelector)
 
     @skipUnlessHasENOSYS
     def test_select_module_defines_does_not_implement_poll(self):
@@ -734,7 +741,7 @@ class TestUniqueSelectScenarios(BaseSelectorTestCase):
         patch_select_module(self, 'select', poll=BadPoll)
 
         selector = self.make_selector()
-        self.assertIsInstance(selector, selectors.SelectSelector)
+        assert isinstance(selector, selectors.SelectSelector)
 
     @skipUnlessHasENOSYS
     def test_select_module_defines_does_not_implement_epoll(self):
@@ -751,7 +758,7 @@ class TestUniqueSelectScenarios(BaseSelectorTestCase):
         patch_select_module(self, 'select', epoll=bad_epoll)
 
         selector = self.make_selector()
-        self.assertIsInstance(selector, selectors.SelectSelector)
+        assert isinstance(selector, selectors.SelectSelector)
 
 
 @pytest.mark.skipif(
