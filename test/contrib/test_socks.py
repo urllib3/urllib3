@@ -206,7 +206,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, '16.17.18.19')
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             while True:
@@ -238,7 +238,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertIn(addr, ['127.0.0.1', '::1'])
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             while True:
@@ -270,7 +270,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, b'example.com')
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             buf = b''
@@ -364,7 +364,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, '16.17.18.19')
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             while True:
@@ -424,7 +424,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, '16.17.18.19')
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             while True:
@@ -463,7 +463,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, '16.17.18.19')
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             while True:
@@ -495,7 +495,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, '127.0.0.1')
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             while True:
@@ -527,7 +527,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, b'example.com')
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             buf = b''
@@ -584,7 +584,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, '16.17.18.19')
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             while True:
@@ -641,7 +641,7 @@ class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, b'localhost')
-            self.assertTrue(port, 443)
+            self.assertEqual(port, 443)
             handler.send(True)
 
             # Wrap in TLS
