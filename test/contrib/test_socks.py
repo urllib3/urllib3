@@ -194,6 +194,14 @@ def handle_socks4_negotiation(sock, username=None):
     yield True  # Avoid StopIteration exceptions getting fired.
 
 
+class TestSOCKSProxyManager(object):
+
+    def test_invalid_socks_version_is_valueerror(self):
+        with pytest.raises(ValueError) as e:
+            socks.SOCKSProxyManager(proxy_url='http://example.org')
+        assert 'Unable to determine SOCKS version' in e.value.args[0]
+
+
 class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
     """
     Test the SOCKS proxy in SOCKS5 mode.
