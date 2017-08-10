@@ -28,12 +28,12 @@ try:  # Windows doesn't support socketpair on Python 3.5<
 except ImportError:
     from .socketpair_helper import socketpair
 
-import pytest
+import pytest  # noqa: E402
 
 from urllib3.util import (
     selectors,
     wait
-)
+)  # noqa: E402
 
 HAS_ALARM = hasattr(signal, "alarm")
 
