@@ -1,4 +1,5 @@
 import datetime
+import json
 import logging
 import ssl
 import sys
@@ -70,16 +71,17 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.assertEqual(r.status, 200, r.data)
 
     def test_client_intermediate(self):
-        client_cert, client_key, client_serial = (
+        client_cert, client_key, client_subject = (
             DEFAULT_CLIENT_CERTS['certfile'],
             DEFAULT_CLIENT_CERTS['keyfile'],
-            DEFAULT_CLIENT_CERTS['serial']
+            DEFAULT_CLIENT_CERTS['subject']
         )
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          key_file=client_key,
                                          cert_file=client_cert)
         r = https_pool.request('GET', '/certificate')
-        self.assertEqual(r.data, client_serial, r.data)
+        self.assertDictEqual(json.loads(r.data.decode('utf-8')),
+                             client_subject, r.data)
 
     def test_client_no_intermediate(self):
         client_cert, client_key = (
@@ -90,10 +92,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          cert_file=client_cert,
                                          key_file=client_key)
         try:
-            https_pool.request('GET', '/certificate')
+            https_pool.request('GET', '/certificate', retries=False)
         except SSLError as e:
             self.assertTrue('alert unknown ca' in str(e) or
-                            'invalid certificate chain' in str(e))
+                            'invalid certificate chain' in str(e) or
+                            'unknown Cert Authority' in str(e))
 
     def test_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,

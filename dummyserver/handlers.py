@@ -109,8 +109,11 @@ class TestingApp(RequestHandler):
     def certificate(self, request):
         """Return the requester's certificate."""
         cert = request.get_ssl_certificate()
-        serial = cert['serialNumber'].strip() if cert is not None else None
-        return Response(str(serial))
+        subject = dict()
+        if cert is not None:
+            subject = dict((k, v) for (k, v) in [y for z in cert['subject']
+                                                 for y in z])
+        return Response(json.dumps(subject))
 
     def source_address(self, request):
         """Return the requester's IP address."""
