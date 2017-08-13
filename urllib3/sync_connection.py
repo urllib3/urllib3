@@ -345,7 +345,7 @@ class SyncHTTP1Connection(object):
 
         return conn
 
-    def send_request(self, request):
+    async def send_request(self, request):
         """
         Given a Request object, performs the logic required to get a response.
         """
