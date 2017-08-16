@@ -9,6 +9,9 @@ dev (master)
 * Put the connection back in the pool when calling stream() or read_chunked() on
   a chunked HEAD response. (Issue #1234)
 
+* Fixed pyOpenSSL-specific ssl client authentication issue when clients
+  attempted to auth via certificate + chain (Issue #1060)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
