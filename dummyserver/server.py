@@ -14,12 +14,8 @@ import sys
 import threading
 import socket
 import warnings
+import ssl
 from datetime import datetime
-
-try:
-    from ssl import CERT_OPTIONAL
-except:
-    CERT_OPTIONAL = None
 
 from urllib3.exceptions import HTTPWarning
 
@@ -35,7 +31,7 @@ CERTS_PATH = os.path.join(os.path.dirname(__file__), 'certs')
 DEFAULT_CERTS = {
     'certfile': os.path.join(CERTS_PATH, 'server.crt'),
     'keyfile': os.path.join(CERTS_PATH, 'server.key'),
-    'cert_reqs': CERT_OPTIONAL,
+    'cert_reqs': ssl.CERT_OPTIONAL,
     'ca_certs': os.path.join(CERTS_PATH, 'cacert.pem'),
 }
 DEFAULT_CLIENT_CERTS = {
