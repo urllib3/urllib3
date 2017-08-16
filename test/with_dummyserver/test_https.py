@@ -1,4 +1,5 @@
 import datetime
+import json
 import logging
 import ssl
 import sys
@@ -12,6 +13,8 @@ from dummyserver.testcase import (
     HTTPSDummyServerTestCase, IPV6HTTPSDummyServerTestCase
 )
 from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
+                                DEFAULT_CLIENT_CERTS,
+                                DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS,
                                 NO_SAN_CERTS, NO_SAN_CA, DEFAULT_CA_DIR,
                                 IPV6_ADDR_CERTS, IPV6_ADDR_CA, HAS_IPV6,
                                 IP_SAN_CERTS)
@@ -66,6 +69,34 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self._pool.ssl_version = ssl.PROTOCOL_TLSv1
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
+
+    def test_client_intermediate(self):
+        client_cert, client_key, client_subject = (
+            DEFAULT_CLIENT_CERTS['certfile'],
+            DEFAULT_CLIENT_CERTS['keyfile'],
+            DEFAULT_CLIENT_CERTS['subject']
+        )
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         key_file=client_key,
+                                         cert_file=client_cert)
+        r = https_pool.request('GET', '/certificate')
+        self.assertDictEqual(json.loads(r.data.decode('utf-8')),
+                             client_subject, r.data)
+
+    def test_client_no_intermediate(self):
+        client_cert, client_key = (
+            DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS['certfile'],
+            DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS['keyfile']
+        )
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_file=client_cert,
+                                         key_file=client_key)
+        try:
+            https_pool.request('GET', '/certificate', retries=False)
+        except SSLError as e:
+            self.assertTrue('alert unknown ca' in str(e) or
+                            'invalid certificate chain' in str(e) or
+                            'unknown Cert Authority' in str(e))
 
     def test_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
