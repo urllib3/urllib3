@@ -236,5 +236,8 @@ In chronological order:
 * Wolfgang Richter <wolfgang.richter@gmail.com>
   * Bugfix related to loading full certificate chains with PyOpenSSL backend.
 
+* Mike Miller <github@mikeage.net>
+  * Logging improvements to include the HTTP(S) port when opening a new connection
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
