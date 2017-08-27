@@ -308,7 +308,25 @@ class PoolManager(RequestMethods):
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
         u = parse_url(url)
-        conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
+        # Given the way that we need to keep this pool alive until pool._get_conn is called during
+        # the urlopen call below, this lock needs to be held until pool.urlopen gets to that call.
+        # Additionally, since pool.urlopen also handles retries, potentially requiring another
+        # connection, we actually need to hold this lock through the entire pool.urlopen call.
+        # Unfortunately, while this should make the PoolManager thread-safe, it also means that
+        # we've essentially enforced that only one HTTP call can happen through the PoolManager
+        # at any time.
+        #
+        # In order to make PoolManager thread-safe and still be useful, we need to pull the retry
+        # logic up to this level and not allow retries directly in the ConnectionPool and refactor
+        # ConnectionPool.urlopen so that we can acquire the connection with our lock, then continue
+        # with the network IO outside of the critical section.
+        #
+        # The only other possibility I can think of is to implement reference counting for
+        # self.pools so that we don't release/close a pool until we know it is not being used
+        # anywhere.
+
+        # start critical section with self.pools.lock:
+        pool = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
         kw['assert_same_host'] = False
         kw['redirect'] = False
@@ -316,9 +334,10 @@ class PoolManager(RequestMethods):
             kw['headers'] = self.headers
 
         if self.proxy is not None and u.scheme == "http":
-            response = conn.urlopen(method, url, **kw)
+            response = pool.urlopen(method, url, **kw)
         else:
-            response = conn.urlopen(method, u.request_uri, **kw)
+            response = pool.urlopen(method, u.request_uri, **kw)
+        # end critical section with self.pools.lock
 
         redirect_location = redirect and response.get_redirect_location()
         if not redirect_location:
@@ -336,7 +355,7 @@ class PoolManager(RequestMethods):
             retries = Retry.from_int(retries, redirect=redirect)
 
         try:
-            retries = retries.increment(method, url, response=response, _pool=conn)
+            retries = retries.increment(method, url, response=response, _pool=pool)
         except MaxRetryError:
             if retries.raise_on_redirect:
                 raise
