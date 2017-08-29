@@ -538,200 +538,185 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             Additional parameters are passed to
             :meth:`urllib3.response.HTTPResponse.from_httplib`
         """
-        if headers is None:
-            headers = self.headers
+        while True:
+            if headers is None:
+                headers = self.headers
 
-        if not isinstance(retries, Retry):
-            retries = Retry.from_int(retries, redirect=redirect, default=self.retries)
+            if not isinstance(retries, Retry):
+                retries = Retry.from_int(retries, redirect=redirect, default=self.retries)
 
-        if release_conn is None:
-            release_conn = response_kw.get('preload_content', True)
+            if release_conn is None:
+                release_conn = response_kw.get('preload_content', True)
 
-        # Check host
-        if assert_same_host and not self.is_same_host(url):
-            raise HostChangedError(self, url, retries)
+            # Check host
+            if assert_same_host and not self.is_same_host(url):
+                raise HostChangedError(self, url, retries)
 
-        conn = None
+            conn = None
 
-        # Track whether `conn` needs to be released before
-        # returning/raising/recursing. Update this variable if necessary, and
-        # leave `release_conn` constant throughout the function. That way, if
-        # the function recurses, the original value of `release_conn` will be
-        # passed down into the recursive call, and its value will be respected.
-        #
-        # See issue #651 [1] for details.
-        #
-        # [1] <https://github.com/shazow/urllib3/issues/651>
-        release_this_conn = release_conn
+            # Track whether `conn` needs to be released before
+            # returning/raising/recursing. Update this variable if necessary, and
+            # leave `release_conn` constant throughout the function. That way, if
+            # the function recurses, the original value of `release_conn` will be
+            # passed down into the recursive call, and its value will be respected.
+            #
+            # See issue #651 [1] for details.
+            #
+            # [1] <https://github.com/shazow/urllib3/issues/651>
+            release_this_conn = release_conn
 
-        # Merge the proxy headers. Only do this in HTTP. We have to copy the
-        # headers dict so we can safely change it without those changes being
-        # reflected in anyone else's copy.
-        if self.scheme == 'http':
-            headers = headers.copy()
-            headers.update(self.proxy_headers)
+            # Merge the proxy headers. Only do this in HTTP. We have to copy the
+            # headers dict so we can safely change it without those changes being
+            # reflected in anyone else's copy.
+            if self.scheme == 'http':
+                headers = headers.copy()
+                headers.update(self.proxy_headers)
 
-        # Must keep the exception bound to a separate variable or else Python 3
-        # complains about UnboundLocalError.
-        err = None
+            # Must keep the exception bound to a separate variable or else Python 3
+            # complains about UnboundLocalError.
+            err = None
 
-        # Keep track of whether we cleanly exited the except block. This
-        # ensures we do proper cleanup in finally.
-        clean_exit = False
-
-        # Rewind body position, if needed. Record current position
-        # for future rewinds in the event of a redirect/retry.
-        body_pos = set_file_position(body, body_pos)
-
-        try:
-            # Request a connection from the queue.
-            timeout_obj = self._get_timeout(timeout)
-            conn = self._get_conn(timeout=pool_timeout)
-
-            conn.timeout = timeout_obj.connect_timeout
-
-            is_new_proxy_conn = self.proxy is not None and not getattr(conn, 'sock', None)
-            if is_new_proxy_conn:
-                self._prepare_proxy(conn)
-
-            # Make the request on the httplib connection object.
-            httplib_response = self._make_request(conn, method, url,
-                                                  timeout=timeout_obj,
-                                                  body=body, headers=headers,
-                                                  chunked=chunked)
-
-            # If we're going to release the connection in ``finally:``, then
-            # the response doesn't need to know about the connection. Otherwise
-            # it will also try to release it and we'll have a double-release
-            # mess.
-            response_conn = conn if not release_conn else None
-
-            # Pass method to Response for length checking
-            response_kw['request_method'] = method
-
-            # Import httplib's response into our own wrapper object
-            response = self.ResponseCls.from_httplib(httplib_response,
-                                                     pool=self,
-                                                     connection=response_conn,
-                                                     retries=retries,
-                                                     **response_kw)
-
-            # Everything went great!
-            clean_exit = True
-
-        except queue.Empty:
-            # Timed out by queue.
-            raise EmptyPoolError(self, "No pool connections are available.")
-
-        except (TimeoutError, HTTPException, SocketError, ProtocolError,
-                BaseSSLError, SSLError, CertificateError) as e:
-            # Discard the connection for these exceptions. It will be
-            # replaced during the next _get_conn() call.
+            # Keep track of whether we cleanly exited the except block. This
+            # ensures we do proper cleanup in finally.
             clean_exit = False
-            if isinstance(e, (BaseSSLError, CertificateError)):
-                e = SSLError(e)
-            elif isinstance(e, (SocketError, NewConnectionError)) and self.proxy:
-                e = ProxyError('Cannot connect to proxy.', e)
-            elif isinstance(e, (SocketError, HTTPException)):
-                e = ProtocolError('Connection aborted.', e)
 
-            retries = retries.increment(method, url, error=e, _pool=self,
-                                        _stacktrace=sys.exc_info()[2])
-            retries.sleep()
+            # Rewind body position, if needed. Record current position
+            # for future rewinds in the event of a redirect/retry.
+            body_pos = set_file_position(body, body_pos)
 
-            # Keep track of the error for the retry warning.
-            err = e
-
-        finally:
-            if not clean_exit:
-                # We hit some kind of exception, handled or otherwise. We need
-                # to throw the connection away unless explicitly told not to.
-                # Close the connection, set the variable to None, and make sure
-                # we put the None back in the pool to avoid leaking it.
-                conn = conn and conn.close()
-                release_this_conn = True
-
-            if release_this_conn:
-                # Put the connection back to be reused. If the connection is
-                # expired then it will be None, which will get replaced with a
-                # fresh connection during _get_conn.
-                self._put_conn(conn)
-
-        if not conn:
-            # Try again
-            log.warning("Retrying (%r) after connection "
-                        "broken by '%r': %s", retries, err, url)
-            return self.urlopen(method, url, body, headers, retries,
-                                redirect, assert_same_host,
-                                timeout=timeout, pool_timeout=pool_timeout,
-                                release_conn=release_conn, body_pos=body_pos,
-                                **response_kw)
-
-        def drain_and_release_conn(response):
             try:
-                # discard any remaining response body, the connection will be
-                # released back to the pool once the entire response is read
-                response.read()
+                # Request a connection from the queue.
+                timeout_obj = self._get_timeout(timeout)
+                conn = self._get_conn(timeout=pool_timeout)
+
+                conn.timeout = timeout_obj.connect_timeout
+
+                is_new_proxy_conn = self.proxy is not None and not getattr(conn, 'sock', None)
+                if is_new_proxy_conn:
+                    self._prepare_proxy(conn)
+
+                # Make the request on the httplib connection object.
+                httplib_response = self._make_request(conn, method, url,
+                                                      timeout=timeout_obj,
+                                                      body=body, headers=headers,
+                                                      chunked=chunked)
+
+                # If we're going to release the connection in ``finally:``, then
+                # the response doesn't need to know about the connection. Otherwise
+                # it will also try to release it and we'll have a double-release
+                # mess.
+                response_conn = conn if not release_conn else None
+
+                # Pass method to Response for length checking
+                response_kw['request_method'] = method
+
+                # Import httplib's response into our own wrapper object
+                response = self.ResponseCls.from_httplib(httplib_response,
+                                                         pool=self,
+                                                         connection=response_conn,
+                                                         retries=retries,
+                                                         **response_kw)
+
+                # Everything went great!
+                clean_exit = True
+
+            except queue.Empty:
+                # Timed out by queue.
+                raise EmptyPoolError(self, "No pool connections are available.")
+
             except (TimeoutError, HTTPException, SocketError, ProtocolError,
-                    BaseSSLError, SSLError) as e:
-                pass
+                    BaseSSLError, SSLError, CertificateError) as e:
+                # Discard the connection for these exceptions. It will be
+                # replaced during the next _get_conn() call.
+                clean_exit = False
+                if isinstance(e, (BaseSSLError, CertificateError)):
+                    e = SSLError(e)
+                elif isinstance(e, (SocketError, NewConnectionError)) and self.proxy:
+                    e = ProxyError('Cannot connect to proxy.', e)
+                elif isinstance(e, (SocketError, HTTPException)):
+                    e = ProtocolError('Connection aborted.', e)
 
-        # Handle redirect?
-        redirect_location = redirect and response.get_redirect_location()
-        if redirect_location:
-            if response.status == 303:
-                method = 'GET'
+                retries = retries.increment(method, url, error=e, _pool=self,
+                                            _stacktrace=sys.exc_info()[2])
+                retries.sleep()
 
-            try:
-                retries = retries.increment(method, url, response=response, _pool=self)
-            except MaxRetryError:
-                if retries.raise_on_redirect:
-                    # Drain and release the connection for this response, since
-                    # we're not returning it to be released manually.
-                    drain_and_release_conn(response)
-                    raise
-                return response
+                # Keep track of the error for the retry warning.
+                err = e
 
-            # drain and return the connection to the pool before recursing
-            drain_and_release_conn(response)
+            finally:
+                if not clean_exit:
+                    # We hit some kind of exception, handled or otherwise. We need
+                    # to throw the connection away unless explicitly told not to.
+                    # Close the connection, set the variable to None, and make sure
+                    # we put the None back in the pool to avoid leaking it.
+                    conn = conn and conn.close()
+                    release_this_conn = True
 
-            retries.sleep_for_retry(response)
-            log.debug("Redirecting %s -> %s", url, redirect_location)
-            return self.urlopen(
-                method, redirect_location, body, headers,
-                retries=retries, redirect=redirect,
-                assert_same_host=assert_same_host,
-                timeout=timeout, pool_timeout=pool_timeout,
-                release_conn=release_conn, body_pos=body_pos,
-                **response_kw)
+                if release_this_conn:
+                    # Put the connection back to be reused. If the connection is
+                    # expired then it will be None, which will get replaced with a
+                    # fresh connection during _get_conn.
+                    self._put_conn(conn)
 
-        # Check if we should retry the HTTP response.
-        has_retry_after = bool(response.getheader('Retry-After'))
-        if retries.is_retry(method, response.status, has_retry_after):
-            try:
-                retries = retries.increment(method, url, response=response, _pool=self)
-            except MaxRetryError:
-                if retries.raise_on_status:
-                    # Drain and release the connection for this response, since
-                    # we're not returning it to be released manually.
-                    drain_and_release_conn(response)
-                    raise
-                return response
+            if not conn:
+                # Try again
+                log.warning("Retrying (%r) after connection "
+                            "broken by '%r': %s", retries, err, url)
+                continue
 
-            # drain and return the connection to the pool before recursing
-            drain_and_release_conn(response)
+            def drain_and_release_conn(response):
+                try:
+                    # discard any remaining response body, the connection will be
+                    # released back to the pool once the entire response is read
+                    response.read()
+                except (TimeoutError, HTTPException, SocketError, ProtocolError,
+                        BaseSSLError, SSLError) as e:
+                    pass
 
-            retries.sleep(response)
-            log.debug("Retry: %s", url)
-            return self.urlopen(
-                method, url, body, headers,
-                retries=retries, redirect=redirect,
-                assert_same_host=assert_same_host,
-                timeout=timeout, pool_timeout=pool_timeout,
-                release_conn=release_conn,
-                body_pos=body_pos, **response_kw)
+            # Handle redirect?
+            redirect_location = redirect and response.get_redirect_location()
+            if redirect_location:
+                if response.status == 303:
+                    method = 'GET'
 
-        return response
+                try:
+                    retries = retries.increment(method, url, response=response, _pool=self)
+                except MaxRetryError:
+                    if retries.raise_on_redirect:
+                        # Drain and release the connection for this response, since
+                        # we're not returning it to be released manually.
+                        drain_and_release_conn(response)
+                        raise
+                    return response
+
+                # drain and return the connection to the pool before recursing
+                drain_and_release_conn(response)
+
+                retries.sleep_for_retry(response)
+                log.debug("Redirecting %s -> %s", url, redirect_location)
+                continue
+
+            # Check if we should retry the HTTP response.
+            has_retry_after = bool(response.getheader('Retry-After'))
+            if retries.is_retry(method, response.status, has_retry_after):
+                try:
+                    retries = retries.increment(method, url, response=response, _pool=self)
+                except MaxRetryError:
+                    if retries.raise_on_status:
+                        # Drain and release the connection for this response, since
+                        # we're not returning it to be released manually.
+                        drain_and_release_conn(response)
+                        raise
+                    return response
+
+                # drain and return the connection to the pool before recursing
+                drain_and_release_conn(response)
+
+                retries.sleep(response)
+                log.debug("Retry: %s", url)
+                continue
+
+            return response
 
 
 class HTTPSConnectionPool(HTTPConnectionPool):
