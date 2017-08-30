@@ -4,6 +4,8 @@ Changes
 dev (master)
 ------------
 
+* Fix ``util.selectors._fileobj_to_fd`` to accept ``long`` (Issue #1247).
+
 * Dropped Python 3.3 support. (Pull #1242)
 
 * Put the connection back in the pool when calling stream() or read_chunked() on
