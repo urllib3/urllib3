@@ -31,6 +31,14 @@ class TestPoolManager(object):
 
         assert conn1 == conn2
 
+        # Ensure that FQDNs are handled separately from relative domains
+        p = PoolManager(2)
+
+        conn1 = p.connection_from_url('http://localhost.:8081/foo')
+        conn2 = p.connection_from_url('http://localhost:8081/bar')
+
+        assert conn1 != conn2
+
     def test_many_urls(self):
         urls = [
             "http://localhost:8081/foo",
