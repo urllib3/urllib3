@@ -308,24 +308,6 @@ class PoolManager(RequestMethods):
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
         u = parse_url(url)
-        # Given the way that we need to keep this pool alive until pool._get_conn is called during
-        # the urlopen call below, this lock needs to be held until pool.urlopen gets to that call.
-        # Additionally, since pool.urlopen also handles retries, potentially requiring another
-        # connection, we actually need to hold this lock through the entire pool.urlopen call.
-        # Unfortunately, while this should make the PoolManager thread-safe, it also means that
-        # we've essentially enforced that only one HTTP call can happen through the PoolManager
-        # at any time.
-        #
-        # In order to make PoolManager thread-safe and still be useful, we need to pull the retry
-        # logic up to this level and not allow retries directly in the ConnectionPool and refactor
-        # ConnectionPool.urlopen so that we can acquire the connection with our lock, then continue
-        # with the network IO outside of the critical section.
-        #
-        # The only other possibility I can think of is to implement reference counting for
-        # self.pools so that we don't release/close a pool until we know it is not being used
-        # anywhere.
-
-        # start critical section with self.pools.lock:
 
         kw['assert_same_host'] = False
         kw['redirect'] = False
@@ -339,26 +321,33 @@ class PoolManager(RequestMethods):
         #
         # If the original pool has not been thrown away yet then it should be reused here.
         #
-        # TODO: This still doesn't fully fix the original issue as the pool lock is only held
-        # while connection_from_pool_key is being run so the pool could be thrown away before
-        # _get_conn is called on it. Further refactoring will be needed so that both
-        # connection_from_host and _get_conn are called within the same lock context.
+        # TODO: Passing self.pools.lock and having pool.urlopen_only release it should fix the
+        # issue completely by keeping the pool lock until the connection is acquired, but the
+        # implementation is hacky.
         def _urlopen_only(
             method, url, body=None, headers=None, retries=None,
             assert_same_host=True, timeout=_Default,
             pool_timeout=None, release_conn=None, chunked=False,
             **response_kw
         ):
-            pool = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
-            return pool.urlopen_only(
-                method, url, body=body, headers=headers, retries=retries,
-                assert_same_host=assert_same_host, timeout=timeout,
-                pool_timeout=pool_timeout, release_conn=release_conn, chunked=chunked,
-                **response_kw
-            )
+            self.pools.lock.acquire()
+            try:
+                pool = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
+                return pool.urlopen_only(
+                    method, url, body=body, headers=headers, retries=retries,
+                    assert_same_host=assert_same_host, timeout=timeout,
+                    pool_timeout=pool_timeout, release_conn=release_conn, chunked=chunked,
+                    conn_lock=self.pools.lock,
+                    **response_kw
+                )
+            finally:
+                try:
+                    self.pools.lock.release()
+                except RuntimeError:
+                    pass
 
-        # TODO: tmp_pool is only used for getting the proxy and retries values to pass to URLOpenWithRetries
-        # and for use in the retries.increment call below.
+        # TODO: tmp_pool is only used for getting the proxy and retries values to pass to
+        # URLOpenWithRetries and for use in the retries.increment call below.
         tmp_pool = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
         url_open_with_retries = URLOpenWithRetries(
             tmp_pool.proxy, tmp_pool.retries, _urlopen_only
@@ -368,7 +357,6 @@ class PoolManager(RequestMethods):
             response = url_open_with_retries.urlopen(method, url, **kw)
         else:
             response = url_open_with_retries.urlopen(method, u.request_uri, **kw)
-        # end critical section with self.pools.lock
 
         redirect_location = redirect and response.get_redirect_location()
         if not redirect_location:

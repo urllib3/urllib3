@@ -222,6 +222,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
         import time
         threads = []
         http.request('GET', '%s/retry_after' % (self.base_url,))
+
         def invalidate_pool():
             time.sleep(0.5)
             http.request('GET', self.base_url_alt)

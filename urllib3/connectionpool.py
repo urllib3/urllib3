@@ -448,6 +448,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self, method, url, body=None, headers=None, retries=None,
         assert_same_host=True, timeout=_Default,
         pool_timeout=None, release_conn=None, chunked=False,
+        conn_lock=None,
         **response_kw
     ):
         if headers is None:
@@ -485,6 +486,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Request a connection from the queue.
             timeout_obj = self._get_timeout(timeout)
             conn = self._get_conn(timeout=pool_timeout)
+            if conn_lock is not None:
+                conn_lock.release()
 
             conn.timeout = timeout_obj.connect_timeout
 
