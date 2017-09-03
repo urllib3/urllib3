@@ -444,7 +444,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         return (scheme, host, port) == (self.scheme, self.host, self.port)
 
-    def _do_urlopen(
+    def urlopen_only(
         self, method, url, body=None, headers=None, retries=None,
         assert_same_host=True, timeout=_Default,
         pool_timeout=None, release_conn=None, chunked=False,
@@ -642,7 +642,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             Additional parameters are passed to
             :meth:`urllib3.response.HTTPResponse.from_httplib`
         """
-        url_open_with_retries = URLOpenWithRetries(self.proxy, self.retries, self._do_urlopen)
+        url_open_with_retries = URLOpenWithRetries(self.proxy, self.retries, self.urlopen_only)
         return url_open_with_retries.urlopen(
             method, url, body, headers, retries,
             redirect, assert_same_host, timeout,
@@ -652,10 +652,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
 
 class URLOpenWithRetries(object):
-    def __init__(self, proxy, retries, do_urlopen_func):
+    def __init__(self, proxy, retries, urlopen_only_func):
         self.proxy = proxy
         self.retries = retries
-        self.do_urlopen_func = do_urlopen_func
+        self.urlopen_only_func = urlopen_only_func
 
     def urlopen(self, method, url, body=None, headers=None, retries=None,
                 redirect=True, assert_same_host=True, timeout=_Default,
@@ -686,7 +686,7 @@ class URLOpenWithRetries(object):
             body_pos = set_file_position(body, body_pos)
 
             try:
-                response = self.do_urlopen_func(
+                response = self.urlopen_only_func(
                     method, url, body=body, headers=headers, retries=retries,
                     assert_same_host=assert_same_host, timeout=timeout,
                     pool_timeout=pool_timeout, release_conn=release_conn, chunked=chunked,
