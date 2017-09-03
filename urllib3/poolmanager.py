@@ -4,7 +4,7 @@ import functools
 import logging
 
 from ._collections import RecentlyUsedContainer
-from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
+from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, URLOpenWithRetries, _Default
 from .connectionpool import port_by_scheme
 from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
 from .packages.six.moves.urllib.parse import urljoin
@@ -326,17 +326,48 @@ class PoolManager(RequestMethods):
         # anywhere.
 
         # start critical section with self.pools.lock:
-        pool = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
         kw['assert_same_host'] = False
         kw['redirect'] = False
         if 'headers' not in kw:
             kw['headers'] = self.headers
 
+        # This will be called every time the underlying retry-capable logic needs to urlopen.
+        # Since the retry logic may call urlopen_only after network IO the pool it got the
+        # connection from may have been thrown away already. This wrapper function ensures that
+        # we get a working pool to use for the next urlopen_only call.
+        #
+        # If the original pool has not been thrown away yet then it should be reused here.
+        #
+        # TODO: This still doesn't fully fix the original issue as the pool lock is only held
+        # while connection_from_pool_key is being run so the pool could be thrown away before
+        # _get_conn is called on it. Further refactoring will be needed so that both
+        # connection_from_host and _get_conn are called within the same lock context.
+        def _urlopen_only(
+            method, url, body=None, headers=None, retries=None,
+            assert_same_host=True, timeout=_Default,
+            pool_timeout=None, release_conn=None, chunked=False,
+            **response_kw
+        ):
+            pool = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
+            return pool.urlopen_only(
+                method, url, body=body, headers=headers, retries=retries,
+                assert_same_host=assert_same_host, timeout=timeout,
+                pool_timeout=pool_timeout, release_conn=release_conn, chunked=chunked,
+                **response_kw
+            )
+
+        # TODO: tmp_pool is only used for getting the proxy and retries values to pass to URLOpenWithRetries
+        # and for use in the retries.increment call below.
+        tmp_pool = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
+        url_open_with_retries = URLOpenWithRetries(
+            tmp_pool.proxy, tmp_pool.retries, _urlopen_only
+        )
+
         if self.proxy is not None and u.scheme == "http":
-            response = pool.urlopen(method, url, **kw)
+            response = url_open_with_retries.urlopen(method, url, **kw)
         else:
-            response = pool.urlopen(method, u.request_uri, **kw)
+            response = url_open_with_retries.urlopen(method, u.request_uri, **kw)
         # end critical section with self.pools.lock
 
         redirect_location = redirect and response.get_redirect_location()
@@ -355,7 +386,7 @@ class PoolManager(RequestMethods):
             retries = Retry.from_int(retries, redirect=redirect)
 
         try:
-            retries = retries.increment(method, url, response=response, _pool=pool)
+            retries = retries.increment(method, url, response=response, _pool=tmp_pool)
         except MaxRetryError:
             if retries.raise_on_redirect:
                 raise
