@@ -446,10 +446,24 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def _do_urlopen(
         self, method, url, body=None, headers=None, retries=None,
-        timeout=_Default,
+        assert_same_host=True, timeout=_Default,
         pool_timeout=None, release_conn=None, chunked=False,
         **response_kw
     ):
+        if headers is None:
+            headers = self.headers
+
+        # Merge the proxy headers. Only do this in HTTP. We have to copy the
+        # headers dict so we can safely change it without those changes being
+        # reflected in anyone else's copy.
+        if self.scheme == 'http':
+            headers = headers.copy()
+            headers.update(self.proxy_headers)
+
+        # Check host
+        if assert_same_host and not self.is_same_host(url):
+            raise HostChangedError(self, url, retries)
+
         conn = None
 
         # Keep track of whether we cleanly exited the except block. This
@@ -628,10 +642,26 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             Additional parameters are passed to
             :meth:`urllib3.response.HTTPResponse.from_httplib`
         """
-        while True:
-            if headers is None:
-                headers = self.headers
+        url_open_with_retries = URLOpenWithRetries(self.proxy, self.retries, self._do_urlopen)
+        return url_open_with_retries.urlopen(
+            method, url, body, headers, retries,
+            redirect, assert_same_host, timeout,
+            pool_timeout, release_conn, chunked,
+            body_pos, **response_kw
+        )
 
+
+class URLOpenWithRetries(object):
+    def __init__(self, proxy, retries, do_urlopen_func):
+        self.proxy = proxy
+        self.retries = retries
+        self.do_urlopen_func = do_urlopen_func
+
+    def urlopen(self, method, url, body=None, headers=None, retries=None,
+                redirect=True, assert_same_host=True, timeout=_Default,
+                pool_timeout=None, release_conn=None, chunked=False,
+                body_pos=None, **response_kw):
+        while True:
             if not isinstance(retries, PersistentRetry):
                 if not isinstance(retries, Retry):
                     retries = PersistentRetry(
@@ -642,17 +672,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
             if release_conn is None:
                 release_conn = response_kw.get('preload_content', True)
-
-            # Check host
-            if assert_same_host and not self.is_same_host(url):
-                raise HostChangedError(self, url, retries)
-
-            # Merge the proxy headers. Only do this in HTTP. We have to copy the
-            # headers dict so we can safely change it without those changes being
-            # reflected in anyone else's copy.
-            if self.scheme == 'http':
-                headers = headers.copy()
-                headers.update(self.proxy_headers)
 
             # Must keep the exception bound to a separate variable or else Python 3
             # complains about UnboundLocalError.
@@ -667,9 +686,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             body_pos = set_file_position(body, body_pos)
 
             try:
-                response = self._do_urlopen(
+                response = self.do_urlopen_func(
                     method, url, body=body, headers=headers, retries=retries,
-                    timeout=timeout,
+                    assert_same_host=assert_same_host, timeout=timeout,
                     pool_timeout=pool_timeout, release_conn=release_conn, chunked=chunked,
                     **response_kw)
                 clean_exit = True
