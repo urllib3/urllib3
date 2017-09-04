@@ -96,7 +96,133 @@ class ConnectionPool(object):
 _blocking_errnos = set([errno.EAGAIN, errno.EWOULDBLOCK])
 
 
-class HTTPConnectionPool(ConnectionPool, RequestMethods):
+class RetryingURLOpen(object):
+    def urlopen_only(
+        self, method, url, body=None, headers=None, retries=None,
+        assert_same_host=True, timeout=_Default,
+        pool_timeout=None, release_conn=None, chunked=False,
+        conn_lock=None,
+        **response_kw
+    ):
+        raise NotImplementedError('Classes extending RetryingURLOpen must implement urlopen_only')
+
+    def urlopen(
+        self,
+        method, url, body=None, headers=None, retries=None,
+        redirect=True, assert_same_host=True, timeout=_Default,
+        pool_timeout=None, release_conn=None, chunked=False,
+        body_pos=None, proxy=None, **response_kw
+    ):
+        if not isinstance(retries, Retry):
+            retries = Retry.from_int(retries, redirect=redirect)
+        while True:
+
+            if release_conn is None:
+                release_conn = response_kw.get('preload_content', True)
+
+            # Must keep the exception bound to a separate variable or else Python 3
+            # complains about UnboundLocalError.
+            err = None
+
+            # Keep track of whether we cleanly exited the except block. This
+            # ensures we do proper cleanup in finally.
+            clean_exit = False
+
+            # Rewind body position, if needed. Record current position
+            # for future rewinds in the event of a redirect/retry.
+            body_pos = set_file_position(body, body_pos)
+
+            try:
+                response = self.urlopen_only(
+                    method, url, body=body, headers=headers, retries=retries,
+                    assert_same_host=assert_same_host, timeout=timeout,
+                    pool_timeout=pool_timeout, release_conn=release_conn, chunked=chunked,
+                    **response_kw)
+                clean_exit = True
+            except (TimeoutError, HTTPException, SocketError, ProtocolError,
+                    BaseSSLError, SSLError, CertificateError) as e:
+                if isinstance(e, (BaseSSLError, CertificateError)):
+                    e = SSLError(e)
+                elif isinstance(e, (SocketError, NewConnectionError)) and proxy:
+                    e = ProxyError('Cannot connect to proxy.', e)
+                elif isinstance(e, (SocketError, HTTPException)):
+                    e = ProtocolError('Connection aborted.', e)
+
+                retries = retries.increment(method, url, error=e, _pool=self,
+                                            _stacktrace=sys.exc_info()[2])
+                retries.sleep()
+
+                # Keep track of the error for the retry warning.
+                err = e
+
+            if not clean_exit:
+                # Try again
+                log.warning("Retrying (%r) after connection "
+                            "broken by '%r': %s", retries, err, url)
+                continue
+
+            def drain_and_release_conn(response):
+                try:
+                    # discard any remaining response body, the connection will be
+                    # released back to the pool once the entire response is read
+                    response.read()
+                except (TimeoutError, HTTPException, SocketError, ProtocolError,
+                        BaseSSLError, SSLError):
+                    pass
+
+            # Handle redirect?
+            redirect_location = redirect and response.get_redirect_location()
+            if redirect_location:
+
+                # Support relative URLs for redirecting.
+                redirect_location = urljoin(url, redirect_location)
+
+                # RFC 7231, Section 6.4.4
+                if response.status == 303:
+                    method = 'GET'
+
+                try:
+                    retries = retries.increment(method, url, response=response, _pool=self)
+                except MaxRetryError:
+                    if retries.raise_on_redirect:
+                        # Drain and release the connection for this response, since
+                        # we're not returning it to be released manually.
+                        drain_and_release_conn(response)
+                        raise
+                    return response
+
+                # drain and return the connection to the pool before recursing
+                drain_and_release_conn(response)
+
+                retries.sleep_for_retry(response)
+                log.debug("Redirecting %s -> %s", url, redirect_location)
+                url = redirect_location
+                continue
+
+            # Check if we should retry the HTTP response.
+            has_retry_after = bool(response.getheader('Retry-After'))
+            if retries.is_retry(method, response.status, has_retry_after):
+                try:
+                    retries = retries.increment(method, url, response=response, _pool=self)
+                except MaxRetryError:
+                    if retries.raise_on_status:
+                        # Drain and release the connection for this response, since
+                        # we're not returning it to be released manually.
+                        drain_and_release_conn(response)
+                        raise
+                    return response
+
+                # drain and return the connection to the pool before recursing
+                drain_and_release_conn(response)
+
+                retries.sleep(response)
+                log.debug("Retry: %s", url)
+                continue
+
+            return response
+
+
+class HTTPConnectionPool(ConnectionPool, RetryingURLOpen, RequestMethods):
     """
     Thread-safe connection pool for one host.
 
@@ -638,138 +764,17 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             Additional parameters are passed to
             :meth:`urllib3.response.HTTPResponse.from_httplib`
         """
-        url_open_retry_wrapper = URLOpenRetryWrapper(
-            self.urlopen_only,
-            proxy=self.proxy, retries=self.retries
+        # Calls RetryingURLOpen.urlopen. The only reason urlopen is overridden here
+        # is to use self.retries if the retries argument is None
+        return super(HTTPConnectionPool, self).urlopen(
+            method, url,
+            body=body, headers=headers,
+            retries=retries if retries is not None else self.retries,
+            redirect=redirect, assert_same_host=assert_same_host,
+            timeout=timeout, pool_timeout=pool_timeout,
+            release_conn=release_conn, chunked=chunked,
+            body_pos=body_pos, proxy=self.proxy, **response_kw
         )
-        return url_open_retry_wrapper.urlopen(
-            method, url, body, headers, retries,
-            redirect, assert_same_host, timeout,
-            pool_timeout, release_conn, chunked,
-            body_pos, **response_kw
-        )
-
-
-class URLOpenRetryWrapper(object):
-    def __init__(self, urlopen_only_func, proxy=None, retries=None):
-        self.proxy = proxy
-        self.retries = retries
-        self.urlopen_only_func = urlopen_only_func
-
-    def urlopen(
-        self,
-        method, url, body=None, headers=None, retries=None,
-        redirect=True, assert_same_host=True, timeout=_Default,
-        pool_timeout=None, release_conn=None, chunked=False,
-        body_pos=None, **response_kw
-    ):
-        if not isinstance(retries, Retry):
-            retries = Retry.from_int(retries, redirect=redirect, default=self.retries)
-        while True:
-
-            if release_conn is None:
-                release_conn = response_kw.get('preload_content', True)
-
-            # Must keep the exception bound to a separate variable or else Python 3
-            # complains about UnboundLocalError.
-            err = None
-
-            # Keep track of whether we cleanly exited the except block. This
-            # ensures we do proper cleanup in finally.
-            clean_exit = False
-
-            # Rewind body position, if needed. Record current position
-            # for future rewinds in the event of a redirect/retry.
-            body_pos = set_file_position(body, body_pos)
-
-            try:
-                response = self.urlopen_only_func(
-                    method, url, body=body, headers=headers, retries=retries,
-                    assert_same_host=assert_same_host, timeout=timeout,
-                    pool_timeout=pool_timeout, release_conn=release_conn, chunked=chunked,
-                    **response_kw)
-                clean_exit = True
-            except (TimeoutError, HTTPException, SocketError, ProtocolError,
-                    BaseSSLError, SSLError, CertificateError) as e:
-                if isinstance(e, (BaseSSLError, CertificateError)):
-                    e = SSLError(e)
-                elif isinstance(e, (SocketError, NewConnectionError)) and self.proxy:
-                    e = ProxyError('Cannot connect to proxy.', e)
-                elif isinstance(e, (SocketError, HTTPException)):
-                    e = ProtocolError('Connection aborted.', e)
-
-                retries = retries.increment(method, url, error=e, _pool=self,
-                                            _stacktrace=sys.exc_info()[2])
-                retries.sleep()
-
-                # Keep track of the error for the retry warning.
-                err = e
-
-            if not clean_exit:
-                # Try again
-                log.warning("Retrying (%r) after connection "
-                            "broken by '%r': %s", retries, err, url)
-                continue
-
-            def drain_and_release_conn(response):
-                try:
-                    # discard any remaining response body, the connection will be
-                    # released back to the pool once the entire response is read
-                    response.read()
-                except (TimeoutError, HTTPException, SocketError, ProtocolError,
-                        BaseSSLError, SSLError) as e:
-                    pass
-
-            # Handle redirect?
-            redirect_location = redirect and response.get_redirect_location()
-            if redirect_location:
-
-                # Support relative URLs for redirecting.
-                redirect_location = urljoin(url, redirect_location)
-
-                # RFC 7231, Section 6.4.4
-                if response.status == 303:
-                    method = 'GET'
-
-                try:
-                    retries = retries.increment(method, url, response=response, _pool=self)
-                except MaxRetryError:
-                    if retries.raise_on_redirect:
-                        # Drain and release the connection for this response, since
-                        # we're not returning it to be released manually.
-                        drain_and_release_conn(response)
-                        raise
-                    return response
-
-                # drain and return the connection to the pool before recursing
-                drain_and_release_conn(response)
-
-                retries.sleep_for_retry(response)
-                log.debug("Redirecting %s -> %s", url, redirect_location)
-                url = redirect_location
-                continue
-
-            # Check if we should retry the HTTP response.
-            has_retry_after = bool(response.getheader('Retry-After'))
-            if retries.is_retry(method, response.status, has_retry_after):
-                try:
-                    retries = retries.increment(method, url, response=response, _pool=self)
-                except MaxRetryError:
-                    if retries.raise_on_status:
-                        # Drain and release the connection for this response, since
-                        # we're not returning it to be released manually.
-                        drain_and_release_conn(response)
-                        raise
-                    return response
-
-                # drain and return the connection to the pool before recursing
-                drain_and_release_conn(response)
-
-                retries.sleep(response)
-                log.debug("Retry: %s", url)
-                continue
-
-            return response
 
 
 class HTTPSConnectionPool(HTTPConnectionPool):

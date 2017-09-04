@@ -4,7 +4,7 @@ import functools
 import logging
 
 from ._collections import RecentlyUsedContainer
-from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, URLOpenRetryWrapper
+from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, RetryingURLOpen
 from .connectionpool import port_by_scheme
 from .exceptions import LocationValueError, ProxySchemeUnknown
 from .request import RequestMethods
@@ -116,7 +116,7 @@ pool_classes_by_scheme = {
 }
 
 
-class PoolManager(RequestMethods):
+class PoolManager(RetryingURLOpen, RequestMethods):
     """
     Allows for arbitrary requests while transparently keeping track of
     necessary connection pools for you.
@@ -296,52 +296,46 @@ class PoolManager(RequestMethods):
                     base_pool_kwargs[key] = value
         return base_pool_kwargs
 
+    # This will be called every time the underlying retry-capable logic needs to urlopen.
+    # Since the retry logic may call urlopen_only after network IO the pool it got the
+    # connection from may have been thrown away already. This wrapper function ensures that
+    # we get a working pool to use for the next urlopen_only call.
+    #
+    # If the original pool has not been thrown away yet then it should be reused here.
+    #
+    # TODO: Passing self.pools.lock and having pool.urlopen_only release it should fix the
+    # issue completely by keeping the pool lock until the connection is acquired, but the
+    # implementation is hacky.
+    def urlopen_only(self, method, url, **kw):
+        u = parse_url(url)
+        self.pools.lock.acquire()
+        try:
+            pool = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
+            if self.proxy is not None and u.scheme == "http":
+                response = pool.urlopen_only(method, url, **kw)
+            else:
+                response = pool.urlopen_only(method, parse_url(url).request_uri, **kw)
+            return response
+            # return pool.urlopen_only(*a, **k)
+        finally:
+            try:
+                self.pools.lock.release()
+            except RuntimeError:
+                pass
+
     def urlopen(self, method, url, **kw):
         """
         Same as :meth:`urllib3.connectionpool.HTTPConnectionPool.urlopen`
-        with custom cross-host redirect logic and only sends the request-uri
-        portion of the ``url``.
+        but only sends the request-uri portion of the ``url``.
 
         The given ``url`` parameter must be absolute, such that an appropriate
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
-
         kw['assert_same_host'] = False
         if 'headers' not in kw:
             kw['headers'] = self.headers
 
-        # This will be called every time the underlying retry-capable logic needs to urlopen.
-        # Since the retry logic may call urlopen_only after network IO the pool it got the
-        # connection from may have been thrown away already. This wrapper function ensures that
-        # we get a working pool to use for the next urlopen_only call.
-        #
-        # If the original pool has not been thrown away yet then it should be reused here.
-        #
-        # TODO: Passing self.pools.lock and having pool.urlopen_only release it should fix the
-        # issue completely by keeping the pool lock until the connection is acquired, but the
-        # implementation is hacky.
-        def _urlopen_only(method, url, *a, **k):
-            u = parse_url(url)
-            self.pools.lock.acquire()
-            try:
-                pool = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
-                if self.proxy is not None and u.scheme == "http":
-                    response = pool.urlopen_only(method, url, *a, **k)
-                else:
-                    response = pool.urlopen_only(method, parse_url(url).request_uri, *a, **k)
-                return response
-                # return pool.urlopen_only(*a, **k)
-            finally:
-                try:
-                    self.pools.lock.release()
-                except RuntimeError:
-                    pass
-        url_open_retry_wrapper = URLOpenRetryWrapper(
-            _urlopen_only,
-            proxy=self.connection_pool_kw.get('_proxy'),
-            retries=self.connection_pool_kw.get('retries'),
-        )
-        return url_open_retry_wrapper.urlopen(method, url, **kw)
+        return super(PoolManager, self).urlopen(method, url, proxy=self.proxy, **kw)
 
 
 class ProxyManager(PoolManager):
