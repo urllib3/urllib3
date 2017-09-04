@@ -39,7 +39,7 @@ from .response import HTTPResponse
 from .util.connection import is_connection_dropped
 from .util.request import set_file_position
 from .util.response import assert_header_parsing
-from .util.retry import Retry, PersistentRetry
+from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import get_host, Url
 
@@ -529,14 +529,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Timed out by queue.
             raise EmptyPoolError(self, "No pool connections are available.")
 
-        # clean_exit can't be True if we're in this except block
-        # except (TimeoutError, HTTPException, SocketError, ProtocolError,
-        #         BaseSSLError, SSLError, CertificateError):
-        #     # Discard the connection for these exceptions. It will be
-        #     # replaced during the next _get_conn() call.
-        #     clean_exit = False
-        #     raise
-
         finally:
             if not clean_exit:
                 # We hit some kind of exception, handled or otherwise. We need
@@ -671,13 +663,8 @@ class URLOpenRetryWrapper(object):
         pool_timeout=None, release_conn=None, chunked=False,
         body_pos=None, **response_kw
     ):
-        if not isinstance(retries, PersistentRetry):
-            if not isinstance(retries, Retry):
-                retries = PersistentRetry(
-                    Retry.from_int(retries, redirect=redirect, default=self.retries)
-                )
-            else:
-                retries = PersistentRetry(retries)
+        if not isinstance(retries, Retry):
+            retries = Retry.from_int(retries, redirect=redirect, default=self.retries)
         while True:
 
             if release_conn is None:
@@ -711,8 +698,8 @@ class URLOpenRetryWrapper(object):
                 elif isinstance(e, (SocketError, HTTPException)):
                     e = ProtocolError('Connection aborted.', e)
 
-                retries.increment(method, url, error=e, _pool=self,
-                                  _stacktrace=sys.exc_info()[2])
+                retries = retries.increment(method, url, error=e, _pool=self,
+                                            _stacktrace=sys.exc_info()[2])
                 retries.sleep()
 
                 # Keep track of the error for the retry warning.
@@ -745,7 +732,7 @@ class URLOpenRetryWrapper(object):
                     method = 'GET'
 
                 try:
-                    retries.increment(method, url, response=response, _pool=self)
+                    retries = retries.increment(method, url, response=response, _pool=self)
                 except MaxRetryError:
                     if retries.raise_on_redirect:
                         # Drain and release the connection for this response, since
@@ -766,7 +753,7 @@ class URLOpenRetryWrapper(object):
             has_retry_after = bool(response.getheader('Retry-After'))
             if retries.is_retry(method, response.status, has_retry_after):
                 try:
-                    retries.increment(method, url, response=response, _pool=self)
+                    retries = retries.increment(method, url, response=response, _pool=self)
                 except MaxRetryError:
                     if retries.raise_on_status:
                         # Drain and release the connection for this response, since

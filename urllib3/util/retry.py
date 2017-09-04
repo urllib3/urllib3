@@ -397,17 +397,5 @@ class Retry(object):
                     cls=type(self), self=self)
 
 
-class PersistentRetry(object):
-    def __init__(self, retry):
-        self._retry = retry
-
-    def increment(self, *a, **k):
-        self._retry = self._retry.increment(*a, **k)
-        return self
-
-    def __getattr__(self, name):
-        return getattr(self._retry, name)
-
-
 # For backwards compatibility (equivalent to pre-v1.9):
 Retry.DEFAULT = Retry(3)
