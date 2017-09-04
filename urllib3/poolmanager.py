@@ -4,7 +4,7 @@ import functools
 import logging
 
 from ._collections import RecentlyUsedContainer
-from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, URLOpenWithRetries, _Default
+from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, URLOpenRetryWrapper, _Default
 from .connectionpool import port_by_scheme
 from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
 from .packages.six.moves.urllib.parse import urljoin
@@ -298,7 +298,7 @@ class PoolManager(RequestMethods):
                     base_pool_kwargs[key] = value
         return base_pool_kwargs
 
-    def urlopen(self, method, url, redirect=True, **kw):
+    def urlopen(self, method, url, **kw):
         """
         Same as :meth:`urllib3.connectionpool.HTTPConnectionPool.urlopen`
         with custom cross-host redirect logic and only sends the request-uri
@@ -307,10 +307,8 @@ class PoolManager(RequestMethods):
         The given ``url`` parameter must be absolute, such that an appropriate
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
-        u = parse_url(url)
 
         kw['assert_same_host'] = False
-        kw['redirect'] = False
         if 'headers' not in kw:
             kw['headers'] = self.headers
 
@@ -324,67 +322,28 @@ class PoolManager(RequestMethods):
         # TODO: Passing self.pools.lock and having pool.urlopen_only release it should fix the
         # issue completely by keeping the pool lock until the connection is acquired, but the
         # implementation is hacky.
-        def _urlopen_only(
-            method, url, body=None, headers=None, retries=None,
-            assert_same_host=True, timeout=_Default,
-            pool_timeout=None, release_conn=None, chunked=False,
-            **response_kw
-        ):
+        def _urlopen_only(method, url, *a, **k):
+            u = parse_url(url)
             self.pools.lock.acquire()
             try:
                 pool = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
-                return pool.urlopen_only(
-                    method, url, body=body, headers=headers, retries=retries,
-                    assert_same_host=assert_same_host, timeout=timeout,
-                    pool_timeout=pool_timeout, release_conn=release_conn, chunked=chunked,
-                    conn_lock=self.pools.lock,
-                    **response_kw
-                )
+                if self.proxy is not None and u.scheme == "http":
+                    response = pool.urlopen_only(method, url, *a, **k)
+                else:
+                    response = pool.urlopen_only(method, parse_url(url).request_uri, *a, **k)
+                return response
+                # return pool.urlopen_only(*a, **k)
             finally:
                 try:
                     self.pools.lock.release()
                 except RuntimeError:
                     pass
-
-        # TODO: tmp_pool is only used for getting the proxy and retries values to pass to
-        # URLOpenWithRetries and for use in the retries.increment call below.
-        tmp_pool = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
-        url_open_with_retries = URLOpenWithRetries(
-            tmp_pool.proxy, tmp_pool.retries, _urlopen_only
+        url_open_retry_wrapper = URLOpenRetryWrapper(
+            _urlopen_only,
+            proxy=self.connection_pool_kw.get('_proxy'),
+            retries=self.connection_pool_kw.get('retries'),
         )
-
-        if self.proxy is not None and u.scheme == "http":
-            response = url_open_with_retries.urlopen(method, url, **kw)
-        else:
-            response = url_open_with_retries.urlopen(method, u.request_uri, **kw)
-
-        redirect_location = redirect and response.get_redirect_location()
-        if not redirect_location:
-            return response
-
-        # Support relative URLs for redirecting.
-        redirect_location = urljoin(url, redirect_location)
-
-        # RFC 7231, Section 6.4.4
-        if response.status == 303:
-            method = 'GET'
-
-        retries = kw.get('retries')
-        if not isinstance(retries, Retry):
-            retries = Retry.from_int(retries, redirect=redirect)
-
-        try:
-            retries = retries.increment(method, url, response=response, _pool=tmp_pool)
-        except MaxRetryError:
-            if retries.raise_on_redirect:
-                raise
-            return response
-
-        kw['retries'] = retries
-        kw['redirect'] = redirect
-
-        log.info("Redirecting %s -> %s", url, redirect_location)
-        return self.urlopen(method, redirect_location, **kw)
+        return url_open_retry_wrapper.urlopen(method, url, **kw)
 
 
 class ProxyManager(PoolManager):

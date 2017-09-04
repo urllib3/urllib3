@@ -26,6 +26,7 @@ from .exceptions import (
 from .packages.ssl_match_hostname import CertificateError
 from .packages import six
 from .packages.six.moves import queue
+from .packages.six.moves.urllib.parse import urljoin
 from .connection import (
     port_by_scheme,
     DummyConnection,
@@ -645,8 +646,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             Additional parameters are passed to
             :meth:`urllib3.response.HTTPResponse.from_httplib`
         """
-        url_open_with_retries = URLOpenWithRetries(self.proxy, self.retries, self.urlopen_only)
-        return url_open_with_retries.urlopen(
+        url_open_retry_wrapper = URLOpenRetryWrapper(
+            self.urlopen_only,
+            proxy=self.proxy, retries=self.retries
+        )
+        return url_open_retry_wrapper.urlopen(
             method, url, body, headers, retries,
             redirect, assert_same_host, timeout,
             pool_timeout, release_conn, chunked,
@@ -654,24 +658,27 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         )
 
 
-class URLOpenWithRetries(object):
-    def __init__(self, proxy, retries, urlopen_only_func):
+class URLOpenRetryWrapper(object):
+    def __init__(self, urlopen_only_func, proxy=None, retries=None):
         self.proxy = proxy
         self.retries = retries
         self.urlopen_only_func = urlopen_only_func
 
-    def urlopen(self, method, url, body=None, headers=None, retries=None,
-                redirect=True, assert_same_host=True, timeout=_Default,
-                pool_timeout=None, release_conn=None, chunked=False,
-                body_pos=None, **response_kw):
+    def urlopen(
+        self,
+        method, url, body=None, headers=None, retries=None,
+        redirect=True, assert_same_host=True, timeout=_Default,
+        pool_timeout=None, release_conn=None, chunked=False,
+        body_pos=None, **response_kw
+    ):
+        if not isinstance(retries, PersistentRetry):
+            if not isinstance(retries, Retry):
+                retries = PersistentRetry(
+                    Retry.from_int(retries, redirect=redirect, default=self.retries)
+                )
+            else:
+                retries = PersistentRetry(retries)
         while True:
-            if not isinstance(retries, PersistentRetry):
-                if not isinstance(retries, Retry):
-                    retries = PersistentRetry(
-                        Retry.from_int(retries, redirect=redirect, default=self.retries)
-                    )
-                else:
-                    retries = PersistentRetry(retries)
 
             if release_conn is None:
                 release_conn = response_kw.get('preload_content', True)
@@ -729,6 +736,11 @@ class URLOpenWithRetries(object):
             # Handle redirect?
             redirect_location = redirect and response.get_redirect_location()
             if redirect_location:
+
+                # Support relative URLs for redirecting.
+                redirect_location = urljoin(url, redirect_location)
+
+                # RFC 7231, Section 6.4.4
                 if response.status == 303:
                     method = 'GET'
 
