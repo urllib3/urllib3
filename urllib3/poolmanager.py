@@ -308,17 +308,27 @@ class PoolManager(RequestMethods):
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
         u = parse_url(url)
-        conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
+        self.pools.lock.acquire()
+        try:
+            pool = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 
-        kw['assert_same_host'] = False
-        kw['redirect'] = False
-        if 'headers' not in kw:
-            kw['headers'] = self.headers
+            kw['assert_same_host'] = False
+            kw['redirect'] = False
+            if 'headers' not in kw:
+                kw['headers'] = self.headers
 
-        if self.proxy is not None and u.scheme == "http":
-            response = conn.urlopen(method, url, **kw)
-        else:
-            response = conn.urlopen(method, u.request_uri, **kw)
+            if self.proxy is not None and u.scheme == "http":
+                response = pool.urlopen(method, url, _conn_lock=self.pools.lock, **kw)
+            else:
+                response = pool.urlopen(method, u.request_uri, _conn_lock=self.pools.lock, **kw)
+        finally:
+            # We need to make sure the lock is released as pool.urlopen may have failed before
+            # releasing the lock.
+            try:
+                self.pools.lock.release()
+            # RuntimeError will happen if pool.urlopen already released the lock.
+            except RuntimeError:
+                pass
 
         redirect_location = redirect and response.get_redirect_location()
         if not redirect_location:
@@ -336,7 +346,7 @@ class PoolManager(RequestMethods):
             retries = Retry.from_int(retries, redirect=redirect)
 
         try:
-            retries = retries.increment(method, url, response=response, _pool=conn)
+            retries = retries.increment(method, url, response=response, _pool=pool)
         except MaxRetryError:
             if retries.raise_on_redirect:
                 raise
