@@ -262,6 +262,19 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('POST', '/upload', fields=fields)
         self.assertEqual(r.status, 200, r.data)
 
+    def test_upload_with_janky_ct_header(self):
+        data = "I'm in ur multipart form-data, hazing a cheezburgr"
+        fields = {
+            'upload_param': 'filefield',
+            'upload_filename': 'lolcat.txt',
+            'upload_size': len(data),
+            'filefield': ('lolcat.txt', data),
+        }
+        headers = {'Content-Type': 'NOT REAL PLEASE OVERRIDE ME'}
+        r = self.pool.request('POST', '/upload', fields=fields, headers=headers)
+        # We should override the fake Content-Type header when we do our multipart magic
+        self.assertEqual(r.status, 200, r.data)
+
     def test_one_name_multiple_values(self):
         fields = [
             ('foo', 'a'),

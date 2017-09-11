@@ -127,7 +127,7 @@ class RequestMethods(object):
         if headers is None:
             headers = self.headers
 
-        extra_kw = {'headers': {}}
+        extra_kw = {'headers': headers.copy()}
 
         if fields:
             if 'body' in urlopen_kw:
@@ -140,9 +140,8 @@ class RequestMethods(object):
                 body, content_type = urlencode(fields), 'application/x-www-form-urlencoded'
 
             extra_kw['body'] = body
-            extra_kw['headers'] = {'Content-Type': content_type}
+            extra_kw['headers'].update({'Content-Type': content_type})
 
-        extra_kw['headers'].update(headers)
         extra_kw.update(urlopen_kw)
 
         return self.urlopen(method, url, **extra_kw)
