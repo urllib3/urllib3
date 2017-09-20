@@ -16,6 +16,8 @@ dev (master)
 
 * Add the port to the connectionpool connect print (Pull #1251)
 
+* Lazily load `uuid` to boost performance on imports (Pull #1270)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
