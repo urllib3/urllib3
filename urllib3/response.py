@@ -38,7 +38,11 @@ class DeflateDecoder(object):
 
         self._data += data
         try:
-            return self._obj.decompress(data)
+            decompressed = self._obj.decompress(data)
+            if decompressed:
+                self._first_try = False
+                self._data = None
+            return decompressed
         except zlib.error:
             self._first_try = False
             self._obj = zlib.decompressobj(-zlib.MAX_WBITS)
@@ -470,6 +474,10 @@ class HTTPResponse(io.IOBase):
     def getheader(self, name, default=None):
         return self.headers.get(name, default)
 
+    # Backwards compatibility for http.cookiejar
+    def info(self):
+        return self.headers
+
     # Overrides from io.IOBase
     def close(self):
         if not self.closed:
@@ -580,12 +588,12 @@ class HTTPResponse(io.IOBase):
                 "Body should be httplib.HTTPResponse like. "
                 "It should have have an fp attribute which returns raw chunks.")
 
-        # Don't bother reading the body of a HEAD request.
-        if self._original_response and is_response_to_head(self._original_response):
-            self._original_response.close()
-            return
-
         with self._error_catcher():
+            # Don't bother reading the body of a HEAD request.
+            if self._original_response and is_response_to_head(self._original_response):
+                self._original_response.close()
+                return
+
             while True:
                 self._update_chunk_length()
                 if self.chunk_left == 0:

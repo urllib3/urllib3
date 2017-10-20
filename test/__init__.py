@@ -4,11 +4,13 @@ import errno
 import functools
 import logging
 import socket
+import platform
 
-from nose.plugins.skip import SkipTest
+import pytest
 
 from urllib3.exceptions import HTTPWarning
 from urllib3.packages import six
+from urllib3.util import ssl_
 
 # We need a host that will not immediately close the connection with a TCP
 # Reset. SO suggests this hostname
@@ -42,7 +44,7 @@ def onlyPy26OrOlder(test):
     def wrapper(*args, **kwargs):
         msg = "{name} only runs on Python2.6.x or older".format(name=test.__name__)
         if sys.version_info >= (2, 7):
-            raise SkipTest(msg)
+            pytest.skip(msg)
         return test(*args, **kwargs)
     return wrapper
 
@@ -54,7 +56,7 @@ def onlyPy27OrNewer(test):
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python 2.7.x+ to run".format(name=test.__name__)
         if sys.version_info < (2, 7):
-            raise SkipTest(msg)
+            pytest.skip(msg)
         return test(*args, **kwargs)
     return wrapper
 
@@ -66,7 +68,7 @@ def onlyPy279OrNewer(test):
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python 2.7.9+ to run".format(name=test.__name__)
         if sys.version_info < (2, 7, 9):
-            raise SkipTest(msg)
+            pytest.skip(msg)
         return test(*args, **kwargs)
     return wrapper
 
@@ -78,7 +80,7 @@ def onlyPy2(test):
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python 2.x to run".format(name=test.__name__)
         if six.PY3:
-            raise SkipTest(msg)
+            pytest.skip(msg)
         return test(*args, **kwargs)
     return wrapper
 
@@ -90,7 +92,30 @@ def onlyPy3(test):
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python3.x to run".format(name=test.__name__)
         if not six.PY3:
-            raise SkipTest(msg)
+            pytest.skip(msg)
+        return test(*args, **kwargs)
+    return wrapper
+
+
+def notSecureTransport(test):
+    """Skips this test when SecureTransport is in use."""
+
+    @functools.wraps(test)
+    def wrapper(*args, **kwargs):
+        msg = "{name} does not run with SecureTransport".format(name=test.__name__)
+        if ssl_.IS_SECURETRANSPORT:
+            pytest.skip(msg)
+        return test(*args, **kwargs)
+    return wrapper
+
+
+def onlyPy27OrNewerOrNonWindows(test):
+    """Skips this test unless you are on Python2.7+ or non-Windows"""
+    @functools.wraps(test)
+    def wrapper(*args, **kwargs):
+        msg = "{name} requires Python2.7+ or non-Windows to run".format(name=test.__name__)
+        if sys.version_info < (2, 7) and platform.system() == 'Windows':
+            pytest.skip(msg)
         return test(*args, **kwargs)
     return wrapper
 
@@ -130,7 +155,7 @@ def requires_network(test):
         else:
             msg = "Can't run {name} because the network is unreachable".format(
                 name=test.__name__)
-            raise SkipTest(msg)
+            pytest.skip(msg)
     return wrapper
 
 

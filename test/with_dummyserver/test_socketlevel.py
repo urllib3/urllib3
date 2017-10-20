@@ -18,11 +18,10 @@ from urllib3._collections import HTTPHeaderDict, OrderedDict
 
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from dummyserver.server import (
-    DEFAULT_CERTS, DEFAULT_CA, get_unreachable_address)
+    DEFAULT_CERTS, DEFAULT_CA, COMBINED_CERT_AND_KEY, get_unreachable_address)
 
 from .. import onlyPy3, LogRecorder
 
-from nose.plugins.skip import SkipTest
 try:
     from mimetools import Message as MimeToolMessage
 except ImportError:
@@ -32,6 +31,8 @@ from threading import Event
 import select
 import socket
 import ssl
+
+import pytest
 
 
 class TestCookies(SocketDummyServerTestCase):
@@ -60,10 +61,8 @@ class TestCookies(SocketDummyServerTestCase):
 
 class TestSNI(SocketDummyServerTestCase):
 
+    @pytest.mark.skipif(not HAS_SNI, reason='SNI-support not available')
     def test_hostname_in_first_request_packet(self):
-        if not HAS_SNI:
-            raise SkipTest('SNI-support not available')
-
         done_receiving = Event()
         self.buf = b''
 
@@ -79,11 +78,155 @@ class TestSNI(SocketDummyServerTestCase):
         self.addCleanup(pool.close)
         try:
             pool.request('GET', '/', retries=0)
-        except SSLError:  # We are violating the protocol
+        except MaxRetryError:  # We are violating the protocol
             pass
         done_receiving.wait()
         self.assertTrue(self.host.encode('ascii') in self.buf,
                         "missing hostname in SSL handshake")
+
+
+class TestClientCerts(SocketDummyServerTestCase):
+    """
+    Tests for client certificate support.
+    """
+    def _wrap_in_ssl(self, sock):
+        """
+        Given a single socket, wraps it in TLS.
+        """
+        return ssl.wrap_socket(
+            sock,
+            ssl_version=ssl.PROTOCOL_SSLv23,
+            cert_reqs=ssl.CERT_REQUIRED,
+            ca_certs=DEFAULT_CA,
+            certfile=DEFAULT_CERTS['certfile'],
+            keyfile=DEFAULT_CERTS['keyfile'],
+            server_side=True
+        )
+
+    def test_client_certs_two_files(self):
+        """
+        Having a client cert in a separate file to its associated key works
+        properly.
+        """
+        done_receiving = Event()
+        client_certs = []
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            sock = self._wrap_in_ssl(sock)
+
+            client_certs.append(sock.getpeercert())
+
+            data = b''
+            while not data.endswith(b'\r\n\r\n'):
+                data += sock.recv(8192)
+
+            sock.sendall(
+                b'HTTP/1.1 200 OK\r\n'
+                b'Server: testsocket\r\n'
+                b'Connection: close\r\n'
+                b'Content-Length: 6\r\n'
+                b'\r\n'
+                b'Valid!'
+            )
+
+            done_receiving.wait(5)
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPSConnectionPool(
+            self.host,
+            self.port,
+            cert_file=DEFAULT_CERTS['certfile'],
+            key_file=DEFAULT_CERTS['keyfile'],
+            cert_reqs='REQUIRED',
+            ca_certs=DEFAULT_CA,
+        )
+        self.addCleanup(pool.close)
+        pool.request('GET', '/', retries=0)
+        done_receiving.set()
+
+        self.assertEqual(len(client_certs), 1)
+
+    def test_client_certs_one_file(self):
+        """
+        Having a client cert and its associated private key in just one file
+        works properly.
+        """
+        done_receiving = Event()
+        client_certs = []
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            sock = self._wrap_in_ssl(sock)
+
+            client_certs.append(sock.getpeercert())
+
+            data = b''
+            while not data.endswith(b'\r\n\r\n'):
+                data += sock.recv(8192)
+
+            sock.sendall(
+                b'HTTP/1.1 200 OK\r\n'
+                b'Server: testsocket\r\n'
+                b'Connection: close\r\n'
+                b'Content-Length: 6\r\n'
+                b'\r\n'
+                b'Valid!'
+            )
+
+            done_receiving.wait(5)
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPSConnectionPool(
+            self.host,
+            self.port,
+            cert_file=COMBINED_CERT_AND_KEY,
+            cert_reqs='REQUIRED',
+            ca_certs=DEFAULT_CA,
+        )
+        self.addCleanup(pool.close)
+        pool.request('GET', '/', retries=0)
+        done_receiving.set()
+
+        self.assertEqual(len(client_certs), 1)
+
+    def test_missing_client_certs_raises_error(self):
+        """
+        Having client certs not be present causes an error.
+        """
+        done_receiving = Event()
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            try:
+                self._wrap_in_ssl(sock)
+            except ssl.SSLError:
+                pass
+
+            done_receiving.wait(5)
+            sock.close()
+
+        self._start_server(socket_handler)
+        pool = HTTPSConnectionPool(
+            self.host,
+            self.port,
+            cert_reqs='REQUIRED',
+            ca_certs=DEFAULT_CA,
+        )
+        self.addCleanup(pool.close)
+        try:
+            pool.request('GET', '/', retries=0)
+        except MaxRetryError:
+            done_receiving.set()
+        else:
+            done_receiving.set()
+            self.fail(
+                "Expected server to reject connection due to missing client "
+                "certificates"
+            )
 
 
 class TestSocketClosing(SocketDummyServerTestCase):
@@ -767,6 +910,51 @@ class TestProxyManager(SocketDummyServerTestCase):
         r = conn.urlopen('GET', url, retries=0)
         self.assertEqual(r.status, 200)
 
+    def test_connect_ipv6_addr(self):
+        ipv6_addr = '2001:4998:c:a06::2:4008'
+
+        def echo_socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+            s = buf.decode('utf-8')
+
+            if s.startswith('CONNECT [%s]:443' % (ipv6_addr,)):
+                sock.send(b'HTTP/1.1 200 Connection Established\r\n\r\n')
+                ssl_sock = ssl.wrap_socket(sock,
+                                           server_side=True,
+                                           keyfile=DEFAULT_CERTS['keyfile'],
+                                           certfile=DEFAULT_CERTS['certfile'])
+                buf = b''
+                while not buf.endswith(b'\r\n\r\n'):
+                    buf += ssl_sock.recv(65536)
+
+                ssl_sock.send(b'HTTP/1.1 200 OK\r\n'
+                              b'Content-Type: text/plain\r\n'
+                              b'Content-Length: 2\r\n'
+                              b'Connection: close\r\n'
+                              b'\r\n'
+                              b'Hi')
+                ssl_sock.close()
+            else:
+                sock.close()
+
+        self._start_server(echo_socket_handler)
+        base_url = 'http://%s:%d' % (self.host, self.port)
+
+        proxy = proxy_from_url(base_url)
+        self.addCleanup(proxy.clear)
+
+        url = 'https://[{0}]'.format(ipv6_addr)
+        conn = proxy.connection_from_url(url)
+        try:
+            r = conn.urlopen('GET', url, retries=0)
+            self.assertEqual(r.status, 200)
+        except MaxRetryError:
+            self.fail('Invalid IPv6 format in HTTP CONNECT request')
+
 
 class TestSSL(SocketDummyServerTestCase):
 
@@ -798,7 +986,9 @@ class TestSSL(SocketDummyServerTestCase):
         pool = HTTPSConnectionPool(self.host, self.port)
         self.addCleanup(pool.close)
 
-        self.assertRaises(SSLError, pool.request, 'GET', '/', retries=0)
+        with self.assertRaises(MaxRetryError) as cm:
+            pool.request('GET', '/', retries=0)
+        self.assertIsInstance(cm.exception.reason, SSLError)
 
     def test_ssl_read_timeout(self):
         timed_out = Event()
@@ -866,14 +1056,62 @@ class TestSSL(SocketDummyServerTestCase):
                                        assert_fingerprint=fingerprint)
             try:
                 response = pool.urlopen('GET', '/', preload_content=False,
-                                        timeout=Timeout(connect=1, read=0.001))
+                                        timeout=Timeout(connect=1, read=0.001),
+                                        retries=0)
                 response.read()
             finally:
                 pool.close()
 
-        self.assertRaises(SSLError, request)
+        with self.assertRaises(MaxRetryError) as cm:
+            request()
+        self.assertIsInstance(cm.exception.reason, SSLError)
         # Should not hang, see https://github.com/shazow/urllib3/issues/529
-        self.assertRaises(SSLError, request)
+        self.assertRaises(MaxRetryError, request)
+
+    def test_retry_ssl_error(self):
+        def socket_handler(listener):
+            # first request, trigger an SSLError
+            sock = listener.accept()[0]
+            sock2 = sock.dup()
+            ssl_sock = ssl.wrap_socket(sock,
+                                       server_side=True,
+                                       keyfile=DEFAULT_CERTS['keyfile'],
+                                       certfile=DEFAULT_CERTS['certfile'])
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += ssl_sock.recv(65536)
+
+            # Deliberately send from the non-SSL socket to trigger an SSLError
+            sock2.send((
+                'HTTP/1.1 200 OK\r\n'
+                'Content-Type: text/plain\r\n'
+                'Content-Length: 4\r\n'
+                '\r\n'
+                'Fail').encode('utf-8'))
+            sock2.close()
+            ssl_sock.close()
+
+            # retried request
+            sock = listener.accept()[0]
+            ssl_sock = ssl.wrap_socket(sock,
+                                       server_side=True,
+                                       keyfile=DEFAULT_CERTS['keyfile'],
+                                       certfile=DEFAULT_CERTS['certfile'])
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += ssl_sock.recv(65536)
+            ssl_sock.send(b'HTTP/1.1 200 OK\r\n'
+                          b'Content-Type: text/plain\r\n'
+                          b'Content-Length: 7\r\n\r\n'
+                          b'Success')
+            ssl_sock.close()
+
+        self._start_server(socket_handler)
+
+        pool = HTTPSConnectionPool(self.host, self.port)
+        self.addCleanup(pool.close)
+        response = pool.urlopen('GET', '/', retries=1)
+        self.assertEqual(response.data, b'Success')
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):
@@ -1021,12 +1259,11 @@ class TestHeaders(SocketDummyServerTestCase):
         self.assertEqual(expected_response_headers, actual_response_headers)
 
 
+@pytest.mark.skipif(
+    issubclass(httplib.HTTPMessage, MimeToolMessage),
+    reason='Header parsing errors not available'
+)
 class TestBrokenHeaders(SocketDummyServerTestCase):
-    def setUp(self):
-        if issubclass(httplib.HTTPMessage, MimeToolMessage):
-            raise SkipTest('Header parsing errors not available')
-
-        super(TestBrokenHeaders, self).setUp()
 
     def _test_broken_header_parsing(self, headers):
         self.start_response_handler((
@@ -1199,3 +1436,36 @@ class TestBadContentLength(SocketDummyServerTestCase):
         self.assertEqual(len(data), 0)
 
         done_event.set()
+
+
+class TestRetryPoolSizeDrainFail(SocketDummyServerTestCase):
+
+    def test_pool_size_retry_drain_fail(self):
+        def socket_handler(listener):
+            for _ in range(2):
+                sock = listener.accept()[0]
+                while not sock.recv(65536).endswith(b'\r\n\r\n'):
+                    pass
+
+                # send a response with an invalid content length -- this causes
+                # a ProtocolError to raise when trying to drain the connection
+                sock.send(
+                    b'HTTP/1.1 404 NOT FOUND\r\n'
+                    b'Content-Length: 1000\r\n'
+                    b'Content-Type: text/plain\r\n'
+                    b'\r\n'
+                )
+                sock.close()
+
+        self._start_server(socket_handler)
+        retries = Retry(
+            total=1,
+            raise_on_status=False,
+            status_forcelist=[404],
+        )
+        pool = HTTPConnectionPool(self.host, self.port, maxsize=10,
+                                  retries=retries, block=True)
+        self.addCleanup(pool.close)
+
+        pool.urlopen('GET', '/not_found', preload_content=False)
+        self.assertEquals(pool.num_connections, 1)

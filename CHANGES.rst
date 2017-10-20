@@ -4,10 +4,85 @@ Changes
 dev (master)
 ------------
 
+* Fix ``util.selectors._fileobj_to_fd`` to accept ``long`` (Issue #1247).
+
+* Dropped Python 3.3 support. (Pull #1242)
+
+* Put the connection back in the pool when calling stream() or read_chunked() on
+  a chunked HEAD response. (Issue #1234)
+
+* Fixed pyOpenSSL-specific ssl client authentication issue when clients
+  attempted to auth via certificate + chain (Issue #1060)
+
+* Add the port to the connectionpool connect print (Pull #1251)
+
+* Lazily load `uuid` to boost performance on imports (Pull #1270)
+
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.22 (2017-07-20)
+-----------------
+
+* Fixed missing brackets in ``HTTP CONNECT`` when connecting to IPv6 address via
+  IPv6 proxy. (Issue #1222)
+
+* Made the connection pool retry on ``SSLError``.  The original ``SSLError``
+  is available on ``MaxRetryError.reason``. (Issue #1112)
+
+* Drain and release connection before recursing on retry/redirect.  Fixes
+  deadlocks with a blocking connectionpool. (Issue #1167)
+
+* Fixed compatibility for cookiejar. (Issue #1229)
+
+* pyopenssl: Use vendored version of ``six``. (Issue #1231)
+
+
+1.21.1 (2017-05-02)
+-------------------
+
+* Fixed SecureTransport issue that would cause long delays in response body
+  delivery. (Pull #1154)
+
+* Fixed regression in 1.21 that threw exceptions when users passed the
+  ``socket_options`` flag to the ``PoolManager``.  (Issue #1165)
+
+* Fixed regression in 1.21 that threw exceptions when users passed the
+  ``assert_hostname`` or ``assert_fingerprint`` flag to the ``PoolManager``.
+  (Pull #1157)
+
+
+1.21 (2017-04-25)
+-----------------
+
 * Improved performance of certain selector system calls on Python 3.5 and
   later. (Pull #1095)
 
-* ... [Short description of non-trivial change.] (Issue #)
+* Resolved issue where the PyOpenSSL backend would not wrap SysCallError
+  exceptions appropriately when sending data. (Pull #1125)
+
+* Selectors now detects a monkey-patched select module after import for modules
+  that patch the select module like eventlet, greenlet. (Pull #1128)
+
+* Reduced memory consumption when streaming zlib-compressed responses
+  (as opposed to raw deflate streams). (Pull #1129)
+
+* Connection pools now use the entire request context when constructing the
+  pool key. (Pull #1016)
+
+* ``PoolManager.connection_from_*`` methods now accept a new keyword argument,
+  ``pool_kwargs``, which are merged with the existing ``connection_pool_kw``.
+  (Pull #1016)
+
+* Add retry counter for ``status_forcelist``. (Issue #1147)
+
+* Added ``contrib`` module for using SecureTransport on macOS:
+  ``urllib3.contrib.securetransport``.  (Pull #1122)
+
+* urllib3 now only normalizes the case of ``http://`` and ``https://`` schemes:
+  for schemes it does not recognise, it assumes they are case-sensitive and
+  leaves them unchanged.
+  (Issue #1080)
 
 
 1.20 (2017-01-19)

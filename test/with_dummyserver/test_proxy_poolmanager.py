@@ -2,7 +2,7 @@ import json
 import socket
 import unittest
 
-from nose.tools import timed
+import pytest
 
 from dummyserver.testcase import HTTPDummyProxyTestCase, IPv6HTTPDummyProxyTestCase
 from dummyserver.server import (
@@ -43,6 +43,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.addCleanup(http.clear)
         hc2 = http.connection_from_host(self.http_host, self.http_port)
         conn = hc2._get_conn()
+        self.addCleanup(conn.close)
         hc2._make_request(conn, 'GET', '/')
         tcp_nodelay_setting = conn.sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
         self.assertEqual(tcp_nodelay_setting, 0,
@@ -81,12 +82,13 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         https_pool = http._new_pool('https', self.https_host,
                                     self.https_port)
         try:
-            https_pool.request('GET', '/')
+            https_pool.request('GET', '/', retries=0)
             self.fail("Didn't raise SSL error with wrong CA")
-        except SSLError as e:
-            self.assertTrue('certificate verify failed' in str(e),
+        except MaxRetryError as e:
+            self.assertIsInstance(e.reason, SSLError)
+            self.assertTrue('certificate verify failed' in str(e.reason),
                             "Expected 'certificate verify failed',"
-                            "instead got: %r" % e)
+                            "instead got: %r" % e.reason)
 
         http = proxy_from_url(self.proxy_url, cert_reqs='REQUIRED',
                               ca_certs=DEFAULT_CA)
@@ -102,10 +104,11 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         https_fail_pool = http._new_pool('https', '127.0.0.1', self.https_port)
 
         try:
-            https_fail_pool.request('GET', '/')
+            https_fail_pool.request('GET', '/', retries=0)
             self.fail("Didn't raise SSL invalid common name")
-        except SSLError as e:
-            self.assertTrue("doesn't match" in str(e))
+        except MaxRetryError as e:
+            self.assertIsInstance(e.reason, SSLError)
+            self.assertTrue("doesn't match" in str(e.reason))
 
     def test_redirect(self):
         http = proxy_from_url(self.proxy_url)
@@ -292,7 +295,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertNotEqual(sc2, sc3)
         self.assertEqual(sc3, sc4)
 
-    @timed(0.5)
+    @pytest.mark.timeout(0.5)
     @requires_network
     def test_https_proxy_timeout(self):
         https = proxy_from_url('https://{host}'.format(host=TARPIT_HOST))
@@ -303,7 +306,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         except MaxRetryError as e:
             self.assertEqual(type(e.reason), ConnectTimeoutError)
 
-    @timed(0.5)
+    @pytest.mark.timeout(0.5)
     @requires_network
     def test_https_proxy_pool_timeout(self):
         https = proxy_from_url('https://{host}'.format(host=TARPIT_HOST),

@@ -1,9 +1,13 @@
 urllib3
 =======
 
-.. image:: https://travis-ci.org/shazow/urllib3.png?branch=master
+.. image:: https://travis-ci.org/shazow/urllib3.svg?branch=master
         :alt: Build status on Travis
         :target: https://travis-ci.org/shazow/urllib3
+
+.. image:: https://img.shields.io/appveyor/ci/shazow/urllib3/master.svg
+        :alt: Build status on AppVeyor
+        :target: https://ci.appveyor.com/project/shazow/urllib3
 
 .. image:: https://readthedocs.org/projects/urllib3/badge/?version=latest
         :alt: Documentation Status

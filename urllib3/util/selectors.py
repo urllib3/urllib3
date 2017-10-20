@@ -12,17 +12,20 @@ import socket
 import sys
 import time
 from collections import namedtuple, Mapping
+from ..packages.six import integer_types
 
 try:
     monotonic = time.monotonic
 except (AttributeError, ImportError):  # Python 3.3<
     monotonic = time.time
 
+
 EVENT_READ = (1 << 0)
 EVENT_WRITE = (1 << 1)
 
 HAS_SELECT = True  # Variable that shows whether the platform has a selector.
 _SYSCALL_SENTINEL = object()  # Sentinel in case a system call returns None.
+_DEFAULT_SELECTOR = None
 
 
 class SelectorError(Exception):
@@ -40,7 +43,7 @@ class SelectorError(Exception):
 def _fileobj_to_fd(fileobj):
     """ Return a file descriptor from a file object. If
     given an integer will simply return that integer back. """
-    if isinstance(fileobj, int):
+    if isinstance(fileobj, integer_types):
         fd = fileobj
     else:
         try:
@@ -535,19 +538,46 @@ if hasattr(select, "kqueue"):
             super(KqueueSelector, self).close()
 
 
+if not hasattr(select, 'select'):  # Platform-specific: AppEngine
+    HAS_SELECT = False
+
+
+def _can_allocate(struct):
+    """ Checks that select structs can be allocated by the underlying
+    operating system, not just advertised by the select module. We don't
+    check select() because we'll be hopeful that most platforms that
+    don't have it available will not advertise it. (ie: GAE) """
+    try:
+        # select.poll() objects won't fail until used.
+        if struct == 'poll':
+            p = select.poll()
+            p.poll(0)
+
+        # All others will fail on allocation.
+        else:
+            getattr(select, struct)().close()
+        return True
+    except (OSError, AttributeError) as e:
+        return False
+
+
 # Choose the best implementation, roughly:
 # kqueue == epoll > poll > select. Devpoll not supported. (See above)
 # select() also can't accept a FD > FD_SETSIZE (usually around 1024)
-if 'KqueueSelector' in globals():  # Platform-specific: Mac OS and BSD
-    DefaultSelector = KqueueSelector
-elif 'EpollSelector' in globals():  # Platform-specific: Linux
-    DefaultSelector = EpollSelector
-elif 'PollSelector' in globals():  # Platform-specific: Linux
-    DefaultSelector = PollSelector
-elif 'SelectSelector' in globals():  # Platform-specific: Windows
-    DefaultSelector = SelectSelector
-else:  # Platform-specific: AppEngine
-    def no_selector(_):
-        raise ValueError("Platform does not have a selector")
-    DefaultSelector = no_selector
-    HAS_SELECT = False
+def DefaultSelector():
+    """ This function serves as a first call for DefaultSelector to
+    detect if the select module is being monkey-patched incorrectly
+    by eventlet, greenlet, and preserve proper behavior. """
+    global _DEFAULT_SELECTOR
+    if _DEFAULT_SELECTOR is None:
+        if _can_allocate('kqueue'):
+            _DEFAULT_SELECTOR = KqueueSelector
+        elif _can_allocate('epoll'):
+            _DEFAULT_SELECTOR = EpollSelector
+        elif _can_allocate('poll'):
+            _DEFAULT_SELECTOR = PollSelector
+        elif hasattr(select, 'select'):
+            _DEFAULT_SELECTOR = SelectSelector
+        else:  # Platform-specific: AppEngine
+            raise ValueError('Platform does not have a selector')
+    return _DEFAULT_SELECTOR()

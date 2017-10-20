@@ -1,7 +1,9 @@
-import unittest
 import socket
 
 from io import BytesIO, BufferedReader
+
+import pytest
+import mock
 
 from urllib3.response import HTTPResponse
 from urllib3.exceptions import (
@@ -29,63 +31,69 @@ S5moAj5HexY/g/F8TctpxwsvyZp38dXeLDjSQvEQIkF7XR3YXbeZgKk3V34KGCPOAeeuQDIgyVhV
 nP4HF2uWHA==""")
 
 
-class TestLegacyResponse(unittest.TestCase):
+@pytest.fixture
+def sock():
+    s = socket.socket()
+    yield s
+    s.close()
+
+
+class TestLegacyResponse(object):
     def test_getheaders(self):
         headers = {'host': 'example.com'}
         r = HTTPResponse(headers=headers)
-        self.assertEqual(r.getheaders(), headers)
+        assert r.getheaders() == headers
 
     def test_getheader(self):
         headers = {'host': 'example.com'}
         r = HTTPResponse(headers=headers)
-        self.assertEqual(r.getheader('host'), 'example.com')
+        assert r.getheader('host') == 'example.com'
 
 
-class TestResponse(unittest.TestCase):
+class TestResponse(object):
     def test_cache_content(self):
         r = HTTPResponse('foo')
-        self.assertEqual(r.data, 'foo')
-        self.assertEqual(r._body, 'foo')
+        assert r.data == 'foo'
+        assert r._body == 'foo'
 
     def test_default(self):
         r = HTTPResponse()
-        self.assertEqual(r.data, None)
+        assert r.data is None
 
     def test_none(self):
         r = HTTPResponse(None)
-        self.assertEqual(r.data, None)
+        assert r.data is None
 
     def test_preload(self):
         fp = BytesIO(b'foo')
 
         r = HTTPResponse(fp, preload_content=True)
 
-        self.assertEqual(fp.tell(), len(b'foo'))
-        self.assertEqual(r.data, b'foo')
+        assert fp.tell() == len(b'foo')
+        assert r.data == b'foo'
 
     def test_no_preload(self):
         fp = BytesIO(b'foo')
 
         r = HTTPResponse(fp, preload_content=False)
 
-        self.assertEqual(fp.tell(), 0)
-        self.assertEqual(r.data, b'foo')
-        self.assertEqual(fp.tell(), len(b'foo'))
+        assert fp.tell() == 0
+        assert r.data == b'foo'
+        assert fp.tell() == len(b'foo')
 
     def test_decode_bad_data(self):
         fp = BytesIO(b'\x00' * 10)
-        self.assertRaises(DecodeError, HTTPResponse, fp, headers={
-            'content-encoding': 'deflate'
-        })
+        with pytest.raises(DecodeError):
+            HTTPResponse(fp, headers={'content-encoding': 'deflate'})
 
     def test_reference_read(self):
         fp = BytesIO(b'foo')
         r = HTTPResponse(fp, preload_content=False)
 
-        self.assertEqual(r.read(1), b'f')
-        self.assertEqual(r.read(2), b'oo')
-        self.assertEqual(r.read(), b'')
-        self.assertEqual(r.read(), b'')
+        assert r.read(1) == b'f'
+        assert r.read(2) == b'oo'
+        assert r.read() == b''
+        assert r.read() == b''
 
     def test_decode_deflate(self):
         import zlib
@@ -94,7 +102,7 @@ class TestResponse(unittest.TestCase):
         fp = BytesIO(data)
         r = HTTPResponse(fp, headers={'content-encoding': 'deflate'})
 
-        self.assertEqual(r.data, b'foo')
+        assert r.data == b'foo'
 
     def test_decode_deflate_case_insensitve(self):
         import zlib
@@ -103,7 +111,7 @@ class TestResponse(unittest.TestCase):
         fp = BytesIO(data)
         r = HTTPResponse(fp, headers={'content-encoding': 'DeFlAtE'})
 
-        self.assertEqual(r.data, b'foo')
+        assert r.data == b'foo'
 
     def test_chunked_decoding_deflate(self):
         import zlib
@@ -113,11 +121,15 @@ class TestResponse(unittest.TestCase):
         r = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
                          preload_content=False)
 
-        self.assertEqual(r.read(3), b'')
-        self.assertEqual(r.read(1), b'f')
-        self.assertEqual(r.read(2), b'oo')
-        self.assertEqual(r.read(), b'')
-        self.assertEqual(r.read(), b'')
+        assert r.read(3) == b''
+        # Buffer in case we need to switch to the raw stream
+        assert r._decoder._data is not None
+        assert r.read(1) == b'f'
+        # Now that we've decoded data, we just stream through the decoder
+        assert r._decoder._data is None
+        assert r.read(2) == b'oo'
+        assert r.read() == b''
+        assert r.read() == b''
 
     def test_chunked_decoding_deflate2(self):
         import zlib
@@ -129,11 +141,13 @@ class TestResponse(unittest.TestCase):
         r = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
                          preload_content=False)
 
-        self.assertEqual(r.read(1), b'')
-        self.assertEqual(r.read(1), b'f')
-        self.assertEqual(r.read(2), b'oo')
-        self.assertEqual(r.read(), b'')
-        self.assertEqual(r.read(), b'')
+        assert r.read(1) == b''
+        assert r.read(1) == b'f'
+        # Once we've decoded data, we just stream to the decoder; no buffering
+        assert r._decoder._data is None
+        assert r.read(2) == b'oo'
+        assert r.read() == b''
+        assert r.read() == b''
 
     def test_chunked_decoding_gzip(self):
         import zlib
@@ -145,71 +159,79 @@ class TestResponse(unittest.TestCase):
         r = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
                          preload_content=False)
 
-        self.assertEqual(r.read(11), b'')
-        self.assertEqual(r.read(1), b'f')
-        self.assertEqual(r.read(2), b'oo')
-        self.assertEqual(r.read(), b'')
-        self.assertEqual(r.read(), b'')
+        assert r.read(11) == b''
+        assert r.read(1) == b'f'
+        assert r.read(2) == b'oo'
+        assert r.read() == b''
+        assert r.read() == b''
 
     def test_body_blob(self):
         resp = HTTPResponse(b'foo')
-        self.assertEqual(resp.data, b'foo')
-        self.assertTrue(resp.closed)
+        assert resp.data == b'foo'
+        assert resp.closed
 
-    def test_io(self):
+    def test_io(self, sock):
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)
 
-        self.assertEqual(resp.closed, False)
-        self.assertEqual(resp.readable(), True)
-        self.assertEqual(resp.writable(), False)
-        self.assertRaises(IOError, resp.fileno)
+        assert not resp.closed
+        assert resp.readable()
+        assert not resp.writable()
+        with pytest.raises(IOError):
+            resp.fileno()
 
         resp.close()
-        self.assertEqual(resp.closed, True)
+        assert resp.closed
 
         # Try closing with an `httplib.HTTPResponse`, because it has an
         # `isclosed` method.
-        hlr = httplib.HTTPResponse(socket.socket())
-        resp2 = HTTPResponse(hlr, preload_content=False)
-        self.assertEqual(resp2.closed, False)
-        resp2.close()
-        self.assertEqual(resp2.closed, True)
+        try:
+            hlr = httplib.HTTPResponse(sock)
+            resp2 = HTTPResponse(hlr, preload_content=False)
+            assert not resp2.closed
+            resp2.close()
+            assert resp2.closed
+        finally:
+            hlr.close()
 
         # also try when only data is present.
         resp3 = HTTPResponse('foodata')
-        self.assertRaises(IOError, resp3.fileno)
+        with pytest.raises(IOError):
+            resp3.fileno()
 
         resp3._fp = 2
         # A corner case where _fp is present but doesn't have `closed`,
         # `isclosed`, or `fileno`.  Unlikely, but possible.
-        self.assertEqual(resp3.closed, True)
-        self.assertRaises(IOError, resp3.fileno)
+        assert resp3.closed
+        with pytest.raises(IOError):
+            resp3.fileno()
 
-    def test_io_closed_consistently(self):
-        hlr = httplib.HTTPResponse(socket.socket())
-        hlr.fp = BytesIO(b'foo')
-        hlr.chunked = 0
-        hlr.length = 3
-        resp = HTTPResponse(hlr, preload_content=False)
-
-        self.assertEqual(resp.closed, False)
-        self.assertEqual(resp._fp.isclosed(), False)
-        self.assertEqual(is_fp_closed(resp._fp), False)
-        resp.read()
-        self.assertEqual(resp.closed, True)
-        self.assertEqual(resp._fp.isclosed(), True)
-        self.assertEqual(is_fp_closed(resp._fp), True)
+    def test_io_closed_consistently(self, sock):
+        try:
+            hlr = httplib.HTTPResponse(sock)
+            hlr.fp = BytesIO(b'foo')
+            hlr.chunked = 0
+            hlr.length = 3
+            with HTTPResponse(hlr, preload_content=False) as resp:
+                assert not resp.closed
+                assert not resp._fp.isclosed()
+                assert not is_fp_closed(resp._fp)
+                resp.read()
+                assert resp.closed
+                assert resp._fp.isclosed()
+                assert is_fp_closed(resp._fp)
+        finally:
+            hlr.close()
 
     def test_io_bufferedreader(self):
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)
         br = BufferedReader(resp)
 
-        self.assertEqual(br.read(), b'foo')
+        assert br.read() == b'foo'
 
         br.close()
-        self.assertEqual(resp.closed, True)
+        assert resp.closed
 
         b = b'fooandahalf'
         fp = BytesIO(b)
@@ -217,7 +239,7 @@ class TestResponse(unittest.TestCase):
         br = BufferedReader(resp, 5)
 
         br.read(1)  # sets up the buffer, reading 5
-        self.assertEqual(len(fp.read()), len(b) - 5)
+        assert len(fp.read()) == (len(b) - 5)
 
         # This is necessary to make sure the "no bytes left" part of `readinto`
         # gets tested.
@@ -246,9 +268,10 @@ class TestResponse(unittest.TestCase):
         resp = HTTPResponse(fp, preload_content=False)
         stream = resp.stream(2, decode_content=False)
 
-        self.assertEqual(next(stream), b'fo')
-        self.assertEqual(next(stream), b'o')
-        self.assertRaises(StopIteration, next, stream)
+        assert next(stream) == b'fo'
+        assert next(stream) == b'o'
+        with pytest.raises(StopIteration):
+            next(stream)
 
     def test_streaming_tell(self):
         fp = BytesIO(b'foo')
@@ -258,14 +281,15 @@ class TestResponse(unittest.TestCase):
         position = 0
 
         position += len(next(stream))
-        self.assertEqual(2, position)
-        self.assertEqual(position, resp.tell())
+        assert 2 == position
+        assert position == resp.tell()
 
         position += len(next(stream))
-        self.assertEqual(3, position)
-        self.assertEqual(position, resp.tell())
+        assert 3 == position
+        assert position == resp.tell()
 
-        self.assertRaises(StopIteration, next, stream)
+        with pytest.raises(StopIteration):
+            next(stream)
 
     def test_gzipped_streaming(self):
         import zlib
@@ -278,9 +302,10 @@ class TestResponse(unittest.TestCase):
                             preload_content=False)
         stream = resp.stream(2)
 
-        self.assertEqual(next(stream), b'f')
-        self.assertEqual(next(stream), b'oo')
-        self.assertRaises(StopIteration, next, stream)
+        assert next(stream) == b'f'
+        assert next(stream) == b'oo'
+        with pytest.raises(StopIteration):
+            next(stream)
 
     def test_gzipped_streaming_tell(self):
         import zlib
@@ -296,11 +321,12 @@ class TestResponse(unittest.TestCase):
 
         # Read everything
         payload = next(stream)
-        self.assertEqual(payload, uncompressed_data)
+        assert payload == uncompressed_data
 
-        self.assertEqual(len(data), resp.tell())
+        assert len(data) == resp.tell()
 
-        self.assertRaises(StopIteration, next, stream)
+        with pytest.raises(StopIteration):
+            next(stream)
 
     def test_deflate_streaming_tell_intermediate_point(self):
         # Ensure that ``tell()`` returns the correct number of bytes when
@@ -339,20 +365,21 @@ class TestResponse(unittest.TestCase):
         parts_positions = [(part, resp.tell()) for part in stream]
         end_of_stream = resp.tell()
 
-        self.assertRaises(StopIteration, next, stream)
+        with pytest.raises(StopIteration):
+            next(stream)
 
         parts, positions = zip(*parts_positions)
 
         # Check that the payload is equal to the uncompressed data
         payload = b"".join(parts)
-        self.assertEqual(uncompressed_data, payload)
+        assert uncompressed_data == payload
 
         # Check that the positions in the stream are correct
         expected = [(i+1)*payload_part_size for i in range(NUMBER_OF_READS)]
-        self.assertEqual(expected, list(positions))
+        assert expected == list(positions)
 
         # Check that the end of the stream is in the correct place
-        self.assertEqual(len(ZLIB_PAYLOAD), end_of_stream)
+        assert len(ZLIB_PAYLOAD) == end_of_stream
 
     def test_deflate_streaming(self):
         import zlib
@@ -363,9 +390,10 @@ class TestResponse(unittest.TestCase):
                             preload_content=False)
         stream = resp.stream(2)
 
-        self.assertEqual(next(stream), b'f')
-        self.assertEqual(next(stream), b'oo')
-        self.assertRaises(StopIteration, next, stream)
+        assert next(stream) == b'f'
+        assert next(stream) == b'oo'
+        with pytest.raises(StopIteration):
+            next(stream)
 
     def test_deflate2_streaming(self):
         import zlib
@@ -378,39 +406,41 @@ class TestResponse(unittest.TestCase):
                             preload_content=False)
         stream = resp.stream(2)
 
-        self.assertEqual(next(stream), b'f')
-        self.assertEqual(next(stream), b'oo')
-        self.assertRaises(StopIteration, next, stream)
+        assert next(stream) == b'f'
+        assert next(stream) == b'oo'
+        with pytest.raises(StopIteration):
+            next(stream)
 
     def test_empty_stream(self):
         fp = BytesIO(b'')
         resp = HTTPResponse(fp, preload_content=False)
         stream = resp.stream(2, decode_content=False)
 
-        self.assertRaises(StopIteration, next, stream)
+        with pytest.raises(StopIteration):
+            next(stream)
 
     def test_length_no_header(self):
         fp = BytesIO(b'12345')
         resp = HTTPResponse(fp, preload_content=False)
-        self.assertEqual(resp.length_remaining, None)
+        assert resp.length_remaining is None
 
     def test_length_w_valid_header(self):
         headers = {"content-length": "5"}
         fp = BytesIO(b'12345')
 
         resp = HTTPResponse(fp, headers=headers, preload_content=False)
-        self.assertEqual(resp.length_remaining, 5)
+        assert resp.length_remaining == 5
 
     def test_length_w_bad_header(self):
         garbage = {'content-length': 'foo'}
         fp = BytesIO(b'12345')
 
         resp = HTTPResponse(fp, headers=garbage, preload_content=False)
-        self.assertEqual(resp.length_remaining, None)
+        assert resp.length_remaining is None
 
         garbage['content-length'] = "-10"
         resp = HTTPResponse(fp, headers=garbage, preload_content=False)
-        self.assertEqual(resp.length_remaining, None)
+        assert resp.length_remaining is None
 
     def test_length_when_chunked(self):
         # This is expressly forbidden in RFC 7230 sec 3.3.2
@@ -421,7 +451,7 @@ class TestResponse(unittest.TestCase):
         fp = BytesIO(b'12345')
 
         resp = HTTPResponse(fp, headers=headers, preload_content=False)
-        self.assertEqual(resp.length_remaining, None)
+        assert resp.length_remaining is None
 
     def test_length_with_multiple_content_lengths(self):
         headers = {'content-length': '5, 5, 5'}
@@ -429,10 +459,10 @@ class TestResponse(unittest.TestCase):
         fp = BytesIO(b'abcde')
 
         resp = HTTPResponse(fp, headers=headers, preload_content=False)
-        self.assertEqual(resp.length_remaining, 5)
+        assert resp.length_remaining == 5
 
-        self.assertRaises(InvalidHeader, HTTPResponse, fp,
-                          headers=garbage, preload_content=False)
+        with pytest.raises(InvalidHeader):
+            HTTPResponse(fp, headers=garbage, preload_content=False)
 
     def test_length_after_read(self):
         headers = {"content-length": "5"}
@@ -441,20 +471,20 @@ class TestResponse(unittest.TestCase):
         fp = BytesIO(b'12345')
         resp = HTTPResponse(fp, preload_content=False)
         resp.read()
-        self.assertEqual(resp.length_remaining, None)
+        assert resp.length_remaining is None
 
         # Test our update from content-length
         fp = BytesIO(b'12345')
         resp = HTTPResponse(fp, headers=headers, preload_content=False)
         resp.read()
-        self.assertEqual(resp.length_remaining, 0)
+        assert resp.length_remaining == 0
 
         # Test partial read
         fp = BytesIO(b'12345')
         resp = HTTPResponse(fp, headers=headers, preload_content=False)
         data = resp.stream(2)
         next(data)
-        self.assertEqual(resp.length_remaining, 3)
+        assert resp.length_remaining == 3
 
     def test_mock_httpresponse_stream(self):
         # Mock out a HTTP Request that does enough to make it through urllib3's
@@ -479,9 +509,10 @@ class TestResponse(unittest.TestCase):
         resp = HTTPResponse(fp, preload_content=False)
         stream = resp.stream(2)
 
-        self.assertEqual(next(stream), b'fo')
-        self.assertEqual(next(stream), b'o')
-        self.assertRaises(StopIteration, next, stream)
+        assert next(stream) == b'fo'
+        assert next(stream) == b'o'
+        with pytest.raises(StopIteration):
+            next(stream)
 
     def test_mock_transfer_encoding_chunked(self):
         stream = [b"fo", b"o", b"bar"]
@@ -490,10 +521,8 @@ class TestResponse(unittest.TestCase):
         r.fp = fp
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
 
-        i = 0
-        for c in resp.stream():
-            self.assertEqual(c, stream[i])
-            i += 1
+        for i, c in enumerate(resp.stream()):
+            assert c == stream[i]
 
     def test_mock_gzipped_transfer_encoding_chunked_decoded(self):
         """Show that we can decode the gizpped and chunked body."""
@@ -516,7 +545,7 @@ class TestResponse(unittest.TestCase):
         for c in resp.stream(decode_content=True):
             data += c
 
-        self.assertEqual(b'foobar', data)
+        assert b'foobar' == data
 
     def test_mock_transfer_encoding_chunked_custom_read(self):
         stream = [b"foooo", b"bbbbaaaaar"]
@@ -528,12 +557,7 @@ class TestResponse(unittest.TestCase):
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
         expected_response = [b'fo', b'oo', b'o', b'bb', b'bb', b'aa', b'aa', b'ar']
         response = list(resp.read_chunked(2))
-        if getattr(self, "assertListEqual", False):
-            self.assertListEqual(expected_response, response)
-        else:
-            for index, item in enumerate(response):
-                v = expected_response[index]
-                self.assertEqual(item, v)
+        assert expected_response == response
 
     def test_mock_transfer_encoding_chunked_unlmtd_read(self):
         stream = [b"foooo", b"bbbbaaaaar"]
@@ -543,18 +567,14 @@ class TestResponse(unittest.TestCase):
         r.chunked = True
         r.chunk_left = None
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
-        if getattr(self, "assertListEqual", False):
-            self.assertListEqual(stream, list(resp.read_chunked()))
-        else:
-            for index, item in enumerate(resp.read_chunked()):
-                v = stream[index]
-                self.assertEqual(item, v)
+        assert stream == list(resp.read_chunked())
 
     def test_read_not_chunked_response_as_chunks(self):
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)
         r = resp.read_chunked()
-        self.assertRaises(ResponseNotChunked, next, r)
+        with pytest.raises(ResponseNotChunked):
+            next(r)
 
     def test_invalid_chunks(self):
         stream = [b"foooo", b"bbbbaaaaar"]
@@ -564,7 +584,8 @@ class TestResponse(unittest.TestCase):
         r.chunked = True
         r.chunk_left = None
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
-        self.assertRaises(ProtocolError, next, resp.read_chunked())
+        with pytest.raises(ProtocolError):
+            next(resp.read_chunked())
 
     def test_chunked_response_without_crlf_on_end(self):
         stream = [b"foo", b"bar", b"baz"]
@@ -574,12 +595,7 @@ class TestResponse(unittest.TestCase):
         r.chunked = True
         r.chunk_left = None
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
-        if getattr(self, "assertListEqual", False):
-            self.assertListEqual(stream, list(resp.stream()))
-        else:
-            for index, item in enumerate(resp.stream()):
-                v = stream[index]
-                self.assertEqual(item, v)
+        assert stream == list(resp.stream())
 
     def test_chunked_response_with_extensions(self):
         stream = [b"foo", b"bar"]
@@ -589,26 +605,37 @@ class TestResponse(unittest.TestCase):
         r.chunked = True
         r.chunk_left = None
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
-        if getattr(self, "assertListEqual", False):
-            self.assertListEqual(stream, list(resp.stream()))
-        else:
-            for index, item in enumerate(resp.stream()):
-                v = stream[index]
-                self.assertEqual(item, v)
+        assert stream == list(resp.stream())
+
+    def test_chunked_head_response(self):
+        r = httplib.HTTPResponse(MockSock, method='HEAD')
+        r.chunked = True
+        r.chunk_left = None
+        resp = HTTPResponse('',
+                            preload_content=False,
+                            headers={'transfer-encoding': 'chunked'},
+                            original_response=r)
+        assert resp.chunked is True
+
+        resp.supports_chunked_reads = lambda: True
+        resp.release_conn = mock.Mock()
+        for _ in resp.stream():
+            continue
+        resp.release_conn.assert_called_once_with()
 
     def test_get_case_insensitive_headers(self):
         headers = {'host': 'example.com'}
         r = HTTPResponse(headers=headers)
-        self.assertEqual(r.headers.get('host'), 'example.com')
-        self.assertEqual(r.headers.get('Host'), 'example.com')
+        assert r.headers.get('host') == 'example.com'
+        assert r.headers.get('Host') == 'example.com'
 
     def test_retries(self):
         fp = BytesIO(b'')
         resp = HTTPResponse(fp)
-        self.assertEqual(resp.retries, None)
+        assert resp.retries is None
         retry = Retry()
         resp = HTTPResponse(fp, retries=retry)
-        self.assertEqual(resp.retries, retry)
+        assert resp.retries == retry
 
 
 class MockChunkedEncodingResponse(object):
@@ -711,7 +738,3 @@ class MockSock(object):
     @classmethod
     def makefile(cls, *args, **kwargs):
         return
-
-
-if __name__ == '__main__':
-    unittest.main()

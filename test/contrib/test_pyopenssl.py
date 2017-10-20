@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
 import unittest
 
-from nose.plugins.skip import SkipTest
+import pytest
 
 try:
     from urllib3.contrib.pyopenssl import (inject_into_urllib3,
                                            extract_from_urllib3,
                                            _dnsname_to_stdlib)
 except ImportError as e:
-    raise SkipTest('Could not import PyOpenSSL: %r' % e)
+    pytestmark = pytest.mark.skip('Could not import PyOpenSSL: %r' % e)
 
 
 from ..with_dummyserver.test_https import TestHTTPS, TestHTTPS_TLSv1  # noqa: F401
-from ..with_dummyserver.test_socketlevel import TestSNI, TestSocketClosing  # noqa: F401
+from ..with_dummyserver.test_socketlevel import (  # noqa: F401
+    TestSNI, TestSocketClosing, TestClientCerts
+)
 
 
 def setup_module():
