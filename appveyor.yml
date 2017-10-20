@@ -7,12 +7,6 @@ build: off
 environment:
 
   matrix:
-    - PYTHON: "C:\\Python26-x64"
-      PYTHON_VERSION: "2.6.x"
-      PYTHON_ARCH: "64"
-      TOXENV: "py26"
-      TOXPY26: "%PYTHON%\\python.exe"
-
     - PYTHON: "C:\\Python27-x64"
       PYTHON_VERSION: "2.7.x"
       PYTHON_ARCH: "64"
