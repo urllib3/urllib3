@@ -371,7 +371,7 @@ For example, to do a total of 3 retries, but limit to only 2 redirects::
     >>> http.request(
     ...     'GET',
     ...     'http://httpbin.org/redirect/3',
-    ...     retries=urllib3.Retries(3, redirect=2))
+    ...     retries=urllib3.Retry(3, redirect=2))
     MaxRetryError
 
 You can also disable exceptions for too many redirects and just return the
@@ -380,7 +380,7 @@ You can also disable exceptions for too many redirects and just return the
     >>> r = http.request(
     ...     'GET',
     ...     'http://httpbin.org/redirect/3',
-    ...     retries=urllib3.Retries(
+    ...     retries=urllib3.Retry(
     ...         redirect=2, raise_on_redirect=False))
     >>> r.status
     302
