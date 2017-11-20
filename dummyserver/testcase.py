@@ -1,5 +1,4 @@
 import sys
-import socket
 import threading
 
 import pytest
