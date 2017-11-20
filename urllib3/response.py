@@ -112,7 +112,7 @@ class HTTPResponse(io.IOBase):
 
     def __init__(self, body='', headers=None, status=0, version=0, reason=None,
                  strict=0, preload_content=True, decode_content=True,
-                 original_response=None, pool=None, connection=None,
+                 original_response=None, pool=None, connection=None, msg=None,
                  retries=None, enforce_content_length=False, request_method=None):
 
         if isinstance(headers, HTTPHeaderDict):
@@ -132,6 +132,7 @@ class HTTPResponse(io.IOBase):
         self._fp = None
         self._original_response = original_response
         self._fp_bytes_read = 0
+        self.msg = msg
 
         if body and isinstance(body, (basestring, binary_type)):
             self._body = body
@@ -190,6 +191,9 @@ class HTTPResponse(io.IOBase):
     @property
     def connection(self):
         return self._connection
+
+    def isclosed(self):
+        return is_fp_closed(self._fp)
 
     def tell(self):
         """
