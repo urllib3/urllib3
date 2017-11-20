@@ -183,6 +183,7 @@ class IPv6HTTPDummyServerTestCase(HTTPDummyServerTestCase):
     host = '::1'
 
 
+@pytest.mark.skipif(not HAS_IPV6, reason='IPv6 not available')
 class IPv6HTTPDummyProxyTestCase(HTTPDummyProxyTestCase):
 
     http_host = 'localhost'
