@@ -1,5 +1,4 @@
 import sys
-import socket
 import threading
 
 import pytest
@@ -10,6 +9,7 @@ from dummyserver.server import (
     run_tornado_app,
     run_loop_in_thread,
     DEFAULT_CERTS,
+    HAS_IPV6,
 )
 from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
@@ -134,7 +134,7 @@ class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
     certs = DEFAULT_CERTS
 
 
-@pytest.mark.skipif(not socket.has_ipv6, reason='IPv6 not available')
+@pytest.mark.skipif(not HAS_IPV6, reason='IPv6 not available')
 class IPV6HTTPSDummyServerTestCase(HTTPSDummyServerTestCase):
     host = '::1'
 
@@ -178,11 +178,12 @@ class HTTPDummyProxyTestCase(unittest.TestCase):
         cls.server_thread.join()
 
 
-@pytest.mark.skipif(not socket.has_ipv6, reason='IPv6 not available')
+@pytest.mark.skipif(not HAS_IPV6, reason='IPv6 not available')
 class IPv6HTTPDummyServerTestCase(HTTPDummyServerTestCase):
     host = '::1'
 
 
+@pytest.mark.skipif(not HAS_IPV6, reason='IPv6 not available')
 class IPv6HTTPDummyProxyTestCase(HTTPDummyProxyTestCase):
 
     http_host = 'localhost'
