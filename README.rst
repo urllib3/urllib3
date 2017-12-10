@@ -89,3 +89,7 @@ Sponsorship
 
 If your company benefits from this library, please consider `sponsoring its
 development <https://urllib3.readthedocs.io/en/latest/contributing.html#sponsorship>`_.
+
+Sponsors include:
+
+- Hewlett Packard Enterprise (2016-2017), sponsored `@Lukasa’s <https://github.com/Lukasa>`_ work on urllib3
