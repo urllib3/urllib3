@@ -78,6 +78,7 @@ for some tips on getting started.
 Maintainers
 -----------
 
+- `@haikuginger <https://github.com/haikuginger>`_ (Jesse Shapiro)
 - `@lukasa <https://github.com/lukasa>`_ (Cory Benfield)
 - `@sigmavirus24 <https://github.com/sigmavirus24>`_ (Ian Cordasco)
 - `@shazow <https://github.com/shazow>`_ (Andrey Petrov)
@@ -92,4 +93,5 @@ development <https://urllib3.readthedocs.io/en/latest/contributing.html#sponsors
 
 Sponsors include:
 
+- Akamai (2017-present), sponsors `@haikuginger <https://github.com/haikuginger>`_'s work on an ongoing basis
 - Hewlett Packard Enterprise (2016-2017), sponsored `@Lukasa’s <https://github.com/Lukasa>`_ work on urllib3
