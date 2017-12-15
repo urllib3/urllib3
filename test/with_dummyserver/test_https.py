@@ -65,6 +65,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
+    def test_dotted_fqdn(self):
+        pool = HTTPSConnectionPool(self.host + '.', self.port)
+        r = pool.request('GET', '/')
+        self.assertEqual(r.status, 200, r.data)
+
     def test_set_ssl_version_to_tlsv1(self):
         self._pool.ssl_version = ssl.PROTOCOL_TLSv1
         r = self._pool.request('GET', '/')
