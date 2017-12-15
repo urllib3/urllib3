@@ -76,6 +76,23 @@ class SocketDummyServerTestCase(unittest.TestCase):
         if hasattr(cls, 'server_thread'):
             cls.server_thread.join(0.1)
 
+    def assert_header_received(
+        self,
+        received_headers,
+        header_name,
+        expected_value=None
+    ):
+        header_name = header_name.encode('ascii')
+        if expected_value is not None:
+            expected_value = expected_value.encode('ascii')
+        header_titles = []
+        for header in received_headers:
+            key, value = header.split(b': ')
+            header_titles.append(key)
+            if key == header_name and expected_value is not None:
+                self.assertEqual(value, expected_value)
+        self.assertIn(header_name, header_titles)
+
 
 class IPV4SocketDummyServerTestCase(SocketDummyServerTestCase):
     @classmethod

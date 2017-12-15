@@ -124,6 +124,35 @@ class HTTPConnection(_HTTPConnection, object):
         # Superclass also sets self.source_address in Python 2.7+.
         _HTTPConnection.__init__(self, *args, **kw)
 
+    @property
+    def host(self):
+        """
+        Getter method to remove any trailing dots that indicate the hostname is an FQDN.
+
+        In general, SSL certificates don't include the trailing dot indicating a
+        fully-qualified domain name, and thus, they don't validate properly when
+        checked against a domain name that includes the dot. In addition, some
+        servers may not expect to receive the trailing dot when provided.
+
+        However, the hostname with trailing dot is critical to DNS resolution; doing a
+        lookup with the trailing dot will properly only resolve the appropriate FQDN,
+        whereas a lookup without a trailing dot will search the system's search domain
+        list. Thus, it's important to keep the original host around for use only in
+        those cases where it's appropriate (i.e., when doing DNS lookup to establish the
+        actual TCP connection across which we're going to send HTTP requests).
+        """
+        return self._dns_host.rstrip('.')
+
+    @host.setter
+    def host(self, value):
+        """
+        Setter for the `host` property.
+
+        We assume that only urllib3 uses the _dns_host attribute; httplib itself
+        only uses `host`, and it seems reasonable that other libraries follow suit.
+        """
+        self._dns_host = value
+
     def _new_conn(self):
         """ Establish a socket connection and set nodelay settings on it.
 
@@ -138,7 +167,7 @@ class HTTPConnection(_HTTPConnection, object):
 
         try:
             conn = connection.create_connection(
-                (self.host, self.port), self.timeout, **extra_kw)
+                (self._dns_host, self.port), self.timeout, **extra_kw)
 
         except SocketTimeout as e:
             raise ConnectTimeoutError(
