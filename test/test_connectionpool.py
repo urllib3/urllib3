@@ -118,6 +118,7 @@ class TestConnectionPool(object):
         ('google.com', 'https://google.com/'),
         ('yahoo.com', 'http://google.com/'),
         ('google.com', 'https://google.net/'),
+        ('google.com', 'http://google.com./'),
     ])
     def test_not_same_host_no_port_http(self, a, b):
         with HTTPConnectionPool(a) as c:
@@ -130,6 +131,7 @@ class TestConnectionPool(object):
         ('google.com', 'http://google.com/'),
         ('yahoo.com', 'https://google.com/'),
         ('google.com', 'https://google.net/'),
+        ('google.com', 'https://google.com./'),
     ])
     def test_not_same_host_no_port_https(self, a, b):
         with HTTPSConnectionPool(a) as c:
