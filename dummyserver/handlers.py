@@ -106,6 +106,15 @@ class TestingApp(RequestHandler):
         "Render simple message"
         return Response("Dummy server!")
 
+    def certificate(self, request):
+        """Return the requester's certificate."""
+        cert = request.get_ssl_certificate()
+        subject = dict()
+        if cert is not None:
+            subject = dict((k, v) for (k, v) in [y for z in cert['subject']
+                                                 for y in z])
+        return Response(json.dumps(subject))
+
     def source_address(self, request):
         """Return the requester's IP address."""
         return Response(request.remote_ip)
@@ -133,8 +142,8 @@ class TestingApp(RequestHandler):
     def upload(self, request):
         "Confirm that the uploaded file conforms to specification"
         # FIXME: This is a huge broken mess
-        param = request.params.get('upload_param', 'myfile').decode('ascii')
-        filename = request.params.get('upload_filename', '').decode('utf-8')
+        param = request.params.get('upload_param', b'myfile').decode('ascii')
+        filename = request.params.get('upload_filename', b'').decode('utf-8')
         size = int(request.params.get('upload_size', '0'))
         files_ = request.files.get(param)
 
@@ -170,7 +179,7 @@ class TestingApp(RequestHandler):
 
     def multi_redirect(self, request):
         "Performs a redirect chain based on ``redirect_codes``"
-        codes = request.params.get('redirect_codes', '200').decode('utf-8')
+        codes = request.params.get('redirect_codes', b'200').decode('utf-8')
         head, tail = codes.split(',', 1) if "," in codes else (codes, None)
         status = "{0} {1}".format(head, responses[int(head)])
         if not tail:
@@ -272,7 +281,7 @@ class TestingApp(RequestHandler):
 
     def retry_after(self, request):
         if datetime.now() - self.application.last_req < timedelta(seconds=1):
-            status = request.params.get("status", "429 Too Many Requests")
+            status = request.params.get("status", b"429 Too Many Requests")
             return Response(
                     status=status.decode('utf-8'),
                     headers=[('Retry-After', '1')])

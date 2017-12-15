@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 import codecs
 
-from uuid import uuid4
 from io import BytesIO
 
 from .packages import six
@@ -14,7 +13,15 @@ writer = codecs.lookup('utf-8')[3]
 def choose_boundary():
     """
     Our embarrassingly-simple replacement for mimetools.choose_boundary.
+
+    We are lazily loading uuid here, because we don't want its issues
+
+    https://bugs.python.org/issue5885
+    https://bugs.python.org/issue11063
+
+    to affect our entire library.
     """
+    from uuid import uuid4
     return uuid4().hex
 
 
