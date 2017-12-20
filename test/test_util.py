@@ -25,6 +25,7 @@ from urllib3.util.ssl_ import (
     resolve_ssl_version,
     ssl_wrap_socket,
     _const_compare_digest_backport,
+    _is_ip_address
 )
 from urllib3.exceptions import (
     LocationParseError,
@@ -575,3 +576,12 @@ class TestUtil(object):
     def test_assert_header_parsing_throws_typeerror_with_non_headers(self, headers):
         with pytest.raises(TypeError):
             assert_header_parsing(headers)
+
+    def test_is_ip_address(self):
+        assert _is_ip_address(None) is False
+        assert _is_ip_address("127.0.0.1") is True
+        assert _is_ip_address("127.0.0") is True
+        assert _is_ip_address("127.0.0") is True
+        assert _is_ip_address("fd99:f17b:37d0::100") is True
+        assert _is_ip_address("fd99:f17b:37d0:") is False
+        assert _is_ip_address("google.com") is False
