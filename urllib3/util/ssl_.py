@@ -279,6 +279,23 @@ def create_urllib3_context(ssl_version=None, cert_reqs=None,
     return context
 
 
+def _is_ip_address(input_str):
+    if input_str is None:
+        return False
+
+    import socket
+    try:
+        socket.inet_aton(input_str)
+        return True
+    except socket.error:
+        try:
+            socket.inet_pton(socket.AF_INET6, input_str)
+            return True
+        except socket.error:
+            pass
+    return False
+    
+
 def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                     ca_certs=None, server_hostname=None,
                     ssl_version=None, ciphers=None, ssl_context=None,
@@ -325,7 +342,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
 
     if certfile:
         context.load_cert_chain(certfile, keyfile)
-    if HAS_SNI:  # Platform-specific: OpenSSL with enabled SNI
+    if HAS_SNI and not _is_ip_address(server_hostname):  # Platform-specific: OpenSSL with enabled SNI
         return context.wrap_socket(sock, server_hostname=server_hostname)
 
     warnings.warn(
