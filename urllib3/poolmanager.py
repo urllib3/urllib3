@@ -4,13 +4,11 @@ import functools
 import logging
 
 from ._collections import RecentlyUsedContainer
-from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
+from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, RetryingURLOpen
 from .connectionpool import port_by_scheme
-from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
-from .packages.six.moves.urllib.parse import urljoin
+from .exceptions import LocationValueError, ProxySchemeUnknown
 from .request import RequestMethods
 from .util.url import parse_url
-from .util.retry import Retry
 
 
 __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
@@ -118,7 +116,7 @@ pool_classes_by_scheme = {
 }
 
 
-class PoolManager(RequestMethods):
+class PoolManager(RetryingURLOpen, RequestMethods):
     """
     Allows for arbitrary requests while transparently keeping track of
     necessary connection pools for you.
@@ -298,55 +296,46 @@ class PoolManager(RequestMethods):
                     base_pool_kwargs[key] = value
         return base_pool_kwargs
 
-    def urlopen(self, method, url, redirect=True, **kw):
+    # This will be called every time the underlying retry-capable logic needs to urlopen.
+    # Since the retry logic may call urlopen_only after network IO the pool it got the
+    # connection from may have been thrown away already. This wrapper function ensures that
+    # we get a working pool to use for the next urlopen_only call.
+    #
+    # If the original pool has not been thrown away yet then it should be reused here.
+    #
+    # TODO: Passing self.pools.lock and having pool.urlopen_only release it should fix the
+    # issue completely by keeping the pool lock until the connection is acquired, but the
+    # implementation is hacky.
+    def urlopen_only(self, method, url, **kw):
+        u = parse_url(url)
+        self.pools.lock.acquire()
+        try:
+            pool = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
+            if self.proxy is not None and u.scheme == "http":
+                response = pool.urlopen_only(method, url, **kw)
+            else:
+                response = pool.urlopen_only(method, parse_url(url).request_uri, **kw)
+            return response
+            # return pool.urlopen_only(*a, **k)
+        finally:
+            try:
+                self.pools.lock.release()
+            except RuntimeError:
+                pass
+
+    def urlopen(self, method, url, **kw):
         """
         Same as :meth:`urllib3.connectionpool.HTTPConnectionPool.urlopen`
-        with custom cross-host redirect logic and only sends the request-uri
-        portion of the ``url``.
+        but only sends the request-uri portion of the ``url``.
 
         The given ``url`` parameter must be absolute, such that an appropriate
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
-        u = parse_url(url)
-        conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
-
         kw['assert_same_host'] = False
-        kw['redirect'] = False
         if 'headers' not in kw:
             kw['headers'] = self.headers
 
-        if self.proxy is not None and u.scheme == "http":
-            response = conn.urlopen(method, url, **kw)
-        else:
-            response = conn.urlopen(method, u.request_uri, **kw)
-
-        redirect_location = redirect and response.get_redirect_location()
-        if not redirect_location:
-            return response
-
-        # Support relative URLs for redirecting.
-        redirect_location = urljoin(url, redirect_location)
-
-        # RFC 7231, Section 6.4.4
-        if response.status == 303:
-            method = 'GET'
-
-        retries = kw.get('retries')
-        if not isinstance(retries, Retry):
-            retries = Retry.from_int(retries, redirect=redirect)
-
-        try:
-            retries = retries.increment(method, url, response=response, _pool=conn)
-        except MaxRetryError:
-            if retries.raise_on_redirect:
-                raise
-            return response
-
-        kw['retries'] = retries
-        kw['redirect'] = redirect
-
-        log.info("Redirecting %s -> %s", url, redirect_location)
-        return self.urlopen(method, redirect_location, **kw)
+        return super(PoolManager, self).urlopen(method, url, proxy=self.proxy, **kw)
 
 
 class ProxyManager(PoolManager):

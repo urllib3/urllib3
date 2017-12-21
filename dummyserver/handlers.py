@@ -283,7 +283,7 @@ class TestingApp(RequestHandler):
         if datetime.now() - self.application.last_req < timedelta(seconds=1):
             status = request.params.get("status", b"429 Too Many Requests")
             return Response(
-                    status=status.decode('utf-8'),
+                    status=status.decode('utf-8') if hasattr(status, 'decode') else status,
                     headers=[('Retry-After', '1')])
 
         self.application.last_req = datetime.now()

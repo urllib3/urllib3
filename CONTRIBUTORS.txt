@@ -243,5 +243,8 @@ In chronological order:
   * Fix ``util.selectors._fileobj_to_fd`` to accept ``long``.
   * Update appveyor tox setup to use the 64bit python.
 
+* Justin Patrin <papercrane@reversefold.com>
+  * Fix PoolManager and ConnectionPool to close race condition which can cause ClosedPoolError on retry
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

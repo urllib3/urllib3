@@ -216,6 +216,25 @@ class TestPoolManager(HTTPDummyServerTestCase):
         r = http.request('GET', 'http://%s:%s/' % (self.host, self.port))
         self.assertEqual(r.status, 200)
 
+    def test_retry_with_too_many_pools(self):
+        http = PoolManager(num_pools=1, retries=5)
+        import threading
+        import time
+        threads = []
+        http.request('GET', '%s/retry_after' % (self.base_url,))
+
+        def invalidate_pool():
+            time.sleep(0.5)
+            http.request('GET', self.base_url_alt)
+        t = threading.Thread(target=invalidate_pool)
+        t.start()
+        threads.append(t)
+        try:
+            http.request('GET', '%s/retry_after' % (self.base_url,))
+        finally:
+            for t in threads:
+                t.join()
+
 
 @pytest.mark.skipif(
     not HAS_IPV6,
