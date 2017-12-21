@@ -49,6 +49,7 @@ urllib3 is powerful and easy to use::
     >>> r.data
     'User-agent: *\nDisallow: /deny\n'
 
+
 Installing
 ----------
 
@@ -75,6 +76,7 @@ urllib3 happily accepts contributions. Please see our
 `contributing documentation <https://urllib3.readthedocs.io/en/latest/contributing.html>`_
 for some tips on getting started.
 
+
 Maintainers
 -----------
 
@@ -84,6 +86,7 @@ Maintainers
 - `@shazow <https://github.com/shazow>`_ (Andrey Petrov)
 
 👋
+
 
 Sponsorship
 -----------
