@@ -16,8 +16,6 @@ from __future__ import absolute_import
 
 import collections
 import datetime
-import errno
-import itertools
 import socket
 import warnings
 
@@ -30,7 +28,7 @@ from .exceptions import (
     ProtocolError
 )
 from .packages import six
-from .util import selectors, connection, ssl_ as ssl_util
+from .util import ssl_ as ssl_util
 from .backends import LoopAbort
 
 try:
@@ -147,7 +145,7 @@ def _response_from_h11(h11_response, body_object):
     Given a h11 Response object, build a urllib3 response object and return it.
     """
     if h11_response.http_version not in _SUPPORTED_VERSIONS:
-        raise BadVersionError(response.http_version)
+        raise BadVersionError(h11_response.http_version)
 
     version = b'HTTP/' + h11_response.http_version
     our_response = Response(
@@ -201,6 +199,7 @@ async def _start_http_request(self, request, state_machine, conn):
     request_bytes_iterable = _request_bytes_iterable(request, state_machine)
 
     send_aborted = True
+
     async def next_bytes_to_send():
         nonlocal send_aborted
         try:
@@ -211,6 +210,7 @@ async def _start_http_request(self, request, state_machine, conn):
             return None
 
     h11_response = None
+
     def consume_bytes(data):
         nonlocal h11_response
 
@@ -229,7 +229,7 @@ async def _start_http_request(self, request, state_machine, conn):
             else:
                 # Can't happen
                 raise RuntimeError("Unexpected h11 event {}".format(event))
-            
+
     await conn.send_and_receive_for_a_while(
         next_bytes_to_send, consume_bytes)
     assert h11_response is not None
@@ -242,7 +242,7 @@ async def _start_http_request(self, request, state_machine, conn):
         # re-use this connection, even though we can't. So record this in
         # h11's state machine.
         # XX need to implement this in h11
-        #state_machine.poison()
+        # state_machine.poison()
         # XX kluge for now
         state_machine._cstate.process_error(state_machine.our_role)
 
@@ -373,11 +373,12 @@ class SyncHTTP1Connection(object):
         if tunnel_response.status_code != 200:
             conn.forceful_close()
             raise FailedTunnelError(
-                "Unable to establish CONNECT tunnel", response
+                "Unable to establish CONNECT tunnel", tunnel_response
             )
 
     async def connect(self, ssl_context=None,
-                fingerprint=None, assert_hostname=None):
+                      fingerprint=None, assert_hostname=None,
+                      connect_timeout=None):
         """
         Connect this socket to the server, applying the source address, any
         relevant socket options, and the relevant connection timeout.
@@ -393,12 +394,14 @@ class SyncHTTP1Connection(object):
 
         if self._socket_options:
             extra_kw['socket_options'] = self._socket_options
+        # XX pass connect_timeout to backend
 
         # This was factored out into a separate function to allow overriding
         # by subclasses, but in the backend approach the way to to this is to
         # provide a custom backend. (Composition >> inheritance.)
         try:
-            conn = await self._backend.connect(self._host, self._port, **connect_kw)
+            conn = await self._backend.connect(
+                self._host, self._port, **extra_kw)
         # XX these two error handling blocks needs to be re-done in a
         # backend-agnostic way
         except socket.timeout:

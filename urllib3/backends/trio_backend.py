@@ -3,6 +3,9 @@ import trio
 from . import LoopAbort
 from ._util import is_readable
 
+BUFSIZE = 65536
+
+
 class TrioBackend:
     async def connect(
             self, host, port, source_address=None, socket_options=None):
@@ -23,6 +26,8 @@ class TrioBackend:
 # cancellation, but we probably should do something to detect when the stream
 # has been broken by cancellation (e.g. a timeout) and make is_readable return
 # True so the connection won't be reused.
+
+
 class TrioSocket:
     def __init__(self, stream):
         self._stream = stream
@@ -40,7 +45,7 @@ class TrioSocket:
     async def receive_some(self):
         return await self._stream.receive_some(BUFSIZE)
 
-    async def send_and_receive_for_a_while(produce_bytes, consume_bytes):
+    async def send_and_receive_for_a_while(self, produce_bytes, consume_bytes):
         async def sender():
             while True:
                 outgoing = await produce_bytes()
@@ -50,7 +55,7 @@ class TrioSocket:
 
         async def receiver():
             while True:
-                incoming = await stream.receive_some(BUFSIZE)
+                incoming = await self._stream.receive_some(BUFSIZE)
                 consume_bytes(incoming)
 
         try:
@@ -73,6 +78,6 @@ class TrioSocket:
             sock_stream = sock_stream.transport_stream
         sock = sock_stream.socket
         return is_readable(sock)
-        
+
     def set_readable_watch_state(self, enabled):
         pass

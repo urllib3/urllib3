@@ -1,3 +1,6 @@
+import errno
+import select
+import socket
 import ssl
 from ..util.connection import create_connection
 from ..util.ssl_ import ssl_wrap_socket
@@ -9,6 +12,7 @@ from ._util import DEFAULT_SELECTOR, is_readable
 __all__ = ["SyncBackend"]
 
 BUFSIZE = 65536
+
 
 class SyncBackend(object):
     def __init__(self, connect_timeout, read_timeout):
@@ -72,7 +76,7 @@ class SyncSocket(object):
                 else:
                     raise
 
-    async def send_and_receive_for_a_while(produce_bytes, consume_bytes):
+    async def send_and_receive_for_a_while(self, produce_bytes, consume_bytes):
         outgoing_finished = False
         outgoing = b""
         try:
