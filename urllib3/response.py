@@ -148,11 +148,11 @@ class HTTPResponse(io.IOBase):
 
         return False
 
-    def release_conn(self):
+    async def release_conn(self):
         if not self._pool or not self._connection:
             return
 
-        self._pool._put_conn(self._connection)
+        await self._pool._put_conn(self._connection)
         self._connection = None
 
     @property
@@ -264,10 +264,11 @@ class HTTPResponse(io.IOBase):
 
             # If we hold the original response but it's finished now, we should
             # return the connection back to the pool.
-            if self._original_response and self._original_response.complete:
+            # XXX
+            if False and self._original_response and self._original_response.complete:
                 self.release_conn()
 
-    def read(self, amt=None, decode_content=None, cache_content=False):
+    async def read(self, amt=None, decode_content=None, cache_content=False):
         """
         Similar to :meth:`httplib.HTTPResponse.read`, but with two additional
         parameters: ``decode_content`` and ``cache_content``.

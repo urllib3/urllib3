@@ -140,7 +140,7 @@ class PoolManager(RequestMethods):
 
     proxy = None
 
-    def __init__(self, num_pools=10, headers=None, **connection_pool_kw):
+    def __init__(self, backend=None, num_pools=10, headers=None, **connection_pool_kw):
         RequestMethods.__init__(self, headers)
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools,
@@ -150,6 +150,7 @@ class PoolManager(RequestMethods):
         # override them.
         self.pool_classes_by_scheme = pool_classes_by_scheme
         self.key_fn_by_scheme = key_fn_by_scheme.copy()
+        self.backend = backend
 
     def __enter__(self):
         return self
@@ -184,7 +185,7 @@ class PoolManager(RequestMethods):
             for kw in SSL_KEYWORDS:
                 request_context.pop(kw, None)
 
-        return pool_cls(host, port, **request_context)
+        return pool_cls(host, port, **request_context, backend=self.backend)
 
     def clear(self):
         """
@@ -290,7 +291,7 @@ class PoolManager(RequestMethods):
                     base_pool_kwargs[key] = value
         return base_pool_kwargs
 
-    def urlopen(self, method, url, redirect=True, **kw):
+    async def urlopen(self, method, url, redirect=True, **kw):
         """
         Same as :meth:`urllib3.connectionpool.HTTPConnectionPool.urlopen`
         with redirect logic and only sends the request-uri portion of the
@@ -312,9 +313,9 @@ class PoolManager(RequestMethods):
             kw['headers'] = self.headers
 
         if self.proxy is not None and u.scheme == "http":
-            response = conn.urlopen(method, url, **kw)
+            response = await conn.urlopen(method, url, **kw)
         else:
-            response = conn.urlopen(method, u.request_uri, **kw)
+            response = await conn.urlopen(method, u.request_uri, **kw)
 
         redirect_location = redirect and response.get_redirect_location()
         if not redirect_location:

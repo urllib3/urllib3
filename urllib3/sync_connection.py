@@ -134,7 +134,7 @@ def _request_bytes_iterable(request, state_machine):
     )
     yield state_machine.send(h11_request)
 
-    for chunk in _make_body_iterable(request):
+    for chunk in _make_body_iterable(request.body):
         yield state_machine.send(h11.Data(data=chunk))
 
     yield state_machine.send(h11.EndOfMessage())
@@ -179,7 +179,7 @@ def _build_tunnel_request(host, port, headers):
     return tunnel_request
 
 
-async def _start_http_request(self, request, state_machine, conn):
+async def _start_http_request(request, state_machine, conn):
     """
     Send the request using the given state machine and connection, wait
     for the response headers, and return them.
@@ -225,6 +225,7 @@ async def _start_http_request(self, request, state_machine, conn):
             elif isinstance(event, h11.Response):
                 # We have our response! Save it and get out of here.
                 h11_response = event
+                print(event)
                 raise LoopAbort
             else:
                 # Can't happen
@@ -246,10 +247,10 @@ async def _start_http_request(self, request, state_machine, conn):
         # XX kluge for now
         state_machine._cstate.process_error(state_machine.our_role)
 
-    return _response_from_h11(h11_response)
+    return _response_from_h11(h11_response, request_bytes_iterable)
 
 
-async def _read_until_event(self, state_machine, conn):
+async def _read_until_event(state_machine, conn):
     """
     A loop that keeps issuing reads and feeding the data into h11 and
     checking whether h11 has an event for us. The moment there is an event
@@ -345,11 +346,11 @@ class SyncHTTP1Connection(object):
 
         return conn
 
-    async def send_request(self, request):
+    async def send_request(self, request, read_timeout):
         """
         Given a Request object, performs the logic required to get a response.
         """
-        return await self._start_http_request(
+        return await _start_http_request(
             request, self._state_machine, self._sock
         )
 
@@ -424,14 +425,14 @@ class SyncHTTP1Connection(object):
         # XX We should pick one of these names and use it consistently...
         self._sock = conn
 
-    def close(self):
+    async def close(self):
         """
         Close this connection.
         """
         if self._sock is not None:
             # Make sure self._sock is None even if closing raises an exception
             sock, self._sock = self._sock, None
-            sock.forceful_close()
+            await sock.forceful_close()
 
     def is_dropped(self):
         """

@@ -123,7 +123,7 @@ class ConnectionPool(object):
         # Return False to re-raise any potential exceptions
         return False
 
-    def close(self):
+    async def close(self):
         """
         Close all pooled connections and disable the pool.
         """
@@ -248,7 +248,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                   **self.conn_kw)
         return conn
 
-    def _get_conn(self, timeout=None):
+    async def _get_conn(self, timeout=None):
         """
         Get a connection. Will return a pooled connection if one is available.
 
@@ -277,11 +277,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # If this is a persistent connection, check if it got disconnected
         if conn and is_connection_dropped(conn):
             log.debug("Resetting dropped connection: %s", self.host)
-            conn.close()
+            await conn.close()
 
         return conn or self._new_conn()
 
-    def _put_conn(self, conn):
+    async def _put_conn(self, conn):
         """
         Put a connection back into the pool.
 
@@ -309,13 +309,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Connection never got put back into the pool, close it.
         if conn:
-            conn.close()
+            await conn.close()
 
-    def _start_conn(self, conn, connect_timeout):
+    async def _start_conn(self, conn, connect_timeout):
         """
         Called right before a request is made, after the socket is created.
         """
-        conn.connect(connect_timeout=connect_timeout)
+        await conn.connect(connect_timeout=connect_timeout)
 
     def _get_timeout(self, timeout):
         """ Helper that always returns a :class:`urllib3.util.Timeout` """
@@ -347,8 +347,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if 'timed out' in str(err) or 'did not complete (read)' in str(err):  # Python 2.6
             raise ReadTimeoutError(self, url, "Read timed out. (read timeout=%s)" % timeout_value)
 
-    def _make_request(self, conn, method, url, timeout=_Default, body=None,
-                      headers=None):
+    async def _make_request(
+            self, conn, method, url, timeout=_Default, body=None, headers=None):
         """
         Perform a request on a given urllib connection object taken from our
         pool.
@@ -370,7 +370,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Trigger any extra validation we need to do.
         try:
-            self._start_conn(conn, timeout_obj.connect_timeout)
+            await self._start_conn(conn, timeout_obj.connect_timeout)
         except (SocketTimeout, BaseSSLError) as e:
             # Py2 raises this as a BaseSSLError, Py3 raises it as socket timeout.
             self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
@@ -405,7 +405,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Receive the response from the server
         try:
-            response = conn.send_request(request, read_timeout=read_timeout)
+            response = await conn.send_request(
+                request, read_timeout=read_timeout)
         except (SocketTimeout, BaseSSLError, SocketError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
@@ -420,7 +421,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     def _absolute_url(self, path):
         return Url(scheme=self.scheme, host=self.host, port=self.port, path=path).url
 
-    def close(self):
+    async def close(self):
         """
         Close all pooled connections and disable the pool.
         """
@@ -431,7 +432,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             while True:
                 conn = old_pool.get(block=False)
                 if conn:
-                    conn.close()
+                    await conn.close()
 
         except queue.Empty:
             pass  # Done.
@@ -457,8 +458,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         return (scheme, host, port) == (self.scheme, self.host, self.port)
 
-    def urlopen(self, method, url, body=None, headers=None, retries=None,
-                timeout=_Default, pool_timeout=None, body_pos=None, **response_kw):
+    async def urlopen(self, method, url, body=None, headers=None, retries=None,
+                      timeout=_Default, pool_timeout=None, body_pos=None,
+                      **response_kw):
         """
         Get a connection from the pool and perform an HTTP request. This is the
         lowest level call for making a request, so you'll need to specify all
@@ -554,14 +556,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         try:
             # Request a connection from the queue.
             timeout_obj = self._get_timeout(timeout)
-            conn = self._get_conn(timeout=pool_timeout)
+            conn = await self._get_conn(timeout=pool_timeout)
 
             conn.timeout = timeout_obj.connect_timeout
 
             # Make the request on the base connection object.
-            base_response = self._make_request(conn, method, url,
-                                               timeout=timeout_obj,
-                                               body=body, headers=headers)
+            base_response = await self._make_request(conn, method, url,
+                                                     timeout=timeout_obj,
+                                                     body=body,
+                                                     headers=headers)
 
             # Pass method to Response for length checking
             response_kw['request_method'] = method
@@ -615,22 +618,23 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 # to throw the connection away unless explicitly told not to.
                 # Close the connection, set the variable to None, and make sure
                 # we put the None back in the pool to avoid leaking it.
-                conn = conn and conn.close()
+                conn = conn and await conn.close()
                 release_this_conn = True
 
             if release_this_conn:
                 # Put the connection back to be reused. If the connection is
                 # expired then it will be None, which will get replaced with a
                 # fresh connection during _get_conn.
-                self._put_conn(conn)
+                await self._put_conn(conn)
 
         if not conn:
             # Try again
             log.warning("Retrying (%r) after connection "
                         "broken by '%r': %s", retries, err, url)
-            return self.urlopen(method, url, body, headers, retries,
-                                timeout=timeout, pool_timeout=pool_timeout,
-                                body_pos=body_pos, **response_kw)
+            return await self.urlopen(method, url, body, headers, retries,
+                                      timeout=timeout,
+                                      pool_timeout=pool_timeout,
+                                      body_pos=body_pos, **response_kw)
 
         # Check if we should retry the HTTP response.
         has_retry_after = bool(response.getheader('Retry-After'))
@@ -646,7 +650,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 return response
             retries.sleep(response)
             log.debug("Retry: %s", url)
-            return self.urlopen(
+            return await self.urlopen(
                 method, url, body, headers,
                 retries=retries, timeout=timeout, pool_timeout=pool_timeout,
                 body_pos=body_pos, **response_kw)

@@ -60,13 +60,13 @@ class TrioSocket:
 
         try:
             async with trio.open_nursery() as nursery:
-                nursery.spawn(sender)
-                nursery.spawn(receiver)
+                nursery.start_soon(sender)
+                nursery.start_soon(receiver)
         except LoopAbort:
             pass
 
-    def forceful_close(self):
-        self._stream.forceful_close()
+    async def forceful_close(self):
+        await trio.aclose_forcefully(self._stream)
 
     def is_readable(self):
         # This is a bit of a hack, but I can't think of a better API that trio
