@@ -216,10 +216,12 @@ class TestResponse(object):
                 assert not resp.closed
                 assert not resp._fp.isclosed()
                 assert not is_fp_closed(resp._fp)
+                assert not resp.isclosed()
                 resp.read()
                 assert resp.closed
                 assert resp._fp.isclosed()
                 assert is_fp_closed(resp._fp)
+                assert resp.isclosed()
         finally:
             hlr.close()
 
