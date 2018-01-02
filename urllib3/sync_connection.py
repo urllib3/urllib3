@@ -370,6 +370,10 @@ class SyncHTTP1Connection(object):
         h11_response = await _start_http_request(
             tunnel_request, tunnel_state_machine, conn
         )
+        # XX this is wrong -- 'self' here will try to iterate using
+        # self._state_machine, not tunnel_state_machine. Also, we need to
+        # think about how this failure case interacts with the pool's
+        # connection lifecycle management.
         tunnel_response = _response_from_h11(h11_response, self)
 
         if h11_response.status_code != 200:
