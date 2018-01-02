@@ -179,77 +179,6 @@ def _build_tunnel_request(host, port, headers):
     return tunnel_request
 
 
-async def _start_http_request(request, state_machine, conn):
-    """
-    Send the request using the given state machine and connection, wait
-    for the response headers, and return them.
-
-    If we get response headers early, then we stop sending and return
-    immediately, poisoning the state machine along the way so that we know
-    it can't be re-used.
-
-    This is a standalone function because we use it both to set up both
-    CONNECT requests and real requests.
-    """
-    # Before we begin, confirm that the state machine is ok.
-    if (state_machine.our_state is not h11.IDLE or
-            state_machine.their_state is not h11.IDLE):
-        raise ProtocolError("Invalid internal state transition")
-
-    request_bytes_iterable = _request_bytes_iterable(request, state_machine)
-
-    send_aborted = True
-
-    async def next_bytes_to_send():
-        nonlocal send_aborted
-        try:
-            return next(request_bytes_iterable)
-        except StopIteration:
-            # We successfully sent the whole body!
-            send_aborted = False
-            return None
-
-    h11_response = None
-
-    def consume_bytes(data):
-        nonlocal h11_response
-
-        state_machine.receive_data(data)
-        while True:
-            event = state_machine.next_event()
-            if event is h11.NEED_DATA:
-                break
-            elif isinstance(event, h11.InformationalResponse):
-                # Ignore 1xx responses
-                continue
-            elif isinstance(event, h11.Response):
-                # We have our response! Save it and get out of here.
-                h11_response = event
-                print(event)
-                raise LoopAbort
-            else:
-                # Can't happen
-                raise RuntimeError("Unexpected h11 event {}".format(event))
-
-    await conn.send_and_receive_for_a_while(
-        next_bytes_to_send, consume_bytes)
-    assert h11_response is not None
-
-    if send_aborted:
-        # Our state machine thinks we sent a bunch of data... but maybe we
-        # didn't! Maybe our send got cancelled while we were only half-way
-        # through sending the last chunk, and then h11 thinks we sent a
-        # complete request and we actually didn't. Then h11 might think we can
-        # re-use this connection, even though we can't. So record this in
-        # h11's state machine.
-        # XX need to implement this in h11
-        # state_machine.poison()
-        # XX kluge for now
-        state_machine._cstate.process_error(state_machine.our_role)
-
-    return _response_from_h11(h11_response, request_bytes_iterable)
-
-
 async def _read_until_event(state_machine, conn):
     """
     A loop that keeps issuing reads and feeding the data into h11 and
@@ -350,7 +279,7 @@ class SyncHTTP1Connection(object):
         """
         Given a Request object, performs the logic required to get a response.
         """
-        return await _start_http_request(
+        return await self._start_http_request(
             request, self._state_machine, self._sock
         )
 
@@ -367,7 +296,7 @@ class SyncHTTP1Connection(object):
 
         tunnel_state_machine = h11.Connection(our_role=h11.CLIENT)
 
-        tunnel_response = await _start_http_request(
+        tunnel_response = await self._start_http_request(
             tunnel_request, tunnel_state_machine, conn
         )
 
@@ -424,6 +353,75 @@ class SyncHTTP1Connection(object):
 
         # XX We should pick one of these names and use it consistently...
         self._sock = conn
+
+    async def _start_http_request(self, request, state_machine, conn):
+        """
+        Send the request using the given state machine and connection, wait
+        for the response headers, and return them.
+
+        If we get response headers early, then we stop sending and return
+        immediately, poisoning the state machine along the way so that we know
+        it can't be re-used.
+
+        This is a standalone function because we use it both to set up both
+        CONNECT requests and real requests.
+        """
+        # Before we begin, confirm that the state machine is ok.
+        if (state_machine.our_state is not h11.IDLE or
+                state_machine.their_state is not h11.IDLE):
+            raise ProtocolError("Invalid internal state transition")
+
+        request_bytes_iterable = _request_bytes_iterable(request, state_machine)
+
+        send_aborted = True
+
+        async def next_bytes_to_send():
+            nonlocal send_aborted
+            try:
+                return next(request_bytes_iterable)
+            except StopIteration:
+                # We successfully sent the whole body!
+                send_aborted = False
+                return None
+
+        h11_response = None
+
+        def consume_bytes(data):
+            nonlocal h11_response
+
+            state_machine.receive_data(data)
+            while True:
+                event = state_machine.next_event()
+                if event is h11.NEED_DATA:
+                    break
+                elif isinstance(event, h11.InformationalResponse):
+                    # Ignore 1xx responses
+                    continue
+                elif isinstance(event, h11.Response):
+                    # We have our response! Save it and get out of here.
+                    h11_response = event
+                    raise LoopAbort
+                else:
+                    # Can't happen
+                    raise RuntimeError("Unexpected h11 event {}".format(event))
+
+        await conn.send_and_receive_for_a_while(
+            next_bytes_to_send, consume_bytes)
+        assert h11_response is not None
+
+        if send_aborted:
+            # Our state machine thinks we sent a bunch of data... but maybe we
+            # didn't! Maybe our send got cancelled while we were only half-way
+            # through sending the last chunk, and then h11 thinks we sent a
+            # complete request and we actually didn't. Then h11 might think we can
+            # re-use this connection, even though we can't. So record this in
+            # h11's state machine.
+            # XX need to implement this in h11
+            # state_machine.poison()
+            # XX kluge for now
+            state_machine._cstate.process_error(state_machine.our_role)
+
+        return _response_from_h11(h11_response, self)
 
     async def close(self):
         """
@@ -509,7 +507,7 @@ class SyncHTTP1Connection(object):
             return bytes(event.data)
         elif isinstance(event, h11.EndOfMessage):
             self._reset()
-            raise StopIteration()
+            raise StopAsyncIteration
         else:
             # can't happen
             raise RuntimeError("Unexpected h11 event {}".format(event))

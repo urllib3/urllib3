@@ -306,7 +306,8 @@ class HTTPResponse(io.IOBase):
 
         with self._error_catcher():
             if amt is None:
-                data += b''.join(self.stream(decode_content))
+                async for chunk in self.stream(decode_content):
+                    data += chunk
                 self._buffer = b''
 
                 # We only cache the body data for simple read calls.
@@ -331,7 +332,7 @@ class HTTPResponse(io.IOBase):
 
         return data
 
-    def stream(self, decode_content=None):
+    async def stream(self, decode_content=None):
         """
         A generator wrapper for the read() method.
 
@@ -348,7 +349,7 @@ class HTTPResponse(io.IOBase):
             decode_content = self.decode_content
 
         with self._error_catcher():
-            for raw_chunk in self._fp:
+            async for raw_chunk in self._fp:
                 self._fp_bytes_read += len(raw_chunk)
                 decoded_chunk = self._decode(
                     raw_chunk, decode_content, flush_decoder=False
