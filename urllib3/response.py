@@ -306,8 +306,10 @@ class HTTPResponse(io.IOBase):
 
         with self._error_catcher():
             if amt is None:
+                chunks = []
                 async for chunk in self.stream(decode_content):
-                    data += chunk
+                    chunks.append(chunk)
+                data += b''.join(chunks)
                 self._buffer = b''
 
                 # We only cache the body data for simple read calls.
