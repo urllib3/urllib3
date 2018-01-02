@@ -148,11 +148,11 @@ class HTTPResponse(io.IOBase):
 
         return False
 
-    def release_conn(self):
+    async def release_conn(self):
         if not self._pool or not self._connection:
             return
 
-        self._pool._put_conn(self._connection)
+        await self._pool._put_conn(self._connection)
         self._connection = None
 
     @property
@@ -264,10 +264,11 @@ class HTTPResponse(io.IOBase):
 
             # If we hold the original response but it's finished now, we should
             # return the connection back to the pool.
-            if self._original_response and self._original_response.complete:
+            # XXX
+            if False and self._original_response and self._original_response.complete:
                 self.release_conn()
 
-    def read(self, amt=None, decode_content=None, cache_content=False):
+    async def read(self, amt=None, decode_content=None, cache_content=False):
         """
         Similar to :meth:`httplib.HTTPResponse.read`, but with two additional
         parameters: ``decode_content`` and ``cache_content``.
@@ -305,7 +306,10 @@ class HTTPResponse(io.IOBase):
 
         with self._error_catcher():
             if amt is None:
-                data += b''.join(self.stream(decode_content))
+                chunks = []
+                async for chunk in self.stream(decode_content):
+                    chunks.append(chunk)
+                data += b''.join(chunks)
                 self._buffer = b''
 
                 # We only cache the body data for simple read calls.
@@ -330,7 +334,7 @@ class HTTPResponse(io.IOBase):
 
         return data
 
-    def stream(self, decode_content=None):
+    async def stream(self, decode_content=None):
         """
         A generator wrapper for the read() method.
 
@@ -347,7 +351,7 @@ class HTTPResponse(io.IOBase):
             decode_content = self.decode_content
 
         with self._error_catcher():
-            for raw_chunk in self._fp:
+            async for raw_chunk in self._fp:
                 self._fp_bytes_read += len(raw_chunk)
                 decoded_chunk = self._decode(
                     raw_chunk, decode_content, flush_decoder=False

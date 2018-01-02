@@ -15,6 +15,7 @@ except (OSError, AttributeError):
 else:
     DEFAULT_SELECTOR = selectors.PollSelector
 
+
 def is_readable(sock):
     s = DEFAULT_SELECTOR()
     s.register(sock, selectors.EVENT_READ)

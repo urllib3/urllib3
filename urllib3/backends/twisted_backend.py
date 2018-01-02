@@ -1,6 +1,7 @@
 import socket
 import OpenSSL.crypto
-from twisted.internet import protocol
+from twisted.internet import protocol, ssl
+from twisted.internet.interfaces import IHandshakeListener
 from twisted.internet.endpoints import HostnameEndpoint, connectProtocol
 from twisted.internet.defer import (
     Deferred, DeferredList, CancelledError, ensureDeferred,
@@ -11,6 +12,8 @@ from ..contrib.pyopenssl import get_subj_alt_name
 from . import LoopAbort
 
 # XX need to add timeout support, esp. on connect
+
+
 class TwistedBackend:
     def __init__(self, reactor):
         self._reactor = reactor
@@ -21,7 +24,7 @@ class TwistedBackend:
             raise NotImplementedError(
                 "twisted backend doesn't support setting source_address")
 
-        factory = protocol.Factory.forProtocol(TwistedSocketProtocol)
+        # factory = protocol.Factory.forProtocol(TwistedSocketProtocol)
         endpoint = HostnameEndpoint(self._reactor, host, port)
         d = connectProtocol(endpoint, TwistedSocketProtocol())
         # XX d.addTimeout(...)
@@ -39,8 +42,12 @@ class TwistedBackend:
 # enums
 class _DATA_RECEIVED:
     pass
+
+
 class _RESUME_PRODUCING:
     pass
+
+
 class _HANDSHAKE_COMPLETED:
     pass
 
@@ -71,6 +78,7 @@ class TwistedSocketProtocol(protocol.Protocol):
         d = Deferred()
         # We might get callbacked, we might get cancelled; either way we want
         # to clean up then pass through the result:
+
         def cleanup(obj):
             del self._events[event]
             return obj
@@ -138,6 +146,7 @@ class TwistedSocketProtocol(protocol.Protocol):
         else:
             self.transport.pauseProducing()
 
+
 class DoubleError(Exception):
     def __init__(self, exc1, exc2):
         self.exc1 = exc1
@@ -173,7 +182,7 @@ class TwistedSocket:
     async def receive_some(self):
         return await self._protocol.receive_some()
 
-    async def send_and_receive_for_a_while(produce_bytes, consume_bytes):
+    async def send_and_receive_for_a_while(self, produce_bytes, consume_bytes):
         async def sender():
             while True:
                 outgoing = await produce_bytes()
@@ -209,7 +218,7 @@ class TwistedSocket:
 
         # Wait for both to finish, and then figure out if we need to raise an
         # exception.
-        results = await DeferredList([d1, d2])
+        results = await DeferredList([send_loop, receive_loop])
         # First, find the failure objects - but since we've almost always
         # cancelled one of the deferreds, which causes it to raise
         # CancelledError, we can't treat these at face value.
