@@ -463,33 +463,16 @@ class SyncHTTP1Connection(object):
         state machine and connection or not, and if not, closes the socket and
         state machine.
         """
-        # The logic here is as follows. Once we've got EndOfMessage, only two
-        # things can be true. Either a) the connection is suitable for
-        # connection re-use per RFC 7230, or b) it is not. h11 signals this
-        # difference by what happens when you call `next_event()`.
-        #
-        # If the connection is safe to re-use, when we call `next_event()`
-        # we'll get back a h11.NEED_DATA and the state machine will be reset to
-        # (IDLE, IDLE). If it's not, we'll get either ConnectionClosed or we'll
-        # find that our state is MUST_CLOSE, and then we should close the
-        # connection accordingly.
-        continue_states = (h11.IDLE, h11.DONE)
-        event = self._state_machine.next_event()
-        our_state = self._state_machine.our_state
-        their_state = self._state_machine.their_state
-        must_close = (
-            event is not h11.NEED_DATA or
-            our_state not in continue_states or
-            their_state not in continue_states
-        )
-        if must_close:
-            self.close()
-        elif our_state is h11.DONE and their_state is h11.DONE:
+        try:
             self._state_machine.start_next_cycle()
-        # This connection can be returned to the connection pool, and
-        # eventually we'll take it out again and want to know if it's been
-        # dropped.
-        self._sock.set_readable_watch_state(True)
+        except h11.LocalProtocolError:
+            # Not re-usable
+            self.close()
+        else:
+            # This connection can be returned to the connection pool, and
+            # eventually we'll take it out again and want to know if it's been
+            # dropped.
+            self._sock.set_readable_watch_state(True)
 
     @property
     def complete(self):
