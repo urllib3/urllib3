@@ -246,5 +246,8 @@ In chronological order:
 * Akamai (through Jesse Shapiro) <jshapiro@akamai.com>
   * Ongoing maintenance
 
+* Dominique Leuenberger <dimstar@opensuse.org>
+  * Minor fixes in the test suite
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

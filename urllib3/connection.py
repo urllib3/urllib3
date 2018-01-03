@@ -56,10 +56,11 @@ port_by_scheme = {
     'https': 443,
 }
 
-# When updating RECENT_DATE, move it to
-# within two years of the current date, and no
-# earlier than 6 months ago.
-RECENT_DATE = datetime.date(2016, 1, 1)
+# When updating RECENT_DATE, move it to within two years of the current date,
+# and not less than 6 months ago.
+# Example: if Today is 2018-01-01, then RECENT_DATE should be any date on or
+# after 2016-01-01 (today - 2 years) AND before 2017-07-01 (today - 6 months)
+RECENT_DATE = datetime.date(2017, 6, 30)
 
 
 class DummyConnection(object):
