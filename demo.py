@@ -1,18 +1,20 @@
 import urllib3
 from urllib3.backends import TrioBackend, SyncBackend, TwistedBackend
 
-async def main(backend):
-    http = urllib3.PoolManager(backend=backend)
-    r = await http.request("GET", "http://httpbin.org/robots.txt",
-                           preload_content=False)
-    print("Status:", r.status)
-    print("Data:", await r.read())
+URL = "http://httpbin.org/uuid"
 
-print("--- Trio ---")
+async def main(backend):
+    with urllib3.PoolManager(backend=backend) as http:
+        print("URL:", URL)
+        r = await http.request("GET", URL, preload_content=False)
+        print("Status:", r.status)
+        print("Data:", await r.read())
+
+print("--- urllib3 using Trio ---")
 import trio
 trio.run(main, TrioBackend())
 
-print("--- Synchronous ---")
+print("\n--- urllib3 using synchronous sockets ---")
 def run_sync_coroutine(afn, *args):
     coro = afn(*args)
     try:
@@ -22,7 +24,7 @@ def run_sync_coroutine(afn, *args):
     assert False
 run_sync_coroutine(main, SyncBackend())
 
-print("--- Twisted ---")
+print("\n--- urllib3 using Twisted ---")
 from twisted.internet.task import react
 from twisted.internet.defer import ensureDeferred
 def twisted_main(reactor):
