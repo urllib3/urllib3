@@ -6,7 +6,7 @@ from twisted.internet.endpoints import HostnameEndpoint, connectProtocol
 from twisted.internet.defer import (
     Deferred, DeferredList, CancelledError, ensureDeferred,
 )
-from zope.interface import provides
+from zope.interface import implementer
 
 from ..contrib.pyopenssl import get_subj_alt_name
 from . import LoopAbort
@@ -52,14 +52,14 @@ class _HANDSHAKE_COMPLETED:
     pass
 
 
-@provides(IHandshakeListener)
+@implementer(IHandshakeListener)
 class TwistedSocketProtocol(protocol.Protocol):
     def connectionMade(self):
         self._receive_buffer = bytearray()
         self.transport.pauseProducing()
 
-        self.transport.registerProducer(self)
-        self._producing = False
+        self.transport.registerProducer(self, True)
+        self._producing = True
 
         self._readable_watch_state_enabled = False
         self._is_readable = False
@@ -108,6 +108,9 @@ class TwistedSocketProtocol(protocol.Protocol):
     def resumeProducing(self):
         self._producing = True
         self._signal(_RESUME_PRODUCING)
+
+    def stopProducing(self):
+        pass
 
     def handshakeCompleted(self):
         self._signal(_HANDSHAKE_COMPLETED)
