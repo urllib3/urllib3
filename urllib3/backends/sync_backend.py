@@ -15,7 +15,7 @@ BUFSIZE = 65536
 
 
 class SyncBackend(object):
-    def __init__(self, connect_timeout, read_timeout):
+    def __init__(self, connect_timeout=None, read_timeout=None):
         self._connect_timeout = connect_timeout
         self._read_timeout = read_timeout
 
