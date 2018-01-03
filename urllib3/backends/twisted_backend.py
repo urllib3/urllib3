@@ -245,6 +245,9 @@ class TwistedSocket:
         else:
             raise DoubleError(*failures)
 
+    def forceful_close(self):
+        self._protocol.transport.abortConnection()
+
     def is_readable(self):
         return self._protocol.is_readable()
 

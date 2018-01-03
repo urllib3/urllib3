@@ -123,7 +123,7 @@ class ConnectionPool(object):
         # Return False to re-raise any potential exceptions
         return False
 
-    async def close(self):
+    def close(self):
         """
         Close all pooled connections and disable the pool.
         """
@@ -277,7 +277,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # If this is a persistent connection, check if it got disconnected
         if conn and is_connection_dropped(conn):
             log.debug("Resetting dropped connection: %s", self.host)
-            await conn.close()
+            conn.close()
 
         return conn or self._new_conn()
 
@@ -309,7 +309,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Connection never got put back into the pool, close it.
         if conn:
-            await conn.close()
+            conn.close()
 
     async def _start_conn(self, conn, connect_timeout):
         """
@@ -421,7 +421,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     def _absolute_url(self, path):
         return Url(scheme=self.scheme, host=self.host, port=self.port, path=path).url
 
-    async def close(self):
+    def close(self):
         """
         Close all pooled connections and disable the pool.
         """
@@ -432,7 +432,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             while True:
                 conn = old_pool.get(block=False)
                 if conn:
-                    await conn.close()
+                    conn.close()
 
         except queue.Empty:
             pass  # Done.
@@ -618,7 +618,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 # to throw the connection away unless explicitly told not to.
                 # Close the connection, set the variable to None, and make sure
                 # we put the None back in the pool to avoid leaking it.
-                conn = conn and await conn.close()
+                conn = conn and conn.close()
                 release_this_conn = True
 
             if release_this_conn:

@@ -430,14 +430,14 @@ class SyncHTTP1Connection(object):
         # XX We should pick one of these names and use it consistently...
         self._sock = conn
 
-    async def close(self):
+    def close(self):
         """
         Close this connection.
         """
         if self._sock is not None:
             # Make sure self._sock is None even if closing raises an exception
             sock, self._sock = self._sock, None
-            await sock.forceful_close()
+            sock.forceful_close()
 
     def is_dropped(self):
         """

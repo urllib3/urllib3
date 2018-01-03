@@ -65,19 +65,23 @@ class TrioSocket:
         except LoopAbort:
             pass
 
-    async def forceful_close(self):
-        await trio.aclose_forcefully(self._stream)
+    # Pull out the underlying trio socket, because it turns out HTTP is not so
+    # great at respecting abstraction boundaries.
+    def _socket(self):
+        stream = self._stream
+        # Strip off any layers of SSLStream
+        while hasattr(stream, "transport_stream"):
+            stream = stream.transport_stream
+        # Now we have a SocketStream
+        return stream.socket
+
+    # We want this to be synchronous, and don't care about graceful teardown
+    # of the SSL/TLS layer.
+    def forceful_close(self):
+        self._socket().close()
 
     def is_readable(self):
-        # This is a bit of a hack, but I can't think of a better API that trio
-        # *could* provide, since what we want to check here is such an odd
-        # thing.
-        sock_stream = self._stream
-        # Strip off SSLStream wrappings
-        while hasattr(sock_stream, "transport_stream"):
-            sock_stream = sock_stream.transport_stream
-        sock = sock_stream.socket
-        return is_readable(sock)
+        return is_readable(self._socket())
 
     def set_readable_watch_state(self, enabled):
         pass
