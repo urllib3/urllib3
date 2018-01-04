@@ -1,7 +1,6 @@
 import trio
 
-from . import LoopAbort
-from ._util import is_readable
+from ._common import is_readable, LoopAbort
 
 BUFSIZE = 65536
 

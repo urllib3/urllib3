@@ -185,7 +185,7 @@ class PoolManager(RequestMethods):
             for kw in SSL_KEYWORDS:
                 request_context.pop(kw, None)
 
-        return pool_cls(host, port, **request_context, backend=self.backend)
+        return pool_cls(host, port, backend=self.backend, **request_context)
 
     def clear(self):
         """

@@ -1,6 +1,6 @@
 from ..util import selectors
 
-__all__ = ["DEFAULT_SELECTOR", "is_readable"]
+__all__ = ["DEFAULT_SELECTOR", "is_readable", "LoopAbort"]
 
 # We only ever select on 1 fd at a time, so there's no point in messing around
 # with epoll/kqueue. But we do want to use PollSelector on platforms that have
@@ -21,3 +21,10 @@ def is_readable(sock):
     s.register(sock, selectors.EVENT_READ)
     events = s.select(timeout=0)
     return bool(events)
+
+
+class LoopAbort(Exception):
+    """
+    Tell backends that enough bytes have been consumed
+    """
+    pass
