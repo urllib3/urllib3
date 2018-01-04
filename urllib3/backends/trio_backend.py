@@ -1,7 +1,7 @@
 import trio
 
 from ..exceptions import _LoopAbort
-from ._util import is_readable
+from ._common import is_readable
 
 BUFSIZE = 65536
 

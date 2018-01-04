@@ -7,7 +7,7 @@ from ..util.connection import create_connection
 from ..util.ssl_ import ssl_wrap_socket
 from ..util import selectors
 
-from ._util import DEFAULT_SELECTOR, is_readable
+from ._common import DEFAULT_SELECTOR, is_readable
 
 __all__ = ["SyncBackend"]
 
