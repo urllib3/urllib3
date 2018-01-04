@@ -70,19 +70,22 @@ class TwistedSocketProtocol(protocol.Protocol):
 
     def _signal(self, event):
         if event in self._events:
+            # The first thing callback() will do is remove the deferred from
+            # self._events (see cleanup() in _wait_for() below).
             self._events[event].callback(None)
-        assert event not in self._events
 
     async def _wait_for(self, event):
         assert event not in self._events
         d = Deferred()
+
         # We might get callbacked, we might get cancelled; either way we want
         # to clean up then pass through the result:
-
         def cleanup(obj):
+            assert self._events[event] is d
             del self._events[event]
             return obj
         d.addBoth(cleanup)
+
         self._events[event] = d
         await d
 
