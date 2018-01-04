@@ -9,7 +9,7 @@ from twisted.internet.defer import (
 from zope.interface import implementer
 
 from ..contrib.pyopenssl import get_subj_alt_name
-from ..exceptions import _LoopAbort
+from ._common import LoopAbort
 
 # XX need to add timeout support, esp. on connect
 
@@ -198,7 +198,7 @@ class TwistedSocket:
                 incoming = await self._protocol.receive_some()
                 try:
                     consume_bytes(incoming)
-                except _LoopAbort:
+                except LoopAbort:
                     break
 
         # Run the two async functions concurrently
@@ -212,7 +212,7 @@ class TwistedSocket:
             receive_loop.cancel()
             return failure
 
-        # If the receive_loop errors out *or* exits cleanly due to _LoopAbort,
+        # If the receive_loop errors out *or* exits cleanly due to LoopAbort,
         # then cancel the send_loop and preserve the result
         @receive_loop.addBoth
         def receive_loop_allback(result):

@@ -25,10 +25,11 @@ from .base import Request, Response
 from .exceptions import (
     ConnectTimeoutError, NewConnectionError, SubjectAltNameWarning,
     SystemTimeWarning, BadVersionError, FailedTunnelError, InvalidBodyError,
-    ProtocolError, _LoopAbort
+    ProtocolError
 )
 from .packages import six
 from .util import ssl_ as ssl_util
+from .backends._common import LoopAbort
 
 try:
     import ssl
@@ -220,7 +221,7 @@ async def _start_http_request(request, state_machine, conn):
             elif isinstance(event, h11.Response):
                 # We have our response! Save it and get out of here.
                 context['h11_response'] = event
-                raise _LoopAbort
+                raise LoopAbort
             else:
                 # Can't happen
                 raise RuntimeError("Unexpected h11 event {}".format(event))

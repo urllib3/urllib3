@@ -229,10 +229,3 @@ class InvalidBodyError(HTTPError):
     not support.
     """
     pass
-
-
-class _LoopAbort(Exception):
-    """
-    Tell backends that enough bytes have been consumed
-    """
-    pass
