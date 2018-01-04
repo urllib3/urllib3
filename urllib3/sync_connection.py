@@ -197,22 +197,18 @@ async def _start_http_request(request, state_machine, conn):
 
     request_bytes_iterable = _request_bytes_iterable(request, state_machine)
 
-    send_aborted = True
+    # Hack around Python 2 lack of nonlocal
+    context = {'send_aborted': True, 'h11_response': None}
 
     async def next_bytes_to_send():
-        nonlocal send_aborted
         try:
             return next(request_bytes_iterable)
         except StopIteration:
             # We successfully sent the whole body!
-            send_aborted = False
+            context['send_aborted'] = False
             return None
 
-    h11_response = None
-
     def consume_bytes(data):
-        nonlocal h11_response
-
         state_machine.receive_data(data)
         while True:
             event = state_machine.next_event()
@@ -223,17 +219,16 @@ async def _start_http_request(request, state_machine, conn):
                 continue
             elif isinstance(event, h11.Response):
                 # We have our response! Save it and get out of here.
-                h11_response = event
-                raise LoopAbort
+                context['h11_response'] = event
+                raise _LoopAbort
             else:
                 # Can't happen
                 raise RuntimeError("Unexpected h11 event {}".format(event))
 
-    await conn.send_and_receive_for_a_while(
-        next_bytes_to_send, consume_bytes)
-    assert h11_response is not None
+    await conn.send_and_receive_for_a_while(next_bytes_to_send, consume_bytes)
+    assert context['h11_response'] is not None
 
-    if send_aborted:
+    if context['send_aborted']:
         # Our state machine thinks we sent a bunch of data... but maybe we
         # didn't! Maybe our send got cancelled while we were only half-way
         # through sending the last chunk, and then h11 thinks we sent a
@@ -245,7 +240,7 @@ async def _start_http_request(request, state_machine, conn):
         # XX kluge for now
         state_machine._cstate.process_error(state_machine.our_role)
 
-    return h11_response
+    return context['h11_response']
 
 
 async def _read_until_event(state_machine, conn):
