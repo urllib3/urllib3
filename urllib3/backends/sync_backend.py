@@ -60,7 +60,7 @@ class SyncSocket(object):
         if not events:
             raise socket.timeout("XX FIXME timeout happened")
         _, event = events[0]
-        return (event & select.POLLIN, event & select.POLLOUT)
+        return (event & selectors.EVENT_READ, event & selectors.EVENT_WRITE)
 
     async def receive_some(self):
         while True:
