@@ -25,11 +25,10 @@ from .base import Request, Response
 from .exceptions import (
     ConnectTimeoutError, NewConnectionError, SubjectAltNameWarning,
     SystemTimeWarning, BadVersionError, FailedTunnelError, InvalidBodyError,
-    ProtocolError
+    ProtocolError, _LoopAbort
 )
 from .packages import six
 from .util import ssl_ as ssl_util
-from .backends import LoopAbort
 
 try:
     import ssl

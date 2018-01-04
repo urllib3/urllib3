@@ -1,6 +1,6 @@
 import trio
 
-from . import LoopAbort
+from ..exceptions import _LoopAbort
 from ._util import is_readable
 
 BUFSIZE = 65536
@@ -62,7 +62,7 @@ class TrioSocket:
             async with trio.open_nursery() as nursery:
                 nursery.start_soon(sender)
                 nursery.start_soon(receiver)
-        except LoopAbort:
+        except _LoopAbort:
             pass
 
     # Pull out the underlying trio socket, because it turns out HTTP is not so

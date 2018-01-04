@@ -2,11 +2,11 @@ import errno
 import select
 import socket
 import ssl
+from ..exceptions import _LoopAbort
 from ..util.connection import create_connection
 from ..util.ssl_ import ssl_wrap_socket
 from ..util import selectors
 
-from . import LoopAbort
 from ._util import DEFAULT_SELECTOR, is_readable
 
 __all__ = ["SyncBackend"]
@@ -100,7 +100,7 @@ class SyncSocket(object):
                     if exc.errno in (errno.EWOULDBLOCK, errno.EAGAIN):
                         want_read = True
                 else:
-                    # Can exit loop here with LoopAbort
+                    # Can exit loop here with _LoopAbort
                     consume_bytes(incoming)
 
                 if not outgoing_finished:
@@ -117,7 +117,7 @@ class SyncSocket(object):
 
                 if want_read or want_write:
                     self._wait(want_read, want_write)
-        except LoopAbort:
+        except _LoopAbort:
             pass
 
     def forceful_close(self):
