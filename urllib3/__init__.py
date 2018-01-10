@@ -12,6 +12,7 @@ from .connectionpool import (
 
 from . import exceptions
 from .filepost import encode_multipart_formdata
+from .packages import six
 from .poolmanager import PoolManager, ProxyManager, proxy_from_url
 from .response import HTTPResponse
 from .util.request import make_headers
@@ -33,7 +34,7 @@ __author__ = 'Andrey Petrov (andrey.petrov@shazow.net)'
 __license__ = 'MIT'
 __version__ = 'dev'
 
-__all__ = (
+__all__ = [
     'HTTPConnectionPool',
     'HTTPSConnectionPool',
     'PoolManager',
@@ -48,7 +49,12 @@ __all__ = (
     'get_host',
     'make_headers',
     'proxy_from_url',
-)
+]
+
+if six.PY3:
+    from urllib3._async.poolmanager import PoolManager as AsyncPoolManager
+    __all__.append('AsyncPoolManager')
+
 
 logging.getLogger(__name__).addHandler(NullHandler())
 
