@@ -33,6 +33,8 @@ matrix:
       env: TOXENV=py35
     - python: 3.6
       env: TOXENV=py36
+    - python: 3.7-dev
+      env: TOXENV=py37
     - python: pypy-5.4
       env: TOXENV=pypy
     - language: generic
@@ -50,6 +52,11 @@ matrix:
     - language: generic
       os: osx
       env: TOXENV=py36
+    - language: generic
+      os: osx
+      env: TOXENV=py37
   allow_failures:
   - python: pypy-5.4
+  - python: 3.7-dev
+  - env: TOXENV=py37
 sudo: false
