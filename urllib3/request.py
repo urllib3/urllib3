@@ -44,8 +44,8 @@ class RequestMethods(object):
     def urlopen(self, method, url, body=None, headers=None,
                 encode_multipart=True, multipart_boundary=None,
                 **kw):  # Abstract
-        raise NotImplemented("Classes extending RequestMethods must implement "
-                             "their own ``urlopen`` method.")
+        raise NotImplementedError("Classes extending RequestMethods must implement "
+                                  "their own ``urlopen`` method.")
 
     def request(self, method, url, fields=None, headers=None, **urlopen_kw):
         """
