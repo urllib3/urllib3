@@ -21,15 +21,15 @@ import warnings
 
 import h11
 
-from .base import Request, Response
-from .exceptions import (
+from ..base import Request, Response
+from ..exceptions import (
     ConnectTimeoutError, NewConnectionError, SubjectAltNameWarning,
     SystemTimeWarning, BadVersionError, FailedTunnelError, InvalidBodyError,
     ProtocolError
 )
-from .packages import six
-from .util import ssl_ as ssl_util
-from .backends._common import LoopAbort
+from urllib3.packages import six
+from ..util import ssl_ as ssl_util
+from ..backends._common import LoopAbort
 
 try:
     import ssl
@@ -482,6 +482,9 @@ class SyncHTTP1Connection(object):
 
     def __aiter__(self):
         return self
+
+    def next(self):  # Needed for Python 2 as __anext__ becomes __next__
+        return self.__next__()
 
     async def __anext__(self):
         """

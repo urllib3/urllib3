@@ -8,12 +8,12 @@ from socket import error as SocketError
 
 import h11
 
-from ._collections import HTTPHeaderDict
-from .exceptions import (
+from .._collections import HTTPHeaderDict
+from ..exceptions import (
     ProtocolError, DecodeError, ReadTimeoutError
 )
-from .packages.six import string_types as basestring, binary_type
-from .util.ssl_ import BaseSSLError
+from urllib3.packages.six import string_types as basestring, binary_type
+from ..util.ssl_ import BaseSSLError
 
 log = logging.getLogger(__name__)
 

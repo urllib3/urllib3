@@ -10,8 +10,8 @@ import socket
 import h11
 
 
-from .base import Request, DEFAULT_PORTS
-from .exceptions import (
+from ..base import Request, DEFAULT_PORTS
+from ..exceptions import (
     ClosedPoolError,
     ProtocolError,
     EmptyPoolError,
@@ -24,22 +24,22 @@ from .exceptions import (
     InsecureRequestWarning,
     NewConnectionError,
 )
-from .packages.ssl_match_hostname import CertificateError
-from .packages import six
-from .packages.six.moves import queue
-from .request import RequestMethods
+from urllib3.packages.ssl_match_hostname import CertificateError
+from urllib3.packages import six
+from urllib3.packages.six.moves import queue
+from ..request import RequestMethods
 from .response import HTTPResponse
 from .sync_connection import SyncHTTP1Connection
 
-from .util.connection import is_connection_dropped
-from .util.request import set_file_position
-from .util.retry import Retry
-from .util.ssl_ import (
+from ..util.connection import is_connection_dropped
+from ..util.request import set_file_position
+from ..util.retry import Retry
+from ..util.ssl_ import (
     create_urllib3_context, merge_context_settings, resolve_ssl_version,
     resolve_cert_reqs, BaseSSLError
 )
-from .util.timeout import Timeout
-from .util.url import get_host, Url
+from ..util.timeout import Timeout
+from ..util.url import get_host, Url
 
 try:
     import ssl
