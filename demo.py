@@ -1,10 +1,11 @@
 import urllib3
-from urllib3.backends import TrioBackend, SyncBackend, TwistedBackend
+from urllib3._async.backends import TrioBackend, SyncBackend, TwistedBackend
+from urllib3._async.poolmanager import PoolManager as AsyncPoolManager
 
 URL = "http://httpbin.org/uuid"
 
 async def main(backend):
-    with urllib3.PoolManager(backend=backend) as http:
+    with AsyncPoolManager(backend=backend) as http:
         print("URL:", URL)
         r = await http.request("GET", URL, preload_content=False)
         print("Status:", r.status)

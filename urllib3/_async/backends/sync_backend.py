@@ -2,11 +2,11 @@ import errno
 import select
 import socket
 import ssl
-from ..util.connection import create_connection
-from ..util.ssl_ import ssl_wrap_socket
-from ..util import selectors
+from ...util.connection import create_connection
+from ...util.ssl_ import ssl_wrap_socket
+from ...util import selectors
 
-from ._common import DEFAULT_SELECTOR, is_readable, LoopAbort
+from ...backends._common import DEFAULT_SELECTOR, is_readable, LoopAbort
 
 __all__ = ["SyncBackend"]
 
