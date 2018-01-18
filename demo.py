@@ -1,5 +1,5 @@
 import urllib3
-from urllib3._backends import SyncBackend, TrioBackend, TwistedBackend
+from urllib3._backends import TrioBackend, TwistedBackend
 
 URL = "http://httpbin.org/uuid"
 
@@ -15,7 +15,7 @@ import trio
 trio.run(main, TrioBackend())
 
 print("\n--- urllib3 using synchronous sockets ---")
-with urllib3.PoolManager(backend=SyncBackend()) as http:
+with urllib3.PoolManager() as http:
     print("URL:", URL)
     r = http.request("GET", URL, preload_content=False)
     print("Status:", r.status)
