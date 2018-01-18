@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 import urllib3
-from urllib3.backends import SyncBackend
+from urllib3._backends import SyncBackend
 
 URL = "http://httpbin.org/uuid"
 

@@ -1,5 +1,5 @@
 import urllib3
-from urllib3.backends import SyncBackend, TrioBackend, TwistedBackend
+from urllib3._backends import SyncBackend, TrioBackend, TwistedBackend
 
 URL = "http://httpbin.org/uuid"
 

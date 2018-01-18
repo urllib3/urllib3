@@ -29,7 +29,7 @@ from ..exceptions import (
 )
 from urllib3.packages import six
 from ..util import ssl_ as ssl_util
-from ..backends._common import LoopAbort
+from .._backends._common import LoopAbort
 
 try:
     import ssl
