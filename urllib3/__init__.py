@@ -52,8 +52,16 @@ __all__ = [
 ]
 
 if six.PY3:
-    from urllib3._async.poolmanager import PoolManager as AsyncPoolManager
-    __all__.append('AsyncPoolManager')
+    from urllib3._async.connectionpool import (
+        HTTPConnectionPool as AsyncHTTPConnectionPool,
+        HTTPSConnectionPool as AsyncHTTPSConnectionPool)
+    from urllib3._async.poolmanager import (
+        PoolManager as AsyncPoolManager,
+        ProxyManager as AsyncProxyManager)
+    from urllib3._async.response import HTTPResponse as AsyncHTTPResponse
+    __all__.extend(
+        ('AsyncHTTPConnectionPool', 'AsyncHTTPConnectionPool',
+         'AsyncPoolManager', 'AsyncProxyManager', 'AsyncHTTPResponse'))
 
 
 logging.getLogger(__name__).addHandler(NullHandler())
