@@ -8,8 +8,8 @@ from twisted.internet.defer import (
 )
 from zope.interface import implementer
 
-from ...contrib.pyopenssl import get_subj_alt_name
-from ...backends._common import LoopAbort
+from ..contrib.pyopenssl import get_subj_alt_name
+from ._common import LoopAbort
 
 # XX need to add timeout support, esp. on connect
 
