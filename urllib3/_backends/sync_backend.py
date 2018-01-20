@@ -18,7 +18,7 @@ class SyncBackend(object):
         self._connect_timeout = connect_timeout
         self._read_timeout = read_timeout
 
-    async def connect(
+    def connect(
             self, host, port, source_address=None, socket_options=None):
         conn = create_connection(
             (host, port), self._connect_timeout,
@@ -34,7 +34,7 @@ class SyncSocket(object):
         # during the SSL handshake:
         self._sock.setblocking(False)
 
-    async def start_tls(self, server_hostname, ssl_context):
+    def start_tls(self, server_hostname, ssl_context):
         self._sock.setblocking(True)
         wrapped = ssl_wrap_socket(
             self._sock,
@@ -61,7 +61,7 @@ class SyncSocket(object):
         _, event = events[0]
         return (event & selectors.EVENT_READ, event & selectors.EVENT_WRITE)
 
-    async def receive_some(self):
+    def receive_some(self):
         while True:
             try:
                 return self._sock.recv(BUFSIZE)
@@ -75,14 +75,14 @@ class SyncSocket(object):
                 else:
                     raise
 
-    async def send_and_receive_for_a_while(self, produce_bytes, consume_bytes):
+    def send_and_receive_for_a_while(self, produce_bytes, consume_bytes):
         outgoing_finished = False
         outgoing = b""
         try:
             while True:
                 if not outgoing_finished and not outgoing:
                     # Can exit loop here with error
-                    outgoing = memoryview(await produce_bytes())
+                    outgoing = memoryview(produce_bytes())
                     if outgoing is None:
                         outgoing_finished = True
 
