@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from .filepost import encode_multipart_formdata
 from .packages.six.moves.urllib.parse import urlencode
 
+import sys
 
 __all__ = ['RequestMethods']
 
@@ -40,6 +41,12 @@ class RequestMethods(object):
 
     def __init__(self, headers=None):
         self.headers = headers or {}
+        try: 
+            version = sys.modules['urllib3'].__version__
+            self.headers.update({'User-Agent': 'python-urllib3/%s' % version})
+        except KeyError:
+            pass
+        
 
     def urlopen(self, method, url, body=None, headers=None,
                 encode_multipart=True, multipart_boundary=None,

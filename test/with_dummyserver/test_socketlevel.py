@@ -781,6 +781,7 @@ class TestProxyManager(SocketDummyServerTestCase):
                              b'Accept: */*',
                              b'',
                              b'',
+                             b'User-Agent: python-urllib3/dev'
                          ]))
 
     def test_headers(self):
