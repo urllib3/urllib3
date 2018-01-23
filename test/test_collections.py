@@ -4,6 +4,7 @@ from urllib3._collections import (
 )
 import pytest
 
+from urllib3.exceptions import InvalidHeader
 from urllib3.packages import six
 xrange = six.moves.xrange
 
@@ -340,8 +341,8 @@ Server: nginx
 Content-Type: text/html; charset=windows-1251
 Connection: keep-alive
 X-Some-Multiline: asdf
- asdf
- asdf
+ asdf\t
+\t asdf
 Set-Cookie: bb_lastvisit=1348253375; expires=Sat, 21-Sep-2013 18:49:35 GMT; path=/
 Set-Cookie: bb_lastactivity=0; expires=Sat, 21-Sep-2013 18:49:35 GMT; path=/
 www-authenticate: asdf
@@ -356,6 +357,14 @@ www-authenticate: bla
         assert len(cookies) == 2
         assert cookies[0].startswith("bb_lastvisit")
         assert cookies[1].startswith("bb_lastactivity")
-        assert d['x-some-multiline'].split() == ['asdf', 'asdf', 'asdf']
+        assert d['x-some-multiline'] == 'asdf asdf asdf'
         assert d['www-authenticate'] == 'asdf, bla'
         assert d.getlist('www-authenticate') == ['asdf', 'bla']
+        with_invalid_multiline = """\tthis-is-not-a-header: but it has a pretend value
+Authorization: Bearer 123
+
+"""
+        buffer = six.moves.StringIO(with_invalid_multiline.replace('\n', '\r\n'))
+        msg = six.moves.http_client.HTTPMessage(buffer)
+        with pytest.raises(InvalidHeader):
+            HTTPHeaderDict.from_httplib(msg)
