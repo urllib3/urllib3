@@ -12,7 +12,6 @@ from .connectionpool import (
 
 from . import exceptions
 from .filepost import encode_multipart_formdata
-from .packages import six
 from .poolmanager import PoolManager, ProxyManager, proxy_from_url
 from .response import HTTPResponse
 from .util.request import make_headers
@@ -51,7 +50,9 @@ __all__ = [
     'proxy_from_url',
 ]
 
-if six.PY3:
+# For now we only support async on 3.6, because we use async generators
+import sys
+if sys.version_info >= (3, 6):
     from urllib3._async.connectionpool import (
         HTTPConnectionPool as AsyncHTTPConnectionPool,
         HTTPSConnectionPool as AsyncHTTPSConnectionPool)
@@ -60,7 +61,7 @@ if six.PY3:
         ProxyManager as AsyncProxyManager)
     from urllib3._async.response import HTTPResponse as AsyncHTTPResponse
     __all__.extend(
-        ('AsyncHTTPConnectionPool', 'AsyncHTTPConnectionPool',
+        ('AsyncHTTPConnectionPool', 'AsyncHTTPSConnectionPool',
          'AsyncPoolManager', 'AsyncProxyManager', 'AsyncHTTPResponse'))
 
 
