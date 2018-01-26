@@ -411,6 +411,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         Close all pooled connections and disable the pool.
         """
+        if self.pool is None:
+            return
         # Disable access to the pool
         old_pool, self.pool = self.pool, None
 
