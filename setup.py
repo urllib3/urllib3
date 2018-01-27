@@ -147,7 +147,7 @@ setup(name='urllib3',
                 ],
       # We'll probably want to vendor this for a real release, but for now
       # this works.
-      requires=["h11"],
+      install_requires=["h11"],
       tests_require=[
           # These are a less-specific subset of dev-requirements.txt, for the
           # convenience of distro package maintainers.
