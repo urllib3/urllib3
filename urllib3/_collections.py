@@ -306,7 +306,7 @@ class HTTPHeaderDict(MutableMapping):
         # python2.7 does not expose a proper API for exporting multiheaders
         # efficiently. This function re-reads raw lines from the message
         # object and extracts the multiheaders properly.
-        obs_fold_continued_leaders = (' ', '\t',)
+        obs_fold_continued_leaders = (' ', '\t')
         headers = []
 
         for line in message.headers:
