@@ -153,6 +153,7 @@ setup(name='urllib3',
           'tornado',
       ],
       test_suite='test',
+      install_requires=["h11"],
       extras_require={
           'secure': [
               'pyOpenSSL>=0.14',
