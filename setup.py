@@ -145,9 +145,6 @@ setup(name='urllib3',
                 'urllib3.contrib._securetransport', 'urllib3.util',
                 'urllib3._async', 'urllib3._backends',
                 ],
-      # We'll probably want to vendor this for a real release, but for now
-      # this works.
-      install_requires=["h11"],
       tests_require=[
           # These are a less-specific subset of dev-requirements.txt, for the
           # convenience of distro package maintainers.
