@@ -29,7 +29,7 @@ from urllib3.packages import six
 from urllib3.packages.six.moves import queue
 from ..request import RequestMethods
 from .response import HTTPResponse
-from .sync_connection import SyncHTTP1Connection
+from .connection import HTTP1Connection
 
 from ..util.connection import is_connection_dropped
 from ..util.request import set_file_position
@@ -195,7 +195,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     """
 
     scheme = 'http'
-    ConnectionCls = SyncHTTP1Connection
+    ConnectionCls = HTTP1Connection
     ResponseCls = HTTPResponse
 
     def __init__(self, host, port=None,

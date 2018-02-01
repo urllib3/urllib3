@@ -40,8 +40,8 @@ except ImportError:
 
 from socket import error as SocketError, timeout as SocketTimeout
 
-from ..sync_connection import (
-    SyncHTTP1Connection
+from ..connection import (
+    HTTP1Connection
 )
 from ..connectionpool import (
     HTTPConnectionPool, HTTPSConnectionPool
@@ -51,7 +51,7 @@ from ..poolmanager import PoolManager
 from ..util.url import parse_url
 
 
-class SOCKSConnection(SyncHTTP1Connection):
+class SOCKSConnection(HTTP1Connection):
     """
     A HTTP connection that connects via a SOCKS proxy.
     """

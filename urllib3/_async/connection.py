@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This module implements the synchronous connection management logic.
+This module implements the connection management logic.
 
 Unlike in http.client, the connection here is an object that is responsible
 for a very small number of tasks:
@@ -260,9 +260,9 @@ async def _read_until_event(state_machine, conn):
 _DEFAULT_SOCKET_OPTIONS = object()
 
 
-class SyncHTTP1Connection(object):
+class HTTP1Connection(object):
     """
-    A synchronous wrapper around a single HTTP/1.1 connection.
+    A wrapper around a single HTTP/1.1 connection.
 
     This wrapper manages connection state, ensuring that connections are
     appropriately managed throughout the lifetime of a HTTP transaction. In
