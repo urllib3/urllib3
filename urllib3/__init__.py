@@ -31,7 +31,7 @@ except ImportError:
 
 __author__ = 'Andrey Petrov (andrey.petrov@shazow.net)'
 __license__ = 'MIT'
-__version__ = '2.0.dev0+BLEACH.SPIKE.PROOF.OF.CONCEPT.DONT.USE'
+__version__ = '2.0.dev0+bleach.spike.proof.of.concept.dont.use'
 
 __all__ = [
     'HTTPConnectionPool',
