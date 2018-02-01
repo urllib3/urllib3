@@ -29,6 +29,7 @@ from ..exceptions import (
 )
 from urllib3.packages import six
 from ..util import ssl_ as ssl_util
+from .._backends import SyncBackend
 from .._backends._common import LoopAbort
 
 try:
@@ -279,13 +280,13 @@ class HTTP1Connection(object):
     #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
     default_socket_options = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
 
-    def __init__(self, backend, host, port,
+    def __init__(self, host, port, backend=None,
                  socket_options=_DEFAULT_SOCKET_OPTIONS,
                  source_address=None, tunnel_host=None, tunnel_port=None,
                  tunnel_headers=None):
         self.is_verified = False
 
-        self._backend = backend
+        self._backend = backend or SyncBackend()
         self._host = host
         self._port = port
         self._socket_options = (

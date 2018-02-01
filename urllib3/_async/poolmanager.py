@@ -4,7 +4,6 @@ import functools
 import logging
 
 from .._collections import RecentlyUsedContainer
-from .._backends import SyncBackend
 from ..base import DEFAULT_PORTS
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from ..exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
@@ -141,7 +140,7 @@ class PoolManager(RequestMethods):
 
     proxy = None
 
-    def __init__(self, backend=None, num_pools=10, headers=None, **connection_pool_kw):
+    def __init__(self, num_pools=10, headers=None, backend=None, **connection_pool_kw):
         RequestMethods.__init__(self, headers)
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools,
@@ -151,7 +150,7 @@ class PoolManager(RequestMethods):
         # override them.
         self.pool_classes_by_scheme = pool_classes_by_scheme
         self.key_fn_by_scheme = key_fn_by_scheme.copy()
-        self.backend = backend or SyncBackend()
+        self.backend = backend
 
     def __enter__(self):
         return self
