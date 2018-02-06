@@ -7,6 +7,7 @@ import warnings
 
 import mock
 from nose.plugins.skip import SkipTest
+import pytest
 
 from dummyserver.testcase import (
     HTTPSDummyServerTestCase, IPV6HTTPSDummyServerTestCase
@@ -259,6 +260,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_hostname = 'localhost'
         https_pool.request('GET', '/')
 
+    @pytest.mark.xfail
     def test_assert_fingerprint_md5(self):
         https_pool = HTTPSConnectionPool('localhost', self.port,
                                          cert_reqs='CERT_REQUIRED',
@@ -270,6 +272,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         https_pool.request('GET', '/')
 
+    @pytest.mark.xfail
     def test_assert_fingerprint_sha1(self):
         https_pool = HTTPSConnectionPool('localhost', self.port,
                                          cert_reqs='CERT_REQUIRED',
@@ -280,6 +283,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                         'BF:93:CF:F9:71:CC:07:7D:0A'
         https_pool.request('GET', '/')
 
+    @pytest.mark.xfail
     def test_assert_fingerprint_sha256(self):
         https_pool = HTTPSConnectionPool('localhost', self.port,
                                          cert_reqs='CERT_REQUIRED',
@@ -291,6 +295,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          '1E:60:B0:8B:70:18:64:E6')
         https_pool.request('GET', '/')
 
+    @pytest.mark.xfail
     def test_assert_invalid_fingerprint(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_REQUIRED',
@@ -312,6 +317,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_fingerprint = 'AA'
         self.assertRaises(SSLError, https_pool.request, 'GET', '/')
 
+    @pytest.mark.xfail
     def test_verify_none_and_bad_fingerprint(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_NONE',
@@ -322,6 +328,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                         'AA:AA:AA:AA:AA:AA:AA:AA:AA'
         self.assertRaises(SSLError, https_pool.request, 'GET', '/')
 
+    @pytest.mark.xfail
     def test_verify_none_and_good_fingerprint(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_NONE',
@@ -332,6 +339,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                         'BF:93:CF:F9:71:CC:07:7D:0A'
         https_pool.request('GET', '/')
 
+    @pytest.mark.xfail
     @notSecureTransport
     def test_good_fingerprint_and_hostname_mismatch(self):
         # This test doesn't run with SecureTransport because we don't turn off
@@ -402,6 +410,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/',
                           timeout=Timeout(total=None, connect=0.001))
 
+    @pytest.mark.xfail
     def test_enhanced_ssl_connection(self):
         fingerprint = '92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A'
 
@@ -417,6 +426,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         w = self._request_without_resource_warnings('GET', '/')
         self.assertEqual([], w)
 
+    @pytest.mark.xfail
     def test_ssl_wrong_system_time(self):
         with mock.patch('urllib3.sync_connection.datetime') as mock_date:
             mock_date.date.today.return_value = datetime.date(1970, 1, 1)

@@ -8,6 +8,7 @@ from dummyserver.server import DEFAULT_CERTS
 from dummyserver.testcase import IPV4SocketDummyServerTestCase
 
 from nose.plugins.skip import SkipTest
+import pytest
 
 try:
     import ssl
@@ -194,6 +195,7 @@ def handle_socks4_negotiation(sock, username=None):
     yield True  # Avoid StopIteration exceptions getting fired.
 
 
+@pytest.mark.skip
 class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
     """
     Test the SOCKS proxy in SOCKS5 mode.
@@ -447,6 +449,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         self.assertEqual(response.status, 200)
 
 
+@pytest.mark.skip
 class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
     """
     Test the SOCKS proxy in SOCKS4 mode.
@@ -626,6 +629,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             self.fail("Did not raise")
 
 
+@pytest.mark.skip
 class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
     """
     Test that TLS behaves properly for SOCKS proxies.

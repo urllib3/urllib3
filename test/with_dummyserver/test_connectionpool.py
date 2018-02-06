@@ -31,6 +31,8 @@ from dummyserver.server import NoIPv6Warning, HAS_IPV6_AND_DNS
 
 from threading import Event
 
+import pytest
+
 log = logging.getLogger('urllib3.connectionpool')
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -45,6 +47,7 @@ def wait_for_socket(ready_event):
     ready_event.clear()
 
 
+@pytest.mark.skip
 class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
 
     def test_timeout_float(self):
@@ -218,6 +221,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         )
 
 
+@pytest.mark.skip
 class TestConnectionPool(HTTPDummyServerTestCase):
 
     def setUp(self):
