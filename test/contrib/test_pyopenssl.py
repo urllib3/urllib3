@@ -2,6 +2,7 @@
 import unittest
 
 from nose.plugins.skip import SkipTest
+import pytest
 
 try:
     from urllib3.contrib.pyopenssl import (inject_into_urllib3,
@@ -25,6 +26,7 @@ def teardown_module():
     extract_from_urllib3()
 
 
+@pytest.mark.skip
 class TestPyOpenSSLHelpers(unittest.TestCase):
     """
     Tests for PyOpenSSL helper functions.

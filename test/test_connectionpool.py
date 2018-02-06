@@ -5,10 +5,10 @@ import sys
 from urllib3.base import Response
 from urllib3.connectionpool import (
     connection_from_url,
-    SyncHTTP1Connection,
     HTTPConnectionPool,
     HTTPSConnectionPool,
 )
+from urllib3._sync.connection import HTTP1Connection
 from urllib3.response import HTTPResponse
 from urllib3.util.timeout import Timeout
 from urllib3.packages.six.moves.queue import Empty
@@ -264,7 +264,7 @@ class TestConnectionPool(unittest.TestCase):
         pool = HTTPConnectionPool(host='localhost')
         self.addCleanup(pool.close)
         conn = pool._new_conn()
-        self.assertEqual(conn.__class__, SyncHTTP1Connection)
+        self.assertEqual(conn.__class__, HTTP1Connection)
         self.assertEqual(pool.timeout.__class__, Timeout)
         self.assertEqual(pool.timeout._read, Timeout.DEFAULT_TIMEOUT)
         self.assertEqual(pool.timeout._connect, Timeout.DEFAULT_TIMEOUT)

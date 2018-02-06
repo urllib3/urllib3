@@ -44,7 +44,7 @@ class SyncSocket(object):
 
     # Only for SSL-wrapped sockets
     def getpeercert(self, binary=False):
-        return self._sock.getpeercert(binary=binary)
+        return self._sock.getpeercert(binary_form=binary)
 
     def _wait(self, readable, writable):
         assert readable or writable
@@ -82,9 +82,12 @@ class SyncSocket(object):
             while True:
                 if not outgoing_finished and not outgoing:
                     # Can exit loop here with error
-                    outgoing = memoryview(produce_bytes())
-                    if outgoing is None:
+                    b = produce_bytes()
+                    if b is None:
+                        outgoing = None
                         outgoing_finished = True
+                    else:
+                        outgoing = memoryview(b)
 
                 want_read = False
                 want_write = False
