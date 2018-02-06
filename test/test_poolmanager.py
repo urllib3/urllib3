@@ -1,10 +1,7 @@
 import sys
 
-from urllib3.poolmanager import (
-    PoolKey,
-    key_fn_by_scheme,
-    PoolManager,
-)
+from urllib3.poolmanager import PoolManager
+from urllib3._sync.poolmanager import key_fn_by_scheme, PoolKey
 from urllib3 import connection_from_url
 from urllib3.exceptions import (
     ClosedPoolError,

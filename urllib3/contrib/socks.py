@@ -40,7 +40,7 @@ except ImportError:
 
 from socket import error as SocketError, timeout as SocketTimeout
 
-from ..connection import (
+from .._sync.connection import (
     HTTP1Connection
 )
 from ..connectionpool import (

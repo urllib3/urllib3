@@ -24,7 +24,7 @@ from test import (
     TARPIT_HOST,
 )
 from urllib3 import HTTPSConnectionPool
-from urllib3.sync_connection import RECENT_DATE
+from urllib3._sync.connection import RECENT_DATE
 from urllib3.exceptions import (
     SSLError,
     ConnectTimeoutError,

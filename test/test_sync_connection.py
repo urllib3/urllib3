@@ -16,7 +16,7 @@ import unittest
 import h11
 
 from urllib3.base import Request
-from urllib3.sync_connection import SyncHTTP1Connection
+from urllib3._sync.connection import HTTP1Connection
 from urllib3.util import selectors
 
 
@@ -225,7 +225,7 @@ class TestUnusualSocketConditions(unittest.TestCase):
     READ_TIMEOUT = 5
 
     def run_scenario(self, scenario):
-        conn = SyncHTTP1Connection('localhost', 80)
+        conn = HTTP1Connection('localhost', 80)
         conn._state_machine = h11.Connection(our_role=h11.CLIENT)
         conn._sock = sock = ScenarioSocket(scenario)
         conn._selector = ScenarioSelector(scenario, sock)

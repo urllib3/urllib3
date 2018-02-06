@@ -2,7 +2,7 @@ import datetime
 import mock
 import sys
 
-from urllib3.sync_connection import RECENT_DATE
+from urllib3._sync.connection import RECENT_DATE
 from urllib3.util.ssl_ import CertificateError, match_hostname
 
 if sys.version_info >= (2, 7):
