@@ -18,24 +18,28 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
 
     case "${TOXENV}" in
         py27)
-            curl -O https://bootstrap.pypa.io/get-pip.py
-            python get-pip.py --user
+            pyenv install 2.7.14
+            pyenv global 2.7.14
             ;;
         py33)
             pyenv install 3.3.6
             pyenv global 3.3.6
             ;;
         py34)
-            pyenv install 3.4.5
-            pyenv global 3.4.5
+            pyenv install 3.4.7
+            pyenv global 3.4.7
             ;;
         py35)
-            pyenv install 3.5.2
-            pyenv global 3.5.2
+            pyenv install 3.5.4
+            pyenv global 3.5.4
             ;;
         py36)
-            pyenv install 3.6.0
-            pyenv global 3.6.0
+            pyenv install 3.6.3
+            pyenv global 3.6.3
+            ;;
+        py37)
+            pyenv install 3.7-dev
+            pyenv global 3.7-dev
             ;;
         pypy*)
             pyenv install "pypy-5.4.1"
@@ -51,6 +55,7 @@ fi
 
 pip install tox
 
-if [[ "${TOXENV}" == "gae" && ! -d ${GAE_PYTHONPATH} ]]; then
-  python _travis/fetch_gae_sdk.py ;
+if [[ "${TOXENV}" == "gae" ]]; then
+    pip install gcp-devrel-py-tools
+    gcp-devrel-py-tools download-appengine-sdk "$(dirname ${GAE_SDK_PATH})"
 fi

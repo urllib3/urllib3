@@ -3,7 +3,8 @@ import io
 import json
 import time
 
-from nose.plugins.skip import SkipTest
+import pytest
+
 from dummyserver.server import HAS_IPV6
 from dummyserver.testcase import (HTTPDummyServerTestCase,
                                   IPv6HTTPDummyServerTestCase)
@@ -214,6 +215,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_http_with_ca_cert_dir(self):
         http = PoolManager(ca_certs='REQUIRED', ca_cert_dir='/nosuchdir')
+        self.addCleanup(http.clear)
 
         r = http.request('GET', 'http://%s:%s/' % (self.host, self.port))
         self.assertEqual(r.status, 200)
@@ -530,9 +532,11 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
                 self.assertTrue('Unable to record file position for' in str(e))
 
 
+@pytest.mark.skipif(
+    not HAS_IPV6,
+    reason='IPv6 is not supported on this system'
+)
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
-    if not HAS_IPV6:
-        raise SkipTest("IPv6 is not supported on this system.")
 
     def setUp(self):
         self.base_url = 'http://[%s]:%d' % (self.host, self.port)

@@ -1,29 +1,12 @@
-import unittest
+import dummyserver.testcase
+import pytest
 
-from dummyserver.testcase import HTTPSDummyServerTestCase
-from nose.plugins.skip import SkipTest
+from urllib3.contrib import appengine
+import urllib3.exceptions
+import urllib3.util.url
+import urllib3.util.retry
 
-try:
-    from google.appengine.api import urlfetch
-    (urlfetch)
-except ImportError:
-    raise SkipTest("App Engine SDK not available.")
-
-from urllib3.contrib.appengine import AppEngineManager, AppEnginePlatformError
-from urllib3.exceptions import (
-    TimeoutError,
-    ProtocolError,
-    SSLError)
-from urllib3.util.url import Url
-from urllib3.util.retry import Retry, RequestHistory
-
-from test.with_dummyserver.test_connectionpool import (
-    TestConnectionPool, TestRetry, TestRetryAfter)
-
-
-# Prevent nose from running these test.
-TestConnectionPool.__test__ = False
-TestRetry.__test__ = False
+from test.with_dummyserver import test_connectionpool
 
 
 # This class is used so we can re-use the tests from the connection pool.
@@ -44,7 +27,7 @@ class MockPool(object):
         return self.manager.urlopen(method, url, *args, **kwargs)
 
     def _absolute_url(self, path):
-        return Url(
+        return urllib3.util.url.Url(
             scheme=self.scheme,
             host=self.host,
             port=self.port,
@@ -54,14 +37,11 @@ class MockPool(object):
 # Note that this doesn't run in the sandbox, it only runs with the URLFetch
 # API stub enabled. There's no need to enable the sandbox as we know for a fact
 # that URLFetch is used by the connection manager.
-class TestGAEConnectionManager(TestConnectionPool):
-    __test__ = True
-
-    # Magic class variable that tells NoseGAE to enable the URLFetch stub.
-    nosegae_urlfetch = True
+@pytest.mark.usefixtures('testbed')
+class TestGAEConnectionManager(test_connectionpool.TestConnectionPool):
 
     def setUp(self):
-        self.manager = AppEngineManager()
+        self.manager = appengine.AppEngineManager()
         self.pool = MockPool(self.host, self.port, self.manager)
 
     # Tests specific to AppEngineManager
@@ -69,7 +49,7 @@ class TestGAEConnectionManager(TestConnectionPool):
     def test_exceptions(self):
         # DeadlineExceededError -> TimeoutError
         self.assertRaises(
-            TimeoutError,
+            urllib3.exceptions.TimeoutError,
             self.pool.request,
             'GET',
             '/sleep?seconds=0.005',
@@ -77,21 +57,21 @@ class TestGAEConnectionManager(TestConnectionPool):
 
         # InvalidURLError -> ProtocolError
         self.assertRaises(
-            ProtocolError,
+            urllib3.exceptions.ProtocolError,
             self.manager.request,
             'GET',
             'ftp://invalid/url')
 
         # DownloadError -> ProtocolError
         self.assertRaises(
-            ProtocolError,
+            urllib3.exceptions.ProtocolError,
             self.manager.request,
             'GET',
             'http://0.0.0.0')
 
         # ResponseTooLargeError -> AppEnginePlatformError
         self.assertRaises(
-            AppEnginePlatformError,
+            appengine.AppEnginePlatformError,
             self.pool.request,
             'GET',
             '/nbytes?length=33554433')  # One byte over 32 megabtyes.
@@ -100,7 +80,7 @@ class TestGAEConnectionManager(TestConnectionPool):
         # which maps to a AppEnginePlatformError.
         body = b'1' * 10485761  # One byte over 10 megabytes.
         self.assertRaises(
-            AppEnginePlatformError,
+            appengine.AppEnginePlatformError,
             self.manager.request,
             'POST',
             '/',
@@ -139,11 +119,12 @@ class TestGAEConnectionManager(TestConnectionPool):
     test_dns_error = None
 
 
-class TestGAEConnectionManagerWithSSL(HTTPSDummyServerTestCase):
-    nosegae_urlfetch = True
+@pytest.mark.usefixtures('testbed')
+class TestGAEConnectionManagerWithSSL(
+        dummyserver.testcase.HTTPSDummyServerTestCase):
 
     def setUp(self):
-        self.manager = AppEngineManager()
+        self.manager = appengine.AppEngineManager()
         self.pool = MockPool(self.host, self.port, self.manager, 'https')
 
     def test_exceptions(self):
@@ -151,25 +132,22 @@ class TestGAEConnectionManagerWithSSL(HTTPSDummyServerTestCase):
         # SSLError is raised with dummyserver because URLFetch doesn't allow
         # self-signed certs.
         self.assertRaises(
-            SSLError,
+            urllib3.exceptions.SSLError,
             self.pool.request,
             'GET',
             '/')
 
 
-class TestGAERetry(TestRetry):
-    __test__ = True
-
-    # Magic class variable that tells NoseGAE to enable the URLFetch stub.
-    nosegae_urlfetch = True
+@pytest.mark.usefixtures('testbed')
+class TestGAERetry(test_connectionpool.TestRetry):
 
     def setUp(self):
-        self.manager = AppEngineManager()
+        self.manager = appengine.AppEngineManager()
         self.pool = MockPool(self.host, self.port, self.manager)
 
     def test_default_method_whitelist_retried(self):
         """ urllib3 should retry methods in the default method whitelist """
-        retry = Retry(total=1, status_forcelist=[418])
+        retry = urllib3.util.retry.Retry(total=1, status_forcelist=[418])
         # Use HEAD instead of OPTIONS, as URLFetch doesn't support OPTIONS
         resp = self.pool.request(
             'HEAD', '/successful_retry',
@@ -179,16 +157,18 @@ class TestGAERetry(TestRetry):
 
     def test_retry_return_in_response(self):
         headers = {'test-name': 'test_retry_return_in_response'}
-        retry = Retry(total=2, status_forcelist=[418])
+        retry = urllib3.util.retry.Retry(total=2, status_forcelist=[418])
         resp = self.pool.request('GET', '/successful_retry',
                                  headers=headers, retries=retry)
         self.assertEqual(resp.status, 200)
         self.assertEqual(resp.retries.total, 1)
         # URLFetch use absolute urls.
-        self.assertEqual(resp.retries.history,
-                         (RequestHistory('GET',
-                                         self.pool._absolute_url('/successful_retry'),
-                                         None, 418, None),))
+        self.assertEqual(
+            resp.retries.history,
+            (urllib3.util.retry.RequestHistory(
+                'GET',
+                self.pool._absolute_url('/successful_retry'),
+                None, 418, None),))
 
     # test_max_retry = None
     # test_disabled_retry = None
@@ -197,17 +177,10 @@ class TestGAERetry(TestRetry):
     test_multi_redirect_history = None
 
 
-class TestGAERetryAfter(TestRetryAfter):
-    __test__ = True
-
-    # Magic class variable that tells NoseGAE to enable the URLFetch stub.
-    nosegae_urlfetch = True
+@pytest.mark.usefixtures('testbed')
+class TestGAERetryAfter(test_connectionpool.TestRetryAfter):
 
     def setUp(self):
         # Disable urlfetch which doesn't respect Retry-After header.
-        self.manager = AppEngineManager(urlfetch_retries=False)
+        self.manager = appengine.AppEngineManager(urlfetch_retries=False)
         self.pool = MockPool(self.host, self.port, self.manager)
-
-
-if __name__ == '__main__':
-    unittest.main()

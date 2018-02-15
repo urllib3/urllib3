@@ -59,7 +59,7 @@ except ImportError:  # Platform-specific: Python 3
 
 import logging
 import ssl
-import six
+from ..packages import six
 import sys
 
 from .. import util
@@ -183,9 +183,12 @@ def get_subj_alt_name(peer_cert):
     Given an PyOpenSSL certificate, provides all the subject alternative names.
     """
     # Pass the cert to cryptography, which has much better APIs for this.
-    # This is technically using private APIs, but should work across all
-    # relevant versions until PyOpenSSL gets something proper for this.
-    cert = _Certificate(openssl_backend, peer_cert._x509)
+    if hasattr(peer_cert, "to_cryptography"):
+        cert = peer_cert.to_cryptography()
+    else:
+        # This is technically using private APIs, but should work across all
+        # relevant versions before PyOpenSSL got a proper API for this.
+        cert = _Certificate(openssl_backend, peer_cert._x509)
 
     # We want to find the SAN extension. Ask Cryptography to locate it (it's
     # faster than looping in Python)
@@ -421,7 +424,7 @@ class PyOpenSSLContext(object):
             self._ctx.load_verify_locations(BytesIO(cadata))
 
     def load_cert_chain(self, certfile, keyfile=None, password=None):
-        self._ctx.use_certificate_file(certfile)
+        self._ctx.use_certificate_chain_file(certfile)
         if password is not None:
             self._ctx.set_passwd_cb(lambda max_length, prompt_twice, userdata: password)
         self._ctx.use_privatekey_file(keyfile or certfile)

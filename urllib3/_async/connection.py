@@ -311,7 +311,17 @@ class HTTP1Connection(object):
                 SystemTimeWarning
             )
 
-        conn = await conn.start_tls(self._host, ssl_context)
+        # XX need to know whether this is the proxy or the final host that
+        # we just did a handshake with!
+        check_host = assert_hostname or self._tunnel_host or self._host
+
+        # Stripping trailing dots from the hostname is important because
+        # they indicate that this host is an absolute name (for DNS
+        # lookup), but are irrelevant to SSL hostname matching and in fact
+        # will break it.
+        check_host = check_host.rstrip(".")
+
+        conn = await conn.start_tls(check_host, ssl_context)
 
         if fingerprint:
             ssl_util.assert_fingerprint(conn.getpeercert(binary_form=True),
@@ -330,7 +340,6 @@ class HTTP1Connection(object):
                     'details.)'.format(self._host)),
                     SubjectAltNameWarning
                 )
-            check_host = assert_hostname or self._tunnel_host or self._host
             ssl_util.match_hostname(cert, check_host)
 
         self.is_verified = (
