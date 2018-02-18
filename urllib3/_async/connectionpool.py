@@ -738,11 +738,11 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
         return conn
 
-    def _start_conn(self, conn, connect_timeout):
+    async def _start_conn(self, conn, connect_timeout):
         """
         Called right before a request is made, after the socket is created.
         """
-        conn.connect(
+        await conn.connect(
             ssl_context=self.ssl_context, fingerprint=self.assert_fingerprint,
             assert_hostname=self.assert_hostname,
             connect_timeout=connect_timeout

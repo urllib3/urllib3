@@ -231,6 +231,7 @@ class TestClientCerts(SocketDummyServerTestCase):
             )
 
 
+@pytest.mark.skip
 class TestSocketClosing(SocketDummyServerTestCase):
 
     def test_recovery_when_server_closes_connection(self):
@@ -280,6 +281,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         self.assertRaises(MaxRetryError, http.request, 'GET', '/', retries=0, release_conn=False)
         self.assertEqual(http.pool.qsize(), http.pool.maxsize)
 
+    @pytest.mark.skip
     def test_connection_read_timeout(self):
         timed_out = Event()
 
@@ -1068,6 +1070,7 @@ class TestProxyManager(SocketDummyServerTestCase):
 
 class TestSSL(SocketDummyServerTestCase):
 
+    @pytest.mark.xfail
     def test_ssl_failure_midway_through_conn(self):
         def socket_handler(listener):
             sock = listener.accept()[0]
@@ -1100,6 +1103,7 @@ class TestSSL(SocketDummyServerTestCase):
             pool.request('GET', '/', retries=0)
         self.assertIsInstance(cm.exception.reason, SSLError)
 
+    @pytest.mark.skip
     def test_ssl_read_timeout(self):
         timed_out = Event()
 
@@ -1138,6 +1142,7 @@ class TestSSL(SocketDummyServerTestCase):
         finally:
             timed_out.set()
 
+    @pytest.mark.xfail
     def test_ssl_failed_fingerprint_verification(self):
         def socket_handler(listener):
             for i in range(2):
@@ -1531,6 +1536,7 @@ class TestStream(SocketDummyServerTestCase):
 
 
 class TestBadContentLength(SocketDummyServerTestCase):
+    @pytest.mark.xfail
     def test_enforce_content_length_get(self):
         done_event = Event()
 
@@ -1607,6 +1613,7 @@ class TestAutomaticHeaderInsertion(SocketDummyServerTestCase):
     Tests for automatically inserting headers, including for chunked transfer
     encoding.
     """
+    @pytest.mark.skip
     def test_automatic_chunking_fileobj(self):
         """
         A file-like object should automatically be chunked if the user provides

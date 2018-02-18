@@ -269,7 +269,7 @@ class TestConnectionPool(object):
             assert pool.timeout._connect == Timeout.DEFAULT_TIMEOUT
             assert pool.timeout.total is None
 
-            pool = HTTPConnectionPool(host='localhost', timeout=3)
+        with HTTPConnectionPool(host='localhost', timeout=3) as pool:
             assert pool.timeout._read == 3
             assert pool.timeout._connect == 3
             assert pool.timeout.total is None
