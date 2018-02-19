@@ -1436,10 +1436,6 @@ class TestHeaders(SocketDummyServerTestCase):
         self.assertEqual(expected_headers, parsed_headers)
 
 
-@pytest.mark.skipif(
-    issubclass(httplib.HTTPMessage, MimeToolMessage),
-    reason='Header parsing errors not available'
-)
 class TestBrokenHeaders(SocketDummyServerTestCase):
 
     def _test_broken_header_parsing(self, headers):
