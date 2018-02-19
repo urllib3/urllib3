@@ -1070,7 +1070,7 @@ class TestProxyManager(SocketDummyServerTestCase):
 
 class TestSSL(SocketDummyServerTestCase):
 
-    @pytest.mark.xfail
+    @pytest.mark.skip
     def test_ssl_failure_midway_through_conn(self):
         def socket_handler(listener):
             sock = listener.accept()[0]
@@ -1183,6 +1183,7 @@ class TestSSL(SocketDummyServerTestCase):
         # Should not hang, see https://github.com/shazow/urllib3/issues/529
         self.assertRaises(MaxRetryError, request)
 
+    @pytest.mark.skip
     def test_retry_ssl_error(self):
         def socket_handler(listener):
             # first request, trigger an SSLError

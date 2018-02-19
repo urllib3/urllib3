@@ -395,6 +395,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                         'BF:93:CF:F9:71:CC:07:7D:0A'
         https_pool.request('GET', '/')
 
+    @pytest.mark.skip
     @requires_network
     def test_https_timeout(self):
         timeout = Timeout(connect=0.001)
@@ -424,6 +425,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.addCleanup(https_pool.close)
         https_pool.request('GET', '/')
 
+    @pytest.mark.skip
     @requires_network
     def test_enhanced_timeout(self):
         def new_pool(timeout, cert_reqs='CERT_REQUIRED'):
