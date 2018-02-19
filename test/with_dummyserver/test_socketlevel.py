@@ -1535,7 +1535,6 @@ class TestStream(SocketDummyServerTestCase):
 
 
 class TestBadContentLength(SocketDummyServerTestCase):
-    @pytest.mark.xfail
     def test_enforce_content_length_get(self):
         done_event = Event()
 
