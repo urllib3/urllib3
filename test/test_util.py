@@ -11,7 +11,6 @@ import pytest
 
 from urllib3 import add_stderr_logger, disable_warnings
 from urllib3.util.request import make_headers, rewind_body, _FAILEDTELL
-from urllib3.util.response import assert_header_parsing
 from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
 from urllib3.util.url import (
@@ -566,12 +565,3 @@ class TestUtil(object):
     def test_parse_retry_after(self, value, expected):
         retry = Retry()
         assert retry.parse_retry_after(value) == expected
-
-    @pytest.mark.parametrize('headers', [
-        b'foo',
-        None,
-        object,
-    ])
-    def test_assert_header_parsing_throws_typeerror_with_non_headers(self, headers):
-        with pytest.raises(TypeError):
-            assert_header_parsing(headers)
