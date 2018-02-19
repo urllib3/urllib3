@@ -371,7 +371,7 @@ class TestResponse(object):
 
         for part in stream:
             parts.append(part)
-            self.assertEqual(resp.tell(), fp.consumed)
+            assert resp.tell() == fp.consumed
 
         end_of_stream = resp.tell()
 
