@@ -633,8 +633,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 # discard any remaining response body, the connection will be
                 # released back to the pool once the entire response is read
                 response.read()
-            except (TimeoutError, HTTPException, SocketError, ProtocolError,
-                    BaseSSLError, SSLError) as e:
+            except (TimeoutError, SocketError, ProtocolError, BaseSSLError,
+                    SSLError) as e:
                 pass
 
         # Check if we should retry the HTTP response.
