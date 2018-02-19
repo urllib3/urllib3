@@ -7,7 +7,6 @@ from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 from dummyserver.server import DEFAULT_CERTS
 from dummyserver.testcase import IPV4SocketDummyServerTestCase
 
-from nose.plugins.skip import SkipTest
 import pytest
 
 try:
@@ -195,6 +194,14 @@ def handle_socks4_negotiation(sock, username=None):
     yield True  # Avoid StopIteration exceptions getting fired.
 
 
+class TestSOCKSProxyManager(object):
+
+    def test_invalid_socks_version_is_valueerror(self):
+        with pytest.raises(ValueError) as e:
+            socks.SOCKSProxyManager(proxy_url='http://example.org')
+        assert 'Unable to determine SOCKS version' in e.value.args[0]
+
+
 @pytest.mark.skip
 class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
     """
@@ -208,7 +215,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, '16.17.18.19')
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             while True:
@@ -240,7 +247,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertIn(addr, ['127.0.0.1', '::1'])
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             while True:
@@ -257,6 +264,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         self._start_server(request_handler)
         proxy_url = "socks5://%s:%s" % (self.host, self.port)
         pm = socks.SOCKSProxyManager(proxy_url)
+        self.addCleanup(pm.clear)
         response = pm.request('GET', 'http://localhost')
 
         self.assertEqual(response.status, 200)
@@ -271,7 +279,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, b'example.com')
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             buf = b''
@@ -365,7 +373,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, '16.17.18.19')
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             while True:
@@ -425,7 +433,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, '16.17.18.19')
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             while True:
@@ -465,7 +473,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, '16.17.18.19')
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             while True:
@@ -497,7 +505,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, '127.0.0.1')
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             while True:
@@ -514,6 +522,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         self._start_server(request_handler)
         proxy_url = "socks4://%s:%s" % (self.host, self.port)
         pm = socks.SOCKSProxyManager(proxy_url)
+        self.addCleanup(pm.clear)
         response = pm.request('GET', 'http://localhost')
 
         self.assertEqual(response.status, 200)
@@ -528,7 +537,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, b'example.com')
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             buf = b''
@@ -585,7 +594,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, '16.17.18.19')
-            self.assertTrue(port, 80)
+            self.assertEqual(port, 80)
             handler.send(True)
 
             while True:
@@ -634,10 +643,8 @@ class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
     """
     Test that TLS behaves properly for SOCKS proxies.
     """
+    @pytest.mark.skipif(not HAS_SSL, reason='No TLS available')
     def test_basic_request(self):
-        if not HAS_SSL:
-            raise SkipTest("No TLS available")
-
         def request_handler(listener):
             sock = listener.accept()[0]
 
@@ -645,7 +652,7 @@ class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
             addr, port = next(handler)
 
             self.assertEqual(addr, b'localhost')
-            self.assertTrue(port, 443)
+            self.assertEqual(port, 443)
             handler.send(True)
 
             # Wrap in TLS
@@ -668,6 +675,7 @@ class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
                         b'Content-Length: 0\r\n'
                         b'\r\n')
             tls.close()
+            sock.close()
 
         self._start_server(request_handler)
         proxy_url = "socks5h://%s:%s" % (self.host, self.port)

@@ -62,6 +62,10 @@ We welcome your patronage on `Bountysource <https://www.bountysource.com/teams/u
 Your contribution will go towards adding new features to urllib3 and making
 sure all functionality continues to meet our high quality standards.
 
+We also welcome sponsorship in the form of time. We greatly appreciate companies
+who encourage employees to contribute on an ongoing basis during their work hours.
+Please let us know and we'll be glad to add you to our sponsors list!
+
 
 Project Grant
 -------------

@@ -71,13 +71,17 @@ except ImportError:
 # - https://hynek.me/articles/hardening-your-web-servers-ssl-ciphers/
 #
 # The general intent is:
-# - Prefer cipher suites that offer perfect forward secrecy (DHE/ECDHE),
+# - Prefer TLS 1.3 cipher suites
+# - prefer cipher suites that offer perfect forward secrecy (DHE/ECDHE),
 # - prefer ECDHE over DHE for better performance,
 # - prefer any AES-GCM and ChaCha20 over any AES-CBC for better performance and
 #   security,
 # - prefer AES-GCM over ChaCha20 because hardware-accelerated AES is common,
 # - disable NULL authentication, MD5 MACs and DSS for security reasons.
 DEFAULT_CIPHERS = ':'.join([
+    'TLS13-AES-256-GCM-SHA384',
+    'TLS13-CHACHA20-POLY1305-SHA256',
+    'TLS13-AES-128-GCM-SHA256',
     'ECDH+AESGCM',
     'ECDH+CHACHA20',
     'DH+AESGCM',
@@ -351,7 +355,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         return context.wrap_socket(sock, server_hostname=server_hostname)
 
     warnings.warn(
-        'An HTTPS request has been made, but the SNI (Subject Name '
+        'An HTTPS request has been made, but the SNI (Server Name '
         'Indication) extension to TLS is not available on this platform. '
         'This may cause the server to present an incorrect TLS '
         'certificate, which can cause validation failures. You can upgrade to '

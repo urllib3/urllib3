@@ -1,6 +1,7 @@
-import unittest
-
 from io import BytesIO, BufferedReader
+
+import pytest
+import mock
 
 from urllib3.base import Response
 from urllib3.response import HTTPResponse
@@ -34,63 +35,62 @@ def get_response():
     )
 
 
-class TestLegacyResponse(unittest.TestCase):
+class TestLegacyResponse(object):
     def test_getheaders(self):
         headers = {'host': 'example.com'}
         r = HTTPResponse(headers=headers)
-        self.assertEqual(r.getheaders(), headers)
+        assert r.getheaders() == headers
 
     def test_getheader(self):
         headers = {'host': 'example.com'}
         r = HTTPResponse(headers=headers)
-        self.assertEqual(r.getheader('host'), 'example.com')
+        assert r.getheader('host') == 'example.com'
 
 
-class TestResponse(unittest.TestCase):
+class TestResponse(object):
     def test_cache_content(self):
         r = HTTPResponse('foo')
-        self.assertEqual(r.data, 'foo')
-        self.assertEqual(r._body, 'foo')
+        assert r.data == 'foo'
+        assert r._body == 'foo'
 
     def test_default(self):
         r = HTTPResponse()
-        self.assertEqual(r.data, b'')
+        assert r.data == b''
 
     def test_none(self):
         r = HTTPResponse(None)
-        self.assertEqual(r.data, b'')
+        assert r.data == b''
 
     def test_preload(self):
         fp = BytesIO(b'foo')
 
         r = HTTPResponse(fp, preload_content=True)
 
-        self.assertEqual(fp.tell(), len(b'foo'))
-        self.assertEqual(r.data, b'foo')
+        assert fp.tell() == len(b'foo')
+        assert r.data == b'foo'
 
     def test_no_preload(self):
         fp = BytesIO(b'foo')
 
         r = HTTPResponse(fp, preload_content=False)
 
-        self.assertEqual(fp.tell(), 0)
-        self.assertEqual(r.data, b'foo')
-        self.assertEqual(fp.tell(), len(b'foo'))
+        assert fp.tell() == 0
+        assert r.data == b'foo'
+        assert fp.tell() == len(b'foo')
 
     def test_decode_bad_data(self):
         fp = BytesIO(b'\x00' * 10)
-        self.assertRaises(DecodeError, HTTPResponse, fp, headers={
-            'content-encoding': 'deflate'
-        })
+        with pytest.raises(DecodeError):
+            HTTPResponse(fp, headers={'content-encoding': 'deflate'})
 
     def test_reference_read(self):
         fp = BytesIO(b'foo')
         r = HTTPResponse(fp, preload_content=False)
 
-        self.assertEqual(r.read(1), b'f')
-        self.assertEqual(r.read(2), b'oo')
-        self.assertEqual(r.read(), b'')
-        self.assertEqual(r.read(), b'')
+        assert r.read(1) == b'f'
+        assert r.read(2) == b'oo'
+        assert r.read() == b''
+        assert r.read() == b''
 
     def test_decode_deflate(self):
         import zlib
@@ -99,7 +99,7 @@ class TestResponse(unittest.TestCase):
         fp = BytesIO(data)
         r = HTTPResponse(fp, headers={'content-encoding': 'deflate'})
 
-        self.assertEqual(r.data, b'foo')
+        assert r.data == b'foo'
 
     def test_decode_deflate_case_insensitve(self):
         import zlib
@@ -108,7 +108,7 @@ class TestResponse(unittest.TestCase):
         fp = BytesIO(data)
         r = HTTPResponse(fp, headers={'content-encoding': 'DeFlAtE'})
 
-        self.assertEqual(r.data, b'foo')
+        assert r.data == b'foo'
 
     def test_chunked_decoding_deflate(self):
         import zlib
@@ -118,12 +118,12 @@ class TestResponse(unittest.TestCase):
         r = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
                          preload_content=False)
 
-        self.assertEqual(r.read(1), b'f')
+        assert r.read(1) == b'f'
         # Buffer in case we need to switch to the raw stream
-        self.assertIsNone(r._decoder._data)
-        self.assertEqual(r.read(2), b'oo')
-        self.assertEqual(r.read(), b'')
-        self.assertEqual(r.read(), b'')
+        assert r._decoder._data is None
+        assert r.read(2) == b'oo'
+        assert r.read() == b''
+        assert r.read() == b''
 
     def test_chunked_decoding_deflate2(self):
         import zlib
@@ -135,12 +135,12 @@ class TestResponse(unittest.TestCase):
         r = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
                          preload_content=False)
 
-        self.assertEqual(r.read(1), b'f')
+        assert r.read(1) == b'f'
         # Once we've decoded data, we just stream to the decoder; no buffering
-        self.assertIsNone(r._decoder._data)
-        self.assertEqual(r.read(2), b'oo')
-        self.assertEqual(r.read(), b'')
-        self.assertEqual(r.read(), b'')
+        assert r._decoder._data is None
+        assert r.read(2) == b'oo'
+        assert r.read() == b''
+        assert r.read() == b''
 
     def test_chunked_decoding_gzip(self):
         import zlib
@@ -152,48 +152,54 @@ class TestResponse(unittest.TestCase):
         r = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
                          preload_content=False)
 
-        self.assertEqual(r.read(1), b'f')
-        self.assertEqual(r.read(2), b'oo')
-        self.assertEqual(r.read(), b'')
-        self.assertEqual(r.read(), b'')
+        assert r.read(1) == b'f'
+        assert r.read(2) == b'oo'
+        assert r.read() == b''
+        assert r.read() == b''
 
     def test_body_blob(self):
         resp = HTTPResponse(b'foo')
-        self.assertEqual(resp.data, b'foo')
-        self.assertTrue(resp.closed)
+        assert resp.data == b'foo'
+        assert resp.closed
 
+    @pytest.mark.xfail
     def test_io(self):
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)
 
-        self.assertEqual(resp.closed, False)
-        self.assertEqual(resp.readable(), True)
-        self.assertEqual(resp.writable(), False)
-        self.assertRaises(IOError, resp.fileno)
+        assert not resp.closed
+        assert resp.readable()
+        assert not resp.writable()
+        with pytest.raises(IOError):
+            resp.fileno()
 
         resp.close()
-        self.assertEqual(resp.closed, True)
+        assert resp.closed
 
         # Try closing with a base Response
-        hlr = get_response()
-        resp2 = HTTPResponse(hlr.body, preload_content=False)
-        self.assertEqual(resp2.closed, False)
-        resp2.close()
-        self.assertEqual(resp2.closed, True)
+        try:
+            hlr = get_response()
+            resp2 = HTTPResponse(hlr.body, preload_content=False)
+            assert not resp2.closed
+            resp2.close()
+            assert resp2.closed
+        finally:
+            hlr.close()
 
         # also try when only data is present.
         resp3 = HTTPResponse('foodata')
-        self.assertRaises(IOError, resp3.fileno)
+        with pytest.raises(IOError):
+            resp3.fileno()
 
     def test_io_bufferedreader(self):
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)
         br = BufferedReader(resp)
 
-        self.assertEqual(br.read(), b'foo')
+        assert br.read() == b'foo'
 
         br.close()
-        self.assertEqual(resp.closed, True)
+        assert resp.closed
 
         b = b'!tenbytes!'
         fp = BytesIO(b)
@@ -202,34 +208,36 @@ class TestResponse(unittest.TestCase):
 
         # This is necessary to make sure the "no bytes left" part of `readinto`
         # gets tested.
-        self.assertEqual(len(br.read(5)), 5)
-        self.assertEqual(len(br.read(5)), 5)
-        self.assertEqual(len(br.read(5)), 0)
+        assert len(br.read(5)) == 5
+        assert len(br.read(5)) == 5
+        assert len(br.read(5)) == 0
 
     def test_streaming(self):
         fp = [b'fo', b'o']
         resp = HTTPResponse(fp, preload_content=False)
         stream = resp.stream(decode_content=False)
 
-        self.assertEqual(next(stream), b'fo')
-        self.assertEqual(next(stream), b'o')
-        self.assertRaises(StopIteration, next, stream)
+        assert next(stream) == b'fo'
+        assert next(stream) == b'o'
+        with pytest.raises(StopIteration):
+            next(stream)
 
     def test_double_streaming(self):
         fp = [b'fo', b'o']
         resp = HTTPResponse(fp, preload_content=False)
 
         stream = list(resp.stream(decode_content=False))
-        self.assertEqual(stream, fp)
+        assert stream == fp
 
         stream = list(resp.stream(decode_content=False))
-        self.assertEqual(stream, [])
+        assert stream == []
 
     def test_closed_streaming(self):
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)
         resp.close()
-        self.assertRaises(StopIteration, next, resp.stream())
+        with pytest.raises(StopIteration):
+            next(resp.stream())
 
     def test_close_midstream(self):
         # A mock fp object that wraps a list and allows closing.
@@ -255,9 +263,10 @@ class TestResponse(unittest.TestCase):
         resp = HTTPResponse(fp, preload_content=False)
         stream = resp.stream()
 
-        self.assertEqual(next(stream), b'fo')
+        assert next(stream) == b'fo'
         resp.close()
-        self.assertRaises(StopIteration, next, stream)
+        with pytest.raises(StopIteration):
+            next(stream)
 
     def test_streaming_tell(self):
         fp = [b'fo', b'o']
@@ -267,14 +276,15 @@ class TestResponse(unittest.TestCase):
         position = 0
 
         position += len(next(stream))
-        self.assertEqual(2, position)
-        self.assertEqual(2, resp.tell())
+        assert 2 == position
+        assert 2 == resp.tell()
 
         position += len(next(stream))
-        self.assertEqual(3, position)
-        self.assertEqual(3, resp.tell())
+        assert 3 == position
+        assert 3 == resp.tell()
 
-        self.assertRaises(StopIteration, next, stream)
+        with pytest.raises(StopIteration):
+            next(stream)
 
     def test_gzipped_streaming(self):
         import zlib
@@ -287,8 +297,9 @@ class TestResponse(unittest.TestCase):
                             preload_content=False)
         stream = resp.stream()
 
-        self.assertEqual(next(stream), b'foo')
-        self.assertRaises(StopIteration, next, stream)
+        assert next(stream) == b'foo'
+        with pytest.raises(StopIteration):
+            next(stream)
 
     def test_gzipped_streaming_tell(self):
         import zlib
@@ -304,11 +315,12 @@ class TestResponse(unittest.TestCase):
 
         # Read everything
         payload = next(stream)
-        self.assertEqual(payload, uncompressed_data)
+        assert payload == uncompressed_data
 
-        self.assertEqual(len(data), resp.tell())
+        assert len(data) == resp.tell()
 
-        self.assertRaises(StopIteration, next, stream)
+        with pytest.raises(StopIteration):
+            next(stream)
 
     def test_deflate_streaming_tell_intermediate_point(self):
         # Ensure that ``tell()`` returns the correct number of bytes when
@@ -360,18 +372,19 @@ class TestResponse(unittest.TestCase):
 
         for part in stream:
             parts.append(part)
-            self.assertEqual(resp.tell(), fp.consumed)
+            assert resp.tell() == fp.consumed
 
         end_of_stream = resp.tell()
 
-        self.assertRaises(StopIteration, next, stream)
+        with pytest.raises(StopIteration):
+            next(stream)
 
         # Check that the payload is equal to the uncompressed data
         payload = b"".join(parts)
-        self.assertEqual(uncompressed_data, payload)
+        assert uncompressed_data == payload
 
         # Check that the end of the stream is in the correct place
-        self.assertEqual(len(ZLIB_PAYLOAD), end_of_stream)
+        assert len(ZLIB_PAYLOAD) == end_of_stream
 
     def test_deflate_streaming(self):
         import zlib
@@ -382,8 +395,9 @@ class TestResponse(unittest.TestCase):
                             preload_content=False)
         stream = resp.stream()
 
-        self.assertEqual(next(stream), b'foo')
-        self.assertRaises(StopIteration, next, stream)
+        assert next(stream) == b'foo'
+        with pytest.raises(StopIteration):
+            next(stream)
 
     def test_deflate2_streaming(self):
         import zlib
@@ -396,15 +410,17 @@ class TestResponse(unittest.TestCase):
                             preload_content=False)
         stream = resp.stream()
 
-        self.assertEqual(next(stream), b'foo')
-        self.assertRaises(StopIteration, next, stream)
+        assert next(stream) == b'foo'
+        with pytest.raises(StopIteration):
+            next(stream)
 
     def test_empty_stream(self):
         fp = BytesIO(b'')
         resp = HTTPResponse(fp, preload_content=False)
         stream = resp.stream(decode_content=False)
 
-        self.assertRaises(StopIteration, next, stream)
+        with pytest.raises(StopIteration):
+            next(stream)
 
     def test_mock_httpresponse_stream(self):
         # Mock out a HTTP Request that does enough to make it through urllib3's
@@ -438,31 +454,22 @@ class TestResponse(unittest.TestCase):
         resp = HTTPResponse(fp, preload_content=False)
         stream = resp.stream()
 
-        self.assertEqual(next(stream), b'f')
-        self.assertEqual(next(stream), b'o')
-        self.assertEqual(next(stream), b'o')
-        self.assertRaises(StopIteration, next, stream)
+        assert next(stream) == b'f'
+        assert next(stream) == b'o'
+        assert next(stream) == b'o'
+        with pytest.raises(StopIteration):
+            next(stream)
 
     def test_get_case_insensitive_headers(self):
         headers = {'host': 'example.com'}
         r = HTTPResponse(headers=headers)
-        self.assertEqual(r.headers.get('host'), 'example.com')
-        self.assertEqual(r.headers.get('Host'), 'example.com')
+        assert r.headers.get('host') == 'example.com'
+        assert r.headers.get('Host') == 'example.com'
 
     def test_retries(self):
         fp = BytesIO(b'')
         resp = HTTPResponse(fp)
-        self.assertEqual(resp.retries, None)
+        assert resp.retries is None
         retry = Retry()
         resp = HTTPResponse(fp, retries=retry)
-        self.assertEqual(resp.retries, retry)
-
-
-class MockSock(object):
-    @classmethod
-    def makefile(cls, *args, **kwargs):
-        return
-
-
-if __name__ == '__main__':
-    unittest.main()
+        assert resp.retries == retry

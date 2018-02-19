@@ -241,8 +241,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         Return a fresh connection.
         """
         self.num_connections += 1
-        log.debug("Starting new HTTP connection (%d): %s",
-                  self.num_connections, self.host)
+        log.debug("Starting new HTTP connection (%d): %s:%s",
+                  self.num_connections, self.host, self.port or "80")
 
         conn = self.ConnectionCls(host=self.host, port=self.port,
                                   **self.conn_kw)
@@ -425,6 +425,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         Close all pooled connections and disable the pool.
         """
+        if self.pool is None:
+            return
         # Disable access to the pool
         old_pool, self.pool = self.pool, None
 
@@ -582,25 +584,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Timed out by queue.
             raise EmptyPoolError(self, "No pool connections are available.")
 
-        except (BaseSSLError, CertificateError) as e:
-            # Close the connection. If a connection is reused on which there
-            # was a Certificate error, the next request will certainly raise
-            # another Certificate error.
-            clean_exit = False
-            raise SSLError(e)
-
-        except SSLError:
-            # Treat SSLError separately from BaseSSLError to preserve
-            # traceback.
-            clean_exit = False
-            raise
-
-        except (TimeoutError, SocketError, ProtocolError, h11.ProtocolError) as e:
+        except (TimeoutError, SocketError, ProtocolError, h11.ProtocolError,
+                BaseSSLError, SSLError, CertificateError) as e:
             # Discard the connection for these exceptions. It will be
-            # be replaced during the next _get_conn() call.
+            # replaced during the next _get_conn() call.
             clean_exit = False
 
-            if isinstance(e, (SocketError, NewConnectionError)) and self.proxy:
+            if isinstance(e, (BaseSSLError, CertificateError)):
+                e = SSLError(e)
+            elif isinstance(e, (SocketError, NewConnectionError)) and self.proxy:
                 e = ProxyError('Cannot connect to proxy.', e)
             elif isinstance(e, (SocketError, h11.ProtocolError)):
                 e = ProtocolError('Connection aborted.', e)
@@ -636,6 +628,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                                       pool_timeout=pool_timeout,
                                       body_pos=body_pos, **response_kw)
 
+        def drain_and_release_conn(response):
+            try:
+                # discard any remaining response body, the connection will be
+                # released back to the pool once the entire response is read
+                response.read()
+            except (TimeoutError, SocketError, ProtocolError, BaseSSLError,
+                    SSLError) as e:
+                pass
+
         # Check if we should retry the HTTP response.
         has_retry_after = bool(response.getheader('Retry-After'))
         if retries.is_retry(method, response.status, has_retry_after):
@@ -643,11 +644,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 retries = retries.increment(method, url, response=response, _pool=self)
             except MaxRetryError:
                 if retries.raise_on_status:
-                    # Release the connection for this response, since we're not
-                    # returning it to be released manually.
-                    response.release_conn()
+                    # Drain and release the connection for this response, since
+                    # we're not returning it to be released manually.
+                    drain_and_release_conn(response)
                     raise
                 return response
+
+            # drain and return the connection to the pool before recursing
+            drain_and_release_conn(response)
+
             retries.sleep(response)
             log.debug("Retry: %s", url)
             return await self.urlopen(
@@ -710,8 +715,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         Return a fresh connection.
         """
         self.num_connections += 1
-        log.debug("Starting new HTTPS connection (%d): %s",
-                  self.num_connections, self.host)
+        log.debug("Starting new HTTPS connection (%d): %s:%s",
+                  self.num_connections, self.host, self.port or "443")
 
         actual_host = self.host
         actual_port = self.port

@@ -6,7 +6,7 @@ import logging
 import socket
 import platform
 
-from nose.plugins.skip import SkipTest
+import pytest
 
 from urllib3.exceptions import HTTPWarning
 from urllib3.packages import six
@@ -44,7 +44,7 @@ def onlyPy27OrNewer(test):
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python 2.7.x+ to run".format(name=test.__name__)
         if sys.version_info < (2, 7):
-            raise SkipTest(msg)
+            pytest.skip(msg)
         return test(*args, **kwargs)
     return wrapper
 
@@ -56,7 +56,7 @@ def onlyPy279OrNewer(test):
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python 2.7.9+ to run".format(name=test.__name__)
         if sys.version_info < (2, 7, 9):
-            raise SkipTest(msg)
+            pytest.skip(msg)
         return test(*args, **kwargs)
     return wrapper
 
@@ -68,7 +68,7 @@ def onlyPy2(test):
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python 2.x to run".format(name=test.__name__)
         if six.PY3:
-            raise SkipTest(msg)
+            pytest.skip(msg)
         return test(*args, **kwargs)
     return wrapper
 
@@ -80,7 +80,7 @@ def onlyPy3(test):
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python3.x to run".format(name=test.__name__)
         if not six.PY3:
-            raise SkipTest(msg)
+            pytest.skip(msg)
         return test(*args, **kwargs)
     return wrapper
 
@@ -92,7 +92,7 @@ def notSecureTransport(test):
     def wrapper(*args, **kwargs):
         msg = "{name} does not run with SecureTransport".format(name=test.__name__)
         if ssl_.IS_SECURETRANSPORT:
-            raise SkipTest(msg)
+            pytest.skip(msg)
         return test(*args, **kwargs)
     return wrapper
 
@@ -103,7 +103,7 @@ def onlyPy27OrNewerOrNonWindows(test):
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python2.7+ or non-Windows to run".format(name=test.__name__)
         if sys.version_info < (2, 7) and platform.system() == 'Windows':
-            raise SkipTest(msg)
+            pytest.skip(msg)
         return test(*args, **kwargs)
     return wrapper
 
@@ -143,7 +143,7 @@ def requires_network(test):
         else:
             msg = "Can't run {name} because the network is unreachable".format(
                 name=test.__name__)
-            raise SkipTest(msg)
+            pytest.skip(msg)
     return wrapper
 
 

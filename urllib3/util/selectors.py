@@ -11,12 +11,19 @@ import select
 import socket
 import sys
 import time
-from collections import namedtuple, Mapping
+from collections import namedtuple
+from ..packages.six import integer_types
+
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
 
 try:
     monotonic = time.monotonic
 except (AttributeError, ImportError):  # Python 3.3<
     monotonic = time.time
+
 
 EVENT_READ = (1 << 0)
 EVENT_WRITE = (1 << 1)
@@ -41,7 +48,7 @@ class SelectorError(Exception):
 def _fileobj_to_fd(fileobj):
     """ Return a file descriptor from a file object. If
     given an integer will simply return that integer back. """
-    if isinstance(fileobj, int):
+    if isinstance(fileobj, integer_types):
         fd = fileobj
     else:
         try:

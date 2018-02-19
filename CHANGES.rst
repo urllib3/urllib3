@@ -30,10 +30,52 @@ Upcoming 2.0 Changes
 dev (master)
 ------------
 
+* Fix ``util.selectors._fileobj_to_fd`` to accept ``long`` (Issue #1247).
+
+* Dropped Python 3.3 support. (Pull #1242)
+
+* Put the connection back in the pool when calling stream() or read_chunked() on
+  a chunked HEAD response. (Issue #1234)
+
+* Fixed pyOpenSSL-specific ssl client authentication issue when clients
+  attempted to auth via certificate + chain (Issue #1060)
+
+* Add the port to the connectionpool connect print (Pull #1251)
+
+* Lazily load `uuid` to boost performance on imports (Pull #1270)
+
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.22 (2017-07-20)
+-----------------
+
+* Fixed missing brackets in ``HTTP CONNECT`` when connecting to IPv6 address via
+  IPv6 proxy. (Issue #1222)
+
+* Made the connection pool retry on ``SSLError``.  The original ``SSLError``
+  is available on ``MaxRetryError.reason``. (Issue #1112)
+
+* Drain and release connection before recursing on retry/redirect.  Fixes
+  deadlocks with a blocking connectionpool. (Issue #1167)
+
+* Fixed compatibility for cookiejar. (Issue #1229)
+
+* pyopenssl: Use vendored version of ``six``. (Issue #1231)
+
+
+1.21.1 (2017-05-02)
+-------------------
+
 * Fixed SecureTransport issue that would cause long delays in response body
   delivery. (Pull #1154)
 
-* ... [Short description of non-trivial change.] (Issue #)
+* Fixed regression in 1.21 that threw exceptions when users passed the
+  ``socket_options`` flag to the ``PoolManager``.  (Issue #1165)
+
+* Fixed regression in 1.21 that threw exceptions when users passed the
+  ``assert_hostname`` or ``assert_fingerprint`` flag to the ``PoolManager``.
+  (Pull #1157)
 
 
 1.21 (2017-04-25)
@@ -67,8 +109,6 @@ dev (master)
   for schemes it does not recognise, it assumes they are case-sensitive and
   leaves them unchanged.
   (Issue #1080)
-
-* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.20 (2017-01-19)
@@ -858,7 +898,7 @@ dev (master)
 * Refactored code to be even more decoupled, reusable, and extendable.
 * License header added to ``.py`` files.
 * Embiggened the documentation: Lots of Sphinx-friendly docstrings in the code
-  and docs in ``docs/`` and on urllib3.readthedocs.org.
+  and docs in ``docs/`` and on https://urllib3.readthedocs.io/.
 * Embettered all the things!
 * Started writing this file.
 

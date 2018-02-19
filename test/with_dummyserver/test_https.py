@@ -1,4 +1,5 @@
 import datetime
+import json
 import logging
 import ssl
 import sys
@@ -6,13 +7,14 @@ import unittest
 import warnings
 
 import mock
-from nose.plugins.skip import SkipTest
 import pytest
 
 from dummyserver.testcase import (
     HTTPSDummyServerTestCase, IPV6HTTPSDummyServerTestCase
 )
 from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
+                                DEFAULT_CLIENT_CERTS,
+                                DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS,
                                 NO_SAN_CERTS, NO_SAN_CA, DEFAULT_CA_DIR,
                                 IPV6_ADDR_CERTS, IPV6_ADDR_CA, HAS_IPV6,
                                 IP_SAN_CERTS)
@@ -32,6 +34,7 @@ from urllib3.exceptions import (
     InsecureRequestWarning,
     SystemTimeWarning,
     InsecurePlatformWarning,
+    MaxRetryError,
 )
 from urllib3.packages import six
 from urllib3.util.timeout import Timeout
@@ -57,10 +60,44 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
+    def test_dotted_fqdn(self):
+        pool = HTTPSConnectionPool(self.host + '.', self.port)
+        r = pool.request('GET', '/')
+        self.assertEqual(r.status, 200, r.data)
+
+    def test_client_intermediate(self):
+        client_cert, client_key, client_subject = (
+            DEFAULT_CLIENT_CERTS['certfile'],
+            DEFAULT_CLIENT_CERTS['keyfile'],
+            DEFAULT_CLIENT_CERTS['subject']
+        )
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         key_file=client_key,
+                                         cert_file=client_cert)
+        r = https_pool.request('GET', '/certificate')
+        self.assertDictEqual(json.loads(r.data.decode('utf-8')),
+                             client_subject, r.data)
+
+    def test_client_no_intermediate(self):
+        client_cert, client_key = (
+            DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS['certfile'],
+            DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS['keyfile']
+        )
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_file=client_cert,
+                                         key_file=client_key)
+        try:
+            https_pool.request('GET', '/certificate', retries=False)
+        except SSLError as e:
+            self.assertTrue('alert unknown ca' in str(e) or
+                            'invalid certificate chain' in str(e) or
+                            'unknown Cert Authority' in str(e))
+
     def test_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA)
+        self.addCleanup(https_pool.close)
 
         with mock.patch('warnings.warn') as warn:
             r = https_pool.request('GET', '/')
@@ -138,14 +175,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with mock.patch('warnings.warn') as warn:
             r = https_pool.request('GET', '/')
             self.assertEqual(r.status, 200)
-
-            if sys.version_info >= (2, 7, 9):
-                self.assertFalse(warn.called, warn.call_args_list)
-            else:
-                self.assertTrue(warn.called)
-                call, = warn.call_args_list
-                error = call[0][1]
-                self.assertEqual(error, InsecurePlatformWarning)
+            self.assertFalse(warn.called, warn.call_args_list)
 
     def test_invalid_common_name(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
@@ -156,10 +186,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         try:
             https_pool.request('GET', '/')
             self.fail("Didn't raise SSL invalid common name")
-        except SSLError as e:
+        except MaxRetryError as e:
+            self.assertIsInstance(e.reason, SSLError)
             self.assertTrue(
-                "doesn't match" in str(e) or
-                "certificate verify failed" in str(e)
+                "doesn't match" in str(e.reason) or
+                "certificate verify failed" in str(e.reason)
             )
 
     def test_verified_with_bad_ca_certs(self):
@@ -171,10 +202,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         try:
             https_pool.request('GET', '/')
             self.fail("Didn't raise SSL error with bad CA certs")
-        except SSLError as e:
-            self.assertTrue('certificate verify failed' in str(e),
+        except MaxRetryError as e:
+            self.assertIsInstance(e.reason, SSLError)
+            self.assertTrue('certificate verify failed' in str(e.reason),
                             "Expected 'certificate verify failed',"
-                            "instead got: %r" % e)
+                            "instead got: %r" % e.reason)
 
     def test_verified_without_ca_certs(self):
         # default is cert_reqs=None which is ssl.CERT_NONE
@@ -186,16 +218,17 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             https_pool.request('GET', '/')
             self.fail("Didn't raise SSL error with no CA certs when"
                       "CERT_REQUIRED is set")
-        except SSLError as e:
+        except MaxRetryError as e:
+            self.assertIsInstance(e.reason, SSLError)
             # there is a different error message depending on whether or
             # not pyopenssl is injected
-            self.assertTrue('No root certificates specified' in str(e) or
-                            'certificate verify failed' in str(e) or
-                            'invalid certificate chain' in str(e),
+            self.assertTrue('No root certificates specified' in str(e.reason) or
+                            'certificate verify failed' in str(e.reason) or
+                            'invalid certificate chain' in str(e.reason),
                             "Expected 'No root certificates specified',  "
                             "'certificate verify failed', or "
                             "'invalid certificate chain', "
-                            "instead got: %r" % e)
+                            "instead got: %r" % e.reason)
 
     def test_unverified_ssl(self):
         """ Test that bare HTTPSConnection can connect, make requests """
@@ -305,17 +338,22 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_fingerprint = 'AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:' \
                                         'AA:AA:AA:AA:AA:AA:AA:AA:AA'
 
-        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+        def _test_request(pool):
+            with self.assertRaises(MaxRetryError) as cm:
+                pool.request('GET', '/', retries=0)
+            self.assertIsInstance(cm.exception.reason, SSLError)
+
+        _test_request(https_pool)
         https_pool._get_conn()
 
         # Uneven length
         https_pool.assert_fingerprint = 'AA:A'
-        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+        _test_request(https_pool)
         https_pool._get_conn()
 
         # Invalid length
         https_pool.assert_fingerprint = 'AA'
-        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+        _test_request(https_pool)
 
     @pytest.mark.xfail
     def test_verify_none_and_bad_fingerprint(self):
@@ -326,7 +364,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         https_pool.assert_fingerprint = 'AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:' \
                                         'AA:AA:AA:AA:AA:AA:AA:AA:AA'
-        self.assertRaises(SSLError, https_pool.request, 'GET', '/')
+        with self.assertRaises(MaxRetryError) as cm:
+            https_pool.request('GET', '/', retries=0)
+        self.assertIsInstance(cm.exception.reason, SSLError)
 
     @pytest.mark.xfail
     def test_verify_none_and_good_fingerprint(self):
@@ -355,6 +395,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                         'BF:93:CF:F9:71:CC:07:7D:0A'
         https_pool.request('GET', '/')
 
+    @pytest.mark.skip
     @requires_network
     def test_https_timeout(self):
         timeout = Timeout(connect=0.001)
@@ -384,6 +425,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.addCleanup(https_pool.close)
         https_pool.request('GET', '/')
 
+    @pytest.mark.skip
     @requires_network
     def test_enhanced_timeout(self):
         def new_pool(timeout, cert_reqs='CERT_REQUIRED'):
@@ -467,12 +509,14 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
         pool = HTTPSConnectionPool(
             self.host, self.port, cert_reqs='CERT_REQUIRED'
         )
-        self.assertRaises(SSLError, pool.request, 'GET', '/')
+        with self.assertRaises(MaxRetryError) as cm:
+            pool.request('GET', '/', retries=0)
+        self.assertIsInstance(cm.exception.reason, SSLError)
         pool = HTTPSConnectionPool(
             self.host, self.port, cert_reqs='CERT_REQUIRED',
             ca_certs=DEFAULT_CA
         )
-        self._pool.request('GET', '/')
+        pool.request('GET', '/')
 
     def test_set_cert_default_cert_required(self):
         pool = HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA)
@@ -503,7 +547,7 @@ class TestHTTPS_IPSAN(HTTPSDummyServerTestCase):
         try:
             import ipaddress  # noqa: F401
         except ImportError:
-            raise SkipTest("Only runs on systems with an ipaddress module")
+            pytest.skip("Only runs on systems with an ipaddress module")
 
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_REQUIRED',
@@ -516,10 +560,9 @@ class TestHTTPS_IPSAN(HTTPSDummyServerTestCase):
 class TestHTTPS_IPv6Addr(IPV6HTTPSDummyServerTestCase):
     certs = IPV6_ADDR_CERTS
 
+    @pytest.mark.skipif(not HAS_IPV6, reason='Only runs on IPv6 systems')
     def test_strip_square_brackets_before_validating(self):
         """Test that the fix for #760 works."""
-        if not HAS_IPV6:
-            raise SkipTest("Only runs on IPv6 systems")
         https_pool = HTTPSConnectionPool('[::1]', self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=IPV6_ADDR_CA)

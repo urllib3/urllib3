@@ -45,6 +45,8 @@ _key_fields = (
     'key__proxy_headers',  # dict
     'key_socket_options',  # list of (level (int), optname (int), value (int or str)) tuples
     'key__socks_options',  # dict
+    'key_assert_hostname',  # bool or string
+    'key_assert_fingerprint',  # str
 )
 
 #: The namedtuple class used to construct keys for the connection pool.
@@ -81,6 +83,12 @@ def _default_key_normalizer(key_class, request_context):
     for key in ('headers', '_proxy_headers', '_socks_options'):
         if key in context and context[key] is not None:
             context[key] = frozenset(context[key].items())
+
+    # The socket_options key may be a list and needs to be transformed into a
+    # tuple.
+    socket_opts = context.get('socket_options')
+    if socket_opts is not None:
+        context['socket_options'] = tuple(socket_opts)
 
     # Map the kwargs to the names in the namedtuple - this is necessary since
     # namedtuples can't have fields starting with '_'.
