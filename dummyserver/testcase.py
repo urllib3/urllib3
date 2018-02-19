@@ -82,12 +82,13 @@ class SocketDummyServerTestCase(unittest.TestCase):
         header_name,
         expected_value=None
     ):
-        header_name = header_name.encode('ascii')
+        header_name = header_name.encode('ascii').lower()
         if expected_value is not None:
             expected_value = expected_value.encode('ascii')
         header_titles = []
         for header in received_headers:
             key, value = header.split(b': ')
+            key = key.lower()
             header_titles.append(key)
             if key == header_name and expected_value is not None:
                 self.assertEqual(value, expected_value)
