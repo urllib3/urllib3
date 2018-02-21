@@ -52,6 +52,7 @@ setup(name='urllib3',
                 'urllib3.contrib._securetransport', 'urllib3.util',
                 ],
       requires=[],
+      python_requires=">=2.6, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, <4",
       tests_require=[
           # These are a less-specific subset of dev-requirements.txt, for the
           # convenience of distro package maintainers.

@@ -872,7 +872,7 @@ dev (master)
 * Refactored code to be even more decoupled, reusable, and extendable.
 * License header added to ``.py`` files.
 * Embiggened the documentation: Lots of Sphinx-friendly docstrings in the code
-  and docs in ``docs/`` and on urllib3.readthedocs.org.
+  and docs in ``docs/`` and on https://urllib3.readthedocs.io/.
 * Embettered all the things!
 * Started writing this file.
 

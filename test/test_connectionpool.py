@@ -118,6 +118,7 @@ class TestConnectionPool(object):
         ('google.com', 'https://google.com/'),
         ('yahoo.com', 'http://google.com/'),
         ('google.com', 'https://google.net/'),
+        ('google.com', 'http://google.com./'),
     ])
     def test_not_same_host_no_port_http(self, a, b):
         with HTTPConnectionPool(a) as c:
@@ -130,6 +131,7 @@ class TestConnectionPool(object):
         ('google.com', 'http://google.com/'),
         ('yahoo.com', 'https://google.com/'),
         ('google.com', 'https://google.net/'),
+        ('google.com', 'https://google.com./'),
     ])
     def test_not_same_host_no_port_https(self, a, b):
         with HTTPSConnectionPool(a) as c:
@@ -246,6 +248,23 @@ class TestConnectionPool(object):
 
         with pytest.raises(Empty):
             old_pool_queue.get(block=False)
+
+    def test_pool_close_twice(self):
+        pool = connection_from_url('http://google.com:80')
+
+        # Populate with some connections
+        conn1 = pool._get_conn()
+        conn2 = pool._get_conn()
+        pool._put_conn(conn1)
+        pool._put_conn(conn2)
+
+        pool.close()
+        assert pool.pool is None
+
+        try:
+            pool.close()
+        except AttributeError:
+            pytest.fail("Pool of the ConnectionPool is None and has no attribute get.")
 
     def test_pool_timeouts(self):
         with HTTPConnectionPool(host='localhost') as pool:

@@ -1000,7 +1000,7 @@ class TestRetryPoolSize(HTTPDummyServerTestCase):
 
     def test_pool_size_retry(self):
         self.pool.urlopen('GET', '/not_found', preload_content=False)
-        self.assertEquals(self.pool.num_connections, 1)
+        assert self.pool.num_connections == 1
 
 
 class TestRedirectPoolSize(HTTPDummyServerTestCase):
@@ -1017,7 +1017,7 @@ class TestRedirectPoolSize(HTTPDummyServerTestCase):
 
     def test_pool_size_redirect(self):
         self.pool.urlopen('GET', '/redirect', preload_content=False)
-        self.assertEquals(self.pool.num_connections, 1)
+        assert self.pool.num_connections == 1
 
 
 if __name__ == '__main__':
