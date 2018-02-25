@@ -194,7 +194,7 @@ verification support. These warning indicate particular situations and can
 resolved in different ways.
 
 * :class:`~exceptions.InsecureRequestWarning`
-    This happens when an request is made to an HTTPS URL without certificate
+    This happens when a request is made to an HTTPS URL without certificate
     verification enabled. Follow the :ref:`certificate verification <ssl>`
     guide to resolve this warning.
 * :class:`~exceptions.InsecurePlatformWarning`
