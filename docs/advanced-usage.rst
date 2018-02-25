@@ -142,7 +142,7 @@ Once PySocks is installed, you can use
 Custom SSL certificates and client certificates
 -----------------------------------------------
 
-Instead of using `certifi <https://certifi.io/en/latest>`_ you can provide your
+Instead of using `certifi <https://certifi.io/>`_ you can provide your
 own certificate authority bundle. This is useful for cases where you've
 generated your own certificates or when you're using a private certificate
 authority. Just provide the full path to the certificate bundle when creating a
