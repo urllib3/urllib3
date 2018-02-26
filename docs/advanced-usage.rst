@@ -191,7 +191,7 @@ SSL Warnings
 
 urllib3 will issue several different warnings based on the level of certificate
 verification support. These warning indicate particular situations and can
-resolved in different ways.
+be resolved in different ways.
 
 * :class:`~exceptions.InsecureRequestWarning`
     This happens when a request is made to an HTTPS URL without certificate
