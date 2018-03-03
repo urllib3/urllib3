@@ -117,7 +117,7 @@ class RequestMethods(object):
             }
 
         When uploading a file, providing a filename (the first parameter of the
-        tuple) is optional but recommended to best mimick behavior of browsers.
+        tuple) is optional but recommended to best mimic behavior of browsers.
 
         Note that if ``headers`` are supplied, the 'Content-Type' header will
         be overwritten because it depends on the dynamic random boundary string
