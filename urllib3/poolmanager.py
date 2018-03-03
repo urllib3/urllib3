@@ -358,7 +358,7 @@ class ProxyManager(PoolManager):
         The URL of the proxy to be used.
 
     :param proxy_headers:
-        A dictionary contaning headers that will be sent to the proxy. In case
+        A dictionary containing headers that will be sent to the proxy. In case
         of HTTP they are being sent with each request, while in the
         HTTPS/CONNECT case they are sent only once. Could be used for proxy
         authentication.

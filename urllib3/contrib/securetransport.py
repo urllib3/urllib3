@@ -88,7 +88,7 @@ _connection_ref_lock = threading.Lock()
 SSL_WRITE_BLOCKSIZE = 16384
 
 # This is our equivalent of util.ssl_.DEFAULT_CIPHERS, but expanded out to
-# individual cipher suites. We need to do this becuase this is how
+# individual cipher suites. We need to do this because this is how
 # SecureTransport wants them.
 CIPHER_SUITES = [
     SecurityConst.TLS_AES_256_GCM_SHA384,
