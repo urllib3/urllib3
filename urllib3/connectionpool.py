@@ -449,7 +449,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     def urlopen(self, method, url, body=None, headers=None, retries=None,
                 redirect=True, assert_same_host=True, timeout=_Default,
                 pool_timeout=None, release_conn=None, chunked=False,
-                body_pos=None, **response_kw):
+                body_pos=None, _conn_lock=None, **response_kw):
         """
         Get a connection from the pool and perform an HTTP request. This is the
         lowest level call for making a request, so you'll need to specify all
@@ -536,6 +536,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             redirect. Typically this won't need to be set because urllib3 will
             auto-populate the value when needed.
 
+        :param _conn_lock:
+            A ``Lock`` which will be released once ``_get_conn`` has been called. Used
+            internally by ``PoolManager``.
+
         :param \\**response_kw:
             Additional parameters are passed to
             :meth:`urllib3.response.HTTPResponse.from_httplib`
@@ -589,6 +593,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Request a connection from the queue.
             timeout_obj = self._get_timeout(timeout)
             conn = self._get_conn(timeout=pool_timeout)
+
+            if _conn_lock is not None:
+                _conn_lock.release()
 
             conn.timeout = timeout_obj.connect_timeout
 
