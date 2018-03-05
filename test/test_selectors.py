@@ -1,5 +1,6 @@
 from __future__ import with_statement
 import errno
+import mock
 import os
 import psutil
 import select
@@ -707,6 +708,82 @@ class TestUniqueSelectScenarios(BaseSelectorTestCase):
         # Make sure that the selector returned only uses the selector available.
         selector = self.make_selector()
         self.assertIsInstance(selector, selectors.SelectSelector)
+
+    @skipUnless(sys.version_info < (3, 5), "Platform uses simple _syscall_wrapper")
+    def test_syscall_wrapper_select_timeout(self):
+        # This test is to make sure that if our select call times out
+        # we correctly raise an OSError.
+
+        our_timeout = 0.1
+
+        def bad_select(*args, **kwargs):
+            # We only need to sleep slightly longer than our timeout
+            time.sleep(our_timeout + 0.2)
+            raise OSError(errno.EINTR, "Interrupted system call")
+
+        # Now replace `select.select`.
+        patch_select_module(self, select=bad_select)
+
+        # Make sure that the select raises the correct OSError
+        try:
+            selector = self.make_selector()
+            # Selecting on empty lists on Windows is skipped, so we add
+            # nonsense to the readers so the test will run.
+            selector._readers.add(None)
+            result = selector.select(timeout=our_timeout)
+        except OSError as e:
+            self.assertEqual(e.errno, errno.ETIMEDOUT)
+        except Exception as e:
+            self.fail("Raised incorrect exception: " + repr(e))
+        else:
+            self.fail("select() didn't raise OSError, got: " + repr(result))
+
+    @skipUnless(sys.version_info < (3, 5), "Platform uses simple _syscall_wrapper")
+    def test_timeout_is_recalculated_after_interrupt(self):
+        selectors._DEFAULT_SELECTOR = None
+
+        mock_socket = mock.Mock()
+        mock_socket.fileno.return_value = 1
+
+        class InterruptingSelect(object):
+            """ Helper object that imitates a select that interrupts
+            after sleeping some time then returns a result. """
+            def __init__(self):
+                self.call_count = 0
+                self.calls = []
+
+            def select(self, *args, **kwargs):
+                self.calls.append((args, kwargs))
+                self.call_count += 1
+                if self.call_count == 1:
+                    time.sleep(0.1)
+                    error = OSError()
+                    error.errno = errno.EINTR
+                    raise error
+                else:
+                    return [1], [], []
+
+        mock_select = InterruptingSelect()
+
+        patch_select_module(self, select=mock_select.select)
+
+        selector = self.make_selector()
+        selector.register(mock_socket, selectors.EVENT_READ)
+
+        result = selector.select(timeout=1.0)
+
+        # Make sure the mocked call actually completed correctly.
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0][0].fileobj, mock_socket)
+        self.assertEqual(result[0][1], selectors.EVENT_READ)
+
+        # There should be two calls to the mock_select.select() function
+        self.assertEqual(mock_select.call_count, 2)
+
+        # Timeout should be less in the second call.
+        # The structure of mock_select.calls is [(args, kwargs), (args, kwargs)] where
+        # args is ([r], [w], [x], timeout).
+        self.assertLess(mock_select.calls[1][0][3], mock_select.calls[0][0][3])
 
     @skipUnlessHasENOSYS
     def test_select_module_defines_does_not_implement_poll(self):
