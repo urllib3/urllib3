@@ -180,7 +180,7 @@ def _build_tunnel_request(host, port, headers):
     return tunnel_request
 
 
-async def _start_http_request(request, state_machine, conn):
+async def _start_http_request(request, state_machine, sock):
     """
     Send the request using the given state machine and connection, wait
     for the response headers, and return them.
@@ -245,7 +245,7 @@ async def _start_http_request(request, state_machine, conn):
     return context['h11_response']
 
 
-async def _read_until_event(state_machine, conn):
+async def _read_until_event(state_machine, sock):
     """
     A loop that keeps issuing reads and feeding the data into h11 and
     checking whether h11 has an event for us. The moment there is an event
@@ -255,7 +255,7 @@ async def _read_until_event(state_machine, conn):
         event = state_machine.next_event()
         if event is not h11.NEED_DATA:
             return event
-        state_machine.receive_data(await conn.receive_some())
+        state_machine.receive_data(await sock.receive_some())
 
 
 _DEFAULT_SOCKET_OPTIONS = object()
@@ -300,7 +300,7 @@ class HTTP1Connection(object):
         self._sock = None
         self._state_machine = h11.Connection(our_role=h11.CLIENT)
 
-    async def _wrap_socket(self, conn, ssl_context, fingerprint, assert_hostname):
+    async def _wrap_socket(self, sock, ssl_context, fingerprint, assert_hostname):
         """
         Handles extra logic to wrap the socket in TLS magic.
         """
@@ -322,15 +322,15 @@ class HTTP1Connection(object):
         # will break it.
         check_host = check_host.rstrip(".")
 
-        conn = await conn.start_tls(check_host, ssl_context)
+        sock = await sock.start_tls(check_host, ssl_context)
 
         if fingerprint:
-            ssl_util.assert_fingerprint(conn.getpeercert(binary_form=True),
+            ssl_util.assert_fingerprint(sock.getpeercert(binary_form=True),
                                         fingerprint)
 
         elif (ssl_context.verify_mode != ssl.CERT_NONE
               and assert_hostname is not False):
-            cert = conn.getpeercert()
+            cert = sock.getpeercert()
             if not cert.get('subjectAltName', ()):
                 warnings.warn((
                     'Certificate for {0} has no `subjectAltName`, falling '
@@ -348,7 +348,7 @@ class HTTP1Connection(object):
             (assert_hostname is not False or fingerprint)
         )
 
-        return conn
+        return sock
 
     async def send_request(self, request, read_timeout):
         """
@@ -359,7 +359,7 @@ class HTTP1Connection(object):
         )
         return _response_from_h11(h11_response, self)
 
-    async def _tunnel(self, conn):
+    async def _tunnel(self, sock):
         """
         This method establishes a CONNECT tunnel shortly after connection.
         """
@@ -373,7 +373,7 @@ class HTTP1Connection(object):
         tunnel_state_machine = h11.Connection(our_role=h11.CLIENT)
 
         h11_response = await _start_http_request(
-            tunnel_request, tunnel_state_machine, conn
+            tunnel_request, tunnel_state_machine, sock
         )
         # XX this is wrong -- 'self' here will try to iterate using
         # self._state_machine, not tunnel_state_machine. Also, we need to
@@ -382,7 +382,7 @@ class HTTP1Connection(object):
         tunnel_response = _response_from_h11(h11_response, self)
 
         if h11_response.status_code != 200:
-            conn.forceful_close()
+            sock.forceful_close()
             raise FailedTunnelError(
                 "Unable to establish CONNECT tunnel", tunnel_response
             )
@@ -411,7 +411,7 @@ class HTTP1Connection(object):
         # by subclasses, but in the backend approach the way to to this is to
         # provide a custom backend. (Composition >> inheritance.)
         try:
-            conn = await self._backend.connect(
+            self._sock = await self._backend.connect(
                 self._host, self._port, **extra_kw)
         # XX these two error handling blocks needs to be re-done in a
         # backend-agnostic way
@@ -426,14 +426,11 @@ class HTTP1Connection(object):
 
         if ssl_context is not None:
             if self._tunnel_host is not None:
-                self._tunnel(conn)
+                self._tunnel(self._sock)
 
-            conn = await self._wrap_socket(
-                conn, ssl_context, fingerprint, assert_hostname
+            self._sock = await self._wrap_socket(
+                self._sock, ssl_context, fingerprint, assert_hostname
             )
-
-        # XX We should pick one of these names and use it consistently...
-        self._sock = conn
 
     def close(self):
         """
