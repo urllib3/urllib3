@@ -351,6 +351,7 @@ class HTTP1Connection(object):
         return sock
 
     async def send_request(self, request, read_timeout):
+        # XXX Remove read_timeout as it is sent to backend already
         """
         Given a Request object, performs the logic required to get a response.
         """

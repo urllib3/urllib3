@@ -13,10 +13,10 @@ import socket
 import ssl
 import unittest
 
-import h11
 import pytest
 
 from urllib3.base import Request
+from urllib3._backends.sync_backend import SyncSocket
 from urllib3._sync.connection import HTTP1Connection
 from urllib3.util import selectors
 
@@ -227,9 +227,10 @@ class TestUnusualSocketConditions(unittest.TestCase):
 
     def run_scenario(self, scenario):
         conn = HTTP1Connection('localhost', 80)
-        conn._state_machine = h11.Connection(our_role=h11.CLIENT)
-        conn._sock = sock = ScenarioSocket(scenario)
-        conn._selector = ScenarioSelector(scenario, sock)
+        sock = ScenarioSocket(scenario)
+        sync_socket = SyncSocket(sock, read_timeout=self.READ_TIMEOUT)
+        sync_socket._selector = ScenarioSelector(scenario, sock)
+        conn._sock = sync_socket
 
         request = Request(method=b'GET', target=b'/')
         request.add_host(host=b'localhost', port=80, scheme='http')
@@ -250,13 +251,12 @@ class TestUnusualSocketConditions(unittest.TestCase):
 
         return sock
 
-    @pytest.mark.xfail
     def test_happy_path(self):
         """
         When everything goes smoothly, the response is cleanly consumed.
         """
         scenario = [
-            SELECT_UPLOAD_WRITE,
+            SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
             SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
