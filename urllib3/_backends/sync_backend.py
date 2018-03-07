@@ -1,5 +1,4 @@
 import errno
-import select
 import socket
 import ssl
 from ..util.connection import create_connection
@@ -33,6 +32,7 @@ class SyncSocket(object):
         # We keep the socket in non-blocking mode, except during connect() and
         # during the SSL handshake:
         self._sock.setblocking(False)
+        self._selector = DEFAULT_SELECTOR()
 
     def start_tls(self, server_hostname, ssl_context):
         self._sock.setblocking(True)
@@ -48,14 +48,13 @@ class SyncSocket(object):
 
     def _wait(self, readable, writable):
         assert readable or writable
-        s = DEFAULT_SELECTOR()
         flags = 0
         if readable:
             flags |= selectors.EVENT_READ
         if writable:
             flags |= selectors.EVENT_WRITE
-        s.register(self._sock, flags)
-        events = s.select(timeout=self._read_timeout)
+        self._selector.register(self._sock, flags)
+        events = self._selector.select(timeout=self._read_timeout)
         if not events:
             raise socket.timeout("XX FIXME timeout happened")
         _, event = events[0]
