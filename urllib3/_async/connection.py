@@ -202,7 +202,7 @@ async def _start_http_request(request, state_machine, conn):
     # Hack around Python 2 lack of nonlocal
     context = {'send_aborted': True, 'h11_response': None}
 
-    async def next_bytes_to_send():
+    async def produce_bytes():
         try:
             return next(request_bytes_iterable)
         except StopIteration:
@@ -227,7 +227,7 @@ async def _start_http_request(request, state_machine, conn):
                 # Can't happen
                 raise RuntimeError("Unexpected h11 event {}".format(event))
 
-    await conn.send_and_receive_for_a_while(next_bytes_to_send, consume_bytes)
+    await sock.send_and_receive_for_a_while(produce_bytes, consume_bytes)
     assert context['h11_response'] is not None
 
     if context['send_aborted']:
