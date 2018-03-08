@@ -228,8 +228,9 @@ class TestUnusualSocketConditions(unittest.TestCase):
     def run_scenario(self, scenario):
         conn = HTTP1Connection('localhost', 80)
         sock = ScenarioSocket(scenario)
-        sync_socket = SyncSocket(sock, read_timeout=self.READ_TIMEOUT)
-        sync_socket._selector = ScenarioSelector(scenario, sock)
+        selector = ScenarioSelector(scenario, sock)
+        sync_socket = SyncSocket(
+            sock, read_timeout=self.READ_TIMEOUT, _selector=selector)
         conn._sock = sync_socket
 
         request = Request(method=b'GET', target=b'/')
