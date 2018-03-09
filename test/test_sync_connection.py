@@ -168,7 +168,7 @@ class ScenarioSocket(object):
     def send(self, data):
         expected_object, event, args = self._scenario.pop(0)
         if expected_object is not SOCKET:
-            raise ScenarioError("Received non selector event!")
+            raise ScenarioError("Received non socket event!")
 
         if event is not EVENT_SEND:
             raise ScenarioError("Expected EVENT_SEND, got %s" % event)
