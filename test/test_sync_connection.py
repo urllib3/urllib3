@@ -61,6 +61,7 @@ SELECT_WRITABLE_WRITE = Event(
 )
 SOCKET_SEND_ALL = Event(SOCKET, EVENT_SEND, (SEND_ALL,))
 SOCKET_SEND_5 = Event(SOCKET, EVENT_SEND, (5,))
+SOCKET_SEND_0 = Event(SOCKET, EVENT_SEND, (0,))
 SOCKET_SEND_EAGAIN = Event(SOCKET, EVENT_SEND, (RAISE_EAGAIN,))
 SOCKET_SEND_WANTREAD = Event(SOCKET, EVENT_SEND, (RAISE_WANT_READ,))
 SOCKET_SEND_WANTWRITE = Event(SOCKET, EVENT_SEND, (RAISE_WANT_WRITE,))
@@ -265,17 +266,17 @@ class TestUnusualSocketConditions(unittest.TestCase):
         sock = self.run_scenario(scenario)
         self.assertEqual(sock._data_sent, REQUEST)
 
-    @pytest.mark.xfail
     def test_handle_recv_eagain_download(self):
         """
         When a socket is marked readable during response body download but
         returns EAGAIN when read from, the code simply retries the read.
         """
         scenario = [
-            SELECT_UPLOAD_WRITE,
+            SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
             SELECT_DOWNLOAD_READ,
             SOCKET_RECV_EAGAIN,
+            SOCKET_SEND_ALL,
             SELECT_DOWNLOAD_READ,
             SOCKET_RECV_EAGAIN,
             SELECT_DOWNLOAD_READ,
@@ -284,17 +285,17 @@ class TestUnusualSocketConditions(unittest.TestCase):
         sock = self.run_scenario(scenario)
         self.assertEqual(sock._data_sent, REQUEST)
 
-    @pytest.mark.xfail
     def test_handle_recv_want_read_download(self):
         """
         When a socket is marked readable during response body download but
         returns SSL_WANT_READ when read from, the code simply retries the read.
         """
         scenario = [
-            SELECT_UPLOAD_WRITE,
+            SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
             SELECT_DOWNLOAD_READ,
             SOCKET_RECV_WANTREAD,
+            SOCKET_SEND_ALL,
             SELECT_DOWNLOAD_READ,
             SOCKET_RECV_WANTREAD,
             SELECT_DOWNLOAD_READ,
@@ -303,18 +304,16 @@ class TestUnusualSocketConditions(unittest.TestCase):
         sock = self.run_scenario(scenario)
         self.assertEqual(sock._data_sent, REQUEST)
 
-    @pytest.mark.xfail
     def test_handle_recv_eagain_upload(self):
         """
         When a socket is marked readable during request upload but returns
         EAGAIN when read from, the code ignores it and continues with upload.
         """
         scenario = [
-            SELECT_UPLOAD_WRITE,
-            SOCKET_SEND_5,
-            SELECT_UPLOAD_READ,
             SOCKET_RECV_EAGAIN,
-            SELECT_UPLOAD_WRITE,
+            SOCKET_SEND_5,
+            SELECT_DOWNLOAD_READ,
+            SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
             SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
@@ -322,18 +321,16 @@ class TestUnusualSocketConditions(unittest.TestCase):
         sock = self.run_scenario(scenario)
         self.assertEqual(sock._data_sent, REQUEST)
 
-    @pytest.mark.xfail
     def test_handle_recv_wantread_upload(self):
         """
         When a socket is marked readable during request upload but returns
         WANT_READ when read from, the code ignores it and continues with upload.
         """
         scenario = [
-            SELECT_UPLOAD_WRITE,
+            SOCKET_RECV_EAGAIN,
             SOCKET_SEND_5,
-            SELECT_UPLOAD_READ,
+            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_WANTREAD,
-            SELECT_UPLOAD_WRITE,
             SOCKET_SEND_ALL,
             SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
@@ -341,18 +338,19 @@ class TestUnusualSocketConditions(unittest.TestCase):
         sock = self.run_scenario(scenario)
         self.assertEqual(sock._data_sent, REQUEST)
 
-    @pytest.mark.xfail
     def test_handle_send_eagain_upload(self):
         """
         When a socket is marked writable during request upload but returns
         EAGAIN when written to, the code ignores it and continues with upload.
         """
         scenario = [
-            SELECT_UPLOAD_WRITE,
+            SOCKET_RECV_EAGAIN,
             SOCKET_SEND_5,
-            SELECT_UPLOAD_WRITE,
+            SELECT_DOWNLOAD_READ,
+            SOCKET_RECV_EAGAIN,
             SOCKET_SEND_EAGAIN,
             SELECT_UPLOAD_WRITE,
+            SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
             SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
@@ -360,7 +358,6 @@ class TestUnusualSocketConditions(unittest.TestCase):
         sock = self.run_scenario(scenario)
         self.assertEqual(sock._data_sent, REQUEST)
 
-    @pytest.mark.xfail
     def test_handle_send_wantwrite_upload(self):
         """
         When a socket is marked writable during request upload but returns
@@ -368,11 +365,13 @@ class TestUnusualSocketConditions(unittest.TestCase):
         upload.
         """
         scenario = [
-            SELECT_UPLOAD_WRITE,
+            SOCKET_RECV_EAGAIN,
             SOCKET_SEND_5,
-            SELECT_UPLOAD_WRITE,
+            SELECT_DOWNLOAD_READ,
+            SOCKET_RECV_EAGAIN,
             SOCKET_SEND_WANTWRITE,
             SELECT_UPLOAD_WRITE,
+            SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
             SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
@@ -388,18 +387,17 @@ class TestUnusualSocketConditions(unittest.TestCase):
         read.
         """
         scenario = [
-            SELECT_UPLOAD_WRITE,
+            SOCKET_RECV_EAGAIN,
             SOCKET_SEND_5,
-            SELECT_UPLOAD_READ,
-            SOCKET_RECV_5,
             SELECT_DOWNLOAD_READ,
+            SOCKET_RECV_5,
+            SELECT_DOWNLOAD_READ,  # XXX At this point we send instead
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
         self.assertEqual(sock._data_sent, REQUEST[:5])
         self.assertTrue(sock._closed)
 
-    @pytest.mark.xfail
     def test_handle_want_read_during_upload(self):
         """
         When a socket is marked writable during request upload but returns
@@ -407,14 +405,17 @@ class TestUnusualSocketConditions(unittest.TestCase):
         readable and issues the write again.
         """
         scenario = [
-            SELECT_UPLOAD_WRITE,
+            SOCKET_RECV_EAGAIN,
             SOCKET_SEND_5,
             # Return WANT_READ twice for good measure.
-            SELECT_UPLOAD_WRITE,
+            SELECT_DOWNLOAD_READ,
+            SOCKET_RECV_EAGAIN,
             SOCKET_SEND_WANTREAD,
             SELECT_DOWNLOAD_READ,
+            SOCKET_RECV_EAGAIN,
             SOCKET_SEND_WANTREAD,
             SELECT_DOWNLOAD_READ,
+            SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
             SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
@@ -422,7 +423,6 @@ class TestUnusualSocketConditions(unittest.TestCase):
         sock = self.run_scenario(scenario)
         self.assertEqual(sock._data_sent, REQUEST)
 
-    @pytest.mark.xfail
     def test_handle_want_write_during_download(self):
         """
         When a socket is marked readable during response download but returns
@@ -430,16 +430,16 @@ class TestUnusualSocketConditions(unittest.TestCase):
         writable and issues the read again.
         """
         scenario = [
-            SELECT_UPLOAD_WRITE,
+            SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
             # Return WANT_WRITE twice for good measure.
             SELECT_DOWNLOAD_READ,
             SOCKET_RECV_WANTWRITE,
+            SOCKET_SEND_0,
             SELECT_WRITABLE_WRITE,
             SOCKET_RECV_WANTWRITE,
             SELECT_WRITABLE_WRITE,
             SOCKET_RECV_5,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
