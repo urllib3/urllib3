@@ -6,6 +6,7 @@ import pytest
 from urllib3._sync.connection import RECENT_DATE
 from urllib3.util.ssl_ import CertificateError, match_hostname
 
+
 class TestConnection(object):
     """
     Tests in this suite should not make any network requests or connections.

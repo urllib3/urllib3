@@ -1,7 +1,6 @@
 from io import BytesIO, BufferedReader
 
 import pytest
-import mock
 
 from urllib3.base import Response
 from urllib3.response import HTTPResponse
