@@ -26,12 +26,17 @@ class SyncBackend(object):
 
 
 class SyncSocket(object):
-    def __init__(self, sock, read_timeout):
+    # _selector is a hack for testing. Note that normally, we create a
+    # new selector object each time we block, but if _selector is passed
+    # we use the object every time. See test_sync_connection.py for the
+    # tests that use this.
+    def __init__(self, sock, read_timeout, _selector=None):
         self._sock = sock
         self._read_timeout = read_timeout
         # We keep the socket in non-blocking mode, except during connect() and
         # during the SSL handshake:
         self._sock.setblocking(False)
+        self._selector = _selector
 
     def start_tls(self, server_hostname, ssl_context):
         self._sock.setblocking(True)
@@ -47,7 +52,7 @@ class SyncSocket(object):
 
     def _wait(self, readable, writable):
         assert readable or writable
-        s = DEFAULT_SELECTOR()
+        s = self._selector or DEFAULT_SELECTOR()
         flags = 0
         if readable:
             flags |= selectors.EVENT_READ
