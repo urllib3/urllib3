@@ -26,6 +26,10 @@ class SyncBackend(object):
 
 
 class SyncSocket(object):
+    # _selector is a hack for testing. Note that normally, we create a
+    # new selector object each time we block, but if _selector is passed
+    # we use the object every time. See test_sync_connection.py for the
+    # tests that use this.
     def __init__(self, sock, read_timeout, _selector=None):
         self._sock = sock
         self._read_timeout = read_timeout
