@@ -25,7 +25,7 @@ venv = "test-venv-py{}{}".format(sys.version_info[0], sys.version_info[1])
 
 if not os.path.exists(venv):
     print("-- Creating venv in {} --".format(venv))
-    run([sys.executable, "-m", "venv", venv])
+    run([sys.executable, "-m", "virtualenv", venv])
 
 run([venv + "/bin/pip", "install", "-r", "dev-requirements.txt"])
 # XX get rid of this:
