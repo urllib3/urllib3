@@ -31,6 +31,7 @@ from dummyserver.server import DEFAULT_CA
 
 import h11
 
+
 class TestConnectionPool(object):
     """
     Tests in this suite should exercise the ConnectionPool functionality

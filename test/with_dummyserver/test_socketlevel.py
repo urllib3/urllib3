@@ -21,8 +21,6 @@ from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from dummyserver.server import (
     DEFAULT_CERTS, DEFAULT_CA, COMBINED_CERT_AND_KEY, get_unreachable_address)
 
-from .. import onlyPy3, LogRecorder
-
 try:
     from mimetools import Message as MimeToolMessage
 except ImportError:
@@ -1020,7 +1018,6 @@ class TestProxyManager(SocketDummyServerTestCase):
         exception = cm.value
         assert exception.response.status_code == 401
         assert exception.response.headers['x-custom-header'] == 'yougotit'
-
 
     @pytest.mark.xfail
     def test_connect_ipv6_addr(self):

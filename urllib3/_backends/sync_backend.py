@@ -1,5 +1,4 @@
 import errno
-import select
 import socket
 import ssl
 from ..util.connection import create_connection

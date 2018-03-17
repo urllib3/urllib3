@@ -53,13 +53,14 @@ __all__ = [
 # For now we only support async on 3.6, because we use async generators
 import sys
 if sys.version_info >= (3, 6):
-    from urllib3._async.connectionpool import (
+    from urllib3._async.connectionpool import (  # NOQA
         HTTPConnectionPool as AsyncHTTPConnectionPool,
         HTTPSConnectionPool as AsyncHTTPSConnectionPool)
-    from urllib3._async.poolmanager import (
+    from urllib3._async.poolmanager import (  # NOQA
         PoolManager as AsyncPoolManager,
         ProxyManager as AsyncProxyManager)
-    from urllib3._async.response import HTTPResponse as AsyncHTTPResponse
+    from urllib3._async.response import (  # NOQA
+        HTTPResponse as AsyncHTTPResponse)
     __all__.extend(
         ('AsyncHTTPConnectionPool', 'AsyncHTTPSConnectionPool',
          'AsyncPoolManager', 'AsyncProxyManager', 'AsyncHTTPResponse'))
