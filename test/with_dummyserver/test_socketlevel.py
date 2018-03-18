@@ -893,6 +893,9 @@ class TestProxyManager(SocketDummyServerTestCase):
         # OrderedDict/MultiDict).
         self.assertTrue(b'for-the-proxy: YEAH!\r\n' in r.data)
 
+    # Usually passes, but flaky. See:
+    #    https://github.com/njsmith/urllib3/pull/15#issuecomment-373977268
+    @pytest.mark.skip
     def test_retries(self):
         close_event = Event()
 
