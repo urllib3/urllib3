@@ -27,14 +27,16 @@ if not exists(venv):
     print("-- Creating venv in {} --".format(venv))
     run([sys.executable, "-m", "virtualenv", "-p", sys.executable, venv])
 
-if exists(join(venv, "bin")):
-    bindir = join(venv, "bin")
-elif exists(join(venv, "Scripts")):
-    bindir = join(venv, "Scripts")
+python_candidates = [
+    join(venv, "bin", "python"),
+    join(venv, "Scripts", "python.exe"),
+]
+for python_candidate in python_candidates:
+    if exists(python_candidate):
+        python = python_candidate
+        break
 else:
     raise RuntimeError("I don't understand this platform's virtualenv layout")
-
-python = join(venv, "bin", "python")
 
 run([python, "-m", "pip", "install", "-r", "dev-requirements.txt"])
 # XX get rid of this:
