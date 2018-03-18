@@ -69,8 +69,8 @@ dist: trusty
 notifications:
   email: false
 python:
+  - 3.5
   - 3.6
-  - 3.7-dev
 script:
   - pip install virtualenv
   - python ./runtests.py
