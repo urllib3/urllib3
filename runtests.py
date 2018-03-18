@@ -14,6 +14,7 @@
 # 3) Runs the tests. Any arguments are passed on to pytest.
 
 from os.path import exists, join
+import os
 import sys
 import subprocess
 import shutil
@@ -42,8 +43,12 @@ else:
     raise RuntimeError("I don't understand this platform's virtualenv layout")
 
 run([python, "-m", "pip", "install", "-r", "dev-requirements.txt"])
-# XX get rid of this:
-run([python, "-m", "pip", "install", "trio", "twisted[tls]"])
+# XX get rid of this extra pip call:
+if os.name == "nt":
+    twisted = "twisted[tls,windows_platform]"
+else:
+    twisted = "twisted[tls]"
+run([python, "-m", "pip", "install", "trio", twisted])
 
 print("-- Rebuilding urllib3/_sync in source tree --")
 run([python, "setup.py", "build"])
