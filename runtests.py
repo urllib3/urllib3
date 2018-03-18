@@ -59,4 +59,4 @@ except FileNotFoundError:
 shutil.copytree("build/lib/urllib3/_sync", "urllib3/_sync")
 
 print("-- Running tests --")
-run([python, "-u", "-m", "pytest"] + list(sys.argv)[1:])
+run([python, "-u", "-m", "pytest", "-v"] + list(sys.argv)[1:])
