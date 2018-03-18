@@ -106,7 +106,7 @@ class bleach_build_py(build_py):
             self.build_package_data()
 
         for f in self._updated_files:
-            if '/_async/' in f:
+            if os.sep + '_async' + os.sep in f:
                 bleach(f, '_async', '_sync')
 
         # Remaining base class code
