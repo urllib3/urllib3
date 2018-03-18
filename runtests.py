@@ -12,7 +12,7 @@
 #    do.)
 # 3) Runs the tests. Any arguments are passed on to pytest.
 
-import os.path
+from os.path import exists, join
 import sys
 import subprocess
 import shutil
@@ -23,16 +23,25 @@ def run(cmd):
 
 venv = "test-venv-py{}{}".format(sys.version_info[0], sys.version_info[1])
 
-if not os.path.exists(venv):
+if not exists(venv):
     print("-- Creating venv in {} --".format(venv))
     run([sys.executable, "-m", "virtualenv", "-p", sys.executable, venv])
 
-run([venv + "/bin/pip", "install", "-r", "dev-requirements.txt"])
+if exists(join(venv, "bin")):
+    bindir = join(venv, "bin")
+elif exists(join(venv, "Scripts")):
+    bindir = join(venv, "Scripts")
+else:
+    raise RuntimeError("I don't understand this platform's virtualenv layout")
+
+python = join(venv, "bin", "python")
+
+run([python, "-m", "pip", "install", "-r", "dev-requirements.txt"])
 # XX get rid of this:
-run([venv + "/bin/pip", "install", "trio", "twisted[tls]"])
+run([python, "-m", "pip", "install", "trio", "twisted[tls]"])
 
 print("-- Rebuilding urllib3/_sync in source tree --")
-run([sys.executable, "setup.py", "build"])
+run([python, "setup.py", "build"])
 try:
     shutil.rmtree("urllib3/_sync")
 except FileNotFoundError:
@@ -40,4 +49,4 @@ except FileNotFoundError:
 shutil.copytree("build/lib/urllib3/_sync", "urllib3/_sync")
 
 print("-- Running tests --")
-run([venv + "/bin/python", "-m", "pytest"] + list(sys.argv)[1:])
+run([python, "-m", "pytest"] + list(sys.argv)[1:])
