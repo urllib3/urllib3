@@ -3,8 +3,9 @@
 # Simple (too simple!) test running script, to tide us over until we get tox
 # etc. working properly.
 #
-# 1) Creates a venv named like 'test-venv-py36', and tries to install the
-#    required stuff into it. If you delete this it'll be recreated.
+# 1) Creates a venv named like 'test-venv-cp36-linux_x86_64', and tries to
+#    install the required stuff into it. If you delete this it'll be
+#    recreated.
 # 2) Rebuilds the _sync version of our code, and puts it into urllib3/_sync.
 #    Yes, directly inside your source directory! We run the tests directly
 #    against the source tree! (This is kinda handy though b/c it leaves the
@@ -17,11 +18,13 @@ import sys
 import subprocess
 import shutil
 
+from wheel.pep425tags import get_abi_tag, get_platform
+
 def run(cmd):
     print(cmd)
     return subprocess.check_call(cmd)
 
-venv = "test-venv-py{}{}".format(sys.version_info[0], sys.version_info[1])
+venv = "test-venv-{}-{}".format(get_abi_tag(), get_platform())
 
 if not exists(venv):
     print("-- Creating venv in {} --".format(venv))
