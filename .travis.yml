@@ -73,4 +73,4 @@ python:
   - 3.6
 script:
   - pip install virtualenv
-  - python ./runtests.py
+  - python ./runtests.py -v
