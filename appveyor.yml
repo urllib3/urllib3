@@ -56,7 +56,7 @@ install:
 
 test_script:
   #- tox
-  - python -u ./runtests.py
+  - python -u ./runtests.py -v
 
 # XX TODO: re-enable
 # on_success:
