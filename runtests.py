@@ -37,21 +37,26 @@ python_candidates = [
 ]
 for python_candidate in python_candidates:
     if exists(python_candidate):
-        python = python_candidate
+        working_python = python_candidate
         break
 else:
     raise RuntimeError("I don't understand this platform's virtualenv layout")
 
-run([python, "-u", "-m", "pip", "install", "-r", "dev-requirements.txt"])
+def python(*args):
+    run([python, "-u"] + list(args))
+
+python("-m", "pip", "install", "-r", "dev-requirements.txt")
 # XX get rid of this extra pip call:
 if os.name == "nt":
     twisted = "twisted[tls,windows_platform]"
 else:
     twisted = "twisted[tls]"
-run([python, "-u", "-m", "pip", "install", "trio", twisted])
+python("-u", "-m", "pip", "install", "trio", twisted)
+
+python("-m", "pip", "install", "pytest-random-order")
 
 print("-- Rebuilding urllib3/_sync in source tree --")
-run([python, "-u", "setup.py", "build"])
+python("setup.py", "build")
 try:
     shutil.rmtree("urllib3/_sync")
 except FileNotFoundError:
@@ -59,4 +64,4 @@ except FileNotFoundError:
 shutil.copytree("build/lib/urllib3/_sync", "urllib3/_sync")
 
 print("-- Running tests --")
-run([python, "-u", "-m", "pytest", "-v"] + list(sys.argv)[1:])
+python("-m", "pytest", "-v", *sys.argv[1:])
