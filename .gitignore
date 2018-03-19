@@ -7,4 +7,4 @@
 /build
 /docs/_build
 /urllib3/_sync
-test-venv-py*/
+test-venv-*/
