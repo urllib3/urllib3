@@ -7,17 +7,18 @@ build: off
 environment:
 
   matrix:
-    - PYTHON: "C:\\Python27-x64"
-      PYTHON_VERSION: "2.7.x"
-      PYTHON_ARCH: "64"
-      TOXENV: "py27"
-      TOXPY27: "%PYTHON%\\python.exe"
+    # XX TODO: re-enable
+    # - PYTHON: "C:\\Python27-x64"
+    #   PYTHON_VERSION: "2.7.x"
+    #   PYTHON_ARCH: "64"
+    #   TOXENV: "py27"
+    #   TOXPY27: "%PYTHON%\\python.exe"
 
-    - PYTHON: "C:\\Python34-x64"
-      PYTHON_VERSION: "3.4.x"
-      PYTHON_ARCH: "64"
-      TOXENV: "py34"
-      TOXPY34: "%PYTHON%\\python.exe"
+    # - PYTHON: "C:\\Python34-x64"
+    #   PYTHON_VERSION: "3.4.x"
+    #   PYTHON_ARCH: "64"
+    #   TOXENV: "py34"
+    #   TOXPY34: "%PYTHON%\\python.exe"
 
     - PYTHON: "C:\\Python35-x64"
       PYTHON_VERSION: "3.5.x"
@@ -54,9 +55,11 @@ install:
   - pip install tox virtualenv
 
 test_script:
-  - tox
+  #- tox
+  - python -u ./runtests.py
 
-on_success:
-  - .tox/%TOXENV%/Scripts/activate.bat
-  - pip install codecov
-  - codecov --env PLATFORM,TOXENV
+# XX TODO: re-enable
+# on_success:
+#   - .tox/%TOXENV%/Scripts/activate.bat
+#   - pip install codecov
+#   - codecov --env PLATFORM,TOXENV
