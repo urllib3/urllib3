@@ -21,6 +21,8 @@ import shutil
 
 from wheel.pep425tags import get_abi_tag, get_platform
 
+os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+
 def run(cmd):
     print(cmd)
     return subprocess.check_call(cmd)
@@ -37,13 +39,13 @@ python_candidates = [
 ]
 for python_candidate in python_candidates:
     if exists(python_candidate):
-        working_python = python_candidate
+        python_exe = python_candidate
         break
 else:
     raise RuntimeError("I don't understand this platform's virtualenv layout")
 
 def python(*args):
-    run([python, "-u"] + list(args))
+    run([python_exe, "-u"] + list(args))
 
 python("-m", "pip", "install", "-r", "dev-requirements.txt")
 # XX get rid of this extra pip call:
