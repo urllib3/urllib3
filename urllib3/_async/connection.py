@@ -238,10 +238,7 @@ async def _start_http_request(request, state_machine, sock):
         # complete request and we actually didn't. Then h11 might think we can
         # re-use this connection, even though we can't. So record this in
         # h11's state machine.
-        # XX need to implement this in h11
-        # state_machine.poison()
-        # XX kluge for now
-        state_machine._cstate.process_error(state_machine.our_role)
+        state_machine.send_failed()
 
     return context['h11_response']
 
