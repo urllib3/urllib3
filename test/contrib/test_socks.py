@@ -202,7 +202,7 @@ class TestSOCKSProxyManager(object):
         assert 'Unable to determine SOCKS version' in e.value.args[0]
 
 
-class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
+class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
     """
     Test the SOCKS proxy in SOCKS5 mode.
     """
