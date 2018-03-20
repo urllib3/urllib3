@@ -47,9 +47,9 @@ def wait_for_socket(ready_event):
     ready_event.clear()
 
 
-@pytest.mark.skip
 class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
 
+    @pytest.mark.skip
     def test_timeout_float(self):
         block_event = Event()
         ready_event = self.start_basic_handler(block_send=block_event, num=2)
@@ -66,6 +66,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         block_event.set()  # Pre-release block
         pool.request('GET', '/')
 
+    @pytest.mark.skip
     def test_conn_closed(self):
         block_event = Event()
         self.start_basic_handler(block_send=block_event, num=1)
@@ -85,6 +86,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
 
         block_event.set()
 
+    @pytest.mark.skip
     def test_timeout(self):
         # Requests should time out when expected
         block_event = Event()
@@ -145,6 +147,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
                           timeout=SHORT_TIMEOUT)
         block_event.set()  # Release request
 
+    @pytest.mark.skip
     def test_connect_timeout(self):
         url = '/'
         host, port = TARPIT_HOST, 80
@@ -173,6 +176,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         pool._put_conn(conn)
         self.assertRaises(ConnectTimeoutError, pool.request, 'GET', url, timeout=timeout)
 
+    @pytest.mark.skip
     def test_total_applies_connect(self):
         host, port = TARPIT_HOST, 80
 
@@ -190,6 +194,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         self.addCleanup(conn.close)
         self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', '/')
 
+    @pytest.mark.skip
     def test_total_timeout(self):
         block_event = Event()
         ready_event = self.start_basic_handler(block_send=block_event, num=2)
@@ -211,6 +216,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         self.addCleanup(pool.close)
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/')
 
+    @pytest.mark.xfail
     def test_create_connection_timeout(self):
         timeout = Timeout(connect=SHORT_TIMEOUT, total=LONG_TIMEOUT)
         pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout, retries=False)
@@ -223,7 +229,6 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         )
 
 
-@pytest.mark.skip
 class TestConnectionPool(HTTPDummyServerTestCase):
 
     def setUp(self):
@@ -235,6 +240,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                               fields={'method': 'GET'})
         self.assertEqual(r.status, 200, r.data)
 
+    @pytest.mark.skip
     def test_post_url(self):
         r = self.pool.request('POST', '/specific_method',
                               fields={'method': 'POST'})
@@ -244,6 +250,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.urlopen('PUT', '/specific_method?method=PUT')
         self.assertEqual(r.status, 200, r.data)
 
+    @pytest.mark.skip
     def test_wrong_specific_method(self):
         # To make sure the dummy server is actually returning failed responses
         r = self.pool.request('GET', '/specific_method',
@@ -254,6 +261,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                               fields={'method': 'GET'})
         self.assertEqual(r.status, 400, r.data)
 
+    @pytest.mark.skip
     def test_upload(self):
         data = "I'm in ur multipart form-data, hazing a cheezburgr"
         fields = {
@@ -266,6 +274,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('POST', '/upload', fields=fields)
         self.assertEqual(r.status, 200, r.data)
 
+    @pytest.mark.skip
     def test_one_name_multiple_values(self):
         fields = [
             ('foo', 'a'),
@@ -280,6 +289,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('POST', '/echo', fields=fields)
         self.assertEqual(r.data.count(b'name="foo"'), 2)
 
+    @pytest.mark.skip
     def test_request_method_body(self):
         body = b'hi'
         r = self.pool.request('POST', '/echo', body=body)
@@ -288,6 +298,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         fields = [('hi', 'hello')]
         self.assertRaises(TypeError, self.pool.request, 'POST', '/echo', body=body, fields=fields)
 
+    @pytest.mark.skip
     def test_unicode_upload(self):
         fieldname = u('myfile')
         filename = u('\xe2\x99\xa5.txt')
@@ -304,6 +315,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('POST', '/upload', fields=fields)
         self.assertEqual(r.status, 200, r.data)
 
+    @pytest.mark.xfail
     def test_nagle(self):
         """ Test that connections have TCP_NODELAY turned on """
         # This test needs to be here in order to be run. socket.create_connection actually tries
@@ -316,6 +328,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         tcp_nodelay_setting = conn._sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
         self.assertTrue(tcp_nodelay_setting)
 
+    @pytest.mark.xfail
     def test_socket_options(self):
         """Test that connections accept socket options."""
         # This test needs to be here in order to be run. socket.create_connection actually tries to
@@ -330,6 +343,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertTrue(using_keepalive)
         s.close()
 
+    @pytest.mark.xfail
     def test_disable_default_socket_options(self):
         """Test that passing None disables all socket options."""
         # This test needs to be here in order to be run. socket.create_connection actually tries
@@ -342,6 +356,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertTrue(using_nagle)
         s.close()
 
+    @pytest.mark.xfail
     def test_defaults_are_applied(self):
         """Test that modifying the default socket options works."""
         # This test needs to be here in order to be run. socket.create_connection actually tries
@@ -389,6 +404,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.addCleanup(pool.close)
         pool.request('GET', '/')
 
+    @pytest.mark.xfail
     def test_redirect(self):
         r = self.pool.request('GET', '/redirect', fields={'target': '/'}, redirect=False)
         self.assertEqual(r.status, 303)
@@ -405,6 +421,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         except MaxRetryError as e:
             self.assertEqual(type(e.reason), NewConnectionError)
 
+    @pytest.mark.skip
     def test_keepalive(self):
         pool = HTTPConnectionPool(self.host, self.port, block=True, maxsize=1)
         self.addCleanup(pool.close)
@@ -416,6 +433,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(pool.num_connections, 1)
         self.assertEqual(pool.num_requests, 2)
 
+    @pytest.mark.skip
     def test_keepalive_close(self):
         pool = HTTPConnectionPool(self.host, self.port,
                                   block=True, maxsize=1, timeout=2)
@@ -466,11 +484,13 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # Next request
         r = pool.request('GET', '/keepalive?close=0')
 
+    @pytest.mark.skip
     def test_post_with_urlencode(self):
         data = {'banana': 'hammock', 'lol': 'cat'}
         r = self.pool.request('POST', '/echo', fields=data, encode_multipart=False)
         self.assertEqual(r.data.decode('utf-8'), urlencode(data))
 
+    @pytest.mark.skip
     def test_post_with_multipart(self):
         data = {'banana': 'hammock', 'lol': 'cat'}
         r = self.pool.request('POST', '/echo',
@@ -517,6 +537,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                           'GET', '/encodingrequest',
                           headers={'accept-encoding': 'garbage-gzip'})
 
+    @pytest.mark.xfail
     def test_connection_count(self):
         pool = HTTPConnectionPool(self.host, self.port, maxsize=1)
         self.addCleanup(pool.close)
@@ -528,6 +549,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(pool.num_connections, 1)
         self.assertEqual(pool.num_requests, 3)
 
+    @pytest.mark.xfail
     def test_connection_count_bigpool(self):
         http_pool = HTTPConnectionPool(self.host, self.port, maxsize=16)
         self.addCleanup(http_pool.close)
@@ -551,6 +573,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(r.read(5), resp_data[:5])
         self.assertEqual(r.read(), resp_data[5:])
 
+    @pytest.mark.skip
     def test_lazy_load_twice(self):
         # This test is sad and confusing. Need to figure out what's
         # going on with partial reads and socket reuse.
@@ -598,6 +621,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         self.assertEqual(pool.num_connections, 1)
 
+    @pytest.mark.xfail
     def test_for_double_release(self):
         MAXSIZE = 5
 
@@ -661,6 +685,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                               pool.request,
                               'GET', '/source_address?{0}'.format(addr))
 
+    @pytest.mark.xfail
     def test_stream_keepalive(self):
         x = 2
 
