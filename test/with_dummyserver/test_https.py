@@ -116,7 +116,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 error = call[0][1]
                 self.assertEqual(error, InsecurePlatformWarning)
 
-    @pytest.mark.xfail
     def test_verified_with_context(self):
         ctx = util.ssl_.create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
         ctx.load_verify_locations(cafile=DEFAULT_CA)
@@ -141,7 +140,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 error = call[0][1]
                 self.assertEqual(error, InsecurePlatformWarning)
 
-    @pytest.mark.xfail
     def test_context_combines_with_ca_certs(self):
         ctx = util.ssl_.create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
         https_pool = HTTPSConnectionPool(self.host, self.port,
