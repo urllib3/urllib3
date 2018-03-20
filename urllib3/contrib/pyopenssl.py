@@ -199,8 +199,7 @@ def get_subj_alt_name(peer_cert):
     except x509.ExtensionNotFound:
         # No such extension, return the empty list.
         return []
-    except (x509.DuplicateExtension, x509.UnsupportedExtension,
-            x509.UnsupportedGeneralNameType, UnicodeError) as e:
+    except (x509.DuplicateExtension, x509.UnsupportedGeneralNameType, UnicodeError) as e:
         # A problem has been found with the quality of the certificate. Assume
         # no SAN field is present.
         log.warning(
