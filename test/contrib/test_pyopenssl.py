@@ -25,7 +25,6 @@ def teardown_module():
     extract_from_urllib3()
 
 
-@pytest.mark.skip
 class TestPyOpenSSLHelpers(unittest.TestCase):
     """
     Tests for PyOpenSSL helper functions.
