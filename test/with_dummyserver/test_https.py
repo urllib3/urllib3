@@ -78,7 +78,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.assertDictEqual(json.loads(r.data.decode('utf-8')),
                              client_subject, r.data)
 
-    @pytest.mark.skip  # XX flaky on AppVeyor
+    # XX flaky on AppVeyor
+    # https://github.com/njsmith/urllib3/pull/21#issuecomment-374847312
+    @pytest.mark.skip
     def test_client_no_intermediate(self):
         client_cert, client_key = (
             DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS['certfile'],
