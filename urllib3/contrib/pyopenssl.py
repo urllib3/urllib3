@@ -47,6 +47,12 @@ import OpenSSL.SSL
 from cryptography import x509
 from cryptography.hazmat.backends.openssl import backend as openssl_backend
 from cryptography.hazmat.backends.openssl.x509 import _Certificate
+try:
+    from cryptography.x509 import UnsupportedExtension
+except ImportError:
+    # UnsupportedExtension is gone in cryptography >= 2.1.0
+    class UnsupportedExtension(Exception):
+        pass
 
 from socket import timeout, error as SocketError
 from io import BytesIO
@@ -199,7 +205,8 @@ def get_subj_alt_name(peer_cert):
     except x509.ExtensionNotFound:
         # No such extension, return the empty list.
         return []
-    except (x509.DuplicateExtension, x509.UnsupportedGeneralNameType, UnicodeError) as e:
+    except (x509.DuplicateExtension, UnsupportedExtension,
+            x509.UnsupportedGeneralNameType, UnicodeError) as e:
         # A problem has been found with the quality of the certificate. Assume
         # no SAN field is present.
         log.warning(
