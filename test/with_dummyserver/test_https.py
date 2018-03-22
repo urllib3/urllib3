@@ -78,6 +78,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.assertDictEqual(json.loads(r.data.decode('utf-8')),
                              client_subject, r.data)
 
+    # XX flaky on AppVeyor
+    # https://github.com/njsmith/urllib3/pull/21#issuecomment-374847312
+    @pytest.mark.skip
     def test_client_no_intermediate(self):
         client_cert, client_key = (
             DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS['certfile'],
@@ -116,7 +119,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 error = call[0][1]
                 self.assertEqual(error, InsecurePlatformWarning)
 
-    @pytest.mark.xfail
     def test_verified_with_context(self):
         ctx = util.ssl_.create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
         ctx.load_verify_locations(cafile=DEFAULT_CA)
@@ -141,7 +143,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 error = call[0][1]
                 self.assertEqual(error, InsecurePlatformWarning)
 
-    @pytest.mark.xfail
     def test_context_combines_with_ca_certs(self):
         ctx = util.ssl_.create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
         https_pool = HTTPSConnectionPool(self.host, self.port,

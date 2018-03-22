@@ -161,7 +161,6 @@ class TestResponse(object):
         assert resp.data == b'foo'
         assert resp.closed
 
-    @pytest.mark.xfail
     def test_io(self):
         fp = BytesIO(b'foo')
         resp = HTTPResponse(fp, preload_content=False)
@@ -176,14 +175,11 @@ class TestResponse(object):
         assert resp.closed
 
         # Try closing with a base Response
-        try:
-            hlr = get_response()
-            resp2 = HTTPResponse(hlr.body, preload_content=False)
-            assert not resp2.closed
-            resp2.close()
-            assert resp2.closed
-        finally:
-            hlr.close()
+        hlr = get_response()
+        resp2 = HTTPResponse(hlr.body, preload_content=False)
+        assert not resp2.closed
+        resp2.close()
+        assert resp2.closed
 
         # also try when only data is present.
         resp3 = HTTPResponse('foodata')
