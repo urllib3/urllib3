@@ -308,7 +308,7 @@ if hasattr(select, "select"):
             self._writers.discard(key.fd)
             return key
 
-        def _select(self, r, w, timeout=None):
+        def _wrap_select(self, r, w, timeout=None):
             """ Wrapper for select.select because timeout is a positional arg """
             return select.select(r, w, [], timeout)
 
@@ -319,7 +319,7 @@ if hasattr(select, "select"):
 
             timeout = None if timeout is None else max(timeout, 0.0)
             ready = []
-            r, w, _ = _syscall_wrapper(self._select, True, self._readers,
+            r, w, _ = _syscall_wrapper(self._wrap_select, True, self._readers,
                                        self._writers, timeout=timeout)
             r = set(r)
             w = set(w)
@@ -512,7 +512,7 @@ if hasattr(select, "kqueue"):
             max_events = len(self._fd_to_key) * 2
             ready_fds = {}
 
-            kevent_list = _syscall_wrapper(self._kqueue.control, True,
+            kevent_list = _syscall_wrapper(self._wrap_control, True,
                                            None, max_events, timeout=timeout)
 
             for kevent in kevent_list:
@@ -537,6 +537,9 @@ if hasattr(select, "kqueue"):
         def close(self):
             self._kqueue.close()
             super(KqueueSelector, self).close()
+
+        def _wrap_control(self, changelist, max_events, timeout=None):
+            return self._kqueue.control(changelist, max_events, timeout)
 
 
 if not hasattr(select, 'select'):  # Platform-specific: AppEngine
