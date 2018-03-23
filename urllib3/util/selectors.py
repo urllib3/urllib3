@@ -11,8 +11,13 @@ import select
 import socket
 import sys
 import time
-from collections import namedtuple, Mapping
+from collections import namedtuple
 from ..packages.six import integer_types
+
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
 
 try:
     monotonic = time.monotonic
