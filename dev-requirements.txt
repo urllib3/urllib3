@@ -13,9 +13,6 @@ pytest-timeout==1.2.1
 pytest==3.4.2
 gcp-devrel-py-tools==0.0.13
 h11==0.8.0
-# Temporary pin to work around:
-#   https://github.com/shazow/urllib3/issues/1340
-#   https://github.com/shazow/urllib3/issues/1341
 cryptography==2.2.1
 trio==0.3.0
 twisted[tls,windows_platform]==17.9.0; os_name == 'nt'
