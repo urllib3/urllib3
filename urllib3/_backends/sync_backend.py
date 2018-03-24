@@ -93,6 +93,9 @@ class SyncSocket(object):
                     else:
                         outgoing = memoryview(b)
 
+                # This controls whether or not we block
+                made_progress = False
+                # If we do block, then these determine what can wake us up
                 want_read = False
                 want_write = False
 
@@ -106,6 +109,7 @@ class SyncSocket(object):
                     if exc.errno in (errno.EWOULDBLOCK, errno.EAGAIN):
                         want_read = True
                 else:
+                    made_progress = True
                     # Can exit loop here with LoopAbort
                     consume_bytes(incoming)
 
@@ -120,8 +124,10 @@ class SyncSocket(object):
                     except (OSError, socket.error) as exc:
                         if exc.errno in (errno.EWOULDBLOCK, errno.EAGAIN):
                             want_write = True
+                    else:
+                        made_progress = True
 
-                if want_read or want_write:
+                if not made_progress:
                     self._wait(want_read, want_write)
         except LoopAbort:
             pass
