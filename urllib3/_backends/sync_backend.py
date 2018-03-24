@@ -108,6 +108,8 @@ class SyncSocket(object):
                 except (OSError, socket.error) as exc:
                     if exc.errno in (errno.EWOULDBLOCK, errno.EAGAIN):
                         want_read = True
+                    else:
+                        raise
                 else:
                     made_progress = True
                     # Can exit loop here with LoopAbort
@@ -124,6 +126,8 @@ class SyncSocket(object):
                     except (OSError, socket.error) as exc:
                         if exc.errno in (errno.EWOULDBLOCK, errno.EAGAIN):
                             want_write = True
+                        else:
+                            raise
                     else:
                         made_progress = True
 
