@@ -24,7 +24,6 @@ try:
 except (AttributeError, ImportError):  # Python 3.3<
     monotonic = time.time
 
-
 EVENT_READ = (1 << 0)
 EVENT_WRITE = (1 << 1)
 
@@ -79,7 +78,15 @@ else:
         """ Wrapper function for syscalls that could fail due to EINTR.
         All functions should be retried if there is time left in the timeout
         in accordance with PEP 475. """
+
+        if recalc_timeout and "timeout" not in kwargs:
+            raise ValueError(
+                "Timeout must be in kwargs to be recalculated")
+
+        # timeout for recalcultion must be a keyword argument
         timeout = kwargs.get("timeout", None)
+
+        # Based on the timeout, determine call expiry time
         if timeout is None:
             expires = None
             recalc_timeout = False
@@ -89,11 +96,6 @@ else:
                 expires = None
             else:
                 expires = monotonic() + timeout
-
-        args = list(args)
-        if recalc_timeout and "timeout" not in kwargs:
-            raise ValueError(
-                "Timeout must be in args or kwargs to be recalculated")
 
         result = _SYSCALL_SENTINEL
         while result is _SYSCALL_SENTINEL:
@@ -106,7 +108,7 @@ else:
             except (OSError, IOError, select.error) as e:
                 # select.error wasn't a subclass of OSError in the past.
                 errcode = None
-                if hasattr(e, "errno"):
+                if hasattr(e, "errno") and e.errno is not None:
                     errcode = e.errno
                 elif hasattr(e, "args"):
                     errcode = e.args[0]
@@ -119,10 +121,9 @@ else:
                     if expires is not None:
                         current_time = monotonic()
                         if current_time > expires:
-                            raise OSError(errno=errno.ETIMEDOUT)
+                            raise OSError(errno.ETIMEDOUT, "Connection timed out")
                         if recalc_timeout:
-                            if "timeout" in kwargs:
-                                kwargs["timeout"] = expires - current_time
+                            kwargs["timeout"] = expires - current_time
                     continue
                 if errcode:
                     raise SelectorError(errcode)
@@ -312,7 +313,7 @@ if hasattr(select, "select"):
             self._writers.discard(key.fd)
             return key
 
-        def _select(self, r, w, timeout=None):
+        def _wrap_select(self, r, w, timeout=None):
             """ Wrapper for select.select because timeout is a positional arg """
             return select.select(r, w, [], timeout)
 
@@ -323,8 +324,8 @@ if hasattr(select, "select"):
 
             timeout = None if timeout is None else max(timeout, 0.0)
             ready = []
-            r, w, _ = _syscall_wrapper(self._select, True, self._readers,
-                                       self._writers, timeout)
+            r, w, _ = _syscall_wrapper(self._wrap_select, True, self._readers,
+                                       self._writers, timeout=timeout)
             r = set(r)
             w = set(w)
             for fd in r | w:
@@ -516,8 +517,8 @@ if hasattr(select, "kqueue"):
             max_events = len(self._fd_to_key) * 2
             ready_fds = {}
 
-            kevent_list = _syscall_wrapper(self._kqueue.control, True,
-                                           None, max_events, timeout)
+            kevent_list = _syscall_wrapper(self._wrap_control, True,
+                                           None, max_events, timeout=timeout)
 
             for kevent in kevent_list:
                 fd = kevent.ident
@@ -542,6 +543,9 @@ if hasattr(select, "kqueue"):
             self._kqueue.close()
             super(KqueueSelector, self).close()
 
+        def _wrap_control(self, changelist, max_events, timeout=None):
+            return self._kqueue.control(changelist, max_events, timeout)
+
 
 if not hasattr(select, 'select'):  # Platform-specific: AppEngine
     HAS_SELECT = False
@@ -562,7 +566,7 @@ def _can_allocate(struct):
         else:
             getattr(select, struct)().close()
         return True
-    except (OSError, AttributeError) as e:
+    except (OSError, AttributeError):
         return False
 
 
