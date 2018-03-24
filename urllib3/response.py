@@ -113,9 +113,8 @@ class HTTPResponse(io.IOBase):
         If True, the response's body will be preloaded during construction.
 
     :param decode_content:
-        If True, attempts to decode specific content-encoding's based on headers
-        (like 'gzip' and 'deflate') will be skipped and raw data will be used
-        instead.
+        If True, will attempt to decode the body based on the
+        'content-encoding' header.
 
     :param original_response:
         When this HTTPResponse wrapper is generated from an httplib.HTTPResponse
