@@ -48,14 +48,6 @@ def python(*args):
     run([python_exe, "-u"] + list(args))
 
 python("-m", "pip", "install", "-r", "dev-requirements.txt")
-# XX get rid of this extra pip call:
-if os.name == "nt":
-    twisted = "twisted[tls,windows_platform]"
-else:
-    twisted = "twisted[tls]"
-python("-u", "-m", "pip", "install", "trio", twisted)
-
-python("-m", "pip", "install", "pytest-random-order")
 
 print("-- Rebuilding urllib3/_sync in source tree --")
 python("setup.py", "build")
