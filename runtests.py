@@ -25,7 +25,10 @@ os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 
 def run(cmd):
     print(cmd)
-    return subprocess.check_call(cmd)
+    try:
+        subprocess.check_call(cmd)
+    except subprocess.CalledProcessError as e:
+        sys.exit(e.returncode)
 
 venv = "test-venv-{}-{}".format(get_abi_tag(), get_platform())
 
