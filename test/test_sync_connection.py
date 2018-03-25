@@ -260,7 +260,6 @@ class TestUnusualSocketConditions(unittest.TestCase):
         scenario = [
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
@@ -274,7 +273,6 @@ class TestUnusualSocketConditions(unittest.TestCase):
         scenario = [
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
             SELECT_DOWNLOAD_READ,
@@ -293,7 +291,6 @@ class TestUnusualSocketConditions(unittest.TestCase):
         scenario = [
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_WANTREAD,
             SOCKET_SEND_ALL,
             SELECT_DOWNLOAD_READ,
@@ -312,10 +309,8 @@ class TestUnusualSocketConditions(unittest.TestCase):
         scenario = [
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_5,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
@@ -329,10 +324,8 @@ class TestUnusualSocketConditions(unittest.TestCase):
         scenario = [
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_5,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_WANTREAD,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
@@ -346,13 +339,11 @@ class TestUnusualSocketConditions(unittest.TestCase):
         scenario = [
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_5,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_EAGAIN,
             SELECT_UPLOAD_WRITE,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
@@ -367,13 +358,11 @@ class TestUnusualSocketConditions(unittest.TestCase):
         scenario = [
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_5,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_WANTWRITE,
             SELECT_UPLOAD_WRITE,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
@@ -389,10 +378,8 @@ class TestUnusualSocketConditions(unittest.TestCase):
         scenario = [
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_5,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_5,
-            SELECT_DOWNLOAD_READ,  # XXX At this point we send instead
-            SOCKET_RECV_ALL,
+            SOCKET_RECV_ALL,  # XXX At this point we send instead
         ]
         sock = self.run_scenario(scenario)
         self.assertEqual(sock._data_sent, REQUEST[:5])
@@ -408,7 +395,6 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_5,
             # Return WANT_READ twice for good measure.
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_WANTREAD,
             SELECT_DOWNLOAD_READ,
@@ -417,7 +403,6 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SELECT_DOWNLOAD_READ,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
@@ -433,7 +418,6 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
             # Return WANT_WRITE twice for good measure.
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_WANTWRITE,
             SOCKET_SEND_0,
             SELECT_WRITABLE_WRITE,
