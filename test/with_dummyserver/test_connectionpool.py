@@ -5,6 +5,7 @@ import sys
 import unittest
 import time
 import warnings
+import pytest
 
 import mock
 
@@ -694,6 +695,16 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         self.assertEqual(self.pool.num_connections, 1)
         self.assertEqual(self.pool.num_requests, x)
+
+    def test_read_chunked_short_circuit(self):
+        response = self.pool.request(
+            'GET',
+            '/chunked',
+            preload_content=False
+        )
+        response.read()
+        with pytest.raises(StopIteration):
+            next(response.read_chunked())
 
     def test_chunked_gzip(self):
         response = self.pool.request(
