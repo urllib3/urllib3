@@ -18,6 +18,8 @@ dev (master)
 
 * Lazily load `uuid` to boost performance on imports (Pull #1270)
 
+* ``read_chunked()`` on a closed response returns no chunks. (Issue #1088)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
