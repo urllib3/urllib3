@@ -697,6 +697,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # drain and return the connection to the pool before recursing
             drain_and_release_conn(response)
 
+            # Strip the Authentication header if redirecting to a new host
+            # and we don't want to forward that header across hosts.
+            if (not retries.forward_auth_headers_across_hosts
+                    and 'Authentication' in headers
+                    and not self.is_same_host(redirect_location)):
+                headers.pop('Authentication')
+
             retries.sleep_for_retry(response)
             log.debug("Redirecting %s -> %s", url, redirect_location)
             return self.urlopen(

@@ -5,11 +5,15 @@ import sys
 import unittest
 import time
 import warnings
+import json
 
 import mock
 
 from .. import (
-    TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES,
+    TARPIT_HOST,
+    VALID_SOURCE_ADDRESSES,
+    INVALID_SOURCE_ADDRESSES,
+    requires_network
 )
 from ..port_helpers import find_unused_port
 from urllib3 import (
@@ -743,6 +747,8 @@ class TestRetry(HTTPDummyServerTestCase):
         self.pool = HTTPConnectionPool(self.host, self.port)
         self.addCleanup(self.pool.close)
 
+        self.base_url_alt = 'http://%s:%d' % (self.host_alt, self.port)
+
     def test_max_retry(self):
         try:
             r = self.pool.request('GET', '/redirect',
@@ -860,6 +866,31 @@ class TestRetry(HTTPDummyServerTestCase):
                     (302, '/multi_redirect?redirect_codes=200')]
         actual = [(history.status, history.redirect_location) for history in r.retries.history]
         self.assertEqual(actual, expected)
+
+    def test_redirect_cross_host_no_forward_auth_headers(self):
+        url = '/redirect?target=%s/headers' % self.base_url_alt
+        headers = {'Authentication': 'foo'}
+
+        resp = self.pool.urlopen('GET', url, headers=headers, assert_same_host=False)
+
+        self.assertEqual(resp.status, 200)
+
+        data = json.loads(resp.data.decode('utf-8'))
+
+        self.assertNotIn('Authentication', data)
+
+    def test_redirect_cross_host_forward_auth_headers(self):
+        url = '/redirect?target=%s/headers' % self.base_url_alt
+        headers = {'Authentication': 'foo'}
+        retry = Retry(redirect=2, forward_auth_headers_across_hosts=True)
+
+        resp = self.pool.urlopen('GET', url, headers=headers, assert_same_host=False, retries=retry)
+
+        self.assertEqual(resp.status, 200)
+
+        data = json.loads(resp.data.decode('utf-8'))
+
+        self.assertEqual(data['Authentication'], 'foo')
 
 
 class TestRetryAfter(HTTPDummyServerTestCase):
