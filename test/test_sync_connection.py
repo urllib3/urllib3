@@ -185,7 +185,7 @@ class ScenarioSocket(object):
     def recv(self, amt):
         expected_object, event, args = self._scenario.pop(0)
         if expected_object is not SOCKET:
-            raise ScenarioError("Received non selector event!")
+            raise ScenarioError("Received non socket event!")
 
         if event is not EVENT_RECV:
             raise ScenarioError("Expected EVENT_RECV, got %s" % event)
