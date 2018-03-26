@@ -12,8 +12,7 @@ import mock
 from .. import (
     TARPIT_HOST,
     VALID_SOURCE_ADDRESSES,
-    INVALID_SOURCE_ADDRESSES,
-    requires_network
+    INVALID_SOURCE_ADDRESSES
 )
 from ..port_helpers import find_unused_port
 from urllib3 import (
@@ -884,7 +883,11 @@ class TestRetry(HTTPDummyServerTestCase):
         headers = {'Authentication': 'foo'}
         retry = Retry(redirect=2, forward_auth_headers_across_hosts=True)
 
-        resp = self.pool.urlopen('GET', url, headers=headers, assert_same_host=False, retries=retry)
+        resp = self.pool.urlopen(
+            'GET', url, headers=headers,
+            assert_same_host=False,
+            retries=retry
+        )
 
         self.assertEqual(resp.status, 200)
 

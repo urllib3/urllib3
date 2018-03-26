@@ -176,6 +176,10 @@ class TestGAERetry(test_connectionpool.TestRetry):
     test_retry_redirect_history = None
     test_multi_redirect_history = None
 
+    # GAE doesn't have the assert_same_host parameter in urlopen()
+    test_redirect_cross_host_forward_auth_headers = None
+    test_redirect_cross_host_no_forward_auth_headers = None
+
 
 @pytest.mark.usefixtures('testbed')
 class TestGAERetryAfter(test_connectionpool.TestRetryAfter):
