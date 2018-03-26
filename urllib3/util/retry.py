@@ -139,6 +139,10 @@ class Retry(object):
         Whether to respect Retry-After header on status codes defined as
         :attr:`Retry.RETRY_AFTER_STATUS_CODES` or not.
 
+    :param bool forward_auth_headers_across_hosts:
+        Whether to forward Authentication headers if a response is received
+        that redirects to a different host than the original request.
+        Defaults to False.
     """
 
     DEFAULT_METHOD_WHITELIST = frozenset([
@@ -152,7 +156,8 @@ class Retry(object):
     def __init__(self, total=10, connect=None, read=None, redirect=None, status=None,
                  method_whitelist=DEFAULT_METHOD_WHITELIST, status_forcelist=None,
                  backoff_factor=0, raise_on_redirect=True, raise_on_status=True,
-                 history=None, respect_retry_after_header=True):
+                 history=None, respect_retry_after_header=True,
+                 forward_auth_headers_across_hosts=False):
 
         self.total = total
         self.connect = connect
@@ -171,6 +176,8 @@ class Retry(object):
         self.raise_on_status = raise_on_status
         self.history = history or tuple()
         self.respect_retry_after_header = respect_retry_after_header
+        self.forward_auth_headers_across_hosts = \
+            forward_auth_headers_across_hosts
 
     def new(self, **kw):
         params = dict(
@@ -182,6 +189,7 @@ class Retry(object):
             raise_on_redirect=self.raise_on_redirect,
             raise_on_status=self.raise_on_status,
             history=self.history,
+            forward_auth_headers_across_hosts=self.forward_auth_headers_across_hosts
         )
         params.update(kw)
         return type(self)(**params)
