@@ -109,6 +109,35 @@ class TestPoolManager(HTTPDummyServerTestCase):
         except MaxRetryError:
             pass
 
+    def test_redirect_cross_host_strip_auth_headers(self):
+        http = PoolManager()
+        self.addCleanup(http.clear)
+
+        r = http.request('GET', '%s/redirect' % self.base_url,
+                         fields={'target': '%s/headers' % self.base_url_alt},
+                         headers={'Authentication': 'foo'})
+
+        self.assertEqual(r.status, 200)
+
+        data = json.loads(r.data.decode('utf-8'))
+
+        self.assertNotIn('Authentication', data)
+
+    def test_redirect_cross_host_forward_auth_headers(self):
+        http = PoolManager()
+        self.addCleanup(http.clear)
+
+        r = http.request('GET', '%s/redirect' % self.base_url,
+                         fields={'target': '%s/headers' % self.base_url_alt},
+                         headers={'Authentication': 'foo'},
+                         retries=Retry(forward_auth_headers_across_hosts=True))
+
+        self.assertEqual(r.status, 200)
+
+        data = json.loads(r.data.decode('utf-8'))
+
+        self.assertEqual(data['Authentication'], 'foo')
+
     def test_raise_on_redirect(self):
         http = PoolManager()
         self.addCleanup(http.clear)

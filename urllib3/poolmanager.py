@@ -312,8 +312,11 @@ class PoolManager(RequestMethods):
 
         kw['assert_same_host'] = False
         kw['redirect'] = False
+
         if 'headers' not in kw:
-            kw['headers'] = self.headers
+            kw['headers'] = headers = self.headers
+        else:
+            headers = kw['headers']
 
         if self.proxy is not None and u.scheme == "http":
             response = conn.urlopen(method, url, **kw)
@@ -335,6 +338,13 @@ class PoolManager(RequestMethods):
         if not isinstance(retries, Retry):
             retries = Retry.from_int(retries, redirect=redirect)
 
+        # Strip the Authentication header if redirecting to a new host
+        # and we don't want to forward that header across hosts.
+        if (not retries.forward_auth_headers_across_hosts
+                and 'Authentication' in headers
+                and not conn.is_same_host(redirect_location)):
+            headers.pop('Authentication')
+
         try:
             retries = retries.increment(method, url, response=response, _pool=conn)
         except MaxRetryError:
@@ -344,6 +354,7 @@ class PoolManager(RequestMethods):
 
         kw['retries'] = retries
         kw['redirect'] = redirect
+        kw['headers'] = headers
 
         log.info("Redirecting %s -> %s", url, redirect_location)
         return self.urlopen(method, redirect_location, **kw)
