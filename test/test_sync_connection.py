@@ -61,7 +61,6 @@ SELECT_WRITABLE_WRITE = Event(
 )
 SOCKET_SEND_ALL = Event(SOCKET, EVENT_SEND, (SEND_ALL,))
 SOCKET_SEND_5 = Event(SOCKET, EVENT_SEND, (5,))
-SOCKET_SEND_0 = Event(SOCKET, EVENT_SEND, (0,))
 SOCKET_SEND_EAGAIN = Event(SOCKET, EVENT_SEND, (RAISE_EAGAIN,))
 SOCKET_SEND_WANTREAD = Event(SOCKET, EVENT_SEND, (RAISE_WANT_READ,))
 SOCKET_SEND_WANTWRITE = Event(SOCKET, EVENT_SEND, (RAISE_WANT_WRITE,))
@@ -275,7 +274,6 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_SEND_ALL,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_EAGAIN,
             SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
@@ -293,7 +291,6 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_SEND_ALL,
             SOCKET_RECV_WANTREAD,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_WANTREAD,
             SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
@@ -419,8 +416,7 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_SEND_ALL,
             # Return WANT_WRITE twice for good measure.
             SOCKET_RECV_WANTWRITE,
-            SOCKET_SEND_0,
-            SELECT_WRITABLE_WRITE,
+            SOCKET_SEND_5,
             SOCKET_RECV_WANTWRITE,
             SELECT_WRITABLE_WRITE,
             SOCKET_RECV_5,
