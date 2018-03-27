@@ -20,9 +20,6 @@ from ..packages import six
 log = logging.getLogger(__name__)
 
 
-DEFAULT_REDIRECT_HEADERS_BLACKLIST = ['Authorization']
-
-
 # Data structure for representing the metadata of requests that result in a retry.
 RequestHistory = namedtuple('RequestHistory', ["method", "url", "error",
                                                "status", "redirect_location"])
@@ -154,6 +151,8 @@ class Retry(object):
 
     RETRY_AFTER_STATUS_CODES = frozenset([413, 429, 503])
 
+    DEFAULT_REDIRECT_HEADERS_BLACKLIST = frozenset(['Authorization'])
+
     #: Maximum backoff time.
     BACKOFF_MAX = 120
 
@@ -173,7 +172,7 @@ class Retry(object):
             raise_on_redirect = False
 
         if remove_headers_on_redirect is None:
-            remove_headers_on_redirect = DEFAULT_REDIRECT_HEADERS_BLACKLIST
+            remove_headers_on_redirect = self.DEFAULT_REDIRECT_HEADERS_BLACKLIST
         remove_headers_on_redirect = set(remove_headers_on_redirect)
 
         self.redirect = redirect
