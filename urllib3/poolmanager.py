@@ -314,9 +314,7 @@ class PoolManager(RequestMethods):
         kw['redirect'] = False
 
         if 'headers' not in kw:
-            kw['headers'] = headers = self.headers
-        else:
-            headers = kw['headers']
+            kw['headers'] = self.headers.copy()
 
         if self.proxy is not None and u.scheme == "http":
             response = conn.urlopen(method, url, **kw)
@@ -342,8 +340,7 @@ class PoolManager(RequestMethods):
         if (retries.remove_headers_on_redirect
                 and not conn.is_same_host(redirect_location)):
             for header in retries.remove_headers_on_redirect:
-                if header in headers:
-                    headers.pop(header)
+                kw['headers'].pop(header, None)
 
         try:
             retries = retries.increment(method, url, response=response, _pool=conn)
@@ -354,7 +351,6 @@ class PoolManager(RequestMethods):
 
         kw['retries'] = retries
         kw['redirect'] = redirect
-        kw['headers'] = headers
 
         log.info("Redirecting %s -> %s", url, redirect_location)
         return self.urlopen(method, redirect_location, **kw)
