@@ -706,6 +706,16 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         with pytest.raises(StopIteration):
             next(response.read_chunked())
 
+    def test_read_chunked_on_closed_response(self):
+        response = self.pool.request(
+            'GET',
+            '/chunked',
+            preload_content=False
+        )
+        response.close()
+        with pytest.raises(StopIteration):
+            next(response.read_chunked())
+
     def test_chunked_gzip(self):
         response = self.pool.request(
                 'GET',
