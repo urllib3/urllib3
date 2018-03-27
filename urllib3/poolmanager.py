@@ -338,12 +338,12 @@ class PoolManager(RequestMethods):
         if not isinstance(retries, Retry):
             retries = Retry.from_int(retries, redirect=redirect)
 
-        # Strip the Authentication header if redirecting to a new host
-        # and we don't want to forward that header across hosts.
-        if (not retries.forward_auth_headers_across_hosts
-                and 'Authentication' in headers
+        # Strip headers marked as unsafe to forward to the redirected location.
+        if (retries.remove_headers_on_redirect
                 and not conn.is_same_host(redirect_location)):
-            headers.pop('Authentication')
+            for header in retries.remove_headers_on_redirect:
+                if header in headers:
+                    headers.pop(header)
 
         try:
             retries = retries.increment(method, url, response=response, _pool=conn)

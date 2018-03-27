@@ -139,10 +139,10 @@ class Retry(object):
         Whether to respect Retry-After header on status codes defined as
         :attr:`Retry.RETRY_AFTER_STATUS_CODES` or not.
 
-    :param bool forward_auth_headers_across_hosts:
-        Whether to forward Authentication headers if a response is received
-        that redirects to a different host than the original request.
-        Defaults to False.
+    :param iterable remove_headers_on_redirect:
+        Sequence of headers to remove from the request when a response
+        indicating a redirect is returned before firing off the redirected
+        request.
     """
 
     DEFAULT_METHOD_WHITELIST = frozenset([
@@ -157,7 +157,7 @@ class Retry(object):
                  method_whitelist=DEFAULT_METHOD_WHITELIST, status_forcelist=None,
                  backoff_factor=0, raise_on_redirect=True, raise_on_status=True,
                  history=None, respect_retry_after_header=True,
-                 forward_auth_headers_across_hosts=False):
+                 remove_headers_on_redirect=None):
 
         self.total = total
         self.connect = connect
@@ -168,6 +168,10 @@ class Retry(object):
             redirect = 0
             raise_on_redirect = False
 
+        if remove_headers_on_redirect is None:
+            remove_headers_on_redirect = ['Authorization']
+        remove_headers_on_redirect = set(remove_headers_on_redirect)
+
         self.redirect = redirect
         self.status_forcelist = status_forcelist or set()
         self.method_whitelist = method_whitelist
@@ -176,8 +180,7 @@ class Retry(object):
         self.raise_on_status = raise_on_status
         self.history = history or tuple()
         self.respect_retry_after_header = respect_retry_after_header
-        self.forward_auth_headers_across_hosts = \
-            forward_auth_headers_across_hosts
+        self.remove_headers_on_redirect = remove_headers_on_redirect
 
     def new(self, **kw):
         params = dict(
@@ -189,7 +192,7 @@ class Retry(object):
             raise_on_redirect=self.raise_on_redirect,
             raise_on_status=self.raise_on_status,
             history=self.history,
-            forward_auth_headers_across_hosts=self.forward_auth_headers_across_hosts
+            remove_headers_on_redirect=self.remove_headers_on_redirect
         )
         params.update(kw)
         return type(self)(**params)

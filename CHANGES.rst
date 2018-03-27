@@ -18,9 +18,9 @@ dev (master)
 
 * Lazily load `uuid` to boost performance on imports (Pull #1270)
 
-* Stop forwarding the ``Authentication`` HTTP header on a cross-host
-  redirect unless disabled by setting ``forward_auth_headers_across_hosts``
-  to True on ``Retry`` objects. (Issue #1316)
+* Allow providing a list of headers to strip from requests when redirecting
+  to a different host. Defaults to the ``Authorization`` header. Different
+  headers can be set via ``Retry.remove_headers_on_redirect``. (Issue #1316)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
