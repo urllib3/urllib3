@@ -337,6 +337,8 @@ class PoolManager(RequestMethods):
             retries = Retry.from_int(retries, redirect=redirect)
 
         # Strip headers marked as unsafe to forward to the redirected location.
+        # Check remove_headers_on_redirect to avoid a potential network call within
+        # conn.is_same_host() which may use socket.gethostbyname() in the future.
         if (retries.remove_headers_on_redirect
                 and not conn.is_same_host(redirect_location)):
             for header in retries.remove_headers_on_redirect:
