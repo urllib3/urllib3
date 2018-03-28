@@ -2,11 +2,13 @@ from __future__ import absolute_import
 import errno
 import warnings
 import hmac
+import socket
 
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
 from ..exceptions import SSLError, InsecurePlatformWarning, SNIMissingWarning
+from ..packages import six
 
 
 SSLContext = None
@@ -325,8 +327,13 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
 
     if certfile:
         context.load_cert_chain(certfile, keyfile)
-    if HAS_SNI:  # Platform-specific: OpenSSL with enabled SNI
-        return context.wrap_socket(sock, server_hostname=server_hostname)
+    if HAS_SNI:
+        # If we detect server_hostname is an IP address then the SNI
+        # extension should not be used according to RFC3546 Section 3.1
+        if server_hostname is not None and not is_ipaddress(server_hostname):
+            return context.wrap_socket(sock, server_hostname=server_hostname)
+        else:
+            return context.wrap_socket(sock)
 
     warnings.warn(
         'An HTTPS request has been made, but the SNI (Server Name '
@@ -339,3 +346,25 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         SNIMissingWarning
     )
     return context.wrap_socket(sock)
+
+
+def is_ipaddress(hostname):
+    """Detects whether the hostname given is an IP address.
+
+    :param str hostname: Hostname to examine.
+    :return: True if the hostname is an IP address, False otherwise.
+    """
+    if six.PY3 and isinstance(hostname, six.binary_type):
+        # IDN A-label bytes are ASCII compatible.
+        hostname = hostname.decode('ascii')
+    families = [socket.AF_INET]
+    if hasattr(socket, 'AF_INET6'):
+        families.append(socket.AF_INET6)
+    for af in families:
+        try:
+            socket.inet_pton(af, hostname)
+        except socket.error:
+            pass
+        else:
+            return True
+    return False
