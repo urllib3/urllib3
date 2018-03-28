@@ -327,24 +327,31 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
 
     if certfile:
         context.load_cert_chain(certfile, keyfile)
-    if HAS_SNI:
-        # If we detect server_hostname is an IP address then the SNI
-        # extension should not be used according to RFC3546 Section 3.1
-        if server_hostname is not None and not is_ipaddress(server_hostname):
-            return context.wrap_socket(sock, server_hostname=server_hostname)
-        else:
-            return context.wrap_socket(sock)
 
-    warnings.warn(
-        'An HTTPS request has been made, but the SNI (Server Name '
-        'Indication) extension to TLS is not available on this platform. '
-        'This may cause the server to present an incorrect TLS '
-        'certificate, which can cause validation failures. You can upgrade to '
-        'a newer version of Python to solve this. For more information, see '
-        'https://urllib3.readthedocs.io/en/latest/advanced-usage.html'
-        '#ssl-warnings',
-        SNIMissingWarning
-    )
+    if server_hostname is not None:
+        is_ip = is_ipaddress(server_hostname)
+    else:
+        is_ip = False
+
+    # If we detect server_hostname is an IP address then the SNI
+    # extension should not be used according to RFC3546 Section 3.1
+    # We shouldn't warn the user if SNI isn't available but we would
+    # not be using SNI anyways due to IP address for server_hostname.
+    if not is_ip:
+        if HAS_SNI:
+            return context.wrap_socket(sock, server_hostname=server_hostname)
+
+        warnings.warn(
+            'An HTTPS request has been made, but the SNI (Server Name '
+            'Indication) extension to TLS is not available on this platform. '
+            'This may cause the server to present an incorrect TLS '
+            'certificate, which can cause validation failures. You can upgrade to '
+            'a newer version of Python to solve this. For more information, see '
+            'https://urllib3.readthedocs.io/en/latest/advanced-usage.html'
+            '#ssl-warnings',
+            SNIMissingWarning
+        )
+
     return context.wrap_socket(sock)
 
 
