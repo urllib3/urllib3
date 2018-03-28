@@ -106,6 +106,7 @@ class TestGAEConnectionManager(test_connectionpool.TestConnectionPool):
     test_stream_keepalive = None
     test_cleanup_on_connection_error = None
     test_read_chunked_short_circuit = None
+    test_read_chunked_on_closed_response = None
 
     # Tests that should likely be modified for appengine specific stuff
     test_timeout = None
