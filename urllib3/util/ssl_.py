@@ -328,17 +328,12 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
     if certfile:
         context.load_cert_chain(certfile, keyfile)
 
-    if server_hostname is not None:
-        is_ip = is_ipaddress(server_hostname)
-    else:
-        is_ip = False
-
     # If we detect server_hostname is an IP address then the SNI
     # extension should not be used according to RFC3546 Section 3.1
     # We shouldn't warn the user if SNI isn't available but we would
     # not be using SNI anyways due to IP address for server_hostname.
-    if not is_ip:
-        if HAS_SNI:
+    if not is_ipaddress(server_hostname):
+        if HAS_SNI and server_hostname is not None:
             return context.wrap_socket(sock, server_hostname=server_hostname)
 
         warnings.warn(
@@ -361,6 +356,8 @@ def is_ipaddress(hostname):
     :param str hostname: Hostname to examine.
     :return: True if the hostname is an IP address, False otherwise.
     """
+    if hostname is None:
+        return False
     if six.PY3 and isinstance(hostname, six.binary_type):
         # IDN A-label bytes are ASCII compatible.
         hostname = hostname.decode('ascii')
