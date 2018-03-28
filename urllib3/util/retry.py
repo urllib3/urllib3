@@ -160,7 +160,7 @@ class Retry(object):
                  method_whitelist=DEFAULT_METHOD_WHITELIST, status_forcelist=None,
                  backoff_factor=0, raise_on_redirect=True, raise_on_status=True,
                  history=None, respect_retry_after_header=True,
-                 remove_headers_on_redirect=None):
+                 remove_headers_on_redirect=DEFAULT_REDIRECT_HEADERS_BLACKLIST):
 
         self.total = total
         self.connect = connect
@@ -170,10 +170,6 @@ class Retry(object):
         if redirect is False or total is False:
             redirect = 0
             raise_on_redirect = False
-
-        if remove_headers_on_redirect is None:
-            remove_headers_on_redirect = self.DEFAULT_REDIRECT_HEADERS_BLACKLIST
-        remove_headers_on_redirect = set(remove_headers_on_redirect)
 
         self.redirect = redirect
         self.status_forcelist = status_forcelist or set()
