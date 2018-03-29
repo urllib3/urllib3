@@ -312,8 +312,9 @@ class PoolManager(RequestMethods):
 
         kw['assert_same_host'] = False
         kw['redirect'] = False
+
         if 'headers' not in kw:
-            kw['headers'] = self.headers
+            kw['headers'] = self.headers.copy()
 
         if self.proxy is not None and u.scheme == "http":
             response = conn.urlopen(method, url, **kw)
@@ -334,6 +335,14 @@ class PoolManager(RequestMethods):
         retries = kw.get('retries')
         if not isinstance(retries, Retry):
             retries = Retry.from_int(retries, redirect=redirect)
+
+        # Strip headers marked as unsafe to forward to the redirected location.
+        # Check remove_headers_on_redirect to avoid a potential network call within
+        # conn.is_same_host() which may use socket.gethostbyname() in the future.
+        if (retries.remove_headers_on_redirect
+                and not conn.is_same_host(redirect_location)):
+            for header in retries.remove_headers_on_redirect:
+                kw['headers'].pop(header, None)
 
         try:
             retries = retries.increment(method, url, response=response, _pool=conn)

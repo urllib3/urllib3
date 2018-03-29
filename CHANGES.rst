@@ -4,6 +4,10 @@ Changes
 dev (master)
 ------------
 
+* Allow providing a list of headers to strip from requests when redirecting
+  to a different host. Defaults to the ``Authorization`` header. Different
+  headers can be set via ``Retry.remove_headers_on_redirect``. (Issue #1316)
+
 * Fix ``util.selectors._fileobj_to_fd`` to accept ``long`` (Issue #1247).
 
 * Dropped Python 3.3 support. (Pull #1242)
