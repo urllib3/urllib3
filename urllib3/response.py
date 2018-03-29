@@ -600,6 +600,11 @@ class HTTPResponse(io.IOBase):
         Similar to :meth:`HTTPResponse.read`, but with an additional
         parameter: ``decode_content``.
 
+        :param amt:
+            How much of the content to read. If specified, caching is skipped
+            because it doesn't make sense to cache partial content as the full
+            response.
+
         :param decode_content:
             If True, will attempt to decode the body based on the
             'content-encoding' header.
@@ -619,6 +624,11 @@ class HTTPResponse(io.IOBase):
             # Don't bother reading the body of a HEAD request.
             if self._original_response and is_response_to_head(self._original_response):
                 self._original_response.close()
+                return
+
+            # If a response is already read and closed
+            # then return immediately.
+            if self._fp.fp is None:
                 return
 
             while True:
