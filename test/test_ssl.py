@@ -53,8 +53,8 @@ def test_context_sni_with_ip_address(monkeypatch, has_sni, server_hostname, uses
      (True, '127.0.0.1', False),
      (False, '127.0.0.1', False),
      (False, 'www.google.com', True),
-     (True, None, True),
-     (False, None, True)]
+     (True, None, False),
+     (False, None, False)]
 )
 def test_sni_missing_warning_with_ip_addresses(monkeypatch, has_sni, server_hostname, should_warn):
     monkeypatch.setattr(ssl_, 'HAS_SNI', has_sni)

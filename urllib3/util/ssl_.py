@@ -62,7 +62,6 @@ except ImportError:
 if hasattr(socket, 'inet_pton'):
     inet_pton = socket.inet_pton
 else:
-
     # Maybe we can use ipaddress if the user has urllib3[secure]?
     try:
         import ipaddress
@@ -351,7 +350,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
     # extension should not be used according to RFC3546 Section 3.1
     # We shouldn't warn the user if SNI isn't available but we would
     # not be using SNI anyways due to IP address for server_hostname.
-    if not is_ipaddress(server_hostname):
+    if server_hostname is not None and not is_ipaddress(server_hostname):
         if HAS_SNI and server_hostname is not None:
             return context.wrap_socket(sock, server_hostname=server_hostname)
 
@@ -375,20 +374,18 @@ def is_ipaddress(hostname):
     :param str hostname: Hostname to examine.
     :return: True if the hostname is an IP address, False otherwise.
     """
-    if hostname is None:
-        return False
     if six.PY3 and isinstance(hostname, six.binary_type):
         # IDN A-label bytes are ASCII compatible.
         hostname = hostname.decode('ascii')
 
     families = [socket.AF_INET]
     if hasattr(socket, 'AF_INET6'):
-       families.append(socket.AF_INET6)
+        families.append(socket.AF_INET6)
 
     for af in families:
         try:
             inet_pton(af, hostname)
-        except (socket.error, ValueError):
+        except (socket.error, ValueError, OSError):
             pass
         else:
             return True
