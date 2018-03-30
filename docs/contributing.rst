@@ -5,11 +5,11 @@ urllib3 is a community-maintained project and we happily accept contributions.
 
 If you wish to add a new feature or fix a bug:
 
-#. `Check for open issues <https://github.com/shazow/urllib3/issues>`_ or open
+#. `Check for open issues <https://github.com/urllib3/urllib3/issues>`_ or open
    a fresh issue to start a discussion around a feature idea or a bug. There is
    a *Contributor Friendly* tag for issues that should be ideal for people who
    are not very familiar with the codebase yet.
-#. Fork the `urllib3 repository on Github <https://github.com/shazow/urllib3>`_
+#. Fork the `urllib3 repository on Github <https://github.com/urllib3/urllib3>`_
    to start making your changes.
 #. Write a test which shows that the bug was fixed or that the feature works
    as expected.
@@ -45,7 +45,7 @@ suite::
   py34: commands succeeded
 
 Our test suite `runs continuously on Travis CI
-<https://travis-ci.org/shazow/urllib3>`_ with every pull request.
+<https://travis-ci.org/urllib3/urllib3>`_ with every pull request.
 
 
 Sponsorship
