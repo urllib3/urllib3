@@ -55,6 +55,25 @@ except ImportError:
     OP_NO_SSLv2, OP_NO_SSLv3 = 0x1000000, 0x2000000
     OP_NO_COMPRESSION = 0x20000
 
+
+# Python 2.7 and earlier didn't have inet_pton on non-Linux
+# so we fallback on inet_aton in those cases. This means that
+# we can only detect IPv4 addresses in this case.
+if hasattr(socket, 'inet_pton'):
+    inet_pton = socket.inet_pton
+else:
+
+    # Maybe we can use ipaddress if the user has urllib3[secure]?
+    try:
+        import ipaddress
+
+        def inet_pton(_, host):
+            return ipaddress.ip_address(host)
+    except ImportError:  # Platform-specific: Non-Linux
+        def inet_pton(_, host):
+            return socket.inet_aton(host)
+
+
 # A secure default.
 # Sources for more information on TLS ciphers:
 #
@@ -361,13 +380,15 @@ def is_ipaddress(hostname):
     if six.PY3 and isinstance(hostname, six.binary_type):
         # IDN A-label bytes are ASCII compatible.
         hostname = hostname.decode('ascii')
+
     families = [socket.AF_INET]
     if hasattr(socket, 'AF_INET6'):
-        families.append(socket.AF_INET6)
+       families.append(socket.AF_INET6)
+
     for af in families:
         try:
-            socket.inet_pton(af, hostname)
-        except socket.error:
+            inet_pton(af, hostname)
+        except (socket.error, ValueError):
             pass
         else:
             return True
