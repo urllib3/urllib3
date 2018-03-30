@@ -41,7 +41,7 @@ urllib3 can be installed with `pip <https://pip.pypa.io>`_::
 
     $ pip install urllib3
 
-Alternatively, you can grab the latest source code from `GitHub <https://github.com/shazow/urllib3>`_::
+Alternatively, you can grab the latest source code from `GitHub <https://github.com/urllib3/urllib3>`_::
 
     $ git clone git://github.com/shazow/urllib3.git
     $ python setup.py install
@@ -66,7 +66,7 @@ Who uses urllib3?
 License
 -------
 
-urllib3 is made available under the MIT License. For more details, see `LICENSE.txt <https://github.com/shazow/urllib3/blob/master/LICENSE.txt>`_.
+urllib3 is made available under the MIT License. For more details, see `LICENSE.txt <https://github.com/urllib3/urllib3/blob/master/LICENSE.txt>`_.
 
 Contributing
 ------------
