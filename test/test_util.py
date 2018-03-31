@@ -500,7 +500,8 @@ class TestUtil(object):
         ssl_.HAS_SNI = False
         try:
             with patch('warnings.warn') as warn:
-                ssl_wrap_socket(ssl_context=mock_context, sock=socket)
+                ssl_wrap_socket(ssl_context=mock_context, sock=socket,
+                                server_hostname='www.google.com')
             mock_context.wrap_socket.assert_called_once_with(socket)
             assert warn.call_count >= 1
             warnings = [call[0][1] for call in warn.call_args_list]

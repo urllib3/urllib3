@@ -62,9 +62,12 @@ def test_sni_missing_warning_with_ip_addresses(monkeypatch, has_sni, server_host
     sock = mock.Mock()
     context = mock.Mock()
 
-    with pytest.warns(None) as record:
+    with mock.patch('warnings.warn') as warn:
         ssl_.ssl_wrap_socket(sock, server_hostname=server_hostname, ssl_context=context)
 
-    assert len(record) == int(should_warn)
     if should_warn:
-        assert isinstance(record[0].message, SNIMissingWarning)
+        assert warn.call_count >= 1
+        warnings = [call[0][1] for call in warn.call_args_list]
+        assert SNIMissingWarning in warnings
+    else:
+        assert warn.call_count == 0
