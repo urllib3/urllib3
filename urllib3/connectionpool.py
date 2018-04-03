@@ -41,11 +41,7 @@ from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import get_host, Url
-
-
-if six.PY2:
-    # Queue is imported for side effects on MS Windows
-    import Queue as _unused_module_Queue  # noqa: F401
+from .util.queue import LifoQueue
 
 xrange = six.moves.xrange
 
@@ -62,7 +58,7 @@ class ConnectionPool(object):
     """
 
     scheme = None
-    QueueCls = queue.LifoQueue
+    QueueCls = LifoQueue
 
     def __init__(self, host, port=None):
         if not host:
