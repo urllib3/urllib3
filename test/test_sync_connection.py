@@ -13,8 +13,6 @@ import socket
 import ssl
 import unittest
 
-import pytest
-
 from urllib3.base import Request
 from urllib3._backends.sync_backend import SyncSocket
 from urllib3._sync.connection import HTTP1Connection

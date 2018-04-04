@@ -101,6 +101,8 @@ SSL_WRITE_BLOCKSIZE = 16384
 
 orig_util_HAS_SNI = util.HAS_SNI
 orig_util_SSLContext = util.ssl_.SSLContext
+orig_util_SSLWantReadError = util.SSLWantReadError
+orig_util_SSLWantWriteError = util.SSLWantWriteError
 
 
 log = logging.getLogger(__name__)
@@ -116,6 +118,10 @@ def inject_into_urllib3():
     util.ssl_.HAS_SNI = HAS_SNI
     util.IS_PYOPENSSL = True
     util.ssl_.IS_PYOPENSSL = True
+    util.SSLWantReadError = OpenSSL.SSL.WantReadError
+    util.ssl_.SSLWantReadError = OpenSSL.SSL.WantReadError
+    util.SSLWantWriteError = OpenSSL.SSL.WantWriteError
+    util.ssl_.SSLWantWriteError = OpenSSL.SSL.WantWriteError
 
 
 def extract_from_urllib3():
@@ -126,6 +132,10 @@ def extract_from_urllib3():
     util.ssl_.HAS_SNI = orig_util_HAS_SNI
     util.IS_PYOPENSSL = False
     util.ssl_.IS_PYOPENSSL = False
+    util.SSLWantReadError = orig_util_SSLWantReadError
+    util.ssl_.SSLWantReadError = orig_util_SSLWantReadError
+    util.SSLWantWriteError = orig_util_SSLWantWriteError
+    util.ssl_.SSLWantWriteError = orig_util_SSLWantWriteError
 
 
 def _validate_dependencies_met():
@@ -255,7 +265,7 @@ class WrappedSocket(object):
 
     def recv(self, *args, **kwargs):
         try:
-            data = self.connection.recv(*args, **kwargs)
+            return self.connection.recv(*args, **kwargs)
         except OpenSSL.SSL.SysCallError as e:
             if self.suppress_ragged_eofs and e.args == (-1, 'Unexpected EOF'):
                 return b''
@@ -266,14 +276,6 @@ class WrappedSocket(object):
                 return b''
             else:
                 raise
-        except OpenSSL.SSL.WantReadError:
-            rd = util.wait_for_read(self.socket, self.socket.gettimeout())
-            if not rd:
-                raise timeout('The read operation timed out')
-            else:
-                return self.recv(*args, **kwargs)
-        else:
-            return data
 
     def recv_into(self, *args, **kwargs):
         try:
@@ -288,36 +290,16 @@ class WrappedSocket(object):
                 return 0
             else:
                 raise
-        except OpenSSL.SSL.WantReadError:
-            rd = util.wait_for_read(self.socket, self.socket.gettimeout())
-            if not rd:
-                raise timeout('The read operation timed out')
-            else:
-                return self.recv_into(*args, **kwargs)
 
     def settimeout(self, timeout):
         return self.socket.settimeout(timeout)
 
-    def _send_until_done(self, data):
+    def send(self, data):
         while True:
             try:
                 return self.connection.send(data)
-            except OpenSSL.SSL.WantWriteError:
-                wr = util.wait_for_write(self.socket, self.socket.gettimeout())
-                if not wr:
-                    raise timeout()
-                continue
             except OpenSSL.SSL.SysCallError as e:
                 raise SocketError(str(e))
-
-    def send(self, data):
-        return self._send_until_done(data)
-
-    def sendall(self, data):
-        total_sent = 0
-        while total_sent < len(data):
-            sent = self._send_until_done(data[total_sent:total_sent + SSL_WRITE_BLOCKSIZE])
-            total_sent += sent
 
     def shutdown(self):
         # FIXME rethrow compatible exceptions should we ever use this

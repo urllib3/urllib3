@@ -1,9 +1,9 @@
 import errno
 import socket
-import ssl
 from ..util.connection import create_connection
 from ..util.ssl_ import ssl_wrap_socket
 from ..util import selectors
+from .. import util
 
 from ._common import DEFAULT_SELECTOR, is_readable, LoopAbort
 
@@ -69,9 +69,9 @@ class SyncSocket(object):
         while True:
             try:
                 return self._sock.recv(BUFSIZE)
-            except ssl.SSLWantReadError:
+            except util.SSLWantReadError:
                 self._wait(readable=True, writable=False)
-            except ssl.SSLWantWriteError:
+            except util.SSLWantWriteError:
                 self._wait(readable=False, writable=True)
             except (OSError, socket.error) as exc:
                 if exc.errno in (errno.EWOULDBLOCK, errno.EAGAIN):
@@ -108,9 +108,9 @@ class SyncSocket(object):
 
                 try:
                     incoming = self._sock.recv(BUFSIZE)
-                except ssl.SSLWantReadError:
+                except util.SSLWantReadError:
                     want_read = True
-                except ssl.SSLWantWriteError:
+                except util.SSLWantWriteError:
                     want_write = True
                 except (OSError, socket.error) as exc:
                     if exc.errno in (errno.EWOULDBLOCK, errno.EAGAIN):
@@ -126,9 +126,9 @@ class SyncSocket(object):
                     try:
                         sent = self._sock.send(outgoing)
                         outgoing = outgoing[sent:]
-                    except ssl.SSLWantReadError:
+                    except util.SSLWantReadError:
                         want_read = True
-                    except ssl.SSLWantWriteError:
+                    except util.SSLWantWriteError:
                         want_write = True
                     except (OSError, socket.error) as exc:
                         if exc.errno in (errno.EWOULDBLOCK, errno.EAGAIN):

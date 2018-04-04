@@ -12,6 +12,8 @@ from .ssl_ import (
     resolve_cert_reqs,
     resolve_ssl_version,
     ssl_wrap_socket,
+    SSLWantReadError,
+    SSLWantWriteError,
 )
 from .timeout import (
     current_time,
@@ -50,5 +52,7 @@ __all__ = (
     'split_first',
     'ssl_wrap_socket',
     'wait_for_read',
-    'wait_for_write'
+    'wait_for_write',
+    'SSLWantReadError',
+    'SSLWantWriteError',
 )

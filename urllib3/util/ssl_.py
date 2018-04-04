@@ -52,8 +52,15 @@ try:  # Test for SSL features
     from ssl import wrap_socket, CERT_NONE, PROTOCOL_SSLv23
     from ssl import HAS_SNI  # Has SNI?
     from ssl import SSLError as BaseSSLError
+    from ssl import SSLWantReadError, SSLWantWriteError
 except ImportError:
     class BaseSSLError(Exception):
+        pass
+
+    class SSLWantReadError(Exception):
+        pass
+
+    class SSLWantWriteError(Exception):
         pass
 
 
