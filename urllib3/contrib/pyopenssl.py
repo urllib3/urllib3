@@ -294,21 +294,12 @@ class WrappedSocket(object):
     def settimeout(self, timeout):
         return self.socket.settimeout(timeout)
 
-    def _send_until_done(self, data):
+    def send(self, data):
         while True:
             try:
                 return self.connection.send(data)
             except OpenSSL.SSL.SysCallError as e:
                 raise SocketError(str(e))
-
-    def send(self, data):
-        return self._send_until_done(data)
-
-    def sendall(self, data):
-        total_sent = 0
-        while total_sent < len(data):
-            sent = self._send_until_done(data[total_sent:total_sent + SSL_WRITE_BLOCKSIZE])
-            total_sent += sent
 
     def shutdown(self):
         # FIXME rethrow compatible exceptions should we ever use this
