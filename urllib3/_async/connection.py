@@ -129,17 +129,37 @@ def _request_bytes_iterable(request, state_machine):
     """
     An iterable that serialises a set of bytes for the body.
     """
-    h11_request = h11.Request(
-        method=request.method,
-        target=request.target,
-        headers=_stringify_headers(request.headers.items())
-    )
-    yield state_machine.send(h11_request)
+    def all_pieces_iter():
+        h11_request = h11.Request(
+            method=request.method,
+            target=request.target,
+            headers=_stringify_headers(request.headers.items())
+        )
+        yield state_machine.send(h11_request)
 
-    for chunk in _make_body_iterable(request.body):
-        yield state_machine.send(h11.Data(data=chunk))
+        for chunk in _make_body_iterable(request.body):
+            yield state_machine.send(h11.Data(data=chunk))
 
-    yield state_machine.send(h11.EndOfMessage())
+        yield state_machine.send(h11.EndOfMessage())
+
+    # We filter out any empty strings, because we don't want to call
+    # send(b""). You might think this is a no-op, so it shouldn't matter
+    # either way. But this isn't true. For example, if we're sending a request
+    # with Content-Length framing, we could have this sequence:
+    #
+    # - We send the last Data event.
+    # - The peer immediately sends its response and closes the socket.
+    # - We attempt to send the EndOfMessage event, which (b/c this request has
+    #   Content-Length framing) is encoded as b"".
+    # - We call send(b"").
+    # - This triggers the kernel / SSL layer to discover that the socket is
+    #   closed, so it raises an exception.
+    #
+    # It's easier to fix this once here instead of worrying about it in all
+    # the different backends.
+    for piece in all_pieces_iter():
+        if piece:
+            yield piece
 
 
 def _response_from_h11(h11_response, body_object):

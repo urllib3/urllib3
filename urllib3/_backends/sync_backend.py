@@ -91,10 +91,20 @@ class SyncSocket(object):
                         outgoing = None
                         outgoing_finished = True
                     else:
+                        assert b
                         outgoing = memoryview(b)
 
+                # This controls whether or not we block
+                made_progress = False
+                # If we do block, then these determine what can wake us up
                 want_read = False
                 want_write = False
+
+                # Important: we do recv before send. This is because we want
+                # to make sure that after a send completes, we immediately
+                # call produce_bytes before calling recv and potentially
+                # getting a LoopAbort. This avoids a race condition -- see the
+                # "subtle invariant" in the backend API documentation.
 
                 try:
                     incoming = self._sock.recv(BUFSIZE)
@@ -105,7 +115,10 @@ class SyncSocket(object):
                 except (OSError, socket.error) as exc:
                     if exc.errno in (errno.EWOULDBLOCK, errno.EAGAIN):
                         want_read = True
+                    else:
+                        raise
                 else:
+                    made_progress = True
                     # Can exit loop here with LoopAbort
                     consume_bytes(incoming)
 
@@ -120,8 +133,12 @@ class SyncSocket(object):
                     except (OSError, socket.error) as exc:
                         if exc.errno in (errno.EWOULDBLOCK, errno.EAGAIN):
                             want_write = True
+                        else:
+                            raise
+                    else:
+                        made_progress = True
 
-                if want_read or want_write:
+                if not made_progress:
                     self._wait(want_read, want_write)
         except LoopAbort:
             pass

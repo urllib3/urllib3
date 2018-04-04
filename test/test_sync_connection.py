@@ -61,7 +61,6 @@ SELECT_WRITABLE_WRITE = Event(
 )
 SOCKET_SEND_ALL = Event(SOCKET, EVENT_SEND, (SEND_ALL,))
 SOCKET_SEND_5 = Event(SOCKET, EVENT_SEND, (5,))
-SOCKET_SEND_0 = Event(SOCKET, EVENT_SEND, (0,))
 SOCKET_SEND_EAGAIN = Event(SOCKET, EVENT_SEND, (RAISE_EAGAIN,))
 SOCKET_SEND_WANTREAD = Event(SOCKET, EVENT_SEND, (RAISE_WANT_READ,))
 SOCKET_SEND_WANTWRITE = Event(SOCKET, EVENT_SEND, (RAISE_WANT_WRITE,))
@@ -94,6 +93,12 @@ class ScenarioError(Exception):
     pass
 
 
+def next_event(what, scenario):
+    event = scenario.pop(0)
+    print("Scenario step:\n  Code did: {}\n  Event is: {}".format(what, event))
+    return event
+
+
 class ScenarioSelector(object):
     """
     A mock Selector object. This selector implements a tiny bit of the selector
@@ -115,8 +120,19 @@ class ScenarioSelector(object):
             raise ScenarioError("Modifying unexpected socket!")
         self._events = events
 
+    def _describe_events(self, events):
+        pieces = []
+        if events & selectors.EVENT_READ:
+            pieces.append("EVENT_READ")
+        if events & selectors.EVENT_WRITE:
+            pieces.append("EVENT_WRITE")
+        return pieces
+
     def select(self, timeout=None):
-        expected_object, event, args = self._scenario.pop(0)
+        expected_object, event, args = next_event(
+            ("select", self._describe_events(self._events)),
+            self._scenario
+        )
         if expected_object is not SELECTOR:
             raise ScenarioError("Received non selector event!")
 
@@ -167,7 +183,10 @@ class ScenarioSocket(object):
             raise ssl.SSLWantWriteError("Want write")
 
     def send(self, data):
-        expected_object, event, args = self._scenario.pop(0)
+        expected_object, event, args = next_event(
+            ("send", bytes(data)),
+            self._scenario,
+        )
         if expected_object is not SOCKET:
             raise ScenarioError("Received non socket event!")
 
@@ -183,9 +202,12 @@ class ScenarioSocket(object):
         return amount
 
     def recv(self, amt):
-        expected_object, event, args = self._scenario.pop(0)
+        expected_object, event, args = next_event(
+            ("recv", amt),
+            self._scenario,
+        )
         if expected_object is not SOCKET:
-            raise ScenarioError("Received non selector event!")
+            raise ScenarioError("Received non socket event!")
 
         if event is not EVENT_RECV:
             raise ScenarioError("Expected EVENT_RECV, got %s" % event)
@@ -260,7 +282,6 @@ class TestUnusualSocketConditions(unittest.TestCase):
         scenario = [
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
@@ -274,9 +295,7 @@ class TestUnusualSocketConditions(unittest.TestCase):
         scenario = [
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_EAGAIN,
-            SOCKET_SEND_ALL,
             SELECT_DOWNLOAD_READ,
             SOCKET_RECV_EAGAIN,
             SELECT_DOWNLOAD_READ,
@@ -293,9 +312,7 @@ class TestUnusualSocketConditions(unittest.TestCase):
         scenario = [
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
-            SOCKET_RECV_WANTREAD,
-            SOCKET_SEND_ALL,
+            SOCKET_RECV_EAGAIN,
             SELECT_DOWNLOAD_READ,
             SOCKET_RECV_WANTREAD,
             SELECT_DOWNLOAD_READ,
@@ -312,10 +329,8 @@ class TestUnusualSocketConditions(unittest.TestCase):
         scenario = [
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_5,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
@@ -329,10 +344,8 @@ class TestUnusualSocketConditions(unittest.TestCase):
         scenario = [
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_5,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_WANTREAD,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
@@ -346,13 +359,11 @@ class TestUnusualSocketConditions(unittest.TestCase):
         scenario = [
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_5,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_EAGAIN,
             SELECT_UPLOAD_WRITE,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
@@ -367,19 +378,16 @@ class TestUnusualSocketConditions(unittest.TestCase):
         scenario = [
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_5,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_WANTWRITE,
             SELECT_UPLOAD_WRITE,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
         self.assertEqual(sock._data_sent, REQUEST)
 
-    @pytest.mark.xfail
     def test_handle_early_response(self):
         """
         When a socket is marked readable during request upload, and any data is
@@ -389,9 +397,8 @@ class TestUnusualSocketConditions(unittest.TestCase):
         scenario = [
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_5,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_5,
-            SELECT_DOWNLOAD_READ,  # XXX At this point we send instead
+            SOCKET_SEND_EAGAIN,
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
@@ -408,7 +415,6 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_5,
             # Return WANT_READ twice for good measure.
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_WANTREAD,
             SELECT_DOWNLOAD_READ,
@@ -417,7 +423,6 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SELECT_DOWNLOAD_READ,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
@@ -433,9 +438,7 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
             # Return WANT_WRITE twice for good measure.
-            SELECT_DOWNLOAD_READ,
             SOCKET_RECV_WANTWRITE,
-            SOCKET_SEND_0,
             SELECT_WRITABLE_WRITE,
             SOCKET_RECV_WANTWRITE,
             SELECT_WRITABLE_WRITE,

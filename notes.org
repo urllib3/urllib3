@@ -52,6 +52,25 @@ I think the abstraction we want is something like
           Other errors should cause both loops to be cancelled, and then
           propagate out.
 
+          Subtle invariant: in the send loop, there should not be any
+          cancellation point in between a successful send_all and the next call
+          to produce_bytes. This is to avoid a race condition that could
+          otherwise happen:
+
+          1. We send the last data in an HTTP request.
+          2. The server responds very quickly, consume_bytes() gets the response
+             data, and raises LoopAbort.
+          3. The send loop is cancelled immediately, preventing the next call to
+             produce_bytes.
+          4. This last call to produce_bytes would have detected that there was
+             no more data to send, and marked the request as complete and the
+             connection as re-usable. Since it never happened, the connection
+             tracking code doesn't know that the request was fully sent, and
+             thus has to assume that the connection is in an inconsistent state.
+
+          But if there's no cancellation point in between send_all and
+          produce_bytes, then this can't happen.
+
           """
 
       def forceful_close(self, opaque_sock):
@@ -79,7 +98,6 @@ I think the abstraction we want is something like
 
           This is needed for twisted support.
           """
-
 #+END_SRC
 
 in sync mode, these are pretty straightforward using select (and at least will get the select nonsense out of the main control flow!). (except on unix we should use poll instead to avoid the maximum-FD limit.)
