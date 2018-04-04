@@ -11,11 +11,6 @@ except ImportError as e:
     pytestmark = pytest.mark.skip('Could not import PyOpenSSL: %r' % e)
 
 
-# Currently the pyopenssl code all assumes that we're using blocking sockets,
-# so there's no hope of it working.
-pytestmark = pytest.mark.skip('PyOpenSSL code not ported yet')
-
-
 from ..with_dummyserver.test_https import TestHTTPS, TestHTTPS_TLSv1  # noqa: F401
 from ..with_dummyserver.test_socketlevel import (  # noqa: F401
     TestSNI, TestSocketClosing, TestClientCerts

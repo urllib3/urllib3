@@ -255,7 +255,7 @@ class WrappedSocket(object):
 
     def recv(self, *args, **kwargs):
         try:
-            data = self.connection.recv(*args, **kwargs)
+            return self.connection.recv(*args, **kwargs)
         except OpenSSL.SSL.SysCallError as e:
             if self.suppress_ragged_eofs and e.args == (-1, 'Unexpected EOF'):
                 return b''
@@ -266,14 +266,6 @@ class WrappedSocket(object):
                 return b''
             else:
                 raise
-        except OpenSSL.SSL.WantReadError:
-            rd = util.wait_for_read(self.socket, self.socket.gettimeout())
-            if not rd:
-                raise timeout('The read operation timed out')
-            else:
-                return self.recv(*args, **kwargs)
-        else:
-            return data
 
     def recv_into(self, *args, **kwargs):
         try:
@@ -288,12 +280,6 @@ class WrappedSocket(object):
                 return 0
             else:
                 raise
-        except OpenSSL.SSL.WantReadError:
-            rd = util.wait_for_read(self.socket, self.socket.gettimeout())
-            if not rd:
-                raise timeout('The read operation timed out')
-            else:
-                return self.recv_into(*args, **kwargs)
 
     def settimeout(self, timeout):
         return self.socket.settimeout(timeout)
@@ -302,11 +288,6 @@ class WrappedSocket(object):
         while True:
             try:
                 return self.connection.send(data)
-            except OpenSSL.SSL.WantWriteError:
-                wr = util.wait_for_write(self.socket, self.socket.gettimeout())
-                if not wr:
-                    raise timeout()
-                continue
             except OpenSSL.SSL.SysCallError as e:
                 raise SocketError(str(e))
 
