@@ -101,6 +101,8 @@ SSL_WRITE_BLOCKSIZE = 16384
 
 orig_util_HAS_SNI = util.HAS_SNI
 orig_util_SSLContext = util.ssl_.SSLContext
+orig_util_SSLWantReadError = util.SSLWantReadError
+orig_util_SSLWantWriteError = util.SSLWantWriteError
 
 
 log = logging.getLogger(__name__)
@@ -116,6 +118,10 @@ def inject_into_urllib3():
     util.ssl_.HAS_SNI = HAS_SNI
     util.IS_PYOPENSSL = True
     util.ssl_.IS_PYOPENSSL = True
+    util.SSLWantReadError = OpenSSL.SSL.WantReadError
+    util.ssl_.SSLWantReadError = OpenSSL.SSL.WantReadError
+    util.SSLWantWriteError = OpenSSL.SSL.WantWriteError
+    util.ssl_.SSLWantWriteError = OpenSSL.SSL.WantWriteError
 
 
 def extract_from_urllib3():
@@ -126,6 +132,10 @@ def extract_from_urllib3():
     util.ssl_.HAS_SNI = orig_util_HAS_SNI
     util.IS_PYOPENSSL = False
     util.ssl_.IS_PYOPENSSL = False
+    util.SSLWantReadError = orig_util_SSLWantReadError
+    util.ssl_.SSLWantReadError = orig_util_SSLWantReadError
+    util.SSLWantWriteError = orig_util_SSLWantWriteError
+    util.ssl_.SSLWantWriteError = orig_util_SSLWantWriteError
 
 
 def _validate_dependencies_met():
