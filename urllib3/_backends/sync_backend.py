@@ -100,6 +100,12 @@ class SyncSocket(object):
                 want_read = False
                 want_write = False
 
+                # Important: we do recv before send. This is because we want
+                # to make sure that after a send completes, we immediately
+                # call produce_bytes before calling recv and potentially
+                # getting a LoopAbort. This avoids a race condition -- see the
+                # "subtle invariant" in the backend API documentation.
+
                 try:
                     incoming = self._sock.recv(BUFSIZE)
                 except ssl.SSLWantReadError:
