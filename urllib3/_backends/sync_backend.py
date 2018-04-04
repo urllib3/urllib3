@@ -47,8 +47,8 @@ class SyncSocket(object):
         return SyncSocket(wrapped, self._read_timeout)
 
     # Only for SSL-wrapped sockets
-    def getpeercert(self, binary=False):
-        return self._sock.getpeercert(binary_form=binary)
+    def getpeercert(self, binary_form=False):
+        return self._sock.getpeercert(binary_form=binary_form)
 
     def _wait(self, readable, writable):
         assert readable or writable
