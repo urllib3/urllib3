@@ -91,6 +91,7 @@ class SyncSocket(object):
                         outgoing = None
                         outgoing_finished = True
                     else:
+                        assert b
                         outgoing = memoryview(b)
 
                 # This controls whether or not we block
