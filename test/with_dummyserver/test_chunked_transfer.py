@@ -27,7 +27,6 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
 
-    @pytest.mark.skip
     def test_chunks(self):
         self.start_chunked_handler()
         chunks = [b'foo', b'bar', b'', b'bazzzzzzzzzzzzzzzzzzzzzz']
@@ -64,25 +63,20 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         else:
             self.assertEqual(body, b'0\r\n\r\n')
 
-    @pytest.mark.skip
     def test_bytestring_body(self):
         self._test_body(b'thisshouldbeonechunk\r\nasdf')
 
-    @pytest.mark.skip
     def test_unicode_body(self):
         # Unicode bodies are not supported.
         chunk = u'thisshouldbeonechunk\r\näöüß'
         self.assertRaises(InvalidBodyError, self._test_body, chunk)
 
-    @pytest.mark.skip
     def test_empty_string_body(self):
         self._test_body(b'')
 
-    @pytest.mark.skip
     def test_empty_iterable_body(self):
         self._test_body([])
 
-    @pytest.mark.skip
     def test_removes_duplicate_host_header(self):
         self.start_chunked_handler()
         chunks = [b'foo', b'bar', b'', b'bazzzzzzzzzzzzzzzzzzzzzz']
@@ -98,7 +92,6 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         host_headers = [x for x in header_lines if x.startswith(b'host')]
         self.assertEqual(len(host_headers), 1)
 
-    @pytest.mark.skip
     def test_provides_default_host_header(self):
         self.start_chunked_handler()
         chunks = [b'foo', b'bar', b'', b'bazzzzzzzzzzzzzzzzzzzzzz']
