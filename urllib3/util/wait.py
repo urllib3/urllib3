@@ -105,10 +105,23 @@ def null_wait_for_socket(*args, **kwargs):
     raise RuntimeError("no select-equivalent available")
 
 
-if hasattr(select, "poll"):
+def _have_working_poll():
+    # Apparently some systems have a select.poll that fails as soon as you try
+    # to use it, either due to strange configuration or broken monkeypatching
+    # from libraries like eventlet/greenlet.
+    try:
+        poll_obj = select.poll()
+        poll_obj.poll(0)
+    except (AttributeError, OSError):
+        return False
+    else:
+        return True
+
+
+if _have_working_poll():
     wait_for_socket = poll_wait_for_socket
     HAS_WAIT_FOR_SOCKET = True
-elif hasattr(select, "select"):  # Platform-specific: Windows.
+elif hasattr(select, "select"):
     wait_for_socket = select_wait_for_socket
     HAS_WAIT_FOR_SOCKET = True
 else:  # Platform-specific: Appengine.

@@ -15,6 +15,7 @@ from urllib3.util.wait import (
     wait_for_socket,
     select_wait_for_socket,
     poll_wait_for_socket,
+    _have_working_poll,
 )
 
 
@@ -30,7 +31,7 @@ variants = [
     wait_for_socket,
     select_wait_for_socket,
 ]
-if hasattr(select, "poll"):
+if _have_working_poll():
     variants.append(poll_wait_for_socket)
 
 
@@ -66,6 +67,10 @@ def test_wait_for_socket(wfs, spair):
     # Unless we read from it
     assert a.recv(1) == b"x"
     assert not wfs(a, read=True, write=True, timeout=0)
+
+    # But if the remote peer closes the socket, then it becomes readable
+    b.close()
+    assert wfs(a, read=True, timeout=0)
 
 
 def test_wait_for_read_write(spair):
