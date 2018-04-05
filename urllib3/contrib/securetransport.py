@@ -53,8 +53,9 @@ except ImportError:  # Platform-specific: Python 3
 
 try:
     memoryview(b'')
+    has_memoryview = True
 except NameError:
-    raise ImportError("SecureTransport only works on Pythons with memoryview")
+    has_memoryview = False
 
 __all__ = ['inject_into_urllib3', 'extract_from_urllib3']
 
@@ -195,8 +196,11 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
         timeout = wrapped_socket.gettimeout()
         error = None
         read_count = 0
-        buffer = (ctypes.c_char * requested_length).from_address(data_buffer)
-        buffer_view = memoryview(buffer)
+        if has_memoryview:
+            buffer = (ctypes.c_char * requested_length).from_address(data_buffer)
+            buffer_view = memoryview(buffer)
+        else:
+            buffer_view = None
 
         try:
             while read_count < requested_length:
@@ -207,9 +211,17 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
 
                 # We need to tell ctypes that we have a buffer that can be
                 # written to. Upsettingly, we do that like this:
-                chunk_size = base_socket.recv_into(
-                    buffer_view[read_count:requested_length]
-                )
+                if buffer_view is not None:
+                    chunk_size = base_socket.recv_into(
+                        buffer_view[read_count:requested_length]
+                    )
+                else:
+                    remaining = requested_length - read_count
+                    # This is likely innefficient, but works on Python 2.6
+                    buffer = (ctypes.c_char * remaining).from_address(
+                        data_buffer + read_count
+                    )
+                    chunk_size = base_socket.recv_into(buffer, remaining)
                 read_count += chunk_size
                 if not chunk_size:
                     if not read_count:
