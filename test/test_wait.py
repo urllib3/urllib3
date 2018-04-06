@@ -72,6 +72,11 @@ def test_wait_for_socket(wfs, spair):
     b.close()
     assert wfs(a, read=True, timeout=0)
 
+    # Waiting for a socket that's actually been closed is just a bug, and
+    # raises an appropriate exception:
+    with pytest.raises(ValueError):
+        wfs(b, read=True)
+
 
 def test_wait_for_read_write(spair):
     a, b = spair
