@@ -101,7 +101,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         except SSLError as e:
             self.assertTrue('alert unknown ca' in str(e) or
                             'invalid certificate chain' in str(e) or
-                            'unknown Cert Authority' in str(e))
+                            'unknown Cert Authority' in str(e) or
+                            'certificate verify failed' in str(e))
 
     def test_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
