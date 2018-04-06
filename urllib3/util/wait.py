@@ -7,7 +7,10 @@ try:
 except ImportError:
     from time import time as monotonic
 
-__all__ = ["HAS_WAIT_FOR_SOCKET", "wait_for_read", "wait_for_write"]
+__all__ = ["NoWayToWaitForSocketError", "wait_for_read", "wait_for_write"]
+
+class NoWayToWaitForSocketError(Exception):
+    pass
 
 # How should we wait on sockets?
 #
@@ -28,7 +31,8 @@ __all__ = ["HAS_WAIT_FOR_SOCKET", "wait_for_read", "wait_for_write"]
 # for it), but that's OK, because on Windows, select() doesn't have this
 # strange calling convention; plain select() works fine.
 #
-# So: on Windows we use select(), and everywhere else we use poll().
+# So: on Windows we use select(), and everywhere else we use poll(). We also
+# fall back to select() in case poll() is somehow broken or missing.
 
 if sys.version_info >= (3, 5):
     # Modern Python, that retries syscalls by default
@@ -102,7 +106,7 @@ def poll_wait_for_socket(sock, read=False, write=False, timeout=None):
 
 
 def null_wait_for_socket(*args, **kwargs):
-    raise RuntimeError("no select-equivalent available")
+    raise NoWayToWaitForSocketError("no select-equivalent available")
 
 
 def _have_working_poll():
@@ -118,15 +122,19 @@ def _have_working_poll():
         return True
 
 
-if _have_working_poll():
-    wait_for_socket = poll_wait_for_socket
-    HAS_WAIT_FOR_SOCKET = True
-elif hasattr(select, "select"):
-    wait_for_socket = select_wait_for_socket
-    HAS_WAIT_FOR_SOCKET = True
-else:  # Platform-specific: Appengine.
-    wait_for_socket = null_wait_for_socket
-    HAS_WAIT_FOR_SOCKET = False
+def wait_for_socket(*args, **kwargs):
+    # We delay choosing which implementation to use until the first time we're
+    # called. We could do it at import time, but then we might make the wrong
+    # decision if someone goes wild with monkeypatching select.poll after
+    # we're imported.
+    global wait_for_socket
+    if _have_working_poll():
+        wait_for_socket = poll_wait_for_socket
+    elif hasattr(select, "select"):
+        wait_for_socket = select_wait_for_socket
+    else:  # Platform-specific: Appengine.
+        wait_for_socket = null_wait_for_socket
+    return wait_for_socket(*args, **kwargs)
 
 
 def wait_for_read(sock, timeout=None):
