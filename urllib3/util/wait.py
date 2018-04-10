@@ -9,8 +9,10 @@ except ImportError:
 
 __all__ = ["NoWayToWaitForSocketError", "wait_for_read", "wait_for_write"]
 
+
 class NoWayToWaitForSocketError(Exception):
     pass
+
 
 # How should we wait on sockets?
 #
