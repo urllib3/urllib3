@@ -1,8 +1,8 @@
 from __future__ import absolute_import
 
-from .filepost import encode_multipart_formdata
-from .packages import six
-from .packages.six.moves.urllib.parse import urlencode
+from ..filepost import encode_multipart_formdata
+from ..packages import six
+from ..packages.six.moves.urllib.parse import urlencode
 
 
 __all__ = ['RequestMethods']
@@ -42,13 +42,14 @@ class RequestMethods(object):
     def __init__(self, headers=None):
         self.headers = headers or {}
 
-    def urlopen(self, method, url, body=None, headers=None,
-                encode_multipart=True, multipart_boundary=None,
-                **kw):  # Abstract
+    async def urlopen(self, method, url, body=None, headers=None,
+                      encode_multipart=True, multipart_boundary=None,
+                      **kw):  # Abstract
         raise NotImplementedError("Classes extending RequestMethods must implement "
                                   "their own ``urlopen`` method.")
 
-    def request(self, method, url, fields=None, headers=None, **urlopen_kw):
+    async def request(self, method, url, fields=None, headers=None,
+                      **urlopen_kw):
         """
         Make a request using :meth:`urlopen` with the appropriate encoding of
         ``fields`` based on the ``method`` used.
@@ -62,16 +63,16 @@ class RequestMethods(object):
         method = method.upper()
 
         if method in self._encode_url_methods:
-            return self.request_encode_url(method, url, fields=fields,
-                                           headers=headers,
-                                           **urlopen_kw)
+            return await self.request_encode_url(method, url, fields=fields,
+                                                 headers=headers,
+                                                 **urlopen_kw)
         else:
-            return self.request_encode_body(method, url, fields=fields,
-                                            headers=headers,
-                                            **urlopen_kw)
+            return await self.request_encode_body(method, url, fields=fields,
+                                                  headers=headers,
+                                                  **urlopen_kw)
 
-    def request_encode_url(self, method, url, fields=None, headers=None,
-                           **urlopen_kw):
+    async def request_encode_url(self, method, url, fields=None, headers=None,
+                                 **urlopen_kw):
         """
         Make a request using :meth:`urlopen` with the ``fields`` encoded in
         the url. This is useful for request methods like GET, HEAD, DELETE, etc.
@@ -85,11 +86,11 @@ class RequestMethods(object):
         if fields:
             url += '?' + urlencode(fields)
 
-        return self.urlopen(method, url, **extra_kw)
+        return await self.urlopen(method, url, **extra_kw)
 
-    def request_encode_body(self, method, url, fields=None, headers=None,
-                            encode_multipart=True, multipart_boundary=None,
-                            **urlopen_kw):
+    async def request_encode_body(self, method, url, fields=None,
+                                  headers=None, encode_multipart=True,
+                                  multipart_boundary=None, **urlopen_kw):
         """
         Make a request using :meth:`urlopen` with the ``fields`` encoded in
         the body. This is useful for request methods like POST, PUT, PATCH, etc.
@@ -149,4 +150,4 @@ class RequestMethods(object):
         extra_kw['headers'].update(headers)
         extra_kw.update(urlopen_kw)
 
-        return self.urlopen(method, url, **extra_kw)
+        return await self.urlopen(method, url, **extra_kw)
