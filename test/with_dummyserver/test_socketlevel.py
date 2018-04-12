@@ -1143,7 +1143,6 @@ class TestSSL(SocketDummyServerTestCase):
         finally:
             timed_out.set()
 
-    @pytest.mark.xfail
     def test_ssl_failed_fingerprint_verification(self):
         def socket_handler(listener):
             for i in range(2):

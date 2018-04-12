@@ -296,7 +296,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_hostname = 'localhost'
         https_pool.request('GET', '/')
 
-    @pytest.mark.xfail
     def test_assert_fingerprint_md5(self):
         https_pool = HTTPSConnectionPool('localhost', self.port,
                                          cert_reqs='CERT_REQUIRED',
@@ -308,7 +307,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         https_pool.request('GET', '/')
 
-    @pytest.mark.xfail
     def test_assert_fingerprint_sha1(self):
         https_pool = HTTPSConnectionPool('localhost', self.port,
                                          cert_reqs='CERT_REQUIRED',
@@ -319,7 +317,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                         'BF:93:CF:F9:71:CC:07:7D:0A'
         https_pool.request('GET', '/')
 
-    @pytest.mark.xfail
     def test_assert_fingerprint_sha256(self):
         https_pool = HTTPSConnectionPool('localhost', self.port,
                                          cert_reqs='CERT_REQUIRED',
@@ -331,7 +328,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          '1E:60:B0:8B:70:18:64:E6')
         https_pool.request('GET', '/')
 
-    @pytest.mark.xfail
     def test_assert_invalid_fingerprint(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_REQUIRED',
@@ -358,7 +354,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_fingerprint = 'AA'
         _test_request(https_pool)
 
-    @pytest.mark.xfail
     def test_verify_none_and_bad_fingerprint(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_NONE',
@@ -371,7 +366,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             https_pool.request('GET', '/', retries=0)
         self.assertIsInstance(cm.exception.reason, SSLError)
 
-    @pytest.mark.xfail
     def test_verify_none_and_good_fingerprint(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_NONE',
@@ -382,7 +376,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                         'BF:93:CF:F9:71:CC:07:7D:0A'
         https_pool.request('GET', '/')
 
-    @pytest.mark.xfail
     @notSecureTransport
     def test_good_fingerprint_and_hostname_mismatch(self):
         # This test doesn't run with SecureTransport because we don't turn off
@@ -398,7 +391,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                         'BF:93:CF:F9:71:CC:07:7D:0A'
         https_pool.request('GET', '/')
 
-    @pytest.mark.skip
     @requires_network
     def test_https_timeout(self):
         timeout = Timeout(connect=0.001)
@@ -428,7 +420,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.addCleanup(https_pool.close)
         https_pool.request('GET', '/')
 
-    @pytest.mark.skip
     @requires_network
     def test_enhanced_timeout(self):
         def new_pool(timeout, cert_reqs='CERT_REQUIRED'):
@@ -455,7 +446,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.assertRaises(ConnectTimeoutError, https_pool.request, 'GET', '/',
                           timeout=Timeout(total=None, connect=0.001))
 
-    @pytest.mark.xfail
     def test_enhanced_ssl_connection(self):
         fingerprint = '92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A'
 

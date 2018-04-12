@@ -38,8 +38,8 @@ class TrioSocket:
             https_compatible=True)
         return TrioSocket(wrapped)
 
-    def getpeercert(self, binary=False):
-        return self._stream.getpeercert(binary=binary)
+    def getpeercert(self, binary_form=False):
+        return self._stream.getpeercert(binary_form=binary_form)
 
     async def receive_some(self):
         return await self._stream.receive_some(BUFSIZE)
