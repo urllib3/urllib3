@@ -249,5 +249,8 @@ In chronological order:
 * Dominique Leuenberger <dimstar@opensuse.org>
   * Minor fixes in the test suite
 
+* Will Bond <will@wbond.net>
+  * Add Python 2.6 support to ``contrib.securetransport``
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

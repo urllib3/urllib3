@@ -24,6 +24,8 @@ dev (master)
 
 * ``read_chunked()`` on a closed response returns no chunks. (Issue #1088)
 
+* Add Python 2.6 support to ``contrib.securetransport`` (Pull #1359)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
