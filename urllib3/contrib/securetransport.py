@@ -267,7 +267,25 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
                 if error == errno.ECONNRESET or error == errno.EPIPE:
                     if sent != bytes_to_write:
                         orig_data = ctypes.string_at(data_buffer, bytes_to_write)
-                        print('Data not sent: %s' % orig_data[sent:])
+                        unsent_data = orig_data[sent:]
+                        print('Data not sent: %r' % unsent_data)
+                        record_type = unsent_data[0:1]
+                        if record_type == b'\x16' or record_type == b'\x15':
+                            if record_type == b'\x16':
+                                print('Handshake message')
+                            else:
+                                print('Alert message')
+                            tls_version = unsent_data[1:3]
+                            if tls_version == b'\x03\x03':
+                                print('TLS 1.2')
+                            elif tls_version == b'\x03\x02':
+                                print('TLS 1.1')
+                            print('Message length: %r' % unsent_data[3:5])
+                            print('Message type: %r' % unsent_data[5:6])
+                            if record_type == b'\x15':
+                                print('Alert: %r' % unsent_data[6:7])
+                        else:
+                            print('Other message: %r' % unsent_data[0:1])
                     else:
                         print('All data sent')
                     return SecurityConst.errSSLClosedAbort
