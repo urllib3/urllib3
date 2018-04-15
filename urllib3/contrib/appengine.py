@@ -54,7 +54,7 @@ from ..exceptions import (
 )
 
 from ..packages.six import BytesIO
-from ..request import RequestMethods
+from .._sync.request import RequestMethods
 from ..response import HTTPResponse
 from ..util.timeout import Timeout
 from ..util.retry import Retry

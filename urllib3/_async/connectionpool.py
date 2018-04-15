@@ -27,7 +27,7 @@ from ..exceptions import (
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.packages import six
 from urllib3.packages.six.moves import queue
-from ..request import RequestMethods
+from .request import RequestMethods
 from .response import HTTPResponse
 from .connection import HTTP1Connection
 
