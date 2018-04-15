@@ -189,6 +189,10 @@ def _temporary_keychain():
 
     keychain_path = os.path.join(tempdirectory, filename).encode('utf-8')
 
+    # This randomly fails with a permission error periodically on Travis
+    print('Keychain path: %r' % keychain_path)
+    print('Password: %r' % password)
+
     # We now want to create the keychain itself.
     keychain = Security.SecKeychainRef()
     status = Security.SecKeychainCreate(
