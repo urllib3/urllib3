@@ -99,7 +99,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         try:
             https_pool.request('GET', '/certificate', retries=False)
         except SSLError as e:
-            print(str(e))
             self.assertTrue('alert unknown ca' in str(e) or
                             'invalid certificate chain' in str(e) or
                             'unknown Cert Authority' in str(e))

@@ -212,7 +212,8 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
             error = e.errno
 
             if error is not None and error != errno.EAGAIN:
-                if error == errno.ECONNRESET:
+                data_length_pointer[0] = read_count
+                if error == errno.ECONNRESET or error == errno.EPIPE:
                     return SecurityConst.errSSLClosedAbort
                 raise
 
@@ -223,7 +224,6 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
 
         return 0
     except Exception as e:
-        print("Internal error during read: %s" % e)
         if wrapped_socket is not None:
             wrapped_socket._exception = e
         return SecurityConst.errSSLInternal
@@ -243,7 +243,6 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
 
         bytes_to_write = data_length_pointer[0]
         data = ctypes.string_at(data_buffer, bytes_to_write)
-        orig_data = data
 
         timeout = wrapped_socket.gettimeout()
         error = None
@@ -264,41 +263,19 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
         except (socket.error) as e:
             error = e.errno
 
-            data_length_pointer[0] = sent
-
             if error is not None and error != errno.EAGAIN:
+                data_length_pointer[0] = sent
                 if error == errno.ECONNRESET or error == errno.EPIPE:
-                    if sent != bytes_to_write:
-                        unsent_data = orig_data[sent:]
-                        print('Data not sent: %r' % unsent_data)
-                        record_type = unsent_data[0:1]
-                        if record_type == b'\x16' or record_type == b'\x15':
-                            if record_type == b'\x16':
-                                print('Handshake message')
-                            else:
-                                print('Alert message')
-                            tls_version = unsent_data[1:3]
-                            if tls_version == b'\x03\x03':
-                                print('TLS 1.2')
-                            elif tls_version == b'\x03\x02':
-                                print('TLS 1.1')
-                            print('Message length: %r' % unsent_data[3:5])
-                            print('Message type: %r' % unsent_data[5:6])
-                            if record_type == b'\x15':
-                                print('Alert: %r' % unsent_data[6:7])
-                        else:
-                            print('Other message: %r' % unsent_data[0:1])
-                    else:
-                        print('All data sent')
                     return SecurityConst.errSSLClosedAbort
                 raise
+
+        data_length_pointer[0] = sent
 
         if sent != bytes_to_write:
             return SecurityConst.errSSLWouldBlock
 
         return 0
     except Exception as e:
-        print("Internal error during write: %s" % e)
         if wrapped_socket is not None:
             wrapped_socket._exception = e
         return SecurityConst.errSSLInternal
