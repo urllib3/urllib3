@@ -264,7 +264,7 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
             error = e.errno
 
             if error is not None and error != errno.EAGAIN:
-                if error == errno.ECONNRESET:
+                if error == errno.ECONNRESET or error == errno.EPIPE:
                     return SecurityConst.errSSLClosedAbort
                 raise
 
