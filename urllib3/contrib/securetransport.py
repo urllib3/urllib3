@@ -243,6 +243,7 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
 
         bytes_to_write = data_length_pointer[0]
         data = ctypes.string_at(data_buffer, bytes_to_write)
+        orig_data = data
 
         timeout = wrapped_socket.gettimeout()
         error = None
@@ -266,7 +267,6 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
             if error is not None and error != errno.EAGAIN:
                 if error == errno.ECONNRESET or error == errno.EPIPE:
                     if sent != bytes_to_write:
-                        orig_data = ctypes.string_at(data_buffer, bytes_to_write)
                         unsent_data = orig_data[sent:]
                         print('Data not sent: %r' % unsent_data)
                         record_type = unsent_data[0:1]
