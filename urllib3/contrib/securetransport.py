@@ -264,6 +264,8 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
         except (socket.error) as e:
             error = e.errno
 
+            data_length_pointer[0] = sent
+
             if error is not None and error != errno.EAGAIN:
                 if error == errno.ECONNRESET or error == errno.EPIPE:
                     if sent != bytes_to_write:
@@ -291,7 +293,6 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
                     return SecurityConst.errSSLClosedAbort
                 raise
 
-        data_length_pointer[0] = sent
         if sent != bytes_to_write:
             return SecurityConst.errSSLWouldBlock
 
