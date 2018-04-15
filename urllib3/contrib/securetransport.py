@@ -223,7 +223,7 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
 
         return 0
     except Exception as e:
-        print("Internal error: %s" % e)
+        print("Internal error during read: %s" % e)
         if wrapped_socket is not None:
             wrapped_socket._exception = e
         return SecurityConst.errSSLInternal
@@ -274,6 +274,7 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
 
         return 0
     except Exception as e:
+        print("Internal error during write: %s" % e)
         if wrapped_socket is not None:
             wrapped_socket._exception = e
         return SecurityConst.errSSLInternal
