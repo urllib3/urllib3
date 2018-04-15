@@ -265,6 +265,11 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
 
             if error is not None and error != errno.EAGAIN:
                 if error == errno.ECONNRESET or error == errno.EPIPE:
+                    if sent != bytes_to_write:
+                        orig_data = ctypes.string_at(data_buffer, bytes_to_write)
+                        print('Data not sent: %s' % orig_data[sent:])
+                    else:
+                        print('All data sent')
                     return SecurityConst.errSSLClosedAbort
                 raise
 
