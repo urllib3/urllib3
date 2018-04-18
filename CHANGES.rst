@@ -24,6 +24,8 @@ dev (master)
 
 * ``read_chunked()`` on a closed response returns no chunks. (Issue #1088)
 
+* Added support for auth info in url for SOCKS proxy (Pull #1363)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

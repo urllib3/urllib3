@@ -398,6 +398,45 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         self.assertEqual(response.data, b'')
         self.assertEqual(response.headers['Server'], 'SocksTestServer')
 
+    def test_socks_with_auth_in_url(self):
+        """
+        Test when we have auth info in url, i.e.
+        socks5://user:pass@host:port and no username/password as params
+        """
+        def request_handler(listener):
+            sock = listener.accept()[0]
+
+            handler = handle_socks5_negotiation(
+                sock, negotiate=True, username=b'user', password=b'pass'
+            )
+            addr, port = next(handler)
+
+            self.assertEqual(addr, '16.17.18.19')
+            self.assertEqual(port, 80)
+            handler.send(True)
+
+            while True:
+                buf = sock.recv(65535)
+                if buf.endswith(b'\r\n\r\n'):
+                    break
+
+            sock.sendall(b'HTTP/1.1 200 OK\r\n'
+                         b'Server: SocksTestServer\r\n'
+                         b'Content-Length: 0\r\n'
+                         b'\r\n')
+            sock.close()
+
+        self._start_server(request_handler)
+        proxy_url = "socks5://user:pass@%s:%s" % (self.host, self.port)
+        pm = socks.SOCKSProxyManager(proxy_url)
+        self.addCleanup(pm.clear)
+
+        response = pm.request('GET', 'http://16.17.18.19')
+
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.data, b'')
+        self.assertEqual(response.headers['Server'], 'SocksTestServer')
+
     def test_socks_with_invalid_password(self):
         def request_handler(listener):
             sock = listener.accept()[0]
