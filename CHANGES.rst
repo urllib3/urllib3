@@ -26,6 +26,8 @@ dev (master)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
+* Added support for auth info in url for SOCKS proxy (Issue #1363)
+
 
 1.22 (2017-07-20)
 -----------------
