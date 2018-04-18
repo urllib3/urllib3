@@ -400,7 +400,8 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
 
     def test_socks_with_auth_in_url(self):
         """
-        Test when we have auth info in url, i.e. socks5://user:pass@host:port and no username/password as params
+        Test when we have auth info in url, i.e.
+        socks5://user:pass@host:port and no username/password as params
         """
         def request_handler(listener):
             sock = listener.accept()[0]
