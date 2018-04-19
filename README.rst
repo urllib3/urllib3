@@ -25,6 +25,10 @@ urllib3
         :alt: Bountysource
         :target: https://www.bountysource.com/trackers/192525-urllib3?utm_source=192525&utm_medium=shield&utm_campaign=TRACKER_BADGE
 
+.. image:: https://badges.gitter.im/python-urllib3/Lobby.svg
+        :alt: Gitter
+        :target: https://gitter.im/python-urllib3/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
+
 urllib3 is a powerful, *sanity-friendly* HTTP client for Python. Much of the
 Python ecosystem already uses urllib3 and you should too.
 urllib3 brings many critical features that are missing from the Python
