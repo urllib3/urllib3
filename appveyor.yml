@@ -51,7 +51,7 @@ install:
 
   # Upgrade to the latest version of pip to avoid it displaying warnings
   # about it being out of date.
-  - pip install --disable-pip-version-check --user --upgrade pip wheel
+  - pip install --disable-pip-version-check --user --upgrade pip~=9.0 wheel
   - pip install tox virtualenv
 
 test_script:
