@@ -201,7 +201,7 @@ def _build_tunnel_request(host, port, headers):
     return tunnel_request
 
 
-async def _start_http_request(request, state_machine, sock):
+async def _start_http_request(request, state_machine, sock, read_timeout=None):
     """
     Send the request using the given state machine and connection, wait
     for the response headers, and return them.
@@ -248,7 +248,8 @@ async def _start_http_request(request, state_machine, sock):
                 # Can't happen
                 raise RuntimeError("Unexpected h11 event {}".format(event))
 
-    await sock.send_and_receive_for_a_while(produce_bytes, consume_bytes)
+    await sock.send_and_receive_for_a_while(
+        produce_bytes, consume_bytes, read_timeout)
     assert context['h11_response'] is not None
 
     if context['send_aborted']:
@@ -369,12 +370,11 @@ class HTTP1Connection(object):
         return sock
 
     async def send_request(self, request, read_timeout):
-        # XXX Remove read_timeout as it is sent to backend already
         """
         Given a Request object, performs the logic required to get a response.
         """
         h11_response = await _start_http_request(
-            request, self._state_machine, self._sock
+            request, self._state_machine, self._sock, read_timeout
         )
         return _response_from_h11(h11_response, self)
 
@@ -424,14 +424,13 @@ class HTTP1Connection(object):
 
         if self._socket_options:
             extra_kw['socket_options'] = self._socket_options
-        # XX pass connect_timeout to backend
 
         # This was factored out into a separate function to allow overriding
         # by subclasses, but in the backend approach the way to to this is to
         # provide a custom backend. (Composition >> inheritance.)
         try:
             self._sock = await self._backend.connect(
-                self._host, self._port, **extra_kw)
+                self._host, self._port, connect_timeout, **extra_kw)
         # XX these two error handling blocks needs to be re-done in a
         # backend-agnostic way
         except socket.timeout:

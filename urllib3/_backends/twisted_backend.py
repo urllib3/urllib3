@@ -18,7 +18,8 @@ class TwistedBackend:
     def __init__(self, reactor):
         self._reactor = reactor
 
-    async def connect(self, host, port, source_address=None, socket_options=None):
+    async def connect(self, host, port, connect_timeout,
+                      source_address=None, socket_options=None):
         # HostnameEndpoint only supports setting source host, not source port
         if source_address is not None:
             raise NotImplementedError(
@@ -188,7 +189,8 @@ class TwistedSocket:
     async def receive_some(self):
         return await self._protocol.receive_some()
 
-    async def send_and_receive_for_a_while(self, produce_bytes, consume_bytes):
+    async def send_and_receive_for_a_while(
+            self, produce_bytes, consume_bytes, read_timeout):
         async def sender():
             while True:
                 outgoing = await produce_bytes()

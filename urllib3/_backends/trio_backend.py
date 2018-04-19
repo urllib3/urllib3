@@ -6,8 +6,8 @@ BUFSIZE = 65536
 
 
 class TrioBackend:
-    async def connect(
-            self, host, port, source_address=None, socket_options=None):
+    async def connect(self, host, port, connect_timeout,
+                      source_address=None, socket_options=None):
         if source_address is not None:
             # You can't really combine source_address= and happy eyeballs
             # (can we get rid of source_address? or at least make it a source
@@ -44,7 +44,8 @@ class TrioSocket:
     async def receive_some(self):
         return await self._stream.receive_some(BUFSIZE)
 
-    async def send_and_receive_for_a_while(self, produce_bytes, consume_bytes):
+    async def send_and_receive_for_a_while(
+            self, produce_bytes, consume_bytes, read_timeout):
         async def sender():
             while True:
                 outgoing = await produce_bytes()
