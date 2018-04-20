@@ -399,7 +399,7 @@ class WrappedSocket(object):
             if trust:
                 CoreFoundation.CFRelease(trust)
 
-            if cert_array is None:
+            if cert_array is not None:
                 CoreFoundation.CFRelease(cert_array)
 
         # Ok, now we can look at what the result was.
