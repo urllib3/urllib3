@@ -1,5 +1,5 @@
-urllib3
-=======
+earllib3
+========
 
 .. image:: https://travis-ci.org/urllib3/urllib3.svg?branch=master
         :alt: Build status on Travis
