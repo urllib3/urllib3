@@ -273,8 +273,7 @@ class WrappedSocket(object):
             else:
                 raise
         except OpenSSL.SSL.WantReadError:
-            rd = util.wait_for_read(self.socket, self.socket.gettimeout())
-            if not rd:
+            if not util.wait_for_read(self.socket, self.socket.gettimeout()):
                 raise timeout('The read operation timed out')
             else:
                 return self.recv(*args, **kwargs)
@@ -295,8 +294,7 @@ class WrappedSocket(object):
             else:
                 raise
         except OpenSSL.SSL.WantReadError:
-            rd = util.wait_for_read(self.socket, self.socket.gettimeout())
-            if not rd:
+            if not util.wait_for_read(self.socket, self.socket.gettimeout()):
                 raise timeout('The read operation timed out')
             else:
                 return self.recv_into(*args, **kwargs)
@@ -309,8 +307,7 @@ class WrappedSocket(object):
             try:
                 return self.connection.send(data)
             except OpenSSL.SSL.WantWriteError:
-                wr = util.wait_for_write(self.socket, self.socket.gettimeout())
-                if not wr:
+                if not util.wait_for_write(self.socket, self.socket.gettimeout()):
                     raise timeout()
                 continue
             except OpenSSL.SSL.SysCallError as e:
@@ -446,8 +443,7 @@ class PyOpenSSLContext(object):
             try:
                 cnx.do_handshake()
             except OpenSSL.SSL.WantReadError:
-                rd = util.wait_for_read(sock, sock.gettimeout())
-                if not rd:
+                if not util.wait_for_read(sock, sock.gettimeout()):
                     raise timeout('select timed out')
                 continue
             except OpenSSL.SSL.Error as e:
