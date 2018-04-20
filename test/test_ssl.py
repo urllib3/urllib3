@@ -1,6 +1,5 @@
 import mock
 import pytest
-import socket
 from six import b
 from urllib3.util import ssl_
 from urllib3.exceptions import SNIMissingWarning
@@ -37,7 +36,7 @@ def test_is_ipaddress_false(addr):
 def test_context_sni_with_ip_address(monkeypatch, has_sni, server_hostname, uses_sni):
     monkeypatch.setattr(ssl_, 'HAS_SNI', has_sni)
 
-    sock = mock.create_autospec(socket.socket)
+    sock = mock.Mock()
     context = mock.create_autospec(ssl_.SSLContext)
 
     ssl_.ssl_wrap_socket(sock, server_hostname=server_hostname, ssl_context=context)
@@ -60,7 +59,7 @@ def test_context_sni_with_ip_address(monkeypatch, has_sni, server_hostname, uses
 def test_sni_missing_warning_with_ip_addresses(monkeypatch, has_sni, server_hostname, should_warn):
     monkeypatch.setattr(ssl_, 'HAS_SNI', has_sni)
 
-    sock = mock.create_autospec(socket.socket)
+    sock = mock.Mock()
     context = mock.create_autospec(ssl_.SSLContext)
 
     with mock.patch('warnings.warn') as warn:
