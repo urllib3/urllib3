@@ -5,6 +5,8 @@ from ._common import is_readable, LoopAbort
 BUFSIZE = 65536
 
 
+# XX support connect_timeout and read_timeout
+
 class TrioBackend:
     async def connect(self, host, port, connect_timeout,
                       source_address=None, socket_options=None):

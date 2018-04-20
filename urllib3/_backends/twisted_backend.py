@@ -11,7 +11,7 @@ from zope.interface import implementer
 from ..contrib.pyopenssl import get_subj_alt_name
 from ._common import LoopAbort
 
-# XX need to add timeout support, esp. on connect
+# XX support connect_timeout and read_timeout
 
 
 class TwistedBackend:
