@@ -13,16 +13,12 @@ BUFSIZE = 65536
 
 
 class SyncBackend(object):
-    def __init__(self, connect_timeout=None, read_timeout=None):
-        self._connect_timeout = connect_timeout
-        self._read_timeout = read_timeout
-
-    def connect(
-            self, host, port, source_address=None, socket_options=None):
+    def connect(self, host, port, connect_timeout,
+                source_address=None, socket_options=None):
         conn = create_connection(
-            (host, port), self._connect_timeout,
+            (host, port), connect_timeout,
             source_address=source_address, socket_options=socket_options)
-        return SyncSocket(conn, self._read_timeout)
+        return SyncSocket(conn)
 
 
 class SyncSocket(object):
@@ -30,9 +26,8 @@ class SyncSocket(object):
     # new selector object each time we block, but if _selector is passed
     # we use the object every time. See test_sync_connection.py for the
     # tests that use this.
-    def __init__(self, sock, read_timeout, _selector=None):
+    def __init__(self, sock, _selector=None):
         self._sock = sock
-        self._read_timeout = read_timeout
         # We keep the socket in non-blocking mode, except during connect() and
         # during the SSL handshake:
         self._sock.setblocking(False)
@@ -44,13 +39,13 @@ class SyncSocket(object):
             self._sock,
             server_hostname=server_hostname, ssl_context=ssl_context)
         wrapped.setblocking(False)
-        return SyncSocket(wrapped, self._read_timeout)
+        return SyncSocket(wrapped)
 
     # Only for SSL-wrapped sockets
     def getpeercert(self, binary_form=False):
         return self._sock.getpeercert(binary_form=binary_form)
 
-    def _wait(self, readable, writable):
+    def _wait(self, readable, writable, read_timeout=None):
         assert readable or writable
         s = self._selector or DEFAULT_SELECTOR()
         flags = 0
@@ -59,9 +54,9 @@ class SyncSocket(object):
         if writable:
             flags |= selectors.EVENT_WRITE
         s.register(self._sock, flags)
-        events = s.select(timeout=self._read_timeout)
+        events = s.select(timeout=read_timeout)
         if not events:
-            raise socket.timeout("XX FIXME timeout happened")
+            raise socket.timeout()  # XX use a backend-agnostic exception
         _, event = events[0]
         return (event & selectors.EVENT_READ, event & selectors.EVENT_WRITE)
 
@@ -79,7 +74,8 @@ class SyncSocket(object):
                 else:
                     raise
 
-    def send_and_receive_for_a_while(self, produce_bytes, consume_bytes):
+    def send_and_receive_for_a_while(
+            self, produce_bytes, consume_bytes, read_timeout):
         outgoing_finished = False
         outgoing = b""
         try:
@@ -139,7 +135,7 @@ class SyncSocket(object):
                         made_progress = True
 
                 if not made_progress:
-                    self._wait(want_read, want_write)
+                    self._wait(want_read, want_write, read_timeout)
         except LoopAbort:
             pass
 

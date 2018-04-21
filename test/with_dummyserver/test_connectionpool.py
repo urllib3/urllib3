@@ -49,7 +49,6 @@ def wait_for_socket(ready_event):
 
 class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
 
-    @pytest.mark.skip
     def test_timeout_float(self):
         block_event = Event()
         ready_event = self.start_basic_handler(block_send=block_event, num=2)
@@ -66,7 +65,6 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         block_event.set()  # Pre-release block
         pool.request('GET', '/')
 
-    @pytest.mark.skip
     def test_conn_closed(self):
         block_event = Event()
         self.start_basic_handler(block_send=block_event, num=1)
@@ -86,7 +84,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
 
         block_event.set()
 
-    @pytest.mark.skip
+    @pytest.mark.xfail
     def test_timeout(self):
         # Requests should time out when expected
         block_event = Event()
@@ -147,7 +145,6 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
                           timeout=SHORT_TIMEOUT)
         block_event.set()  # Release request
 
-    @pytest.mark.skip
     def test_connect_timeout(self):
         url = '/'
         host, port = TARPIT_HOST, 80
@@ -176,7 +173,6 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         pool._put_conn(conn)
         self.assertRaises(ConnectTimeoutError, pool.request, 'GET', url, timeout=timeout)
 
-    @pytest.mark.skip
     def test_total_applies_connect(self):
         host, port = TARPIT_HOST, 80
 
@@ -194,7 +190,6 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         self.addCleanup(conn.close)
         self.assertRaises(ConnectTimeoutError, pool._make_request, conn, 'GET', '/')
 
-    @pytest.mark.skip
     def test_total_timeout(self):
         block_event = Event()
         ready_event = self.start_basic_handler(block_send=block_event, num=2)
@@ -216,7 +211,9 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         self.addCleanup(pool.close)
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/')
 
-    @pytest.mark.xfail
+    # Sometimes fails with `AttributeError: 'TestConnectionPoolTimeouts' object
+    # has no attribute 'port'` when instantiating the pool
+    @pytest.mark.skip
     def test_create_connection_timeout(self):
         timeout = Timeout(connect=SHORT_TIMEOUT, total=LONG_TIMEOUT)
         pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout, retries=False)

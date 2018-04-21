@@ -305,7 +305,7 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
         response = pm.request('GET', 'http://example.com')
         self.assertEqual(response.status, 200)
 
-    @pytest.mark.xfail
+    @pytest.mark.skip
     def test_connection_timeouts(self):
         event = threading.Event()
 
