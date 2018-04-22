@@ -17,6 +17,18 @@ If you wish to add a new feature or fix a bug:
    :) Make sure to add yourself to ``CONTRIBUTORS.txt``.
 
 
+Setting up your development environment
+---------------------------------------
+
+It is recommended, and even enforced by the make file, that you use a 
+`virtualenv
+<http://docs.python-guide.org/en/latest/dev/virtualenvs/>`_::
+
+  $ python3 -m venv venv3
+  $ source venv3/bin/activate
+  $ pip install -r dev-requirements.txt
+
+
 Running the tests
 -----------------
 
@@ -25,11 +37,16 @@ analysis while running test suite. Our ``Makefile`` handles much of this for
 you as long as you're running it `inside of a virtualenv
 <http://docs.python-guide.org/en/latest/dev/virtualenvs/>`_::
 
-  $ make test
+  $ make test-quick
   [... magically installs dependencies and runs tests on your virtualenv]
   Ran 182 tests in 1.633s
 
   OK (SKIP=6)
+
+There is also a make target for running all of our tests and multiple python
+versions.
+
+  $ make test-all
 
 Note that code coverage less than 100% is regarded as a failing run. Some
 platform-specific tests are skipped unless run in that platform.  To make sure

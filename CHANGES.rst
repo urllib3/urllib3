@@ -26,6 +26,8 @@ dev (master)
 
 * Add Python 2.6 support to ``contrib.securetransport`` (Pull #1359)
 
+* Added support for auth info in url for SOCKS proxy (Pull #1363)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

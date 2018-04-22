@@ -194,8 +194,7 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
         try:
             while read_count < requested_length:
                 if timeout is None or timeout >= 0:
-                    readables = util.wait_for_read([base_socket], timeout)
-                    if not readables:
+                    if not util.wait_for_read(base_socket, timeout):
                         raise socket.error(errno.EAGAIN, 'timed out')
 
                 remaining = requested_length - read_count
@@ -251,8 +250,7 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
         try:
             while sent < bytes_to_write:
                 if timeout is None or timeout >= 0:
-                    writables = util.wait_for_write([base_socket], timeout)
-                    if not writables:
+                    if not util.wait_for_write(base_socket, timeout):
                         raise socket.error(errno.EAGAIN, 'timed out')
                 chunk_sent = base_socket.send(data)
                 sent += chunk_sent
@@ -395,7 +393,7 @@ class WrappedSocket(object):
             if trust:
                 CoreFoundation.CFRelease(trust)
 
-            if cert_array is None:
+            if cert_array is not None:
                 CoreFoundation.CFRelease(cert_array)
 
         # Ok, now we can look at what the result was.
