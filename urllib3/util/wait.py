@@ -61,10 +61,10 @@ else:
                     raise
                 else:
                     timeout = deadline - monotonic()
-                    if timeout == float("inf"):
-                        timeout = None
                     if timeout < 0:
                         timeout = 0
+                    if timeout == float("inf"):
+                        timeout = None
                     continue
 
 
