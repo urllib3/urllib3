@@ -11,6 +11,7 @@ from ..exceptions import SSLError, InsecurePlatformWarning, SNIMissingWarning
 
 SSLContext = None
 HAS_SNI = False
+HAS_IPADDRESS = False
 IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
 
@@ -52,6 +53,12 @@ try:
 except ImportError:
     OP_NO_SSLv2, OP_NO_SSLv3 = 0x1000000, 0x2000000
     OP_NO_COMPRESSION = 0x20000
+
+try:
+    import ipaddress
+    HAS_IPADDRESS = True
+except ImportError:
+    pass
 
 # A secure default.
 # Sources for more information on TLS ciphers:
@@ -323,19 +330,42 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         # try to load OS default certs; works well on Windows (require Python3.4+)
         context.load_default_certs()
 
+    # Due to a bug in Python's handling of SNI extensions (sends IP as SNI hostname when connecting via IP address)
+    # we shouldn't send things that parse as IP addresses to wrap_socket as a hostname.
+    # If ipaddress is available, use it to filter those out.
+    server_hostname_is_ip = False
+
+    if HAS_IPADDRESS:
+        try:
+            # ipaddress doesn't accept byte strings
+            if isinstance(server_hostname, u''.__class__):
+                server_hostname_uni = server_hostname
+            else:
+                server_hostname_uni = server_hostname.decode('utf-8')
+
+            ipaddress.ip_address(server_hostname_uni)
+            server_hostname_is_ip = True
+        except ipaddress.AddressValueError:
+            pass
+
     if certfile:
         context.load_cert_chain(certfile, keyfile)
-    if HAS_SNI:  # Platform-specific: OpenSSL with enabled SNI
-        return context.wrap_socket(sock, server_hostname=server_hostname)
 
-    warnings.warn(
-        'An HTTPS request has been made, but the SNI (Server Name '
-        'Indication) extension to TLS is not available on this platform. '
-        'This may cause the server to present an incorrect TLS '
-        'certificate, which can cause validation failures. You can upgrade to '
-        'a newer version of Python to solve this. For more information, see '
-        'https://urllib3.readthedocs.io/en/latest/advanced-usage.html'
-        '#ssl-warnings',
-        SNIMissingWarning
-    )
-    return context.wrap_socket(sock)
+    wrap_socket_kwargs = {}
+
+    if HAS_SNI:  # Platform-specific: OpenSSL with enabled SNI
+        if not server_hostname_is_ip:
+            wrap_socket_kwargs['server_hostname'] = server_hostname
+    else:
+        warnings.warn(
+            'An HTTPS request has been made, but the SNI (Server Name '
+            'Indication) extension to TLS is not available on this platform. '
+            'This may cause the server to present an incorrect TLS '
+            'certificate, which can cause validation failures. You can upgrade to '
+            'a newer version of Python to solve this. For more information, see '
+            'https://urllib3.readthedocs.io/en/latest/advanced-usage.html'
+            '#ssl-warnings',
+            SNIMissingWarning
+        )
+
+    return context.wrap_socket(sock, **wrap_socket_kwargs)
