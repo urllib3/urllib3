@@ -91,6 +91,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         except MaxRetryError as e:
             if sys.platform == 'darwin':
                 # OS X has intermittent Import/Export error.
+                # https://github.com/urllib3/urllib3/issues/1372
                 self.assertTrue('Import/Export format unsupported.' in str(e),
                                 str(e))
             else:
@@ -109,6 +110,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         except SSLError as e:
             if sys.platform == 'darwin':
                 # OS X has intermittent Import/Export error.
+                # https://github.com/urllib3/urllib3/issues/1372
                 self.assertTrue('Import/Export format unsupported.' in str(e) or
                                 'alert unknown ca' in str(e) or
                                 'invalid certificate chain' in str(e) or
