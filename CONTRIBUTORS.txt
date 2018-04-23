@@ -249,6 +249,9 @@ In chronological order:
 * Dominique Leuenberger <dimstar@opensuse.org>
   * Minor fixes in the test suite
 
+* Will Bond <will@wbond.net>
+  * Add Python 2.6 support to ``contrib.securetransport``
+
 * Aleksei Alekseev <alekseev.yeskela@gmail.com>
   * using auth info for socks proxy
 
