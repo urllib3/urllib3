@@ -1,3 +1,5 @@
+import zlib
+
 from io import BytesIO, BufferedReader
 
 import pytest
@@ -92,7 +94,6 @@ class TestResponse(object):
         assert r.read() == b''
 
     def test_decode_deflate(self):
-        import zlib
         data = zlib.compress(b'foo')
 
         fp = BytesIO(data)
@@ -101,7 +102,6 @@ class TestResponse(object):
         assert r.data == b'foo'
 
     def test_decode_deflate_case_insensitve(self):
-        import zlib
         data = zlib.compress(b'foo')
 
         fp = BytesIO(data)
@@ -110,7 +110,6 @@ class TestResponse(object):
         assert r.data == b'foo'
 
     def test_chunked_decoding_deflate(self):
-        import zlib
         data = zlib.compress(b'foo')
 
         fp = BytesIO(data)
@@ -125,7 +124,6 @@ class TestResponse(object):
         assert r.read() == b''
 
     def test_chunked_decoding_deflate2(self):
-        import zlib
         compress = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
         data = compress.compress(b'foo')
         data += compress.flush()
@@ -142,7 +140,6 @@ class TestResponse(object):
         assert r.read() == b''
 
     def test_chunked_decoding_gzip(self):
-        import zlib
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
         data = compress.compress(b'foo')
         data += compress.flush()
@@ -155,6 +152,53 @@ class TestResponse(object):
         assert r.read(2) == b'oo'
         assert r.read() == b''
         assert r.read() == b''
+
+    def test_decode_gzip_multi_member(self):
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        data = compress.compress(b'foo')
+        data += compress.flush()
+        data = data * 3
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'gzip'})
+
+        assert r.data == b'foofoofoo'
+
+    def test_decode_gzip_error(self):
+        fp = BytesIO(b'foo')
+        with pytest.raises(DecodeError):
+            HTTPResponse(fp, headers={'content-encoding': 'gzip'})
+
+    def test_decode_gzip_swallow_garbage(self):
+        # When data comes from multiple calls to read(), data after
+        # the first zlib error (here triggered by garbage) should be
+        # ignored.
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        data = compress.compress(b'foo')
+        data += compress.flush()
+        data = data * 3 + b'foo'
+
+        fp = BytesIO(data)
+        r = HTTPResponse(
+            fp, headers={'content-encoding': 'gzip'}, preload_content=False)
+        ret = b''
+        for _ in range(100):
+            ret += r.read(1)
+            if r.closed:
+                break
+
+        assert ret == b'foofoofoo'
+
+    def test_chunked_decoding_gzip_swallow_garbage(self):
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        data = compress.compress(b'foo')
+        data += compress.flush()
+        data = data * 3 + b'foo'
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'gzip'})
+
+        assert r.data == b'foofoofoo'
 
     def test_body_blob(self):
         resp = HTTPResponse(b'foo')
@@ -282,7 +326,6 @@ class TestResponse(object):
             next(stream)
 
     def test_gzipped_streaming(self):
-        import zlib
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
         data = compress.compress(b'foo')
         data += compress.flush()
@@ -297,7 +340,6 @@ class TestResponse(object):
             next(stream)
 
     def test_gzipped_streaming_tell(self):
-        import zlib
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
         uncompressed_data = b'foo'
         data = compress.compress(uncompressed_data)
@@ -320,8 +362,6 @@ class TestResponse(object):
     def test_deflate_streaming_tell_intermediate_point(self):
         # Ensure that ``tell()`` returns the correct number of bytes when
         # part-way through streaming compressed content.
-        import zlib
-
         NUMBER_OF_READS = 10
 
         class MockCompressedDataReading(BytesIO):
@@ -382,7 +422,6 @@ class TestResponse(object):
         assert len(ZLIB_PAYLOAD) == end_of_stream
 
     def test_deflate_streaming(self):
-        import zlib
         data = zlib.compress(b'foo')
 
         fp = BytesIO(data)
@@ -395,7 +434,6 @@ class TestResponse(object):
             next(stream)
 
     def test_deflate2_streaming(self):
-        import zlib
         compress = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
         data = compress.compress(b'foo')
         data += compress.flush()

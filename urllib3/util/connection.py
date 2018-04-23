@@ -1,13 +1,22 @@
 from __future__ import absolute_import
 import socket
+from .wait import NoWayToWaitForSocketError, wait_for_read
 
 
 def is_connection_dropped(conn):  # Platform-specific
     """
     Returns True if the connection is dropped and should be closed.
     """
-    # TODO: Need to restore AppEngine behaviour here at some point.
-    return conn.is_dropped()
+    sock = getattr(conn, 'sock', False)
+    if sock is False:  # Platform-specific: AppEngine
+        return False
+    if sock is None:  # Connection already closed (such as by httplib).
+        return True
+    try:
+        # Returns True if readable, which here means it's been dropped
+        return wait_for_read(sock, timeout=0.0)
+    except NoWayToWaitForSocketError:  # Platform-specific: AppEngine
+        return False
 
 
 # This function is copied from socket.py in the Python 2.7 standard

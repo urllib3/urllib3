@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
+import os
 import unittest
 
+import mock
 import pytest
 
 try:
+    from cryptography import x509
+    from OpenSSL.crypto import FILETYPE_PEM, load_certificate
     from urllib3.contrib.pyopenssl import (inject_into_urllib3,
                                            extract_from_urllib3,
+                                           get_subj_alt_name,
                                            _dnsname_to_stdlib)
 except ImportError as e:
     pytestmark = pytest.mark.skip('Could not import PyOpenSSL: %r' % e)
@@ -56,3 +61,19 @@ class TestPyOpenSSLHelpers(unittest.TestCase):
         expected_result = '*.xn--p1b6ci4b4b3a.xn--11b5bs8d'
 
         self.assertEqual(_dnsname_to_stdlib(name), expected_result)
+
+    @mock.patch('urllib3.contrib.pyopenssl.log.warning')
+    def test_get_subj_alt_name(self, mock_warning):
+        """
+        If a certificate has two subject alternative names, cryptography raises
+        an x509.DuplicateExtension exception.
+        """
+        path = os.path.join(os.path.dirname(__file__), 'duplicate_san.pem')
+        with open(path, 'r') as fp:
+            cert = load_certificate(FILETYPE_PEM, fp.read())
+
+        self.assertEqual(get_subj_alt_name(cert), [])
+
+        self.assertEqual(mock_warning.call_count, 1)
+        self.assertTrue(isinstance(mock_warning.call_args[0][1],
+                                   x509.DuplicateExtension))
