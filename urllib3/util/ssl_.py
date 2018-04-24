@@ -350,7 +350,8 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
     # extension should not be used according to RFC3546 Section 3.1
     # We shouldn't warn the user if SNI isn't available but we would
     # not be using SNI anyways due to IP address for server_hostname.
-    if server_hostname is not None and not is_ipaddress(server_hostname):
+    if ((server_hostname is not None and not is_ipaddress(server_hostname))
+            or IS_SECURETRANSPORT):
         if HAS_SNI and server_hostname is not None:
             return context.wrap_socket(sock, server_hostname=server_hostname)
 
