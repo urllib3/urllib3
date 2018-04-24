@@ -2,10 +2,9 @@ import errno
 import socket
 from ..util.connection import create_connection
 from ..util.ssl_ import ssl_wrap_socket
-from ..util import selectors
 from .. import util
 
-from ._common import DEFAULT_SELECTOR, is_readable, LoopAbort
+from ._common import is_readable, LoopAbort
 
 __all__ = ["SyncBackend"]
 
@@ -22,16 +21,14 @@ class SyncBackend(object):
 
 
 class SyncSocket(object):
-    # _selector is a hack for testing. Note that normally, we create a
-    # new selector object each time we block, but if _selector is passed
-    # we use the object every time. See test_sync_connection.py for the
-    # tests that use this.
-    def __init__(self, sock, _selector=None):
+    # _wait_for_socket is a hack for testing. See test_sync_connection.py for
+    # the tests that use this.
+    def __init__(self, sock, _wait_for_socket=util.wait_for_socket):
         self._sock = sock
         # We keep the socket in non-blocking mode, except during connect() and
         # during the SSL handshake:
         self._sock.setblocking(False)
-        self._selector = _selector
+        self._wait_for_socket = _wait_for_socket
 
     def start_tls(self, server_hostname, ssl_context):
         self._sock.setblocking(True)
@@ -47,18 +44,10 @@ class SyncSocket(object):
 
     def _wait(self, readable, writable, read_timeout=None):
         assert readable or writable
-        s = self._selector or DEFAULT_SELECTOR()
-        flags = 0
-        if readable:
-            flags |= selectors.EVENT_READ
-        if writable:
-            flags |= selectors.EVENT_WRITE
-        s.register(self._sock, flags)
-        events = s.select(timeout=read_timeout)
-        if not events:
+        if not self._wait_for_socket(
+                self._sock, read=readable, write=writable,
+                timeout=read_timeout):
             raise socket.timeout()  # XX use a backend-agnostic exception
-        _, event = events[0]
-        return (event & selectors.EVENT_READ, event & selectors.EVENT_WRITE)
 
     def receive_some(self):
         while True:

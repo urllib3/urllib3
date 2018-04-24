@@ -16,7 +16,6 @@ import unittest
 from urllib3.base import Request
 from urllib3._backends.sync_backend import SyncSocket
 from urllib3._sync.connection import HTTP1Connection
-from urllib3.util import selectors
 
 
 # Objects and globals for handling scenarios.
@@ -38,25 +37,9 @@ RECV_ALL = "RECV_ALL"
 
 
 # A number of helpful shorthands for common events.
-SELECT_UPLOAD_WRITE = Event(
-    SELECTOR,
-    EVENT_SELECT,
-    (selectors.EVENT_READ | selectors.EVENT_WRITE, selectors.EVENT_WRITE)
-)
-SELECT_UPLOAD_READ = Event(
-    SELECTOR,
-    EVENT_SELECT,
-    (selectors.EVENT_READ | selectors.EVENT_WRITE, selectors.EVENT_READ)
-)
-SELECT_DOWNLOAD_READ = Event(
-    SELECTOR, EVENT_SELECT, (selectors.EVENT_READ, selectors.EVENT_READ)
-)
-SELECT_DOWNLOAD_WRITE = Event(
-    SELECTOR, EVENT_SELECT, (selectors.EVENT_READ, selectors.EVENT_READ)
-)
-SELECT_WRITABLE_WRITE = Event(
-    SELECTOR, EVENT_SELECT, (selectors.EVENT_WRITE, selectors.EVENT_WRITE)
-)
+SELECT_UPLOAD = Event(SELECTOR, EVENT_SELECT, {'read': True, 'write': True})
+SELECT_DOWNLOAD = Event(SELECTOR, EVENT_SELECT, {'read': True, 'write': False})
+SELECT_WRITABLE = Event(SELECTOR, EVENT_SELECT, {'read': False, 'write': True})
 SOCKET_SEND_ALL = Event(SOCKET, EVENT_SEND, (SEND_ALL,))
 SOCKET_SEND_5 = Event(SOCKET, EVENT_SEND, (5,))
 SOCKET_SEND_EAGAIN = Event(SOCKET, EVENT_SEND, (RAISE_EAGAIN,))
@@ -97,67 +80,31 @@ def next_event(what, scenario):
     return event
 
 
-class ScenarioSelector(object):
+class ScenarioWait(object):
     """
-    A mock Selector object. This selector implements a tiny bit of the selector
-    API (only that which is used by the higher layers), and response to select
-    based on the scenario it is provided.
+    Provides a mock wait_for_socket function which responds based on the
+    scenario it is provided.
     """
-    def __init__(self, scenario, sock):
+    def __init__(self, scenario):
         self._scenario = scenario
-        self._fd = sock
-        self._events = None
 
-    def register(self, fd, events):
-        if fd is not self._fd:
-            raise ScenarioError("Registered unexpected socket!")
-        self._events = events
+    def wait_for_socket(self, sock, read, write, timeout):
+        events = {'read': read, 'write': write}
+        expected_object, event, expected_events = next_event(
+            ("select", events), self._scenario)
 
-    def modify(self, fd, events):
-        if fd is not self._fd:
-            raise ScenarioError("Modifying unexpected socket!")
-        self._events = events
-
-    def _describe_events(self, events):
-        pieces = []
-        if events & selectors.EVENT_READ:
-            pieces.append("EVENT_READ")
-        if events & selectors.EVENT_WRITE:
-            pieces.append("EVENT_WRITE")
-        return pieces
-
-    def select(self, timeout=None):
-        expected_object, event, args = next_event(
-            ("select", self._describe_events(self._events)),
-            self._scenario
-        )
         if expected_object is not SELECTOR:
             raise ScenarioError("Received non selector event!")
 
         if event is not EVENT_SELECT:
             raise ScenarioError("Expected EVENT_SELECT, got %s" % event)
 
-        expected_events, returned_event = args
-        if self._events != expected_events:
+        if events != expected_events:
             raise ScenarioError(
-                "Expected events %s, got %s" % (self._events, expected_events)
+                "Expected events %s, got %s" % (expected_events, events)
             )
 
-        key = self.get_key(self._fd)
-        return [(key, returned_event)]
-
-    def get_key(self, fd):
-        if fd is not self._fd:
-            raise ScenarioError("Querying unexpected socket!")
-        return selectors.SelectorKey(
-            self._fd,
-            1,
-            self._events,
-            None
-        )
-
-    def close(self):
-        pass
+        return True
 
 
 class ScenarioSocket(object):
@@ -249,8 +196,8 @@ class TestUnusualSocketConditions(unittest.TestCase):
     def run_scenario(self, scenario):
         conn = HTTP1Connection('localhost', 80)
         sock = ScenarioSocket(scenario)
-        selector = ScenarioSelector(scenario, sock)
-        sync_socket = SyncSocket(sock, _selector=selector)
+        wait_for_socket = ScenarioWait(scenario).wait_for_socket
+        sync_socket = SyncSocket(sock, _wait_for_socket=wait_for_socket)
         conn._sock = sync_socket
 
         request = Request(method=b'GET', target=b'/')
@@ -293,9 +240,9 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
             SOCKET_RECV_EAGAIN,
-            SELECT_DOWNLOAD_READ,
+            SELECT_DOWNLOAD,
             SOCKET_RECV_EAGAIN,
-            SELECT_DOWNLOAD_READ,
+            SELECT_DOWNLOAD,
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
@@ -310,9 +257,9 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
             SOCKET_RECV_EAGAIN,
-            SELECT_DOWNLOAD_READ,
+            SELECT_DOWNLOAD,
             SOCKET_RECV_WANTREAD,
-            SELECT_DOWNLOAD_READ,
+            SELECT_DOWNLOAD,
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
@@ -358,7 +305,7 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_SEND_5,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_EAGAIN,
-            SELECT_UPLOAD_WRITE,
+            SELECT_UPLOAD,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
             SOCKET_RECV_ALL,
@@ -377,7 +324,7 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_SEND_5,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_WANTWRITE,
-            SELECT_UPLOAD_WRITE,
+            SELECT_UPLOAD,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
             SOCKET_RECV_ALL,
@@ -414,10 +361,10 @@ class TestUnusualSocketConditions(unittest.TestCase):
             # Return WANT_READ twice for good measure.
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_WANTREAD,
-            SELECT_DOWNLOAD_READ,
+            SELECT_DOWNLOAD,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_WANTREAD,
-            SELECT_DOWNLOAD_READ,
+            SELECT_DOWNLOAD,
             SOCKET_RECV_EAGAIN,
             SOCKET_SEND_ALL,
             SOCKET_RECV_ALL,
@@ -436,9 +383,9 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_SEND_ALL,
             # Return WANT_WRITE twice for good measure.
             SOCKET_RECV_WANTWRITE,
-            SELECT_WRITABLE_WRITE,
+            SELECT_WRITABLE,
             SOCKET_RECV_WANTWRITE,
-            SELECT_WRITABLE_WRITE,
+            SELECT_WRITABLE,
             SOCKET_RECV_5,
             SOCKET_RECV_ALL,
         ]
