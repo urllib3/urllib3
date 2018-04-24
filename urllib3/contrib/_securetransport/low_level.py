@@ -186,8 +186,8 @@ def _temporary_keychain():
     # some random bytes to password-protect the keychain we're creating, so we
     # ask for 40 random bytes.
     random_bytes = os.urandom(40)
-    filename = base64.b64encode(random_bytes[:8]).decode('utf-8')
-    password = base64.b64encode(random_bytes[8:])  # Must be valid UTF-8
+    filename = base64.b16encode(random_bytes[:8]).decode('utf-8')
+    password = base64.b16encode(random_bytes[8:])  # Must be valid UTF-8
     tempdirectory = tempfile.mkdtemp()
 
     keychain_path = os.path.join(tempdirectory, filename).encode('utf-8')
