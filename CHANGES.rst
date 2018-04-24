@@ -20,7 +20,7 @@ dev (master)
 
 * Add the port to the connectionpool connect print (Pull #1251)
 
-* Lazily load `uuid` to boost performance on imports (Pull #1270)
+* Don't use the ``uuid`` module to create multipart data boundaries. (Pull #1380)
 
 * ``read_chunked()`` on a closed response returns no chunks. (Issue #1088)
 
