@@ -15,7 +15,7 @@ except ImportError:
 
 def setup_module():
     try:
-        from urllib3.contrib.pyopenssl import inject_into_urllib3
+        from urllib3.contrib.pyopenssl import inject_into_urllib3  # noqa: F401
     except ImportError as e:
         pytest.skip('Could not import PyOpenSSL: %r' % e)
 
