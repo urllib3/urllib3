@@ -37,4 +37,4 @@ def test_no_crash_with_empty_trust_bundle():
     with contextlib.closing(socket.socket()) as s:
         ws = WrappedSocket(s)
         with pytest.raises(ssl.SSLError):
-ws._custom_validate(True, b"")
+            ws._custom_validate(True, b"")
