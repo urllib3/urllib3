@@ -84,9 +84,18 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          key_file=client_key,
                                          cert_file=client_cert)
-        r = https_pool.request('GET', '/certificate')
-        self.assertDictEqual(json.loads(r.data.decode('utf-8')),
-                             client_subject, r.data)
+        try:
+            r = https_pool.request('GET', '/certificate')
+            data_json = json.loads(r.data.decode('utf-8'))
+            self.assertDictEqual(data_json, client_subject, data_json)
+        except MaxRetryError as e:
+            if sys.platform == 'darwin':
+                # OS X has intermittent Import/Export error.
+                # https://github.com/urllib3/urllib3/issues/1372
+                self.assertTrue('Import/Export format unsupported.' in str(e),
+                                str(e))
+            else:
+                raise
 
     def test_client_no_intermediate(self):
         client_cert, client_key = (
@@ -99,9 +108,17 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         try:
             https_pool.request('GET', '/certificate', retries=False)
         except SSLError as e:
-            self.assertTrue('alert unknown ca' in str(e) or
-                            'invalid certificate chain' in str(e) or
-                            'unknown Cert Authority' in str(e))
+            if sys.platform == 'darwin':
+                # OS X has intermittent Import/Export error.
+                # https://github.com/urllib3/urllib3/issues/1372
+                self.assertTrue('Import/Export format unsupported.' in str(e) or
+                                'alert unknown ca' in str(e) or
+                                'invalid certificate chain' in str(e) or
+                                'unknown Cert Authority' in str(e), str(e))
+            else:
+                self.assertTrue('alert unknown ca' in str(e) or
+                                'invalid certificate chain' in str(e) or
+                                'unknown Cert Authority' in str(e), str(e))
 
     def test_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
