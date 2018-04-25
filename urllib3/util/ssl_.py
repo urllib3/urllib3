@@ -67,7 +67,10 @@ else:
         import ipaddress
 
         def inet_pton(_, host):
+            if isinstance(host, six.binary_type):
+                host = host.decode('ascii')
             return ipaddress.ip_address(host)
+
     except ImportError:  # Platform-specific: Non-Linux
         def inet_pton(_, host):
             return socket.inet_aton(host)
