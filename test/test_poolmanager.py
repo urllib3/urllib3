@@ -346,6 +346,41 @@ class TestPoolManager(object):
         assert default_pool.conn_kw['socket_options'] == []
         assert override_pool.conn_kw['socket_options'] == override_opts
 
+    def test_hijacked_resolver_sets_correct_host(self):
+        hijacked_manager = PoolManager(hijacked_dns_resolver={
+            'example.com': '127.0.0.2',
+            'example.com:443': '127.0.0.1'
+        })
+        hijacked_pool = hijacked_manager.connection_from_url('http://example.com/')
+
+        self.assertEqual(hijacked_pool.host, '127.0.0.2')
+        self.assertEqual(hijacked_pool.port, 80)
+
+    def test_hijacked_resolver_is_bypassed_with_missing_host(self):
+        hijacked_manager = PoolManager(hijacked_dns_resolver={
+            'example.com': '127.0.0.2',
+            'example.com:443': '127.0.0.1'
+        })
+        hijacked_pool = hijacked_manager.connection_from_url('http://example.net/')
+
+        self.assertEqual(hijacked_pool.host, 'example.net')
+
+    def test_hijacked_resolver_is_bypassed_if_is_not_a_dict(self):
+        hijacked_manager = PoolManager(hijacked_dns_resolver=[('example.com', '127.0.0.1')])
+        hijacked_pool = hijacked_manager.connection_from_url('http://example.com/')
+
+        self.assertEqual(hijacked_pool.host, 'example.com')
+
+    def test_hijacked_resolver_sets_correct_host_and_port(self):
+        hijacked_manager = PoolManager(hijacked_dns_resolver={
+            'example.com': '127.0.0.2',
+            'example.com:443': '127.0.0.1'
+        })
+        hijacked_pool = hijacked_manager.connection_from_url('https://example.com:443/')
+
+        self.assertEqual(hijacked_pool.host, '127.0.0.1')
+        self.assertEqual(hijacked_pool.port, 443)
+
     def test_merge_pool_kwargs(self):
         """Assert _merge_pool_kwargs works in the happy case"""
         p = PoolManager(strict=True)
