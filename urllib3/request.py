@@ -60,6 +60,8 @@ class RequestMethods(object):
         """
         method = method.upper()
 
+        urlopen_kw['request_url'] = url
+
         if method in self._encode_url_methods:
             return self.request_encode_url(method, url, fields=fields,
                                            headers=headers,
