@@ -16,6 +16,7 @@ from __future__ import absolute_import
 
 import collections
 import datetime
+import itertools
 import socket
 import warnings
 
@@ -142,6 +143,12 @@ def _request_bytes_iterable(request, state_machine):
 
         yield state_machine.send(h11.EndOfMessage())
 
+    # Try to combine the header bytes + (first set of body bytes or end of message bytes) into one packet.
+    # As long as all_pieces_iter() yields at least two messages, this should never raise StopIteration.
+    remaining_pieces = all_pieces_iter()
+    first_packet_bytes = next(remaining_pieces) + next(remaining_pieces)
+    all_pieces_combined_iter = itertools.chain([first_packet_bytes], remaining_pieces)
+
     # We filter out any empty strings, because we don't want to call
     # send(b""). You might think this is a no-op, so it shouldn't matter
     # either way. But this isn't true. For example, if we're sending a request
@@ -157,7 +164,7 @@ def _request_bytes_iterable(request, state_machine):
     #
     # It's easier to fix this once here instead of worrying about it in all
     # the different backends.
-    for piece in all_pieces_iter():
+    for piece in all_pieces_combined_iter:
         if piece:
             yield piece
 
