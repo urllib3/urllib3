@@ -1,9 +1,11 @@
 import datetime
 import mock
 
+import h11
 import pytest
 
-from urllib3._sync.connection import RECENT_DATE
+from urllib3.base import Request
+from urllib3._sync.connection import _request_bytes_iterable, RECENT_DATE
 from urllib3.util.ssl_ import CertificateError, match_hostname
 
 
@@ -50,3 +52,25 @@ class TestConnection(object):
         # according to the rules defined in that file.
         two_years = datetime.timedelta(days=365 * 2)
         assert RECENT_DATE > (datetime.datetime.today() - two_years).date()
+
+    def test_request_bytes_iterable(self):
+        # Assert that we send the first set of body bytes with the request packet.
+        body_bytes = [b"Hello, ", b"world!"]
+        body_size = 13
+        request = Request(
+            method=b"POST",
+            target="post",
+            body=body_bytes,
+            headers={
+                "Content-Length": body_size,
+            },
+        )
+        request.add_host("httpbin.org", port=80, scheme="http")
+        state_machine = h11.Connection(our_role=h11.CLIENT)
+        iterable = _request_bytes_iterable(request, state_machine)
+        first_packet, second_packet = next(iterable), next(iterable)
+        assert request.method in first_packet
+        assert body_bytes[0] in first_packet
+        assert body_bytes[1] in second_packet
+        with pytest.raises(StopIteration):
+            next(iterable)
