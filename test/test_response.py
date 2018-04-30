@@ -11,7 +11,7 @@ from urllib3.exceptions import (
     DecodeError, ResponseNotChunked, ProtocolError, InvalidHeader
 )
 from urllib3.packages.six.moves import http_client as httplib
-from urllib3.util.retry import Retry
+from urllib3.util.retry import Retry, RequestHistory
 from urllib3.util.response import is_fp_closed
 
 from base64 import b64decode
@@ -674,6 +674,24 @@ class TestResponse(object):
         retry = Retry()
         resp = HTTPResponse(fp, retries=retry)
         assert resp.retries == retry
+
+    def test_geturl(self):
+        fp = BytesIO(b'')
+        request_url = 'https://example.com'
+        resp = HTTPResponse(fp, request_url=request_url)
+        assert resp.geturl() == request_url
+
+    def test_geturl_retries(self):
+        fp = BytesIO(b'')
+        resp = HTTPResponse(fp, request_url='http://example.com')
+        request_histories = [
+            RequestHistory(method='GET', url='http://example.com', error=None,
+                           status=301, redirect_location='https://example.com/'),
+            RequestHistory(method='GET', url='https://example.com/', error=None,
+                           status=301, redirect_location='https://www.example.com')]
+        retry = Retry(history=request_histories)
+        resp = HTTPResponse(fp, retries=retry)
+        assert resp.geturl() == 'https://www.example.com'
 
 
 class MockChunkedEncodingResponse(object):
