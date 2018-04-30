@@ -30,8 +30,8 @@ from ..exceptions import (
 )
 from urllib3.packages import six
 from ..util import ssl_ as ssl_util
-from .._backends import SyncBackend
 from .._backends._common import LoopAbort
+from .._backends._loader import load_backend
 
 try:
     import ssl
@@ -311,8 +311,7 @@ class HTTP1Connection(object):
                  source_address=None, tunnel_host=None, tunnel_port=None,
                  tunnel_headers=None):
         self.is_verified = False
-
-        self._backend = backend or SyncBackend()
+        self._backend = backend or load_backend("sync")
         self._host = host
         self._port = port
         self._socket_options = (
