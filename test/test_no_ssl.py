@@ -90,6 +90,5 @@ class TestImportWithoutSSL(TestWithoutSSL):
 
         self.assertRaises(ImportError, import_ssl)
 
-    @pytest.mark.xfail
     def test_import_urllib3(self):
         import urllib3  # noqa: F401
