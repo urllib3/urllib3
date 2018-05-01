@@ -124,7 +124,7 @@ The usage of :class:`~poolmanager.ProxyManager` is the same as
 
 You can use :class:`~contrib.socks.SOCKSProxyManager` to connect to SOCKS4 or
 SOCKS5 proxies. In order to use SOCKS proxies you will need to install
-`PySocks <https://pypi.python.org/pypi/PySocks>`_ or install urllib3 with the
+`PySocks <https://pypi.org/project/PySocks/>`_ or install urllib3 with the
 ``socks`` extra::
 
     pip install urllib3[socks]

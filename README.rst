@@ -19,7 +19,7 @@ urllib3
 
 .. image:: https://img.shields.io/pypi/v/urllib3.svg?maxAge=86400
         :alt: PyPI version
-        :target: https://pypi.python.org/pypi/urllib3
+        :target: https://pypi.org/project/urllib3/
 
 .. image:: https://www.bountysource.com/badge/tracker?tracker_id=192525
         :alt: Bountysource
