@@ -29,7 +29,8 @@ from .url import (
 )
 from .wait import (
     wait_for_read,
-    wait_for_write
+    wait_for_write,
+    wait_for_socket
 )
 
 __all__ = (
@@ -53,6 +54,7 @@ __all__ = (
     'ssl_wrap_socket',
     'wait_for_read',
     'wait_for_write',
+    'wait_for_socket',
     'SSLWantReadError',
     'SSLWantWriteError',
 )

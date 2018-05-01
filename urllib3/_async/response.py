@@ -14,6 +14,7 @@ from ..exceptions import (
 )
 from urllib3.packages.six import string_types as basestring, binary_type
 from ..util.ssl_ import BaseSSLError
+from ..util import is_fp_closed
 
 log = logging.getLogger(__name__)
 
@@ -51,18 +52,42 @@ class DeflateDecoder(object):
                 self._data = None
 
 
+class GzipDecoderState(object):
+
+    FIRST_MEMBER = 0
+    OTHER_MEMBERS = 1
+    SWALLOW_DATA = 2
+
+
 class GzipDecoder(object):
 
     def __init__(self):
         self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
+        self._state = GzipDecoderState.FIRST_MEMBER
 
     def __getattr__(self, name):
         return getattr(self._obj, name)
 
     def decompress(self, data):
-        if not data:
-            return data
-        return self._obj.decompress(data)
+        ret = binary_type()
+        if self._state == GzipDecoderState.SWALLOW_DATA or not data:
+            return ret
+        while True:
+            try:
+                ret += self._obj.decompress(data)
+            except zlib.error:
+                previous_state = self._state
+                # Ignore data after the first error
+                self._state = GzipDecoderState.SWALLOW_DATA
+                if previous_state == GzipDecoderState.OTHER_MEMBERS:
+                    # Allow trailing garbage acceptable in other gzip clients
+                    return ret
+                raise
+            data = self._obj.unused_data
+            if not data:
+                return ret
+            self._state = GzipDecoderState.OTHER_MEMBERS
+            self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
 
 def _get_decoder(mode):
@@ -88,9 +113,8 @@ class HTTPResponse(io.IOBase):
         If True, the response's body will be preloaded during construction.
 
     :param decode_content:
-        If True, attempts to decode specific content-encoding's based on headers
-        (like 'gzip' and 'deflate') will be skipped and raw data will be used
-        instead.
+        If True, will attempt to decode the body based on the
+        'content-encoding' header.
 
     :param retries:
         The retries contains the last :class:`~urllib3.util.retry.Retry` that
@@ -102,7 +126,7 @@ class HTTPResponse(io.IOBase):
 
     def __init__(self, body='', headers=None, status=0, version=0, reason=None,
                  strict=0, preload_content=True, decode_content=True,
-                 original_response=None, pool=None, connection=None,
+                 original_response=None, pool=None, connection=None, msg=None,
                  retries=None, request_method=None):
 
         if isinstance(headers, HTTPHeaderDict):
@@ -121,6 +145,7 @@ class HTTPResponse(io.IOBase):
         self._fp = None
         self._original_response = original_response
         self._fp_bytes_read = 0
+        self.msg = msg
         self._buffer = b''
 
         if body and isinstance(body, (basestring, binary_type)):
@@ -167,6 +192,9 @@ class HTTPResponse(io.IOBase):
     @property
     def connection(self):
         return self._connection
+
+    def isclosed(self):
+        return is_fp_closed(self._fp)
 
     def tell(self):
         """

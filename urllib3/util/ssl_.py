@@ -189,7 +189,7 @@ def resolve_cert_reqs(candidate):
     the wrap_socket function/method from the ssl module.
     Defaults to :data:`ssl.CERT_NONE`.
     If given a string it is assumed to be the name of the constant in the
-    :mod:`ssl` module or its abbrevation.
+    :mod:`ssl` module or its abbreviation.
     (So you can specify `REQUIRED` instead of `CERT_REQUIRED`.
     If it's neither `None` nor a string we assume it is already the numeric
     constant which can directly be passed to wrap_socket.

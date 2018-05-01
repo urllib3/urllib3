@@ -111,6 +111,9 @@ def _cert_array_from_pem(pem_bundle):
     Given a bundle of certs in PEM format, turns them into a CFArray of certs
     that can be used to validate a cert chain.
     """
+    # Normalize the PEM bundle's line endings.
+    pem_bundle = pem_bundle.replace(b"\r\n", b"\n")
+
     der_certs = [
         base64.b64decode(match.group(1))
         for match in _PEM_CERTS_RE.finditer(pem_bundle)

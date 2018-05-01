@@ -30,6 +30,10 @@ Upcoming 2.0 Changes
 dev (master)
 ------------
 
+* Allow providing a list of headers to strip from requests when redirecting
+  to a different host. Defaults to the ``Authorization`` header. Different
+  headers can be set via ``Retry.remove_headers_on_redirect``. (Issue #1316)
+
 * Fix ``util.selectors._fileobj_to_fd`` to accept ``long`` (Issue #1247).
 
 * Dropped Python 3.3 support. (Pull #1242)
@@ -43,6 +47,10 @@ dev (master)
 * Add the port to the connectionpool connect print (Pull #1251)
 
 * Lazily load `uuid` to boost performance on imports (Pull #1270)
+
+* ``read_chunked()`` on a closed response returns no chunks. (Issue #1088)
+
+* Added support for auth info in url for SOCKS proxy (Pull #1363)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
@@ -135,7 +143,7 @@ dev (master)
 * Fix some bugs that occur when modules incautiously patch the queue module.
   (Pull #1061)
 
-* Prevent retries from occuring on read timeouts for which the request method
+* Prevent retries from occurring on read timeouts for which the request method
   was not in the method whitelist. (Issue #1059)
 
 * Changed the PyOpenSSL contrib module to lazily load idna to avoid
@@ -169,7 +177,7 @@ dev (master)
   non-httplib underlying FPs. (Pull #990)
 
 * Empty filenames in multipart headers are now emitted as such, rather than
-  being supressed. (Issue #1015)
+  being suppressed. (Issue #1015)
 
 * Prefer user-supplied Host headers on chunked uploads. (Issue #1009)
 
@@ -530,7 +538,7 @@ dev (master)
 * All errors during a retry-enabled request should be wrapped in
   ``urllib3.exceptions.MaxRetryError``, including timeout-related exceptions
   which were previously exempt. Underlying error is accessible from the
-  ``.reason`` propery. (Issue #326)
+  ``.reason`` property. (Issue #326)
 
 * ``urllib3.exceptions.ConnectionError`` renamed to
   ``urllib3.exceptions.ProtocolError``. (Issue #326)

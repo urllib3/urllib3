@@ -88,7 +88,7 @@ _connection_ref_lock = threading.Lock()
 SSL_WRITE_BLOCKSIZE = 16384
 
 # This is our equivalent of util.ssl_.DEFAULT_CIPHERS, but expanded out to
-# individual cipher suites. We need to do this becuase this is how
+# individual cipher suites. We need to do this because this is how
 # SecureTransport wants them.
 CIPHER_SUITES = [
     SecurityConst.TLS_AES_256_GCM_SHA384,
@@ -201,8 +201,7 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
         try:
             while read_count < requested_length:
                 if timeout is None or timeout >= 0:
-                    readables = util.wait_for_read([base_socket], timeout)
-                    if not readables:
+                    if not util.wait_for_read(base_socket, timeout):
                         raise socket.error(errno.EAGAIN, 'timed out')
 
                 # We need to tell ctypes that we have a buffer that can be
@@ -257,8 +256,7 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
         try:
             while sent < bytes_to_write:
                 if timeout is None or timeout >= 0:
-                    writables = util.wait_for_write([base_socket], timeout)
-                    if not writables:
+                    if not util.wait_for_write(base_socket, timeout):
                         raise socket.error(errno.EAGAIN, 'timed out')
                 chunk_sent = base_socket.send(data)
                 sent += chunk_sent
@@ -399,7 +397,7 @@ class WrappedSocket(object):
             if trust:
                 CoreFoundation.CFRelease(trust)
 
-            if cert_array is None:
+            if cert_array is not None:
                 CoreFoundation.CFRelease(cert_array)
 
         # Ok, now we can look at what the result was.

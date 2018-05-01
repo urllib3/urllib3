@@ -249,3 +249,13 @@ class TestRetry(object):
         retry = Retry()
         with pytest.raises(ReadTimeoutError):
             retry.increment(method='POST', error=error)
+
+    def test_retry_default_remove_headers_on_redirect(self):
+        retry = Retry()
+
+        assert list(retry.remove_headers_on_redirect) == ['Authorization']
+
+    def test_retry_set_remove_headers_on_redirect(self):
+        retry = Retry(remove_headers_on_redirect=['X-API-Secret'])
+
+        assert list(retry.remove_headers_on_redirect) == ['X-API-Secret']

@@ -318,7 +318,7 @@ class PoolManager(RequestMethods):
         kw['body_pos'] = set_file_position(body, body_pos)
 
         if 'headers' not in kw:
-            kw['headers'] = self.headers
+            kw['headers'] = self.headers.copy()
 
         if self.proxy is not None and u.scheme == "http":
             response = await conn.urlopen(method, url, **kw)
@@ -339,6 +339,14 @@ class PoolManager(RequestMethods):
         retries = kw.get('retries')
         if not isinstance(retries, Retry):
             retries = Retry.from_int(retries, redirect=redirect)
+
+        # Strip headers marked as unsafe to forward to the redirected location.
+        # Check remove_headers_on_redirect to avoid a potential network call within
+        # conn.is_same_host() which may use socket.gethostbyname() in the future.
+        if (retries.remove_headers_on_redirect
+                and not conn.is_same_host(redirect_location)):
+            for header in retries.remove_headers_on_redirect:
+                kw['headers'].pop(header, None)
 
         try:
             retries = retries.increment(method, url, response=response, _pool=conn)
@@ -364,7 +372,7 @@ class ProxyManager(PoolManager):
         The URL of the proxy to be used.
 
     :param proxy_headers:
-        A dictionary contaning headers that will be sent to the proxy. In case
+        A dictionary containing headers that will be sent to the proxy. In case
         of HTTP they are being sent with each request, while in the
         HTTPS/CONNECT case they are sent only once. Could be used for proxy
         authentication.
