@@ -1,6 +1,6 @@
 class Backend:
     """
-    Specifies the desired backend and any argumnets passed to it's constructor.
+    Specifies the desired backend and any arguments passed to its constructor.
 
     Projects that use urllib3 can subclass this interface to expose it to users.
     """
