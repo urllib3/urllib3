@@ -1,21 +1,17 @@
 import sys
 
-from ..backends import Backend as UserSpecifiedBackend
+from ..backends import Backend
 
 
-def check_for_python_3_5():
-    if sys.version_info < (3, 5):
-        raise ValueError("This backend requires Python 3.5 or greater.")
+class Loader:
 
+    def __init__(self, name, loader, is_async):
+        self.name = name
+        self.loader = loader
+        self.is_async = is_async
 
-def load_dummy_backend(kwargs):
-    """
-    This function is called by unit tests.
-    It asserts that urllib3 can be used without having a specific backend installed.
-    The .dummy_backend module should not exist.
-    """
-    from .dummy_backend import DummyBackend
-    return DummyBackend(**kwargs)
+    def __call__(self, *args, **kwargs):
+        return self.loader(kwargs)
 
 
 def load_sync_backend(kwargs):
@@ -24,13 +20,11 @@ def load_sync_backend(kwargs):
 
 
 def load_trio_backend(kwargs):
-    check_for_python_3_5()
     from .trio_backend import TrioBackend
     return TrioBackend(**kwargs)
 
 
 def load_twisted_backend(kwargs):
-    check_for_python_3_5()
     from .twisted_backend import TwistedBackend
     return TwistedBackend(**kwargs)
 
@@ -39,29 +33,85 @@ def backend_directory():
     """
     We defer any heavy duty imports until the last minute.
     """
+    loaders = [
+        Loader(
+            name="sync",
+            loader=load_sync_backend,
+            is_async=False,
+        ),
+        Loader(
+            name="trio",
+            loader=load_trio_backend,
+            is_async=True,
+        ),
+        Loader(
+            name="twisted",
+            loader=load_twisted_backend,
+            is_async=True,
+        ),
+    ]
     return {
-        "dummy": load_dummy_backend,
-        "sync": load_sync_backend,
-        "trio": load_trio_backend,
-        "twisted": load_twisted_backend,
+        loader.name: loader for loader in loaders
     }
 
 
 def user_specified_unknown_backend(backend_name):
-    known_backend_names = sorted(backend_directory().keys())
+    backend_names = [loader.name for loader in backend_directory().values()]
     return "Unknown backend specifier {backend_name}. Choose one of: {known_backend_names}".format(
         backend_name=backend_name,
-        known_backend_names=", ".join(known_backend_names)
+        known_backend_names=", ".join(backend_names)
     )
 
 
-def load_backend(user_specified_backend):
-    if not isinstance(user_specified_backend, UserSpecifiedBackend):
-        user_specified_backend = UserSpecifiedBackend(name=user_specified_backend)
+def async_supported():
+    """
+    Tests if the async keyword is supported.
+    """
+    async def f():
+        """
+        Functions with an `async` prefix return a coroutine.
+        This is removed by the bleaching code, which will change this function to return None.
+        """
+        return None
 
-    available_loaders = backend_directory()
-    if user_specified_backend.name not in available_loaders:
-        raise ValueError(user_specified_unknown_backend(user_specified_backend.name))
+    obj = f()
+    if obj is None:
+        return False
+    else:
+        obj.close()  # prevent unawaited coroutine warning
+        return True
 
-    loader = available_loaders[user_specified_backend.name]
-    return loader(user_specified_backend.kwargs)
+
+def user_specified_incompatible_backend(backend_name, is_async_supported, is_async_backend):
+    lib_kind = "async" if is_async_supported else "sync"
+    loader_kind = "an async backend" if is_async_backend else "a sync backend"
+    return "{name} is {loader_kind} which is incompatible with the {lib_kind} version of urllib3.".format(
+        name=backend_name,
+        loader_kind=loader_kind,
+        lib_kind=lib_kind,
+    )
+
+
+def normalize_backend(backend):
+    if backend is None:
+        backend = Backend(name="sync")  # sync backend is the default
+    elif not isinstance(backend, Backend):
+        backend = Backend(name=backend)
+
+    loaders_by_name = backend_directory()
+    if backend.name not in loaders_by_name:
+        raise ValueError(user_specified_unknown_backend(backend.name))
+
+    loader = loaders_by_name[backend.name]
+
+    is_async_supported = async_supported()
+    if is_async_supported != loader.is_async:
+        raise ValueError(user_specified_incompatible_backend(loader.name, is_async_supported, loader.is_async))
+
+    return backend
+
+
+def load_backend(backend):
+    loaders_by_name = backend_directory()
+    loader = loaders_by_name[backend.name]
+    return loader(backend.kwargs)
