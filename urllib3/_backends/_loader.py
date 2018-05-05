@@ -55,14 +55,6 @@ def backend_directory():
     }
 
 
-def user_specified_unknown_backend(backend_name):
-    backend_names = [loader.name for loader in backend_directory().values()]
-    return "Unknown backend specifier {backend_name}. Choose one of: {known_backend_names}".format(
-        backend_name=backend_name,
-        known_backend_names=", ".join(backend_names)
-    )
-
-
 def async_supported():
     """
     Tests if the async keyword is supported.
@@ -82,16 +74,6 @@ def async_supported():
         return True
 
 
-def user_specified_incompatible_backend(backend_name, is_async_supported, is_async_backend):
-    lib_kind = "async" if is_async_supported else "sync"
-    loader_kind = "an async backend" if is_async_backend else "a sync backend"
-    return "{name} is {loader_kind} which is incompatible with the {lib_kind} version of urllib3.".format(
-        name=backend_name,
-        loader_kind=loader_kind,
-        lib_kind=lib_kind,
-    )
-
-
 def normalize_backend(backend):
     if backend is None:
         backend = Backend(name="sync")  # sync backend is the default
@@ -100,13 +82,16 @@ def normalize_backend(backend):
 
     loaders_by_name = backend_directory()
     if backend.name not in loaders_by_name:
-        raise ValueError(user_specified_unknown_backend(backend.name))
+        raise ValueError("unknown backend specifier {}".format(backend.name))
 
     loader = loaders_by_name[backend.name]
 
     is_async_supported = async_supported()
-    if is_async_supported != loader.is_async:
-        raise ValueError(user_specified_incompatible_backend(loader.name, is_async_supported, loader.is_async))
+    if is_async_supported and not loader.is_async:
+        raise ValueError("{} backend requires urllib3 to be built without async support".format(loader.name))
+
+    if not is_async_supported and loader.is_async:
+        raise ValueError("{} backend requires urllib3 to be built with async support".format(loader.name))
 
     return backend
 
