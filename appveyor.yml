@@ -55,11 +55,9 @@ install:
   - pip install tox virtualenv
 
 test_script:
-  #- tox
-  - python -u ./runtests.py -v
+  - tox
 
-# XX TODO: re-enable
-# on_success:
-#   - .tox/%TOXENV%/Scripts/activate.bat
-#   - pip install codecov
-#   - codecov --env PLATFORM,TOXENV
+on_success:
+  - .tox/%TOXENV%/Scripts/activate.bat
+  - pip install codecov
+  - codecov --env PLATFORM,TOXENV

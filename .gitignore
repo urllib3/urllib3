@@ -6,5 +6,4 @@
 /dist
 /build
 /docs/_build
-/urllib3/_sync
-test-venv-*/
+/src/urllib3/_sync
