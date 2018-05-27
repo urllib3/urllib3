@@ -3,6 +3,7 @@
 from setuptools import setup
 
 import os
+import sys
 import re
 import codecs
 
