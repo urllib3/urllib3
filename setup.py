@@ -22,7 +22,7 @@ version = VERSION
 
 # pyOpenSSL version 18.0.0 dropped support for Python 2.6
 if sys.version_info < (2, 7):
-    PYOPENSSL_VERSION += 'pyOpenSSL >= 0.14, < 18.0.0'
+    PYOPENSSL_VERSION = 'pyOpenSSL >= 0.14, < 18.0.0'
 else:
     PYOPENSSL_VERSION = 'pyOpenSSL >= 0.14'
 
