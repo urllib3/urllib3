@@ -3,6 +3,7 @@
 from setuptools import setup
 
 import os
+import sys
 import re
 import codecs
 
@@ -18,6 +19,12 @@ with codecs.open('README.rst', encoding='utf-8') as fp:
 with codecs.open('CHANGES.rst', encoding='utf-8') as fp:
     changes = fp.read()
 version = VERSION
+
+# pyOpenSSL version 18.0.0 dropped support for Python 2.6
+if sys.version_info < (2, 7):
+    PYOPENSSL_VERSION = 'pyOpenSSL >= 0.14, < 18.0.0'
+else:
+    PYOPENSSL_VERSION = 'pyOpenSSL >= 0.14'
 
 setup(name='urllib3',
       version=version,
@@ -63,7 +70,7 @@ setup(name='urllib3',
       test_suite='test',
       extras_require={
           'secure': [
-              'pyOpenSSL>=0.14',
+              PYOPENSSL_VERSION,
               'cryptography>=1.3.4',
               'idna>=2.0.0',
               'certifi',
