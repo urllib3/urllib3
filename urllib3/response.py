@@ -234,18 +234,18 @@ class HTTPResponse(io.IOBase):
         """
         length = self.headers.get('content-length')
 
-        if length is not None and self.chunked:
-            # This Response will fail with an IncompleteRead if it can't be
-            # received as chunked. This method falls back to attempt reading
-            # the response before raising an exception.
-            log.warning("Received response with both Content-Length and "
-                        "Transfer-Encoding set. This is expressly forbidden "
-                        "by RFC 7230 sec 3.3.2. Ignoring Content-Length and "
-                        "attempting to process response as Transfer-Encoding: "
-                        "chunked.")
-            return None
+        if length is not None:
+            if self.chunked:
+                # This Response will fail with an IncompleteRead if it can't be
+                # received as chunked. This method falls back to attempt reading
+                # the response before raising an exception.
+                log.warning("Received response with both Content-Length and "
+                            "Transfer-Encoding set. This is expressly forbidden "
+                            "by RFC 7230 sec 3.3.2. Ignoring Content-Length and "
+                            "attempting to process response as Transfer-Encoding: "
+                            "chunked.")
+                return None
 
-        elif length is not None:
             try:
                 # RFC 7230 section 3.3.2 specifies multiple content lengths can
                 # be sent in a single Content-Length header
