@@ -202,7 +202,7 @@ class Retry(object):
         if retries is None:
             retries = default if default is not None else cls.DEFAULT
 
-        if isinstance(retries, Retry):
+        if not isinstance(retries, int):
             return retries
 
         redirect = bool(redirect) and None
