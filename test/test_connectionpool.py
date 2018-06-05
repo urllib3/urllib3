@@ -32,6 +32,19 @@ from ssl import SSLError as BaseSSLError
 from dummyserver.server import DEFAULT_CA
 
 
+class HTTPUnixConnection(HTTPConnection):
+    def __init__(self, host, timeout=60, **kwargs):
+        super(HTTPUnixConnection, self).__init__('localhost')
+        self.unix_socket = host
+        self.timeout = timeout
+        self.sock = None
+
+
+class HTTPUnixConnectionPool(HTTPConnectionPool):
+    scheme = 'http+unix'
+    ConnectionCls = HTTPUnixConnection
+
+
 class TestConnectionPool(object):
     """
     Tests in this suite should exercise the ConnectionPool functionality
@@ -118,6 +131,7 @@ class TestConnectionPool(object):
         ('google.com', 'https://google.com/'),
         ('yahoo.com', 'http://google.com/'),
         ('google.com', 'https://google.net/'),
+        ('google.com', 'http://google.com./'),
     ])
     def test_not_same_host_no_port_http(self, a, b):
         with HTTPConnectionPool(a) as c:
@@ -130,6 +144,7 @@ class TestConnectionPool(object):
         ('google.com', 'http://google.com/'),
         ('yahoo.com', 'https://google.com/'),
         ('google.com', 'https://google.net/'),
+        ('google.com', 'https://google.com./'),
     ])
     def test_not_same_host_no_port_https(self, a, b):
         with HTTPSConnectionPool(a) as c:
@@ -137,6 +152,31 @@ class TestConnectionPool(object):
 
         with HTTPSConnectionPool(b) as c:
             assert not c.is_same_host(a)
+
+    @pytest.mark.parametrize('a, b', [
+        ('%2Fvar%2Frun%2Fdocker.sock',
+         'http+unix://%2Fvar%2Frun%2Fdocker.sock'),
+        ('%2Fvar%2Frun%2Fdocker.sock',
+         'http+unix://%2Fvar%2Frun%2Fdocker.sock/'),
+        ('%2Fvar%2Frun%2Fdocker.sock',
+         'http+unix://%2Fvar%2Frun%2Fdocker.sock/abracadabra'),
+        ('%2Ftmp%2FTEST.sock', 'http+unix://%2Ftmp%2FTEST.sock'),
+        ('%2Ftmp%2FTEST.sock', 'http+unix://%2Ftmp%2FTEST.sock/'),
+        ('%2Ftmp%2FTEST.sock', 'http+unix://%2Ftmp%2FTEST.sock/abracadabra'),
+    ])
+    def test_same_host_custom_protocol(self, a, b):
+        with HTTPUnixConnectionPool(a) as c:
+            assert c.is_same_host(b)
+
+    @pytest.mark.parametrize('a, b', [
+        ('%2Ftmp%2Ftest.sock', 'http+unix://%2Ftmp%2FTEST.sock'),
+        ('%2Ftmp%2Ftest.sock', 'http+unix://%2Ftmp%2FTEST.sock/'),
+        ('%2Ftmp%2Ftest.sock', 'http+unix://%2Ftmp%2FTEST.sock/abracadabra'),
+        ('%2Fvar%2Frun%2Fdocker.sock', 'http+unix://%2Ftmp%2FTEST.sock'),
+    ])
+    def test_not_same_host_custom_protocol(self, a, b):
+        with HTTPUnixConnectionPool(a) as c:
+            assert not c.is_same_host(b)
 
     def test_max_connections(self):
         with HTTPConnectionPool(host='localhost', maxsize=1, block=True) as pool:
@@ -246,6 +286,23 @@ class TestConnectionPool(object):
 
         with pytest.raises(Empty):
             old_pool_queue.get(block=False)
+
+    def test_pool_close_twice(self):
+        pool = connection_from_url('http://google.com:80')
+
+        # Populate with some connections
+        conn1 = pool._get_conn()
+        conn2 = pool._get_conn()
+        pool._put_conn(conn1)
+        pool._put_conn(conn2)
+
+        pool.close()
+        assert pool.pool is None
+
+        try:
+            pool.close()
+        except AttributeError:
+            pytest.fail("Pool of the ConnectionPool is None and has no attribute get.")
 
     def test_pool_timeouts(self):
         with HTTPConnectionPool(host='localhost') as pool:

@@ -14,6 +14,7 @@ import sys
 import threading
 import socket
 import warnings
+import ssl
 from datetime import datetime
 
 from urllib3.exceptions import HTTPWarning
@@ -30,6 +31,20 @@ CERTS_PATH = os.path.join(os.path.dirname(__file__), 'certs')
 DEFAULT_CERTS = {
     'certfile': os.path.join(CERTS_PATH, 'server.crt'),
     'keyfile': os.path.join(CERTS_PATH, 'server.key'),
+    'cert_reqs': ssl.CERT_OPTIONAL,
+    'ca_certs': os.path.join(CERTS_PATH, 'cacert.pem'),
+}
+DEFAULT_CLIENT_CERTS = {
+    'certfile': os.path.join(CERTS_PATH, 'client_intermediate.pem'),
+    'keyfile': os.path.join(CERTS_PATH, 'client_intermediate.key'),
+    'subject': dict(countryName=u'FI', stateOrProvinceName=u'dummy',
+                    organizationName=u'dummy', organizationalUnitName=u'dummy',
+                    commonName=u'SnakeOilClient',
+                    emailAddress=u'dummy@test.local'),
+}
+DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS = {
+    'certfile': os.path.join(CERTS_PATH, 'client_no_intermediate.pem'),
+    'keyfile': os.path.join(CERTS_PATH, 'client_intermediate.key'),
 }
 NO_SAN_CERTS = {
     'certfile': os.path.join(CERTS_PATH, 'server.no_san.crt'),
@@ -66,7 +81,7 @@ def _has_ipv6(host):
             sock = socket.socket(socket.AF_INET6)
             sock.bind((host, 0))
             has_ipv6 = True
-        except:
+        except Exception:
             pass
 
     if sock:

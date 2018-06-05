@@ -206,7 +206,7 @@ It is highly recommended to always use SSL certificate verification.
 **By default, urllib3 does not verify HTTPS requests**.
 
 In order to enable verification you will need a set of root certificates. The easiest
-and most reliable method is to use the `certifi <https://certifi.io/en/latest>`_ package which provides Mozilla's root certificate bundle::
+and most reliable method is to use the `certifi <https://certifi.io/>`_ package which provides Mozilla's root certificate bundle::
 
     pip install certifi
 
@@ -371,7 +371,7 @@ For example, to do a total of 3 retries, but limit to only 2 redirects::
     >>> http.request(
     ...     'GET',
     ...     'http://httpbin.org/redirect/3',
-    ...     retries=urllib3.Retries(3, redirect=2))
+    ...     retries=urllib3.Retry(3, redirect=2))
     MaxRetryError
 
 You can also disable exceptions for too many redirects and just return the
@@ -380,7 +380,7 @@ You can also disable exceptions for too many redirects and just return the
     >>> r = http.request(
     ...     'GET',
     ...     'http://httpbin.org/redirect/3',
-    ...     retries=urllib3.Retries(
+    ...     retries=urllib3.Retry(
     ...         redirect=2, raise_on_redirect=False))
     >>> r.status
     302

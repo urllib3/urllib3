@@ -124,7 +124,7 @@ The usage of :class:`~poolmanager.ProxyManager` is the same as
 
 You can use :class:`~contrib.socks.SOCKSProxyManager` to connect to SOCKS4 or
 SOCKS5 proxies. In order to use SOCKS proxies you will need to install
-`PySocks <https://pypi.python.org/pypi/PySocks>`_ or install urllib3 with the
+`PySocks <https://pypi.org/project/PySocks/>`_ or install urllib3 with the
 ``socks`` extra::
 
     pip install urllib3[socks]
@@ -142,7 +142,7 @@ Once PySocks is installed, you can use
 Custom SSL certificates and client certificates
 -----------------------------------------------
 
-Instead of using `certifi <https://certifi.io/en/latest>`_ you can provide your
+Instead of using `certifi <https://certifi.io/>`_ you can provide your
 own certificate authority bundle. This is useful for cases where you've
 generated your own certificates or when you're using a private certificate
 authority. Just provide the full path to the certificate bundle when creating a
@@ -191,10 +191,10 @@ SSL Warnings
 
 urllib3 will issue several different warnings based on the level of certificate
 verification support. These warning indicate particular situations and can
-resolved in different ways.
+be resolved in different ways.
 
 * :class:`~exceptions.InsecureRequestWarning`
-    This happens when an request is made to an HTTPS URL without certificate
+    This happens when a request is made to an HTTPS URL without certificate
     verification enabled. Follow the :ref:`certificate verification <ssl>`
     guide to resolve this warning.
 * :class:`~exceptions.InsecurePlatformWarning`

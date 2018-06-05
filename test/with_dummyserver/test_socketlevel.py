@@ -22,7 +22,6 @@ from dummyserver.server import (
 
 from .. import onlyPy3, LogRecorder
 
-from nose.plugins.skip import SkipTest
 try:
     from mimetools import Message as MimeToolMessage
 except ImportError:
@@ -32,6 +31,8 @@ from threading import Event
 import select
 import socket
 import ssl
+
+import pytest
 
 
 class TestCookies(SocketDummyServerTestCase):
@@ -60,10 +61,8 @@ class TestCookies(SocketDummyServerTestCase):
 
 class TestSNI(SocketDummyServerTestCase):
 
+    @pytest.mark.skipif(not HAS_SNI, reason='SNI-support not available')
     def test_hostname_in_first_request_packet(self):
-        if not HAS_SNI:
-            raise SkipTest('SNI-support not available')
-
         done_receiving = Event()
         self.buf = b''
 
@@ -1226,6 +1225,37 @@ class TestHeaders(SocketDummyServerTestCase):
         pool.request('GET', '/', headers=OrderedDict(expected_request_headers))
         self.assertEqual(expected_request_headers, actual_request_headers)
 
+    def test_request_host_header_ignores_fqdn_dot(self):
+
+        received_headers = []
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += sock.recv(65536)
+
+            for header in buf.split(b'\r\n')[1:]:
+                if header:
+                    received_headers.append(header)
+
+            sock.send((
+                u'HTTP/1.1 204 No Content\r\n'
+                u'Content-Length: 0\r\n'
+                u'\r\n').encode('ascii'))
+
+            sock.close()
+
+        self._start_server(socket_handler)
+
+        pool = HTTPConnectionPool(self.host + '.', self.port, retries=False)
+        self.addCleanup(pool.close)
+        pool.request('GET', '/')
+        self.assert_header_received(
+            received_headers, 'Host', '%s:%s' % (self.host, self.port)
+        )
+
     def test_response_headers_are_returned_in_the_original_order(self):
         # NOTE: Probability this test gives a false negative is 1/(K!)
         K = 16
@@ -1260,12 +1290,11 @@ class TestHeaders(SocketDummyServerTestCase):
         self.assertEqual(expected_response_headers, actual_response_headers)
 
 
+@pytest.mark.skipif(
+    issubclass(httplib.HTTPMessage, MimeToolMessage),
+    reason='Header parsing errors not available'
+)
 class TestBrokenHeaders(SocketDummyServerTestCase):
-    def setUp(self):
-        if issubclass(httplib.HTTPMessage, MimeToolMessage):
-            raise SkipTest('Header parsing errors not available')
-
-        super(TestBrokenHeaders, self).setUp()
 
     def _test_broken_header_parsing(self, headers):
         self.start_response_handler((
@@ -1470,4 +1499,4 @@ class TestRetryPoolSizeDrainFail(SocketDummyServerTestCase):
         self.addCleanup(pool.close)
 
         pool.urlopen('GET', '/not_found', preload_content=False)
-        self.assertEquals(pool.num_connections, 1)
+        assert pool.num_connections == 1

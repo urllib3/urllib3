@@ -41,7 +41,10 @@ def sandbox(testbed):
     Inserts the stub module import hook which causes the usage of
     appengine-specific httplib, httplib2, socket, etc.
     """
-    from google.appengine.tools.devappserver2.python import sandbox
+    try:
+        from google.appengine.tools.devappserver2.python import sandbox
+    except ImportError:
+        from google.appengine.tools.devappserver2.python.runtime import sandbox
 
     for name in list(sys.modules):
         if name in sandbox.dist27.MODULE_OVERRIDES:

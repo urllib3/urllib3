@@ -1,7 +1,8 @@
 import unittest
 import json
 
-from nose.plugins.skip import SkipTest
+import pytest
+
 from dummyserver.server import HAS_IPV6
 from dummyserver.testcase import (HTTPDummyServerTestCase,
                                   IPv6HTTPDummyServerTestCase)
@@ -107,6 +108,52 @@ class TestPoolManager(HTTPDummyServerTestCase):
             self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
         except MaxRetryError:
             pass
+
+    def test_redirect_cross_host_remove_headers(self):
+        http = PoolManager()
+        self.addCleanup(http.clear)
+
+        r = http.request('GET', '%s/redirect' % self.base_url,
+                         fields={'target': '%s/headers' % self.base_url_alt},
+                         headers={'Authorization': 'foo'})
+
+        self.assertEqual(r.status, 200)
+
+        data = json.loads(r.data.decode('utf-8'))
+
+        self.assertNotIn('Authorization', data)
+
+    def test_redirect_cross_host_no_remove_headers(self):
+        http = PoolManager()
+        self.addCleanup(http.clear)
+
+        r = http.request('GET', '%s/redirect' % self.base_url,
+                         fields={'target': '%s/headers' % self.base_url_alt},
+                         headers={'Authorization': 'foo'},
+                         retries=Retry(remove_headers_on_redirect=[]))
+
+        self.assertEqual(r.status, 200)
+
+        data = json.loads(r.data.decode('utf-8'))
+
+        self.assertEqual(data['Authorization'], 'foo')
+
+    def test_redirect_cross_host_set_removed_headers(self):
+        http = PoolManager()
+        self.addCleanup(http.clear)
+
+        r = http.request('GET', '%s/redirect' % self.base_url,
+                         fields={'target': '%s/headers' % self.base_url_alt},
+                         headers={'X-API-Secret': 'foo',
+                                  'Authorization': 'bar'},
+                         retries=Retry(remove_headers_on_redirect=['X-API-Secret']))
+
+        self.assertEqual(r.status, 200)
+
+        data = json.loads(r.data.decode('utf-8'))
+
+        self.assertNotIn('X-API-Secret', data)
+        self.assertEqual(data['Authorization'], 'bar')
 
     def test_raise_on_redirect(self):
         http = PoolManager()
@@ -216,9 +263,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
         self.assertEqual(r.status, 200)
 
 
+@pytest.mark.skipif(
+    not HAS_IPV6,
+    reason='IPv6 is not supported on this system'
+)
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
-    if not HAS_IPV6:
-        raise SkipTest("IPv6 is not supported on this system.")
 
     def setUp(self):
         self.base_url = 'http://[%s]:%d' % (self.host, self.port)

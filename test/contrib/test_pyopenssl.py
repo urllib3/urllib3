@@ -1,28 +1,40 @@
 # -*- coding: utf-8 -*-
+import os
 import unittest
 
-from nose.plugins.skip import SkipTest
+import mock
+import pytest
 
 try:
-    from urllib3.contrib.pyopenssl import (inject_into_urllib3,
-                                           extract_from_urllib3,
-                                           _dnsname_to_stdlib)
-except ImportError as e:
-    raise SkipTest('Could not import PyOpenSSL: %r' % e)
+    from urllib3.contrib.pyopenssl import (
+        _dnsname_to_stdlib, get_subj_alt_name
+    )
+    from cryptography import x509
+    from OpenSSL.crypto import FILETYPE_PEM, load_certificate
+except ImportError:
+    pass
+
+
+def setup_module():
+    try:
+        from urllib3.contrib.pyopenssl import inject_into_urllib3
+        inject_into_urllib3()
+    except ImportError as e:
+        pytest.skip('Could not import PyOpenSSL: %r' % e)
+
+
+def teardown_module():
+    try:
+        from urllib3.contrib.securetransport import extract_from_urllib3
+        extract_from_urllib3()
+    except ImportError:
+        pass
 
 
 from ..with_dummyserver.test_https import TestHTTPS, TestHTTPS_TLSv1  # noqa: F401
 from ..with_dummyserver.test_socketlevel import (  # noqa: F401
     TestSNI, TestSocketClosing, TestClientCerts
 )
-
-
-def setup_module():
-    inject_into_urllib3()
-
-
-def teardown_module():
-    extract_from_urllib3()
 
 
 class TestPyOpenSSLHelpers(unittest.TestCase):
@@ -56,3 +68,19 @@ class TestPyOpenSSLHelpers(unittest.TestCase):
         expected_result = '*.xn--p1b6ci4b4b3a.xn--11b5bs8d'
 
         self.assertEqual(_dnsname_to_stdlib(name), expected_result)
+
+    @mock.patch('urllib3.contrib.pyopenssl.log.warning')
+    def test_get_subj_alt_name(self, mock_warning):
+        """
+        If a certificate has two subject alternative names, cryptography raises
+        an x509.DuplicateExtension exception.
+        """
+        path = os.path.join(os.path.dirname(__file__), 'duplicate_san.pem')
+        with open(path, 'r') as fp:
+            cert = load_certificate(FILETYPE_PEM, fp.read())
+
+        self.assertEqual(get_subj_alt_name(cert), [])
+
+        self.assertEqual(mock_warning.call_count, 1)
+        self.assertTrue(isinstance(mock_warning.call_args[0][1],
+                                   x509.DuplicateExtension))

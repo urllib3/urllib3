@@ -1,15 +1,23 @@
 # -*- coding: utf-8 -*-
 import unittest
-
-from nose.plugins.skip import SkipTest
-
-try:
-    from urllib3.contrib.pyopenssl import (inject_into_urllib3,
-                                           extract_from_urllib3)
-except ImportError as e:
-    raise SkipTest('Could not import PyOpenSSL: %r' % e)
+import pytest
 
 from mock import patch, Mock
+
+try:
+    from urllib3.contrib.pyopenssl import (
+        inject_into_urllib3,
+        extract_from_urllib3
+    )
+except ImportError:
+    pass
+
+
+def setup_module():
+    try:
+        from urllib3.contrib.pyopenssl import inject_into_urllib3  # noqa: F401
+    except ImportError as e:
+        pytest.skip('Could not import PyOpenSSL: %r' % e)
 
 
 class TestPyOpenSSLInjection(unittest.TestCase):

@@ -1,4 +1,5 @@
 import datetime
+import json
 import logging
 import ssl
 import sys
@@ -6,12 +7,14 @@ import unittest
 import warnings
 
 import mock
-from nose.plugins.skip import SkipTest
+import pytest
 
 from dummyserver.testcase import (
     HTTPSDummyServerTestCase, IPV6HTTPSDummyServerTestCase
 )
 from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
+                                DEFAULT_CLIENT_CERTS,
+                                DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS,
                                 NO_SAN_CERTS, NO_SAN_CA, DEFAULT_CA_DIR,
                                 IPV6_ADDR_CERTS, IPV6_ADDR_CA, HAS_IPV6,
                                 IP_SAN_CERTS)
@@ -62,10 +65,43 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
+    def test_dotted_fqdn(self):
+        pool = HTTPSConnectionPool(self.host + '.', self.port)
+        r = pool.request('GET', '/')
+        self.assertEqual(r.status, 200, r.data)
+
     def test_set_ssl_version_to_tlsv1(self):
         self._pool.ssl_version = ssl.PROTOCOL_TLSv1
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
+
+    def test_client_intermediate(self):
+        client_cert, client_key, client_subject = (
+            DEFAULT_CLIENT_CERTS['certfile'],
+            DEFAULT_CLIENT_CERTS['keyfile'],
+            DEFAULT_CLIENT_CERTS['subject']
+        )
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         key_file=client_key,
+                                         cert_file=client_cert)
+        r = https_pool.request('GET', '/certificate')
+        self.assertDictEqual(json.loads(r.data.decode('utf-8')),
+                             client_subject, r.data)
+
+    def test_client_no_intermediate(self):
+        client_cert, client_key = (
+            DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS['certfile'],
+            DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS['keyfile']
+        )
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         cert_file=client_cert,
+                                         key_file=client_key)
+        try:
+            https_pool.request('GET', '/certificate', retries=False)
+        except SSLError as e:
+            self.assertTrue('alert unknown ca' in str(e) or
+                            'invalid certificate chain' in str(e) or
+                            'unknown Cert Authority' in str(e))
 
     def test_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
@@ -82,7 +118,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
             # Modern versions of Python, or systems using PyOpenSSL, don't
             # emit warnings.
-            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL \
+                    or util.IS_SECURETRANSPORT:
                 self.assertFalse(warn.called, warn.call_args_list)
             else:
                 self.assertTrue(warn.called)
@@ -109,7 +146,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
             # Modern versions of Python, or systems using PyOpenSSL, don't
             # emit warnings.
-            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL \
+                    or util.IS_SECURETRANSPORT:
                 self.assertFalse(warn.called, warn.call_args_list)
             else:
                 self.assertTrue(warn.called)
@@ -136,7 +174,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
             # Modern versions of Python, or systems using PyOpenSSL, don't
             # emit warnings.
-            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL \
+                    or util.IS_SECURETRANSPORT:
                 self.assertFalse(warn.called, warn.call_args_list)
             else:
                 self.assertTrue(warn.called)
@@ -240,13 +279,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             # the unverified warning. Older systems may also emit other
             # warnings, which we want to ignore here.
             calls = warn.call_args_list
-            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
-                category = calls[0][0][1]
-            elif util.HAS_SNI:
-                category = calls[1][0][1]
-            else:
-                category = calls[2][0][1]
-            self.assertEqual(category, InsecureRequestWarning)
+            self.assertIn(InsecureRequestWarning, [x[0][1] for x in calls])
 
     def test_ssl_unverified_with_ca_certs(self):
         pool = HTTPSConnectionPool(self.host, self.port,
@@ -263,7 +296,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             # the unverified warning. Older systems may also emit other
             # warnings, which we want to ignore here.
             calls = warn.call_args_list
-            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL \
+                    or util.IS_SECURETRANSPORT:
                 category = calls[0][0][1]
             elif util.HAS_SNI:
                 category = calls[1][0][1]
@@ -560,7 +594,7 @@ class TestHTTPS_IPSAN(HTTPSDummyServerTestCase):
         try:
             import ipaddress  # noqa: F401
         except ImportError:
-            raise SkipTest("Only runs on systems with an ipaddress module")
+            pytest.skip("Only runs on systems with an ipaddress module")
 
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_REQUIRED',
@@ -573,10 +607,9 @@ class TestHTTPS_IPSAN(HTTPSDummyServerTestCase):
 class TestHTTPS_IPv6Addr(IPV6HTTPSDummyServerTestCase):
     certs = IPV6_ADDR_CERTS
 
+    @pytest.mark.skipif(not HAS_IPV6, reason='Only runs on IPv6 systems')
     def test_strip_square_brackets_before_validating(self):
         """Test that the fix for #760 works."""
-        if not HAS_IPV6:
-            raise SkipTest("Only runs on IPv6 systems")
         https_pool = HTTPSConnectionPool('[::1]', self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=IPV6_ADDR_CA)

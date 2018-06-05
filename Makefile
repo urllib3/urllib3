@@ -41,7 +41,12 @@ clean:
 
 .PHONY: test
 test: requirements
-	nosetests
+	tox
+
+.PHONY: test-quick
+test-quick: requirements
+	tox -e py36
+	tox -e py27
 
 .PHONY: test-all
 test-all: requirements

@@ -1,15 +1,17 @@
 import socket
+import zlib
 
 from io import BytesIO, BufferedReader
 
 import pytest
+import mock
 
 from urllib3.response import HTTPResponse
 from urllib3.exceptions import (
     DecodeError, ResponseNotChunked, ProtocolError, InvalidHeader
 )
 from urllib3.packages.six.moves import http_client as httplib
-from urllib3.util.retry import Retry
+from urllib3.util.retry import Retry, RequestHistory
 from urllib3.util.response import is_fp_closed
 
 from base64 import b64decode
@@ -95,7 +97,6 @@ class TestResponse(object):
         assert r.read() == b''
 
     def test_decode_deflate(self):
-        import zlib
         data = zlib.compress(b'foo')
 
         fp = BytesIO(data)
@@ -104,7 +105,6 @@ class TestResponse(object):
         assert r.data == b'foo'
 
     def test_decode_deflate_case_insensitve(self):
-        import zlib
         data = zlib.compress(b'foo')
 
         fp = BytesIO(data)
@@ -113,7 +113,6 @@ class TestResponse(object):
         assert r.data == b'foo'
 
     def test_chunked_decoding_deflate(self):
-        import zlib
         data = zlib.compress(b'foo')
 
         fp = BytesIO(data)
@@ -131,7 +130,6 @@ class TestResponse(object):
         assert r.read() == b''
 
     def test_chunked_decoding_deflate2(self):
-        import zlib
         compress = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
         data = compress.compress(b'foo')
         data += compress.flush()
@@ -149,7 +147,6 @@ class TestResponse(object):
         assert r.read() == b''
 
     def test_chunked_decoding_gzip(self):
-        import zlib
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
         data = compress.compress(b'foo')
         data += compress.flush()
@@ -163,6 +160,53 @@ class TestResponse(object):
         assert r.read(2) == b'oo'
         assert r.read() == b''
         assert r.read() == b''
+
+    def test_decode_gzip_multi_member(self):
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        data = compress.compress(b'foo')
+        data += compress.flush()
+        data = data * 3
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'gzip'})
+
+        assert r.data == b'foofoofoo'
+
+    def test_decode_gzip_error(self):
+        fp = BytesIO(b'foo')
+        with pytest.raises(DecodeError):
+            HTTPResponse(fp, headers={'content-encoding': 'gzip'})
+
+    def test_decode_gzip_swallow_garbage(self):
+        # When data comes from multiple calls to read(), data after
+        # the first zlib error (here triggered by garbage) should be
+        # ignored.
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        data = compress.compress(b'foo')
+        data += compress.flush()
+        data = data * 3 + b'foo'
+
+        fp = BytesIO(data)
+        r = HTTPResponse(
+            fp, headers={'content-encoding': 'gzip'}, preload_content=False)
+        ret = b''
+        for _ in range(100):
+            ret += r.read(1)
+            if r.closed:
+                break
+
+        assert ret == b'foofoofoo'
+
+    def test_chunked_decoding_gzip_swallow_garbage(self):
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        data = compress.compress(b'foo')
+        data += compress.flush()
+        data = data * 3 + b'foo'
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'gzip'})
+
+        assert r.data == b'foofoofoo'
 
     def test_body_blob(self):
         resp = HTTPResponse(b'foo')
@@ -215,10 +259,12 @@ class TestResponse(object):
                 assert not resp.closed
                 assert not resp._fp.isclosed()
                 assert not is_fp_closed(resp._fp)
+                assert not resp.isclosed()
                 resp.read()
                 assert resp.closed
                 assert resp._fp.isclosed()
                 assert is_fp_closed(resp._fp)
+                assert resp.isclosed()
         finally:
             hlr.close()
 
@@ -291,7 +337,6 @@ class TestResponse(object):
             next(stream)
 
     def test_gzipped_streaming(self):
-        import zlib
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
         data = compress.compress(b'foo')
         data += compress.flush()
@@ -307,7 +352,6 @@ class TestResponse(object):
             next(stream)
 
     def test_gzipped_streaming_tell(self):
-        import zlib
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
         uncompressed_data = b'foo'
         data = compress.compress(uncompressed_data)
@@ -330,8 +374,6 @@ class TestResponse(object):
     def test_deflate_streaming_tell_intermediate_point(self):
         # Ensure that ``tell()`` returns the correct number of bytes when
         # part-way through streaming compressed content.
-        import zlib
-
         NUMBER_OF_READS = 10
 
         class MockCompressedDataReading(BytesIO):
@@ -381,7 +423,6 @@ class TestResponse(object):
         assert len(ZLIB_PAYLOAD) == end_of_stream
 
     def test_deflate_streaming(self):
-        import zlib
         data = zlib.compress(b'foo')
 
         fp = BytesIO(data)
@@ -395,7 +436,6 @@ class TestResponse(object):
             next(stream)
 
     def test_deflate2_streaming(self):
-        import zlib
         compress = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
         data = compress.compress(b'foo')
         data += compress.flush()
@@ -527,7 +567,6 @@ class TestResponse(object):
         """Show that we can decode the gizpped and chunked body."""
         def stream():
             # Set up a generator to chunk the gzipped body
-            import zlib
             compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
             data = compress.compress(b'foobar')
             data += compress.flush()
@@ -606,6 +645,22 @@ class TestResponse(object):
         resp = HTTPResponse(r, preload_content=False, headers={'transfer-encoding': 'chunked'})
         assert stream == list(resp.stream())
 
+    def test_chunked_head_response(self):
+        r = httplib.HTTPResponse(MockSock, method='HEAD')
+        r.chunked = True
+        r.chunk_left = None
+        resp = HTTPResponse('',
+                            preload_content=False,
+                            headers={'transfer-encoding': 'chunked'},
+                            original_response=r)
+        assert resp.chunked is True
+
+        resp.supports_chunked_reads = lambda: True
+        resp.release_conn = mock.Mock()
+        for _ in resp.stream():
+            continue
+        resp.release_conn.assert_called_once_with()
+
     def test_get_case_insensitive_headers(self):
         headers = {'host': 'example.com'}
         r = HTTPResponse(headers=headers)
@@ -619,6 +674,24 @@ class TestResponse(object):
         retry = Retry()
         resp = HTTPResponse(fp, retries=retry)
         assert resp.retries == retry
+
+    def test_geturl(self):
+        fp = BytesIO(b'')
+        request_url = 'https://example.com'
+        resp = HTTPResponse(fp, request_url=request_url)
+        assert resp.geturl() == request_url
+
+    def test_geturl_retries(self):
+        fp = BytesIO(b'')
+        resp = HTTPResponse(fp, request_url='http://example.com')
+        request_histories = [
+            RequestHistory(method='GET', url='http://example.com', error=None,
+                           status=301, redirect_location='https://example.com/'),
+            RequestHistory(method='GET', url='https://example.com/', error=None,
+                           status=301, redirect_location='https://www.example.com')]
+        retry = Retry(history=request_histories)
+        resp = HTTPResponse(fp, retries=retry)
+        assert resp.geturl() == 'https://www.example.com'
 
 
 class MockChunkedEncodingResponse(object):

@@ -5,6 +5,7 @@ import sys
 import unittest
 import time
 import warnings
+import pytest
 
 import mock
 
@@ -695,6 +696,26 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(self.pool.num_connections, 1)
         self.assertEqual(self.pool.num_requests, x)
 
+    def test_read_chunked_short_circuit(self):
+        response = self.pool.request(
+            'GET',
+            '/chunked',
+            preload_content=False
+        )
+        response.read()
+        with pytest.raises(StopIteration):
+            next(response.read_chunked())
+
+    def test_read_chunked_on_closed_response(self):
+        response = self.pool.request(
+            'GET',
+            '/chunked',
+            preload_content=False
+        )
+        response.close()
+        with pytest.raises(StopIteration):
+            next(response.read_chunked())
+
     def test_chunked_gzip(self):
         response = self.pool.request(
                 'GET',
@@ -1000,7 +1021,7 @@ class TestRetryPoolSize(HTTPDummyServerTestCase):
 
     def test_pool_size_retry(self):
         self.pool.urlopen('GET', '/not_found', preload_content=False)
-        self.assertEquals(self.pool.num_connections, 1)
+        assert self.pool.num_connections == 1
 
 
 class TestRedirectPoolSize(HTTPDummyServerTestCase):
@@ -1017,7 +1038,7 @@ class TestRedirectPoolSize(HTTPDummyServerTestCase):
 
     def test_pool_size_redirect(self):
         self.pool.urlopen('GET', '/redirect', preload_content=False)
-        self.assertEquals(self.pool.num_connections, 1)
+        assert self.pool.num_connections == 1
 
 
 if __name__ == '__main__':

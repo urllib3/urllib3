@@ -1,6 +1,34 @@
 Changes
 =======
 
+1.23 (2018-06-04)
+-----------------
+
+* Allow providing a list of headers to strip from requests when redirecting
+  to a different host. Defaults to the ``Authorization`` header. Different
+  headers can be set via ``Retry.remove_headers_on_redirect``. (Issue #1316)
+
+* Fix ``util.selectors._fileobj_to_fd`` to accept ``long`` (Issue #1247).
+
+* Dropped Python 3.3 support. (Pull #1242)
+
+* Put the connection back in the pool when calling stream() or read_chunked() on
+  a chunked HEAD response. (Issue #1234)
+
+* Fixed pyOpenSSL-specific ssl client authentication issue when clients
+  attempted to auth via certificate + chain (Issue #1060)
+
+* Add the port to the connectionpool connect print (Pull #1251)
+
+* Don't use the ``uuid`` module to create multipart data boundaries. (Pull #1380)
+
+* ``read_chunked()`` on a closed response returns no chunks. (Issue #1088)
+
+* Add Python 2.6 support to ``contrib.securetransport`` (Pull #1359)
+
+* Added support for auth info in url for SOCKS proxy (Pull #1363)
+
+
 1.22 (2017-07-20)
 -----------------
 
@@ -89,7 +117,7 @@ Changes
 * Fix some bugs that occur when modules incautiously patch the queue module.
   (Pull #1061)
 
-* Prevent retries from occuring on read timeouts for which the request method
+* Prevent retries from occurring on read timeouts for which the request method
   was not in the method whitelist. (Issue #1059)
 
 * Changed the PyOpenSSL contrib module to lazily load idna to avoid
@@ -123,7 +151,7 @@ Changes
   non-httplib underlying FPs. (Pull #990)
 
 * Empty filenames in multipart headers are now emitted as such, rather than
-  being supressed. (Issue #1015)
+  being suppressed. (Issue #1015)
 
 * Prefer user-supplied Host headers on chunked uploads. (Issue #1009)
 
@@ -484,7 +512,7 @@ Changes
 * All errors during a retry-enabled request should be wrapped in
   ``urllib3.exceptions.MaxRetryError``, including timeout-related exceptions
   which were previously exempt. Underlying error is accessible from the
-  ``.reason`` propery. (Issue #326)
+  ``.reason`` property. (Issue #326)
 
 * ``urllib3.exceptions.ConnectionError`` renamed to
   ``urllib3.exceptions.ProtocolError``. (Issue #326)
@@ -852,7 +880,7 @@ Changes
 * Refactored code to be even more decoupled, reusable, and extendable.
 * License header added to ``.py`` files.
 * Embiggened the documentation: Lots of Sphinx-friendly docstrings in the code
-  and docs in ``docs/`` and on urllib3.readthedocs.org.
+  and docs in ``docs/`` and on https://urllib3.readthedocs.io/.
 * Embettered all the things!
 * Started writing this file.
 

@@ -1,7 +1,7 @@
 import sys
-import socket
 import threading
-from nose.plugins.skip import SkipTest
+
+import pytest
 from tornado import ioloop, web
 
 from dummyserver.server import (
@@ -9,6 +9,7 @@ from dummyserver.server import (
     run_tornado_app,
     run_loop_in_thread,
     DEFAULT_CERTS,
+    HAS_IPV6,
 )
 from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
@@ -75,6 +76,23 @@ class SocketDummyServerTestCase(unittest.TestCase):
         if hasattr(cls, 'server_thread'):
             cls.server_thread.join(0.1)
 
+    def assert_header_received(
+        self,
+        received_headers,
+        header_name,
+        expected_value=None
+    ):
+        header_name = header_name.encode('ascii')
+        if expected_value is not None:
+            expected_value = expected_value.encode('ascii')
+        header_titles = []
+        for header in received_headers:
+            key, value = header.split(b': ')
+            header_titles.append(key)
+            if key == header_name and expected_value is not None:
+                self.assertEqual(value, expected_value)
+        self.assertIn(header_name, header_titles)
+
 
 class IPV4SocketDummyServerTestCase(SocketDummyServerTestCase):
     @classmethod
@@ -133,15 +151,9 @@ class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
     certs = DEFAULT_CERTS
 
 
+@pytest.mark.skipif(not HAS_IPV6, reason='IPv6 not available')
 class IPV6HTTPSDummyServerTestCase(HTTPSDummyServerTestCase):
     host = '::1'
-
-    @classmethod
-    def setUpClass(cls):
-        if not socket.has_ipv6:
-            raise SkipTest('IPv6 not available')
-        else:
-            super(IPV6HTTPSDummyServerTestCase, cls).setUpClass()
 
 
 class HTTPDummyProxyTestCase(unittest.TestCase):
@@ -183,17 +195,12 @@ class HTTPDummyProxyTestCase(unittest.TestCase):
         cls.server_thread.join()
 
 
+@pytest.mark.skipif(not HAS_IPV6, reason='IPv6 not available')
 class IPv6HTTPDummyServerTestCase(HTTPDummyServerTestCase):
     host = '::1'
 
-    @classmethod
-    def setUpClass(cls):
-        if not socket.has_ipv6:
-            raise SkipTest('IPv6 not available')
-        else:
-            super(IPv6HTTPDummyServerTestCase, cls).setUpClass()
 
-
+@pytest.mark.skipif(not HAS_IPV6, reason='IPv6 not available')
 class IPv6HTTPDummyProxyTestCase(HTTPDummyProxyTestCase):
 
     http_host = 'localhost'
