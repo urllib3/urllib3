@@ -4,6 +4,12 @@ Changes
 dev (master)
 ------------
 
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.23 (2018-06-05)
+-----------------
+
 * Allow providing a list of headers to strip from requests when redirecting
   to a different host. Defaults to the ``Authorization`` header. Different
   headers can be set via ``Retry.remove_headers_on_redirect``. (Issue #1316)
@@ -27,8 +33,6 @@ dev (master)
 * Add Python 2.6 support to ``contrib.securetransport`` (Pull #1359)
 
 * Added support for auth info in url for SOCKS proxy (Pull #1363)
-
-* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.22 (2017-07-20)
