@@ -8,6 +8,9 @@ dev (master)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
+* Add a server_hostname parameter to HTTPSConnection which allows for
+  overriding the SNI hostname sent in the handshake. (Pull #1397)
+
 
 1.23 (2018-06-05)
 -----------------
