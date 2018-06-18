@@ -45,8 +45,6 @@ else:
     def _retry_on_intr(fn, timeout):
         if timeout is None:
             deadline = float("inf")
-        elif timeout <= 0:
-            deadline = 0.0
         else:
             deadline = monotonic() + timeout
 
