@@ -153,7 +153,6 @@ def test_eintr_zero_timeout(wfs, spair):
     old_handler = signal.signal(signal.SIGALRM, handler)
     try:
         assert not wfs(a, read=True, timeout=0)
-        start = monotonic()
         try:
             # Start delivering SIGALRM 1000 times per second,
             # to trigger race conditions such as
@@ -166,8 +165,6 @@ def test_eintr_zero_timeout(wfs, spair):
         finally:
             # Stop delivering SIGALRM
             signal.setitimer(signal.ITIMER_REAL, 0)
-        end = monotonic()
-        dur = end - start
     finally:
         signal.signal(signal.SIGALRM, old_handler)
 
