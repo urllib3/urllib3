@@ -142,6 +142,40 @@ def test_eintr(wfs, spair):
     reason="need setitimer() support"
 )
 @pytest.mark.parametrize("wfs", variants)
+def test_eintr_zero_timeout(wfs, spair):
+    a, b = spair
+    interrupt_count = [0]
+
+    def handler(sig, frame):
+        assert sig == signal.SIGALRM
+        interrupt_count[0] += 1
+
+    old_handler = signal.signal(signal.SIGALRM, handler)
+    try:
+        assert not wfs(a, read=True, timeout=0)
+        try:
+            # Start delivering SIGALRM 1000 times per second,
+            # to trigger race conditions such as
+            # https://github.com/urllib3/urllib3/issues/1396.
+            signal.setitimer(signal.ITIMER_REAL, 0.001, 0.001)
+            # Hammer the system call for a while to trigger the
+            # race.
+            for i in range(100000):
+                wfs(a, read=True, timeout=0)
+        finally:
+            # Stop delivering SIGALRM
+            signal.setitimer(signal.ITIMER_REAL, 0)
+    finally:
+        signal.signal(signal.SIGALRM, old_handler)
+
+    assert interrupt_count[0] > 0
+
+
+@pytest.mark.skipif(
+    not hasattr(signal, "setitimer"),
+    reason="need setitimer() support"
+)
+@pytest.mark.parametrize("wfs", variants)
 def test_eintr_infinite_timeout(wfs, spair):
     a, b = spair
     interrupt_count = [0]
