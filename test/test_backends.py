@@ -1,5 +1,3 @@
-import sys
-
 import pytest
 
 import urllib3
@@ -38,7 +36,8 @@ class TestNormalizeBackend(object):
         with pytest.raises(ValueError) as excinfo:
             normalize_backend(Backend("trio"))
 
-        assert 'trio backend requires urllib3 to be built with async support' == str(excinfo.value)
+        assert ('trio backend requires urllib3 to be built with async support'
+                == str(excinfo.value))
 
     @requires_async_pool_manager
     def test_async(self):
@@ -48,10 +47,14 @@ class TestNormalizeBackend(object):
         with pytest.raises(ValueError) as excinfo:
             normalize_backend(Backend("sync"))
 
-        assert 'sync backend requires urllib3 to be built without async support' == str(excinfo.value)
+        assert (
+            'sync backend requires urllib3 to be built without async support'
+            == str(excinfo.value))
 
         from twisted.internet import reactor
-        assert normalize_backend(Backend("twisted", reactor=reactor)) == Backend("twisted", reactor=reactor)
+        assert (
+            normalize_backend(Backend("twisted", reactor=reactor))
+            == Backend("twisted", reactor=reactor))
 
 
 class TestLoadBackend(object):

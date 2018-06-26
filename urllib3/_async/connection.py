@@ -143,8 +143,10 @@ def _request_bytes_iterable(request, state_machine):
 
         yield state_machine.send(h11.EndOfMessage())
 
-    # Try to combine the header bytes + (first set of body bytes or end of message bytes) into one packet.
-    # As long as all_pieces_iter() yields at least two messages, this should never raise StopIteration.
+    # Try to combine the header bytes + (first set of body bytes or end of
+    # message bytes) into one packet.
+    # As long as all_pieces_iter() yields at least two messages, this should
+    # never raise StopIteration.
     remaining_pieces = all_pieces_iter()
     first_packet_bytes = next(remaining_pieces) + next(remaining_pieces)
     all_pieces_combined_iter = itertools.chain([first_packet_bytes], remaining_pieces)

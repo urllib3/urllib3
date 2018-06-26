@@ -1,5 +1,3 @@
-import sys
-
 from ..backends import Backend
 
 
@@ -88,10 +86,14 @@ def normalize_backend(backend):
 
     is_async_supported = async_supported()
     if is_async_supported and not loader.is_async:
-        raise ValueError("{} backend requires urllib3 to be built without async support".format(loader.name))
+        raise ValueError(
+            "{} backend requires urllib3 to be built without async support".
+            format(loader.name))
 
     if not is_async_supported and loader.is_async:
-        raise ValueError("{} backend requires urllib3 to be built with async support".format(loader.name))
+        raise ValueError(
+            "{} backend requires urllib3 to be built with async support".
+            format(loader.name))
 
     return backend
 

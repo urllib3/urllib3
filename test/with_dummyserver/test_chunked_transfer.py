@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import pytest
-
 from urllib3 import HTTPConnectionPool
 from urllib3.exceptions import InvalidBodyError
 from urllib3.packages import six
