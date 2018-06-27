@@ -11,49 +11,37 @@ requires_async_pool_manager = pytest.mark.skipif(
 )
 
 
-requires_sync_pool_manager = pytest.mark.skipif(
-    hasattr(urllib3, "AsyncPoolManager"),
-    reason="sync backends cannot be used with AsyncPoolManager",
-)
-
-
 class TestNormalizeBackend(object):
     """
     Assert that we fail correctly if we attempt to use an unknown or incompatible backend.
     """
     def test_unknown(self):
         with pytest.raises(ValueError) as excinfo:
-            normalize_backend("_unknown")
+            normalize_backend("_unknown", async_mode=False)
 
         assert 'unknown backend specifier _unknown' == str(excinfo.value)
 
-    @requires_sync_pool_manager
     def test_sync(self):
-        assert normalize_backend(Backend("sync")) == Backend("sync")
-        assert normalize_backend("sync") == Backend("sync")
-        assert normalize_backend(None) == Backend("sync")
+        assert normalize_backend(Backend("sync"), async_mode=False) == Backend("sync")
+        assert normalize_backend("sync", async_mode=False) == Backend("sync")
+        assert normalize_backend(None, async_mode=False) == Backend("sync")
 
         with pytest.raises(ValueError) as excinfo:
-            normalize_backend(Backend("trio"))
-
-        assert ('trio backend requires urllib3 to be built with async support'
-                == str(excinfo.value))
+            normalize_backend(Backend("trio"), async_mode=False)
+        assert ('trio backend needs to be run in async mode' == str(excinfo.value))
 
     @requires_async_pool_manager
     def test_async(self):
-        assert normalize_backend(Backend("trio")) == Backend("trio")
-        assert normalize_backend("twisted") == Backend("twisted")
+        assert normalize_backend(Backend("trio"), async_mode=True) == Backend("trio")
+        assert normalize_backend("twisted", async_mode=True) == Backend("twisted")
 
         with pytest.raises(ValueError) as excinfo:
-            normalize_backend(Backend("sync"))
-
-        assert (
-            'sync backend requires urllib3 to be built without async support'
-            == str(excinfo.value))
+            normalize_backend(Backend("sync"), async_mode=True)
+        assert ('sync backend needs to be run in sync mode' == str(excinfo.value))
 
         from twisted.internet import reactor
         assert (
-            normalize_backend(Backend("twisted", reactor=reactor))
+            normalize_backend(Backend("twisted", reactor=reactor), async_mode=True)
             == Backend("twisted", reactor=reactor))
 
 
@@ -61,9 +49,8 @@ class TestLoadBackend(object):
     """
     Assert that we can load a normalized backend
     """
-    @requires_sync_pool_manager()
     def test_sync(self):
-        load_backend(normalize_backend("sync"))
+        load_backend(normalize_backend("sync", async_mode=False))
 
     @requires_async_pool_manager()
     def test_async(self):

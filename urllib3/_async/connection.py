@@ -31,12 +31,29 @@ from ..exceptions import (
 from urllib3.packages import six
 from ..util import ssl_ as ssl_util
 from .._backends._common import LoopAbort
-from .._backends._loader import load_backend
+from .._backends._loader import load_backend, normalize_backend
 
 try:
     import ssl
 except ImportError:
     ssl = None
+
+
+def is_async_mode():
+    """Tests if we're in the async part of the code or if we're bleached"""
+    async def f():
+        """bleaching transforms async functions in sync functions"""
+        return None
+
+    obj = f()
+    if obj is None:
+        return False
+    else:
+        obj.close()  # prevent unawaited coroutine warning
+        return True
+
+
+_ASYNC_MODE = is_async_mode()
 
 
 # When updating RECENT_DATE, move it to within two years of the current date,
@@ -313,7 +330,7 @@ class HTTP1Connection(object):
                  source_address=None, tunnel_host=None, tunnel_port=None,
                  tunnel_headers=None):
         self.is_verified = False
-        self._backend = backend or load_backend("sync")
+        self._backend = load_backend(normalize_backend(backend, _ASYNC_MODE))
         self._host = host
         self._port = port
         self._socket_options = (

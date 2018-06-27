@@ -53,26 +53,7 @@ def backend_directory():
     }
 
 
-def async_supported():
-    """
-    Tests if the async keyword is supported.
-    """
-    async def f():
-        """
-        Functions with an `async` prefix return a coroutine.
-        This is removed by the bleaching code, which will change this function to return None.
-        """
-        return None
-
-    obj = f()
-    if obj is None:
-        return False
-    else:
-        obj.close()  # prevent unawaited coroutine warning
-        return True
-
-
-def normalize_backend(backend):
+def normalize_backend(backend, async_mode):
     if backend is None:
         backend = Backend(name="sync")  # sync backend is the default
     elif not isinstance(backend, Backend):
@@ -84,16 +65,13 @@ def normalize_backend(backend):
 
     loader = loaders_by_name[backend.name]
 
-    is_async_supported = async_supported()
-    if is_async_supported and not loader.is_async:
-        raise ValueError(
-            "{} backend requires urllib3 to be built without async support".
-            format(loader.name))
+    if async_mode and not loader.is_async:
+        raise ValueError("{} backend needs to be run in sync mode".format(
+            loader.name))
 
-    if not is_async_supported and loader.is_async:
-        raise ValueError(
-            "{} backend requires urllib3 to be built with async support".
-            format(loader.name))
+    if not async_mode and loader.is_async:
+        raise ValueError("{} backend needs to be run in async mode".format(
+            loader.name))
 
     return backend
 
