@@ -1,8 +1,7 @@
 # This should work on python 3.6+
 
 import urllib3
-# TODO: less janky way of specifying backends
-from urllib3._backends import TrioBackend, TwistedBackend
+from urllib3.backends import Backend
 
 URL = "http://httpbin.org/uuid"
 
@@ -15,11 +14,11 @@ async def main(backend):
 
 print("--- urllib3 using Trio ---")
 import trio
-trio.run(main, TrioBackend())
+trio.run(main, "trio")
 
 print("\n--- urllib3 using Twisted ---")
 from twisted.internet.task import react
 from twisted.internet.defer import ensureDeferred
 def twisted_main(reactor):
-    return ensureDeferred(main(TwistedBackend(reactor)))
+    return ensureDeferred(main(Backend("twisted", reactor=reactor)))
 react(twisted_main)
