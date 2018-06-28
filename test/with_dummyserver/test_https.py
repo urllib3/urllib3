@@ -207,9 +207,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.fail("Didn't raise SSL error with bad CA certs")
         except MaxRetryError as e:
             self.assertIsInstance(e.reason, SSLError)
-            self.assertTrue('certificate verify failed' in str(e.reason),
-                            "Expected 'certificate verify failed',"
-                            "instead got: %r" % e.reason)
+            assert 'certificate verify failed' in str(e.reason)
 
     def test_verified_without_ca_certs(self):
         # default is cert_reqs=None which is ssl.CERT_NONE

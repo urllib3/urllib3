@@ -13,7 +13,7 @@ import codecs
 base_path = os.path.dirname(__file__)
 
 # Get the version (borrowed from SQLAlchemy)
-with open(os.path.join(base_path, 'urllib3', '__init__.py')) as fp:
+with open(os.path.join(base_path, 'src', 'urllib3', '__init__.py')) as fp:
     VERSION = re.compile(r".*__version__ = '(.*?)'",
                          re.S).match(fp.read()).group(1)
 
@@ -152,6 +152,7 @@ setup(name='urllib3',
                 'urllib3.contrib._securetransport', 'urllib3.util',
                 'urllib3._async', 'urllib3._backends',
                 ],
+      package_dir={'': 'src'},
       python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, <4",
       tests_require=[
           # These are a less-specific subset of dev-requirements.txt, for the

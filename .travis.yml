@@ -1,76 +1,80 @@
-# language: python
-# script:
-#   - ./_travis/run.sh
-# before_install:
-#   - openssl version
-# after_success:
-#   - ./_travis/upload_coverage.sh
-# cache:
-#   directories:
-#   - ${HOME}/.cache
-# install:
-#   - ./_travis/install.sh
-# notifications:
-#   email: false
-# env:
-#   global:
-#     - GAE_SDK_PATH=${HOME}/.cache/google_appengine
-#     - PYTHONWARNINGS=always::DeprecationWarning
-#   matrix:
-#     - TOXENV=flake8-py3
-#     - TOXENV=gae
-#     - TOXENV=docs
-# # https://github.com/travis-ci/travis-ci/issues/4794
-# matrix:
-#   include:
-#     - python: 2.7
-#       env: TOXENV=py27
-#     - python: 3.4
-#       env: TOXENV=py34
-#     - python: 3.5
-#       env: TOXENV=py35
-#     - python: 3.6
-#       env: TOXENV=py36
-#     - python: 3.7-dev
-#       env: TOXENV=py37
-#     - python: pypy2.7
-#       env: TOXENV=pypy
-#     - python: pypy3.5
-#       env: TOXENV=pypy3
-#     - language: generic
-#       os: osx
-#       env: TOXENV=py27
-#     - language: generic
-#       os: osx
-#       env: TOXENV=py34
-#     - language: generic
-#       os: osx
-#       env: TOXENV=py35
-#     - language: generic
-#       os: osx
-#       env: TOXENV=py36
-#     - language: generic
-#       os: osx
-#       env: TOXENV=py37
-#   allow_failures:
-#   - env: TOXENV=gae
-#   - python: 3.7-dev
-#   - env: TOXENV=py37
-# sudo: false
-
-# Temporary minimal travis config so we can at least run tests while
-# we're refactoring everything.
-#
-# XX TODO: add back all the stuff above
-language:
-  python
-sudo: false
-dist: trusty
+language: python
+script:
+  - ./_travis/run.sh
+before_install:
+  - openssl version
+after_success:
+  - ./_travis/upload_coverage.sh
+cache:
+  directories:
+  - ${HOME}/.cache
+install:
+  - ./_travis/install.sh
 notifications:
   email: false
-python:
-  - 3.5
-  - 3.6
-script:
-  - pip install virtualenv
-  - python ./runtests.py -v
+env:
+  global:
+    - GAE_SDK_PATH=${HOME}/.cache/google_appengine
+    - PYTHONWARNINGS=always::DeprecationWarning
+  matrix:
+    - TOXENV=gae
+# https://github.com/travis-ci/travis-ci/issues/4794
+matrix:
+  include:
+    - python: 3.6
+      env: TOXENV=flake8-py3
+    - python: 3.6
+      env: TOXENV=docs
+    - python: 2.7
+      env: TOXENV=py27
+    - python: 3.4
+      env: TOXENV=py34
+    - python: 3.5
+      env: TOXENV=py35
+    - python: 3.6
+      env: TOXENV=py36
+    - python: 3.7-dev
+      env: TOXENV=py37
+    - python: pypy2.7
+      env: TOXENV=pypy
+    - python: pypy3.5
+      env: TOXENV=pypy3
+    - language: generic
+      os: osx
+      env: TOXENV=py27
+    - language: generic
+      os: osx
+      env: TOXENV=py34
+    - language: generic
+      os: osx
+      env: TOXENV=py35
+    - language: generic
+      os: osx
+      env: TOXENV=py36
+    - language: generic
+      os: osx
+      env: TOXENV=py37
+  allow_failures:
+    - python: 3.6
+      env: TOXENV=docs
+    - python: 2.7
+      env: TOXENV=py27
+    - language: generic
+      os: osx
+      env: TOXENV=py27
+    - python: 3.4
+      env: TOXENV=py34
+    - python: 3.7-dev
+      env: TOXENV=py37
+    - python: pypy2.7
+      env: TOXENV=pypy
+    - language: generic
+      os: osx
+      env: TOXENV=py27
+    - language: generic
+      os: osx
+      env: TOXENV=py34
+    - language: generic
+      os: osx
+      env: TOXENV=py37
+sudo: false
