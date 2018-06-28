@@ -1,6 +1,6 @@
 import socket
 import OpenSSL.crypto
-from twisted.internet import protocol, ssl
+from twisted.internet import protocol, reactor as default_reactor, ssl
 from twisted.internet.interfaces import IHandshakeListener
 from twisted.internet.endpoints import HostnameEndpoint, connectProtocol
 from twisted.internet.defer import (
@@ -15,8 +15,8 @@ from ._common import LoopAbort
 
 
 class TwistedBackend:
-    def __init__(self, reactor):
-        self._reactor = reactor
+    def __init__(self, reactor=None):
+        self._reactor = reactor or default_reactor
 
     async def connect(self, host, port, connect_timeout,
                       source_address=None, socket_options=None):

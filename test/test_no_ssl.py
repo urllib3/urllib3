@@ -5,8 +5,6 @@ Test what happens if Python was built without SSL
 * HTTPS requests must fail with an error that points at the ssl module
 """
 
-import pytest
-
 import sys
 if sys.version_info >= (2, 7):
     import unittest
@@ -90,6 +88,5 @@ class TestImportWithoutSSL(TestWithoutSSL):
 
         self.assertRaises(ImportError, import_ssl)
 
-    @pytest.mark.xfail
     def test_import_urllib3(self):
         import urllib3  # noqa: F401
