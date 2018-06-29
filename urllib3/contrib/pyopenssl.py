@@ -163,7 +163,7 @@ def _dnsname_to_stdlib(name):
     from ASCII bytes. We need to idna-encode that string to get it back, and
     then on Python 3 we also need to convert to unicode via UTF-8 (the stdlib
     uses PyUnicode_FromStringAndSize on it, which decodes via UTF-8).
-    
+
     If the name cannot be idna-encoded then we return None signalling that
     the name given should be skipped.
     """
@@ -232,11 +232,10 @@ def get_subj_alt_name(peer_cert):
     # decoded. This is pretty frustrating, but that's what the standard library
     # does with certificates, and so we need to attempt to do the same.
     # We also want to skip over names which cannot be idna encoded.
-    names = []
-    for name in ext.get_values_for_type(x509.DNSName):
-        name = _dnsname_to_stdlib(name)
-        if name is not None:
-            names.append(('DNS', name))
+    names = [
+        ('DNS', name) for name in map(_dnsname_to_stdlib, ext.get_values_for_type(x509.DNSName))
+        if name is not None
+    ]
     names.extend(
         ('IP Address', str(name))
         for name in ext.get_values_for_type(x509.IPAddress)
