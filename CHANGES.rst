@@ -4,6 +4,8 @@ Changes
 dev (master)
 ------------
 
+* Skip DNS names that can't be idna-decoded when using pyOpenSSL (Issue #1405).
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
