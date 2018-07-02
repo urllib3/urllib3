@@ -229,7 +229,6 @@ class TestClientCerts(SocketDummyServerTestCase):
             )
 
 
-@pytest.mark.skip
 class TestSocketClosing(SocketDummyServerTestCase):
 
     def test_recovery_when_server_closes_connection(self):
@@ -279,7 +278,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
         self.assertRaises(MaxRetryError, http.request, 'GET', '/', retries=0, release_conn=False)
         self.assertEqual(http.pool.qsize(), http.pool.maxsize)
 
-    @pytest.mark.skip
     def test_connection_read_timeout(self):
         timed_out = Event()
 
@@ -324,6 +322,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         finally:
             timed_out.set()
 
+    @pytest.mark.skip
     def test_https_connection_read_timeout(self):
         """ Handshake timeouts should fail with a Timeout"""
         timed_out = Event()
@@ -386,6 +385,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         finally:
             socket.setdefaulttimeout(default_timeout)
 
+    @pytest.mark.skip
     def test_delayed_body_read_timeout(self):
         timed_out = Event()
 
@@ -415,6 +415,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         finally:
             timed_out.set()
 
+    @pytest.mark.xfail
     def test_delayed_body_read_timeout_with_preload(self):
         timed_out = Event()
 
@@ -544,6 +545,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         self.assertIsInstance(cm.exception.reason, BadVersionError)
 
+    @pytest.mark.skip
     def test_connection_cleanup_on_read_timeout(self):
         timed_out = Event()
 
@@ -572,6 +574,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             finally:
                 timed_out.set()
 
+    @pytest.mark.xfail
     def test_connection_cleanup_on_protocol_error_during_read(self):
         body = 'Response'
         partial_body = body[:2]
@@ -600,6 +603,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             self.assertRaises(ProtocolError, response.read)
             self.assertEqual(poolsize, pool.pool.qsize())
 
+    @pytest.mark.xfail
     def test_connection_closed_on_read_timeout_preload_false(self):
         timed_out = Event()
 
@@ -714,6 +718,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         if not successful:
             self.fail("Timed out waiting for connection close")
 
+    @pytest.mark.xfail
     def test_release_conn_param_is_respected_after_timeout_retry(self):
         """For successful ```urlopen()```, the connection isn't released, even
         after a retry.
@@ -1071,7 +1076,6 @@ class TestProxyManager(SocketDummyServerTestCase):
 
 class TestSSL(SocketDummyServerTestCase):
 
-    @pytest.mark.skip
     def test_ssl_failure_midway_through_conn(self):
         def socket_handler(listener):
             sock = listener.accept()[0]
@@ -1183,7 +1187,6 @@ class TestSSL(SocketDummyServerTestCase):
         # Should not hang, see https://github.com/shazow/urllib3/issues/529
         self.assertRaises(MaxRetryError, request)
 
-    @pytest.mark.skip
     def test_retry_ssl_error(self):
         def socket_handler(listener):
             # first request, trigger an SSLError
@@ -1610,7 +1613,6 @@ class TestAutomaticHeaderInsertion(SocketDummyServerTestCase):
     Tests for automatically inserting headers, including for chunked transfer
     encoding.
     """
-    @pytest.mark.skip
     def test_automatic_chunking_fileobj(self):
         """
         A file-like object should automatically be chunked if the user provides
