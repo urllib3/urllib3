@@ -445,7 +445,6 @@ class TestRetry(HTTPDummyServerTestCase):
             actual = [(history.status, history.redirect_location) for history in r.retries.history]
             self.assertEqual(actual, expected)
 
-    @pytest.mark.skip
     def test_redirect_put_file(self):
         """PUT with file object should work with a redirection response"""
         retry = Retry(total=3, status_forcelist=[418])
@@ -541,7 +540,6 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
         self.base_url = 'http://%s:%d' % (self.host, self.port)
         self.base_url_alt = 'http://%s:%d' % (self.host_alt, self.port)
 
-    @pytest.mark.skip
     def test_retries_put_filehandle(self):
         """HTTP PUT retry with a file-like object should not timeout"""
         retry = Retry(total=3, status_forcelist=[418])

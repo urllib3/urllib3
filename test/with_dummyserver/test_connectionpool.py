@@ -236,7 +236,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                               fields={'method': 'GET'})
         self.assertEqual(r.status, 200, r.data)
 
-    @pytest.mark.skip
     def test_post_url(self):
         r = self.pool.request('POST', '/specific_method',
                               fields={'method': 'POST'})
@@ -246,7 +245,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.urlopen('PUT', '/specific_method?method=PUT')
         self.assertEqual(r.status, 200, r.data)
 
-    @pytest.mark.skip
     def test_wrong_specific_method(self):
         # To make sure the dummy server is actually returning failed responses
         r = self.pool.request('GET', '/specific_method',
@@ -257,7 +255,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                               fields={'method': 'GET'})
         self.assertEqual(r.status, 400, r.data)
 
-    @pytest.mark.skip
     def test_upload(self):
         data = "I'm in ur multipart form-data, hazing a cheezburgr"
         fields = {
@@ -270,7 +267,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('POST', '/upload', fields=fields)
         self.assertEqual(r.status, 200, r.data)
 
-    @pytest.mark.skip
     def test_one_name_multiple_values(self):
         fields = [
             ('foo', 'a'),
@@ -285,7 +281,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('POST', '/echo', fields=fields)
         self.assertEqual(r.data.count(b'name="foo"'), 2)
 
-    @pytest.mark.skip
     def test_request_method_body(self):
         body = b'hi'
         r = self.pool.request('POST', '/echo', body=body)
@@ -294,7 +289,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         fields = [('hi', 'hello')]
         self.assertRaises(TypeError, self.pool.request, 'POST', '/echo', body=body, fields=fields)
 
-    @pytest.mark.skip
     def test_unicode_upload(self):
         fieldname = u('myfile')
         filename = u('\xe2\x99\xa5.txt')
@@ -480,13 +474,11 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # Next request
         r = pool.request('GET', '/keepalive?close=0')
 
-    @pytest.mark.skip
     def test_post_with_urlencode(self):
         data = {'banana': 'hammock', 'lol': 'cat'}
         r = self.pool.request('POST', '/echo', fields=data, encode_multipart=False)
         self.assertEqual(r.data.decode('utf-8'), urlencode(data))
 
-    @pytest.mark.skip
     def test_post_with_multipart(self):
         data = {'banana': 'hammock', 'lol': 'cat'}
         r = self.pool.request('POST', '/echo',
@@ -569,7 +561,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(r.read(5), resp_data[:5])
         self.assertEqual(r.read(), resp_data[5:])
 
-    @pytest.mark.skip
     def test_lazy_load_twice(self):
         # This test is sad and confusing. Need to figure out what's
         # going on with partial reads and socket reuse.

@@ -292,7 +292,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertNotEqual(sc2, sc3)
         self.assertEqual(sc3, sc4)
 
-    @pytest.mark.skip
     @pytest.mark.timeout(0.5)
     @requires_network
     def test_https_proxy_timeout(self):
@@ -304,7 +303,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         except MaxRetryError as e:
             self.assertEqual(type(e.reason), ConnectTimeoutError)
 
-    @pytest.mark.skip
     @pytest.mark.timeout(0.5)
     @requires_network
     def test_https_proxy_pool_timeout(self):

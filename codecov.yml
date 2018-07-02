@@ -5,4 +5,4 @@ coverage:
                 target: '100'
         project:
             default:
-                target: '35'
+                target: '40'
