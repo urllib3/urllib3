@@ -242,7 +242,7 @@ class HTTPSConnection(HTTPConnection):
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-                 ssl_context=None, **kw):
+                 ssl_context=None, server_hostname=None, **kw):
 
         HTTPConnection.__init__(self, host, port, strict=strict,
                                 timeout=timeout, **kw)
@@ -250,6 +250,7 @@ class HTTPSConnection(HTTPConnection):
         self.key_file = key_file
         self.cert_file = cert_file
         self.ssl_context = ssl_context
+        self.server_hostname = server_hostname
 
         # Required property for Google AppEngine 1.9.0 which otherwise causes
         # HTTPS requests to go out as HTTP. (See Issue #356)
@@ -270,6 +271,7 @@ class HTTPSConnection(HTTPConnection):
             keyfile=self.key_file,
             certfile=self.cert_file,
             ssl_context=self.ssl_context,
+            server_hostname=self.server_hostname
         )
 
 
@@ -328,6 +330,10 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             # Override the host with the one we're requesting data from.
             hostname = self._tunnel_host
 
+        server_hostname = hostname
+        if self.server_hostname is not None:
+            server_hostname = self.server_hostname
+
         is_time_off = datetime.date.today() < RECENT_DATE
         if is_time_off:
             warnings.warn((
@@ -352,7 +358,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             certfile=self.cert_file,
             ca_certs=self.ca_certs,
             ca_cert_dir=self.ca_cert_dir,
-            server_hostname=hostname,
+            server_hostname=server_hostname,
             ssl_context=context)
 
         if self.assert_fingerprint:
@@ -373,7 +379,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                     'for details.)'.format(hostname)),
                     SubjectAltNameWarning
                 )
-            _match_hostname(cert, self.assert_hostname or hostname)
+            _match_hostname(cert, self.assert_hostname or server_hostname)
 
         self.is_verified = (
             context.verify_mode == ssl.CERT_REQUIRED or
