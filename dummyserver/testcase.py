@@ -124,7 +124,7 @@ class HTTPDummyServerTestCase(unittest.TestCase):
 
     @classmethod
     def _start_server(cls):
-        cls.io_loop = ioloop.IOLoop()
+        cls.io_loop = ioloop.IOLoop.current()
         app = web.Application([(r".*", TestingApp)])
         cls.server, cls.port = run_tornado_app(app, cls.io_loop, cls.certs,
                                                cls.scheme, cls.host)
@@ -170,7 +170,7 @@ class HTTPDummyProxyTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.io_loop = ioloop.IOLoop()
+        cls.io_loop = ioloop.IOLoop.current()
 
         app = web.Application([(r'.*', TestingApp)])
         cls.http_server, cls.http_port = run_tornado_app(
