@@ -226,15 +226,16 @@ def bind_sockets(port, address=None, family=socket.AF_UNSPEC, backlog=128,
 
 
 def run_tornado_app(app, io_loop, certs, scheme, host):
+    assert io_loop == tornado.ioloop.IOLoop.current()
+
     # We can't use fromtimestamp(0) because of CPython issue 29097, so we'll
     # just construct the datetime object directly.
     app.last_req = datetime(1970, 1, 1)
 
     if scheme == 'https':
-        http_server = tornado.httpserver.HTTPServer(app, ssl_options=certs,
-                                                    io_loop=io_loop)
+        http_server = tornado.httpserver.HTTPServer(app, ssl_options=certs)
     else:
-        http_server = tornado.httpserver.HTTPServer(app, io_loop=io_loop)
+        http_server = tornado.httpserver.HTTPServer(app)
 
     sockets = bind_sockets(None, address=host)
     port = sockets[0].getsockname()[1]
@@ -268,7 +269,7 @@ if __name__ == '__main__':
     from .testcase import TestingApp
     host = '127.0.0.1'
 
-    io_loop = tornado.ioloop.IOLoop()
+    io_loop = tornado.ioloop.IOLoop.current()
     app = tornado.web.Application([(r".*", TestingApp)])
     server, port = run_tornado_app(app, io_loop, None,
                                    'http', host)
