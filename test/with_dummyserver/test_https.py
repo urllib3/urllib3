@@ -75,6 +75,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
+    # SecureTransport rejects >36 bytes serial numbers, see
+    # https://github.com/urllib3/urllib3/pull/1418
+    @notSecureTransport
     def test_client_intermediate(self):
         client_cert, client_key, client_subject = (
             DEFAULT_CLIENT_CERTS['certfile'],
@@ -88,6 +91,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.assertDictEqual(json.loads(r.data.decode('utf-8')),
                              client_subject, r.data)
 
+    # SecureTransport rejects >36 bytes serial numbers, see
+    # https://github.com/urllib3/urllib3/pull/1418
+    @notSecureTransport
     def test_client_no_intermediate(self):
         client_cert, client_key = (
             DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS['certfile'],
@@ -188,7 +194,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 self.assertEqual(error, InsecurePlatformWarning)
 
     @onlyPy279OrNewer
-    @notSecureTransport
+    @notSecureTransport  # SecureTransport does not support cert directories
     def test_ca_dir_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_reqs='CERT_REQUIRED',
