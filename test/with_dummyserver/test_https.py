@@ -58,7 +58,12 @@ log.addHandler(logging.StreamHandler(sys.stdout))
 
 class TestHTTPS(HTTPSDummyServerTestCase):
     def setUp(self):
-        self._pool = HTTPSConnectionPool(self.host, self.port)
+        self._pool = HTTPSConnectionPool(
+            self.host,
+            self.port,
+            ca_certs=DEFAULT_CA,
+            cert_reqs='CERT_REQUIRED'
+        )
         self.addCleanup(self._pool.close)
 
     def test_simple(self):
