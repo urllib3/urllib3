@@ -101,7 +101,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         except SSLError as e:
             if not ('alert unknown ca' in str(e) or
                     'invalid certificate chain' in str(e) or
-                    'unknown Cert Authority' in str(e)):
+                    'unknown Cert Authority' in str(e) or
+                    # https://github.com/urllib3/urllib3/issues/1422
+                    'connection closed via error' in str(e)):
                 raise
 
     def test_verified(self):
