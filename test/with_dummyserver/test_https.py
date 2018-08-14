@@ -75,25 +75,19 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
-    # SecureTransport rejects >36 bytes serial numbers, see
-    # https://github.com/urllib3/urllib3/pull/1418
-    @notSecureTransport
     def test_client_intermediate(self):
-        client_cert, client_key, client_subject = (
+        client_cert, client_key = (
             DEFAULT_CLIENT_CERTS['certfile'],
             DEFAULT_CLIENT_CERTS['keyfile'],
-            DEFAULT_CLIENT_CERTS['subject']
         )
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          key_file=client_key,
                                          cert_file=client_cert)
         r = https_pool.request('GET', '/certificate')
-        self.assertDictEqual(json.loads(r.data.decode('utf-8')),
-                             client_subject, r.data)
+        subject = json.loads(r.data.decode('utf-8'))
+        assert subject['organizationalUnitName'].startswith(
+            'Testing server cert')
 
-    # SecureTransport rejects >36 bytes serial numbers, see
-    # https://github.com/urllib3/urllib3/pull/1418
-    @notSecureTransport
     def test_client_no_intermediate(self):
         client_cert, client_key = (
             DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS['certfile'],
@@ -107,7 +101,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         except SSLError as e:
             if not ('alert unknown ca' in str(e) or
                     'invalid certificate chain' in str(e) or
-                    'unknown Cert Authority' in str(e)):
+                    'unknown Cert Authority' in str(e) or
+                    # https://github.com/urllib3/urllib3/issues/1422
+                    'connection closed via error' in str(e)):
                 raise
 
     def test_verified(self):
