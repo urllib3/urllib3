@@ -842,7 +842,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         """
         Called right before a request is made, after the socket is created.
         """
-        super(HTTPSConnectionPool, self)._validate_conn(conn)
+        try:
+            super(HTTPSConnectionPool, self)._validate_conn(conn)
+        except: # Python 3
+            super()
 
         # Force connect early to allow us to validate the connection.
         if not getattr(conn, 'sock', None):  # AppEngine might not have  `.sock`
