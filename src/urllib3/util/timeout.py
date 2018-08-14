@@ -120,6 +120,15 @@ class Timeout(object):
         if isinstance(value, bool):
             raise ValueError("Timeout cannot be a boolean value. It must "
                              "be an int, float or None.")
+
+        if isinstance(value, Timeout):
+            if name is 'connect':
+                value = value._connect
+            elif name is 'read':
+                value = value._read
+            else:
+                value = value._total
+
         try:
             float(value)
         except (TypeError, ValueError):

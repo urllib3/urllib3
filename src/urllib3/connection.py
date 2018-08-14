@@ -251,6 +251,7 @@ class HTTPSConnection(HTTPConnection):
         self.cert_file = cert_file
         self.ssl_context = ssl_context
         self.server_hostname = server_hostname
+        self._dns_host = host
 
         # Required property for Google AppEngine 1.9.0 which otherwise causes
         # HTTPS requests to go out as HTTP. (See Issue #356)
