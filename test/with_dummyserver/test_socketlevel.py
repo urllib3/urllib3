@@ -14,7 +14,7 @@ from urllib3.response import httplib
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util.timeout import Timeout
 from urllib3.util.retry import Retry
-from urllib3._collections import HTTPHeaderDict, OrderedDict
+from urllib3._collections import HTTPHeaderDict
 
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from dummyserver.server import (
@@ -27,6 +27,7 @@ try:
 except ImportError:
     class MimeToolMessage(object):
         pass
+from collections import OrderedDict
 from threading import Event
 import select
 import socket
@@ -81,8 +82,8 @@ class TestSNI(SocketDummyServerTestCase):
         except MaxRetryError:  # We are violating the protocol
             pass
         done_receiving.wait()
-        self.assertTrue(self.host.encode('ascii') in self.buf,
-                        "missing hostname in SSL handshake")
+        self.assertIn(self.host.encode('ascii'), self.buf,
+                      "missing hostname in SSL handshake")
 
 
 class TestClientCerts(SocketDummyServerTestCase):
@@ -737,12 +738,12 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # should be in the pool. We opened two though.
             self.assertEqual(pool.num_connections, 2)
             self.assertEqual(pool.pool.qsize(), 0)
-            self.assertTrue(response.connection is not None)
+            self.assertIsNotNone(response.connection)
 
             # Consume the data. This should put the connection back.
             response.read()
             self.assertEqual(pool.pool.qsize(), 1)
-            self.assertTrue(response.connection is None)
+            self.assertIsNone(response.connection)
 
 
 class TestProxyManager(SocketDummyServerTestCase):
@@ -814,7 +815,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         # FIXME: The order of the headers is not predictable right now. We
         # should fix that someday (maybe when we migrate to
         # OrderedDict/MultiDict).
-        self.assertTrue(b'For The Proxy: YEAH!\r\n' in r.data)
+        self.assertIn(b'For The Proxy: YEAH!\r\n', r.data)
 
     def test_retries(self):
         close_event = Event()
@@ -1433,7 +1434,7 @@ class TestBadContentLength(SocketDummyServerTestCase):
             next(data)
             self.assertFail()
         except ProtocolError as e:
-            self.assertTrue('12 bytes read, 10 more expected' in str(e))
+            self.assertIn('12 bytes read, 10 more expected', str(e))
 
         done_event.set()
 

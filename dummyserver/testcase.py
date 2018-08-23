@@ -1,5 +1,5 @@
-import sys
 import threading
+import unittest
 
 import pytest
 from tornado import ioloop, web
@@ -13,11 +13,6 @@ from dummyserver.server import (
 )
 from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
-
-if sys.version_info >= (2, 7):
-    import unittest
-else:
-    import unittest2 as unittest
 
 
 def consume_socket(sock, chunks=65536):

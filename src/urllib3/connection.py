@@ -2,7 +2,6 @@ from __future__ import absolute_import
 import datetime
 import logging
 import os
-import sys
 import socket
 from socket import error as SocketError, timeout as SocketTimeout
 import warnings
@@ -78,9 +77,6 @@ class HTTPConnection(_HTTPConnection, object):
 
       - ``strict``: See the documentation on :class:`urllib3.connectionpool.HTTPConnectionPool`
       - ``source_address``: Set the source address for the current connection.
-
-        .. note:: This is ignored for Python 2.6. It is only applied for 2.7 and 3.x
-
       - ``socket_options``: Set specific options on the underlying socket. If not specified, then
         defaults are loaded from ``HTTPConnection.default_socket_options`` which includes disabling
         Nagle's algorithm (sets TCP_NODELAY to 1) unless the connection is behind a proxy.
@@ -108,21 +104,13 @@ class HTTPConnection(_HTTPConnection, object):
         if six.PY3:  # Python 3
             kw.pop('strict', None)
 
-        # Pre-set source_address in case we have an older Python like 2.6.
+        # Pre-set source_address.
         self.source_address = kw.get('source_address')
-
-        if sys.version_info < (2, 7):  # Python 2.6
-            # _HTTPConnection on Python 2.6 will balk at this keyword arg, but
-            # not newer versions. We can still use it when creating a
-            # connection though, so we pop it *after* we have saved it as
-            # self.source_address.
-            kw.pop('source_address', None)
 
         #: The socket options provided by the user. If no options are
         #: provided, we use the default options.
         self.socket_options = kw.pop('socket_options', self.default_socket_options)
 
-        # Superclass also sets self.source_address in Python 2.7+.
         _HTTPConnection.__init__(self, *args, **kw)
 
     @property

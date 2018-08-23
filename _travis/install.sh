@@ -17,17 +17,9 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     eval "$(pyenv init -)"
 
     case "${TOXENV}" in
-        py26)
-            pyenv install 2.6.9
-            pyenv global 2.6.9
-            ;;
         py27)
             pyenv install 2.7.14
             pyenv global 2.7.14
-            ;;
-        py33)
-            pyenv install 3.3.6
-            pyenv global 3.3.6
             ;;
         py34)
             pyenv install 3.4.7
