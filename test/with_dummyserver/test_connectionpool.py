@@ -403,7 +403,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         conn._tunnel = mock.Mock(return_value=None)
         pool._make_request(conn, 'GET', '/')
-        self.assertEqual(conn._tunnel.called, False)
+        self.assertFalse(conn._tunnel.called)
 
     def test_redirect(self):
         r = self.pool.request('GET', '/redirect', fields={'target': '/'}, redirect=False)
@@ -463,7 +463,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # The dummyserver responded with Connection:keep-alive, the connection
         # persists.
         conn = pool.pool.get()
-        self.assertNotEqual(conn.sock, None)
+        self.assertIsNotNone(conn.sock)
         pool._put_conn(conn)
 
         # Another request asking the server to close the connection. This one

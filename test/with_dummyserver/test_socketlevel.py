@@ -82,8 +82,8 @@ class TestSNI(SocketDummyServerTestCase):
         except MaxRetryError:  # We are violating the protocol
             pass
         done_receiving.wait()
-        self.assertTrue(self.host.encode('ascii') in self.buf,
-                        "missing hostname in SSL handshake")
+        self.assertIn(self.host.encode('ascii'), self.buf,
+                      "missing hostname in SSL handshake")
 
 
 class TestClientCerts(SocketDummyServerTestCase):
@@ -743,7 +743,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # Consume the data. This should put the connection back.
             response.read()
             self.assertEqual(pool.pool.qsize(), 1)
-            self.assertTrue(response.connection is None)
+            self.assertIsNone(response.connection)
 
 
 class TestProxyManager(SocketDummyServerTestCase):
