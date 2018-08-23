@@ -120,7 +120,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         block_event.set()  # Release request
 
         message = "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT"
-        self.assertTrue(delta < LONG_TIMEOUT, message)
+        self.assertLess(delta, LONG_TIMEOUT, message)
         pool._put_conn(conn)
 
         wait_for_socket(ready_event)
@@ -129,7 +129,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         delta = time.time() - now
 
         message = "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT"
-        self.assertTrue(delta < LONG_TIMEOUT, message)
+        self.assertLess(delta, LONG_TIMEOUT, message)
         block_event.set()  # Release request
 
         # Timeout int/float passed directly to request and _make_request should
@@ -451,7 +451,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # because _get_conn() is where the check & reset occurs
         # pylint: disable-msg=W0212
         conn = pool.pool.get()
-        self.assertEqual(conn.sock, None)
+        self.assertIsNone(conn.sock)
         pool._put_conn(conn)
 
         # Now with keep-alive
@@ -476,7 +476,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(r.status, 200)
 
         conn = pool.pool.get()
-        self.assertEqual(conn.sock, None)
+        self.assertIsNone(conn.sock)
         pool._put_conn(conn)
 
         # Next request
@@ -929,14 +929,14 @@ class TestRetryAfter(HTTPDummyServerTestCase):
         r = self.pool.request('GET', '/redirect_after')
         self.assertEqual(r.status, 200)
         delta = time.time() - t
-        self.assertTrue(delta >= 1)
+        self.assertGreaterEqual(delta, 1)
 
         t = time.time()
         timestamp = t + 2
         r = self.pool.request('GET', '/redirect_after?date=' + str(timestamp))
         self.assertEqual(r.status, 200)
         delta = time.time() - t
-        self.assertTrue(delta >= 1)
+        self.assertGreaterEqual(delta, 1)
 
         # Retry-After is past
         t = time.time()
@@ -944,7 +944,7 @@ class TestRetryAfter(HTTPDummyServerTestCase):
         r = self.pool.request('GET', '/redirect_after?date=' + str(timestamp))
         delta = time.time() - t
         self.assertEqual(r.status, 200)
-        self.assertTrue(delta < 1)
+        self.assertLess(delta, 1)
 
 
 class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
@@ -1002,7 +1002,7 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
             self.pool.urlopen('PUT', url, headers=headers, body=body)
             self.fail('PUT successful despite failed rewind.')
         except UnrewindableBodyError as e:
-            self.assertTrue('Unable to record file position for' in str(e))
+            self.assertIn('Unable to record file position for', str(e))
 
 
 class TestRetryPoolSize(HTTPDummyServerTestCase):

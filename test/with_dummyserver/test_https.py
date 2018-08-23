@@ -230,9 +230,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.fail("Didn't raise SSL error with bad CA certs")
         except MaxRetryError as e:
             self.assertIsInstance(e.reason, SSLError)
-            self.assertTrue('certificate verify failed' in str(e.reason),
-                            "Expected 'certificate verify failed',"
-                            "instead got: %r" % e.reason)
+            self.assertIn('certificate verify failed', str(e.reason),
+                          "Expected 'certificate verify failed',"
+                          "instead got: %r" % e.reason)
 
     def test_verified_without_ca_certs(self):
         # default is cert_reqs=None which is ssl.CERT_NONE
@@ -539,7 +539,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             warning = w[0]
 
             self.assertEqual(SystemTimeWarning, warning.category)
-            self.assertTrue(str(RECENT_DATE) in warning.message.args[0])
+            self.assertIn(str(RECENT_DATE), warning.message.args[0])
 
     def _request_without_resource_warnings(self, method, url):
         with warnings.catch_warnings(record=True) as w:

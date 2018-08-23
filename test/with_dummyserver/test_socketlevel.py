@@ -738,7 +738,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # should be in the pool. We opened two though.
             self.assertEqual(pool.num_connections, 2)
             self.assertEqual(pool.pool.qsize(), 0)
-            self.assertTrue(response.connection is not None)
+            self.assertIsNotNone(response.connection)
 
             # Consume the data. This should put the connection back.
             response.read()
@@ -815,7 +815,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         # FIXME: The order of the headers is not predictable right now. We
         # should fix that someday (maybe when we migrate to
         # OrderedDict/MultiDict).
-        self.assertTrue(b'For The Proxy: YEAH!\r\n' in r.data)
+        self.assertIn(b'For The Proxy: YEAH!\r\n', r.data)
 
     def test_retries(self):
         close_event = Event()
@@ -1434,7 +1434,7 @@ class TestBadContentLength(SocketDummyServerTestCase):
             next(data)
             self.assertFail()
         except ProtocolError as e:
-            self.assertTrue('12 bytes read, 10 more expected' in str(e))
+            self.assertIn('12 bytes read, 10 more expected', str(e))
 
         done_event.set()
 
