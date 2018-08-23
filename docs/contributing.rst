@@ -55,11 +55,12 @@ suite::
 
   $ make test-all
   [... tox creates a virtualenv for every platform and runs tests inside of each]
-  py26: commands succeeded
   py27: commands succeeded
-  py32: commands succeeded
-  py33: commands succeeded
   py34: commands succeeded
+  py35: commands succeeded
+  py36: commands succeeded
+  py37: commands succeeded
+  pypy: commands succeeded
 
 Our test suite `runs continuously on Travis CI
 <https://travis-ci.org/urllib3/urllib3>`_ with every pull request.

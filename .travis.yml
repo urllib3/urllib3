@@ -23,8 +23,6 @@ env:
 # https://github.com/travis-ci/travis-ci/issues/4794
 matrix:
   include:
-    - python: 2.6
-      env: TOXENV=py26
     - python: 2.7
       env: TOXENV=py27
     - python: 3.4
@@ -37,9 +35,6 @@ matrix:
       env: TOXENV=py37
     - python: pypy-5.4
       env: TOXENV=pypy
-    - language: generic
-      os: osx
-      env: TOXENV=py26
     - language: generic
       os: osx
       env: TOXENV=py27

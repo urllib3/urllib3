@@ -14,7 +14,7 @@ from urllib3.response import httplib
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util.timeout import Timeout
 from urllib3.util.retry import Retry
-from urllib3._collections import HTTPHeaderDict, OrderedDict
+from urllib3._collections import HTTPHeaderDict
 
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from dummyserver.server import (
@@ -27,6 +27,7 @@ try:
 except ImportError:
     class MimeToolMessage(object):
         pass
+from collections import OrderedDict
 from threading import Event
 import select
 import socket

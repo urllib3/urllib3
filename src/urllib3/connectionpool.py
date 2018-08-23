@@ -375,7 +375,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         try:
             try:  # Python 2.7, use buffering of HTTP responses
                 httplib_response = conn.getresponse(buffering=True)
-            except TypeError:  # Python 2.6 and older, Python 3
+            except TypeError:  # Python 3
                 try:
                     httplib_response = conn.getresponse()
                 except Exception as e:
@@ -801,17 +801,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         Establish tunnel connection early, because otherwise httplib
         would improperly set Host: header to proxy's IP:port.
         """
-        # Python 2.7+
-        try:
-            set_tunnel = conn.set_tunnel
-        except AttributeError:  # Platform-specific: Python 2.6
-            set_tunnel = conn._set_tunnel
-
-        if sys.version_info <= (2, 6, 4) and not self.proxy_headers:  # Python 2.6.4 and older
-            set_tunnel(self._proxy_host, self.port)
-        else:
-            set_tunnel(self._proxy_host, self.port, self.proxy_headers)
-
+        conn.set_tunnel(self._proxy_host, self.port, self.proxy_headers)
         conn.connect()
 
     def _new_conn(self):

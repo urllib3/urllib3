@@ -20,10 +20,8 @@ from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
                                 IP_SAN_CERTS)
 
 from test import (
-    onlyPy26OrOlder,
     onlyPy279OrNewer,
     notSecureTransport,
-    onlyPy27OrNewerOrNonWindows,
     requires_network,
     TARPIT_HOST,
 )
@@ -476,25 +474,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.addCleanup(https_pool.close)
         conn = https_pool._new_conn()
         self.addCleanup(conn.close)
-        try:
-            conn.set_tunnel(self.host, self.port)
-        except AttributeError:  # python 2.6
-            conn._set_tunnel(self.host, self.port)
+        conn.set_tunnel(self.host, self.port)
         conn._tunnel = mock.Mock()
         https_pool._make_request(conn, 'GET', '/')
         conn._tunnel.assert_called_once_with()
-
-    @onlyPy26OrOlder
-    def test_tunnel_old_python(self):
-        """HTTPSConnection can still make connections if _tunnel_host isn't set
-
-        The _tunnel_host attribute was added in 2.6.3 - because our test runners
-        generally use the latest Python 2.6, we simulate the old version by
-        deleting the attribute from the HTTPSConnection.
-        """
-        conn = self._pool._new_conn()
-        del conn._tunnel_host
-        self._pool._make_request(conn, 'GET', '/')
 
     @requires_network
     def test_enhanced_timeout(self):
@@ -574,11 +557,7 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
         self._pool = HTTPSConnectionPool(self.host, self.port)
         self.addCleanup(self._pool.close)
 
-    @onlyPy27OrNewerOrNonWindows
     def test_discards_connection_on_sslerror(self):
-        # This test is skipped on Windows for Python 2.6 because we suspect there
-        # is an issue with the OpenSSL for Python 2.6 on Windows.
-
         self._pool.cert_reqs = 'CERT_REQUIRED'
         with self.assertRaises(MaxRetryError) as cm:
             self._pool.request('GET', '/', retries=0)

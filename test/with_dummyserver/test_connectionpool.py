@@ -388,10 +388,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.addCleanup(pool.close)
         conn = pool._get_conn()
         self.addCleanup(conn.close)
-        try:
-            conn.set_tunnel(self.host, self.port)
-        except AttributeError:  # python 2.6
-            conn._set_tunnel(self.host, self.port)
+        conn.set_tunnel(self.host, self.port)
 
         conn._tunnel = mock.Mock(return_value=None)
         pool._make_request(conn, 'GET', '/')
