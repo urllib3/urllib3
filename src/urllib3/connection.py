@@ -104,6 +104,9 @@ class HTTPConnection(_HTTPConnection, object):
         if six.PY3:  # Python 3
             kw.pop('strict', None)
 
+        # Pre-set source_address.
+        self.source_address = kw.get('source_address')
+
         #: The socket options provided by the user. If no options are
         #: provided, we use the default options.
         self.socket_options = kw.pop('socket_options', self.default_socket_options)
