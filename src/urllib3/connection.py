@@ -171,10 +171,7 @@ class HTTPConnection(_HTTPConnection, object):
 
     def _prepare_conn(self, conn):
         self.sock = conn
-        # the _tunnel_host attribute was added in python 2.6.3 (via
-        # http://hg.python.org/cpython/rev/0f57b30a152f) so pythons 2.6(0-2) do
-        # not have them.
-        if getattr(self, '_tunnel_host', None):
+        if self._tunnel_host:
             # TODO: Fix tunnel so it doesn't depend on self.sock state.
             self._tunnel()
             # Mark this connection as not reusable
@@ -302,12 +299,9 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     def connect(self):
         # Add certificate verification
         conn = self._new_conn()
-
         hostname = self.host
-        if getattr(self, '_tunnel_host', None):
-            # _tunnel_host was added in Python 2.6.3
-            # (See: http://hg.python.org/cpython/rev/0f57b30a152f)
 
+        if self._tunnel_host:
             self.sock = conn
             # Calls self._set_hostport(), so self.host is
             # self._tunnel_host below.
