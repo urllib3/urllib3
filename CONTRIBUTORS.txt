@@ -262,7 +262,7 @@ In chronological order:
 * Bruce Merry <https://www.brucemerry.org.za>
   * Fix leaking exceptions when system calls are interrupted with zero timeout
 
-* [Hugo van Kemenade] <https://github.com/hugovk>
+* Hugo van Kemenade <https://github.com/hugovk>
   * Drop support for EOL Python 2.6
 
 * [Your name or handle] <[email or website]>
