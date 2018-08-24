@@ -38,6 +38,7 @@ from urllib3.exceptions import (
     SystemTimeWarning,
     InsecurePlatformWarning,
     MaxRetryError,
+    ProtocolError,
 )
 from urllib3.packages import six
 from urllib3.util.timeout import Timeout
@@ -101,7 +102,12 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                     'invalid certificate chain' in str(e) or
                     'unknown Cert Authority' in str(e) or
                     # https://github.com/urllib3/urllib3/issues/1422
-                    'connection closed via error' in str(e)):
+                    'connection closed via error' in str(e) or
+                    'WSAECONNRESET' in str(e)):
+                raise
+        except ProtocolError as e:
+            # https://github.com/urllib3/urllib3/issues/1422
+            if not ('An existing connection was forcibly closed by the remote host' in str(e)):
                 raise
 
     def test_verified(self):
