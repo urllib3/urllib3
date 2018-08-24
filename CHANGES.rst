@@ -6,10 +6,12 @@ dev (master)
 
 * Skip DNS names that can't be idna-decoded when using pyOpenSSL (Issue #1405).
 
-* ... [Short description of non-trivial change.] (Issue #)
-
 * Add a server_hostname parameter to HTTPSConnection which allows for
   overriding the SNI hostname sent in the handshake. (Pull #1397)
+
+* Drop support for EOL Python 2.6 (Pull #1429 and Pull #1430)
+
+* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.23 (2018-06-05)
