@@ -639,13 +639,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
     def test_closing_response_actually_closes_connection(self):
         done_closing = Event()
         complete = Event()
-        # The insane use of this variable here is to get around the fact that
-        # Python 2.6 does not support returning a value from Event.wait(). This
-        # means we can't tell if an event timed out, so we can't use the timing
-        # out of the 'complete' event to determine the success or failure of
-        # the test. Python 2 also doesn't have the nonlocal statement, so we
-        # can't write directly to this variable, only mutate it. Hence: list.
-        successful = []
 
         def socket_handler(listener):
             sock = listener.accept()[0]
@@ -667,7 +660,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.settimeout(1)
             new_data = sock.recv(65536)
             self.assertFalse(new_data)
-            successful.append(True)
             sock.close()
             complete.set()
 
@@ -680,7 +672,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         response.close()
 
         done_closing.set()  # wait until the socket in our pool gets closed
-        complete.wait(timeout=1)
+        successful = complete.wait(timeout=1)
         if not successful:
             self.fail("Timed out waiting for connection close")
 
