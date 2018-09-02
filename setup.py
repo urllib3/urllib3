@@ -153,6 +153,7 @@ setup(name='urllib3',
                 'urllib3._async', 'urllib3._backends',
                 ],
       package_dir={'': 'src'},
+      requires=[],
       python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, <4",
       tests_require=[
           # These are a less-specific subset of dev-requirements.txt, for the
