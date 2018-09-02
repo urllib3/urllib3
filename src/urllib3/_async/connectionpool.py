@@ -39,7 +39,7 @@ from ..util.ssl_ import (
     resolve_cert_reqs, BaseSSLError
 )
 from ..util.timeout import Timeout
-from ..util.url import get_host, Url
+from ..util.url import get_host, Url, NORMALIZABLE_SCHEMES
 from ..util.queue import LifoQueue
 
 try:
@@ -105,7 +105,7 @@ class ConnectionPool(object):
         if not host:
             raise LocationValueError("No host specified.")
 
-        self.host = _ipv6_host(host).lower()
+        self.host = _ipv6_host(host, self.scheme)
         self.port = port
 
     def __str__(self):
@@ -447,7 +447,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # TODO: Add optional support for socket.gethostbyname checking.
         scheme, host, port = get_host(url)
 
-        host = _ipv6_host(host).lower()
+        host = _ipv6_host(host, self.scheme)
 
         # Use explicit default port for comparison when none is given
         if self.port and not port:
@@ -782,7 +782,7 @@ def connection_from_url(url, **kw):
         return HTTPConnectionPool(host, port=port, **kw)
 
 
-def _ipv6_host(host):
+def _ipv6_host(host, scheme):
     """
     Process IPv6 address literals
     """
@@ -798,4 +798,6 @@ def _ipv6_host(host):
     # percent sign might be URIencoded, convert it back into ASCII
     if host.startswith('[') and host.endswith(']'):
         host = host.replace('%25', '%').strip('[]')
+    if scheme in NORMALIZABLE_SCHEMES:
+        host = host.lower()
     return host

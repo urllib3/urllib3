@@ -108,7 +108,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
             # Modern versions of Python, or systems using PyOpenSSL, don't
             # emit warnings.
-            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL \
+                    or util.IS_SECURETRANSPORT:
                 self.assertFalse(warn.called, warn.call_args_list)
             else:
                 self.assertTrue(warn.called)
@@ -132,7 +133,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
             # Modern versions of Python, or systems using PyOpenSSL, don't
             # emit warnings.
-            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL \
+                    or util.IS_SECURETRANSPORT:
                 self.assertFalse(warn.called, warn.call_args_list)
             else:
                 self.assertTrue(warn.called)
@@ -156,7 +158,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
             # Modern versions of Python, or systems using PyOpenSSL, don't
             # emit warnings.
-            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL \
+                    or util.IS_SECURETRANSPORT:
                 self.assertFalse(warn.called, warn.call_args_list)
             else:
                 self.assertTrue(warn.called)
@@ -245,13 +248,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             # the unverified warning. Older systems may also emit other
             # warnings, which we want to ignore here.
             calls = warn.call_args_list
-            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
-                category = calls[0][0][1]
-            elif util.HAS_SNI:
-                category = calls[1][0][1]
-            else:
-                category = calls[2][0][1]
-            self.assertEqual(category, InsecureRequestWarning)
+            self.assertIn(InsecureRequestWarning, [x[0][1] for x in calls])
 
     def test_ssl_unverified_with_ca_certs(self):
         pool = HTTPSConnectionPool(self.host, self.port,
@@ -268,7 +265,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             # the unverified warning. Older systems may also emit other
             # warnings, which we want to ignore here.
             calls = warn.call_args_list
-            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL:
+            if sys.version_info >= (2, 7, 9) or util.IS_PYOPENSSL \
+                    or util.IS_SECURETRANSPORT:
                 category = calls[0][0][1]
             elif util.HAS_SNI:
                 category = calls[1][0][1]

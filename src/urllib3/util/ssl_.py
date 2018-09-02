@@ -3,6 +3,7 @@ import errno
 import logging
 import warnings
 import hmac
+import socket
 
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
@@ -12,6 +13,7 @@ from ..packages.ssl_match_hostname import (
     match_hostname as _match_hostname,
     CertificateError
 )
+from ..packages import six
 
 
 SSLContext = None
@@ -69,6 +71,27 @@ try:
 except ImportError:
     OP_NO_SSLv2, OP_NO_SSLv3 = 0x1000000, 0x2000000
     OP_NO_COMPRESSION = 0x20000
+
+
+# Python 2.7 and earlier didn't have inet_pton on non-Linux
+# so we fallback on inet_aton in those cases. This means that
+# we can only detect IPv4 addresses in this case.
+if hasattr(socket, 'inet_pton'):
+    inet_pton = socket.inet_pton
+else:
+    # Maybe we can use ipaddress if the user has urllib3[secure]?
+    try:
+        import ipaddress
+
+        def inet_pton(_, host):
+            if isinstance(host, six.binary_type):
+                host = host.decode('ascii')
+            return ipaddress.ip_address(host)
+
+    except ImportError:  # Platform-specific: Non-Linux
+        def inet_pton(_, host):
+            return socket.inet_aton(host)
+
 
 # A secure default.
 # Sources for more information on TLS ciphers:
@@ -358,19 +381,27 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
 
     if certfile:
         context.load_cert_chain(certfile, keyfile)
-    if HAS_SNI:  # Platform-specific: OpenSSL with enabled SNI
-        return context.wrap_socket(sock, server_hostname=server_hostname)
 
-    warnings.warn(
-        'An HTTPS request has been made, but the SNI (Server Name '
-        'Indication) extension to TLS is not available on this platform. '
-        'This may cause the server to present an incorrect TLS '
-        'certificate, which can cause validation failures. You can upgrade to '
-        'a newer version of Python to solve this. For more information, see '
-        'https://urllib3.readthedocs.io/en/latest/advanced-usage.html'
-        '#ssl-warnings',
-        SNIMissingWarning
-    )
+    # If we detect server_hostname is an IP address then the SNI
+    # extension should not be used according to RFC3546 Section 3.1
+    # We shouldn't warn the user if SNI isn't available but we would
+    # not be using SNI anyways due to IP address for server_hostname.
+    if ((server_hostname is not None and not is_ipaddress(server_hostname))
+            or IS_SECURETRANSPORT):
+        if HAS_SNI and server_hostname is not None:
+            return context.wrap_socket(sock, server_hostname=server_hostname)
+
+        warnings.warn(
+            'An HTTPS request has been made, but the SNI (Server Name '
+            'Indication) extension to TLS is not available on this platform. '
+            'This may cause the server to present an incorrect TLS '
+            'certificate, which can cause validation failures. You can upgrade to '
+            'a newer version of Python to solve this. For more information, see '
+            'https://urllib3.readthedocs.io/en/latest/advanced-usage.html'
+            '#ssl-warnings',
+            SNIMissingWarning
+        )
+
     return context.wrap_socket(sock)
 
 
@@ -386,3 +417,27 @@ def match_hostname(cert, asserted_hostname):
         # the cert when catching the exception, if they want to
         e._peer_cert = cert
         raise
+
+
+def is_ipaddress(hostname):
+    """Detects whether the hostname given is an IP address.
+
+    :param str hostname: Hostname to examine.
+    :return: True if the hostname is an IP address, False otherwise.
+    """
+    if six.PY3 and isinstance(hostname, six.binary_type):
+        # IDN A-label bytes are ASCII compatible.
+        hostname = hostname.decode('ascii')
+
+    families = [socket.AF_INET]
+    if hasattr(socket, 'AF_INET6'):
+        families.append(socket.AF_INET6)
+
+    for af in families:
+        try:
+            inet_pton(af, hostname)
+        except (socket.error, ValueError, OSError):
+            pass
+        else:
+            return True
+    return False

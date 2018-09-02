@@ -127,7 +127,8 @@ class HTTPResponse(io.IOBase):
     def __init__(self, body='', headers=None, status=0, version=0, reason=None,
                  strict=0, preload_content=True, decode_content=True,
                  original_response=None, pool=None, connection=None, msg=None,
-                 retries=None, request_method=None):
+                 retries=None, enforce_content_length=False,
+                 request_method=None, request_url=None):
 
         if isinstance(headers, HTTPHeaderDict):
             self.headers = headers
@@ -146,6 +147,7 @@ class HTTPResponse(io.IOBase):
         self._original_response = original_response
         self._fp_bytes_read = 0
         self.msg = msg
+        self._request_url = request_url
         self._buffer = b''
 
         if body and isinstance(body, (basestring, binary_type)):
@@ -473,3 +475,14 @@ class HTTPResponse(io.IOBase):
         else:
             b[:len(temp)] = temp
             return len(temp)
+
+    def geturl(self):
+        """
+        Returns the URL that was the source of this response.
+        If the request that generated this response redirected, this method
+        will return the final redirect location.
+        """
+        if self.retries is not None and len(self.retries.history):
+            return self.retries.history[-1].redirect_location
+        else:
+            return self._request_url

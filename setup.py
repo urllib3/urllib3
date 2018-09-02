@@ -4,6 +4,7 @@ from setuptools import setup
 from setuptools.command.build_py import build_py
 
 import os
+import sys
 import re
 import tokenize as std_tokenize
 from tokenize import ASYNC, AWAIT, NAME, NEWLINE, NL, STRING, ENCODING
@@ -22,7 +23,6 @@ with codecs.open('README.rst', encoding='utf-8') as fp:
 with codecs.open('CHANGES.rst', encoding='utf-8') as fp:
     changes = fp.read()
 version = VERSION
-
 
 ASYNC_TO_SYNC = {
     '__aenter__': '__enter__',

@@ -6,28 +6,35 @@ import mock
 import pytest
 
 try:
+    from urllib3.contrib.pyopenssl import (
+        _dnsname_to_stdlib, get_subj_alt_name
+    )
     from cryptography import x509
     from OpenSSL.crypto import FILETYPE_PEM, load_certificate
-    from urllib3.contrib.pyopenssl import (inject_into_urllib3,
-                                           extract_from_urllib3,
-                                           get_subj_alt_name,
-                                           _dnsname_to_stdlib)
-except ImportError as e:
-    pytestmark = pytest.mark.skip('Could not import PyOpenSSL: %r' % e)
+except ImportError:
+    pass
+
+
+def setup_module():
+    try:
+        from urllib3.contrib.pyopenssl import inject_into_urllib3
+        inject_into_urllib3()
+    except ImportError as e:
+        pytest.skip('Could not import PyOpenSSL: %r' % e)
+
+
+def teardown_module():
+    try:
+        from urllib3.contrib.securetransport import extract_from_urllib3
+        extract_from_urllib3()
+    except ImportError:
+        pass
 
 
 from ..with_dummyserver.test_https import TestHTTPS, TestHTTPS_TLSv1  # noqa: F401
 from ..with_dummyserver.test_socketlevel import (  # noqa: F401
     TestSNI, TestSocketClosing, TestClientCerts
 )
-
-
-def setup_module():
-    inject_into_urllib3()
-
-
-def teardown_module():
-    extract_from_urllib3()
 
 
 class TestPyOpenSSLHelpers(unittest.TestCase):

@@ -124,7 +124,7 @@ The usage of :class:`~poolmanager.ProxyManager` is the same as
 
 You can use :class:`~contrib.socks.SOCKSProxyManager` to connect to SOCKS4 or
 SOCKS5 proxies. In order to use SOCKS proxies you will need to install
-`PySocks <https://pypi.python.org/pypi/PySocks>`_ or install urllib3 with the
+`PySocks <https://pypi.org/project/PySocks/>`_ or install urllib3 with the
 ``socks`` extra::
 
     pip install urllib3[socks]
@@ -227,7 +227,7 @@ Alternatively you can capture the warnings with the standard :mod:`logging` modu
 
 Finally, you can suppress the warnings at the interpreter level by setting the
 ``PYTHONWARNINGS`` environment variable or by using the
-`-W flag <https://docs.python.org/2/using/cmdline.html#cmdoption-W>`_.
+`-W flag <https://docs.python.org/3/using/cmdline.html#cmdoption-w>`_.
 
 Google App Engine
 -----------------

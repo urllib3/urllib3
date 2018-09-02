@@ -43,9 +43,6 @@ if sys.version_info >= (3, 5):
 else:
     # Old and broken Pythons.
     def _retry_on_intr(fn, timeout):
-        if timeout is not None and timeout <= 0:
-            return fn(timeout)
-
         if timeout is None:
             deadline = float("inf")
         else:
@@ -61,10 +58,10 @@ else:
                     raise
                 else:
                     timeout = deadline - monotonic()
-                    if timeout == float("inf"):
-                        timeout = None
                     if timeout < 0:
                         timeout = 0
+                    if timeout == float("inf"):
+                        timeout = None
                     continue
 
 
@@ -117,7 +114,7 @@ def _have_working_poll():
     # from libraries like eventlet/greenlet.
     try:
         poll_obj = select.poll()
-        poll_obj.poll(0)
+        _retry_on_intr(poll_obj.poll, 0)
     except (AttributeError, OSError):
         return False
     else:
