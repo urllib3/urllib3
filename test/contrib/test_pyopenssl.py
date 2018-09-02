@@ -82,5 +82,5 @@ class TestPyOpenSSLHelpers(unittest.TestCase):
         self.assertEqual(get_subj_alt_name(cert), [])
 
         self.assertEqual(mock_warning.call_count, 1)
-        self.assertTrue(isinstance(mock_warning.call_args[0][1],
-                                   x509.DuplicateExtension))
+        self.assertIsInstance(mock_warning.call_args[0][1],
+                              x509.DuplicateExtension)

@@ -15,7 +15,7 @@ from urllib3.exceptions import (
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util.timeout import Timeout
 from urllib3.util.retry import Retry
-from urllib3._collections import HTTPHeaderDict, OrderedDict
+from urllib3._collections import HTTPHeaderDict
 
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from dummyserver.server import (
@@ -26,6 +26,7 @@ try:
 except ImportError:
     class MimeToolMessage(object):
         pass
+from collections import OrderedDict
 from threading import Event
 import io
 import select
@@ -81,8 +82,8 @@ class TestSNI(SocketDummyServerTestCase):
         except MaxRetryError:  # We are violating the protocol
             pass
         done_receiving.wait()
-        self.assertTrue(self.host.encode('ascii') in self.buf,
-                        "missing hostname in SSL handshake")
+        self.assertIn(self.host.encode('ascii'), self.buf,
+                      "missing hostname in SSL handshake")
 
 
 class TestClientCerts(SocketDummyServerTestCase):
@@ -673,13 +674,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
     def test_closing_response_actually_closes_connection(self):
         done_closing = Event()
         complete = Event()
-        # The insane use of this variable here is to get around the fact that
-        # Python 2.6 does not support returning a value from Event.wait(). This
-        # means we can't tell if an event timed out, so we can't use the timing
-        # out of the 'complete' event to determine the success or failure of
-        # the test. Python 2 also doesn't have the nonlocal statement, so we
-        # can't write directly to this variable, only mutate it. Hence: list.
-        successful = []
 
         def socket_handler(listener):
             sock = listener.accept()[0]
@@ -701,7 +695,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.settimeout(1)
             new_data = sock.recv(65536)
             self.assertFalse(new_data)
-            successful.append(True)
             sock.close()
             complete.set()
 
@@ -714,7 +707,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         response.close()
 
         done_closing.set()  # wait until the socket in our pool gets closed
-        complete.wait(timeout=1)
+        successful = complete.wait(timeout=1)
         if not successful:
             self.fail("Timed out waiting for connection close")
 
@@ -773,12 +766,12 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # should be in the pool. We opened two though.
             self.assertEqual(pool.num_connections, 2)
             self.assertEqual(pool.pool.qsize(), 0)
-            self.assertTrue(response.connection is not None)
+            self.assertIsNotNone(response.connection)
 
             # Consume the data. This should put the connection back.
             response.read()
             self.assertEqual(pool.pool.qsize(), 1)
-            self.assertTrue(response.connection is None)
+            self.assertIsNone(response.connection)
 
     def test_early_response(self):
         """
@@ -896,7 +889,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         # FIXME: The order of the headers is not predictable right now. We
         # should fix that someday (maybe when we migrate to
         # OrderedDict/MultiDict).
-        self.assertTrue(b'for-the-proxy: YEAH!\r\n' in r.data)
+        self.assertIn(b'for-the-proxy: YEAH!\r\n', r.data)
 
     # Usually passes, but flaky. See:
     #    https://github.com/njsmith/urllib3/pull/15#issuecomment-373977268
@@ -1573,7 +1566,7 @@ class TestBadContentLength(SocketDummyServerTestCase):
             next(data)
             self.assertFail()
         except ProtocolError as e:
-            self.assertTrue('received 12 bytes, expected 22' in str(e))
+            self.assertIn('received 12 bytes, expected 22', str(e))
 
         done_event.set()
 

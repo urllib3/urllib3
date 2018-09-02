@@ -128,7 +128,7 @@ class ConnectionPool(object):
 
 
 # This is taken from http://hg.python.org/cpython/file/7aaba721ebc0/Lib/socket.py#l252
-_blocking_errnos = set([errno.EAGAIN, errno.EWOULDBLOCK])
+_blocking_errnos = {errno.EAGAIN, errno.EWOULDBLOCK}
 
 
 class HTTPConnectionPool(ConnectionPool, RequestMethods):
@@ -340,8 +340,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Catch possible read timeouts thrown as SSL errors. If not the
         # case, rethrow the original. We need to do this because of:
         # http://bugs.python.org/issue10272
-        # TODO: Can we remove this?
-        if 'timed out' in str(err) or 'did not complete (read)' in str(err):  # Python 2.6
+        if 'timed out' in str(err) or 'did not complete (read)' in str(err):  # Python < 2.7.4
             raise ReadTimeoutError(self, url, "Read timed out. (read timeout=%s)" % timeout_value)
 
     async def _make_request(

@@ -32,7 +32,7 @@ from dummyserver.server import DEFAULT_CA
 import h11
 
 
-class HTTPUnixConnection(HTTPConnection):
+class HTTPUnixConnection(HTTP1Connection):
     def __init__(self, host, timeout=60, **kwargs):
         super(HTTPUnixConnection, self).__init__('localhost')
         self.unix_socket = host

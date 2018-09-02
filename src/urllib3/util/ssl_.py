@@ -73,9 +73,8 @@ except ImportError:
     OP_NO_COMPRESSION = 0x20000
 
 
-# Python 2.7 and earlier didn't have inet_pton on non-Linux
-# so we fallback on inet_aton in those cases. This means that
-# we can only detect IPv4 addresses in this case.
+# Python 2.7 doesn't have inet_pton on non-Linux so we fallback on inet_aton in
+# those cases. This means that we can only detect IPv4 addresses in this case.
 if hasattr(socket, 'inet_pton'):
     inet_pton = socket.inet_pton
 else:
@@ -133,7 +132,7 @@ except ImportError:
 
     # TODO: Can we remove this by choosing to support only platforms with
     # actual SSLContext objects?
-    class SSLContext(object):  # Platform-specific: Python 2 & 3.1
+    class SSLContext(object):  # Platform-specific: Python 2
         def __init__(self, protocol_version):
             self.protocol = protocol_version
             # Use default values from a real SSLContext
@@ -367,7 +366,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
     if ca_certs or ca_cert_dir:
         try:
             context.load_verify_locations(ca_certs, ca_cert_dir)
-        except IOError as e:  # Platform-specific: Python 2.6, 2.7, 3.2
+        except IOError as e:  # Platform-specific: Python 2.7
             raise SSLError(e)
         # Py33 raises FileNotFoundError which subclasses OSError
         # These are not equivalent unless we check the errno attribute

@@ -4,7 +4,6 @@ from setuptools import setup
 from setuptools.command.build_py import build_py
 
 import os
-import sys
 import re
 import tokenize as std_tokenize
 from tokenize import ASYNC, AWAIT, NAME, NEWLINE, NL, STRING, ENCODING
@@ -130,7 +129,6 @@ setup(name='urllib3',
           'Operating System :: OS Independent',
           'Programming Language :: Python',
           'Programming Language :: Python :: 2',
-          'Programming Language :: Python :: 2.6',
           'Programming Language :: Python :: 2.7',
           'Programming Language :: Python :: 3',
           'Programming Language :: Python :: 3.4',
@@ -166,7 +164,7 @@ setup(name='urllib3',
       install_requires=["h11 >= 0.8.0"],
       extras_require={
           'secure': [
-              'pyOpenSSL>=0.14',
+              'pyOpenSSL >= 0.14',
               'cryptography>=1.3.4',
               'idna>=2.0.0',
               'certifi',

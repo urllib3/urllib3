@@ -30,7 +30,7 @@ In chronological order:
 * kennethreitz <me@kennethreitz.com>
   * Bugfixes, suggestions, Requests integration
 
-* georgemarshall <http://github.com/georgemarshall>
+* georgemarshall <https://github.com/georgemarshall>
   * Bugfixes, Improvements and Test coverage
 
 * Thomas Kluyver <thomas@kluyver.me.uk>
@@ -67,7 +67,7 @@ In chronological order:
 * Boris Figovsky <boris.figovsky@ravellosystems.com>
   * Allowed to skip SSL hostname verification
 
-* Cory Benfield <http://lukasa.co.uk/about/>
+* Cory Benfield <https://lukasa.co.uk/about/>
   * Stream method for Response objects.
   * Return native strings in header values.
   * Generate 'Host' header when using proxies.
@@ -96,7 +96,7 @@ In chronological order:
 * Nipunn Koorapati <nipunn1313@gmail.com>
   * Ignore default ports when comparing hosts for equality
 
-* Danilo @dbrgn <http://dbrgn.ch/>
+* Danilo @dbrgn <https://dbrgn.ch/>
   * Disabled TLS compression by default on Python 3.2+
   * Disabled TLS compression in pyopenssl contrib module
   * Configurable cipher suites in pyopenssl contrib module
@@ -114,7 +114,7 @@ In chronological order:
 * Tahia Khan <http://tahia.tk/>
   * Added Timeout examples in docs
 
-* Arthur Grunseid <http://grunseid.com>
+* Arthur Grunseid <https://grunseid.com>
   * source_address support and tests (with https://github.com/bui)
 
 * Ian Cordasco <graffatcolmingov@gmail.com>
@@ -151,8 +151,9 @@ In chronological order:
 * David D. Riddle <ddriddle@illinois.edu>
   * IPv6 bugfixes in testsuite
 
-* Jon Wayne Parrott <jonwayne@google.com>
+* Thea Flowers <magicalgirl@google.com>
   * App Engine environment tests.
+  * Documentation re-write.
 
 * John Krauss <https://github.com/talos>
   * Clues to debugging problems with `cryptography` dependency in docs
@@ -259,8 +260,11 @@ In chronological order:
   * Improve contribution guide
   * Add ``HTTPResponse.geturl`` method to provide ``urllib2.urlopen().geturl()`` behavior
 
-* Bruce Merry <http://www.brucemerry.org.za>
+* Bruce Merry <https://www.brucemerry.org.za>
   * Fix leaking exceptions when system calls are interrupted with zero timeout
+
+* Hugo van Kemenade <https://github.com/hugovk>
+  * Drop support for EOL Python 2.6
 
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
