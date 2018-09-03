@@ -6,18 +6,11 @@ import ssl
 import pytest
 
 try:
-    from urllib3.contrib.securetransport import (
-        WrappedSocket, inject_into_urllib3, extract_from_urllib3
-    )
+    from urllib3.contrib.securetransport import WrappedSocket
 except ImportError as e:
-    pytestmark = pytest.mark.skip('Could not import SecureTransport: %r' % e)
+    pass
 
 pytestmark = pytest.mark.skip('SecureTransport currently not supported on v2!')
-
-from ..with_dummyserver.test_https import TestHTTPS, TestHTTPS_TLSv1  # noqa: F401
-from ..with_dummyserver.test_socketlevel import (  # noqa: F401
-    TestSNI, TestSocketClosing, TestClientCerts
-)
 
 
 def setup_module():
