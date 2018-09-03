@@ -300,6 +300,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_hostname = 'localhost'
         https_pool.request('GET', '/')
 
+    @pytest.mark.xfail
     def test_server_hostname(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_REQUIRED',
