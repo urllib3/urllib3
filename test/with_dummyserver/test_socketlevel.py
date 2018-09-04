@@ -605,7 +605,8 @@ class TestSocketClosing(SocketDummyServerTestCase):
             self.assertRaises(ProtocolError, response.read)
             self.assertEqual(poolsize, pool.pool.qsize())
 
-    @pytest.mark.xfail
+    # Tends to hang on PyPy 3 in Travis, and using pytest.timeout fails on Windows
+    @pytest.mark.skip
     def test_connection_closed_on_read_timeout_preload_false(self):
         timed_out = Event()
 
