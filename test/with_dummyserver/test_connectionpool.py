@@ -525,7 +525,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                           'GET', '/encodingrequest',
                           headers={'accept-encoding': 'garbage-gzip'})
 
-    @pytest.mark.xfail
     def test_connection_count(self):
         pool = HTTPConnectionPool(self.host, self.port, maxsize=1)
         self.addCleanup(pool.close)
@@ -537,7 +536,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(pool.num_connections, 1)
         self.assertEqual(pool.num_requests, 3)
 
-    @pytest.mark.xfail
     def test_connection_count_bigpool(self):
         http_pool = HTTPConnectionPool(self.host, self.port, maxsize=16)
         self.addCleanup(http_pool.close)
@@ -608,7 +606,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
         self.assertEqual(pool.num_connections, 1)
 
-    @pytest.mark.xfail
     def test_for_double_release(self):
         MAXSIZE = 5
 
@@ -672,7 +669,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                               pool.request,
                               'GET', '/source_address?{0}'.format(addr))
 
-    @pytest.mark.xfail
     def test_stream_keepalive(self):
         x = 2
 

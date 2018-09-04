@@ -232,6 +232,7 @@ class TestClientCerts(SocketDummyServerTestCase):
 
 class TestSocketClosing(SocketDummyServerTestCase):
 
+    @pytest.mark.xfail
     def test_recovery_when_server_closes_connection(self):
         # Does the pool work seamlessly if an open connection in the
         # connection pool gets hung up on by the server, then reaches
@@ -711,7 +712,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
         if not successful:
             self.fail("Timed out waiting for connection close")
 
-    @pytest.mark.xfail
     def test_release_conn_param_is_respected_after_timeout_retry(self):
         """For successful ```urlopen()```, the connection isn't released, even
         after a retry.
