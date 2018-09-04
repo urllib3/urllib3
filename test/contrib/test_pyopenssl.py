@@ -5,6 +5,10 @@ import unittest
 import mock
 import pytest
 
+pytestmark = pytest.mark.skip(
+    'inject_into_urllib3/extract_from_urllib3 appear to break the standard '
+    'library SSL tests')
+
 try:
     from urllib3.contrib.pyopenssl import (
         _dnsname_to_stdlib, get_subj_alt_name
