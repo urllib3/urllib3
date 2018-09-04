@@ -1180,6 +1180,7 @@ class TestSSL(SocketDummyServerTestCase):
         # Should not hang, see https://github.com/shazow/urllib3/issues/529
         self.assertRaises(MaxRetryError, request)
 
+    @pytest.mark.timeout(0.5)
     def test_retry_ssl_error(self):
         def socket_handler(listener):
             # first request, trigger an SSLError
