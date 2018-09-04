@@ -32,6 +32,19 @@ from dummyserver.server import DEFAULT_CA
 import h11
 
 
+class HTTPUnixConnection(HTTP1Connection):
+    def __init__(self, host, timeout=60, **kwargs):
+        super(HTTPUnixConnection, self).__init__('localhost')
+        self.unix_socket = host
+        self.timeout = timeout
+        self.sock = None
+
+
+class HTTPUnixConnectionPool(HTTPConnectionPool):
+    scheme = 'http+unix'
+    ConnectionCls = HTTPUnixConnection
+
+
 class TestConnectionPool(object):
     """
     Tests in this suite should exercise the ConnectionPool functionality
@@ -139,6 +152,31 @@ class TestConnectionPool(object):
 
         with HTTPSConnectionPool(b) as c:
             assert not c.is_same_host(a)
+
+    @pytest.mark.parametrize('a, b', [
+        ('%2Fvar%2Frun%2Fdocker.sock',
+         'http+unix://%2Fvar%2Frun%2Fdocker.sock'),
+        ('%2Fvar%2Frun%2Fdocker.sock',
+         'http+unix://%2Fvar%2Frun%2Fdocker.sock/'),
+        ('%2Fvar%2Frun%2Fdocker.sock',
+         'http+unix://%2Fvar%2Frun%2Fdocker.sock/abracadabra'),
+        ('%2Ftmp%2FTEST.sock', 'http+unix://%2Ftmp%2FTEST.sock'),
+        ('%2Ftmp%2FTEST.sock', 'http+unix://%2Ftmp%2FTEST.sock/'),
+        ('%2Ftmp%2FTEST.sock', 'http+unix://%2Ftmp%2FTEST.sock/abracadabra'),
+    ])
+    def test_same_host_custom_protocol(self, a, b):
+        with HTTPUnixConnectionPool(a) as c:
+            assert c.is_same_host(b)
+
+    @pytest.mark.parametrize('a, b', [
+        ('%2Ftmp%2Ftest.sock', 'http+unix://%2Ftmp%2FTEST.sock'),
+        ('%2Ftmp%2Ftest.sock', 'http+unix://%2Ftmp%2FTEST.sock/'),
+        ('%2Ftmp%2Ftest.sock', 'http+unix://%2Ftmp%2FTEST.sock/abracadabra'),
+        ('%2Fvar%2Frun%2Fdocker.sock', 'http+unix://%2Ftmp%2FTEST.sock'),
+    ])
+    def test_not_same_host_custom_protocol(self, a, b):
+        with HTTPUnixConnectionPool(a) as c:
+            assert not c.is_same_host(b)
 
     def test_max_connections(self):
         with HTTPConnectionPool(host='localhost', maxsize=1, block=True) as pool:

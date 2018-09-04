@@ -37,7 +37,7 @@ class RequestMethods(object):
         explicitly.
     """
 
-    _encode_url_methods = set(['DELETE', 'GET', 'HEAD', 'OPTIONS'])
+    _encode_url_methods = {'DELETE', 'GET', 'HEAD', 'OPTIONS'}
 
     def __init__(self, headers=None):
         self.headers = headers or {}
@@ -61,6 +61,8 @@ class RequestMethods(object):
         or even the lowest level :meth:`urlopen`.
         """
         method = method.upper()
+
+        urlopen_kw['request_url'] = url
 
         if method in self._encode_url_methods:
             return await self.request_encode_url(method, url, fields=fields,

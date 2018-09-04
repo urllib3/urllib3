@@ -51,11 +51,6 @@ except ImportError:  # Platform-specific: Python 3
     _fileobject = None
     from ..packages.backports.makefile import backport_makefile
 
-try:
-    memoryview(b'')
-except NameError:
-    raise ImportError("SecureTransport only works on Pythons with memoryview")
-
 __all__ = ['inject_into_urllib3', 'extract_from_urllib3']
 
 # SNI always works
@@ -195,8 +190,6 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
         timeout = wrapped_socket.gettimeout()
         error = None
         read_count = 0
-        buffer = (ctypes.c_char * requested_length).from_address(data_buffer)
-        buffer_view = memoryview(buffer)
 
         try:
             while read_count < requested_length:
@@ -204,11 +197,11 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
                     if not util.wait_for_read(base_socket, timeout):
                         raise socket.error(errno.EAGAIN, 'timed out')
 
-                # We need to tell ctypes that we have a buffer that can be
-                # written to. Upsettingly, we do that like this:
-                chunk_size = base_socket.recv_into(
-                    buffer_view[read_count:requested_length]
+                remaining = requested_length - read_count
+                buffer = (ctypes.c_char * remaining).from_address(
+                    data_buffer + read_count
                 )
+                chunk_size = base_socket.recv_into(buffer, remaining)
                 read_count += chunk_size
                 if not chunk_size:
                     if not read_count:
@@ -218,7 +211,8 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
             error = e.errno
 
             if error is not None and error != errno.EAGAIN:
-                if error == errno.ECONNRESET:
+                data_length_pointer[0] = read_count
+                if error == errno.ECONNRESET or error == errno.EPIPE:
                     return SecurityConst.errSSLClosedAbort
                 raise
 
@@ -268,11 +262,13 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
             error = e.errno
 
             if error is not None and error != errno.EAGAIN:
-                if error == errno.ECONNRESET:
+                data_length_pointer[0] = sent
+                if error == errno.ECONNRESET or error == errno.EPIPE:
                     return SecurityConst.errSSLClosedAbort
                 raise
 
         data_length_pointer[0] = sent
+
         if sent != bytes_to_write:
             return SecurityConst.errSSLWouldBlock
 

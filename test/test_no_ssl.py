@@ -6,10 +6,7 @@ Test what happens if Python was built without SSL
 """
 
 import sys
-if sys.version_info >= (2, 7):
-    import unittest
-else:
-    import unittest2 as unittest
+import unittest
 
 
 class ImportBlocker(object):
@@ -80,13 +77,8 @@ class TestWithoutSSL(unittest.TestCase):
 
 class TestImportWithoutSSL(TestWithoutSSL):
     def test_cannot_import_ssl(self):
-        # python26 has neither contextmanagers (for assertRaises) nor
-        # importlib.
-        # 'import' inside 'lambda' is invalid syntax.
-        def import_ssl():
+        with self.assertRaises(ImportError):
             import ssl  # noqa: F401
-
-        self.assertRaises(ImportError, import_ssl)
 
     def test_import_urllib3(self):
         import urllib3  # noqa: F401

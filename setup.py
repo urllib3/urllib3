@@ -23,7 +23,6 @@ with codecs.open('CHANGES.rst', encoding='utf-8') as fp:
     changes = fp.read()
 version = VERSION
 
-
 ASYNC_TO_SYNC = {
     '__aenter__': '__enter__',
     '__aexit__': '__exit__',
@@ -130,7 +129,6 @@ setup(name='urllib3',
           'Operating System :: OS Independent',
           'Programming Language :: Python',
           'Programming Language :: Python :: 2',
-          'Programming Language :: Python :: 2.6',
           'Programming Language :: Python :: 2.7',
           'Programming Language :: Python :: 3',
           'Programming Language :: Python :: 3.4',
@@ -153,6 +151,7 @@ setup(name='urllib3',
                 'urllib3._async', 'urllib3._backends',
                 ],
       package_dir={'': 'src'},
+      requires=[],
       python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, <4",
       tests_require=[
           # These are a less-specific subset of dev-requirements.txt, for the
@@ -165,7 +164,7 @@ setup(name='urllib3',
       install_requires=["h11 >= 0.8.0"],
       extras_require={
           'secure': [
-              'pyOpenSSL>=0.14',
+              'pyOpenSSL >= 0.14',
               'cryptography>=1.3.4',
               'idna>=2.0.0',
               'certifi',

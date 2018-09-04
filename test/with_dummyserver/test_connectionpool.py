@@ -117,7 +117,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         block_event.set()  # Release request
 
         message = "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT"
-        self.assertTrue(delta < LONG_TIMEOUT, message)
+        self.assertLess(delta, LONG_TIMEOUT, message)
         pool._put_conn(conn)
 
         wait_for_socket(ready_event)
@@ -126,7 +126,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         delta = time.time() - now
 
         message = "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT"
-        self.assertTrue(delta < LONG_TIMEOUT, message)
+        self.assertLess(delta, LONG_TIMEOUT, message)
         block_event.set()  # Release request
 
         # Timeout int/float passed directly to request and _make_request should
@@ -443,7 +443,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # because _get_conn() is where the check & reset occurs
         # pylint: disable-msg=W0212
         conn = pool.pool.get()
-        self.assertEqual(conn._sock, None)
+        self.assertIsNone(conn._sock)
         pool._put_conn(conn)
 
         # Now with keep-alive
@@ -455,7 +455,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         # The dummyserver responded with Connection:keep-alive, the connection
         # persists.
         conn = pool.pool.get()
-        self.assertNotEqual(conn._sock, None)
+        self.assertIsNotNone(conn._sock)
         pool._put_conn(conn)
 
         # Another request asking the server to close the connection. This one
@@ -468,7 +468,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(r.status, 200)
 
         conn = pool.pool.get()
-        self.assertEqual(conn._sock, None)
+        self.assertIsNone(conn._sock)
         pool._put_conn(conn)
 
         # Next request

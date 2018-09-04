@@ -55,7 +55,7 @@ install:
   - pip install tox virtualenv
 
 test_script:
-  - tox
+  - tox -- -v
 
 on_success:
   - .tox/%TOXENV%/Scripts/activate.bat

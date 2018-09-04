@@ -30,6 +30,19 @@ Upcoming 2.0 Changes
 dev (master)
 ------------
 
+* Skip DNS names that can't be idna-decoded when using pyOpenSSL (Issue #1405).
+
+* Add a server_hostname parameter to HTTPSConnection which allows for
+  overriding the SNI hostname sent in the handshake. (Pull #1397)
+
+* Drop support for EOL Python 2.6 (Pull #1429 and Pull #1430)
+
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.23 (2018-06-05)
+-----------------
+
 * Allow providing a list of headers to strip from requests when redirecting
   to a different host. Defaults to the ``Authorization`` header. Different
   headers can be set via ``Retry.remove_headers_on_redirect``. (Issue #1316)
@@ -46,13 +59,13 @@ dev (master)
 
 * Add the port to the connectionpool connect print (Pull #1251)
 
-* Lazily load `uuid` to boost performance on imports (Pull #1270)
+* Don't use the ``uuid`` module to create multipart data boundaries. (Pull #1380)
 
 * ``read_chunked()`` on a closed response returns no chunks. (Issue #1088)
 
-* Added support for auth info in url for SOCKS proxy (Pull #1363)
+* Add Python 2.6 support to ``contrib.securetransport`` (Pull #1359)
 
-* ... [Short description of non-trivial change.] (Issue #)
+* Added support for auth info in url for SOCKS proxy (Pull #1363)
 
 
 1.22 (2017-07-20)

@@ -105,7 +105,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             self.fail("Didn't raise SSL invalid common name")
         except MaxRetryError as e:
             self.assertIsInstance(e.reason, SSLError)
-            self.assertTrue("doesn't match" in str(e.reason))
+            self.assertIn("doesn't match", str(e.reason))
 
     def test_redirect(self):
         http = proxy_from_url(self.proxy_url)
@@ -183,14 +183,14 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         r = http.request_encode_url('GET', '%s/headers' % self.https_url)
         returned_headers = json.loads(r.data.decode())
         self.assertEqual(returned_headers.get('Foo'), 'bar')
-        self.assertEqual(returned_headers.get('Hickory'), None)
+        self.assertIsNone(returned_headers.get('Hickory'))
         self.assertEqual(returned_headers.get('Host'),
                          '%s:%s' % (self.https_host, self.https_port))
 
         r = http.request_encode_url('GET', '%s/headers' % self.https_url_alt)
         returned_headers = json.loads(r.data.decode())
         self.assertEqual(returned_headers.get('Foo'), 'bar')
-        self.assertEqual(returned_headers.get('Hickory'), None)
+        self.assertIsNone(returned_headers.get('Hickory'))
         self.assertEqual(returned_headers.get('Host'),
                          '%s:%s' % (self.https_host_alt, self.https_port))
 
@@ -203,7 +203,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
         r = http.request_encode_url('GET', '%s/headers' % self.http_url, headers={'Baz': 'quux'})
         returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get('Foo'), None)
+        self.assertIsNone(returned_headers.get('Foo'))
         self.assertEqual(returned_headers.get('Baz'), 'quux')
         self.assertEqual(returned_headers.get('Hickory'), 'dickory')
         self.assertEqual(returned_headers.get('Host'),
@@ -211,15 +211,15 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
         r = http.request_encode_url('GET', '%s/headers' % self.https_url, headers={'Baz': 'quux'})
         returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get('Foo'), None)
+        self.assertIsNone(returned_headers.get('Foo'))
         self.assertEqual(returned_headers.get('Baz'), 'quux')
-        self.assertEqual(returned_headers.get('Hickory'), None)
+        self.assertIsNone(returned_headers.get('Hickory'))
         self.assertEqual(returned_headers.get('Host'),
                          '%s:%s' % (self.https_host, self.https_port))
 
         r = http.request_encode_body('GET', '%s/headers' % self.http_url, headers={'Baz': 'quux'})
         returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get('Foo'), None)
+        self.assertIsNone(returned_headers.get('Foo'))
         self.assertEqual(returned_headers.get('Baz'), 'quux')
         self.assertEqual(returned_headers.get('Hickory'), 'dickory')
         self.assertEqual(returned_headers.get('Host'),
@@ -227,9 +227,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
         r = http.request_encode_body('GET', '%s/headers' % self.https_url, headers={'Baz': 'quux'})
         returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get('Foo'), None)
+        self.assertIsNone(returned_headers.get('Foo'))
         self.assertEqual(returned_headers.get('Baz'), 'quux')
-        self.assertEqual(returned_headers.get('Hickory'), None)
+        self.assertIsNone(returned_headers.get('Hickory'))
         self.assertEqual(returned_headers.get('Host'),
                          '%s:%s' % (self.https_host, self.https_port))
 

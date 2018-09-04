@@ -290,7 +290,7 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
                     break
 
             self.assertTrue(buf.startswith(b'GET / HTTP/1.1'))
-            self.assertTrue(b'host: example.com' in buf)
+            self.assertIn(b'Host: example.com', buf)
 
             sock.sendall(b'HTTP/1.1 200 OK\r\n'
                          b'Server: SocksTestServer\r\n'
@@ -463,7 +463,7 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
         try:
             pm.request('GET', 'http://example.com', retries=False)
         except NewConnectionError as e:
-            self.assertTrue("SOCKS5 authentication failed" in str(e))
+            self.assertIn("SOCKS5 authentication failed", str(e))
         else:
             self.fail("Did not raise")
 
@@ -595,7 +595,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
                     break
 
             self.assertTrue(buf.startswith(b'GET / HTTP/1.1'))
-            self.assertTrue(b'host: example.com' in buf)
+            self.assertIn(b'Host: example.com', buf)
 
             sock.sendall(b'HTTP/1.1 200 OK\r\n'
                          b'Server: SocksTestServer\r\n'
@@ -684,7 +684,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         try:
             pm.request('GET', 'http://example.com', retries=False)
         except NewConnectionError as e:
-            self.assertTrue("different user-ids" in str(e))
+            self.assertIn("different user-ids", str(e))
         else:
             self.fail("Did not raise")
 

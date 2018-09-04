@@ -16,4 +16,4 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
     export CFLAGS="-I$(brew --prefix openssl@1.1)/include"
 fi
 
-tox
+tox -- -v

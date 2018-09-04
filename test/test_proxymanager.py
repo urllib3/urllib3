@@ -5,12 +5,12 @@ from urllib3.poolmanager import ProxyManager
 
 class TestProxyManager(object):
     def test_proxy_headers(self):
-        url = 'http://pypi.python.org/test'
+        url = 'http://pypi.org/project/urllib3/'
         with ProxyManager('http://something:1234') as p:
 
             # Verify default headers
             default_headers = {'Accept': '*/*',
-                               'Host': 'pypi.python.org'}
+                               'Host': 'pypi.org'}
             headers = p._set_proxy_headers(url)
 
             assert headers == default_headers
@@ -26,8 +26,8 @@ class TestProxyManager(object):
             # Verify proxy with nonstandard port
             provided_headers = {'Accept': 'application/json'}
             expected_headers = provided_headers.copy()
-            expected_headers.update({'Host': 'pypi.python.org:8080'})
-            url_with_port = 'http://pypi.python.org:8080/test'
+            expected_headers.update({'Host': 'pypi.org:8080'})
+            url_with_port = 'http://pypi.org:8080/project/urllib3/'
             headers = p._set_proxy_headers(url_with_port, provided_headers)
 
             assert headers == expected_headers
