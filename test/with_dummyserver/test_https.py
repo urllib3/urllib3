@@ -484,10 +484,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         w = self._request_without_resource_warnings('GET', '/')
         self.assertEqual([], w)
 
-    @pytest.mark.xfail
     @onlyPy279OrNewer
     def test_ssl_wrong_system_time(self):
-        with mock.patch('urllib3.sync_connection.datetime') as mock_date:
+        with mock.patch('urllib3._sync.connection.datetime') as mock_date:
             mock_date.date.today.return_value = datetime.date(1970, 1, 1)
 
             w = self._request_without_resource_warnings('GET', '/')
