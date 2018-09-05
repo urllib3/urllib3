@@ -301,23 +301,23 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_hostname = 'localhost'
         https_pool.request('GET', '/')
 
-    @pytest.mark.xfail
     def test_server_hostname(self):
         https_pool = HTTPSConnectionPool('127.0.0.1', self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA,
                                          server_hostname='localhost')
         self.addCleanup(https_pool.close)
-
         conn = https_pool._new_conn()
-        conn.request('GET', '/')
+        https_pool._start_conn(conn, connect_timeout=None)
 
         # Assert the wrapping socket is using the passed-through SNI name.
         # pyopenssl doesn't let you pull the server_hostname back off the
         # socket, so only add this assertion if the attribute is there (i.e.
         # the python ssl module).
-        if hasattr(conn.sock, 'server_hostname'):
-            self.assertEqual(conn.sock.server_hostname, "localhost")
+        # XXX This is highly-specific to SyncBackend
+        sock = conn._sock._sock
+        if hasattr(sock, 'server_hostname'):
+            self.assertEqual(sock.server_hostname, 'localhost')
 
     def test_assert_fingerprint_md5(self):
         https_pool = HTTPSConnectionPool('localhost', self.port,
