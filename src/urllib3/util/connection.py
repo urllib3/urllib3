@@ -1,20 +1,20 @@
 from __future__ import absolute_import
 import socket
-from .wait import NoWayToWaitForSocketError, wait_for_read
+from .wait import NoWayToWaitForSocketError
 
 
 def is_connection_dropped(conn):  # Platform-specific
     """
     Returns True if the connection is dropped and should be closed.
     """
-    sock = getattr(conn, 'sock', False)
+    sock = getattr(conn, '_sock', False)
     if sock is False:  # Platform-specific: AppEngine
         return False
     if sock is None:  # Connection already closed (such as by httplib).
         return True
     try:
         # Returns True if readable, which here means it's been dropped
-        return wait_for_read(sock, timeout=0.0)
+        return sock.is_readable()
     except NoWayToWaitForSocketError:  # Platform-specific: AppEngine
         return False
 

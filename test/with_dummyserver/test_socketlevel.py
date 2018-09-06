@@ -232,7 +232,6 @@ class TestClientCerts(SocketDummyServerTestCase):
 
 class TestSocketClosing(SocketDummyServerTestCase):
 
-    @pytest.mark.xfail
     def test_recovery_when_server_closes_connection(self):
         # Does the pool work seamlessly if an open connection in the
         # connection pool gets hung up on by the server, then reaches
