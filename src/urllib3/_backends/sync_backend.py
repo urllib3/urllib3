@@ -49,17 +49,17 @@ class SyncSocket(object):
                 timeout=read_timeout):
             raise socket.timeout()  # XX use a backend-agnostic exception
 
-    def receive_some(self):
+    def receive_some(self, read_timeout):
         while True:
             try:
                 return self._sock.recv(BUFSIZE)
             except util.SSLWantReadError:
-                self._wait(readable=True, writable=False)
+                self._wait(readable=True, writable=False, read_timeout=read_timeout)
             except util.SSLWantWriteError:
-                self._wait(readable=False, writable=True)
+                self._wait(readable=False, writable=True, read_timeout=read_timeout)
             except (OSError, socket.error) as exc:
                 if exc.errno in (errno.EWOULDBLOCK, errno.EAGAIN):
-                    self._wait(readable=True, writable=False)
+                    self._wait(readable=True, writable=False, read_timeout=read_timeout)
                 else:
                     raise
 

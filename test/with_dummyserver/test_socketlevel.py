@@ -386,7 +386,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
         finally:
             socket.setdefaulttimeout(default_timeout)
 
-    @pytest.mark.skip
     def test_delayed_body_read_timeout(self):
         timed_out = Event()
 
@@ -416,7 +415,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
         finally:
             timed_out.set()
 
-    @pytest.mark.skip
     def test_delayed_body_read_timeout_with_preload(self):
         timed_out = Event()
 
@@ -546,7 +544,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         self.assertIsInstance(cm.exception.reason, BadVersionError)
 
-    @pytest.mark.skip
+    @pytest.mark.xfail
     def test_connection_cleanup_on_read_timeout(self):
         timed_out = Event()
 
@@ -604,8 +602,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
             self.assertRaises(ProtocolError, response.read)
             self.assertEqual(poolsize, pool.pool.qsize())
 
-    # Tends to hang on PyPy 3 in Travis, and using pytest.timeout fails on Windows
-    @pytest.mark.skip
     def test_connection_closed_on_read_timeout_preload_false(self):
         timed_out = Event()
 
@@ -1101,7 +1097,6 @@ class TestSSL(SocketDummyServerTestCase):
             pool.request('GET', '/', retries=0)
         self.assertIsInstance(cm.exception.reason, SSLError)
 
-    @pytest.mark.skip
     def test_ssl_read_timeout(self):
         timed_out = Event()
 

@@ -290,7 +290,7 @@ async def _start_http_request(request, state_machine, sock, read_timeout=None):
     return context['h11_response']
 
 
-async def _read_until_event(state_machine, sock):
+async def _read_until_event(state_machine, sock, read_timeout):
     """
     A loop that keeps issuing reads and feeding the data into h11 and
     checking whether h11 has an event for us. The moment there is an event
@@ -300,7 +300,7 @@ async def _read_until_event(state_machine, sock):
         event = state_machine.next_event()
         if event is not h11.NEED_DATA:
             return event
-        state_machine.receive_data(await sock.receive_some())
+        state_machine.receive_data(await sock.receive_some(read_timeout))
 
 
 _DEFAULT_SOCKET_OPTIONS = object()
@@ -330,6 +330,7 @@ class HTTP1Connection(object):
                  source_address=None, tunnel_host=None, tunnel_port=None,
                  tunnel_headers=None):
         self.is_verified = False
+        self.read_timeout = None
         self._backend = load_backend(normalize_backend(backend, _ASYNC_MODE))
         self._host = host
         self._port = port
@@ -540,7 +541,7 @@ class HTTP1Connection(object):
         """
         Iterate over the body bytes of the response until end of message.
         """
-        event = await _read_until_event(self._state_machine, self._sock)
+        event = await _read_until_event(self._state_machine, self._sock, self.read_timeout)
         if isinstance(event, h11.Data):
             return bytes(event.data)
         elif isinstance(event, h11.EndOfMessage):
