@@ -39,6 +39,7 @@ urllib3 on Google App Engine:
 """
 
 from __future__ import absolute_import
+import io
 import logging
 import os
 import warnings
@@ -53,7 +54,6 @@ from ..exceptions import (
     SSLError
 )
 
-from ..packages.six import BytesIO
 from ..request import RequestMethods
 from ..response import HTTPResponse
 from ..util.timeout import Timeout
@@ -239,7 +239,7 @@ class AppEngineManager(RequestMethods):
         original_response = HTTPResponse(
             # In order for decoding to work, we must present the content as
             # a file-like object.
-            body=BytesIO(urlfetch_resp.content),
+            body=io.BytesIO(urlfetch_resp.content),
             msg=urlfetch_resp.header_msg,
             headers=urlfetch_resp.headers,
             status=urlfetch_resp.status_code,
@@ -247,7 +247,7 @@ class AppEngineManager(RequestMethods):
         )
 
         return HTTPResponse(
-            body=BytesIO(urlfetch_resp.content),
+            body=io.BytesIO(urlfetch_resp.content),
             headers=urlfetch_resp.headers,
             status=urlfetch_resp.status_code,
             original_response=original_response,
