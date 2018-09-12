@@ -32,6 +32,7 @@ class TestPickle(object):
 
 class TestFormat(object):
     def test_header_parsing_errors(self):
-        hpe = HeaderParsingError('defects')
+        hpe = HeaderParsingError('defects', 'unparsed_data')
 
         assert 'defects' in str(hpe)
+        assert 'unparsed_data' in str(hpe)
