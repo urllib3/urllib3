@@ -1328,6 +1328,35 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
         ])
 
 
+@pytest.mark.skipif(
+    issubclass(httplib.HTTPMessage, MimeToolMessage),
+    reason='Header parsing errors not available'
+)
+class TestOkayHeaders(SocketDummyServerTestCase):
+
+    def _test_okay_header_parsing(self, header):
+        self.start_response_handler((
+           b'HTTP/1.1 200 OK\r\n'
+           b'Content-Length: 0\r\n'
+           ) + header + b'\r\n\r\n'
+        )
+
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        self.addCleanup(pool.close)
+
+        with LogRecorder() as logs:
+            pool.request('GET', '/')
+
+        for record in logs:
+            assert 'Failed to parse headers' not in record.msg
+
+    def test_header_text_plain(self):
+        self._test_okay_header_parsing(b'Content-type: text/plain')
+
+    def test_header_message_rfc822(self):
+        self._test_okay_header_parsing(b'Content-type: message/rfc822')
+
+
 class TestHEAD(SocketDummyServerTestCase):
     def test_chunked_head_response_does_not_hang(self):
         self.start_response_handler(
