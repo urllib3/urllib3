@@ -37,7 +37,6 @@ def is_fp_closed(obj):
 
 def assert_header_parsing(headers):
     """
-    Asserts whether all headers have been successfully parsed.
     Extracts encountered errors from the result of parsing headers.
 
     Only works on Python 3.
@@ -56,14 +55,9 @@ def assert_header_parsing(headers):
             type(headers)))
 
     defects = getattr(headers, 'defects', None)
-    get_payload = getattr(headers, 'get_payload', None)
 
-    unparsed_data = None
-    if get_payload:  # Platform-specific: Python 3.
-        unparsed_data = get_payload()
-
-    if defects or unparsed_data:
-        raise HeaderParsingError(defects=defects, unparsed_data=unparsed_data)
+    if defects:
+        raise HeaderParsingError(defects=defects)
 
 
 def is_response_to_head(response):
