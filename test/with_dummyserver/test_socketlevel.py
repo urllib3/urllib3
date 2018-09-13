@@ -1289,7 +1289,7 @@ class TestHeaders(SocketDummyServerTestCase):
 )
 class TestBrokenHeaders(SocketDummyServerTestCase):
 
-    def _test_broken_header_parsing(self, headers):
+    def _test_broken_header_parsing(self, headers, unparsed_data_check=None):
         self.start_response_handler((
            b'HTTP/1.1 200 OK\r\n'
            b'Content-Length: 0\r\n'
@@ -1306,7 +1306,8 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
         for record in logs:
             if 'Failed to parse headers' in record.msg and \
                     pool._absolute_url('/') == record.args[0]:
-                return
+                if unparsed_data_check is None or unparsed_data_check in record.getMessage():
+                    return
         self.fail('Missing log about unparsed headers')
 
     def test_header_without_name(self):
@@ -1325,7 +1326,7 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
         self._test_broken_header_parsing([
             b'Broken Header',
             b'Another: Header',
-        ])
+        ], 'Broken Header')
 
 
 @pytest.mark.skipif(
