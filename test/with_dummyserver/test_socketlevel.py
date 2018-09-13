@@ -1329,11 +1329,7 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
         ], 'Broken Header')
 
 
-@pytest.mark.skipif(
-    issubclass(httplib.HTTPMessage, MimeToolMessage),
-    reason='Header parsing errors not available'
-)
-class TestOkayHeaders(SocketDummyServerTestCase):
+class TestHeaderParsingContentType(SocketDummyServerTestCase):
 
     def _test_okay_header_parsing(self, header):
         self.start_response_handler((
