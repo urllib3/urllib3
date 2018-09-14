@@ -66,7 +66,7 @@ else:
         import ipaddress
 
         def inet_pton(_, host):
-            if isinstance(host, six.binary_type):
+            if isinstance(host, bytes):
                 host = host.decode('ascii')
             return ipaddress.ip_address(host)
 
@@ -363,7 +363,7 @@ def is_ipaddress(hostname):
     :param str hostname: Hostname to examine.
     :return: True if the hostname is an IP address, False otherwise.
     """
-    if six.PY3 and isinstance(hostname, six.binary_type):
+    if six.PY3 and isinstance(hostname, bytes):
         # IDN A-label bytes are ASCII compatible.
         hostname = hostname.decode('ascii')
 

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from urllib3 import HTTPConnectionPool
-from urllib3.packages import six
 from dummyserver.testcase import SocketDummyServerTestCase
 
 
@@ -50,7 +49,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
         self.assertIn(b'Transfer-Encoding: chunked', header.split(b'\r\n'))
         if data:
-            bdata = data if isinstance(data, six.binary_type) else data.encode('utf-8')
+            bdata = data if isinstance(data, bytes) else data.encode('utf-8')
             self.assertIn(b'\r\n' + bdata + b'\r\n', body)
             self.assertTrue(body.endswith(b'\r\n0\r\n\r\n'))
 

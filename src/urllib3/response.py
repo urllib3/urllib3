@@ -11,7 +11,7 @@ from .exceptions import (
     BodyNotHttplibCompatible, ProtocolError, DecodeError, ReadTimeoutError,
     ResponseNotChunked, IncompleteRead, InvalidHeader
 )
-from .packages.six import string_types as basestring, binary_type, PY3
+from .packages.six import string_types as basestring, PY3
 from .packages.six.moves import http_client as httplib
 from .connection import HTTPException, BaseSSLError
 from .util.response import is_fp_closed, is_response_to_head
@@ -23,7 +23,7 @@ class DeflateDecoder(object):
 
     def __init__(self):
         self._first_try = True
-        self._data = binary_type()
+        self._data = b''
         self._obj = zlib.decompressobj()
 
     def __getattr__(self, name):
@@ -69,7 +69,7 @@ class GzipDecoder(object):
         return getattr(self._obj, name)
 
     def decompress(self, data):
-        ret = binary_type()
+        ret = b''
         if self._state == GzipDecoderState.SWALLOW_DATA or not data:
             return ret
         while True:
@@ -159,7 +159,7 @@ class HTTPResponse(io.IOBase):
         self.msg = msg
         self._request_url = request_url
 
-        if body and isinstance(body, (basestring, binary_type)):
+        if body and isinstance(body, (basestring, bytes)):
             self._body = body
 
         self._pool = pool
