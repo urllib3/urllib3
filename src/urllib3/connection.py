@@ -202,13 +202,13 @@ class HTTPConnection(_HTTPConnection, object):
         self.endheaders()
 
         if body is not None:
-            stringish_types = six.string_types + (six.binary_type,)
+            stringish_types = six.string_types + (bytes,)
             if isinstance(body, stringish_types):
                 body = (body,)
             for chunk in body:
                 if not chunk:
                     continue
-                if not isinstance(chunk, six.binary_type):
+                if not isinstance(chunk, bytes):
                     chunk = chunk.encode('utf8')
                 len_str = hex(len(chunk))[2:]
                 self.send(len_str.encode('utf-8'))
