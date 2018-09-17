@@ -4,6 +4,8 @@ Changes
 dev (master)
 ------------
 
+* Add ability to handle multiple Content-Encodings (Issue #1441 and Pull #1442)
+
 * Skip DNS names that can't be idna-decoded when using pyOpenSSL (Issue #1405).
 
 * Add a server_hostname parameter to HTTPSConnection which allows for
