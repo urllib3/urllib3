@@ -208,6 +208,38 @@ class TestResponse(object):
 
         assert r.data == b'foofoofoo'
 
+    def test_multi_decoding_deflate_deflate(self):
+        data = zlib.compress(zlib.compress(b'foo'))
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'deflate, deflate'})
+
+        assert r.data == b'foo'
+
+    def test_multi_decoding_deflate_gzip(self):
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        data = compress.compress(zlib.compress(b'foo'))
+        data += compress.flush()
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'deflate, gzip'})
+
+        assert r.data == b'foo'
+
+    def test_multi_decoding_gzip_gzip(self):
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        data = compress.compress(b'foo')
+        data += compress.flush()
+
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        data = compress.compress(data)
+        data += compress.flush()
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'gzip, gzip'})
+
+        assert r.data == b'foo'
+
     def test_body_blob(self):
         resp = HTTPResponse(b'foo')
         assert resp.data == b'foo'
