@@ -59,7 +59,7 @@ def assert_header_parsing(headers):
     get_payload = getattr(headers, 'get_payload', None)
 
     unparsed_data = None
-    if get_payload:  # Platform-specific: Python 3.
+    if get_payload:
         # get_payload is actually email.message.Message.get_payload;
         # we're only interested in the result if it's not a multipart message
         if not headers.is_multipart():
