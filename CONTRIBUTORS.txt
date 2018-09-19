@@ -266,6 +266,9 @@ In chronological order:
 * Hugo van Kemenade <https://github.com/hugovk>
   * Drop support for EOL Python 2.6
 
+* Tim Bell <https://github.com/timb07>
+  * Bugfix for responses with Content-Type: message/* logging warnings
+
 * Justin Bramley <https://github.com/jbramleycl>
   * Add ability to handle multiple Content-Encodings
 

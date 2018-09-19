@@ -13,6 +13,9 @@ dev (master)
 
 * Drop support for EOL Python 2.6 (Pull #1429 and Pull #1430)
 
+* Fixed bug where responses with header Content-Type: message/* erroneously
+  raised HeaderParsingError, resulting in a warning being logged. (Pull #1439)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

@@ -1289,12 +1289,12 @@ class TestHeaders(SocketDummyServerTestCase):
 )
 class TestBrokenHeaders(SocketDummyServerTestCase):
 
-    def _test_broken_header_parsing(self, headers):
+    def _test_broken_header_parsing(self, headers, unparsed_data_check=None):
         self.start_response_handler((
            b'HTTP/1.1 200 OK\r\n'
            b'Content-Length: 0\r\n'
            b'Content-type: text/plain\r\n'
-           ) + b'\r\n'.join(headers) + b'\r\n'
+           ) + b'\r\n'.join(headers) + b'\r\n\r\n'
         )
 
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
@@ -1306,26 +1306,52 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
         for record in logs:
             if 'Failed to parse headers' in record.msg and \
                     pool._absolute_url('/') == record.args[0]:
-                return
+                if unparsed_data_check is None or unparsed_data_check in record.getMessage():
+                    return
         self.fail('Missing log about unparsed headers')
 
     def test_header_without_name(self):
         self._test_broken_header_parsing([
-            b': Value\r\n',
-            b'Another: Header\r\n',
+            b': Value',
+            b'Another: Header',
         ])
 
     def test_header_without_name_or_value(self):
         self._test_broken_header_parsing([
-            b':\r\n',
-            b'Another: Header\r\n',
+            b':',
+            b'Another: Header',
         ])
 
     def test_header_without_colon_or_value(self):
         self._test_broken_header_parsing([
             b'Broken Header',
             b'Another: Header',
-        ])
+        ], 'Broken Header')
+
+
+class TestHeaderParsingContentType(SocketDummyServerTestCase):
+
+    def _test_okay_header_parsing(self, header):
+        self.start_response_handler((
+           b'HTTP/1.1 200 OK\r\n'
+           b'Content-Length: 0\r\n'
+           ) + header + b'\r\n\r\n'
+        )
+
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        self.addCleanup(pool.close)
+
+        with LogRecorder() as logs:
+            pool.request('GET', '/')
+
+        for record in logs:
+            assert 'Failed to parse headers' not in record.msg
+
+    def test_header_text_plain(self):
+        self._test_okay_header_parsing(b'Content-type: text/plain')
+
+    def test_header_message_rfc822(self):
+        self._test_okay_header_parsing(b'Content-type: message/rfc822')
 
 
 class TestHEAD(SocketDummyServerTestCase):
