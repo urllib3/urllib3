@@ -78,9 +78,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         assert subject['organizationalUnitName'].startswith(
             'Testing server cert')
 
-    # XX flaky on AppVeyor
-    # https://github.com/njsmith/urllib3/pull/21#issuecomment-374847312
-    @pytest.mark.skip
     def test_client_no_intermediate(self):
         client_cert, client_key = (
             DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS['certfile'],
