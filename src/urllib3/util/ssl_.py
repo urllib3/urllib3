@@ -115,8 +115,6 @@ except ImportError:
     import sys
 
     class SSLContext(object):  # Platform-specific: Python 2
-        supports_set_ciphers = True
-
         def __init__(self, protocol_version):
             self.protocol = protocol_version
             # Use default values from a real SSLContext
