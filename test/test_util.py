@@ -540,6 +540,13 @@ class TestUtil(object):
                 instance.bind.return_value = True
                 assert _has_ipv6('::1')
 
+    def test_has_ipv6_disabled_on_appengine(self):
+        gae_patch = patch(
+            'urllib3.contrib._appengine_environ.is_appengine_sandbox',
+            return_value=True)
+        with gae_patch:
+            assert not _has_ipv6('::1')
+
     def test_ip_family_ipv6_enabled(self):
         with patch('urllib3.util.connection.HAS_IPV6', True):
             assert allowed_gai_family() == socket.AF_UNSPEC
