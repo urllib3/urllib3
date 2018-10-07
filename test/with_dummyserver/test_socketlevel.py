@@ -416,7 +416,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         finally:
             timed_out.set()
 
-    @pytest.mark.xfail
+    @pytest.mark.skip
     def test_delayed_body_read_timeout_with_preload(self):
         timed_out = Event()
 
