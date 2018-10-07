@@ -416,7 +416,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         finally:
             timed_out.set()
 
-    @pytest.mark.xfail
+    @pytest.mark.skip
     def test_delayed_body_read_timeout_with_preload(self):
         timed_out = Event()
 
@@ -604,7 +604,8 @@ class TestSocketClosing(SocketDummyServerTestCase):
             self.assertRaises(ProtocolError, response.read)
             self.assertEqual(poolsize, pool.pool.qsize())
 
-    @pytest.mark.xfail
+    # Tends to hang on PyPy 3 in Travis, and using pytest.timeout fails on Windows
+    @pytest.mark.skip
     def test_connection_closed_on_read_timeout_preload_false(self):
         timed_out = Event()
 
@@ -711,7 +712,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
         if not successful:
             self.fail("Timed out waiting for connection close")
 
-    @pytest.mark.xfail
     def test_release_conn_param_is_respected_after_timeout_retry(self):
         """For successful ```urlopen()```, the connection isn't released, even
         after a retry.

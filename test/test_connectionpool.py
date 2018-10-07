@@ -373,8 +373,7 @@ class TestConnectionPool(object):
             new_pool_size = c.pool.qsize()
             assert initial_pool_size == new_pool_size
 
-    @pytest.mark.xfail
-    def test_release_conn_param_is_respected_after_http_error_retry(self):
+    def test_release_after_http_error_retry(self):
         """For successful ```urlopen()```, the connection isn't released, even
         after a retry.
 
@@ -416,7 +415,7 @@ class TestConnectionPool(object):
                 # released back into the pool.
                 pool._make_request = _raise_once_make_request_function(exception, *args)
                 response = pool.urlopen('GET', '/', retries=1,
-                                        release_conn=False, preload_content=False)
+                                        preload_content=False)
                 assert pool.pool.qsize() == 0
                 assert pool.num_connections == 2
                 assert response.connection is not None

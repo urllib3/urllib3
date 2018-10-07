@@ -266,7 +266,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
         r = http.request('GET', 'http://%s:%s/' % (self.host, self.port))
         self.assertEqual(r.status, 200)
 
-    @pytest.mark.xfail
     def test_cleanup_on_connection_error(self):
         '''
         Test that connections are recycled to the pool on

@@ -294,8 +294,7 @@ class HTTPResponse(io.IOBase):
 
             # If we hold the original response but it's finished now, we should
             # return the connection back to the pool.
-            # XXX
-            if False and self._original_response and self._original_response.complete:
+            if self._original_response and self._original_response.complete:
                 self.release_conn()
 
     async def read(self, amt=None, decode_content=None, cache_content=False):
