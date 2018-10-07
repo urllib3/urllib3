@@ -42,11 +42,11 @@ class SyncSocket(object):
     def getpeercert(self, binary_form=False):
         return self._sock.getpeercert(binary_form=binary_form)
 
-    def _wait(self, readable, writable, read_timeout=None):
+    def _wait(self, readable, writable, timeout=None):
         assert readable or writable
         if not self._wait_for_socket(
                 self._sock, read=readable, write=writable,
-                timeout=read_timeout):
+                timeout=timeout):
             raise socket.timeout()  # XX use a backend-agnostic exception
 
     def receive_some(self, read_timeout):
@@ -54,12 +54,12 @@ class SyncSocket(object):
             try:
                 return self._sock.recv(BUFSIZE)
             except util.SSLWantReadError:
-                self._wait(readable=True, writable=False, read_timeout=read_timeout)
+                self._wait(readable=True, writable=False, timeout=read_timeout)
             except util.SSLWantWriteError:
-                self._wait(readable=False, writable=True, read_timeout=read_timeout)
+                self._wait(readable=False, writable=True, timeout=read_timeout)
             except (OSError, socket.error) as exc:
                 if exc.errno in (errno.EWOULDBLOCK, errno.EAGAIN):
-                    self._wait(readable=True, writable=False, read_timeout=read_timeout)
+                    self._wait(readable=True, writable=False, timeout=read_timeout)
                 else:
                     raise
 
