@@ -305,7 +305,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('POST', '/upload', fields=fields)
         self.assertEqual(r.status, 200, r.data)
 
-    @pytest.mark.xfail
+    @pytest.mark.skip
     def test_nagle(self):
         """ Test that connections have TCP_NODELAY turned on """
         # This test needs to be here in order to be run. socket.create_connection actually tries

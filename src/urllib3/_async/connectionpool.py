@@ -398,11 +398,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 self, url, "Read timed out. (read timeout=%s)" % read_timeout)
         if read_timeout is Timeout.DEFAULT_TIMEOUT:
             read_timeout = socket.getdefaulttimeout()
+        conn.read_timeout = read_timeout
 
         # Receive the response from the server
         try:
-            response = await conn.send_request(
-                request, read_timeout=read_timeout)
+            response = await conn.send_request(request, read_timeout=read_timeout)
         except (SocketTimeout, BaseSSLError, SocketError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
