@@ -2,7 +2,7 @@
 # Cut a new release based on the latest CHANGES.rst entry.
 # Must be called from the `release` branch.
 
-VERSION_FILE="urllib3/__init__.py"
+VERSION_FILE="src/urllib3/__init__.py"
 CHANGES_FILE="CHANGES.rst"
 
 if [ "$(git rev-parse --abbrev-ref HEAD)" != "release" ]; then

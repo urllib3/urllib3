@@ -188,10 +188,7 @@ class TestPoolManager(object):
             'ssl_version': 'SSLv23_METHOD',
         }
         p = PoolManager(5, **ssl_kw)
-        conns = []
-        conns.append(
-            p.connection_from_host('example.com', 443, scheme='https')
-        )
+        conns = [p.connection_from_host('example.com', 443, scheme='https')]
 
         for k in ssl_kw:
             p.connection_pool_kw[k] = 'newval'

@@ -14,7 +14,7 @@ from urllib3.response import httplib
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util.timeout import Timeout
 from urllib3.util.retry import Retry
-from urllib3._collections import HTTPHeaderDict, OrderedDict
+from urllib3._collections import HTTPHeaderDict
 
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from dummyserver.server import (
@@ -27,6 +27,7 @@ try:
 except ImportError:
     class MimeToolMessage(object):
         pass
+from collections import OrderedDict
 from threading import Event
 import select
 import socket
@@ -81,8 +82,8 @@ class TestSNI(SocketDummyServerTestCase):
         except MaxRetryError:  # We are violating the protocol
             pass
         done_receiving.wait()
-        self.assertTrue(self.host.encode('ascii') in self.buf,
-                        "missing hostname in SSL handshake")
+        self.assertIn(self.host.encode('ascii'), self.buf,
+                      "missing hostname in SSL handshake")
 
 
 class TestClientCerts(SocketDummyServerTestCase):
@@ -638,13 +639,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
     def test_closing_response_actually_closes_connection(self):
         done_closing = Event()
         complete = Event()
-        # The insane use of this variable here is to get around the fact that
-        # Python 2.6 does not support returning a value from Event.wait(). This
-        # means we can't tell if an event timed out, so we can't use the timing
-        # out of the 'complete' event to determine the success or failure of
-        # the test. Python 2 also doesn't have the nonlocal statement, so we
-        # can't write directly to this variable, only mutate it. Hence: list.
-        successful = []
 
         def socket_handler(listener):
             sock = listener.accept()[0]
@@ -666,7 +660,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.settimeout(1)
             new_data = sock.recv(65536)
             self.assertFalse(new_data)
-            successful.append(True)
             sock.close()
             complete.set()
 
@@ -679,7 +672,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         response.close()
 
         done_closing.set()  # wait until the socket in our pool gets closed
-        complete.wait(timeout=1)
+        successful = complete.wait(timeout=1)
         if not successful:
             self.fail("Timed out waiting for connection close")
 
@@ -737,12 +730,12 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # should be in the pool. We opened two though.
             self.assertEqual(pool.num_connections, 2)
             self.assertEqual(pool.pool.qsize(), 0)
-            self.assertTrue(response.connection is not None)
+            self.assertIsNotNone(response.connection)
 
             # Consume the data. This should put the connection back.
             response.read()
             self.assertEqual(pool.pool.qsize(), 1)
-            self.assertTrue(response.connection is None)
+            self.assertIsNone(response.connection)
 
 
 class TestProxyManager(SocketDummyServerTestCase):
@@ -814,7 +807,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         # FIXME: The order of the headers is not predictable right now. We
         # should fix that someday (maybe when we migrate to
         # OrderedDict/MultiDict).
-        self.assertTrue(b'For The Proxy: YEAH!\r\n' in r.data)
+        self.assertIn(b'For The Proxy: YEAH!\r\n', r.data)
 
     def test_retries(self):
         close_event = Event()
@@ -1296,12 +1289,12 @@ class TestHeaders(SocketDummyServerTestCase):
 )
 class TestBrokenHeaders(SocketDummyServerTestCase):
 
-    def _test_broken_header_parsing(self, headers):
+    def _test_broken_header_parsing(self, headers, unparsed_data_check=None):
         self.start_response_handler((
            b'HTTP/1.1 200 OK\r\n'
            b'Content-Length: 0\r\n'
            b'Content-type: text/plain\r\n'
-           ) + b'\r\n'.join(headers) + b'\r\n'
+           ) + b'\r\n'.join(headers) + b'\r\n\r\n'
         )
 
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
@@ -1313,26 +1306,52 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
         for record in logs:
             if 'Failed to parse headers' in record.msg and \
                     pool._absolute_url('/') == record.args[0]:
-                return
+                if unparsed_data_check is None or unparsed_data_check in record.getMessage():
+                    return
         self.fail('Missing log about unparsed headers')
 
     def test_header_without_name(self):
         self._test_broken_header_parsing([
-            b': Value\r\n',
-            b'Another: Header\r\n',
+            b': Value',
+            b'Another: Header',
         ])
 
     def test_header_without_name_or_value(self):
         self._test_broken_header_parsing([
-            b':\r\n',
-            b'Another: Header\r\n',
+            b':',
+            b'Another: Header',
         ])
 
     def test_header_without_colon_or_value(self):
         self._test_broken_header_parsing([
             b'Broken Header',
             b'Another: Header',
-        ])
+        ], 'Broken Header')
+
+
+class TestHeaderParsingContentType(SocketDummyServerTestCase):
+
+    def _test_okay_header_parsing(self, header):
+        self.start_response_handler((
+           b'HTTP/1.1 200 OK\r\n'
+           b'Content-Length: 0\r\n'
+           ) + header + b'\r\n\r\n'
+        )
+
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        self.addCleanup(pool.close)
+
+        with LogRecorder() as logs:
+            pool.request('GET', '/')
+
+        for record in logs:
+            assert 'Failed to parse headers' not in record.msg
+
+    def test_header_text_plain(self):
+        self._test_okay_header_parsing(b'Content-type: text/plain')
+
+    def test_header_message_rfc822(self):
+        self._test_okay_header_parsing(b'Content-type: message/rfc822')
 
 
 class TestHEAD(SocketDummyServerTestCase):
@@ -1433,7 +1452,7 @@ class TestBadContentLength(SocketDummyServerTestCase):
             next(data)
             self.assertFail()
         except ProtocolError as e:
-            self.assertTrue('12 bytes read, 10 more expected' in str(e))
+            self.assertIn('12 bytes read, 10 more expected', str(e))
 
         done_event.set()
 

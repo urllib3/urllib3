@@ -227,7 +227,7 @@ Alternatively you can capture the warnings with the standard :mod:`logging` modu
 
 Finally, you can suppress the warnings at the interpreter level by setting the
 ``PYTHONWARNINGS`` environment variable or by using the
-`-W flag <https://docs.python.org/2/using/cmdline.html#cmdoption-W>`_.
+`-W flag <https://docs.python.org/3/using/cmdline.html#cmdoption-w>`_.
 
 Google App Engine
 -----------------

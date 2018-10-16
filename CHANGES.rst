@@ -1,6 +1,32 @@
 Changes
 =======
 
+1.24 (2018-10-16)
+-----------------
+
+* Allow key_server_hostname to be specified when initializing a PoolManager to allow custom SNI to be overridden. (Pull #1449)
+
+* Test against Python 3.7 on AppVeyor. (Pull #1453)
+
+* Early-out ipv6 checks when running on App Engine. (Pull #1450)
+
+* Change ambiguous description of backoff_factor (Pull #1436)
+
+* Add ability to handle multiple Content-Encodings (Issue #1441 and Pull #1442)
+
+* Skip DNS names that can't be idna-decoded when using pyOpenSSL (Issue #1405).
+
+* Add a server_hostname parameter to HTTPSConnection which allows for
+  overriding the SNI hostname sent in the handshake. (Pull #1397)
+
+* Drop support for EOL Python 2.6 (Pull #1429 and Pull #1430)
+
+* Fixed bug where responses with header Content-Type: message/* erroneously
+  raised HeaderParsingError, resulting in a warning being logged. (Pull #1439)
+
+* Move urllib3 to src/urllib3 (Pull #1409)
+
+
 1.23 (2018-06-04)
 -----------------
 

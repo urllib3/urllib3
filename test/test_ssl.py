@@ -1,6 +1,5 @@
 import mock
 import pytest
-from six import b
 from urllib3.util import ssl_
 from urllib3.exceptions import SNIMissingWarning
 
@@ -10,7 +9,7 @@ from urllib3.exceptions import SNIMissingWarning
     '::',
     '127.0.0.1',
     '8.8.8.8',
-    b('127.0.0.1')
+    b'127.0.0.1'
 ])
 def test_is_ipaddress_true(addr):
     assert ssl_.is_ipaddress(addr)
@@ -18,7 +17,7 @@ def test_is_ipaddress_true(addr):
 
 @pytest.mark.parametrize('addr', [
     'www.python.org',
-    b('www.python.org')
+    b'www.python.org'
 ])
 def test_is_ipaddress_false(addr):
     assert not ssl_.is_ipaddress(addr)

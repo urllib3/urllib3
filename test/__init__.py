@@ -4,7 +4,6 @@ import errno
 import functools
 import logging
 import socket
-import platform
 
 import pytest
 
@@ -35,42 +34,6 @@ def clear_warnings(cls=HTTPWarning):
 def setUp():
     clear_warnings()
     warnings.simplefilter('ignore', HTTPWarning)
-
-
-def onlyPy26OrOlder(test):
-    """Skips this test unless you are on Python2.6.x or earlier."""
-
-    @functools.wraps(test)
-    def wrapper(*args, **kwargs):
-        msg = "{name} only runs on Python2.6.x or older".format(name=test.__name__)
-        if sys.version_info >= (2, 7):
-            pytest.skip(msg)
-        return test(*args, **kwargs)
-    return wrapper
-
-
-def onlyPy34OrOlder(test):
-    """Skips this test unless you are on Python2.6.x or earlier."""
-
-    @functools.wraps(test)
-    def wrapper(*args, **kwargs):
-        msg = "{name} only runs on Python2.6.x or older".format(name=test.__name__)
-        if sys.version_info >= (3, 4):
-            pytest.skip(msg)
-        return test(*args, **kwargs)
-    return wrapper
-
-
-def onlyPy27OrNewer(test):
-    """Skips this test unless you are on Python 2.7.x or later."""
-
-    @functools.wraps(test)
-    def wrapper(*args, **kwargs):
-        msg = "{name} requires Python 2.7.x+ to run".format(name=test.__name__)
-        if sys.version_info < (2, 7):
-            pytest.skip(msg)
-        return test(*args, **kwargs)
-    return wrapper
 
 
 def onlyPy279OrNewer(test):
@@ -116,17 +79,6 @@ def notSecureTransport(test):
     def wrapper(*args, **kwargs):
         msg = "{name} does not run with SecureTransport".format(name=test.__name__)
         if ssl_.IS_SECURETRANSPORT:
-            pytest.skip(msg)
-        return test(*args, **kwargs)
-    return wrapper
-
-
-def onlyPy27OrNewerOrNonWindows(test):
-    """Skips this test unless you are on Python2.7+ or non-Windows"""
-    @functools.wraps(test)
-    def wrapper(*args, **kwargs):
-        msg = "{name} requires Python2.7+ or non-Windows to run".format(name=test.__name__)
-        if sys.version_info < (2, 7) and platform.system() == 'Windows':
             pytest.skip(msg)
         return test(*args, **kwargs)
     return wrapper

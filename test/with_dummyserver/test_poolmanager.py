@@ -240,12 +240,12 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         r = http.request_encode_url('GET', '%s/headers' % self.base_url, headers={'Baz': 'quux'})
         returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get('Foo'), None)
+        self.assertIsNone(returned_headers.get('Foo'))
         self.assertEqual(returned_headers.get('Baz'), 'quux')
 
         r = http.request_encode_body('GET', '%s/headers' % self.base_url, headers={'Baz': 'quux'})
         returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get('Foo'), None)
+        self.assertIsNone(returned_headers.get('Foo'))
         self.assertEqual(returned_headers.get('Baz'), 'quux')
 
     def test_http_with_ssl_keywords(self):

@@ -208,6 +208,38 @@ class TestResponse(object):
 
         assert r.data == b'foofoofoo'
 
+    def test_multi_decoding_deflate_deflate(self):
+        data = zlib.compress(zlib.compress(b'foo'))
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'deflate, deflate'})
+
+        assert r.data == b'foo'
+
+    def test_multi_decoding_deflate_gzip(self):
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        data = compress.compress(zlib.compress(b'foo'))
+        data += compress.flush()
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'deflate, gzip'})
+
+        assert r.data == b'foo'
+
+    def test_multi_decoding_gzip_gzip(self):
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        data = compress.compress(b'foo')
+        data += compress.flush()
+
+        compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+        data = compress.compress(data)
+        data += compress.flush()
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'gzip, gzip'})
+
+        assert r.data == b'foo'
+
     def test_body_blob(self):
         resp = HTTPResponse(b'foo')
         assert resp.data == b'foo'
@@ -290,23 +322,6 @@ class TestResponse(object):
         # gets tested.
         while not br.closed:
             br.read(5)
-
-    def test_io_readinto(self):
-        # This test is necessary because in py2.6, `readinto` doesn't get called
-        # in `test_io_bufferedreader` like it does for all the other python
-        # versions.  Probably this is because the `io` module in py2.6 is an
-        # old version that has a different underlying implementation.
-
-        fp = BytesIO(b'foo')
-        resp = HTTPResponse(fp, preload_content=False)
-
-        barr = bytearray(3)
-        assert resp.readinto(barr) == 3
-        assert b'foo' == barr
-
-        # The reader should already be empty, so this should read nothing.
-        assert resp.readinto(barr) == 0
-        assert b'foo' == barr
 
     def test_streaming(self):
         fp = BytesIO(b'foo')

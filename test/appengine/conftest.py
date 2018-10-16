@@ -16,11 +16,15 @@ import os
 import sys
 
 # Import py.test hooks and fixtures for App Engine
-from gcp_devrel.testing.appengine import (
-    pytest_configure,
-    pytest_runtest_call,
-    testbed
-)
+try:
+    from gcp_devrel.testing.appengine import (
+        pytest_configure,
+        pytest_runtest_call,
+        testbed
+    )
+except ImportError:
+    pass
+
 import pytest
 import six
 

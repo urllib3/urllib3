@@ -1,5 +1,5 @@
-import sys
 import threading
+import unittest
 
 import pytest
 from tornado import ioloop, web
@@ -13,11 +13,6 @@ from dummyserver.server import (
 )
 from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
-
-if sys.version_info >= (2, 7):
-    import unittest
-else:
-    import unittest2 as unittest
 
 
 def consume_socket(sock, chunks=65536):
@@ -124,7 +119,7 @@ class HTTPDummyServerTestCase(unittest.TestCase):
 
     @classmethod
     def _start_server(cls):
-        cls.io_loop = ioloop.IOLoop()
+        cls.io_loop = ioloop.IOLoop.current()
         app = web.Application([(r".*", TestingApp)])
         cls.server, cls.port = run_tornado_app(app, cls.io_loop, cls.certs,
                                                cls.scheme, cls.host)
@@ -170,7 +165,7 @@ class HTTPDummyProxyTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.io_loop = ioloop.IOLoop()
+        cls.io_loop = ioloop.IOLoop.current()
 
         app = web.Application([(r'.*', TestingApp)])
         cls.http_server, cls.http_port = run_tornado_app(
