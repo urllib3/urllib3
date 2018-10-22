@@ -6,7 +6,7 @@ from setuptools.command.build_py import build_py
 import os
 import re
 import tokenize as std_tokenize
-from tokenize import ASYNC, AWAIT, NAME, NEWLINE, NL, STRING, ENCODING
+from tokenize import NAME, NEWLINE, NL, STRING, ENCODING
 import codecs
 
 
@@ -60,8 +60,8 @@ def bleach_tokens(tokens):
     # TODO __await__, ...?
     used_space = None
     for space, toknum, tokval in tokens:
-        if toknum in [ASYNC, AWAIT]:  # TODO Python 3.7+
-            # When remove async or await, we want to use the whitespace that
+        if tokval in ["async", "await"]:
+            # When removing async or await, we want to use the whitespace that
             # was before async/await before the next token so that
             # `print(await stuff)` becomes `print(stuff)` and not
             # `print( stuff)`
