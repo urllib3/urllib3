@@ -5,7 +5,7 @@ set -x
 
 if [[ "$(uname -s)" == 'Darwin' ]]; then
     sw_vers
-    brew update || brew update
+    brew update --overwrite gcc || brew update --overwrite gcc
 
     brew outdated openssl || brew upgrade openssl
     brew install openssl@1.1
