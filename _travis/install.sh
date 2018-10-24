@@ -7,8 +7,8 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     sw_vers
     brew update || brew update
 
-    # Pin gdal because it tries to install an old version of gcc.
-    brew pin gdal
+    # Pin gcc because it's provided by Travis
+    brew pin gcc
 
     brew outdated openssl || brew upgrade openssl
     brew install openssl@1.1
