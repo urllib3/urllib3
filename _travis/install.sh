@@ -5,7 +5,10 @@ set -x
 
 if [[ "$(uname -s)" == 'Darwin' ]]; then
     sw_vers
-    brew update --overwrite gcc || brew update --overwrite gcc
+    brew update || brew update
+
+    # Pin gdal because it tries to install an old version of gcc.
+    brew pin gdal
 
     brew outdated openssl || brew upgrade openssl
     brew install openssl@1.1
