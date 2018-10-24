@@ -7,7 +7,10 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     sw_vers
     brew update || brew update
 
-    brew outdated openssl || brew upgrade openssl --force
+    # https://github.com/travis-ci/travis-ci/issues/8826
+    brew cask uninstall oclint
+
+    brew outdated openssl || brew upgrade openssl
     brew install openssl@1.1
 
     # install pyenv
