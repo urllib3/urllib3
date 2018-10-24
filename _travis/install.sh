@@ -7,10 +7,7 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     sw_vers
     brew update || brew update
 
-    # Pin gcc because it's provided by Travis
-    brew pin gcc
-
-    brew outdated openssl || brew upgrade openssl
+    brew outdated openssl || brew upgrade openssl --force
     brew install openssl@1.1
 
     # install pyenv
