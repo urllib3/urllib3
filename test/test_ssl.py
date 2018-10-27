@@ -88,4 +88,3 @@ def test_create_urllib3_context_set_ciphers(monkeypatch, ciphers, expected_ciphe
 
     assert context.set_ciphers.call_count == 1
     assert context.set_ciphers.call_args == mock.call(expected_ciphers)
-
