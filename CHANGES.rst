@@ -4,6 +4,8 @@ Changes
 dev (master)
 ------------
 
+* Remove quadratic behavior within ``GzipDecoder.decompress()`` (Issue #1467)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
