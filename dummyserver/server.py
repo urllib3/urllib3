@@ -20,6 +20,7 @@ from datetime import datetime
 from urllib3.exceptions import HTTPWarning
 
 from tornado.platform.auto import set_close_exec
+from tornado.netutil import bind_unix_socket
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
@@ -237,8 +238,12 @@ def run_tornado_app(app, io_loop, certs, scheme, host):
     else:
         http_server = tornado.httpserver.HTTPServer(app)
 
-    sockets = bind_sockets(None, address=host)
-    port = sockets[0].getsockname()[1]
+    if host[:1] == '/':
+        sockets = [bind_unix_socket(host)]
+        port = None
+    else:
+        sockets = bind_sockets(None, address=host)
+        port = sockets[0].getsockname()[1]
     http_server.add_sockets(sockets)
     return http_server, port
 
@@ -267,7 +272,8 @@ def get_unreachable_address():
 if __name__ == '__main__':
     # For debugging dummyserver itself - python -m dummyserver.server
     from .testcase import TestingApp
-    host = '127.0.0.1'
+    # host = '127.0.0.1'
+    host = '/tmp/dummyserver.sock'
 
     io_loop = tornado.ioloop.IOLoop.current()
     app = tornado.web.Application([(r".*", TestingApp)])
@@ -275,4 +281,7 @@ if __name__ == '__main__':
                                    'http', host)
     server_thread = run_loop_in_thread(io_loop)
 
-    print("Listening on http://{host}:{port}".format(host=host, port=port))
+    if port:
+        print("Listening on http://{host}:{port}".format(host=host, port=port))
+    else:
+        print("Listening on unix@{host}".format(host=host))
