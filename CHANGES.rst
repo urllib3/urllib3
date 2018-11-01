@@ -4,6 +4,8 @@ Changes
 dev (master)
 ------------
 
+* Remove quadratic behavior within ``GzipDecoder.decompress()`` (Issue #1467)
+
 * Restored functionality of `ciphers` parameter for `create_urllib3_context()`. (Issue #1462)
 
 * ... [Short description of non-trivial change.] (Issue #)
