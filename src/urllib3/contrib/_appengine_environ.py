@@ -21,9 +21,14 @@ def is_local_appengine():
     return is_appengine() and \
            ('SERVER_SOFTWARE' not in os.environ or
             os.environ['SERVER_SOFTWARE'].startswith('Development'))
+    return ('APPENGINE_RUNTIME' in os.environ and
+            os.environ.get('SERVER_SOFTWARE', '').startswith('Development'))
 
 
 def is_prod_appengine():
+    return ('APPENGINE_RUNTIME' in os.environ and
+            not os.environ.get('SERVER_SOFTWARE', '').startswith('Development') and
+            not is_prod_appengine_mvms())
     return is_appengine() and not is_local_appengine()
 
 
