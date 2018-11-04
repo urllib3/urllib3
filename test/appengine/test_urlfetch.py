@@ -6,7 +6,10 @@ import httplib
 import StringIO
 import unittest
 
-from mock import patch
+try:
+    from unittest.mock import patch
+except ImportError:
+    from mock import patch
 import pytest
 
 from ..test_no_ssl import TestWithoutSSL

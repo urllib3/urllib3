@@ -4,7 +4,10 @@ import zlib
 from io import BytesIO, BufferedReader
 
 import pytest
-import mock
+try:
+    import unittest.mock as mock
+except ImportError:
+    import mock
 
 from urllib3.response import HTTPResponse
 from urllib3.exceptions import (

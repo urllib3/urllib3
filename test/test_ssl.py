@@ -1,4 +1,7 @@
-import mock
+try:
+    import unittest.mock as mock
+except ImportError:
+    import mock
 import pytest
 from urllib3.util import ssl_
 from urllib3.exceptions import SNIMissingWarning

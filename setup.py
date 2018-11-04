@@ -52,12 +52,15 @@ setup(name='urllib3',
                 ],
       package_dir={'': 'src'},
       requires=[],
+      install_requires=[
+          'setuptools>=20.8.1'
+      ],
       python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, <4",
       tests_require=[
           # These are a less-specific subset of dev-requirements.txt, for the
           # convenience of distro package maintainers.
           'pytest',
-          'mock',
+          'mock;python_version<"3.3"',
           'tornado',
       ],
       test_suite='test',

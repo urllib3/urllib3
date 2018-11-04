@@ -27,7 +27,10 @@ sys.path.insert(0, root_path)
 # Mock some expensive/platform-specific modules so build will work.
 # (https://read-the-docs.readthedocs.io/en/latest/faq.html#\
 #  i-get-import-errors-on-libraries-that-depend-on-c-modules)
-import mock
+try:
+    import unittest.mock as mock
+except ImportError:
+    import mock
 
 
 class MockModule(mock.Mock):

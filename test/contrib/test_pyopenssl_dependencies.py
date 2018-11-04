@@ -2,7 +2,10 @@
 import unittest
 import pytest
 
-from mock import patch, Mock
+try:
+    from unittest.mock import patch, Mock
+except ImportError:
+    from mock import patch, Mock
 
 try:
     from urllib3.contrib.pyopenssl import (

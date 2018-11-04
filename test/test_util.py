@@ -6,7 +6,10 @@ import ssl
 import socket
 from itertools import chain
 
-from mock import patch, Mock
+try:
+    from unittest.mock import patch, Mock
+except ImportError:
+    from mock import patch, Mock
 import pytest
 
 from urllib3 import add_stderr_logger, disable_warnings

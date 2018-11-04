@@ -1,6 +1,9 @@
 from __future__ import absolute_import
 
-import mock
+try:
+    import unittest.mock as mock
+except ImportError:
+    import mock
 
 import pytest
 

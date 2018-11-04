@@ -6,7 +6,10 @@ import sys
 import unittest
 import warnings
 
-import mock
+try:
+    import unittest.mock as mock
+except ImportError:
+    import mock
 import pytest
 
 from dummyserver.testcase import (

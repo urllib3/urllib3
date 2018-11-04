@@ -7,7 +7,10 @@ import time
 import warnings
 import pytest
 
-import mock
+try:
+    import unittest.mock as mock
+except ImportError:
+    import mock
 
 from .. import (
     TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES,
