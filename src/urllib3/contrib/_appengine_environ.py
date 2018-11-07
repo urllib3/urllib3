@@ -23,6 +23,7 @@ def is_local_appengine():
             os.environ.get('SERVER_SOFTWARE', '').startswith('Development'))
 
 
+
 def is_prod_appengine():
     return is_appengine() and \
            ('APPENGINE_RUNTIME' in os.environ and
