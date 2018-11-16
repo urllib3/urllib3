@@ -35,6 +35,8 @@ matrix:
       env: TOXENV=py37
     - python: 3.8-dev
       env: TOXENV=py38
+      sudo: required
+      dist: xenial
     - python: pypy-5.4
       env: TOXENV=pypy
     - language: generic
