@@ -5,7 +5,7 @@ set -x
 
 # Because Travis Xenial doesn't have localhost in /etc/hosts
 if [[ "${TRAVIS_DIST}" == "xenial" ]]; then
-    echo -e "127.0.0.1\tlocalhost" >> /etc/hosts
+    sudo echo -e "127.0.0.1\tlocalhost" >> /etc/hosts
 fi
 
 if [[ "$(uname -s)" == 'Darwin' ]]; then
