@@ -1,8 +1,12 @@
 language: python
+addons:
+  hosts:
+    - localhost
 script:
   - ./_travis/run.sh
 before_install:
   - openssl version
+  - cat /etc/hosts
 after_success:
   - ./_travis/upload_coverage.sh
 cache:
