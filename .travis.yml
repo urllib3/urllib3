@@ -1,7 +1,4 @@
 language: python
-addons:
-  hosts:
-    - localhost
 script:
   - ./_travis/run.sh
 before_install:
