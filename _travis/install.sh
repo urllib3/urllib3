@@ -8,7 +8,9 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     brew update || brew update
 
     # https://github.com/travis-ci/travis-ci/issues/8826
-    brew cask uninstall oclint
+    if brew ls --versions oclint >> /dev/null; then
+        brew cask uninstall oclint
+    fi
 
     brew outdated openssl || brew upgrade openssl
     brew install openssl@1.1
