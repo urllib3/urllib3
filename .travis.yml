@@ -25,6 +25,8 @@ matrix:
   include:
     - python: 2.7
       env: TOXENV=py27
+      sudo: required
+      dist: xenial
     - python: 3.4
       env: TOXENV=py34
     - python: 3.5
