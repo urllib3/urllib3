@@ -6,12 +6,6 @@ set -x
 if [[ "$(uname -s)" == 'Darwin' ]]; then
     sw_vers
     brew update || brew update
-
-    # https://github.com/travis-ci/travis-ci/issues/8826
-    if brew ls --versions oclint >> /dev/null; then
-        brew cask uninstall oclint
-    fi
-
     brew outdated openssl || brew upgrade openssl
     brew install openssl@1.1
 
