@@ -2,6 +2,7 @@ language: python
 script:
   - ./_travis/run.sh
 before_install:
+  - env
   - openssl version
 after_success:
   - ./_travis/upload_coverage.sh
@@ -35,6 +36,10 @@ matrix:
       env: TOXENV=py36
     - python: 3.7-dev
       env: TOXENV=py37
+    - python: 3.8-dev
+      env: TOXENV=py38
+      dist: xenial
+      sudo: required
     - python: pypy2.7
       env: TOXENV=pypy
     - python: pypy3.5
@@ -54,6 +59,9 @@ matrix:
     - language: generic
       os: osx
       env: TOXENV=py37
+    - language: generic
+      os: osx
+      env: TOXENV=py38
   allow_failures:
     - python: 3.6
       env: TOXENV=docs

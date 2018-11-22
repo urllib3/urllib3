@@ -35,6 +35,8 @@ import ssl
 
 import pytest
 
+from test import fails_on_travis_gce
+
 
 class TestCookies(SocketDummyServerTestCase):
 
@@ -1333,6 +1335,7 @@ class TestHeaders(SocketDummyServerTestCase):
         self.assertEqual(expected_request_headers, actual_request_headers)
 
     @pytest.mark.xfail
+    @fails_on_travis_gce
     def test_request_host_header_ignores_fqdn_dot(self):
 
         received_headers = []
