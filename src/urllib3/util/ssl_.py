@@ -112,8 +112,6 @@ DEFAULT_CIPHERS = ':'.join([
 try:
     from ssl import SSLContext  # Modern SSL?
 except ImportError:
-    import sys
-
     class SSLContext(object):  # Platform-specific: Python 2
         def __init__(self, protocol_version):
             self.protocol = protocol_version
