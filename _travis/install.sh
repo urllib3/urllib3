@@ -6,7 +6,6 @@ set -x
 if [[ "$(uname -s)" == 'Darwin' ]]; then
     sw_vers
     brew update || brew update
-
     brew outdated openssl || brew upgrade openssl
     brew install openssl@1.1
 
@@ -36,6 +35,10 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
         py37)
             pyenv install 3.7-dev
             pyenv global 3.7-dev
+            ;;
+        py38)
+            pyenv install 3.8-dev
+            pyenv global 3.8-dev
             ;;
         pypy*)
             pyenv install "pypy-5.4.1"
