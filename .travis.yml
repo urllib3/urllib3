@@ -2,6 +2,7 @@ language: python
 script:
   - ./_travis/run.sh
 before_install:
+  - env
   - openssl version
 after_success:
   - ./_travis/upload_coverage.sh
