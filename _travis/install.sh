@@ -9,6 +9,12 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     brew outdated openssl || brew upgrade openssl
     brew install openssl@1.1
 
+    # Uninstall oclint if it's installed. This is
+    # conditional because of build caching.
+    if brew ls --versions oclint >> /dev/null; then
+        brew cask uninstall oclint
+    fi
+
     # install pyenv
     git clone --depth 1 https://github.com/yyuu/pyenv.git ~/.pyenv
     PYENV_ROOT="$HOME/.pyenv"
