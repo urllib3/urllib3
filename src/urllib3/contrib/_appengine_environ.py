@@ -6,9 +6,7 @@ import os
 
 
 def is_appengine():
-    return (is_local_appengine() or
-            is_prod_appengine() or
-            is_prod_appengine_mvms())
+    return 'APPENGINE_RUNTIME' in os.environ
 
 
 def is_appengine_sandbox():
