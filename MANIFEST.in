@@ -1,4 +1,4 @@
-include README.rst CHANGES.rst LICENSE.txt CONTRIBUTORS.txt dev-requirements.txt Makefile
+include README.rst CHANGES.rst LICENSE.txt CONTRIBUTORS.txt dev-requirements.txt Makefile pyproject.toml
 recursive-include dummyserver *
 recursive-include test *
 recursive-include docs *
