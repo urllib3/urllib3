@@ -17,4 +17,3 @@ twisted[tls]==17.9.0; os_name != 'nt'
 # https://github.com/GoogleCloudPlatform/python-repo-tools/issues/23
 pylint<2.0;python_version<="2.7"
 gcp-devrel-py-tools==0.0.15
-pip==18.1
