@@ -7,7 +7,7 @@ import pytest
 
 try:
     from urllib3.contrib.securetransport import WrappedSocket
-except ImportError as e:
+except ImportError:
     pass
 
 pytestmark = pytest.mark.skip('SecureTransport currently not supported on v2!')
