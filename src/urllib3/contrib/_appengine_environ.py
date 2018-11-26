@@ -14,12 +14,13 @@ def is_appengine_sandbox():
 
 
 def is_local_appengine():
-    return ('SERVER_SOFTWARE' not in os.environ or
+    return is_appengine() and
+           ('SERVER_SOFTWARE' not in os.environ or
             os.environ['SERVER_SOFTWARE'].startswith('Development'))
 
 
 def is_prod_appengine():
-    return not is_local_appengine()
+    return is_appengine() and not is_local_appengine()
 
 
 def is_prod_appengine_mvms():
