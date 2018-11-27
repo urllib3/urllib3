@@ -14,7 +14,7 @@ def is_appengine_sandbox():
 
 
 def is_local_appengine():
-    return is_appengine() and
+    return is_appengine() and \
            ('SERVER_SOFTWARE' not in os.environ or
             os.environ['SERVER_SOFTWARE'].startswith('Development'))
 
