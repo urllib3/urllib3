@@ -1,4 +1,5 @@
 import warnings
+import platform
 import sys
 import errno
 import functools
@@ -135,6 +136,17 @@ def fails_on_travis_gce(test):
     def wrapper(*args, **kwargs):
         if os.environ.get("TRAVIS_INFRA") == "gce":
             pytest.xfail("%s is expected to fail on Travis GCE builds" % test.__name__)
+        return test(*args, **kwargs)
+    return wrapper
+
+
+def requires_bundled_OpenSSL_on_mac(test):
+    """Skips this test unless your MacPython bundles OpenSSL"""
+
+    @functools.wraps(test)
+    def wrapper(*args, **kwargs):
+        if platform.system() == 'Darwin' and sys.version_info[0:2] < (3, 6):
+            pytest.skip("{name} requires MacPython >= 3.6".format(name=test.__name__))
         return test(*args, **kwargs)
     return wrapper
 
