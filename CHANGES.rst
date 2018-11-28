@@ -4,11 +4,17 @@ Changes
 dev (master)
 ------------
 
+* Implemented a more efficient ``HTTPResponse.__iter__()`` method (Issue #1483)
+
+* ... [Short description of non-trivial change.] (Issue #)
+
+
+1.24.1 (2018-11-02)
+-------------------
+
 * Remove quadratic behavior within ``GzipDecoder.decompress()`` (Issue #1467)
 
 * Restored functionality of `ciphers` parameter for `create_urllib3_context()`. (Issue #1462)
-
-* ... [Short description of non-trivial change.] (Issue #)
 
 
 1.24 (2018-10-16)
