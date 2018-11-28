@@ -705,3 +705,20 @@ class HTTPResponse(io.IOBase):
             return self.retries.history[-1].redirect_location
         else:
             return self._request_url
+
+    def __iter__(self):
+        buffer = [b""]
+        for chunk in self.stream(decode_content=True):
+            if b"\n" in chunk:
+                chunk = chunk.split(b"\n")
+                yield b"".join(buffer) + chunk[0] + b"\n"
+                for x in chunk[1:-1]:
+                    yield x + b"\n"
+                if chunk[-1]:
+                    buffer = [chunk[-1]]
+                else:
+                    buffer = []
+            else:
+                buffer.append(chunk)
+        if buffer:
+            yield b"".join(buffer)
