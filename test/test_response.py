@@ -708,6 +708,41 @@ class TestResponse(object):
         resp = HTTPResponse(fp, retries=retry)
         assert resp.geturl() == 'https://www.example.com'
 
+    @pytest.mark.parametrize(
+        ["payload", "expected_stream"],
+        [(b"", [b""]),
+         (b"\n", [b"\n"]),
+         (b"abc\ndef", [b"abc\n", b"def"]),
+         (b"Hello\nworld\n\n\n!", [b"Hello\n", b"world\n", b"\n", b"\n", b"!"])]
+    )
+    def test__iter__(self, payload, expected_stream):
+        actual_stream = []
+        for chunk in HTTPResponse(BytesIO(payload), preload_content=False):
+            actual_stream.append(chunk)
+
+        assert actual_stream == expected_stream
+
+    def test__iter__decode_content(self):
+        def stream():
+            # Set up a generator to chunk the gzipped body
+            compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+            data = compress.compress(b'foo\nbar')
+            data += compress.flush()
+            for i in range(0, len(data), 2):
+                yield data[i:i + 2]
+
+        fp = MockChunkedEncodingResponse(list(stream()))
+        r = httplib.HTTPResponse(MockSock)
+        r.fp = fp
+        headers = {'transfer-encoding': 'chunked', 'content-encoding': 'gzip'}
+        resp = HTTPResponse(r, preload_content=False, headers=headers)
+
+        data = b''
+        for c in resp:
+            data += c
+
+        assert b'foo\nbar' == data
+
 
 class MockChunkedEncodingResponse(object):
 
