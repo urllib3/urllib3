@@ -4,6 +4,7 @@ script:
 before_install:
   - env
   - openssl version
+  - python -c "import ssl; print(ssl.OPENSSL_VERSION)"
 after_success:
   - ./_travis/upload_coverage.sh
 cache:
