@@ -66,6 +66,8 @@ matrix:
       env: TOXENV=py34
     - python: pypy2.7
       env: TOXENV=pypy
+    - python: pypy3.5
+      env: TOXENV=pypy3
     - language: generic
       os: osx
       env: TOXENV=py27
