@@ -145,8 +145,10 @@ def requires_bundled_OpenSSL_on_mac(test):
 
     @functools.wraps(test)
     def wrapper(*args, **kwargs):
-        if platform.system() == 'Darwin' and sys.version_info[0:2] < (3, 6):
-            pytest.skip("{name} requires MacPython >= 3.6".format(name=test.__name__))
+        major, minor = sys.version_info[0:2]
+        if platform.system() == 'Darwin' and major == 3 and minor < 6:
+            msg = "{name} requires MacPython 2.7 or >= 3.6".format(name=test.__name__)
+            pytest.skip(msg)
         return test(*args, **kwargs)
     return wrapper
 
