@@ -241,14 +241,19 @@ class TestUtil(object):
 
     url_vulnerabilities = [
         # urlparse doesn't follow RFC 3986 Section 3.2
-        ("http://google.com#@evil.com/", Url("http", host="google.com", path="", fragment="@evil.com/")),
+        ("http://google.com#@evil.com/", Url("http",
+                                             host="google.com",
+                                             path="",
+                                             fragment="@evil.com/")),
 
         # CVE-2016-5699
-        ("http://127.0.0.1%0d%0aConnection%3a%20keep-alive", Url("http",
-                                                                 host="127.0.0.1%0d%0aConnection%3a%20keep-alive")),
+        ("http://127.0.0.1%0d%0aConnection%3a%20keep-alive",
+         Url("http", host="127.0.0.1%0d%0aConnection%3a%20keep-alive")),
 
         # NodeJS unicode -> double dot
-        ("http://google.com/\uff2e\uff2e/abc", Url("http", host="google.com", path='/%ef%bc%ae%ef%bc%ae/abc'))
+        ("http://google.com/\uff2e\uff2e/abc", Url("http",
+                                                   host="google.com",
+                                                   path='/%ef%bc%ae%ef%bc%ae/abc'))
     ]
 
     @pytest.mark.parametrize("url, expected_url", url_vulnerabilities)
