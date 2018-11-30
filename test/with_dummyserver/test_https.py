@@ -22,7 +22,7 @@ from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
 from test import (
     onlyPy279OrNewer,
     notSecureTransport,
-    requires_bundled_OpenSSL_on_mac,
+    notOpenSSL098,
     requires_network,
     fails_on_travis_gce,
     TARPIT_HOST,
@@ -198,7 +198,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @onlyPy279OrNewer
     @notSecureTransport  # SecureTransport does not support cert directories
-    @requires_bundled_OpenSSL_on_mac  # older MacPython builds don't bundle OpenSSL
+    @notOpenSSL098  # OpenSSL 0.9.8 does not support cert directories
     def test_ca_dir_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_reqs='CERT_REQUIRED',
