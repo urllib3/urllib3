@@ -20,7 +20,6 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     PYTHON_EXE=/Library/Frameworks/Python.framework/Versions/$MINOR/bin/python$MINOR
     # The pip in older MacPython releases doesn't support a new enough TLS
     curl https://bootstrap.pypa.io/get-pip.py | sudo $PYTHON_EXE
-    $PYTHON_EXE -c "import ssl; print(ssl.OPENSSL_VERSION)"
     $PYTHON_EXE -m pip install virtualenv
 else
     pip install virtualenv
