@@ -4,6 +4,7 @@ script:
 before_install:
   - env
   - openssl version
+  - python -c "import ssl; print(ssl.OPENSSL_VERSION)"
 after_success:
   - ./_travis/upload_coverage.sh
 cache:
@@ -61,9 +62,6 @@ matrix:
     - language: generic
       os: osx
       env: TOXENV=py37
-    - language: generic
-      os: osx
-      env: TOXENV=py38
   allow_failures:
     - python: 3.6
       env: TOXENV=docs
