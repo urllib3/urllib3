@@ -6,6 +6,9 @@ dev (master)
 
 * Implemented a more efficient ``HTTPResponse.__iter__()`` method (Issue #1483)
 
+* Added support for ``key_password`` for ``HTTPSConnectionPool`` to use
+  encrypted ``key_file`` without creating your own ``SSLContext`` object. (Pull #1489)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
@@ -14,7 +17,7 @@ dev (master)
 
 * Remove quadratic behavior within ``GzipDecoder.decompress()`` (Issue #1467)
 
-* Restored functionality of `ciphers` parameter for `create_urllib3_context()`. (Issue #1462)
+* Restored functionality of ``ciphers`` parameter for ``create_urllib3_context()``. (Issue #1462)
 
 
 1.24 (2018-10-16)

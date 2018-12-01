@@ -47,6 +47,7 @@ DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS = {
     'keyfile': os.path.join(CERTS_PATH, 'client_intermediate.key'),
 }
 PASSWORD_KEYFILE = os.path.join(CERTS_PATH, 'server_password.key')
+PASSWORD_CLIENT_KEYFILE = os.path.join(CERTS_PATH, 'client_password.key')
 NO_SAN_CERTS = {
     'certfile': os.path.join(CERTS_PATH, 'server.no_san.crt'),
     'keyfile': DEFAULT_CERTS['keyfile']

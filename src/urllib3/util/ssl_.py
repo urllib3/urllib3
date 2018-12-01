@@ -289,7 +289,7 @@ def create_urllib3_context(ssl_version=None, cert_reqs=None,
 def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                     ca_certs=None, server_hostname=None,
                     ssl_version=None, ciphers=None, ssl_context=None,
-                    ca_cert_dir=None):
+                    ca_cert_dir=None, key_password=None):
     """
     All arguments except for server_hostname, ssl_context, and ca_cert_dir have
     the same meaning as they do when using :func:`ssl.wrap_socket`.
@@ -305,6 +305,8 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         A directory containing CA certificates in multiple separate files, as
         supported by OpenSSL's -CApath flag or the capath argument to
         SSLContext.load_verify_locations().
+    :param key_password:
+        Optional password if the keyfile is encrypted.
     """
     context = ssl_context
     if context is None:
@@ -330,7 +332,10 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         context.load_default_certs()
 
     if certfile:
-        context.load_cert_chain(certfile, keyfile)
+        if key_password is None:
+            context.load_cert_chain(certfile, keyfile)
+        else:
+            context.load_cert_chain(certfile, keyfile, key_password)
 
     # If we detect server_hostname is an IP address then the SNI
     # extension should not be used according to RFC3546 Section 3.1

@@ -746,8 +746,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     If ``assert_hostname`` is False, no verification is done.
 
     The ``key_file``, ``cert_file``, ``cert_reqs``, ``ca_certs``,
-    ``ca_cert_dir``, and ``ssl_version`` are only used if :mod:`ssl` is
-    available and are fed into :meth:`urllib3.util.ssl_wrap_socket` to upgrade
+    ``ca_cert_dir``, ``ssl_version``, ``key_password`` are only used if :mod:`ssl`
+    is available and are fed into :meth:`urllib3.util.ssl_wrap_socket` to upgrade
     the connection socket into an SSL socket.
     """
 
@@ -759,7 +759,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  block=False, headers=None, retries=None,
                  _proxy=None, _proxy_headers=None,
                  key_file=None, cert_file=None, cert_reqs=None,
-                 ca_certs=None, ssl_version=None,
+                 key_password=None, ca_certs=None, ssl_version=None,
                  assert_hostname=None, assert_fingerprint=None,
                  ca_cert_dir=None, **conn_kw):
 
@@ -773,6 +773,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.key_file = key_file
         self.cert_file = cert_file
         self.cert_reqs = cert_reqs
+        self.key_password = key_password
         self.ca_certs = ca_certs
         self.ca_cert_dir = ca_cert_dir
         self.ssl_version = ssl_version
@@ -787,6 +788,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
         if isinstance(conn, VerifiedHTTPSConnection):
             conn.set_cert(key_file=self.key_file,
+                          key_password=self.key_password,
                           cert_file=self.cert_file,
                           cert_reqs=self.cert_reqs,
                           ca_certs=self.ca_certs,
@@ -824,7 +826,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
         conn = self.ConnectionCls(host=actual_host, port=actual_port,
                                   timeout=self.timeout.connect_timeout,
-                                  strict=self.strict, **self.conn_kw)
+                                  strict=self.strict, cert_file=self.cert_file,
+                                  key_file=self.key_file, key_password=self.key_password,
+                                  **self.conn_kw)
 
         return self._prepare_conn(conn)
 
