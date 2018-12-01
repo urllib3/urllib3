@@ -9,6 +9,9 @@ dev (master)
 * Added support for ``key_password`` for ``HTTPSConnectionPool`` to use
   encrypted ``key_file`` without creating your own ``SSLContext`` object. (Pull #1489)
 
+* Fixed issue where OpenSSL would block if an encrypted client private key was
+  given and no password was given. Instead an ``SSLError`` is raised. (Pull #1489)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

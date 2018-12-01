@@ -123,11 +123,27 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          key_file=client_key,
                                          cert_file=client_cert,
-                                         key_password="letmein")
+                                         )#key_password="letmein")
         r = https_pool.request('GET', '/certificate')
         subject = json.loads(r.data.decode('utf-8'))
         assert subject['organizationalUnitName'].startswith(
             'Testing server cert')
+
+    @requires_ssl_context_keyfile_password
+    def test_client_encrypted_key_requires_password(self):
+        client_cert, client_key = (
+            DEFAULT_CLIENT_CERTS['certfile'],
+            PASSWORD_CLIENT_KEYFILE,
+        )
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         key_file=client_key,
+                                         cert_file=client_cert,
+                                         key_password=None)
+
+        with pytest.raises(SSLError) as e:
+            https_pool.request('GET', '/certificate')
+
+        assert 'password is required' in str(e)
 
     def test_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,

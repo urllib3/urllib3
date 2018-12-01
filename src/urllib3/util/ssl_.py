@@ -331,6 +331,12 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         # try to load OS default certs; works well on Windows (require Python3.4+)
         context.load_default_certs()
 
+    # Attempt to detect if we get the goofy behavior of the
+    # keyfile being encrypted and OpenSSL asking for the
+    # passphrase via the terminal and instead error out.
+    if keyfile and key_password is None and _is_key_file_encrypted(keyfile):
+        raise SSLError("Client private key is encrypted, password is required")
+
     if certfile:
         if key_password is None:
             context.load_cert_chain(certfile, keyfile)
@@ -381,4 +387,15 @@ def is_ipaddress(hostname):
             pass
         else:
             return True
+    return False
+
+
+def _is_key_file_encrypted(key_file):
+    """Detects if a key file is encrypted or not."""
+    with open(key_file, 'r') as f:
+        for line in f:
+            # Look for Proc-Type: 4,ENCRYPTED
+            if 'ENCRYPTED' in line:
+                return True
+
     return False
