@@ -143,8 +143,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with pytest.raises(MaxRetryError) as e:
             https_pool.request('GET', '/certificate')
 
-        assert 'password is required' in str(e)
-        assert isinstance(e.reason, SSLError)
+        assert 'password is required' in str(e.value)
+        assert isinstance(e.value.reason, SSLError)
 
     def test_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
