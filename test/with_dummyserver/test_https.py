@@ -123,7 +123,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          key_file=client_key,
                                          cert_file=client_cert,
-                                         )#key_password="letmein")
+                                         key_password="letmein")
         r = https_pool.request('GET', '/certificate')
         subject = json.loads(r.data.decode('utf-8'))
         assert subject['organizationalUnitName'].startswith(
