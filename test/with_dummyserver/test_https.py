@@ -140,7 +140,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                                          cert_file=client_cert,
                                          key_password=None)
 
-        with pytest.raises(MayRetryError) as e:
+        with pytest.raises(MaxRetryError) as e:
             https_pool.request('GET', '/certificate')
 
         assert 'password is required' in str(e)
