@@ -1,7 +1,4 @@
 [run]
-source =
-    urllib3
-
 omit =
     *urllib3/packages/*
     *urllib3/contrib/appengine.py
@@ -9,11 +6,10 @@ omit =
     *urllib3/contrib/pyopenssl.py
     *urllib3/contrib/securetransport.py
     *urllib3/contrib/_securetransport/*
-
-[paths]
-source =
-   src/urllib3
-   .tox/*/site-packages/urllib3
+    # remove when ready to test the async backends
+    *urllib3/_async/*
+    *urllib3/_backends/trio_backend.py
+    *urllib3/_backends/twisted_backend.py
 
 [report]
 exclude_lines =
