@@ -72,15 +72,22 @@ def _address_from_socket(sock):
     """
     addr_type = sock.recv(1)
 
+    print(addr_type)
+
     if addr_type == b'\x01':
         ipv4_addr = _read_exactly(sock, 4)
+        print(ipv4_addr)
         return socket.inet_ntoa(ipv4_addr)
     elif addr_type == b'\x04':
         ipv6_addr = _read_exactly(sock, 16)
+        print(ipv6_addr)
         return socket.inet_ntop(socket.AF_INET6, ipv6_addr)
     elif addr_type == b'\x03':
         addr_len = ord(sock.recv(1))
-        return _read_exactly(sock, addr_len)
+        print(addr_len)
+        data = _read_exactly(sock, addr_len)
+        print(data)
+        return data
     else:
         raise RuntimeError("Unexpected addr type: %r" % addr_type)
 

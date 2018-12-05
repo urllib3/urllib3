@@ -189,6 +189,7 @@ def parse_url(url):
         else:
             path = None
 
+    print(parse_result)
     return Url(
         scheme=parse_result.scheme,
         auth=parse_result.userinfo,
