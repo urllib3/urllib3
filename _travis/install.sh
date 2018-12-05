@@ -21,6 +21,7 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     # The pip in older MacPython releases doesn't support a new enough TLS
     curl https://bootstrap.pypa.io/get-pip.py | sudo $PYTHON_EXE
     $PYTHON_EXE -m pip install virtualenv
+    export PATH="/Library/Frameworks/Python.framework/Versions/$MINOR/bin":$PATH
 else
     pip install virtualenv
 fi
