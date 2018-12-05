@@ -75,13 +75,13 @@ FRAGMENT_MATCHER = QUERY_MATCHER
 # Scheme validation, see: http://tools.ietf.org/html/rfc3986#section-3.1
 SCHEME_MATCHER = re.compile('^{0}$'.format(abnf_regexp.SCHEME_RE))
 
-RELATIVE_REF_MATCHER = re.compile('^%s(\?%s)?(#%s)?$' % (
+RELATIVE_REF_MATCHER = re.compile(r'^%s(\?%s)?(#%s)?$' % (
     abnf_regexp.RELATIVE_PART_RE, abnf_regexp.QUERY_RE,
     abnf_regexp.FRAGMENT_RE,
 ))
 
 # See http://tools.ietf.org/html/rfc3986#section-4.3
-ABSOLUTE_URI_MATCHER = re.compile('^%s:%s(\?%s)?$' % (
+ABSOLUTE_URI_MATCHER = re.compile(r'^%s:%s(\?%s)?$' % (
     abnf_regexp.COMPONENT_PATTERN_DICT['scheme'],
     abnf_regexp.HIER_PART_RE,
     abnf_regexp.QUERY_RE[1:-1],

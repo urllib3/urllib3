@@ -129,7 +129,13 @@ def encode_component(uri_component, encoding):
     if uri_component is None:
         return uri_component
 
+    # Try to see if the component we're encoding is already percent-encoded
+    # so we can skip all '%' characters but still encode all others.
+    percent_encodings = len(PERCENT_MATCHER.findall(
+                            compat.to_str(uri_component, encoding)))
+
     uri_bytes = compat.to_bytes(uri_component, encoding)
+    is_percent_encoded = percent_encodings == uri_bytes.count(b'%')
 
     encoded_uri = bytearray()
 
@@ -137,7 +143,8 @@ def encode_component(uri_component, encoding):
         # Will return a single character bytestring on both Python 2 & 3
         byte = uri_bytes[i:i+1]
         byte_ord = ord(byte)
-        if byte_ord < 128 and byte.decode() in misc.NON_PCT_ENCODED:
+        if ((is_percent_encoded and byte == b'%')
+                or (byte_ord < 128 and byte.decode() in misc.NON_PCT_ENCODED)):
             encoded_uri.extend(byte)
             continue
         encoded_uri.extend('%{0:02x}'.format(byte_ord).encode())

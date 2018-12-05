@@ -20,16 +20,16 @@ GENERIC_DELIMITERS_SET = set(GENERIC_DELIMITERS)
 SUB_DELIMS = SUB_DELIMITERS = "!$&'()*+,;="
 SUB_DELIMITERS_SET = set(SUB_DELIMITERS)
 # Escape the '*' for use in regular expressions
-SUB_DELIMITERS_RE = "!$&'()\*+,;="
+SUB_DELIMITERS_RE = r"!$&'()\*+,;="
 RESERVED_CHARS_SET = GENERIC_DELIMITERS_SET.union(SUB_DELIMITERS_SET)
 ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 DIGIT = '0123456789'
 # https://tools.ietf.org/html/rfc3986#section-2.3
 UNRESERVED = UNRESERVED_CHARS = ALPHA + DIGIT + '._!-'
 UNRESERVED_CHARS_SET = set(UNRESERVED_CHARS)
-NON_PCT_ENCODED_SET = RESERVED_CHARS_SET.union(UNRESERVED_CHARS_SET).union('%')
+NON_PCT_ENCODED_SET = RESERVED_CHARS_SET.union(UNRESERVED_CHARS_SET)
 # We need to escape the '-' in this case:
-UNRESERVED_RE = 'A-Za-z0-9._~\-'
+UNRESERVED_RE = r'A-Za-z0-9._~\-'
 
 # Percent encoded character values
 PERCENT_ENCODED = PCT_ENCODED = '%[A-Fa-f0-9]{2}'
@@ -59,9 +59,9 @@ COMPONENT_PATTERN_DICT = {
 # modified to ignore other matches that are not important to the parsing of
 # the reference so we can also simply use SRE_Match#groups.
 URL_PARSING_RE = (
-    '(?:(?P<scheme>{scheme}):)?(?://(?P<authority>{authority}))?'
-    '(?P<path>{path})(?:\?(?P<query>{query}))?'
-    '(?:#(?P<fragment>{fragment}))?'
+    r'(?:(?P<scheme>{scheme}):)?(?://(?P<authority>{authority}))?'
+    r'(?P<path>{path})(?:\?(?P<query>{query}))?'
+    r'(?:#(?P<fragment>{fragment}))?'
 ).format(**COMPONENT_PATTERN_DICT)
 
 
@@ -71,7 +71,7 @@ URL_PARSING_RE = (
 
 # Host patterns, see: http://tools.ietf.org/html/rfc3986#section-3.2.2
 # The pattern for a regular name, e.g.,  www.google.com, api.github.com
-REGULAR_NAME_RE = REG_NAME = '(({0})*|[{1}]*)'.format(
+REGULAR_NAME_RE = REG_NAME = '((?:{0}|[{1}])*)'.format(
     '%[0-9A-Fa-f]{2}', SUB_DELIMITERS_RE + UNRESERVED_RE
 )
 # The pattern for an IPv4 address, e.g., 192.168.255.255, 127.0.0.1,
@@ -107,7 +107,7 @@ variations = [
     '((%(hex)s:){0,6}%(hex)s)?::' % _subs,
 ]
 
-IPv6_RE = '(({0})|({1})|({2})|({3})|({4})|({5})|({6})|({7}))'.format(
+IPv6_RE = '(({0})|({1})|({2})|({3})|({4})|({5})|({6})|({7})|({8}))'.format(
     *variations
 )
 
@@ -120,7 +120,7 @@ IPv_FUTURE_RE = 'v[0-9A-Fa-f]+.[%s]+' % (
 ZONE_ID = '(?:[' + UNRESERVED_RE + ']|' + PCT_ENCODED + ')+'
 IPv6_ADDRZ_RE = IPv6_RE + '%25' + ZONE_ID
 
-IP_LITERAL_RE = '\[({0}|(?:{1})|{2})\]'.format(
+IP_LITERAL_RE = r'\[({0}|(?:{1})|{2})\]'.format(
     IPv6_RE,
     IPv6_ADDRZ_RE,
     IPv_FUTURE_RE,

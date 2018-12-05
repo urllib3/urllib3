@@ -40,15 +40,15 @@ if PY3:
     unicode = str  # Python 3.x
 
 
-def to_str(b, encoding):
+def to_str(b, encoding='utf-8'):
     """Ensure that b is text in the specified encoding."""
     if hasattr(b, 'decode') and not isinstance(b, unicode):
-        b = b.decode('utf-8')
+        b = b.decode(encoding)
     return b
 
 
-def to_bytes(s, encoding):
+def to_bytes(s, encoding='utf-8'):
     """Ensure that s is converted to bytes from the encoding."""
     if hasattr(s, 'encode') and not isinstance(s, bytes):
-        s = s.encode('utf-8')
+        s = s.encode(encoding)
     return s
