@@ -44,12 +44,11 @@ _const_compare_digest = getattr(hmac, 'compare_digest',
 # Borrow rfc3986's regular expressions for IPv4
 # and IPv6 addresses for use in is_ipaddress()
 _IP_ADDRESS_REGEX = re.compile(
-    r'^(?:%s|%s|%s|%s|%s)$' % (
+    r'^(?:%s|%s|%s|%s)$' % (
         abnf_regexp.IPv4_RE,
         abnf_regexp.IPv6_RE,
         abnf_regexp.IPv6_ADDRZ_RE,
-        abnf_regexp.IPv_FUTURE_RE,
-        abnf_regexp.IP_LITERAL_RE
+        abnf_regexp.IPv_FUTURE_RE
     )
 )
 
