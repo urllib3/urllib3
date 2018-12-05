@@ -251,9 +251,9 @@ class TestUtil(object):
          Url("http", host="127.0.0.1%0d%0aConnection%3a%20keep-alive")),
 
         # NodeJS unicode -> double dot
-        ("http://google.com/\uff2e\uff2e/abc", Url("http",
-                                                   host="google.com",
-                                                   path='/%ef%bc%ae%ef%bc%ae/abc'))
+        (u"http://google.com/\uff2e\uff2e/abc", Url("http",
+                                                    host="google.com",
+                                                    path='/%ef%bc%ae%ef%bc%ae/abc'))
     ]
 
     @pytest.mark.parametrize("url, expected_url", url_vulnerabilities)
