@@ -124,7 +124,7 @@ CIPHER_SUITES = [
 # Basically this is simple: for PROTOCOL_SSLv23 we turn it into a low of
 # TLSv1 and a high of TLSv1.2. For everything else, we pin to that version.
 _protocol_to_min_max = {
-    ssl.PROTOCOL_SSLv23: (SecurityConst.kTLSProtocol1, SecurityConst.kTLSProtocol12),
+    ssl.PROTOCOL_SSLv23: (SecurityConst.kTLSProtocol1, SecurityConst.kTLSProtocol13),
 }
 
 if hasattr(ssl, "PROTOCOL_SSLv2"):
@@ -146,6 +146,10 @@ if hasattr(ssl, "PROTOCOL_TLSv1_1"):
 if hasattr(ssl, "PROTOCOL_TLSv1_2"):
     _protocol_to_min_max[ssl.PROTOCOL_TLSv1_2] = (
         SecurityConst.kTLSProtocol12, SecurityConst.kTLSProtocol12
+    )
+if hasattr(ssl, "PROTOCOL_TLSv1_3"):
+    _protocol_to_min_max[ssl.PROTOCOL_TLSv1_3] = (
+        SecurityConst.kTLSProtocol13, SecurityConst.kTLSProtocol13
     )
 if hasattr(ssl, "PROTOCOL_TLS"):
     _protocol_to_min_max[ssl.PROTOCOL_TLS] = _protocol_to_min_max[ssl.PROTOCOL_SSLv23]
@@ -666,6 +670,25 @@ class WrappedSocket(object):
                 CoreFoundation.CFRelease(trust)
 
         return der_bytes
+
+    def version(self):
+        protocol = Security.SSLProtocol()
+        result = Security.SSLGetNegotiatedProtocolVersion(self.context, ctypes.byref(protocol))
+        _assert_no_error(result)
+        if protocol == SecurityConst.kTLSProtocol13:
+            return 'TLSv1.3'
+        elif protocol == SecurityConst.kTLSProtocol12:
+            return 'TLSv1.2'
+        elif protocol == SecurityConst.kTLSProtocol11:
+            return 'TLSv1.1'
+        elif protocol == SecurityConst.kTLSProtocol1:
+            return 'TLSv1'
+        elif protocol == SecurityConst.kSSLProtocol3:
+            return 'SSLv3'
+        elif protocol == SecurityConst.kSSLProtocol2:
+            return 'SSLv2'
+        else:
+            raise ssl.SSLError('Unknown TLS version: %r' % protocol)
 
     def _reuse(self):
         self._makefile_refs += 1

@@ -360,6 +360,9 @@ class WrappedSocket(object):
             'subjectAltName': get_subj_alt_name(x509)
         }
 
+    def version(self):
+        return self.connection.get_protocol_version_name()
+
     def _reuse(self):
         self._makefile_refs += 1
 

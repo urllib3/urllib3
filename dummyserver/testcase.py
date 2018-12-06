@@ -1,6 +1,7 @@
 import threading
 import unittest
 
+import ssl
 import pytest
 from tornado import ioloop, web
 
@@ -18,6 +19,22 @@ from dummyserver.proxy import ProxyHandler
 def consume_socket(sock, chunks=65536):
     while not sock.recv(chunks).endswith(b'\r\n\r\n'):
         pass
+
+
+def create_TLSv1_3_context():
+    context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    context.check_hostname = True
+    context.options |= ssl.OP_NO_SSLv2
+    context.options |= ssl.OP_NO_SSLv3
+    context.options |= ssl.OP_NO_TLSv1
+    context.options |= ssl.OP_NO_TLSv1_1
+    context.options |= ssl.OP_NO_TLSv1_2
+
+    context.load_cert_chain(
+        DEFAULT_CERTS["certfile"],
+        DEFAULT_CERTS["keyfile"]
+    )
+    return context
 
 
 class SocketDummyServerTestCase(unittest.TestCase):
@@ -115,13 +132,16 @@ class HTTPDummyServerTestCase(unittest.TestCase):
     scheme = 'http'
     host = 'localhost'
     host_alt = '127.0.0.1'  # Some tests need two hosts
-    certs = DEFAULT_CERTS
+
+    @classmethod
+    def certs(cls):
+        return DEFAULT_CERTS
 
     @classmethod
     def _start_server(cls):
         cls.io_loop = ioloop.IOLoop.current()
         app = web.Application([(r".*", TestingApp)])
-        cls.server, cls.port = run_tornado_app(app, cls.io_loop, cls.certs,
+        cls.server, cls.port = run_tornado_app(app, cls.io_loop, cls.certs(),
                                                cls.scheme, cls.host)
         cls.server_thread = run_loop_in_thread(cls.io_loop)
 
@@ -143,7 +163,10 @@ class HTTPDummyServerTestCase(unittest.TestCase):
 class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
     scheme = 'https'
     host = 'localhost'
-    certs = DEFAULT_CERTS
+
+    @classmethod
+    def certs(cls):
+        return DEFAULT_CERTS
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason='IPv6 not available')
@@ -207,3 +230,11 @@ class IPv6HTTPDummyProxyTestCase(HTTPDummyProxyTestCase):
 
     proxy_host = '::1'
     proxy_host_alt = '127.0.0.1'
+
+
+@pytest.mark.skipif(not hasattr(ssl, "OP_NO_TLSv1_3"), reason='TLS 1.3 not available')
+class TLS1_3HTTPSDummyServerTestCase(HTTPSDummyServerTestCase):
+
+    @classmethod
+    def certs(cls):
+        ctx = super().certs()
