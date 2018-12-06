@@ -3,7 +3,7 @@ import re
 from collections import namedtuple
 
 from ..exceptions import LocationParseError
-from ..packages import rfc3986
+from ..packages import six, rfc3986
 from ..packages.rfc3986.exceptions import RFC3986Exception
 
 
@@ -189,15 +189,21 @@ def parse_url(url):
         else:
             path = None
 
-    print(parse_result)
+    # Ensure that each part of the URL is a `str` for
+    # backwards compatbility.
+    def to_str(x):
+        if six.PY2 and isinstance(x, six.string_types):
+            return x.encode('utf-8')
+        return x
+
     return Url(
-        scheme=parse_result.scheme,
-        auth=parse_result.userinfo,
-        host=parse_result.hostname,
+        scheme=to_str(parse_result.scheme),
+        auth=to_str(parse_result.userinfo),
+        host=to_str(parse_result.hostname),
         port=parse_result.port,
-        path=path,
-        query=parse_result.query,
-        fragment=parse_result.fragment
+        path=to_str(path),
+        query=to_str(parse_result.query),
+        fragment=to_str(parse_result.fragment)
     )
 
 
