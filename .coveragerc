@@ -3,17 +3,16 @@ source =
     urllib3
 
 omit =
-    *urllib3/packages/*
-    *urllib3/contrib/appengine.py
-    *urllib3/contrib/ntlmpool.py
-    *urllib3/contrib/pyopenssl.py
-    *urllib3/contrib/securetransport.py
-    *urllib3/contrib/_securetransport/*
+    src/urllib3/packages/*
+    src/urllib3/contrib/appengine.py
+    src/urllib3/contrib/ntlmpool.py
+    src/urllib3/contrib/pyopenssl.py
+    src/urllib3/contrib/securetransport.py
+    src/urllib3/contrib/_securetransport/*
 
 [paths]
 source =
-   src/urllib3
-   .tox/*/site-packages/urllib3
+   src/
 
 [report]
 exclude_lines =
