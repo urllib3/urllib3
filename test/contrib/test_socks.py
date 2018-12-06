@@ -72,7 +72,8 @@ def _address_from_socket(sock):
     """
     addr_type = sock.recv(1)
 
-    print(addr_type)
+    print('socks addr type', addr_type)
+    print('inet_pton', hasattr(socket, 'inet_pton'))
 
     if addr_type == b'\x01':
         ipv4_addr = _read_exactly(sock, 4)
