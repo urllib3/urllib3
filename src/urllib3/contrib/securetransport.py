@@ -468,8 +468,7 @@ class WrappedSocket(object):
         # so we have to detect when we error out and try
         # setting TLS 1.3 if it's allowed.
         result = Security.SSLSetProtocolVersionMax(self.context, max_version)
-        print("err", result)
-        if result and max_version == SecurityConst.kTLSProtocolMaxSupported:
+        if result != 0 and max_version == SecurityConst.kTLSProtocolMaxSupported:
             result = Security.SSLSetProtocolVersionMax(self.context, SecurityConst.kTLSProtocol12)
         _assert_no_error(result)
 
@@ -683,17 +682,17 @@ class WrappedSocket(object):
         protocol = Security.SSLProtocol()
         result = Security.SSLGetNegotiatedProtocolVersion(self.context, ctypes.byref(protocol))
         _assert_no_error(result)
-        if protocol == SecurityConst.kTLSProtocol13:
+        if protocol.value == SecurityConst.kTLSProtocol13:
             return 'TLSv1.3'
-        elif protocol == SecurityConst.kTLSProtocol12:
+        elif protocol.value == SecurityConst.kTLSProtocol12:
             return 'TLSv1.2'
-        elif protocol == SecurityConst.kTLSProtocol11:
+        elif protocol.value == SecurityConst.kTLSProtocol11:
             return 'TLSv1.1'
-        elif protocol == SecurityConst.kTLSProtocol1:
+        elif protocol.value == SecurityConst.kTLSProtocol1:
             return 'TLSv1'
-        elif protocol == SecurityConst.kSSLProtocol3:
+        elif protocol.value == SecurityConst.kSSLProtocol3:
             return 'SSLv3'
-        elif protocol == SecurityConst.kSSLProtocol2:
+        elif protocol.value == SecurityConst.kSSLProtocol2:
             return 'SSLv2'
         else:
             raise ssl.SSLError('Unknown TLS version: %r' % protocol)
