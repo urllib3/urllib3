@@ -124,7 +124,7 @@ CIPHER_SUITES = [
 # Basically this is simple: for PROTOCOL_SSLv23 we turn it into a low of
 # TLSv1 and a high of TLSv1.2. For everything else, we pin to that version.
 _protocol_to_min_max = {
-    ssl.PROTOCOL_SSLv23: (SecurityConst.kTLSProtocol1, SecurityConst.kTLSProtocol13),
+    ssl.PROTOCOL_SSLv23: (SecurityConst.kTLSProtocol1, SecurityConst.kTLSProtocolMaxSupported),
 }
 
 if hasattr(ssl, "PROTOCOL_SSLv2"):
