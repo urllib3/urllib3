@@ -569,6 +569,10 @@ class TestHTTPS_TLSVersion(TestHTTPS):
     def test_tls_protocol_name_of_socket(self):
         conn = self._pool._get_conn()
         conn.connect()
+
+        if not hasattr(conn.sock, 'version'):
+            pytest.skip('SSLSocket.version() not available')
+
         self.assertEqual(conn.sock.version(), self.tls_protocol_name)
 
 
