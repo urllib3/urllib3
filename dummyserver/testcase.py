@@ -1,7 +1,6 @@
 import threading
 import unittest
 
-import ssl
 import pytest
 from tornado import ioloop, web
 
@@ -19,22 +18,6 @@ from dummyserver.proxy import ProxyHandler
 def consume_socket(sock, chunks=65536):
     while not sock.recv(chunks).endswith(b'\r\n\r\n'):
         pass
-
-
-def create_TLSv1_3_context():
-    context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    context.check_hostname = True
-    context.options |= ssl.OP_NO_SSLv2
-    context.options |= ssl.OP_NO_SSLv3
-    context.options |= ssl.OP_NO_TLSv1
-    context.options |= ssl.OP_NO_TLSv1_1
-    context.options |= ssl.OP_NO_TLSv1_2
-
-    context.load_cert_chain(
-        DEFAULT_CERTS["certfile"],
-        DEFAULT_CERTS["keyfile"]
-    )
-    return context
 
 
 class SocketDummyServerTestCase(unittest.TestCase):
@@ -230,11 +213,3 @@ class IPv6HTTPDummyProxyTestCase(HTTPDummyProxyTestCase):
 
     proxy_host = '::1'
     proxy_host_alt = '127.0.0.1'
-
-
-@pytest.mark.skipif(not hasattr(ssl, "OP_NO_TLSv1_3"), reason='TLS 1.3 not available')
-class TLS1_3HTTPSDummyServerTestCase(HTTPSDummyServerTestCase):
-
-    @classmethod
-    def certs(cls):
-        ctx = super().certs()

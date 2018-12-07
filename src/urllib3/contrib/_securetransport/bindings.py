@@ -516,6 +516,7 @@ class SecurityConst(object):
     kTLSProtocol1 = 4
     kTLSProtocol11 = 7
     kTLSProtocol12 = 8
+    kTLSProtocol13 = 10
 
     kSSLClientSide = 1
     kSSLStreamType = 0

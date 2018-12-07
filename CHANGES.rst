@@ -6,6 +6,8 @@ dev (master)
 
 * Implemented a more efficient ``HTTPResponse.__iter__()`` method (Issue #1483)
 
+* Added support for TLSv1.3 support for all ``HTTPSConnection`` implementations. (PR #1496)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
