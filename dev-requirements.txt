@@ -1,5 +1,5 @@
 mock==2.0.0
-coverage==4.5.1
+coverage==4.5.2
 tox==2.9.1
 wheel==0.30.0
 tornado==5.0.2
