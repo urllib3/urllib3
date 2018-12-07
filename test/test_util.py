@@ -1,3 +1,4 @@
+# coding: utf-8
 import hashlib
 import warnings
 import logging
@@ -152,12 +153,15 @@ class TestUtil(object):
         # Path/query/fragment
         ('', Url()),
         ('/', Url(path='/')),
+        ('/abc/../def', Url(path="/abc/../def")),
         ('#?/!google.com/?foo#bar', Url(path='', fragment='?/!google.com/?foo#bar')),
         ('/foo', Url(path='/foo')),
         ('/foo?bar=baz', Url(path='/foo', query='bar=baz')),
         ('/foo?bar=baz#banana?apple/orange', Url(path='/foo',
                                                  query='bar=baz',
                                                  fragment='banana?apple/orange')),
+        ('/redirect?target=http://localhost:61020/', Url(path='redirect',
+                                                         query='target=http://localhost:61020/')),
 
         # Port
         ('http://google.com/', Url('http', host='google.com', path='/')),
@@ -170,8 +174,7 @@ class TestUtil(object):
         ('http://foo:bar@baz@localhost/', Url('http',
                                               auth='foo:bar@baz',
                                               host='localhost',
-                                              path='/')),
-        ('http://@', Url('http', host=None, auth=''))
+                                              path='/'))
     ]
 
     non_round_tripping_parse_url_host_map = [
@@ -197,8 +200,12 @@ class TestUtil(object):
         assert url == expected_url.url
 
     def test_parse_url_invalid_IPv6(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(LocationParseError):
             parse_url('[::1')
+
+    def test_parse_url_negative_port(self):
+        with pytest.raises(LocationParseError):
+            parse_url("https://www.google.com:-80/")
 
     def test_Url_str(self):
         U = Url('http', host='google.com')
@@ -231,6 +238,31 @@ class TestUtil(object):
     @pytest.mark.parametrize('url, expected_netloc', url_netloc_map)
     def test_netloc(self, url, expected_netloc):
         assert parse_url(url).netloc == expected_netloc
+
+    url_vulnerabilities = [
+        # urlparse doesn't follow RFC 3986 Section 3.2
+        ("http://google.com#@evil.com/", Url("http",
+                                             host="google.com",
+                                             path="",
+                                             fragment="@evil.com/")),
+
+        # CVE-2016-5699
+        ("http://127.0.0.1%0d%0aConnection%3a%20keep-alive",
+         Url("http", host="127.0.0.1%0d%0aConnection%3a%20keep-alive")),
+
+        # NodeJS unicode -> double dot
+        (u"http://google.com/\uff2e\uff2e/abc", Url("http",
+                                                    host="google.com",
+                                                    path='/%ef%bc%ae%ef%bc%ae/abc'))
+    ]
+
+    @pytest.mark.parametrize("url, expected_url", url_vulnerabilities)
+    def test_url_vulnerabilities(self, url, expected_url):
+        if expected_url is False:
+            with pytest.raises(LocationParseError):
+                parse_url(url)
+        else:
+            assert parse_url(url) == expected_url
 
     @pytest.mark.parametrize('kwargs, expected', [
         ({'accept_encoding': True},
