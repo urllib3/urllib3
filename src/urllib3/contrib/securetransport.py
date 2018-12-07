@@ -44,6 +44,7 @@ from ._securetransport.low_level import (
     _assert_no_error, _cert_array_from_pem, _temporary_keychain,
     _load_client_cert_chain
 )
+from ._securetransport.bindings import version_info
 
 try:  # Platform-specific: Python 2
     from socket import _fileobject
@@ -147,7 +148,7 @@ if hasattr(ssl, "PROTOCOL_TLSv1_2"):
     _protocol_to_min_max[ssl.PROTOCOL_TLSv1_2] = (
         SecurityConst.kTLSProtocol12, SecurityConst.kTLSProtocol12
     )
-if hasattr(ssl, "PROTOCOL_TLSv1_3"):
+if hasattr(ssl, "PROTOCOL_TLSv1_3") and version_info >= (10, 13):
     _protocol_to_min_max[ssl.PROTOCOL_TLSv1_3] = (
         SecurityConst.kTLSProtocol13, SecurityConst.kTLSProtocol13
     )
@@ -462,7 +463,14 @@ class WrappedSocket(object):
         # Set the minimum and maximum TLS versions.
         result = Security.SSLSetProtocolVersionMin(self.context, min_version)
         _assert_no_error(result)
+
+        # TLS 1.3 isn't necessarily enabled by the OS
+        # so we have to detect when we error out and try
+        # setting TLS 1.3 if it's allowed.
         result = Security.SSLSetProtocolVersionMax(self.context, max_version)
+        print("err", result)
+        if result and max_version == SecurityConst.kTLSProtocolMaxSupported:
+            result = Security.SSLSetProtocolVersionMax(self.context, SecurityConst.kTLSProtocol12)
         _assert_no_error(result)
 
         # If there's a trust DB, we need to use it. We do that by telling
