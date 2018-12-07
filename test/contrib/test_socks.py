@@ -80,8 +80,7 @@ def _address_from_socket(sock):
         return socket.inet_ntop(socket.AF_INET6, ipv6_addr)
     elif addr_type == b'\x03':
         addr_len = ord(sock.recv(1))
-        data = _read_exactly(sock, addr_len)
-        return data
+        return _read_exactly(sock, addr_len)
     else:
         raise RuntimeError("Unexpected addr type: %r" % addr_type)
 
