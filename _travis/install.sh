@@ -21,6 +21,9 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     # The pip in older MacPython releases doesn't support a new enough TLS
     curl https://bootstrap.pypa.io/get-pip.py | sudo $PYTHON_EXE
     $PYTHON_EXE -m pip install virtualenv
+
+    # Enable TLS 1.3 on macOS
+    sudo defaults write /Library/Preferences/com.apple.networkd tcp_connect_enable_tls13 1
 else
     pip install virtualenv
 fi
