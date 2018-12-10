@@ -65,11 +65,11 @@ setup(name='urllib3',
       test_suite='test',
       extras_require={
           'secure': [
-              'pyOpenSSL >= 0.14',
+              'pyOpenSSL>=0.14',
               'cryptography>=1.3.4',
               'idna>=2.0.0',
               'certifi',
-              "ipaddress",
+              "ipaddress; python_version=='2.7'",
           ],
           'socks': [
               'PySocks>=1.5.6,<2.0,!=1.5.7',
