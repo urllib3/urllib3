@@ -123,7 +123,8 @@ CIPHER_SUITES = [
 ]
 
 # Basically this is simple: for PROTOCOL_SSLv23 we turn it into a low of
-# TLSv1 and a high of TLSv1.2. For everything else, we pin to that version.
+# TLSv1 and a high of TLSv1.3. For everything else, we pin to that version.
+# TLSv1 to 1.2 are supported on macOS 10.8+ and TLSv1.3 is macOS 10.13+
 _protocol_to_min_max = {
     ssl.PROTOCOL_SSLv23: (SecurityConst.kTLSProtocol1, SecurityConst.kTLSProtocolMaxSupported),
 }
@@ -466,7 +467,8 @@ class WrappedSocket(object):
 
         # TLS 1.3 isn't necessarily enabled by the OS
         # so we have to detect when we error out and try
-        # setting TLS 1.3 if it's allowed.
+        # setting TLS 1.3 if it's allowed. kTLSProtocolMaxSupported
+        # was added in macOS 10.13 along with kTLSProtocol13.
         result = Security.SSLSetProtocolVersionMax(self.context, max_version)
         if result != 0 and max_version == SecurityConst.kTLSProtocolMaxSupported:
             result = Security.SSLSetProtocolVersionMax(self.context, SecurityConst.kTLSProtocol12)
