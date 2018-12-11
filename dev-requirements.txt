@@ -3,7 +3,7 @@ coverage==4.5.1
 tox==2.9.1
 twine==1.11.0
 wheel==0.30.0
-tornado==5.0.2
+tornado==5.1.1
 PySocks==1.6.8
 pkginfo==1.4.2
 pytest-timeout==1.3.1
