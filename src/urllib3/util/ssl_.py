@@ -83,17 +83,15 @@ else:
 # - https://hynek.me/articles/hardening-your-web-servers-ssl-ciphers/
 #
 # The general intent is:
-# - Prefer TLS 1.3 cipher suites
 # - prefer cipher suites that offer perfect forward secrecy (DHE/ECDHE),
 # - prefer ECDHE over DHE for better performance,
 # - prefer any AES-GCM and ChaCha20 over any AES-CBC for better performance and
 #   security,
 # - prefer AES-GCM over ChaCha20 because hardware-accelerated AES is common,
 # - disable NULL authentication, MD5 MACs and DSS for security reasons.
+# - NOTE: TLS 1.3 ciphersuites are managed through a different interface
+#   not exposed by CPython (yet!) and are enabled by default if they're available.
 DEFAULT_CIPHERS = ':'.join([
-    'TLS13-AES-256-GCM-SHA384',
-    'TLS13-CHACHA20-POLY1305-SHA256',
-    'TLS13-AES-128-GCM-SHA256',
     'ECDH+AESGCM',
     'ECDH+CHACHA20',
     'DH+AESGCM',
