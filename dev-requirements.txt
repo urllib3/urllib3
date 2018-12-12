@@ -1,19 +1,24 @@
 mock==2.0.0
-coverage==4.5.1
+coverage==4.5.2
 twine==1.11.0
 wheel==0.30.0
 tornado==5.0.2
 PySocks==1.6.8
 pkginfo==1.4.2
-pytest-random-order==0.6.0
+pytest-random-order==1.0.4
 pytest-timeout==1.3.1
-pytest==3.6.4
+pytest==4.0.1
+pytest-cov==2.6.0
 tox==2.9.1
 h11==0.8.0
 cryptography==2.2.1
 trio==0.3.0
+# Our macOS Python 3.5 CI build is stuck with OpenSSL 0.9.8. While pip itself supports
+# TLS 1.2, extras like [tls] below result in easy_install fetching packages, but that
+# fails because easy_install uses OpenSSL 0.9.8 which only supports TLS 1.1
+# https://github.com/tox-dev/tox/issues/809#issuecomment-443436586
+twisted[tls]==17.9.0; os_name != 'nt' and (sys_platform != 'darwin' or python_version != '3.5')
 twisted[tls,windows_platform]==17.9.0; os_name == 'nt'
-twisted[tls]==17.9.0; os_name != 'nt'
 # https://github.com/GoogleCloudPlatform/python-repo-tools/issues/23
 pylint<2.0;python_version<="2.7"
 gcp-devrel-py-tools==0.0.15

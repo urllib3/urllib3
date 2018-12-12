@@ -4,47 +4,24 @@ set -e
 set -x
 
 if [[ "$(uname -s)" == 'Darwin' ]]; then
-    sw_vers
-    brew update || brew update
-
-    brew outdated openssl || brew upgrade openssl
-    brew install openssl@1.1
-
-    # install pyenv
-    git clone --depth 1 https://github.com/yyuu/pyenv.git ~/.pyenv
-    PYENV_ROOT="$HOME/.pyenv"
-    PATH="$PYENV_ROOT/bin:$PATH"
-    eval "$(pyenv init -)"
-
     case "${TOXENV}" in
-        py27)
-            pyenv install 2.7.14
-            pyenv global 2.7.14
-            ;;
-        py34)
-            pyenv install 3.4.7
-            pyenv global 3.4.7
-            ;;
-        py35)
-            pyenv install 3.5.4
-            pyenv global 3.5.4
-            ;;
-        py36)
-            pyenv install 3.6.3
-            pyenv global 3.6.3
-            ;;
-        py37)
-            pyenv install 3.7-dev
-            pyenv global 3.7-dev
-            ;;
-        pypy*)
-            pyenv install "pypy-5.4.1"
-            pyenv global "pypy-5.4.1"
-            ;;
+        py27) MACPYTHON=2.7.15 ;;
+        py34) MACPYTHON=3.4.4 ;;
+        py35) MACPYTHON=3.5.4 ;;
+        py36) MACPYTHON=3.6.7 ;;
+        py37) MACPYTHON=3.7.1 ;;
     esac
-    pyenv rehash
-    pip install -U setuptools
-    pip install --user virtualenv
+
+    MINOR=$(echo $MACPYTHON | cut -d. -f1,2)
+
+    curl -Lo macpython.pkg https://www.python.org/ftp/python/${MACPYTHON}/python-${MACPYTHON}-macosx10.6.pkg
+    sudo installer -pkg macpython.pkg -target /
+    ls /Library/Frameworks/Python.framework/Versions/$MINOR/bin/
+    PYTHON_EXE=/Library/Frameworks/Python.framework/Versions/$MINOR/bin/python$MINOR
+    # The pip in older MacPython releases doesn't support a new enough TLS
+    curl https://bootstrap.pypa.io/get-pip.py | sudo $PYTHON_EXE
+    $PYTHON_EXE -m pip install virtualenv
+    export PATH="/Library/Frameworks/Python.framework/Versions/$MINOR/bin":$PATH
 else
     pip install virtualenv
 fi

@@ -35,6 +35,8 @@ import ssl
 
 import pytest
 
+from test import fails_on_travis_gce
+
 
 class TestCookies(SocketDummyServerTestCase):
 
@@ -344,6 +346,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         finally:
             timed_out.set()
 
+    @pytest.mark.skip  # flaky in CI
     def test_timeout_errors_cause_retries(self):
         def socket_handler(listener):
             sock_timeout = listener.accept()[0]
@@ -386,6 +389,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         finally:
             socket.setdefaulttimeout(default_timeout)
 
+    @pytest.mark.skip  # flaky in CI
     def test_delayed_body_read_timeout(self):
         timed_out = Event()
 
@@ -602,6 +606,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             self.assertRaises(ProtocolError, response.read)
             self.assertEqual(poolsize, pool.pool.qsize())
 
+    @pytest.mark.skip  # flaky in CI
     def test_connection_closed_on_read_timeout_preload_false(self):
         timed_out = Event()
 
@@ -708,6 +713,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         if not successful:
             self.fail("Timed out waiting for connection close")
 
+    @pytest.mark.skip  # Flaky in CI
     def test_release_conn_param_is_respected_after_timeout_retry(self):
         """For successful ```urlopen()```, the connection isn't released, even
         after a retry.
@@ -1097,6 +1103,7 @@ class TestSSL(SocketDummyServerTestCase):
             pool.request('GET', '/', retries=0)
         self.assertIsInstance(cm.exception.reason, SSLError)
 
+    @pytest.mark.skip  # flaky in CI
     def test_ssl_read_timeout(self):
         timed_out = Event()
 
@@ -1333,6 +1340,7 @@ class TestHeaders(SocketDummyServerTestCase):
         self.assertEqual(expected_request_headers, actual_request_headers)
 
     @pytest.mark.xfail
+    @fails_on_travis_gce
     def test_request_host_header_ignores_fqdn_dot(self):
 
         received_headers = []
