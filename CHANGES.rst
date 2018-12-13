@@ -4,7 +4,9 @@ Changes
 dev (master)
 ------------
 
-* Implemented a more efficient ``HTTPResponse.__iter__()`` method (Issue #1483)
+* Implemented a more efficient ``HTTPResponse.__iter__()`` method. (Issue #1483)
+
+* Upgraded ``urllib3.utils.parse_url()`` to be RFC 3986 compliant. (Issue #)
 
 * Added support for ``key_password`` for ``HTTPSConnectionPool`` to use
   encrypted ``key_file`` without creating your own ``SSLContext`` object. (Pull #1489)
