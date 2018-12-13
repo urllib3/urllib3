@@ -1,5 +1,4 @@
 import json
-import socket
 import unittest
 
 import pytest
@@ -45,8 +44,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         conn = hc2._get_conn()
         self.addCleanup(conn.close)
         hc2._make_request(conn, 'GET', '/')
-        # XXX SyncBackend specific
-        tcp_nodelay_setting = conn._sock._sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
+        tcp_nodelay_setting = conn._sock._getsockopt_tcp_nodelay()
         self.assertEqual(tcp_nodelay_setting, 0,
                          ("Expected TCP_NODELAY for proxies to be set "
                           "to zero, instead was %s" % tcp_nodelay_setting))
