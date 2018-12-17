@@ -576,7 +576,7 @@ class TestHTTPS_TLSVersion(TestHTTPS):
         self.assertEqual(conn.sock.version(), self.tls_protocol_name)
 
     def test_tls_howsmyssl_ciphers(self):
-        http = PoolManager(**self.certs())
+        http = PoolManager(ssl_version=self.certs()['ssl_version'])
         r = http.request('GET', 'https://howsmyssl.com/a/check')
         print(r.data)
         assert False
