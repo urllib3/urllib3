@@ -27,7 +27,7 @@ from test import (
     fails_on_travis_gce,
     TARPIT_HOST,
 )
-from urllib3 import HTTPSConnectionPool
+from urllib3 import HTTPSConnectionPool, PoolManager
 from urllib3.connection import (
     VerifiedHTTPSConnection,
     UnverifiedHTTPSConnection,
@@ -576,7 +576,8 @@ class TestHTTPS_TLSVersion(TestHTTPS):
         self.assertEqual(conn.sock.version(), self.tls_protocol_name)
 
     def test_tls_howsmyssl_ciphers(self):
-        r = self._pool.request('GET', 'https://howsmyssl.com/a/check')
+        http = PoolManager(**self.certs())
+        r = http.request('GET', 'https://howsmyssl.com/a/check')
         print(r.data)
         assert False
 
