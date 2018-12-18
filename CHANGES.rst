@@ -6,7 +6,7 @@ dev (master)
 
 * Implemented a more efficient ``HTTPResponse.__iter__()`` method (Issue #1483)
 
-* Add support for TLSv1.3 support for CPython and SecureTransport ``SSLContext`` implementations. (PR #1496)
+* Add TLSv1.3 support to CPython and SecureTransport ``SSLContext`` implementations. (PR #1496)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
