@@ -8,6 +8,8 @@ dev (master)
 
 * Add TLSv1.3 support to CPython and SecureTransport ``SSLContext`` implementations. (PR #1496)
 
+* Add support for IPv6 addresses in subjectAltName section of certificates. (Issue #1269)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
