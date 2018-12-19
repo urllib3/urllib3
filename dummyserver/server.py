@@ -58,11 +58,16 @@ IPV6_ADDR_CERTS = {
     'certfile': os.path.join(CERTS_PATH, 'server.ipv6addr.crt'),
     'keyfile': os.path.join(CERTS_PATH, 'server.ipv6addr.key'),
 }
+IPV6_SAN_CERTS = {
+    'certfile': os.path.join(CERTS_PATH, 'server.ipv6_san.crt'),
+    'keyfile': DEFAULT_CERTS['keyfile']
+}
 DEFAULT_CA = os.path.join(CERTS_PATH, 'cacert.pem')
 DEFAULT_CA_BAD = os.path.join(CERTS_PATH, 'client_bad.pem')
 NO_SAN_CA = os.path.join(CERTS_PATH, 'cacert.no_san.pem')
 DEFAULT_CA_DIR = os.path.join(CERTS_PATH, 'ca_path_test')
 IPV6_ADDR_CA = os.path.join(CERTS_PATH, 'server.ipv6addr.crt')
+IPV6_SAN_CA = os.path.join(CERTS_PATH, 'server.ipv6_san.crt')
 COMBINED_CERT_AND_KEY = os.path.join(CERTS_PATH, 'server.combined.pem')
 
 

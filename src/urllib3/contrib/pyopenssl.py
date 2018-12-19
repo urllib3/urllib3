@@ -77,9 +77,12 @@ HAS_SNI = True
 
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
 _openssl_versions = {
-    ssl.PROTOCOL_SSLv23: OpenSSL.SSL.SSLv23_METHOD,
+    util.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,
     ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
 }
+
+if hasattr(ssl, 'PROTOCOL_SSLv3') and hasattr(OpenSSL.SSL, 'SSLv3_METHOD'):
+    _openssl_versions[ssl.PROTOCOL_SSLv3] = OpenSSL.SSL.SSLv3_METHOD
 
 if hasattr(ssl, 'PROTOCOL_TLSv1_1') and hasattr(OpenSSL.SSL, 'TLSv1_1_METHOD'):
     _openssl_versions[ssl.PROTOCOL_TLSv1_1] = OpenSSL.SSL.TLSv1_1_METHOD
@@ -87,10 +90,6 @@ if hasattr(ssl, 'PROTOCOL_TLSv1_1') and hasattr(OpenSSL.SSL, 'TLSv1_1_METHOD'):
 if hasattr(ssl, 'PROTOCOL_TLSv1_2') and hasattr(OpenSSL.SSL, 'TLSv1_2_METHOD'):
     _openssl_versions[ssl.PROTOCOL_TLSv1_2] = OpenSSL.SSL.TLSv1_2_METHOD
 
-try:
-    _openssl_versions.update({ssl.PROTOCOL_SSLv3: OpenSSL.SSL.SSLv3_METHOD})
-except AttributeError:
-    pass
 
 _stdlib_to_openssl_verify = {
     ssl.CERT_NONE: OpenSSL.SSL.VERIFY_NONE,
@@ -183,6 +182,10 @@ def _dnsname_to_stdlib(name):
             return idna.encode(name)
         except idna.core.IDNAError:
             return None
+
+    # Don't send IPv6 addresses through the IDNA encoder.
+    if ':' in name:
+        return name
 
     name = idna_encode(name)
     if name is None:

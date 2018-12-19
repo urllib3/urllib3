@@ -151,7 +151,7 @@ CIPHER_SUITES = [
 # TLSv1 and a high of TLSv1.3. For everything else, we pin to that version.
 # TLSv1 to 1.2 are supported on macOS 10.8+ and TLSv1.3 is macOS 10.13+
 _protocol_to_min_max = {
-    ssl.PROTOCOL_SSLv23: (SecurityConst.kTLSProtocol1, SecurityConst.kTLSProtocolMaxSupported),
+    util.PROTOCOL_TLS: (SecurityConst.kTLSProtocol1, SecurityConst.kTLSProtocolMaxSupported),
 }
 
 if hasattr(ssl, "PROTOCOL_SSLv2"):

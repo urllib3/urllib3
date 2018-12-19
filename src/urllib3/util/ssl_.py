@@ -43,17 +43,28 @@ _const_compare_digest = getattr(hmac, 'compare_digest',
 
 try:  # Test for SSL features
     import ssl
-    from ssl import wrap_socket, CERT_NONE, PROTOCOL_SSLv23
+    from ssl import wrap_socket, CERT_NONE
     from ssl import HAS_SNI  # Has SNI?
 except ImportError:
     pass
 
+try:  # Platform-specific: Python 3.6
+    from ssl import PROTOCOL_TLS
+    PROTOCOL_SSLv23 = PROTOCOL_TLS
+except ImportError:
+    try:
+        from ssl import PROTOCOL_SSLv23 as PROTOCOL_TLS
+        PROTOCOL_SSLv23 = PROTOCOL_TLS
+    except ImportError:
+        PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
+
 
 try:
-    from ssl import OP_NO_SSLv2, OP_NO_SSLv3, OP_NO_COMPRESSION
+    from ssl import OP_NO_SSLv2, OP_NO_SSLv3, OP_NO_COMPRESSION, OP_ALL
 except ImportError:
     OP_NO_SSLv2, OP_NO_SSLv3 = 0x1000000, 0x2000000
     OP_NO_COMPRESSION = 0x20000
+    OP_ALL = 0
 
 
 # Python 2.7 doesn't have inet_pton on non-Linux so we fallback on inet_aton in
@@ -89,7 +100,7 @@ else:
 #   security,
 # - prefer AES-GCM over ChaCha20 because hardware-accelerated AES is common,
 # - disable NULL authentication, MD5 MACs and DSS for security reasons.
-# - NOTE: TLS 1.3 ciphersuites are managed through a different interface
+# - NOTE: TLS 1.3 cipher suites are managed through a different interface
 #   not exposed by CPython (yet!) and are enabled by default if they're available.
 DEFAULT_CIPHERS = ':'.join([
     'ECDH+AESGCM',
@@ -105,6 +116,7 @@ DEFAULT_CIPHERS = ':'.join([
     '!aNULL',
     '!eNULL',
     '!MD5',
+    '!DSS',
 ])
 
 try:
@@ -117,7 +129,7 @@ except ImportError:
             self.check_hostname = False
             self.verify_mode = ssl.CERT_NONE
             self.ca_certs = None
-            self.options = 0
+            self.options = OP_ALL
             self.certfile = None
             self.keyfile = None
             self.ciphers = None
@@ -211,7 +223,7 @@ def resolve_ssl_version(candidate):
     like resolve_cert_reqs
     """
     if candidate is None:
-        return PROTOCOL_SSLv23
+        return PROTOCOL_TLS
 
     if isinstance(candidate, str):
         res = getattr(ssl, candidate, None)
@@ -257,7 +269,7 @@ def create_urllib3_context(ssl_version=None, cert_reqs=None,
         Constructed SSLContext object with specified options
     :rtype: SSLContext
     """
-    context = SSLContext(ssl_version or ssl.PROTOCOL_SSLv23)
+    context = SSLContext(ssl_version or PROTOCOL_TLS)
 
     context.set_ciphers(ciphers or DEFAULT_CIPHERS)
 
@@ -265,7 +277,8 @@ def create_urllib3_context(ssl_version=None, cert_reqs=None,
     cert_reqs = ssl.CERT_REQUIRED if cert_reqs is None else cert_reqs
 
     if options is None:
-        options = 0
+        # Work-arounds for bugs in other SSL implementations
+        options = OP_ALL
         # SSLv2 is easily broken and is considered harmful and dangerous
         options |= OP_NO_SSLv2
         # SSLv3 has several problems and is now dangerous
