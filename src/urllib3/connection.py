@@ -171,7 +171,7 @@ class HTTPConnection(_HTTPConnection, object):
 
     def _prepare_conn(self, conn):
         self.sock = conn
-        if self._tunnel_host:
+        if getattr(self, '_tunnel_host', None):
             # TODO: Fix tunnel so it doesn't depend on self.sock state.
             self._tunnel()
             # Mark this connection as not reusable
@@ -301,7 +301,8 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         conn = self._new_conn()
         hostname = self.host
 
-        if self._tunnel_host:
+        # Google App Engine's different HTTP lib may not define_tunnel_host.
+        if getattr(self, '_tunnel_host', None):
             self.sock = conn
             # Calls self._set_hostport(), so self.host is
             # self._tunnel_host below.
