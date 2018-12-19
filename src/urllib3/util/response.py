@@ -4,6 +4,7 @@ from ..packages.six.moves import http_client as httplib
 from ..exceptions import HeaderParsingError
 from ..contrib import _appengine_environ
 
+
 def is_fp_closed(obj):
     """
     Checks whether a given file-like object is closed.
