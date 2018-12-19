@@ -60,11 +60,10 @@ except ImportError:
 
 
 try:
-    from ssl import OP_NO_SSLv2, OP_NO_SSLv3, OP_NO_COMPRESSION, OP_ALL
+    from ssl import OP_NO_SSLv2, OP_NO_SSLv3, OP_NO_COMPRESSION
 except ImportError:
     OP_NO_SSLv2, OP_NO_SSLv3 = 0x1000000, 0x2000000
     OP_NO_COMPRESSION = 0x20000
-    OP_ALL = 0
 
 
 # Python 2.7 doesn't have inet_pton on non-Linux so we fallback on inet_aton in
@@ -129,7 +128,7 @@ except ImportError:
             self.check_hostname = False
             self.verify_mode = ssl.CERT_NONE
             self.ca_certs = None
-            self.options = OP_ALL
+            self.options = 0
             self.certfile = None
             self.keyfile = None
             self.ciphers = None
@@ -277,8 +276,7 @@ def create_urllib3_context(ssl_version=None, cert_reqs=None,
     cert_reqs = ssl.CERT_REQUIRED if cert_reqs is None else cert_reqs
 
     if options is None:
-        # Work-arounds for bugs in other SSL implementations
-        options = OP_ALL
+        options = 0
         # SSLv2 is easily broken and is considered harmful and dangerous
         options |= OP_NO_SSLv2
         # SSLv3 has several problems and is now dangerous
