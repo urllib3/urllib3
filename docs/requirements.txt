@@ -2,4 +2,4 @@
 ndg-httpsclient
 sphinx
 alabaster
-requests>=2.0,<2.16
+requests>=2

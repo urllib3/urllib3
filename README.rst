@@ -21,10 +21,6 @@ urllib3
         :alt: PyPI version
         :target: https://pypi.org/project/urllib3/
 
-.. image:: https://www.bountysource.com/badge/tracker?tracker_id=192525
-        :alt: Bountysource
-        :target: https://www.bountysource.com/trackers/192525-urllib3?utm_source=192525&utm_medium=shield&utm_campaign=TRACKER_BADGE
-
 .. image:: https://badges.gitter.im/python-urllib3/Lobby.svg
         :alt: Gitter
         :target: https://gitter.im/python-urllib3/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
@@ -98,7 +94,7 @@ Sponsorship
 -----------
 
 If your company benefits from this library, please consider `sponsoring its
-development <https://urllib3.readthedocs.io/en/latest/contributing.html#sponsorship>`_.
+development <https://urllib3.readthedocs.io/en/latest/contributing.html#sponsorship-project-grants>`_.
 
 Sponsors include:
 
