@@ -43,7 +43,7 @@ _const_compare_digest = getattr(hmac, 'compare_digest',
 
 try:  # Test for SSL features
     import ssl
-    from ssl import wrap_socket, CERT_NONE, PROTOCOL_SSLv23
+    from ssl import wrap_socket, CERT_REQUIRED, PROTOCOL_SSLv23
     from ssl import HAS_SNI  # Has SNI?
 except ImportError:
     pass
@@ -197,7 +197,7 @@ def resolve_cert_reqs(candidate):
     constant which can directly be passed to wrap_socket.
     """
     if candidate is None:
-        return CERT_NONE
+        return CERT_REQUIRED
 
     if isinstance(candidate, str):
         res = getattr(ssl, candidate, None)

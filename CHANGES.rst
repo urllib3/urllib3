@@ -6,6 +6,8 @@ dev (master)
 
 * Implemented a more efficient ``HTTPResponse.__iter__()`` method (Issue #1483)
 
+* Require and validate certificates by default when using HTTPS (Pull #1507)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

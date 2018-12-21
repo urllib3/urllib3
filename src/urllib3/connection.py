@@ -278,15 +278,13 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         """
         This method should only be called once, before the connection is used.
         """
-        # If cert_reqs is not provided, we can try to guess. If the user gave
-        # us a cert database, we assume they want to use it: otherwise, if
-        # they gave us an SSL Context object we should use whatever is set for
-        # it.
+        # If cert_reqs is not provided we'll assume CERT_REQUIRED unless also
+        # have an SSLContext object in which case we'll use its verify_mode.
         if cert_reqs is None:
-            if ca_certs or ca_cert_dir:
-                cert_reqs = 'CERT_REQUIRED'
-            elif self.ssl_context is not None:
+            if self.ssl_context is not None:
                 cert_reqs = self.ssl_context.verify_mode
+            else:
+                cert_reqs = resolve_cert_reqs(None)
 
         self.key_file = key_file
         self.cert_file = cert_file
