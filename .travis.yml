@@ -1,28 +1,40 @@
 language: python
-script:
-  - ./_travis/run.sh
+sudo: false
+
 before_install:
   - env
   - openssl version
   - python -c "import ssl; print(ssl.OPENSSL_VERSION)"
+
+install:
+  - ./_travis/install.sh
+
+script:
+  - ./_travis/run.sh
+
 after_success:
   - ./_travis/upload_coverage.sh
+
 cache:
   directories:
   - ${HOME}/.cache
-install:
-  - ./_travis/install.sh
+
 notifications:
   email: false
+
 env:
   global:
     - GAE_SDK_PATH=${HOME}/.cache/google_appengine
     - PYTHONWARNINGS=always::DeprecationWarning
+
+    - PYPI_USERNAME=shazow
+    - secure: ...  # PYPI_PASSWORD
+
   matrix:
     - TOXENV=flake8-py3
     - TOXENV=gae
     - TOXENV=docs
-# https://github.com/travis-ci/travis-ci/issues/4794
+
 matrix:
   include:
     - python: 2.7
@@ -59,6 +71,32 @@ matrix:
     - language: generic
       os: osx
       env: TOXENV=py37
+
   allow_failures:
   - python: pypy-5.4
-sudo: false
+
+deploy:
+  - provider: script
+    script: bash _travis/deploy.sh
+    skip_cleanup: true
+    on:
+      branch: master
+      repo: urllib3/urllib3
+      tags: true
+      python: 3.7
+
+  - provider: releases
+    api_key:
+      secure: ...  # GitHub access token
+    name: "$TRAVIS_TAG"
+    body: "Release $TRAVIS_TAG"
+    draft: true
+    skip_cleanup: true
+    file_glob: true
+    file: dist/*
+    overwrite: true
+    on:
+      branch: master
+      repo: urllib3/urllib3
+      tags: true
+      python: 3.7
