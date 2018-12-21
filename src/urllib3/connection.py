@@ -278,7 +278,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         """
         This method should only be called once, before the connection is used.
         """
-        # If cert_reqs is not provided we'll assume CERT_REQUIRED unless also
+        # If cert_reqs is not provided we'll assume CERT_REQUIRED unless we also
         # have an SSLContext object in which case we'll use its verify_mode.
         if cert_reqs is None:
             if self.ssl_context is not None:
