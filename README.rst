@@ -85,7 +85,7 @@ Maintainers
 -----------
 
 - `@theacodes <https://github.com/theacodes>`_ (Thea Flowers)
-- `@SethMichaelLarson <https://github.com/SethMichaelLarson>`_ (Seth M. Larson)
+- `@sethmlarson <https://github.com/sethmlarson>`_ (Seth M. Larson)
 - `@haikuginger <https://github.com/haikuginger>`_ (Jesse Shapiro)
 - `@lukasa <https://github.com/lukasa>`_ (Cory Benfield)
 - `@sigmavirus24 <https://github.com/sigmavirus24>`_ (Ian Cordasco)
@@ -103,6 +103,6 @@ development <https://urllib3.readthedocs.io/en/latest/contributing.html#sponsors
 Sponsors include:
 
 - Google Cloud Platform (2018-present), sponsors `@theacodes <https://github.com/theacodes>`_'s work on an ongoing basis
-- Abbott (2018-present), sponsors `@SethMichaelLarson <https://github.com/SethMichaelLarson>`_'s work on an ongoing basis
+- Abbott (2018-present), sponsors `@sethmlarson <https://github.com/sethmlarson>`_'s work on an ongoing basis
 - Akamai (2017-present), sponsors `@haikuginger <https://github.com/haikuginger>`_'s work on an ongoing basis
 - Hewlett Packard Enterprise (2016-2017), sponsored `@Lukasa’s <https://github.com/Lukasa>`_ work on urllib3
