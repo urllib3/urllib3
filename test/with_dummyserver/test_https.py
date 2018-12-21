@@ -609,14 +609,14 @@ class TestHTTPS_TLSv1_2(TestHTTPS_TLSVersion):
         return certs
 
 
-@pytest.mark.skipif(not hasattr(ssl, "PROTOCOL_TLSv1_3"), reason="Requires TLSv1.3 support")
+@pytest.mark.skipif(not getattr(ssl, "HAS_TLSv1_3", False), reason="Requires TLSv1.3 support")
 class TestHTTPS_TLSv1_3(TestHTTPS_TLSVersion):
     tls_protocol_name = 'TLSv1.3'
 
     @classmethod
     def certs(cls):
         certs = DEFAULT_CERTS.copy()
-        certs['ssl_version'] = ssl.PROTOCOL_TLSv1_3
+        certs['ssl_version'] = ssl.PROTOCOL_TLS  # No dedicated TLS 1.3 Protocol
         return certs
 
 
