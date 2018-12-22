@@ -10,7 +10,7 @@ fi
 if [ -n "${TOXENV}" ]; then
     tox
 else
-    downstream_script="${TRAVIS_BUILD_DIR}/.travis/downstream/${DOWNSTREAM}.sh"
+    downstream_script="${TRAVIS_BUILD_DIR}/_travis/downstream/${DOWNSTREAM}.sh"
     if [ ! -x "$downstream_script" ]; then
         exit 1
     fi
