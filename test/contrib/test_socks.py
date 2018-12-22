@@ -4,7 +4,7 @@ import socket
 from urllib3.contrib import socks
 from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
-from dummyserver.server import DEFAULT_CERTS
+from dummyserver.server import DEFAULT_CERTS, DEFAULT_CA
 from dummyserver.testcase import IPV4SocketDummyServerTestCase
 
 import pytest
@@ -715,7 +715,7 @@ class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
 
         self._start_server(request_handler)
         proxy_url = "socks5h://%s:%s" % (self.host, self.port)
-        pm = socks.SOCKSProxyManager(proxy_url, ca_certs=DEFAULT_CERTS['ca_certs'])
+        pm = socks.SOCKSProxyManager(proxy_url, ca_certs=DEFAULT_CA)
         self.addCleanup(pm.clear)
         response = pm.request('GET', 'https://localhost')
 
