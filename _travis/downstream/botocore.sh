@@ -11,7 +11,7 @@ case "${1}" in
         python scripts/ci/install
         ;;
     run)
-        cd requests
+        cd botocore
         python scripts/ci/run-tests
         ;;
     *)
