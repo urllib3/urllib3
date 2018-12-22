@@ -76,18 +76,12 @@ matrix:
     - python: 2.7
       env: DOWNSTREAM=requests
 
-    - python: 3.4
-      env: DOWNSTREAM=requests
-
     - python: 3.7
       env: DOWNSTREAM=requests
       dist: xenial
       sudo: required
 
     - python: 2.7
-      env: DOWNSTREAM=botocore
-
-    - python: 3.4
       env: DOWNSTREAM=botocore
 
     - python: 3.7
