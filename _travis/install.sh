@@ -25,6 +25,10 @@ else
     pip install virtualenv
 fi
 
+if [[ "$DOCKER" ]]; then
+  docker pull "$DOCKER" || docker pull "$DOCKER" || docker pull "$DOCKER"
+fi
+
 pip install tox
 
 if [[ "${TOXENV}" == "gae" ]]; then
