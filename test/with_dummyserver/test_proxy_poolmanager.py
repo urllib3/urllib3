@@ -28,7 +28,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.proxy_url = 'http://%s:%d' % (self.proxy_host, self.proxy_port)
 
     def test_basic_proxy(self):
-        http = proxy_from_url(self.proxy_url)
+        http = proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA)
         self.addCleanup(http.clear)
 
         r = http.request('GET', '%s/' % self.http_url)
@@ -66,7 +66,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             self.assertEqual(type(e.reason), ProxyError)
 
     def test_oldapi(self):
-        http = ProxyManager(connection_from_url(self.proxy_url))
+        http = ProxyManager(connection_from_url(self.proxy_url), ca_certs=DEFAULT_CA)
         self.addCleanup(http.clear)
 
         r = http.request('GET', '%s/' % self.http_url)
@@ -146,7 +146,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertNotEqual(r._pool.host, self.http_host_alt)
 
     def test_cross_protocol_redirect(self):
-        http = proxy_from_url(self.proxy_url)
+        http = proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA)
         self.addCleanup(http.clear)
 
         cross_protocol_location = '%s/echo?a=b' % self.https_url
@@ -166,7 +166,8 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_headers(self):
         http = proxy_from_url(self.proxy_url, headers={'Foo': 'bar'},
-                              proxy_headers={'Hickory': 'dickory'})
+                              proxy_headers={'Hickory': 'dickory'},
+                              ca_certs=DEFAULT_CA)
         self.addCleanup(http.clear)
 
         r = http.request_encode_url('GET', '%s/headers' % self.http_url)
@@ -189,13 +190,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertIsNone(returned_headers.get('Hickory'))
         self.assertEqual(returned_headers.get('Host'),
                          '%s:%s' % (self.https_host, self.https_port))
-
-        r = http.request_encode_url('GET', '%s/headers' % self.https_url_alt)
-        returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get('Foo'), 'bar')
-        self.assertIsNone(returned_headers.get('Hickory'))
-        self.assertEqual(returned_headers.get('Host'),
-                         '%s:%s' % (self.https_host_alt, self.https_port))
 
         r = http.request_encode_body('POST', '%s/headers' % self.http_url)
         returned_headers = json.loads(r.data.decode())
@@ -254,7 +248,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         self.assertEqual(returned_headers.get('Baz'), 'quux')
 
     def test_proxy_pooling(self):
-        http = proxy_from_url(self.proxy_url)
+        http = proxy_from_url(self.proxy_url, cert_reqs='NONE')
         self.addCleanup(http.clear)
 
         for x in range(2):
@@ -320,7 +314,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_scheme_host_case_insensitive(self):
         """Assert that upper-case schemes and hosts are normalized."""
-        http = proxy_from_url(self.proxy_url.upper())
+        http = proxy_from_url(self.proxy_url.upper(), ca_certs=DEFAULT_CA)
         self.addCleanup(http.clear)
 
         r = http.request('GET', '%s/' % self.http_url.upper())
@@ -342,7 +336,7 @@ class TestIPv6HTTPProxyManager(IPv6HTTPDummyProxyTestCase):
         self.proxy_url = 'http://[%s]:%d' % (self.proxy_host, self.proxy_port)
 
     def test_basic_ipv6_proxy(self):
-        http = proxy_from_url(self.proxy_url)
+        http = proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA)
         self.addCleanup(http.clear)
 
         r = http.request('GET', '%s/' % self.http_url)

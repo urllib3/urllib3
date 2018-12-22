@@ -405,7 +405,7 @@ class TestUtil(object):
         assert timeout.get_connect_duration() == 37
 
     @pytest.mark.parametrize('candidate, requirements', [
-        (None, ssl.CERT_NONE),
+        (None, ssl.CERT_REQUIRED),
         (ssl.CERT_NONE, ssl.CERT_NONE),
         (ssl.CERT_REQUIRED, ssl.CERT_REQUIRED),
         ('REQUIRED', ssl.CERT_REQUIRED),

@@ -715,7 +715,7 @@ class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
 
         self._start_server(request_handler)
         proxy_url = "socks5h://%s:%s" % (self.host, self.port)
-        pm = socks.SOCKSProxyManager(proxy_url)
+        pm = socks.SOCKSProxyManager(proxy_url, ca_certs=DEFAULT_CERTS['ca_certs'])
         self.addCleanup(pm.clear)
         response = pm.request('GET', 'https://localhost')
 

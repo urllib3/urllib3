@@ -59,7 +59,7 @@ log.addHandler(logging.StreamHandler(sys.stdout))
 
 class TestHTTPS(HTTPSDummyServerTestCase):
     def setUp(self):
-        self._pool = HTTPSConnectionPool(self.host, self.port)
+        self._pool = HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA)
         self.addCleanup(self._pool.close)
 
     def test_simple(self):
@@ -68,7 +68,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @fails_on_travis_gce
     def test_dotted_fqdn(self):
-        pool = HTTPSConnectionPool(self.host + '.', self.port)
+        pool = HTTPSConnectionPool(self.host + '.', self.port, ca_certs=DEFAULT_CA)
         r = pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
@@ -84,7 +84,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         )
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          key_file=client_key,
-                                         cert_file=client_cert)
+                                         cert_file=client_cert,
+                                         ca_certs=DEFAULT_CA)
         r = https_pool.request('GET', '/certificate')
         subject = json.loads(r.data.decode('utf-8'))
         assert subject['organizationalUnitName'].startswith(
@@ -97,7 +98,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         )
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_file=client_cert,
-                                         key_file=client_key)
+                                         key_file=client_key,
+                                         ca_certs=DEFAULT_CA)
         try:
             https_pool.request('GET', '/certificate', retries=False)
         except SSLError as e:
@@ -277,8 +279,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def test_unverified_ssl(self):
         """ Test that bare HTTPSConnection can connect, make requests """
-        pool = HTTPSConnectionPool(self.host, self.port)
-        pool.ConnectionCls = UnverifiedHTTPSConnection
+        pool = HTTPSConnectionPool(self.host, self.port, cert_reqs=ssl.CERT_NONE)
         self.addCleanup(pool.close)
 
         with mock.patch('warnings.warn') as warn:
@@ -518,15 +519,14 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     def test_enhanced_ssl_connection(self):
         fingerprint = '92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A'
 
-        conn = VerifiedHTTPSConnection(self.host, self.port)
-        self.addCleanup(conn.close)
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=DEFAULT_CA,
                                          assert_fingerprint=fingerprint)
         self.addCleanup(https_pool.close)
 
-        https_pool._make_request(conn, 'GET', '/')
+        r = https_pool.request('GET', '/')
+        assert r.status == 200
 
     @onlyPy279OrNewer
     def test_ssl_correct_system_time(self):
@@ -577,8 +577,8 @@ class TestHTTPS_TLSv1(HTTPSDummyServerTestCase):
 
     def test_set_cert_default_cert_required(self):
         conn = VerifiedHTTPSConnection(self.host, self.port)
-        conn.set_cert(ca_certs=DEFAULT_CA)
-        self.assertEqual(conn.cert_reqs, 'CERT_REQUIRED')
+        conn.set_cert()
+        self.assertEqual(conn.cert_reqs, ssl.CERT_REQUIRED)
 
 
 class TestHTTPS_NoSAN(HTTPSDummyServerTestCase):

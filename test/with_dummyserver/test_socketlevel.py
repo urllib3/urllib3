@@ -895,7 +895,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         self._start_server(echo_socket_handler)
         base_url = 'http://%s:%d' % (self.host, self.port)
 
-        proxy = proxy_from_url(base_url)
+        proxy = proxy_from_url(base_url, ca_certs=DEFAULT_CA)
         self.addCleanup(proxy.clear)
 
         url = 'https://{0}'.format(self.host)
@@ -939,7 +939,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         self._start_server(echo_socket_handler)
         base_url = 'http://%s:%d' % (self.host, self.port)
 
-        proxy = proxy_from_url(base_url)
+        proxy = proxy_from_url(base_url, cert_reqs='NONE')
         self.addCleanup(proxy.clear)
 
         url = 'https://[{0}]'.format(ipv6_addr)
@@ -993,8 +993,7 @@ class TestSSL(SocketDummyServerTestCase):
             ssl_sock = ssl.wrap_socket(sock,
                                        server_side=True,
                                        keyfile=DEFAULT_CERTS['keyfile'],
-                                       certfile=DEFAULT_CERTS['certfile'],
-                                       ca_certs=DEFAULT_CA)
+                                       certfile=DEFAULT_CERTS['certfile'])
 
             buf = b''
             while not buf.endswith(b'\r\n\r\n'):
@@ -1013,7 +1012,7 @@ class TestSSL(SocketDummyServerTestCase):
             ssl_sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPSConnectionPool(self.host, self.port)
+        pool = HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA)
         self.addCleanup(pool.close)
 
         response = pool.urlopen('GET', '/', retries=0, preload_content=False,
@@ -1103,7 +1102,7 @@ class TestSSL(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
 
-        pool = HTTPSConnectionPool(self.host, self.port)
+        pool = HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA)
         self.addCleanup(pool.close)
         response = pool.urlopen('GET', '/', retries=1)
         self.assertEqual(response.data, b'Success')
