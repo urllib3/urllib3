@@ -30,7 +30,6 @@ from test import (
 from urllib3 import HTTPSConnectionPool
 from urllib3.connection import (
     VerifiedHTTPSConnection,
-    UnverifiedHTTPSConnection,
     RECENT_DATE,
 )
 from urllib3.exceptions import (
