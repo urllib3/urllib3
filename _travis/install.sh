@@ -22,16 +22,10 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     curl https://bootstrap.pypa.io/get-pip.py | sudo $PYTHON_EXE
     $PYTHON_EXE -m pip install virtualenv
 else
-    pip install virtualenv
+    python -m pip install virtualenv
 fi
-
-if [[ "$DOCKER" ]]; then
-  docker pull "$DOCKER" || docker pull "$DOCKER" || docker pull "$DOCKER"
-fi
-
-pip install tox
 
 if [[ "${TOXENV}" == "gae" ]]; then
-    pip install gcp-devrel-py-tools
+    python -m pip install gcp-devrel-py-tools
     gcp-devrel-py-tools download-appengine-sdk "$(dirname ${GAE_SDK_PATH})"
 fi

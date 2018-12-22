@@ -8,6 +8,7 @@ if [[ "$(uname -s)" == "Darwin" && "$TOXENV" == "py27" ]]; then
 fi
 
 if [ -n "${TOXENV}" ]; then
+    python -m pip install tox
     tox
 else
     downstream_script="${TRAVIS_BUILD_DIR}/_travis/downstream/${DOWNSTREAM}.sh"
@@ -15,6 +16,6 @@ else
         exit 1
     fi
     $downstream_script install
-    pip install .
+    python -m pip install .
     $downstream_script run
 fi
