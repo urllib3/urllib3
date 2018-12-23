@@ -198,8 +198,6 @@ def parse_url(url):
             return None
         elif is_string and isinstance(x, six.binary_type):
             return x.decode('utf-8')
-        elif not is_string and isinstance(x, six.string_types):
-            return x.encode('utf-8')
         return x
 
     return Url(
