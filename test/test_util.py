@@ -177,8 +177,14 @@ class TestUtil(object):
                                               path='/')),
 
         # Unicode type (Python 2.x)
-        (u'http://foo:bar@localhost/', Url(u'http', auth=u'foo:bar', host=u'localhost', path=u'/')),
-        ('http://foo:bar@localhost/', Url('http', auth='foo:bar', host='localhost', path='/')),
+        (u'http://foo:bar@localhost/', Url(u'http',
+                                           auth=u'foo:bar',
+                                           host=u'localhost',
+                                           path=u'/')),
+        ('http://foo:bar@localhost/', Url('http',
+                                          auth='foo:bar',
+                                          host='localhost',
+                                          path='/')),
     ]
 
     non_round_tripping_parse_url_host_map = [
