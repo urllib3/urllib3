@@ -281,6 +281,19 @@ class TestUtil(object):
         url = parse_url(b"https://www.google.com/")
         assert url == Url('https', host='www.google.com', path='/')
 
+        assert isinstance(url.scheme, str)
+        assert isinstance(url.host, str)
+        assert isinstance(url.path, str)
+
+    @onlyPy2
+    def test_parse_url_unicode_python_2(self):
+        url = parse_url(u"https://www.google.com/")
+        assert url == Url(u'https', host=u'www.google.com', path=u'/')
+
+        assert isinstance(url.scheme, unicode)
+        assert isinstance(url.host, unicode)
+        assert isinstance(url.path, unicode)
+
     @onlyPy3
     def test_parse_url_bytes_type_error_python_3(self):
         with pytest.raises(TypeError):
