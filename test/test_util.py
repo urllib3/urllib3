@@ -290,9 +290,9 @@ class TestUtil(object):
         url = parse_url(u"https://www.google.com/")
         assert url == Url(u'https', host=u'www.google.com', path=u'/')
 
-        assert isinstance(url.scheme, unicode)
-        assert isinstance(url.host, unicode)
-        assert isinstance(url.path, unicode)
+        assert isinstance(url.scheme, six.text_type)
+        assert isinstance(url.host, six.text_type)
+        assert isinstance(url.path, six.text_type)
 
     @onlyPy3
     def test_parse_url_bytes_type_error_python_3(self):
