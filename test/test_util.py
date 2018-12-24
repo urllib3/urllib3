@@ -44,6 +44,8 @@ from urllib3.packages import six
 
 from . import clear_warnings
 
+from test import onlyPy3, onlyPy2
+
 # This number represents a time in seconds, it doesn't mean anything in
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller
 # numbers used for timeouts
@@ -174,7 +176,17 @@ class TestUtil(object):
         ('http://foo:bar@baz@localhost/', Url('http',
                                               auth='foo:bar@baz',
                                               host='localhost',
-                                              path='/'))
+                                              path='/')),
+
+        # Unicode type (Python 2.x)
+        (u'http://foo:bar@localhost/', Url(u'http',
+                                           auth=u'foo:bar',
+                                           host=u'localhost',
+                                           path=u'/')),
+        ('http://foo:bar@localhost/', Url('http',
+                                          auth='foo:bar',
+                                          host='localhost',
+                                          path='/')),
     ]
 
     non_round_tripping_parse_url_host_map = [
@@ -263,6 +275,29 @@ class TestUtil(object):
                 parse_url(url)
         else:
             assert parse_url(url) == expected_url
+
+    @onlyPy2
+    def test_parse_url_bytes_to_str_python_2(self):
+        url = parse_url(b"https://www.google.com/")
+        assert url == Url('https', host='www.google.com', path='/')
+
+        assert isinstance(url.scheme, str)
+        assert isinstance(url.host, str)
+        assert isinstance(url.path, str)
+
+    @onlyPy2
+    def test_parse_url_unicode_python_2(self):
+        url = parse_url(u"https://www.google.com/")
+        assert url == Url(u'https', host=u'www.google.com', path=u'/')
+
+        assert isinstance(url.scheme, six.text_type)
+        assert isinstance(url.host, six.text_type)
+        assert isinstance(url.path, six.text_type)
+
+    @onlyPy3
+    def test_parse_url_bytes_type_error_python_3(self):
+        with pytest.raises(TypeError):
+            parse_url(b"https://www.google.com/")
 
     @pytest.mark.parametrize('kwargs, expected', [
         ({'accept_encoding': True},
