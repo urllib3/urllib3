@@ -112,35 +112,33 @@ SSL_WRITE_BLOCKSIZE = 16384
 # individual cipher suites. We need to do this because this is how
 # SecureTransport wants them.
 CIPHER_SUITES = [
-    SecurityConst.TLS_AES_256_GCM_SHA384,
-    SecurityConst.TLS_CHACHA20_POLY1305_SHA256,
-    SecurityConst.TLS_AES_128_GCM_SHA256,
     SecurityConst.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
     SecurityConst.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
     SecurityConst.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
     SecurityConst.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-    SecurityConst.TLS_DHE_DSS_WITH_AES_256_GCM_SHA384,
+    SecurityConst.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+    SecurityConst.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
     SecurityConst.TLS_DHE_RSA_WITH_AES_256_GCM_SHA384,
-    SecurityConst.TLS_DHE_DSS_WITH_AES_128_GCM_SHA256,
     SecurityConst.TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
+    SecurityConst.TLS_CHACHA20_POLY1305_SHA256,
     SecurityConst.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384,
     SecurityConst.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,
     SecurityConst.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
     SecurityConst.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
     SecurityConst.TLS_DHE_RSA_WITH_AES_256_CBC_SHA256,
-    SecurityConst.TLS_DHE_DSS_WITH_AES_256_CBC_SHA256,
     SecurityConst.TLS_DHE_RSA_WITH_AES_256_CBC_SHA,
-    SecurityConst.TLS_DHE_DSS_WITH_AES_256_CBC_SHA,
     SecurityConst.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
     SecurityConst.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
     SecurityConst.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
     SecurityConst.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
     SecurityConst.TLS_DHE_RSA_WITH_AES_128_CBC_SHA256,
-    SecurityConst.TLS_DHE_DSS_WITH_AES_128_CBC_SHA256,
     SecurityConst.TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
-    SecurityConst.TLS_DHE_DSS_WITH_AES_128_CBC_SHA,
+    SecurityConst.TLS_AES_256_GCM_SHA384,
+    SecurityConst.TLS_AES_128_GCM_SHA256,
     SecurityConst.TLS_RSA_WITH_AES_256_GCM_SHA384,
     SecurityConst.TLS_RSA_WITH_AES_128_GCM_SHA256,
+    SecurityConst.TLS_AES_128_CCM_8_SHA256,
+    SecurityConst.TLS_AES_128_CCM_SHA256,
     SecurityConst.TLS_RSA_WITH_AES_256_CBC_SHA256,
     SecurityConst.TLS_RSA_WITH_AES_128_CBC_SHA256,
     SecurityConst.TLS_RSA_WITH_AES_256_CBC_SHA,
@@ -174,12 +172,6 @@ if hasattr(ssl, "PROTOCOL_TLSv1_2"):
     _protocol_to_min_max[ssl.PROTOCOL_TLSv1_2] = (
         SecurityConst.kTLSProtocol12, SecurityConst.kTLSProtocol12
     )
-if hasattr(ssl, "PROTOCOL_TLSv1_3") and version_info >= (10, 13):
-    _protocol_to_min_max[ssl.PROTOCOL_TLSv1_3] = (
-        SecurityConst.kTLSProtocol13, SecurityConst.kTLSProtocol13
-    )
-if hasattr(ssl, "PROTOCOL_TLS"):
-    _protocol_to_min_max[ssl.PROTOCOL_TLS] = _protocol_to_min_max[ssl.PROTOCOL_SSLv23]
 
 
 def inject_into_urllib3():

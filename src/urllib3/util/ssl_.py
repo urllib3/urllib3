@@ -98,7 +98,8 @@ else:
 # - prefer any AES-GCM and ChaCha20 over any AES-CBC for better performance and
 #   security,
 # - prefer AES-GCM over ChaCha20 because hardware-accelerated AES is common,
-# - disable NULL authentication, MD5 MACs and DSS for security reasons.
+# - disable NULL authentication, MD5 MACs, DSS, and other
+#   insecure ciphers for security reasons.
 # - NOTE: TLS 1.3 cipher suites are managed through a different interface
 #   not exposed by CPython (yet!) and are enabled by default if they're available.
 DEFAULT_CIPHERS = ':'.join([
@@ -116,6 +117,9 @@ DEFAULT_CIPHERS = ':'.join([
     '!eNULL',
     '!MD5',
     '!DSS',
+    '!PSK',
+    '!IDEA',
+    '!SEED',
 ])
 
 try:
