@@ -25,6 +25,10 @@ urllib3
         :alt: Gitter
         :target: https://gitter.im/python-urllib3/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
 
+.. image:: https://tidelift.com/badges/github/urllib3/urllib3
+        :alt: Tidelift Dependencies
+        :target: https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=docs
+
 urllib3 is a powerful, *sanity-friendly* HTTP client for Python. Much of the
 Python ecosystem already uses urllib3 and you should too.
 urllib3 brings many critical features that are missing from the Python
@@ -114,7 +118,7 @@ Sponsorship
        from the experts who know it best, while seamlessly integrating with existing
        tools.
 
-.. _Tidelift Subscription: https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=docs
+.. _Tidelift Subscription: https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=readme
 
 If your company benefits from this library, please consider `sponsoring its
 development <https://urllib3.readthedocs.io/en/latest/contributing.html#sponsorship-project-grants>`_.
