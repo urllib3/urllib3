@@ -77,6 +77,13 @@ urllib3 happily accepts contributions. Please see our
 for some tips on getting started.
 
 
+Security Disclosures
+--------------------
+
+To report a security vulnerability, please use the
+`Tidelift security contact <https://tidelift.com/security>`_.
+Tidelift will coordinate the fix and disclosure with maintainers.
+
 Maintainers
 -----------
 
@@ -92,6 +99,22 @@ Maintainers
 
 Sponsorship
 -----------
+
+.. |tideliftlogo| image:: https://nedbatchelder.com/pix/Tidelift_Logos_RGB_Tidelift_Shorthand_On-White_small.png
+   :width: 75
+   :alt: Tidelift
+
+.. list-table::
+   :widths: 10 100
+
+   * - |tideliftlogo|
+     - Professional support for urllib3 is available as part of the `Tidelift
+       Subscription`_.  Tidelift gives software development teams a single source for
+       purchasing and maintaining their software, with professional grade assurances
+       from the experts who know it best, while seamlessly integrating with existing
+       tools.
+
+.. _Tidelift Subscription: https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=docs
 
 If your company benefits from this library, please consider `sponsoring its
 development <https://urllib3.readthedocs.io/en/latest/contributing.html#sponsorship-project-grants>`_.
