@@ -104,26 +104,23 @@ else:
 #   not exposed by CPython (yet!) and are enabled by default if they're available.
 DEFAULT_CIPHERS = ':'.join([
     'ECDH+ECDSA+AESGCM',
-    'ECDH+AESGCM',
     'ECDH+ECDSA+CHACHA20',
+    'ECDH+AESGCM',
     'ECDH+CHACHA20',
-    'DH+AESGCM',
-    'DH+CHACHA20',
+    'DHE+AESGCM',
+    'DHE+CHACHA20',
     'ECDH+ECDSA+AES256',
-    'ECDH+AES256',
-    'DH+AES256',
     'ECDH+ECDSA+AES128',
+    'ECDH+AES256',
     'ECDH+AES128',
-    'DH+AES',
+    'DHE+AES256',
+    'DHE+AES',
     'RSA+AESGCM',
     'RSA+AES',
     '!aNULL',
     '!eNULL',
     '!MD5',
     '!DSS',
-    '!PSK',
-    '!IDEA',
-    '!SEED',
 ])
 
 try:
