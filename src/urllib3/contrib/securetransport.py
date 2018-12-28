@@ -69,7 +69,6 @@ from ._securetransport.low_level import (
     _assert_no_error, _cert_array_from_pem, _temporary_keychain,
     _load_client_cert_chain
 )
-from ._securetransport.bindings import version_info
 
 try:  # Platform-specific: Python 2
     from socket import _fileobject
