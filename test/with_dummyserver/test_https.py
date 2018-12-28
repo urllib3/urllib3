@@ -553,14 +553,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         return [x for x in w if not isinstance(x.message, ResourceWarning)]
 
-    def test_show_ciphers(self):
-        from urllib3 import PoolManager
-        import urllib3.util
-        http = PoolManager()
-        r = http.request('GET', 'https://howsmyssl.com/a/check')
-        print((urllib3.util.IS_SECURETRANSPORT, urllib3.util.IS_PYOPENSSL, r.data))
-        assert False
-
 
 class TestHTTPS_TLSVersion(TestHTTPS):
     tls_protocol_name = None
