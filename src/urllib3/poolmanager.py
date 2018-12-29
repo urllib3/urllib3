@@ -7,6 +7,7 @@ from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
 from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
+from .packages import six
 from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
 from .util.url import parse_url
@@ -342,12 +343,9 @@ class PoolManager(RequestMethods):
         # conn.is_same_host() which may use socket.gethostbyname() in the future.
         if (retries.remove_headers_on_redirect
                 and not conn.is_same_host(redirect_location)):
-            headers = kw['headers']
-            newheaders = {}
-            for k, v in iter(headers.items()):
-                if not k.lower() in retries.remove_headers_on_redirect:
-                    newheaders[k] = v
-            kw['headers'] = newheaders
+            for k in six.viewkeys(kw['headers'].copy()):
+                if k.lower() in retries.remove_headers_on_redirect:
+                    del kw['headers'][k]
 
         try:
             retries = retries.increment(method, url, response=response, _pool=conn)
