@@ -343,9 +343,10 @@ class PoolManager(RequestMethods):
         # conn.is_same_host() which may use socket.gethostbyname() in the future.
         if (retries.remove_headers_on_redirect
                 and not conn.is_same_host(redirect_location)):
-            for k in six.viewkeys(kw['headers'].copy()):
-                if k.lower() in retries.remove_headers_on_redirect:
-                    del kw['headers'][k]
+            headers = list(six.iterkeys(kw['headers']))
+            for header in headers:
+                if header.lower() in retries.remove_headers_on_redirect:
+                    kw['headers'].pop(header, None)
 
         try:
             retries = retries.increment(method, url, response=response, _pool=conn)
