@@ -151,7 +151,7 @@ class Retry(object):
 
     RETRY_AFTER_STATUS_CODES = frozenset([413, 429, 503])
 
-    DEFAULT_REDIRECT_HEADERS_BLACKLIST = frozenset(['Authorization'])
+    DEFAULT_REDIRECT_HEADERS_BLACKLIST = frozenset(['Authorization', 'Cookie'])
 
     #: Maximum backoff time.
     BACKOFF_MAX = 120
