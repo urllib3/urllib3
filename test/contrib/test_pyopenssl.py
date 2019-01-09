@@ -4,6 +4,7 @@ import unittest
 
 import mock
 import pytest
+import ssl
 
 try:
     from urllib3.contrib.pyopenssl import (
@@ -13,6 +14,8 @@ try:
     from OpenSSL.crypto import FILETYPE_PEM, load_certificate
 except ImportError:
     pass
+
+import urllib3
 
 
 def setup_module():
@@ -84,3 +87,13 @@ class TestPyOpenSSLHelpers(unittest.TestCase):
         self.assertEqual(mock_warning.call_count, 1)
         self.assertIsInstance(mock_warning.call_args[0][1],
                               x509.DuplicateExtension)
+
+class TestPyOpenSSLException(unittest.TestCase):
+    def test_load_verify_locations_exception(self):
+        """
+        Ensure PyOpenSSLContext.load_verify_locations raises ssl.SSLError, which is
+        later wrapped in urllib3.exceptions.SSLError.
+        """
+        with pytest.raises(urllib3.exceptions.SSLError) as exc:
+            urllib3.util.ssl_wrap_socket(None, ca_certs=os.devnull)
+        self.assertIsInstance(exc.value.args[0], ssl.SSLError)
