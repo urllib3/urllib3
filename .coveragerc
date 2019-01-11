@@ -12,9 +12,10 @@ omit =
 
 [paths]
 source =
-   src/urllib3
-   .tox/*/lib/python*/site-packages/urllib3
-   .tox/pypy*/site-packages/urllib3
+    src/urllib3
+    .tox/*/lib/python*/site-packages/urllib3
+    .tox\*\Lib\site-packages\urllib3
+    .tox/pypy*/site-packages/urllib3
 
 [report]
 exclude_lines =
