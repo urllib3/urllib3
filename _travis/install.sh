@@ -1,7 +1,6 @@
 #!/bin/bash
 
-set -e
-set -x
+set -exo pipefail
 
 if [[ "$(uname -s)" == 'Darwin' ]]; then
     case "${TOXENV}" in

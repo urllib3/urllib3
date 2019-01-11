@@ -1,7 +1,6 @@
 #!/bin/bash
 
-set -e
-set -x
+set -exo pipefail
 
 case "${1}" in
     install)

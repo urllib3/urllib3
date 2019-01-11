@@ -1,7 +1,6 @@
 #!/bin/bash
 
-set -e
-set -x
+set -exo pipefail
 
 source .tox/${TOXENV}/bin/activate
 pip install codecov

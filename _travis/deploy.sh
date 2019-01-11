@@ -1,8 +1,7 @@
 #!/bin/bash
 
-set -e
-set -x
+set -exo pipefail
 
-python -m pip install -U twine
-python setup.py sdist bdist_wheel
-twine upload dist/* -u $PYPI_USERNAME -p $PYPI_PASSWORD --skip-existing
+python3 -m pip install --upgrade twine
+python3 setup.py sdist bdist_wheel
+python3 -m twine upload dist/* -u $PYPI_USERNAME -p $PYPI_PASSWORD --skip-existing
