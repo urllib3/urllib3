@@ -66,6 +66,29 @@ Our test suite `runs continuously on Travis CI
 <https://travis-ci.org/urllib3/urllib3>`_ with every pull request.
 
 
+Releases
+--------
+
+A release candidate can be created by any contributor by creating a branch
+named ``release-x.x`` where ``x.x`` is the version of the proposed release.
+
+- Update ``CHANGES.rst`` and ``urllib3/__init__.py`` with the proper version number
+  and commit the changes to ``release-x.x``.
+- Open a pull request to merge the ``release-x.x`` branch into the ``master`` branch.
+- Integration tests are run against the release candidate on Travis. From here on all
+  the steps below will be handled by a maintainer so unless you receive review comments
+  you are done here.
+- Once the pull request is squash merged into master the merging maintainer the
+  pull request will tag the merge commit with the version number:
+
+  - ``git tag -a 1.24.1 [commit sha]``
+  - ``git push origin master --tags``
+
+- After the commit is tagged Travis will build the tagged commit and upload the sdist and wheel
+  to PyPI and create a draft release on GitHub for the tag. The merging maintainer will
+  ensure that the PyPI sdist and wheel are properly uploaded.
+- The merging maintainer will mark the draft release on GitHub as an approved release.
+
 Sponsorship
 -----------
 
