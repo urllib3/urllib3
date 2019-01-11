@@ -31,7 +31,7 @@ from .connection import (
     port_by_scheme,
     DummyConnection,
     HTTPConnection, HTTPSConnection, VerifiedHTTPSConnection,
-    HTTPException, BaseSSLError,
+    HTTPException, BaseSSLError, BrokenPipeError
 )
 from .request import RequestMethods
 from .response import HTTPResponse
@@ -352,7 +352,15 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if chunked:
             conn.request_chunked(method, url, **httplib_request_kw)
         else:
-            conn.request(method, url, **httplib_request_kw)
+            try:
+                conn.request(method, url, **httplib_request_kw)
+            except BrokenPipeError:  # Python 3
+                pass
+            except IOError as e:  # Python 2
+                if e.errno == errno.EPIPE:
+                    pass
+                else:
+                    raise
 
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
