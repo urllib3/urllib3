@@ -97,3 +97,4 @@ class TestPyOpenSSLException(unittest.TestCase):
         with pytest.raises(urllib3.exceptions.SSLError) as exc:
             urllib3.util.ssl_wrap_socket(None, ca_certs=os.devnull)
         self.assertIsInstance(exc.value.args[0], ssl.SSLError)
+        self.assertIn('unable to load trusted certificates', str(exc.value.args[0]))
