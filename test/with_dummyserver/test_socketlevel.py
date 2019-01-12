@@ -11,6 +11,7 @@ from urllib3.exceptions import (
         ProtocolError,
 )
 from urllib3.response import httplib
+from urllib3.util import ssl_wrap_socket
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util.timeout import Timeout
 from urllib3.util.retry import Retry
@@ -29,6 +30,7 @@ except ImportError:
         pass
 from collections import OrderedDict
 from threading import Event
+import os
 import select
 import socket
 import ssl
@@ -230,6 +232,16 @@ class TestClientCerts(SocketDummyServerTestCase):
                 "Expected server to reject connection due to missing client "
                 "certificates"
             )
+
+    def test_load_verify_locations_exception(self):
+        """
+        Ensure that load_verify_locations raises urllib3.exceptions.SSLError in
+        case of error.
+        """
+        with pytest.raises(SSLError) as exc:
+            ssl_wrap_socket(None, ca_certs=os.devnull)
+        self.assertIsInstance(exc.value.args[0], ssl.SSLError)
+        self.assertIn('unable to load trusted certificates', str(exc.value.args[0]))
 
 
 class TestSocketClosing(SocketDummyServerTestCase):
