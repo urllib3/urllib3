@@ -349,18 +349,20 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # conn.request() calls httplib.*.request, not the method in
         # urllib3.request. It also calls makefile (recv) on the socket.
-        if chunked:
-            conn.request_chunked(method, url, **httplib_request_kw)
-        else:
-            try:
+        try:
+            if chunked:
+                conn.request_chunked(method, url, **httplib_request_kw)
+            else:
                 conn.request(method, url, **httplib_request_kw)
-            except BrokenPipeError:  # Python 3
-                pass
-            except IOError as e:  # Python 2
-                if e.errno == errno.EPIPE:
-                    pass
-                else:
-                    raise
+
+        # We are shallowing BrokenPipeError (errno.EPIPE) since the server is
+        # legitimately able to close the connection after sending a valid response.
+        # With this behaviour, the received response is still readable.
+        except BrokenPipeError:  # Python 3
+            pass
+        except IOError as e:  # Python 2
+            if e.errno != errno.EPIPE:
+                raise
 
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
