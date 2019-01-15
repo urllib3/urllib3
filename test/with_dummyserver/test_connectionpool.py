@@ -774,6 +774,13 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         response = pool.request('GET', "http://LoCaLhOsT:%d/" % self.port)
         self.assertEqual(response.status, 200)
 
+    def test_broken_pipe_ignore(self):
+        resp = self.pool.urlopen('POST', '/admin', chunked=False)
+        assert resp.status == 401
+
+        resp = self.pool.urlopen('POST', '/admin', chunked=True)
+        assert resp.status == 401
+
 
 class TestRetry(HTTPDummyServerTestCase):
     def setUp(self):
@@ -1056,14 +1063,6 @@ class TestRedirectPoolSize(HTTPDummyServerTestCase):
         self.pool.urlopen('GET', '/redirect', preload_content=False)
         assert self.pool.num_connections == 1
 
-
-class TestBrokenPipeIgnore(HTTPDummyServerTestCase):
-    def setUp(self):
-        self.pool = HTTPConnectionPool(self.host, self.port)
-
-    def test_broken_pipe_ignore(self):
-        resp = self.pool.urlopen('POST', '/admin')
-        assert resp.status == 401
 
 if __name__ == '__main__':
     unittest.main()
