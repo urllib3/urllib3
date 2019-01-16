@@ -160,6 +160,8 @@ def parse_url(url):
         # Empty
         return Url()
 
+    is_string = not isinstance(url, six.binary_type)
+
     # RFC 3986 doesn't like URLs that have a host but don't start
     # with a scheme and we support URLs like that so we need to
     # detect that problem and add an empty scheme indication.
@@ -190,20 +192,24 @@ def parse_url(url):
             path = None
 
     # Ensure that each part of the URL is a `str` for
-    # backwards compatbility.
-    def to_str(x):
-        if six.PY2 and isinstance(x, six.string_types):
+    # backwards compatibility.
+    def to_input_type(x):
+        if x is None:
+            return None
+        elif is_string and isinstance(x, six.binary_type):
+            return x.decode('utf-8')
+        elif not is_string and not isinstance(x, six.binary_type):
             return x.encode('utf-8')
         return x
 
     return Url(
-        scheme=to_str(parse_result.scheme),
-        auth=to_str(parse_result.userinfo),
-        host=to_str(parse_result.hostname),
+        scheme=to_input_type(parse_result.scheme),
+        auth=to_input_type(parse_result.userinfo),
+        host=to_input_type(parse_result.hostname),
         port=parse_result.port,
-        path=to_str(path),
-        query=to_str(parse_result.query),
-        fragment=to_str(parse_result.fragment)
+        path=to_input_type(path),
+        query=to_input_type(parse_result.query),
+        fragment=to_input_type(parse_result.fragment)
     )
 
 

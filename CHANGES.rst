@@ -6,7 +6,9 @@ dev (master)
 
 * Implemented a more efficient ``HTTPResponse.__iter__()`` method. (Issue #1483)
 
-* Upgraded ``urllib3.utils.parse_url()`` to be RFC 3986 compliant. (Issue #)
+* Upgraded ``urllib3.utils.parse_url()`` to be RFC 3986 compliant. (Pull #1487)
+
+* Remove Authorization header regardless of case when redirecting to cross-site. (Issue #1510)
 
 * ... [Short description of non-trivial change.] (Issue #)
 

@@ -65,7 +65,6 @@ suite::
 Our test suite `runs continuously on Travis CI
 <https://travis-ci.org/urllib3/urllib3>`_ with every pull request.
 
-
 Releases
 --------
 
@@ -92,13 +91,24 @@ named ``release-x.x`` where ``x.x`` is the version of the proposed release.
 Sponsorship
 -----------
 
+.. |tideliftlogo| image:: https://nedbatchelder.com/pix/Tidelift_Logos_RGB_Tidelift_Shorthand_On-White_small.png
+   :width: 75
+   :alt: Tidelift
+
+.. list-table::
+   :widths: 10 100
+
+   * - |tideliftlogo|
+     - Professional support for urllib3 is available as part of the `Tidelift
+       Subscription`_.  Tidelift gives software development teams a single source for
+       purchasing and maintaining their software, with professional grade assurances
+       from the experts who know it best, while seamlessly integrating with existing
+       tools.
+
+.. _Tidelift Subscription: https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=docs
+
 Please consider sponsoring urllib3 development, especially if your company
 benefits from this library.
-
-We welcome your patronage on `Bountysource <https://www.bountysource.com/teams/urllib3>`_:
-
-* `Contribute a recurring amount to the team <https://salt.bountysource.com/checkout/amount?team=urllib3>`_
-* `Place a bounty on a specific feature <https://www.bountysource.com/teams/urllib3>`_
 
 Your contribution will go towards adding new features to urllib3 and making
 sure all functionality continues to meet our high quality standards.
@@ -107,21 +117,19 @@ We also welcome sponsorship in the form of time. We greatly appreciate companies
 who encourage employees to contribute on an ongoing basis during their work hours.
 Please let us know and we'll be glad to add you to our sponsors list!
 
-
-Project Grant
--------------
-
 A grant for contiguous full-time development has the biggest impact for
 progress. Periods of 3 to 10 days allow a contributor to tackle substantial
 complex issues which are otherwise left to linger until somebody can't afford
 to not fix them.
 
-Contact `@shazow <https://github.com/shazow>`_ to arrange a grant for a core
-contributor.
+Contact `@theacodes <https://github.com/theacodes>`_ or `@shazow <https://github.com/shazow>`_ 
+to arrange a grant for a core contributor.
 
 Huge thanks to all the companies and individuals who financially contributed to
 the development of urllib3. Please send a PR if you've donated and would like
 to be listed.
+
+* `GOVCERT.LU <https://govcert.lu/>`_ (October 23, 2018)
 
 * `Stripe <https://stripe.com/>`_ (June 23, 2014)
 
