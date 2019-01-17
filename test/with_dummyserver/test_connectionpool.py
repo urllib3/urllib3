@@ -17,7 +17,7 @@ from urllib3 import (
     encode_multipart_formdata,
     HTTPConnectionPool,
 )
-from urllib3.contrib.appengine import AppEngineManager
+from urllib3.contrib.appengine import is_appengine
 from urllib3.exceptions import (
     ConnectTimeoutError,
     EmptyPoolError,
@@ -780,7 +780,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         assert resp.status == 401
 
     def test_broken_pipe_ignore_chunked(self):
-        if isinstance(self.pool, AppEngineManager):
+        if is_appengine():
             self.skipTest("Google App Engine does not support chunked requests in URLFetch")
 
         resp = self.pool.urlopen('POST', '/admin', chunked=True)
