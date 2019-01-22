@@ -137,6 +137,17 @@ def requires_network(test):
     return wrapper
 
 
+def requires_ssl_context_keyfile_password(test):
+    @functools.wraps(test)
+    def wrapper(*args, **kwargs):
+        if ((not ssl_.IS_PYOPENSSL and sys.version_info < (2, 7, 9))
+                or ssl_.IS_SECURETRANSPORT):
+            pytest.skip("%s requires password parameter for "
+                        "SSLContext.load_cert_chain()" % test.__name__)
+        return test(*args, **kwargs)
+    return wrapper
+
+
 def fails_on_travis_gce(test):
     """Expect the test to fail on Google Compute Engine instances for Travis.
     Travis uses GCE for its sudo: enabled builds.

@@ -281,7 +281,7 @@ def create_urllib3_context(ssl_version=None, cert_reqs=None,
 def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                     ca_certs=None, server_hostname=None,
                     ssl_version=None, ciphers=None, ssl_context=None,
-                    ca_cert_dir=None):
+                    ca_cert_dir=None, key_password=None):
     """
     All arguments except for server_hostname, ssl_context, and ca_cert_dir have
     the same meaning as they do when using :func:`ssl.wrap_socket`.
@@ -297,6 +297,8 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         A directory containing CA certificates in multiple separate files, as
         supported by OpenSSL's -CApath flag or the capath argument to
         SSLContext.load_verify_locations().
+    :param key_password:
+        Optional password if the keyfile is encrypted.
     """
     context = ssl_context
     if context is None:
@@ -321,8 +323,17 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         # try to load OS default certs; works well on Windows (require Python3.4+)
         context.load_default_certs()
 
+    # Attempt to detect if we get the goofy behavior of the
+    # keyfile being encrypted and OpenSSL asking for the
+    # passphrase via the terminal and instead error out.
+    if keyfile and key_password is None and _is_key_file_encrypted(keyfile):
+        raise SSLError("Client private key is encrypted, password is required")
+
     if certfile:
-        context.load_cert_chain(certfile, keyfile)
+        if key_password is None:
+            context.load_cert_chain(certfile, keyfile)
+        else:
+            context.load_cert_chain(certfile, keyfile, key_password)
 
     # If we detect server_hostname is an IP address then the SNI
     # extension should not be used according to RFC3546 Section 3.1
@@ -356,5 +367,15 @@ def is_ipaddress(hostname):
     if six.PY3 and isinstance(hostname, bytes):
         # IDN A-label bytes are ASCII compatible.
         hostname = hostname.decode('ascii')
-
     return _IP_ADDRESS_REGEX.match(hostname) is not None
+
+
+def _is_key_file_encrypted(key_file):
+    """Detects if a key file is encrypted or not."""
+    with open(key_file, 'r') as f:
+        for line in f:
+            # Look for Proc-Type: 4,ENCRYPTED
+            if 'ENCRYPTED' in line:
+                return True
+
+    return False

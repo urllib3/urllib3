@@ -139,8 +139,8 @@ Once PySocks is installed, you can use
 
 .. _ssl_custom:
 
-Custom SSL certificates and client certificates
------------------------------------------------
+Custom SSL certificates
+-----------------------
 
 Instead of using `certifi <https://certifi.io/>`_ you can provide your
 own certificate authority bundle. This is useful for cases where you've
@@ -158,6 +158,11 @@ verified with that bundle will succeed. It's recommended to use a separate
 :class:`~poolmanager.PoolManager` to make requests to URLs that do not need
 the custom certificate.
 
+.. _ssl_client:
+
+Client certificates
+-------------------
+
 You can also specify a client certificate. This is useful when both the server
 and the client need to verify each other's identity. Typically these
 certificates are issued from the same authority. To use a client certificate,
@@ -167,6 +172,17 @@ provide the full path when creating a :class:`~poolmanager.PoolManager`::
     ...     cert_file='/path/to/your/client_cert.pem',
     ...     cert_reqs='CERT_REQUIRED',
     ...     ca_certs='/path/to/your/certificate_bundle')
+
+If you have an encrypted client certificate private key you can use
+the ``key_password`` parameter to specify a password to decrypt the key. ::
+
+    >>> http = urllib3.PoolManager(
+    ...     cert_file='/path/to/your/client_cert.pem',
+    ...     cert_reqs='CERT_REQUIRED',
+    ...     key_file='/path/to/your/client.key',
+    ...     key_password='keyfile_password')
+
+If your key isn't encrypted the ``key_password`` parameter isn't required.
 
 .. _ssl_mac:
 

@@ -434,7 +434,9 @@ class PyOpenSSLContext(object):
     def load_cert_chain(self, certfile, keyfile=None, password=None):
         self._ctx.use_certificate_chain_file(certfile)
         if password is not None:
-            self._ctx.set_passwd_cb(lambda max_length, prompt_twice, userdata: password)
+            if not isinstance(password, six.binary_type):
+                password = password.encode('utf-8')
+            self._ctx.set_passwd_cb(lambda *_: password)
         self._ctx.use_privatekey_file(keyfile or certfile)
 
     def wrap_socket(self, sock, server_side=False,
