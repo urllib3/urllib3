@@ -122,6 +122,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             PASSWORD_CLIENT_KEYFILE,
         )
         https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         ca_certs=DEFAULT_CA,
                                          key_file=client_key,
                                          cert_file=client_cert,
                                          key_password="letmein")
