@@ -117,6 +117,7 @@ def inject_into_urllib3():
 
     _validate_dependencies_met()
 
+    util.SSLContext = PyOpenSSLContext
     util.ssl_.SSLContext = PyOpenSSLContext
     util.HAS_SNI = HAS_SNI
     util.ssl_.HAS_SNI = HAS_SNI
@@ -127,6 +128,7 @@ def inject_into_urllib3():
 def extract_from_urllib3():
     'Undo monkey-patching by :func:`inject_into_urllib3`.'
 
+    util.SSLContext = orig_util_SSLContext
     util.ssl_.SSLContext = orig_util_SSLContext
     util.HAS_SNI = orig_util_HAS_SNI
     util.ssl_.HAS_SNI = orig_util_HAS_SNI
@@ -432,7 +434,9 @@ class PyOpenSSLContext(object):
     def load_cert_chain(self, certfile, keyfile=None, password=None):
         self._ctx.use_certificate_chain_file(certfile)
         if password is not None:
-            self._ctx.set_passwd_cb(lambda max_length, prompt_twice, userdata: password)
+            if not isinstance(password, six.binary_type):
+                password = password.encode('utf-8')
+            self._ctx.set_passwd_cb(lambda *_: password)
         self._ctx.use_privatekey_file(keyfile or certfile)
 
     def wrap_socket(self, sock, server_side=False,

@@ -17,13 +17,14 @@ from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
                                 DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS,
                                 NO_SAN_CERTS, NO_SAN_CA, DEFAULT_CA_DIR,
                                 IPV6_ADDR_CERTS, IPV6_ADDR_CA, HAS_IPV6,
-                                IP_SAN_CERTS)
+                                IP_SAN_CERTS, PASSWORD_CLIENT_KEYFILE)
 
 from test import (
     onlyPy279OrNewer,
     notSecureTransport,
     notOpenSSL098,
     requires_network,
+    requires_ssl_context_keyfile_password,
     fails_on_travis_gce,
     TARPIT_HOST,
 )
@@ -113,6 +114,38 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             # https://github.com/urllib3/urllib3/issues/1422
             if not ('An existing connection was forcibly closed by the remote host' in str(e)):
                 raise
+
+    @requires_ssl_context_keyfile_password
+    def test_client_key_password(self):
+        client_cert, client_key = (
+            DEFAULT_CLIENT_CERTS['certfile'],
+            PASSWORD_CLIENT_KEYFILE,
+        )
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         key_file=client_key,
+                                         cert_file=client_cert,
+                                         key_password="letmein")
+        r = https_pool.request('GET', '/certificate')
+        subject = json.loads(r.data.decode('utf-8'))
+        assert subject['organizationalUnitName'].startswith(
+            'Testing server cert')
+
+    @requires_ssl_context_keyfile_password
+    def test_client_encrypted_key_requires_password(self):
+        client_cert, client_key = (
+            DEFAULT_CLIENT_CERTS['certfile'],
+            PASSWORD_CLIENT_KEYFILE,
+        )
+        https_pool = HTTPSConnectionPool(self.host, self.port,
+                                         key_file=client_key,
+                                         cert_file=client_cert,
+                                         key_password=None)
+
+        with pytest.raises(MaxRetryError) as e:
+            https_pool.request('GET', '/certificate')
+
+        assert 'password is required' in str(e.value)
+        assert isinstance(e.value.reason, SSLError)
 
     def test_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,

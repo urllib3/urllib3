@@ -272,5 +272,8 @@ In chronological order:
 * Justin Bramley <https://github.com/jbramleycl>
   * Add ability to handle multiple Content-Encodings
 
+* Katsuhiko YOSHIDA <https://github.com/kyoshidajp>
+  * Remove Authorization header regardless of case when redirecting to cross-site
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

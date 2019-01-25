@@ -1,7 +1,10 @@
 from __future__ import absolute_import
+import re
 from collections import namedtuple
 
 from ..exceptions import LocationParseError
+from ..packages import six, rfc3986
+from ..packages.rfc3986.exceptions import RFC3986Exception
 
 
 url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
@@ -9,6 +12,9 @@ url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
 # We only want to normalize urls with an HTTP(S) scheme.
 # urllib3 infers URLs without a scheme (None) to be http.
 NORMALIZABLE_SCHEMES = ('http', 'https', None)
+
+# Regex for detecting URLs with schemes. RFC 3986 Section 3.1
+SCHEME_REGEX = re.compile(r"^[a-zA-Z][a-zA-Z0-9+\-.]*://")
 
 
 class Url(namedtuple('Url', url_attrs)):
@@ -98,6 +104,8 @@ class Url(namedtuple('Url', url_attrs)):
 
 def split_first(s, delims):
     """
+    Deprecated. No longer used by parse_url().
+
     Given a string and an iterable of delimiters, split on the first found
     delimiter. Return two split parts and the matched delimiter.
 
@@ -133,6 +141,9 @@ def parse_url(url):
     """
     Given a url, return a parsed :class:`.Url` namedtuple. Best-effort is
     performed to parse incomplete urls. Fields not provided will be None.
+    This parser is RFC 3986 compliant.
+
+    :param str url: URL to parse into a :class:`.Url` namedtuple.
 
     Partly backwards-compatible with :mod:`urlparse`.
 
@@ -145,81 +156,61 @@ def parse_url(url):
         >>> parse_url('/foo?bar')
         Url(scheme=None, host=None, port=None, path='/foo', query='bar', ...)
     """
-
-    # While this code has overlap with stdlib's urlparse, it is much
-    # simplified for our needs and less annoying.
-    # Additionally, this implementations does silly things to be optimal
-    # on CPython.
-
     if not url:
         # Empty
         return Url()
 
-    scheme = None
-    auth = None
-    host = None
-    port = None
-    path = None
-    fragment = None
-    query = None
+    is_string = not isinstance(url, six.binary_type)
 
-    # Scheme
-    if '://' in url:
-        scheme, url = url.split('://', 1)
+    # RFC 3986 doesn't like URLs that have a host but don't start
+    # with a scheme and we support URLs like that so we need to
+    # detect that problem and add an empty scheme indication.
+    # We don't get hurt on path-only URLs here as it's stripped
+    # off and given an empty scheme anyways.
+    if not SCHEME_REGEX.search(url):
+        url = "//" + url
 
-    # Find the earliest Authority Terminator
-    # (http://tools.ietf.org/html/rfc3986#section-3.2)
-    url, path_, delim = split_first(url, ['/', '?', '#'])
+    try:
+        parse_result = rfc3986.urlparse(url, encoding="utf-8")
+    except (ValueError, RFC3986Exception):
+        raise LocationParseError(url)
 
-    if delim:
-        # Reassemble the path
-        path = delim + path_
+    # RFC 3986 doesn't assert ports must be non-negative.
+    if parse_result.port and parse_result.port < 0:
+        raise LocationParseError(url)
 
-    # Auth
-    if '@' in url:
-        # Last '@' denotes end of auth part
-        auth, url = url.rsplit('@', 1)
-
-    # IPv6
-    if url and url[0] == '[':
-        host, url = url.split(']', 1)
-        host += ']'
-
-    # Port
-    if ':' in url:
-        _host, port = url.split(':', 1)
-
-        if not host:
-            host = _host
-
-        if port:
-            # If given, ports must be integers. No whitespace, no plus or
-            # minus prefixes, no non-integer digits such as ^2 (superscript).
-            if not port.isdigit():
-                raise LocationParseError(url)
-            try:
-                port = int(port)
-            except ValueError:
-                raise LocationParseError(url)
-        else:
-            # Blank ports are cool, too. (rfc3986#section-3.2.3)
-            port = None
-
-    elif not host and url:
-        host = url
-
+    # For the sake of backwards compatibility we put empty
+    # string values for path if there are any defined values
+    # beyond the path in the URL.
+    # TODO: Remove this when we break backwards compatibility.
+    path = parse_result.path
     if not path:
-        return Url(scheme, auth, host, port, path, query, fragment)
+        if (parse_result.query is not None
+                or parse_result.fragment is not None):
+            path = ""
+        else:
+            path = None
 
-    # Fragment
-    if '#' in path:
-        path, fragment = path.split('#', 1)
+    # Ensure that each part of the URL is a `str` for
+    # backwards compatibility.
+    def to_input_type(x):
+        if x is None:
+            return None
+        elif is_string and isinstance(x, six.binary_type):
+            return x.decode('utf-8')
+        elif not is_string and not isinstance(x, six.binary_type):
+            return x.encode('utf-8')
+        return x
 
-    # Query
-    if '?' in path:
-        path, query = path.split('?', 1)
-
-    return Url(scheme, auth, host, port, path, query, fragment)
+    return Url(
+        scheme=to_input_type(parse_result.scheme),
+        auth=to_input_type(parse_result.userinfo),
+        host=to_input_type(parse_result.hostname),
+        port=parse_result.port,
+        path=to_input_type(path),
+        query=to_input_type(parse_result.query),
+        fragment=to_input_type(parse_result.fragment)
+    )
 
 
 def get_host(url):

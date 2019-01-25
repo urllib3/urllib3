@@ -2,13 +2,14 @@ from __future__ import absolute_import
 import errno
 import warnings
 import hmac
-import socket
+import re
 
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
 from ..exceptions import SSLError, InsecurePlatformWarning, SNIMissingWarning
 from ..packages import six
+from ..packages.rfc3986 import abnf_regexp
 
 
 SSLContext = None
@@ -40,6 +41,16 @@ def _const_compare_digest_backport(a, b):
 _const_compare_digest = getattr(hmac, 'compare_digest',
                                 _const_compare_digest_backport)
 
+# Borrow rfc3986's regular expressions for IPv4
+# and IPv6 addresses for use in is_ipaddress()
+_IP_ADDRESS_REGEX = re.compile(
+    r'^(?:%s|%s|%s|%s)$' % (
+        abnf_regexp.IPv4_RE,
+        abnf_regexp.IPv6_RE,
+        abnf_regexp.IPv6_ADDRZ_RE,
+        abnf_regexp.IPv_FUTURE_RE
+    )
+)
 
 try:  # Test for SSL features
     import ssl
@@ -54,25 +65,6 @@ try:
 except ImportError:
     OP_NO_SSLv2, OP_NO_SSLv3 = 0x1000000, 0x2000000
     OP_NO_COMPRESSION = 0x20000
-
-
-# Python 2.7 doesn't have inet_pton on non-Linux so we fallback on inet_aton in
-# those cases. This means that we can only detect IPv4 addresses in this case.
-if hasattr(socket, 'inet_pton'):
-    inet_pton = socket.inet_pton
-else:
-    # Maybe we can use ipaddress if the user has urllib3[secure]?
-    try:
-        import ipaddress
-
-        def inet_pton(_, host):
-            if isinstance(host, bytes):
-                host = host.decode('ascii')
-            return ipaddress.ip_address(host)
-
-    except ImportError:  # Platform-specific: Non-Linux
-        def inet_pton(_, host):
-            return socket.inet_aton(host)
 
 
 # A secure default.
@@ -289,7 +281,7 @@ def create_urllib3_context(ssl_version=None, cert_reqs=None,
 def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
                     ca_certs=None, server_hostname=None,
                     ssl_version=None, ciphers=None, ssl_context=None,
-                    ca_cert_dir=None):
+                    ca_cert_dir=None, key_password=None):
     """
     All arguments except for server_hostname, ssl_context, and ca_cert_dir have
     the same meaning as they do when using :func:`ssl.wrap_socket`.
@@ -305,6 +297,8 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         A directory containing CA certificates in multiple separate files, as
         supported by OpenSSL's -CApath flag or the capath argument to
         SSLContext.load_verify_locations().
+    :param key_password:
+        Optional password if the keyfile is encrypted.
     """
     context = ssl_context
     if context is None:
@@ -329,8 +323,17 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
         # try to load OS default certs; works well on Windows (require Python3.4+)
         context.load_default_certs()
 
+    # Attempt to detect if we get the goofy behavior of the
+    # keyfile being encrypted and OpenSSL asking for the
+    # passphrase via the terminal and instead error out.
+    if keyfile and key_password is None and _is_key_file_encrypted(keyfile):
+        raise SSLError("Client private key is encrypted, password is required")
+
     if certfile:
-        context.load_cert_chain(certfile, keyfile)
+        if key_password is None:
+            context.load_cert_chain(certfile, keyfile)
+        else:
+            context.load_cert_chain(certfile, keyfile, key_password)
 
     # If we detect server_hostname is an IP address then the SNI
     # extension should not be used according to RFC3546 Section 3.1
@@ -364,16 +367,15 @@ def is_ipaddress(hostname):
     if six.PY3 and isinstance(hostname, bytes):
         # IDN A-label bytes are ASCII compatible.
         hostname = hostname.decode('ascii')
+    return _IP_ADDRESS_REGEX.match(hostname) is not None
 
-    families = [socket.AF_INET]
-    if hasattr(socket, 'AF_INET6'):
-        families.append(socket.AF_INET6)
 
-    for af in families:
-        try:
-            inet_pton(af, hostname)
-        except (socket.error, ValueError, OSError):
-            pass
-        else:
-            return True
+def _is_key_file_encrypted(key_file):
+    """Detects if a key file is encrypted or not."""
+    with open(key_file, 'r') as f:
+        for line in f:
+            # Look for Proc-Type: 4,ENCRYPTED
+            if 'ENCRYPTED' in line:
+                return True
+
     return False
