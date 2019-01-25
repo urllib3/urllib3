@@ -208,9 +208,9 @@ Certificate verification
 
 While you can disable certification verification, it is highly recommend to leave it on.
 
-For certificate verification to work properly you will need a set of root certificates. Unless otherwise
-specified urllib3 will try to load the default system certificate stores. The most reliable cross-platform
-method is to use the `certifi <https://certifi.io/>`_ package which provides Mozilla's root certificate bundle::
+Unless otherwise specified urllib3 will try to load the default system certificate stores.
+The most reliable cross-platform method is to use the `certifi <https://certifi.io/>`_
+package which provides Mozilla's root certificate bundle::
 
     pip install certifi
 
