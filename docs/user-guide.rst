@@ -204,13 +204,11 @@ Certificate verification
 
  .. note:: *New in version 1.25*
 
-    HTTPS connections are now verified by default
-    (``cert_reqs = 'CERT_REQUIRED'``) regardless of whether
-    CA certs are specified.
+    HTTPS connections are now verified by default (``cert_reqs = 'CERT_REQUIRED'``).
 
-It is highly recommended to always use SSL certificate verification.
+While you can disable certification verification, it is highly recommend to leave it on.
 
-In order to enable verification you will need a set of root certificates. The easiest
+In order to enable certificate verification you will need a set of root certificates. The easiest
 and most reliable method is to use the `certifi <https://certifi.io/>`_ package which provides Mozilla's root certificate bundle::
 
     pip install certifi
