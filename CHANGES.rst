@@ -16,6 +16,8 @@ dev (master)
 * Fixed issue where OpenSSL would block if an encrypted client private key was
   given and no password was given. Instead an ``SSLError`` is raised. (Pull #1489)
 
+* Require and validate certificates by default when using HTTPS (Pull #1507)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

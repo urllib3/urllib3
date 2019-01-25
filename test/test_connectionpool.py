@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import ssl
 import pytest
 
 from urllib3.connectionpool import (
@@ -350,7 +351,7 @@ class TestConnectionPool(object):
     def test_ca_certs_default_cert_required(self):
         with connection_from_url('https://google.com:80', ca_certs=DEFAULT_CA) as pool:
             conn = pool._get_conn()
-            assert conn.cert_reqs == 'CERT_REQUIRED'
+            assert conn.cert_reqs == ssl.CERT_REQUIRED
 
     def test_cleanup_on_extreme_connection_error(self):
         """
