@@ -134,7 +134,9 @@ class TestUtil(object):
     @pytest.mark.parametrize('url', [
         'http://user\\@google.com',
         'http://google\\.com',
-        'user\\@google.com'
+        'user\\@google.com',
+        'http://google.com#fragment#',
+        'http://user@user@google.com/',
     ])
     def test_invalid_url(self, url):
         with pytest.raises(LocationParseError):
@@ -279,8 +281,6 @@ class TestUtil(object):
         # Scheme without ://
         ("javascript:a='@google.com:12345/';alert(0)", Url(scheme="javascript",
                                                            path="a='@google.com:12345/';alert(0)")),
-
-        # Authority containing invalid characters
     ]
 
     @pytest.mark.parametrize("url, expected_url", url_vulnerabilities)
