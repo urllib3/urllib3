@@ -321,16 +321,18 @@ class HTTPResponse(io.IOBase):
         """
         Decode the data passed in and potentially flush the decoder.
         """
+        if not decode_content:
+            return data
+
         try:
-            if decode_content and self._decoder:
+            if self._decoder:
                 data = self._decoder.decompress(data)
         except (IOError, zlib.error) as e:
             content_encoding = self.headers.get('content-encoding', '').lower()
             raise DecodeError(
                 "Received response with content-encoding: %s, but "
                 "failed to decode it." % content_encoding, e)
-
-        if flush_decoder and decode_content:
+        if flush_decoder:
             data += self._flush_decoder()
 
         return data
