@@ -4,7 +4,8 @@ from collections import namedtuple
 
 from ..exceptions import LocationParseError
 from ..packages import six, rfc3986
-from ..packages.rfc3986.exceptions import RFC3986Exception
+from ..packages.rfc3986.exceptions import RFC3986Exception, ValidationError
+from ..packages.rfc3986.validators import Validator
 
 
 url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
@@ -14,12 +15,12 @@ url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
 NORMALIZABLE_SCHEMES = ('http', 'https', None)
 
 # Regex for detecting URLs with schemes. RFC 3986 Section 3.1
-SCHEME_REGEX = re.compile(r"^[a-zA-Z][a-zA-Z0-9+\-.]*://")
+SCHEME_REGEX = re.compile(r"^[a-zA-Z][a-zA-Z0-9+\-]*:")
 
 
 class Url(namedtuple('Url', url_attrs)):
     """
-    Datastructure for representing an HTTP URL. Used as a return value for
+    Data structure for representing an HTTP URL. Used as a return value for
     :func:`parse_url`. Both the scheme and host are normalized as they are
     both case-insensitive according to RFC 3986.
     """
@@ -175,6 +176,15 @@ def parse_url(url):
     except (ValueError, RFC3986Exception):
         raise LocationParseError(url)
 
+    # Run validator on the internal URIReference within the ParseResult
+    validator = Validator()
+    try:
+        validator.check_validity_of(
+            *validator.COMPONENT_NAMES
+        ).validate(parse_result.reference)
+    except ValidationError:
+        raise LocationParseError(url)
+
     # RFC 3986 doesn't assert ports must be non-negative.
     if parse_result.port and parse_result.port < 0:
         raise LocationParseError(url)
@@ -196,8 +206,6 @@ def parse_url(url):
     def to_input_type(x):
         if x is None:
             return None
-        elif is_string and isinstance(x, six.binary_type):
-            return x.decode('utf-8')
         elif not is_string and not isinstance(x, six.binary_type):
             return x.encode('utf-8')
         return x

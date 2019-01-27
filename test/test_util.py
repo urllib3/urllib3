@@ -131,6 +131,15 @@ class TestUtil(object):
         with pytest.raises(LocationParseError):
             get_host(location)
 
+    @pytest.mark.parametrize('url', [
+        'http://user\\@google.com',
+        'http://google\\.com',
+        'user\\@google.com'
+    ])
+    def test_invalid_url(self, url):
+        with pytest.raises(LocationParseError):
+            parse_url(url)
+
     @pytest.mark.parametrize('url, expected_normalized_url', [
         ('HTTP://GOOGLE.COM/MAIL/', 'http://google.com/MAIL/'),
         ('HTTP://JeremyCline:Hunter2@Example.com:8080/',
@@ -156,7 +165,7 @@ class TestUtil(object):
         ('', Url()),
         ('/', Url(path='/')),
         ('/abc/../def', Url(path="/abc/../def")),
-        ('#?/!google.com/?foo#bar', Url(path='', fragment='?/!google.com/?foo#bar')),
+        ('#?/!google.com/?foo', Url(path='', fragment='?/!google.com/?foo')),
         ('/foo', Url(path='/foo')),
         ('/foo?bar=baz', Url(path='/foo', query='bar=baz')),
         ('/foo?bar=baz#banana?apple/orange', Url(path='/foo',
@@ -173,10 +182,10 @@ class TestUtil(object):
         # Auth
         ('http://foo:bar@localhost/', Url('http', auth='foo:bar', host='localhost', path='/')),
         ('http://foo@localhost/', Url('http', auth='foo', host='localhost', path='/')),
-        ('http://foo:bar@baz@localhost/', Url('http',
-                                              auth='foo:bar@baz',
-                                              host='localhost',
-                                              path='/')),
+        ('http://foo:bar@localhost/', Url('http',
+                                          auth='foo:bar',
+                                          host='localhost',
+                                          path='/')),
 
         # Unicode type (Python 2.x)
         (u'http://foo:bar@localhost/', Url(u'http',
@@ -265,7 +274,13 @@ class TestUtil(object):
         # NodeJS unicode -> double dot
         (u"http://google.com/\uff2e\uff2e/abc", Url("http",
                                                     host="google.com",
-                                                    path='/%ef%bc%ae%ef%bc%ae/abc'))
+                                                    path='/%ef%bc%ae%ef%bc%ae/abc')),
+
+        # Scheme without ://
+        ("javascript:a='@google.com:12345/';alert(0)", Url(scheme="javascript",
+                                                           path="a='@google.com:12345/';alert(0)")),
+
+        # Authority containing invalid characters
     ]
 
     @pytest.mark.parametrize("url, expected_url", url_vulnerabilities)
