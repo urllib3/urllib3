@@ -13,6 +13,12 @@ environment:
       TOXENV: "py27"
       TOXPY27: "%PYTHON%\\python.exe"
 
+    - PYTHON: "C:\\Python27-x64"
+      PYTHON_VERSION: "2.7.x"
+      PYTHON_ARCH: "64"
+      TOXENV: "py27-nobrotli"
+      TOXPY27: "%PYTHON%\\python.exe"
+
     - PYTHON: "C:\\Python34-x64"
       PYTHON_VERSION: "3.4.x"
       PYTHON_ARCH: "64"
@@ -35,6 +41,12 @@ environment:
       PYTHON_VERSION: "3.7.x"
       PYTHON_ARCH: "64"
       TOXENV: "py37"
+      TOXPY37: "%PYTHON%\\python.exe"
+
+    - PYTHON: "C:\\Python37-x64"
+      PYTHON_VERSION: "3.7.x"
+      PYTHON_ARCH: "64"
+      TOXENV: "py37-nobrotli"
       TOXPY37: "%PYTHON%\\python.exe"
 
 cache:
