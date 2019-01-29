@@ -6,6 +6,7 @@ from ..exceptions import LocationParseError
 from ..packages import six, rfc3986
 from ..packages.rfc3986.exceptions import RFC3986Exception, ValidationError
 from ..packages.rfc3986.validators import Validator
+from ..packages.rfc3986.normalizers import normalize_host
 
 
 url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
@@ -172,31 +173,30 @@ def parse_url(url):
         url = "//" + url
 
     try:
-        parse_result = rfc3986.urlparse(url, encoding="utf-8")
+        uri_ref = rfc3986.URIReference.from_string(url, encoding="utf-8")
     except (ValueError, RFC3986Exception):
         raise LocationParseError(url)
+
+    if uri_ref.scheme in NORMALIZABLE_SCHEMES:
+        uri_ref = uri_ref.normalize()
 
     # Run validator on the internal URIReference within the ParseResult
     validator = Validator()
     try:
         validator.check_validity_of(
             *validator.COMPONENT_NAMES
-        ).validate(parse_result.reference)
+        ).validate(uri_ref)
     except ValidationError:
-        raise LocationParseError(url)
-
-    # RFC 3986 doesn't assert ports must be non-negative.
-    if parse_result.port and parse_result.port < 0:
         raise LocationParseError(url)
 
     # For the sake of backwards compatibility we put empty
     # string values for path if there are any defined values
     # beyond the path in the URL.
     # TODO: Remove this when we break backwards compatibility.
-    path = parse_result.path
+    path = uri_ref.path
     if not path:
-        if (parse_result.query is not None
-                or parse_result.fragment is not None):
+        if (uri_ref.query is not None
+                or uri_ref.fragment is not None):
             path = ""
         else:
             path = None
@@ -211,13 +211,13 @@ def parse_url(url):
         return x
 
     return Url(
-        scheme=to_input_type(parse_result.scheme),
-        auth=to_input_type(parse_result.userinfo),
-        host=to_input_type(parse_result.hostname),
-        port=parse_result.port,
+        scheme=to_input_type(uri_ref.scheme),
+        auth=to_input_type(uri_ref.userinfo),
+        host=to_input_type(uri_ref.host),
+        port=int(uri_ref.port) if uri_ref.port is not None else None,
         path=to_input_type(path),
-        query=to_input_type(parse_result.query),
-        fragment=to_input_type(parse_result.fragment)
+        query=to_input_type(uri_ref.query),
+        fragment=to_input_type(uri_ref.fragment)
     )
 
 
