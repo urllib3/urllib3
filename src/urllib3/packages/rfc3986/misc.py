@@ -59,6 +59,12 @@ SUBAUTHORITY_MATCHER = re.compile((
 
 
 IPv4_MATCHER = re.compile('^' + abnf_regexp.IPv4_RE + '$')
+IPv6_MATCHER = re.compile(r'^\[' + abnf_regexp.IPv6_ADDRZ_RFC4007_RE + r'\]$')
+
+# Used by host validator
+IPv6_NO_RFC4007_MATCHER = re.compile(r'^\[%s\]$' % (
+    abnf_regexp.IPv6_ADDRZ_RE
+))
 
 # Matcher used to validate path components
 PATH_MATCHER = re.compile(abnf_regexp.PATH_RE)

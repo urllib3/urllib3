@@ -115,14 +115,14 @@ IPv_FUTURE_RE = 'v[0-9A-Fa-f]+.[%s]+' % (
     UNRESERVED_RE + SUB_DELIMITERS_RE + ':'
 )
 
-
 # RFC 6874 Zone ID ABNF
 ZONE_ID = '(?:[' + UNRESERVED_RE + ']|' + PCT_ENCODED + ')+'
-IPv6_ADDRZ_RE = IPv6_RE + '%25' + ZONE_ID
 
-IP_LITERAL_RE = r'\[({0}|(?:{1})|{2})\]'.format(
-    IPv6_RE,
-    IPv6_ADDRZ_RE,
+IPv6_ADDRZ_RFC4007_RE = IPv6_RE + '(?:(?:%25|%)' + ZONE_ID + ')?'
+IPv6_ADDRZ_RE = IPv6_RE + '(?:%25' + ZONE_ID + ')?'
+
+IP_LITERAL_RE = r'\[({0}|{1})\]'.format(
+    IPv6_ADDRZ_RFC4007_RE,
     IPv_FUTURE_RE,
 )
 

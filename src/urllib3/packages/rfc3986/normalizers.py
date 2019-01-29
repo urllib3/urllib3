@@ -49,6 +49,21 @@ def normalize_password(password):
 
 def normalize_host(host):
     """Normalize a host string."""
+    if misc.IPv6_MATCHER.match(host):
+        percent = host.find('%')
+        if percent != -1:
+            percent_25 = host.find('%25')
+
+            # Replace RFC 4007 IPv6 Zone ID delimiter '%' with '%25'
+            # from RFC 6874. If the host is '[<IPv6 addr>%25]' then we
+            # assume RFC 4007 and normalize to '[<IPV6 addr>%2525]'
+            if percent_25 == -1 or percent < percent_25 or \
+                    (percent == percent_25 and percent_25 == len(host) - 4):
+                host = host.replace('%', '%25', 1)
+
+            # Don't normalize the casing of the Zone ID
+            return host[:percent].lower() + host[percent:]
+
     return host.lower()
 
 
