@@ -560,6 +560,7 @@ class SecurityConst(object):
     errSecInvalidTrustSettings = -25262
 
     # Cipher suites. We only pick the ones our default cipher string allows.
+    # Source: https://developer.apple.com/documentation/security/1550981-ssl_cipher_suite_values
     TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 = 0xC02C
     TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 = 0xC030
     TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 = 0xC02B

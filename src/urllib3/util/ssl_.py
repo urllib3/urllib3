@@ -103,18 +103,14 @@ else:
 # - NOTE: TLS 1.3 cipher suites are managed through a different interface
 #   not exposed by CPython (yet!) and are enabled by default if they're available.
 DEFAULT_CIPHERS = ':'.join([
-    'ECDHE+ECDSA+AESGCM',
-    'ECDHE+ECDSA+CHACHA20',
     'ECDHE+AESGCM',
     'ECDHE+CHACHA20',
     'DHE+AESGCM',
     'DHE+CHACHA20',
-    'ECDHE+ECDSA+AES256',
-    'ECDHE+ECDSA+AES128',
-    'ECDHE+AES256',
-    'ECDHE+AES128',
-    'DHE+AES256',
-    'DHE+AES',
+    'ECDH+AESGCM',
+    'DH+AESGCM',
+    'ECDH+AES',
+    'DH+AES',
     'RSA+AESGCM',
     'RSA+AES',
     '!aNULL',
