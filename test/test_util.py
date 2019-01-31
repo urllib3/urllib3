@@ -167,7 +167,6 @@ class TestUtil(object):
         # Path/query/fragment
         ('', Url()),
         ('/', Url(path='/')),
-        ('/abc/../def', Url(path="/def")),
         ('#?/!google.com/?foo', Url(path='', fragment='?/!google.com/?foo')),
         ('/foo', Url(path='/foo')),
         ('/foo?bar=baz', Url(path='/foo', query='bar=baz')),
@@ -221,11 +220,24 @@ class TestUtil(object):
 
     @pytest.mark.parametrize('url, expected_url', parse_url_host_map)
     def test_unparse_url(self, url, expected_url):
-
-        if '/../' in url:
-            url = url.replace('/abc/../', '/')
-
         assert url == expected_url.url
+
+    @pytest.mark.parametrize(
+        ['url', 'expected_url'],
+        [
+            # RFC 3986 5.2.4
+            ('/abc/../def', Url(path="/def")),
+            ('/..', Url(path="/")),
+            ('/./abc/./def/', Url(path='/abc/def/')),
+            ('/.', Url(path='/')),
+            ('/./', Url(path='/')),
+            ('/abc/./.././d/././e/.././f/./../../ghi', Url(path='/ghi'))
+        ]
+    )
+    def test_parse_and_normalize_url_paths(self, url, expected_url):
+        actual_url = parse_url(url)
+        assert actual_url == expected_url
+        assert actual_url.url == expected_url.url
 
     def test_parse_url_invalid_IPv6(self):
         with pytest.raises(LocationParseError):
@@ -284,8 +296,9 @@ class TestUtil(object):
                                                     path='/%EF%BC%AE%EF%BC%AE/abc')),
 
         # Scheme without ://
-        ("javascript:a='@google.com:12345/';alert(0)", Url(scheme="javascript",
-                                                           path="a='@google.com:12345/';alert(0)")),
+        ("javascript:a='@google.com:12345/';alert(0)",
+         Url(scheme="javascript",
+             path="a='@google.com:12345/';alert(0)")),
     ]
 
     @pytest.mark.parametrize("url, expected_url", url_vulnerabilities)

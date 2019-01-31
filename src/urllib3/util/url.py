@@ -6,7 +6,6 @@ from ..exceptions import LocationParseError
 from ..packages import six, rfc3986
 from ..packages.rfc3986.exceptions import RFC3986Exception, ValidationError, InvalidAuthority
 from ..packages.rfc3986.validators import Validator
-from ..packages.rfc3986.normalizers import normalize_host
 
 
 url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
@@ -173,7 +172,7 @@ def parse_url(url):
     try:
         uri_ref = rfc3986.URIReference.from_string(url, encoding="utf-8")
     except (ValueError, RFC3986Exception):
-        raise LocationParseError(url)
+        six.raise_from(LocationParseError(url), None)
 
     # Find all components that the URI has before normalization.
     # If there's an invalid authority already it'd be stripped
@@ -184,7 +183,7 @@ def parse_url(url):
             if v is not None
         ]
     except InvalidAuthority:
-        raise LocationParseError(url)
+        six.raise_from(LocationParseError(url), None)
 
     required_components.extend([
         k for k in ['path', 'query', 'fragment']
@@ -205,7 +204,7 @@ def parse_url(url):
             *required_components
         ).validate(uri_ref)
     except ValidationError:
-        raise LocationParseError(url)
+        six.raise_from(LocationParseError(url), None)
 
     # For the sake of backwards compatibility we put empty
     # string values for path if there are any defined values
