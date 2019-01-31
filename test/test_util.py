@@ -148,6 +148,7 @@ class TestUtil(object):
          'http://JeremyCline:Hunter2@example.com:8080/'),
         ('HTTPS://Example.Com/?Key=Value', 'https://example.com/?Key=Value'),
         ('Https://Example.Com/#Fragment', 'https://example.com/#Fragment'),
+        ('[::Ff%etH0%Ff]/%ab%Af', '[::ff%25etH0%Ff]/%AB%AF'),
     ])
     def test_parse_url_normalization(self, url, expected_normalized_url):
         """Assert parse_url normalizes the scheme/host, and only the scheme/host"""
@@ -166,7 +167,7 @@ class TestUtil(object):
         # Path/query/fragment
         ('', Url()),
         ('/', Url(path='/')),
-        ('/abc/../def', Url(path="/abc/../def")),
+        ('/abc/../def', Url(path="/def")),
         ('#?/!google.com/?foo', Url(path='', fragment='?/!google.com/?foo')),
         ('/foo', Url(path='/foo')),
         ('/foo?bar=baz', Url(path='/foo', query='bar=baz')),
@@ -220,6 +221,10 @@ class TestUtil(object):
 
     @pytest.mark.parametrize('url, expected_url', parse_url_host_map)
     def test_unparse_url(self, url, expected_url):
+
+        if '/../' in url:
+            url = url.replace('/abc/../', '/')
+
         assert url == expected_url.url
 
     def test_parse_url_invalid_IPv6(self):
@@ -271,12 +276,12 @@ class TestUtil(object):
 
         # CVE-2016-5699
         ("http://127.0.0.1%0d%0aConnection%3a%20keep-alive",
-         Url("http", host="127.0.0.1%0d%0aConnection%3a%20keep-alive")),
+         Url("http", host="127.0.0.1%0d%0aconnection%3a%20keep-alive")),
 
         # NodeJS unicode -> double dot
         (u"http://google.com/\uff2e\uff2e/abc", Url("http",
                                                     host="google.com",
-                                                    path='/%ef%bc%ae%ef%bc%ae/abc')),
+                                                    path='/%EF%BC%AE%EF%BC%AE/abc')),
 
         # Scheme without ://
         ("javascript:a='@google.com:12345/';alert(0)", Url(scheme="javascript",

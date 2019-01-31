@@ -4,7 +4,7 @@ from collections import namedtuple
 
 from ..exceptions import LocationParseError
 from ..packages import six, rfc3986
-from ..packages.rfc3986.exceptions import RFC3986Exception, ValidationError
+from ..packages.rfc3986.exceptions import RFC3986Exception, ValidationError, InvalidAuthority
 from ..packages.rfc3986.validators import Validator
 from ..packages.rfc3986.normalizers import normalize_host
 
@@ -31,10 +31,8 @@ class Url(namedtuple('Url', url_attrs)):
                 query=None, fragment=None):
         if path and not path.startswith('/'):
             path = '/' + path
-        if scheme:
+        if scheme is not None:
             scheme = scheme.lower()
-        if host and scheme in NORMALIZABLE_SCHEMES:
-            host = host.lower()
         return super(Url, cls).__new__(cls, scheme, auth, host, port, path,
                                        query, fragment)
 
@@ -106,7 +104,7 @@ class Url(namedtuple('Url', url_attrs)):
 
 def split_first(s, delims):
     """
-    Deprecated. No longer used by parse_url().
+    .. deprecated:: 1.25
 
     Given a string and an iterable of delimiters, split on the first found
     delimiter. Return two split parts and the matched delimiter.
@@ -177,14 +175,34 @@ def parse_url(url):
     except (ValueError, RFC3986Exception):
         raise LocationParseError(url)
 
-    if uri_ref.scheme in NORMALIZABLE_SCHEMES:
+    # Find all components that the URI has before normalization.
+    # If there's an invalid authority already it'd be stripped
+    # off by normalization.
+    try:
+        required_components = [
+            k for k, v in six.iteritems(uri_ref.authority_info())
+            if v is not None
+        ]
+    except InvalidAuthority:
+        raise LocationParseError(url)
+
+    required_components.extend([
+        k for k in ['path', 'query', 'fragment']
+        if getattr(uri_ref, k) is not None
+    ])
+
+    if uri_ref.scheme is None or uri_ref.scheme.lower() in NORMALIZABLE_SCHEMES:
         uri_ref = uri_ref.normalize()
 
-    # Run validator on the internal URIReference within the ParseResult
+    # Validate all URIReference components and ensure that all
+    # components that were set before are still set after
+    # normalization has completed.
     validator = Validator()
     try:
         validator.check_validity_of(
             *validator.COMPONENT_NAMES
+        ).require_presence_of(
+            *required_components
         ).validate(uri_ref)
     except ValidationError:
         raise LocationParseError(url)

@@ -58,6 +58,7 @@ SUBAUTHORITY_MATCHER = re.compile((
              abnf_regexp.PORT_RE))
 
 
+HOST_MATCHER = re.compile('^' + abnf_regexp.HOST_RE + '$')
 IPv4_MATCHER = re.compile('^' + abnf_regexp.IPv4_RE + '$')
 IPv6_MATCHER = re.compile(r'^\[' + abnf_regexp.IPv6_ADDRZ_RFC4007_RE + r'\]$')
 
