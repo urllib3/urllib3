@@ -25,6 +25,10 @@ from test import (
     notOpenSSL098,
     requires_network,
     fails_on_travis_gce,
+    requiresTLSv1,
+    requiresTLSv1_1,
+    requiresTLSv1_2,
+    requiresTLSv1_3,
     TARPIT_HOST,
 )
 from urllib3 import HTTPSConnectionPool
@@ -57,7 +61,19 @@ log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
 
+TLSv1_CERTS = DEFAULT_CERTS.copy()
+TLSv1_CERTS["ssl_version"] = ssl.PROTOCOL_TLSv1
+
+TLSv1_1_CERTS = DEFAULT_CERTS.copy()
+TLSv1_1_CERTS["ssl_version"] = ssl.PROTOCOL_TLSv1_1
+
+TLSv1_2_CERTS = DEFAULT_CERTS.copy()
+TLSv1_2_CERTS["ssl_version"] = ssl.PROTOCOL_TLSv1_2
+
+
 class TestHTTPS(HTTPSDummyServerTestCase):
+    tls_protocol_name = None
+
     def setUp(self):
         self._pool = HTTPSConnectionPool(self.host, self.port)
         self.addCleanup(self._pool.close)
@@ -553,20 +569,18 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         return [x for x in w if not isinstance(x.message, ResourceWarning)]
 
-
-class TestHTTPS_TLSVersion(TestHTTPS):
-    tls_protocol_name = None
-
-    @classmethod
-    def certs(cls):
-        return pytest.skip('Don\'t run parent version.')
-
     def test_set_ssl_version_to_tls_version(self):
-        self._pool.ssl_version = self.certs()['ssl_version']
+        if self.tls_protocol_name is None:
+            pytest.skip("Skipping base test class")
+
+        self._pool.ssl_version = self.certs['ssl_version']
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
     def test_tls_protocol_name_of_socket(self):
+        if self.tls_protocol_name is None:
+            pytest.skip("Skipping base test class")
+
         conn = self._pool._get_conn()
         conn.connect()
 
@@ -576,54 +590,31 @@ class TestHTTPS_TLSVersion(TestHTTPS):
         self.assertEqual(conn.sock.version(), self.tls_protocol_name)
 
 
-@pytest.mark.skipif(not hasattr(ssl, "PROTOCOL_TLSv1"), reason="Requires TLSv1 support")
-class TestHTTPS_TLSv1(TestHTTPS_TLSVersion):
+@requiresTLSv1()
+class TestHTTPS_TLSv1(TestHTTPS):
     tls_protocol_name = 'TLSv1'
-
-    @classmethod
-    def certs(cls):
-        certs = DEFAULT_CERTS.copy()
-        certs['ssl_version'] = ssl.PROTOCOL_TLSv1
-        return certs
+    certs = TLSv1_CERTS
 
 
-@pytest.mark.skipif(not hasattr(ssl, "PROTOCOL_TLSv1_1"), reason="Requires TLSv1.1 support")
-class TestHTTPS_TLSv1_1(TestHTTPS_TLSVersion):
+@requiresTLSv1_1()
+class TestHTTPS_TLSv1_1(TestHTTPS):
     tls_protocol_name = 'TLSv1.1'
-
-    @classmethod
-    def certs(cls):
-        certs = DEFAULT_CERTS.copy()
-        certs['ssl_version'] = ssl.PROTOCOL_TLSv1_1
-        return certs
+    certs = TLSv1_1_CERTS
 
 
-@pytest.mark.skipif(not hasattr(ssl, "PROTOCOL_TLSv1_2"), reason="Requires TLSv1.2 support")
-class TestHTTPS_TLSv1_2(TestHTTPS_TLSVersion):
+@requiresTLSv1_2()
+class TestHTTPS_TLSv1_2(TestHTTPS):
     tls_protocol_name = 'TLSv1.2'
-
-    @classmethod
-    def certs(cls):
-        certs = DEFAULT_CERTS.copy()
-        certs['ssl_version'] = ssl.PROTOCOL_TLSv1_2
-        return certs
+    certs = TLSv1_2_CERTS
 
 
-@pytest.mark.skipif(not getattr(ssl, "HAS_TLSv1_3", False), reason="Requires TLSv1.3 support")
-class TestHTTPS_TLSv1_3(TestHTTPS_TLSVersion):
+@requiresTLSv1_3()
+class TestHTTPS_TLSv1_3(TestHTTPS):
     tls_protocol_name = 'TLSv1.3'
-
-    @classmethod
-    def certs(cls):
-        certs = DEFAULT_CERTS.copy()
-        certs['ssl_version'] = ssl.PROTOCOL_TLS  # No dedicated TLS 1.3 Protocol
-        return certs
 
 
 class TestHTTPS_NoSAN(HTTPSDummyServerTestCase):
-    @classmethod
-    def certs(cls):
-        return NO_SAN_CERTS
+    certs = NO_SAN_CERTS
 
     def test_warning_for_certs_without_a_san(self):
         """Ensure that a warning is raised when the cert from the server has
@@ -639,9 +630,7 @@ class TestHTTPS_NoSAN(HTTPSDummyServerTestCase):
 
 
 class TestHTTPS_IPSAN(HTTPSDummyServerTestCase):
-    @classmethod
-    def certs(cls):
-        return IP_SAN_CERTS
+    certs = IP_SAN_CERTS
 
     def test_can_validate_ip_san(self):
         """Ensure that urllib3 can validate SANs with IP addresses in them."""
@@ -659,9 +648,7 @@ class TestHTTPS_IPSAN(HTTPSDummyServerTestCase):
 
 
 class TestHTTPS_IPv6Addr(IPV6HTTPSDummyServerTestCase):
-    @classmethod
-    def certs(cls):
-        return IPV6_ADDR_CERTS
+    certs = IPV6_ADDR_CERTS
 
     @pytest.mark.skipif(not HAS_IPV6, reason='Only runs on IPv6 systems')
     def test_strip_square_brackets_before_validating(self):
@@ -675,9 +662,7 @@ class TestHTTPS_IPv6Addr(IPV6HTTPSDummyServerTestCase):
 
 
 class TestHTTPS_IPV6SAN(IPV6HTTPSDummyServerTestCase):
-    @classmethod
-    def certs(cls):
-        return IPV6_SAN_CERTS
+    certs = IPV6_SAN_CERTS
 
     def test_can_validate_ipv6_san(self):
         """Ensure that urllib3 can validate SANs with IPv6 addresses in them."""

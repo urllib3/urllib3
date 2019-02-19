@@ -69,6 +69,8 @@ from ..packages import six
 import sys
 
 from .. import util
+from ..connection import BaseSSLError
+
 
 __all__ = ['inject_into_urllib3', 'extract_from_urllib3']
 
@@ -289,6 +291,10 @@ class WrappedSocket(object):
                 raise timeout('The read operation timed out')
             else:
                 return self.recv(*args, **kwargs)
+
+        # TLS 1.3 post-handshake authentication
+        except OpenSSL.SSL.Error as e:
+            raise ssl.SSLError("read error: %r" % e)
         else:
             return data
 
@@ -310,6 +316,10 @@ class WrappedSocket(object):
                 raise timeout('The read operation timed out')
             else:
                 return self.recv_into(*args, **kwargs)
+
+        # TLS 1.3 post-handshake authentication
+        except OpenSSL.SSL.Error as e:
+            raise ssl.SSLError("read error: %r" % e)
 
     def settimeout(self, timeout):
         return self.socket.settimeout(timeout)

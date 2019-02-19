@@ -6,7 +6,8 @@ dev (master)
 
 * Implemented a more efficient ``HTTPResponse.__iter__()`` method (Issue #1483)
 
-* Add TLSv1.3 support to CPython and SecureTransport ``SSLContext`` implementations. (Pull #1496)
+* Add TLSv1.3 support to CPython, pyOpenSSL, and SecureTransport ``SSLContext``
+  implementations. (Pull #1496)
 
 * Drop ciphers using DSS key exchange from default TLS cipher suites.
   Improve default ciphers when using SecureTransport. (Pull #1496)

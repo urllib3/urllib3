@@ -115,16 +115,13 @@ class HTTPDummyServerTestCase(unittest.TestCase):
     scheme = 'http'
     host = 'localhost'
     host_alt = '127.0.0.1'  # Some tests need two hosts
-
-    @classmethod
-    def certs(cls):
-        return DEFAULT_CERTS
+    certs = DEFAULT_CERTS
 
     @classmethod
     def _start_server(cls):
         cls.io_loop = ioloop.IOLoop.current()
         app = web.Application([(r".*", TestingApp)])
-        cls.server, cls.port = run_tornado_app(app, cls.io_loop, cls.certs(),
+        cls.server, cls.port = run_tornado_app(app, cls.io_loop, cls.certs,
                                                cls.scheme, cls.host)
         cls.server_thread = run_loop_in_thread(cls.io_loop)
 
@@ -146,10 +143,7 @@ class HTTPDummyServerTestCase(unittest.TestCase):
 class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
     scheme = 'https'
     host = 'localhost'
-
-    @classmethod
-    def certs(cls):
-        return DEFAULT_CERTS
+    certs = DEFAULT_CERTS
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason='IPv6 not available')
