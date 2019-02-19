@@ -202,11 +202,15 @@ recommended to set the ``Content-Type`` header::
 Certificate verification
 ------------------------
 
-It is highly recommended to always use SSL certificate verification.
-**By default, urllib3 does not verify HTTPS requests**.
+ .. note:: *New in version 1.25*
 
-In order to enable verification you will need a set of root certificates. The easiest
-and most reliable method is to use the `certifi <https://certifi.io/>`_ package which provides Mozilla's root certificate bundle::
+    HTTPS connections are now verified by default (``cert_reqs = 'CERT_REQUIRED'``).
+
+While you can disable certification verification, it is highly recommend to leave it on.
+
+Unless otherwise specified urllib3 will try to load the default system certificate stores.
+The most reliable cross-platform method is to use the `certifi <https://certifi.io/>`_
+package which provides Mozilla's root certificate bundle::
 
     pip install certifi
 

@@ -8,6 +8,10 @@ import ssl
 import os
 
 import pytest
+try:
+    import brotli
+except ImportError:
+    brotli = None
 
 from urllib3.exceptions import HTTPWarning
 from urllib3.packages import six
@@ -74,6 +78,16 @@ def onlyPy3(test):
     return wrapper
 
 
+def onlyBrotlipy():
+    return pytest.mark.skipif(
+        brotli is None, reason='only run if brotlipy is present')
+
+
+def notBrotlipy():
+    return pytest.mark.skipif(
+        brotli is not None, reason='only run if brotlipy is absent')
+
+
 def notSecureTransport(test):
     """Skips this test when SecureTransport is in use."""
 
@@ -134,6 +148,17 @@ def requires_network(test):
             msg = "Can't run {name} because the network is unreachable".format(
                 name=test.__name__)
             pytest.skip(msg)
+    return wrapper
+
+
+def requires_ssl_context_keyfile_password(test):
+    @functools.wraps(test)
+    def wrapper(*args, **kwargs):
+        if ((not ssl_.IS_PYOPENSSL and sys.version_info < (2, 7, 9))
+                or ssl_.IS_SECURETRANSPORT):
+            pytest.skip("%s requires password parameter for "
+                        "SSLContext.load_cert_chain()" % test.__name__)
+        return test(*args, **kwargs)
     return wrapper
 
 
