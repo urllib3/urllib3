@@ -194,7 +194,9 @@ def requiresTLSv1_2():
 
 def requiresTLSv1_3():
     """Test requires TLSv1.3 available"""
-    return pytest.mark.skipif(not getattr(ssl, "HAS_TLSv1_3", False), reason="Test requires TLSv1.3")
+    return pytest.mark.skipif(
+        not getattr(ssl, "HAS_TLSv1_3", False), reason="Test requires TLSv1.3"
+    )
 
 
 class _ListHandler(logging.Handler):

@@ -69,7 +69,6 @@ from ..packages import six
 import sys
 
 from .. import util
-from ..connection import BaseSSLError
 
 
 __all__ = ['inject_into_urllib3', 'extract_from_urllib3']

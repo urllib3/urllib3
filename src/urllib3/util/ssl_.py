@@ -54,7 +54,7 @@ _IP_ADDRESS_REGEX = re.compile(
 
 try:  # Test for SSL features
     import ssl
-    from ssl import wrap_socket, CERT_REQUIRED, PROTOCOL_SSLv23
+    from ssl import wrap_socket, CERT_REQUIRED
     from ssl import HAS_SNI  # Has SNI?
 except ImportError:
     pass

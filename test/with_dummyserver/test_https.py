@@ -63,13 +63,13 @@ log.addHandler(logging.StreamHandler(sys.stdout))
 
 
 TLSv1_CERTS = DEFAULT_CERTS.copy()
-TLSv1_CERTS["ssl_version"] = ssl.PROTOCOL_TLSv1
+TLSv1_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLSv1", None)
 
 TLSv1_1_CERTS = DEFAULT_CERTS.copy()
-TLSv1_1_CERTS["ssl_version"] = ssl.PROTOCOL_TLSv1_1
+TLSv1_1_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLSv1_1", None)
 
 TLSv1_2_CERTS = DEFAULT_CERTS.copy()
-TLSv1_2_CERTS["ssl_version"] = ssl.PROTOCOL_TLSv1_2
+TLSv1_2_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLSv1_2", None)
 
 
 class TestHTTPS(HTTPSDummyServerTestCase):
