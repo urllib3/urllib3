@@ -206,7 +206,7 @@ SSL Warnings
 ------------
 
 urllib3 will issue several different warnings based on the level of certificate
-verification support. These warning indicate particular situations and can
+verification support. These warnings indicate particular situations and can
 be resolved in different ways.
 
 * :class:`~exceptions.InsecureRequestWarning`
