@@ -9,6 +9,9 @@ case "${1}" in
         git rev-parse HEAD
         python -m pip install --upgrade pipenv
         pipenv install --dev --skip-lock
+        
+        # See: kennethreitz/requests/5004
+        python -m pip install pytest-httpbin<1.0.0
         ;;
     run)
         cd requests
