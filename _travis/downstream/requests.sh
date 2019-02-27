@@ -11,7 +11,7 @@ case "${1}" in
         pipenv install --dev --skip-lock
         
         # See: kennethreitz/requests/5004
-        python -m pip install pytest-httpbin<1.0.0
+        python -m pip install pytest-httpbin==0.3.0
         ;;
     run)
         cd requests
