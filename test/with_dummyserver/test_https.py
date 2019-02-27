@@ -610,7 +610,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self._pool.ssl_version = self.certs['ssl_version']
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
-        
+
     def test_set_cert_default_cert_required(self):
         conn = VerifiedHTTPSConnection(self.host, self.port)
         conn.set_cert()
