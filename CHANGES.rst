@@ -22,6 +22,14 @@ dev (master)
   ``brotlipy`` package is installed which can be requested with
   ``urllib3[brotli]`` extra. (Pull #1532)
 
+* Add TLSv1.3 support to CPython, pyOpenSSL, and SecureTransport ``SSLContext``
+  implementations. (Pull #1496)
+
+* Drop ciphers using DSS key exchange from default TLS cipher suites.
+  Improve default ciphers when using SecureTransport. (Pull #1496)
+
+* Add support for IPv6 addresses in subjectAltName section of certificates. (Issue #1269)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 
