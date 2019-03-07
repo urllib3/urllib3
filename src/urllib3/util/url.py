@@ -77,23 +77,23 @@ class Url(namedtuple('Url', url_attrs)):
             'http://username:password@host.com:80/path?query#fragment'
         """
         scheme, auth, host, port, path, query, fragment = self
-        url = ''
+        url = u''
 
         # We use "is not None" we want things to happen with empty strings (or 0 port)
         if scheme is not None:
-            url += scheme + '://'
+            url += scheme + u'://'
         if auth is not None:
-            url += auth + '@'
+            url += auth + u'@'
         if host is not None:
             url += host
         if port is not None:
-            url += ':' + str(port)
+            url += u':' + str(port)
         if path is not None:
             url += path
         if query is not None:
-            url += '?' + query
+            url += u'?' + query
         if fragment is not None:
-            url += '#' + fragment
+            url += u'#' + fragment
 
         return url
 
@@ -170,7 +170,7 @@ def parse_url(url):
         url = "//" + url
 
     try:
-        uri_ref = rfc3986.URIReference.from_string(url, encoding="utf-8")
+        uri_ref = rfc3986.URIReference.from_string(url, encoding="utf-8", is_iri=True)
     except (ValueError, RFC3986Exception):
         six.raise_from(LocationParseError(url), None)
 
@@ -179,7 +179,7 @@ def parse_url(url):
     # off by normalization.
     try:
         required_components = [
-            k for k, v in six.iteritems(uri_ref.authority_info())
+            k for k, v in six.iteritems(uri_ref.authority_info(iri=True))
             if v is not None
         ]
     except InvalidAuthority:
@@ -198,13 +198,15 @@ def parse_url(url):
     # normalization has completed.
     validator = Validator()
     try:
-        validator.check_validity_of(
+        validator.allow_use_of_iris(
+        ).check_validity_of(
             *validator.COMPONENT_NAMES
         ).require_presence_of(
             *required_components
         ).validate(uri_ref)
     except ValidationError:
-        six.raise_from(LocationParseError(url), None)
+        raise
+        #six.raise_from(LocationParseError(url), None)
 
     # For the sake of backwards compatibility we put empty
     # string values for path if there are any defined values

@@ -19,7 +19,7 @@ This module contains important constants, patterns, and compiled regular
 expressions for parsing and validating URIs and their components.
 """
 
-import re
+import regex as re
 
 from . import abnf_regexp
 
@@ -83,7 +83,8 @@ FRAGMENT_MATCHER = QUERY_MATCHER
 SCHEME_MATCHER = re.compile('^{0}$'.format(abnf_regexp.SCHEME_RE))
 
 RELATIVE_REF_MATCHER = re.compile(r'^%s(\?%s)?(#%s)?$' % (
-    abnf_regexp.RELATIVE_PART_RE, abnf_regexp.QUERY_RE,
+    abnf_regexp.RELATIVE_PART_RE,
+    abnf_regexp.QUERY_RE,
     abnf_regexp.FRAGMENT_RE,
 ))
 
@@ -93,6 +94,40 @@ ABSOLUTE_URI_MATCHER = re.compile(r'^%s:%s(\?%s)?$' % (
     abnf_regexp.HIER_PART_RE,
     abnf_regexp.QUERY_RE[1:-1],
 ))
+
+# ###############
+# IRIs / RFC 3987
+# ###############
+
+ISUBAUTHORITY_MATCHER = re.compile((
+    u'^(?:(?P<userinfo>{0})@)?'  # iuserinfo
+    u'(?P<host>{1})'  # ihost
+    u':?(?P<port>{2})?$'  # port
+    ).format(abnf_regexp.IUSERINFO_RE,
+             abnf_regexp.IHOST_RE,
+             abnf_regexp.PORT_RE), re.UNICODE)
+
+
+IHOST_MATCHER = re.compile('^' + abnf_regexp.IHOST_RE + '$', re.UNICODE)
+
+IPATH_MATCHER = re.compile(abnf_regexp.IPATH_RE, re.UNICODE)
+
+IQUERY_MATCHER = re.compile(abnf_regexp.IQUERY_RE, re.UNICODE)
+
+IFRAGMENT_MATCHER = re.compile(abnf_regexp.IFRAGMENT_RE, re.UNICODE)
+
+
+RELATIVE_IRI_MATCHER = re.compile(u'^%s(?:\?%s)?(?:%s)?$' % (
+    abnf_regexp.IRELATIVE_PART_RE,
+    abnf_regexp.IQUERY_RE,
+    abnf_regexp.IFRAGMENT_RE
+), re.UNICODE)
+
+ABSOLUTE_IRI_MATCHER = re.compile(u'^%s:%s(?:\?%s)?$' % (
+    abnf_regexp.COMPONENT_PATTERN_DICT['scheme'],
+    abnf_regexp.IHIER_PART_RE,
+    abnf_regexp.IQUERY_RE[1:-1]
+), re.UNICODE)
 
 
 # Path merger as defined in http://tools.ietf.org/html/rfc3986#section-5.2.3

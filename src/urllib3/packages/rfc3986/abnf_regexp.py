@@ -13,6 +13,8 @@
 # limitations under the License.
 """Module for the regular expressions crafted from ABNF."""
 
+import sys
+
 # https://tools.ietf.org/html/rfc3986#page-13
 GEN_DELIMS = GENERIC_DELIMITERS = ":/?#[]@"
 GENERIC_DELIMITERS_SET = set(GENERIC_DELIMITERS)
@@ -184,5 +186,77 @@ HIER_PART_RE = '(//%s%s|%s|%s|%s)' % (
     PATH_ABEMPTY,
     PATH_ABSOLUTE,
     PATH_ROOTLESS,
+    PATH_EMPTY,
+)
+
+# ###############
+# IRIs / RFC 3987
+# ###############
+
+# Only wide-unicode gets the high-ranges of UCSCHAR
+if sys.maxunicode > 0xFFFF:
+    IPRIVATE = u'\uE000-\uF8FF\U000F0000-\U000FFFFD\U00100000-\U0010FFFD'
+    UCSCHAR_RE = (
+        u'\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF'
+        u'\U00010000-\U0001FFFD\U00020000-\U0002FFFD\U00030000-\U0003FFFD\U00040000-\U0004FFFD'
+        u'\U00050000-\U0005FFFD\U00060000-\U0006FFFD\U00070000-\U0007FFFD\U00080000-\U0008FFFD'
+        u'\U00090000-\U0009FFFD\U000A0000-\U000AFFFD\U000B0000-\U000BFFFD\U000C0000-\U000CFFFD'
+        u'\U000D0000-\U000DFFFD\U000E1000-\U000EFFFD'
+    )
+else:
+    IPRIVATE = u'\uE000-\uF8FF'
+    UCSCHAR_RE = (
+        u'\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF'
+    )
+
+IUNRESERVED_RE = u'A-Za-z0-9._~\-' + UCSCHAR_RE
+IPCHAR = u'([' + IUNRESERVED_RE + SUB_DELIMITERS_RE + u':@]|%s)' % PCT_ENCODED
+
+isegments = {
+    'isegment': IPCHAR + u'*',
+    # Non-zero length segment
+    'isegment-nz': IPCHAR + u'+',
+    # Non-zero length segment without ":"
+    'isegment-nz-nc': IPCHAR.replace(':', '') + u'+'
+}
+
+IPATH_ROOTLESS = u'%(isegment-nz)s(/%(isegment)s)*' % isegments
+IPATH_NOSCHEME = u'%(isegment-nz-nc)s(/%(isegment)s)*' % isegments
+IPATH_ABSOLUTE = u'/(?:%s)?' % IPATH_ROOTLESS
+IPATH_ABEMPTY = u'(?:/%(isegment)s)*' % isegments
+IPATH_RE = u'^(?:%s|%s|%s|%s|%s)$' % (
+    IPATH_ABEMPTY, IPATH_ABSOLUTE, IPATH_NOSCHEME, IPATH_ROOTLESS, PATH_EMPTY
+)
+
+IREGULAR_NAME_RE = IREG_NAME = u'(?:{0}|[{1}])*'.format(
+    u'%[0-9A-Fa-f]{2}', SUB_DELIMITERS_RE + IUNRESERVED_RE
+)
+
+IHOST_RE = IHOST_PATTERN = u'({0}|{1}|{2})'.format(
+    IREG_NAME,
+    IPv4_RE,
+    IP_LITERAL_RE,
+)
+
+IUSERINFO_RE = u'^(?:[' + IUNRESERVED_RE + SUB_DELIMITERS_RE + u':]|%s)+' % (
+    PCT_ENCODED
+)
+
+IFRAGMENT_RE = u'^(?:[/?:@' + IUNRESERVED_RE + SUB_DELIMITERS_RE + u']|%s)*$' % PCT_ENCODED
+IQUERY_RE = u'^(?:[/?:@' + IUNRESERVED_RE + SUB_DELIMITERS_RE + IPRIVATE + u']|%s)*$' % PCT_ENCODED
+
+IRELATIVE_PART_RE = u'(//%s%s|%s|%s|%s)' % (
+    COMPONENT_PATTERN_DICT['authority'],
+    IPATH_ABEMPTY,
+    IPATH_ABSOLUTE,
+    IPATH_NOSCHEME,
+    PATH_EMPTY,
+)
+
+IHIER_PART_RE = u'(//%s%s|%s|%s|%s)' % (
+    COMPONENT_PATTERN_DICT['authority'],
+    IPATH_ABEMPTY,
+    IPATH_ABSOLUTE,
+    IPATH_ROOTLESS,
     PATH_EMPTY,
 )

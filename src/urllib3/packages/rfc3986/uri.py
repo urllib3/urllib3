@@ -85,7 +85,7 @@ class URIReference(namedtuple('URIReference', misc.URI_COMPONENTS)):
     slots = ()
 
     def __new__(cls, scheme, authority, path, query, fragment,
-                encoding='utf-8'):
+                encoding='utf-8', is_iri=False):
         """Create a new URIReference."""
         ref = super(URIReference, cls).__new__(
             cls,
@@ -95,6 +95,7 @@ class URIReference(namedtuple('URIReference', misc.URI_COMPONENTS)):
             query,
             fragment)
         ref.encoding = encoding
+        ref.is_iri = is_iri
         return ref
 
     __hash__ = tuple.__hash__
@@ -117,11 +118,12 @@ class URIReference(namedtuple('URIReference', misc.URI_COMPONENTS)):
         return naive_equality or self.normalized_equality(other_ref)
 
     @classmethod
-    def from_string(cls, uri_string, encoding='utf-8'):
+    def from_string(cls, uri_string, encoding='utf-8', is_iri=False):
         """Parse a URI reference from the given unicode URI string.
 
         :param str uri_string: Unicode URI to be parsed into a reference.
         :param str encoding: The encoding of the string provided
+        :param bool is_iri: Whether to treat the uri_string as an IRI per RFC 3987
         :returns: :class:`URIReference` or subclass thereof
         """
         uri_string = compat.to_str(uri_string, encoding)
@@ -133,9 +135,10 @@ class URIReference(namedtuple('URIReference', misc.URI_COMPONENTS)):
             normalizers.encode_component(split_uri['query'], encoding),
             normalizers.encode_component(split_uri['fragment'], encoding),
             encoding,
+            is_iri
         )
 
-    def authority_info(self):
+    def authority_info(self, iri=False):
         """Return a dictionary with the ``userinfo``, ``host``, and ``port``.
 
         If the authority is not valid, it will raise a
@@ -151,7 +154,10 @@ class URIReference(namedtuple('URIReference', misc.URI_COMPONENTS)):
         if not self.authority:
             return {'userinfo': None, 'host': None, 'port': None}
 
-        match = misc.SUBAUTHORITY_MATCHER.match(self.authority)
+        if self.is_iri:
+            match = misc.ISUBAUTHORITY_MATCHER.match(self.authority)
+        else:
+            match = misc.SUBAUTHORITY_MATCHER.match(self.authority)
 
         if match is None:
             # In this case, we have an authority that was parsed from the URI
@@ -355,7 +361,8 @@ class URIReference(namedtuple('URIReference', misc.URI_COMPONENTS)):
                             normalizers.normalize_path(self.path or ''),
                             normalizers.normalize_query(self.query),
                             normalizers.normalize_fragment(self.fragment),
-                            self.encoding)
+                            self.encoding,
+                            self.is_iri)
 
     def normalized_equality(self, other_ref):
         """Compare this URIReference to another URIReference.

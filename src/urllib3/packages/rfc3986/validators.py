@@ -61,6 +61,7 @@ class Validator(object):
         self.allowed_hosts = set()
         self.allowed_ports = set()
         self.allow_password = True
+        self.allow_iris = False
         self.required_components = {
             'scheme': False,
             'userinfo': False,
@@ -135,6 +136,18 @@ class Validator(object):
         self.allow_password = True
         return self
 
+    def allow_use_of_iris(self):
+        """Allow IRIs from RFC 3987 to be valid
+
+        :returns:
+            The validator instance.
+
+        :rtype:
+            Validator
+        """
+        self.allow_iris = True
+        return self
+
     def forbid_use_of_password(self):
         """Prevent passwords from being included in the URI.
 
@@ -147,6 +160,9 @@ class Validator(object):
         """
         self.allow_password = False
         return self
+
+    def forbid_use_of_iris(self):
+        pass
 
     def check_validity_of(self, *components):
         """Check the validity of the components provided.
@@ -289,7 +305,7 @@ def is_valid(value, matcher, require):
     return value is None or matcher.match(value)
 
 
-def authority_is_valid(authority, host=None, require=False):
+def authority_is_valid(authority, host=None, require=False, iri=False):
     """Determine if the authority string is valid.
 
     :param str authority:
@@ -303,13 +319,13 @@ def authority_is_valid(authority, host=None, require=False):
     :rtype:
         bool
     """
-    validated = is_valid(authority, misc.SUBAUTHORITY_MATCHER, require)
+    validated = is_valid(authority, misc.ISUBAUTHORITY_MATCHER if iri else misc.SUBAUTHORITY_MATCHER, require)
     if validated and host is not None:
         return host_is_valid(host, require)
     return validated
 
 
-def host_is_valid(host, require=False):
+def host_is_valid(host, require=False, is_iri=False):
     """Determine if the host string is valid.
 
     :param str host:
@@ -321,7 +337,7 @@ def host_is_valid(host, require=False):
     :rtype:
         bool
     """
-    validated = is_valid(host, misc.HOST_MATCHER, require)
+    validated = is_valid(host, misc.IHOST_MATCHER if is_iri else misc.HOST_MATCHER, require)
     if validated and host is not None and misc.IPv4_MATCHER.match(host):
         return valid_ipv4_host_address(host)
     elif validated and host is not None and misc.IPv6_MATCHER.match(host):
@@ -329,7 +345,7 @@ def host_is_valid(host, require=False):
     return validated
 
 
-def scheme_is_valid(scheme, require=False):
+def scheme_is_valid(scheme, require=False, is_iri=False):
     """Determine if the scheme is valid.
 
     :param str scheme:
@@ -344,7 +360,7 @@ def scheme_is_valid(scheme, require=False):
     return is_valid(scheme, misc.SCHEME_MATCHER, require)
 
 
-def path_is_valid(path, require=False):
+def path_is_valid(path, require=False, is_iri=False):
     """Determine if the path component is valid.
 
     :param str path:
@@ -356,10 +372,10 @@ def path_is_valid(path, require=False):
     :rtype:
         bool
     """
-    return is_valid(path, misc.PATH_MATCHER, require)
+    return is_valid(path, misc.IPATH_MATCHER if is_iri else misc.PATH_MATCHER, require)
 
 
-def query_is_valid(query, require=False):
+def query_is_valid(query, require=False, is_iri=False):
     """Determine if the query component is valid.
 
     :param str query:
@@ -371,10 +387,10 @@ def query_is_valid(query, require=False):
     :rtype:
         bool
     """
-    return is_valid(query, misc.QUERY_MATCHER, require)
+    return is_valid(query, misc.IQUERY_MATCHER if is_iri else misc.QUERY_MATCHER, require)
 
 
-def fragment_is_valid(fragment, require=False):
+def fragment_is_valid(fragment, require=False, is_iri=False):
     """Determine if the fragment component is valid.
 
     :param str fragment:
@@ -386,7 +402,7 @@ def fragment_is_valid(fragment, require=False):
     :rtype:
         bool
     """
-    return is_valid(fragment, misc.FRAGMENT_MATCHER, require)
+    return is_valid(fragment, misc.IFRAGMENT_MATCHER if is_iri else misc.FRAGMENT_MATCHER, require)
 
 
 def valid_ipv4_host_address(host):
@@ -416,7 +432,7 @@ def subauthority_component_is_valid(uri, component):
     # If we can parse the authority into sub-components and we're not
     # validating the port, we can assume it's valid.
     if component == 'host':
-        return host_is_valid(subauthority_dict['host'])
+        return host_is_valid(subauthority_dict['host'], is_iri=uri.is_iri)
     elif component != 'port':
         return True
 
@@ -443,7 +459,7 @@ def ensure_components_are_valid(uri, validated_components):
             continue  # nocov: Python 2.7, 3.3, 3.4
 
         validator = _COMPONENT_VALIDATORS[component]
-        if not validator(getattr(uri, component)):
+        if not validator(getattr(uri, component), is_iri=uri.is_iri):
             invalid_components.add(component)
 
     if invalid_components:

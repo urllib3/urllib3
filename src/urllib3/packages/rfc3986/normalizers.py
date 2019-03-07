@@ -27,13 +27,13 @@ def normalize_scheme(scheme):
 def normalize_authority(authority):
     """Normalize an authority tuple to a string."""
     userinfo, host, port = authority
-    result = ''
+    result = u''
     if userinfo:
-        result += normalize_percent_characters(userinfo) + '@'
+        result += normalize_percent_characters(userinfo) + u'@'
     if host:
         result += normalize_host(host)
     if port:
-        result += ':' + port
+        result += u':' + port
     return result
 
 
