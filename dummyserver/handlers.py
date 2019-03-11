@@ -17,6 +17,7 @@ from datetime import timedelta
 
 from urllib3.packages.six.moves.http_client import responses
 from urllib3.packages.six.moves.urllib.parse import urlsplit
+from urllib3.packages.six import binary_type
 
 log = logging.getLogger(__name__)
 
@@ -157,8 +158,15 @@ class TestingApp(RequestHandler):
             return Response("Wrong size: %d != %d" %
                             (size, len(data)), status='400 Bad Request')
 
+        got_filename = file_['filename']
+        if(got_filename, binary_type):
+            got_filename = got_filename.decode('utf-8')
+
+        print(type(filename), filename)
+        print(type(got_filename), got_filename)
+
         # Tornado can leave the trailing \n in place on the filename.
-        if filename != file_['filename'].strip():
+        if filename != got_filename:
             return Response(
                 u"Wrong filename: %s != %s" % (filename, file_.filename),
                 status='400 Bad Request')
