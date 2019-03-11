@@ -157,10 +157,12 @@ class TestingApp(RequestHandler):
             return Response("Wrong size: %d != %d" %
                             (size, len(data)), status='400 Bad Request')
 
+        print(filename, type(filename))
+        print(file_['filename'], type(filename))
         if filename != file_['filename']:
-            return Response("Wrong filename: %s != %s" %
-                            (filename, file_.filename),
-                            status='400 Bad Request')
+            return Response(
+                "Wrong filename: %s != %s" % (filename, file_.filename),
+                status='400 Bad Request')
 
         return Response()
 

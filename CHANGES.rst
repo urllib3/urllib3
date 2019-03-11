@@ -5,6 +5,7 @@ dev (master)
 ------------
 
 * Implemented a more efficient ``HTTPResponse.__iter__()`` method (Issue #1483)
+* Switched the default multipart header encoder from RFC 2231 to HTML 5 working draft. (Issue #303, PR #1492)
 
 * ... [Short description of non-trivial change.] (Issue #)
 
