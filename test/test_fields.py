@@ -2,13 +2,6 @@ import pytest
 
 from urllib3.fields import format_header_param_rfc2231, guess_content_type, RequestField
 from urllib3.packages.six import u
-from . import onlyPy2
-
-class RequestFieldRFC2231(RequestField):
-        # This class is used instead of RequestField in some tests, because
-        # changing the class-member RequestField.header_formatter in a test
-        # will cause subsequent tests to fail
-        header_formatter = staticmethod(format_header_param_rfc2231)
 
 
 class TestRequestField(object):
@@ -59,25 +52,31 @@ class TestRequestField(object):
         parts = field._render_parts([('name', 'value'), ('filename', 'value')])
         assert parts == 'name="value"; filename="value"'
 
-    def test_render_part_rfc2231_non_ascii(self):
-        field = RequestFieldRFC2231('somename', 'data')
+    def test_render_part_rfc2231_unicode(self):
+        field = RequestField('somename', 'data', header_encoder=format_header_param_rfc2231)
         param = field._render_part('filename', u('n\u00e4me'))
         assert param == "filename*=utf-8''n%C3%A4me"
 
-    def test_render_part_rfc2231_ascii_only(self):
-        field = RequestFieldRFC2231('somename', 'data')
+    def test_render_part_rfc2231_ascii(self):
+        field = RequestField('somename', 'data', header_encoder=format_header_param_rfc2231)
         param = field._render_part('filename', u('name'))
         assert param == 'filename="name"'
 
-    def test_render_part_html5(self):
+    def test_render_part_html5_unicode(self):
         field = RequestField('somename', 'data')
-        param = field._render_part('filename', 'n\xc3\xa4me')
-        assert param == "filename*=utf-8''n%C3%A4me"
         param = field._render_part('filename', u('n\u00e4me'))
-        assert param == 'filename="n\u00e4me"'
+        assert param == u('filename="n\u00e4me"')
+
+    def test_render_part_html5_ascii(self):
+        field = RequestField('somename', 'data')
+        param = field._render_part('filename', 'name')
+        assert param == 'filename="name"'
 
     def test_from_tuples_rfc2231(self):
-        field = RequestFieldRFC2231.from_tuples(u('fieldname'), (u('filen\u00e4me'), 'data'))
+        field = RequestField.from_tuples(
+            u('fieldname'),
+            (u('filen\u00e4me'), 'data'),
+            header_encoder=format_header_param_rfc2231)
         cd = field.headers['Content-Disposition']
         assert (cd == u("form-data; name=\"fieldname\"; filename*=utf-8''filen%C3%A4me"))
 

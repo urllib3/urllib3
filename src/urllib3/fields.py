@@ -21,11 +21,11 @@ def guess_content_type(filename, default='application/octet-stream'):
 
 def format_header_param_rfc2231(name, value):
     """
-    Helper function to format and quote a single header parameter.
+    Helper function to format and quote a single header parameter using the
+    strategy defined in RFC 2231.
 
     Particularly useful for header parameters which might contain
-    non-ASCII values, like file names. This follows RFC 2231, as
-    suggested by RFC 2388 Section 4.4.
+    non-ASCII values, like file names. This follows RFC 2388 Section 4.4.
 
     :param name:
         The name of the parameter, a string expected to be ASCII only.
@@ -59,11 +59,15 @@ def format_header_param_rfc2231(name, value):
 
 def format_header_param_html5(name, value):
     """
-    Helper function to format and quote a single header parameter.
+    Helper function to format and quote a single header parameter using the
+    HTML5 stragey.
 
     Particularly useful for header parameters which might contain
-    non-ASCII values, like file names. This follows the HTML5 Working Draft
-    Section 4.10.22.7 (http://w3c.github.io/html/sec-forms.html#multipart-form-data)
+    non-ASCII values, like file names. This follows the `HTML5 Working Draft
+    Section 4.10.22.7`_ and matches the behavior of curl and modern browsers.
+
+    .. _HTML5 Working Draft Section 4.10.22.7:
+        http://w3c.github.io/html/sec-forms.html#multipart-form-data
 
     :param name:
         The name of the parameter, a string expected to be ASCII only.
@@ -79,12 +83,7 @@ def format_header_param_html5(name, value):
     return u'%s="%s"' % (name, value)
 
 
-format_header_param = format_header_param_rfc2231  # For backwards-compatibility
-
-
 class RequestField(object):
-    header_formatter = staticmethod(format_header_param_html5)
-
     """
     A data container for request body parameters.
 
@@ -96,17 +95,31 @@ class RequestField(object):
         An optional filename of the request field. Must be unicode.
     :param headers:
         An optional dict-like object of headers to initially use for the field.
+    :param header_encoder:
+        An optional callable that is used to encode the headers. By default,
+        this is :func:`format_header_param_html5`.
     """
-    def __init__(self, name, data, filename=None, headers=None):
+    def __init__(
+            self,
+            name,
+            data,
+            filename=None,
+            headers=None,
+            header_encoder=format_header_param_html5):
         self._name = name
         self._filename = filename
         self.data = data
         self.headers = {}
         if headers:
             self.headers = dict(headers)
+        self.header_encoder = header_encoder
 
     @classmethod
-    def from_tuples(cls, fieldname, value):
+    def from_tuples(
+            cls,
+            fieldname,
+            value,
+            header_encoder=format_header_param_html5):
         """
         A :class:`~urllib3.fields.RequestField` factory from old-style tuple parameters.
 
@@ -134,14 +147,16 @@ class RequestField(object):
             content_type = None
             data = value
 
-        request_param = cls(fieldname, data, filename=filename)
+        request_param = cls(
+            fieldname, data, filename=filename, header_encoder=header_encoder)
         request_param.make_multipart(content_type=content_type)
 
         return request_param
 
     def _render_part(self, name, value):
         """
-        Overridable helper function to format a single header parameter.
+        Overridable helper function to format a single header parameter. By
+        default, this calls ``self.header_encoder``.
 
         :param name:
             The name of the parameter, a string expected to be ASCII only.
@@ -149,7 +164,7 @@ class RequestField(object):
             The value of the parameter, provided as a unicode string.
         """
 
-        return type(self).header_formatter(name, value)
+        return self.header_encoder(name, value)
 
     def _render_parts(self, header_parts):
         """
