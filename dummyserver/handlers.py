@@ -159,7 +159,7 @@ class TestingApp(RequestHandler):
                             (size, len(data)), status='400 Bad Request')
 
         got_filename = file_['filename']
-        if(isintance(got_filename, binary_type)):
+        if(isinstance(got_filename, binary_type)):
             got_filename = got_filename.decode('utf-8')
 
         print(type(filename), filename)
