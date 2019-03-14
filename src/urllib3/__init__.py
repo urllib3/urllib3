@@ -26,7 +26,7 @@ from logging import NullHandler
 
 __author__ = 'Andrey Petrov (andrey.petrov@shazow.net)'
 __license__ = 'MIT'
-__version__ = '2.0.dev0+bleach.spike.proof.of.concept.dont.use'
+__version__ = '2.0.dev0+unasync.proof.of.concept.dont.use'
 
 __all__ = [
     'HTTPConnectionPool',

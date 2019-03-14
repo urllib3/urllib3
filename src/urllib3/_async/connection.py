@@ -40,9 +40,9 @@ except ImportError:
 
 
 def is_async_mode():
-    """Tests if we're in the async part of the code or if we're bleached"""
+    """Tests if we're in the async part of the code or if we're in unasync"""
     async def f():
-        """bleaching transforms async functions in sync functions"""
+        """Unasync transforms async functions in sync functions"""
         return None
 
     obj = f()
