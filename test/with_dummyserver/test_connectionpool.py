@@ -319,7 +319,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         tcp_nodelay_setting = conn._sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
         self.assertTrue(tcp_nodelay_setting)
 
-    @pytest.mark.xfail
     def test_socket_options(self):
         """Test that connections accept socket options."""
         # This test needs to be here in order to be run. socket.create_connection actually tries to
@@ -334,7 +333,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertTrue(using_keepalive)
         s.close()
 
-    @pytest.mark.xfail
     def test_disable_default_socket_options(self):
         """Test that passing None disables all socket options."""
         # This test needs to be here in order to be run. socket.create_connection actually tries
@@ -347,7 +345,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertTrue(using_nagle)
         s.close()
 
-    @pytest.mark.xfail
     def test_defaults_are_applied(self):
         """Test that modifying the default socket options works."""
         # This test needs to be here in order to be run. socket.create_connection actually tries

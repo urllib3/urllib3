@@ -139,3 +139,9 @@ class SyncSocket(object):
 
     def _getsockopt_tcp_nodelay(self):
         return self._sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
+
+    def getsockopt(self, level, option):
+        return self._sock.getsockopt(level, option)
+
+    def close(self):
+        return self._sock.close()
