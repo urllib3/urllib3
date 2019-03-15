@@ -40,7 +40,7 @@ except ImportError:
 
 
 def is_async_mode():
-    """Tests if we're in the async part of the code or if we're in unasync"""
+    """Tests if we're in the async part of the code or not"""
     async def f():
         """Unasync transforms async functions in sync functions"""
         return None
