@@ -315,6 +315,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         # socket, so only add this assertion if the attribute is there (i.e.
         # the python ssl module).
         # XXX This is highly-specific to SyncBackend
+        # See https://github.com/python-trio/urllib3/pull/54#discussion_r241683895
+        # for potential solutions
         sock = conn._sock._sock
         if hasattr(sock, 'server_hostname'):
             self.assertEqual(sock.server_hostname, 'localhost')
