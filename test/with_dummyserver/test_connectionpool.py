@@ -214,6 +214,8 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/')
 
     def test_create_connection_timeout(self):
+        self.start_basic_handler(block_send=Event(), num=0)  # needed for self.port
+
         timeout = Timeout(connect=SHORT_TIMEOUT, total=LONG_TIMEOUT)
         pool = HTTPConnectionPool(TARPIT_HOST, self.port, timeout=timeout, retries=False)
         self.addCleanup(pool.close)
