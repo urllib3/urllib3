@@ -304,11 +304,11 @@ class TestUtil(object):
 
         # International URLs
         (u'http://ヒ:キ@ヒキワリ.ナットウ.ニホン/ヒ?キ#ワ', Url(u'http',
-                                            host=u'ヒキワリ.ナットウ.ニホン',
-                                            auth=u'ヒ:キ',
-                                            path=u'/%E3%83%92',
-                                            query=u'%E3%82%AD',
-                                            fragment=u'%E3%83%AF')),
+                                                host=u'ヒキワリ.ナットウ.ニホン',
+                                                auth=u'ヒ:キ',
+                                                path=u'/%E3%83%92',
+                                                query=u'%E3%82%AD',
+                                                fragment=u'%E3%83%AF')),
     ]
 
     @pytest.mark.parametrize("url, expected_url", url_vulnerabilities)
