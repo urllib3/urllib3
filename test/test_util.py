@@ -198,10 +198,6 @@ class TestUtil(object):
                                           auth='foo:bar',
                                           host='localhost',
                                           path='/')),
-
-        # International URLs
-        (u'http://ヒキワリ.ナットウ.ニホン', Url(u'http',
-                                              host=u'ヒキワリ.ナットウ.ニホン')),
     ]
 
     non_round_tripping_parse_url_host_map = [
@@ -304,7 +300,15 @@ class TestUtil(object):
          Url(scheme="javascript",
              path="a='@google.com:12345/';alert(0)")),
 
-        ("//google.com/a/b/c", Url(host="google.com", path="/a/b/c"))
+        ("//google.com/a/b/c", Url(host="google.com", path="/a/b/c")),
+
+        # International URLs
+        (u'http://ヒ:キ@ヒキワリ.ナットウ.ニホン/ヒ?キ#ワ', Url(u'http',
+                                            host=u'ヒキワリ.ナットウ.ニホン',
+                                            auth=u'ヒ:キ',
+                                            path=u'/%E3%83%92',
+                                            query=u'%E3%82%AD',
+                                            fragment=u'%E3%83%AF')),
     ]
 
     @pytest.mark.parametrize("url, expected_url", url_vulnerabilities)
