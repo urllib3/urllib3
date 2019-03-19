@@ -371,7 +371,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
         http = HTTPConnectionPool(self.host, self.port,
-                                  timeout=0.001,
+                                  timeout=0.01,
                                   retries=False,
                                   maxsize=3,
                                   block=True)
@@ -394,7 +394,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=0.001, retries=True)
+        pool = HTTPConnectionPool(self.host, self.port, timeout=0.01, retries=True)
         self.addCleanup(pool.close)
 
         try:
@@ -415,7 +415,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPSConnectionPool(self.host, self.port, timeout=0.001, retries=False)
+        pool = HTTPSConnectionPool(self.host, self.port, timeout=0.01, retries=False)
         self.addCleanup(pool.close)
         try:
             self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/')
@@ -454,7 +454,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         try:
             self._start_server(socket_handler)
-            t = Timeout(connect=0.001, read=0.001)
+            t = Timeout(connect=0.001, read=0.01)
             pool = HTTPConnectionPool(self.host, self.port, timeout=t)
             self.addCleanup(pool.close)
 
@@ -487,7 +487,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         self.addCleanup(pool.close)
 
         response = pool.urlopen('GET', '/', retries=0, preload_content=False,
-                                timeout=Timeout(connect=1, read=0.001))
+                                timeout=Timeout(connect=1, read=0.01))
         try:
             self.assertRaises(ReadTimeoutError, response.read)
         finally:
@@ -517,7 +517,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         try:
             self.assertRaises(ReadTimeoutError, pool.urlopen,
                               'GET', '/', retries=False,
-                              timeout=Timeout(connect=1, read=0.001))
+                              timeout=Timeout(connect=1, read=0.01))
         finally:
             timed_out.set()
 
@@ -614,7 +614,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port) as pool:
             poolsize = pool.pool.qsize()
             response = pool.urlopen('GET', '/', retries=0, preload_content=False,
-                                    timeout=Timeout(connect=1, read=0.001))
+                                    timeout=Timeout(connect=1, read=0.01))
             try:
                 self.assertRaises(ReadTimeoutError, response.read)
                 self.assertEqual(poolsize, pool.pool.qsize())
@@ -803,7 +803,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # save it.
             response = pool.urlopen('GET', '/', retries=1,
                                     release_conn=False, preload_content=False,
-                                    timeout=Timeout(connect=1, read=0.001))
+                                    timeout=Timeout(connect=1, read=0.01))
 
             # The connection should still be on the response object, and none
             # should be in the pool. We opened two though.
@@ -1093,7 +1093,7 @@ class TestSSL(SocketDummyServerTestCase):
         self.addCleanup(pool.close)
 
         response = pool.urlopen('GET', '/', retries=0, preload_content=False,
-                                timeout=Timeout(connect=1, read=0.001))
+                                timeout=Timeout(connect=1, read=0.01))
         try:
             self.assertRaises(ReadTimeoutError, response.read)
         finally:
@@ -1127,7 +1127,7 @@ class TestSSL(SocketDummyServerTestCase):
                                        assert_fingerprint=fingerprint)
             try:
                 response = pool.urlopen('GET', '/', preload_content=False,
-                                        timeout=Timeout(connect=1, read=0.001),
+                                        timeout=Timeout(connect=1, read=0.01),
                                         retries=0)
                 response.read()
             finally:
