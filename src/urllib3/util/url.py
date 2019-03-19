@@ -15,7 +15,7 @@ url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
 NORMALIZABLE_SCHEMES = ('http', 'https', None)
 
 # Regex for detecting URLs with schemes. RFC 3986 Section 3.1
-SCHEME_REGEX = re.compile(r"^[a-zA-Z][a-zA-Z0-9+\-]*:")
+SCHEME_REGEX = re.compile(r"^(?:[a-zA-Z][a-zA-Z0-9+\-]*:|/)")
 
 
 class Url(namedtuple('Url', url_attrs)):
@@ -205,8 +205,7 @@ def parse_url(url):
             *required_components
         ).validate(uri_ref)
     except ValidationError:
-        raise
-        #six.raise_from(LocationParseError(url), None)
+        six.raise_from(LocationParseError(url), None)
 
     # For the sake of backwards compatibility we put empty
     # string values for path if there are any defined values
