@@ -712,7 +712,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # Second should succeed.
             response = pool.urlopen('GET', '/', retries=0,
                                     preload_content=False,
-                                    timeout=Timeout(connect=1, read=0.1))
+                                    timeout=Timeout(connect=1, read=1))
             self.assertEqual(len(response.read()), 8)
 
     def test_closing_response_actually_closes_connection(self):
