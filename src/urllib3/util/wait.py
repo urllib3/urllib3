@@ -40,7 +40,7 @@ if sys.version_info >= (3, 5):
     # Modern Python, that retries syscalls by default
     def _retry_on_intr(fn, timeout):
         return fn(timeout)
-else:
+else:  # Python 2.7
     # Old and broken Pythons.
     def _retry_on_intr(fn, timeout):
         if timeout is None:
