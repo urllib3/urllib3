@@ -19,7 +19,7 @@ This module contains important constants, patterns, and compiled regular
 expressions for parsing and validating URIs and their components.
 """
 
-import regex as re
+import re
 
 from . import abnf_regexp
 
