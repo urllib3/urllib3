@@ -512,6 +512,23 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
             self.assertEqual(body[i], expected_body[i])
 
+    def test_post_with_multipart__iter__(self):
+        data = {'hello': 'world'}
+        r = self.pool.request('POST', '/echo',
+                              fields=data,
+                              preload_content=False,
+                              multipart_boundary="boundary",
+                              encode_multipart=True)
+
+        chunks = [chunk for chunk in r]
+        assert chunks == [
+            b"--boundary\r\n",
+            b'Content-Disposition: form-data; name="hello"\r\n',
+            b'\r\n',
+            b'world\r\n',
+            b"--boundary--\r\n"
+        ]
+
     def test_check_gzip(self):
         r = self.pool.request('GET', '/encodingrequest',
                               headers={'accept-encoding': 'gzip'})
