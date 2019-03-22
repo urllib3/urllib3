@@ -53,13 +53,13 @@ class TestRequestField(object):
         assert parts == 'name="value"; filename="value"'
 
     def test_render_part_rfc2231_unicode(self):
-        field = RequestField('somename', 'data', header_encoder=format_header_param_rfc2231)
+        field = RequestField('somename', 'data', header_formatter=format_header_param_rfc2231)
         param = field._render_part('filename', u('n\u00e4me'))
         assert param == "filename*=utf-8''n%C3%A4me"
 
     def test_render_part_rfc2231_ascii(self):
-        field = RequestField('somename', 'data', header_encoder=format_header_param_rfc2231)
-        param = field._render_part('filename', u('name'))
+        field = RequestField('somename', 'data', header_formatter=format_header_param_rfc2231)
+        param = field._render_part('filename', b'name')
         assert param == 'filename="name"'
 
     def test_render_part_html5_unicode(self):
@@ -69,14 +69,19 @@ class TestRequestField(object):
 
     def test_render_part_html5_ascii(self):
         field = RequestField('somename', 'data')
-        param = field._render_part('filename', 'name')
+        param = field._render_part('filename', b'name')
         assert param == 'filename="name"'
+
+    def test_render_part_html5_unicode_escape(self):
+        field = RequestField('somename', 'data')
+        param = field._render_part('filename', u('hello\\world\u0022'))
+        assert param == u('filename="hello\\\\world%22"')
 
     def test_from_tuples_rfc2231(self):
         field = RequestField.from_tuples(
             u('fieldname'),
             (u('filen\u00e4me'), 'data'),
-            header_encoder=format_header_param_rfc2231)
+            header_formatter=format_header_param_rfc2231)
         cd = field.headers['Content-Disposition']
         assert (cd == u("form-data; name=\"fieldname\"; filename*=utf-8''filen%C3%A4me"))
 

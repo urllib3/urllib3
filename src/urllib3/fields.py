@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 import email.utils
 import mimetypes
+import re
 
 from .packages import six
 
@@ -30,10 +31,13 @@ def format_header_param_rfc2231(name, value):
     :param name:
         The name of the parameter, a string expected to be ASCII only.
     :param value:
-        The value of the parameter, provided as a unicode string.
+        The value of the parameter, provided as ``bytes`` or `str``.
     :ret:
         An RFC-2231-formatted unicode string.
     """
+    if isinstance(value, six.binary_type):
+        value = value.decode("utf-8")
+
     if not any(ch in value for ch in '"\\\r\n'):
         result = u'%s="%s"' % (name, value)
         try:
@@ -57,30 +61,67 @@ def format_header_param_rfc2231(name, value):
     return value
 
 
+_HTML5_REPLACEMENTS = {
+    u"\u0022": u"%22",
+    # Replace "\" with "\\".
+    u"\u005C": u"\u005C\u005C",
+    u"\u005C": u"\u005C\u005C",
+}
+
+# All control characters from 0x00 to 0x1F *except* 0x1B.
+_HTML5_REPLACEMENTS.update({
+    six.unichr(cc): u"%{:02X}".format(cc)
+    for cc
+    in range(0x00, 0x1F+1)
+    if cc not in (0x1B,)
+})
+
+
+def _replace_multiple(value, needles_and_replacements):
+
+    def replacer(match):
+        return needles_and_replacements[match.group(0)]
+
+    pattern = re.compile(
+        r"|".join([
+            re.escape(needle) for needle in needles_and_replacements.keys()
+        ])
+    )
+
+    result = pattern.sub(replacer, value)
+
+    return result
+
+
 def format_header_param_html5(name, value):
     """
     Helper function to format and quote a single header parameter using the
-    HTML5 stragey.
+    HTML5 strategy.
 
     Particularly useful for header parameters which might contain
     non-ASCII values, like file names. This follows the `HTML5 Working Draft
     Section 4.10.22.7`_ and matches the behavior of curl and modern browsers.
 
-    .. _HTML5 Working Draft Section 4.10.22.7:
-        http://w3c.github.io/html/sec-forms.html#multipart-form-data
+    .. _HTML5 Working Draft Section 4.10.21.7:
+        https://w3c.github.io/html/sec-forms.html#multipart-form-data
 
     :param name:
         The name of the parameter, a string expected to be ASCII only.
     :param value:
-        The value of the parameter, provided as a unicode string.
+        The value of the parameter, provided as ``bytes`` or `str``.
     :ret:
         A unicode string, stripped of troublesome characters.
     """
+    if isinstance(value, six.binary_type):
+        value = value.decode("utf-8")
 
-    value = value.replace(u'\\', u'\\\\').replace(u'"', u'\\"')
-    value = value.replace(u'\r', u' ').replace(u'\n', u' ')
+    value = _replace_multiple(value, _HTML5_REPLACEMENTS)
 
     return u'%s="%s"' % (name, value)
+
+
+# For backwards-compatibility.
+format_header_param = format_header_param_html5
 
 
 class RequestField(object):
@@ -95,9 +136,9 @@ class RequestField(object):
         An optional filename of the request field. Must be unicode.
     :param headers:
         An optional dict-like object of headers to initially use for the field.
-    :param header_encoder:
-        An optional callable that is used to encode the headers. By default,
-        this is :func:`format_header_param_html5`.
+    :param header_formatter:
+        An optional callable that is used to encode and format the headers. By
+        default, this is :func:`format_header_param_html5`.
     """
     def __init__(
             self,
@@ -105,21 +146,21 @@ class RequestField(object):
             data,
             filename=None,
             headers=None,
-            header_encoder=format_header_param_html5):
+            header_formatter=format_header_param_html5):
         self._name = name
         self._filename = filename
         self.data = data
         self.headers = {}
         if headers:
             self.headers = dict(headers)
-        self.header_encoder = header_encoder
+        self.header_formatter = header_formatter
 
     @classmethod
     def from_tuples(
             cls,
             fieldname,
             value,
-            header_encoder=format_header_param_html5):
+            header_formatter=format_header_param_html5):
         """
         A :class:`~urllib3.fields.RequestField` factory from old-style tuple parameters.
 
@@ -148,7 +189,7 @@ class RequestField(object):
             data = value
 
         request_param = cls(
-            fieldname, data, filename=filename, header_encoder=header_encoder)
+            fieldname, data, filename=filename, header_formatter=header_formatter)
         request_param.make_multipart(content_type=content_type)
 
         return request_param
@@ -156,7 +197,7 @@ class RequestField(object):
     def _render_part(self, name, value):
         """
         Overridable helper function to format a single header parameter. By
-        default, this calls ``self.header_encoder``.
+        default, this calls ``self.header_formatter``.
 
         :param name:
             The name of the parameter, a string expected to be ASCII only.
@@ -164,7 +205,7 @@ class RequestField(object):
             The value of the parameter, provided as a unicode string.
         """
 
-        return self.header_encoder(name, value)
+        return self.header_formatter(name, value)
 
     def _render_parts(self, header_parts):
         """

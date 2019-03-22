@@ -162,9 +162,6 @@ class TestingApp(RequestHandler):
         if(isinstance(got_filename, binary_type)):
             got_filename = got_filename.decode('utf-8')
 
-        print(type(filename), filename)
-        print(type(got_filename), got_filename)
-
         # Tornado can leave the trailing \n in place on the filename.
         if filename != got_filename:
             return Response(
