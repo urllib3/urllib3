@@ -102,7 +102,7 @@ def format_header_param_html5(name, value):
     non-ASCII values, like file names. This follows the `HTML5 Working Draft
     Section 4.10.22.7`_ and matches the behavior of curl and modern browsers.
 
-    .. _HTML5 Working Draft Section 4.10.21.7:
+    .. _HTML5 Working Draft Section 4.10.22.7:
         https://w3c.github.io/html/sec-forms.html#multipart-form-data
 
     :param name:
