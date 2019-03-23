@@ -77,6 +77,11 @@ class TestRequestField(object):
         param = field._render_part('filename', u('hello\\world\u0022'))
         assert param == u('filename="hello\\\\world%22"')
 
+    def test_render_part_html5_unicode_with_control_character(self):
+        field = RequestField('somename', 'data')
+        param = field._render_part('filename', u('hello\x1A\x1B\x1C'))
+        assert param == u('filename="hello%1A\x1B%1C"')
+
     def test_from_tuples_rfc2231(self):
         field = RequestField.from_tuples(
             u('fieldname'),
