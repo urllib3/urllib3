@@ -278,7 +278,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         return conn or self._new_conn()
 
-    async def _put_conn(self, conn):
+    def _put_conn(self, conn):
         """
         Put a connection back into the pool.
 
@@ -613,7 +613,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 # Put the connection back to be reused. If the connection is
                 # expired then it will be None, which will get replaced with a
                 # fresh connection during _get_conn.
-                await self._put_conn(conn)
+                self._put_conn(conn)
 
         if not conn:
             # Try again
