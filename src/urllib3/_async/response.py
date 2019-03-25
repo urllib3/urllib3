@@ -175,11 +175,11 @@ class HTTPResponse(io.IOBase):
 
         return False
 
-    async def release_conn(self):
+    def release_conn(self):
         if not self._pool or not self._connection:
             return
 
-        await self._pool._put_conn(self._connection)
+        self._pool._put_conn(self._connection)
         self._connection = None
 
     @property
