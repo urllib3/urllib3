@@ -1339,7 +1339,6 @@ class TestHeaders(SocketDummyServerTestCase):
         pool.request('GET', '/', headers=OrderedDict(expected_request_headers))
         self.assertEqual(expected_request_headers, actual_request_headers)
 
-    @pytest.mark.xfail
     @fails_on_travis_gce
     def test_request_host_header_ignores_fqdn_dot(self):
 

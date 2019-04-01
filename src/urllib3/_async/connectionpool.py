@@ -383,7 +383,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         host = self.host
         port = self.port
         scheme = self.scheme
-        request.add_host(host, port, scheme)
+
+        # When given a URL wit a trailing dot for the hostname part:
+        # "https://example.com./", urllib3 will strip off the dot and use the name
+        # without a dot internally and send it dot-less in HTTP Host: headers and in
+        # the TLS SNI field.
+
+        request.add_host(host.rstrip("."), port, scheme)
 
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
