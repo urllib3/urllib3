@@ -384,10 +384,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         port = self.port
         scheme = self.scheme
 
-        # When given a URL wit a trailing dot for the hostname part:
-        # "https://example.com./", urllib3 will strip off the dot and use the name
-        # without a dot internally and send it dot-less in HTTP Host: headers and in
-        # the TLS SNI field.
+        # Stripping trailing dots from Host header to keep HTTP Host in sync
+        # between SNI and HTTP to avoid confuse servers.
+        # https://github.com/urllib3/urllib3/issues/1254
 
         request.add_host(host.rstrip("."), port, scheme)
 
