@@ -387,9 +387,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Stripping trailing dots from Host header to keep HTTP Host in sync
         # between SNI and HTTP to avoid confusing the servers.
         # https://github.com/urllib3/urllib3/issues/1254
-        print(host)
         host = host.rstrip(".")
-        print(host)
 
         request.add_host(host, port, scheme)
 
