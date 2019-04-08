@@ -383,6 +383,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         host = self.host
         port = self.port
         scheme = self.scheme
+
+        # Stripping trailing dots from Host header to keep HTTP Host in sync
+        # between SNI and HTTP to avoid confusing the servers.
+        # https://github.com/urllib3/urllib3/issues/1254
+        host = host.rstrip(".")
+
         request.add_host(host, port, scheme)
 
         # Reset the timeout for the recv() on the socket
