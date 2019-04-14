@@ -210,7 +210,13 @@ def _build_tunnel_request(host, port, headers):
     Builds a urllib3 Request object that is set up correctly to request a proxy
     to establish a TCP tunnel to the remote host.
     """
-    target = "%s:%d" % (host, port)
+
+    try:
+        socket.inet_pton(socket.AF_INET6, host)
+        target = "[%s]:%d" % (host, port)
+    except OSError:
+        target = "%s:%d" % (host, port)
+
     if not isinstance(target, bytes):
         target = target.encode('latin1')
 
