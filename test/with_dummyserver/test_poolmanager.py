@@ -191,7 +191,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                          retries=Retry(total=None, redirect=1, raise_on_redirect=False))
 
         self.assertEqual(r.status, 303)
- 
+
     def test_raise_on_status(self):
         http = PoolManager()
         self.addCleanup(http.clear)
