@@ -4,7 +4,8 @@ Changes
 1.24.2 (2019-04-17)
 -------------------
 
-* Don't load system certificates by default when using the ``ssl_context`` parameter.
+* Don't load system certificates by default when any other ``ca_certs``, ``ca_certs_dir`` or
+  ``ssl_context`` parameters are specified.
 
 * Remove Authorization header regardless of case when redirecting to cross-site. (Issue #1510)
  
