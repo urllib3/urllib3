@@ -181,6 +181,17 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         self.assertEqual(data['Authorization'], 'bar')
 
+    def test_raise_on_redirect(self):
+        http = PoolManager()
+        self.addCleanup(http.clear)
+
+        r = http.request('GET', '%s/redirect' % self.base_url,
+                         fields={'target': '%s/redirect?target=%s/' % (self.base_url,
+                                                                       self.base_url)},
+                         retries=Retry(total=None, redirect=1, raise_on_redirect=False))
+
+        self.assertEqual(r.status, 303)
+ 
     def test_raise_on_status(self):
         http = PoolManager()
         self.addCleanup(http.clear)
