@@ -33,12 +33,8 @@ env:
 
 matrix:
   include:
-
-  matrix:
     - python: 3.6
       env: TOXENV=flake8-py3
-    - python: 2.7
-      env: TOXENV=gae
     - python: 3.6
       env: TOXENV=docs
 
@@ -67,6 +63,10 @@ matrix:
 
     - python: pypy-5.4
       env: TOXENV=pypy
+
+    - python: 2.7
+      env: TOXENV=gae
+
     - language: generic
       os: osx
       env: TOXENV=py27
