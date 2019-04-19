@@ -19,6 +19,8 @@ except ImportError:
     HAS_SSL = False
 
 
+pytestmark = pytest.mark.skip("Currently not supporting socks proxies.")
+
 SOCKS_NEGOTIATION_NONE = b'\x00'
 SOCKS_NEGOTIATION_PASSWORD = b'\x02'
 
@@ -206,7 +208,7 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
     """
     Test the SOCKS proxy in SOCKS5 mode.
     """
-    @pytest.mark.skip
+
     def test_basic_request(self):
         def request_handler(listener):
             sock = listener.accept()[0]
@@ -239,7 +241,6 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
         self.assertEqual(response.data, b'')
         self.assertEqual(response.headers['Server'], 'SocksTestServer')
 
-    @pytest.mark.xfail
     def test_local_dns(self):
         def request_handler(listener):
             sock = listener.accept()[0]
@@ -305,7 +306,6 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
         response = pm.request('GET', 'http://example.com')
         self.assertEqual(response.status, 200)
 
-    @pytest.mark.skip
     def test_connection_timeouts(self):
         event = threading.Event()
 
@@ -323,7 +323,6 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
         )
         event.set()
 
-    @pytest.mark.xfail
     def test_connection_failure(self):
         event = threading.Event()
 
@@ -342,7 +341,6 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
             retries=False
         )
 
-    @pytest.mark.xfail
     def test_proxy_rejection(self):
         evt = threading.Event()
 
@@ -367,7 +365,6 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
         )
         evt.set()
 
-    @pytest.mark.skip
     def test_socks_with_password(self):
         def request_handler(listener):
             sock = listener.accept()[0]
@@ -404,7 +401,6 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
         self.assertEqual(response.data, b'')
         self.assertEqual(response.headers['Server'], 'SocksTestServer')
 
-    @pytest.mark.skip
     def test_socks_with_auth_in_url(self):
         """
         Test when we have auth info in url, i.e.
@@ -444,7 +440,6 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
         self.assertEqual(response.data, b'')
         self.assertEqual(response.headers['Server'], 'SocksTestServer')
 
-    @pytest.mark.xfail
     def test_socks_with_invalid_password(self):
         def request_handler(listener):
             sock = listener.accept()[0]
@@ -467,7 +462,6 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
         else:
             self.fail("Did not raise")
 
-    @pytest.mark.xfail
     def test_source_address_works(self):
         expected_port = _get_free_port(self.host)
 
@@ -511,7 +505,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
     Has relatively fewer tests than the SOCKS5 case, mostly because once the
     negotiation is done the two cases behave identically.
     """
-    @pytest.mark.skip
+
     def test_basic_request(self):
         def request_handler(listener):
             sock = listener.accept()[0]
@@ -544,7 +538,6 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         self.assertEqual(response.headers['Server'], 'SocksTestServer')
         self.assertEqual(response.data, b'')
 
-    @pytest.mark.xfail
     def test_local_dns(self):
         def request_handler(listener):
             sock = listener.accept()[0]
@@ -610,7 +603,6 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         response = pm.request('GET', 'http://example.com')
         self.assertEqual(response.status, 200)
 
-    @pytest.mark.xfail
     def test_proxy_rejection(self):
         evt = threading.Event()
 
@@ -635,7 +627,6 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         )
         evt.set()
 
-    @pytest.mark.skip
     def test_socks4_with_username(self):
         def request_handler(listener):
             sock = listener.accept()[0]
@@ -668,7 +659,6 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         self.assertEqual(response.data, b'')
         self.assertEqual(response.headers['Server'], 'SocksTestServer')
 
-    @pytest.mark.xfail
     def test_socks_with_invalid_username(self):
         def request_handler(listener):
             sock = listener.accept()[0]
@@ -693,7 +683,7 @@ class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
     """
     Test that TLS behaves properly for SOCKS proxies.
     """
-    @pytest.mark.skip
+
     @pytest.mark.skipif(not HAS_SSL, reason='No TLS available')
     def test_basic_request(self):
         def request_handler(listener):

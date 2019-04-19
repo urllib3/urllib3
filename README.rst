@@ -12,7 +12,7 @@ urllib3
 .. image:: https://readthedocs.org/projects/urllib3/badge/?version=latest
         :alt: Documentation Status
         :target: https://urllib3.readthedocs.io/en/latest/
-        
+
 .. image:: https://img.shields.io/codecov/c/github/urllib3/urllib3.svg
         :alt: Coverage Status
         :target: https://codecov.io/gh/urllib3/urllib3
@@ -33,6 +33,8 @@ urllib3 is a powerful, *sanity-friendly* HTTP client for Python. Much of the
 Python ecosystem already uses urllib3 and you should too.
 urllib3 brings many critical features that are missing from the Python
 standard libraries:
+
+*Currently not supporting SOCKS proxies, pyOpenSSL and SecureTransport.*
 
 - Thread safety.
 - Connection pooling.
