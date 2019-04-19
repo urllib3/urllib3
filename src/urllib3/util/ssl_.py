@@ -329,7 +329,8 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=None,
             if e.errno == errno.ENOENT:
                 raise SSLError(e)
             raise
-    elif getattr(context, 'load_default_certs', None) is not None:
+
+    elif ssl_context is None and hasattr(context, 'load_default_certs'):
         # try to load OS default certs; works well on Windows (require Python3.4+)
         context.load_default_certs()
 
