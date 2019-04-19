@@ -31,13 +31,17 @@ env:
     - PYPI_USERNAME=urllib3
     # PYPI_PASSWORD is set in Travis control panel.
 
-  matrix:
-    - TOXENV=flake8-py3
-    - TOXENV=gae
-    - TOXENV=docs
-
 matrix:
   include:
+
+  matrix:
+    - python: 3.6
+      env: TOXENV=flake8-py3
+    - python: 2.7
+      env: TOXENV=gae
+    - python: 3.6
+      env: TOXENV=docs
+
     - python: 2.7
       env: TOXENV=py27
     - python: 2.7
