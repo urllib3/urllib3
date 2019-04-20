@@ -70,6 +70,7 @@ import sys
 
 from .. import util
 
+
 __all__ = ['inject_into_urllib3', 'extract_from_urllib3']
 
 # SNI always works.
@@ -77,9 +78,12 @@ HAS_SNI = True
 
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
 _openssl_versions = {
-    ssl.PROTOCOL_SSLv23: OpenSSL.SSL.SSLv23_METHOD,
+    util.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,
     ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
 }
+
+if hasattr(ssl, 'PROTOCOL_SSLv3') and hasattr(OpenSSL.SSL, 'SSLv3_METHOD'):
+    _openssl_versions[ssl.PROTOCOL_SSLv3] = OpenSSL.SSL.SSLv3_METHOD
 
 if hasattr(ssl, 'PROTOCOL_TLSv1_1') and hasattr(OpenSSL.SSL, 'TLSv1_1_METHOD'):
     _openssl_versions[ssl.PROTOCOL_TLSv1_1] = OpenSSL.SSL.TLSv1_1_METHOD
@@ -87,10 +91,6 @@ if hasattr(ssl, 'PROTOCOL_TLSv1_1') and hasattr(OpenSSL.SSL, 'TLSv1_1_METHOD'):
 if hasattr(ssl, 'PROTOCOL_TLSv1_2') and hasattr(OpenSSL.SSL, 'TLSv1_2_METHOD'):
     _openssl_versions[ssl.PROTOCOL_TLSv1_2] = OpenSSL.SSL.TLSv1_2_METHOD
 
-try:
-    _openssl_versions.update({ssl.PROTOCOL_SSLv3: OpenSSL.SSL.SSLv3_METHOD})
-except AttributeError:
-    pass
 
 _stdlib_to_openssl_verify = {
     ssl.CERT_NONE: OpenSSL.SSL.VERIFY_NONE,
@@ -185,6 +185,10 @@ def _dnsname_to_stdlib(name):
             return idna.encode(name)
         except idna.core.IDNAError:
             return None
+
+    # Don't send IPv6 addresses through the IDNA encoder.
+    if ':' in name:
+        return name
 
     name = idna_encode(name)
     if name is None:
@@ -288,6 +292,10 @@ class WrappedSocket(object):
                 raise timeout('The read operation timed out')
             else:
                 return self.recv(*args, **kwargs)
+
+        # TLS 1.3 post-handshake authentication
+        except OpenSSL.SSL.Error as e:
+            raise ssl.SSLError("read error: %r" % e)
         else:
             return data
 
@@ -309,6 +317,10 @@ class WrappedSocket(object):
                 raise timeout('The read operation timed out')
             else:
                 return self.recv_into(*args, **kwargs)
+
+        # TLS 1.3 post-handshake authentication
+        except OpenSSL.SSL.Error as e:
+            raise ssl.SSLError("read error: %r" % e)
 
     def settimeout(self, timeout):
         return self.socket.settimeout(timeout)
@@ -361,6 +373,9 @@ class WrappedSocket(object):
             ),
             'subjectAltName': get_subj_alt_name(x509)
         }
+
+    def version(self):
+        return self.connection.get_protocol_version_name()
 
     def _reuse(self):
         self._makefile_refs += 1

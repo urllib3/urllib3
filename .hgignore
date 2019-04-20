@@ -1,7 +1,0 @@
-syntax: glob
-.*
-*.pyc
-*.egg-info
-*.log
-dist
-build

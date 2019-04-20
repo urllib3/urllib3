@@ -206,7 +206,7 @@ SSL Warnings
 ------------
 
 urllib3 will issue several different warnings based on the level of certificate
-verification support. These warning indicate particular situations and can
+verification support. These warnings indicate particular situations and can
 be resolved in different ways.
 
 * :class:`~exceptions.InsecureRequestWarning`
@@ -273,3 +273,19 @@ To use the Sockets API, add the following to your app.yaml and use
 
 For more details on the limitations and gotchas, see
 :mod:`urllib3.contrib.appengine`.
+
+Brotli Encoding
+---------------
+
+Brotli is a compression algorithm created by Google with better compression
+than gzip and deflate and is supported by urllib3 if the
+`brotlipy <https://github.com/python-hyper/brotlipy>`_ package is installed.
+You may also request the package be installed via the ``urllib3[brotli]`` extra::
+
+    python -m pip install urllib3[brotli]
+
+Here's an example using brotli encoding via the ``Accept-Encoding`` header::
+
+    >>> from urllib3 import PoolManager
+    >>> http = PoolManager()
+    >>> http.request('GET', 'https://www.google.com/', headers={'Accept-Encoding': 'br'})

@@ -374,9 +374,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Receive the response from the server
         try:
-            try:  # Python 2.7, use buffering of HTTP responses
+            try:
+                # Python 2.7, use buffering of HTTP responses
                 httplib_response = conn.getresponse(buffering=True)
-            except TypeError:  # Python 3
+            except TypeError:
+                # Python 3
                 try:
                     httplib_response = conn.getresponse()
                 except Exception as e:
