@@ -307,23 +307,20 @@ class TestUtil(object):
 
         # International URLs
         (u'http://ヒ:キ@ヒ.abc.ニ/ヒ?キ#ワ', Url(u'http',
-                                              host=u'xn--pdk.abc.xn--idk',
-                                              auth=u'%E3%83%92:%E3%82%AD',
-                                              path=u'/%E3%83%92',
-                                              query=u'%E3%82%AD',
-                                              fragment=u'%E3%83%AF')),
+                                          host=u'xn--pdk.abc.xn--idk',
+                                          auth=u'%E3%83%92:%E3%82%AD',
+                                          path=u'/%E3%83%92',
+                                          query=u'%E3%82%AD',
+                                          fragment=u'%E3%83%AF')),
 
         # Injected headers (CVE-2016-5699, CVE-2019-9740, CVE-2019-9947)
-        ("10.251.0.83:7777?a=1 HTTP/1.1\r\nX-injected: header", Url(host='10.251.0.83',
-                                                                    port=7777,
-                                                                    path='',
-                                                                    query='a=1%20HTTP/1.1%0D%0AX-injected:%20header')),
+        ("10.251.0.83:7777?a=1 HTTP/1.1\r\nX-injected: header",
+         Url(host='10.251.0.83', port=7777, path='',
+             query='a=1%20HTTP/1.1%0D%0AX-injected:%20header')),
 
-        ("http://127.0.0.1:6379?\r\nSET test failure12\r\n:8080/test/?test=a", Url(scheme='http',
-                                                                                   host='127.0.0.1',
-                                                                                   port=6379,
-                                                                                   path='',
-                                                                                   query='%0D%0ASET%20test%20failure12%0D%0A:8080/test/?test=a')),
+        ("http://127.0.0.1:6379?\r\nSET test failure12\r\n:8080/test/?test=a",
+         Url(scheme='http', host='127.0.0.1', port=6379, path='',
+             query='%0D%0ASET%20test%20failure12%0D%0A:8080/test/?test=a')),
     ]
 
     @pytest.mark.parametrize("url, expected_url", url_vulnerabilities)
