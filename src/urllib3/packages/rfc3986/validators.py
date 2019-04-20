@@ -304,6 +304,24 @@ def authority_is_valid(authority, host=None, require=False):
         bool
     """
     validated = is_valid(authority, misc.SUBAUTHORITY_MATCHER, require)
+    if validated and host is not None:
+        return host_is_valid(host, require)
+    return validated
+
+
+def host_is_valid(host, require=False):
+    """Determine if the host string is valid.
+
+    :param str host:
+        The host to validate.
+    :param bool require:
+        (optional) Specify if host must not be None.
+    :returns:
+        ``True`` if valid, ``False`` otherwise
+    :rtype:
+        bool
+    """
+    validated = is_valid(host, misc.HOST_MATCHER, require)
     if validated and host is not None and misc.IPv4_MATCHER.match(host):
         return valid_ipv4_host_address(host)
     elif validated and host is not None and misc.IPv6_MATCHER.match(host):
@@ -395,19 +413,11 @@ def subauthority_component_is_valid(uri, component):
     except exceptions.InvalidAuthority:
         return False
 
-    # Check host here
-    if component == 'host':
-        host = subauthority_dict.get('host')
-        if (host and misc.IPv6_MATCHER.match(host) and not
-                misc.IPv6_NO_RFC4007_MATCHER.match(host)):
-            # If it's an IPv6 address that has RFC 4007 IPv6
-            # Zone IDs then it's invalid.
-            return False
-
-
     # If we can parse the authority into sub-components and we're not
     # validating the port, we can assume it's valid.
-    if component != 'port':
+    if component == 'host':
+        return host_is_valid(subauthority_dict['host'])
+    elif component != 'port':
         return True
 
     try:

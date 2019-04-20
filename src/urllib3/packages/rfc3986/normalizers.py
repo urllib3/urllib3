@@ -162,6 +162,6 @@ def encode_component(uri_component, encoding):
                 or (byte_ord < 128 and byte.decode() in misc.NON_PCT_ENCODED)):
             encoded_uri.extend(byte)
             continue
-        encoded_uri.extend('%{0:02x}'.format(byte_ord).encode())
+        encoded_uri.extend('%{0:02x}'.format(byte_ord).encode().upper())
 
     return encoded_uri.decode(encoding)
