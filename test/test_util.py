@@ -166,7 +166,6 @@ class TestUtil(object):
         # Path/query/fragment
         ('', Url()),
         ('/', Url(path='/')),
-        ('/abc/../def', Url(path="/abc/../def")),
         ('#?/!google.com/?foo', Url(path='', fragment='?/!google.com/?foo')),
         ('/foo', Url(path='/foo')),
         ('/foo?bar=baz', Url(path='/foo', query='bar=baz')),
@@ -204,6 +203,9 @@ class TestUtil(object):
         # Path/query/fragment
         ('?', Url(path='', query='')),
         ('#', Url(path='', fragment='')),
+
+        # Path normalization
+        ('/abc/../def', Url(path="/def")),
 
         # Empty Port
         ('http://google.com:', Url('http', host='google.com')),
@@ -274,13 +276,25 @@ class TestUtil(object):
          Url("http", host="127.0.0.1%0d%0aConnection%3a%20keep-alive")),
 
         # NodeJS unicode -> double dot
-        (u"http://google.com/\uff2e\uff2e/abc", Url("http",
-                                                    host="google.com",
-                                                    path='/%ef%bc%ae%ef%bc%ae/abc')),
+        (u"http://google.com/\uff2e\uff2e/abc", Url(u"http",
+                                                    host=u"google.com",
+                                                    path=u'/%EF%BC%AE%EF%BC%AE/abc')),
 
         # Scheme without ://
         ("javascript:a='@google.com:12345/';alert(0)", Url(scheme="javascript",
                                                            path="a='@google.com:12345/';alert(0)")),
+
+        # Injected headers (CVE-2016-5699, CVE-2019-9740, CVE-2019-9947)
+        ("10.251.0.83:7777?a=1 HTTP/1.1\r\nX-injected: header", Url(host='10.251.0.83',
+                                                                    port=7777,
+                                                                    path='',
+                                                                    query='a=1%20HTTP/1.1%0D%0AX-injected:%20header')),
+
+        ("http://127.0.0.1:6379?\r\nSET test failure12\r\n:8080/test/?test=a", Url(scheme='http',
+                                                                                   host='127.0.0.1',
+                                                                                   port=6379,
+                                                                                   path='',
+                                                                                   query='%0D%0ASET%20test%20failure12%0D%0A:8080/test/?test=a')),
     ]
 
     @pytest.mark.parametrize("url, expected_url", url_vulnerabilities)

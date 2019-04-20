@@ -163,6 +163,8 @@ def parse_url(url):
         return Url()
 
     is_string = not isinstance(url, six.binary_type)
+    if not is_string:
+        url = url.decode("utf-8")
 
     # RFC 3986 doesn't like URLs that have a host but don't start
     # with a scheme and we support URLs like that so we need to
@@ -173,8 +175,25 @@ def parse_url(url):
         url = "//" + url
 
     try:
-        uri_ref = rfc3986.URIReference.from_string(url, encoding="utf-8")
+        iri_ref = rfc3986.IRIReference.from_string(url, encoding="utf-8")
     except (ValueError, RFC3986Exception):
+        raise LocationParseError(url)
+
+    def idna_encode(name):
+        if name and any([ord(x) > 128 for x in name]):
+            try:
+                import idna
+            except ImportError:
+                raise LocationParseError("Unable to parse URL without the 'idna' module")
+            try:
+                return idna.encode(name, strict=True, std3_rules=True).lower()
+            except idna.IDNAError:
+                raise LocationParseError(u"Name '%s' is not a valid IDNA label" % name)
+        return name
+
+    has_authority = iri_ref.authority is not None
+    uri_ref = iri_ref.encode(idna_encoder=idna_encode)
+    if has_authority and uri_ref.authority is None:
         raise LocationParseError(url)
 
     if uri_ref.scheme in NORMALIZABLE_SCHEMES:

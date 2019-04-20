@@ -119,13 +119,13 @@ class IRIReference(namedtuple('IRIReference', misc.URI_COMPONENTS),
                 else:
                     def idna_encoder(x):
                         try:
-                            return idna.encode(x, strict=True, std3_rules=True)
+                            return idna.encode(x, strict=True, std3_rules=True).lower()
                         except idna.IDNAError:
                             raise exceptions.InvalidAuthority(self.authority)
 
             authority = ""
             if self.host:
-                authority = ".".join([compat.to_str(idna_encoder(part.lower()))
+                authority = ".".join([compat.to_str(idna_encoder(part))
                                       for part in self.host.split(".")])
 
             if self.userinfo is not None:
