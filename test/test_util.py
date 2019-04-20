@@ -148,6 +148,7 @@ class TestUtil(object):
          'http://JeremyCline:Hunter2@example.com:8080/'),
         ('HTTPS://Example.Com/?Key=Value', 'https://example.com/?Key=Value'),
         ('Https://Example.Com/#Fragment', 'https://example.com/#Fragment'),
+        ('[::Ff%etH0%Ff]/%ab%Af', '[::ff%25etH0%Ff]/%AB%AF'),
     ])
     def test_parse_url_normalization(self, url, expected_normalized_url):
         """Assert parse_url normalizes the scheme/host, and only the scheme/host"""
@@ -224,6 +225,23 @@ class TestUtil(object):
     def test_unparse_url(self, url, expected_url):
         assert url == expected_url.url
 
+    @pytest.mark.parametrize(
+        ['url', 'expected_url'],
+        [
+            # RFC 3986 5.2.4
+            ('/abc/../def', Url(path="/def")),
+            ('/..', Url(path="/")),
+            ('/./abc/./def/', Url(path='/abc/def/')),
+            ('/.', Url(path='/')),
+            ('/./', Url(path='/')),
+            ('/abc/./.././d/././e/.././f/./../../ghi', Url(path='/ghi'))
+        ]
+    )
+    def test_parse_and_normalize_url_paths(self, url, expected_url):
+        actual_url = parse_url(url)
+        assert actual_url == expected_url
+        assert actual_url.url == expected_url.url
+
     def test_parse_url_invalid_IPv6(self):
         with pytest.raises(LocationParseError):
             parse_url('[::1')
@@ -273,16 +291,27 @@ class TestUtil(object):
 
         # CVE-2016-5699
         ("http://127.0.0.1%0d%0aConnection%3a%20keep-alive",
-         Url("http", host="127.0.0.1%0d%0aConnection%3a%20keep-alive")),
+         Url("http", host="127.0.0.1%0d%0aconnection%3a%20keep-alive")),
 
         # NodeJS unicode -> double dot
-        (u"http://google.com/\uff2e\uff2e/abc", Url(u"http",
-                                                    host=u"google.com",
-                                                    path=u'/%EF%BC%AE%EF%BC%AE/abc')),
+        (u"http://google.com/\uff2e\uff2e/abc", Url("http",
+                                                    host="google.com",
+                                                    path='/%EF%BC%AE%EF%BC%AE/abc')),
 
         # Scheme without ://
-        ("javascript:a='@google.com:12345/';alert(0)", Url(scheme="javascript",
-                                                           path="a='@google.com:12345/';alert(0)")),
+        ("javascript:a='@google.com:12345/';alert(0)",
+         Url(scheme="javascript",
+             path="a='@google.com:12345/';alert(0)")),
+
+        ("//google.com/a/b/c", Url(host="google.com", path="/a/b/c")),
+
+        # International URLs
+        (u'http://ヒ:キ@ヒ.abc.ニ/ヒ?キ#ワ', Url(u'http',
+                                              host=u'xn--pdk.abc.xn--idk',
+                                              auth=u'%E3%83%92:%E3%82%AD',
+                                              path=u'/%E3%83%92',
+                                              query=u'%E3%82%AD',
+                                              fragment=u'%E3%83%AF')),
 
         # Injected headers (CVE-2016-5699, CVE-2019-9740, CVE-2019-9947)
         ("10.251.0.83:7777?a=1 HTTP/1.1\r\nX-injected: header", Url(host='10.251.0.83',

@@ -6,7 +6,6 @@ from ..exceptions import LocationParseError
 from ..packages import six, rfc3986
 from ..packages.rfc3986.exceptions import RFC3986Exception, ValidationError
 from ..packages.rfc3986.validators import Validator
-from ..packages.rfc3986.normalizers import normalize_host
 
 
 url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
@@ -16,7 +15,7 @@ url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
 NORMALIZABLE_SCHEMES = ('http', 'https', None)
 
 # Regex for detecting URLs with schemes. RFC 3986 Section 3.1
-SCHEME_REGEX = re.compile(r"^[a-zA-Z][a-zA-Z0-9+\-]*:")
+SCHEME_REGEX = re.compile(r"^(?:[a-zA-Z][a-zA-Z0-9+\-]*:|/)")
 
 
 class Url(namedtuple('Url', url_attrs)):
@@ -31,10 +30,8 @@ class Url(namedtuple('Url', url_attrs)):
                 query=None, fragment=None):
         if path and not path.startswith('/'):
             path = '/' + path
-        if scheme:
+        if scheme is not None:
             scheme = scheme.lower()
-        if host and scheme in NORMALIZABLE_SCHEMES:
-            host = host.lower()
         return super(Url, cls).__new__(cls, scheme, auth, host, port, path,
                                        query, fragment)
 
@@ -80,23 +77,23 @@ class Url(namedtuple('Url', url_attrs)):
             'http://username:password@host.com:80/path?query#fragment'
         """
         scheme, auth, host, port, path, query, fragment = self
-        url = ''
+        url = u''
 
         # We use "is not None" we want things to happen with empty strings (or 0 port)
         if scheme is not None:
-            url += scheme + '://'
+            url += scheme + u'://'
         if auth is not None:
-            url += auth + '@'
+            url += auth + u'@'
         if host is not None:
             url += host
         if port is not None:
-            url += ':' + str(port)
+            url += u':' + str(port)
         if path is not None:
             url += path
         if query is not None:
-            url += '?' + query
+            url += u'?' + query
         if fragment is not None:
-            url += '#' + fragment
+            url += u'#' + fragment
 
         return url
 
@@ -106,7 +103,7 @@ class Url(namedtuple('Url', url_attrs)):
 
 def split_first(s, delims):
     """
-    Deprecated. No longer used by parse_url().
+    .. deprecated:: 1.25
 
     Given a string and an iterable of delimiters, split on the first found
     delimiter. Return two split parts and the matched delimiter.
@@ -177,7 +174,7 @@ def parse_url(url):
     try:
         iri_ref = rfc3986.IRIReference.from_string(url, encoding="utf-8")
     except (ValueError, RFC3986Exception):
-        raise LocationParseError(url)
+        six.raise_from(LocationParseError(url), None)
 
     def idna_encode(name):
         if name and any([ord(x) > 128 for x in name]):
@@ -193,20 +190,26 @@ def parse_url(url):
 
     has_authority = iri_ref.authority is not None
     uri_ref = iri_ref.encode(idna_encoder=idna_encode)
+
+    # rfc3986 strips the authority if it's invalid
     if has_authority and uri_ref.authority is None:
         raise LocationParseError(url)
 
-    if uri_ref.scheme in NORMALIZABLE_SCHEMES:
+    # Only normalize schemes we understand to not break http+unix
+    # or other schemes that don't follow RFC 3986.
+    if uri_ref.scheme is None or uri_ref.scheme.lower() in NORMALIZABLE_SCHEMES:
         uri_ref = uri_ref.normalize()
 
-    # Run validator on the internal URIReference within the ParseResult
+    # Validate all URIReference components and ensure that all
+    # components that were set before are still set after
+    # normalization has completed.
     validator = Validator()
     try:
         validator.check_validity_of(
             *validator.COMPONENT_NAMES
         ).validate(uri_ref)
     except ValidationError:
-        raise LocationParseError(url)
+        six.raise_from(LocationParseError(url), None)
 
     # For the sake of backwards compatibility we put empty
     # string values for path if there are any defined values
