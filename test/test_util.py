@@ -131,12 +131,24 @@ class TestUtil(object):
         with pytest.raises(LocationParseError):
             get_host(location)
 
+    @pytest.mark.parametrize('url', [
+        'http://user\\@google.com',
+        'http://google\\.com',
+        'user\\@google.com',
+        'http://google.com#fragment#',
+        'http://user@user@google.com/',
+    ])
+    def test_invalid_url(self, url):
+        with pytest.raises(LocationParseError):
+            parse_url(url)
+
     @pytest.mark.parametrize('url, expected_normalized_url', [
         ('HTTP://GOOGLE.COM/MAIL/', 'http://google.com/MAIL/'),
         ('HTTP://JeremyCline:Hunter2@Example.com:8080/',
          'http://JeremyCline:Hunter2@example.com:8080/'),
         ('HTTPS://Example.Com/?Key=Value', 'https://example.com/?Key=Value'),
         ('Https://Example.Com/#Fragment', 'https://example.com/#Fragment'),
+        ('[::Ff%etH0%Ff]/%ab%Af', '[::ff%25etH0%Ff]/%AB%AF'),
     ])
     def test_parse_url_normalization(self, url, expected_normalized_url):
         """Assert parse_url normalizes the scheme/host, and only the scheme/host"""
@@ -155,8 +167,7 @@ class TestUtil(object):
         # Path/query/fragment
         ('', Url()),
         ('/', Url(path='/')),
-        ('/abc/../def', Url(path="/abc/../def")),
-        ('#?/!google.com/?foo#bar', Url(path='', fragment='?/!google.com/?foo#bar')),
+        ('#?/!google.com/?foo', Url(path='', fragment='?/!google.com/?foo')),
         ('/foo', Url(path='/foo')),
         ('/foo?bar=baz', Url(path='/foo', query='bar=baz')),
         ('/foo?bar=baz#banana?apple/orange', Url(path='/foo',
@@ -173,10 +184,10 @@ class TestUtil(object):
         # Auth
         ('http://foo:bar@localhost/', Url('http', auth='foo:bar', host='localhost', path='/')),
         ('http://foo@localhost/', Url('http', auth='foo', host='localhost', path='/')),
-        ('http://foo:bar@baz@localhost/', Url('http',
-                                              auth='foo:bar@baz',
-                                              host='localhost',
-                                              path='/')),
+        ('http://foo:bar@localhost/', Url('http',
+                                          auth='foo:bar',
+                                          host='localhost',
+                                          path='/')),
 
         # Unicode type (Python 2.x)
         (u'http://foo:bar@localhost/', Url(u'http',
@@ -194,6 +205,9 @@ class TestUtil(object):
         ('?', Url(path='', query='')),
         ('#', Url(path='', fragment='')),
 
+        # Path normalization
+        ('/abc/../def', Url(path="/def")),
+
         # Empty Port
         ('http://google.com:', Url('http', host='google.com')),
         ('http://google.com:/', Url('http', host='google.com', path='/')),
@@ -210,6 +224,23 @@ class TestUtil(object):
     @pytest.mark.parametrize('url, expected_url', parse_url_host_map)
     def test_unparse_url(self, url, expected_url):
         assert url == expected_url.url
+
+    @pytest.mark.parametrize(
+        ['url', 'expected_url'],
+        [
+            # RFC 3986 5.2.4
+            ('/abc/../def', Url(path="/def")),
+            ('/..', Url(path="/")),
+            ('/./abc/./def/', Url(path='/abc/def/')),
+            ('/.', Url(path='/')),
+            ('/./', Url(path='/')),
+            ('/abc/./.././d/././e/.././f/./../../ghi', Url(path='/ghi'))
+        ]
+    )
+    def test_parse_and_normalize_url_paths(self, url, expected_url):
+        actual_url = parse_url(url)
+        assert actual_url == expected_url
+        assert actual_url.url == expected_url.url
 
     def test_parse_url_invalid_IPv6(self):
         with pytest.raises(LocationParseError):
@@ -260,12 +291,36 @@ class TestUtil(object):
 
         # CVE-2016-5699
         ("http://127.0.0.1%0d%0aConnection%3a%20keep-alive",
-         Url("http", host="127.0.0.1%0d%0aConnection%3a%20keep-alive")),
+         Url("http", host="127.0.0.1%0d%0aconnection%3a%20keep-alive")),
 
         # NodeJS unicode -> double dot
         (u"http://google.com/\uff2e\uff2e/abc", Url("http",
                                                     host="google.com",
-                                                    path='/%ef%bc%ae%ef%bc%ae/abc'))
+                                                    path='/%EF%BC%AE%EF%BC%AE/abc')),
+
+        # Scheme without ://
+        ("javascript:a='@google.com:12345/';alert(0)",
+         Url(scheme="javascript",
+             path="a='@google.com:12345/';alert(0)")),
+
+        ("//google.com/a/b/c", Url(host="google.com", path="/a/b/c")),
+
+        # International URLs
+        (u'http://ヒ:キ@ヒ.abc.ニ/ヒ?キ#ワ', Url(u'http',
+                                          host=u'xn--pdk.abc.xn--idk',
+                                          auth=u'%E3%83%92:%E3%82%AD',
+                                          path=u'/%E3%83%92',
+                                          query=u'%E3%82%AD',
+                                          fragment=u'%E3%83%AF')),
+
+        # Injected headers (CVE-2016-5699, CVE-2019-9740, CVE-2019-9947)
+        ("10.251.0.83:7777?a=1 HTTP/1.1\r\nX-injected: header",
+         Url(host='10.251.0.83', port=7777, path='',
+             query='a=1%20HTTP/1.1%0D%0AX-injected:%20header')),
+
+        ("http://127.0.0.1:6379?\r\nSET test failure12\r\n:8080/test/?test=a",
+         Url(scheme='http', host='127.0.0.1', port=6379, path='',
+             query='%0D%0ASET%20test%20failure12%0D%0A:8080/test/?test=a')),
     ]
 
     @pytest.mark.parametrize("url, expected_url", url_vulnerabilities)

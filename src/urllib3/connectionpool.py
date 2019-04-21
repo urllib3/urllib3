@@ -26,6 +26,7 @@ from .exceptions import (
 from .packages.ssl_match_hostname import CertificateError
 from .packages import six
 from .packages.six.moves import queue
+from .packages.rfc3986.normalizers import normalize_host
 from .connection import (
     port_by_scheme,
     DummyConnection,
@@ -65,7 +66,7 @@ class ConnectionPool(object):
         if not host:
             raise LocationValueError("No host specified.")
 
-        self.host = _ipv6_host(host, self.scheme)
+        self.host = _normalize_host(host, scheme=self.scheme)
         self._proxy_host = host.lower()
         self.port = port
 
@@ -434,8 +435,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # TODO: Add optional support for socket.gethostbyname checking.
         scheme, host, port = get_host(url)
-
-        host = _ipv6_host(host, self.scheme)
+        if host is not None:
+            host = _normalize_host(host, scheme=scheme)
 
         # Use explicit default port for comparison when none is given
         if self.port and not port:
@@ -878,9 +879,9 @@ def connection_from_url(url, **kw):
         return HTTPConnectionPool(host, port=port, **kw)
 
 
-def _ipv6_host(host, scheme):
+def _normalize_host(host, scheme):
     """
-    Process IPv6 address literals
+    Normalize hosts for comparisons and use with sockets.
     """
 
     # httplib doesn't like it when we include brackets in IPv6 addresses
@@ -889,11 +890,8 @@ def _ipv6_host(host, scheme):
     # Instead, we need to make sure we never pass ``None`` as the port.
     # However, for backward compatibility reasons we can't actually
     # *assert* that.  See http://bugs.python.org/issue28539
-    #
-    # Also if an IPv6 address literal has a zone identifier, the
-    # percent sign might be URIencoded, convert it back into ASCII
     if host.startswith('[') and host.endswith(']'):
-        host = host.replace('%25', '%').strip('[]')
+        host = host.strip('[]')
     if scheme in NORMALIZABLE_SCHEMES:
-        host = host.lower()
+        host = normalize_host(host)
     return host
