@@ -8,6 +8,7 @@ case "${1}" in
         cd requests
         git rev-parse HEAD
         python -m pip install -r ${TRAVIS_BUILD_DIR}/_travis/downstream/requests-requirements.txt
+        python setup.py install
         ;;
     run)
         cd requests
