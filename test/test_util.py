@@ -211,6 +211,8 @@ class TestUtil(object):
         # Empty Port
         ('http://google.com:', Url('http', host='google.com')),
         ('http://google.com:/', Url('http', host='google.com', path='/')),
+        (u'http://Königsgäßchen.de/straße'.encode("utf-8"),
+         Url('http', host='xn--knigsgchen-b4a3dun.de', path='/stra%C3%9Fe'))
     ]
 
     @pytest.mark.parametrize(
