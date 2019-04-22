@@ -341,7 +341,7 @@ class HTTPResponse(io.IOBase):
 
     DECODER_ERROR_CLASSES = (IOError, zlib.error)
     if brotli is not None:
-        DECODER_ERROR_CLASSES += (brotli.Error,)
+        DECODER_ERROR_CLASSES += (brotli.error,)
 
     def _decode(self, data, decode_content, flush_decoder):
         """
