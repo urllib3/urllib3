@@ -7,15 +7,12 @@ case "${1}" in
         git clone --depth 1 https://github.com/kennethreitz/requests
         cd requests
         git rev-parse HEAD
-        python -m pip install --upgrade pipenv
-        pipenv install --dev --skip-lock
-        
-        # See: kennethreitz/requests/5004
-        python -m pip install pytest-httpbin==0.3.0
+        python -m pip install -r ${TRAVIS_BUILD_DIR}/_travis/downstream/requests-requirements.txt
+        python -m pip install .
         ;;
     run)
         cd requests
-        pipenv run py.test -n 8 --boxed
+        pytest tests/
         ;;
     *)
         exit 1
