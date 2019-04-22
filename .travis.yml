@@ -1,6 +1,7 @@
 language: python
 sudo: false
 stage: test
+dist: xenial
 
 before_install:
   - env
@@ -50,16 +51,10 @@ matrix:
       env: TOXENV=py36
     - python: 3.7
       env: TOXENV=py37
-      dist: xenial
-      sudo: required
     - python: 3.7
       env: TOXENV=py37-nobrotli
-      dist: xenial
-      sudo: required
     - python: 3.8-dev
       env: TOXENV=py38
-      dist: xenial
-      sudo: required
 
     - python: pypy-5.4
       env: TOXENV=pypy
@@ -89,8 +84,6 @@ matrix:
 
     - python: 3.7
       env: DOWNSTREAM=requests
-      dist: xenial
-      sudo: required
       stage: integration
 
     - python: 2.7
@@ -99,8 +92,6 @@ matrix:
 
     - python: 3.7
       env: DOWNSTREAM=botocore
-      dist: xenial
-      sudo: required
       stage: integration
 
     - python: 3.7
