@@ -343,7 +343,7 @@ class HTTP1Connection(object):
         self._tunnel_port = tunnel_port
         self._tunnel_headers = tunnel_headers
         self._sock = None
-        self._state_machine = h11.Connection(our_role=h11.CLIENT)
+        self._state_machine = None
 
     async def _wrap_socket(self, sock, ssl_context, fingerprint, assert_hostname):
         """
@@ -457,6 +457,8 @@ class HTTP1Connection(object):
         try:
             self._sock = await self._backend.connect(
                 self._host, self._port, connect_timeout, **extra_kw)
+            self._state_machine = h11.Connection(our_role=h11.CLIENT)
+
         # XX these two error handling blocks needs to be re-done in a
         # backend-agnostic way
         except socket.timeout:
@@ -482,6 +484,9 @@ class HTTP1Connection(object):
         """
         if self._sock is not None:
             # Make sure self._sock is None even if closing raises an exception
+            # Also keep self._state_machine in sync with self._sock: it should only be
+            # defined when self._sock is defined
+            self._state_machine = None
             sock, self._sock = self._sock, None
             sock.forceful_close()
 
@@ -522,13 +527,11 @@ class HTTP1Connection(object):
 
     @property
     def complete(self):
-        """
-        XX what is this supposed to do? check if the response has been fully
-        iterated over? check for that + the connection being reusable?
-        """
+        if not self._state_machine:
+            return True
+
         our_state = self._state_machine.our_state
         their_state = self._state_machine.their_state
-
         return (our_state is h11.IDLE and their_state is h11.IDLE)
 
     def __aiter__(self):

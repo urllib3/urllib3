@@ -13,6 +13,8 @@ import socket
 import ssl
 import unittest
 
+import h11
+
 from urllib3.base import Request
 from urllib3._backends.sync_backend import SyncSocket
 from urllib3._sync.connection import HTTP1Connection
@@ -199,6 +201,7 @@ class TestUnusualSocketConditions(unittest.TestCase):
         wait_for_socket = ScenarioWait(scenario).wait_for_socket
         sync_socket = SyncSocket(sock, _wait_for_socket=wait_for_socket)
         conn._sock = sync_socket
+        conn._state_machine = h11.Connection(our_role=h11.CLIENT)
 
         request = Request(method=b'GET', target=b'/')
         request.add_host(host=b'localhost', port=80, scheme='http')

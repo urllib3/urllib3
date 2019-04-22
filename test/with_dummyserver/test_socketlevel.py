@@ -548,7 +548,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         self.assertIsInstance(cm.exception.reason, BadVersionError)
 
-    @pytest.mark.xfail
     def test_connection_cleanup_on_read_timeout(self):
         timed_out = Event()
 
@@ -577,7 +576,6 @@ class TestSocketClosing(SocketDummyServerTestCase):
             finally:
                 timed_out.set()
 
-    @pytest.mark.xfail
     def test_connection_cleanup_on_protocol_error_during_read(self):
         body = 'Response'
         partial_body = body[:2]
@@ -1649,7 +1647,6 @@ class TestAutomaticHeaderInsertion(SocketDummyServerTestCase):
 
 class TestRetryPoolSizeDrainFail(SocketDummyServerTestCase):
 
-    @pytest.mark.xfail
     def test_pool_size_retry_drain_fail(self):
         def socket_handler(listener):
             for _ in range(2):

@@ -84,7 +84,6 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
 
         block_event.set()
 
-    @pytest.mark.xfail
     def test_timeout(self):
         # Requests should time out when expected
         block_event = Event()
