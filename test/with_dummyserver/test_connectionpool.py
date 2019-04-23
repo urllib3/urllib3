@@ -305,7 +305,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         r = self.pool.request('POST', '/upload', fields=fields)
         self.assertEqual(r.status, 200, r.data)
 
-    @pytest.mark.skip
     def test_nagle(self):
         """ Test that connections have TCP_NODELAY turned on """
         # This test needs to be here in order to be run. socket.create_connection actually tries
@@ -399,7 +398,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         except MaxRetryError as e:
             self.assertEqual(type(e.reason), NewConnectionError)
 
-    @pytest.mark.skip
     def test_keepalive(self):
         pool = HTTPConnectionPool(self.host, self.port, block=True, maxsize=1)
         self.addCleanup(pool.close)
@@ -411,7 +409,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         self.assertEqual(pool.num_connections, 1)
         self.assertEqual(pool.num_requests, 2)
 
-    @pytest.mark.skip
     def test_keepalive_close(self):
         pool = HTTPConnectionPool(self.host, self.port,
                                   block=True, maxsize=1, timeout=2)
