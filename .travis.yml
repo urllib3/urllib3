@@ -43,6 +43,8 @@ matrix:
       env: TOXENV=py27
     - python: 2.7
       env: TOXENV=py27-nobrotli
+    - python: 2.7
+      env: TOXENV=py27-google-brotli
     - python: 3.4
       env: TOXENV=py34
     - python: 3.5
@@ -53,6 +55,8 @@ matrix:
       env: TOXENV=py37
     - python: 3.7
       env: TOXENV=py37-nobrotli
+    - python: 3.7
+      env: TOXENV=py37-google-brotli
     - python: 3.8-dev
       env: TOXENV=py38
 
@@ -92,14 +96,6 @@ matrix:
 
     - python: 3.7
       env: DOWNSTREAM=botocore
-      stage: integration
-
-    - python: 2.7
-      env: DOWNSTREAM=google-brotli
-      stage: integration
-
-    - python: 3.7
-      env: DOWNSTREAM=google-brotli
       stage: integration
 
     - python: 3.7

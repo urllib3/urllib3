@@ -97,14 +97,21 @@ class GzipDecoder(object):
 
 if brotli is not None:
     class BrotliDecoder(object):
+        # Supports both 'brotlipy' and 'Brotli' packages
+        # since they share an import name. The top branches
+        # are for 'brotlipy' and bottom branches for 'Brotli'
         def __init__(self):
             self._obj = brotli.Decompressor()
 
-        def __getattr__(self, name):
-            return getattr(self._obj, name)
-
         def decompress(self, data):
-            return self._obj.decompress(data)
+            if hasattr(self._obj, 'decompress'):
+                return self._obj.decompress(data)
+            return self._obj.process(data)
+
+        def flush(self):
+            if hasattr(self._obj, 'flush'):
+                return self._obj.flush()
+            return b''
 
 
 class MultiDecoder(object):
