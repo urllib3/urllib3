@@ -1,6 +1,12 @@
 Changes
 =======
 
+dev (master)
+------------
+
+* Change ``is_ipaddress`` to not detect IPvFuture addresses. (Pull #1583)
+
+
 1.25.1 (2019-04-24)
 -------------------
 
