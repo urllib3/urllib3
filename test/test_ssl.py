@@ -17,7 +17,7 @@ from urllib3.exceptions import SNIMissingWarning
 
     # IPv6 w/ Zone IDs
     'FE80::8939:7684:D84b:a5A4%251',
-    b'FE80::8939:7684:D84b:a5A4%251'
+    b'FE80::8939:7684:D84b:a5A4%251',
     'FE80::8939:7684:D84b:a5A4%19',
     b'FE80::8939:7684:D84b:a5A4%19'
 ])
