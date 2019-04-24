@@ -4,8 +4,8 @@ set -exo pipefail
 
 
 install_mac_python() {
-    local FULL=$0
-    local MINOR=$(echo $MACPYTHON | cut -d. -f1,2)
+    local FULL=$1
+    local MINOR=$(echo $FULL | cut -d. -f1,2)
     local PYTHON_EXE=/Library/Frameworks/Python.framework/Versions/${MINOR}/bin/python${MINOR}
 
     # Already installed.
