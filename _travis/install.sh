@@ -2,13 +2,18 @@
 
 set -exo pipefail
 
+if ! python3 -m pip --version; then
+    curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+    sudo python3 get-pip.py
+fi
+
 if [[ "$(uname -s)" == 'Darwin' ]]; then
-    case "${TOXENV}" in
-        py27) MACPYTHON=2.7.15 ;;
-        py34) MACPYTHON=3.4.4 ;;
-        py35) MACPYTHON=3.5.4 ;;
-        py36) MACPYTHON=3.6.7 ;;
-        py37) MACPYTHON=3.7.1 ;;
+    case "${NOX_SESSION}" in
+        tests-2.7) MACPYTHON=2.7.15 ;;
+        tests-3.4) MACPYTHON=3.4.4 ;;
+        tests-3.5) MACPYTHON=3.5.4 ;;
+        tests-3.6) MACPYTHON=3.6.7 ;;
+        tests-3.7) MACPYTHON=3.7.1 ;;
     esac
 
     MINOR=$(echo $MACPYTHON | cut -d. -f1,2)
@@ -23,11 +28,9 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
 
     # Enable TLS 1.3 on macOS
     sudo defaults write /Library/Preferences/com.apple.networkd tcp_connect_enable_tls13 1
-else
-    python -m pip install virtualenv
 fi
 
 if [[ "${TOXENV}" == "gae" ]]; then
-    python -m pip install gcp-devrel-py-tools
+    python3 -m pip install gcp-devrel-py-tools
     gcp-devrel-py-tools download-appengine-sdk "$(dirname ${GAE_SDK_PATH})"
 fi

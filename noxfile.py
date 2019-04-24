@@ -1,3 +1,4 @@
+import os
 import shutil
 
 import nox
@@ -67,5 +68,6 @@ def docs(session):
     session.install(".[socks,secure,brotli]")
 
     session.chdir("docs")
-    shutil.rmtree("_build")
+    if os.path.exists("_build"):
+        shutil.rmtree("_build")
     session.run("sphinx-build", "-W", ".", "_build/html")
