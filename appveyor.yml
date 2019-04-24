@@ -51,7 +51,7 @@ install:
   - C:\Python36-x64\python.exe -m pip install nox
 
 test_script:
-  - ps: C:\Python36-x64\python.exe -m nox -s $env:NOX_SESSION
+  - "C:\Python36-x64\python.exe --s \"%NOX_SESSION%\""
 
 on_success:
   - pip install codecov
