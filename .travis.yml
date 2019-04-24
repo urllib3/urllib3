@@ -26,7 +26,6 @@ notifications:
 
 env:
   global:
-    - GAE_SDK_PATH=${HOME}/.cache/google_appengine
     - PYTHONWARNINGS=always::DeprecationWarning
 
     - PYPI_USERNAME=urllib3
@@ -60,7 +59,7 @@ matrix:
       env: NOX_SESSION=test-pypy
 
     - python: 2.7
-      env: NOX_SESSION=app_engine
+      env: NOX_SESSION=app_engine GAE_SDK_PATH=${HOME}/.cache/google_appengine
 
     - language: generic
       os: osx
