@@ -7,7 +7,7 @@ if [[ "$(uname -s)" == "Darwin" && "$NOX_SESSION" == "tests-2.7" ]]; then
 fi
 
 if [ -n "${NOX_SESSION}" ]; then
-    python3 -m nox -s "${NOX_SESSION}"
+    nox -s "${NOX_SESSION}"
 else
     downstream_script="${TRAVIS_BUILD_DIR}/_travis/downstream/${DOWNSTREAM}.sh"
     if [ ! -x "$downstream_script" ]; then

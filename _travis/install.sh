@@ -32,11 +32,11 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
         test-3.7) MACPYTHON=3.7.1 ;;
     esac
 
-    # Always install 3.6 for Nox
-    install_mac_python "3.6.7"
-
     # Install additional versions as needed.
     install_mac_python $MACPYTHON
+
+    # Always install 3.6 for Nox
+    install_mac_python "3.6.7"
 
     # Enable TLS 1.3 on macOS
     sudo defaults write /Library/Preferences/com.apple.networkd tcp_connect_enable_tls13 1
