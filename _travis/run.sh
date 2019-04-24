@@ -2,12 +2,12 @@
 
 set -exo pipefail
 
-if [[ "$(uname -s)" == "Darwin" && "$TOXENV" == "py27" ]]; then
+if [[ "$(uname -s)" == "Darwin" && "$NOX_SESSION" == "tests-2.7" ]]; then
     export PATH="/Library/Frameworks/Python.framework/Versions/2.7/bin":$PATH
 fi
 
-if [ -n "${TOXENV}" ]; then
-    python -m pip install tox
+if [ -n "${NOX_SESSION}" ]; then
+    python3 -m pip install nox
     tox
 else
     downstream_script="${TRAVIS_BUILD_DIR}/_travis/downstream/${DOWNSTREAM}.sh"
