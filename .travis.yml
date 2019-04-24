@@ -52,7 +52,9 @@ matrix:
       env: NOX_SESSION=test-3.7
     - python: 3.8-dev
       env: NOX_SESSION=test-3.8
-    - python: pypy-5.4
+    - python: pypy2.7-6.0
+      env: NOX_SESSION=test-pypy
+    - python: pypy3.5-6.0
       env: NOX_SESSION=test-pypy
 
     # Extras
@@ -103,7 +105,8 @@ matrix:
         - ./_travis/deploy.sh
 
   allow_failures:
-  - python: pypy-5.4
+    - python: pypy3.5-6.0
+    - python: pypy2.7-6.0
 
 stages:
   - name: test
