@@ -4,7 +4,7 @@ Changes
 dev (master)
 ------------
 
-* Add support for Google's ``Brotli`` package. (Pull #1752)
+* Add support for Google's ``Brotli`` package. (Pull #1572, Pull #1579)
 
 * ... [Short description of non-trivial change.] (Issue #)
 

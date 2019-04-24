@@ -94,7 +94,7 @@ class IRIReference(namedtuple('IRIReference', misc.URI_COMPONENTS),
             encoding,
         )
 
-    def encode(self, idna_encoder=None):
+    def encode(self, idna_encoder=None):  # noqa: C901
         """Encode an IRIReference into a URIReference instance.
 
         If the ``idna`` module is installed or the ``rfc3986[idna]``
@@ -116,12 +116,16 @@ class IRIReference(namedtuple('IRIReference', misc.URI_COMPONENTS),
                         "Could not import the 'idna' module "
                         "and the IRI hostname requires encoding"
                     )
-                else:
-                    def idna_encoder(x):
+
+                def idna_encoder(name):
+                    if any(ord(c) > 128 for c in name):
                         try:
-                            return idna.encode(x, strict=True, std3_rules=True).lower()
+                            return idna.encode(name.lower(),
+                                               strict=True,
+                                               std3_rules=True)
                         except idna.IDNAError:
                             raise exceptions.InvalidAuthority(self.authority)
+                    return name
 
             authority = ""
             if self.host:
