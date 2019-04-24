@@ -1,12 +1,12 @@
 Changes
 =======
 
-dev (master)
-------------
+1.25.1 (2019-04-24)
+-------------------
 
 * Add support for Google's ``Brotli`` package. (Pull #1572, Pull #1579)
 
-* ... [Short description of non-trivial change.] (Issue #)
+* Upgrade bundled rfc3986 to v1.3.1 (Pull #1578)
 
 
 1.25 (2019-04-22)
