@@ -4,10 +4,9 @@ set -exo pipefail
 
 
 install_mac_python() {
-    local FULL = $0
+    local FULL=$0
     local MINOR=$(echo $MACPYTHON | cut -d. -f1,2)
-
-    PYTHON_EXE=/Library/Frameworks/Python.framework/Versions/${MINOR}/bin/python${MINOR}
+    local PYTHON_EXE=/Library/Frameworks/Python.framework/Versions/${MINOR}/bin/python${MINOR}
 
     # Already installed.
     if [[ -f "${PYTHON_EXE}" ]]; then
@@ -60,7 +59,7 @@ else
     fi
 fi
 
-if [[ "${TOXENV}" == "gae" ]]; then
+if [[ "${NOX_SESSION}" == "app_engine" ]]; then
     python -m pip install gcp-devrel-py-tools
     gcp-devrel-py-tools download-appengine-sdk "$(dirname ${GAE_SDK_PATH})"
 fi
