@@ -39,7 +39,11 @@ def test(session):
 
 
 @nox.session(python=["2", "3"])
-def no_brotli(session):
+def google_brotli(session):
+    # https://pypi.org/project/Brotli/ is the Google version of brotli, so
+    # install it separately and don't install our brotli extra (which installs
+    # brotlipy).
+    session.install("brotli")
     tests_impl(session, extras="socks,secure")
 
 

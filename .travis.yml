@@ -33,15 +33,15 @@ env:
 
 matrix:
   include:
+    # Lint & documentation.
     - python: 3.6
       env: NOX_SESSION=lint
     - python: 3.6
       env: NOX_SESSION=docs
 
+    # Unit tests
     - python: 2.7
       env: NOX_SESSION=test-2.7
-    - python: 2.7
-      env: NOX_SESSION=no_brotli-2
     - python: 3.4
       env: NOX_SESSION=test-3.4
     - python: 3.5
@@ -50,17 +50,20 @@ matrix:
       env: NOX_SESSION=test-3.6
     - python: 3.7
       env: NOX_SESSION=test-3.7
-    - python: 3.7
-      env: NOX_SESSION=no_brotli-3
     - python: 3.8-dev
       env: NOX_SESSION=test-3.8
-
     - python: pypy-5.4
       env: NOX_SESSION=test-pypy
 
+    # Extras
     - python: 2.7
       env: NOX_SESSION=app_engine GAE_SDK_PATH=${HOME}/.cache/google_appengine
+    - python: 2.7
+      env: NOX_SESSION=google_brotli-2
+    - python: 3.7
+      env: NOX_SESSION=google_brotli-3
 
+    # OS X unit tests.
     - language: generic
       os: osx
       env: NOX_SESSION=test-2.7
@@ -77,6 +80,7 @@ matrix:
       os: osx
       env: NOX_SESSION=test-3.7
 
+    # Downstream integration tests.
     - python: 2.7
       env: DOWNSTREAM=requests
       stage: integration
@@ -91,14 +95,6 @@ matrix:
 
     - python: 3.7
       env: DOWNSTREAM=botocore
-      stage: integration
-
-    - python: 2.7
-      env: DOWNSTREAM=google-brotli
-      stage: integration
-
-    - python: 3.7
-      env: DOWNSTREAM=google-brotli
       stage: integration
 
     - python: 3.7
