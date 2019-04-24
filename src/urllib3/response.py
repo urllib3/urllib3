@@ -103,9 +103,6 @@ if brotli is not None:
         def __init__(self):
             self._obj = brotli.Decompressor()
 
-        def __getattr__(self, name):
-            return getattr(self._obj, name)
-
         def decompress(self, data):
             if hasattr(self._obj, 'decompress'):
                 return self._obj.decompress(data)
