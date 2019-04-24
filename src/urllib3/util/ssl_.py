@@ -47,7 +47,7 @@ _IP_ADDRESS_REGEX = re.compile(
     r'^(?:%s|%s|%s)$' % (
         abnf_regexp.IPv4_RE,
         abnf_regexp.IPv6_RE,
-        abnf_regexp.IPv6_ADDRZ_RE
+        abnf_regexp.IPv6_ADDRZ_RFC4007_RE
     )
 )
 
