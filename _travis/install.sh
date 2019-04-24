@@ -42,7 +42,7 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     sudo defaults write /Library/Preferences/com.apple.networkd tcp_connect_enable_tls13 1
 
     # Install Nox
-    python3.6 -m install nox
+    python3.6 -m pip install nox
 
 else
     # Linux Setup
