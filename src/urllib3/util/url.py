@@ -6,6 +6,7 @@ from ..exceptions import LocationParseError
 from ..packages import six, rfc3986
 from ..packages.rfc3986.exceptions import RFC3986Exception, ValidationError
 from ..packages.rfc3986.validators import Validator
+from ..packages.rfc3986 import abnf_regexp, normalizers, compat
 
 
 url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
@@ -16,6 +17,9 @@ NORMALIZABLE_SCHEMES = ('http', 'https', None)
 
 # Regex for detecting URLs with schemes. RFC 3986 Section 3.1
 SCHEME_REGEX = re.compile(r"^(?:[a-zA-Z][a-zA-Z0-9+\-]*:|/)")
+
+PATH_CHARS = abnf_regexp.UNRESERVED_CHARS_SET | abnf_regexp.SUB_DELIMITERS_SET | {':', '@', '/'}
+QUERY_CHARS = FRAGMENT_CHARS = PATH_CHARS | {'?'}
 
 
 class Url(namedtuple('Url', url_attrs)):
@@ -136,6 +140,34 @@ def split_first(s, delims):
     return s[:min_idx], s[min_idx + 1:], min_delim
 
 
+def encode_invalid_chars(component, allowed_chars, encoding='utf-8'):
+    """Encode the specific component in the provided encoding."""
+    if component is None:
+        return component
+
+    # Try to see if the component we're encoding is already percent-encoded
+    # so we can skip all '%' characters but still encode all others.
+    percent_encodings = len(normalizers.PERCENT_MATCHER.findall(
+                            compat.to_str(component, encoding)))
+
+    uri_bytes = compat.to_bytes(component, encoding)
+    is_percent_encoded = percent_encodings == uri_bytes.count(b'%')
+
+    encoded_component = bytearray()
+
+    for i in range(0, len(uri_bytes)):
+        # Will return a single character bytestring on both Python 2 & 3
+        byte = uri_bytes[i:i+1]
+        byte_ord = ord(byte)
+        if ((is_percent_encoded and byte == b'%')
+                or (byte_ord < 128 and byte.decode() in allowed_chars)):
+            encoded_component.extend(byte)
+            continue
+        encoded_component.extend('%{0:02x}'.format(byte_ord).encode().upper())
+
+    return encoded_component.decode(encoding)
+
+
 def parse_url(url):
     """
     Given a url, return a parsed :class:`.Url` namedtuple. Best-effort is
@@ -195,6 +227,14 @@ def parse_url(url):
     if has_authority and uri_ref.authority is None:
         raise LocationParseError(url)
 
+    # Percent-encode any characters that aren't allowed in that component
+    # before normalizing and validating.
+    uri_ref = uri_ref.copy_with(
+        path=encode_invalid_chars(uri_ref.path, PATH_CHARS),
+        query=encode_invalid_chars(uri_ref.query, QUERY_CHARS),
+        fragment=encode_invalid_chars(uri_ref.fragment, FRAGMENT_CHARS)
+    )
+
     # Only normalize schemes we understand to not break http+unix
     # or other schemes that don't follow RFC 3986.
     if uri_ref.scheme is None or uri_ref.scheme.lower() in NORMALIZABLE_SCHEMES:
@@ -206,17 +246,10 @@ def parse_url(url):
     validator = Validator()
     try:
         validator.check_validity_of(
-            'scheme', 'userinfo', 'host', 'port'
+            *validator.COMPONENT_NAMES
         ).validate(uri_ref)
     except ValidationError:
         six.raise_from(LocationParseError(url), None)
-
-    # Ensure that there are no control characters in the authority, path,
-    # query otherwise pass through to the request target to allow for
-    # exotic path and query constructions like `?parameters[]=example`
-    for component in (uri_ref.authority, uri_ref.path, uri_ref.query):
-        if component and set(component).intersection({"\r\n\t "}):
-            raise LocationParseError(url)
 
     # For the sake of backwards compatibility we put empty
     # string values for path if there are any defined values
