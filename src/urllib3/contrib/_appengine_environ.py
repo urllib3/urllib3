@@ -6,7 +6,11 @@ import os
 
 
 def is_appengine():
-    return 'APPENGINE_RUNTIME' in os.environ
+    try:
+        from google.appengine.tools.devappserver2.python import instance_factory
+        return True
+    except ImportError:
+        return False
 
 
 def is_appengine_sandbox():
