@@ -12,13 +12,16 @@ from urllib3.exceptions import (
 )
 from urllib3.response import httplib
 from urllib3.util.ssl_ import HAS_SNI
+from urllib3.util import ssl_
 from urllib3.util.timeout import Timeout
 from urllib3.util.retry import Retry
 from urllib3._collections import HTTPHeaderDict
 
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from dummyserver.server import (
-    DEFAULT_CERTS, DEFAULT_CA, COMBINED_CERT_AND_KEY, get_unreachable_address)
+    DEFAULT_CERTS, DEFAULT_CA, COMBINED_CERT_AND_KEY,
+    PASSWORD_KEYFILE, get_unreachable_address
+)
 
 from .. import onlyPy3, LogRecorder
 
@@ -35,7 +38,7 @@ import ssl
 
 import pytest
 
-from test import fails_on_travis_gce
+from test import fails_on_travis_gce, requires_ssl_context_keyfile_password
 
 
 class TestCookies(SocketDummyServerTestCase):
@@ -230,6 +233,80 @@ class TestClientCerts(SocketDummyServerTestCase):
                 "Expected server to reject connection due to missing client "
                 "certificates"
             )
+
+    @requires_ssl_context_keyfile_password
+    def test_client_cert_with_string_password(self):
+        self.run_client_cert_with_password_test(u"letmein")
+
+    @requires_ssl_context_keyfile_password
+    def test_client_cert_with_bytes_password(self):
+        self.run_client_cert_with_password_test(b"letmein")
+
+    def run_client_cert_with_password_test(self, password):
+        """
+        Tests client certificate password functionality
+        """
+        done_receiving = Event()
+        client_certs = []
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            sock = self._wrap_in_ssl(sock)
+
+            client_certs.append(sock.getpeercert())
+
+            data = b''
+            while not data.endswith(b'\r\n\r\n'):
+                data += sock.recv(8192)
+
+            sock.sendall(
+                b'HTTP/1.1 200 OK\r\n'
+                b'Server: testsocket\r\n'
+                b'Connection: close\r\n'
+                b'Content-Length: 6\r\n'
+                b'\r\n'
+                b'Valid!'
+            )
+
+            done_receiving.wait(5)
+            sock.close()
+
+        self._start_server(socket_handler)
+        ssl_context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
+        ssl_context.load_cert_chain(
+            certfile=DEFAULT_CERTS['certfile'],
+            keyfile=PASSWORD_KEYFILE,
+            password=password
+        )
+
+        pool = HTTPSConnectionPool(
+            self.host,
+            self.port,
+            ssl_context=ssl_context,
+            cert_reqs='REQUIRED',
+            ca_certs=DEFAULT_CA,
+        )
+        self.addCleanup(pool.close)
+        pool.request('GET', '/', retries=0)
+        done_receiving.set()
+
+        self.assertEqual(len(client_certs), 1)
+
+    @requires_ssl_context_keyfile_password
+    def test_load_keyfile_with_invalid_password(self):
+        context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
+
+        # Different error is raised depending on context.
+        if ssl_.IS_PYOPENSSL:
+            from OpenSSL.SSL import Error
+            expected_error = Error
+        else:
+            expected_error = ssl.SSLError
+
+        with pytest.raises(expected_error):
+            context.load_cert_chain(certfile=DEFAULT_CERTS["certfile"],
+                                    keyfile=PASSWORD_KEYFILE,
+                                    password=b'letmei')
 
 
 class TestSocketClosing(SocketDummyServerTestCase):
@@ -626,7 +703,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # First request should fail.
             response = pool.urlopen('GET', '/', retries=0,
                                     preload_content=False,
-                                    timeout=Timeout(connect=1, read=0.001))
+                                    timeout=Timeout(connect=1, read=0.1))
             try:
                 self.assertRaises(ReadTimeoutError, response.read)
             finally:
@@ -895,7 +972,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         self._start_server(echo_socket_handler)
         base_url = 'http://%s:%d' % (self.host, self.port)
 
-        proxy = proxy_from_url(base_url)
+        proxy = proxy_from_url(base_url, ca_certs=DEFAULT_CA)
         self.addCleanup(proxy.clear)
 
         url = 'https://{0}'.format(self.host)
@@ -939,7 +1016,7 @@ class TestProxyManager(SocketDummyServerTestCase):
         self._start_server(echo_socket_handler)
         base_url = 'http://%s:%d' % (self.host, self.port)
 
-        proxy = proxy_from_url(base_url)
+        proxy = proxy_from_url(base_url, cert_reqs='NONE')
         self.addCleanup(proxy.clear)
 
         url = 'https://[{0}]'.format(ipv6_addr)
@@ -993,8 +1070,7 @@ class TestSSL(SocketDummyServerTestCase):
             ssl_sock = ssl.wrap_socket(sock,
                                        server_side=True,
                                        keyfile=DEFAULT_CERTS['keyfile'],
-                                       certfile=DEFAULT_CERTS['certfile'],
-                                       ca_certs=DEFAULT_CA)
+                                       certfile=DEFAULT_CERTS['certfile'])
 
             buf = b''
             while not buf.endswith(b'\r\n\r\n'):
@@ -1013,7 +1089,7 @@ class TestSSL(SocketDummyServerTestCase):
             ssl_sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPSConnectionPool(self.host, self.port)
+        pool = HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA)
         self.addCleanup(pool.close)
 
         response = pool.urlopen('GET', '/', retries=0, preload_content=False,
@@ -1103,7 +1179,7 @@ class TestSSL(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
 
-        pool = HTTPSConnectionPool(self.host, self.port)
+        pool = HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA)
         self.addCleanup(pool.close)
         response = pool.urlopen('GET', '/', retries=1)
         self.assertEqual(response.data, b'Success')

@@ -4,9 +4,14 @@ import errno
 import functools
 import logging
 import socket
+import ssl
 import os
 
 import pytest
+try:
+    import brotli
+except ImportError:
+    brotli = None
 
 from urllib3.exceptions import HTTPWarning
 from urllib3.packages import six
@@ -73,6 +78,16 @@ def onlyPy3(test):
     return wrapper
 
 
+def onlyBrotlipy():
+    return pytest.mark.skipif(
+        brotli is None, reason='only run if brotlipy is present')
+
+
+def notBrotlipy():
+    return pytest.mark.skipif(
+        brotli is not None, reason='only run if brotlipy is absent')
+
+
 def notSecureTransport(test):
     """Skips this test when SecureTransport is in use."""
 
@@ -81,6 +96,18 @@ def notSecureTransport(test):
         msg = "{name} does not run with SecureTransport".format(name=test.__name__)
         if ssl_.IS_SECURETRANSPORT:
             pytest.skip(msg)
+        return test(*args, **kwargs)
+    return wrapper
+
+
+def notOpenSSL098(test):
+    """Skips this test for Python 3.4 and 3.5 macOS python.org distributions"""
+
+    @functools.wraps(test)
+    def wrapper(*args, **kwargs):
+        is_stdlib_ssl = not ssl_.IS_SECURETRANSPORT and not ssl_.IS_PYOPENSSL
+        if is_stdlib_ssl and ssl.OPENSSL_VERSION == "OpenSSL 0.9.8zh 14 Jan 2016":
+            pytest.xfail("{name} fails with OpenSSL 0.9.8zh".format(name=test.__name__))
         return test(*args, **kwargs)
     return wrapper
 
@@ -124,6 +151,17 @@ def requires_network(test):
     return wrapper
 
 
+def requires_ssl_context_keyfile_password(test):
+    @functools.wraps(test)
+    def wrapper(*args, **kwargs):
+        if ((not ssl_.IS_PYOPENSSL and sys.version_info < (2, 7, 9))
+                or ssl_.IS_SECURETRANSPORT):
+            pytest.skip("%s requires password parameter for "
+                        "SSLContext.load_cert_chain()" % test.__name__)
+        return test(*args, **kwargs)
+    return wrapper
+
+
 def fails_on_travis_gce(test):
     """Expect the test to fail on Google Compute Engine instances for Travis.
     Travis uses GCE for its sudo: enabled builds.
@@ -137,6 +175,28 @@ def fails_on_travis_gce(test):
             pytest.xfail("%s is expected to fail on Travis GCE builds" % test.__name__)
         return test(*args, **kwargs)
     return wrapper
+
+
+def requiresTLSv1():
+    """Test requires TLSv1 available"""
+    return pytest.mark.skipif(not hasattr(ssl, "PROTOCOL_TLSv1"), reason="Test requires TLSv1")
+
+
+def requiresTLSv1_1():
+    """Test requires TLSv1.1 available"""
+    return pytest.mark.skipif(not hasattr(ssl, "PROTOCOL_TLSv1_1"), reason="Test requires TLSv1.1")
+
+
+def requiresTLSv1_2():
+    """Test requires TLSv1.2 available"""
+    return pytest.mark.skipif(not hasattr(ssl, "PROTOCOL_TLSv1_2"), reason="Test requires TLSv1.2")
+
+
+def requiresTLSv1_3():
+    """Test requires TLSv1.3 available"""
+    return pytest.mark.skipif(
+        not getattr(ssl, "HAS_TLSv1_3", False), reason="Test requires TLSv1.3"
+    )
 
 
 class _ListHandler(logging.Handler):

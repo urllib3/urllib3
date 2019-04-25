@@ -6,13 +6,15 @@ from io import BytesIO, BufferedReader
 import pytest
 import mock
 
-from urllib3.response import HTTPResponse
+from urllib3.response import HTTPResponse, brotli
 from urllib3.exceptions import (
     DecodeError, ResponseNotChunked, ProtocolError, InvalidHeader
 )
 from urllib3.packages.six.moves import http_client as httplib
 from urllib3.util.retry import Retry, RequestHistory
 from urllib3.util.response import is_fp_closed
+
+from test import onlyBrotlipy
 
 from base64 import b64decode
 
@@ -207,6 +209,35 @@ class TestResponse(object):
         r = HTTPResponse(fp, headers={'content-encoding': 'gzip'})
 
         assert r.data == b'foofoofoo'
+
+    @onlyBrotlipy()
+    def test_decode_brotli(self):
+        data = brotli.compress(b'foo')
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'br'})
+        assert r.data == b'foo'
+
+    @onlyBrotlipy()
+    def test_chunked_decoding_brotli(self):
+        data = brotli.compress(b'foobarbaz')
+
+        fp = BytesIO(data)
+        r = HTTPResponse(
+            fp, headers={'content-encoding': 'br'}, preload_content=False)
+
+        ret = b''
+        for _ in range(100):
+            ret += r.read(1)
+            if r.closed:
+                break
+        assert ret == b'foobarbaz'
+
+    @onlyBrotlipy()
+    def test_decode_brotli_error(self):
+        fp = BytesIO(b'foo')
+        with pytest.raises(DecodeError):
+            HTTPResponse(fp, headers={'content-encoding': 'br'})
 
     def test_multi_decoding_deflate_deflate(self):
         data = zlib.compress(zlib.compress(b'foo'))
@@ -707,6 +738,41 @@ class TestResponse(object):
         retry = Retry(history=request_histories)
         resp = HTTPResponse(fp, retries=retry)
         assert resp.geturl() == 'https://www.example.com'
+
+    @pytest.mark.parametrize(
+        ["payload", "expected_stream"],
+        [(b"", [b""]),
+         (b"\n", [b"\n"]),
+         (b"abc\ndef", [b"abc\n", b"def"]),
+         (b"Hello\nworld\n\n\n!", [b"Hello\n", b"world\n", b"\n", b"\n", b"!"])]
+    )
+    def test__iter__(self, payload, expected_stream):
+        actual_stream = []
+        for chunk in HTTPResponse(BytesIO(payload), preload_content=False):
+            actual_stream.append(chunk)
+
+        assert actual_stream == expected_stream
+
+    def test__iter__decode_content(self):
+        def stream():
+            # Set up a generator to chunk the gzipped body
+            compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
+            data = compress.compress(b'foo\nbar')
+            data += compress.flush()
+            for i in range(0, len(data), 2):
+                yield data[i:i + 2]
+
+        fp = MockChunkedEncodingResponse(list(stream()))
+        r = httplib.HTTPResponse(MockSock)
+        r.fp = fp
+        headers = {'transfer-encoding': 'chunked', 'content-encoding': 'gzip'}
+        resp = HTTPResponse(r, preload_content=False, headers=headers)
+
+        data = b''
+        for c in resp:
+            data += c
+
+        assert b'foo\nbar' == data
 
 
 class MockChunkedEncodingResponse(object):
