@@ -206,10 +206,17 @@ def parse_url(url):
     validator = Validator()
     try:
         validator.check_validity_of(
-            *validator.COMPONENT_NAMES
+            'scheme', 'userinfo', 'host', 'port'
         ).validate(uri_ref)
     except ValidationError:
         six.raise_from(LocationParseError(url), None)
+
+    # Ensure that there are no control characters in the authority, path,
+    # query otherwise pass through to the request target to allow for
+    # exotic path and query constructions like `?parameters[]=example`
+    for component in (uri_ref.authority, uri_ref.path, uri_ref.query):
+        if component and set(component).intersection({"\r\n\t "}):
+            raise LocationParseError(url)
 
     # For the sake of backwards compatibility we put empty
     # string values for path if there are any defined values
