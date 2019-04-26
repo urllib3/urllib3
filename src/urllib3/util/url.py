@@ -140,8 +140,11 @@ def split_first(s, delims):
     return s[:min_idx], s[min_idx + 1:], min_delim
 
 
-def encode_invalid_chars(component, allowed_chars, encoding='utf-8'):
-    """Encode the specific component in the provided encoding."""
+def _encode_invalid_chars(component, allowed_chars, encoding='utf-8'):
+    """Percent-encodes a URI component without reapplying
+    onto an already percent-encoded component. Based on
+    rfc3986.normalizers.encode_component()
+    """
     if component is None:
         return component
 
@@ -230,9 +233,9 @@ def parse_url(url):
     # Percent-encode any characters that aren't allowed in that component
     # before normalizing and validating.
     uri_ref = uri_ref.copy_with(
-        path=encode_invalid_chars(uri_ref.path, PATH_CHARS),
-        query=encode_invalid_chars(uri_ref.query, QUERY_CHARS),
-        fragment=encode_invalid_chars(uri_ref.fragment, FRAGMENT_CHARS)
+        path=_encode_invalid_chars(uri_ref.path, PATH_CHARS),
+        query=_encode_invalid_chars(uri_ref.query, QUERY_CHARS),
+        fragment=_encode_invalid_chars(uri_ref.fragment, FRAGMENT_CHARS)
     )
 
     # Only normalize schemes we understand to not break http+unix

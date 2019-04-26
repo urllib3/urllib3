@@ -135,7 +135,6 @@ class TestUtil(object):
         'http://user\\@google.com',
         'http://google\\.com',
         'user\\@google.com',
-        'http://google.com#fragment#',
         'http://user@user@google.com/',
     ])
     def test_invalid_url(self, url):
@@ -149,6 +148,15 @@ class TestUtil(object):
         ('HTTPS://Example.Com/?Key=Value', 'https://example.com/?Key=Value'),
         ('Https://Example.Com/#Fragment', 'https://example.com/#Fragment'),
         ('[::Ff%etH0%Ff]/%ab%Af', '[::ff%25etH0%Ff]/%AB%AF'),
+
+        # Invalid characters for the query/fragment getting encoded
+        ('http://google.com/p[]?parameter[]=\"hello\"#fragment#',
+         'http://google.com/p%5B%5D?parameter%5B%5D=%22hello%22#fragment%23'),
+
+        # Percent encoding isn't applied twice despite '%' being invalid
+        # but the percent encoding is still normalized.
+        ('http://google.com/p%5B%5d?parameter%5b%5D=%22hello%22#fragment%23',
+         'http://google.com/p%5B%5D?parameter%5B%5D=%22hello%22#fragment%23')
     ])
     def test_parse_url_normalization(self, url, expected_normalized_url):
         """Assert parse_url normalizes the scheme/host, and only the scheme/host"""
