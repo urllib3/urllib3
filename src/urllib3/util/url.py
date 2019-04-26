@@ -206,11 +206,6 @@ def parse_url(url):
     if not SCHEME_REGEX.search(url):
         url = "//" + url
 
-    try:
-        iri_ref = rfc3986.IRIReference.from_string(url, encoding="utf-8")
-    except (ValueError, RFC3986Exception):
-        six.raise_from(LocationParseError(url), None)
-
     def idna_encode(name):
         if name and any([ord(x) > 128 for x in name]):
             try:
@@ -223,8 +218,12 @@ def parse_url(url):
                 raise LocationParseError(u"Name '%s' is not a valid IDNA label" % name)
         return name
 
-    has_authority = iri_ref.authority is not None
-    uri_ref = iri_ref.encode(idna_encoder=idna_encode)
+    try:
+        iri_ref = rfc3986.IRIReference.from_string(url, encoding="utf-8")
+        has_authority = iri_ref.authority is not None
+        uri_ref = iri_ref.encode(idna_encoder=idna_encode)
+    except (ValueError, RFC3986Exception, UnicodeDecodeError):
+        return six.raise_from(LocationParseError(url), None)
 
     # rfc3986 strips the authority if it's invalid
     if has_authority and uri_ref.authority is None:
@@ -252,7 +251,7 @@ def parse_url(url):
             *validator.COMPONENT_NAMES
         ).validate(uri_ref)
     except ValidationError:
-        six.raise_from(LocationParseError(url), None)
+        return six.raise_from(LocationParseError(url), None)
 
     # For the sake of backwards compatibility we put empty
     # string values for path if there are any defined values

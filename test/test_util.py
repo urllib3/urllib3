@@ -136,6 +136,14 @@ class TestUtil(object):
         'http://google\\.com',
         'user\\@google.com',
         'http://user@user@google.com/',
+
+        # Invalid IDNA labels
+        u'http://\uD7FF.com',
+        u'http://❤️',
+
+        # Unicode surrogates
+        u'http://\uD800.com',
+        u'http://\uDC00.com',
     ])
     def test_invalid_url(self, url):
         with pytest.raises(LocationParseError):
