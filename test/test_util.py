@@ -144,6 +144,9 @@ class TestUtil(object):
         # Unicode surrogates
         u'http://\uD800.com',
         u'http://\uDC00.com',
+        u'http://google.com/\uD800',
+        u'http://google.com?q=\uDC00',
+        u'http://google.com#\uDC00',
     ])
     def test_invalid_url(self, url):
         with pytest.raises(LocationParseError):
