@@ -149,6 +149,7 @@ class Retry(object):
     :param int max_retry_wait_length:
         :raises urllib3.exceptions.ExceedingWaitTime: if response attempts to give
         longer wait length than specified.
+
     """
 
     DEFAULT_METHOD_WHITELIST = frozenset([
@@ -165,7 +166,8 @@ class Retry(object):
                  method_whitelist=DEFAULT_METHOD_WHITELIST, status_forcelist=None,
                  backoff_factor=0, raise_on_redirect=True, raise_on_status=True,
                  history=None, respect_retry_after_header=True,
-                 remove_headers_on_redirect=DEFAULT_REDIRECT_HEADERS_BLACKLIST, max_retry_wait_length=-1):
+                 remove_headers_on_redirect=DEFAULT_REDIRECT_HEADERS_BLACKLIST,
+                 max_retry_wait_length=-1):
 
         self.total = total
         self.connect = connect
@@ -258,7 +260,10 @@ class Retry(object):
         retry_after = self.parse_retry_after(retry_after)
 
         if self.max_retry_wait_length != -1 and retry_after > self.max_retry_wait_length:
-            raise ExceedingWaitTime("Retry-After header gave a wait length (%d) that exceeds specified (%d)." % (retry_after, self.max_retry_wait_length))
+            raise ExceedingWaitTime(
+                "Retry-After header gave a wait length (%d) that exceeds specified (%d)."
+                % (retry_after, self.max_retry_wait_length)
+            )
 
         return retry_after
 

@@ -273,4 +273,3 @@ class TestRetry(object):
 
         retry.max_retry_wait_length = 6
         assert retry.get_retry_after(response) == 5
-
