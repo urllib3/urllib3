@@ -6,7 +6,7 @@ from ..exceptions import LocationParseError
 from ..packages import six, rfc3986
 from ..packages.rfc3986.exceptions import RFC3986Exception, ValidationError
 from ..packages.rfc3986.validators import Validator
-from ..packages.rfc3986 import abnf_regexp, normalizers, compat
+from ..packages.rfc3986 import abnf_regexp, normalizers, compat, misc
 
 
 url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
@@ -153,7 +153,7 @@ def _encode_invalid_chars(component, allowed_chars, encoding='utf-8'):
     percent_encodings = len(normalizers.PERCENT_MATCHER.findall(
                             compat.to_str(component, encoding)))
 
-    uri_bytes = compat.to_bytes(component, encoding)
+    uri_bytes = component.encode('utf-8', 'surrogatepass')
     is_percent_encoded = percent_encodings == uri_bytes.count(b'%')
 
     encoded_component = bytearray()
@@ -195,8 +195,6 @@ def parse_url(url):
         return Url()
 
     is_string = not isinstance(url, six.binary_type)
-    if not is_string:
-        url = url.decode("utf-8")
 
     # RFC 3986 doesn't like URLs that have a host but don't start
     # with a scheme and we support URLs like that so we need to
@@ -219,10 +217,16 @@ def parse_url(url):
         return name
 
     try:
-        iri_ref = rfc3986.IRIReference.from_string(url, encoding="utf-8")
+        split_iri = misc.IRI_MATCHER.match(compat.to_str(url)).groupdict()
+        iri_ref = rfc3986.IRIReference(
+            split_iri['scheme'], split_iri['authority'],
+            _encode_invalid_chars(split_iri['path'], PATH_CHARS),
+            _encode_invalid_chars(split_iri['query'], QUERY_CHARS),
+            _encode_invalid_chars(split_iri['fragment'], FRAGMENT_CHARS)
+        )
         has_authority = iri_ref.authority is not None
         uri_ref = iri_ref.encode(idna_encoder=idna_encode)
-    except (ValueError, RFC3986Exception, UnicodeDecodeError):
+    except (ValueError, RFC3986Exception):
         return six.raise_from(LocationParseError(url), None)
 
     # rfc3986 strips the authority if it's invalid
@@ -231,11 +235,11 @@ def parse_url(url):
 
     # Percent-encode any characters that aren't allowed in that component
     # before normalizing and validating.
-    uri_ref = uri_ref.copy_with(
-        path=_encode_invalid_chars(uri_ref.path, PATH_CHARS),
-        query=_encode_invalid_chars(uri_ref.query, QUERY_CHARS),
-        fragment=_encode_invalid_chars(uri_ref.fragment, FRAGMENT_CHARS)
-    )
+    #uri_ref = uri_ref.copy_with(
+    #    path=_encode_invalid_chars(uri_ref.path, PATH_CHARS),
+    #    query=_encode_invalid_chars(uri_ref.query, QUERY_CHARS),
+    #    fragment=_encode_invalid_chars(uri_ref.fragment, FRAGMENT_CHARS)
+    #)
 
     # Only normalize schemes we understand to not break http+unix
     # or other schemes that don't follow RFC 3986.

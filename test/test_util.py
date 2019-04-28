@@ -144,9 +144,6 @@ class TestUtil(object):
         # Unicode surrogates
         u'http://\uD800.com',
         u'http://\uDC00.com',
-        u'http://google.com/\uD800',
-        u'http://google.com?q=\uDC00',
-        u'http://google.com#\uDC00',
     ])
     def test_invalid_url(self, url):
         with pytest.raises(LocationParseError):
@@ -233,7 +230,12 @@ class TestUtil(object):
 
         # Uppercase IRI
         (u'http://Königsgäßchen.de/straße',
-         Url('http', host='xn--knigsgchen-b4a3dun.de', path='/stra%C3%9Fe'))
+         Url('http', host='xn--knigsgchen-b4a3dun.de', path='/stra%C3%9Fe')),
+
+        # Unicode Surrogates
+        (u'http://google.com/\uD800', Url('http', host='google.com', path='%ED%A0%80')),
+        (u'http://google.com?q=\uDC00', Url('http', host='google.com', path='', query='q=%ED%B0%80')),
+        (u'http://google.com#\uDC00', Url('http', host='google.com', path='', fragment='%ED%B0%80')),
     ]
 
     @pytest.mark.parametrize(
