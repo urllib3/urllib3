@@ -234,8 +234,10 @@ class TestUtil(object):
 
         # Unicode Surrogates
         (u'http://google.com/\uD800', Url('http', host='google.com', path='%ED%A0%80')),
-        (u'http://google.com?q=\uDC00', Url('http', host='google.com', path='', query='q=%ED%B0%80')),
-        (u'http://google.com#\uDC00', Url('http', host='google.com', path='', fragment='%ED%B0%80')),
+        (u'http://google.com?q=\uDC00',
+         Url('http', host='google.com', path='', query='q=%ED%B0%80')),
+        (u'http://google.com#\uDC00',
+         Url('http', host='google.com', path='', fragment='%ED%B0%80')),
     ]
 
     @pytest.mark.parametrize(

@@ -233,14 +233,6 @@ def parse_url(url):
     if has_authority and uri_ref.authority is None:
         raise LocationParseError(url)
 
-    # Percent-encode any characters that aren't allowed in that component
-    # before normalizing and validating.
-    #uri_ref = uri_ref.copy_with(
-    #    path=_encode_invalid_chars(uri_ref.path, PATH_CHARS),
-    #    query=_encode_invalid_chars(uri_ref.query, QUERY_CHARS),
-    #    fragment=_encode_invalid_chars(uri_ref.fragment, FRAGMENT_CHARS)
-    #)
-
     # Only normalize schemes we understand to not break http+unix
     # or other schemes that don't follow RFC 3986.
     if uri_ref.scheme is None or uri_ref.scheme.lower() in NORMALIZABLE_SCHEMES:
