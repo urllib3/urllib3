@@ -4,7 +4,6 @@ import sys
 import unittest
 import time
 import warnings
-import pytest
 
 from .. import (
     TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES,
@@ -48,7 +47,6 @@ def wait_for_socket(ready_event):
 
 class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
 
-    @pytest.mark.skip  # flaky in CI
     def test_timeout_float(self):
         block_event = Event()
         ready_event = self.start_basic_handler(block_send=block_event, num=2)
@@ -210,9 +208,6 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         self.addCleanup(pool.close)
         self.assertRaises(ReadTimeoutError, pool.request, 'GET', '/')
 
-    # Sometimes fails with `AttributeError: 'TestConnectionPoolTimeouts' object
-    # has no attribute 'port'` when instantiating the pool
-    @pytest.mark.skip
     def test_create_connection_timeout(self):
         self.start_basic_handler(block_send=Event(), num=0)  # needed for self.port
 
