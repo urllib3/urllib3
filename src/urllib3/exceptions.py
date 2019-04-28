@@ -244,3 +244,6 @@ class HeaderParsingError(HTTPError):
 class UnrewindableBodyError(HTTPError):
     "urllib3 encountered an error when trying to rewind a body"
     pass
+
+class ExceedingWaitTime(ResponseError):
+    "Raised when response's Retry-After length greater than specified max_retry_wait_length"

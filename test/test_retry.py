@@ -8,6 +8,7 @@ from urllib3.exceptions import (
     MaxRetryError,
     ReadTimeoutError,
     ResponseError,
+    ExceedingWaitTime,
 )
 
 
@@ -259,3 +260,17 @@ class TestRetry(object):
         retry = Retry(remove_headers_on_redirect=['X-API-Secret'])
 
         assert list(retry.remove_headers_on_redirect) == ['x-api-secret']
+
+    def test_retry_get_retry_after(self):
+        retry = Retry()
+        response = HTTPResponse(headers={"Retry-After": "5"})
+
+        assert retry.get_retry_after(response) == 5
+
+        retry.max_retry_wait_length = 3
+        with pytest.raises(ExceedingWaitTime):
+            retry.get_retry_after(response)
+
+        retry.max_retry_wait_length = 6
+        assert retry.get_retry_after(response) == 5
+

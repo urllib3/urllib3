@@ -13,6 +13,7 @@ from ..exceptions import (
     ReadTimeoutError,
     ResponseError,
     InvalidHeader,
+    ExceedingWaitTime,
 )
 from ..packages import six
 
@@ -144,6 +145,10 @@ class Retry(object):
         Sequence of headers to remove from the request when a response
         indicating a redirect is returned before firing off the redirected
         request.
+
+    :param int max_retry_wait_length:
+        :raises urllib3.exceptions.ExceedingWaitTime: if response attempts to give
+        longer wait length than specified.
     """
 
     DEFAULT_METHOD_WHITELIST = frozenset([
@@ -160,7 +165,7 @@ class Retry(object):
                  method_whitelist=DEFAULT_METHOD_WHITELIST, status_forcelist=None,
                  backoff_factor=0, raise_on_redirect=True, raise_on_status=True,
                  history=None, respect_retry_after_header=True,
-                 remove_headers_on_redirect=DEFAULT_REDIRECT_HEADERS_BLACKLIST):
+                 remove_headers_on_redirect=DEFAULT_REDIRECT_HEADERS_BLACKLIST, max_retry_wait_length=-1):
 
         self.total = total
         self.connect = connect
@@ -181,6 +186,7 @@ class Retry(object):
         self.respect_retry_after_header = respect_retry_after_header
         self.remove_headers_on_redirect = frozenset([
             h.lower() for h in remove_headers_on_redirect])
+        self.max_retry_wait_length = max_retry_wait_length
 
     def new(self, **kw):
         params = dict(
@@ -249,7 +255,12 @@ class Retry(object):
         if retry_after is None:
             return None
 
-        return self.parse_retry_after(retry_after)
+        retry_after = self.parse_retry_after(retry_after)
+
+        if self.max_retry_wait_length != -1 and retry_after > self.max_retry_wait_length:
+            raise ExceedingWaitTime("Retry-After header gave a wait length (%d) that exceeds specified (%d)." % (retry_after, self.max_retry_wait_length))
+
+        return retry_after
 
     def sleep_for_retry(self, response=None):
         retry_after = self.get_retry_after(response)
