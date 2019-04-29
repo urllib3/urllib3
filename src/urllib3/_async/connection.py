@@ -490,24 +490,6 @@ class HTTP1Connection(object):
             sock, self._sock = self._sock, None
             sock.forceful_close()
 
-    def is_dropped(self):
-        """
-        Returns True if the connection is closed: returns False otherwise. This
-        includes closures that do not mark the FD as closed, such as when the
-        remote peer has sent EOF but we haven't read it yet.
-
-        Pre-condition: _reset must have been called.
-        """
-        if self._sock is None:
-            return True
-
-        # We check for droppedness by checking the socket for readability. If
-        # it's not readable, it's not dropped. If it is readable, then we
-        # assume that the thing we'd read from the socket is EOF. It might not
-        # be, but if it's not then the server has busted its HTTP/1.1 framing
-        # and so we want to drop the connection anyway.
-        return self._sock.is_readable()
-
     def _reset(self):
         """
         Called once we hit EndOfMessage, and checks whether we can re-use this
@@ -537,7 +519,7 @@ class HTTP1Connection(object):
     def __aiter__(self):
         return self
 
-    def next(self):  # Needed for Python 2 as __anext__ becomes __next__
+    def next(self):  # Platform-specific: Python 2.7
         return self.__next__()
 
     async def __anext__(self):

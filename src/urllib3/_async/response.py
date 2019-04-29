@@ -195,9 +195,6 @@ class HTTPResponse(io.IOBase):
     def connection(self):
         return self._connection
 
-    def isclosed(self):
-        return is_fp_closed(self._fp)
-
     def tell(self):
         """
         Obtain the number of bytes pulled over the wire so far. May differ from
@@ -474,14 +471,3 @@ class HTTPResponse(io.IOBase):
         else:
             b[:len(temp)] = temp
             return len(temp)
-
-    def geturl(self):
-        """
-        Returns the URL that was the source of this response.
-        If the request that generated this response redirected, this method
-        will return the final redirect location.
-        """
-        if self.retries is not None and len(self.retries.history):
-            return self.retries.history[-1].redirect_location
-        else:
-            return self._request_url
