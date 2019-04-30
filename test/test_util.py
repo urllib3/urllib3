@@ -200,6 +200,11 @@ class TestUtil(object):
         with pytest.raises(ValueError):
             parse_url('[::1')
 
+    def test_parse_url_contains_control_characters(self):
+        # see CVE-2019-9740
+        with pytest.raises(LocationParseError):
+            parse_url('http://localhost:8000/ HTTP/1.1\r\nHEADER: INJECTED\r\nIgnore:')
+
     def test_Url_str(self):
         U = Url('http', host='google.com')
         assert str(U) == U.url
