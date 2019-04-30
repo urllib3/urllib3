@@ -123,6 +123,17 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         self.assertNotIn('Authorization', data)
 
+        r = http.request('GET', '%s/redirect' % self.base_url,
+                         fields={'target': '%s/headers' % self.base_url_alt},
+                         headers={'authorization': 'foo'})
+
+        self.assertEqual(r.status, 200)
+
+        data = json.loads(r.data.decode('utf-8'))
+
+        self.assertNotIn('authorization', data)
+        self.assertNotIn('Authorization', data)
+
     def test_redirect_cross_host_no_remove_headers(self):
         http = PoolManager()
         self.addCleanup(http.clear)
@@ -153,6 +164,21 @@ class TestPoolManager(HTTPDummyServerTestCase):
         data = json.loads(r.data.decode('utf-8'))
 
         self.assertNotIn('X-API-Secret', data)
+        self.assertEqual(data['Authorization'], 'bar')
+
+        r = http.request('GET', '%s/redirect' % self.base_url,
+                         fields={'target': '%s/headers' % self.base_url_alt},
+                         headers={'x-api-secret': 'foo',
+                                  'authorization': 'bar'},
+                         retries=Retry(remove_headers_on_redirect=['X-API-Secret']))
+
+        self.assertEqual(r.status, 200)
+
+        data = json.loads(r.data.decode('utf-8'))
+
+        self.assertNotIn('x-api-secret', data)
+        self.assertNotIn('X-API-Secret', data)
+
         self.assertEqual(data['Authorization'], 'bar')
 
     def test_raise_on_redirect(self):

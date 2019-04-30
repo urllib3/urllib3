@@ -17,7 +17,7 @@ from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
                                 DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS,
                                 NO_SAN_CERTS, NO_SAN_CA, DEFAULT_CA_DIR,
                                 IPV6_ADDR_CERTS, IPV6_ADDR_CA, HAS_IPV6,
-                                IP_SAN_CERTS)
+                                IP_SAN_CERTS, IPV6_SAN_CA, IPV6_SAN_CERTS)
 
 from test import (
     onlyPy279OrNewer,
@@ -620,6 +620,24 @@ class TestHTTPS_IPv6Addr(IPV6HTTPSDummyServerTestCase):
         https_pool = HTTPSConnectionPool('[::1]', self.port,
                                          cert_reqs='CERT_REQUIRED',
                                          ca_certs=IPV6_ADDR_CA)
+        self.addCleanup(https_pool.close)
+        r = https_pool.request('GET', '/')
+        self.assertEqual(r.status, 200)
+
+
+class TestHTTPS_IPV6SAN(IPV6HTTPSDummyServerTestCase):
+    certs = IPV6_SAN_CERTS
+
+    def test_can_validate_ipv6_san(self):
+        """Ensure that urllib3 can validate SANs with IPv6 addresses in them."""
+        try:
+            import ipaddress  # noqa: F401
+        except ImportError:
+            pytest.skip("Only runs on systems with an ipaddress module")
+
+        https_pool = HTTPSConnectionPool('[::1]', self.port,
+                                         cert_reqs='CERT_REQUIRED',
+                                         ca_certs=IPV6_SAN_CA)
         self.addCleanup(https_pool.close)
         r = https_pool.request('GET', '/')
         self.assertEqual(r.status, 200)

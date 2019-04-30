@@ -1,19 +1,24 @@
 #!/bin/bash
 
-set -e
-set -x
+set -exo pipefail
 
-if [[ "$(uname -s)" == "Darwin" ]]; then
-    # initialize our pyenv
-    PYENV_ROOT="$HOME/.pyenv"
-    PATH="$PYENV_ROOT/bin:$PATH"
-    eval "$(pyenv init -)"
-
-    # Use the good OpenSSL for PyOpenSSL. This also links it statically into
-    # cryptography, which more accurately reflects the way the wheel is used.
-    export CRYPTOGRAPHY_OSX_NO_LINK_FLAGS="1"
-    export LDFLAGS="$(brew --prefix openssl@1.1)/lib/libcrypto.a $(brew --prefix openssl@1.1)/lib/libssl.a"
-    export CFLAGS="-I$(brew --prefix openssl@1.1)/include"
+if [[ "$(uname -s)" == "Darwin" && "$NOX_SESSION" == "tests-2.7" ]]; then
+    export PATH="/Library/Frameworks/Python.framework/Versions/2.7/bin":$PATH
 fi
 
-tox
+if [ -n "${NOX_SESSION}" ]; then
+    if [[ "$(uname -s)" == 'Darwin' ]]; then
+        # Explicitly use Python 3.6 on MacOS, otherwise it won't find Nox properly.
+        python3.6 -m nox -s "${NOX_SESSION}"
+    else
+        nox -s "${NOX_SESSION}"
+    fi
+else
+    downstream_script="${TRAVIS_BUILD_DIR}/_travis/downstream/${DOWNSTREAM}.sh"
+    if [ ! -x "$downstream_script" ]; then
+        exit 1
+    fi
+    $downstream_script install
+    python -m pip install .
+    $downstream_script run
+fi
