@@ -23,6 +23,7 @@ from test import (
     onlyPy279OrNewer,
     notSecureTransport,
     requires_network,
+    fails_on_travis_gce,
     TARPIT_HOST,
 )
 from urllib3 import HTTPSConnectionPool
@@ -64,6 +65,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
+    @fails_on_travis_gce
     def test_dotted_fqdn(self):
         pool = HTTPSConnectionPool(self.host + '.', self.port)
         r = pool.request('GET', '/')
