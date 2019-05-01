@@ -4,6 +4,8 @@ import errno
 import functools
 import logging
 import socket
+import ssl
+import os
 
 import pytest
 
@@ -84,6 +86,18 @@ def notSecureTransport(test):
     return wrapper
 
 
+def notOpenSSL098(test):
+    """Skips this test for Python 3.4 and 3.5 macOS python.org distributions"""
+
+    @functools.wraps(test)
+    def wrapper(*args, **kwargs):
+        is_stdlib_ssl = not ssl_.IS_SECURETRANSPORT and not ssl_.IS_PYOPENSSL
+        if is_stdlib_ssl and ssl.OPENSSL_VERSION == "OpenSSL 0.9.8zh 14 Jan 2016":
+            pytest.xfail("{name} fails with OpenSSL 0.9.8zh".format(name=test.__name__))
+        return test(*args, **kwargs)
+    return wrapper
+
+
 _requires_network_has_route = None
 
 
@@ -120,6 +134,21 @@ def requires_network(test):
             msg = "Can't run {name} because the network is unreachable".format(
                 name=test.__name__)
             pytest.skip(msg)
+    return wrapper
+
+
+def fails_on_travis_gce(test):
+    """Expect the test to fail on Google Compute Engine instances for Travis.
+    Travis uses GCE for its sudo: enabled builds.
+
+    Reason for this decorator:
+    https://github.com/urllib3/urllib3/pull/1475#issuecomment-440788064
+    """
+    @functools.wraps(test)
+    def wrapper(*args, **kwargs):
+        if os.environ.get("TRAVIS_INFRA") == "gce":
+            pytest.xfail("%s is expected to fail on Travis GCE builds" % test.__name__)
+        return test(*args, **kwargs)
     return wrapper
 
 

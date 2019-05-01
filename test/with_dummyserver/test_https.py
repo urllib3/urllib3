@@ -22,7 +22,9 @@ from dummyserver.server import (DEFAULT_CA, DEFAULT_CA_BAD, DEFAULT_CERTS,
 from test import (
     onlyPy279OrNewer,
     notSecureTransport,
+    notOpenSSL098,
     requires_network,
+    fails_on_travis_gce,
     TARPIT_HOST,
 )
 from urllib3 import HTTPSConnectionPool
@@ -64,6 +66,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         r = self._pool.request('GET', '/')
         self.assertEqual(r.status, 200, r.data)
 
+    @fails_on_travis_gce
     def test_dotted_fqdn(self):
         pool = HTTPSConnectionPool(self.host + '.', self.port)
         r = pool.request('GET', '/')
@@ -195,6 +198,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @onlyPy279OrNewer
     @notSecureTransport  # SecureTransport does not support cert directories
+    @notOpenSSL098  # OpenSSL 0.9.8 does not support cert directories
     def test_ca_dir_verified(self):
         https_pool = HTTPSConnectionPool(self.host, self.port,
                                          cert_reqs='CERT_REQUIRED',

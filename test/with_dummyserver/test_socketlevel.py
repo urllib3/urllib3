@@ -16,6 +16,7 @@ from urllib3.util.timeout import Timeout
 from urllib3.util.retry import Retry
 from urllib3._collections import HTTPHeaderDict
 
+from test import fails_on_travis_gce
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from dummyserver.server import (
     DEFAULT_CERTS, DEFAULT_CA, COMBINED_CERT_AND_KEY, get_unreachable_address)
@@ -1218,6 +1219,7 @@ class TestHeaders(SocketDummyServerTestCase):
         pool.request('GET', '/', headers=OrderedDict(expected_request_headers))
         self.assertEqual(expected_request_headers, actual_request_headers)
 
+    @fails_on_travis_gce
     def test_request_host_header_ignores_fqdn_dot(self):
 
         received_headers = []
