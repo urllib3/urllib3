@@ -3,6 +3,7 @@ from collections import namedtuple
 import re
 
 from ..exceptions import LocationParseError
+from ..packages.six.moves.urllib.parse import quote
 
 
 url_attrs = ['scheme', 'auth', 'host', 'port', 'path', 'query', 'fragment']
@@ -160,8 +161,7 @@ def parse_url(url):
 
     # Prevent CVE-2019-9740.
     # adapted from https://github.com/python/cpython/pull/12755
-    if _contains_disallowed_url_pchar_re.search(url):
-        raise LocationParseError("URL can't contain control characters. {!r}".format(url))
+    url = _contains_disallowed_url_pchar_re.sub(lambda match: quote(match.group()), url)
 
     scheme = None
     auth = None

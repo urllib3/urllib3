@@ -200,10 +200,26 @@ class TestUtil(object):
         with pytest.raises(ValueError):
             parse_url('[::1')
 
-    def test_parse_url_contains_control_characters(self):
+    @pytest.mark.parametrize('url, expected_url', [
+        (
+            'http://localhost/ HTTP/1.1\r\nHEADER: INJECTED\r\nIgnore:',
+            Url('http', host='localhost', port=None,
+                path='/%20HTTP/1.1%0D%0AHEADER:%20INJECTED%0D%0AIgnore:')
+        ),
+        (
+            u'http://localhost/ HTTP/1.1\r\nHEADER: INJECTED\r\nIgnore:',
+            Url('http', host='localhost', port=None,
+                path='/%20HTTP/1.1%0D%0AHEADER:%20INJECTED%0D%0AIgnore:')
+        ),
+        (
+            'http://localhost/ ?q=\r\n',
+            Url('http', host='localhost', path='/%20', query='q=%0D%0A')
+        ),
+    ])
+    def test_parse_url_contains_control_characters(self, url, expected_url):
         # see CVE-2019-9740
-        with pytest.raises(LocationParseError):
-            parse_url('http://localhost:8000/ HTTP/1.1\r\nHEADER: INJECTED\r\nIgnore:')
+        url = parse_url(url)
+        assert url == expected_url
 
     def test_Url_str(self):
         U = Url('http', host='google.com')
