@@ -1017,7 +1017,6 @@ class TestProxyManager(SocketDummyServerTestCase):
         assert exception.response.status_code == 401
         assert exception.response.headers['x-custom-header'] == 'yougotit'
 
-    @pytest.mark.xfail
     def test_connect_ipv6_addr(self):
         ipv6_addr = '2001:4998:c:a06::2:4008'
 
