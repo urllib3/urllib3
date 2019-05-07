@@ -3,6 +3,7 @@ import errno
 import logging
 import sys
 import warnings
+import re
 
 from socket import error as SocketError, timeout as SocketTimeout
 import socket
@@ -388,11 +389,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         except (SocketTimeout, BaseSSLError, SocketError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
+        
 
         # AppEngine doesn't have a version attr.
         http_version = getattr(conn, '_http_vsn_str', 'HTTP/?')
+        redacted_url = re.sub(r"(api_token=).*(&)", r"\1API_TOKEN_REDACTED\2", url)
+
         log.debug("%s://%s:%s \"%s %s %s\" %s %s", self.scheme, self.host, self.port,
-                  method, url, http_version, httplib_response.status,
+                  method, redacted_url, http_version, httplib_response.status,
                   httplib_response.length)
 
         try:
