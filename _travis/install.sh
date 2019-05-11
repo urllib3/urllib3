@@ -26,7 +26,6 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     # Mac OS setup.
     case "${NOX_SESSION}" in
         test-2.7) MACPYTHON=2.7.15 ;;
-        test-3.4) MACPYTHON=3.4.4 ;;
         test-3.5) MACPYTHON=3.5.4 ;;
         test-3.6) MACPYTHON=3.6.7 ;;
         test-3.7) MACPYTHON=3.7.1 ;;
