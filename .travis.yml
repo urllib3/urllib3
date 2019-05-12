@@ -43,9 +43,13 @@ matrix:
       env: TOXENV=py38
       dist: xenial
       sudo: required
-    - python: pypy2.7
+    - python: pypy2.7-7.1.1
+      dist: xenial
+      sudo: required
       env: TOXENV=pypy
-    - python: pypy3.5
+    - python: pypy3.6-7.1.1
+      dist: xenial
+      sudo: required
       env: TOXENV=pypy3
     - language: generic
       os: osx
