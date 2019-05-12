@@ -656,7 +656,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # First request should fail.
             response = pool.urlopen('GET', '/', retries=0,
                                     preload_content=False,
-                                    timeout=Timeout(connect=1, read=0.001))
+                                    timeout=Timeout(connect=1, read=0.01))
             try:
                 self.assertRaises(ReadTimeoutError, response.read)
             finally:
@@ -756,7 +756,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # save it.
             response = pool.urlopen('GET', '/', retries=1,
                                     preload_content=False,
-                                    timeout=Timeout(connect=1, read=0.001))
+                                    timeout=Timeout(connect=1, read=0.01))
 
             # The connection should still be on the response object, and none
             # should be in the pool. We opened two though.
