@@ -192,7 +192,7 @@ def _response_from_h11(h11_response, body_object):
     """
     Given a h11 Response object, build a urllib3 response object and return it.
     """
-    if h11_response.http_version not in _SUPPORTED_VERSIONS:
+    if bytes(h11_response.http_version) not in _SUPPORTED_VERSIONS:
         raise BadVersionError(h11_response.http_version)
 
     version = b'HTTP/' + h11_response.http_version
@@ -213,7 +213,7 @@ def _build_tunnel_request(host, port, headers):
 
     try:
         socket.inet_pton(socket.AF_INET6, host)
-    except OSError:
+    except (socket.error, ValueError, OSError):
         # Not a raw IPv6 address
         target = "%s:%d" % (host, port)
     else:
