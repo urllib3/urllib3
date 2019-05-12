@@ -149,7 +149,6 @@ class Retry(object):
     :param int max_retry_wait_length:
         :raises urllib3.exceptions.ExceedingWaitTime: if response attempts to give
         longer wait length than specified.
-
     """
 
     DEFAULT_METHOD_WHITELIST = frozenset([
