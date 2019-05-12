@@ -18,9 +18,5 @@ gcp-devrel-py-tools==0.0.15
 
 # optional dependencies, only intended for use with Python 3.5+
 trio==0.3.0; python_version >= "3.5"
-# Our macOS Python 3.5 CI build is stuck with OpenSSL 0.9.8. While pip itself supports
-# TLS 1.2, extras like [tls] below result in easy_install fetching packages, but that
-# fails because easy_install uses OpenSSL 0.9.8 which only supports TLS 1.1
-# https://github.com/tox-dev/tox/issues/809#issuecomment-443436586
-twisted[tls]==17.9.0; python_version >= "3.5" and os_name != 'nt' and (sys_platform != 'darwin' or python_version != '3.5')
+twisted[tls]==17.9.0; python_version >= "3.5" and os_name != 'nt'
 twisted[tls,windows_platform]==17.9.0; python_version >= "3.5" and os_name == 'nt'
