@@ -5,6 +5,7 @@ dev (master)
 ------------
 
 * Change ``is_ipaddress`` to not detect IPvFuture addresses. (Pull #1583)
+* Implement ``max_retry_wait_length`` for Retry objects. (Pull #1587)
 
 
 1.25.1 (2019-04-24)
