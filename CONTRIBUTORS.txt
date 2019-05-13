@@ -275,5 +275,8 @@ In chronological order:
 * Katsuhiko YOSHIDA <https://github.com/kyoshidajp>
   * Remove Authorization header regardless of case when redirecting to cross-site
 
+* Batuhan Taskaya <batuhanosmantaskaya@gmail.com>
+  * Implement max_retry_wait_length for Retry objects.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
