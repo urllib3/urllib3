@@ -52,7 +52,7 @@ install:
   # Upgrade to the latest version of pip to avoid it displaying warnings
   # about it being out of date.
   - python -m pip install --upgrade pip wheel
-  - pip install tox virtualenv
+  - pip install tox==3.9.0 virtualenv
 
 test_script:
   - tox -- -v
