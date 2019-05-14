@@ -26,7 +26,7 @@ else
     pip install virtualenv
 fi
 
-pip install tox
+pip install tox==3.9.0
 
 if [[ "${TOXENV}" == "gae" ]]; then
     pip install gcp-devrel-py-tools

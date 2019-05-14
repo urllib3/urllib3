@@ -7,13 +7,13 @@ build: off
 environment:
 
   matrix:
-    # XX TODO: re-enable
-    # - PYTHON: "C:\\Python27-x64"
-    #   PYTHON_VERSION: "2.7.x"
-    #   PYTHON_ARCH: "64"
-    #   TOXENV: "py27"
-    #   TOXPY27: "%PYTHON%\\python.exe"
+    - PYTHON: "C:\\Python27-x64"
+      PYTHON_VERSION: "2.7.x"
+      PYTHON_ARCH: "64"
+      TOXENV: "py27"
+      TOXPY27: "%PYTHON%\\python.exe"
 
+    # XX TODO: re-enable
     # - PYTHON: "C:\\Python34-x64"
     #   PYTHON_VERSION: "3.4.x"
     #   PYTHON_ARCH: "64"
@@ -52,7 +52,7 @@ install:
   # Upgrade to the latest version of pip to avoid it displaying warnings
   # about it being out of date.
   - python -m pip install --upgrade pip wheel
-  - pip install tox virtualenv
+  - pip install tox==3.9.0 virtualenv
 
 test_script:
   - tox -- -v
