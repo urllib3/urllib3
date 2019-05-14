@@ -45,6 +45,10 @@ Changes
 
 * Implemented a more efficient ``HTTPResponse.__iter__()`` method. (Issue #1483)
 
+1.24.3 (2019-05-01)
+-------------------
+
+* Apply fix for CVE-2019-9740. (Pull #1591)
 
 1.24.2 (2019-04-17)
 -------------------
