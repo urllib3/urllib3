@@ -795,6 +795,18 @@ class TestUtil(object):
         retry = Retry()
         assert retry.parse_retry_after(value) == expected
 
+    @pytest.mark.parametrize('respect_retry_after_header', [
+        True,
+        False
+    ])
+    def test_respect_retry_after_header_propagated(self,
+                                                   respect_retry_after_header):
+
+        retry = Retry(respect_retry_after_header=respect_retry_after_header)
+        new_retry = retry.new()
+        assert new_retry.respect_retry_after_header \
+            == respect_retry_after_header
+
     @pytest.mark.parametrize("headers", [b"foo", None, object])
     def test_assert_header_parsing_throws_typeerror_with_non_headers(self, headers):
         with pytest.raises(TypeError):
