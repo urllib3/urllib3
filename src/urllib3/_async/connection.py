@@ -132,7 +132,7 @@ def _make_body_iterable(body):
     """
     if body is None:
         return []
-    elif isinstance(body, six.binary_type):
+    elif isinstance(body, bytes):
         return [body]
     elif hasattr(body, "read"):
         return _read_readable(body)

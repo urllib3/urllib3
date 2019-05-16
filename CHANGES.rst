@@ -30,12 +30,17 @@ Upcoming 2.0 Changes
 dev (master)
 ------------
 
+* Add ability to handle multiple Content-Encodings (Issue #1441 and Pull #1442)
+
 * Skip DNS names that can't be idna-decoded when using pyOpenSSL (Issue #1405).
 
 * Add a server_hostname parameter to HTTPSConnection which allows for
   overriding the SNI hostname sent in the handshake. (Pull #1397)
 
 * Drop support for EOL Python 2.6 (Pull #1429 and Pull #1430)
+
+* Fixed bug where responses with header Content-Type: message/* erroneously
+  raised HeaderParsingError, resulting in a warning being logged. (Pull #1439)
 
 * ... [Short description of non-trivial change.] (Issue #)
 

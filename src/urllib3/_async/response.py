@@ -12,7 +12,7 @@ from .._collections import HTTPHeaderDict
 from ..exceptions import (
     ProtocolError, DecodeError, ReadTimeoutError
 )
-from urllib3.packages.six import string_types as basestring, binary_type
+from urllib3.packages.six import string_types as basestring
 from ..util.ssl_ import BaseSSLError
 from ..util import is_fp_closed
 
@@ -23,7 +23,7 @@ class DeflateDecoder(object):
 
     def __init__(self):
         self._first_try = True
-        self._data = binary_type()
+        self._data = b''
         self._obj = zlib.decompressobj()
 
     def __getattr__(self, name):
@@ -69,7 +69,7 @@ class GzipDecoder(object):
         return getattr(self._obj, name)
 
     def decompress(self, data):
-        ret = binary_type()
+        ret = b''
         if self._state == GzipDecoderState.SWALLOW_DATA or not data:
             return ret
         while True:
@@ -90,7 +90,31 @@ class GzipDecoder(object):
             self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
 
+class MultiDecoder(object):
+    """
+    From RFC7231:
+        If one or more encodings have been applied to a representation, the
+        sender that applied the encodings MUST generate a Content-Encoding
+        header field that lists the content codings in the order in which
+        they were applied.
+    """
+
+    def __init__(self, modes):
+        self._decoders = [_get_decoder(m.strip()) for m in modes.split(',')]
+
+    def flush(self):
+        return self._decoders[0].flush()
+
+    def decompress(self, data):
+        for d in reversed(self._decoders):
+            data = d.decompress(data)
+        return data
+
+
 def _get_decoder(mode):
+    if ',' in mode:
+        return MultiDecoder(mode)
+
     if mode == 'gzip':
         return GzipDecoder()
 
@@ -150,7 +174,7 @@ class HTTPResponse(io.IOBase):
         self._request_url = request_url
         self._buffer = b''
 
-        if body and isinstance(body, (basestring, binary_type)):
+        if body and isinstance(body, (basestring, bytes)):
             self._body = body
         else:
             self._fp = body
@@ -210,8 +234,13 @@ class HTTPResponse(io.IOBase):
         # Note: content-encoding value should be case-insensitive, per RFC 7230
         # Section 3.2
         content_encoding = self.headers.get('content-encoding', '').lower()
-        if self._decoder is None and content_encoding in self.CONTENT_DECODERS:
-            self._decoder = _get_decoder(content_encoding)
+        if self._decoder is None:
+            if content_encoding in self.CONTENT_DECODERS:
+                self._decoder = _get_decoder(content_encoding)
+            elif ',' in content_encoding:
+                encodings = [e.strip() for e in content_encoding.split(',') if e.strip() in self.CONTENT_DECODERS]
+                if len(encodings):
+                    self._decoder = _get_decoder(content_encoding)
 
     def _decode(self, data, decode_content, flush_decoder):
         """

@@ -1433,7 +1433,7 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
            b'HTTP/1.1 200 OK\r\n'
            b'Content-Length: 0\r\n'
            b'Content-type: text/plain\r\n'
-           ) + b''.join(headers) + b'\r\n'
+           ) + b'\r\n'.join(headers) + b'\r\n'
         )
 
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
@@ -1442,21 +1442,41 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
 
     def test_header_without_name(self):
         self._test_broken_header_parsing([
-            b': Value\r\n',
-            b'Another: Header\r\n',
+            b': Value',
+            b'Another: Header',
         ])
 
     def test_header_without_name_or_value(self):
         self._test_broken_header_parsing([
-            b':\r\n',
-            b'Another: Header\r\n',
+            b':',
+            b'Another: Header',
         ])
 
     def test_header_without_colon_or_value(self):
         self._test_broken_header_parsing([
-            b'Broken Header\r\n',
-            b'Another: Header\r\n',
+            b'Broken Header',
+            b'Another: Header',
         ])
+
+
+class TestHeaderParsingContentType(SocketDummyServerTestCase):
+
+    def _test_okay_header_parsing(self, header):
+        self.start_response_handler((
+           b'HTTP/1.1 200 OK\r\n'
+           b'Content-Length: 0\r\n'
+           ) + header + b'\r\n\r\n'
+        )
+
+        pool = HTTPConnectionPool(self.host, self.port, retries=False)
+        self.addCleanup(pool.close)
+        pool.request('GET', '/')  # does not raise
+
+    def test_header_text_plain(self):
+        self._test_okay_header_parsing(b'Content-type: text/plain')
+
+    def test_header_message_rfc822(self):
+        self._test_okay_header_parsing(b'Content-type: message/rfc822')
 
 
 class TestHEAD(SocketDummyServerTestCase):
