@@ -1,6 +1,12 @@
 Changes
 =======
 
+dev (master)
+------------
+
+* Upgrade bundled rfc3986 to 1.3.2. (Pull #1609, Issue #1605)
+
+
 1.25.2 (2019-04-28)
 -------------------
 
