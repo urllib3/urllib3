@@ -6,7 +6,7 @@ dev (master)
 
 * Change ``HTTPSConnection`` to load system CA certificates
   when ``ca_certs``, ``ca_cert_dir``, and ``ssl_context`` are
-  unspecified. (Pull #)
+  unspecified. (Pull #1608, Issue #1603)
 
 
 1.25.2 (2019-04-28)
