@@ -1428,12 +1428,12 @@ class TestHeaders(SocketDummyServerTestCase):
 
 class TestBrokenHeaders(SocketDummyServerTestCase):
 
-    def _test_broken_header_parsing(self, headers, unparsed_data_check=None):
+    def _test_broken_header_parsing(self, headers):
         self.start_response_handler((
            b'HTTP/1.1 200 OK\r\n'
            b'Content-Length: 0\r\n'
            b'Content-type: text/plain\r\n'
-           ) + b''.join(headers) + b'\r\n\r\n'
+           ) + b'\r\n'.join(headers) + b'\r\n'
         )
 
         pool = HTTPConnectionPool(self.host, self.port, retries=False)
@@ -1454,8 +1454,8 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
 
     def test_header_without_colon_or_value(self):
         self._test_broken_header_parsing([
-            b'Broken Header\r\n',
-            b'Another: Header\r\n',
+            b'Broken Header',
+            b'Another: Header',
         ])
 
 
