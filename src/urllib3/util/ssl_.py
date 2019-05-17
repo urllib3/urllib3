@@ -129,7 +129,6 @@ DEFAULT_CIPHERS = ':'.join([
 try:
     from ssl import SSLContext  # Modern SSL?
 except ImportError:
-
     # TODO: Can we remove this by choosing to support only platforms with
     # actual SSLContext objects?
     class SSLContext(object):  # Platform-specific: Python 2
@@ -281,6 +280,8 @@ def create_urllib3_context(ssl_version=None, cert_reqs=None,
     """
     context = SSLContext(ssl_version or ssl.PROTOCOL_SSLv23)
 
+    context.set_ciphers(ciphers or DEFAULT_CIPHERS)
+
     # Setting the default here, as we may have no ssl module on import
     cert_reqs = ssl.CERT_REQUIRED if cert_reqs is None else cert_reqs
 
@@ -295,8 +296,6 @@ def create_urllib3_context(ssl_version=None, cert_reqs=None,
         options |= OP_NO_COMPRESSION
 
     context.options |= options
-
-    context.set_ciphers(ciphers or DEFAULT_CIPHERS)
 
     context.verify_mode = cert_reqs
     if getattr(context, 'check_hostname', None) is not None:  # Platform-specific: Python 3.2

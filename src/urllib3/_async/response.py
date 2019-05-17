@@ -14,7 +14,6 @@ from ..exceptions import (
 )
 from urllib3.packages.six import string_types as basestring
 from ..util.ssl_ import BaseSSLError
-from ..util import is_fp_closed
 
 log = logging.getLogger(__name__)
 
@@ -69,9 +68,9 @@ class GzipDecoder(object):
         return getattr(self._obj, name)
 
     def decompress(self, data):
-        ret = b''
+        ret = bytearray()
         if self._state == GzipDecoderState.SWALLOW_DATA or not data:
-            return ret
+            return bytes(ret)
         while True:
             try:
                 ret += self._obj.decompress(data)
@@ -81,11 +80,11 @@ class GzipDecoder(object):
                 self._state = GzipDecoderState.SWALLOW_DATA
                 if previous_state == GzipDecoderState.OTHER_MEMBERS:
                     # Allow trailing garbage acceptable in other gzip clients
-                    return ret
+                    return bytes(ret)
                 raise
             data = self._obj.unused_data
             if not data:
-                return ret
+                return bytes(ret)
             self._state = GzipDecoderState.OTHER_MEMBERS
             self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
@@ -238,7 +237,9 @@ class HTTPResponse(io.IOBase):
             if content_encoding in self.CONTENT_DECODERS:
                 self._decoder = _get_decoder(content_encoding)
             elif ',' in content_encoding:
-                encodings = [e.strip() for e in content_encoding.split(',') if e.strip() in self.CONTENT_DECODERS]
+                encodings = [
+                    e.strip() for e in content_encoding.split(',')
+                    if e.strip() in self.CONTENT_DECODERS]
                 if len(encodings):
                     self._decoder = _get_decoder(content_encoding)
 
