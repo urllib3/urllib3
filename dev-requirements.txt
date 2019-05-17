@@ -11,12 +11,12 @@ pytest==4.0.1
 pytest-cov==2.6.0
 tox==2.9.1
 h11==0.8.0
-cryptography==2.2.1
+cryptography==2.6.1
 # https://github.com/GoogleCloudPlatform/python-repo-tools/issues/23
 pylint<2.0;python_version<="2.7"
 gcp-devrel-py-tools==0.0.15
 
 # optional dependencies, only intended for use with Python 3.5+
 trio==0.3.0; python_version >= "3.5"
-twisted[tls]==17.9.0; python_version >= "3.5" and os_name != 'nt'
-twisted[tls,windows_platform]==17.9.0; python_version >= "3.5" and os_name == 'nt'
+twisted[tls]==19.2.0; python_version >= "3.5" and os_name != 'nt'
+twisted[tls,windows_platform]==19.2.0; python_version >= "3.5" and os_name == 'nt'
