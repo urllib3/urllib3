@@ -2,7 +2,6 @@ from __future__ import absolute_import
 # For backwards compatibility, provide imports that used to be here.
 from .connection import is_connection_dropped
 from .request import make_headers
-from .response import is_fp_closed
 from .ssl_ import (
     SSLContext,
     HAS_SNI,
@@ -44,7 +43,6 @@ __all__ = (
     'assert_fingerprint',
     'current_time',
     'is_connection_dropped',
-    'is_fp_closed',
     'get_host',
     'parse_url',
     'make_headers',
