@@ -14,7 +14,6 @@ from ..exceptions import (
 )
 from urllib3.packages.six import string_types as basestring
 from ..util.ssl_ import BaseSSLError
-from ..util import is_fp_closed
 
 log = logging.getLogger(__name__)
 

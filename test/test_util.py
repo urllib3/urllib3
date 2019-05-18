@@ -37,7 +37,7 @@ from urllib3.util.connection import (
     allowed_gai_family,
     _has_ipv6
 )
-from urllib3.util import is_fp_closed, ssl_
+from urllib3.util import ssl_
 from urllib3.packages import six
 
 from . import clear_warnings
@@ -421,37 +421,6 @@ class TestUtil(object):
     ])
     def test_resolve_ssl_version(self, candidate, version):
         assert resolve_ssl_version(candidate) == version
-
-    def test_is_fp_closed_object_supports_closed(self):
-        class ClosedFile(object):
-            @property
-            def closed(self):
-                return True
-
-        assert is_fp_closed(ClosedFile())
-
-    def test_is_fp_closed_object_has_none_fp(self):
-        class NoneFpFile(object):
-            @property
-            def fp(self):
-                return None
-
-        assert is_fp_closed(NoneFpFile())
-
-    def test_is_fp_closed_object_has_fp(self):
-        class FpFile(object):
-            @property
-            def fp(self):
-                return True
-
-        assert not is_fp_closed(FpFile())
-
-    def test_is_fp_closed_object_has_neither_fp_nor_closed(self):
-        class NotReallyAFile(object):
-            pass
-
-        with pytest.raises(ValueError):
-            is_fp_closed(NotReallyAFile())
 
     def test_ssl_wrap_socket_loads_the_cert_chain(self):
         socket = object()
