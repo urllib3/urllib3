@@ -37,7 +37,7 @@ from ..with_dummyserver.test_https import (  # noqa: F401
     TestHTTPS_IPv6Addr, TestHTTPS_NoSAN, TestHTTPS_IPV6SAN
 )
 from ..with_dummyserver.test_socketlevel import (  # noqa: F401
-    TestSNI, TestSocketClosing, TestClientCerts, TestSSL
+    TestSNI, TestSocketClosing, TestClientCerts
 )
 
 
