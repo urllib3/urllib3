@@ -1188,26 +1188,19 @@ class TestSSL(SocketDummyServerTestCase):
     def test_ssl_load_default_certs_when_empty(self):
         def socket_handler(listener):
             sock = listener.accept()[0]
-            sock2 = sock.dup()
             ssl_sock = ssl.wrap_socket(sock,
                                        server_side=True,
                                        keyfile=DEFAULT_CERTS['keyfile'],
                                        certfile=DEFAULT_CERTS['certfile'],
                                        ca_certs=DEFAULT_CA)
 
-            buf = b''
-            while not buf.endswith(b'\r\n\r\n'):
-                buf += ssl_sock.recv(65536)
+            ssl_sock.send(b'HTTP/1.1 200 OK\r\n'
+                          b'Content-Type: text/plain\r\n'
+                          b'Content-Length: 5\r\n\r\n'
+                          b'Hello')
 
-            # Deliberately send from the non-SSL socket.
-            sock2.send((
-                'HTTP/1.1 200 OK\r\n'
-                'Content-Type: text/plain\r\n'
-                'Content-Length: 2\r\n'
-                '\r\n'
-                'Hi').encode('utf-8'))
-            sock2.close()
             ssl_sock.close()
+            sock.close()
 
         context = mock.create_autospec(ssl_.SSLContext)
         context.load_default_certs = mock.Mock()
@@ -1227,26 +1220,19 @@ class TestSSL(SocketDummyServerTestCase):
     def test_ssl_dont_load_default_certs_when_given(self):
         def socket_handler(listener):
             sock = listener.accept()[0]
-            sock2 = sock.dup()
             ssl_sock = ssl.wrap_socket(sock,
                                        server_side=True,
                                        keyfile=DEFAULT_CERTS['keyfile'],
                                        certfile=DEFAULT_CERTS['certfile'],
                                        ca_certs=DEFAULT_CA)
 
-            buf = b''
-            while not buf.endswith(b'\r\n\r\n'):
-                buf += ssl_sock.recv(65536)
+            ssl_sock.send(b'HTTP/1.1 200 OK\r\n'
+                          b'Content-Type: text/plain\r\n'
+                          b'Content-Length: 5\r\n\r\n'
+                          b'Hello')
 
-            # Deliberately send from the non-SSL socket.
-            sock2.send((
-                'HTTP/1.1 200 OK\r\n'
-                'Content-Type: text/plain\r\n'
-                'Content-Length: 2\r\n'
-                '\r\n'
-                'Hi').encode('utf-8'))
-            sock2.close()
             ssl_sock.close()
+            sock.close()
 
         context = mock.create_autospec(ssl_.SSLContext)
         context.load_default_certs = mock.Mock()
