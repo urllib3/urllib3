@@ -77,8 +77,8 @@ named ``release-x.x`` where ``x.x`` is the version of the proposed release.
 - Integration tests are run against the release candidate on Travis. From here on all
   the steps below will be handled by a maintainer so unless you receive review comments
   you are done here.
-- Once the pull request is squash merged into master the merging maintainer the
-  pull request will tag the merge commit with the version number:
+- Once the pull request is squash merged into master the merging maintainer
+  will tag the merge commit with the version number:
 
   - ``git tag -a 1.24.1 [commit sha]``
   - ``git push origin master --tags``
