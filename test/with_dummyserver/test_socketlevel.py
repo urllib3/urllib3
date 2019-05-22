@@ -1194,6 +1194,10 @@ class TestSSL(SocketDummyServerTestCase):
                                        certfile=DEFAULT_CERTS['certfile'],
                                        ca_certs=DEFAULT_CA)
 
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += ssl_sock.recv(65536)
+
             ssl_sock.send(b'HTTP/1.1 200 OK\r\n'
                           b'Content-Type: text/plain\r\n'
                           b'Content-Length: 5\r\n\r\n'
@@ -1226,6 +1230,10 @@ class TestSSL(SocketDummyServerTestCase):
                                        certfile=DEFAULT_CERTS['certfile'],
                                        ca_certs=DEFAULT_CA)
 
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += ssl_sock.recv(65536)
+
             ssl_sock.send(b'HTTP/1.1 200 OK\r\n'
                           b'Content-Type: text/plain\r\n'
                           b'Content-Length: 5\r\n\r\n'
@@ -1239,13 +1247,13 @@ class TestSSL(SocketDummyServerTestCase):
         context.options = 0
 
         with mock.patch("urllib3.util.ssl_.SSLContext", lambda *_, **__: context):
-
-            self._start_server(socket_handler)
-
             for kwargs in [{"ca_certs": "/a"},
                            {"ca_cert_dir": "/a"},
                            {"ca_certs": "a", "ca_cert_dir": "a"},
                            {"ssl_context": context}]:
+
+                self._start_server(socket_handler)
+
                 pool = HTTPSConnectionPool(self.host, self.port, **kwargs)
                 self.addCleanup(pool.close)
 
