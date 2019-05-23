@@ -1217,7 +1217,7 @@ class TestSSL(SocketDummyServerTestCase):
             self.addCleanup(pool.close)
 
             with self.assertRaises(MaxRetryError):
-                pool.request("GET", "/")
+                pool.request("GET", "/", timeout=0.01)
 
             context.load_default_certs.assert_called_with()
 
@@ -1258,7 +1258,7 @@ class TestSSL(SocketDummyServerTestCase):
                 self.addCleanup(pool.close)
 
                 with self.assertRaises(MaxRetryError):
-                    pool.request("GET", "/")
+                    pool.request("GET", "/", timeout=0.01)
 
                 context.load_default_certs.assert_not_called()
 
