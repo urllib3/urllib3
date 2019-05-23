@@ -4,6 +4,10 @@ Changes
 dev (master)
 ------------
 
+* Change ``HTTPSConnection`` to load system CA certificates
+  when ``ca_certs``, ``ca_cert_dir``, and ``ssl_context`` are
+  unspecified. (Pull #1608, Issue #1603)
+
 * Upgrade bundled rfc3986 to 1.3.2. (Pull #1609, Issue #1605)
 
 
