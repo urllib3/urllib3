@@ -1,7 +1,7 @@
 Changes
 =======
 
-1.25.2 (2019-05-23)
+1.25.3 (2019-05-23)
 -------------------
 
 * Change ``HTTPSConnection`` to load system CA certificates
