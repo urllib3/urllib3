@@ -249,11 +249,22 @@ class HTTPSConnection(HTTPConnection):
         conn = self._new_conn()
         self._prepare_conn(conn)
 
+        # Wrap socket using verification with the root certs in
+        # trusted_root_certs
+        default_ssl_context = False
         if self.ssl_context is None:
+            default_ssl_context = True
             self.ssl_context = create_urllib3_context(
-                ssl_version=resolve_ssl_version(None),
-                cert_reqs=resolve_cert_reqs(None),
+                ssl_version=resolve_ssl_version(self.ssl_version),
+                cert_reqs=resolve_cert_reqs(self.cert_reqs),
             )
+
+        # Try to load OS default certs if none are given.
+        # Works well on Windows (requires Python3.4+)
+        context = self.ssl_context
+        if (not self.ca_certs and not self.ca_cert_dir and default_ssl_context
+                and hasattr(context, 'load_default_certs')):
+            context.load_default_certs()
 
         self.sock = ssl_wrap_socket(
             sock=conn,
@@ -331,7 +342,9 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
         # Wrap socket using verification with the root certs in
         # trusted_root_certs
+        default_ssl_context = False
         if self.ssl_context is None:
+            default_ssl_context = True
             self.ssl_context = create_urllib3_context(
                 ssl_version=resolve_ssl_version(self.ssl_version),
                 cert_reqs=resolve_cert_reqs(self.cert_reqs),
@@ -339,6 +352,13 @@ class VerifiedHTTPSConnection(HTTPSConnection):
 
         context = self.ssl_context
         context.verify_mode = resolve_cert_reqs(self.cert_reqs)
+
+        # Try to load OS default certs if none are given.
+        # Works well on Windows (requires Python3.4+)
+        if (not self.ca_certs and not self.ca_cert_dir and default_ssl_context
+                and hasattr(context, 'load_default_certs')):
+            context.load_default_certs()
+
         self.sock = ssl_wrap_socket(
             sock=conn,
             keyfile=self.key_file,
