@@ -14,6 +14,7 @@ class TestConnection(object):
     """
     Tests in this suite should not make any network requests or connections.
     """
+
     def test_match_hostname_no_cert(self):
         cert = None
         asserted_hostname = 'foo'

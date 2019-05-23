@@ -21,6 +21,7 @@ class TestMonkeypatchResistance(object):
     Test that connection pool works even with a monkey patched Queue module,
     see obspy/obspy#1599, kennethreitz/requests#3742, shazow/urllib3#1061.
     """
+
     def test_queue_monkeypatching(self):
         with mock.patch.object(queue, 'Empty', BadError):
             with HTTPConnectionPool(host="localhost", block=True) as http:

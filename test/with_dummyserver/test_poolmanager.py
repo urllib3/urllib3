@@ -26,13 +26,13 @@ class TestPoolManager(HTTPDummyServerTestCase):
                          fields={'target': '%s/' % self.base_url},
                          redirect=False)
 
-        self.assertEqual(r.status, 303)
+        assert r.status == 303
 
         r = http.request('GET', '%s/redirect' % self.base_url,
                          fields={'target': '%s/' % self.base_url})
 
-        self.assertEqual(r.status, 200)
-        self.assertEqual(r.data, b'Dummy server!')
+        assert r.status == 200
+        assert r.data == b'Dummy server!'
 
     def test_redirect_twice(self):
         http = PoolManager()
@@ -42,14 +42,14 @@ class TestPoolManager(HTTPDummyServerTestCase):
                          fields={'target': '%s/redirect' % self.base_url},
                          redirect=False)
 
-        self.assertEqual(r.status, 303)
+        assert r.status == 303
 
         r = http.request('GET', '%s/redirect' % self.base_url,
                          fields={'target': '%s/redirect?target=%s/' % (self.base_url,
                                                                        self.base_url)})
 
-        self.assertEqual(r.status, 200)
-        self.assertEqual(r.data, b'Dummy server!')
+        assert r.status == 200
+        assert r.data == b'Dummy server!'
 
     def test_redirect_to_relative_url(self):
         http = PoolManager()
@@ -59,13 +59,13 @@ class TestPoolManager(HTTPDummyServerTestCase):
                          fields={'target': '/redirect'},
                          redirect=False)
 
-        self.assertEqual(r.status, 303)
+        assert r.status == 303
 
         r = http.request('GET', '%s/redirect' % self.base_url,
                          fields={'target': '/redirect'})
 
-        self.assertEqual(r.status, 200)
-        self.assertEqual(r.data, b'Dummy server!')
+        assert r.status == 200
+        assert r.data == b'Dummy server!'
 
     def test_cross_host_redirect(self):
         http = PoolManager()
@@ -85,7 +85,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                          fields={'target': '%s/echo?a=b' % self.base_url_alt},
                          timeout=1, retries=1)
 
-        self.assertEqual(r._pool.host, self.host_alt)
+        assert r._pool.host == self.host_alt
 
     def test_too_many_redirects(self):
         http = PoolManager()
@@ -117,22 +117,22 @@ class TestPoolManager(HTTPDummyServerTestCase):
                          fields={'target': '%s/headers' % self.base_url_alt},
                          headers={'Authorization': 'foo'})
 
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
 
         data = json.loads(r.data.decode('utf-8'))
 
-        self.assertNotIn('Authorization', data)
+        assert 'Authorization' not in data
 
         r = http.request('GET', '%s/redirect' % self.base_url,
                          fields={'target': '%s/headers' % self.base_url_alt},
                          headers={'authorization': 'foo'})
 
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
 
         data = json.loads(r.data.decode('utf-8'))
 
-        self.assertNotIn('authorization', data)
-        self.assertNotIn('Authorization', data)
+        assert 'authorization' not in data
+        assert 'Authorization' not in data
 
     def test_redirect_cross_host_no_remove_headers(self):
         http = PoolManager()
@@ -143,11 +143,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
                          headers={'Authorization': 'foo'},
                          retries=Retry(remove_headers_on_redirect=[]))
 
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
 
         data = json.loads(r.data.decode('utf-8'))
 
-        self.assertEqual(data['Authorization'], 'foo')
+        assert data['Authorization'] == 'foo'
 
     def test_redirect_cross_host_set_removed_headers(self):
         http = PoolManager()
@@ -159,12 +159,12 @@ class TestPoolManager(HTTPDummyServerTestCase):
                                   'Authorization': 'bar'},
                          retries=Retry(remove_headers_on_redirect=['X-API-Secret']))
 
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
 
         data = json.loads(r.data.decode('utf-8'))
 
-        self.assertNotIn('X-API-Secret', data)
-        self.assertEqual(data['Authorization'], 'bar')
+        assert 'X-API-Secret' not in data
+        assert data['Authorization'] == 'bar'
 
         r = http.request('GET', '%s/redirect' % self.base_url,
                          fields={'target': '%s/headers' % self.base_url_alt},
@@ -172,13 +172,13 @@ class TestPoolManager(HTTPDummyServerTestCase):
                                   'authorization': 'bar'},
                          retries=Retry(remove_headers_on_redirect=['X-API-Secret']))
 
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
 
         data = json.loads(r.data.decode('utf-8'))
 
-        self.assertNotIn('x-api-secret', data)
-        self.assertNotIn('X-API-Secret', data)
-        self.assertEqual(data['Authorization'], 'bar')
+        assert 'x-api-secret' not in data
+        assert 'X-API-Secret' not in data
+        assert data['Authorization'] == 'bar'
 
     def test_raise_on_redirect(self):
         http = PoolManager()
@@ -189,7 +189,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                                                                        self.base_url)},
                          retries=Retry(total=None, redirect=1, raise_on_redirect=False))
 
-        self.assertEqual(r.status, 303)
+        assert r.status == 303
 
     def test_raise_on_status(self):
         http = PoolManager()
@@ -222,7 +222,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                                        status_forcelist=range(500, 600),
                                        raise_on_status=False))
 
-        self.assertEqual(r.status, 500)
+        assert r.status == 500
 
     def test_missing_port(self):
         # Can a URL that lacks an explicit port like ':80' succeed, or
@@ -240,8 +240,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
         finally:
             port_by_scheme['http'] = 80
 
-        self.assertEqual(r.status, 200)
-        self.assertEqual(r.data, b'Dummy server!')
+        assert r.status == 200
+        assert r.data == b'Dummy server!'
 
     def test_headers(self):
         http = PoolManager(headers={'Foo': 'bar'})
@@ -249,43 +249,43 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         r = http.request('GET', '%s/headers' % self.base_url)
         returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get('Foo'), 'bar')
+        assert returned_headers.get('Foo') == 'bar'
 
         r = http.request('POST', '%s/headers' % self.base_url)
         returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get('Foo'), 'bar')
+        assert returned_headers.get('Foo') == 'bar'
 
         r = http.request_encode_url('GET', '%s/headers' % self.base_url)
         returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get('Foo'), 'bar')
+        assert returned_headers.get('Foo') == 'bar'
 
         r = http.request_encode_body('POST', '%s/headers' % self.base_url)
         returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get('Foo'), 'bar')
+        assert returned_headers.get('Foo') == 'bar'
 
         r = http.request_encode_url('GET', '%s/headers' % self.base_url, headers={'Baz': 'quux'})
         returned_headers = json.loads(r.data.decode())
-        self.assertIsNone(returned_headers.get('Foo'))
-        self.assertEqual(returned_headers.get('Baz'), 'quux')
+        assert returned_headers.get('Foo') is None
+        assert returned_headers.get('Baz') == 'quux'
 
         r = http.request_encode_body('GET', '%s/headers' % self.base_url, headers={'Baz': 'quux'})
         returned_headers = json.loads(r.data.decode())
-        self.assertIsNone(returned_headers.get('Foo'))
-        self.assertEqual(returned_headers.get('Baz'), 'quux')
+        assert returned_headers.get('Foo') is None
+        assert returned_headers.get('Baz') == 'quux'
 
     def test_http_with_ssl_keywords(self):
         http = PoolManager(ca_certs='REQUIRED')
         self.addCleanup(http.clear)
 
         r = http.request('GET', 'http://%s:%s/' % (self.host, self.port))
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
 
     def test_http_with_ca_cert_dir(self):
         http = PoolManager(ca_certs='REQUIRED', ca_cert_dir='/nosuchdir')
         self.addCleanup(http.clear)
 
         r = http.request('GET', 'http://%s:%s/' % (self.host, self.port))
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
 
 
 @pytest.mark.skipif(

@@ -397,6 +397,7 @@ class TestConnectionPool(object):
             Raises the given exception on its first call, but returns a
             successful response on subsequent calls.
             """
+
             def __init__(self, ex):
                 super(_raise_once_make_request_function, self).__init__()
                 self._ex = ex

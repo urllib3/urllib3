@@ -7,6 +7,7 @@ Test what happens if Python was built without SSL
 
 import sys
 import unittest
+import pytest
 
 
 class ImportBlocker(object):
@@ -16,6 +17,7 @@ class ImportBlocker(object):
     To be placed on ``sys.meta_path``. This ensures that the modules
     specified cannot be imported, even if they are a builtin.
     """
+
     def __init__(self, *namestoblock):
         self.namestoblock = namestoblock
 
@@ -77,7 +79,7 @@ class TestWithoutSSL(unittest.TestCase):
 
 class TestImportWithoutSSL(TestWithoutSSL):
     def test_cannot_import_ssl(self):
-        with self.assertRaises(ImportError):
+        with pytest.raises(ImportError):
             import ssl  # noqa: F401
 
     def test_import_urllib3(self):
