@@ -27,13 +27,13 @@ def normalize_scheme(scheme):
 def normalize_authority(authority):
     """Normalize an authority tuple to a string."""
     userinfo, host, port = authority
-    result = ''
+    result = ""
     if userinfo:
-        result += normalize_percent_characters(userinfo) + '@'
+        result += normalize_percent_characters(userinfo) + "@"
     if host:
         result += normalize_host(host)
     if port:
-        result += ':' + port
+        result += ":" + port
     return result
 
 
@@ -50,16 +50,19 @@ def normalize_password(password):
 def normalize_host(host):
     """Normalize a host string."""
     if misc.IPv6_MATCHER.match(host):
-        percent = host.find('%')
+        percent = host.find("%")
         if percent != -1:
-            percent_25 = host.find('%25')
+            percent_25 = host.find("%25")
 
             # Replace RFC 4007 IPv6 Zone ID delimiter '%' with '%25'
             # from RFC 6874. If the host is '[<IPv6 addr>%25]' then we
             # assume RFC 4007 and normalize to '[<IPV6 addr>%2525]'
-            if percent_25 == -1 or percent < percent_25 or \
-                    (percent == percent_25 and percent_25 == len(host) - 4):
-                host = host.replace('%', '%25', 1)
+            if (
+                percent_25 == -1
+                or percent < percent_25
+                or (percent == percent_25 and percent_25 == len(host) - 4)
+            ):
+                host = host.replace("%", "%25", 1)
 
             # Don't normalize the casing of the Zone ID
             return host[:percent].lower() + host[percent:]
@@ -90,7 +93,7 @@ def normalize_fragment(fragment):
     return normalize_percent_characters(fragment)
 
 
-PERCENT_MATCHER = re.compile('%[A-Fa-f0-9]{2}')
+PERCENT_MATCHER = re.compile("%[A-Fa-f0-9]{2}")
 
 
 def normalize_percent_characters(s):
@@ -111,15 +114,15 @@ def remove_dot_segments(s):
     See also Section 5.2.4 of :rfc:`3986`.
     """
     # See http://tools.ietf.org/html/rfc3986#section-5.2.4 for pseudo-code
-    segments = s.split('/')  # Turn the path into a list of segments
+    segments = s.split("/")  # Turn the path into a list of segments
     output = []  # Initialize the variable to use to store output
 
     for segment in segments:
         # '.' is the current directory, so ignore it, it is superfluous
-        if segment == '.':
+        if segment == ".":
             continue
         # Anything other than '..', should be appended to the output
-        elif segment != '..':
+        elif segment != "..":
             output.append(segment)
         # In this case segment == '..', if we can, we should pop the last
         # element
@@ -128,15 +131,15 @@ def remove_dot_segments(s):
 
     # If the path starts with '/' and the output is empty or the first string
     # is non-empty
-    if s.startswith('/') and (not output or output[0]):
-        output.insert(0, '')
+    if s.startswith("/") and (not output or output[0]):
+        output.insert(0, "")
 
     # If the path starts with '/.' or '/..' ensure we add one more empty
     # string to add a trailing '/'
-    if s.endswith(('/.', '/..')):
-        output.append('')
+    if s.endswith(("/.", "/..")):
+        output.append("")
 
-    return '/'.join(output)
+    return "/".join(output)
 
 
 def encode_component(uri_component, encoding):
@@ -146,22 +149,24 @@ def encode_component(uri_component, encoding):
 
     # Try to see if the component we're encoding is already percent-encoded
     # so we can skip all '%' characters but still encode all others.
-    percent_encodings = len(PERCENT_MATCHER.findall(
-                            compat.to_str(uri_component, encoding)))
+    percent_encodings = len(
+        PERCENT_MATCHER.findall(compat.to_str(uri_component, encoding))
+    )
 
     uri_bytes = compat.to_bytes(uri_component, encoding)
-    is_percent_encoded = percent_encodings == uri_bytes.count(b'%')
+    is_percent_encoded = percent_encodings == uri_bytes.count(b"%")
 
     encoded_uri = bytearray()
 
     for i in range(0, len(uri_bytes)):
         # Will return a single character bytestring on both Python 2 & 3
-        byte = uri_bytes[i:i+1]
+        byte = uri_bytes[i : i + 1]
         byte_ord = ord(byte)
-        if ((is_percent_encoded and byte == b'%')
-                or (byte_ord < 128 and byte.decode() in misc.NON_PCT_ENCODED)):
+        if (is_percent_encoded and byte == b"%") or (
+            byte_ord < 128 and byte.decode() in misc.NON_PCT_ENCODED
+        ):
             encoded_uri.extend(byte)
             continue
-        encoded_uri.extend('%{0:02x}'.format(byte_ord).encode().upper())
+        encoded_uri.extend("%{0:02x}".format(byte_ord).encode().upper())
 
     return encoded_uri.decode(encoding)

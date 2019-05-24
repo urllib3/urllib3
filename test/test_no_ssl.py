@@ -16,6 +16,7 @@ class ImportBlocker(object):
     To be placed on ``sys.meta_path``. This ensures that the modules
     specified cannot be imported, even if they are a builtin.
     """
+
     def __init__(self, *namestoblock):
         self.namestoblock = namestoblock
 
@@ -25,7 +26,7 @@ class ImportBlocker(object):
         return None
 
     def load_module(self, fullname):
-        raise ImportError('import of {0} is blocked'.format(fullname))
+        raise ImportError("import of {0} is blocked".format(fullname))
 
 
 class ModuleStash(object):
@@ -45,27 +46,27 @@ class ModuleStash(object):
         self._data[self.namespace] = self.modules.pop(self.namespace, None)
 
         for module in list(self.modules.keys()):
-            if module.startswith(self.namespace + '.'):
+            if module.startswith(self.namespace + "."):
                 self._data[module] = self.modules.pop(module)
 
     def pop(self):
         self.modules.pop(self.namespace, None)
 
         for module in list(self.modules.keys()):
-            if module.startswith(self.namespace + '.'):
+            if module.startswith(self.namespace + "."):
                 self.modules.pop(module)
 
         self.modules.update(self._data)
 
 
-ssl_blocker = ImportBlocker('ssl', '_ssl')
-module_stash = ModuleStash('urllib3')
+ssl_blocker = ImportBlocker("ssl", "_ssl")
+module_stash = ModuleStash("urllib3")
 
 
 class TestWithoutSSL(unittest.TestCase):
     def setUp(self):
-        sys.modules.pop('ssl', None)
-        sys.modules.pop('_ssl', None)
+        sys.modules.pop("ssl", None)
+        sys.modules.pop("_ssl", None)
 
         module_stash.stash()
         sys.meta_path.insert(0, ssl_blocker)

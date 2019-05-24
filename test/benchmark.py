@@ -10,28 +10,28 @@ import sys
 import time
 import urllib
 
-sys.path.append('../')
+sys.path.append("../")
 import urllib3  # noqa: E402
 
 
 # URLs to download. Doesn't matter as long as they're from the same host, so we
 # can take advantage of connection re-using.
 TO_DOWNLOAD = [
-    'http://code.google.com/apis/apps/',
-    'http://code.google.com/apis/base/',
-    'http://code.google.com/apis/blogger/',
-    'http://code.google.com/apis/calendar/',
-    'http://code.google.com/apis/codesearch/',
-    'http://code.google.com/apis/contact/',
-    'http://code.google.com/apis/books/',
-    'http://code.google.com/apis/documents/',
-    'http://code.google.com/apis/finance/',
-    'http://code.google.com/apis/health/',
-    'http://code.google.com/apis/notebook/',
-    'http://code.google.com/apis/picasaweb/',
-    'http://code.google.com/apis/spreadsheets/',
-    'http://code.google.com/apis/webmastertools/',
-    'http://code.google.com/apis/youtube/',
+    "http://code.google.com/apis/apps/",
+    "http://code.google.com/apis/base/",
+    "http://code.google.com/apis/blogger/",
+    "http://code.google.com/apis/calendar/",
+    "http://code.google.com/apis/codesearch/",
+    "http://code.google.com/apis/contact/",
+    "http://code.google.com/apis/books/",
+    "http://code.google.com/apis/documents/",
+    "http://code.google.com/apis/finance/",
+    "http://code.google.com/apis/health/",
+    "http://code.google.com/apis/notebook/",
+    "http://code.google.com/apis/picasaweb/",
+    "http://code.google.com/apis/spreadsheets/",
+    "http://code.google.com/apis/webmastertools/",
+    "http://code.google.com/apis/youtube/",
 ]
 
 
@@ -49,12 +49,12 @@ def pool_get(url_list):
     pool = urllib3.PoolManager()
     for url in url_list:
         now = time.time()
-        pool.request('GET', url, assert_same_host=False)
+        pool.request("GET", url, assert_same_host=False)
         elapsed = time.time() - now
         print("Got in %0.3fs: %s" % (elapsed, url))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("Running pool_get ...")
     now = time.time()
     pool_get(TO_DOWNLOAD)

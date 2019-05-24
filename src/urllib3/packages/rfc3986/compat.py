@@ -25,12 +25,7 @@ try:
 except ImportError:  # Python 2.x
     from urllib import urlencode
 
-__all__ = (
-    'to_bytes',
-    'to_str',
-    'urlquote',
-    'urlencode',
-)
+__all__ = ("to_bytes", "to_str", "urlquote", "urlencode")
 
 PY3 = (3, 0) <= sys.version_info < (4, 0)
 PY2 = (2, 6) <= sys.version_info < (2, 8)
@@ -40,15 +35,15 @@ if PY3:
     unicode = str  # Python 3.x
 
 
-def to_str(b, encoding='utf-8'):
+def to_str(b, encoding="utf-8"):
     """Ensure that b is text in the specified encoding."""
-    if hasattr(b, 'decode') and not isinstance(b, unicode):
+    if hasattr(b, "decode") and not isinstance(b, unicode):
         b = b.decode(encoding)
     return b
 
 
-def to_bytes(s, encoding='utf-8'):
+def to_bytes(s, encoding="utf-8"):
     """Ensure that s is converted to bytes from the encoding."""
-    if hasattr(s, 'encode') and not isinstance(s, bytes):
+    if hasattr(s, "encode") and not isinstance(s, bytes):
         s = s.encode(encoding)
     return s

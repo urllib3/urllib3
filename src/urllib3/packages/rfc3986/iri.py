@@ -29,8 +29,7 @@ except ImportError:  # pragma: no cover
     idna = None
 
 
-class IRIReference(namedtuple('IRIReference', misc.URI_COMPONENTS),
-                   uri.URIMixin):
+class IRIReference(namedtuple("IRIReference", misc.URI_COMPONENTS), uri.URIMixin):
     """Immutable object representing a parsed IRI Reference.
 
     Can be encoded into an URIReference object via the procedure
@@ -43,16 +42,11 @@ class IRIReference(namedtuple('IRIReference', misc.URI_COMPONENTS),
 
     slots = ()
 
-    def __new__(cls, scheme, authority, path, query, fragment,
-                encoding='utf-8'):
+    def __new__(cls, scheme, authority, path, query, fragment, encoding="utf-8"):
         """Create a new IRIReference."""
         ref = super(IRIReference, cls).__new__(
-            cls,
-            scheme or None,
-            authority or None,
-            path or None,
-            query,
-            fragment)
+            cls, scheme or None, authority or None, path or None, query, fragment
+        )
         ref.encoding = encoding
         return ref
 
@@ -66,8 +60,10 @@ class IRIReference(namedtuple('IRIReference', misc.URI_COMPONENTS),
                 other_ref = self.__class__.from_string(other)
             except TypeError:
                 raise TypeError(
-                    'Unable to compare {0}() to {1}()'.format(
-                        type(self).__name__, type(other).__name__))
+                    "Unable to compare {0}() to {1}()".format(
+                        type(self).__name__, type(other).__name__
+                    )
+                )
 
         # See http://tools.ietf.org/html/rfc3986#section-6.2
         return tuple(self) == tuple(other_ref)
@@ -76,7 +72,7 @@ class IRIReference(namedtuple('IRIReference', misc.URI_COMPONENTS),
         return misc.ISUBAUTHORITY_MATCHER.match(self.authority)
 
     @classmethod
-    def from_string(cls, iri_string, encoding='utf-8'):
+    def from_string(cls, iri_string, encoding="utf-8"):
         """Parse a IRI reference from the given unicode IRI string.
 
         :param str iri_string: Unicode IRI to be parsed into a reference.
@@ -87,10 +83,11 @@ class IRIReference(namedtuple('IRIReference', misc.URI_COMPONENTS),
 
         split_iri = misc.IRI_MATCHER.match(iri_string).groupdict()
         return cls(
-            split_iri['scheme'], split_iri['authority'],
-            normalizers.encode_component(split_iri['path'], encoding),
-            normalizers.encode_component(split_iri['query'], encoding),
-            normalizers.encode_component(split_iri['fragment'], encoding),
+            split_iri["scheme"],
+            split_iri["authority"],
+            normalizers.encode_component(split_iri["path"], encoding),
+            normalizers.encode_component(split_iri["query"], encoding),
+            normalizers.encode_component(split_iri["fragment"], encoding),
             encoding,
         )
 
@@ -120,28 +117,34 @@ class IRIReference(namedtuple('IRIReference', misc.URI_COMPONENTS),
                 def idna_encoder(name):
                     if any(ord(c) > 128 for c in name):
                         try:
-                            return idna.encode(name.lower(),
-                                               strict=True,
-                                               std3_rules=True)
+                            return idna.encode(
+                                name.lower(), strict=True, std3_rules=True
+                            )
                         except idna.IDNAError:
                             raise exceptions.InvalidAuthority(self.authority)
                     return name
 
             authority = ""
             if self.host:
-                authority = ".".join([compat.to_str(idna_encoder(part))
-                                      for part in self.host.split(".")])
+                authority = ".".join(
+                    [compat.to_str(idna_encoder(part)) for part in self.host.split(".")]
+                )
 
             if self.userinfo is not None:
-                authority = (normalizers.encode_component(
-                             self.userinfo, self.encoding) + '@' + authority)
+                authority = (
+                    normalizers.encode_component(self.userinfo, self.encoding)
+                    + "@"
+                    + authority
+                )
 
             if self.port is not None:
                 authority += ":" + str(self.port)
 
-        return uri.URIReference(self.scheme,
-                                authority,
-                                path=self.path,
-                                query=self.query,
-                                fragment=self.fragment,
-                                encoding=self.encoding)
+        return uri.URIReference(
+            self.scheme,
+            authority,
+            path=self.path,
+            query=self.query,
+            fragment=self.fragment,
+            encoding=self.encoding,
+        )
