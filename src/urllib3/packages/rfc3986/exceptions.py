@@ -16,8 +16,8 @@ class InvalidAuthority(RFC3986Exception):
     def __init__(self, authority):
         """Initialize the exception with the invalid authority."""
         super(InvalidAuthority, self).__init__(
-            u"The authority ({0}) is not valid.".format(
-                compat.to_str(authority)))
+            u"The authority ({0}) is not valid.".format(compat.to_str(authority))
+        )
 
 
 class InvalidPort(RFC3986Exception):
@@ -25,8 +25,7 @@ class InvalidPort(RFC3986Exception):
 
     def __init__(self, port):
         """Initialize the exception with the invalid port."""
-        super(InvalidPort, self).__init__(
-            'The port ("{0}") is not valid.'.format(port))
+        super(InvalidPort, self).__init__('The port ("{0}") is not valid.'.format(port))
 
 
 class ResolutionError(RFC3986Exception):
@@ -35,7 +34,8 @@ class ResolutionError(RFC3986Exception):
     def __init__(self, uri):
         """Initialize the error with the failed URI."""
         super(ResolutionError, self).__init__(
-            "{0} is not an absolute URI.".format(uri.unsplit()))
+            "{0} is not an absolute URI.".format(uri.unsplit())
+        )
 
 
 class ValidationError(RFC3986Exception):
@@ -49,17 +49,15 @@ class MissingComponentError(ValidationError):
 
     def __init__(self, uri, *component_names):
         """Initialize the error with the missing component name."""
-        verb = 'was'
+        verb = "was"
         if len(component_names) > 1:
-            verb = 'were'
+            verb = "were"
 
         self.uri = uri
         self.components = sorted(component_names)
-        components = ', '.join(self.components)
+        components = ", ".join(self.components)
         super(MissingComponentError, self).__init__(
-            "{} {} required but missing".format(components, verb),
-            uri,
-            self.components,
+            "{} {} required but missing".format(components, verb), uri, self.components
         )
 
 
@@ -70,7 +68,7 @@ class UnpermittedComponentError(ValidationError):
         """Initialize the error with the unpermitted component."""
         super(UnpermittedComponentError, self).__init__(
             "{} was required to be one of {!r} but was {!r}".format(
-                component_name, list(sorted(allowed_values)), component_value,
+                component_name, list(sorted(allowed_values)), component_value
             ),
             component_name,
             component_value,
@@ -86,11 +84,9 @@ class PasswordForbidden(ValidationError):
 
     def __init__(self, uri):
         """Initialize the error with the URI that failed validation."""
-        unsplit = getattr(uri, 'unsplit', lambda: uri)
+        unsplit = getattr(uri, "unsplit", lambda: uri)
         super(PasswordForbidden, self).__init__(
-            '"{}" contained a password when validation forbade it'.format(
-                unsplit()
-            )
+            '"{}" contained a password when validation forbade it'.format(unsplit())
         )
         self.uri = uri
 
@@ -100,17 +96,15 @@ class InvalidComponentsError(ValidationError):
 
     def __init__(self, uri, *component_names):
         """Initialize the error with the invalid component name(s)."""
-        verb = 'was'
+        verb = "was"
         if len(component_names) > 1:
-            verb = 'were'
+            verb = "were"
 
         self.uri = uri
         self.components = sorted(component_names)
-        components = ', '.join(self.components)
+        components = ", ".join(self.components)
         super(InvalidComponentsError, self).__init__(
-            "{} {} found to be invalid".format(components, verb),
-            uri,
-            self.components,
+            "{} {} found to be invalid".format(components, verb), uri, self.components
         )
 
 
