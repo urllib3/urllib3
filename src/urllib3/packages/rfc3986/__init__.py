@@ -31,26 +31,26 @@ from .api import URIReference
 from .api import urlparse
 from .parseresult import ParseResult
 
-__title__ = 'rfc3986'
-__author__ = 'Ian Stapleton Cordasco'
-__author_email__ = 'graffatcolmingov@gmail.com'
-__license__ = 'Apache v2.0'
-__copyright__ = 'Copyright 2014 Rackspace'
-__version__ = '1.3.2'
+__title__ = "rfc3986"
+__author__ = "Ian Stapleton Cordasco"
+__author_email__ = "graffatcolmingov@gmail.com"
+__license__ = "Apache v2.0"
+__copyright__ = "Copyright 2014 Rackspace"
+__version__ = "1.3.2"
 
 __all__ = (
-    'ParseResult',
-    'URIReference',
-    'IRIReference',
-    'is_valid_uri',
-    'normalize_uri',
-    'uri_reference',
-    'iri_reference',
-    'urlparse',
-    '__title__',
-    '__author__',
-    '__author_email__',
-    '__license__',
-    '__copyright__',
-    '__version__',
+    "ParseResult",
+    "URIReference",
+    "IRIReference",
+    "is_valid_uri",
+    "normalize_uri",
+    "uri_reference",
+    "iri_reference",
+    "urlparse",
+    "__title__",
+    "__author__",
+    "__author_email__",
+    "__license__",
+    "__copyright__",
+    "__version__",
 )

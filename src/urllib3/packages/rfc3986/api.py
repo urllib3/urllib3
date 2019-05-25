@@ -24,7 +24,7 @@ from .parseresult import ParseResult
 from .uri import URIReference
 
 
-def uri_reference(uri, encoding='utf-8'):
+def uri_reference(uri, encoding="utf-8"):
     """Parse a URI string into a URIReference.
 
     This is a convenience function. You could achieve the same end by using
@@ -38,7 +38,7 @@ def uri_reference(uri, encoding='utf-8'):
     return URIReference.from_string(uri, encoding)
 
 
-def iri_reference(iri, encoding='utf-8'):
+def iri_reference(iri, encoding="utf-8"):
     """Parse a IRI string into an IRIReference.
 
     This is a convenience function. You could achieve the same end by using
@@ -52,7 +52,7 @@ def iri_reference(iri, encoding='utf-8'):
     return IRIReference.from_string(iri, encoding)
 
 
-def is_valid_uri(uri, encoding='utf-8', **kwargs):
+def is_valid_uri(uri, encoding="utf-8", **kwargs):
     """Determine if the URI given is valid.
 
     This is a convenience function. You could use either
@@ -77,7 +77,7 @@ def is_valid_uri(uri, encoding='utf-8', **kwargs):
     return URIReference.from_string(uri, encoding).is_valid(**kwargs)
 
 
-def normalize_uri(uri, encoding='utf-8'):
+def normalize_uri(uri, encoding="utf-8"):
     """Normalize the given URI.
 
     This is a convenience function. You could use either
@@ -93,7 +93,7 @@ def normalize_uri(uri, encoding='utf-8'):
     return normalized_reference.unsplit()
 
 
-def urlparse(uri, encoding='utf-8'):
+def urlparse(uri, encoding="utf-8"):
     """Parse a given URI and return a ParseResult.
 
     This is a partial replacement of the standard library's urlparse function.

@@ -5,10 +5,7 @@ import pytest
 from mock import patch, Mock
 
 try:
-    from urllib3.contrib.pyopenssl import (
-        inject_into_urllib3,
-        extract_from_urllib3
-    )
+    from urllib3.contrib.pyopenssl import inject_into_urllib3, extract_from_urllib3
 except ImportError:
     pass
 
@@ -16,14 +13,16 @@ except ImportError:
 def setup_module():
     try:
         from urllib3.contrib.pyopenssl import inject_into_urllib3
+
         inject_into_urllib3()
     except ImportError as e:
-        pytest.skip('Could not import PyOpenSSL: %r' % e)
+        pytest.skip("Could not import PyOpenSSL: %r" % e)
 
 
 def teardown_module():
     try:
         from urllib3.contrib.pyopenssl import extract_from_urllib3
+
         extract_from_urllib3()
     except ImportError:
         pass

@@ -29,8 +29,16 @@ class URIBuilder(object):
 
     """
 
-    def __init__(self, scheme=None, userinfo=None, host=None, port=None,
-                 path=None, query=None, fragment=None):
+    def __init__(
+        self,
+        scheme=None,
+        userinfo=None,
+        host=None,
+        port=None,
+        path=None,
+        query=None,
+        fragment=None,
+    ):
         """Initialize our URI builder.
 
         :param str scheme:
@@ -58,9 +66,11 @@ class URIBuilder(object):
 
     def __repr__(self):
         """Provide a convenient view of our builder object."""
-        formatstr = ('URIBuilder(scheme={b.scheme}, userinfo={b.userinfo}, '
-                     'host={b.host}, port={b.port}, path={b.path}, '
-                     'query={b.query}, fragment={b.fragment})')
+        formatstr = (
+            "URIBuilder(scheme={b.scheme}, userinfo={b.userinfo}, "
+            "host={b.host}, port={b.port}, path={b.path}, "
+            "query={b.query}, fragment={b.fragment})"
+        )
         return formatstr.format(b=self)
 
     def add_scheme(self, scheme):
@@ -101,13 +111,12 @@ class URIBuilder(object):
                     port=None, path=None, query=None, fragment=None)
         """
         if username is None:
-            raise ValueError('Username cannot be None')
+            raise ValueError("Username cannot be None")
         userinfo = normalizers.normalize_username(username)
 
         if password is not None:
-            userinfo = '{}:{}'.format(
-                userinfo,
-                normalizers.normalize_password(password),
+            userinfo = "{}:{}".format(
+                userinfo, normalizers.normalize_password(password)
             )
 
         return URIBuilder(
@@ -157,23 +166,19 @@ class URIBuilder(object):
         port_int = int(port)
         if port_int < 0:
             raise ValueError(
-                'ports are not allowed to be negative. You provided {}'.format(
-                    port_int,
-                )
+                "ports are not allowed to be negative. You provided {}".format(port_int)
             )
         if port_int > 65535:
             raise ValueError(
-                'ports are not allowed to be larger than 65535. '
-                'You provided {}'.format(
-                    port_int,
-                )
+                "ports are not allowed to be larger than 65535. "
+                "You provided {}".format(port_int)
             )
 
         return URIBuilder(
             scheme=self.scheme,
             userinfo=self.userinfo,
             host=self.host,
-            port='{}'.format(port_int),
+            port="{}".format(port_int),
             path=self.path,
             query=self.query,
             fragment=self.fragment,
@@ -193,8 +198,8 @@ class URIBuilder(object):
                     path='/checkout.php', query=None, fragment=None)
 
         """
-        if not path.startswith('/'):
-            path = '/{}'.format(path)
+        if not path.startswith("/"):
+            path = "/{}".format(path)
 
         return URIBuilder(
             scheme=self.scheme,
@@ -289,9 +294,7 @@ class URIBuilder(object):
         """
         return uri.URIReference(
             self.scheme,
-            normalizers.normalize_authority(
-                (self.userinfo, self.host, self.port)
-            ),
+            normalizers.normalize_authority((self.userinfo, self.host, self.port)),
             self.path,
             self.query,
             self.fragment,
