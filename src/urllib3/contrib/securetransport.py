@@ -621,7 +621,7 @@ class WrappedSocket(object):
             )
             total_sent += sent
 
-    def shutdown(self):
+    def shutdown(self, how=None):
         with self._raise_on_error():
             Security.SSLClose(self.context)
 

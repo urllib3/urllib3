@@ -353,7 +353,7 @@ class WrappedSocket(object):
             )
             total_sent += sent
 
-    def shutdown(self):
+    def shutdown(self, how=None):
         # FIXME rethrow compatible exceptions should we ever use this
         self.connection.shutdown()
 
