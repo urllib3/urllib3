@@ -345,7 +345,7 @@ class WrappedSocket(object):
             except OpenSSL.SSL.SysCallError as e:
                 raise SocketError(str(e))
 
-    def sendall(self, data):
+    def sendall(self, data, flags=0):
         total_sent = 0
         while total_sent < len(data):
             sent = self._send_until_done(
@@ -396,7 +396,7 @@ class WrappedSocket(object):
 
 if _fileobject:  # Platform-specific: Python 2
 
-    def makefile(self, mode, bufsize=-1):
+    def makefile(self, mode="r", bufsize=-1):
         self._makefile_refs += 1
         return _fileobject(self, mode, bufsize, close=True)
 
