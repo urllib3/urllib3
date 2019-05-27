@@ -74,7 +74,7 @@ setup(
     ],
     test_suite="test",
     extras_require={
-        "brotli": ["brotlipy>=0.6.0"],
+        "brotli": ["brotli>=1.0.0"],
         "secure": [
             "pyOpenSSL>=0.14",
             "cryptography>=1.3.4",

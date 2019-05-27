@@ -82,13 +82,13 @@ def onlyPy3(test):
     return wrapper
 
 
-def onlyBrotlipy():
-    return pytest.mark.skipif(brotli is None, reason="only run if brotlipy is present")
+def onlyBrotli():
+    return pytest.mark.skipif(brotli is None, reason="only run if Brotli is present")
 
 
-def notBrotlipy():
+def notBrotli():
     return pytest.mark.skipif(
-        brotli is not None, reason="only run if brotlipy is absent"
+        brotli is not None, reason="only run if Brotli is absent"
     )
 
 

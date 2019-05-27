@@ -17,7 +17,7 @@ from urllib3.packages.six.moves import http_client as httplib
 from urllib3.util.retry import Retry, RequestHistory
 from urllib3.util.response import is_fp_closed
 
-from test import onlyBrotlipy
+from test import onlyBrotli
 
 from base64 import b64decode
 
@@ -219,7 +219,7 @@ class TestResponse(object):
 
         assert r.data == b"foofoofoo"
 
-    @onlyBrotlipy()
+    @onlyBrotli()
     def test_decode_brotli(self):
         data = brotli.compress(b"foo")
 
@@ -227,7 +227,7 @@ class TestResponse(object):
         r = HTTPResponse(fp, headers={"content-encoding": "br"})
         assert r.data == b"foo"
 
-    @onlyBrotlipy()
+    @onlyBrotli()
     def test_chunked_decoding_brotli(self):
         data = brotli.compress(b"foobarbaz")
 
@@ -241,7 +241,7 @@ class TestResponse(object):
                 break
         assert ret == b"foobarbaz"
 
-    @onlyBrotlipy()
+    @onlyBrotli()
     def test_decode_brotli_error(self):
         fp = BytesIO(b"foo")
         with pytest.raises(DecodeError):

@@ -36,7 +36,7 @@ from urllib3.packages import six
 
 from . import clear_warnings
 
-from test import onlyPy3, onlyPy2, onlyBrotlipy, notBrotlipy
+from test import onlyPy3, onlyPy2, onlyBrotli, notBrotli
 
 # This number represents a time in seconds, it doesn't mean anything in
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller
@@ -436,24 +436,24 @@ class TestUtil(object):
             pytest.param(
                 {"accept_encoding": True},
                 {"accept-encoding": "gzip,deflate,br"},
-                marks=onlyBrotlipy(),
+                marks=onlyBrotli(),
             ),
             pytest.param(
                 {"accept_encoding": True},
                 {"accept-encoding": "gzip,deflate"},
-                marks=notBrotlipy(),
+                marks=notBrotli(),
             ),
             ({"accept_encoding": "foo,bar"}, {"accept-encoding": "foo,bar"}),
             ({"accept_encoding": ["foo", "bar"]}, {"accept-encoding": "foo,bar"}),
             pytest.param(
                 {"accept_encoding": True, "user_agent": "banana"},
                 {"accept-encoding": "gzip,deflate,br", "user-agent": "banana"},
-                marks=onlyBrotlipy(),
+                marks=onlyBrotli(),
             ),
             pytest.param(
                 {"accept_encoding": True, "user_agent": "banana"},
                 {"accept-encoding": "gzip,deflate", "user-agent": "banana"},
-                marks=notBrotlipy(),
+                marks=notBrotli(),
             ),
             ({"user_agent": "banana"}, {"user-agent": "banana"}),
             ({"keep_alive": True}, {"connection": "keep-alive"}),
