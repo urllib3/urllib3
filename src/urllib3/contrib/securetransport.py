@@ -541,13 +541,13 @@ class WrappedSocket(object):
         if self._closed:
             self.close()
 
-    def recv(self, bufsiz):
+    def recv(self, bufsiz, flags=0):
         buffer = ctypes.create_string_buffer(bufsiz)
-        bytes_read = self.recv_into(buffer, bufsiz)
+        bytes_read = self.recv_into(buffer, bufsiz, flags)
         data = buffer[:bytes_read]
         return data
 
-    def recv_into(self, buffer, nbytes=None):
+    def recv_into(self, buffer, nbytes=None, flags=0):
         # Read short on EOF.
         if self._closed:
             return 0
@@ -596,7 +596,7 @@ class WrappedSocket(object):
     def gettimeout(self):
         return self._timeout
 
-    def send(self, data):
+    def send(self, data, flags=0):
         processed_bytes = ctypes.c_size_t(0)
 
         with self._raise_on_error():
@@ -613,7 +613,7 @@ class WrappedSocket(object):
         # We sent, and probably succeeded. Tell them how much we sent.
         return processed_bytes.value
 
-    def sendall(self, data):
+    def sendall(self, data, flags=0):
         total_sent = 0
         while total_sent < len(data):
             sent = self.send(
@@ -621,7 +621,7 @@ class WrappedSocket(object):
             )
             total_sent += sent
 
-    def shutdown(self):
+    def shutdown(self, how=None):
         with self._raise_on_error():
             Security.SSLClose(self.context)
 
@@ -735,7 +735,7 @@ class WrappedSocket(object):
 
 if _fileobject:  # Platform-specific: Python 2
 
-    def makefile(self, mode, bufsize=-1):
+    def makefile(self, mode="r", bufsize=-1):
         self._makefile_refs += 1
         return _fileobject(self, mode, bufsize, close=True)
 

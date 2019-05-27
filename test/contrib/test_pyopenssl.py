@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
+import contextlib
+import inspect
 import os
+import socket
 import unittest
 
 import mock
 import pytest
 
+from .socketsig_helper import socket_signature_validators
+
 try:
     from urllib3.contrib.pyopenssl import _dnsname_to_stdlib, get_subj_alt_name
+    from urllib3.contrib.pyopenssl import WrappedSocket
     from cryptography import x509
     from OpenSSL.crypto import FILETYPE_PEM, load_certificate
 except ImportError:
@@ -96,3 +102,42 @@ class TestPyOpenSSLHelpers(unittest.TestCase):
 
         assert mock_warning.call_count == 1
         assert isinstance(mock_warning.call_args[0][1], x509.DuplicateExtension)
+
+    def test_socket_signature(self):
+        """
+        Check WrappedSocket methods match corresponding socket.socket
+        method signatures.
+        """
+        with contextlib.closing(socket.socket()) as sock:
+            validators = socket_signature_validators()
+            wrapper = WrappedSocket(None, sock)
+
+            # iterate through all WrappedSocket methods and check
+            # the ones that override socket.socket (heuristic: same
+            # name but don't start with an underscore)
+            for name, method in inspect.getmembers(wrapper, inspect.ismethod):
+                if name.startswith("_"):
+                    continue
+                if not hasattr(sock, name):
+                    continue
+
+                # test fails here if WrappedSocket defines overrides
+                # socket.socket but there is no corresponding validator
+                # defined in sockesig_helper
+                assert name in validators
+
+                print("Check function signature: WrappedSocket.{}".format(name))
+
+                # the trick here is to avoid calling WrappedSocket
+                # method directly because we don't have a proper
+                # fixture. Instead create a mock with the same signature
+                # (autospec) and call the validator on it.
+                setattr(wrapper, name, mock.create_autospec(getattr(wrapper, name)))
+                for counter, m_call in enumerate(
+                    [m for group in validators[name] for m in group]
+                ):
+                    print("    WrappedSocket.{} test call #{}".format(name, counter))
+
+                    # test fails here if WrapperSocket method does
+                    # not match socket.socket method signature
+                    m_call(wrapper)
