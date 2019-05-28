@@ -82,8 +82,8 @@ class SocketDummyServerTestCase(unittest.TestCase):
             key, value = header.split(b": ")
             header_titles.append(key)
             if key == header_name and expected_value is not None:
-                self.assertEqual(value, expected_value)
-        self.assertIn(header_name, header_titles)
+                assert value == expected_value
+        assert header_name in header_titles
 
 
 class IPV4SocketDummyServerTestCase(SocketDummyServerTestCase):

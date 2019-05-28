@@ -45,48 +45,28 @@ class TestGAEConnectionManager(test_connectionpool.TestConnectionPool):
 
     def test_exceptions(self):
         # DeadlineExceededError -> TimeoutError
-        self.assertRaises(
-            urllib3.exceptions.TimeoutError,
-            self.pool.request,
-            "GET",
-            "/sleep?seconds=0.005",
-            timeout=0.001,
-        )
+        with pytest.raises(urllib3.exceptions.TimeoutError):
+            self.pool.request("GET", "/sleep?seconds=0.005", timeout=0.001)
 
         # InvalidURLError -> ProtocolError
-        self.assertRaises(
-            urllib3.exceptions.ProtocolError,
-            self.manager.request,
-            "GET",
-            "ftp://invalid/url",
-        )
+        with pytest.raises(urllib3.exceptions.ProtocolError):
+            self.manager.request("GET", "ftp://invalid/url")
 
         # DownloadError -> ProtocolError
-        self.assertRaises(
-            urllib3.exceptions.ProtocolError,
-            self.manager.request,
-            "GET",
-            "http://0.0.0.0",
-        )
+        with pytest.raises(urllib3.exceptions.ProtocolError):
+            self.manager.request("GET", "http://0.0.0.0")
 
         # ResponseTooLargeError -> AppEnginePlatformError
-        self.assertRaises(
-            appengine.AppEnginePlatformError,
-            self.pool.request,
-            "GET",
-            "/nbytes?length=33554433",
-        )  # One byte over 32 megabtyes.
+        with pytest.raises(appengine.AppEnginePlatformError):
+            self.pool.request(
+                "GET", "/nbytes?length=33554433"
+            )  # One byte over 32 megabtyes.
 
         # URLFetch reports the request too large error as a InvalidURLError,
         # which maps to a AppEnginePlatformError.
         body = b"1" * 10485761  # One byte over 10 megabytes.
-        self.assertRaises(
-            appengine.AppEnginePlatformError,
-            self.manager.request,
-            "POST",
-            "/",
-            body=body,
-        )
+        with pytest.raises(appengine.AppEnginePlatformError):
+            self.manager.request("POST", "/", body=body)
 
     # Re-used tests below this line.
     # Subsumed tests
@@ -133,7 +113,8 @@ class TestGAEConnectionManagerWithSSL(dummyserver.testcase.HTTPSDummyServerTestC
         # SSLCertificateError -> SSLError
         # SSLError is raised with dummyserver because URLFetch doesn't allow
         # self-signed certs.
-        self.assertRaises(urllib3.exceptions.SSLError, self.pool.request, "GET", "/")
+        with pytest.raises(urllib3.exceptions.SSLError):
+            self.pool.request("GET", "/")
 
 
 @pytest.mark.usefixtures("testbed")
@@ -152,7 +133,7 @@ class TestGAERetry(test_connectionpool.TestRetry):
             headers={"test-name": "test_default_whitelist"},
             retries=retry,
         )
-        self.assertEqual(resp.status, 200)
+        assert resp.status == 200
 
     def test_retry_return_in_response(self):
         headers = {"test-name": "test_retry_return_in_response"}
@@ -160,15 +141,12 @@ class TestGAERetry(test_connectionpool.TestRetry):
         resp = self.pool.request(
             "GET", "/successful_retry", headers=headers, retries=retry
         )
-        self.assertEqual(resp.status, 200)
-        self.assertEqual(resp.retries.total, 1)
+        assert resp.status == 200
+        assert resp.retries.total == 1
         # URLFetch use absolute urls.
-        self.assertEqual(
-            resp.retries.history,
-            (
-                urllib3.util.retry.RequestHistory(
-                    "GET", self.pool._absolute_url("/successful_retry"), None, 418, None
-                ),
+        assert resp.retries.history == (
+            urllib3.util.retry.RequestHistory(
+                "GET", self.pool._absolute_url("/successful_retry"), None, 418, None
             ),
         )
 

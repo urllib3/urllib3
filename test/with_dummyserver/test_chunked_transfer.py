@@ -31,14 +31,14 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         pool.urlopen("GET", "/", chunks, headers=dict(DNT="1"), chunked=True)
         self.addCleanup(pool.close)
 
-        self.assertIn(b"Transfer-Encoding", self.buffer)
+        assert b"Transfer-Encoding" in self.buffer
         body = self.buffer.split(b"\r\n\r\n", 1)[1]
         lines = body.split(b"\r\n")
         # Empty chunks should have been skipped, as this could not be distinguished
         # from terminating the transmission
         for i, chunk in enumerate([c for c in chunks if c]):
-            self.assertEqual(lines[i * 2], hex(len(chunk))[2:].encode("utf-8"))
-            self.assertEqual(lines[i * 2 + 1], chunk.encode("utf-8"))
+            assert lines[i * 2] == hex(len(chunk))[2:].encode("utf-8")
+            assert lines[i * 2 + 1] == chunk.encode("utf-8")
 
     def _test_body(self, data):
         self.start_chunked_handler()
@@ -48,17 +48,17 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         pool.urlopen("GET", "/", data, chunked=True)
         header, body = self.buffer.split(b"\r\n\r\n", 1)
 
-        self.assertIn(b"Transfer-Encoding: chunked", header.split(b"\r\n"))
+        assert b"Transfer-Encoding: chunked" in header.split(b"\r\n")
         if data:
             bdata = data if isinstance(data, bytes) else data.encode("utf-8")
-            self.assertIn(b"\r\n" + bdata + b"\r\n", body)
-            self.assertTrue(body.endswith(b"\r\n0\r\n\r\n"))
+            assert b"\r\n" + bdata + b"\r\n" in body
+            assert body.endswith(b"\r\n0\r\n\r\n")
 
             len_str = body.split(b"\r\n", 1)[0]
             stated_len = int(len_str, 16)
-            self.assertEqual(stated_len, len(bdata))
+            assert stated_len == len(bdata)
         else:
-            self.assertEqual(body, b"0\r\n\r\n")
+            assert body == b"0\r\n\r\n"
 
     def test_bytestring_body(self):
         self._test_body(b"thisshouldbeonechunk\r\nasdf")
@@ -91,7 +91,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         header_lines = header_block.split(b"\r\n")[1:]
 
         host_headers = [x for x in header_lines if x.startswith(b"host")]
-        self.assertEqual(len(host_headers), 1)
+        assert len(host_headers) == 1
 
     def test_provides_default_host_header(self):
         self.start_chunked_handler()
@@ -104,4 +104,4 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         header_lines = header_block.split(b"\r\n")[1:]
 
         host_headers = [x for x in header_lines if x.startswith(b"host")]
-        self.assertEqual(len(host_headers), 1)
+        assert len(host_headers) == 1
