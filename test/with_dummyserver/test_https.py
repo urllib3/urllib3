@@ -86,13 +86,13 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def test_simple(self):
         r = self._pool.request("GET", "/")
-        self.assertEqual(r.status, 200, r.data)
+        assert r.status == 200, r.data
 
     @fails_on_travis_gce
     def test_dotted_fqdn(self):
         pool = HTTPSConnectionPool(self.host + ".", self.port, ca_certs=DEFAULT_CA)
         r = pool.request("GET", "/")
-        self.assertEqual(r.status, 200, r.data)
+        assert r.status == 200, r.data
 
     def test_client_intermediate(self):
         client_cert, client_key = (
@@ -188,11 +188,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.addCleanup(https_pool.close)
 
         conn = https_pool._new_conn()
-        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
+        assert conn.__class__ == VerifiedHTTPSConnection
 
         with mock.patch("warnings.warn") as warn:
             r = https_pool.request("GET", "/")
-            self.assertEqual(r.status, 200)
+            assert r.status == 200
 
             # Modern versions of Python, or systems using PyOpenSSL, don't
             # emit warnings.
@@ -201,15 +201,15 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 or util.IS_PYOPENSSL
                 or util.IS_SECURETRANSPORT
             ):
-                self.assertFalse(warn.called, warn.call_args_list)
+                assert not warn.called, warn.call_args_list
             else:
-                self.assertTrue(warn.called)
+                assert warn.called
                 if util.HAS_SNI:
                     call = warn.call_args_list[0]
                 else:
                     call = warn.call_args_list[1]
                 error = call[0][1]
-                self.assertEqual(error, InsecurePlatformWarning)
+                assert error == InsecurePlatformWarning
 
     def test_verified_with_context(self):
         ctx = util.ssl_.create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
@@ -218,11 +218,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.addCleanup(https_pool.close)
 
         conn = https_pool._new_conn()
-        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
+        assert conn.__class__ == VerifiedHTTPSConnection
 
         with mock.patch("warnings.warn") as warn:
             r = https_pool.request("GET", "/")
-            self.assertEqual(r.status, 200)
+            assert r.status == 200
 
             # Modern versions of Python, or systems using PyOpenSSL, don't
             # emit warnings.
@@ -231,15 +231,15 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 or util.IS_PYOPENSSL
                 or util.IS_SECURETRANSPORT
             ):
-                self.assertFalse(warn.called, warn.call_args_list)
+                assert not warn.called, warn.call_args_list
             else:
-                self.assertTrue(warn.called)
+                assert warn.called
                 if util.HAS_SNI:
                     call = warn.call_args_list[0]
                 else:
                     call = warn.call_args_list[1]
                 error = call[0][1]
-                self.assertEqual(error, InsecurePlatformWarning)
+                assert error == InsecurePlatformWarning
 
     def test_context_combines_with_ca_certs(self):
         ctx = util.ssl_.create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
@@ -249,11 +249,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.addCleanup(https_pool.close)
 
         conn = https_pool._new_conn()
-        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
+        assert conn.__class__ == VerifiedHTTPSConnection
 
         with mock.patch("warnings.warn") as warn:
             r = https_pool.request("GET", "/")
-            self.assertEqual(r.status, 200)
+            assert r.status == 200
 
             # Modern versions of Python, or systems using PyOpenSSL, don't
             # emit warnings.
@@ -262,15 +262,15 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 or util.IS_PYOPENSSL
                 or util.IS_SECURETRANSPORT
             ):
-                self.assertFalse(warn.called, warn.call_args_list)
+                assert not warn.called, warn.call_args_list
             else:
-                self.assertTrue(warn.called)
+                assert warn.called
                 if util.HAS_SNI:
                     call = warn.call_args_list[0]
                 else:
                     call = warn.call_args_list[1]
                 error = call[0][1]
-                self.assertEqual(error, InsecurePlatformWarning)
+                assert error == InsecurePlatformWarning
 
     @onlyPy279OrNewer
     @notSecureTransport  # SecureTransport does not support cert directories
@@ -282,12 +282,12 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self.addCleanup(https_pool.close)
 
         conn = https_pool._new_conn()
-        self.assertEqual(conn.__class__, VerifiedHTTPSConnection)
+        assert conn.__class__ == VerifiedHTTPSConnection
 
         with mock.patch("warnings.warn") as warn:
             r = https_pool.request("GET", "/")
-            self.assertEqual(r.status, 200)
-            self.assertFalse(warn.called, warn.call_args_list)
+            assert r.status == 200
+            assert not warn.called, warn.call_args_list
 
     def test_invalid_common_name(self):
         https_pool = HTTPSConnectionPool(
@@ -299,11 +299,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             https_pool.request("GET", "/")
             self.fail("Didn't raise SSL invalid common name")
         except MaxRetryError as e:
-            self.assertIsInstance(e.reason, SSLError)
-            self.assertTrue(
-                "doesn't match" in str(e.reason)
-                or "certificate verify failed" in str(e.reason)
-            )
+            assert isinstance(e.reason, SSLError)
+            assert "doesn't match" in str(
+                e.reason
+            ) or "certificate verify failed" in str(e.reason)
 
     def test_verified_with_bad_ca_certs(self):
         https_pool = HTTPSConnectionPool(
@@ -315,11 +314,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             https_pool.request("GET", "/")
             self.fail("Didn't raise SSL error with bad CA certs")
         except MaxRetryError as e:
-            self.assertIsInstance(e.reason, SSLError)
-            self.assertIn(
-                "certificate verify failed",
-                str(e.reason),
-                "Expected 'certificate verify failed'," "instead got: %r" % e.reason,
+            assert isinstance(e.reason, SSLError)
+            assert "certificate verify failed" in str(e.reason), (
+                "Expected 'certificate verify failed'," "instead got: %r" % e.reason
             )
 
     def test_verified_without_ca_certs(self):
@@ -335,27 +332,29 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 "Didn't raise SSL error with no CA certs when" "CERT_REQUIRED is set"
             )
         except MaxRetryError as e:
-            self.assertIsInstance(e.reason, SSLError)
+            assert isinstance(e.reason, SSLError)
             # there is a different error message depending on whether or
             # not pyopenssl is injected
-            self.assertTrue(
+            assert (
                 "No root certificates specified" in str(e.reason)
                 or "certificate verify failed" in str(e.reason)
-                or "invalid certificate chain" in str(e.reason),
+                or "invalid certificate chain" in str(e.reason)
+            ), (
                 "Expected 'No root certificates specified',  "
                 "'certificate verify failed', or "
                 "'invalid certificate chain', "
-                "instead got: %r" % e.reason,
+                "instead got: %r" % e.reason
             )
 
     def test_no_ssl(self):
         pool = HTTPSConnectionPool(self.host, self.port)
         pool.ConnectionCls = None
         self.addCleanup(pool.close)
-        self.assertRaises(SSLError, pool._new_conn)
-        with self.assertRaises(MaxRetryError) as cm:
+        with pytest.raises(SSLError):
+            pool._new_conn()
+        with pytest.raises(MaxRetryError) as cm:
             pool.request("GET", "/", retries=0)
-        self.assertIsInstance(cm.exception.reason, SSLError)
+        assert isinstance(cm.value.reason, SSLError)
 
     def test_unverified_ssl(self):
         """ Test that bare HTTPSConnection can connect, make requests """
@@ -364,14 +363,14 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         with mock.patch("warnings.warn") as warn:
             r = pool.request("GET", "/")
-            self.assertEqual(r.status, 200)
-            self.assertTrue(warn.called)
+            assert r.status == 200
+            assert warn.called
 
             # Modern versions of Python, or systems using PyOpenSSL, only emit
             # the unverified warning. Older systems may also emit other
             # warnings, which we want to ignore here.
             calls = warn.call_args_list
-            self.assertIn(InsecureRequestWarning, [x[0][1] for x in calls])
+            assert InsecureRequestWarning in [x[0][1] for x in calls]
 
     def test_ssl_unverified_with_ca_certs(self):
         pool = HTTPSConnectionPool(
@@ -381,8 +380,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         with mock.patch("warnings.warn") as warn:
             r = pool.request("GET", "/")
-            self.assertEqual(r.status, 200)
-            self.assertTrue(warn.called)
+            assert r.status == 200
+            assert warn.called
 
             # Modern versions of Python, or systems using PyOpenSSL, only emit
             # the unverified warning. Older systems may also emit other
@@ -398,7 +397,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 category = calls[1][0][1]
             else:
                 category = calls[2][0][1]
-            self.assertEqual(category, InsecureRequestWarning)
+            assert category == InsecureRequestWarning
 
     def test_assert_hostname_false(self):
         https_pool = HTTPSConnectionPool(
@@ -436,7 +435,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         # socket, so only add this assertion if the attribute is there (i.e.
         # the python ssl module).
         if hasattr(conn.sock, "server_hostname"):
-            self.assertEqual(conn.sock.server_hostname, "localhost")
+            assert conn.sock.server_hostname == "localhost"
 
     def test_assert_fingerprint_md5(self):
         https_pool = HTTPSConnectionPool(
@@ -485,9 +484,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         )
 
         def _test_request(pool):
-            with self.assertRaises(MaxRetryError) as cm:
+            with pytest.raises(MaxRetryError) as cm:
                 pool.request("GET", "/", retries=0)
-            self.assertIsInstance(cm.exception.reason, SSLError)
+            assert isinstance(cm.value.reason, SSLError)
 
         _test_request(https_pool)
         https_pool._get_conn()
@@ -510,9 +509,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         https_pool.assert_fingerprint = (
             "AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:" "AA:AA:AA:AA:AA:AA:AA:AA:AA"
         )
-        with self.assertRaises(MaxRetryError) as cm:
+        with pytest.raises(MaxRetryError) as cm:
             https_pool.request("GET", "/", retries=0)
-        self.assertIsInstance(cm.exception.reason, SSLError)
+        assert isinstance(cm.value.reason, SSLError)
 
     def test_verify_none_and_good_fingerprint(self):
         https_pool = HTTPSConnectionPool(
@@ -562,7 +561,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             cert_reqs="CERT_REQUIRED",
         )
         self.addCleanup(https_pool.close)
-        self.assertRaises(ConnectTimeoutError, https_pool.request, "GET", "/")
+        with pytest.raises(ConnectTimeoutError):
+            https_pool.request("GET", "/")
 
         timeout = Timeout(read=0.01)
         https_pool = HTTPSConnectionPool(
@@ -614,30 +614,20 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         https_pool = new_pool(Timeout(connect=0.001))
         conn = https_pool._new_conn()
-        self.assertRaises(ConnectTimeoutError, https_pool.request, "GET", "/")
-        self.assertRaises(
-            ConnectTimeoutError, https_pool._make_request, conn, "GET", "/"
-        )
+        with pytest.raises(ConnectTimeoutError):
+            https_pool.request("GET", "/")
+        with pytest.raises(ConnectTimeoutError):
+            https_pool._make_request(conn, "GET", "/")
 
         https_pool = new_pool(Timeout(connect=5))
-        self.assertRaises(
-            ConnectTimeoutError,
-            https_pool.request,
-            "GET",
-            "/",
-            timeout=Timeout(connect=0.001),
-        )
+        with pytest.raises(ConnectTimeoutError):
+            https_pool.request("GET", "/", timeout=Timeout(connect=0.001))
 
         t = Timeout(total=None)
         https_pool = new_pool(t)
         conn = https_pool._new_conn()
-        self.assertRaises(
-            ConnectTimeoutError,
-            https_pool.request,
-            "GET",
-            "/",
-            timeout=Timeout(total=None, connect=0.001),
-        )
+        with pytest.raises(ConnectTimeoutError):
+            https_pool.request("GET", "/", timeout=Timeout(total=None, connect=0.001))
 
     def test_enhanced_ssl_connection(self):
         fingerprint = "92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A"
@@ -660,7 +650,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         self._pool.ca_certs = DEFAULT_CA
 
         w = self._request_without_resource_warnings("GET", "/")
-        self.assertEqual([], w)
+        assert [] == w
 
     @onlyPy279OrNewer
     def test_ssl_wrong_system_time(self):
@@ -671,11 +661,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
             w = self._request_without_resource_warnings("GET", "/")
 
-            self.assertEqual(len(w), 1)
+            assert len(w) == 1
             warning = w[0]
 
-            self.assertEqual(SystemTimeWarning, warning.category)
-            self.assertIn(str(RECENT_DATE), warning.message.args[0])
+            assert SystemTimeWarning == warning.category
+            assert str(RECENT_DATE) in warning.message.args[0]
 
     def _request_without_resource_warnings(self, method, url):
         with warnings.catch_warnings(record=True) as w:
@@ -690,12 +680,12 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         self._pool.ssl_version = self.certs["ssl_version"]
         r = self._pool.request("GET", "/")
-        self.assertEqual(r.status, 200, r.data)
+        assert r.status == 200, r.data
 
     def test_set_cert_default_cert_required(self):
         conn = VerifiedHTTPSConnection(self.host, self.port)
         conn.set_cert()
-        self.assertEqual(conn.cert_reqs, ssl.CERT_REQUIRED)
+        assert conn.cert_reqs == ssl.CERT_REQUIRED
 
     def test_tls_protocol_name_of_socket(self):
         if self.tls_protocol_name is None:
@@ -707,7 +697,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         if not hasattr(conn.sock, "version"):
             pytest.skip("SSLSocket.version() not available")
 
-        self.assertEqual(conn.sock.version(), self.tls_protocol_name)
+        assert conn.sock.version() == self.tls_protocol_name
 
 
 @requiresTLSv1()
@@ -745,8 +735,8 @@ class TestHTTPS_NoSAN(HTTPSDummyServerTestCase):
             )
             self.addCleanup(https_pool.close)
             r = https_pool.request("GET", "/")
-            self.assertEqual(r.status, 200)
-            self.assertTrue(warn.called)
+            assert r.status == 200
+            assert warn.called
 
 
 class TestHTTPS_IPSAN(HTTPSDummyServerTestCase):
@@ -764,7 +754,7 @@ class TestHTTPS_IPSAN(HTTPSDummyServerTestCase):
         )
         self.addCleanup(https_pool.close)
         r = https_pool.request("GET", "/")
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
 
 
 class TestHTTPS_IPv6Addr(IPV6HTTPSDummyServerTestCase):
@@ -778,7 +768,7 @@ class TestHTTPS_IPv6Addr(IPV6HTTPSDummyServerTestCase):
         )
         self.addCleanup(https_pool.close)
         r = https_pool.request("GET", "/")
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
 
 
 class TestHTTPS_IPV6SAN(IPV6HTTPSDummyServerTestCase):
@@ -796,7 +786,7 @@ class TestHTTPS_IPV6SAN(IPV6HTTPSDummyServerTestCase):
         )
         self.addCleanup(https_pool.close)
         r = https_pool.request("GET", "/")
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
 
 
 if __name__ == "__main__":
