@@ -115,11 +115,14 @@ class TestPoolManager(HTTPDummyServerTestCase):
                     "GET",
                     "%s/redirect" % self.base_url,
                     fields={
-                        "target": "%s/redirect?target=%s/" % (self.base_url, self.base_url)
+                        "target": "%s/redirect?target=%s/"
+                        % (self.base_url, self.base_url)
                     },
                     retries=1,
                 )
-                self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
+                self.fail(
+                    "Failed to raise MaxRetryError exception, returned %r" % r.status
+                )
             except MaxRetryError:
                 pass
 
@@ -128,11 +131,14 @@ class TestPoolManager(HTTPDummyServerTestCase):
                     "GET",
                     "%s/redirect" % self.base_url,
                     fields={
-                        "target": "%s/redirect?target=%s/" % (self.base_url, self.base_url)
+                        "target": "%s/redirect?target=%s/"
+                        % (self.base_url, self.base_url)
                     },
                     retries=Retry(total=None, redirect=1),
                 )
-                self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
+                self.fail(
+                    "Failed to raise MaxRetryError exception, returned %r" % r.status
+                )
             except MaxRetryError:
                 pass
 
@@ -242,7 +248,9 @@ class TestPoolManager(HTTPDummyServerTestCase):
                     fields={"status": "500 Internal Server Error"},
                     retries=Retry(total=1, status_forcelist=range(500, 600)),
                 )
-                self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
+                self.fail(
+                    "Failed to raise MaxRetryError exception, returned %r" % r.status
+                )
             except MaxRetryError:
                 pass
 
@@ -256,7 +264,9 @@ class TestPoolManager(HTTPDummyServerTestCase):
                         total=1, status_forcelist=range(500, 600), raise_on_status=True
                     ),
                 )
-                self.fail("Failed to raise MaxRetryError exception, returned %r" % r.status)
+                self.fail(
+                    "Failed to raise MaxRetryError exception, returned %r" % r.status
+                )
             except MaxRetryError:
                 pass
 
@@ -291,7 +301,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert r.data == b"Dummy server!"
 
     def test_headers(self):
-        with PoolManager() as http:
+        with PoolManager(headers={"Foo": "bar"}) as http:
 
             r = http.request("GET", "%s/headers" % self.base_url)
             returned_headers = json.loads(r.data.decode())

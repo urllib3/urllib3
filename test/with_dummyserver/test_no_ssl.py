@@ -19,7 +19,9 @@ class TestHTTPWithoutSSL(HTTPDummyServerTestCase, TestWithoutSSL):
 
 class TestHTTPSWithoutSSL(HTTPSDummyServerTestCase, TestWithoutSSL):
     def test_simple(self):
-        with urllib3.HTTPSConnectionPool(self.host, self.port, cert_reqs="NONE") as pool:
+        with urllib3.HTTPSConnectionPool(
+            self.host, self.port, cert_reqs="NONE"
+        ) as pool:
             try:
                 pool.request("GET", "/")
             except urllib3.exceptions.SSLError as e:
