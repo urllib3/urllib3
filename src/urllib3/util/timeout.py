@@ -46,19 +46,20 @@ class Timeout(object):
     :type total: integer, float, or None
 
     :param connect:
-        The maximum amount of time to wait for a connection attempt to a server
-        to succeed. Omitting the parameter will default the connect timeout to
-        the system default, probably `the global default timeout in socket.py
+        The maximum amount of time (in seconds) to wait for a connection
+        attempt to a server to succeed. Omitting the parameter will default the
+        connect timeout to the system default, probably `the global default
+        timeout in socket.py
         <http://hg.python.org/cpython/file/603b4d593758/Lib/socket.py#l535>`_.
         None will set an infinite timeout for connection attempts.
 
     :type connect: integer, float, or None
 
     :param read:
-        The maximum amount of time to wait between consecutive
-        read operations for a response from the server. Omitting
-        the parameter will default the read timeout to the system
-        default, probably `the global default timeout in socket.py
+        The maximum amount of time (in seconds) to wait between consecutive
+        read operations for a response from the server. Omitting the parameter
+        will default the read timeout to the system default, probably `the
+        global default timeout in socket.py
         <http://hg.python.org/cpython/file/603b4d593758/Lib/socket.py#l535>`_.
         None will set an infinite timeout.
 
@@ -195,7 +196,7 @@ class Timeout(object):
     def get_connect_duration(self):
         """ Gets the time elapsed since the call to :meth:`start_connect`.
 
-        :return: Elapsed time.
+        :return: Elapsed time in seconds.
         :rtype: float
         :raises urllib3.exceptions.TimeoutStateError: if you attempt
             to get duration for a timer that hasn't been started.
