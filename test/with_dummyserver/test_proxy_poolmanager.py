@@ -33,19 +33,20 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_nagle_proxy(self):
         """ Test that proxy connections do not have TCP_NODELAY turned on """
-        http = proxy_from_url(self.proxy_url)
-        self.addCleanup(http.clear)
-        hc2 = http.connection_from_host(self.http_host, self.http_port)
-        conn = hc2._get_conn()
-        self.addCleanup(conn.close)
-        hc2._make_request(conn, "GET", "/")
-        tcp_nodelay_setting = conn.sock.getsockopt(
-            socket.IPPROTO_TCP, socket.TCP_NODELAY
-        )
-        assert tcp_nodelay_setting == 0, (
-            "Expected TCP_NODELAY for proxies to be set "
-            "to zero, instead was %s" % tcp_nodelay_setting
-        )
+        with ProxyManager(self.proxy_url) as http:
+            hc2 = http.connection_from_host(self.http_host, self.http_port)
+            conn = hc2._get_conn()
+            try:
+                hc2._make_request(conn, "GET", "/")
+                tcp_nodelay_setting = conn.sock.getsockopt(
+                    socket.IPPROTO_TCP, socket.TCP_NODELAY
+                )
+                assert tcp_nodelay_setting == 0, (
+                    "Expected TCP_NODELAY for proxies to be set "
+                    "to zero, instead was %s" % tcp_nodelay_setting
+                )
+            finally:
+                conn.close()
 
     def test_proxy_conn_fail(self):
         host, port = get_unreachable_address()
@@ -75,36 +76,39 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert r.status == 200
 
     def test_proxy_verified(self):
-        http = proxy_from_url(
+        with proxy_from_url(
             self.proxy_url, cert_reqs="REQUIRED", ca_certs=DEFAULT_CA_BAD
-        )
-        self.addCleanup(http.clear)
-        https_pool = http._new_pool("https", self.https_host, self.https_port)
-        try:
-            https_pool.request("GET", "/", retries=0)
-            self.fail("Didn't raise SSL error with wrong CA")
-        except MaxRetryError as e:
-            assert isinstance(e.reason, SSLError)
-            assert "certificate verify failed" in str(e.reason), (
-                "Expected 'certificate verify failed'," "instead got: %r" % e.reason
+        ) as http:
+            https_pool = http._new_pool("https", self.https_host, self.https_port)
+            try:
+                https_pool.request("GET", "/", retries=0)
+                self.fail("Didn't raise SSL error with wrong CA")
+            except MaxRetryError as e:
+                assert isinstance(e.reason, SSLError)
+                assert "certificate verify failed" in str(e.reason), (
+                    "Expected 'certificate verify failed'," "instead got: %r" % e.reason
+                )
+
+            http = proxy_from_url(
+                self.proxy_url, cert_reqs="REQUIRED", ca_certs=DEFAULT_CA
             )
+            https_pool = http._new_pool("https", self.https_host, self.https_port)
 
-        http = proxy_from_url(self.proxy_url, cert_reqs="REQUIRED", ca_certs=DEFAULT_CA)
-        https_pool = http._new_pool("https", self.https_host, self.https_port)
+            conn = https_pool._new_conn()
+            assert conn.__class__ == VerifiedHTTPSConnection
+            https_pool.request("GET", "/")  # Should succeed without exceptions.
 
-        conn = https_pool._new_conn()
-        assert conn.__class__ == VerifiedHTTPSConnection
-        https_pool.request("GET", "/")  # Should succeed without exceptions.
+            http = proxy_from_url(
+                self.proxy_url, cert_reqs="REQUIRED", ca_certs=DEFAULT_CA
+            )
+            https_fail_pool = http._new_pool("https", "127.0.0.1", self.https_port)
 
-        http = proxy_from_url(self.proxy_url, cert_reqs="REQUIRED", ca_certs=DEFAULT_CA)
-        https_fail_pool = http._new_pool("https", "127.0.0.1", self.https_port)
-
-        try:
-            https_fail_pool.request("GET", "/", retries=0)
-            self.fail("Didn't raise SSL invalid common name")
-        except MaxRetryError as e:
-            assert isinstance(e.reason, SSLError)
-            assert "doesn't match" in str(e.reason)
+            try:
+                https_fail_pool.request("GET", "/", retries=0)
+                self.fail("Didn't raise SSL invalid common name")
+            except MaxRetryError as e:
+                assert isinstance(e.reason, SSLError)
+                assert "doesn't match" in str(e.reason)
 
     def test_redirect(self):
         with proxy_from_url(self.proxy_url) as http:

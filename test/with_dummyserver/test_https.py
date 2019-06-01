@@ -80,13 +80,12 @@ TLSv1_2_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLSv1_2", None)
 class TestHTTPS(HTTPSDummyServerTestCase):
     tls_protocol_name = None
 
-    def setUp(self):
-        self._pool = HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA)
-        self.addCleanup(self._pool.close)
-
     def test_simple(self):
-        r = self._pool.request("GET", "/")
-        assert r.status == 200, r.data
+        with HTTPSConnectionPool(
+            self.host, self.port, ca_certs=DEFAULT_CA
+        ) as https_pool:
+            r = https_pool.request("GET", "/")
+            assert r.status == 200, r.data
 
     @fails_on_travis_gce
     def test_dotted_fqdn(self):
@@ -525,92 +524,96 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @requires_network
     def test_https_timeout(self):
-        timeout = Timeout(connect=0.001)
-        https_pool = HTTPSConnectionPool(
-            TARPIT_HOST,
-            self.port,
-            timeout=timeout,
-            retries=False,
-            cert_reqs="CERT_REQUIRED",
-        )
-        self.addCleanup(https_pool.close)
 
         timeout = Timeout(total=None, connect=0.001)
-        https_pool = HTTPSConnectionPool(
+        with HTTPSConnectionPool(
             TARPIT_HOST,
             self.port,
             timeout=timeout,
             retries=False,
             cert_reqs="CERT_REQUIRED",
-        )
-        self.addCleanup(https_pool.close)
-        with pytest.raises(ConnectTimeoutError):
-            https_pool.request("GET", "/")
+        ) as https_pool:
+            with pytest.raises(ConnectTimeoutError):
+                https_pool.request("GET", "/")
 
         timeout = Timeout(read=0.01)
-        https_pool = HTTPSConnectionPool(
+        with HTTPSConnectionPool(
             self.host,
             self.port,
             timeout=timeout,
             retries=False,
             cert_reqs="CERT_REQUIRED",
-        )
-        self.addCleanup(https_pool.close)
-        https_pool.ca_certs = DEFAULT_CA
-        https_pool.assert_fingerprint = (
-            "92:81:FE:85:F7:0C:26:60:EC:D6:B3:" "BF:93:CF:F9:71:CC:07:7D:0A"
-        )
+        ) as https_pool:
+            https_pool.ca_certs = DEFAULT_CA
+            https_pool.assert_fingerprint = (
+                "92:81:FE:85:F7:0C:26:60:EC:D6:B3:" "BF:93:CF:F9:71:CC:07:7D:0A"
+            )
 
         timeout = Timeout(total=None)
-        https_pool = HTTPSConnectionPool(
+        with HTTPSConnectionPool(
             self.host, self.port, timeout=timeout, cert_reqs="CERT_NONE"
-        )
-        self.addCleanup(https_pool.close)
-        https_pool.request("GET", "/")
+        ) as https_pool:
+            https_pool.request("GET", "/")
 
     def test_tunnel(self):
         """ test the _tunnel behavior """
         timeout = Timeout(total=None)
-        https_pool = HTTPSConnectionPool(
+        with HTTPSConnectionPool(
             self.host, self.port, timeout=timeout, cert_reqs="CERT_NONE"
-        )
-        self.addCleanup(https_pool.close)
-        conn = https_pool._new_conn()
-        self.addCleanup(conn.close)
-        conn.set_tunnel(self.host, self.port)
-        conn._tunnel = mock.Mock()
-        https_pool._make_request(conn, "GET", "/")
-        conn._tunnel.assert_called_once_with()
+        ) as https_pool:
+
+            conn = https_pool._new_conn()
+            try:
+                conn.set_tunnel(self.host, self.port)
+                conn._tunnel = mock.Mock()
+                https_pool._make_request(conn, "GET", "/")
+                conn._tunnel.assert_called_once_with()
+            finally:
+                conn.close()
 
     @requires_network
     def test_enhanced_timeout(self):
-        def new_pool(timeout, cert_reqs="CERT_REQUIRED"):
-            https_pool = HTTPSConnectionPool(
-                TARPIT_HOST,
-                self.port,
-                timeout=timeout,
-                retries=False,
-                cert_reqs=cert_reqs,
-            )
-            self.addCleanup(https_pool.close)
-            return https_pool
+        with HTTPSConnectionPool(
+            TARPIT_HOST,
+            self.port,
+            timeout=Timeout(connect=0.001),
+            retries=False,
+            cert_reqs="CERT_REQUIRED",
+        ) as https_pool:
+            conn = https_pool._new_conn()
+            try:
+                with pytest.raises(ConnectTimeoutError):
+                    https_pool.request("GET", "/")
+                with pytest.raises(ConnectTimeoutError):
+                    https_pool._make_request(conn, "GET", "/")
+            finally:
+                conn.close()
 
-        https_pool = new_pool(Timeout(connect=0.001))
-        conn = https_pool._new_conn()
-        with pytest.raises(ConnectTimeoutError):
-            https_pool.request("GET", "/")
-        with pytest.raises(ConnectTimeoutError):
-            https_pool._make_request(conn, "GET", "/")
+        with HTTPSConnectionPool(
+            TARPIT_HOST,
+            self.port,
+            timeout=Timeout(connect=5),
+            retries=False,
+            cert_reqs="CERT_REQUIRED",
+        ) as https_pool:
+            with pytest.raises(ConnectTimeoutError):
+                https_pool.request("GET", "/", timeout=Timeout(connect=0.001))
 
-        https_pool = new_pool(Timeout(connect=5))
-        with pytest.raises(ConnectTimeoutError):
-            https_pool.request("GET", "/", timeout=Timeout(connect=0.001))
-
-        t = Timeout(total=None)
-        https_pool = new_pool(t)
-        conn = https_pool._new_conn()
-        with pytest.raises(ConnectTimeoutError):
-            https_pool.request("GET", "/", timeout=Timeout(total=None, connect=0.001))
+        with HTTPSConnectionPool(
+            TARPIT_HOST,
+            self.port,
+            timeout=Timeout(total=None),
+            retries=False,
+            cert_reqs="CERT_REQUIRED",
+        ) as https_pool:
+            conn = https_pool._new_conn()
+            try:
+                with pytest.raises(ConnectTimeoutError):
+                    https_pool.request(
+                        "GET", "/", timeout=Timeout(total=None, connect=0.001)
+                    )
+            finally:
+                conn.close()
 
     def test_enhanced_ssl_connection(self):
         fingerprint = "92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A"
@@ -628,31 +631,40 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @onlyPy279OrNewer
     def test_ssl_correct_system_time(self):
-        self._pool.cert_reqs = "CERT_REQUIRED"
-        self._pool.ca_certs = DEFAULT_CA
+        with HTTPSConnectionPool(
+            self.host, self.port, ca_certs=DEFAULT_CA
+        ) as https_pool:
+            https_pool.cert_reqs = "CERT_REQUIRED"
+            https_pool.ca_certs = DEFAULT_CA
 
-        w = self._request_without_resource_warnings("GET", "/")
-        assert [] == w
+            w = self._request_without_resource_warnings("GET", "/")
+            assert [] == w
 
     @onlyPy279OrNewer
     def test_ssl_wrong_system_time(self):
-        self._pool.cert_reqs = "CERT_REQUIRED"
-        self._pool.ca_certs = DEFAULT_CA
-        with mock.patch("urllib3.connection.datetime") as mock_date:
-            mock_date.date.today.return_value = datetime.date(1970, 1, 1)
+        with HTTPSConnectionPool(
+            self.host, self.port, ca_certs=DEFAULT_CA
+        ) as https_pool:
+            https_pool.cert_reqs = "CERT_REQUIRED"
+            https_pool.ca_certs = DEFAULT_CA
+            with mock.patch("urllib3.connection.datetime") as mock_date:
+                mock_date.date.today.return_value = datetime.date(1970, 1, 1)
 
-            w = self._request_without_resource_warnings("GET", "/")
+                w = self._request_without_resource_warnings("GET", "/")
 
-            assert len(w) == 1
-            warning = w[0]
+                assert len(w) == 1
+                warning = w[0]
 
-            assert SystemTimeWarning == warning.category
-            assert str(RECENT_DATE) in warning.message.args[0]
+                assert SystemTimeWarning == warning.category
+                assert str(RECENT_DATE) in warning.message.args[0]
 
     def _request_without_resource_warnings(self, method, url):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            self._pool.request(method, url)
+            with HTTPSConnectionPool(
+                self.host, self.port, ca_certs=DEFAULT_CA
+            ) as https_pool:
+                https_pool.request(method, url)
 
         return [x for x in w if not isinstance(x.message, ResourceWarning)]
 
@@ -660,9 +672,12 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         if self.tls_protocol_name is None:
             pytest.skip("Skipping base test class")
 
-        self._pool.ssl_version = self.certs["ssl_version"]
-        r = self._pool.request("GET", "/")
-        assert r.status == 200, r.data
+        with HTTPSConnectionPool(
+            self.host, self.port, ca_certs=DEFAULT_CA
+        ) as https_pool:
+            https_pool.ssl_version = self.certs["ssl_version"]
+            r = https_pool.request("GET", "/")
+            assert r.status == 200, r.data
 
     def test_set_cert_default_cert_required(self):
         conn = VerifiedHTTPSConnection(self.host, self.port)
@@ -673,13 +688,17 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         if self.tls_protocol_name is None:
             pytest.skip("Skipping base test class")
 
-        conn = self._pool._get_conn()
-        conn.connect()
-
-        if not hasattr(conn.sock, "version"):
-            pytest.skip("SSLSocket.version() not available")
-
-        assert conn.sock.version() == self.tls_protocol_name
+        with HTTPSConnectionPool(
+            self.host, self.port, ca_certs=DEFAULT_CA
+        ) as https_pool:
+            conn = https_pool._get_conn()
+            try:
+                conn.connect()
+                if not hasattr(conn.sock, "version"):
+                    pytest.skip("SSLSocket.version() not available")
+                assert conn.sock.version() == self.tls_protocol_name
+            finally:
+                conn.close()
 
 
 @requiresTLSv1()
