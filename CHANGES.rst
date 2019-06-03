@@ -1,6 +1,15 @@
 Changes
 =======
 
+dev (master)
+------------
+
+* Propagate Retry-After header settings to subsequent retries. (Pull #1607)
+
+* Fix edge case where Retry-After header was still respected even when
+  explicitly opted out of. (Pull #1607)
+
+
 1.25.3 (2019-05-23)
 -------------------
 
