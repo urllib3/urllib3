@@ -13,7 +13,6 @@ import pytest
 from urllib3 import add_stderr_logger, disable_warnings
 from urllib3.util.request import make_headers, rewind_body, _FAILEDTELL
 from urllib3.util.response import assert_header_parsing
-from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
 from urllib3.util.url import get_host, parse_url, split_first, Url
 from urllib3.util.ssl_ import (
@@ -27,7 +26,6 @@ from urllib3.exceptions import (
     TimeoutStateError,
     InsecureRequestWarning,
     SNIMissingWarning,
-    InvalidHeader,
     UnrewindableBodyError,
 )
 from urllib3.util.connection import allowed_gai_family, _has_ipv6
@@ -781,31 +779,6 @@ class TestUtil(object):
     def test_ip_family_ipv6_disabled(self):
         with patch("urllib3.util.connection.HAS_IPV6", False):
             assert allowed_gai_family() == socket.AF_INET
-
-    @pytest.mark.parametrize("value", ["-1", "+1", "1.0", six.u("\xb2")])  # \xb2 = ^2
-    def test_parse_retry_after_invalid(self, value):
-        retry = Retry()
-        with pytest.raises(InvalidHeader):
-            retry.parse_retry_after(value)
-
-    @pytest.mark.parametrize(
-        "value, expected", [("0", 0), ("1000", 1000), ("\t42 ", 42)]
-    )
-    def test_parse_retry_after(self, value, expected):
-        retry = Retry()
-        assert retry.parse_retry_after(value) == expected
-
-    @pytest.mark.parametrize('respect_retry_after_header', [
-        True,
-        False
-    ])
-    def test_respect_retry_after_header_propagated(self,
-                                                   respect_retry_after_header):
-
-        retry = Retry(respect_retry_after_header=respect_retry_after_header)
-        new_retry = retry.new()
-        assert new_retry.respect_retry_after_header \
-            == respect_retry_after_header
 
     @pytest.mark.parametrize("headers", [b"foo", None, object])
     def test_assert_header_parsing_throws_typeerror_with_non_headers(self, headers):

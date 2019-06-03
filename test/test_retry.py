@@ -1,10 +1,12 @@
 import pytest
 
 from urllib3.response import HTTPResponse
+from urllib3.packages import six
 from urllib3.packages.six.moves import xrange
 from urllib3.util.retry import Retry, RequestHistory
 from urllib3.exceptions import (
     ConnectTimeoutError,
+    InvalidHeader,
     MaxRetryError,
     ReadTimeoutError,
     ResponseError,
@@ -271,3 +273,28 @@ class TestRetry(object):
         retry = Retry(remove_headers_on_redirect=["X-API-Secret"])
 
         assert list(retry.remove_headers_on_redirect) == ["x-api-secret"]
+
+    @pytest.mark.parametrize("value", ["-1", "+1", "1.0", six.u("\xb2")])  # \xb2 = ^2
+    def test_parse_retry_after_invalid(self, value):
+        retry = Retry()
+        with pytest.raises(InvalidHeader):
+            retry.parse_retry_after(value)
+
+    @pytest.mark.parametrize(
+        "value, expected", [("0", 0), ("1000", 1000), ("\t42 ", 42)]
+    )
+    def test_parse_retry_after(self, value, expected):
+        retry = Retry()
+        assert retry.parse_retry_after(value) == expected
+
+    @pytest.mark.parametrize('respect_retry_after_header', [
+        True,
+        False
+    ])
+    def test_respect_retry_after_header_propagated(self,
+                                                   respect_retry_after_header):
+
+        retry = Retry(respect_retry_after_header=respect_retry_after_header)
+        new_retry = retry.new()
+        assert new_retry.respect_retry_after_header \
+            == respect_retry_after_header
