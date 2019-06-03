@@ -617,7 +617,7 @@ class WrappedSocket(object):
         total_sent = 0
         while total_sent < len(data):
             sent = self.send(
-                data[total_sent : total_sent + SSL_WRITE_BLOCKSIZE]  # noqa
+                data[total_sent : total_sent + SSL_WRITE_BLOCKSIZE]
             )
             total_sent += sent
 

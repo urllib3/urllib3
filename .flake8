@@ -1,0 +1,6 @@
+[flake8]
+# Ignore black styles.
+ignore = E501, E203, W503, W504
+# Imports
+import-order-style = google
+application-import-names = nox,tests

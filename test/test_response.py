@@ -440,7 +440,7 @@ class TestResponse(object):
 
             def __init__(self, payload, payload_part_size):
                 self.payloads = [
-                    payload[i * payload_part_size : (i + 1) * payload_part_size]  # noqa
+                    payload[i * payload_part_size : (i + 1) * payload_part_size]
                     for i in range(NUMBER_OF_READS + 1)
                 ]
 
@@ -633,7 +633,7 @@ class TestResponse(object):
             data = compress.compress(b"foobar")
             data += compress.flush()
             for i in range(0, len(data), 2):
-                yield data[i : i + 2]  # noqa
+                yield data[i : i + 2]
 
         fp = MockChunkedEncodingResponse(list(stream()))
         r = httplib.HTTPResponse(MockSock)
@@ -801,7 +801,7 @@ class TestResponse(object):
             data = compress.compress(b"foo\nbar")
             data += compress.flush()
             for i in range(0, len(data), 2):
-                yield data[i : i + 2]  # noqa
+                yield data[i : i + 2]
 
         fp = MockChunkedEncodingResponse(list(stream()))
         r = httplib.HTTPResponse(MockSock)
@@ -862,7 +862,7 @@ class MockChunkedEncodingResponse(object):
                 return b""
             else:
                 chunk_part = self.cur_chunk[: i + 2]
-                self.cur_chunk = self.cur_chunk[i + 2 :]  # noqa
+                self.cur_chunk = self.cur_chunk[i + 2 :]
                 return chunk_part
         elif amt <= -1:
             chunk_part = self.cur_chunk
