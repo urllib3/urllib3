@@ -288,34 +288,26 @@ class TestRetry(object):
         retry = Retry()
         assert retry.parse_retry_after(value) == expected
 
-    @pytest.mark.parametrize('respect_retry_after_header', [
-        True,
-        False
-    ])
-    def test_respect_retry_after_header_propagated(self,
-                                                   respect_retry_after_header):
+    @pytest.mark.parametrize("respect_retry_after_header", [True, False])
+    def test_respect_retry_after_header_propagated(self, respect_retry_after_header):
 
         retry = Retry(respect_retry_after_header=respect_retry_after_header)
         new_retry = retry.new()
-        assert new_retry.respect_retry_after_header \
-            == respect_retry_after_header
+        assert new_retry.respect_retry_after_header == respect_retry_after_header
 
     @pytest.mark.parametrize(
-        'retry_after_header,respect_retry_after_header,sleep_duration', [
-            ("3600", True, 3600),
-            ("3600", False, None)
-        ]
+        "retry_after_header,respect_retry_after_header,sleep_duration",
+        [("3600", True, 3600), ("3600", False, None)],
     )
-    def test_respect_retry_after_header_sleep(self, retry_after_header,
-                                              respect_retry_after_header,
-                                              sleep_duration):
+    def test_respect_retry_after_header_sleep(
+        self, retry_after_header, respect_retry_after_header, sleep_duration
+    ):
         retry = Retry(respect_retry_after_header=respect_retry_after_header)
 
         with patch("time.sleep") as sleep_mock:
             # for the default behavior, it must be in RETRY_AFTER_STATUS_CODES
             response = HTTPResponse(
-                status=503,
-                headers={"Retry-After": retry_after_header}
+                status=503, headers={"Retry-After": retry_after_header}
             )
 
             retry.sleep(response)
