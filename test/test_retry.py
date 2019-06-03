@@ -1,3 +1,4 @@
+from mock import patch
 import pytest
 
 from urllib3.response import HTTPResponse
@@ -298,3 +299,30 @@ class TestRetry(object):
         new_retry = retry.new()
         assert new_retry.respect_retry_after_header \
             == respect_retry_after_header
+
+    @pytest.mark.parametrize(
+        'retry_after_header,respect_retry_after_header,sleep_duration', [
+            ("3600", True, 3600),
+            ("3600", False, None)
+        ]
+    )
+    def test_respect_retry_after_header_sleep(self, retry_after_header,
+                                              respect_retry_after_header,
+                                              sleep_duration):
+        retry = Retry(respect_retry_after_header=respect_retry_after_header)
+
+        with patch("time.sleep") as sleep_mock:
+            # for the default behavior, it must be in RETRY_AFTER_STATUS_CODES
+            response = HTTPResponse(
+                status=503,
+                headers={"Retry-After": retry_after_header}
+            )
+
+            retry.sleep(response)
+
+            # The expected behavior is that we'll only sleep if respecting
+            # this header (since we won't have any backoff sleep attempts)
+            if respect_retry_after_header:
+                sleep_mock.assert_called_with(sleep_duration)
+            else:
+                sleep_mock.assert_not_called()
