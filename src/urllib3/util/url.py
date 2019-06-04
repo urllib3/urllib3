@@ -149,7 +149,7 @@ def split_first(s, delims):
     if min_idx is None or min_idx < 0:
         return s, "", None
 
-    return s[:min_idx], s[min_idx + 1 :], min_delim  # noqa
+    return s[:min_idx], s[min_idx + 1 :], min_delim
 
 
 def _encode_invalid_chars(component, allowed_chars, encoding="utf-8"):
@@ -173,7 +173,7 @@ def _encode_invalid_chars(component, allowed_chars, encoding="utf-8"):
 
     for i in range(0, len(uri_bytes)):
         # Will return a single character bytestring on both Python 2 & 3
-        byte = uri_bytes[i : i + 1]  # noqa
+        byte = uri_bytes[i : i + 1]
         byte_ord = ord(byte)
         if (is_percent_encoded and byte == b"%") or (
             byte_ord < 128 and byte.decode() in allowed_chars
