@@ -210,6 +210,7 @@ class Retry(object):
             raise_on_status=self.raise_on_status,
             history=self.history,
             remove_headers_on_redirect=self.remove_headers_on_redirect,
+            respect_retry_after_header=self.respect_retry_after_header,
         )
         params.update(kw)
         return type(self)(**params)
@@ -294,7 +295,7 @@ class Retry(object):
         this method will return immediately.
         """
 
-        if response:
+        if self.respect_retry_after_header and response:
             slept = self.sleep_for_retry(response)
             if slept:
                 return

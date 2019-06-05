@@ -412,9 +412,9 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             if not cert.get("subjectAltName", ()):
                 warnings.warn(
                     (
-                        "Certificate for {0} has no `subjectAltName`, falling back to check for a "  # noqa
-                        "`commonName` for now. This feature is being removed by major browsers and "  # noqa
-                        "deprecated by RFC 2818. (See https://github.com/shazow/urllib3/issues/497 "  # noqa
+                        "Certificate for {0} has no `subjectAltName`, falling back to check for a "
+                        "`commonName` for now. This feature is being removed by major browsers and "
+                        "deprecated by RFC 2818. (See https://github.com/shazow/urllib3/issues/497 "
                         "for details.)".format(hostname)
                     ),
                     SubjectAltNameWarning,
