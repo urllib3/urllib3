@@ -271,6 +271,13 @@ def create_urllib3_context(
 
     context.options |= options
 
+    # Enable post-handshake authentication for TLS 1.3, see GH #1634. PHA is
+    # necessary for conditional client cert authentication with TLS 1.3.
+    # The attribute is None for OpenSSL <= 1.1.0 or does not exist in older
+    # versions of Python.
+    if getattr(context, "post_handshake_auth", None) is not None:
+        context.post_handshake_auth = True
+
     context.verify_mode = cert_reqs
     if (
         getattr(context, "check_hostname", None) is not None
