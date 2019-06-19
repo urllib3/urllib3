@@ -12,17 +12,17 @@ import urllib3
 
 class TestHTTPWithoutSSL(HTTPDummyServerTestCase, TestWithoutSSL):
     def test_simple(self):
-        pool = urllib3.HTTPConnectionPool(self.host, self.port)
-        self.addCleanup(pool.close)
-        r = pool.request("GET", "/")
-        assert r.status == 200, r.data
+        with urllib3.HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("GET", "/")
+            assert r.status == 200, r.data
 
 
 class TestHTTPSWithoutSSL(HTTPSDummyServerTestCase, TestWithoutSSL):
     def test_simple(self):
-        pool = urllib3.HTTPSConnectionPool(self.host, self.port, cert_reqs="NONE")
-        self.addCleanup(pool.close)
-        try:
-            pool.request("GET", "/")
-        except urllib3.exceptions.SSLError as e:
-            assert "SSL module is not available" in str(e)
+        with urllib3.HTTPSConnectionPool(
+            self.host, self.port, cert_reqs="NONE"
+        ) as pool:
+            try:
+                pool.request("GET", "/")
+            except urllib3.exceptions.SSLError as e:
+                assert "SSL module is not available" in str(e)
