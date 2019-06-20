@@ -409,9 +409,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 # Python 3
                 try:
                     httplib_response = conn.getresponse()
-                except Exception as e:
-                    # Remove the TypeError from the exception chain in Python 3;
-                    # otherwise it looks like a programming error was the cause.
+                except BaseException as e:
+                    # Remove the TypeError from the exception chain in
+                    # Python 3 (including for exceptions like SystemExit).
+                    # Otherwise it looks like a bug in the code.
                     six.raise_from(e, None)
         except (SocketTimeout, BaseSSLError, SocketError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
