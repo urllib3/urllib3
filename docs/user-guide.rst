@@ -302,8 +302,8 @@ to the standard-library :mod:`ssl` module. You may experience
 Using timeouts
 --------------
 
-Timeouts allow you to control how long requests are allowed to run before
-being aborted. In simple cases, you can specify a timeout as a ``float``
+Timeouts allow you to control how long (in seconds) requests are allowed to run
+before being aborted. In simple cases, you can specify a timeout as a ``float``
 to :meth:`~poolmanager.PoolManager.request`::
 
     >>> http.request(

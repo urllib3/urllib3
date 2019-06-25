@@ -29,6 +29,9 @@ urllib3
         :alt: Tidelift Dependencies
         :target: https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=docs
 
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+    :target: https://github.com/python/black
+
 urllib3 is a powerful, *sanity-friendly* HTTP client for Python. Much of the
 Python ecosystem already uses urllib3 and you should too.
 urllib3 brings many critical features that are missing from the Python
@@ -93,7 +96,7 @@ Maintainers
 
 - `@theacodes <https://github.com/theacodes>`_ (Thea Flowers)
 - `@sethmlarson <https://github.com/sethmlarson>`_ (Seth M. Larson)
-- `@haikuginger <https://github.com/haikuginger>`_ (Jesse Shapiro)
+- `@haikuginger <https://github.com/haikuginger>`_ (Jess Shapiro)
 - `@lukasa <https://github.com/lukasa>`_ (Cory Benfield)
 - `@sigmavirus24 <https://github.com/sigmavirus24>`_ (Ian Cordasco)
 - `@shazow <https://github.com/shazow>`_ (Andrey Petrov)
@@ -127,5 +130,5 @@ Sponsors include:
 
 - Google Cloud Platform (2018-present), sponsors `@theacodes <https://github.com/theacodes>`_'s work on an ongoing basis
 - Abbott (2018-present), sponsors `@sethmlarson <https://github.com/sethmlarson>`_'s work on an ongoing basis
-- Akamai (2017-present), sponsors `@haikuginger <https://github.com/haikuginger>`_'s work on an ongoing basis
+- Akamai (2017-2018), sponsored `@haikuginger <https://github.com/haikuginger>`_'s work on urllib3
 - Hewlett Packard Enterprise (2016-2017), sponsored `@Lukasa’s <https://github.com/Lukasa>`_ work on urllib3

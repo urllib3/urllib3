@@ -27,50 +27,54 @@ import tornado.web
 
 log = logging.getLogger(__name__)
 
-CERTS_PATH = os.path.join(os.path.dirname(__file__), 'certs')
+CERTS_PATH = os.path.join(os.path.dirname(__file__), "certs")
 DEFAULT_CERTS = {
-    'certfile': os.path.join(CERTS_PATH, 'server.crt'),
-    'keyfile': os.path.join(CERTS_PATH, 'server.key'),
-    'cert_reqs': ssl.CERT_OPTIONAL,
-    'ca_certs': os.path.join(CERTS_PATH, 'cacert.pem'),
+    "certfile": os.path.join(CERTS_PATH, "server.crt"),
+    "keyfile": os.path.join(CERTS_PATH, "server.key"),
+    "cert_reqs": ssl.CERT_OPTIONAL,
+    "ca_certs": os.path.join(CERTS_PATH, "cacert.pem"),
 }
 DEFAULT_CLIENT_CERTS = {
-    'certfile': os.path.join(CERTS_PATH, 'client_intermediate.pem'),
-    'keyfile': os.path.join(CERTS_PATH, 'client_intermediate.key'),
-    'subject': dict(countryName=u'FI', stateOrProvinceName=u'dummy',
-                    organizationName=u'dummy', organizationalUnitName=u'dummy',
-                    commonName=u'SnakeOilClient',
-                    emailAddress=u'dummy@test.local'),
+    "certfile": os.path.join(CERTS_PATH, "client_intermediate.pem"),
+    "keyfile": os.path.join(CERTS_PATH, "client_intermediate.key"),
+    "subject": dict(
+        countryName=u"FI",
+        stateOrProvinceName=u"dummy",
+        organizationName=u"dummy",
+        organizationalUnitName=u"dummy",
+        commonName=u"SnakeOilClient",
+        emailAddress=u"dummy@test.local",
+    ),
 }
 DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS = {
-    'certfile': os.path.join(CERTS_PATH, 'client_no_intermediate.pem'),
-    'keyfile': os.path.join(CERTS_PATH, 'client_intermediate.key'),
+    "certfile": os.path.join(CERTS_PATH, "client_no_intermediate.pem"),
+    "keyfile": os.path.join(CERTS_PATH, "client_intermediate.key"),
 }
-PASSWORD_KEYFILE = os.path.join(CERTS_PATH, 'server_password.key')
-PASSWORD_CLIENT_KEYFILE = os.path.join(CERTS_PATH, 'client_password.key')
+PASSWORD_KEYFILE = os.path.join(CERTS_PATH, "server_password.key")
+PASSWORD_CLIENT_KEYFILE = os.path.join(CERTS_PATH, "client_password.key")
 NO_SAN_CERTS = {
-    'certfile': os.path.join(CERTS_PATH, 'server.no_san.crt'),
-    'keyfile': DEFAULT_CERTS['keyfile']
+    "certfile": os.path.join(CERTS_PATH, "server.no_san.crt"),
+    "keyfile": DEFAULT_CERTS["keyfile"],
 }
 IP_SAN_CERTS = {
-    'certfile': os.path.join(CERTS_PATH, 'server.ip_san.crt'),
-    'keyfile': DEFAULT_CERTS['keyfile']
+    "certfile": os.path.join(CERTS_PATH, "server.ip_san.crt"),
+    "keyfile": DEFAULT_CERTS["keyfile"],
 }
 IPV6_ADDR_CERTS = {
-    'certfile': os.path.join(CERTS_PATH, 'server.ipv6addr.crt'),
-    'keyfile': os.path.join(CERTS_PATH, 'server.ipv6addr.key'),
+    "certfile": os.path.join(CERTS_PATH, "server.ipv6addr.crt"),
+    "keyfile": os.path.join(CERTS_PATH, "server.ipv6addr.key"),
 }
 IPV6_SAN_CERTS = {
-    'certfile': os.path.join(CERTS_PATH, 'server.ipv6_san.crt'),
-    'keyfile': DEFAULT_CERTS['keyfile']
+    "certfile": os.path.join(CERTS_PATH, "server.ipv6_san.crt"),
+    "keyfile": DEFAULT_CERTS["keyfile"],
 }
-DEFAULT_CA = os.path.join(CERTS_PATH, 'cacert.pem')
-DEFAULT_CA_BAD = os.path.join(CERTS_PATH, 'client_bad.pem')
-NO_SAN_CA = os.path.join(CERTS_PATH, 'cacert.no_san.pem')
-DEFAULT_CA_DIR = os.path.join(CERTS_PATH, 'ca_path_test')
-IPV6_ADDR_CA = os.path.join(CERTS_PATH, 'server.ipv6addr.crt')
-IPV6_SAN_CA = os.path.join(CERTS_PATH, 'server.ipv6_san.crt')
-COMBINED_CERT_AND_KEY = os.path.join(CERTS_PATH, 'server.combined.pem')
+DEFAULT_CA = os.path.join(CERTS_PATH, "cacert.pem")
+DEFAULT_CA_BAD = os.path.join(CERTS_PATH, "client_bad.pem")
+NO_SAN_CA = os.path.join(CERTS_PATH, "cacert.no_san.pem")
+DEFAULT_CA_DIR = os.path.join(CERTS_PATH, "ca_path_test")
+IPV6_ADDR_CA = os.path.join(CERTS_PATH, "server.ipv6addr.crt")
+IPV6_SAN_CA = os.path.join(CERTS_PATH, "server.ipv6_san.crt")
+COMBINED_CERT_AND_KEY = os.path.join(CERTS_PATH, "server.combined.pem")
 
 
 def _has_ipv6(host):
@@ -100,8 +104,8 @@ def _has_ipv6(host):
 # properly. We can not count that localhost will resolve to ::1 on all
 # systems. See https://github.com/shazow/urllib3/pull/611 and
 # https://bugs.python.org/issue18792
-HAS_IPV6_AND_DNS = _has_ipv6('localhost')
-HAS_IPV6 = _has_ipv6('::1')
+HAS_IPV6_AND_DNS = _has_ipv6("localhost")
+HAS_IPV6 = _has_ipv6("::1")
 
 
 # Different types of servers we have:
@@ -119,10 +123,10 @@ class SocketServerThread(threading.Thread):
     :param ready_event: Event which gets set when the socket handler is
         ready to receive requests.
     """
+
     USE_IPV6 = HAS_IPV6_AND_DNS
 
-    def __init__(self, socket_handler, host='localhost', port=8081,
-                 ready_event=None):
+    def __init__(self, socket_handler, host="localhost", port=8081, ready_event=None):
         threading.Thread.__init__(self)
         self.daemon = True
 
@@ -134,10 +138,9 @@ class SocketServerThread(threading.Thread):
         if self.USE_IPV6:
             sock = socket.socket(socket.AF_INET6)
         else:
-            warnings.warn("No IPv6 support. Falling back to IPv4.",
-                          NoIPv6Warning)
+            warnings.warn("No IPv6 support. Falling back to IPv4.", NoIPv6Warning)
             sock = socket.socket(socket.AF_INET)
-        if sys.platform != 'win32':
+        if sys.platform != "win32":
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind((self.host, 0))
         self.port = sock.getsockname()[1]
@@ -160,8 +163,8 @@ class SocketServerThread(threading.Thread):
 # `tornado.netutil.bind_sockets` again.
 # https://github.com/facebook/tornado/pull/977
 
-def bind_sockets(port, address=None, family=socket.AF_UNSPEC, backlog=128,
-                 flags=None):
+
+def bind_sockets(port, address=None, family=socket.AF_UNSPEC, backlog=128, flags=None):
     """Creates listening sockets bound to the given port and address.
 
     Returns a list of socket objects (multiple sockets are returned if
@@ -194,8 +197,9 @@ def bind_sockets(port, address=None, family=socket.AF_UNSPEC, backlog=128,
     if flags is None:
         flags = socket.AI_PASSIVE
     binded_port = None
-    for res in set(socket.getaddrinfo(address, port, family,
-                                      socket.SOCK_STREAM, 0, flags)):
+    for res in set(
+        socket.getaddrinfo(address, port, family, socket.SOCK_STREAM, 0, flags)
+    ):
         af, socktype, proto, canonname, sockaddr = res
         try:
             sock = socket.socket(af, socktype, proto)
@@ -204,7 +208,7 @@ def bind_sockets(port, address=None, family=socket.AF_UNSPEC, backlog=128,
                 continue
             raise
         set_close_exec(sock.fileno())
-        if os.name != 'nt':
+        if os.name != "nt":
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         if af == socket.AF_INET6:
             # On linux, ipv6 sockets accept ipv4 too by default,
@@ -239,7 +243,7 @@ def run_tornado_app(app, io_loop, certs, scheme, host):
     # just construct the datetime object directly.
     app.last_req = datetime(1970, 1, 1)
 
-    if scheme == 'https':
+    if scheme == "https":
         http_server = tornado.httpserver.HTTPServer(app, ssl_options=certs)
     else:
         http_server = tornado.httpserver.HTTPServer(app)
@@ -258,8 +262,7 @@ def run_loop_in_thread(io_loop):
 
 def get_unreachable_address():
     while True:
-        host = ''.join(random.choice(string.ascii_lowercase)
-                       for _ in range(60))
+        host = "".join(random.choice(string.ascii_lowercase) for _ in range(60))
         sockaddr = (host, 54321)
 
         # check if we are really "lucky" and hit an actual server
@@ -271,15 +274,15 @@ def get_unreachable_address():
             s.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # For debugging dummyserver itself - python -m dummyserver.server
     from .testcase import TestingApp
-    host = '127.0.0.1'
+
+    host = "127.0.0.1"
 
     io_loop = tornado.ioloop.IOLoop.current()
     app = tornado.web.Application([(r".*", TestingApp)])
-    server, port = run_tornado_app(app, io_loop, None,
-                                   'http', host)
+    server, port = run_tornado_app(app, io_loop, None, "http", host)
     server_thread = run_loop_in_thread(io_loop)
 
     print("Listening on http://{host}:{port}".format(host=host, port=port))

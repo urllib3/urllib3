@@ -3,7 +3,6 @@
 set -exo pipefail
 
 if [[ -e .coverage ]]; then
-    source .tox/${TOXENV}/bin/activate
-    pip install codecov
-    codecov --env TRAVIS_OS_NAME,TOXENV
+    python3.6 -m pip install codecov
+    python3.6 -m codecov --env TRAVIS_OS_NAME,NOX_SESSION
 fi

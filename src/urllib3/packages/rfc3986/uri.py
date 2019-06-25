@@ -22,7 +22,7 @@ from . import normalizers
 from ._mixin import URIMixin
 
 
-class URIReference(namedtuple('URIReference', misc.URI_COMPONENTS), URIMixin):
+class URIReference(namedtuple("URIReference", misc.URI_COMPONENTS), URIMixin):
     """Immutable object representing a parsed URI Reference.
 
     .. note::
@@ -82,16 +82,11 @@ class URIReference(namedtuple('URIReference', misc.URI_COMPONENTS), URIMixin):
 
     slots = ()
 
-    def __new__(cls, scheme, authority, path, query, fragment,
-                encoding='utf-8'):
+    def __new__(cls, scheme, authority, path, query, fragment, encoding="utf-8"):
         """Create a new URIReference."""
         ref = super(URIReference, cls).__new__(
-            cls,
-            scheme or None,
-            authority or None,
-            path or None,
-            query,
-            fragment)
+            cls, scheme or None, authority or None, path or None, query, fragment
+        )
         ref.encoding = encoding
         return ref
 
@@ -107,8 +102,10 @@ class URIReference(namedtuple('URIReference', misc.URI_COMPONENTS), URIMixin):
                 other_ref = URIReference.from_string(other)
             except TypeError:
                 raise TypeError(
-                    'Unable to compare URIReference() to {0}()'.format(
-                        type(other).__name__))
+                    "Unable to compare URIReference() to {0}()".format(
+                        type(other).__name__
+                    )
+                )
 
         # See http://tools.ietf.org/html/rfc3986#section-6.2
         naive_equality = tuple(self) == tuple(other_ref)
@@ -125,16 +122,17 @@ class URIReference(namedtuple('URIReference', misc.URI_COMPONENTS), URIMixin):
         """
         # See http://tools.ietf.org/html/rfc3986#section-6.2.2 for logic in
         # this method.
-        return URIReference(normalizers.normalize_scheme(self.scheme or ''),
-                            normalizers.normalize_authority(
-                                (self.userinfo, self.host, self.port)),
-                            normalizers.normalize_path(self.path or ''),
-                            normalizers.normalize_query(self.query),
-                            normalizers.normalize_fragment(self.fragment),
-                            self.encoding)
+        return URIReference(
+            normalizers.normalize_scheme(self.scheme or ""),
+            normalizers.normalize_authority((self.userinfo, self.host, self.port)),
+            normalizers.normalize_path(self.path or ""),
+            normalizers.normalize_query(self.query),
+            normalizers.normalize_fragment(self.fragment),
+            self.encoding,
+        )
 
     @classmethod
-    def from_string(cls, uri_string, encoding='utf-8'):
+    def from_string(cls, uri_string, encoding="utf-8"):
         """Parse a URI reference from the given unicode URI string.
 
         :param str uri_string: Unicode URI to be parsed into a reference.
@@ -145,9 +143,10 @@ class URIReference(namedtuple('URIReference', misc.URI_COMPONENTS), URIMixin):
 
         split_uri = misc.URI_MATCHER.match(uri_string).groupdict()
         return cls(
-            split_uri['scheme'], split_uri['authority'],
-            normalizers.encode_component(split_uri['path'], encoding),
-            normalizers.encode_component(split_uri['query'], encoding),
-            normalizers.encode_component(split_uri['fragment'], encoding),
+            split_uri["scheme"],
+            split_uri["authority"],
+            normalizers.encode_component(split_uri["path"], encoding),
+            normalizers.encode_component(split_uri["query"], encoding),
+            normalizers.encode_component(split_uri["fragment"], encoding),
             encoding,
         )
