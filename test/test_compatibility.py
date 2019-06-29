@@ -25,7 +25,7 @@ class TestVersionCompatibility(object):
             # source_address does not exist in Py26-
             HTTPConnection("localhost", 12345, source_address="127.0.0.1")
         except TypeError as e:
-            pytest.fail("HTTPConnection raised TypeError on source_adddress: %r" % e)
+            pytest.fail("HTTPConnection raised TypeError on source_address: %r" % e)
 
 
 class TestCookiejar(object):
