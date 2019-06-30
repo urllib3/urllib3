@@ -20,24 +20,20 @@ If you wish to add a new feature or fix a bug:
 Setting up your development environment
 ---------------------------------------
 
-It is recommended, and even enforced by the make file, that you use a 
-`virtualenv
-<http://docs.python-guide.org/en/latest/dev/virtualenvs/>`_::
+In order to setup the development environment all that you need is 
+`nox<https://nox.thea.codes/en/stable/index.html>`_ installed in your machine::
 
-  $ python3 -m venv venv3
-  $ source venv3/bin/activate
-  $ pip install -r dev-requirements.txt
+  $ pip install --user --upgrade nox
 
 
 Running the tests
 -----------------
 
 We use some external dependencies, multiple interpreters and code coverage
-analysis while running test suite. Our ``Makefile`` handles much of this for
-you as long as you're running it `inside of a virtualenv
-<http://docs.python-guide.org/en/latest/dev/virtualenvs/>`_::
+analysis while running test suite. Our ``noxfile.py`` handles much of this for
+you::
 
-  $ make test-quick
+  $ nox --sessions test-3.7 test-2.7
   [... magically installs dependencies and runs tests on your virtualenv]
   Ran 182 tests in 1.633s
 
@@ -53,7 +49,7 @@ platform-specific tests are skipped unless run in that platform.  To make sure
 the code works in all of urllib3's supported platforms, you can run our ``tox``
 suite::
 
-  $ make test-all
+  $ nox --sessions test-3.7 test-2.7
   [... tox creates a virtualenv for every platform and runs tests inside of each]
   py27: commands succeeded
   py34: commands succeeded
