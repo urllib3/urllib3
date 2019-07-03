@@ -18,6 +18,7 @@ NORMALIZABLE_SCHEMES = ("http", "https", None)
 # Regex for detecting URLs with schemes. RFC 3986 Section 3.1
 SCHEME_REGEX = re.compile(r"^(?:[a-zA-Z][a-zA-Z0-9+\-]*:|/)")
 
+USERINFO_CHARS = abnf_regexp.UNRESERVED_CHARS_SET | abnf_regexp.SUB_DELIMITERS_SET | {":"}
 PATH_CHARS = (
     abnf_regexp.UNRESERVED_CHARS_SET | abnf_regexp.SUB_DELIMITERS_SET | {":", "@", "/"}
 )
@@ -234,6 +235,13 @@ def parse_url(url):
 
     try:
         split_iri = misc.IRI_MATCHER.match(compat.to_str(url)).groupdict()
+
+        # Grab userinfo and percent-encode the invalid characters.
+        if "@" in (split_iri["authority"] or ""):
+            authority_parts = split_iri["authority"].split("@")
+            userinfo = _encode_invalid_chars("@".join(authority_parts[:-1]), USERINFO_CHARS)
+            split_iri["authority"] = userinfo + "@" + authority_parts[-1]
+
         iri_ref = rfc3986.IRIReference(
             split_iri["scheme"],
             split_iri["authority"],
