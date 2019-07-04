@@ -186,7 +186,7 @@ def fails_on_travis_gce(test):
 
     @functools.wraps(test)
     def wrapper(*args, **kwargs):
-        if os.environ.get("TRAVIS_INFRA") == "gce":
+        if os.environ.get("TRAVIS_INFRA") in ("gce", "unknown"):
             pytest.xfail("%s is expected to fail on Travis GCE builds" % test.__name__)
         return test(*args, **kwargs)
 
