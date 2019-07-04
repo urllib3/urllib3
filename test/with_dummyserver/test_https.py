@@ -3,7 +3,6 @@ import json
 import logging
 import ssl
 import sys
-import unittest
 import warnings
 
 import mock
@@ -784,7 +783,3 @@ class TestHTTPS_IPV6SAN(IPV6HTTPSDummyServerTestCase):
         ) as https_pool:
             r = https_pool.request("GET", "/")
             assert r.status == 200
-
-
-if __name__ == "__main__":
-    unittest.main()

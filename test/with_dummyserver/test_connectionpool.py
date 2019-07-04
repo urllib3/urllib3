@@ -2,7 +2,6 @@ import io
 import logging
 import socket
 import sys
-import unittest
 import time
 import warnings
 import pytest
@@ -1159,7 +1158,3 @@ class TestRedirectPoolSize(HTTPDummyServerTestCase):
         ) as pool:
             pool.urlopen("GET", "/redirect", preload_content=False)
             assert pool.num_connections == 1
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -1,4 +1,3 @@
-import unittest
 import json
 
 import pytest
@@ -12,7 +11,9 @@ from urllib3.util.retry import Retry
 
 
 class TestPoolManager(HTTPDummyServerTestCase):
-    def setUp(self):
+    @classmethod
+    def setup_class(self):
+        super(TestPoolManager, self).setup_class()
         self.base_url = "http://%s:%d" % (self.host, self.port)
         self.base_url_alt = "http://%s:%d" % (self.host_alt, self.port)
 
@@ -348,13 +349,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
-    def setUp(self):
+    @classmethod
+    def setup_class(self):
+        super(TestIPv6PoolManager, self).setup_class()
         self.base_url = "http://[%s]:%d" % (self.host, self.port)
 
     def test_ipv6(self):
         with PoolManager() as http:
             http.request("GET", self.base_url)
-
-
-if __name__ == "__main__":
-    unittest.main()
