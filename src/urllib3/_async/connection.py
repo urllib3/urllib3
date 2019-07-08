@@ -56,11 +56,9 @@ def is_async_mode():
 _ASYNC_MODE = is_async_mode()
 
 
-# When updating RECENT_DATE, move it to within two years of the current date,
-# and not less than 6 months ago.
-# Example: if Today is 2018-01-01, then RECENT_DATE should be any date on or
-# after 2016-01-01 (today - 2 years) AND before 2017-07-01 (today - 6 months)
-RECENT_DATE = datetime.date(2017, 6, 30)
+# When it comes time to update this value as a part of regular maintenance
+# (ie test_recent_date is failing) update it to ~6 months before the current date.
+RECENT_DATE = datetime.date(2019, 1, 1)
 
 _SUPPORTED_VERSIONS = frozenset([b'1.0', b'1.1'])
 
