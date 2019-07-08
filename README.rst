@@ -128,7 +128,7 @@ development <https://urllib3.readthedocs.io/en/latest/contributing.html#sponsors
 
 Sponsors include:
 
-- Abbott (2018-present), sponsors `@sethmlarson <https://github.com/sethmlarson>`_'s work on an ongoing basis.
-- Google Cloud Platform (2018-2019), sponsored `@theacodes <https://github.com/theacodes>`_'s work.
+- Abbott (2018-2019), sponsored `@sethmlarson <https://github.com/sethmlarson>`_'s work on urllib3.
+- Google Cloud Platform (2018-2019), sponsored `@theacodes <https://github.com/theacodes>`_'s work on urllib3.
 - Akamai (2017-2018), sponsored `@haikuginger <https://github.com/haikuginger>`_'s work on urllib3
 - Hewlett Packard Enterprise (2016-2017), sponsored `@Lukasa’s <https://github.com/Lukasa>`_ work on urllib3.
