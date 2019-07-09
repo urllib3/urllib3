@@ -176,7 +176,9 @@ class TestUtil(object):
             ),
             ("HTTPS://Example.Com/?Key=Value", "https://example.com/?Key=Value"),
             ("Https://Example.Com/#Fragment", "https://example.com/#Fragment"),
-            ("[::Ff%etH0%Ff]/%ab%Af", "[::ff%25etH0%Ff]/%AB%AF"),
+            ("[::1%25]", "[::1%25]"),
+            ("[::Ff%etH0%Ff]/%ab%Af", "[::ff%etH0%FF]/%AB%AF"),
+            ("http://user:pass@[AaAa::Ff%25etH0%Ff]/%ab%Af", "http://user:pass@[aaaa::ff%etH0%FF]/%AB%AF"),
             # Invalid characters for the query/fragment getting encoded
             (
                 'http://google.com/p[]?parameter[]="hello"#fragment#',
