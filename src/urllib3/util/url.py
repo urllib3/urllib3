@@ -12,6 +12,8 @@ url_attrs = ["scheme", "auth", "host", "port", "path", "query", "fragment"]
 # urllib3 infers URLs without a scheme (None) to be http.
 NORMALIZABLE_SCHEMES = ("http", "https", None)
 
+# Almost all of these patterns were derived from the
+# 'rfc3986' module: https://github.com/python-hyper/rfc3986
 PERCENT_RE = re.compile(r"%[a-fA-F0-9]{2}")
 SCHEME_RE = re.compile(r"^(?:[a-zA-Z][a-zA-Z0-9+-]*:|/)")
 URI_RE = re.compile(
@@ -24,9 +26,6 @@ URI_RE = re.compile(
 )
 
 IPV4_PAT = r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}"
-
-# Substitutions into the following patterns for IPv6 patterns defined
-# http://tools.ietf.org/html/rfc3986#page-20
 HEX_PAT = "[0-9A-Fa-f]{1,4}"
 LS32_PAT = "(?:{hex}:{hex}|{ipv4})".format(hex=HEX_PAT, ipv4=IPV4_PAT)
 _subs = {"hex": HEX_PAT, "ls32": LS32_PAT}
@@ -325,7 +324,8 @@ def parse_url(url):
     performed to parse incomplete urls. Fields not provided will be None.
     This parser is RFC 3986 compliant.
 
-    The parser logic is based heavily on work done in the ``rfc3986`` module.
+    The parser logic and helper functions are based heavily on
+    work done in the ``rfc3986`` module.
 
     :param str url: URL to parse into a :class:`.Url` namedtuple.
 
