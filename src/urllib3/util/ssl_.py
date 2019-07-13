@@ -6,7 +6,7 @@ import hmac
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
-from .url import IPV4_RE, IPV6_ADDRZ_RE
+from .url import IPV4_RE, BRACELESS_IPV6_ADDRZ_RE
 from ..exceptions import SSLError, InsecurePlatformWarning, SNIMissingWarning
 from ..packages import six
 
@@ -381,7 +381,7 @@ def is_ipaddress(hostname):
     if six.PY3 and isinstance(hostname, bytes):
         # IDN A-label bytes are ASCII compatible.
         hostname = hostname.decode("ascii")
-    return bool(IPV4_RE.match(hostname) or IPV6_ADDRZ_RE.match(hostname))
+    return bool(IPV4_RE.match(hostname) or BRACELESS_IPV6_ADDRZ_RE.match(hostname))
 
 
 def _is_key_file_encrypted(key_file):

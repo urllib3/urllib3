@@ -59,6 +59,7 @@ REG_NAME_PAT = r"(?:[^\[\]%:/?#]|%[a-fA-F0-9]{2})*"
 IPV4_RE = re.compile("^" + IPV4_PAT + "$")
 IPV6_RE = re.compile("^" + IPV6_PAT + "$")
 IPV6_ADDRZ_RE = re.compile("^" + IPV6_ADDRZ_PAT + "$")
+BRACELESS_IPV6_ADDRZ_RE = re.compile("^" + IPV6_ADDRZ_PAT[2:-2] + "$")
 ZONE_ID_RE = re.compile("(" + ZONE_ID_PAT + r")\]$")
 
 SUBAUTHORITY_PAT = (
