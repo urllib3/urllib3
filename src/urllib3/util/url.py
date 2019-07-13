@@ -22,7 +22,7 @@ URI_RE = re.compile(
     r"([^?#]*)"
     r"(?:\?([^#]*))?"
     r"(?:#(.*))?$",
-    re.UNICODE | re.DOTALL
+    re.UNICODE | re.DOTALL,
 )
 
 IPV4_PAT = r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}"
@@ -62,24 +62,17 @@ IPV6_ADDRZ_RE = re.compile("^" + IPV6_ADDRZ_PAT + "$")
 BRACELESS_IPV6_ADDRZ_RE = re.compile("^" + IPV6_ADDRZ_PAT[2:-2] + "$")
 ZONE_ID_RE = re.compile("(" + ZONE_ID_PAT + r")\]$")
 
-SUBAUTHORITY_PAT = (
-        u"^(?:(.*)@)?"
-        u"(%s|%s|%s)"
-        u"(?::([0-9]{0,5}))?$"
-    ) % (REG_NAME_PAT, IPV4_PAT, IPV6_ADDRZ_PAT)
-SUBAUTHORITY_RE = re.compile(
-    SUBAUTHORITY_PAT,
-    re.UNICODE | re.DOTALL,
+SUBAUTHORITY_PAT = (u"^(?:(.*)@)?" u"(%s|%s|%s)" u"(?::([0-9]{0,5}))?$") % (
+    REG_NAME_PAT,
+    IPV4_PAT,
+    IPV6_ADDRZ_PAT,
 )
+SUBAUTHORITY_RE = re.compile(SUBAUTHORITY_PAT, re.UNICODE | re.DOTALL)
 
 ZONE_ID_CHARS = set(
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    "abcdefghijklmnopqrstuvwxyz"
-    "0123456789._!-"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "abcdefghijklmnopqrstuvwxyz" "0123456789._!-"
 )
-USERINFO_CHARS = ZONE_ID_CHARS | set(
-    "$&'()*+,;=:"
-)
+USERINFO_CHARS = ZONE_ID_CHARS | set("$&'()*+,;=:")
 PATH_CHARS = USERINFO_CHARS | {"@", "/"}
 QUERY_CHARS = FRAGMENT_CHARS = PATH_CHARS | {"?"}
 
@@ -300,7 +293,9 @@ def _normalize_host(host, scheme):
                 else:
                     return host.lower()
             elif not IPV4_RE.match(host):
-                return six.ensure_text(b".".join([_idna_encode(label) for label in host.split(".")]))
+                return six.ensure_text(
+                    b".".join([_idna_encode(label) for label in host.split(".")])
+                )
     return host
 
 
@@ -309,13 +304,16 @@ def _idna_encode(name):
         try:
             import idna
         except ImportError:
-            six.raise_from(LocationParseError(
-                "Unable to parse URL without the 'idna' module"
-            ), None)
+            six.raise_from(
+                LocationParseError("Unable to parse URL without the 'idna' module"),
+                None,
+            )
         try:
             return idna.encode(name.lower(), strict=True, std3_rules=True)
         except idna.IDNAError:
-            six.raise_from(LocationParseError(u"Name '%s' is not a valid IDNA label" % name), None)
+            six.raise_from(
+                LocationParseError(u"Name '%s' is not a valid IDNA label" % name), None
+            )
     return name.lower().encode("ascii")
 
 
