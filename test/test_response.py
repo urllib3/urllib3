@@ -434,7 +434,7 @@ class TestResponse(object):
 
         class MockCompressedDataReading(BytesIO):
             """
-            A ByteIO-like reader returning ``payload`` in ``NUMBER_OF_READS``
+            A BytesIO-like reader returning ``payload`` in ``NUMBER_OF_READS``
             calls to ``read``.
             """
 
