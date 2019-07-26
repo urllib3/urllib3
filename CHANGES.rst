@@ -9,6 +9,11 @@ dev (master)
 * Fix edge case where Retry-After header was still respected even when
   explicitly opted out of. (Pull #1607)
 
+* Remove dependency on ``rfc3986`` for URL parsing.
+
+* Fix issue where URLs containing invalid characters within ``Url.auth`` would
+  raise an exception instead of percent-encoding those characters.
+
 
 1.25.3 (2019-05-23)
 -------------------
