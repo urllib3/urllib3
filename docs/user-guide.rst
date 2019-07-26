@@ -77,6 +77,20 @@ to a byte string representing the response content::
 .. note:: For larger responses, it's sometimes better to :ref:`stream <stream>`
     the response.
 
+Using io Wrappers with Response content
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Sometimes you want to use :class:`io.TextIOWrapper` or similar objects like a CSV reader
+directly with :class:`~response.HTTPResponse` data. Making these two interfaces play nice
+together requires using the :attr:`~response.HTTPResponse.auto_close` attribute by setting it
+to ``False``. By default HTTP responses are closed after reading all bytes, this disables that behavior::
+
+    >>> import io
+    >>> r = http.request('GET', 'https://example.com', preload_content=False)
+    >>> r.auto_close = False
+    >>> for line in io.TextIOWrapper(r):
+    >>>     print(line)
+
 .. _request_data:
 
 Request data
