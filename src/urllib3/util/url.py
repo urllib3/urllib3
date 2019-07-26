@@ -274,7 +274,8 @@ def _remove_path_dot_segments(path):
 
 def _normalize_host(host, scheme):
     if host:
-        host = six.ensure_text(host)
+        if isinstance(host, six.binary_type):
+            host = six.ensure_str(host)
 
         if scheme in NORMALIZABLE_SCHEMES:
             is_ipv6 = IPV6_ADDRZ_RE.match(host)
@@ -293,7 +294,7 @@ def _normalize_host(host, scheme):
                 else:
                     return host.lower()
             elif not IPV4_RE.match(host):
-                return six.ensure_text(
+                return six.ensure_str(
                     b".".join([_idna_encode(label) for label in host.split(".")])
                 )
     return host
@@ -393,10 +394,10 @@ def parse_url(url):
 
     # Ensure that each part of the URL is a `str` for
     # backwards compatibility.
-    if isinstance(url, six.binary_type):
-        ensure_func = six.ensure_binary
-    else:
+    if isinstance(url, six.text_type):
         ensure_func = six.ensure_text
+    else:
+        ensure_func = six.ensure_str
 
     def ensure_type(x):
         return x if x is None else ensure_func(x)

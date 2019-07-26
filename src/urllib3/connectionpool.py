@@ -43,12 +43,7 @@ from .util.request import set_file_position
 from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.timeout import Timeout
-from .util.url import (
-    get_host,
-    Url,
-    NORMALIZABLE_SCHEMES,
-    _normalize_host as normalize_host,
-)
+from .util.url import get_host, Url, _normalize_host as normalize_host
 from .util.queue import LifoQueue
 
 
