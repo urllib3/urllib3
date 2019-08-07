@@ -106,7 +106,7 @@ def notSecureTransport(test):
 
 
 def notOpenSSL098(test):
-    """Skips this test for Python 3.4 and 3.5 macOS python.org distributions"""
+    """Skips this test for Python 3.5 macOS python.org distribution"""
 
     @functools.wraps(test)
     def wrapper(*args, **kwargs):

@@ -13,6 +13,4 @@ lazy-object-proxy==1.4.0
 
 # https://github.com/GoogleCloudPlatform/python-repo-tools/issues/23
 pylint<2.0;python_version<="2.7"
-
-# Because typed-ast doesn't provide Python 3.4+Windows wheels
-gcp-devrel-py-tools;python_version>='3.5' or sys_platform != 'win32'
+gcp-devrel-py-tools
