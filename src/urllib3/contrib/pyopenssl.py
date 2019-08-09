@@ -119,6 +119,7 @@ def inject_into_urllib3():
 
     _validate_dependencies_met()
 
+    util.SSLContext = PyOpenSSLContext
     util.ssl_.SSLContext = PyOpenSSLContext
     util.HAS_SNI = HAS_SNI
     util.ssl_.HAS_SNI = HAS_SNI
@@ -133,6 +134,7 @@ def inject_into_urllib3():
 def extract_from_urllib3():
     'Undo monkey-patching by :func:`inject_into_urllib3`.'
 
+    util.SSLContext = orig_util_SSLContext
     util.ssl_.SSLContext = orig_util_SSLContext
     util.HAS_SNI = orig_util_HAS_SNI
     util.ssl_.HAS_SNI = orig_util_HAS_SNI

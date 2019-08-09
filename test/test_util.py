@@ -366,6 +366,7 @@ class TestUtil(object):
         (('abcd', ''),   ('abcd', '', None)),
         (('abcd', 'a'),  ('', 'bcd', 'a')),
         (('abcd', 'ab'), ('', 'bcd', 'a')),
+        (('abcd', 'eb'), ('a', 'cd', 'b')),
     ])
     def test_split_first(self, input, expected):
         output = split_first(*input)
