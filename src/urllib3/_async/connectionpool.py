@@ -73,7 +73,7 @@ def _add_transport_headers(headers):
     headers['transfer-encoding'] = 'chunked'
 
 
-def _build_context(context, keyfile, certfile, cert_reqs,
+def _build_context(context, keyfile, certfile, cert_reqs, key_password,
                    ca_certs, ca_cert_dir, ssl_version):
     """
     Creates a urllib3 context suitable for a given request based on a
@@ -86,7 +86,8 @@ def _build_context(context, keyfile, certfile, cert_reqs,
         )
     context = merge_context_settings(
         context, keyfile=keyfile, certfile=certfile,
-        cert_reqs=cert_reqs, ca_certs=ca_certs, ca_cert_dir=ca_cert_dir
+        cert_reqs=cert_reqs, key_password=key_password,
+        ca_certs=ca_certs, ca_cert_dir=ca_cert_dir
     )
     return context
 
@@ -678,8 +679,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     If ``assert_hostname`` is False, no verification is done.
 
     The ``key_file``, ``cert_file``, ``cert_reqs``, ``ca_certs``,
-    ``ca_cert_dir``, and ``ssl_version`` are only used if :mod:`ssl` is
-    available and are fed into :meth:`urllib3.util.ssl_wrap_socket` to upgrade
+    ``ca_cert_dir``, ``ssl_version``, ``key_password`` are only used if :mod:`ssl`
+    is available and are fed into :meth:`urllib3.util.ssl_wrap_socket` to upgrade
     the connection socket into an SSL socket.
     """
 
@@ -690,7 +691,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                  block=False, headers=None, retries=None,
                  _proxy=None, _proxy_headers=None,
                  key_file=None, cert_file=None, cert_reqs=None,
-                 ca_certs=None, ssl_version=None,
+                 key_password=None, ca_certs=None, ssl_version=None,
                  assert_hostname=None, assert_fingerprint=None,
                  ca_cert_dir=None, ssl_context=None,
                  server_hostname=None, **conn_kw):
@@ -707,8 +708,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
         self.ssl_context = _build_context(
             ssl_context, keyfile=key_file, certfile=cert_file,
-            cert_reqs=cert_reqs, ca_certs=ca_certs, ca_cert_dir=ca_cert_dir,
-            ssl_version=ssl_version
+            cert_reqs=cert_reqs, key_password=key_password, ca_certs=ca_certs,
+            ca_cert_dir=ca_cert_dir, ssl_version=ssl_version
         )
         self.assert_hostname = assert_hostname or server_hostname
         self.assert_fingerprint = assert_fingerprint
