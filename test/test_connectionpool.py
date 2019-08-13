@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import ssl
 import pytest
 
 from urllib3.base import Response
@@ -25,7 +26,7 @@ from urllib3.exceptions import (
 
 from io import BytesIO
 from socket import error as SocketError
-from ssl import SSLError as BaseSSLError, CERT_REQUIRED
+from ssl import SSLError as BaseSSLError
 
 from dummyserver.server import DEFAULT_CA
 
@@ -344,7 +345,7 @@ class TestConnectionPool(object):
 
     def test_ca_certs_default_cert_required(self):
         with connection_from_url('https://google.com:80', ca_certs=DEFAULT_CA) as pool:
-            assert pool.ssl_context.verify_mode == CERT_REQUIRED
+            assert pool.ssl_context.verify_mode == ssl.CERT_REQUIRED
 
     def test_cleanup_on_extreme_connection_error(self):
         """

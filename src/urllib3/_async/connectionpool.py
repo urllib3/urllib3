@@ -703,9 +703,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         if ssl is None:
             raise SSLError("SSL module is not available")
 
-        if ca_certs and cert_reqs is None:
-            cert_reqs = 'CERT_REQUIRED'
-
         self.ssl_context = _build_context(
             ssl_context, keyfile=key_file, certfile=cert_file,
             cert_reqs=cert_reqs, key_password=key_password, ca_certs=ca_certs,
