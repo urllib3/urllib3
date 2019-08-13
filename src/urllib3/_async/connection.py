@@ -366,7 +366,8 @@ class HTTP1Connection(object):
 
         # XX need to know whether this is the proxy or the final host that
         # we just did a handshake with!
-        check_host = assert_hostname or self._tunnel_host or self._host
+        # Google App Engine's httplib does not define _tunnel_host
+        check_host = assert_hostname or getattr(self, '_tunnel_host', None) or self._host
 
         # Stripping trailing dots from the hostname is important because
         # they indicate that this host is an absolute name (for DNS
@@ -478,7 +479,8 @@ class HTTP1Connection(object):
                 self, "Failed to establish a new connection: %s" % e)
 
         if ssl_context is not None:
-            if self._tunnel_host is not None:
+            # Google App Engine's httplib does not define _tunnel_host
+            if getattr(self, '_tunnel_host', None) is not None:
                 self._tunnel(self._sock)
 
             self._sock = await self._wrap_socket(
