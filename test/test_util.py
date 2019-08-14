@@ -43,7 +43,7 @@ from urllib3.packages import six
 
 from . import clear_warnings
 
-from test import onlyPy3, onlyPy2
+from test import onlyPy3, onlyPy2, onlyBrotlipy, notBrotlipy
 
 # This number represents a time in seconds, it doesn't mean anything in
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller
@@ -299,14 +299,30 @@ class TestUtil(object):
             parse_url(b"https://www.google.com/")
 
     @pytest.mark.parametrize('kwargs, expected', [
-        ({'accept_encoding': True},
-         {'accept-encoding': 'gzip,deflate'}),
+        pytest.param(
+            {'accept_encoding': True},
+            {'accept-encoding': 'gzip,deflate,br'},
+            marks=onlyBrotlipy(),
+        ),
+        pytest.param(
+            {'accept_encoding': True},
+            {'accept-encoding': 'gzip,deflate'},
+            marks=notBrotlipy(),
+        ),
         ({'accept_encoding': 'foo,bar'},
          {'accept-encoding': 'foo,bar'}),
         ({'accept_encoding': ['foo', 'bar']},
          {'accept-encoding': 'foo,bar'}),
-        ({'accept_encoding': True, 'user_agent': 'banana'},
-         {'accept-encoding': 'gzip,deflate', 'user-agent': 'banana'}),
+        pytest.param(
+            {'accept_encoding': True, 'user_agent': 'banana'},
+            {'accept-encoding': 'gzip,deflate,br', 'user-agent': 'banana'},
+            marks=onlyBrotlipy(),
+        ),
+        pytest.param(
+            {'accept_encoding': True, 'user_agent': 'banana'},
+            {'accept-encoding': 'gzip,deflate', 'user-agent': 'banana'},
+            marks=notBrotlipy(),
+        ),
         ({'user_agent': 'banana'},
          {'user-agent': 'banana'}),
         ({'keep_alive': True},

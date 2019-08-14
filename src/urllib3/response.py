@@ -1,2 +1,2 @@
-from ._sync.response import DeflateDecoder, GzipDecoder, HTTPResponse
-__all__ = ['DeflateDecoder', 'GzipDecoder', 'HTTPResponse']
+from ._sync.response import DeflateDecoder, GzipDecoder, HTTPResponse, brotli
+__all__ = ['DeflateDecoder', 'GzipDecoder', 'HTTPResponse', 'brotli']

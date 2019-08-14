@@ -69,6 +69,9 @@ setup(name='urllib3',
       test_suite='test',
       install_requires=["h11 >= 0.8.0"],
       extras_require={
+          'brotli': [
+              'brotlipy>=0.6.0',
+          ],
           'secure': [
               'pyOpenSSL>=0.14',
               'cryptography>=1.3.4',
