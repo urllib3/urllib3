@@ -140,7 +140,7 @@ dictionary in the ``fields`` argument provided to
 JSON
 ~~~~
 
-You can sent JSON a request by specifying the encoded data as the ``body``
+You can send a JSON request by specifying the encoded data as the ``body``
 argument and setting the ``Content-Type`` header when calling
 :meth:`~poolmanager.PoolManager.request`::
 
