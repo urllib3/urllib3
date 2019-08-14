@@ -149,3 +149,18 @@ def test_wrap_socket_default_loads_default_certs(monkeypatch):
     ssl_.ssl_wrap_socket(sock)
 
     context.load_default_certs.assert_called_with()
+
+
+@pytest.mark.parametrize(
+    ["pha", "expected_pha"], [(None, None), (False, True), (True, True)]
+)
+def test_create_urllib3_context_pha(monkeypatch, pha, expected_pha):
+    context = mock.create_autospec(ssl_.SSLContext)
+    context.set_ciphers = mock.Mock()
+    context.options = 0
+    context.post_handshake_auth = pha
+    monkeypatch.setattr(ssl_, "SSLContext", lambda *_, **__: context)
+
+    assert ssl_.create_urllib3_context() is context
+
+    assert context.post_handshake_auth == expected_pha
