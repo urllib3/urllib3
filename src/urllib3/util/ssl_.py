@@ -62,7 +62,7 @@ _IP_ADDRESS_REGEX = re.compile(
 
 try:  # Test for SSL features
     import ssl
-    from ssl import wrap_socket, CERT_NONE, PROTOCOL_SSLv23
+    from ssl import wrap_socket, CERT_REQUIRED, PROTOCOL_SSLv23
     from ssl import HAS_SNI  # Has SNI?
     from ssl import SSLError as BaseSSLError
     from ssl import SSLWantReadError, SSLWantWriteError
@@ -208,7 +208,7 @@ def resolve_cert_reqs(candidate):
     constant which can directly be passed to wrap_socket.
     """
     if candidate is None:
-        return CERT_NONE
+        return CERT_REQUIRED
 
     if isinstance(candidate, str):
         res = getattr(ssl, candidate, None)

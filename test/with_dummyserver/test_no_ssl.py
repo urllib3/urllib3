@@ -29,7 +29,7 @@ class TestHTTPWithoutSSL(HTTPDummyServerTestCase, TestWithoutSSL):
 class TestHTTPSWithoutSSL(HTTPSDummyServerTestCase, TestWithoutSSL):
     def test_simple(self):
         try:
-            pool = urllib3.HTTPSConnectionPool(self.host, self.port)
+            pool = urllib3.HTTPSConnectionPool(self.host, self.port, cert_reqs="NONE")
         except urllib3.exceptions.SSLError as e:
             self.assertIn('SSL module is not available', str(e))
         finally:
