@@ -137,6 +137,9 @@ class SyncSocket(object):
     def set_readable_watch_state(self, enabled):
         pass
 
+    def _version(self):
+        return self._sock.version()
+
     def _getsockopt_tcp_nodelay(self):
         return self._sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
 

@@ -62,7 +62,7 @@ _IP_ADDRESS_REGEX = re.compile(
 
 try:  # Test for SSL features
     import ssl
-    from ssl import wrap_socket, CERT_REQUIRED, PROTOCOL_SSLv23
+    from ssl import wrap_socket, CERT_REQUIRED
     from ssl import HAS_SNI  # Has SNI?
     from ssl import SSLError as BaseSSLError
     from ssl import SSLWantReadError, SSLWantWriteError
@@ -75,6 +75,16 @@ except ImportError:
 
     class SSLWantWriteError(Exception):
         pass
+
+try:  # Platform-specific: Python 3.6
+    from ssl import PROTOCOL_TLS
+    PROTOCOL_SSLv23 = PROTOCOL_TLS
+except ImportError:
+    try:
+        from ssl import PROTOCOL_SSLv23 as PROTOCOL_TLS
+        PROTOCOL_SSLv23 = PROTOCOL_TLS
+    except ImportError:
+        PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
 
 
 try:
@@ -92,30 +102,30 @@ except ImportError:
 # - https://hynek.me/articles/hardening-your-web-servers-ssl-ciphers/
 #
 # The general intent is:
-# - Prefer TLS 1.3 cipher suites
 # - prefer cipher suites that offer perfect forward secrecy (DHE/ECDHE),
 # - prefer ECDHE over DHE for better performance,
 # - prefer any AES-GCM and ChaCha20 over any AES-CBC for better performance and
 #   security,
 # - prefer AES-GCM over ChaCha20 because hardware-accelerated AES is common,
-# - disable NULL authentication, MD5 MACs and DSS for security reasons.
+# - disable NULL authentication, MD5 MACs, DSS, and other
+#   insecure ciphers for security reasons.
+# - NOTE: TLS 1.3 cipher suites are managed through a different interface
+#   not exposed by CPython (yet!) and are enabled by default if they're available.
 DEFAULT_CIPHERS = ':'.join([
-    'TLS13-AES-256-GCM-SHA384',
-    'TLS13-CHACHA20-POLY1305-SHA256',
-    'TLS13-AES-128-GCM-SHA256',
+    'ECDHE+AESGCM',
+    'ECDHE+CHACHA20',
+    'DHE+AESGCM',
+    'DHE+CHACHA20',
     'ECDH+AESGCM',
-    'ECDH+CHACHA20',
     'DH+AESGCM',
-    'DH+CHACHA20',
-    'ECDH+AES256',
-    'DH+AES256',
-    'ECDH+AES128',
+    'ECDH+AES',
     'DH+AES',
     'RSA+AESGCM',
     'RSA+AES',
     '!aNULL',
     '!eNULL',
     '!MD5',
+    '!DSS',
 ])
 
 try:
@@ -224,7 +234,7 @@ def resolve_ssl_version(candidate):
     like resolve_cert_reqs
     """
     if candidate is None:
-        return PROTOCOL_SSLv23
+        return PROTOCOL_TLS
 
     if isinstance(candidate, str):
         res = getattr(ssl, candidate, None)
@@ -270,7 +280,7 @@ def create_urllib3_context(ssl_version=None, cert_reqs=None,
         Constructed SSLContext object with specified options
     :rtype: SSLContext
     """
-    context = SSLContext(ssl_version or ssl.PROTOCOL_SSLv23)
+    context = SSLContext(ssl_version or PROTOCOL_TLS)
 
     context.set_ciphers(ciphers or DEFAULT_CIPHERS)
 

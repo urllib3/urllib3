@@ -733,7 +733,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # First request should fail.
             response = pool.urlopen('GET', '/', retries=0,
                                     preload_content=False,
-                                    timeout=Timeout(connect=1, read=0.01))
+                                    timeout=Timeout(connect=1, read=0.1))
             try:
                 self.assertRaises(ReadTimeoutError, response.read)
             finally:
