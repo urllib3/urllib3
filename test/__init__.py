@@ -8,6 +8,10 @@ import ssl
 import os
 
 import pytest
+try:
+    import brotli
+except ImportError:
+    brotli = None
 
 from urllib3.exceptions import HTTPWarning
 from urllib3.packages import six
@@ -72,6 +76,16 @@ def onlyPy3(test):
             pytest.skip(msg)
         return test(*args, **kwargs)
     return wrapper
+
+
+def onlyBrotlipy():
+    return pytest.mark.skipif(
+        brotli is None, reason='only run if brotlipy is present')
+
+
+def notBrotlipy():
+    return pytest.mark.skipif(
+        brotli is not None, reason='only run if brotlipy is absent')
 
 
 def notSecureTransport(test):

@@ -6,6 +6,11 @@ import logging
 from socket import timeout as SocketTimeout
 from socket import error as SocketError
 
+try:
+    import brotli
+except ImportError:
+    brotli = None
+
 import h11
 
 from .._collections import HTTPHeaderDict
@@ -89,6 +94,18 @@ class GzipDecoder(object):
             self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
 
+if brotli is not None:
+    class BrotliDecoder(object):
+        def __init__(self):
+            self._obj = brotli.Decompressor()
+
+        def __getattr__(self, name):
+            return getattr(self._obj, name)
+
+        def decompress(self, data):
+            return self._obj.decompress(data)
+
+
 class MultiDecoder(object):
     """
     From RFC7231:
@@ -116,6 +133,9 @@ def _get_decoder(mode):
 
     if mode == 'gzip':
         return GzipDecoder()
+
+    if brotli is not None and mode == 'br':
+        return BrotliDecoder()
 
     return DeflateDecoder()
 
@@ -145,6 +165,8 @@ class HTTPResponse(io.IOBase):
     """
 
     CONTENT_DECODERS = ['gzip', 'deflate']
+    if brotli is not None:
+        CONTENT_DECODERS += ['br']
     REDIRECT_STATUSES = [301, 302, 303, 307, 308]
 
     def __init__(self, body='', headers=None, status=0, version=0, reason=None,
@@ -242,21 +264,26 @@ class HTTPResponse(io.IOBase):
                     if e.strip() in self.CONTENT_DECODERS]
                 if len(encodings):
                     self._decoder = _get_decoder(content_encoding)
+    DECODER_ERROR_CLASSES = (IOError, zlib.error)
+    if brotli is not None:
+        DECODER_ERROR_CLASSES += (brotli.Error,)
 
     def _decode(self, data, decode_content, flush_decoder):
         """
         Decode the data passed in and potentially flush the decoder.
         """
+        if not decode_content:
+            return data
+
         try:
-            if decode_content and self._decoder:
+            if self._decoder:
                 data = self._decoder.decompress(data)
-        except (IOError, zlib.error) as e:
+        except self.DECODER_ERROR_CLASSES as e:
             content_encoding = self.headers.get('content-encoding', '').lower()
             raise DecodeError(
                 "Received response with content-encoding: %s, but "
                 "failed to decode it." % content_encoding, e)
-
-        if flush_decoder and decode_content:
+        if flush_decoder:
             data += self._flush_decoder()
 
         return data

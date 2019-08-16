@@ -44,6 +44,10 @@ dev (master)
 
 * Require and validate certificates by default when using HTTPS (Pull #1507)
 
+* Added support for Brotli content encoding. It is enabled automatically if
+  ``brotlipy`` package is installed which can be requested with
+  ``urllib3[brotli]`` extra. (Pull #1532)
+
 * ... [Short description of non-trivial change.] (Issue #)
 
 

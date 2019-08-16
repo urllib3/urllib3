@@ -5,9 +5,11 @@ from io import BytesIO, BufferedReader
 import pytest
 
 from urllib3.base import Response
-from urllib3.response import HTTPResponse
+from urllib3.response import HTTPResponse, brotli
 from urllib3.exceptions import DecodeError
 from urllib3.util.retry import Retry
+
+from test import onlyBrotlipy
 
 from base64 import b64decode
 
@@ -199,6 +201,35 @@ class TestResponse(object):
         r = HTTPResponse(fp, headers={'content-encoding': 'gzip'})
 
         assert r.data == b'foofoofoo'
+
+    @onlyBrotlipy()
+    def test_decode_brotli(self):
+        data = brotli.compress(b'foo')
+
+        fp = BytesIO(data)
+        r = HTTPResponse(fp, headers={'content-encoding': 'br'})
+        assert r.data == b'foo'
+
+    @onlyBrotlipy()
+    def test_chunked_decoding_brotli(self):
+        data = brotli.compress(b'foobarbaz')
+
+        fp = BytesIO(data)
+        r = HTTPResponse(
+            fp, headers={'content-encoding': 'br'}, preload_content=False)
+
+        ret = b''
+        for _ in range(100):
+            ret += r.read(1)
+            if r.closed:
+                break
+        assert ret == b'foobarbaz'
+
+    @onlyBrotlipy()
+    def test_decode_brotli_error(self):
+        fp = BytesIO(b'foo')
+        with pytest.raises(DecodeError):
+            HTTPResponse(fp, headers={'content-encoding': 'br'})
 
     def test_multi_decoding_deflate_deflate(self):
         data = zlib.compress(zlib.compress(b'foo'))

@@ -27,8 +27,8 @@ env:
     - GAE_SDK_PATH=${HOME}/.cache/google_appengine
     - PYTHONWARNINGS=always::DeprecationWarning
 
-    - PYPI_USERNAME=shazow
-    - secure: ...  # PYPI_PASSWORD
+    - PYPI_USERNAME=urllib3
+    # PYPI_PASSWORD is set in Travis control panel.
 
   matrix:
     # - TOXENV=gae
@@ -42,6 +42,8 @@ matrix:
       env: TOXENV=docs
     - python: 2.7
       env: TOXENV=py27
+    - python: 2.7
+      env: TOXENV=py27-nobrotli
     - python: 3.4
       env: TOXENV=py34
     - python: 3.5
@@ -50,6 +52,10 @@ matrix:
       env: TOXENV=py36
     - python: 3.7
       env: TOXENV=py37
+      dist: xenial
+      sudo: required
+    - python: 3.7
+      env: TOXENV=py37-nobrotli
       dist: xenial
       sudo: required
     - python: 3.8-dev
