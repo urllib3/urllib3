@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from email.errors import StartBoundaryNotFoundDefect, MultipartInvariantViolationDefect
 from ..packages.six.moves import http_client as httplib
 
 from ..exceptions import HeaderParsingError
@@ -66,6 +67,20 @@ def assert_header_parsing(headers):
 
             if isinstance(payload, (bytes, str)):
                 unparsed_data = payload
+    if defects:
+        # See: https://github.com/urllib3/urllib3/issues/800
+        # When parsing the headers, httplib is telling to parse it as a complete response.
+        # Since we only care about parsing the headers, I don't think we would ever care about these exceptions.
+        new_defects = []
+        for parse_error in defects:
+            if isinstance(parse_error, StartBoundaryNotFoundDefect):
+                # Description from the docs: The claimed start boundary was never found.
+                continue
+            if isinstance(parse_error, MultipartInvariantViolationDefect):
+                # Description from the docs: A message claimed to be a multipart but no subparts were found.
+                continue
+            new_defects.append(parse_error)
+        defects = new_defects
 
     if defects or unparsed_data:
         raise HeaderParsingError(defects=defects, unparsed_data=unparsed_data)
