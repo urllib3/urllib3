@@ -4,11 +4,11 @@ set -exo pipefail
 
 if [[ "$(uname -s)" == 'Darwin' ]]; then
     case "${TOXENV}" in
-        py27) MACPYTHON=2.7.15 ;;
-        py34) MACPYTHON=3.4.4 ;;
-        py35) MACPYTHON=3.5.4 ;;
-        py36) MACPYTHON=3.6.7 ;;
-        py37) MACPYTHON=3.7.1 ;;
+        py27) MACPYTHON=2.7.16 ;;
+        py34) MACPYTHON=3.4.4 ;;  # last binary release
+        py35) MACPYTHON=3.5.4 ;;  # last binary release
+        py36) MACPYTHON=3.6.8 ;;  # last binary release
+        py37) MACPYTHON=3.7.4 ;;
     esac
 
     MINOR=$(echo $MACPYTHON | cut -d. -f1,2)
