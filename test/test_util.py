@@ -814,3 +814,17 @@ class TestUtil(object):
     def test_assert_header_parsing_throws_typeerror_with_non_headers(self, headers):
         with pytest.raises(TypeError):
             assert_header_parsing(headers)
+
+    @pytest.mark.parametrize("headers", [
+        b'Content-Type: multipart/encrypted;protocol="application/'
+        b'HTTP-SPNEGO-session-encrypted";boundary="Encrypted Boundary"'
+        b'\nServer: Microsoft-HTTPAPI/2.0\nDate: Fri, 16 Aug 2019 19:28:01 GMT'
+        b'\nContent-Length: 1895\n\n\n'])
+    def test_assert_header_parsing_success(self, headers):
+        if six.PY2:
+            pytest.skip("Error does not show up on Python2")
+        from http import client  # Does not exist in Python 2
+        header_msg = io.BytesIO()
+        header_msg.write(headers)
+        header_msg.seek(0)
+        assert_header_parsing(client.parse_headers(header_msg))
