@@ -75,6 +75,9 @@ TLSv1_1_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLSv1_1", None)
 TLSv1_2_CERTS = DEFAULT_CERTS.copy()
 TLSv1_2_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLSv1_2", None)
 
+TLSv1_3_CERTS = DEFAULT_CERTS.copy()
+TLSv1_3_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLS", None)
+
 
 class TestHTTPS(HTTPSDummyServerTestCase):
     tls_protocol_name = None
@@ -721,6 +724,7 @@ class TestHTTPS_TLSv1_2(TestHTTPS):
 @requiresTLSv1_3()
 class TestHTTPS_TLSv1_3(TestHTTPS):
     tls_protocol_name = "TLSv1.3"
+    certs = TLSv1_3_CERTS
 
 
 class TestHTTPS_NoSAN(HTTPSDummyServerTestCase):
