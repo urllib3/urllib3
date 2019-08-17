@@ -4,11 +4,11 @@ set -exo pipefail
 
 if [[ "$(uname -s)" == 'Darwin' ]]; then
     case "${TOXENV}" in
-        py27) MACPYTHON=2.7.15 ;;
-        py34) MACPYTHON=3.4.4 ;;
-        py35) MACPYTHON=3.5.4 ;;
-        py36) MACPYTHON=3.6.7 ;;
-        py37) MACPYTHON=3.7.1 ;;
+        py27) MACPYTHON=2.7.16 ;;
+        py34) MACPYTHON=3.4.4 ;;  # last binary release
+        py35) MACPYTHON=3.5.4 ;;  # last binary release
+        py36) MACPYTHON=3.6.8 ;;  # last binary release
+        py37) MACPYTHON=3.7.4 ;;
     esac
 
     MINOR=$(echo $MACPYTHON | cut -d. -f1,2)
@@ -20,6 +20,9 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     # The pip in older MacPython releases doesn't support a new enough TLS
     curl https://bootstrap.pypa.io/get-pip.py | sudo $PYTHON_EXE
     $PYTHON_EXE -m pip install virtualenv
+
+    # Enable TLS 1.3 on macOS
+    sudo defaults write /Library/Preferences/com.apple.networkd tcp_connect_enable_tls13 1
 else
     python -m pip install virtualenv
 fi
