@@ -1,5 +1,6 @@
 language: python
 sudo: false
+stage: test
 
 before_install:
   - env
@@ -31,6 +32,7 @@ env:
     # PYPI_PASSWORD is set in Travis control panel.
 
   matrix:
+    # - TOXENV=flake8-py3
     # - TOXENV=gae
     - TOXENV=docs
 
@@ -86,23 +88,25 @@ matrix:
       os: osx
       env: TOXENV=py37
 
-    # TODO: make these integration tests
     # - python: 2.7
     #   env: DOWNSTREAM=requests
+    #   stage: integration
 
     # - python: 3.7
     #   env: DOWNSTREAM=requests
     #   dist: xenial
     #   sudo: required
+    #   stage: integration
 
     # - python: 2.7
     #   env: DOWNSTREAM=botocore
+    #   stage: integration
 
     # - python: 3.7
     #   env: DOWNSTREAM=botocore
     #   dist: xenial
     #   sudo: required
-
+    #   stage: integration
 
   allow_failures:
     - python: 3.6
@@ -119,6 +123,13 @@ matrix:
     - language: generic
       os: osx
       env: TOXENV=py35
+
+stages:
+  - test
+
+  # Run integration tests for release candidates
+  - name: integration
+    if: type = pull_request AND head_branch =~ ^release-[\d.]+$
 
 deploy:
   - provider: script

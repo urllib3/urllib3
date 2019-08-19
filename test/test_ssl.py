@@ -1,4 +1,7 @@
 import mock
+import platform
+import sys
+
 import pytest
 from urllib3.util import ssl_
 from urllib3.exceptions import SNIMissingWarning
@@ -88,3 +91,42 @@ def test_create_urllib3_context_set_ciphers(monkeypatch, ciphers, expected_ciphe
 
     assert context.set_ciphers.call_count == 1
     assert context.set_ciphers.call_args == mock.call(expected_ciphers)
+
+
+def test_wrap_socket_given_context_no_load_default_certs():
+    context = mock.create_autospec(ssl_.SSLContext)
+    context.load_default_certs = mock.Mock()
+
+    sock = mock.Mock()
+    ssl_.ssl_wrap_socket(sock, ssl_context=context)
+
+    context.load_default_certs.assert_not_called()
+
+
+def test_wrap_socket_given_ca_certs_no_load_default_certs(monkeypatch):
+    if platform.python_implementation() == 'PyPy' and sys.version_info[0] == 2:
+        pytest.xfail("test is expected to fail with PyPy 2")
+    context = mock.create_autospec(ssl_.SSLContext)
+    context.load_default_certs = mock.Mock()
+    context.options = 0
+
+    monkeypatch.setattr(ssl_, "SSLContext", lambda *_, **__: context)
+
+    sock = mock.Mock()
+    ssl_.ssl_wrap_socket(sock, ca_certs="/tmp/fake-file")
+
+    context.load_default_certs.assert_not_called()
+    context.load_verify_locations.assert_called_with("/tmp/fake-file", None)
+
+
+def test_wrap_socket_default_loads_default_certs(monkeypatch):
+    context = mock.create_autospec(ssl_.SSLContext)
+    context.load_default_certs = mock.Mock()
+    context.options = 0
+
+    monkeypatch.setattr(ssl_, "SSLContext", lambda *_, **__: context)
+
+    sock = mock.Mock()
+    ssl_.ssl_wrap_socket(sock)
+
+    context.load_default_certs.assert_called_with()

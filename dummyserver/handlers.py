@@ -17,6 +17,7 @@ from datetime import timedelta
 
 from urllib3.packages.six.moves.http_client import responses
 from urllib3.packages.six.moves.urllib.parse import urlsplit
+from urllib3.packages.six import binary_type
 
 log = logging.getLogger(__name__)
 
@@ -157,10 +158,15 @@ class TestingApp(RequestHandler):
             return Response("Wrong size: %d != %d" %
                             (size, len(data)), status='400 Bad Request')
 
-        if filename != file_['filename']:
-            return Response("Wrong filename: %s != %s" %
-                            (filename, file_.filename),
-                            status='400 Bad Request')
+        got_filename = file_['filename']
+        if(isinstance(got_filename, binary_type)):
+            got_filename = got_filename.decode('utf-8')
+
+        # Tornado can leave the trailing \n in place on the filename.
+        if filename != got_filename:
+            return Response(
+                u"Wrong filename: %s != %s" % (filename, file_.filename),
+                status='400 Bad Request')
 
         return Response()
 
@@ -304,49 +310,3 @@ class TestingApp(RequestHandler):
 
     def shutdown(self, request):
         sys.exit()
-
-
-# RFC2231-aware replacement of internal tornado function
-def _parse_header(line):
-    r"""Parse a Content-type like header.
-
-    Return the main content-type and a dictionary of options.
-
-    >>> d = _parse_header("CD: fd; foo=\"bar\"; file*=utf-8''T%C3%A4st")[1]
-    >>> d['file'] == 'T\u00e4st'
-    True
-    >>> d['foo']
-    'bar'
-    """
-    import tornado.httputil
-    import email.utils
-    from urllib3.packages import six
-    if not six.PY3:
-        line = line.encode('utf-8')
-    parts = tornado.httputil._parseparam(';' + line)
-    key = next(parts)
-    # decode_params treats first argument special, but we already stripped key
-    params = [('Dummy', 'value')]
-    for p in parts:
-        i = p.find('=')
-        if i >= 0:
-            name = p[:i].strip().lower()
-            value = p[i + 1:].strip()
-            params.append((name, value))
-    params = email.utils.decode_params(params)
-    params.pop(0)  # get rid of the dummy again
-    pdict = {}
-    for name, value in params:
-        value = email.utils.collapse_rfc2231_value(value)
-        if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
-            value = value[1:-1]
-        pdict[name] = value
-    return key, pdict
-
-
-# TODO: make the following conditional as soon as we know a version
-#       which does not require this fix.
-#       See https://github.com/facebook/tornado/issues/868
-if True:
-    import tornado.httputil
-    tornado.httputil._parse_header = _parse_header

@@ -34,8 +34,6 @@ dev (master)
 
 * Upgraded ``urllib3.utils.parse_url()`` to be RFC 3986 compliant. (Pull #1487)
 
-* Remove Authorization header regardless of case when redirecting to cross-site. (Issue #1510)
-
 * Added support for ``key_password`` for ``HTTPSConnectionPool`` to use
   encrypted ``key_file`` without creating your own ``SSLContext`` object. (Pull #1489)
 
@@ -54,9 +52,20 @@ dev (master)
 * Drop ciphers using DSS key exchange from default TLS cipher suites.
   Improve default ciphers when using SecureTransport. (Pull #1496)
 
-* Add support for IPv6 addresses in subjectAltName section of certificates. (Issue #1269)
+* Switched the default multipart header encoder from RFC 2231 to HTML 5 working draft. (Issue #303, PR #1492)
 
 * ... [Short description of non-trivial change.] (Issue #)
+
+
+1.24.2 (2019-04-17)
+-------------------
+
+* Don't load system certificates by default when any other ``ca_certs``, ``ca_certs_dir`` or
+  ``ssl_context`` parameters are specified.
+
+* Remove Authorization header regardless of case when redirecting to cross-site. (Issue #1510)
+
+* Add support for IPv6 addresses in subjectAltName section of certificates. (Issue #1269)
 
 
 1.24.1 (2018-11-02)
