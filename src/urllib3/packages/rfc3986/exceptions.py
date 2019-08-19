@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Exceptions module for rfc3986."""
 
+from . import compat
+
 
 class RFC3986Exception(Exception):
     """Base class for all rfc3986 exception classes."""
@@ -14,7 +16,8 @@ class InvalidAuthority(RFC3986Exception):
     def __init__(self, authority):
         """Initialize the exception with the invalid authority."""
         super(InvalidAuthority, self).__init__(
-            "The authority ({0}) is not valid.".format(authority))
+            u"The authority ({0}) is not valid.".format(
+                compat.to_str(authority)))
 
 
 class InvalidPort(RFC3986Exception):
@@ -109,3 +112,7 @@ class InvalidComponentsError(ValidationError):
             uri,
             self.components,
         )
+
+
+class MissingDependencyError(RFC3986Exception):
+    """Exception raised when an IRI is encoded without the 'idna' module."""

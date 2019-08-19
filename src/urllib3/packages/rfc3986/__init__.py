@@ -22,6 +22,8 @@ See http://rfc3986.readthedocs.io/ for detailed documentation.
 :license: Apache v2.0, see LICENSE for details
 """
 
+from .api import iri_reference
+from .api import IRIReference
 from .api import is_valid_uri
 from .api import normalize_uri
 from .api import uri_reference
@@ -34,14 +36,16 @@ __author__ = 'Ian Stapleton Cordasco'
 __author_email__ = 'graffatcolmingov@gmail.com'
 __license__ = 'Apache v2.0'
 __copyright__ = 'Copyright 2014 Rackspace'
-__version__ = '1.2.0'
+__version__ = '1.3.1'
 
 __all__ = (
     'ParseResult',
     'URIReference',
+    'IRIReference',
     'is_valid_uri',
     'normalize_uri',
     'uri_reference',
+    'iri_reference',
     'urlparse',
     '__title__',
     '__author__',

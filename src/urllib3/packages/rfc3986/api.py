@@ -19,6 +19,7 @@ This module defines functions and provides access to the public attributes
 and classes of rfc3986.
 """
 
+from .iri import IRIReference
 from .parseresult import ParseResult
 from .uri import URIReference
 
@@ -35,6 +36,20 @@ def uri_reference(uri, encoding='utf-8'):
     :rtype: :class:`URIReference`
     """
     return URIReference.from_string(uri, encoding)
+
+
+def iri_reference(iri, encoding='utf-8'):
+    """Parse a IRI string into an IRIReference.
+
+    This is a convenience function. You could achieve the same end by using
+    ``IRIReference.from_string(iri)``.
+
+    :param str iri: The IRI which needs to be parsed into a reference.
+    :param str encoding: The encoding of the string provided
+    :returns: A parsed IRI
+    :rtype: :class:`IRIReference`
+    """
+    return IRIReference.from_string(iri, encoding)
 
 
 def is_valid_uri(uri, encoding='utf-8', **kwargs):

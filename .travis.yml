@@ -1,6 +1,7 @@
 language: python
 sudo: false
 stage: test
+dist: xenial
 
 before_install:
   - env
@@ -46,6 +47,8 @@ matrix:
       env: TOXENV=py27
     - python: 2.7
       env: TOXENV=py27-nobrotli
+    - python: 2.7
+      env: TOXENV=py27-google-brotli
     - python: 3.4
       env: TOXENV=py34
     - python: 3.5
@@ -54,23 +57,15 @@ matrix:
       env: TOXENV=py36
     - python: 3.7
       env: TOXENV=py37
-      dist: xenial
-      sudo: required
     - python: 3.7
       env: TOXENV=py37-nobrotli
-      dist: xenial
-      sudo: required
+    - python: 3.7
+      env: TOXENV=py37-google-brotli
     - python: 3.8-dev
       env: TOXENV=py38
-      dist: xenial
-      sudo: required
     - python: pypy2.7-7.1.1
-      dist: xenial
-      sudo: required
       env: TOXENV=pypy
     - python: pypy3.6-7.1.1
-      dist: xenial
-      sudo: required
       env: TOXENV=pypy3
     - language: generic
       os: osx
@@ -94,8 +89,6 @@ matrix:
 
     # - python: 3.7
     #   env: DOWNSTREAM=requests
-    #   dist: xenial
-    #   sudo: required
     #   stage: integration
 
     # - python: 2.7
@@ -104,9 +97,12 @@ matrix:
 
     # - python: 3.7
     #   env: DOWNSTREAM=botocore
-    #   dist: xenial
-    #   sudo: required
     #   stage: integration
+
+    - python: 3.7
+      stage: deploy
+      script:
+        - ./_travis/deploy.sh
 
   allow_failures:
     - python: 3.6
@@ -125,34 +121,13 @@ matrix:
       env: TOXENV=py35
 
 stages:
-  - test
+  - name: test
+    if: tag IS blank
 
   # Run integration tests for release candidates
   - name: integration
-    if: type = pull_request AND head_branch =~ ^release-[\d.]+$
+    if: type = pull_request AND head_branch =~ ^release-[\d.]+$ AND tag IS blank
 
-deploy:
-  - provider: script
-    script: bash _travis/deploy.sh
-    skip_cleanup: true
-    on:
-      branch: master
-      repo: urllib3/urllib3
-      tags: true
-      python: 3.7
-
-  - provider: releases
-    api_key:
-      secure: ...  # GitHub access token
-    name: "$TRAVIS_TAG"
-    body: "Release $TRAVIS_TAG"
-    draft: true
-    skip_cleanup: true
-    file_glob: true
-    file: dist/*
-    overwrite: true
-    on:
-      branch: master
-      repo: urllib3/urllib3
-      tags: true
-      python: 3.7
+  # Deploy on any tags
+  - name: deploy
+    if: branch = master AND tag IS present

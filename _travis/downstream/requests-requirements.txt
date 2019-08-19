@@ -1,0 +1,9 @@
+pytest-mock
+pysocks
+httpbin
+
+# kennethreitz/requests#5049
+pytest<4.1
+
+# kennethreitz/requests#5004
+pytest-httpbin==0.3.0
