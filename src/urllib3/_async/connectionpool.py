@@ -522,7 +522,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         :param \\**response_kw:
             Additional parameters are passed to
-            :meth:`urllib3.response.HTTPResponse.from_httplib`
+            :meth:`urllib3.response.HTTPResponse.from_base`
         """
         if headers is None:
             headers = self.headers
