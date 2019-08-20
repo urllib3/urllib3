@@ -4,7 +4,6 @@ from urllib3._collections import (
 )
 import pytest
 
-from urllib3.exceptions import InvalidHeader
 from urllib3.packages import six
 xrange = six.moves.xrange
 
@@ -333,38 +332,3 @@ class TestHTTPHeaderDict(object):
             del d[3]
         with pytest.raises(Exception):
             HTTPHeaderDict({3: 3})
-
-    @pytest.mark.skipif(six.PY3, reason="python3 has a different internal header implementation")
-    def test_from_httplib_py2(self):
-        msg = """
-Server: nginx
-Content-Type: text/html; charset=windows-1251
-Connection: keep-alive
-X-Some-Multiline: asdf
- asdf\t
-\t asdf
-Set-Cookie: bb_lastvisit=1348253375; expires=Sat, 21-Sep-2013 18:49:35 GMT; path=/
-Set-Cookie: bb_lastactivity=0; expires=Sat, 21-Sep-2013 18:49:35 GMT; path=/
-www-authenticate: asdf
-www-authenticate: bla
-
-"""
-        buffer = six.moves.StringIO(msg.lstrip().replace('\n', '\r\n'))
-        msg = six.moves.http_client.HTTPMessage(buffer)
-        d = HTTPHeaderDict.from_httplib(msg)
-        assert d['server'] == 'nginx'
-        cookies = d.getlist('set-cookie')
-        assert len(cookies) == 2
-        assert cookies[0].startswith("bb_lastvisit")
-        assert cookies[1].startswith("bb_lastactivity")
-        assert d['x-some-multiline'] == 'asdf asdf asdf'
-        assert d['www-authenticate'] == 'asdf, bla'
-        assert d.getlist('www-authenticate') == ['asdf', 'bla']
-        with_invalid_multiline = """\tthis-is-not-a-header: but it has a pretend value
-Authorization: Bearer 123
-
-"""
-        buffer = six.moves.StringIO(with_invalid_multiline.replace('\n', '\r\n'))
-        msg = six.moves.http_client.HTTPMessage(buffer)
-        with pytest.raises(InvalidHeader):
-            HTTPHeaderDict.from_httplib(msg)
