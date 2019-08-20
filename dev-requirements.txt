@@ -1,6 +1,5 @@
 mock==2.0.0
 coverage~=4.5
-tox==2.9.1
 wheel==0.30.0
 tornado==5.1.1
 PySocks==1.6.8
