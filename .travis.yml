@@ -26,63 +26,63 @@ notifications:
 
 env:
   global:
-    - GAE_SDK_PATH=${HOME}/.cache/google_appengine
     - PYTHONWARNINGS=always::DeprecationWarning
 
     - PYPI_USERNAME=urllib3
     # PYPI_PASSWORD is set in Travis control panel.
 
-  matrix:
-    # - TOXENV=flake8-py3
-    # - TOXENV=gae
-    - TOXENV=docs
-
 matrix:
   include:
+    # Lint & documentation.
     - python: 3.6
-      env: TOXENV=flake8-py3
+      env: NOX_SESSION=lint
     - python: 3.6
-      env: TOXENV=docs
-    - python: 2.7
-      env: TOXENV=py27
-    - python: 2.7
-      env: TOXENV=py27-nobrotli
-    - python: 2.7
-      env: TOXENV=py27-google-brotli
-    - python: 3.4
-      env: TOXENV=py34
-    - python: 3.5
-      env: TOXENV=py35
-    - python: 3.6
-      env: TOXENV=py36
-    - python: 3.7
-      env: TOXENV=py37
-    - python: 3.7
-      env: TOXENV=py37-nobrotli
-    - python: 3.7
-      env: TOXENV=py37-google-brotli
-    - python: 3.8-dev
-      env: TOXENV=py38
-    - python: pypy2.7-7.1.1
-      env: TOXENV=pypy
-    - python: pypy3.6-7.1.1
-      env: TOXENV=pypy3
-    - language: generic
-      os: osx
-      env: TOXENV=py27
-    - language: generic
-      os: osx
-      env: TOXENV=py34
-    - language: generic
-      os: osx
-      env: TOXENV=py35
-    - language: generic
-      os: osx
-      env: TOXENV=py36
-    - language: generic
-      os: osx
-      env: TOXENV=py37
+      env: NOX_SESSION=docs
 
+    # Unit tests
+    - python: 2.7
+      env: NOX_SESSION=test-2.7
+    - python: 3.4
+      env: NOX_SESSION=test-3.4
+    - python: 3.5
+      env: NOX_SESSION=test-3.5
+    - python: 3.6
+      env: NOX_SESSION=test-3.6
+    - python: 3.7
+      env: NOX_SESSION=test-3.7
+    - python: 3.8-dev
+      env: NOX_SESSION=test-3.8
+    - python: pypy2.7-6.0
+      env: NOX_SESSION=test-pypy
+    - python: pypy3.5-6.0
+      env: NOX_SESSION=test-pypy
+
+    # Extras
+    # - python: 2.7
+    #   env: NOX_SESSION=app_engine GAE_SDK_PATH=${HOME}/.cache/google_appengine
+    - python: 2.7
+      env: NOX_SESSION=google_brotli-2
+    - python: 3.7
+      env: NOX_SESSION=google_brotli-3
+
+    # OS X unit tests.
+    - language: generic
+      os: osx
+      env: NOX_SESSION=test-2.7
+    - language: generic
+      os: osx
+      env: NOX_SESSION=test-3.4
+    - language: generic
+      os: osx
+      env: NOX_SESSION=test-3.5
+    - language: generic
+      os: osx
+      env: NOX_SESSION=test-3.6
+    - language: generic
+      os: osx
+      env: NOX_SESSION=test-3.7
+
+    # Downstream integration tests.
     # - python: 2.7
     #   env: DOWNSTREAM=requests
     #   stage: integration
@@ -106,19 +106,19 @@ matrix:
 
   allow_failures:
     - python: 3.6
-      env: TOXENV=docs
+      env: NOX_SESSION=docs
     - python: 3.4
-      env: TOXENV=py34
+      env: NOX_SESSION=test-3.4
     - language: generic
       os: osx
-      env: TOXENV=py34
+      env: NOX_SESSION=test-3.4
     # MacPython 3.5 only supports TLS 1.1 by default, which fails whenever
     # easy_install fetchs packages, which is required by Twisted. Giving up on
     # testing MacPython 3.5 on Travis for this reason.
     # https://github.com/tox-dev/tox/issues/809#issuecomment-443436586
     - language: generic
       os: osx
-      env: TOXENV=py35
+      env: NOX_SESSION=test-3.5
 
 stages:
   - name: test
