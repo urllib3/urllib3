@@ -4,7 +4,10 @@ from twisted.internet import protocol, reactor as default_reactor, ssl
 from twisted.internet.interfaces import IHandshakeListener
 from twisted.internet.endpoints import HostnameEndpoint, connectProtocol
 from twisted.internet.defer import (
-    Deferred, DeferredList, CancelledError, ensureDeferred,
+    Deferred,
+    DeferredList,
+    CancelledError,
+    ensureDeferred,
 )
 from zope.interface import implementer
 
@@ -18,12 +21,14 @@ class TwistedBackend:
     def __init__(self, reactor=None):
         self._reactor = reactor or default_reactor
 
-    async def connect(self, host, port, connect_timeout,
-                      source_address=None, socket_options=None):
+    async def connect(
+        self, host, port, connect_timeout, source_address=None, socket_options=None
+    ):
         # HostnameEndpoint only supports setting source host, not source port
         if source_address is not None:
             raise NotImplementedError(
-                "twisted backend doesn't support setting source_address")
+                "twisted backend doesn't support setting source_address"
+            )
 
         # factory = protocol.Factory.forProtocol(TwistedSocketProtocol)
         endpoint = HostnameEndpoint(self._reactor, host, port)
@@ -36,7 +41,8 @@ class TwistedBackend:
                     protocol.transport.setTcpNoDelay(opt[2])
                 else:
                     raise NotImplementedError(
-                        "unrecognized socket option for twisted backend")
+                        "unrecognized socket option for twisted backend"
+                    )
         return TwistedSocket(protocol)
 
 
@@ -85,6 +91,7 @@ class TwistedSocketProtocol(protocol.Protocol):
             assert self._events[event] is d
             del self._events[event]
             return obj
+
         d.addBoth(cleanup)
 
         self._events[event] = d
@@ -176,13 +183,9 @@ class TwistedSocket:
         if not x509:
             return x509
         if binary_form:
-            return OpenSSL.crypto.dump_certificate(
-                OpenSSL.crypto.FILETYPE_ASN1,
-                x509)
+            return OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_ASN1, x509)
         return {
-            "subject": (
-                (("commonName", x509.get_subject().CN),),
-            ),
+            "subject": ((("commonName", x509.get_subject().CN),),),
             "subjectAltName": get_subj_alt_name(x509),
         }
 
@@ -190,7 +193,8 @@ class TwistedSocket:
         return await self._protocol.receive_some()
 
     async def send_and_receive_for_a_while(
-            self, produce_bytes, consume_bytes, read_timeout):
+        self, produce_bytes, consume_bytes, read_timeout
+    ):
         async def sender():
             while True:
                 outgoing = await produce_bytes()

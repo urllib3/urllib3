@@ -30,6 +30,7 @@ class Request(object):
     changing them as necessary. The low-level layers know how to send these
     objects.
     """
+
     def __init__(self, method, target, headers=None, body=None):
         #: The HTTP method in use. Must be a byte string.
         self.method = method
@@ -63,7 +64,7 @@ class Request(object):
         do not duplicate the host header: if there already is one, we just use
         that one.
         """
-        if b'host' not in self.headers:
+        if b"host" not in self.headers:
             # We test against a sentinel object here to forcibly always insert
             # the port for schemes we don't understand.
             if port is DEFAULT_PORTS.get(scheme, object()):
@@ -83,6 +84,7 @@ class Response(object):
     of urllib3: it's just a simple object that just exposes the lowest-level
     HTTP semantics to allow processing by the higher levels.
     """
+
     def __init__(self, status_code, headers, body, version):
         #: The HTTP status code of the response.
         self.status_code = status_code

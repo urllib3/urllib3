@@ -12,11 +12,15 @@ BUFSIZE = 65536
 
 
 class SyncBackend(object):
-    def connect(self, host, port, connect_timeout,
-                source_address=None, socket_options=None):
+    def connect(
+        self, host, port, connect_timeout, source_address=None, socket_options=None
+    ):
         conn = create_connection(
-            (host, port), connect_timeout,
-            source_address=source_address, socket_options=socket_options)
+            (host, port),
+            connect_timeout,
+            source_address=source_address,
+            socket_options=socket_options,
+        )
         return SyncSocket(conn)
 
 
@@ -33,8 +37,8 @@ class SyncSocket(object):
     def start_tls(self, server_hostname, ssl_context):
         self._sock.setblocking(True)
         wrapped = ssl_wrap_socket(
-            self._sock,
-            server_hostname=server_hostname, ssl_context=ssl_context)
+            self._sock, server_hostname=server_hostname, ssl_context=ssl_context
+        )
         wrapped.setblocking(False)
         return SyncSocket(wrapped)
 
@@ -45,8 +49,8 @@ class SyncSocket(object):
     def _wait(self, readable, writable, timeout=None):
         assert readable or writable
         if not self._wait_for_socket(
-                self._sock, read=readable, write=writable,
-                timeout=timeout):
+            self._sock, read=readable, write=writable, timeout=timeout
+        ):
             raise socket.timeout()  # XX use a backend-agnostic exception
 
     def receive_some(self, read_timeout):
@@ -63,8 +67,7 @@ class SyncSocket(object):
                 else:
                     raise
 
-    def send_and_receive_for_a_while(
-            self, produce_bytes, consume_bytes, read_timeout):
+    def send_and_receive_for_a_while(self, produce_bytes, consume_bytes, read_timeout):
         outgoing_finished = False
         outgoing = b""
         try:

@@ -45,15 +45,9 @@ class Validator(object):
 
     """
 
-    COMPONENT_NAMES = frozenset([
-        'scheme',
-        'userinfo',
-        'host',
-        'port',
-        'path',
-        'query',
-        'fragment',
-    ])
+    COMPONENT_NAMES = frozenset(
+        ["scheme", "userinfo", "host", "port", "path", "query", "fragment"]
+    )
 
     def __init__(self):
         """Initialize our default validations."""
@@ -62,13 +56,13 @@ class Validator(object):
         self.allowed_ports = set()
         self.allow_password = True
         self.required_components = {
-            'scheme': False,
-            'userinfo': False,
-            'host': False,
-            'port': False,
-            'path': False,
-            'query': False,
-            'fragment': False,
+            "scheme": False,
+            "userinfo": False,
+            "host": False,
+            "port": False,
+            "path": False,
+            "query": False,
+            "fragment": False,
         }
         self.validated_components = self.required_components.copy()
 
@@ -165,12 +159,8 @@ class Validator(object):
         components = [c.lower() for c in components]
         for component in components:
             if component not in self.COMPONENT_NAMES:
-                raise ValueError(
-                    '"{}" is not a valid component'.format(component)
-                )
-        self.validated_components.update({
-            component: True for component in components
-        })
+                raise ValueError('"{}" is not a valid component'.format(component))
+        self.validated_components.update({component: True for component in components})
         return self
 
     def require_presence_of(self, *components):
@@ -190,12 +180,8 @@ class Validator(object):
         components = [c.lower() for c in components]
         for component in components:
             if component not in self.COMPONENT_NAMES:
-                raise ValueError(
-                    '"{}" is not a valid component'.format(component)
-                )
-        self.required_components.update({
-            component: True for component in components
-        })
+                raise ValueError('"{}" is not a valid component'.format(component))
+        self.required_components.update({component: True for component in components})
         return self
 
     def validate(self, uri):
@@ -235,9 +221,9 @@ class Validator(object):
         if validated_components:
             ensure_components_are_valid(uri, validated_components)
 
-        ensure_one_of(self.allowed_schemes, uri, 'scheme')
-        ensure_one_of(self.allowed_hosts, uri, 'host')
-        ensure_one_of(self.allowed_ports, uri, 'port')
+        ensure_one_of(self.allowed_schemes, uri, "scheme")
+        ensure_one_of(self.allowed_hosts, uri, "host")
+        ensure_one_of(self.allowed_ports, uri, "port")
 
 
 def check_password(uri):
@@ -245,7 +231,7 @@ def check_password(uri):
     userinfo = uri.userinfo
     if not userinfo:
         return
-    credentials = userinfo.split(':', 1)
+    credentials = userinfo.split(":", 1)
     if len(credentials) <= 1:
         return
     raise exceptions.PasswordForbidden(uri)
@@ -255,18 +241,18 @@ def ensure_one_of(allowed_values, uri, attribute):
     """Assert that the uri's attribute is one of the allowed values."""
     value = getattr(uri, attribute)
     if value is not None and allowed_values and value not in allowed_values:
-        raise exceptions.UnpermittedComponentError(
-            attribute, value, allowed_values,
-        )
+        raise exceptions.UnpermittedComponentError(attribute, value, allowed_values)
 
 
 def ensure_required_components_exist(uri, required_components):
     """Assert that all required components are present in the URI."""
-    missing_components = sorted([
-        component
-        for component in required_components
-        if getattr(uri, component) is None
-    ])
+    missing_components = sorted(
+        [
+            component
+            for component in required_components
+            if getattr(uri, component) is None
+        ]
+    )
     if missing_components:
         raise exceptions.MissingComponentError(uri, *missing_components)
 
@@ -282,8 +268,7 @@ def is_valid(value, matcher, require):
         Whether or not the value is required.
     """
     if require:
-        return (value is not None
-                and matcher.match(value))
+        return value is not None and matcher.match(value)
 
     # require is False and value is not None
     return value is None or matcher.match(value)
@@ -393,17 +378,17 @@ def valid_ipv4_host_address(host):
     """Determine if the given host is a valid IPv4 address."""
     # If the host exists, and it might be IPv4, check each byte in the
     # address.
-    return all([0 <= int(byte, base=10) <= 255 for byte in host.split('.')])
+    return all([0 <= int(byte, base=10) <= 255 for byte in host.split(".")])
 
 
 _COMPONENT_VALIDATORS = {
-    'scheme': scheme_is_valid,
-    'path': path_is_valid,
-    'query': query_is_valid,
-    'fragment': fragment_is_valid,
+    "scheme": scheme_is_valid,
+    "path": path_is_valid,
+    "query": query_is_valid,
+    "fragment": fragment_is_valid,
 }
 
-_SUBAUTHORITY_VALIDATORS = set(['userinfo', 'host', 'port'])
+_SUBAUTHORITY_VALIDATORS = set(["userinfo", "host", "port"])
 
 
 def subauthority_component_is_valid(uri, component):
@@ -415,19 +400,19 @@ def subauthority_component_is_valid(uri, component):
 
     # If we can parse the authority into sub-components and we're not
     # validating the port, we can assume it's valid.
-    if component == 'host':
-        return host_is_valid(subauthority_dict['host'])
-    elif component != 'port':
+    if component == "host":
+        return host_is_valid(subauthority_dict["host"])
+    elif component != "port":
         return True
 
     try:
-        port = int(subauthority_dict['port'])
+        port = int(subauthority_dict["port"])
     except TypeError:
         # If the port wasn't provided it'll be None and int(None) raises a
         # TypeError
         return True
 
-    return (0 <= port <= 65535)
+    return 0 <= port <= 65535
 
 
 def ensure_components_are_valid(uri, validated_components):

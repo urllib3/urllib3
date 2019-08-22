@@ -8,6 +8,7 @@ import ssl
 import os
 
 import pytest
+
 try:
     import brotli
 except ImportError:
@@ -19,13 +20,13 @@ from urllib3.util import ssl_
 
 # We need a host that will not immediately close the connection with a TCP
 # Reset. SO suggests this hostname
-TARPIT_HOST = '10.255.255.1'
+TARPIT_HOST = "10.255.255.1"
 
 # (Arguments for socket, is it IPv6 address?)
-VALID_SOURCE_ADDRESSES = [(('::1', 0), True), (('127.0.0.1', 0), False)]
+VALID_SOURCE_ADDRESSES = [(("::1", 0), True), (("127.0.0.1", 0), False)]
 # RFC 5737: 192.0.2.0/24 is for testing only.
 # RFC 3849: 2001:db8::/32 is for documentation only.
-INVALID_SOURCE_ADDRESSES = [('192.0.2.255', 0), ('2001:db8::1', 0)]
+INVALID_SOURCE_ADDRESSES = [("192.0.2.255", 0), ("2001:db8::1", 0)]
 
 
 def clear_warnings(cls=HTTPWarning):
@@ -39,7 +40,7 @@ def clear_warnings(cls=HTTPWarning):
 
 def setUp():
     clear_warnings()
-    warnings.simplefilter('ignore', HTTPWarning)
+    warnings.simplefilter("ignore", HTTPWarning)
 
 
 def onlyPy279OrNewer(test):
@@ -51,6 +52,7 @@ def onlyPy279OrNewer(test):
         if sys.version_info < (2, 7, 9):
             pytest.skip(msg)
         return test(*args, **kwargs)
+
     return wrapper
 
 
@@ -63,6 +65,7 @@ def onlyPy2(test):
         if six.PY3:
             pytest.skip(msg)
         return test(*args, **kwargs)
+
     return wrapper
 
 
@@ -75,17 +78,18 @@ def onlyPy3(test):
         if not six.PY3:
             pytest.skip(msg)
         return test(*args, **kwargs)
+
     return wrapper
 
 
 def onlyBrotlipy():
-    return pytest.mark.skipif(
-        brotli is None, reason='only run if brotlipy is present')
+    return pytest.mark.skipif(brotli is None, reason="only run if brotlipy is present")
 
 
 def notBrotlipy():
     return pytest.mark.skipif(
-        brotli is not None, reason='only run if brotlipy is absent')
+        brotli is not None, reason="only run if brotlipy is absent"
+    )
 
 
 def notSecureTransport(test):
@@ -97,6 +101,7 @@ def notSecureTransport(test):
         if ssl_.IS_SECURETRANSPORT:
             pytest.skip(msg)
         return test(*args, **kwargs)
+
     return wrapper
 
 
@@ -109,6 +114,7 @@ def notOpenSSL098(test):
         if is_stdlib_ssl and ssl.OPENSSL_VERSION == "OpenSSL 0.9.8zh 14 Jan 2016":
             pytest.xfail("{name} fails with OpenSSL 0.9.8zh".format(name=test.__name__))
         return test(*args, **kwargs)
+
     return wrapper
 
 
@@ -119,8 +125,10 @@ def requires_network(test):
     """Helps you skip tests that require the network"""
 
     def _is_unreachable_err(err):
-        return getattr(err, 'errno', None) in (errno.ENETUNREACH,
-                                               errno.EHOSTUNREACH)  # For OSX
+        return getattr(err, "errno", None) in (
+            errno.ENETUNREACH,
+            errno.EHOSTUNREACH,
+        )  # For OSX
 
     def _has_route():
         try:
@@ -146,19 +154,25 @@ def requires_network(test):
             return test(*args, **kwargs)
         else:
             msg = "Can't run {name} because the network is unreachable".format(
-                name=test.__name__)
+                name=test.__name__
+            )
             pytest.skip(msg)
+
     return wrapper
 
 
 def requires_ssl_context_keyfile_password(test):
     @functools.wraps(test)
     def wrapper(*args, **kwargs):
-        if ((not ssl_.IS_PYOPENSSL and sys.version_info < (2, 7, 9))
-                or ssl_.IS_SECURETRANSPORT):
-            pytest.skip("%s requires password parameter for "
-                        "SSLContext.load_cert_chain()" % test.__name__)
+        if (
+            not ssl_.IS_PYOPENSSL and sys.version_info < (2, 7, 9)
+        ) or ssl_.IS_SECURETRANSPORT:
+            pytest.skip(
+                "%s requires password parameter for "
+                "SSLContext.load_cert_chain()" % test.__name__
+            )
         return test(*args, **kwargs)
+
     return wrapper
 
 
@@ -169,27 +183,35 @@ def fails_on_travis_gce(test):
     Reason for this decorator:
     https://github.com/urllib3/urllib3/pull/1475#issuecomment-440788064
     """
+
     @functools.wraps(test)
     def wrapper(*args, **kwargs):
         if os.environ.get("TRAVIS_INFRA") in ("gce", "unknown"):
             pytest.xfail("%s is expected to fail on Travis GCE builds" % test.__name__)
         return test(*args, **kwargs)
+
     return wrapper
 
 
 def requiresTLSv1():
     """Test requires TLSv1 available"""
-    return pytest.mark.skipif(not hasattr(ssl, "PROTOCOL_TLSv1"), reason="Test requires TLSv1")
+    return pytest.mark.skipif(
+        not hasattr(ssl, "PROTOCOL_TLSv1"), reason="Test requires TLSv1"
+    )
 
 
 def requiresTLSv1_1():
     """Test requires TLSv1.1 available"""
-    return pytest.mark.skipif(not hasattr(ssl, "PROTOCOL_TLSv1_1"), reason="Test requires TLSv1.1")
+    return pytest.mark.skipif(
+        not hasattr(ssl, "PROTOCOL_TLSv1_1"), reason="Test requires TLSv1.1"
+    )
 
 
 def requiresTLSv1_2():
     """Test requires TLSv1.2 available"""
-    return pytest.mark.skipif(not hasattr(ssl, "PROTOCOL_TLSv1_2"), reason="Test requires TLSv1.2")
+    return pytest.mark.skipif(
+        not hasattr(ssl, "PROTOCOL_TLSv1_2"), reason="Test requires TLSv1.2"
+    )
 
 
 def requiresTLSv1_3():
