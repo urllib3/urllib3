@@ -8,11 +8,21 @@ from urllib3.exceptions import SNIMissingWarning
 
 
 @pytest.mark.parametrize('addr', [
+    # IPv6
     '::1',
     '::',
+    'FE80::8939:7684:D84b:a5A4%251',
+
+    # IPv4
     '127.0.0.1',
     '8.8.8.8',
-    b'127.0.0.1'
+    b'127.0.0.1',
+
+    # IPv6 w/ Zone IDs
+    'FE80::8939:7684:D84b:a5A4%251',
+    b'FE80::8939:7684:D84b:a5A4%251',
+    'FE80::8939:7684:D84b:a5A4%19',
+    b'FE80::8939:7684:D84b:a5A4%19'
 ])
 def test_is_ipaddress_true(addr):
     assert ssl_.is_ipaddress(addr)
@@ -20,7 +30,9 @@ def test_is_ipaddress_true(addr):
 
 @pytest.mark.parametrize('addr', [
     'www.python.org',
-    b'www.python.org'
+    b'www.python.org',
+    'v2.sg.media-imdb.com',
+    b'v2.sg.media-imdb.com'
 ])
 def test_is_ipaddress_false(addr):
     assert not ssl_.is_ipaddress(addr)

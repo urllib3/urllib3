@@ -52,11 +52,10 @@ _const_compare_digest = getattr(hmac, 'compare_digest',
 # Borrow rfc3986's regular expressions for IPv4
 # and IPv6 addresses for use in is_ipaddress()
 _IP_ADDRESS_REGEX = re.compile(
-    r'^(?:%s|%s|%s|%s)$' % (
+    r'^(?:%s|%s|%s)$' % (
         abnf_regexp.IPv4_RE,
         abnf_regexp.IPv6_RE,
-        abnf_regexp.IPv6_ADDRZ_RE,
-        abnf_regexp.IPv_FUTURE_RE
+        abnf_regexp.IPv6_ADDRZ_RFC4007_RE
     )
 )
 
@@ -442,7 +441,8 @@ def match_hostname(cert, asserted_hostname):
 
 
 def is_ipaddress(hostname):
-    """Detects whether the hostname given is an IP address.
+    """Detects whether the hostname given is an IPv4 or IPv6 address.
+    Also detects IPv6 addresses with Zone IDs.
 
     :param str hostname: Hostname to examine.
     :return: True if the hostname is an IP address, False otherwise.

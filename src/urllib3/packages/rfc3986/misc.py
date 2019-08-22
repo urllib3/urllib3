@@ -110,28 +110,6 @@ ISUBAUTHORITY_MATCHER = re.compile((
              abnf_regexp.PORT_RE), re.UNICODE)
 
 
-IHOST_MATCHER = re.compile('^' + abnf_regexp.IHOST_RE + '$', re.UNICODE)
-
-IPATH_MATCHER = re.compile(abnf_regexp.IPATH_RE, re.UNICODE)
-
-IQUERY_MATCHER = re.compile(abnf_regexp.IQUERY_RE, re.UNICODE)
-
-IFRAGMENT_MATCHER = re.compile(abnf_regexp.IFRAGMENT_RE, re.UNICODE)
-
-
-RELATIVE_IRI_MATCHER = re.compile(u'^%s(?:\\?%s)?(?:%s)?$' % (
-    abnf_regexp.IRELATIVE_PART_RE,
-    abnf_regexp.IQUERY_RE,
-    abnf_regexp.IFRAGMENT_RE
-), re.UNICODE)
-
-ABSOLUTE_IRI_MATCHER = re.compile(u'^%s:%s(?:\\?%s)?$' % (
-    abnf_regexp.COMPONENT_PATTERN_DICT['scheme'],
-    abnf_regexp.IHIER_PART_RE,
-    abnf_regexp.IQUERY_RE[1:-1]
-), re.UNICODE)
-
-
 # Path merger as defined in http://tools.ietf.org/html/rfc3986#section-5.2.3
 def merge_paths(base_uri, relative_path):
     """Merge a base URI's path with a relative URI's path."""
