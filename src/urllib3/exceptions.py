@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 # Base Exceptions
 
 
@@ -14,6 +15,7 @@ class HTTPWarning(Warning):
 
 class PoolError(HTTPError):
     "Base exception for errors caused within a pool."
+
     def __init__(self, pool, message):
         self.pool = pool
         HTTPError.__init__(self, "%s: %s" % (pool, message))
@@ -25,6 +27,7 @@ class PoolError(HTTPError):
 
 class RequestError(PoolError):
     "Base exception for PoolErrors that have associated URLs."
+
     def __init__(self, pool, url, message):
         self.url = url
         PoolError.__init__(self, pool, message)
@@ -60,6 +63,7 @@ ConnectionError = ProtocolError
 
 # Leaf Exceptions
 
+
 class MaxRetryError(RequestError):
     """Raised when the maximum number of retries is exceeded.
 
@@ -73,14 +77,14 @@ class MaxRetryError(RequestError):
     def __init__(self, pool, url, reason=None):
         self.reason = reason
 
-        message = "Max retries exceeded with url: %s (Caused by %r)" % (
-            url, reason)
+        message = "Max retries exceeded with url: %s (Caused by %r)" % (url, reason)
 
         RequestError.__init__(self, pool, url, message)
 
 
 class TimeoutStateError(HTTPError):
     """ Raised when passing an invalid state to a timeout """
+
     pass
 
 
@@ -90,6 +94,7 @@ class TimeoutError(HTTPError):
     Catching this error will catch both :exc:`ReadTimeoutErrors
     <ReadTimeoutError>` and :exc:`ConnectTimeoutErrors <ConnectTimeoutError>`.
     """
+
     pass
 
 
@@ -137,8 +142,8 @@ class LocationParseError(LocationValueError):
 
 class ResponseError(HTTPError):
     "Used as a container for an error reason supplied in a MaxRetryError."
-    GENERIC_ERROR = 'too many error responses'
-    SPECIFIC_ERROR = 'too many {status_code} error responses'
+    GENERIC_ERROR = "too many error responses"
+    SPECIFIC_ERROR = "too many {status_code} error responses"
 
 
 class SecurityWarning(HTTPWarning):
@@ -176,6 +181,7 @@ class DependencyWarning(HTTPWarning):
     Warned when an attempt is made to import a module with missing optional
     dependencies.
     """
+
     pass
 
 
@@ -188,6 +194,7 @@ class BadVersionError(ProtocolError):
     """
     The HTTP version in the response is unsupported.
     """
+
     def __init__(self, version):
         message = "HTTP version {} is unsupported".format(version)
         super(BadVersionError, self).__init__(message)
@@ -204,8 +211,9 @@ class ProxySchemeUnknown(AssertionError, ValueError):
 
 class HeaderParsingError(HTTPError):
     "Raised by assert_header_parsing, but we convert it to a log.warning statement."
+
     def __init__(self, defects, unparsed_data):
-        message = '%s, unparsed data: %r' % (defects or 'Unknown', unparsed_data)
+        message = "%s, unparsed data: %r" % (defects or "Unknown", unparsed_data)
         super(HeaderParsingError, self).__init__(message)
 
 
@@ -218,6 +226,7 @@ class FailedTunnelError(HTTPError):
     """
     An attempt was made to set up a CONNECT tunnel, but that attempt failed.
     """
+
     def __init__(self, message, response):
         super(FailedTunnelError, self).__init__(message)
         self.response = response
@@ -228,4 +237,5 @@ class InvalidBodyError(HTTPError):
     An attempt was made to send a request with a body object that urllib3 does
     not support.
     """
+
     pass

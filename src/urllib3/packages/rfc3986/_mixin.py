@@ -26,7 +26,7 @@ class URIMixin(object):
             If the authority is not ``None`` and can not be parsed.
         """
         if not self.authority:
-            return {'userinfo': None, 'host': None, 'port': None}
+            return {"userinfo": None, "host": None, "port": None}
 
         match = self._match_subauthority()
 
@@ -40,10 +40,13 @@ class URIMixin(object):
         # We had a match, now let's ensure that it is actually a valid host
         # address if it is IPv4
         matches = match.groupdict()
-        host = matches.get('host')
+        host = matches.get("host")
 
-        if (host and misc.IPv4_MATCHER.match(host) and not
-                validators.valid_ipv4_host_address(host)):
+        if (
+            host
+            and misc.IPv4_MATCHER.match(host)
+            and not validators.valid_ipv4_host_address(host)
+        ):
             # If we have a host, it appears to be IPv4 and it does not have
             # valid bytes, it is an InvalidAuthority.
             raise exc.InvalidAuthority(self.authority.encode(self.encoding))
@@ -60,7 +63,7 @@ class URIMixin(object):
             authority = self.authority_info()
         except exc.InvalidAuthority:
             return None
-        return authority['host']
+        return authority["host"]
 
     @property
     def port(self):
@@ -69,7 +72,7 @@ class URIMixin(object):
             authority = self.authority_info()
         except exc.InvalidAuthority:
             return None
-        return authority['port']
+        return authority["port"]
 
     @property
     def userinfo(self):
@@ -78,7 +81,7 @@ class URIMixin(object):
             authority = self.authority_info()
         except exc.InvalidAuthority:
             return None
-        return authority['userinfo']
+        return authority["userinfo"]
 
     def is_absolute(self):
         """Determine if this URI Reference is an absolute URI.
@@ -110,16 +113,18 @@ class URIMixin(object):
         :returns: ``True`` if the URI is valid. ``False`` otherwise.
         :rtype: bool
         """
-        warnings.warn("Please use rfc3986.validators.Validator instead. "
-                      "This method will be eventually removed.",
-                      DeprecationWarning)
+        warnings.warn(
+            "Please use rfc3986.validators.Validator instead. "
+            "This method will be eventually removed.",
+            DeprecationWarning,
+        )
         validators = [
-            (self.scheme_is_valid, kwargs.get('require_scheme', False)),
-            (self.authority_is_valid, kwargs.get('require_authority', False)),
-            (self.path_is_valid, kwargs.get('require_path', False)),
-            (self.query_is_valid, kwargs.get('require_query', False)),
-            (self.fragment_is_valid, kwargs.get('require_fragment', False)),
-            ]
+            (self.scheme_is_valid, kwargs.get("require_scheme", False)),
+            (self.authority_is_valid, kwargs.get("require_authority", False)),
+            (self.path_is_valid, kwargs.get("require_path", False)),
+            (self.query_is_valid, kwargs.get("require_query", False)),
+            (self.fragment_is_valid, kwargs.get("require_fragment", False)),
+        ]
         return all(v(r) for v, r in validators)
 
     def authority_is_valid(self, require=False):
@@ -136,18 +141,18 @@ class URIMixin(object):
         :rtype:
             bool
         """
-        warnings.warn("Please use rfc3986.validators.Validator instead. "
-                      "This method will be eventually removed.",
-                      DeprecationWarning)
+        warnings.warn(
+            "Please use rfc3986.validators.Validator instead. "
+            "This method will be eventually removed.",
+            DeprecationWarning,
+        )
         try:
             self.authority_info()
         except exc.InvalidAuthority:
             return False
 
         return validators.authority_is_valid(
-            self.authority,
-            host=self.host,
-            require=require,
+            self.authority, host=self.host, require=require
         )
 
     def scheme_is_valid(self, require=False):
@@ -162,9 +167,11 @@ class URIMixin(object):
         :returns: ``True`` if the scheme is valid. ``False`` otherwise.
         :rtype: bool
         """
-        warnings.warn("Please use rfc3986.validators.Validator instead. "
-                      "This method will be eventually removed.",
-                      DeprecationWarning)
+        warnings.warn(
+            "Please use rfc3986.validators.Validator instead. "
+            "This method will be eventually removed.",
+            DeprecationWarning,
+        )
         return validators.scheme_is_valid(self.scheme, require)
 
     def path_is_valid(self, require=False):
@@ -179,9 +186,11 @@ class URIMixin(object):
         :returns: ``True`` if the path is valid. ``False`` otherwise.
         :rtype: bool
         """
-        warnings.warn("Please use rfc3986.validators.Validator instead. "
-                      "This method will be eventually removed.",
-                      DeprecationWarning)
+        warnings.warn(
+            "Please use rfc3986.validators.Validator instead. "
+            "This method will be eventually removed.",
+            DeprecationWarning,
+        )
         return validators.path_is_valid(self.path, require)
 
     def query_is_valid(self, require=False):
@@ -196,9 +205,11 @@ class URIMixin(object):
         :returns: ``True`` if the query is valid. ``False`` otherwise.
         :rtype: bool
         """
-        warnings.warn("Please use rfc3986.validators.Validator instead. "
-                      "This method will be eventually removed.",
-                      DeprecationWarning)
+        warnings.warn(
+            "Please use rfc3986.validators.Validator instead. "
+            "This method will be eventually removed.",
+            DeprecationWarning,
+        )
         return validators.query_is_valid(self.query, require)
 
     def fragment_is_valid(self, require=False):
@@ -213,9 +224,11 @@ class URIMixin(object):
         :returns: ``True`` if the fragment is valid. ``False`` otherwise.
         :rtype: bool
         """
-        warnings.warn("Please use rfc3986.validators.Validator instead. "
-                      "This method will be eventually removed.",
-                      DeprecationWarning)
+        warnings.warn(
+            "Please use rfc3986.validators.Validator instead. "
+            "This method will be eventually removed.",
+            DeprecationWarning,
+        )
         return validators.fragment_is_valid(self.fragment, require)
 
     def normalized_equality(self, other_ref):
@@ -269,7 +282,7 @@ class URIMixin(object):
             if resolving.authority is not None:
                 target = resolving.copy_with(
                     scheme=base_uri.scheme,
-                    path=normalizers.normalize_path(resolving.path)
+                    path=normalizers.normalize_path(resolving.path),
                 )
             else:
                 if resolving.path is None:
@@ -281,10 +294,10 @@ class URIMixin(object):
                         scheme=base_uri.scheme,
                         authority=base_uri.authority,
                         path=base_uri.path,
-                        query=query
+                        query=query,
                     )
                 else:
-                    if resolving.path.startswith('/'):
+                    if resolving.path.startswith("/"):
                         path = normalizers.normalize_path(resolving.path)
                     else:
                         path = normalizers.normalize_path(
@@ -294,7 +307,7 @@ class URIMixin(object):
                         scheme=base_uri.scheme,
                         authority=base_uri.authority,
                         path=path,
-                        query=resolving.query
+                        query=resolving.query,
                     )
         return target
 
@@ -307,20 +320,25 @@ class URIMixin(object):
         # See http://tools.ietf.org/html/rfc3986#section-5.3
         result_list = []
         if self.scheme:
-            result_list.extend([self.scheme, ':'])
+            result_list.extend([self.scheme, ":"])
         if self.authority:
-            result_list.extend(['//', self.authority])
+            result_list.extend(["//", self.authority])
         if self.path:
             result_list.append(self.path)
         if self.query is not None:
-            result_list.extend(['?', self.query])
+            result_list.extend(["?", self.query])
         if self.fragment is not None:
-            result_list.extend(['#', self.fragment])
-        return ''.join(result_list)
+            result_list.extend(["#", self.fragment])
+        return "".join(result_list)
 
-    def copy_with(self, scheme=misc.UseExisting, authority=misc.UseExisting,
-                  path=misc.UseExisting, query=misc.UseExisting,
-                  fragment=misc.UseExisting):
+    def copy_with(
+        self,
+        scheme=misc.UseExisting,
+        authority=misc.UseExisting,
+        path=misc.UseExisting,
+        query=misc.UseExisting,
+        fragment=misc.UseExisting,
+    ):
         """Create a copy of this reference with the new components.
 
         :param str scheme:
@@ -339,11 +357,11 @@ class URIMixin(object):
             URIReference
         """
         attributes = {
-            'scheme': scheme,
-            'authority': authority,
-            'path': path,
-            'query': query,
-            'fragment': fragment,
+            "scheme": scheme,
+            "authority": authority,
+            "path": path,
+            "query": query,
+            "fragment": fragment,
         }
         for key, value in list(attributes.items()):
             if value is misc.UseExisting:

@@ -17,7 +17,8 @@ from base64 import b64decode
 #    "".join(random.choice(string.printable) for i in xrange(512))
 #    .encode("zlib").encode("base64")
 # Randomness in tests == bad, and fixing a seed may not be sufficient.
-ZLIB_PAYLOAD = b64decode(b"""\
+ZLIB_PAYLOAD = b64decode(
+    b"""\
 eJwFweuaoQAAANDfineQhiKLUiaiCzvuTEmNNlJGiL5QhnGpZ99z8luQfe1AHoMioB+QSWHQu/L+
 lzd7W5CipqYmeVTBjdgSATdg4l4Z2zhikbuF+EKn69Q0DTpdmNJz8S33odfJoVEexw/l2SS9nFdi
 pis7KOwXzfSqarSo9uJYgbDGrs1VNnQpT9f8zAorhYCEZronZQF9DuDFfNK3Hecc+WHLnZLQptwk
@@ -26,232 +27,233 @@ Khe5TF36JbnKVjdcL1EUNpwrWVfQpFYJ/WWm2b74qNeSZeQv5/xBhRdOmKTJFYgO96PwrHBlsnLn
 a3l0LwJsloWpMbzByU5WLbRE6X5INFqjQOtIwYz5BAlhkn+kVqJvWM5vBlfrwP42ifonM5yF4ciJ
 auHVks62997mNGOsM7WXNG3P98dBHPo2NhbTvHleL0BI5dus2JY81MUOnK3SGWLH8HeWPa1t5KcW
 S5moAj5HexY/g/F8TctpxwsvyZp38dXeLDjSQvEQIkF7XR3YXbeZgKk3V34KGCPOAeeuQDIgyVhV
-nP4HF2uWHA==""")
+nP4HF2uWHA=="""
+)
 
 
 def get_response():
     return Response(
-        status_code=200,
-        headers={},
-        body=BytesIO(b'hello'),
-        version=b"HTTP/1.1"
+        status_code=200, headers={}, body=BytesIO(b"hello"), version=b"HTTP/1.1"
     )
 
 
 class TestLegacyResponse(object):
     def test_getheaders(self):
-        headers = {'host': 'example.com'}
+        headers = {"host": "example.com"}
         r = HTTPResponse(headers=headers)
         assert r.getheaders() == headers
 
     def test_getheader(self):
-        headers = {'host': 'example.com'}
+        headers = {"host": "example.com"}
         r = HTTPResponse(headers=headers)
-        assert r.getheader('host') == 'example.com'
+        assert r.getheader("host") == "example.com"
 
 
 class TestResponse(object):
     def test_cache_content(self):
-        r = HTTPResponse('foo')
-        assert r.data == 'foo'
-        assert r._body == 'foo'
+        r = HTTPResponse("foo")
+        assert r.data == "foo"
+        assert r._body == "foo"
 
     def test_default(self):
         r = HTTPResponse()
-        assert r.data == b''
+        assert r.data == b""
 
     def test_none(self):
         r = HTTPResponse(None)
-        assert r.data == b''
+        assert r.data == b""
 
     def test_preload(self):
-        fp = BytesIO(b'foo')
+        fp = BytesIO(b"foo")
 
         r = HTTPResponse(fp, preload_content=True)
 
-        assert fp.tell() == len(b'foo')
-        assert r.data == b'foo'
+        assert fp.tell() == len(b"foo")
+        assert r.data == b"foo"
 
     def test_no_preload(self):
-        fp = BytesIO(b'foo')
+        fp = BytesIO(b"foo")
 
         r = HTTPResponse(fp, preload_content=False)
 
         assert fp.tell() == 0
-        assert r.data == b'foo'
-        assert fp.tell() == len(b'foo')
+        assert r.data == b"foo"
+        assert fp.tell() == len(b"foo")
 
     def test_decode_bad_data(self):
-        fp = BytesIO(b'\x00' * 10)
+        fp = BytesIO(b"\x00" * 10)
         with pytest.raises(DecodeError):
-            HTTPResponse(fp, headers={'content-encoding': 'deflate'})
+            HTTPResponse(fp, headers={"content-encoding": "deflate"})
 
     def test_reference_read(self):
-        fp = BytesIO(b'foo')
+        fp = BytesIO(b"foo")
         r = HTTPResponse(fp, preload_content=False)
 
-        assert r.read(1) == b'f'
-        assert r.read(2) == b'oo'
-        assert r.read() == b''
-        assert r.read() == b''
+        assert r.read(1) == b"f"
+        assert r.read(2) == b"oo"
+        assert r.read() == b""
+        assert r.read() == b""
 
     def test_decode_deflate(self):
-        data = zlib.compress(b'foo')
+        data = zlib.compress(b"foo")
 
         fp = BytesIO(data)
-        r = HTTPResponse(fp, headers={'content-encoding': 'deflate'})
+        r = HTTPResponse(fp, headers={"content-encoding": "deflate"})
 
-        assert r.data == b'foo'
+        assert r.data == b"foo"
 
     def test_decode_deflate_case_insensitve(self):
-        data = zlib.compress(b'foo')
+        data = zlib.compress(b"foo")
 
         fp = BytesIO(data)
-        r = HTTPResponse(fp, headers={'content-encoding': 'DeFlAtE'})
+        r = HTTPResponse(fp, headers={"content-encoding": "DeFlAtE"})
 
-        assert r.data == b'foo'
+        assert r.data == b"foo"
 
     def test_chunked_decoding_deflate(self):
-        data = zlib.compress(b'foo')
+        data = zlib.compress(b"foo")
 
         fp = BytesIO(data)
-        r = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
-                         preload_content=False)
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
 
-        assert r.read(1) == b'f'
+        assert r.read(1) == b"f"
         # Buffer in case we need to switch to the raw stream
         assert r._decoder._data is None
-        assert r.read(2) == b'oo'
-        assert r.read() == b''
-        assert r.read() == b''
+        assert r.read(2) == b"oo"
+        assert r.read() == b""
+        assert r.read() == b""
 
     def test_chunked_decoding_deflate2(self):
         compress = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
-        data = compress.compress(b'foo')
+        data = compress.compress(b"foo")
         data += compress.flush()
 
         fp = BytesIO(data)
-        r = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
-                         preload_content=False)
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
 
-        assert r.read(1) == b'f'
+        assert r.read(1) == b"f"
         # Once we've decoded data, we just stream to the decoder; no buffering
         assert r._decoder._data is None
-        assert r.read(2) == b'oo'
-        assert r.read() == b''
-        assert r.read() == b''
+        assert r.read(2) == b"oo"
+        assert r.read() == b""
+        assert r.read() == b""
 
     def test_chunked_decoding_gzip(self):
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
-        data = compress.compress(b'foo')
+        data = compress.compress(b"foo")
         data += compress.flush()
 
         fp = BytesIO(data)
-        r = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
-                         preload_content=False)
+        r = HTTPResponse(
+            fp, headers={"content-encoding": "gzip"}, preload_content=False
+        )
 
-        assert r.read(1) == b'f'
-        assert r.read(2) == b'oo'
-        assert r.read() == b''
-        assert r.read() == b''
+        assert r.read(1) == b"f"
+        assert r.read(2) == b"oo"
+        assert r.read() == b""
+        assert r.read() == b""
 
     def test_decode_gzip_multi_member(self):
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
-        data = compress.compress(b'foo')
+        data = compress.compress(b"foo")
         data += compress.flush()
         data = data * 3
 
         fp = BytesIO(data)
-        r = HTTPResponse(fp, headers={'content-encoding': 'gzip'})
+        r = HTTPResponse(fp, headers={"content-encoding": "gzip"})
 
-        assert r.data == b'foofoofoo'
+        assert r.data == b"foofoofoo"
 
     def test_decode_gzip_error(self):
-        fp = BytesIO(b'foo')
+        fp = BytesIO(b"foo")
         with pytest.raises(DecodeError):
-            HTTPResponse(fp, headers={'content-encoding': 'gzip'})
+            HTTPResponse(fp, headers={"content-encoding": "gzip"})
 
     def test_decode_gzip_swallow_garbage(self):
         # When data comes from multiple calls to read(), data after
         # the first zlib error (here triggered by garbage) should be
         # ignored.
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
-        data = compress.compress(b'foo')
+        data = compress.compress(b"foo")
         data += compress.flush()
-        data = data * 3 + b'foo'
+        data = data * 3 + b"foo"
 
         fp = BytesIO(data)
         r = HTTPResponse(
-            fp, headers={'content-encoding': 'gzip'}, preload_content=False)
-        ret = b''
+            fp, headers={"content-encoding": "gzip"}, preload_content=False
+        )
+        ret = b""
         for _ in range(100):
             ret += r.read(1)
             if r.closed:
                 break
 
-        assert ret == b'foofoofoo'
+        assert ret == b"foofoofoo"
 
     def test_chunked_decoding_gzip_swallow_garbage(self):
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
-        data = compress.compress(b'foo')
+        data = compress.compress(b"foo")
         data += compress.flush()
-        data = data * 3 + b'foo'
+        data = data * 3 + b"foo"
 
         fp = BytesIO(data)
-        r = HTTPResponse(fp, headers={'content-encoding': 'gzip'})
+        r = HTTPResponse(fp, headers={"content-encoding": "gzip"})
 
-        assert r.data == b'foofoofoo'
+        assert r.data == b"foofoofoo"
 
     @onlyBrotlipy()
     def test_decode_brotli(self):
-        data = brotli.compress(b'foo')
+        data = brotli.compress(b"foo")
 
         fp = BytesIO(data)
-        r = HTTPResponse(fp, headers={'content-encoding': 'br'})
-        assert r.data == b'foo'
+        r = HTTPResponse(fp, headers={"content-encoding": "br"})
+        assert r.data == b"foo"
 
     @onlyBrotlipy()
     def test_chunked_decoding_brotli(self):
-        data = brotli.compress(b'foobarbaz')
+        data = brotli.compress(b"foobarbaz")
 
         fp = BytesIO(data)
-        r = HTTPResponse(
-            fp, headers={'content-encoding': 'br'}, preload_content=False)
+        r = HTTPResponse(fp, headers={"content-encoding": "br"}, preload_content=False)
 
-        ret = b''
+        ret = b""
         for _ in range(100):
             ret += r.read(1)
             if r.closed:
                 break
-        assert ret == b'foobarbaz'
+        assert ret == b"foobarbaz"
 
     @onlyBrotlipy()
     def test_decode_brotli_error(self):
-        fp = BytesIO(b'foo')
+        fp = BytesIO(b"foo")
         with pytest.raises(DecodeError):
-            HTTPResponse(fp, headers={'content-encoding': 'br'})
+            HTTPResponse(fp, headers={"content-encoding": "br"})
 
     def test_multi_decoding_deflate_deflate(self):
-        data = zlib.compress(zlib.compress(b'foo'))
+        data = zlib.compress(zlib.compress(b"foo"))
 
         fp = BytesIO(data)
-        r = HTTPResponse(fp, headers={'content-encoding': 'deflate, deflate'})
+        r = HTTPResponse(fp, headers={"content-encoding": "deflate, deflate"})
 
-        assert r.data == b'foo'
+        assert r.data == b"foo"
 
     def test_multi_decoding_deflate_gzip(self):
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
-        data = compress.compress(zlib.compress(b'foo'))
+        data = compress.compress(zlib.compress(b"foo"))
         data += compress.flush()
 
         fp = BytesIO(data)
-        r = HTTPResponse(fp, headers={'content-encoding': 'deflate, gzip'})
+        r = HTTPResponse(fp, headers={"content-encoding": "deflate, gzip"})
 
-        assert r.data == b'foo'
+        assert r.data == b"foo"
 
     def test_multi_decoding_gzip_gzip(self):
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
-        data = compress.compress(b'foo')
+        data = compress.compress(b"foo")
         data += compress.flush()
 
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
@@ -259,17 +261,17 @@ class TestResponse(object):
         data += compress.flush()
 
         fp = BytesIO(data)
-        r = HTTPResponse(fp, headers={'content-encoding': 'gzip, gzip'})
+        r = HTTPResponse(fp, headers={"content-encoding": "gzip, gzip"})
 
-        assert r.data == b'foo'
+        assert r.data == b"foo"
 
     def test_body_blob(self):
-        resp = HTTPResponse(b'foo')
-        assert resp.data == b'foo'
+        resp = HTTPResponse(b"foo")
+        assert resp.data == b"foo"
         assert resp.closed
 
     def test_io(self):
-        fp = BytesIO(b'foo')
+        fp = BytesIO(b"foo")
         resp = HTTPResponse(fp, preload_content=False)
 
         assert not resp.closed
@@ -289,21 +291,21 @@ class TestResponse(object):
         assert resp2.closed
 
         # also try when only data is present.
-        resp3 = HTTPResponse('foodata')
+        resp3 = HTTPResponse("foodata")
         with pytest.raises(IOError):
             resp3.fileno()
 
     def test_io_bufferedreader(self):
-        fp = BytesIO(b'foo')
+        fp = BytesIO(b"foo")
         resp = HTTPResponse(fp, preload_content=False)
         br = BufferedReader(resp)
 
-        assert br.read() == b'foo'
+        assert br.read() == b"foo"
 
         br.close()
         assert resp.closed
 
-        b = b'!tenbytes!'
+        b = b"!tenbytes!"
         fp = BytesIO(b)
         resp = HTTPResponse(fp, preload_content=False)
         br = BufferedReader(resp, 5)
@@ -315,17 +317,17 @@ class TestResponse(object):
         assert len(br.read(5)) == 0
 
     def test_streaming(self):
-        fp = [b'fo', b'o']
+        fp = [b"fo", b"o"]
         resp = HTTPResponse(fp, preload_content=False)
         stream = resp.stream(decode_content=False)
 
-        assert next(stream) == b'fo'
-        assert next(stream) == b'o'
+        assert next(stream) == b"fo"
+        assert next(stream) == b"o"
         with pytest.raises(StopIteration):
             next(stream)
 
     def test_double_streaming(self):
-        fp = [b'fo', b'o']
+        fp = [b"fo", b"o"]
         resp = HTTPResponse(fp, preload_content=False)
 
         stream = list(resp.stream(decode_content=False))
@@ -335,7 +337,7 @@ class TestResponse(object):
         assert stream == []
 
     def test_closed_streaming(self):
-        fp = BytesIO(b'foo')
+        fp = BytesIO(b"foo")
         resp = HTTPResponse(fp, preload_content=False)
         resp.close()
         with pytest.raises(StopIteration):
@@ -359,19 +361,19 @@ class TestResponse(object):
 
             next = __next__
 
-        data = [b'fo', b'o']
+        data = [b"fo", b"o"]
         fp = MockFP()
         fp.list = data
         resp = HTTPResponse(fp, preload_content=False)
         stream = resp.stream()
 
-        assert next(stream) == b'fo'
+        assert next(stream) == b"fo"
         resp.close()
         with pytest.raises(StopIteration):
             next(stream)
 
     def test_streaming_tell(self):
-        fp = [b'fo', b'o']
+        fp = [b"fo", b"o"]
         resp = HTTPResponse(fp, preload_content=False)
         stream = resp.stream(decode_content=False)
 
@@ -390,27 +392,29 @@ class TestResponse(object):
 
     def test_gzipped_streaming(self):
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
-        data = compress.compress(b'foo')
+        data = compress.compress(b"foo")
         data += compress.flush()
 
         fp = BytesIO(data)
-        resp = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
-                            preload_content=False)
+        resp = HTTPResponse(
+            fp, headers={"content-encoding": "gzip"}, preload_content=False
+        )
         stream = resp.stream()
 
-        assert next(stream) == b'foo'
+        assert next(stream) == b"foo"
         with pytest.raises(StopIteration):
             next(stream)
 
     def test_gzipped_streaming_tell(self):
         compress = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
-        uncompressed_data = b'foo'
+        uncompressed_data = b"foo"
         data = compress.compress(uncompressed_data)
         data += compress.flush()
 
         fp = BytesIO(data)
-        resp = HTTPResponse(fp, headers={'content-encoding': 'gzip'},
-                            preload_content=False)
+        resp = HTTPResponse(
+            fp, headers={"content-encoding": "gzip"}, preload_content=False
+        )
         stream = resp.stream()
 
         # Read everything
@@ -435,8 +439,9 @@ class TestResponse(object):
 
             def __init__(self, payload, payload_part_size):
                 self.payloads = [
-                    payload[i*payload_part_size:(i+1)*payload_part_size]
-                    for i in range(NUMBER_OF_READS+1)]
+                    payload[i * payload_part_size : (i + 1) * payload_part_size]
+                    for i in range(NUMBER_OF_READS + 1)
+                ]
                 self.consumed = 0
 
                 assert b"".join(self.payloads) == payload
@@ -463,8 +468,9 @@ class TestResponse(object):
 
         payload_part_size = len(ZLIB_PAYLOAD) // NUMBER_OF_READS
         fp = MockCompressedDataReading(ZLIB_PAYLOAD, payload_part_size)
-        resp = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
-                            preload_content=False)
+        resp = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
         parts = []
         stream = resp.stream(1)
 
@@ -485,33 +491,35 @@ class TestResponse(object):
         assert len(ZLIB_PAYLOAD) == end_of_stream
 
     def test_deflate_streaming(self):
-        data = zlib.compress(b'foo')
+        data = zlib.compress(b"foo")
 
         fp = BytesIO(data)
-        resp = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
-                            preload_content=False)
+        resp = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
         stream = resp.stream()
 
-        assert next(stream) == b'foo'
+        assert next(stream) == b"foo"
         with pytest.raises(StopIteration):
             next(stream)
 
     def test_deflate2_streaming(self):
         compress = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
-        data = compress.compress(b'foo')
+        data = compress.compress(b"foo")
         data += compress.flush()
 
         fp = BytesIO(data)
-        resp = HTTPResponse(fp, headers={'content-encoding': 'deflate'},
-                            preload_content=False)
+        resp = HTTPResponse(
+            fp, headers={"content-encoding": "deflate"}, preload_content=False
+        )
         stream = resp.stream()
 
-        assert next(stream) == b'foo'
+        assert next(stream) == b"foo"
         with pytest.raises(StopIteration):
             next(stream)
 
     def test_empty_stream(self):
-        fp = BytesIO(b'')
+        fp = BytesIO(b"")
         resp = HTTPResponse(fp, preload_content=False)
         stream = resp.stream(decode_content=False)
 
@@ -544,26 +552,27 @@ class TestResponse(object):
                 return self.read(1)
 
             next = __next__
-        bio = BytesIO(b'foo')
+
+        bio = BytesIO(b"foo")
         fp = MockHTTPRequest()
         fp.fp = bio
         resp = HTTPResponse(fp, preload_content=False)
         stream = resp.stream()
 
-        assert next(stream) == b'f'
-        assert next(stream) == b'o'
-        assert next(stream) == b'o'
+        assert next(stream) == b"f"
+        assert next(stream) == b"o"
+        assert next(stream) == b"o"
         with pytest.raises(StopIteration):
             next(stream)
 
     def test_get_case_insensitive_headers(self):
-        headers = {'host': 'example.com'}
+        headers = {"host": "example.com"}
         r = HTTPResponse(headers=headers)
-        assert r.headers.get('host') == 'example.com'
-        assert r.headers.get('Host') == 'example.com'
+        assert r.headers.get("host") == "example.com"
+        assert r.headers.get("Host") == "example.com"
 
     def test_retries(self):
-        fp = BytesIO(b'')
+        fp = BytesIO(b"")
         resp = HTTPResponse(fp)
         assert resp.retries is None
         retry = Retry()

@@ -7,21 +7,25 @@ BUFSIZE = 65536
 
 # XX support connect_timeout and read_timeout
 
+
 class TrioBackend:
-    async def connect(self, host, port, connect_timeout,
-                      source_address=None, socket_options=None):
+    async def connect(
+        self, host, port, connect_timeout, source_address=None, socket_options=None
+    ):
         if source_address is not None:
             # You can't really combine source_address= and happy eyeballs
             # (can we get rid of source_address? or at least make it a source
             # ip, no port?)
             raise NotImplementedError(
-                "trio backend doesn't support setting source_address")
+                "trio backend doesn't support setting source_address"
+            )
 
         stream = await trio.open_tcp_stream(host, port)
         for (level, optname, value) in socket_options:
             stream.setsockopt(level, optname, value)
 
         return TrioSocket(stream)
+
 
 # XX it turns out that we don't need SSLStream to be robustified against
 # cancellation, but we probably should do something to detect when the stream
@@ -35,9 +39,11 @@ class TrioSocket:
 
     async def start_tls(self, server_hostname, ssl_context):
         wrapped = trio.ssl.SSLStream(
-            self._stream, ssl_context,
+            self._stream,
+            ssl_context,
             server_hostname=server_hostname,
-            https_compatible=True)
+            https_compatible=True,
+        )
         return TrioSocket(wrapped)
 
     def getpeercert(self, binary_form=False):
@@ -47,7 +53,8 @@ class TrioSocket:
         return await self._stream.receive_some(BUFSIZE)
 
     async def send_and_receive_for_a_while(
-            self, produce_bytes, consume_bytes, read_timeout):
+        self, produce_bytes, consume_bytes, read_timeout
+    ):
         async def sender():
             while True:
                 outgoing = await produce_bytes()

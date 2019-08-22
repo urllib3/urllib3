@@ -10,31 +10,38 @@ try:
 except ImportError:
     pass
 
-pytestmark = pytest.mark.skip('SecureTransport currently not supported on v2!')
+pytestmark = pytest.mark.skip("SecureTransport currently not supported on v2!")
 
 
 def setup_module():
     try:
         from urllib3.contrib.securetransport import inject_into_urllib3
+
         inject_into_urllib3()
     except ImportError as e:
-        pytest.skip('Could not import SecureTransport: %r' % e)
+        pytest.skip("Could not import SecureTransport: %r" % e)
 
 
 def teardown_module():
     try:
         from urllib3.contrib.securetransport import extract_from_urllib3
+
         extract_from_urllib3()
     except ImportError:
         pass
 
 
 from ..with_dummyserver.test_https import (  # noqa: F401
-    TestHTTPS, TestHTTPS_TLSv1, TestHTTPS_TLSv1_1,
-    TestHTTPS_TLSv1_2, TestHTTPS_TLSv1_3
+    TestHTTPS,
+    TestHTTPS_TLSv1,
+    TestHTTPS_TLSv1_1,
+    TestHTTPS_TLSv1_2,
+    TestHTTPS_TLSv1_3,
 )
 from ..with_dummyserver.test_socketlevel import (  # noqa: F401
-    TestSNI, TestSocketClosing, TestClientCerts
+    TestSNI,
+    TestSocketClosing,
+    TestClientCerts,
 )
 
 

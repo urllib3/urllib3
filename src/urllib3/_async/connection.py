@@ -24,9 +24,14 @@ import h11
 
 from ..base import Request, Response
 from ..exceptions import (
-    ConnectTimeoutError, NewConnectionError, SubjectAltNameWarning,
-    SystemTimeWarning, BadVersionError, FailedTunnelError, InvalidBodyError,
-    ProtocolError
+    ConnectTimeoutError,
+    NewConnectionError,
+    SubjectAltNameWarning,
+    SystemTimeWarning,
+    BadVersionError,
+    FailedTunnelError,
+    InvalidBodyError,
+    ProtocolError,
 )
 from urllib3.packages import six
 from ..util import ssl_ as ssl_util
@@ -41,6 +46,7 @@ except ImportError:
 
 def is_async_mode():
     """Tests if we're in the async part of the code or not"""
+
     async def f():
         """Unasync transforms async functions in sync functions"""
         return None
@@ -60,7 +66,7 @@ _ASYNC_MODE = is_async_mode()
 # (ie test_recent_date is failing) update it to ~6 months before the current date.
 RECENT_DATE = datetime.date(2019, 1, 1)
 
-_SUPPORTED_VERSIONS = frozenset([b'1.0', b'1.1'])
+_SUPPORTED_VERSIONS = frozenset([b"1.0", b"1.1"])
 
 # A sentinel object returned when some syscalls return EAGAIN.
 _EAGAIN = object()
@@ -77,9 +83,9 @@ def _headers_to_native_string(headers):
     # 3 and need to decode the headers using Latin1.
     for n, v in headers:
         if not isinstance(n, str):
-            n = n.decode('latin1')
+            n = n.decode("latin1")
         if not isinstance(v, str):
-            v = v.decode('latin1')
+            v = v.decode("latin1")
         yield (n, v)
 
 
@@ -90,12 +96,12 @@ def _stringify_headers(headers):
     # TODO: revisit
     for name, value in headers:
         if isinstance(name, six.text_type):
-            name = name.encode('ascii')
+            name = name.encode("ascii")
 
         if isinstance(value, six.text_type):
-            value = value.encode('latin-1')
+            value = value.encode("latin-1")
         elif isinstance(value, int):
-            value = str(value).encode('ascii')
+            value = str(value).encode("ascii")
 
         yield (name, value)
 
@@ -145,11 +151,12 @@ def _request_bytes_iterable(request, state_machine):
     """
     An iterable that serialises a set of bytes for the body.
     """
+
     def all_pieces_iter():
         h11_request = h11.Request(
             method=request.method,
             target=request.target,
-            headers=_stringify_headers(request.headers.items())
+            headers=_stringify_headers(request.headers.items()),
         )
         yield state_machine.send(h11_request)
 
@@ -193,12 +200,12 @@ def _response_from_h11(h11_response, body_object):
     if bytes(h11_response.http_version) not in _SUPPORTED_VERSIONS:
         raise BadVersionError(h11_response.http_version)
 
-    version = b'HTTP/' + h11_response.http_version
+    version = b"HTTP/" + h11_response.http_version
     our_response = Response(
         status_code=h11_response.status_code,
         headers=_headers_to_native_string(h11_response.headers),
         body=body_object,
-        version=version
+        version=version,
     )
     return our_response
 
@@ -219,18 +226,10 @@ def _build_tunnel_request(host, port, headers):
         target = "[%s]:%d" % (host, port)
 
     if not isinstance(target, bytes):
-        target = target.encode('latin1')
+        target = target.encode("latin1")
 
-    tunnel_request = Request(
-        method=b"CONNECT",
-        target=target,
-        headers=headers
-    )
-    tunnel_request.add_host(
-        host=host,
-        port=port,
-        scheme='http'
-    )
+    tunnel_request = Request(method=b"CONNECT", target=target, headers=headers)
+    tunnel_request.add_host(host=host, port=port, scheme="http")
     return tunnel_request
 
 
@@ -247,21 +246,23 @@ async def _start_http_request(request, state_machine, sock, read_timeout=None):
     CONNECT requests and real requests.
     """
     # Before we begin, confirm that the state machine is ok.
-    if (state_machine.our_state is not h11.IDLE or
-            state_machine.their_state is not h11.IDLE):
+    if (
+        state_machine.our_state is not h11.IDLE
+        or state_machine.their_state is not h11.IDLE
+    ):
         raise ProtocolError("Invalid internal state transition")
 
     request_bytes_iterable = _request_bytes_iterable(request, state_machine)
 
     # Hack around Python 2 lack of nonlocal
-    context = {'send_aborted': True, 'h11_response': None}
+    context = {"send_aborted": True, "h11_response": None}
 
     async def produce_bytes():
         try:
             return next(request_bytes_iterable)
         except StopIteration:
             # We successfully sent the whole body!
-            context['send_aborted'] = False
+            context["send_aborted"] = False
             return None
 
     def consume_bytes(data):
@@ -275,17 +276,16 @@ async def _start_http_request(request, state_machine, sock, read_timeout=None):
                 continue
             elif isinstance(event, h11.Response):
                 # We have our response! Save it and get out of here.
-                context['h11_response'] = event
+                context["h11_response"] = event
                 raise LoopAbort
             else:
                 # Can't happen
                 raise RuntimeError("Unexpected h11 event {}".format(event))
 
-    await sock.send_and_receive_for_a_while(
-        produce_bytes, consume_bytes, read_timeout)
-    assert context['h11_response'] is not None
+    await sock.send_and_receive_for_a_while(produce_bytes, consume_bytes, read_timeout)
+    assert context["h11_response"] is not None
 
-    if context['send_aborted']:
+    if context["send_aborted"]:
         # Our state machine thinks we sent a bunch of data... but maybe we
         # didn't! Maybe our send got cancelled while we were only half-way
         # through sending the last chunk, and then h11 thinks we sent a
@@ -294,7 +294,7 @@ async def _start_http_request(request, state_machine, sock, read_timeout=None):
         # h11's state machine.
         state_machine.send_failed()
 
-    return context['h11_response']
+    return context["h11_response"]
 
 
 async def _read_until_event(state_machine, sock, read_timeout):
@@ -328,21 +328,30 @@ class HTTP1Connection(object):
     data is buffered it will issue one read syscall and return all of that
     data. Buffering of response data must happen at a higher layer.
     """
+
     #: Disable Nagle's algorithm by default.
     #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
     default_socket_options = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
 
-    def __init__(self, host, port, backend=None,
-                 socket_options=_DEFAULT_SOCKET_OPTIONS,
-                 source_address=None, tunnel_host=None, tunnel_port=None,
-                 tunnel_headers=None):
+    def __init__(
+        self,
+        host,
+        port,
+        backend=None,
+        socket_options=_DEFAULT_SOCKET_OPTIONS,
+        source_address=None,
+        tunnel_host=None,
+        tunnel_port=None,
+        tunnel_headers=None,
+    ):
         self.is_verified = False
         self.read_timeout = None
         self._backend = load_backend(normalize_backend(backend, _ASYNC_MODE))
         self._host = host
         self._port = port
         self._socket_options = (
-            socket_options if socket_options is not _DEFAULT_SOCKET_OPTIONS
+            socket_options
+            if socket_options is not _DEFAULT_SOCKET_OPTIONS
             else self.default_socket_options
         )
         self._source_address = source_address
@@ -358,16 +367,20 @@ class HTTP1Connection(object):
         """
         is_time_off = datetime.date.today() < RECENT_DATE
         if is_time_off:
-            warnings.warn((
-                'System time is way off (before {0}). This will probably '
-                'lead to SSL verification errors').format(RECENT_DATE),
-                SystemTimeWarning
+            warnings.warn(
+                (
+                    "System time is way off (before {0}). This will probably "
+                    "lead to SSL verification errors"
+                ).format(RECENT_DATE),
+                SystemTimeWarning,
             )
 
         # XX need to know whether this is the proxy or the final host that
         # we just did a handshake with!
         # Google App Engine's httplib does not define _tunnel_host
-        check_host = assert_hostname or getattr(self, '_tunnel_host', None) or self._host
+        check_host = (
+            assert_hostname or getattr(self, "_tunnel_host", None) or self._host
+        )
 
         # Stripping trailing dots from the hostname is important because
         # they indicate that this host is an absolute name (for DNS
@@ -378,27 +391,26 @@ class HTTP1Connection(object):
         sock = await sock.start_tls(check_host, ssl_context)
 
         if fingerprint:
-            ssl_util.assert_fingerprint(sock.getpeercert(binary_form=True),
-                                        fingerprint)
+            ssl_util.assert_fingerprint(sock.getpeercert(binary_form=True), fingerprint)
 
-        elif (ssl_context.verify_mode != ssl.CERT_NONE
-              and assert_hostname is not False):
+        elif ssl_context.verify_mode != ssl.CERT_NONE and assert_hostname is not False:
             cert = sock.getpeercert()
-            if not cert.get('subjectAltName', ()):
-                warnings.warn((
-                    'Certificate for {0} has no `subjectAltName`, falling '
-                    'back to check for a `commonName` for now. This '
-                    'feature is being removed by major browsers and '
-                    'deprecated by RFC 2818. (See '
-                    'https://github.com/shazow/urllib3/issues/497 for '
-                    'details.)'.format(self._host)),
-                    SubjectAltNameWarning
+            if not cert.get("subjectAltName", ()):
+                warnings.warn(
+                    (
+                        "Certificate for {0} has no `subjectAltName`, falling "
+                        "back to check for a `commonName` for now. This "
+                        "feature is being removed by major browsers and "
+                        "deprecated by RFC 2818. (See "
+                        "https://github.com/shazow/urllib3/issues/497 for "
+                        "details.)".format(self._host)
+                    ),
+                    SubjectAltNameWarning,
                 )
             ssl_util.match_hostname(cert, check_host)
 
-        self.is_verified = (
-            ssl_context.verify_mode == ssl.CERT_REQUIRED and
-            (assert_hostname is not False or fingerprint)
+        self.is_verified = ssl_context.verify_mode == ssl.CERT_REQUIRED and (
+            assert_hostname is not False or fingerprint
         )
 
         return sock
@@ -440,9 +452,13 @@ class HTTP1Connection(object):
                 "Unable to establish CONNECT tunnel", tunnel_response
             )
 
-    async def connect(self, ssl_context=None,
-                      fingerprint=None, assert_hostname=None,
-                      connect_timeout=None):
+    async def connect(
+        self,
+        ssl_context=None,
+        fingerprint=None,
+        assert_hostname=None,
+        connect_timeout=None,
+    ):
         """
         Connect this socket to the server, applying the source address, any
         relevant socket options, and the relevant connection timeout.
@@ -454,33 +470,37 @@ class HTTP1Connection(object):
 
         extra_kw = {}
         if self._source_address:
-            extra_kw['source_address'] = self._source_address
+            extra_kw["source_address"] = self._source_address
 
         if self._socket_options:
-            extra_kw['socket_options'] = self._socket_options
+            extra_kw["socket_options"] = self._socket_options
 
         # This was factored out into a separate function to allow overriding
         # by subclasses, but in the backend approach the way to to this is to
         # provide a custom backend. (Composition >> inheritance.)
         try:
             self._sock = await self._backend.connect(
-                self._host, self._port, connect_timeout, **extra_kw)
+                self._host, self._port, connect_timeout, **extra_kw
+            )
             self._state_machine = h11.Connection(our_role=h11.CLIENT)
 
         # XX these two error handling blocks needs to be re-done in a
         # backend-agnostic way
         except socket.timeout:
             raise ConnectTimeoutError(
-                self, "Connection to %s timed out. (connect timeout=%s)" %
-                (self._host, connect_timeout))
+                self,
+                "Connection to %s timed out. (connect timeout=%s)"
+                % (self._host, connect_timeout),
+            )
 
         except socket.error as e:
             raise NewConnectionError(
-                self, "Failed to establish a new connection: %s" % e)
+                self, "Failed to establish a new connection: %s" % e
+            )
 
         if ssl_context is not None:
             # Google App Engine's httplib does not define _tunnel_host
-            if getattr(self, '_tunnel_host', None) is not None:
+            if getattr(self, "_tunnel_host", None) is not None:
                 self._tunnel(self._sock)
 
             self._sock = await self._wrap_socket(
@@ -523,7 +543,7 @@ class HTTP1Connection(object):
 
         our_state = self._state_machine.our_state
         their_state = self._state_machine.their_state
-        return (our_state is h11.IDLE and their_state is h11.IDLE)
+        return our_state is h11.IDLE and their_state is h11.IDLE
 
     def __aiter__(self):
         return self
@@ -535,7 +555,9 @@ class HTTP1Connection(object):
         """
         Iterate over the body bytes of the response until end of message.
         """
-        event = await _read_until_event(self._state_machine, self._sock, self.read_timeout)
+        event = await _read_until_event(
+            self._state_machine, self._sock, self.read_timeout
+        )
         if isinstance(event, h11.Data):
             return bytes(event.data)
         elif isinstance(event, h11.EndOfMessage):

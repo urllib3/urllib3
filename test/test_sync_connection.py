@@ -21,7 +21,7 @@ from urllib3._sync.connection import HTTP1Connection
 
 
 # Objects and globals for handling scenarios.
-Event = collections.namedtuple('Event', ['expected_object', 'event', 'meta'])
+Event = collections.namedtuple("Event", ["expected_object", "event", "meta"])
 
 SELECTOR = "SELECTOR"
 SOCKET = "SOCKET"
@@ -39,9 +39,9 @@ RECV_ALL = "RECV_ALL"
 
 
 # A number of helpful shorthands for common events.
-SELECT_UPLOAD = Event(SELECTOR, EVENT_SELECT, {'read': True, 'write': True})
-SELECT_DOWNLOAD = Event(SELECTOR, EVENT_SELECT, {'read': True, 'write': False})
-SELECT_WRITABLE = Event(SELECTOR, EVENT_SELECT, {'read': False, 'write': True})
+SELECT_UPLOAD = Event(SELECTOR, EVENT_SELECT, {"read": True, "write": True})
+SELECT_DOWNLOAD = Event(SELECTOR, EVENT_SELECT, {"read": True, "write": False})
+SELECT_WRITABLE = Event(SELECTOR, EVENT_SELECT, {"read": False, "write": True})
 SOCKET_SEND_ALL = Event(SOCKET, EVENT_SEND, (SEND_ALL,))
 SOCKET_SEND_5 = Event(SOCKET, EVENT_SEND, (5,))
 SOCKET_SEND_EAGAIN = Event(SOCKET, EVENT_SEND, (RAISE_EAGAIN,))
@@ -54,18 +54,14 @@ SOCKET_RECV_WANTREAD = Event(SOCKET, EVENT_RECV, (RAISE_WANT_READ,))
 SOCKET_RECV_WANTWRITE = Event(SOCKET, EVENT_RECV, (RAISE_WANT_WRITE,))
 
 
-REQUEST = (
-    b'GET / HTTP/1.1\r\n'
-    b'host: localhost\r\n'
-    b'\r\n'
-)
+REQUEST = b"GET / HTTP/1.1\r\n" b"host: localhost\r\n" b"\r\n"
 RESPONSE = (
-    b'HTTP/1.1 200 OK\r\n'
-    b'Server: totallyarealserver/1.0.0\r\n'
-    b'Content-Length: 8\r\n'
-    b'Content-Type: text/plain\r\n'
-    b'\r\n'
-    b'complete'
+    b"HTTP/1.1 200 OK\r\n"
+    b"Server: totallyarealserver/1.0.0\r\n"
+    b"Content-Length: 8\r\n"
+    b"Content-Type: text/plain\r\n"
+    b"\r\n"
+    b"complete"
 )
 
 
@@ -73,6 +69,7 @@ class ScenarioError(Exception):
     """
     An error occurred with running the scenario.
     """
+
     pass
 
 
@@ -87,13 +84,15 @@ class ScenarioWait(object):
     Provides a mock wait_for_socket function which responds based on the
     scenario it is provided.
     """
+
     def __init__(self, scenario):
         self._scenario = scenario
 
     def wait_for_socket(self, sock, read, write, timeout):
-        events = {'read': read, 'write': write}
+        events = {"read": read, "write": write}
         expected_object, event, expected_events = next_event(
-            ("select", events), self._scenario)
+            ("select", events), self._scenario
+        )
 
         if expected_object is not SELECTOR:
             raise ScenarioError("Received non selector event!")
@@ -115,10 +114,11 @@ class ScenarioSocket(object):
     (only that which is used by the synchronous connection), and responds to
     socket calls based on the scenario it is provided.
     """
+
     def __init__(self, scenario):
         self._scenario = scenario
         self._data_to_send = RESPONSE
-        self._data_sent = b''
+        self._data_sent = b""
         self._closed = False
 
     def _raise_errors(self, possible_error):
@@ -130,10 +130,7 @@ class ScenarioSocket(object):
             raise ssl.SSLWantWriteError("Want write")
 
     def send(self, data):
-        expected_object, event, args = next_event(
-            ("send", bytes(data)),
-            self._scenario,
-        )
+        expected_object, event, args = next_event(("send", bytes(data)), self._scenario)
         if expected_object is not SOCKET:
             raise ScenarioError("Received non socket event!")
 
@@ -149,10 +146,7 @@ class ScenarioSocket(object):
         return amount
 
     def recv(self, amt):
-        expected_object, event, args = next_event(
-            ("recv", amt),
-            self._scenario,
-        )
+        expected_object, event, args = next_event(("recv", amt), self._scenario)
         if expected_object is not SOCKET:
             raise ScenarioError("Received non socket event!")
 
@@ -190,35 +184,36 @@ class TestUnusualSocketConditions(unittest.TestCase):
     examples, but those are so prohibitively difficult to trigger that these
     will have to do instead.
     """
+
     # A stub value of the read timeout that will be used by the selector.
     # This should not be edited by tests: only used as a reference for what
     # delay values they can use to force things to time out.
     READ_TIMEOUT = 5
 
     def run_scenario(self, scenario):
-        conn = HTTP1Connection('localhost', 80)
+        conn = HTTP1Connection("localhost", 80)
         sock = ScenarioSocket(scenario)
         wait_for_socket = ScenarioWait(scenario).wait_for_socket
         sync_socket = SyncSocket(sock, _wait_for_socket=wait_for_socket)
         conn._sock = sync_socket
         conn._state_machine = h11.Connection(our_role=h11.CLIENT)
 
-        request = Request(method=b'GET', target=b'/')
-        request.add_host(host=b'localhost', port=80, scheme='http')
+        request = Request(method=b"GET", target=b"/")
+        request.add_host(host=b"localhost", port=80, scheme="http")
         response = conn.send_request(request, read_timeout=self.READ_TIMEOUT)
-        body = b''.join(response.body)
+        body = b"".join(response.body)
 
         # The scenario should be totally consumed.
         self.assertFalse(scenario)
 
         # Validate that the response is complete.
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(body, b'complete')
-        self.assertEqual(response.version, b'HTTP/1.1')
+        self.assertEqual(body, b"complete")
+        self.assertEqual(response.version, b"HTTP/1.1")
         self.assertEqual(len(response.headers), 3)
-        self.assertEqual(response.headers['server'], 'totallyarealserver/1.0.0')
-        self.assertEqual(response.headers['content-length'], '8')
-        self.assertEqual(response.headers['content-type'], 'text/plain')
+        self.assertEqual(response.headers["server"], "totallyarealserver/1.0.0")
+        self.assertEqual(response.headers["content-length"], "8")
+        self.assertEqual(response.headers["content-type"], "text/plain")
 
         return sock
 
@@ -226,11 +221,7 @@ class TestUnusualSocketConditions(unittest.TestCase):
         """
         When everything goes smoothly, the response is cleanly consumed.
         """
-        scenario = [
-            SOCKET_RECV_EAGAIN,
-            SOCKET_SEND_ALL,
-            SOCKET_RECV_ALL,
-        ]
+        scenario = [SOCKET_RECV_EAGAIN, SOCKET_SEND_ALL, SOCKET_RECV_ALL]
         sock = self.run_scenario(scenario)
         self.assertEqual(sock._data_sent, REQUEST)
 

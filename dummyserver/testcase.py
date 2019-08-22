@@ -16,7 +16,7 @@ from dummyserver.proxy import ProxyHandler
 
 
 def consume_socket(sock, chunks=65536):
-    while not sock.recv(chunks).endswith(b'\r\n\r\n'):
+    while not sock.recv(chunks).endswith(b"\r\n\r\n"):
         pass
 
 
@@ -25,15 +25,16 @@ class SocketDummyServerTestCase(unittest.TestCase):
     A simple socket-based server is created for this class that is good for
     exactly one request.
     """
-    scheme = 'http'
-    host = 'localhost'
+
+    scheme = "http"
+    host = "localhost"
 
     @classmethod
     def _start_server(cls, socket_handler):
         ready_event = threading.Event()
-        cls.server_thread = SocketServerThread(socket_handler=socket_handler,
-                                               ready_event=ready_event,
-                                               host=cls.host)
+        cls.server_thread = SocketServerThread(
+            socket_handler=socket_handler, ready_event=ready_event, host=cls.host
+        )
         cls.server_thread.start()
         ready_event.wait(5)
         if not ready_event.is_set():
@@ -62,27 +63,23 @@ class SocketDummyServerTestCase(unittest.TestCase):
     @classmethod
     def start_basic_handler(cls, **kw):
         return cls.start_response_handler(
-            b'HTTP/1.1 200 OK\r\n'
-            b'Content-Length: 0\r\n'
-            b'\r\n', **kw)
+            b"HTTP/1.1 200 OK\r\n" b"Content-Length: 0\r\n" b"\r\n", **kw
+        )
 
     @classmethod
     def tearDownClass(cls):
-        if hasattr(cls, 'server_thread'):
+        if hasattr(cls, "server_thread"):
             cls.server_thread.join(0.1)
 
     def assert_header_received(
-        self,
-        received_headers,
-        header_name,
-        expected_value=None
+        self, received_headers, header_name, expected_value=None
     ):
-        header_name = header_name.encode('ascii').lower()
+        header_name = header_name.encode("ascii").lower()
         if expected_value is not None:
-            expected_value = expected_value.encode('ascii')
+            expected_value = expected_value.encode("ascii")
         header_titles = []
         for header in received_headers:
-            key, value = header.split(b': ')
+            key, value = header.split(b": ")
             key = key.lower()
             header_titles.append(key)
             if key == header_name and expected_value is not None:
@@ -94,9 +91,9 @@ class IPV4SocketDummyServerTestCase(SocketDummyServerTestCase):
     @classmethod
     def _start_server(cls, socket_handler):
         ready_event = threading.Event()
-        cls.server_thread = SocketServerThread(socket_handler=socket_handler,
-                                               ready_event=ready_event,
-                                               host=cls.host)
+        cls.server_thread = SocketServerThread(
+            socket_handler=socket_handler, ready_event=ready_event, host=cls.host
+        )
         cls.server_thread.USE_IPV6 = False
         cls.server_thread.start()
         ready_event.wait(5)
@@ -113,17 +110,19 @@ class HTTPDummyServerTestCase(unittest.TestCase):
     complete. For examples of what test requests you can send to the server,
     see the TestingApp in dummyserver/handlers.py.
     """
-    scheme = 'http'
-    host = 'localhost'
-    host_alt = '127.0.0.1'  # Some tests need two hosts
+
+    scheme = "http"
+    host = "localhost"
+    host_alt = "127.0.0.1"  # Some tests need two hosts
     certs = DEFAULT_CERTS
 
     @classmethod
     def _start_server(cls):
         cls.io_loop = ioloop.IOLoop.current()
         app = web.Application([(r".*", TestingApp)])
-        cls.server, cls.port = run_tornado_app(app, cls.io_loop, cls.certs,
-                                               cls.scheme, cls.host)
+        cls.server, cls.port = run_tornado_app(
+            app, cls.io_loop, cls.certs, cls.scheme, cls.host
+        )
         cls.server_thread = run_loop_in_thread(cls.io_loop)
 
     @classmethod
@@ -142,43 +141,46 @@ class HTTPDummyServerTestCase(unittest.TestCase):
 
 
 class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
-    scheme = 'https'
-    host = 'localhost'
+    scheme = "https"
+    host = "localhost"
     certs = DEFAULT_CERTS
 
 
-@pytest.mark.skipif(not HAS_IPV6, reason='IPv6 not available')
+@pytest.mark.skipif(not HAS_IPV6, reason="IPv6 not available")
 class IPV6HTTPSDummyServerTestCase(HTTPSDummyServerTestCase):
-    host = '::1'
+    host = "::1"
 
 
 class HTTPDummyProxyTestCase(unittest.TestCase):
 
-    http_host = 'localhost'
-    http_host_alt = '127.0.0.1'
+    http_host = "localhost"
+    http_host_alt = "127.0.0.1"
 
-    https_host = 'localhost'
-    https_host_alt = '127.0.0.1'
+    https_host = "localhost"
+    https_host_alt = "127.0.0.1"
     https_certs = DEFAULT_CERTS
 
-    proxy_host = 'localhost'
-    proxy_host_alt = '127.0.0.1'
+    proxy_host = "localhost"
+    proxy_host_alt = "127.0.0.1"
 
     @classmethod
     def setUpClass(cls):
         cls.io_loop = ioloop.IOLoop.current()
 
-        app = web.Application([(r'.*', TestingApp)])
+        app = web.Application([(r".*", TestingApp)])
         cls.http_server, cls.http_port = run_tornado_app(
-            app, cls.io_loop, None, 'http', cls.http_host)
+            app, cls.io_loop, None, "http", cls.http_host
+        )
 
-        app = web.Application([(r'.*', TestingApp)])
+        app = web.Application([(r".*", TestingApp)])
         cls.https_server, cls.https_port = run_tornado_app(
-            app, cls.io_loop, cls.https_certs, 'https', cls.http_host)
+            app, cls.io_loop, cls.https_certs, "https", cls.http_host
+        )
 
-        app = web.Application([(r'.*', ProxyHandler)])
+        app = web.Application([(r".*", ProxyHandler)])
         cls.proxy_server, cls.proxy_port = run_tornado_app(
-            app, cls.io_loop, None, 'http', cls.proxy_host)
+            app, cls.io_loop, None, "http", cls.proxy_host
+        )
 
         cls.server_thread = run_loop_in_thread(cls.io_loop)
 
@@ -191,20 +193,20 @@ class HTTPDummyProxyTestCase(unittest.TestCase):
         cls.server_thread.join()
 
 
-@pytest.mark.skipif(not HAS_IPV6, reason='IPv6 not available')
+@pytest.mark.skipif(not HAS_IPV6, reason="IPv6 not available")
 class IPv6HTTPDummyServerTestCase(HTTPDummyServerTestCase):
-    host = '::1'
+    host = "::1"
 
 
-@pytest.mark.skipif(not HAS_IPV6, reason='IPv6 not available')
+@pytest.mark.skipif(not HAS_IPV6, reason="IPv6 not available")
 class IPv6HTTPDummyProxyTestCase(HTTPDummyProxyTestCase):
 
-    http_host = 'localhost'
-    http_host_alt = '127.0.0.1'
+    http_host = "localhost"
+    http_host_alt = "127.0.0.1"
 
-    https_host = 'localhost'
-    https_host_alt = '127.0.0.1'
+    https_host = "localhost"
+    https_host_alt = "127.0.0.1"
     https_certs = DEFAULT_CERTS
 
-    proxy_host = '::1'
-    proxy_host_alt = '127.0.0.1'
+    proxy_host = "::1"
+    proxy_host_alt = "127.0.0.1"

@@ -86,15 +86,19 @@ def bind_port(sock, host=HOST):
     from bind()'ing to our host/port for the duration of the test.
     """
     if sock.family == socket.AF_INET and sock.type == socket.SOCK_STREAM:
-        if hasattr(socket, 'SO_REUSEADDR'):
+        if hasattr(socket, "SO_REUSEADDR"):
             if sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR) == 1:
-                raise ValueError("tests should never set the SO_REUSEADDR "
-                                 "socket option on TCP/IP sockets!")
-        if hasattr(socket, 'SO_REUSEPORT'):
+                raise ValueError(
+                    "tests should never set the SO_REUSEADDR "
+                    "socket option on TCP/IP sockets!"
+                )
+        if hasattr(socket, "SO_REUSEPORT"):
             if sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT) == 1:
-                raise ValueError("tests should never set the SO_REUSEPORT "
-                                 "socket option on TCP/IP sockets!")
-        if hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
+                raise ValueError(
+                    "tests should never set the SO_REUSEPORT "
+                    "socket option on TCP/IP sockets!"
+                )
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
 
     sock.bind((host, 0))

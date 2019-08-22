@@ -14,9 +14,7 @@ except ImportError:
 import h11
 
 from .._collections import HTTPHeaderDict
-from ..exceptions import (
-    ProtocolError, DecodeError, ReadTimeoutError
-)
+from ..exceptions import ProtocolError, DecodeError, ReadTimeoutError
 from urllib3.packages.six import string_types as basestring
 from ..util.ssl_ import BaseSSLError
 
@@ -24,10 +22,9 @@ log = logging.getLogger(__name__)
 
 
 class DeflateDecoder(object):
-
     def __init__(self):
         self._first_try = True
-        self._data = b''
+        self._data = b""
         self._obj = zlib.decompressobj()
 
     def __getattr__(self, name):
@@ -64,7 +61,6 @@ class GzipDecoderState(object):
 
 
 class GzipDecoder(object):
-
     def __init__(self):
         self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
         self._state = GzipDecoderState.FIRST_MEMBER
@@ -95,6 +91,7 @@ class GzipDecoder(object):
 
 
 if brotli is not None:
+
     class BrotliDecoder(object):
         # Supports both 'brotlipy' and 'Brotli' packages
         # since they share an import name. The top branches
@@ -103,14 +100,14 @@ if brotli is not None:
             self._obj = brotli.Decompressor()
 
         def decompress(self, data):
-            if hasattr(self._obj, 'decompress'):
+            if hasattr(self._obj, "decompress"):
                 return self._obj.decompress(data)
             return self._obj.process(data)
 
         def flush(self):
-            if hasattr(self._obj, 'flush'):
+            if hasattr(self._obj, "flush"):
                 return self._obj.flush()
-            return b''
+            return b""
 
 
 class MultiDecoder(object):
@@ -123,7 +120,7 @@ class MultiDecoder(object):
     """
 
     def __init__(self, modes):
-        self._decoders = [_get_decoder(m.strip()) for m in modes.split(',')]
+        self._decoders = [_get_decoder(m.strip()) for m in modes.split(",")]
 
     def flush(self):
         return self._decoders[0].flush()
@@ -135,13 +132,13 @@ class MultiDecoder(object):
 
 
 def _get_decoder(mode):
-    if ',' in mode:
+    if "," in mode:
         return MultiDecoder(mode)
 
-    if mode == 'gzip':
+    if mode == "gzip":
         return GzipDecoder()
 
-    if brotli is not None and mode == 'br':
+    if brotli is not None and mode == "br":
         return BrotliDecoder()
 
     return DeflateDecoder()
@@ -171,16 +168,30 @@ class HTTPResponse(io.IOBase):
         was used during the request.
     """
 
-    CONTENT_DECODERS = ['gzip', 'deflate']
+    CONTENT_DECODERS = ["gzip", "deflate"]
     if brotli is not None:
-        CONTENT_DECODERS += ['br']
+        CONTENT_DECODERS += ["br"]
     REDIRECT_STATUSES = [301, 302, 303, 307, 308]
 
-    def __init__(self, body='', headers=None, status=0, version=0, reason=None,
-                 strict=0, preload_content=True, decode_content=True,
-                 original_response=None, pool=None, connection=None, msg=None,
-                 retries=None, enforce_content_length=False,
-                 request_method=None, request_url=None):
+    def __init__(
+        self,
+        body="",
+        headers=None,
+        status=0,
+        version=0,
+        reason=None,
+        strict=0,
+        preload_content=True,
+        decode_content=True,
+        original_response=None,
+        pool=None,
+        connection=None,
+        msg=None,
+        retries=None,
+        enforce_content_length=False,
+        request_method=None,
+        request_url=None,
+    ):
 
         if isinstance(headers, HTTPHeaderDict):
             self.headers = headers
@@ -200,7 +211,7 @@ class HTTPResponse(io.IOBase):
         self._fp_bytes_read = 0
         self.msg = msg
         self._request_url = request_url
-        self._buffer = b''
+        self._buffer = b""
 
         if body and isinstance(body, (basestring, bytes)):
             self._body = body
@@ -223,7 +234,7 @@ class HTTPResponse(io.IOBase):
             location. ``False`` if not a redirect status code.
         """
         if self.status in self.REDIRECT_STATUSES:
-            return self.headers.get('location')
+            return self.headers.get("location")
 
         return False
 
@@ -261,16 +272,19 @@ class HTTPResponse(io.IOBase):
         """
         # Note: content-encoding value should be case-insensitive, per RFC 7230
         # Section 3.2
-        content_encoding = self.headers.get('content-encoding', '').lower()
+        content_encoding = self.headers.get("content-encoding", "").lower()
         if self._decoder is None:
             if content_encoding in self.CONTENT_DECODERS:
                 self._decoder = _get_decoder(content_encoding)
-            elif ',' in content_encoding:
+            elif "," in content_encoding:
                 encodings = [
-                    e.strip() for e in content_encoding.split(',')
-                    if e.strip() in self.CONTENT_DECODERS]
+                    e.strip()
+                    for e in content_encoding.split(",")
+                    if e.strip() in self.CONTENT_DECODERS
+                ]
                 if len(encodings):
                     self._decoder = _get_decoder(content_encoding)
+
     DECODER_ERROR_CLASSES = (IOError, zlib.error)
     if brotli is not None:
         DECODER_ERROR_CLASSES += (brotli.error,)
@@ -286,10 +300,12 @@ class HTTPResponse(io.IOBase):
             if self._decoder:
                 data = self._decoder.decompress(data)
         except self.DECODER_ERROR_CLASSES as e:
-            content_encoding = self.headers.get('content-encoding', '').lower()
+            content_encoding = self.headers.get("content-encoding", "").lower()
             raise DecodeError(
                 "Received response with content-encoding: %s, but "
-                "failed to decode it." % content_encoding, e)
+                "failed to decode it." % content_encoding,
+                e,
+            )
         if flush_decoder:
             data += self._flush_decoder()
 
@@ -301,10 +317,10 @@ class HTTPResponse(io.IOBase):
         being used.
         """
         if self._decoder:
-            buf = self._decoder.decompress(b'')
+            buf = self._decoder.decompress(b"")
             return buf + self._decoder.flush()
 
-        return b''
+        return b""
 
     @contextmanager
     def _error_catcher(self):
@@ -324,20 +340,20 @@ class HTTPResponse(io.IOBase):
             except SocketTimeout:
                 # FIXME: Ideally we'd like to include the url in the ReadTimeoutError but
                 # there is yet no clean way to get at it from this context.
-                raise ReadTimeoutError(self._pool, None, 'Read timed out.')
+                raise ReadTimeoutError(self._pool, None, "Read timed out.")
 
             except BaseSSLError as e:
                 # FIXME: Is there a better way to differentiate between SSLErrors?
-                if 'read operation timed out' not in str(e):  # Defensive:
+                if "read operation timed out" not in str(e):  # Defensive:
                     # This shouldn't happen but just in case we're missing an edge
                     # case, let's avoid swallowing SSL errors.
                     raise
 
-                raise ReadTimeoutError(self._pool, None, 'Read timed out.')
+                raise ReadTimeoutError(self._pool, None, "Read timed out.")
 
             except (h11.ProtocolError, SocketError) as e:
                 # This includes IncompleteRead.
-                raise ProtocolError('Connection broken: %r' % e, e)
+                raise ProtocolError("Connection broken: %r" % e, e)
 
             except GeneratorExit:
                 # We swallow GeneratorExit when it is emitted: this allows the
@@ -390,7 +406,7 @@ class HTTPResponse(io.IOBase):
         # data into the buffer. That's unfortunate, but right now I'm not smart
         # enough to come up with a way to solve that problem.
         if self._fp is None and not self._buffer:
-            return b''
+            return b""
 
         data = self._buffer
 
@@ -399,8 +415,8 @@ class HTTPResponse(io.IOBase):
                 chunks = []
                 async for chunk in self.stream(decode_content):
                     chunks.append(chunk)
-                data += b''.join(chunks)
-                self._buffer = b''
+                data += b"".join(chunks)
+                self._buffer = b""
 
                 # We only cache the body data for simple read calls.
                 self._body = data
@@ -418,7 +434,7 @@ class HTTPResponse(io.IOBase):
                         chunks.append(chunk)
                         data_len += len(chunk)
 
-                data = b''.join(chunks)
+                data = b"".join(chunks)
                 self._buffer = data[amt:]
                 data = data[:amt]
 
@@ -456,9 +472,7 @@ class HTTPResponse(io.IOBase):
             # coverage. Happily, the code here is so simple that testing the
             # branch we don't enter is basically entirely unnecessary (it's
             # just a yield statement).
-            final_chunk = self._decode(
-                b'', decode_content, flush_decoder=True
-            )
+            final_chunk = self._decode(b"", decode_content, flush_decoder=True)
             if final_chunk:  # Platform-specific: Jython
                 yield final_chunk
 
@@ -473,13 +487,15 @@ class HTTPResponse(io.IOBase):
         Remaining parameters are passed to the HTTPResponse constructor, along
         with ``original_response=r``.
         """
-        resp = ResponseCls(body=r.body,
-                           headers=r.headers,
-                           status=r.status_code,
-                           version=r.version,
-                           original_response=r,
-                           connection=r.body,
-                           **response_kw)
+        resp = ResponseCls(
+            body=r.body,
+            headers=r.headers,
+            status=r.status_code,
+            version=r.version,
+            original_response=r,
+            connection=r.body,
+            **response_kw
+        )
         return resp
 
     # Backwards-compatibility methods for httplib.HTTPResponse
@@ -497,7 +513,7 @@ class HTTPResponse(io.IOBase):
     def close(self):
         if not self.closed:
             self._fp.close()
-            self._buffer = b''
+            self._buffer = b""
             self._fp = None
 
         if self._connection:
@@ -508,7 +524,7 @@ class HTTPResponse(io.IOBase):
         # This method is required for `io` module compatibility.
         if self._fp is None and not self._buffer:
             return True
-        elif hasattr(self._fp, 'complete'):
+        elif hasattr(self._fp, "complete"):
             return self._fp.complete
         else:
             return False
@@ -520,8 +536,10 @@ class HTTPResponse(io.IOBase):
         elif hasattr(self._fp, "fileno"):
             return self._fp.fileno()
         else:
-            raise IOError("The file-like object this HTTPResponse is wrapped "
-                          "around has no file descriptor")
+            raise IOError(
+                "The file-like object this HTTPResponse is wrapped "
+                "around has no file descriptor"
+            )
 
     def readable(self):
         # This method is required for `io` module compatibility.
@@ -533,5 +551,5 @@ class HTTPResponse(io.IOBase):
         if len(temp) == 0:
             return 0
         else:
-            b[:len(temp)] = temp
+            b[: len(temp)] = temp
             return len(temp)
