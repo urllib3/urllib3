@@ -85,6 +85,13 @@ def _build_context(context, keyfile, certfile, cert_reqs, key_password,
             ssl_version=resolve_ssl_version(ssl_version),
             cert_reqs=resolve_cert_reqs(cert_reqs)
         )
+
+        # Try to load OS default certs if none are given.
+        # Works well on Windows (requires Python3.4+)
+        if (not ca_certs and not ca_cert_dir
+                and hasattr(context, 'load_default_certs')):
+            context.load_default_certs()
+
     context = merge_context_settings(
         context, keyfile=keyfile, certfile=certfile,
         cert_reqs=cert_reqs, key_password=key_password,

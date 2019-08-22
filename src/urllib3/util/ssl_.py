@@ -326,9 +326,6 @@ def merge_context_settings(context, keyfile=None, certfile=None,
             if e.errno == errno.ENOENT:
                 raise SSLError(e)
             raise
-    elif getattr(context, 'load_default_certs', None) is not None:
-        # try to load OS default certs; works well on Windows (require Python3.4+)
-        context.load_default_certs()
 
     # Attempt to detect if we get the goofy behavior of the
     # keyfile being encrypted and OpenSSL asking for the
