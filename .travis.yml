@@ -130,4 +130,4 @@ stages:
 
   # Deploy on any tags
   - name: deploy
-    if: branch = master AND tag IS present
+    if: tag IS present AND tag =~ /^(\d+\.\d+(?:.\d+)?)$/ AND repo = urllib3/urllib3

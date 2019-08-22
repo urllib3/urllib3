@@ -134,8 +134,15 @@ class TestUtil(object):
         'http://user\\@google.com',
         'http://google\\.com',
         'user\\@google.com',
-        'http://google.com#fragment#',
         'http://user@user@google.com/',
+
+        # Invalid IDNA labels
+        u'http://\uD7FF.com',
+        u'http://❤️',
+
+        # Unicode surrogates
+        u'http://\uD800.com',
+        u'http://\uDC00.com',
     ])
     def test_invalid_url(self, url):
         with pytest.raises(LocationParseError):
@@ -148,6 +155,15 @@ class TestUtil(object):
         ('HTTPS://Example.Com/?Key=Value', 'https://example.com/?Key=Value'),
         ('Https://Example.Com/#Fragment', 'https://example.com/#Fragment'),
         ('[::Ff%etH0%Ff]/%ab%Af', '[::ff%25etH0%Ff]/%AB%AF'),
+
+        # Invalid characters for the query/fragment getting encoded
+        ('http://google.com/p[]?parameter[]=\"hello\"#fragment#',
+         'http://google.com/p%5B%5D?parameter%5B%5D=%22hello%22#fragment%23'),
+
+        # Percent encoding isn't applied twice despite '%' being invalid
+        # but the percent encoding is still normalized.
+        ('http://google.com/p%5B%5d?parameter%5b%5D=%22hello%22#fragment%23',
+         'http://google.com/p%5B%5D?parameter%5B%5D=%22hello%22#fragment%23')
     ])
     def test_parse_url_normalization(self, url, expected_normalized_url):
         """Assert parse_url normalizes the scheme/host, and only the scheme/host"""
@@ -213,7 +229,14 @@ class TestUtil(object):
 
         # Uppercase IRI
         (u'http://Königsgäßchen.de/straße',
-         Url('http', host='xn--knigsgchen-b4a3dun.de', path='/stra%C3%9Fe'))
+         Url('http', host='xn--knigsgchen-b4a3dun.de', path='/stra%C3%9Fe')),
+
+        # Unicode Surrogates
+        (u'http://google.com/\uD800', Url('http', host='google.com', path='%ED%A0%80')),
+        (u'http://google.com?q=\uDC00',
+         Url('http', host='google.com', path='', query='q=%ED%B0%80')),
+        (u'http://google.com#\uDC00',
+         Url('http', host='google.com', path='', fragment='%ED%B0%80')),
     ]
 
     @pytest.mark.parametrize(

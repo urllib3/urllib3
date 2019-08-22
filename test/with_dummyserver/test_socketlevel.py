@@ -35,6 +35,10 @@ import io
 import select
 import socket
 import ssl
+import sys
+import mock
+import platform
+
 
 import pytest
 
@@ -1292,6 +1296,87 @@ class TestSSL(SocketDummyServerTestCase):
         self.addCleanup(pool.close)
         response = pool.urlopen('GET', '/', retries=1)
         self.assertEqual(response.data, b'Success')
+
+    def test_ssl_load_default_certs_when_empty(self):
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            ssl_sock = ssl.wrap_socket(sock,
+                                       server_side=True,
+                                       keyfile=DEFAULT_CERTS['keyfile'],
+                                       certfile=DEFAULT_CERTS['certfile'],
+                                       ca_certs=DEFAULT_CA)
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += ssl_sock.recv(65536)
+
+            ssl_sock.send(b'HTTP/1.1 200 OK\r\n'
+                          b'Content-Type: text/plain\r\n'
+                          b'Content-Length: 5\r\n\r\n'
+                          b'Hello')
+
+            ssl_sock.close()
+            sock.close()
+
+        context = mock.create_autospec(ssl_.SSLContext)
+        context.load_default_certs = mock.Mock()
+        context.options = 0
+
+        with mock.patch("urllib3.util.ssl_.SSLContext", lambda *_, **__: context):
+
+            self._start_server(socket_handler)
+            pool = HTTPSConnectionPool(self.host, self.port)
+            self.addCleanup(pool.close)
+
+            with self.assertRaises(MaxRetryError):
+                pool.request("GET", "/", timeout=0.01)
+
+            context.load_default_certs.assert_called_with()
+
+    def test_ssl_dont_load_default_certs_when_given(self):
+        if platform.python_implementation() == 'PyPy' and sys.version_info[0] == 2:
+            # https://github.com/testing-cabal/mock/issues/438
+            pytest.xfail("fails with PyPy for Python 2 dues to funcsigs bug")
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            ssl_sock = ssl.wrap_socket(sock,
+                                       server_side=True,
+                                       keyfile=DEFAULT_CERTS['keyfile'],
+                                       certfile=DEFAULT_CERTS['certfile'],
+                                       ca_certs=DEFAULT_CA)
+
+            buf = b''
+            while not buf.endswith(b'\r\n\r\n'):
+                buf += ssl_sock.recv(65536)
+
+            ssl_sock.send(b'HTTP/1.1 200 OK\r\n'
+                          b'Content-Type: text/plain\r\n'
+                          b'Content-Length: 5\r\n\r\n'
+                          b'Hello')
+
+            ssl_sock.close()
+            sock.close()
+
+        context = mock.create_autospec(ssl_.SSLContext)
+        context.load_default_certs = mock.Mock()
+        context.options = 0
+
+        with mock.patch("urllib3.util.ssl_.SSLContext", lambda *_, **__: context):
+            for kwargs in [{"ca_certs": "/a"},
+                           {"ca_cert_dir": "/a"},
+                           {"ca_certs": "a", "ca_cert_dir": "a"},
+                           {"ssl_context": context}]:
+
+                self._start_server(socket_handler)
+
+                pool = HTTPSConnectionPool(self.host, self.port, **kwargs)
+                self.addCleanup(pool.close)
+
+                with self.assertRaises(MaxRetryError):
+                    pool.request("GET", "/", timeout=0.01)
+
+                context.load_default_certs.assert_not_called()
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):

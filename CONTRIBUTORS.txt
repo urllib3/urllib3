@@ -193,7 +193,7 @@ In chronological order:
 * Shige Takeda <smtakeda@gmail.com>
   * Started Recipes documentation and added a recipe about handling concatenated gzip data in HTTP response
 
-* Jesse Shapiro <jesse@jesseshapiro.net>
+* Jess Shapiro <jesse@jesseshapiro.net>
   * Various character-encoding fixes/tweaks
   * Disabling IPv6 DNS when IPv6 connections not supported
 
@@ -244,8 +244,8 @@ In chronological order:
   * Fix ``util.selectors._fileobj_to_fd`` to accept ``long``.
   * Update appveyor tox setup to use the 64bit python.
 
-* Akamai (through Jesse Shapiro) <jshapiro@akamai.com>
-  * Ongoing maintenance
+* Akamai (through Jess Shapiro) <jshapiro@akamai.com>
+  * Ongoing maintenance; 2017-2018
 
 * Dominique Leuenberger <dimstar@opensuse.org>
   * Minor fixes in the test suite
