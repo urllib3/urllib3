@@ -35,7 +35,10 @@ import io
 import select
 import socket
 import ssl
+import sys
 import mock
+import platform
+
 
 import pytest
 
@@ -1331,6 +1334,10 @@ class TestSSL(SocketDummyServerTestCase):
             context.load_default_certs.assert_called_with()
 
     def test_ssl_dont_load_default_certs_when_given(self):
+        if platform.python_implementation() == 'PyPy' and sys.version_info[0] == 2:
+            # https://github.com/testing-cabal/mock/pull/445/files
+            pytest.xfail("fails with PyPy for Python 2 dues to funcsigs bug")
+
         def socket_handler(listener):
             sock = listener.accept()[0]
             ssl_sock = ssl.wrap_socket(sock,
