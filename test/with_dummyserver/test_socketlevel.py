@@ -1335,7 +1335,7 @@ class TestSSL(SocketDummyServerTestCase):
 
     def test_ssl_dont_load_default_certs_when_given(self):
         if platform.python_implementation() == 'PyPy' and sys.version_info[0] == 2:
-            # https://github.com/testing-cabal/mock/pull/445/files
+            # https://github.com/testing-cabal/mock/issues/438
             pytest.xfail("fails with PyPy for Python 2 dues to funcsigs bug")
 
         def socket_handler(listener):
