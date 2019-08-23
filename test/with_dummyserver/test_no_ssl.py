@@ -23,7 +23,7 @@ class TestHTTPWithoutSSL(HTTPDummyServerTestCase, TestWithoutSSL):
         pool = urllib3.HTTPConnectionPool(self.host, self.port)
         self.addCleanup(pool.close)
         r = pool.request("GET", "/")
-        self.assertEqual(r.status, 200, r.data)
+        assert r.status == 200, r.data
 
 
 class TestHTTPSWithoutSSL(HTTPSDummyServerTestCase, TestWithoutSSL):
@@ -31,6 +31,6 @@ class TestHTTPSWithoutSSL(HTTPSDummyServerTestCase, TestWithoutSSL):
         try:
             pool = urllib3.HTTPSConnectionPool(self.host, self.port, cert_reqs="NONE")
         except urllib3.exceptions.SSLError as e:
-            self.assertIn("SSL module is not available", str(e))
+            assert "SSL module is not available" in str(e)
         finally:
             pool.close()

@@ -40,8 +40,8 @@ class TestHTTP(TestWithoutSSL):
 
             pool = urllib3.HTTPConnectionPool("www.google.com", "80")
             r = pool.request("GET", "/")
-            self.assertEqual(r.status, 200, r.data)
-            self.assertEqual(fetch_mock.call_count, 1)
+            assert r.status == 200, r.data
+            assert fetch_mock.call_count == 1
 
 
 @pytest.mark.usefixtures("sandbox")
@@ -64,5 +64,5 @@ class TestHTTPS(unittest.TestCase):
             pool = urllib3.HTTPSConnectionPool("www.google.com", "443")
             pool.ConnectionCls = urllib3.connection.UnverifiedHTTPSConnection
             r = pool.request("GET", "/")
-            self.assertEqual(r.status, 200, r.data)
-            self.assertEqual(fetch_mock.call_count, 1)
+            assert r.status == 200, r.data
+            assert fetch_mock.call_count == 1

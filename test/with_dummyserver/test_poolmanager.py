@@ -29,7 +29,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             redirect=False,
         )
 
-        self.assertEqual(r.status, 303)
+        assert r.status == 303
 
         r = http.request(
             "GET",
@@ -37,8 +37,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
             fields={"target": "%s/" % self.base_url},
         )
 
-        self.assertEqual(r.status, 200)
-        self.assertEqual(r.data, b"Dummy server!")
+        assert r.status == 200
+        assert r.data == b"Dummy server!"
 
     def test_redirect_twice(self):
         http = PoolManager()
@@ -51,7 +51,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             redirect=False,
         )
 
-        self.assertEqual(r.status, 303)
+        assert r.status == 303
 
         r = http.request(
             "GET",
@@ -61,8 +61,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
             },
         )
 
-        self.assertEqual(r.status, 200)
-        self.assertEqual(r.data, b"Dummy server!")
+        assert r.status == 200
+        assert r.data == b"Dummy server!"
 
     def test_redirect_to_relative_url(self):
         http = PoolManager()
@@ -75,14 +75,14 @@ class TestPoolManager(HTTPDummyServerTestCase):
             redirect=False,
         )
 
-        self.assertEqual(r.status, 303)
+        assert r.status == 303
 
         r = http.request(
             "GET", "%s/redirect" % self.base_url, fields={"target": "/redirect"}
         )
 
-        self.assertEqual(r.status, 200)
-        self.assertEqual(r.data, b"Dummy server!")
+        assert r.status == 200
+        assert r.data == b"Dummy server!"
 
     def test_cross_host_redirect(self):
         http = PoolManager()
@@ -112,7 +112,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             retries=1,
         )
 
-        self.assertEqual(r._pool.host, self.host_alt)
+        assert r._pool.host == self.host_alt
 
     def test_too_many_redirects(self):
         http = PoolManager()
@@ -155,11 +155,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
             headers={"Authorization": "foo"},
         )
 
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
 
         data = json.loads(r.data.decode("utf-8"))
 
-        self.assertNotIn("Authorization", data)
+        assert "Authorization" not in data
 
         r = http.request(
             "GET",
@@ -168,12 +168,12 @@ class TestPoolManager(HTTPDummyServerTestCase):
             headers={"authorization": "foo"},
         )
 
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
 
         data = json.loads(r.data.decode("utf-8"))
 
-        self.assertNotIn("authorization", data)
-        self.assertNotIn("Authorization", data)
+        assert "authorization" not in data
+        assert "Authorization" not in data
 
     def test_redirect_cross_host_no_remove_headers(self):
         http = PoolManager()
@@ -187,11 +187,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
             retries=Retry(remove_headers_on_redirect=[]),
         )
 
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
 
         data = json.loads(r.data.decode("utf-8"))
 
-        self.assertEqual(data["Authorization"], "foo")
+        assert data["Authorization"] == "foo"
 
     def test_redirect_cross_host_set_removed_headers(self):
         http = PoolManager()
@@ -205,12 +205,12 @@ class TestPoolManager(HTTPDummyServerTestCase):
             retries=Retry(remove_headers_on_redirect=["X-API-Secret"]),
         )
 
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
 
         data = json.loads(r.data.decode("utf-8"))
 
-        self.assertNotIn("X-API-Secret", data)
-        self.assertEqual(data["Authorization"], "bar")
+        assert "X-API-Secret" not in data
+        assert data["Authorization"] == "bar"
 
         r = http.request(
             "GET",
@@ -220,13 +220,13 @@ class TestPoolManager(HTTPDummyServerTestCase):
             retries=Retry(remove_headers_on_redirect=["X-API-Secret"]),
         )
 
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
 
         data = json.loads(r.data.decode("utf-8"))
 
-        self.assertNotIn("x-api-secret", data)
-        self.assertNotIn("X-API-Secret", data)
-        self.assertEqual(data["Authorization"], "bar")
+        assert "x-api-secret" not in data
+        assert "X-API-Secret" not in data
+        assert data["Authorization"] == "bar"
 
     def test_raise_on_redirect(self):
         http = PoolManager()
@@ -241,7 +241,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             retries=Retry(total=None, redirect=1, raise_on_redirect=False),
         )
 
-        self.assertEqual(r.status, 303)
+        assert r.status == 303
 
     def test_raise_on_status(self):
         http = PoolManager()
@@ -283,7 +283,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             ),
         )
 
-        self.assertEqual(r.status, 500)
+        assert r.status == 500
 
     def test_missing_port(self):
         # Can a URL that lacks an explicit port like ':80' succeed, or
@@ -301,8 +301,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
         finally:
             DEFAULT_PORTS["http"] = 80
 
-        self.assertEqual(r.status, 200)
-        self.assertEqual(r.data, b"Dummy server!")
+        assert r.status == 200
+        assert r.data == b"Dummy server!"
 
     def test_headers(self):
         http = PoolManager(headers={"Foo": "bar"})
@@ -310,47 +310,47 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         r = http.request("GET", "%s/headers" % self.base_url)
         returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get("Foo"), "bar")
+        assert returned_headers.get("Foo") == "bar"
 
         r = http.request("POST", "%s/headers" % self.base_url)
         returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get("Foo"), "bar")
+        assert returned_headers.get("Foo") == "bar"
 
         r = http.request_encode_url("GET", "%s/headers" % self.base_url)
         returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get("Foo"), "bar")
+        assert returned_headers.get("Foo") == "bar"
 
         r = http.request_encode_body("POST", "%s/headers" % self.base_url)
         returned_headers = json.loads(r.data.decode())
-        self.assertEqual(returned_headers.get("Foo"), "bar")
+        assert returned_headers.get("Foo") == "bar"
 
         r = http.request_encode_url(
             "GET", "%s/headers" % self.base_url, headers={"Baz": "quux"}
         )
         returned_headers = json.loads(r.data.decode())
-        self.assertIsNone(returned_headers.get("Foo"))
-        self.assertEqual(returned_headers.get("Baz"), "quux")
+        assert returned_headers.get("Foo") is None
+        assert returned_headers.get("Baz") == "quux"
 
         r = http.request_encode_body(
             "GET", "%s/headers" % self.base_url, headers={"Baz": "quux"}
         )
         returned_headers = json.loads(r.data.decode())
-        self.assertIsNone(returned_headers.get("Foo"))
-        self.assertEqual(returned_headers.get("Baz"), "quux")
+        assert returned_headers.get("Foo") is None
+        assert returned_headers.get("Baz") == "quux"
 
     def test_http_with_ssl_keywords(self):
         http = PoolManager(ca_certs="REQUIRED")
         self.addCleanup(http.clear)
 
         r = http.request("GET", "http://%s:%s/" % (self.host, self.port))
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
 
     def test_http_with_ca_cert_dir(self):
         http = PoolManager(ca_certs="REQUIRED", ca_cert_dir="/nosuchdir")
         self.addCleanup(http.clear)
 
         r = http.request("GET", "http://%s:%s/" % (self.host, self.port))
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
 
     def test_cleanup_on_connection_error(self):
         """
@@ -361,26 +361,20 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         with PoolManager(maxsize=poolsize, block=True) as http:
             pool = http.connection_from_host(self.host, self.port)
-            self.assertEqual(pool.pool.qsize(), poolsize)
+            assert pool.pool.qsize() == poolsize
 
             # force a connection error by supplying a non-existent
             # url. We won't get a response for this  and so the
             # conn won't be implicitly returned to the pool.
             url = "%s/redirect" % self.base_url
-            self.assertRaises(
-                MaxRetryError,
-                http.request,
-                "GET",
-                url,
-                fields={"target": "/"},
-                retries=0,
-            )
+            with pytest.raises(MaxRetryError):
+                http.request("GET", url, fields={"target": "/"}, retries=0)
 
             r = http.request("GET", url, fields={"target": "/"}, retries=1)
             r.release_conn()
 
             # the pool should still contain poolsize elements
-            self.assertEqual(pool.pool.qsize(), poolsize)
+            assert pool.pool.qsize() == poolsize
 
 
 class TestRetry(HTTPDummyServerTestCase):
@@ -412,7 +406,7 @@ class TestRetry(HTTPDummyServerTestCase):
                 fields={"target": "/"},
                 retries=False,
             )
-            self.assertEqual(r.status, 303)
+            assert r.status == 303
 
             r = http.request(
                 "GET",
@@ -420,16 +414,15 @@ class TestRetry(HTTPDummyServerTestCase):
                 fields={"target": "/"},
                 retries=Retry(redirect=False),
             )
-            self.assertEqual(r.status, 303)
+            assert r.status == 303
 
-            self.assertRaises(
-                NewConnectionError,
-                http.request,
-                "GET",
-                "http://thishostdoesnotexist.invalid/",
-                timeout=0.001,
-                retries=False,
-            )
+            with pytest.raises(NewConnectionError):
+                http.request(
+                    "GET",
+                    "http://thishostdoesnotexist.invalid/",
+                    timeout=0.001,
+                    retries=False,
+                )
 
     def test_read_retries(self):
         """ Should retry for status codes in the whitelist """
@@ -442,7 +435,7 @@ class TestRetry(HTTPDummyServerTestCase):
                 headers={"test-name": "test_read_retries"},
                 retries=retry,
             )
-            self.assertEqual(resp.status, 200)
+            assert resp.status == 200
 
     def test_read_total_retries(self):
         """ HTTP response w/ status code in the whitelist should be retried """
@@ -456,7 +449,7 @@ class TestRetry(HTTPDummyServerTestCase):
                 headers=headers,
                 retries=retry,
             )
-            self.assertEqual(resp.status, 200)
+            assert resp.status == 200
 
     def test_retries_wrong_whitelist(self):
         """HTTP response w/ status code not in whitelist shouldn't be retried"""
@@ -469,7 +462,7 @@ class TestRetry(HTTPDummyServerTestCase):
                 headers={"test-name": "test_wrong_whitelist"},
                 retries=retry,
             )
-            self.assertEqual(resp.status, 418)
+            assert resp.status == 418
 
     def test_default_method_whitelist_retried(self):
         """ urllib3 should retry methods in the default method whitelist """
@@ -482,7 +475,7 @@ class TestRetry(HTTPDummyServerTestCase):
                 headers={"test-name": "test_default_whitelist"},
                 retries=retry,
             )
-            self.assertEqual(resp.status, 200)
+            assert resp.status == 200
 
     def test_retries_wrong_method_list(self):
         """Method not in our whitelist should not be retried, even if code matches"""
@@ -496,7 +489,7 @@ class TestRetry(HTTPDummyServerTestCase):
                 headers=headers,
                 retries=retry,
             )
-            self.assertEqual(resp.status, 418)
+            assert resp.status == 418
 
     def test_read_retries_unsuccessful(self):
         headers = {"test-name": "test_read_retries_unsuccessful"}
@@ -505,7 +498,7 @@ class TestRetry(HTTPDummyServerTestCase):
             resp = http.request(
                 "GET", "%s/successful_retry" % self.base_url, headers=headers, retries=1
             )
-            self.assertEqual(resp.status, 418)
+            assert resp.status == 418
 
     def test_retry_reuse_safe(self):
         """ It should be possible to reuse a Retry object across requests """
@@ -519,14 +512,14 @@ class TestRetry(HTTPDummyServerTestCase):
                 headers=headers,
                 retries=retry,
             )
-            self.assertEqual(resp.status, 200)
+            assert resp.status == 200
             resp = http.request(
                 "GET",
                 "%s/successful_retry" % self.base_url,
                 headers=headers,
                 retries=retry,
             )
-            self.assertEqual(resp.status, 200)
+            assert resp.status == 200
 
     def test_retry_return_in_response(self):
         headers = {"test-name": "test_retry_return_in_response"}
@@ -539,11 +532,10 @@ class TestRetry(HTTPDummyServerTestCase):
                 headers=headers,
                 retries=retry,
             )
-            self.assertEqual(resp.status, 200)
-            self.assertEqual(resp.retries.total, 1)
-            self.assertEqual(
-                resp.retries.history,
-                (RequestHistory("GET", "/successful_retry", None, 418, None),),
+            assert resp.status == 200
+            assert resp.retries.total == 1
+            assert resp.retries.history == (
+                RequestHistory("GET", "/successful_retry", None, 418, None),
             )
 
     def test_retry_redirect_history(self):
@@ -551,13 +543,10 @@ class TestRetry(HTTPDummyServerTestCase):
             resp = http.request(
                 "GET", "%s/redirect" % self.base_url, fields={"target": "/"}
             )
-            self.assertEqual(resp.status, 200)
-            self.assertEqual(
-                resp.retries.history,
-                (
-                    RequestHistory(
-                        "GET", self.base_url + "/redirect?target=%2F", None, 303, "/"
-                    ),
+            assert resp.status == 200
+            assert resp.retries.history == (
+                RequestHistory(
+                    "GET", self.base_url + "/redirect?target=%2F", None, 303, "/"
                 ),
             )
 
@@ -569,8 +558,8 @@ class TestRetry(HTTPDummyServerTestCase):
                 fields={"redirect_codes": "303,302,200"},
                 redirect=False,
             )
-            self.assertEqual(r.status, 303)
-            self.assertEqual(r.retries.history, tuple())
+            assert r.status == 303
+            assert r.retries.history == tuple()
 
             r = http.request(
                 "GET",
@@ -578,8 +567,8 @@ class TestRetry(HTTPDummyServerTestCase):
                 retries=10,
                 fields={"redirect_codes": "303,302,301,307,302,200"},
             )
-            self.assertEqual(r.status, 200)
-            self.assertEqual(r.data, b"Done redirecting")
+            assert r.status == 200
+            assert r.data == b"Done redirecting"
 
             expected = [
                 (303, "/multi_redirect?redirect_codes=302,301,307,302,200"),
@@ -592,7 +581,7 @@ class TestRetry(HTTPDummyServerTestCase):
                 (history.status, history.redirect_location)
                 for history in r.retries.history
             ]
-            self.assertEqual(actual, expected)
+            assert actual == expected
 
     def test_redirect_put_file(self):
         """PUT with file object should work with a redirection response"""
@@ -611,8 +600,8 @@ class TestRetry(HTTPDummyServerTestCase):
             resp = http.urlopen(
                 "PUT", url, headers=headers, retries=retry, body=uploaded_file
             )
-            self.assertEqual(resp.status, 200)
-            self.assertEqual(resp.data, data)
+            assert resp.status == 200
+            assert resp.data == data
 
 
 class TestRetryAfter(HTTPDummyServerTestCase):
@@ -630,12 +619,12 @@ class TestRetryAfter(HTTPDummyServerTestCase):
             r = http.request(
                 "GET", url, fields={"status": "429 Too Many Requests"}, retries=False
             )
-            self.assertEqual(r.status, 429)
+            assert r.status == 429
 
             r = http.request(
                 "GET", url, fields={"status": "429 Too Many Requests"}, retries=True
             )
-            self.assertEqual(r.status, 200)
+            assert r.status == 200
 
             # Request twice in a second to get a 503 response.
             r = http.request(
@@ -644,39 +633,39 @@ class TestRetryAfter(HTTPDummyServerTestCase):
             r = http.request(
                 "GET", url, fields={"status": "503 Service Unavailable"}, retries=False
             )
-            self.assertEqual(r.status, 503)
+            assert r.status == 503
 
             r = http.request(
                 "GET", url, fields={"status": "503 Service Unavailable"}, retries=True
             )
-            self.assertEqual(r.status, 200)
+            assert r.status == 200
 
             # Ignore Retry-After header on status which is not defined in
             # Retry.RETRY_AFTER_STATUS_CODES.
             r = http.request(
                 "GET", url, fields={"status": "418 I'm a teapot"}, retries=True
             )
-            self.assertEqual(r.status, 418)
+            assert r.status == 418
 
     def test_redirect_after(self):
         with PoolManager() as http:
             r = http.request("GET", "%s/redirect_after" % self.base_url, retries=False)
-            self.assertEqual(r.status, 303)
+            assert r.status == 303
 
             t = time.time()
             r = http.request("GET", "%s/redirect_after" % self.base_url)
-            self.assertEqual(r.status, 200)
+            assert r.status == 200
             delta = time.time() - t
-            self.assertTrue(delta >= 1)
+            assert delta >= 1
 
             t = time.time()
             timestamp = t + 2
             r = http.request(
                 "GET", self.base_url + "/redirect_after?date=" + str(timestamp)
             )
-            self.assertEqual(r.status, 200)
+            assert r.status == 200
             delta = time.time() - t
-            self.assertTrue(delta >= 1)
+            assert delta >= 1
 
             # Retry-After is past
             t = time.time()
@@ -685,8 +674,8 @@ class TestRetryAfter(HTTPDummyServerTestCase):
                 "GET", self.base_url + "/redirect_after?date=" + str(timestamp)
             )
             delta = time.time() - t
-            self.assertEqual(r.status, 200)
-            self.assertTrue(delta < 1)
+            assert r.status == 200
+            assert delta < 1
 
 
 class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
@@ -715,7 +704,7 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
                 body=uploaded_file,
                 redirect=False,
             )
-            self.assertEqual(resp.status, 200)
+            assert resp.status == 200
 
     def test_redirect_with_failed_tell(self):
         """Abort request if failed to get a position from tell()"""
@@ -735,7 +724,7 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
                 http.urlopen("PUT", url, headers=headers, body=body)
                 self.fail("PUT successful despite failed rewind.")
             except UnrewindableBodyError as e:
-                self.assertTrue("Unable to record file position for" in str(e))
+                assert "Unable to record file position for" in str(e)
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")

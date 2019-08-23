@@ -66,7 +66,7 @@ class TestPyOpenSSLHelpers(unittest.TestCase):
         name = u"उदाहरण.परीक"
         expected_result = "xn--p1b6ci4b4b3a.xn--11b5bs8d"
 
-        self.assertEqual(_dnsname_to_stdlib(name), expected_result)
+        assert _dnsname_to_stdlib(name) == expected_result
 
     def test_dnsname_to_stdlib_leading_period(self):
         """
@@ -75,7 +75,7 @@ class TestPyOpenSSLHelpers(unittest.TestCase):
         name = u".उदाहरण.परीक"
         expected_result = ".xn--p1b6ci4b4b3a.xn--11b5bs8d"
 
-        self.assertEqual(_dnsname_to_stdlib(name), expected_result)
+        assert _dnsname_to_stdlib(name) == expected_result
 
     def test_dnsname_to_stdlib_leading_splat(self):
         """
@@ -85,7 +85,7 @@ class TestPyOpenSSLHelpers(unittest.TestCase):
         name = u"*.उदाहरण.परीक"
         expected_result = "*.xn--p1b6ci4b4b3a.xn--11b5bs8d"
 
-        self.assertEqual(_dnsname_to_stdlib(name), expected_result)
+        assert _dnsname_to_stdlib(name) == expected_result
 
     @mock.patch("urllib3.contrib.pyopenssl.log.warning")
     def test_get_subj_alt_name(self, mock_warning):
@@ -97,7 +97,7 @@ class TestPyOpenSSLHelpers(unittest.TestCase):
         with open(path, "r") as fp:
             cert = load_certificate(FILETYPE_PEM, fp.read())
 
-        self.assertEqual(get_subj_alt_name(cert), [])
+        assert get_subj_alt_name(cert) == []
 
-        self.assertEqual(mock_warning.call_count, 1)
-        self.assertIsInstance(mock_warning.call_args[0][1], x509.DuplicateExtension)
+        assert mock_warning.call_count == 1
+        assert isinstance(mock_warning.call_args[0][1], x509.DuplicateExtension)
