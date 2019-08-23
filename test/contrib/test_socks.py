@@ -213,8 +213,8 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
             handler = handle_socks5_negotiation(sock, negotiate=False)
             addr, port = next(handler)
 
-            self.assertEqual(addr, "16.17.18.19")
-            self.assertEqual(port, 80)
+            assert addr == "16.17.18.19"
+            assert port == 80
             handler.send(True)
 
             while True:
@@ -236,9 +236,9 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
         self.addCleanup(pm.clear)
         response = pm.request("GET", "http://16.17.18.19")
 
-        self.assertEqual(response.status, 200)
-        self.assertEqual(response.data, b"")
-        self.assertEqual(response.headers["Server"], "SocksTestServer")
+        assert response.status == 200
+        assert response.data == b""
+        assert response.headers["Server"] == "SocksTestServer"
 
     def test_local_dns(self):
         def request_handler(listener):
@@ -247,8 +247,8 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
             handler = handle_socks5_negotiation(sock, negotiate=False)
             addr, port = next(handler)
 
-            self.assertIn(addr, ["127.0.0.1", "::1"])
-            self.assertEqual(port, 80)
+            assert addr in ["127.0.0.1", "::1"]
+            assert port == 80
             handler.send(True)
 
             while True:
@@ -270,9 +270,9 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
         self.addCleanup(pm.clear)
         response = pm.request("GET", "http://localhost")
 
-        self.assertEqual(response.status, 200)
-        self.assertEqual(response.data, b"")
-        self.assertEqual(response.headers["Server"], "SocksTestServer")
+        assert response.status == 200
+        assert response.data == b""
+        assert response.headers["Server"] == "SocksTestServer"
 
     def test_correct_header_line(self):
         def request_handler(listener):
@@ -281,8 +281,8 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
             handler = handle_socks5_negotiation(sock, negotiate=False)
             addr, port = next(handler)
 
-            self.assertEqual(addr, b"example.com")
-            self.assertEqual(port, 80)
+            assert addr == b"example.com"
+            assert port == 80
             handler.send(True)
 
             buf = b""
@@ -291,8 +291,8 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
                 if buf.endswith(b"\r\n\r\n"):
                     break
 
-            self.assertTrue(buf.startswith(b"GET / HTTP/1.1"))
-            self.assertIn(b"Host: example.com", buf)
+            assert buf.startswith(b"GET / HTTP/1.1")
+            assert b"Host: example.com" in buf
 
             sock.sendall(
                 b"HTTP/1.1 200 OK\r\n"
@@ -307,7 +307,7 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
         pm = socks.SOCKSProxyManager(proxy_url)
         self.addCleanup(pm.clear)
         response = pm.request("GET", "http://example.com")
-        self.assertEqual(response.status, 200)
+        assert response.status == 200
 
     def test_connection_timeouts(self):
         event = threading.Event()
@@ -320,14 +320,8 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
         pm = socks.SOCKSProxyManager(proxy_url)
         self.addCleanup(pm.clear)
 
-        self.assertRaises(
-            ConnectTimeoutError,
-            pm.request,
-            "GET",
-            "http://example.com",
-            timeout=0.001,
-            retries=False,
-        )
+        with pytest.raises(ConnectTimeoutError):
+            pm.request("GET", "http://example.com", timeout=0.001, retries=False)
         event.set()
 
     def test_connection_failure(self):
@@ -343,9 +337,8 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
         self.addCleanup(pm.clear)
 
         event.wait()
-        self.assertRaises(
-            NewConnectionError, pm.request, "GET", "http://example.com", retries=False
-        )
+        with pytest.raises(NewConnectionError):
+            pm.request("GET", "http://example.com", retries=False)
 
     def test_proxy_rejection(self):
         evt = threading.Event()
@@ -365,9 +358,8 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
         pm = socks.SOCKSProxyManager(proxy_url)
         self.addCleanup(pm.clear)
 
-        self.assertRaises(
-            NewConnectionError, pm.request, "GET", "http://example.com", retries=False
-        )
+        with pytest.raises(NewConnectionError):
+            pm.request("GET", "http://example.com", retries=False)
         evt.set()
 
     def test_socks_with_password(self):
@@ -379,8 +371,8 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
             )
             addr, port = next(handler)
 
-            self.assertEqual(addr, "16.17.18.19")
-            self.assertEqual(port, 80)
+            assert addr == "16.17.18.19"
+            assert port == 80
             handler.send(True)
 
             while True:
@@ -403,9 +395,9 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
 
         response = pm.request("GET", "http://16.17.18.19")
 
-        self.assertEqual(response.status, 200)
-        self.assertEqual(response.data, b"")
-        self.assertEqual(response.headers["Server"], "SocksTestServer")
+        assert response.status == 200
+        assert response.data == b""
+        assert response.headers["Server"] == "SocksTestServer"
 
     def test_socks_with_auth_in_url(self):
         """
@@ -421,8 +413,8 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
             )
             addr, port = next(handler)
 
-            self.assertEqual(addr, "16.17.18.19")
-            self.assertEqual(port, 80)
+            assert addr == "16.17.18.19"
+            assert port == 80
             handler.send(True)
 
             while True:
@@ -445,9 +437,9 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
 
         response = pm.request("GET", "http://16.17.18.19")
 
-        self.assertEqual(response.status, 200)
-        self.assertEqual(response.data, b"")
-        self.assertEqual(response.headers["Server"], "SocksTestServer")
+        assert response.status == 200
+        assert response.data == b""
+        assert response.headers["Server"] == "SocksTestServer"
 
     def test_socks_with_invalid_password(self):
         def request_handler(listener):
@@ -466,7 +458,7 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
         try:
             pm.request("GET", "http://example.com", retries=False)
         except NewConnectionError as e:
-            self.assertIn("SOCKS5 authentication failed", str(e))
+            assert "SOCKS5 authentication failed" in str(e)
         else:
             self.fail("Did not raise")
 
@@ -475,14 +467,14 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
 
         def request_handler(listener):
             sock = listener.accept()[0]
-            self.assertEqual(sock.getpeername()[0], "127.0.0.1")
-            self.assertEqual(sock.getpeername()[1], expected_port)
+            assert sock.getpeername()[0] == "127.0.0.1"
+            assert sock.getpeername()[1] == expected_port
 
             handler = handle_socks5_negotiation(sock, negotiate=False)
             addr, port = next(handler)
 
-            self.assertEqual(addr, "16.17.18.19")
-            self.assertEqual(port, 80)
+            assert addr == "16.17.18.19"
+            assert port == 80
             handler.send(True)
 
             while True:
@@ -505,7 +497,7 @@ class TestSOCKS5Proxy(IPV4SocketDummyServerTestCase):
         )
         self.addCleanup(pm.clear)
         response = pm.request("GET", "http://16.17.18.19")
-        self.assertEqual(response.status, 200)
+        assert response.status == 200
 
 
 class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
@@ -523,8 +515,8 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             handler = handle_socks4_negotiation(sock)
             addr, port = next(handler)
 
-            self.assertEqual(addr, "16.17.18.19")
-            self.assertEqual(port, 80)
+            assert addr == "16.17.18.19"
+            assert port == 80
             handler.send(True)
 
             while True:
@@ -546,9 +538,9 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         self.addCleanup(pm.clear)
         response = pm.request("GET", "http://16.17.18.19")
 
-        self.assertEqual(response.status, 200)
-        self.assertEqual(response.headers["Server"], "SocksTestServer")
-        self.assertEqual(response.data, b"")
+        assert response.status == 200
+        assert response.headers["Server"] == "SocksTestServer"
+        assert response.data == b""
 
     def test_local_dns(self):
         def request_handler(listener):
@@ -557,8 +549,8 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             handler = handle_socks4_negotiation(sock)
             addr, port = next(handler)
 
-            self.assertEqual(addr, "127.0.0.1")
-            self.assertEqual(port, 80)
+            assert addr == "127.0.0.1"
+            assert port == 80
             handler.send(True)
 
             while True:
@@ -580,9 +572,9 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         self.addCleanup(pm.clear)
         response = pm.request("GET", "http://localhost")
 
-        self.assertEqual(response.status, 200)
-        self.assertEqual(response.headers["Server"], "SocksTestServer")
-        self.assertEqual(response.data, b"")
+        assert response.status == 200
+        assert response.headers["Server"] == "SocksTestServer"
+        assert response.data == b""
 
     def test_correct_header_line(self):
         def request_handler(listener):
@@ -591,8 +583,8 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             handler = handle_socks4_negotiation(sock)
             addr, port = next(handler)
 
-            self.assertEqual(addr, b"example.com")
-            self.assertEqual(port, 80)
+            assert addr == b"example.com"
+            assert port == 80
             handler.send(True)
 
             buf = b""
@@ -601,8 +593,8 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
                 if buf.endswith(b"\r\n\r\n"):
                     break
 
-            self.assertTrue(buf.startswith(b"GET / HTTP/1.1"))
-            self.assertIn(b"Host: example.com", buf)
+            assert buf.startswith(b"GET / HTTP/1.1")
+            assert b"Host: example.com" in buf
 
             sock.sendall(
                 b"HTTP/1.1 200 OK\r\n"
@@ -617,7 +609,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         pm = socks.SOCKSProxyManager(proxy_url)
         self.addCleanup(pm.clear)
         response = pm.request("GET", "http://example.com")
-        self.assertEqual(response.status, 200)
+        assert response.status == 200
 
     def test_proxy_rejection(self):
         evt = threading.Event()
@@ -637,9 +629,8 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         pm = socks.SOCKSProxyManager(proxy_url)
         self.addCleanup(pm.clear)
 
-        self.assertRaises(
-            NewConnectionError, pm.request, "GET", "http://example.com", retries=False
-        )
+        with pytest.raises(NewConnectionError):
+            pm.request("GET", "http://example.com", retries=False)
         evt.set()
 
     def test_socks4_with_username(self):
@@ -649,8 +640,8 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             handler = handle_socks4_negotiation(sock, username=b"user")
             addr, port = next(handler)
 
-            self.assertEqual(addr, "16.17.18.19")
-            self.assertEqual(port, 80)
+            assert addr == "16.17.18.19"
+            assert port == 80
             handler.send(True)
 
             while True:
@@ -672,9 +663,9 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         self.addCleanup(pm.clear)
         response = pm.request("GET", "http://16.17.18.19")
 
-        self.assertEqual(response.status, 200)
-        self.assertEqual(response.data, b"")
-        self.assertEqual(response.headers["Server"], "SocksTestServer")
+        assert response.status == 200
+        assert response.data == b""
+        assert response.headers["Server"] == "SocksTestServer"
 
     def test_socks_with_invalid_username(self):
         def request_handler(listener):
@@ -691,7 +682,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         try:
             pm.request("GET", "http://example.com", retries=False)
         except NewConnectionError as e:
-            self.assertIn("different user-ids", str(e))
+            assert "different user-ids" in str(e)
         else:
             self.fail("Did not raise")
 
@@ -709,8 +700,8 @@ class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
             handler = handle_socks5_negotiation(sock, negotiate=False)
             addr, port = next(handler)
 
-            self.assertEqual(addr, b"localhost")
-            self.assertEqual(port, 443)
+            assert addr == b"localhost"
+            assert port == 443
             handler.send(True)
 
             # Wrap in TLS
@@ -724,7 +715,7 @@ class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
                 if buf.endswith(b"\r\n\r\n"):
                     break
 
-            self.assertTrue(buf.startswith(b"GET / HTTP/1.1\r\n"))
+            assert buf.startswith(b"GET / HTTP/1.1\r\n")
 
             tls.sendall(
                 b"HTTP/1.1 200 OK\r\n"
@@ -741,6 +732,6 @@ class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):
         self.addCleanup(pm.clear)
         response = pm.request("GET", "https://localhost")
 
-        self.assertEqual(response.status, 200)
-        self.assertEqual(response.data, b"")
-        self.assertEqual(response.headers["Server"], "SocksTestServer")
+        assert response.status == 200
+        assert response.data == b""
+        assert response.headers["Server"] == "SocksTestServer"

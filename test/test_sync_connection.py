@@ -204,16 +204,16 @@ class TestUnusualSocketConditions(unittest.TestCase):
         body = b"".join(response.body)
 
         # The scenario should be totally consumed.
-        self.assertFalse(scenario)
+        assert not scenario
 
         # Validate that the response is complete.
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(body, b"complete")
-        self.assertEqual(response.version, b"HTTP/1.1")
-        self.assertEqual(len(response.headers), 3)
-        self.assertEqual(response.headers["server"], "totallyarealserver/1.0.0")
-        self.assertEqual(response.headers["content-length"], "8")
-        self.assertEqual(response.headers["content-type"], "text/plain")
+        assert response.status_code == 200
+        assert body == b"complete"
+        assert response.version == b"HTTP/1.1"
+        assert len(response.headers) == 3
+        assert response.headers["server"] == "totallyarealserver/1.0.0"
+        assert response.headers["content-length"] == "8"
+        assert response.headers["content-type"] == "text/plain"
 
         return sock
 
@@ -223,7 +223,7 @@ class TestUnusualSocketConditions(unittest.TestCase):
         """
         scenario = [SOCKET_RECV_EAGAIN, SOCKET_SEND_ALL, SOCKET_RECV_ALL]
         sock = self.run_scenario(scenario)
-        self.assertEqual(sock._data_sent, REQUEST)
+        assert sock._data_sent == REQUEST
 
     def test_handle_recv_eagain_download(self):
         """
@@ -240,7 +240,7 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
-        self.assertEqual(sock._data_sent, REQUEST)
+        assert sock._data_sent == REQUEST
 
     def test_handle_recv_want_read_download(self):
         """
@@ -257,7 +257,7 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
-        self.assertEqual(sock._data_sent, REQUEST)
+        assert sock._data_sent == REQUEST
 
     def test_handle_recv_eagain_upload(self):
         """
@@ -272,7 +272,7 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
-        self.assertEqual(sock._data_sent, REQUEST)
+        assert sock._data_sent == REQUEST
 
     def test_handle_recv_wantread_upload(self):
         """
@@ -287,7 +287,7 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
-        self.assertEqual(sock._data_sent, REQUEST)
+        assert sock._data_sent == REQUEST
 
     def test_handle_send_eagain_upload(self):
         """
@@ -305,7 +305,7 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
-        self.assertEqual(sock._data_sent, REQUEST)
+        assert sock._data_sent == REQUEST
 
     def test_handle_send_wantwrite_upload(self):
         """
@@ -324,7 +324,7 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
-        self.assertEqual(sock._data_sent, REQUEST)
+        assert sock._data_sent == REQUEST
 
     def test_handle_early_response(self):
         """
@@ -340,8 +340,8 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
-        self.assertEqual(sock._data_sent, REQUEST[:5])
-        self.assertTrue(sock._closed)
+        assert sock._data_sent == REQUEST[:5]
+        assert sock._closed
 
     def test_handle_want_read_during_upload(self):
         """
@@ -364,7 +364,7 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
-        self.assertEqual(sock._data_sent, REQUEST)
+        assert sock._data_sent == REQUEST
 
     def test_handle_want_write_during_download(self):
         """
@@ -384,4 +384,4 @@ class TestUnusualSocketConditions(unittest.TestCase):
             SOCKET_RECV_ALL,
         ]
         sock = self.run_scenario(scenario)
-        self.assertEqual(sock._data_sent, REQUEST)
+        assert sock._data_sent == REQUEST

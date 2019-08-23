@@ -40,7 +40,8 @@ class TestPyOpenSSLInjection(unittest.TestCase):
         try:
             with patch("cryptography.x509.extensions.Extensions") as mock:
                 del mock.get_extension_for_class
-                self.assertRaises(ImportError, inject_into_urllib3)
+                with pytest.raises(ImportError):
+                    inject_into_urllib3()
         finally:
             # `inject_into_urllib3` is not supposed to succeed.
             # If it does, this test should fail, but we need to
@@ -55,7 +56,8 @@ class TestPyOpenSSLInjection(unittest.TestCase):
             return_val = Mock()
             del return_val._x509
             with patch("OpenSSL.crypto.X509", return_value=return_val):
-                self.assertRaises(ImportError, inject_into_urllib3)
+                with pytest.raises(ImportError):
+                    inject_into_urllib3()
         finally:
             # `inject_into_urllib3` is not supposed to succeed.
             # If it does, this test should fail, but we need to
