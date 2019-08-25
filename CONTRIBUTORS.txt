@@ -275,5 +275,8 @@ In chronological order:
 * Katsuhiko YOSHIDA <https://github.com/kyoshidajp>
   * Remove Authorization header regardless of case when redirecting to cross-site
 
+* James Meickle <https://permadeath.com/>
+  * Improve handling of Retry-After header
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
