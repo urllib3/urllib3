@@ -735,7 +735,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             ) as pool:
                 # FIXME: This assert flakes sometimes. Not sure why.
                 with pytest.raises(NewConnectionError):
-                    pool.request("GET", "/source_address?{0}".format(addr))
+                    pool.request("GET", "/source_address?{0}".format(urlencode(addr)))
 
     def test_stream_keepalive(self):
         x = 2

@@ -62,7 +62,7 @@ IPV6_ADDRZ_RE = re.compile("^" + IPV6_ADDRZ_PAT + "$")
 BRACELESS_IPV6_ADDRZ_RE = re.compile("^" + IPV6_ADDRZ_PAT[2:-2] + "$")
 ZONE_ID_RE = re.compile("(" + ZONE_ID_PAT + r")\]$")
 
-SUBAUTHORITY_PAT = (u"^(?:(.*)@)?" u"(%s|%s|%s)" u"(?::([0-9]{0,5}))?$") % (
+SUBAUTHORITY_PAT = u"^(?:(.*)@)?(%s|%s|%s)(?::([0-9]{0,5}))?$" % (
     REG_NAME_PAT,
     IPV4_PAT,
     IPV6_ADDRZ_PAT,
@@ -70,7 +70,7 @@ SUBAUTHORITY_PAT = (u"^(?:(.*)@)?" u"(%s|%s|%s)" u"(?::([0-9]{0,5}))?$") % (
 SUBAUTHORITY_RE = re.compile(SUBAUTHORITY_PAT, re.UNICODE | re.DOTALL)
 
 ZONE_ID_CHARS = set(
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "abcdefghijklmnopqrstuvwxyz" "0123456789._!-"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._!-"
 )
 USERINFO_CHARS = ZONE_ID_CHARS | set("$&'()*+,;=:")
 PATH_CHARS = USERINFO_CHARS | {"@", "/"}
@@ -301,7 +301,7 @@ def _normalize_host(host, scheme):
 
 
 def _idna_encode(name):
-    if name and any([ord(x) > 128 for x in name]):
+    if name and any([ord(x) > 0x7F for x in name]):
         try:
             import idna
         except ImportError:
