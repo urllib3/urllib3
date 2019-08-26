@@ -13,6 +13,8 @@ If you wish to add a new feature or fix a bug:
    to start making your changes.
 #. Write a test which shows that the bug was fixed or that the feature works
    as expected.
+#. Format your changes with black using command `$ nox -s blacken` and lint your
+   changes using command `nox -s lint`.
 #. Send a pull request and bug the maintainer until it gets merged and published.
    :) Make sure to add yourself to ``CONTRIBUTORS.txt``.
 
@@ -20,47 +22,53 @@ If you wish to add a new feature or fix a bug:
 Setting up your development environment
 ---------------------------------------
 
-It is recommended, and even enforced by the make file, that you use a 
-`virtualenv
-<http://docs.python-guide.org/en/latest/dev/virtualenvs/>`_::
+In order to setup the development environment all that you need is 
+`nox <https://nox.thea.codes/en/stable/index.html>`_ installed in your machine::
 
-  $ python3 -m venv venv3
-  $ source venv3/bin/activate
-  $ pip install -r dev-requirements.txt
+  $ pip install --user --upgrade nox
 
 
 Running the tests
 -----------------
 
 We use some external dependencies, multiple interpreters and code coverage
-analysis while running test suite. Our ``Makefile`` handles much of this for
-you as long as you're running it `inside of a virtualenv
-<http://docs.python-guide.org/en/latest/dev/virtualenvs/>`_::
+analysis while running test suite. Our ``noxfile.py`` handles much of this for
+you::
 
-  $ make test-quick
-  [... magically installs dependencies and runs tests on your virtualenv]
-  Ran 182 tests in 1.633s
+  $ nox --sessions test-2.7 test-3.7
+  [ Nox will create virtualenv, install the specified dependencies, and run the commands in order.]
+  nox > Running session test-2.7
+  .......
+  .......
+  nox > Session test-2.7 was successful.
+  .......
+  .......
+  nox > Running session test-3.7
+  .......
+  .......
+  nox > Session test-3.7 was successful.
 
-  OK (SKIP=6)
-
-There is also a make target for running all of our tests and multiple python
+There is also a nox command for running all of our tests and multiple python
 versions.
 
-  $ make test-all
+  $ nox --sessions test
 
 Note that code coverage less than 100% is regarded as a failing run. Some
 platform-specific tests are skipped unless run in that platform.  To make sure
 the code works in all of urllib3's supported platforms, you can run our ``tox``
 suite::
 
-  $ make test-all
-  [... tox creates a virtualenv for every platform and runs tests inside of each]
-  py27: commands succeeded
-  py34: commands succeeded
-  py35: commands succeeded
-  py36: commands succeeded
-  py37: commands succeeded
-  pypy: commands succeeded
+  $ nox --sessions test
+  [ Nox will create virtualenv, install the specified dependencies, and run the commands in order.]
+  .......
+  .......
+  nox > Session test-2.7 was successful.
+  nox > Session test-3.4 was successful.
+  nox > Session test-3.5 was successful.
+  nox > Session test-3.6 was successful.
+  nox > Session test-3.7 was successful.
+  nox > Session test-3.8 was successful.
+  nox > Session test-pypy was successful.
 
 Our test suite `runs continuously on Travis CI
 <https://travis-ci.org/urllib3/urllib3>`_ with every pull request.

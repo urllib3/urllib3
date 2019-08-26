@@ -62,7 +62,7 @@ def onlyPy2(test):
     @functools.wraps(test)
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python 2.x to run".format(name=test.__name__)
-        if six.PY3:
+        if not six.PY2:
             pytest.skip(msg)
         return test(*args, **kwargs)
 
@@ -75,7 +75,7 @@ def onlyPy3(test):
     @functools.wraps(test)
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python3.x to run".format(name=test.__name__)
-        if not six.PY3:
+        if six.PY2:
             pytest.skip(msg)
         return test(*args, **kwargs)
 
@@ -186,7 +186,7 @@ def fails_on_travis_gce(test):
 
     @functools.wraps(test)
     def wrapper(*args, **kwargs):
-        if os.environ.get("TRAVIS_INFRA") == "gce":
+        if os.environ.get("TRAVIS_INFRA") in ("gce", "unknown"):
             pytest.xfail("%s is expected to fail on Travis GCE builds" % test.__name__)
         return test(*args, **kwargs)
 

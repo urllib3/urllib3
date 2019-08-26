@@ -54,11 +54,9 @@ log = logging.getLogger(__name__)
 
 port_by_scheme = {"http": 80, "https": 443}
 
-# When updating RECENT_DATE, move it to within two years of the current date,
-# and not less than 6 months ago.
-# Example: if Today is 2018-01-01, then RECENT_DATE should be any date on or
-# after 2016-01-01 (today - 2 years) AND before 2017-07-01 (today - 6 months)
-RECENT_DATE = datetime.date(2017, 6, 30)
+# When it comes time to update this value as a part of regular maintenance
+# (ie test_recent_date is failing) update it to ~6 months before the current date.
+RECENT_DATE = datetime.date(2019, 1, 1)
 
 
 class DummyConnection(object):
@@ -101,7 +99,7 @@ class HTTPConnection(_HTTPConnection, object):
     is_verified = False
 
     def __init__(self, *args, **kw):
-        if six.PY3:
+        if not six.PY2:
             kw.pop("strict", None)
 
         # Pre-set source_address.
@@ -431,7 +429,7 @@ def _match_hostname(cert, asserted_hostname):
     try:
         match_hostname(cert, asserted_hostname)
     except CertificateError as e:
-        log.error(
+        log.warning(
             "Certificate did not match expected hostname: %s. " "Certificate: %s",
             asserted_hostname,
             cert,

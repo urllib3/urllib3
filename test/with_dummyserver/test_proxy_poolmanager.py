@@ -1,6 +1,5 @@
 import json
 import socket
-import unittest
 
 import pytest
 
@@ -15,7 +14,9 @@ from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
 
 
 class TestHTTPProxyManager(HTTPDummyProxyTestCase):
-    def setUp(self):
+    @classmethod
+    def setup_class(self):
+        super(TestHTTPProxyManager, self).setup_class()
         self.http_url = "http://%s:%d" % (self.http_host, self.http_port)
         self.http_url_alt = "http://%s:%d" % (self.http_host_alt, self.http_port)
         self.https_url = "https://%s:%d" % (self.https_host, self.https_port)
@@ -368,7 +369,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
 
 class TestIPv6HTTPProxyManager(IPv6HTTPDummyProxyTestCase):
-    def setUp(self):
+    @classmethod
+    def setup_class(self):
+        HTTPDummyProxyTestCase.setup_class()
         self.http_url = "http://%s:%d" % (self.http_host, self.http_port)
         self.http_url_alt = "http://%s:%d" % (self.http_host_alt, self.http_port)
         self.https_url = "https://%s:%d" % (self.https_host, self.https_port)
@@ -383,7 +386,3 @@ class TestIPv6HTTPProxyManager(IPv6HTTPDummyProxyTestCase):
 
             r = http.request("GET", "%s/" % self.https_url)
             assert r.status == 200
-
-
-if __name__ == "__main__":
-    unittest.main()
