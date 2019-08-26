@@ -20,10 +20,9 @@ class TestHTTPWithoutSSL(HTTPDummyServerTestCase, TestWithoutSSL):
         )
     )
     def test_simple(self):
-        pool = urllib3.HTTPConnectionPool(self.host, self.port)
-        self.addCleanup(pool.close)
-        r = pool.request("GET", "/")
-        assert r.status == 200, r.data
+        with urllib3.HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("GET", "/")
+            assert r.status == 200, r.data
 
 
 class TestHTTPSWithoutSSL(HTTPSDummyServerTestCase, TestWithoutSSL):

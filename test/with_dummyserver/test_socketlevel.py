@@ -69,11 +69,10 @@ class TestCookies(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(multicookie_response_handler)
-        pool = HTTPConnectionPool(self.host, self.port)
-        self.addCleanup(pool.close)
-        r = pool.request("GET", "/", retries=0)
-        assert r.headers == {"set-cookie": "foo=1, bar=1"}
-        assert r.headers.getlist("set-cookie") == ["foo=1", "bar=1"]
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("GET", "/", retries=0)
+            assert r.headers == {"set-cookie": "foo=1, bar=1"}
+            assert r.headers.getlist("set-cookie") == ["foo=1", "bar=1"]
 
 
 class TestSNI(SocketDummyServerTestCase):
@@ -90,16 +89,15 @@ class TestSNI(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPSConnectionPool(self.host, self.port)
-        self.addCleanup(pool.close)
-        try:
-            pool.request("GET", "/", retries=0)
-        except MaxRetryError:  # We are violating the protocol
-            pass
-        done_receiving.wait()
-        assert (
-            self.host.encode("ascii") in self.buf
-        ), "missing hostname in SSL handshake"
+        with HTTPSConnectionPool(self.host, self.port) as pool:
+            try:
+                pool.request("GET", "/", retries=0)
+            except MaxRetryError:  # We are violating the protocol
+                pass
+            done_receiving.wait()
+            assert (
+                self.host.encode("ascii") in self.buf
+            ), "missing hostname in SSL handshake"
 
 
 class TestClientCerts(SocketDummyServerTestCase):
@@ -152,19 +150,18 @@ class TestClientCerts(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPSConnectionPool(
+        with HTTPSConnectionPool(
             self.host,
             self.port,
             cert_file=DEFAULT_CERTS["certfile"],
             key_file=DEFAULT_CERTS["keyfile"],
             cert_reqs="REQUIRED",
             ca_certs=DEFAULT_CA,
-        )
-        self.addCleanup(pool.close)
-        pool.request("GET", "/", retries=0)
-        done_receiving.set()
+        ) as pool:
+            pool.request("GET", "/", retries=0)
+            done_receiving.set()
 
-        assert len(client_certs) == 1
+            assert len(client_certs) == 1
 
     def test_client_certs_one_file(self):
         """
@@ -197,18 +194,17 @@ class TestClientCerts(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPSConnectionPool(
+        with HTTPSConnectionPool(
             self.host,
             self.port,
             cert_file=COMBINED_CERT_AND_KEY,
             cert_reqs="REQUIRED",
             ca_certs=DEFAULT_CA,
-        )
-        self.addCleanup(pool.close)
-        pool.request("GET", "/", retries=0)
-        done_receiving.set()
+        ) as pool:
+            pool.request("GET", "/", retries=0)
+            done_receiving.set()
 
-        assert len(client_certs) == 1
+            assert len(client_certs) == 1
 
     def test_missing_client_certs_raises_error(self):
         """
@@ -228,20 +224,19 @@ class TestClientCerts(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPSConnectionPool(
+        with HTTPSConnectionPool(
             self.host, self.port, cert_reqs="REQUIRED", ca_certs=DEFAULT_CA
-        )
-        self.addCleanup(pool.close)
-        try:
-            pool.request("GET", "/", retries=0)
-        except MaxRetryError:
-            done_receiving.set()
-        else:
-            done_receiving.set()
-            self.fail(
-                "Expected server to reject connection due to missing client "
-                "certificates"
-            )
+        ) as pool:
+            try:
+                pool.request("GET", "/", retries=0)
+            except MaxRetryError:
+                done_receiving.set()
+            else:
+                done_receiving.set()
+                self.fail(
+                    "Expected server to reject connection due to missing client "
+                    "certificates"
+                )
 
     @requires_ssl_context_keyfile_password
     def test_client_cert_with_string_password(self):
@@ -288,18 +283,17 @@ class TestClientCerts(SocketDummyServerTestCase):
             password=password,
         )
 
-        pool = HTTPSConnectionPool(
+        with HTTPSConnectionPool(
             self.host,
             self.port,
             ssl_context=ssl_context,
             cert_reqs="REQUIRED",
             ca_certs=DEFAULT_CA,
-        )
-        self.addCleanup(pool.close)
-        pool.request("GET", "/", retries=0)
-        done_receiving.set()
+        ) as pool:
+            pool.request("GET", "/", retries=0)
+            done_receiving.set()
 
-        assert len(client_certs) == 1
+            assert len(client_certs) == 1
 
     @requires_ssl_context_keyfile_password
     def test_load_keyfile_with_invalid_password(self):
@@ -352,27 +346,24 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 done_closing.set()  # let the test know it can proceed
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port)
-        self.addCleanup(pool.close)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.request("GET", "/", retries=0)
+            assert response.status == 200
+            assert response.data == b"Response 0"
 
-        response = pool.request("GET", "/", retries=0)
-        assert response.status == 200
-        assert response.data == b"Response 0"
+            done_closing.wait()  # wait until the socket in our pool gets closed
 
-        done_closing.wait()  # wait until the socket in our pool gets closed
-
-        response = pool.request("GET", "/", retries=0)
-        assert response.status == 200
-        assert response.data == b"Response 1"
+            response = pool.request("GET", "/", retries=0)
+            assert response.status == 200
+            assert response.data == b"Response 1"
 
     def test_connection_refused(self):
         # Does the pool retry if there is no listener on the port?
         host, port = get_unreachable_address()
-        http = HTTPConnectionPool(host, port, maxsize=3, block=True)
-        self.addCleanup(http.close)
-        with pytest.raises(MaxRetryError):
-            http.request("GET", "/", retries=0, release_conn=False)
-        assert http.pool.qsize() == http.pool.maxsize
+        with HTTPConnectionPool(host, port, maxsize=3, block=True) as http:
+            with pytest.raises(MaxRetryError):
+                http.request("GET", "/", retries=0, release_conn=False)
+            assert http.pool.qsize() == http.pool.maxsize
 
     def test_connection_read_timeout(self):
         timed_out = Event()
@@ -386,18 +377,16 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        http = HTTPConnectionPool(
+        with HTTPConnectionPool(
             self.host, self.port, timeout=0.01, retries=False, maxsize=3, block=True
-        )
-        self.addCleanup(http.close)
+        ) as http:
+            try:
+                with pytest.raises(ReadTimeoutError):
+                    http.request("GET", "/", release_conn=False)
+            finally:
+                timed_out.set()
 
-        try:
-            with pytest.raises(ReadTimeoutError):
-                http.request("GET", "/", release_conn=False)
-        finally:
-            timed_out.set()
-
-        assert http.pool.qsize() == http.pool.maxsize
+            assert http.pool.qsize() == http.pool.maxsize
 
     def test_read_timeout_dont_retry_method_not_in_whitelist(self):
         timed_out = Event()
@@ -409,14 +398,14 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port, timeout=0.01, retries=True)
-        self.addCleanup(pool.close)
-
-        try:
-            with pytest.raises(ReadTimeoutError):
-                pool.request("POST", "/")
-        finally:
-            timed_out.set()
+        with HTTPConnectionPool(
+            self.host, self.port, timeout=0.01, retries=True
+        ) as pool:
+            try:
+                with pytest.raises(ReadTimeoutError):
+                    pool.request("POST", "/")
+            finally:
+                timed_out.set()
 
     @pytest.mark.skip
     def test_https_connection_read_timeout(self):
@@ -432,13 +421,14 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPSConnectionPool(self.host, self.port, timeout=0.01, retries=False)
-        self.addCleanup(pool.close)
-        try:
-            with pytest.raises(ReadTimeoutError):
-                pool.request("GET", "/")
-        finally:
-            timed_out.set()
+        with HTTPSConnectionPool(
+            self.host, self.port, timeout=0.01, retries=False
+        ) as pool:
+            try:
+                with pytest.raises(ReadTimeoutError):
+                    pool.request("GET", "/")
+            finally:
+                timed_out.set()
 
     def test_timeout_errors_cause_retries(self):
         def socket_handler(listener):
@@ -477,12 +467,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
         try:
             self._start_server(socket_handler)
             t = Timeout(connect=0.001, read=0.01)
-            pool = HTTPConnectionPool(self.host, self.port, timeout=t)
-            self.addCleanup(pool.close)
-
-            response = pool.request("GET", "/", retries=1)
-            assert response.status == 200
-            assert response.data == b"Response 2"
+            with HTTPConnectionPool(self.host, self.port, timeout=t) as pool:
+                response = pool.request("GET", "/", retries=1)
+                assert response.status == 200
+                assert response.data == b"Response 2"
         finally:
             socket.setdefaulttimeout(default_timeout)
 
@@ -509,21 +497,19 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port)
-        self.addCleanup(pool.close)
-
-        response = pool.urlopen(
-            "GET",
-            "/",
-            retries=0,
-            preload_content=False,
-            timeout=Timeout(connect=1, read=0.01),
-        )
-        try:
-            with pytest.raises(ReadTimeoutError):
-                response.read()
-        finally:
-            timed_out.set()
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.urlopen(
+                "GET",
+                "/",
+                retries=0,
+                preload_content=False,
+                timeout=Timeout(connect=1, read=0.01),
+            )
+            try:
+                with pytest.raises(ReadTimeoutError):
+                    response.read()
+            finally:
+                timed_out.set()
 
     def test_delayed_body_read_timeout_with_preload(self):
         timed_out = Event()
@@ -547,16 +533,14 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port)
-        self.addCleanup(pool.close)
-
-        try:
-            with pytest.raises(ReadTimeoutError):
-                pool.urlopen(
-                    "GET", "/", retries=False, timeout=Timeout(connect=1, read=0.01)
-                )
-        finally:
-            timed_out.set()
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            try:
+                with pytest.raises(ReadTimeoutError):
+                    pool.urlopen(
+                        "GET", "/", retries=False, timeout=Timeout(connect=1, read=0.01)
+                    )
+            finally:
+                timed_out.set()
 
     def test_incomplete_response(self):
         body = "Response"
@@ -583,12 +567,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port)
-        self.addCleanup(pool.close)
-
-        response = pool.request("GET", "/", retries=0, preload_content=False)
-        with pytest.raises(ProtocolError):
-            response.read()
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.request("GET", "/", retries=0, preload_content=False)
+            with pytest.raises(ProtocolError):
+                response.read()
 
     def test_retry_weird_http_version(self):
         """ Retry class should handle httplib.BadStatusLine errors properly """
@@ -634,12 +616,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.close()  # Close the socket.
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port)
-        self.addCleanup(pool.close)
-        retry = Retry(read=1)
-        response = pool.request("GET", "/", retries=retry)
-        assert response.status == 200
-        assert response.data == b"foo"
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            retry = Retry(read=1)
+            response = pool.request("GET", "/", retries=retry)
+            assert response.status == 200
+            assert response.data == b"foo"
 
     def test_dont_tolerate_bad_versions(self):
         """We don't tolerate weird versions of HTTP"""
@@ -666,13 +647,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port)
-        self.addCleanup(pool.close)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            with pytest.raises(MaxRetryError) as cm:
+                pool.request("GET", "/", retries=0)
 
-        with pytest.raises(MaxRetryError) as cm:
-            pool.request("GET", "/", retries=0)
-
-        assert isinstance(cm.value.reason, BadVersionError)
+            assert isinstance(cm.value.reason, BadVersionError)
 
     def test_connection_cleanup_on_read_timeout(self):
         timed_out = Event()
@@ -856,17 +835,15 @@ class TestSocketClosing(SocketDummyServerTestCase):
             complete.set()
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port)
-        self.addCleanup(pool.close)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.request("GET", "/", retries=0, preload_content=False)
+            assert response.status == 200
+            response.close()
 
-        response = pool.request("GET", "/", retries=0, preload_content=False)
-        assert response.status == 200
-        response.close()
-
-        done_closing.set()  # wait until the socket in our pool gets closed
-        successful = complete.wait(timeout=1)
-        if not successful:
-            self.fail("Timed out waiting for connection close")
+            done_closing.set()  # wait until the socket in our pool gets closed
+            successful = complete.wait(timeout=1)
+            if not successful:
+                self.fail("Timed out waiting for connection close")
 
     def test_release_conn_param_is_respected_after_timeout_retry(self):
         """For successful ```urlopen()```, the connection isn't released, even
@@ -978,14 +955,12 @@ class TestSocketClosing(SocketDummyServerTestCase):
             yield b"third data"
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port)
-        self.addCleanup(pool.close)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.request("POST", "/", body=body_uploader(), retries=0)
 
-        response = pool.request("POST", "/", body=body_uploader(), retries=0)
-
-        # Only the first data should have been received by the server.
-        assert response.status == 400
-        assert response.data == b"a\r\nfirst data\r\n"
+            # Only the first data should have been received by the server.
+            assert response.status == 400
+            assert response.data == b"a\r\nfirst data\r\n"
 
 
 class TestProxyManager(SocketDummyServerTestCase):
@@ -1010,24 +985,22 @@ class TestProxyManager(SocketDummyServerTestCase):
 
         self._start_server(echo_socket_handler)
         base_url = "http://%s:%d" % (self.host, self.port)
-        proxy = proxy_from_url(base_url)
-        self.addCleanup(proxy.clear)
+        with proxy_from_url(base_url) as proxy:
+            r = proxy.request("GET", "http://google.com/")
 
-        r = proxy.request("GET", "http://google.com/")
-
-        assert r.status == 200
-        # FIXME: The order of the headers is not predictable right now. We
-        # should fix that someday (maybe when we migrate to
-        # OrderedDict/MultiDict).
-        assert sorted(r.data.split(b"\r\n")) == sorted(
-            [
-                b"GET http://google.com/ HTTP/1.1",
-                b"host: google.com",
-                b"accept: */*",
-                b"",
-                b"",
-            ]
-        )
+            assert r.status == 200
+            # FIXME: The order of the headers is not predictable right now. We
+            # should fix that someday (maybe when we migrate to
+            # OrderedDict/MultiDict).
+            assert sorted(r.data.split(b"\r\n")) == sorted(
+                [
+                    b"GET http://google.com/ HTTP/1.1",
+                    b"host: google.com",
+                    b"accept: */*",
+                    b"",
+                    b"",
+                ]
+            )
 
     def test_headers(self):
         def echo_socket_handler(listener):
@@ -1053,18 +1026,16 @@ class TestProxyManager(SocketDummyServerTestCase):
 
         # Define some proxy headers.
         proxy_headers = HTTPHeaderDict({"For-The-Proxy": "YEAH!"})
-        proxy = proxy_from_url(base_url, proxy_headers=proxy_headers)
-        self.addCleanup(proxy.clear)
+        with proxy_from_url(base_url, proxy_headers=proxy_headers) as proxy:
+            conn = proxy.connection_from_url("http://www.google.com/")
 
-        conn = proxy.connection_from_url("http://www.google.com/")
+            r = conn.urlopen("GET", "http://www.google.com/")
 
-        r = conn.urlopen("GET", "http://www.google.com/")
-
-        assert r.status == 200
-        # FIXME: The order of the headers is not predictable right now. We
-        # should fix that someday (maybe when we migrate to
-        # OrderedDict/MultiDict).
-        assert b"for-the-proxy: YEAH!\r\n" in r.data
+            assert r.status == 200
+            # FIXME: The order of the headers is not predictable right now. We
+            # should fix that someday (maybe when we migrate to
+            # OrderedDict/MultiDict).
+            assert b"for-the-proxy: YEAH!\r\n" in r.data
 
     def test_retries(self):
         close_event = Event()
@@ -1096,16 +1067,15 @@ class TestProxyManager(SocketDummyServerTestCase):
         self._start_server(echo_socket_handler)
         base_url = "http://%s:%d" % (self.host, self.port)
 
-        proxy = proxy_from_url(base_url)
-        self.addCleanup(proxy.clear)
-        conn = proxy.connection_from_url("http://www.google.com")
+        with proxy_from_url(base_url) as proxy:
+            conn = proxy.connection_from_url("http://www.google.com")
 
-        r = conn.urlopen("GET", "http://www.google.com", retries=1)
-        assert r.status == 200
+            r = conn.urlopen("GET", "http://www.google.com", retries=1)
+            assert r.status == 200
 
-        close_event.wait(timeout=1)
-        with pytest.raises(ProxyError):
-            conn.urlopen("GET", "http://www.google.com", retries=False)
+            close_event.wait(timeout=1)
+            with pytest.raises(ProxyError):
+                conn.urlopen("GET", "http://www.google.com", retries=False)
 
     def test_connect_reconn(self):
         def proxy_ssl_one(listener):
@@ -1161,15 +1131,13 @@ class TestProxyManager(SocketDummyServerTestCase):
         self._start_server(echo_socket_handler)
         base_url = "http://%s:%d" % (self.host, self.port)
 
-        proxy = proxy_from_url(base_url, ca_certs=DEFAULT_CA)
-        self.addCleanup(proxy.clear)
-
-        url = "https://{0}".format(self.host)
-        conn = proxy.connection_from_url(url)
-        r = conn.urlopen("GET", url, retries=0)
-        assert r.status == 200
-        r = conn.urlopen("GET", url, retries=0)
-        assert r.status == 200
+        with proxy_from_url(base_url, ca_certs=DEFAULT_CA) as proxy:
+            url = "https://{0}".format(self.host)
+            conn = proxy.connection_from_url(url)
+            r = conn.urlopen("GET", url, retries=0)
+            assert r.status == 200
+            r = conn.urlopen("GET", url, retries=0)
+            assert r.status == 200
 
     def test_connect_failing(self):
         def handler(listener):
@@ -1190,18 +1158,16 @@ class TestProxyManager(SocketDummyServerTestCase):
         self._start_server(handler)
         base_url = "http://%s:%d" % (self.host, self.port)
 
-        proxy = proxy_from_url(base_url)
-        self.addCleanup(proxy.clear)
+        with proxy_from_url(base_url) as proxy:
+            url = "https://{0}".format(self.host)
+            conn = proxy.connection_from_url(url)
 
-        url = "https://{0}".format(self.host)
-        conn = proxy.connection_from_url(url)
+            with pytest.raises(FailedTunnelError) as cm:
+                conn.urlopen("GET", url, retries=0)
 
-        with pytest.raises(FailedTunnelError) as cm:
-            conn.urlopen("GET", url, retries=0)
-
-        exception = cm.value
-        assert exception.response.status_code == 401
-        assert exception.response.headers["x-custom-header"] == "yougotit"
+            exception = cm.value
+            assert exception.response.status_code == 401
+            assert exception.response.headers["x-custom-header"] == "yougotit"
 
     def test_connect_ipv6_addr(self):
         ipv6_addr = "2001:4998:c:a06::2:4008"
@@ -1241,16 +1207,14 @@ class TestProxyManager(SocketDummyServerTestCase):
         self._start_server(echo_socket_handler)
         base_url = "http://%s:%d" % (self.host, self.port)
 
-        proxy = proxy_from_url(base_url, cert_reqs="NONE")
-        self.addCleanup(proxy.clear)
-
-        url = "https://[{0}]".format(ipv6_addr)
-        conn = proxy.connection_from_url(url)
-        try:
-            r = conn.urlopen("GET", url, retries=0)
-            assert r.status == 200
-        except MaxRetryError:
-            self.fail("Invalid IPv6 format in HTTP CONNECT request")
+        with proxy_from_url(base_url, cert_reqs="NONE") as proxy:
+            url = "https://[{0}]".format(ipv6_addr)
+            conn = proxy.connection_from_url(url)
+            try:
+                r = conn.urlopen("GET", url, retries=0)
+                assert r.status == 200
+            except MaxRetryError:
+                self.fail("Invalid IPv6 format in HTTP CONNECT request")
 
 
 class TestSSL(SocketDummyServerTestCase):
@@ -1284,12 +1248,10 @@ class TestSSL(SocketDummyServerTestCase):
             ssl_sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPSConnectionPool(self.host, self.port)
-        self.addCleanup(pool.close)
-
-        with pytest.raises(MaxRetryError) as cm:
-            pool.request("GET", "/", retries=0)
-        assert isinstance(cm.value.reason, SSLError)
+        with HTTPSConnectionPool(self.host, self.port) as pool:
+            with pytest.raises(MaxRetryError) as cm:
+                pool.request("GET", "/", retries=0)
+            assert isinstance(cm.value.reason, SSLError)
 
     def test_ssl_read_timeout(self):
         timed_out = Event()
@@ -1323,21 +1285,19 @@ class TestSSL(SocketDummyServerTestCase):
             ssl_sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA)
-        self.addCleanup(pool.close)
-
-        response = pool.urlopen(
-            "GET",
-            "/",
-            retries=0,
-            preload_content=False,
-            timeout=Timeout(connect=1, read=0.01),
-        )
-        try:
-            with pytest.raises(ReadTimeoutError):
-                response.read()
-        finally:
-            timed_out.set()
+        with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
+            response = pool.urlopen(
+                "GET",
+                "/",
+                retries=0,
+                preload_content=False,
+                timeout=Timeout(connect=1, read=0.01),
+            )
+            try:
+                with pytest.raises(ReadTimeoutError):
+                    response.read()
+            finally:
+                timed_out.set()
 
     def test_ssl_failed_fingerprint_verification(self):
         def socket_handler(listener):
@@ -1438,10 +1398,9 @@ class TestSSL(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
 
-        pool = HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA)
-        self.addCleanup(pool.close)
-        response = pool.urlopen("GET", "/", retries=1)
-        assert response.data == b"Success"
+        with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
+            response = pool.urlopen("GET", "/", retries=1)
+            assert response.data == b"Success"
 
     def test_ssl_load_default_certs_when_empty(self):
         def socket_handler(listener):
@@ -1475,13 +1434,11 @@ class TestSSL(SocketDummyServerTestCase):
         with mock.patch("urllib3.util.ssl_.SSLContext", lambda *_, **__: context):
 
             self._start_server(socket_handler)
-            pool = HTTPSConnectionPool(self.host, self.port)
-            self.addCleanup(pool.close)
+            with HTTPSConnectionPool(self.host, self.port) as pool:
+                with pytest.raises(MaxRetryError):
+                    pool.request("GET", "/", timeout=0.01)
 
-            with pytest.raises(MaxRetryError):
-                pool.request("GET", "/", timeout=0.01)
-
-            context.load_default_certs.assert_called_with()
+                context.load_default_certs.assert_called_with()
 
     def test_ssl_dont_load_default_certs_when_given(self):
         if platform.python_implementation() == "PyPy" and sys.version_info[0] == 2:
@@ -1526,13 +1483,11 @@ class TestSSL(SocketDummyServerTestCase):
 
                 self._start_server(socket_handler)
 
-                pool = HTTPSConnectionPool(self.host, self.port, **kwargs)
-                self.addCleanup(pool.close)
+                with HTTPSConnectionPool(self.host, self.port, **kwargs) as pool:
+                    with pytest.raises(MaxRetryError):
+                        pool.request("GET", "/", timeout=0.01)
 
-                with pytest.raises(MaxRetryError):
-                    pool.request("GET", "/", timeout=0.01)
-
-                context.load_default_certs.assert_not_called()
+                    context.load_default_certs.assert_not_called()
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):
@@ -1540,19 +1495,17 @@ class TestErrorWrapping(SocketDummyServerTestCase):
         self.start_response_handler(
             b"HTTP/1.1 Omg What Is This?\r\n" b"Content-Length: 0\r\n" b"\r\n"
         )
-        pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        self.addCleanup(pool.close)
-        with pytest.raises(ProtocolError):
-            pool.request("GET", "/")
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            with pytest.raises(ProtocolError):
+                pool.request("GET", "/")
 
     def test_unknown_protocol(self):
         self.start_response_handler(
             b"HTTP/1000 200 OK\r\n" b"Content-Length: 0\r\n" b"\r\n"
         )
-        pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        self.addCleanup(pool.close)
-        with pytest.raises(ProtocolError):
-            pool.request("GET", "/")
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            with pytest.raises(ProtocolError):
+                pool.request("GET", "/")
 
 
 class TestHeaders(SocketDummyServerTestCase):
@@ -1563,11 +1516,10 @@ class TestHeaders(SocketDummyServerTestCase):
             b"Content-type: text/plain\r\n"
             b"\r\n"
         )
-        pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        self.addCleanup(pool.close)
-        HEADERS = {"content-length": "0", "content-type": "text/plain"}
-        r = pool.request("GET", "/")
-        assert HEADERS == dict(r.headers.items())  # to preserve case sensitivity
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            HEADERS = {"content-length": "0", "content-type": "text/plain"}
+            r = pool.request("GET", "/")
+            assert HEADERS == dict(r.headers.items())  # to preserve case sensitivity
 
     def test_headers_are_sent_with_lower_case(self):
         headers = {"Foo": "bar", "bAz": "quux"}
@@ -1599,10 +1551,9 @@ class TestHeaders(SocketDummyServerTestCase):
         for key, value in headers.items():
             expected_headers[key.lower()] = value
 
-        pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        self.addCleanup(pool.close)
-        pool.request("GET", "/", headers=HTTPHeaderDict(headers))
-        assert expected_headers == parsed_headers
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            pool.request("GET", "/", headers=HTTPHeaderDict(headers))
+            assert expected_headers == parsed_headers
 
     def test_request_headers_are_sent_in_the_original_order(self):
         # NOTE: Probability this test gives a false negative is 1/(K!)
@@ -1643,10 +1594,9 @@ class TestHeaders(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
 
-        pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        self.addCleanup(pool.close)
-        pool.request("GET", "/", headers=OrderedDict(expected_request_headers))
-        assert expected_request_headers == actual_request_headers
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            pool.request("GET", "/", headers=OrderedDict(expected_request_headers))
+            assert expected_request_headers == actual_request_headers
 
     @fails_on_travis_gce
     def test_request_host_header_ignores_fqdn_dot(self):
@@ -1674,12 +1624,11 @@ class TestHeaders(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
 
-        pool = HTTPConnectionPool(self.host + ".", self.port, retries=False)
-        self.addCleanup(pool.close)
-        pool.request("GET", "/")
-        self.assert_header_received(
-            received_headers, "Host", "%s:%s" % (self.host, self.port)
-        )
+        with HTTPConnectionPool(self.host + ".", self.port, retries=False) as pool:
+            pool.request("GET", "/")
+            self.assert_header_received(
+                received_headers, "Host", "%s:%s" % (self.host, self.port)
+            )
 
     def test_response_headers_are_returned_in_the_original_order(self):
         # NOTE: Probability this test gives a false negative is 1/(K!)
@@ -1711,13 +1660,12 @@ class TestHeaders(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port)
-        self.addCleanup(pool.close)
-        r = pool.request("GET", "/", retries=0)
-        actual_response_headers = [
-            (k, v) for (k, v) in r.headers.items() if k.startswith("x-header-")
-        ]
-        assert expected_response_headers == actual_response_headers
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("GET", "/", retries=0)
+            actual_response_headers = [
+                (k, v) for (k, v) in r.headers.items() if k.startswith("x-header-")
+            ]
+            assert expected_response_headers == actual_response_headers
 
     def test_integer_values_are_sent_as_decimal_strings(self):
         headers = {"Foo": 88}
@@ -1764,10 +1712,9 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
             + b"\r\n"
         )
 
-        pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        self.addCleanup(pool.close)
-        with pytest.raises(ProtocolError):
-            pool.request("GET", "/")
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            with pytest.raises(ProtocolError):
+                pool.request("GET", "/")
 
     def test_header_without_name(self):
         self._test_broken_header_parsing([b": Value", b"Another: Header"])
@@ -1785,9 +1732,8 @@ class TestHeaderParsingContentType(SocketDummyServerTestCase):
             (b"HTTP/1.1 200 OK\r\n" b"Content-Length: 0\r\n") + header + b"\r\n\r\n"
         )
 
-        pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        self.addCleanup(pool.close)
-        pool.request("GET", "/")  # does not raise
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            pool.request("GET", "/")  # does not raise
 
     def test_header_text_plain(self):
         self._test_okay_header_parsing(b"Content-type: text/plain")
@@ -1804,12 +1750,11 @@ class TestHEAD(SocketDummyServerTestCase):
             b"Content-type: text/plain\r\n"
             b"\r\n"
         )
-        pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        self.addCleanup(pool.close)
-        r = pool.request("HEAD", "/", timeout=1, preload_content=False)
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            r = pool.request("HEAD", "/", timeout=1, preload_content=False)
 
-        # stream will use the read_chunked method here.
-        assert [] == list(r.stream())
+            # stream will use the read_chunked method here.
+            assert [] == list(r.stream())
 
     def test_empty_head_response_does_not_hang(self):
         self.start_response_handler(
@@ -1818,12 +1763,11 @@ class TestHEAD(SocketDummyServerTestCase):
             b"Content-type: text/plain\r\n"
             b"\r\n"
         )
-        pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        self.addCleanup(pool.close)
-        r = pool.request("HEAD", "/", timeout=1, preload_content=False)
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            r = pool.request("HEAD", "/", timeout=1, preload_content=False)
 
-        # stream will use the read method here.
-        assert [] == list(r.stream())
+            # stream will use the read method here.
+            assert [] == list(r.stream())
 
 
 class TestStream(SocketDummyServerTestCase):
@@ -1848,14 +1792,13 @@ class TestStream(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        pool = HTTPConnectionPool(self.host, self.port, retries=False)
-        self.addCleanup(pool.close)
-        r = pool.request("GET", "/", timeout=1, preload_content=False)
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            r = pool.request("GET", "/", timeout=1, preload_content=False)
 
-        # Stream should read to the end.
-        assert [b"hello, world"] == list(r.stream(None))
+            # Stream should read to the end.
+            assert [b"hello, world"] == list(r.stream(None))
 
-        done_event.set()
+            done_event.set()
 
 
 class TestBadContentLength(SocketDummyServerTestCase):
@@ -1880,24 +1823,22 @@ class TestBadContentLength(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        conn = HTTPConnectionPool(self.host, self.port, maxsize=1)
-        self.addCleanup(conn.close)
+        with HTTPConnectionPool(self.host, self.port, maxsize=1) as conn:
+            # Test stream read when content length less than headers claim
+            get_response = conn.request("GET", url="/", preload_content=False)
+            data = get_response.stream(100)
 
-        # Test stream read when content length less than headers claim
-        get_response = conn.request("GET", url="/", preload_content=False)
-        data = get_response.stream(100)
-
-        # The first read will work fine.
-        next(data)
-
-        # The second one will see the EOF condition and barf.
-        try:
+            # The first read will work fine.
             next(data)
-            assert False
-        except ProtocolError as e:
-            assert "received 12 bytes, expected 22" in str(e)
 
-        done_event.set()
+            # The second one will see the EOF condition and barf.
+            try:
+                next(data)
+                assert False
+            except ProtocolError as e:
+                assert "received 12 bytes, expected 22" in str(e)
+
+            done_event.set()
 
     def test_enforce_content_length_no_body(self):
         done_event = Event()
@@ -1919,15 +1860,13 @@ class TestBadContentLength(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        conn = HTTPConnectionPool(self.host, self.port, maxsize=1)
-        self.addCleanup(conn.close)
+        with HTTPConnectionPool(self.host, self.port, maxsize=1) as conn:
+            # Test stream on 0 length body
+            head_response = conn.request("HEAD", url="/", preload_content=False)
+            data = [chunk for chunk in head_response.stream(1)]
+            assert len(data) == 0
 
-        # Test stream on 0 length body
-        head_response = conn.request("HEAD", url="/", preload_content=False)
-        data = [chunk for chunk in head_response.stream(1)]
-        assert len(data) == 0
-
-        done_event.set()
+            done_event.set()
 
 
 class TestAutomaticHeaderInsertion(SocketDummyServerTestCase):
@@ -1988,10 +1927,8 @@ class TestRetryPoolSizeDrainFail(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
         retries = Retry(total=1, raise_on_status=False, status_forcelist=[404])
-        pool = HTTPConnectionPool(
+        with HTTPConnectionPool(
             self.host, self.port, maxsize=10, retries=retries, block=True
-        )
-        self.addCleanup(pool.close)
-
-        pool.urlopen("GET", "/not_found", preload_content=False)
-        assert pool.num_connections == 1
+        ) as pool:
+            pool.urlopen("GET", "/not_found", preload_content=False)
+            assert pool.num_connections == 1
