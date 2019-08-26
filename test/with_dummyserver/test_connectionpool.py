@@ -1,7 +1,6 @@
 import logging
 import socket
 import sys
-import unittest
 import time
 import warnings
 import pytest
@@ -227,10 +226,10 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
 
 
 class TestConnectionPool(HTTPDummyServerTestCase):
-    def setUp(self):
+    def setup_method(self, method):
         self.pool = HTTPConnectionPool(self.host, self.port)
 
-    def tearDown(self):
+    def teardown_method(self):
         self.pool.close()
 
     def test_get(self):
@@ -715,7 +714,3 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         with HTTPConnectionPool("LoCaLhOsT", self.port) as pool:
             response = pool.request("GET", "http://LoCaLhOsT:%d/" % self.port)
             assert response.status == 200
-
-
-if __name__ == "__main__":
-    unittest.main()

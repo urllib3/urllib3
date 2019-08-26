@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import unittest
 import pytest
 
 from mock import patch, Mock
@@ -28,7 +27,7 @@ def teardown_module():
         pass
 
 
-class TestPyOpenSSLInjection(unittest.TestCase):
+class TestPyOpenSSLInjection(object):
     """
     Tests for error handling in pyopenssl's 'inject_into urllib3'
     """

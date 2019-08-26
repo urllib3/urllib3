@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import os
-import unittest
 
 import mock
 import pytest
@@ -54,7 +53,7 @@ from ..with_dummyserver.test_socketlevel import (  # noqa: F401
 )
 
 
-class TestPyOpenSSLHelpers(unittest.TestCase):
+class TestPyOpenSSLHelpers(object):
     """
     Tests for PyOpenSSL helper functions.
     """

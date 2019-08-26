@@ -1,4 +1,3 @@
-import unittest
 import io
 import json
 import time
@@ -14,7 +13,9 @@ from urllib3.util.retry import Retry, RequestHistory
 
 
 class TestPoolManager(HTTPDummyServerTestCase):
-    def setUp(self):
+    @classmethod
+    def setup_class(self):
+        super(TestPoolManager, self).setup_class()
         self.base_url = "http://%s:%d" % (self.host, self.port)
         self.base_url_alt = "http://%s:%d" % (self.host_alt, self.port)
 
@@ -360,7 +361,9 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
 
 class TestRetry(HTTPDummyServerTestCase):
-    def setUp(self):
+    @classmethod
+    def setup_class(self):
+        super(TestRetry, self).setup_class()
         self.base_url = "http://%s:%d" % (self.host, self.port)
         self.base_url_alt = "http://%s:%d" % (self.host_alt, self.port)
 
@@ -587,7 +590,9 @@ class TestRetry(HTTPDummyServerTestCase):
 
 
 class TestRetryAfter(HTTPDummyServerTestCase):
-    def setUp(self):
+    @classmethod
+    def setup_class(self):
+        super(TestRetryAfter, self).setup_class()
         self.base_url = "http://%s:%d" % (self.host, self.port)
         self.base_url_alt = "http://%s:%d" % (self.host_alt, self.port)
 
@@ -661,7 +666,8 @@ class TestRetryAfter(HTTPDummyServerTestCase):
 
 
 class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
-    def setUp(self):
+    def setup_class(self):
+        super(TestFileBodiesOnRetryOrRedirect, self).setup_class()
         self.base_url = "http://%s:%d" % (self.host, self.port)
         self.base_url_alt = "http://%s:%d" % (self.host_alt, self.port)
 
@@ -711,13 +717,11 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
-    def setUp(self):
+    @classmethod
+    def setup_class(self):
+        super(TestIPv6PoolManager, self).setup_class()
         self.base_url = "http://[%s]:%d" % (self.host, self.port)
 
     def test_ipv6(self):
         with PoolManager() as http:
             http.request("GET", self.base_url)
-
-
-if __name__ == "__main__":
-    unittest.main()
