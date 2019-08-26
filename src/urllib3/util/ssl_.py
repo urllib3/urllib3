@@ -385,7 +385,7 @@ def is_ipaddress(hostname):
     :param str hostname: Hostname to examine.
     :return: True if the hostname is an IP address, False otherwise.
     """
-    if six.PY3 and isinstance(hostname, bytes):
+    if not six.PY2 and isinstance(hostname, bytes):
         # IDN A-label bytes are ASCII compatible.
         hostname = hostname.decode("ascii")
     return bool(IPV4_RE.match(hostname) or BRACELESS_IPV6_ADDRZ_RE.match(hostname))

@@ -344,7 +344,7 @@ class TestHTTPHeaderDict(object):
             HTTPHeaderDict({3: 3})
 
     @pytest.mark.skipif(
-        six.PY3, reason="python3 has a different internal header implementation"
+        not six.PY2, reason="python3 has a different internal header implementation"
     )
     def test_from_httplib_py2(self):
         msg = """

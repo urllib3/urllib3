@@ -99,7 +99,7 @@ class HTTPConnection(_HTTPConnection, object):
     is_verified = False
 
     def __init__(self, *args, **kw):
-        if six.PY3:
+        if not six.PY2:
             kw.pop("strict", None)
 
         # Pre-set source_address.
