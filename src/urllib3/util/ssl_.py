@@ -3,18 +3,17 @@ import errno
 import logging
 import warnings
 import hmac
-import re
 
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
+from .url import IPV4_RE, BRACELESS_IPV6_ADDRZ_RE
 from ..exceptions import SSLError, InsecurePlatformWarning, SNIMissingWarning
 from ..packages.ssl_match_hostname import (
     match_hostname as _match_hostname,
     CertificateError,
 )
 from ..packages import six
-from ..packages.rfc3986 import abnf_regexp
 
 
 SSLContext = None
@@ -43,13 +42,6 @@ def _const_compare_digest_backport(a, b):
 
 
 _const_compare_digest = getattr(hmac, "compare_digest", _const_compare_digest_backport)
-
-# Borrow rfc3986's regular expressions for IPv4
-# and IPv6 addresses for use in is_ipaddress()
-_IP_ADDRESS_REGEX = re.compile(
-    r"^(?:%s|%s|%s)$"
-    % (abnf_regexp.IPv4_RE, abnf_regexp.IPv6_RE, abnf_regexp.IPv6_ADDRZ_RFC4007_RE)
-)
 
 try:  # Test for SSL features
     import ssl
@@ -445,7 +437,7 @@ def match_hostname(cert, asserted_hostname):
     try:
         _match_hostname(cert, asserted_hostname)
     except CertificateError as e:
-        log.error(
+        log.warning(
             "Certificate did not match expected hostname: %s. " "Certificate: %s",
             asserted_hostname,
             cert,
@@ -466,7 +458,7 @@ def is_ipaddress(hostname):
     if six.PY3 and isinstance(hostname, bytes):
         # IDN A-label bytes are ASCII compatible.
         hostname = hostname.decode("ascii")
-    return _IP_ADDRESS_REGEX.match(hostname) is not None
+    return bool(IPV4_RE.match(hostname) or BRACELESS_IPV6_ADDRZ_RE.match(hostname))
 
 
 def _is_key_file_encrypted(key_file):

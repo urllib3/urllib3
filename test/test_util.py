@@ -155,10 +155,6 @@ class TestUtil(object):
     @pytest.mark.parametrize(
         "url",
         [
-            "http://user\\@google.com",
-            "http://google\\.com",
-            "user\\@google.com",
-            "http://user@user@google.com/",
             # Invalid IDNA labels
             u"http://\uD7FF.com",
             u"http://❤️",
@@ -181,7 +177,12 @@ class TestUtil(object):
             ),
             ("HTTPS://Example.Com/?Key=Value", "https://example.com/?Key=Value"),
             ("Https://Example.Com/#Fragment", "https://example.com/#Fragment"),
-            ("[::Ff%etH0%Ff]/%ab%Af", "[::ff%25etH0%Ff]/%AB%AF"),
+            ("[::1%25]", "[::1%25]"),
+            ("[::Ff%etH0%Ff]/%ab%Af", "[::ff%etH0%FF]/%AB%AF"),
+            (
+                "http://user:pass@[AaAa::Ff%25etH0%Ff]/%ab%Af",
+                "http://user:pass@[aaaa::ff%etH0%FF]/%AB%AF",
+            ),
             # Invalid characters for the query/fragment getting encoded
             (
                 'http://google.com/p[]?parameter[]="hello"#fragment#',
@@ -199,6 +200,22 @@ class TestUtil(object):
         """Assert parse_url normalizes the scheme/host, and only the scheme/host"""
         actual_normalized_url = parse_url(url).url
         assert actual_normalized_url == expected_normalized_url
+
+    @pytest.mark.parametrize("char", [chr(i) for i in range(0x00, 0x21)] + ["\x7F"])
+    def test_control_characters_are_percent_encoded(self, char):
+        percent_char = "%" + (hex(ord(char))[2:].zfill(2).upper())
+        url = parse_url(
+            "http://user{0}@example.com/path{0}?query{0}#fragment{0}".format(char)
+        )
+
+        assert url == Url(
+            "http",
+            auth="user" + percent_char,
+            host="example.com",
+            path="/path" + percent_char,
+            query="query" + percent_char,
+            fragment="fragment" + percent_char,
+        )
 
     parse_url_host_map = [
         ("http://google.com/mail", Url("http", host="google.com", path="/mail")),
@@ -260,6 +277,15 @@ class TestUtil(object):
         (
             u"http://Königsgäßchen.de/straße",
             Url("http", host="xn--knigsgchen-b4a3dun.de", path="/stra%C3%9Fe"),
+        ),
+        # Percent-encode in userinfo
+        (
+            u"http://user@email.com:password@example.com/",
+            Url("http", auth="user%40email.com:password", host="example.com", path="/"),
+        ),
+        (
+            u'http://user":quoted@example.com/',
+            Url("http", auth="user%22:quoted", host="example.com", path="/"),
         ),
         # Unicode Surrogates
         (u"http://google.com/\uD800", Url("http", host="google.com", path="%ED%A0%80")),

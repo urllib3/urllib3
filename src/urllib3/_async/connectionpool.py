@@ -27,7 +27,6 @@ from ..exceptions import (
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.packages import six
 from urllib3.packages.six.moves import queue
-from urllib3.packages.rfc3986.normalizers import normalize_host
 from .request import RequestMethods
 from .response import HTTPResponse
 from .connection import HTTP1Connection
@@ -43,7 +42,7 @@ from ..util.ssl_ import (
     BaseSSLError,
 )
 from ..util.timeout import Timeout
-from ..util.url import get_host, Url, NORMALIZABLE_SCHEMES
+from ..util.url import get_host, Url, _normalize_host as normalize_host
 from ..util.queue import LifoQueue
 
 try:
@@ -908,6 +907,8 @@ def _normalize_host(host, scheme):
     Normalize hosts for comparisons and use with sockets.
     """
 
+    host = normalize_host(host, scheme)
+
     # httplib doesn't like it when we include brackets in IPv6 addresses
     # Specifically, if we include brackets but also pass the port then
     # httplib crazily doubles up the square brackets on the Host header.
@@ -915,7 +916,5 @@ def _normalize_host(host, scheme):
     # However, for backward compatibility reasons we can't actually
     # *assert* that.  See http://bugs.python.org/issue28539
     if host.startswith("[") and host.endswith("]"):
-        host = host.strip("[]")
-    if scheme in NORMALIZABLE_SCHEMES:
-        host = normalize_host(host)
+        host = host[1:-1]
     return host

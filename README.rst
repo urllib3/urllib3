@@ -96,8 +96,8 @@ Tidelift will coordinate the fix and disclosure with maintainers.
 Maintainers
 -----------
 
-- `@theacodes <https://github.com/theacodes>`_ (Thea Flowers)
 - `@sethmlarson <https://github.com/sethmlarson>`_ (Seth M. Larson)
+- `@theacodes <https://github.com/theacodes>`_ (Thea Flowers)
 - `@haikuginger <https://github.com/haikuginger>`_ (Jess Shapiro)
 - `@lukasa <https://github.com/lukasa>`_ (Cory Benfield)
 - `@sigmavirus24 <https://github.com/sigmavirus24>`_ (Ian Cordasco)
@@ -130,7 +130,7 @@ development <https://urllib3.readthedocs.io/en/latest/contributing.html#sponsors
 
 Sponsors include:
 
-- Google Cloud Platform (2018-present), sponsors `@theacodes <https://github.com/theacodes>`_'s work on an ongoing basis
-- Abbott (2018-present), sponsors `@sethmlarson <https://github.com/sethmlarson>`_'s work on an ongoing basis
+- Abbott (2018-2019), sponsored `@sethmlarson <https://github.com/sethmlarson>`_'s work on urllib3.
+- Google Cloud Platform (2018-2019), sponsored `@theacodes <https://github.com/theacodes>`_'s work on urllib3.
 - Akamai (2017-2018), sponsored `@haikuginger <https://github.com/haikuginger>`_'s work on urllib3
-- Hewlett Packard Enterprise (2016-2017), sponsored `@Lukasa’s <https://github.com/Lukasa>`_ work on urllib3
+- Hewlett Packard Enterprise (2016-2017), sponsored `@Lukasa’s <https://github.com/Lukasa>`_ work on urllib3.
