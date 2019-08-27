@@ -139,10 +139,12 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 ):
                     raise
             except ProtocolError as e:
-                # https://github.com/urllib3/urllib3/issues/1422
                 if not (
                     "An existing connection was forcibly closed by the remote host"
                     in str(e)
+                    # Python 3.7.4+
+                    or "WSAECONNRESET" in str(e)  # Windows
+                    or "EPIPE" in str(e)  # macOS
                 ):
                     raise
 
