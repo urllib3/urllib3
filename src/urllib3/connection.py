@@ -251,40 +251,6 @@ class HTTPSConnection(HTTPConnection):
         # HTTPS requests to go out as HTTP. (See Issue #356)
         self._protocol = "https"
 
-    def connect(self):
-        conn = self._new_conn()
-        self._prepare_conn(conn)
-
-        # Wrap socket using verification with the root certs in
-        # trusted_root_certs
-        default_ssl_context = False
-        if self.ssl_context is None:
-            default_ssl_context = True
-            self.ssl_context = create_urllib3_context(
-                ssl_version=resolve_ssl_version(self.ssl_version),
-                cert_reqs=resolve_cert_reqs(self.cert_reqs),
-            )
-
-        # Try to load OS default certs if none are given.
-        # Works well on Windows (requires Python3.4+)
-        context = self.ssl_context
-        if (
-            not self.ca_certs
-            and not self.ca_cert_dir
-            and default_ssl_context
-            and hasattr(context, "load_default_certs")
-        ):
-            context.load_default_certs()
-
-        self.sock = ssl_wrap_socket(
-            sock=conn,
-            keyfile=self.key_file,
-            certfile=self.cert_file,
-            key_password=self.key_password,
-            ssl_context=self.ssl_context,
-            server_hostname=self.server_hostname,
-        )
-
 
 class VerifiedHTTPSConnection(HTTPSConnection):
     """
@@ -346,9 +312,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             # Override the host with the one we're requesting data from.
             hostname = self._tunnel_host
 
-        server_hostname = hostname
-        if self.server_hostname is not None:
-            server_hostname = self.server_hostname
+        server_hostname = self.server_hostname or self.assert_hostname or hostname
 
         is_time_off = datetime.date.today() < RECENT_DATE
         if is_time_off:
@@ -412,7 +376,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                     (
                         "Certificate for {0} has no `subjectAltName`, falling back to check for a "
                         "`commonName` for now. This feature is being removed by major browsers and "
-                        "deprecated by RFC 2818. (See https://github.com/shazow/urllib3/issues/497 "
+                        "deprecated by RFC 2818. (See https://github.com/urllib3/urllib3/issues/497 "
                         "for details.)".format(hostname)
                     ),
                     SubjectAltNameWarning,

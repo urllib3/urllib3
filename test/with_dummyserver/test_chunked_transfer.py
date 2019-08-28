@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
 
+import pytest
+
 from urllib3 import HTTPConnectionPool
-from dummyserver.testcase import SocketDummyServerTestCase
+from urllib3.util.retry import Retry
+from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
+
+# Retry failed tests
+pytestmark = pytest.mark.flaky
 
 
 class TestChunkedTransfer(SocketDummyServerTestCase):
@@ -61,12 +67,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         self._test_body(b"thisshouldbeonechunk\r\nasdf")
 
     def test_unicode_body(self):
-        # Define u'thisshouldbeonechunk\r\näöüß' in a way, so that python3.1
-        # does not suffer a syntax error
-        chunk = b"thisshouldbeonechunk\r\n\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f".decode(
-            "utf-8"
-        )
-        self._test_body(chunk)
+        self._test_body(u"thisshouldbeonechunk\r\näöüß")
 
     def test_empty_body(self):
         self._test_body(None)
@@ -100,3 +101,81 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
             host_headers = [x for x in header_lines if x.startswith(b"host")]
             assert len(host_headers) == 1
+
+    def test_preserve_chunked_on_retry(self):
+        self.chunked_requests = 0
+
+        def socket_handler(listener):
+            for _ in range(2):
+                sock = listener.accept()[0]
+                request = consume_socket(sock)
+                if b"Transfer-Encoding: chunked" in request.split(b"\r\n"):
+                    self.chunked_requests += 1
+
+                sock.send(
+                    b"HTTP/1.1 429 Too Many Requests\r\n"
+                    b"Content-Type: text/plain\r\n"
+                    b"Retry-After: 1\r\n"
+                    b"\r\n"
+                )
+                sock.close()
+
+        self._start_server(socket_handler)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            retries = Retry(total=1)
+            pool.urlopen(
+                "GET", "/", chunked=True, preload_content=False, retries=retries
+            )
+        assert self.chunked_requests == 2
+
+    def test_preserve_chunked_on_redirect(self):
+        self.chunked_requests = 0
+
+        def socket_handler(listener):
+            for i in range(2):
+                sock = listener.accept()[0]
+                request = consume_socket(sock)
+                if b"Transfer-Encoding: chunked" in request.split(b"\r\n"):
+                    self.chunked_requests += 1
+
+                if i == 0:
+                    sock.send(
+                        b"HTTP/1.1 301 Moved Permanently\r\n"
+                        b"Location: /redirect\r\n\r\n"
+                    )
+                else:
+                    sock.send(b"HTTP/1.1 200 OK\r\n\r\n")
+                sock.close()
+
+        self._start_server(socket_handler)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            retries = Retry(redirect=1)
+            pool.urlopen(
+                "GET", "/", chunked=True, preload_content=False, retries=retries
+            )
+        assert self.chunked_requests == 2
+
+    def test_preserve_chunked_on_broken_connection(self):
+        self.chunked_requests = 0
+
+        def socket_handler(listener):
+            for i in range(2):
+                sock = listener.accept()[0]
+                request = consume_socket(sock)
+                if b"Transfer-Encoding: chunked" in request.split(b"\r\n"):
+                    self.chunked_requests += 1
+
+                if i == 0:
+                    # Bad HTTP version will trigger a connection close
+                    sock.send(b"HTTP/0.5 200 OK\r\n\r\n")
+                else:
+                    sock.send(b"HTTP/1.1 200 OK\r\n\r\n")
+                sock.close()
+
+        self._start_server(socket_handler)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            retries = Retry(read=1)
+            pool.urlopen(
+                "GET", "/", chunked=True, preload_content=False, retries=retries
+            )
+        assert self.chunked_requests == 2

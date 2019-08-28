@@ -12,6 +12,11 @@ from urllib3.poolmanager import proxy_from_url, ProxyManager
 from urllib3.exceptions import MaxRetryError, SSLError, ProxyError, ConnectTimeoutError
 from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
 
+from test import SHORT_TIMEOUT, LONG_TIMEOUT
+
+# Retry failed tests
+pytestmark = pytest.mark.flaky
+
 
 class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     @classmethod
@@ -51,18 +56,16 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     def test_proxy_conn_fail(self):
         host, port = get_unreachable_address()
         with proxy_from_url(
-            "http://%s:%s/" % (host, port), retries=1, timeout=0.05
+            "http://%s:%s/" % (host, port), retries=1, timeout=LONG_TIMEOUT
         ) as http:
             with pytest.raises(MaxRetryError):
                 http.request("GET", "%s/" % self.https_url)
             with pytest.raises(MaxRetryError):
                 http.request("GET", "%s/" % self.http_url)
 
-            try:
+            with pytest.raises(MaxRetryError) as e:
                 http.request("GET", "%s/" % self.http_url)
-                self.fail("Failed to raise retry error.")
-            except MaxRetryError as e:
-                assert type(e.reason) == ProxyError
+            assert type(e.value.reason) == ProxyError
 
     def test_oldapi(self):
         with ProxyManager(
@@ -79,14 +82,12 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             self.proxy_url, cert_reqs="REQUIRED", ca_certs=DEFAULT_CA_BAD
         ) as http:
             https_pool = http._new_pool("https", self.https_host, self.https_port)
-            try:
+            with pytest.raises(MaxRetryError) as e:
                 https_pool.request("GET", "/", retries=0)
-                self.fail("Didn't raise SSL error with wrong CA")
-            except MaxRetryError as e:
-                assert isinstance(e.reason, SSLError)
-                assert "certificate verify failed" in str(e.reason), (
-                    "Expected 'certificate verify failed', instead got: %r" % e.reason
-                )
+            assert isinstance(e.value.reason, SSLError)
+            assert "certificate verify failed" in str(e.value.reason), (
+                "Expected 'certificate verify failed', instead got: %r" % e.value.reason
+            )
 
             http = proxy_from_url(
                 self.proxy_url, cert_reqs="REQUIRED", ca_certs=DEFAULT_CA
@@ -102,12 +103,10 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             )
             https_fail_pool = http._new_pool("https", "127.0.0.1", self.https_port)
 
-            try:
+            with pytest.raises(MaxRetryError) as e:
                 https_fail_pool.request("GET", "/", retries=0)
-                self.fail("Didn't raise SSL invalid common name")
-            except MaxRetryError as e:
-                assert isinstance(e.reason, SSLError)
-                assert "doesn't match" in str(e.reason)
+            assert isinstance(e.value.reason, SSLError)
+            assert "doesn't match" in str(e.value.reason)
 
     def test_redirect(self):
         with proxy_from_url(self.proxy_url) as http:
@@ -132,24 +131,20 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     def test_cross_host_redirect(self):
         with proxy_from_url(self.proxy_url) as http:
             cross_host_location = "%s/echo?a=b" % self.http_url_alt
-            try:
+            with pytest.raises(MaxRetryError):
                 http.request(
                     "GET",
                     "%s/redirect" % self.http_url,
                     fields={"target": cross_host_location},
-                    timeout=1,
+                    timeout=LONG_TIMEOUT,
                     retries=0,
                 )
-                self.fail("We don't want to follow redirects here.")
-
-            except MaxRetryError:
-                pass
 
             r = http.request(
                 "GET",
                 "%s/redirect" % self.http_url,
                 fields={"target": "%s/echo?a=b" % self.http_url_alt},
-                timeout=1,
+                timeout=LONG_TIMEOUT,
                 retries=1,
             )
             assert r._pool.host != self.http_host_alt
@@ -157,24 +152,20 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     def test_cross_protocol_redirect(self):
         with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
             cross_protocol_location = "%s/echo?a=b" % self.https_url
-            try:
+            with pytest.raises(MaxRetryError):
                 http.request(
                     "GET",
                     "%s/redirect" % self.http_url,
                     fields={"target": cross_protocol_location},
-                    timeout=1,
+                    timeout=LONG_TIMEOUT,
                     retries=0,
                 )
-                self.fail("We don't want to follow redirects here.")
-
-            except MaxRetryError:
-                pass
 
             r = http.request(
                 "GET",
                 "%s/redirect" % self.http_url,
                 fields={"target": "%s/echo?a=b" % self.https_url},
-                timeout=1,
+                timeout=LONG_TIMEOUT,
                 retries=1,
             )
             assert r._pool.host == self.https_host
@@ -331,23 +322,19 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     @requires_network
     def test_https_proxy_timeout(self):
         with proxy_from_url("https://{host}".format(host=TARPIT_HOST)) as https:
-            try:
-                https.request("GET", self.http_url, timeout=0.001)
-                self.fail("Failed to raise retry error.")
-            except MaxRetryError as e:
-                assert type(e.reason) == ConnectTimeoutError
+            with pytest.raises(MaxRetryError) as e:
+                https.request("GET", self.http_url, timeout=SHORT_TIMEOUT)
+            assert type(e.value.reason) == ConnectTimeoutError
 
     @pytest.mark.timeout(0.5)
     @requires_network
     def test_https_proxy_pool_timeout(self):
         with proxy_from_url(
-            "https://{host}".format(host=TARPIT_HOST), timeout=0.001
+            "https://{host}".format(host=TARPIT_HOST), timeout=SHORT_TIMEOUT
         ) as https:
-            try:
+            with pytest.raises(MaxRetryError) as e:
                 https.request("GET", self.http_url)
-                self.fail("Failed to raise retry error.")
-            except MaxRetryError as e:
-                assert type(e.reason) == ConnectTimeoutError
+            assert type(e.value.reason) == ConnectTimeoutError
 
     def test_scheme_host_case_insensitive(self):
         """Assert that upper-case schemes and hosts are normalized."""

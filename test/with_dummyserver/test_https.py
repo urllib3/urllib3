@@ -3,6 +3,7 @@ import json
 import logging
 import ssl
 import sys
+import shutil
 import warnings
 
 import mock
@@ -10,14 +11,15 @@ import pytest
 
 from dummyserver.testcase import HTTPSDummyServerTestCase, IPV6HTTPSDummyServerTestCase
 from dummyserver.server import (
+    CLIENT_CERT,
+    CLIENT_INTERMEDIATE_PEM,
+    CLIENT_NO_INTERMEDIATE_PEM,
+    CLIENT_INTERMEDIATE_KEY,
     DEFAULT_CA,
     DEFAULT_CA_BAD,
     DEFAULT_CERTS,
-    DEFAULT_CLIENT_CERTS,
-    DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS,
     NO_SAN_CERTS,
     NO_SAN_CA,
-    DEFAULT_CA_DIR,
     IPV6_ADDR_CERTS,
     IPV6_ADDR_CA,
     HAS_IPV6,
@@ -39,6 +41,8 @@ from test import (
     requiresTLSv1_2,
     requiresTLSv1_3,
     TARPIT_HOST,
+    SHORT_TIMEOUT,
+    LONG_TIMEOUT,
 )
 from urllib3 import HTTPSConnectionPool
 from urllib3.connection import VerifiedHTTPSConnection, RECENT_DATE
@@ -55,6 +59,8 @@ from urllib3.packages import six
 from urllib3.util.timeout import Timeout
 import urllib3.util as util
 
+# Retry failed tests
+pytestmark = pytest.mark.flaky
 
 ResourceWarning = getattr(
     six.moves.builtins, "ResourceWarning", type("ResourceWarning", (), {})
@@ -97,32 +103,36 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             r = pool.request("GET", "/")
             assert r.status == 200, r.data
 
-    def test_client_intermediate(self):
-        client_cert, client_key = (
-            DEFAULT_CLIENT_CERTS["certfile"],
-            DEFAULT_CLIENT_CERTS["keyfile"],
-        )
+    def test_client_intermediate(self, certs_dir):
+        """Check that certificate chains work well with client certs
+
+        We generate an intermediate CA from the root CA, and issue a client certificate
+        from that intermediate CA. Since the server only knows about the root CA, we
+        need to send it the certificate *and* the intermediate CA, so that it can check
+        the whole chain.
+        """
         with HTTPSConnectionPool(
             self.host,
             self.port,
-            key_file=client_key,
-            cert_file=client_cert,
+            key_file=str(certs_dir / CLIENT_INTERMEDIATE_KEY),
+            cert_file=str(certs_dir / CLIENT_INTERMEDIATE_PEM),
             ca_certs=DEFAULT_CA,
         ) as https_pool:
             r = https_pool.request("GET", "/certificate")
             subject = json.loads(r.data.decode("utf-8"))
-            assert subject["organizationalUnitName"].startswith("Testing server cert")
+            assert subject["organizationalUnitName"].startswith("Testing cert")
 
-    def test_client_no_intermediate(self):
-        client_cert, client_key = (
-            DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS["certfile"],
-            DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS["keyfile"],
-        )
+    def test_client_no_intermediate(self, certs_dir):
+        """Check that missing links in certificate chains indeed break
+
+        The only difference with test_client_intermediate is that we don't send the
+        intermediate CA to the server, only the client cert.
+        """
         with HTTPSConnectionPool(
             self.host,
             self.port,
-            cert_file=client_cert,
-            key_file=client_key,
+            cert_file=str(certs_dir / CLIENT_NO_INTERMEDIATE_PEM),
+            key_file=str(certs_dir / CLIENT_INTERMEDIATE_KEY),
             ca_certs=DEFAULT_CA,
         ) as https_pool:
             try:
@@ -145,21 +155,18 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                     # Python 3.7.4+
                     or "WSAECONNRESET" in str(e)  # Windows
                     or "EPIPE" in str(e)  # macOS
+                    or "ECONNRESET" in str(e)  # OpenSSL
                 ):
                     raise
 
     @requires_ssl_context_keyfile_password
     def test_client_key_password(self):
-        client_cert, client_key = (
-            DEFAULT_CLIENT_CERTS["certfile"],
-            PASSWORD_CLIENT_KEYFILE,
-        )
         with HTTPSConnectionPool(
             self.host,
             self.port,
             ca_certs=DEFAULT_CA,
-            key_file=client_key,
-            cert_file=client_cert,
+            key_file=PASSWORD_CLIENT_KEYFILE,
+            cert_file=CLIENT_CERT,
             key_password="letmein",
         ) as https_pool:
             r = https_pool.request("GET", "/certificate")
@@ -168,15 +175,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @requires_ssl_context_keyfile_password
     def test_client_encrypted_key_requires_password(self):
-        client_cert, client_key = (
-            DEFAULT_CLIENT_CERTS["certfile"],
-            PASSWORD_CLIENT_KEYFILE,
-        )
         with HTTPSConnectionPool(
             self.host,
             self.port,
-            key_file=client_key,
-            cert_file=client_cert,
+            key_file=PASSWORD_CLIENT_KEYFILE,
+            cert_file=CLIENT_CERT,
             key_password=None,
         ) as https_pool:
             with pytest.raises(MaxRetryError) as e:
@@ -273,9 +276,14 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     @onlyPy279OrNewer
     @notSecureTransport  # SecureTransport does not support cert directories
     @notOpenSSL098  # OpenSSL 0.9.8 does not support cert directories
-    def test_ca_dir_verified(self):
+    def test_ca_dir_verified(self, tmpdir):
+        # OpenSSL looks up certificates by the hash for their name, see c_rehash
+        # TODO infer the bytes using `cryptography.x509.Name.public_bytes`.
+        # https://github.com/pyca/cryptography/pull/3236
+        shutil.copyfile(DEFAULT_CA, str(tmpdir / "b6b9ccf9.0"))
+
         with HTTPSConnectionPool(
-            self.host, self.port, cert_reqs="CERT_REQUIRED", ca_cert_dir=DEFAULT_CA_DIR
+            self.host, self.port, cert_reqs="CERT_REQUIRED", ca_cert_dir=str(tmpdir)
         ) as https_pool:
             conn = https_pool._new_conn()
             assert conn.__class__ == VerifiedHTTPSConnection
@@ -289,54 +297,45 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             "127.0.0.1", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
-            try:
+            with pytest.raises(MaxRetryError) as e:
                 https_pool.request("GET", "/")
-                self.fail("Didn't raise SSL invalid common name")
-            except MaxRetryError as e:
-                assert isinstance(e.reason, SSLError)
-                assert "doesn't match" in str(
-                    e.reason
-                ) or "certificate verify failed" in str(e.reason)
+            assert isinstance(e.value.reason, SSLError)
+            assert "doesn't match" in str(
+                e.value.reason
+            ) or "certificate verify failed" in str(e.value.reason)
 
     def test_verified_with_bad_ca_certs(self):
         with HTTPSConnectionPool(
             self.host, self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA_BAD
         ) as https_pool:
-            try:
+            with pytest.raises(MaxRetryError) as e:
                 https_pool.request("GET", "/")
-                self.fail("Didn't raise SSL error with bad CA certs")
-            except MaxRetryError as e:
-                assert isinstance(e.reason, SSLError)
-                assert "certificate verify failed" in str(e.reason), (
-                    "Expected 'certificate verify failed', instead got: %r" % e.reason
-                )
+            assert isinstance(e.value.reason, SSLError)
+            assert "certificate verify failed" in str(e.value.reason), (
+                "Expected 'certificate verify failed', instead got: %r" % e.value.reason
+            )
 
     def test_verified_without_ca_certs(self):
         # default is cert_reqs=None which is ssl.CERT_NONE
         with HTTPSConnectionPool(
             self.host, self.port, cert_reqs="CERT_REQUIRED"
         ) as https_pool:
-            try:
+            with pytest.raises(MaxRetryError) as e:
                 https_pool.request("GET", "/")
-                self.fail(
-                    "Didn't raise SSL error with no CA certs when"
-                    "CERT_REQUIRED is set"
-                )
-            except MaxRetryError as e:
-                assert isinstance(e.reason, SSLError)
-                # there is a different error message depending on whether or
-                # not pyopenssl is injected
-                assert (
-                    "No root certificates specified" in str(e.reason)
-                    # PyPy sometimes uses all-caps here
-                    or "certificate verify failed" in str(e.reason).lower()
-                    or "invalid certificate chain" in str(e.reason)
-                ), (
-                    "Expected 'No root certificates specified',  "
-                    "'certificate verify failed', or "
-                    "'invalid certificate chain', "
-                    "instead got: %r" % e.reason
-                )
+            assert isinstance(e.value.reason, SSLError)
+            # there is a different error message depending on whether or
+            # not pyopenssl is injected
+            assert (
+                "No root certificates specified" in str(e.value.reason)
+                # PyPy sometimes uses all-caps here
+                or "certificate verify failed" in str(e.value.reason).lower()
+                or "invalid certificate chain" in str(e.value.reason)
+            ), (
+                "Expected 'No root certificates specified',  "
+                "'certificate verify failed', or "
+                "'invalid certificate chain', "
+                "instead got: %r" % e.value.reason
+            )
 
     def test_no_ssl(self):
         with HTTPSConnectionPool(self.host, self.port) as pool:
@@ -415,6 +414,21 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             # pyopenssl doesn't let you pull the server_hostname back off the
             # socket, so only add this assertion if the attribute is there (i.e.
             # the python ssl module).
+            if hasattr(conn.sock, "server_hostname"):
+                assert conn.sock.server_hostname == "localhost"
+
+    def test_assert_hostname(self):
+        with HTTPSConnectionPool(
+            "127.0.0.1",
+            self.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=DEFAULT_CA,
+            assert_hostname="localhost",
+        ) as https_pool:
+
+            conn = https_pool._new_conn()
+            conn.request("GET", "/")
+
             if hasattr(conn.sock, "server_hostname"):
                 assert conn.sock.server_hostname == "localhost"
 
@@ -510,7 +524,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     @requires_network
     def test_https_timeout(self):
 
-        timeout = Timeout(total=None, connect=0.001)
+        timeout = Timeout(total=None, connect=SHORT_TIMEOUT)
         with HTTPSConnectionPool(
             TARPIT_HOST,
             self.port,
@@ -560,7 +574,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             TARPIT_HOST,
             self.port,
-            timeout=Timeout(connect=0.001),
+            timeout=Timeout(connect=SHORT_TIMEOUT),
             retries=False,
             cert_reqs="CERT_REQUIRED",
         ) as https_pool:
@@ -576,12 +590,12 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             TARPIT_HOST,
             self.port,
-            timeout=Timeout(connect=5),
+            timeout=Timeout(connect=LONG_TIMEOUT),
             retries=False,
             cert_reqs="CERT_REQUIRED",
         ) as https_pool:
             with pytest.raises(ConnectTimeoutError):
-                https_pool.request("GET", "/", timeout=Timeout(connect=0.001))
+                https_pool.request("GET", "/", timeout=Timeout(connect=SHORT_TIMEOUT))
 
         with HTTPSConnectionPool(
             TARPIT_HOST,
@@ -594,7 +608,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             try:
                 with pytest.raises(ConnectTimeoutError):
                     https_pool.request(
-                        "GET", "/", timeout=Timeout(total=None, connect=0.001)
+                        "GET", "/", timeout=Timeout(total=None, connect=SHORT_TIMEOUT)
                     )
             finally:
                 conn.close()

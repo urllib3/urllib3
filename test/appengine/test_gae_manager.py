@@ -7,6 +7,7 @@ import urllib3.util.url
 import urllib3.util.retry
 
 from test.with_dummyserver import test_connectionpool
+from test import SHORT_TIMEOUT
 
 
 # This class is used so we can re-use the tests from the connection pool.
@@ -46,7 +47,11 @@ class TestGAEConnectionManager(test_connectionpool.TestConnectionPool):
     def test_exceptions(self):
         # DeadlineExceededError -> TimeoutError
         with pytest.raises(urllib3.exceptions.TimeoutError):
-            self.pool.request("GET", "/sleep?seconds=0.005", timeout=0.001)
+            self.pool.request(
+                "GET",
+                "/sleep?seconds={}".format(5 * SHORT_TIMEOUT),
+                timeout=SHORT_TIMEOUT,
+            )
 
         # InvalidURLError -> ProtocolError
         with pytest.raises(urllib3.exceptions.ProtocolError):
@@ -163,3 +168,11 @@ class TestGAERetryAfter(test_connectionpool.TestRetryAfter):
         # Disable urlfetch which doesn't respect Retry-After header.
         self.manager = appengine.AppEngineManager(urlfetch_retries=False)
         self.pool = MockPool(self.host, self.port, self.manager)
+
+
+def test_gae_environ():
+    assert not appengine.is_appengine()
+    assert not appengine.is_appengine_sandbox()
+    assert not appengine.is_local_appengine()
+    assert not appengine.is_prod_appengine()
+    assert not appengine.is_prod_appengine_mvms()

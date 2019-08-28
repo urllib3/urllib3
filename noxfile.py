@@ -29,7 +29,9 @@ def tests_impl(session, extras="socks,secure,brotli"):
         "-m",
         "pytest",
         "-r",
-        "sx",
+        "a",
+        "--tb=native",
+        "--no-success-flaky-report",
         *(session.posargs or ("test/",)),
         env={"PYTHONWARNINGS": "always::DeprecationWarning"}
     )
@@ -72,7 +74,7 @@ def app_engine(session):
 
 @nox.session()
 def blacken(session):
-    """Run black code formater."""
+    """Run black code formatter."""
     session.install("black")
     session.run("black", "src", "dummyserver", "test", "noxfile.py", "setup.py")
 
