@@ -29,12 +29,15 @@ def teardown_module():
         pass
 
 
+# While SecureTransport supports TLS 1.3, we can't test for it because
+# Security.SSLSetProtocolVersionMin and Security.SSLSetProtocolVersionMax don't accept
+# kTLSProtocol13
+# See https://forums.developer.apple.com/thread/110369 which includes the relevant code
 from ..with_dummyserver.test_https import (  # noqa: F401
     TestHTTPS,
     TestHTTPS_TLSv1,
     TestHTTPS_TLSv1_1,
     TestHTTPS_TLSv1_2,
-    TestHTTPS_TLSv1_3,
 )
 from ..with_dummyserver.test_socketlevel import (  # noqa: F401
     TestSNI,
