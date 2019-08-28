@@ -18,6 +18,7 @@ from urllib3.exceptions import (
     MaxRetryError,
     ReadTimeoutError,
     NewConnectionError,
+    ProtocolError,
     UnrewindableBodyError,
 )
 from urllib3.packages.six import b, u
@@ -733,8 +734,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             with HTTPConnectionPool(
                 self.host, self.port, source_address=addr, retries=False
             ) as pool:
-                # FIXME: This assert flakes sometimes. Not sure why.
-                with pytest.raises(NewConnectionError):
+                # Remove NewConnectionError when we drop support for Python 3.7
+                with pytest.raises((NewConnectionError, ProtocolError)):
                     pool.request("GET", "/source_address?{0}".format(addr))
 
     def test_stream_keepalive(self):
