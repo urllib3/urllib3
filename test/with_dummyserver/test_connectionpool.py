@@ -717,6 +717,11 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             with pytest.raises(MaxRetryError):
                 pool.request("GET", "/test", retries=2)
 
+    def test_percent_encode_invalid_target_chars(self):
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("GET", "/echo_params?q=\r&k=\n ")
+            assert r.data == b"{'q': '\\r', 'k': '\\n '}"
+
     def test_source_address(self):
         for addr, is_ipv6 in VALID_SOURCE_ADDRESSES:
             if is_ipv6 and not HAS_IPV6_AND_DNS:

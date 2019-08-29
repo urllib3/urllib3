@@ -43,7 +43,13 @@ from .util.request import set_file_position
 from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.timeout import Timeout
-from .util.url import get_host, Url, _normalize_host as normalize_host
+from .util.url import (
+    get_host,
+    parse_url,
+    Url,
+    _normalize_host as normalize_host,
+    _encode_target,
+)
 from .util.queue import LifoQueue
 
 
@@ -603,6 +609,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Check host
         if assert_same_host and not self.is_same_host(url):
             raise HostChangedError(self, url, retries)
+
+        # Ensure that the URL we're connecting to is properly encoded
+        if url.startswith("/"):
+            url = six.ensure_str(_encode_target(url))
+        else:
+            url = six.ensure_str(parse_url(url).url)
 
         conn = None
 
