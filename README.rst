@@ -12,7 +12,7 @@ urllib3
 .. image:: https://readthedocs.org/projects/urllib3/badge/?version=latest
         :alt: Documentation Status
         :target: https://urllib3.readthedocs.io/en/latest/
-        
+
 .. image:: https://img.shields.io/codecov/c/github/urllib3/urllib3.svg
         :alt: Coverage Status
         :target: https://codecov.io/gh/urllib3/urllib3
@@ -30,7 +30,7 @@ urllib3
         :target: https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=docs
 
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
-    :target: https://github.com/python/black
+    :target: https://github.com/psf/black
 
 urllib3 is a powerful, *sanity-friendly* HTTP client for Python. Much of the
 Python ecosystem already uses urllib3 and you should too.
