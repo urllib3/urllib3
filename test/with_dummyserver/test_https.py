@@ -3,7 +3,6 @@ import json
 import logging
 import ssl
 import sys
-import unittest
 import warnings
 
 import mock
@@ -83,10 +82,10 @@ TLSv1_3_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLS", None)
 class TestHTTPS(HTTPSDummyServerTestCase):
     tls_protocol_name = None
 
-    def setUp(self):
+    def setup_method(self, method):
         self._pool = HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA)
 
-    def tearDown(self):
+    def teardown_method(self, method):
         self._pool.close()
 
     def test_simple(self):
@@ -706,7 +705,3 @@ class TestHTTPS_IPV6SAN(IPV6HTTPSDummyServerTestCase):
         ) as https_pool:
             r = https_pool.request("GET", "/")
             assert r.status == 200
-
-
-if __name__ == "__main__":
-    unittest.main()

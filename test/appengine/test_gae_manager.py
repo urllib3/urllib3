@@ -37,7 +37,7 @@ class MockPool(object):
 # that URLFetch is used by the connection manager.
 @pytest.mark.usefixtures("testbed")
 class TestGAEConnectionManager(test_connectionpool.TestConnectionPool):
-    def setUp(self):
+    def setup_method(self, method):
         self.manager = appengine.AppEngineManager()
         self.pool = MockPool(self.host, self.port, self.manager)
 
@@ -105,7 +105,7 @@ class TestGAEConnectionManager(test_connectionpool.TestConnectionPool):
 
 @pytest.mark.usefixtures("testbed")
 class TestGAEConnectionManagerWithSSL(dummyserver.testcase.HTTPSDummyServerTestCase):
-    def setUp(self):
+    def setup_method(self, method):
         self.manager = appengine.AppEngineManager()
         self.pool = MockPool(self.host, self.port, self.manager, "https")
 
@@ -119,7 +119,7 @@ class TestGAEConnectionManagerWithSSL(dummyserver.testcase.HTTPSDummyServerTestC
 
 @pytest.mark.usefixtures("testbed")
 class TestGAERetry(test_connectionpool.TestRetry):
-    def setUp(self):
+    def setup_method(self, method):
         self.manager = appengine.AppEngineManager()
         self.pool = MockPool(self.host, self.port, self.manager)
 
@@ -159,7 +159,7 @@ class TestGAERetry(test_connectionpool.TestRetry):
 
 @pytest.mark.usefixtures("testbed")
 class TestGAERetryAfter(test_connectionpool.TestRetryAfter):
-    def setUp(self):
+    def setup_method(self, method):
         # Disable urlfetch which doesn't respect Retry-After header.
         self.manager = appengine.AppEngineManager(urlfetch_retries=False)
         self.pool = MockPool(self.host, self.port, self.manager)

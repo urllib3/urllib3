@@ -35,7 +35,7 @@ class TestConnection(object):
         cert = {"subjectAltName": [("DNS", "foo")]}
         asserted_hostname = "bar"
         try:
-            with mock.patch("urllib3.util.ssl_.log.error") as mock_log:
+            with mock.patch("urllib3.util.ssl_.log.warning") as mock_log:
                 match_hostname(cert, asserted_hostname)
         except CertificateError as e:
             assert "hostname 'bar' doesn't match 'foo'" in str(e)

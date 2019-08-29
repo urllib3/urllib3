@@ -11,7 +11,6 @@ import collections
 import errno
 import socket
 import ssl
-import unittest
 
 import h11
 
@@ -169,7 +168,7 @@ class ScenarioSocket(object):
         self._closed = True
 
 
-class TestUnusualSocketConditions(unittest.TestCase):
+class TestUnusualSocketConditions:
     """
     This class contains tests that take strict control over sockets and
     selectors. The goal here is to simulate unusual network conditions that are

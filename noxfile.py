@@ -69,6 +69,8 @@ def blacken(session):
     session.install("black")
     session.run("black", "src", "dummyserver", "test", "noxfile.py", "setup.py")
 
+    lint(session)
+
 
 @nox.session
 def lint(session):

@@ -4,7 +4,6 @@ Engine-patched version of httplib to make requests."""
 
 import httplib
 import StringIO
-import unittest
 
 from mock import patch
 import pytest
@@ -45,7 +44,7 @@ class TestHTTP(TestWithoutSSL):
 
 
 @pytest.mark.usefixtures("sandbox")
-class TestHTTPS(unittest.TestCase):
+class TestHTTPS(object):
     @pytest.mark.xfail(
         reason="This is not yet supported by urlfetch, presence of the ssl "
         "module will bypass urlfetch."
