@@ -145,6 +145,22 @@ class Retry(object):
         Sequence of headers to remove from the request when a response
         indicating a redirect is returned before firing off the redirected
         request.
+
+    :param callable force_retry_callback:
+        Callback function to add custom logic to force retrying requests.
+
+        Format for callback function:
+            def retry_handler(response):
+                # handle response manually
+                return True
+
+        If callback function returns True, it will retry.
+        Otherwise, it won't be forced to retry.
+
+        This feature is useful if you need additional retrying mechanism
+        rather than ``status_forcelist``.
+
+        By default, this is disabled with ``None``.
     """
 
     DEFAULT_METHOD_WHITELIST = frozenset(
@@ -173,6 +189,7 @@ class Retry(object):
         history=None,
         respect_retry_after_header=True,
         remove_headers_on_redirect=DEFAULT_REDIRECT_HEADERS_BLACKLIST,
+        force_retry_callback=None,
     ):
 
         self.total = total
@@ -196,6 +213,13 @@ class Retry(object):
             [h.lower() for h in remove_headers_on_redirect]
         )
 
+        if force_retry_callback is not None and hasattr(
+            force_retry_callback, "__call__"
+        ):
+            self.force_retry_callback = force_retry_callback
+        else:
+            self.force_retry_callback = None
+
     def new(self, **kw):
         params = dict(
             total=self.total,
@@ -211,6 +235,7 @@ class Retry(object):
             history=self.history,
             remove_headers_on_redirect=self.remove_headers_on_redirect,
             respect_retry_after_header=self.respect_retry_after_header,
+            force_retry_callback=self.force_retry_callback,
         )
         params.update(kw)
         return type(self)(**params)
@@ -323,9 +348,9 @@ class Retry(object):
 
         return True
 
-    def is_retry(self, method, status_code, has_retry_after=False):
-        """ Is this method/status code retryable? (Based on whitelists and control
-        variables such as the number of total retries to allow, whether to
+    def is_retry(self, method, status_code=None, response=None, has_retry_after=False):
+        """ Is this method/status code/response retryable? (Based on whitelists and
+        control variables such as the number of total retries to allow, whether to
         respect the Retry-After header, whether this header is present, and
         whether the returned status code is on the list of status codes to
         be retried upon on the presence of the aforementioned header)
@@ -333,7 +358,16 @@ class Retry(object):
         if not self._is_method_retryable(method):
             return False
 
-        if self.status_forcelist and status_code in self.status_forcelist:
+        if self.force_retry_callback is not None and self.force_retry_callback(
+            response
+        ):
+            return True
+
+        if (
+            self.status_forcelist
+            and status_code is not None
+            and status_code in self.status_forcelist
+        ):
             return True
 
         return (

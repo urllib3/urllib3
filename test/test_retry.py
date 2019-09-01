@@ -16,6 +16,16 @@ from urllib3.exceptions import (
 )
 
 
+class MockResponse(object):
+    def __init__(self, json_data=None, status_code=None, headers=None):
+        self.json_data = json_data
+        self.status_code = status_code
+        self.headers = headers
+
+    def json(self):
+        return self.json_data
+
+
 class TestRetry(object):
     def test_string(self):
         """ Retry string representation looks the way we expect """
@@ -197,6 +207,24 @@ class TestRetry(object):
         assert not Retry(0).is_exhausted()
         assert Retry(-1).is_exhausted()
         assert Retry(1).increment(method="GET").total == 0
+
+    def test_force_retry_callback(self):
+        def callback(res):
+            expected_error_msg = "Service temporarily unavailable"
+            response_json = res.json()
+            error_msg = response_json["error"]["message"]
+            return res.status_code == 400 and error_msg == expected_error_msg
+
+        error = dict(message="Service temporarily unavailable")
+        response_json = dict(error=error)
+
+        retry = Retry(force_retry_callback=callback)
+        assert retry.is_retry(
+            "GET", response=MockResponse(json_data=response_json, status_code=400)
+        )
+        assert not retry.is_retry(
+            "GET", response=MockResponse(json_data=response_json, status_code=503)
+        )
 
     @pytest.mark.parametrize("total", [-1, 0])
     def test_disabled(self, total):
