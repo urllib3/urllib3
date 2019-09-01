@@ -171,6 +171,22 @@ class Retry:
         Sequence of headers to remove from the request when a response
         indicating a redirect is returned before firing off the redirected
         request.
+
+    :param callable force_retry_callback:
+        Callback function to add custom logic to force retrying requests.
+
+        Format for callback function:
+            def retry_handler(response):
+                # handle response manually
+                return True
+
+        If callback function returns True, it will retry.
+        Otherwise, it won't be forced to retry.
+
+        This feature is useful if you need additional retrying mechanism
+        rather than ``status_forcelist``.
+
+        By default, this is disabled with ``None``.
     """
 
     #: Default methods to be used for ``allowed_methods``
@@ -209,6 +225,7 @@ class Retry:
         remove_headers_on_redirect: typing.Collection[
             str
         ] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
+        force_retry_callback: typing.Callable[[BaseHTTPResponse], bool] | None = None,
     ) -> None:
         self.total = total
         self.connect = connect
@@ -232,6 +249,7 @@ class Retry:
         self.remove_headers_on_redirect = frozenset(
             h.lower() for h in remove_headers_on_redirect
         )
+        self.force_retry_callback = force_retry_callback
 
     def new(self, **kw: typing.Any) -> Retry:
         params = dict(
@@ -250,6 +268,7 @@ class Retry:
             history=self.history,
             remove_headers_on_redirect=self.remove_headers_on_redirect,
             respect_retry_after_header=self.respect_retry_after_header,
+            force_retry_callback=self.force_retry_callback,
         )
 
         params.update(kw)
@@ -371,10 +390,14 @@ class Retry:
         return True
 
     def is_retry(
-        self, method: str, status_code: int, has_retry_after: bool = False
+        self,
+        method: str,
+        status_code: int | None = None,
+        has_retry_after: bool = False,
+        response: BaseHTTPResponse | None = None,
     ) -> bool:
-        """Is this method/status code retryable? (Based on allowlists and control
-        variables such as the number of total retries to allow, whether to
+        """Is this method/status code/response retryable? (Based on allowlists and
+        control variables such as the number of total retries to allow, whether to
         respect the Retry-After header, whether this header is present, and
         whether the returned status code is on the list of status codes to
         be retried upon on the presence of the aforementioned header)
@@ -382,7 +405,18 @@ class Retry:
         if not self._is_method_retryable(method):
             return False
 
-        if self.status_forcelist and status_code in self.status_forcelist:
+        if self.force_retry_callback is not None and response is not None:
+            return self.force_retry_callback(response)
+
+        if not status_code and response:
+            # since status_code is optional, we can infer it from response
+            status_code = response.status
+
+        if (
+            self.status_forcelist
+            and status_code is not None
+            and status_code in self.status_forcelist
+        ):
             return True
 
         return bool(

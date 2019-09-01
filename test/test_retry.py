@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from test import DUMMY_POOL
 from unittest import mock
 
@@ -236,6 +237,21 @@ class TestRetry:
         assert not Retry(0).is_exhausted()
         assert Retry(-1).is_exhausted()
         assert Retry(1).increment(method="GET").total == 0
+
+    def test_force_retry_callback(self) -> None:
+        def callback(res: HTTPResponse) -> bool:
+            expected_error_msg = "Service temporarily unavailable"
+            response_json = res.json()
+            error_msg = response_json["message"]
+            return bool(res.status == 400 and error_msg == expected_error_msg)
+
+        response_body = json.dumps({"message": {"Service temporarily unavailable"}})
+
+        retry = Retry(force_retry_callback=callback)  # type: ignore[arg-type]
+        assert retry.is_retry("GET", response=HTTPResponse(response_body, status=400))
+        assert not retry.is_retry(
+            "GET", response=HTTPResponse(response_body, status=503)
+        )
 
     @pytest.mark.parametrize("total", [-1, 0])
     def test_disabled(self, total: int) -> None:
