@@ -1,6 +1,7 @@
 import pytest
 
 from urllib3.poolmanager import ProxyManager
+from urllib3.util.url import parse_url
 
 
 class TestProxyManager(object):
@@ -43,3 +44,14 @@ class TestProxyManager(object):
             ProxyManager("invalid://host/p")
         with pytest.raises(ValueError):
             ProxyManager("invalid://host/p")
+
+    def test_proxy_tunnel(self):
+        http_url = parse_url("http://example.com")
+        https_url = parse_url("https://example.com")
+        with ProxyManager("http://proxy:8080") as p:
+            assert p._proxy_requires_complete_url(http_url)
+            assert p._proxy_requires_complete_url(https_url) is False
+
+        with ProxyManager("https://proxy:8080") as p:
+            assert p._proxy_requires_complete_url(http_url)
+            assert p._proxy_requires_complete_url(https_url)

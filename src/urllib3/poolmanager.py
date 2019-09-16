@@ -306,6 +306,18 @@ class PoolManager(RequestMethods):
                     base_pool_kwargs[key] = value
         return base_pool_kwargs
 
+    def _proxy_requires_complete_url(self, parsed_url):
+        """
+        Indicates if the proxy requires the complete destination URL in the
+        request.
+
+        Normally this is only needed when not using an HTTP CONNECT tunnel.
+        """
+        if self.proxy is None:
+            return False
+
+        return parsed_url.scheme == "http" or self.proxy.scheme == "https"
+
     def urlopen(self, method, url, redirect=True, **kw):
         """
         Same as :meth:`urllib3.connectionpool.HTTPConnectionPool.urlopen`
@@ -324,7 +336,7 @@ class PoolManager(RequestMethods):
         if "headers" not in kw:
             kw["headers"] = self.headers.copy()
 
-        if self.proxy is not None and u.scheme == "http":
+        if self._proxy_requires_complete_url(u):
             response = conn.urlopen(method, url, **kw)
         else:
             response = conn.urlopen(method, u.request_uri, **kw)

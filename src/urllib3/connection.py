@@ -112,6 +112,9 @@ class HTTPConnection(_HTTPConnection, object):
         #: provided, we use the default options.
         self.socket_options = kw.pop("socket_options", self.default_socket_options)
 
+        # Protocol used to talk to the proxy.
+        self.proxy_scheme = kw.pop("proxy_scheme", None)
+
         _HTTPConnection.__init__(self, *args, **kw)
 
     @property
@@ -174,10 +177,13 @@ class HTTPConnection(_HTTPConnection, object):
 
         return conn
 
+    def _is_using_tunnel(self):
+        # Google App Engine's httplib does not define _tunnel_host
+        return getattr(self, "_tunnel_host", None)
+
     def _prepare_conn(self, conn):
         self.sock = conn
-        # Google App Engine's httplib does not define _tunnel_host
-        if getattr(self, "_tunnel_host", None):
+        if self._is_using_tunnel():
             # TODO: Fix tunnel so it doesn't depend on self.sock state.
             self._tunnel()
             # Mark this connection as not reusable
@@ -314,9 +320,9 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         conn = self._new_conn()
         hostname = self.host
 
-        # Google App Engine's httplib does not define _tunnel_host
-        if getattr(self, "_tunnel_host", None):
+        if self._is_using_tunnel():
             self.sock = conn
+
             # Calls self._set_hostport(), so self.host is
             # self._tunnel_host below.
             self._tunnel()

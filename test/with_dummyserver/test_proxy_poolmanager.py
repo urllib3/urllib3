@@ -32,6 +32,10 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         cls.https_url = "https://%s:%d" % (cls.https_host, cls.https_port)
         cls.https_url_alt = "https://%s:%d" % (cls.https_host_alt, cls.https_port)
         cls.proxy_url = "http://%s:%d" % (cls.proxy_host, cls.proxy_port)
+        self.https_proxy_url = "https://%s:%d" % (
+            self.proxy_host,
+            self.https_proxy_port,
+        )
 
         # Generate another CA to test verification failure
         cls.certs_dir = tempfile.mkdtemp()
@@ -51,6 +55,14 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert r.status == 200
 
             r = http.request("GET", "%s/" % self.https_url)
+            assert r.status == 200
+
+    def test_https_proxy(self):
+        with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
+            r = https.request("GET", "%s/" % self.http_url)
+            assert r.status == 200
+
+            r = https.request("GET", "%s/" % self.https_url)
             assert r.status == 200
 
     def test_nagle_proxy(self):

@@ -212,6 +212,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # We cannot know if the user has added default socket options, so we cannot replace the
             # list.
             self.conn_kw.setdefault("socket_options", [])
+            # Capture the proxy scheme to properly establish the connection.
+            self.conn_kw["proxy_scheme"] = self.proxy.scheme
 
     def _new_conn(self):
         """
@@ -941,10 +943,15 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     def _prepare_proxy(self, conn):
         """
-        Establish tunnel connection early, because otherwise httplib
-        would improperly set Host: header to proxy's IP:port.
+        Establishes a tunnel connection through HTTP CONNECT.
+
+        Tunnel connection is established early because otherwise httplib would
+        improperly set Host: header to proxy's IP:port.
         """
-        conn.set_tunnel(self._proxy_host, self.port, self.proxy_headers)
+
+        if self.proxy.scheme != "https":
+            conn.set_tunnel(self._proxy_host, self.port, self.proxy_headers)
+
         conn.connect()
 
     def _new_conn(self):
