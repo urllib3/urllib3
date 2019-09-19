@@ -30,8 +30,7 @@ def tests_impl(session, extras="socks,secure,brotli"):
         "pytest",
         "-r",
         "sx",
-        "test",
-        *session.posargs,
+        *(session.posargs or ("test/",)),
         env={"PYTHONWARNINGS": "always::DeprecationWarning"}
     )
     session.run("coverage", "combine")
