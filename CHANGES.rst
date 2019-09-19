@@ -1,8 +1,8 @@
 Changes
 =======
 
-dev (master)
-------------
+1.25.4 (2019-09-19)
+-------------------
 
 * Propagate Retry-After header settings to subsequent retries. (Pull #1607)
 
@@ -16,6 +16,8 @@ dev (master)
 
 * Add support for ``HTTPResponse.auto_close = False`` which makes HTTP responses
   work well with BufferedReaders and other ``io`` module features. (Pull #1652)
+
+* Percent-encode invalid characters in URL for ``HTTPConnectionPool.request()`` (Pull #1673)
 
 
 1.25.3 (2019-05-23)
