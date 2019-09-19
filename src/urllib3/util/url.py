@@ -71,7 +71,7 @@ SUBAUTHORITY_PAT = (u"^(?:(.*)@)?" u"(%s|%s|%s)" u"(?::([0-9]{0,5}))?$") % (
 SUBAUTHORITY_RE = re.compile(SUBAUTHORITY_PAT, re.UNICODE | re.DOTALL)
 
 ZONE_ID_CHARS = set(
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "abcdefghijklmnopqrstuvwxyz" "0123456789._!-"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "abcdefghijklmnopqrstuvwxyz" "0123456789._!-~"
 )
 USERINFO_CHARS = ZONE_ID_CHARS | set("$&'()*+,;=:")
 PATH_CHARS = USERINFO_CHARS | {"@", "/"}
