@@ -209,7 +209,10 @@ class TestingApp(RequestHandler):
         return Response("Keeping alive", headers=headers)
 
     def echo_params(self, request):
-        return Response(repr({ensure_str(k): ensure_str(v) for k, v in request.params}))
+        params = sorted(
+            [(ensure_str(k), ensure_str(v)) for k, v in request.params.items()]
+        )
+        return Response(repr(params))
 
     def sleep(self, request):
         "Sleep for a specified amount of ``seconds``"

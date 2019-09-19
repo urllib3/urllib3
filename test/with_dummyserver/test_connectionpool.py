@@ -719,8 +719,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_percent_encode_invalid_target_chars(self):
         with HTTPConnectionPool(self.host, self.port) as pool:
-            r = pool.request("GET", "/echo_params?q=\r&k=\n ")
-            assert r.data == b"{'q': '\\r', 'k': '\\n '}"
+            r = pool.request("GET", "/echo_params?q=\r&k=\n \n")
+            assert r.data == b"[('k', '\\n \\n'), ('q', '\\r')]"
 
     def test_source_address(self):
         for addr, is_ipv6 in VALID_SOURCE_ADDRESSES:
