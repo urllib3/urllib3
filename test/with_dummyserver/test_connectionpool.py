@@ -18,7 +18,6 @@ from urllib3.exceptions import (
     MaxRetryError,
     ReadTimeoutError,
     NewConnectionError,
-    ProtocolError,
     UnrewindableBodyError,
 )
 from urllib3.packages.six import b, u
