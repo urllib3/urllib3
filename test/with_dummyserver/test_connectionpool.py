@@ -734,8 +734,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             with HTTPConnectionPool(
                 self.host, self.port, source_address=addr, retries=False
             ) as pool:
-                # Remove NewConnectionError when we drop support for Python 3.7
-                with pytest.raises((NewConnectionError, ProtocolError)):
+                with pytest.raises(NewConnectionError):
                     pool.request("GET", "/source_address?{0}".format(addr))
 
     def test_stream_keepalive(self):
