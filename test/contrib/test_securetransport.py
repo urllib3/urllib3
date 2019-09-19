@@ -29,12 +29,14 @@ def teardown_module():
         pass
 
 
+# Currently TLSv1.3 doesn't work with SecureTransport despite
+# Apple previously documenting support. See:
+# https://github.com/python-trio/trio/issues/1165#issuecomment-526563135
 from ..with_dummyserver.test_https import (  # noqa: F401
     TestHTTPS,
     TestHTTPS_TLSv1,
     TestHTTPS_TLSv1_1,
     TestHTTPS_TLSv1_2,
-    TestHTTPS_TLSv1_3,
 )
 from ..with_dummyserver.test_socketlevel import (  # noqa: F401
     TestSNI,

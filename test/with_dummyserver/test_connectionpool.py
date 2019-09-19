@@ -738,7 +738,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             with HTTPConnectionPool(
                 self.host, self.port, source_address=addr, retries=False
             ) as pool:
-                # FIXME: This assert flakes sometimes. Not sure why.
                 with pytest.raises(NewConnectionError):
                     pool.request("GET", "/source_address?{0}".format(addr))
 
