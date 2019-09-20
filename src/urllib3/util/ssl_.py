@@ -2,6 +2,7 @@ from __future__ import absolute_import
 import errno
 import warnings
 import hmac
+import sys
 
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
@@ -274,8 +275,12 @@ def create_urllib3_context(
     # Enable post-handshake authentication for TLS 1.3, see GH #1634. PHA is
     # necessary for conditional client cert authentication with TLS 1.3.
     # The attribute is None for OpenSSL <= 1.1.0 or does not exist in older
-    # versions of Python.
-    if getattr(context, "post_handshake_auth", None) is not None:
+    # versions of Python.  We only enable on Python 3.7.4+ or if certificate
+    # verification is enabled to work around Python issue #37428
+    # See: https://bugs.python.org/issue37428
+    if (cert_reqs == ssl.CERT_REQUIRED or sys.version_info >= (3, 7, 4)) and getattr(
+        context, "post_handshake_auth", None
+    ) is not None:
         context.post_handshake_auth = True
 
     context.verify_mode = cert_reqs
