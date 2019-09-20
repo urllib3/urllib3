@@ -1,6 +1,14 @@
 Changes
 =======
 
+1.25.5 (2019-09-19)
+-------------------
+
+* Add mitigation for BPO-37428 affecting Python <3.7.4 and OpenSSL 1.1.1+ which
+  caused certificate verification to be enabled when using ``cert_reqs=CERT_NONE``.
+  (Issue #1682)
+
+
 1.25.4 (2019-09-19)
 -------------------
 
