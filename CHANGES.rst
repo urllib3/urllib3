@@ -1,6 +1,12 @@
 Changes
 =======
 
+dev (master)
+------------
+
+* Dropped Python 3.4 support. (Pull #1686)
+
+
 1.25.5 (2019-09-19)
 -------------------
 
