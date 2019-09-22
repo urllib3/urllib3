@@ -25,10 +25,10 @@ install_mac_python() {
 if [[ "$(uname -s)" == 'Darwin' ]]; then
     # Mac OS setup.
     case "${NOX_SESSION}" in
-        test-2.7) MACPYTHON=2.7.15 ;;
-        test-3.5) MACPYTHON=3.5.4 ;;
-        test-3.6) MACPYTHON=3.6.7 ;;
-        test-3.7) MACPYTHON=3.7.1 ;;
+        test-2.7) MACPYTHON=2.7.16 ;;
+        test-3.5) MACPYTHON=3.5.4 ;;  # last binary release
+        test-3.6) MACPYTHON=3.6.8 ;;  # last binary release
+        test-3.7) MACPYTHON=3.7.4 ;;
     esac
 
     # Install additional versions as needed.
