@@ -8,11 +8,6 @@ install_mac_python() {
     local MINOR=$(echo $FULL | cut -d. -f1,2)
     local PYTHON_EXE=/Library/Frameworks/Python.framework/Versions/${MINOR}/bin/python${MINOR}
 
-    # Already installed.
-    if [[ -f "${PYTHON_EXE}" ]]; then
-        return 0;
-    fi
-
     curl -Lo macpython.pkg https://www.python.org/ftp/python/${FULL}/python-${FULL}-macosx10.6.pkg
     sudo installer -pkg macpython.pkg -target /
 
@@ -31,17 +26,13 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
         test-3.7) MACPYTHON=3.7.4 ;;
     esac
 
-    # Install additional versions as needed.
     install_mac_python $MACPYTHON
-
-    # Always install 3.6 for Nox
-    install_mac_python "3.6.7"
 
     # Enable TLS 1.3 on macOS
     sudo defaults write /Library/Preferences/com.apple.networkd tcp_connect_enable_tls13 1
 
     # Install Nox
-    python3.6 -m pip install nox
+    python3 -m pip install nox
 
 else
     # Linux Setup
