@@ -13,8 +13,6 @@ install:
 
 script:
   - ./_travis/run.sh
-
-after_success:
   - ./_travis/upload_coverage.sh
 
 cache:
