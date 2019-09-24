@@ -171,6 +171,10 @@ class TestUtil(object):
         [
             ("HTTP://GOOGLE.COM/MAIL/", "http://google.com/MAIL/"),
             (
+                "http://user@domain.com:password@example.com/~tilde@?@",
+                "http://user%40domain.com:password@example.com/~tilde@?@",
+            ),
+            (
                 "HTTP://JeremyCline:Hunter2@Example.com:8080/",
                 "http://JeremyCline:Hunter2@example.com:8080/",
             ),

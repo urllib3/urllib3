@@ -50,7 +50,7 @@ _variations = [
     "(?:(?:%(hex)s:){0,6}%(hex)s)?::",
 ]
 
-UNRESERVED_PAT = r"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._!\-"
+UNRESERVED_PAT = r"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._!\-~"
 IPV6_PAT = "(?:" + "|".join([x % _subs for x in _variations]) + ")"
 ZONE_ID_PAT = "(?:%25|%)(?:[" + UNRESERVED_PAT + "]|%[a-fA-F0-9]{2})+"
 IPV6_ADDRZ_PAT = r"\[" + IPV6_PAT + r"(?:" + ZONE_ID_PAT + r")?\]"
@@ -63,17 +63,18 @@ IPV6_ADDRZ_RE = re.compile("^" + IPV6_ADDRZ_PAT + "$")
 BRACELESS_IPV6_ADDRZ_RE = re.compile("^" + IPV6_ADDRZ_PAT[2:-2] + "$")
 ZONE_ID_RE = re.compile("(" + ZONE_ID_PAT + r")\]$")
 
-SUBAUTHORITY_PAT = (u"^(?:(.*)@)?" u"(%s|%s|%s)" u"(?::([0-9]{0,5}))?$") % (
+SUBAUTHORITY_PAT = (u"^(?:(.*)@)?(%s|%s|%s)(?::([0-9]{0,5}))?$") % (
     REG_NAME_PAT,
     IPV4_PAT,
     IPV6_ADDRZ_PAT,
 )
 SUBAUTHORITY_RE = re.compile(SUBAUTHORITY_PAT, re.UNICODE | re.DOTALL)
 
-ZONE_ID_CHARS = set(
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "abcdefghijklmnopqrstuvwxyz" "0123456789._!-"
+UNRESERVED_CHARS = set(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-~"
 )
-USERINFO_CHARS = ZONE_ID_CHARS | set("$&'()*+,;=:")
+SUB_DELIM_CHARS = set("!$&'()*+,;=")
+USERINFO_CHARS = UNRESERVED_CHARS | SUB_DELIM_CHARS | {":"}
 PATH_CHARS = USERINFO_CHARS | {"@", "/"}
 QUERY_CHARS = FRAGMENT_CHARS = PATH_CHARS | {"?"}
 
@@ -290,7 +291,7 @@ def _normalize_host(host, scheme):
                         zone_id = zone_id[3:]
                     else:
                         zone_id = zone_id[1:]
-                    zone_id = "%" + _encode_invalid_chars(zone_id, ZONE_ID_CHARS)
+                    zone_id = "%" + _encode_invalid_chars(zone_id, UNRESERVED_CHARS)
                     return host[:start].lower() + zone_id + host[end:]
                 else:
                     return host.lower()
