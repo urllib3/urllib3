@@ -1,10 +1,11 @@
 Changes
 =======
 
-dev (master)
-------------
+1.25.6 (2019-09-24)
+-------------------
 
-* Dropped Python 3.4 support. (Pull #1686)
+* Fix issue where tilde (``~``) characters were incorrectly
+  percent-encoded in the path. (Pull #1692)
 
 
 1.25.5 (2019-09-19)

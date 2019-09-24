@@ -12,6 +12,11 @@ environment:
       PYTHON_ARCH: "64"
       NOX_SESSION: "test-2.7"
 
+    - PYTHON: "C:\\Python34-x64"
+      PYTHON_VERSION: "3.4.x"
+      PYTHON_ARCH: "64"
+      NOX_SESSION: "test-3.4"
+
     - PYTHON: "C:\\Python35-x64"
       PYTHON_VERSION: "3.5.x"
       PYTHON_ARCH: "64"
