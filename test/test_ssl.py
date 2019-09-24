@@ -1,3 +1,6 @@
+import platform
+import sys
+
 import mock
 import pytest
 from urllib3.util import ssl_
@@ -125,6 +128,9 @@ def test_wrap_socket_given_context_no_load_default_certs():
 
 
 def test_wrap_socket_given_ca_certs_no_load_default_certs(monkeypatch):
+    if platform.python_implementation() == "PyPy" and sys.version_info[0] == 2:
+        # https://github.com/testing-cabal/mock/issues/438
+        pytest.xfail("fails with PyPy for Python 2 dues to funcsigs bug")
     context = mock.create_autospec(ssl_.SSLContext)
     context.load_default_certs = mock.Mock()
     context.options = 0
