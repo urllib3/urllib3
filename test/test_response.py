@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import re
 import socket
 import zlib
 
@@ -413,7 +414,7 @@ class TestResponse(object):
                 # method which is provided by `BufferedReader` wrapper
                 resp = BufferedReader(resp)
             list(TextIOWrapper(resp))
-        assert str(ctx.value) == "I/O operation on closed file."
+        assert re.match("I/O operation on closed file.?", str(ctx.value))
 
     def test_io_not_autoclose_textiowrapper(self):
         fp = BytesIO(
@@ -437,7 +438,7 @@ class TestResponse(object):
         assert resp.closed
         with pytest.raises(ValueError) as ctx:
             next(reader)
-        assert str(ctx.value) == "I/O operation on closed file."
+        assert re.match("I/O operation on closed file.?", str(ctx.value))
 
     def test_streaming(self):
         fp = BytesIO(b"foo")

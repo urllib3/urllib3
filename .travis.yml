@@ -102,10 +102,6 @@ matrix:
       script:
         - ./_travis/deploy.sh
 
-  allow_failures:
-    - python: pypy3.5-6.0
-    - python: pypy2.7-6.0
-
 stages:
   - name: test
     if: tag IS blank
