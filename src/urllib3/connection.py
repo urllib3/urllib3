@@ -430,7 +430,7 @@ def _match_hostname(cert, asserted_hostname):
         match_hostname(cert, asserted_hostname)
     except CertificateError as e:
         log.warning(
-            "Certificate did not match expected hostname: %s. " "Certificate: %s",
+            "Certificate did not match expected hostname: %s. Certificate: %s",
             asserted_hostname,
             cert,
         )
