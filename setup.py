@@ -51,6 +51,11 @@ setup(
     author="Andrey Petrov",
     author_email="andrey.petrov@shazow.net",
     url="https://urllib3.readthedocs.io/",
+    project_urls={
+        "Documentation": "https://urllib3.readthedocs.io/",
+        "Code": "https://github.com/urllib3/urllib3",
+        "Issue tracker": "https://github.com/urllib3/urllib3/issues",
+    },
     license="MIT",
     packages=[
         "urllib3",
