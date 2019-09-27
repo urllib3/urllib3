@@ -682,7 +682,10 @@ class HTTPResponse(io.IOBase):
         line = self._fp.fp.readline()
         line = line.split(b";", 1)[0]
         try:
-            self.chunk_left = int(line, 16)
+            if line:
+                self.chunk_left = int(line, 16)
+            else:
+                self.chunk_left = 0
         except ValueError:
             # Invalid chunked protocol response, abort.
             self.close()
