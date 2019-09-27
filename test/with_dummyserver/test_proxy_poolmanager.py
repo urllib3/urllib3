@@ -87,7 +87,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             except MaxRetryError as e:
                 assert isinstance(e.reason, SSLError)
                 assert "certificate verify failed" in str(e.reason), (
-                    "Expected 'certificate verify failed'," "instead got: %r" % e.reason
+                    "Expected 'certificate verify failed', instead got: %r" % e.reason
                 )
 
             http = proxy_from_url(
