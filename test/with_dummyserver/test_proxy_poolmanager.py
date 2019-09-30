@@ -15,13 +15,13 @@ from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
 
 class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     @classmethod
-    def setup_class(self):
-        super(TestHTTPProxyManager, self).setup_class()
-        self.http_url = "http://%s:%d" % (self.http_host, self.http_port)
-        self.http_url_alt = "http://%s:%d" % (self.http_host_alt, self.http_port)
-        self.https_url = "https://%s:%d" % (self.https_host, self.https_port)
-        self.https_url_alt = "https://%s:%d" % (self.https_host_alt, self.https_port)
-        self.proxy_url = "http://%s:%d" % (self.proxy_host, self.proxy_port)
+    def setup_class(cls):
+        super(TestHTTPProxyManager, cls).setup_class()
+        cls.http_url = "http://%s:%d" % (cls.http_host, cls.http_port)
+        cls.http_url_alt = "http://%s:%d" % (cls.http_host_alt, cls.http_port)
+        cls.https_url = "https://%s:%d" % (cls.https_host, cls.https_port)
+        cls.https_url_alt = "https://%s:%d" % (cls.https_host_alt, cls.https_port)
+        cls.proxy_url = "http://%s:%d" % (cls.proxy_host, cls.proxy_port)
 
     def test_basic_proxy(self):
         with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
@@ -370,13 +370,13 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
 class TestIPv6HTTPProxyManager(IPv6HTTPDummyProxyTestCase):
     @classmethod
-    def setup_class(self):
+    def setup_class(cls):
         HTTPDummyProxyTestCase.setup_class()
-        self.http_url = "http://%s:%d" % (self.http_host, self.http_port)
-        self.http_url_alt = "http://%s:%d" % (self.http_host_alt, self.http_port)
-        self.https_url = "https://%s:%d" % (self.https_host, self.https_port)
-        self.https_url_alt = "https://%s:%d" % (self.https_host_alt, self.https_port)
-        self.proxy_url = "http://[%s]:%d" % (self.proxy_host, self.proxy_port)
+        cls.http_url = "http://%s:%d" % (cls.http_host, cls.http_port)
+        cls.http_url_alt = "http://%s:%d" % (cls.http_host_alt, cls.http_port)
+        cls.https_url = "https://%s:%d" % (cls.https_host, cls.https_port)
+        cls.https_url_alt = "https://%s:%d" % (cls.https_host_alt, cls.https_port)
+        cls.proxy_url = "http://[%s]:%d" % (cls.proxy_host, cls.proxy_port)
 
     def test_basic_ipv6_proxy(self):
         with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
