@@ -450,7 +450,6 @@ class TestConnectionPool(object):
 
         def _test(exception):
             with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
-
                 # Verify that the request succeeds after two attempts, and that the
                 # connection is left on the response object, instead of being
                 # released back into the pool.

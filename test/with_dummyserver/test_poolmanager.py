@@ -39,7 +39,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_redirect_twice(self):
         with PoolManager() as http:
-
             r = http.request(
                 "GET",
                 "%s/redirect" % self.base_url,
@@ -62,7 +61,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_redirect_to_relative_url(self):
         with PoolManager() as http:
-
             r = http.request(
                 "GET",
                 "%s/redirect" % self.base_url,
@@ -81,7 +79,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_cross_host_redirect(self):
         with PoolManager() as http:
-
             cross_host_location = "%s/echo?a=b" % self.base_url_alt
             try:
                 http.request(
@@ -110,7 +107,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_too_many_redirects(self):
         with PoolManager() as http:
-
             try:
                 r = http.request(
                     "GET",
@@ -145,7 +141,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_redirect_cross_host_remove_headers(self):
         with PoolManager() as http:
-
             r = http.request(
                 "GET",
                 "%s/redirect" % self.base_url,
@@ -175,7 +170,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_redirect_cross_host_no_remove_headers(self):
         with PoolManager() as http:
-
             r = http.request(
                 "GET",
                 "%s/redirect" % self.base_url,
@@ -192,7 +186,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_redirect_cross_host_set_removed_headers(self):
         with PoolManager() as http:
-
             r = http.request(
                 "GET",
                 "%s/redirect" % self.base_url,
@@ -226,7 +219,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_raise_on_redirect(self):
         with PoolManager() as http:
-
             r = http.request(
                 "GET",
                 "%s/redirect" % self.base_url,
@@ -240,7 +232,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_raise_on_status(self):
         with PoolManager() as http:
-
             try:
                 # the default is to raise
                 r = http.request(
@@ -288,7 +279,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
         # will all such URLs fail with an error?
 
         with PoolManager() as http:
-
             # By globally adjusting `port_by_scheme` we pretend for a moment
             # that HTTP's default port is not 80, but is the port at which
             # our test server happens to be listening.
@@ -303,7 +293,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_headers(self):
         with PoolManager(headers={"Foo": "bar"}) as http:
-
             r = http.request("GET", "%s/headers" % self.base_url)
             returned_headers = json.loads(r.data.decode())
             assert returned_headers.get("Foo") == "bar"
@@ -336,13 +325,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_http_with_ssl_keywords(self):
         with PoolManager(ca_certs="REQUIRED") as http:
-
             r = http.request("GET", "http://%s:%s/" % (self.host, self.port))
             assert r.status == 200
 
     def test_http_with_ca_cert_dir(self):
         with PoolManager(ca_certs="REQUIRED", ca_cert_dir="/nosuchdir") as http:
-
             r = http.request("GET", "http://%s:%s/" % (self.host, self.port))
             assert r.status == 200
 

@@ -179,7 +179,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             cert_file=client_cert,
             key_password=None,
         ) as https_pool:
-
             with pytest.raises(MaxRetryError) as e:
                 https_pool.request("GET", "/certificate")
 
@@ -190,7 +189,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
-
             conn = https_pool._new_conn()
             assert conn.__class__ == VerifiedHTTPSConnection
 
@@ -219,7 +217,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         ctx = util.ssl_.create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
         ctx.load_verify_locations(cafile=DEFAULT_CA)
         with HTTPSConnectionPool(self.host, self.port, ssl_context=ctx) as https_pool:
-
             conn = https_pool._new_conn()
             assert conn.__class__ == VerifiedHTTPSConnection
 
@@ -249,7 +246,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, ca_certs=DEFAULT_CA, ssl_context=ctx
         ) as https_pool:
-
             conn = https_pool._new_conn()
             assert conn.__class__ == VerifiedHTTPSConnection
 
@@ -281,7 +277,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, cert_reqs="CERT_REQUIRED", ca_cert_dir=DEFAULT_CA_DIR
         ) as https_pool:
-
             conn = https_pool._new_conn()
             assert conn.__class__ == VerifiedHTTPSConnection
 
@@ -294,7 +289,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             "127.0.0.1", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
-
             try:
                 https_pool.request("GET", "/")
                 self.fail("Didn't raise SSL invalid common name")
@@ -308,7 +302,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA_BAD
         ) as https_pool:
-
             try:
                 https_pool.request("GET", "/")
                 self.fail("Didn't raise SSL error with bad CA certs")
@@ -323,7 +316,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, cert_reqs="CERT_REQUIRED"
         ) as https_pool:
-
             try:
                 https_pool.request("GET", "/")
                 self.fail(
@@ -358,7 +350,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     def test_unverified_ssl(self):
         """ Test that bare HTTPSConnection can connect, make requests """
         with HTTPSConnectionPool(self.host, self.port, cert_reqs=ssl.CERT_NONE) as pool:
-
             with mock.patch("warnings.warn") as warn:
                 r = pool.request("GET", "/")
                 assert r.status == 200
@@ -374,7 +365,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, cert_reqs="CERT_NONE", ca_certs=DEFAULT_CA_BAD
         ) as pool:
-
             with mock.patch("warnings.warn") as warn:
                 r = pool.request("GET", "/")
                 assert r.status == 200
@@ -400,7 +390,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             "localhost", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
-
             https_pool.assert_hostname = False
             https_pool.request("GET", "/")
 
@@ -408,7 +397,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             "localhost", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
-
             https_pool.assert_hostname = "localhost"
             https_pool.request("GET", "/")
 
@@ -420,7 +408,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             ca_certs=DEFAULT_CA,
             server_hostname="localhost",
         ) as https_pool:
-
             conn = https_pool._new_conn()
             conn.request("GET", "/")
 
@@ -435,7 +422,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             "localhost", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
-
             https_pool.assert_fingerprint = (
                 "F2:06:5A:42:10:3F:45:1C:17:FE:E6:07:1E:8A:86:E5"
             )
@@ -446,7 +432,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             "localhost", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
-
             https_pool.assert_fingerprint = (
                 "92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A"
             )
@@ -456,7 +441,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             "localhost", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
-
             https_pool.assert_fingerprint = (
                 "C5:4D:0B:83:84:89:2E:AE:B4:58:BB:12:"
                 "F7:A6:C4:76:05:03:88:D8:57:65:51:F3:"
@@ -468,7 +452,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             "127.0.0.1", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
-
             https_pool.assert_fingerprint = (
                 "AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA"
             )
@@ -494,7 +477,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             "127.0.0.1", self.port, cert_reqs="CERT_NONE", ca_certs=DEFAULT_CA_BAD
         ) as https_pool:
-
             https_pool.assert_fingerprint = (
                 "AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA"
             )
@@ -506,7 +488,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             "127.0.0.1", self.port, cert_reqs="CERT_NONE", ca_certs=DEFAULT_CA_BAD
         ) as https_pool:
-
             https_pool.assert_fingerprint = (
                 "92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A"
             )
@@ -521,7 +502,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             "127.0.0.1", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
-
             https_pool.assert_fingerprint = (
                 "92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A"
             )
@@ -566,7 +546,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, timeout=timeout, cert_reqs="CERT_NONE"
         ) as https_pool:
-
             conn = https_pool._new_conn()
             try:
                 conn.set_tunnel(self.host, self.port)
@@ -630,7 +609,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             ca_certs=DEFAULT_CA,
             assert_fingerprint=fingerprint,
         ) as https_pool:
-
             r = https_pool.request("GET", "/")
             assert r.status == 200
 

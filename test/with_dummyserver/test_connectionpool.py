@@ -94,7 +94,6 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         with HTTPConnectionPool(
             self.host, self.port, timeout=timeout, retries=False
         ) as pool:
-
             wait_for_socket(ready_event)
             conn = pool._get_conn()
             with pytest.raises(ReadTimeoutError):
@@ -112,7 +111,6 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         with HTTPConnectionPool(
             self.host, self.port, timeout=LONG_TIMEOUT, retries=False
         ) as pool:
-
             conn = pool._get_conn()
             wait_for_socket(ready_event)
             now = time.time()
@@ -460,7 +458,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         with HTTPConnectionPool(
             self.host, self.port, block=True, maxsize=1, timeout=2
         ) as pool:
-
             r = pool.request(
                 "GET", "/keepalive?close=1", retries=0, headers={"Connection": "close"}
             )
@@ -624,7 +621,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         with HTTPConnectionPool(
             self.host, self.port, block=True, maxsize=1, timeout=2
         ) as pool:
-
             payload_size = 1024 * 2
             first_chunk = 512
 

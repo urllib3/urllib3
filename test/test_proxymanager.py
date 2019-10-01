@@ -7,7 +7,6 @@ class TestProxyManager(object):
     def test_proxy_headers(self):
         url = "http://pypi.org/project/urllib3/"
         with ProxyManager("http://something:1234") as p:
-
             # Verify default headers
             default_headers = {"Accept": "*/*", "Host": "pypi.org"}
             headers = p._set_proxy_headers(url)
