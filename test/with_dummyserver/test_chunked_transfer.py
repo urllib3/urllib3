@@ -42,7 +42,6 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
     def _test_body(self, data):
         self.start_chunked_handler()
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
-
             pool.urlopen("GET", "/", data, chunked=True)
             header, body = self.buffer.split(b"\r\n\r\n", 1)
 

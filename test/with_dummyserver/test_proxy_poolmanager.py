@@ -25,7 +25,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_basic_proxy(self):
         with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
-
             r = http.request("GET", "%s/" % self.http_url)
             assert r.status == 200
 
@@ -69,7 +68,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         with ProxyManager(
             connection_from_url(self.proxy_url), ca_certs=DEFAULT_CA
         ) as http:
-
             r = http.request("GET", "%s/" % self.http_url)
             assert r.status == 200
 
@@ -113,7 +111,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_redirect(self):
         with proxy_from_url(self.proxy_url) as http:
-
             r = http.request(
                 "GET",
                 "%s/redirect" % self.http_url,
@@ -134,7 +131,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_cross_host_redirect(self):
         with proxy_from_url(self.proxy_url) as http:
-
             cross_host_location = "%s/echo?a=b" % self.http_url_alt
             try:
                 http.request(
@@ -160,7 +156,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_cross_protocol_redirect(self):
         with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
-
             cross_protocol_location = "%s/echo?a=b" % self.https_url
             try:
                 http.request(
@@ -284,7 +279,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         with proxy_from_url(
             self.proxy_url, headers=default_headers, proxy_headers=proxy_headers
         ) as http:
-
             request_headers = HTTPHeaderDict(baz="quux")
             r = http.request(
                 "GET", "%s/headers" % self.http_url, headers=request_headers
@@ -295,7 +289,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_proxy_pooling(self):
         with proxy_from_url(self.proxy_url, cert_reqs="NONE") as http:
-
             for x in range(2):
                 http.urlopen("GET", self.http_url)
             assert len(http.pools) == 1
@@ -314,7 +307,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_proxy_pooling_ext(self):
         with proxy_from_url(self.proxy_url) as http:
-
             hc1 = http.connection_from_url(self.http_url)
             hc2 = http.connection_from_host(self.http_host, self.http_port)
             hc3 = http.connection_from_url(self.http_url_alt)
@@ -360,7 +352,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     def test_scheme_host_case_insensitive(self):
         """Assert that upper-case schemes and hosts are normalized."""
         with proxy_from_url(self.proxy_url.upper(), ca_certs=DEFAULT_CA) as http:
-
             r = http.request("GET", "%s/" % self.http_url.upper())
             assert r.status == 200
 
@@ -380,7 +371,6 @@ class TestIPv6HTTPProxyManager(IPv6HTTPDummyProxyTestCase):
 
     def test_basic_ipv6_proxy(self):
         with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
-
             r = http.request("GET", "%s/" % self.http_url)
             assert r.status == 200
 
