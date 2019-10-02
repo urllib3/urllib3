@@ -29,9 +29,6 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
 
     install_mac_python $MACPYTHON
 
-    # Enable TLS 1.3 on macOS
-    sudo defaults write /Library/Preferences/com.apple.networkd tcp_connect_enable_tls13 1
-
     # Install Nox
     python3 -m pip install nox
 
