@@ -21,8 +21,8 @@ def is_local_appengine():
 
 def is_prod_appengine():
     return (
-      is_appengine() and
-      os.environ.get('SERVER_SOFTWARE','').startswith('Google App Engine/'))
+        is_appengine() and
+        os.environ.get('SERVER_SOFTWARE','').startswith('Google App Engine/'))
 
 
 def is_prod_appengine_mvms():
