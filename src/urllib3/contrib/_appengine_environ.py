@@ -6,7 +6,7 @@ import os
 
 
 def is_appengine():
-    return 'APPENGINE_RUNTIME' in os.environ
+    return "APPENGINE_RUNTIME" in os.environ
 
 
 def is_appengine_sandbox():
@@ -15,14 +15,15 @@ def is_appengine_sandbox():
 
 
 def is_local_appengine():
-    return (is_appengine() and
-            os.environ.get('SERVER_SOFTWARE','').startswith('Development/'))
+    return is_appengine() and os.environ.get("SERVER_SOFTWARE", "").startswith(
+        "Development/"
+    )
 
 
 def is_prod_appengine():
-    return (
-        is_appengine() and
-        os.environ.get('SERVER_SOFTWARE','').startswith('Google App Engine/'))
+    return is_appengine() and os.environ.get("SERVER_SOFTWARE", "").startswith(
+        "Google App Engine/"
+    )
 
 
 def is_prod_appengine_mvms():
