@@ -440,12 +440,9 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         with socks.SOCKSProxyManager(
             proxy_url, username="user", password="badpass"
         ) as pm:
-            try:
+            with pytest.raises(NewConnectionError) as e:
                 pm.request("GET", "http://example.com", retries=False)
-            except NewConnectionError as e:
-                assert "SOCKS5 authentication failed" in str(e)
-            else:
-                self.fail("Did not raise")
+            assert "SOCKS5 authentication failed" in str(e.value)
 
     def test_source_address_works(self):
         expected_port = _get_free_port(self.host)
@@ -655,12 +652,9 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         self._start_server(request_handler)
         proxy_url = "socks4a://%s:%s" % (self.host, self.port)
         with socks.SOCKSProxyManager(proxy_url, username="baduser") as pm:
-            try:
+            with pytest.raises(NewConnectionError) as e:
                 pm.request("GET", "http://example.com", retries=False)
-            except NewConnectionError as e:
-                assert "different user-ids" in str(e)
-            else:
-                self.fail("Did not raise")
+                assert "different user-ids" in str(e.value)
 
 
 class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):

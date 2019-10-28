@@ -80,7 +80,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
     def test_cross_host_redirect(self):
         with PoolManager() as http:
             cross_host_location = "%s/echo?a=b" % self.base_url_alt
-            try:
+            with pytest.raises(MaxRetryError):
                 http.request(
                     "GET",
                     "%s/redirect" % self.base_url,
@@ -88,12 +88,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
                     timeout=1,
                     retries=0,
                 )
-                self.fail(
-                    "Request succeeded instead of raising an exception like it should."
-                )
-
-            except MaxRetryError:
-                pass
 
             r = http.request(
                 "GET",
@@ -107,8 +101,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_too_many_redirects(self):
         with PoolManager() as http:
-            try:
-                r = http.request(
+            with pytest.raises(MaxRetryError):
+                http.request(
                     "GET",
                     "%s/redirect" % self.base_url,
                     fields={
@@ -117,14 +111,9 @@ class TestPoolManager(HTTPDummyServerTestCase):
                     },
                     retries=1,
                 )
-                self.fail(
-                    "Failed to raise MaxRetryError exception, returned %r" % r.status
-                )
-            except MaxRetryError:
-                pass
 
-            try:
-                r = http.request(
+            with pytest.raises(MaxRetryError):
+                http.request(
                     "GET",
                     "%s/redirect" % self.base_url,
                     fields={
@@ -133,11 +122,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
                     },
                     retries=Retry(total=None, redirect=1),
                 )
-                self.fail(
-                    "Failed to raise MaxRetryError exception, returned %r" % r.status
-                )
-            except MaxRetryError:
-                pass
 
     def test_redirect_cross_host_remove_headers(self):
         with PoolManager() as http:
@@ -232,7 +216,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_raise_on_status(self):
         with PoolManager() as http:
-            try:
+            with pytest.raises(MaxRetryError):
                 # the default is to raise
                 r = http.request(
                     "GET",
@@ -240,13 +224,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
                     fields={"status": "500 Internal Server Error"},
                     retries=Retry(total=1, status_forcelist=range(500, 600)),
                 )
-                self.fail(
-                    "Failed to raise MaxRetryError exception, returned %r" % r.status
-                )
-            except MaxRetryError:
-                pass
 
-            try:
+            with pytest.raises(MaxRetryError):
                 # raise explicitly
                 r = http.request(
                     "GET",
@@ -256,11 +235,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
                         total=1, status_forcelist=range(500, 600), raise_on_status=True
                     ),
                 )
-                self.fail(
-                    "Failed to raise MaxRetryError exception, returned %r" % r.status
-                )
-            except MaxRetryError:
-                pass
 
             # don't raise
             r = http.request(

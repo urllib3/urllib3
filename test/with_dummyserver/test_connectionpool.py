@@ -73,9 +73,8 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
             conn = pool._get_conn()
             pool._put_conn(conn)
             try:
-                pool.urlopen("GET", "/")
-                self.fail("The request should fail with a timeout error.")
-            except ReadTimeoutError:
+                with pytest.raises(ReadTimeoutError):
+                    pool.urlopen("GET", "/")
                 if conn.sock:
                     with pytest.raises(socket.error):
                         conn.sock.recv(1024)
@@ -383,11 +382,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         """ ECONNREFUSED error should raise a connection error, with retries """
         port = find_unused_port()
         with HTTPConnectionPool(self.host, port) as pool:
-            try:
+            with pytest.raises(MaxRetryError) as e:
                 pool.request("GET", "/", retries=Retry(connect=3))
-                self.fail("Should have failed with a connection error.")
-            except MaxRetryError as e:
-                assert type(e.reason) == NewConnectionError
+            assert type(e.value.reason) == NewConnectionError
 
     def test_timeout_success(self):
         timeout = Timeout(connect=3, read=5, total=None)
@@ -439,11 +436,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_bad_connect(self):
         with HTTPConnectionPool("badhost.invalid", self.port) as pool:
-            try:
+            with pytest.raises(MaxRetryError) as e:
                 pool.request("GET", "/", retries=5)
-                self.fail("should raise timeout exception here")
-            except MaxRetryError as e:
-                assert type(e.reason) == NewConnectionError
+            assert type(e.value.reason) == NewConnectionError
 
     def test_keepalive(self):
         with HTTPConnectionPool(self.host, self.port, block=True, maxsize=1) as pool:
@@ -821,13 +816,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 class TestRetry(HTTPDummyServerTestCase):
     def test_max_retry(self):
         with HTTPConnectionPool(self.host, self.port) as pool:
-            try:
-                r = pool.request("GET", "/redirect", fields={"target": "/"}, retries=0)
-                self.fail(
-                    "Failed to raise MaxRetryError exception, returned %r" % r.status
-                )
-            except MaxRetryError:
-                pass
+            with pytest.raises(MaxRetryError):
+                pool.request("GET", "/redirect", fields={"target": "/"}, retries=0)
 
     def test_disabled_retry(self):
         """ Disabled retries should disable redirect handling. """
@@ -1131,11 +1121,9 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
         # which is unsupported by BytesIO.
         headers = {"Content-Length": "8"}
         with HTTPConnectionPool(self.host, self.port, timeout=0.1) as pool:
-            try:
+            with pytest.raises(UnrewindableBodyError) as e:
                 pool.urlopen("PUT", url, headers=headers, body=body)
-                self.fail("PUT successful despite failed rewind.")
-            except UnrewindableBodyError as e:
-                assert "Unable to record file position for" in str(e)
+            assert "Unable to record file position for" in str(e.value)
 
 
 class TestRetryPoolSize(HTTPDummyServerTestCase):
