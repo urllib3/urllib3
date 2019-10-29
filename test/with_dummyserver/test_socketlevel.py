@@ -229,16 +229,10 @@ class TestClientCerts(SocketDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host, self.port, cert_reqs="REQUIRED", ca_certs=DEFAULT_CA
         ) as pool:
-            try:
+            with pytest.raises(MaxRetryError):
                 pool.request("GET", "/", retries=0)
-            except MaxRetryError:
                 done_receiving.set()
-            else:
-                done_receiving.set()
-                self.fail(
-                    "Expected server to reject connection due to missing client "
-                    "certificates"
-                )
+            done_receiving.set()
 
     @requires_ssl_context_keyfile_password
     def test_client_cert_with_string_password(self):
@@ -812,8 +806,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
             done_closing.set()  # wait until the socket in our pool gets closed
             successful = complete.wait(timeout=1)
-            if not successful:
-                self.fail("Timed out waiting for connection close")
+            assert successful, "Timed out waiting for connection close"
 
     def test_release_conn_param_is_respected_after_timeout_retry(self):
         """For successful ```urlopen(release_conn=False)```,

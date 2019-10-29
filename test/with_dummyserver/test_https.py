@@ -291,54 +291,45 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             "127.0.0.1", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
-            try:
+            with pytest.raises(MaxRetryError) as e:
                 https_pool.request("GET", "/")
-                self.fail("Didn't raise SSL invalid common name")
-            except MaxRetryError as e:
-                assert isinstance(e.reason, SSLError)
-                assert "doesn't match" in str(
-                    e.reason
-                ) or "certificate verify failed" in str(e.reason)
+            assert isinstance(e.value.reason, SSLError)
+            assert "doesn't match" in str(
+                e.value.reason
+            ) or "certificate verify failed" in str(e.value.reason)
 
     def test_verified_with_bad_ca_certs(self):
         with HTTPSConnectionPool(
             self.host, self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA_BAD
         ) as https_pool:
-            try:
+            with pytest.raises(MaxRetryError) as e:
                 https_pool.request("GET", "/")
-                self.fail("Didn't raise SSL error with bad CA certs")
-            except MaxRetryError as e:
-                assert isinstance(e.reason, SSLError)
-                assert "certificate verify failed" in str(e.reason), (
-                    "Expected 'certificate verify failed', instead got: %r" % e.reason
-                )
+            assert isinstance(e.value.reason, SSLError)
+            assert "certificate verify failed" in str(e.value.reason), (
+                "Expected 'certificate verify failed', instead got: %r" % e.value.reason
+            )
 
     def test_verified_without_ca_certs(self):
         # default is cert_reqs=None which is ssl.CERT_NONE
         with HTTPSConnectionPool(
             self.host, self.port, cert_reqs="CERT_REQUIRED"
         ) as https_pool:
-            try:
+            with pytest.raises(MaxRetryError) as e:
                 https_pool.request("GET", "/")
-                self.fail(
-                    "Didn't raise SSL error with no CA certs when"
-                    "CERT_REQUIRED is set"
-                )
-            except MaxRetryError as e:
-                assert isinstance(e.reason, SSLError)
-                # there is a different error message depending on whether or
-                # not pyopenssl is injected
-                assert (
-                    "No root certificates specified" in str(e.reason)
-                    # PyPy sometimes uses all-caps here
-                    or "certificate verify failed" in str(e.reason).lower()
-                    or "invalid certificate chain" in str(e.reason)
-                ), (
-                    "Expected 'No root certificates specified',  "
-                    "'certificate verify failed', or "
-                    "'invalid certificate chain', "
-                    "instead got: %r" % e.reason
-                )
+            assert isinstance(e.value.reason, SSLError)
+            # there is a different error message depending on whether or
+            # not pyopenssl is injected
+            assert (
+                "No root certificates specified" in str(e.value.reason)
+                # PyPy sometimes uses all-caps here
+                or "certificate verify failed" in str(e.value.reason).lower()
+                or "invalid certificate chain" in str(e.value.reason)
+            ), (
+                "Expected 'No root certificates specified',  "
+                "'certificate verify failed', or "
+                "'invalid certificate chain', "
+                "instead got: %r" % e.value.reason
+            )
 
     def test_no_ssl(self):
         with HTTPSConnectionPool(self.host, self.port) as pool:
