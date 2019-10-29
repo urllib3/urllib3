@@ -49,6 +49,9 @@ import pytest
 
 from test import fails_on_travis_gce, requires_ssl_context_keyfile_password
 
+# Retry failed tests
+pytestmark = pytest.mark.flaky
+
 
 class TestCookies(SocketDummyServerTestCase):
     def test_multi_setcookie(self):

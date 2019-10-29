@@ -9,6 +9,9 @@ from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError
 from urllib3.util.retry import Retry
 
+# Retry failed tests
+pytestmark = pytest.mark.flaky
+
 
 class TestPoolManager(HTTPDummyServerTestCase):
     @classmethod

@@ -6,6 +6,7 @@ PySocks==1.6.8
 pkginfo==1.4.2
 pytest-timeout==1.3.3
 pytest==4.6.4
+flaky==3.6.1
 
 # https://github.com/ionelmc/python-lazy-object-proxy/issues/30
 lazy-object-proxy==1.4.0

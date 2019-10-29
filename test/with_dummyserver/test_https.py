@@ -55,6 +55,8 @@ from urllib3.packages import six
 from urllib3.util.timeout import Timeout
 import urllib3.util as util
 
+# Retry failed tests
+pytestmark = pytest.mark.flaky
 
 ResourceWarning = getattr(
     six.moves.builtins, "ResourceWarning", type("ResourceWarning", (), {})
