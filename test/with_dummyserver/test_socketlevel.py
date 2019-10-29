@@ -750,9 +750,8 @@ class TestSocketClosing(SocketDummyServerTestCase):
         self._start_server(socket_handler)
         with HTTPConnectionPool(self.host, self.port) as pool:
             # First request should fail.
-            timeout = Timeout(connect=LONG_TIMEOUT, read=SHORT_TIMEOUT)
             response = pool.urlopen(
-                "GET", "/", retries=0, preload_content=False, timeout=timeout
+                "GET", "/", retries=0, preload_content=False, timeout=LONG_TIMEOUT
             )
             try:
                 with pytest.raises(ReadTimeoutError):
@@ -761,9 +760,8 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 timed_out.set()
 
             # Second should succeed.
-            timeout = Timeout(connect=LONG_TIMEOUT, read=LONG_TIMEOUT)
             response = pool.urlopen(
-                "GET", "/", retries=0, preload_content=False, timeout=timeout
+                "GET", "/", retries=0, preload_content=False, timeout=LONG_TIMEOUT
             )
             assert len(response.read()) == 8
 
