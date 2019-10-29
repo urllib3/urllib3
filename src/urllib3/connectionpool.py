@@ -626,7 +626,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         #
         # See issue #651 [1] for details.
         #
-        # [1] <https://github.com/shazow/urllib3/issues/651>
+        # [1] <https://github.com/urllib3/urllib3/issues/651>
         release_this_conn = release_conn
 
         # Merge the proxy headers. Only do this in HTTP. We have to copy the

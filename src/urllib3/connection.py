@@ -412,7 +412,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                     (
                         "Certificate for {0} has no `subjectAltName`, falling back to check for a "
                         "`commonName` for now. This feature is being removed by major browsers and "
-                        "deprecated by RFC 2818. (See https://github.com/shazow/urllib3/issues/497 "
+                        "deprecated by RFC 2818. (See https://github.com/urllib3/urllib3/issues/497 "
                         "for details.)".format(hostname)
                     ),
                     SubjectAltNameWarning,

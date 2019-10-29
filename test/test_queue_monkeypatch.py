@@ -20,7 +20,7 @@ class BadError(Exception):
 class TestMonkeypatchResistance(object):
     """
     Test that connection pool works even with a monkey patched Queue module,
-    see obspy/obspy#1599, kennethreitz/requests#3742, shazow/urllib3#1061.
+    see obspy/obspy#1599, psf/requests#3742, urllib3/urllib3#1061.
     """
 
     def test_queue_monkeypatching(self):
