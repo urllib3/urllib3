@@ -67,12 +67,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         self._test_body(b"thisshouldbeonechunk\r\nasdf")
 
     def test_unicode_body(self):
-        # Define u'thisshouldbeonechunk\r\näöüß' in a way, so that python3.1
-        # does not suffer a syntax error
-        chunk = b"thisshouldbeonechunk\r\n\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f".decode(
-            "utf-8"
-        )
-        self._test_body(chunk)
+        self._test_body(u"thisshouldbeonechunk\r\näöüß")
 
     def test_empty_body(self):
         self._test_body(None)
