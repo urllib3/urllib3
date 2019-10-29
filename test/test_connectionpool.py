@@ -285,7 +285,7 @@ class TestConnectionPool(object):
             # The pool should never be empty, and with these two exceptions
             # being raised, a retry will be triggered, but that retry will
             # fail, eventually raising MaxRetryError, not EmptyPoolError
-            # See: https://github.com/shazow/urllib3/issues/76
+            # See: https://github.com/urllib3/urllib3/issues/76
             pool._make_request = lambda *args, **kwargs: _raise(HTTPException)
             with pytest.raises(MaxRetryError):
                 pool.request("GET", "/", retries=1, pool_timeout=0.01)
@@ -425,7 +425,7 @@ class TestConnectionPool(object):
         would be released if the initial request failed, even if a retry
         succeeded.
 
-        [1] <https://github.com/shazow/urllib3/issues/651>
+        [1] <https://github.com/urllib3/urllib3/issues/651>
         """
 
         class _raise_once_make_request_function(object):
