@@ -47,7 +47,11 @@ class TestGAEConnectionManager(test_connectionpool.TestConnectionPool):
     def test_exceptions(self):
         # DeadlineExceededError -> TimeoutError
         with pytest.raises(urllib3.exceptions.TimeoutError):
-            self.pool.request("GET", "/sleep?seconds=0.005", timeout=SHORT_TIMEOUT)
+            self.pool.request(
+                "GET",
+                "/sleep?seconds={}".format(5 * SHORT_TIMEOUT),
+                timeout=SHORT_TIMEOUT,
+            )
 
         # InvalidURLError -> ProtocolError
         with pytest.raises(urllib3.exceptions.ProtocolError):
