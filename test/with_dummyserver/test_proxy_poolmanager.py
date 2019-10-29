@@ -15,6 +15,8 @@ from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
 # Retry failed tests
 pytestmark = pytest.mark.flaky
 
+from test import SHORT_TIMEOUT, LONG_TIMEOUT
+
 
 class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     @classmethod
@@ -54,7 +56,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     def test_proxy_conn_fail(self):
         host, port = get_unreachable_address()
         with proxy_from_url(
-            "http://%s:%s/" % (host, port), retries=1, timeout=0.05
+            "http://%s:%s/" % (host, port), retries=1, timeout=LONG_TIMEOUT
         ) as http:
             with pytest.raises(MaxRetryError):
                 http.request("GET", "%s/" % self.https_url)
@@ -134,7 +136,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                     "GET",
                     "%s/redirect" % self.http_url,
                     fields={"target": cross_host_location},
-                    timeout=1,
+                    timeout=LONG_TIMEOUT,
                     retries=0,
                 )
 
@@ -142,7 +144,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                 "GET",
                 "%s/redirect" % self.http_url,
                 fields={"target": "%s/echo?a=b" % self.http_url_alt},
-                timeout=1,
+                timeout=LONG_TIMEOUT,
                 retries=1,
             )
             assert r._pool.host != self.http_host_alt
@@ -155,7 +157,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                     "GET",
                     "%s/redirect" % self.http_url,
                     fields={"target": cross_protocol_location},
-                    timeout=1,
+                    timeout=LONG_TIMEOUT,
                     retries=0,
                 )
 
@@ -163,7 +165,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                 "GET",
                 "%s/redirect" % self.http_url,
                 fields={"target": "%s/echo?a=b" % self.https_url},
-                timeout=1,
+                timeout=LONG_TIMEOUT,
                 retries=1,
             )
             assert r._pool.host == self.https_host
@@ -321,14 +323,14 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     def test_https_proxy_timeout(self):
         with proxy_from_url("https://{host}".format(host=TARPIT_HOST)) as https:
             with pytest.raises(MaxRetryError) as e:
-                https.request("GET", self.http_url, timeout=0.001)
+                https.request("GET", self.http_url, timeout=SHORT_TIMEOUT)
             assert type(e.value.reason) == ConnectTimeoutError
 
     @pytest.mark.timeout(0.5)
     @requires_network
     def test_https_proxy_pool_timeout(self):
         with proxy_from_url(
-            "https://{host}".format(host=TARPIT_HOST), timeout=0.001
+            "https://{host}".format(host=TARPIT_HOST), timeout=SHORT_TIMEOUT
         ) as https:
             with pytest.raises(MaxRetryError) as e:
                 https.request("GET", self.http_url)

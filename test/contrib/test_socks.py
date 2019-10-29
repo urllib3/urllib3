@@ -8,6 +8,7 @@ from dummyserver.server import DEFAULT_CERTS, DEFAULT_CA
 from dummyserver.testcase import IPV4SocketDummyServerTestCase
 
 import pytest
+from test import SHORT_TIMEOUT
 
 try:
     import ssl
@@ -314,7 +315,9 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         proxy_url = "socks5h://%s:%s" % (self.host, self.port)
         with socks.SOCKSProxyManager(proxy_url) as pm:
             with pytest.raises(ConnectTimeoutError):
-                pm.request("GET", "http://example.com", timeout=0.001, retries=False)
+                pm.request(
+                    "GET", "http://example.com", timeout=SHORT_TIMEOUT, retries=False
+                )
             event.set()
 
     def test_connection_failure(self):

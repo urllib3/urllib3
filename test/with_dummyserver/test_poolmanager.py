@@ -12,6 +12,8 @@ from urllib3.util.retry import Retry
 # Retry failed tests
 pytestmark = pytest.mark.flaky
 
+from test import LONG_TIMEOUT
+
 
 class TestPoolManager(HTTPDummyServerTestCase):
     @classmethod
@@ -88,7 +90,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                     "GET",
                     "%s/redirect" % self.base_url,
                     fields={"target": cross_host_location},
-                    timeout=1,
+                    timeout=LONG_TIMEOUT,
                     retries=0,
                 )
 
@@ -96,7 +98,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 "GET",
                 "%s/redirect" % self.base_url,
                 fields={"target": "%s/echo?a=b" % self.base_url_alt},
-                timeout=1,
+                timeout=LONG_TIMEOUT,
                 retries=1,
             )
 
