@@ -1179,9 +1179,8 @@ class TestSSL(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
         with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
-            timeout = Timeout(connect=LONG_TIMEOUT, read=SHORT_TIMEOUT)
             response = pool.urlopen(
-                "GET", "/", retries=0, preload_content=False, timeout=timeout
+                "GET", "/", retries=0, preload_content=False, timeout=LONG_TIMEOUT
             )
             try:
                 with pytest.raises(ReadTimeoutError):
