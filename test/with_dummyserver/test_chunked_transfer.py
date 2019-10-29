@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import pytest
+
 from urllib3 import HTTPConnectionPool
 from dummyserver.testcase import SocketDummyServerTestCase
+
+# Retry failed tests
+pytestmark = pytest.mark.flaky
 
 
 class TestChunkedTransfer(SocketDummyServerTestCase):

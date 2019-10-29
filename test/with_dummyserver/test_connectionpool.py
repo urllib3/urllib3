@@ -30,6 +30,8 @@ from dummyserver.server import NoIPv6Warning, HAS_IPV6_AND_DNS
 
 from threading import Event
 
+pytestmark = pytest.mark.flaky
+
 log = logging.getLogger("urllib3.connectionpool")
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
