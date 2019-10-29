@@ -15,8 +15,13 @@ from dummyserver.proxy import ProxyHandler
 
 
 def consume_socket(sock, chunks=65536):
-    while not sock.recv(chunks).endswith(b"\r\n\r\n"):
-        pass
+    consumed = bytearray()
+    while True:
+        b = sock.recv(chunks)
+        consumed += b
+        if b.endswith(b"\r\n\r\n"):
+            break
+    return consumed
 
 
 class SocketDummyServerTestCase(object):
