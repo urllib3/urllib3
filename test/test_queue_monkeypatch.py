@@ -26,6 +26,6 @@ class TestMonkeypatchResistance(object):
     def test_queue_monkeypatching(self):
         with mock.patch.object(queue, "Empty", BadError):
             with HTTPConnectionPool(host="localhost", block=True) as http:
-                http._get_conn(timeout=1)
+                http._get_conn()
                 with pytest.raises(EmptyPoolError):
-                    http._get_conn(timeout=1)
+                    http._get_conn(timeout=0)
