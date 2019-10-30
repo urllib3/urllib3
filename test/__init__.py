@@ -1,7 +1,6 @@
 import warnings
 import sys
 import errno
-import functools
 import logging
 import socket
 import ssl
@@ -56,7 +55,7 @@ def setUp():
 def onlyPy279OrNewer(test):
     """Skips this test unless you are on Python 2.7.9 or later."""
 
-    @functools.wraps(test)
+    @six.wraps(test)
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python 2.7.9+ to run".format(name=test.__name__)
         if sys.version_info < (2, 7, 9):
@@ -69,7 +68,7 @@ def onlyPy279OrNewer(test):
 def onlyPy2(test):
     """Skips this test unless you are on Python 2.x"""
 
-    @functools.wraps(test)
+    @six.wraps(test)
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python 2.x to run".format(name=test.__name__)
         if not six.PY2:
@@ -82,7 +81,7 @@ def onlyPy2(test):
 def onlyPy3(test):
     """Skips this test unless you are on Python3.x"""
 
-    @functools.wraps(test)
+    @six.wraps(test)
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python3.x to run".format(name=test.__name__)
         if six.PY2:
@@ -105,7 +104,7 @@ def notBrotlipy():
 def notSecureTransport(test):
     """Skips this test when SecureTransport is in use."""
 
-    @functools.wraps(test)
+    @six.wraps(test)
     def wrapper(*args, **kwargs):
         msg = "{name} does not run with SecureTransport".format(name=test.__name__)
         if ssl_.IS_SECURETRANSPORT:
@@ -118,7 +117,7 @@ def notSecureTransport(test):
 def notOpenSSL098(test):
     """Skips this test for Python 3.4 and 3.5 macOS python.org distributions"""
 
-    @functools.wraps(test)
+    @six.wraps(test)
     def wrapper(*args, **kwargs):
         is_stdlib_ssl = not ssl_.IS_SECURETRANSPORT and not ssl_.IS_PYOPENSSL
         if is_stdlib_ssl and ssl.OPENSSL_VERSION == "OpenSSL 0.9.8zh 14 Jan 2016":
@@ -153,7 +152,7 @@ def requires_network(test):
             else:
                 raise
 
-    @functools.wraps(test)
+    @six.wraps(test)
     def wrapper(*args, **kwargs):
         global _requires_network_has_route
 
@@ -172,7 +171,7 @@ def requires_network(test):
 
 
 def requires_ssl_context_keyfile_password(test):
-    @functools.wraps(test)
+    @six.wraps(test)
     def wrapper(*args, **kwargs):
         if (
             not ssl_.IS_PYOPENSSL and sys.version_info < (2, 7, 9)
@@ -194,7 +193,7 @@ def fails_on_travis_gce(test):
     https://github.com/urllib3/urllib3/pull/1475#issuecomment-440788064
     """
 
-    @functools.wraps(test)
+    @six.wraps(test)
     def wrapper(*args, **kwargs):
         if os.environ.get("TRAVIS_INFRA") in ("gce", "unknown"):
             pytest.xfail("%s is expected to fail on Travis GCE builds" % test.__name__)
