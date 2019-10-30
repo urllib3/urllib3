@@ -32,9 +32,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         cls.https_url = "https://%s:%d" % (cls.https_host, cls.https_port)
         cls.https_url_alt = "https://%s:%d" % (cls.https_host_alt, cls.https_port)
         cls.proxy_url = "http://%s:%d" % (cls.proxy_host, cls.proxy_port)
-        self.https_proxy_url = "https://%s:%d" % (
-            self.proxy_host,
-            self.https_proxy_port,
+        cls.https_proxy_url = "https://%s:%d" % (
+            cls.proxy_host,
+            cls.https_proxy_port,
         )
 
         # Generate another CA to test verification failure
@@ -282,6 +282,65 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
             assert returned_headers.get("Hickory") is None
+            assert returned_headers.get("Host") == "%s:%s" % (
+                self.https_host,
+                self.https_port,
+            )
+
+    def test_https_headers(self):
+        with proxy_from_url(
+            self.https_proxy_url,
+            headers={"Foo": "bar"},
+            proxy_headers={"Hickory": "dickory"},
+            ca_certs=DEFAULT_CA,
+        ) as http:
+
+            r = http.request_encode_url("GET", "%s/headers" % self.http_url)
+            returned_headers = json.loads(r.data.decode())
+            assert returned_headers.get("Foo") == "bar"
+            assert returned_headers.get("Hickory") == "dickory"
+            assert returned_headers.get("Host") == "%s:%s" % (
+                self.http_host,
+                self.http_port,
+            )
+
+            r = http.request_encode_url("GET", "%s/headers" % self.http_url_alt)
+            returned_headers = json.loads(r.data.decode())
+            assert returned_headers.get("Foo") == "bar"
+            assert returned_headers.get("Hickory") == "dickory"
+            assert returned_headers.get("Host") == "%s:%s" % (
+                self.http_host_alt,
+                self.http_port,
+            )
+
+            r = http.request_encode_url("GET", "%s/headers" % self.https_url)
+            returned_headers = json.loads(r.data.decode())
+            assert returned_headers.get("Foo") == "bar"
+            assert returned_headers.get("Hickory") == "dickory"
+            assert returned_headers.get("Host") == "%s:%s" % (
+                self.https_host,
+                self.https_port,
+            )
+
+            r = http.request_encode_url(
+                "GET", "%s/headers" % self.http_url, headers={"Baz": "quux"}
+            )
+            returned_headers = json.loads(r.data.decode())
+            assert returned_headers.get("Foo") is None
+            assert returned_headers.get("Baz") == "quux"
+            assert returned_headers.get("Hickory") == "dickory"
+            assert returned_headers.get("Host") == "%s:%s" % (
+                self.http_host,
+                self.http_port,
+            )
+
+            r = http.request_encode_url(
+                "GET", "%s/headers" % self.https_url, headers={"Baz": "quux"}
+            )
+            returned_headers = json.loads(r.data.decode())
+            assert returned_headers.get("Foo") is None
+            assert returned_headers.get("Baz") == "quux"
+            assert returned_headers.get("Hickory") == "dickory"
             assert returned_headers.get("Host") == "%s:%s" % (
                 self.https_host,
                 self.https_port,

@@ -631,10 +631,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # [1] <https://github.com/urllib3/urllib3/issues/651>
         release_this_conn = release_conn
 
-        # Merge the proxy headers. Only do this in HTTP. We have to copy the
-        # headers dict so we can safely change it without those changes being
-        # reflected in anyone else's copy.
-        if self.scheme == "http":
+        # Merge the proxy headers. Only done when not using HTTP CONNECT. We
+        # have to copy the headers dict so we can safely change it without those
+        # changes being reflected in anyone else's copy.
+        if self.scheme == "http" or self.proxy and self.proxy.scheme == 'https':
             headers = headers.copy()
             headers.update(self.proxy_headers)
 

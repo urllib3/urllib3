@@ -468,10 +468,11 @@ class ProxyManager(PoolManager):
         "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
         u = parse_url(url)
 
-        if u.scheme == "http":
-            # For proxied HTTPS requests, httplib sets the necessary headers
-            # on the CONNECT to the proxy. For HTTP, we'll definitely
-            # need to set 'Host' at the very least.
+        if u.scheme == "http" or self.proxy.scheme == 'https':
+            # For connections using HTTP CONNECT, httplib sets the necessary
+            # headers on the CONNECT to the proxy. For HTTP or when talking
+            # HTTPS to the proxy, we'll definitely need to set 'Host' at the
+            # very least.
             headers = kw.get("headers", self.headers)
             kw["headers"] = self._set_proxy_headers(url, headers)
 
