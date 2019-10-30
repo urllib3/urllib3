@@ -1,8 +1,5 @@
 # TODO: Break this module up into pieces. Maybe group by functionality tested
 # rather than the socket level-ness of it.
-import platform
-import sys
-
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
 from urllib3.exceptions import (
@@ -48,6 +45,7 @@ import mock
 import pytest
 
 from test import (
+    notPyPy2,
     fails_on_travis_gce,
     requires_ssl_context_keyfile_password,
     SHORT_TIMEOUT,
@@ -1321,11 +1319,8 @@ class TestSSL(SocketDummyServerTestCase):
                     pool.request("GET", "/", timeout=SHORT_TIMEOUT)
                 context.load_default_certs.assert_called_with()
 
+    @notPyPy2
     def test_ssl_dont_load_default_certs_when_given(self):
-        if platform.python_implementation() == "PyPy" and sys.version_info[0] == 2:
-            # https://github.com/testing-cabal/mock/issues/438
-            pytest.xfail("fails with PyPy for Python 2 dues to funcsigs bug")
-
         def socket_handler(listener):
             sock = listener.accept()[0]
             ssl_sock = ssl.wrap_socket(

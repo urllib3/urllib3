@@ -5,6 +5,7 @@ import logging
 import socket
 import ssl
 import os
+import platform
 
 import pytest
 
@@ -86,6 +87,20 @@ def onlyPy3(test):
         msg = "{name} requires Python3.x to run".format(name=test.__name__)
         if six.PY2:
             pytest.skip(msg)
+        return test(*args, **kwargs)
+
+    return wrapper
+
+
+def notPyPy2(test):
+    """Skips this test on PyPy2"""
+
+    @six.wraps(test)
+    def wrapper(*args, **kwargs):
+        # https://github.com/testing-cabal/mock/issues/438
+        msg = "{} fails with PyPy 2 dues to funcsigs bugs".format(test.__name__)
+        if platform.python_implementation() == "PyPy" and sys.version_info[0] == 2:
+            pytest.xfail(msg)
         return test(*args, **kwargs)
 
     return wrapper
