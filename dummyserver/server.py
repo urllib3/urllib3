@@ -37,14 +37,6 @@ DEFAULT_CERTS = {
 DEFAULT_CLIENT_CERTS = {
     "certfile": os.path.join(CERTS_PATH, "client_intermediate.pem"),
     "keyfile": os.path.join(CERTS_PATH, "client_intermediate.key"),
-    "subject": dict(
-        countryName=u"FI",
-        stateOrProvinceName=u"dummy",
-        organizationName=u"dummy",
-        organizationalUnitName=u"dummy",
-        commonName=u"SnakeOilClient",
-        emailAddress=u"dummy@test.local",
-    ),
 }
 DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS = {
     "certfile": os.path.join(CERTS_PATH, "client_no_intermediate.pem"),
