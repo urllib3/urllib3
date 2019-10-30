@@ -50,6 +50,7 @@ from test import (
     requires_ssl_context_keyfile_password,
     SHORT_TIMEOUT,
     LONG_TIMEOUT,
+    notPyPy2,
 )
 
 # Retry failed tests
