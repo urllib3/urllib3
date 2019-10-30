@@ -29,7 +29,7 @@ def tests_impl(session, extras="socks,secure,brotli"):
         "-m",
         "pytest",
         "-r",
-        "sx",
+        "a",
         "--no-success-flaky-report",
         *(session.posargs or ("test/",)),
         env={"PYTHONWARNINGS": "always::DeprecationWarning"}
