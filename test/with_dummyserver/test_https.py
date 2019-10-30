@@ -1,7 +1,6 @@
 import datetime
 import json
 import logging
-import os
 import ssl
 import sys
 import shutil
@@ -282,10 +281,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         # OpenSSL looks up certificates by the hash for their name, see c_rehash
         # TODO infer the bytes using `cryptography.x509.Name.public_bytes`.
         # https://github.com/pyca/cryptography/pull/3236
-        shutil.copyfile(DEFAULT_CA, os.path.join(tmpdir, "b6b9ccf9.0"))
+        shutil.copyfile(DEFAULT_CA, str(tmpdir / "b6b9ccf9.0"))
 
         with HTTPSConnectionPool(
-            self.host, self.port, cert_reqs="CERT_REQUIRED", ca_cert_dir=tmpdir
+            self.host, self.port, cert_reqs="CERT_REQUIRED", ca_cert_dir=str(tmpdir)
         ) as https_pool:
             conn = https_pool._new_conn()
             assert conn.__class__ == VerifiedHTTPSConnection
