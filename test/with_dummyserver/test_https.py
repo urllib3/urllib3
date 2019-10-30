@@ -9,7 +9,6 @@ import warnings
 
 import mock
 import pytest
-from backports import tempfile
 
 from dummyserver.testcase import HTTPSDummyServerTestCase, IPV6HTTPSDummyServerTestCase
 from dummyserver.server import (
@@ -279,23 +278,22 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     @onlyPy279OrNewer
     @notSecureTransport  # SecureTransport does not support cert directories
     @notOpenSSL098  # OpenSSL 0.9.8 does not support cert directories
-    def test_ca_dir_verified(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # OpenSSL looks up certificates by the hash for their name, see c_rehash
-            # TODO infer the bytes using `cryptography.x509.Name.public_bytes`.
-            # https://github.com/pyca/cryptography/pull/3236
-            shutil.copyfile(DEFAULT_CA, os.path.join(temp_dir, "b6b9ccf9.0"))
+    def test_ca_dir_verified(self, tmpdir):
+        # OpenSSL looks up certificates by the hash for their name, see c_rehash
+        # TODO infer the bytes using `cryptography.x509.Name.public_bytes`.
+        # https://github.com/pyca/cryptography/pull/3236
+        shutil.copyfile(DEFAULT_CA, os.path.join(tmpdir, "b6b9ccf9.0"))
 
-            with HTTPSConnectionPool(
-                self.host, self.port, cert_reqs="CERT_REQUIRED", ca_cert_dir=temp_dir
-            ) as https_pool:
-                conn = https_pool._new_conn()
-                assert conn.__class__ == VerifiedHTTPSConnection
+        with HTTPSConnectionPool(
+            self.host, self.port, cert_reqs="CERT_REQUIRED", ca_cert_dir=tmpdir
+        ) as https_pool:
+            conn = https_pool._new_conn()
+            assert conn.__class__ == VerifiedHTTPSConnection
 
-                with mock.patch("warnings.warn") as warn:
-                    r = https_pool.request("GET", "/")
-                    assert r.status == 200
-                    assert not warn.called, warn.call_args_list
+            with mock.patch("warnings.warn") as warn:
+                r = https_pool.request("GET", "/")
+                assert r.status == 200
+                assert not warn.called, warn.call_args_list
 
     def test_invalid_common_name(self):
         with HTTPSConnectionPool(
