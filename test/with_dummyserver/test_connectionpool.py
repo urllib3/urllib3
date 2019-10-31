@@ -97,16 +97,16 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
 
         # Request-specific timeouts should raise errors
         with HTTPConnectionPool(
-            self.host, self.port, timeout=LONG_TIMEOUT, retries=False
+            self.host, self.port, timeout=short_timeout, retries=False
         ) as pool:
             wait_for_socket(ready_event)
             now = time.time()
             with pytest.raises(ReadTimeoutError):
-                pool.request("GET", "/", timeout=short_timeout)
+                pool.request("GET", "/", timeout=LONG_TIMEOUT)
             delta = time.time() - now
 
-            message = "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT"
-            assert delta < LONG_TIMEOUT, message
+            message = "timeout was pool-level SHORT_TIMEOUT rather than request-level LONG_TIMEOUT"
+            assert delta >= LONG_TIMEOUT, message
             block_event.set()  # Release request
 
             # Timeout passed directly to request should raise a request timeout
