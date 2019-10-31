@@ -28,6 +28,16 @@ VALID_SOURCE_ADDRESSES = [(("::1", 0), True), (("127.0.0.1", 0), False)]
 # RFC 3849: 2001:db8::/32 is for documentation only.
 INVALID_SOURCE_ADDRESSES = [("192.0.2.255", 0), ("2001:db8::1", 0)]
 
+# We use timeouts in three different ways in our tests
+#
+# 1. To make sure that the operation timeouts, we can use a short timeout.
+# 2. To make sure that the test does not hang even if the operation should succeed, we
+#    want to use a long timeout, even more so on CI where tests can be really slow
+# 3. To test our timeout logic by using two different values, eg. by using different
+#    values at the pool level and at the request level.
+SHORT_TIMEOUT = 0.001
+LONG_TIMEOUT = 0.5 if os.environ.get("CI") else 0.01
+
 
 def clear_warnings(cls=HTTPWarning):
     new_filters = []

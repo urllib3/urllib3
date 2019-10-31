@@ -25,6 +25,7 @@ from urllib3.packages.six.moves.urllib.parse import urlencode
 from urllib3.util.retry import Retry, RequestHistory
 from urllib3.util.timeout import Timeout
 
+from test import SHORT_TIMEOUT, LONG_TIMEOUT
 from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
 from dummyserver.server import NoIPv6Warning, HAS_IPV6_AND_DNS
 
@@ -37,10 +38,6 @@ log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
 
-SHORT_TIMEOUT = 0.001
-LONG_TIMEOUT = 0.03
-
-
 def wait_for_socket(ready_event):
     ready_event.wait()
     ready_event.clear()
@@ -51,19 +48,16 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         block_event = Event()
         ready_event = self.start_basic_handler(block_send=block_event, num=2)
 
-        # Pool-global timeout
-        with HTTPConnectionPool(
-            self.host, self.port, timeout=SHORT_TIMEOUT, retries=False
-        ) as pool:
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             wait_for_socket(ready_event)
             with pytest.raises(ReadTimeoutError):
-                pool.request("GET", "/")
+                pool.request("GET", "/", timeout=SHORT_TIMEOUT)
             block_event.set()  # Release block
 
             # Shouldn't raise this time
             wait_for_socket(ready_event)
             block_event.set()  # Pre-release block
-            pool.request("GET", "/")
+            pool.request("GET", "/", timeout=LONG_TIMEOUT)
 
     def test_conn_closed(self):
         block_event = Event()

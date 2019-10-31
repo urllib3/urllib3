@@ -39,6 +39,8 @@ from test import (
     requiresTLSv1_2,
     requiresTLSv1_3,
     TARPIT_HOST,
+    SHORT_TIMEOUT,
+    LONG_TIMEOUT,
 )
 from urllib3 import HTTPSConnectionPool
 from urllib3.connection import VerifiedHTTPSConnection, RECENT_DATE
@@ -503,7 +505,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     @requires_network
     def test_https_timeout(self):
 
-        timeout = Timeout(total=None, connect=0.001)
+        timeout = Timeout(total=None, connect=SHORT_TIMEOUT)
         with HTTPSConnectionPool(
             TARPIT_HOST,
             self.port,
@@ -553,7 +555,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             TARPIT_HOST,
             self.port,
-            timeout=Timeout(connect=0.001),
+            timeout=Timeout(connect=SHORT_TIMEOUT),
             retries=False,
             cert_reqs="CERT_REQUIRED",
         ) as https_pool:
@@ -569,12 +571,12 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             TARPIT_HOST,
             self.port,
-            timeout=Timeout(connect=5),
+            timeout=Timeout(connect=LONG_TIMEOUT),
             retries=False,
             cert_reqs="CERT_REQUIRED",
         ) as https_pool:
             with pytest.raises(ConnectTimeoutError):
-                https_pool.request("GET", "/", timeout=Timeout(connect=0.001))
+                https_pool.request("GET", "/", timeout=Timeout(connect=SHORT_TIMEOUT))
 
         with HTTPSConnectionPool(
             TARPIT_HOST,
@@ -587,7 +589,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             try:
                 with pytest.raises(ConnectTimeoutError):
                     https_pool.request(
-                        "GET", "/", timeout=Timeout(total=None, connect=0.001)
+                        "GET", "/", timeout=Timeout(total=None, connect=SHORT_TIMEOUT)
                     )
             finally:
                 conn.close()
