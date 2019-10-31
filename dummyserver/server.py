@@ -33,14 +33,10 @@ DEFAULT_CERTS = {
     "cert_reqs": ssl.CERT_OPTIONAL,
     "ca_certs": os.path.join(CERTS_PATH, "cacert.pem"),
 }
-DEFAULT_CLIENT_CERTS = {
-    "certfile": os.path.join(CERTS_PATH, "client_intermediate.pem"),
-    "keyfile": os.path.join(CERTS_PATH, "client_intermediate.key"),
-}
-DEFAULT_CLIENT_NO_INTERMEDIATE_CERTS = {
-    "certfile": os.path.join(CERTS_PATH, "client_no_intermediate.pem"),
-    "keyfile": os.path.join(CERTS_PATH, "client_intermediate.key"),
-}
+CLIENT_INTERMEDIATE_PEM = "client_intermediate.pem"
+CLIENT_NO_INTERMEDIATE_PEM = "client_no_intermediate.pem"
+CLIENT_INTERMEDIATE_KEY = "client_intermediate.key"
+CLIENT_CERT = os.path.join(CERTS_PATH, CLIENT_INTERMEDIATE_PEM)
 PASSWORD_KEYFILE = os.path.join(CERTS_PATH, "server_password.key")
 PASSWORD_CLIENT_KEYFILE = os.path.join(CERTS_PATH, "client_password.key")
 NO_SAN_CERTS = {
@@ -60,6 +56,7 @@ IPV6_SAN_CERTS = {
     "keyfile": DEFAULT_CERTS["keyfile"],
 }
 DEFAULT_CA = os.path.join(CERTS_PATH, "cacert.pem")
+DEFAULT_CA_KEY = os.path.join(CERTS_PATH, "cacert.key")
 DEFAULT_CA_BAD = os.path.join(CERTS_PATH, "client_bad.pem")
 NO_SAN_CA = os.path.join(CERTS_PATH, "cacert.no_san.pem")
 IPV6_ADDR_CA = os.path.join(CERTS_PATH, "server.ipv6addr.crt")
