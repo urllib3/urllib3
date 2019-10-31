@@ -322,9 +322,6 @@ def _idna_encode(name):
 
 def _encode_target(target):
     """Percent-encodes a request target so that there are no invalid characters"""
-    if not target.startswith("/"):
-        return target
-
     path, query = TARGET_RE.match(target).groups()
     target = _encode_invalid_chars(path, PATH_CHARS)
     query = _encode_invalid_chars(query, QUERY_CHARS)
