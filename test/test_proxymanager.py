@@ -5,10 +5,7 @@ from urllib3.util.url import parse_url
 
 
 class TestProxyManager(object):
-    @pytest.mark.parametrize("proxy_scheme", [
-        "http",
-        "https"
-    ])
+    @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
     def test_proxy_headers(self, proxy_scheme):
         url = "http://pypi.org/project/urllib3/"
         proxy_url = "{}://something:1234".format(proxy_scheme)

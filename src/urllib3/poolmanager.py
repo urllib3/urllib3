@@ -468,7 +468,7 @@ class ProxyManager(PoolManager):
         "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
         u = parse_url(url)
 
-        if u.scheme == "http" or self.proxy.scheme == 'https':
+        if u.scheme == "http" or self.proxy.scheme == "https":
             # For connections using HTTP CONNECT, httplib sets the necessary
             # headers on the CONNECT to the proxy. For HTTP or when talking
             # HTTPS to the proxy, we'll definitely need to set 'Host' at the
