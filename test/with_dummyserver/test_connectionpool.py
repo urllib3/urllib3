@@ -85,9 +85,9 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         ready_event = self.start_basic_handler(block_send=block_event, num=3)
 
         # Pool-global timeout
-        timeout = Timeout(read=SHORT_TIMEOUT)
+        short_timeout = Timeout(read=SHORT_TIMEOUT)
         with HTTPConnectionPool(
-            self.host, self.port, timeout=timeout, retries=False
+            self.host, self.port, timeout=short_timeout, retries=False
         ) as pool:
             wait_for_socket(ready_event)
             block_event.clear()
@@ -102,7 +102,7 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
             wait_for_socket(ready_event)
             now = time.time()
             with pytest.raises(ReadTimeoutError):
-                pool.request("GET", "/", timeout=timeout)
+                pool.request("GET", "/", timeout=short_timeout)
             delta = time.time() - now
 
             message = "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT"
