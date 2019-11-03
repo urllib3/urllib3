@@ -11,7 +11,7 @@ from dummyserver.server import (
 
 
 @pytest.fixture(scope="session")
-def generated_certs(tmp_path_factory):
+def certs_dir(tmp_path_factory):
     tmpdir = tmp_path_factory.mktemp("certs")
     # Start from existing root CA as we don't want to change the server certificate yet
     with open(DEFAULT_CA, "rb") as crt, open(DEFAULT_CA_KEY, "rb") as key:

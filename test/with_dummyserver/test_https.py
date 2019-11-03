@@ -103,7 +103,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             r = pool.request("GET", "/")
             assert r.status == 200, r.data
 
-    def test_client_intermediate(self, generated_certs):
+    def test_client_intermediate(self, certs_dir):
         """Check that certificate chains work well with client certs
 
         We generate an intermediate CA from the root CA, and issue a client certificate
@@ -114,15 +114,15 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host,
             self.port,
-            key_file=str(generated_certs / CLIENT_INTERMEDIATE_KEY),
-            cert_file=str(generated_certs / CLIENT_INTERMEDIATE_PEM),
+            key_file=str(certs_dir / CLIENT_INTERMEDIATE_KEY),
+            cert_file=str(certs_dir / CLIENT_INTERMEDIATE_PEM),
             ca_certs=DEFAULT_CA,
         ) as https_pool:
             r = https_pool.request("GET", "/certificate")
             subject = json.loads(r.data.decode("utf-8"))
             assert subject["organizationalUnitName"].startswith("Testing cert")
 
-    def test_client_no_intermediate(self, generated_certs):
+    def test_client_no_intermediate(self, certs_dir):
         """Check that missing links in certificate chains indeed break
 
         The only difference with test_client_intermediate is that we don't send the
@@ -131,8 +131,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host,
             self.port,
-            cert_file=str(generated_certs / CLIENT_NO_INTERMEDIATE_PEM),
-            key_file=str(generated_certs / CLIENT_INTERMEDIATE_KEY),
+            cert_file=str(certs_dir / CLIENT_NO_INTERMEDIATE_PEM),
+            key_file=str(certs_dir / CLIENT_INTERMEDIATE_KEY),
             ca_certs=DEFAULT_CA,
         ) as https_pool:
             try:
