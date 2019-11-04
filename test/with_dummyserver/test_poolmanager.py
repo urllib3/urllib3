@@ -312,6 +312,25 @@ class TestPoolManager(HTTPDummyServerTestCase):
             r = http.request("GET", "http://%s:%s/" % (self.host, self.port))
             assert r.status == 200
 
+    @pytest.mark.parametrize(
+        ["target", "expected_target"],
+        [
+            ("/echo_uri?q=1#fragment", b"/echo_uri?q=1"),
+            ("/echo_uri?#", b"/echo_uri?"),
+            ("/echo_uri#?", b"/echo_uri"),
+            ("/echo_uri#?#", b"/echo_uri"),
+            ("/echo_uri??#", b"/echo_uri??"),
+            ("/echo_uri?%3f#", b"/echo_uri?%3F"),
+            ("/echo_uri?%3F#", b"/echo_uri?%3F"),
+            ("/echo_uri?[]", b"/echo_uri?%5B%5D"),
+        ],
+    )
+    def test_encode_http_target(self, target, expected_target):
+        with PoolManager() as http:
+            url = "http://%s:%d%s" % (self.host, self.port, target)
+            r = http.request("GET", url)
+            assert r.data == expected_target
+
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):

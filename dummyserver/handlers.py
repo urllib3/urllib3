@@ -229,6 +229,10 @@ class TestingApp(RequestHandler):
 
         return Response(request.body)
 
+    def echo_uri(self, request):
+        "Echo back the requested URI"
+        return Response(request.uri)
+
     def encodingrequest(self, request):
         "Check for UA accepting gzip/deflate encoding"
         data = b"hello, world!"
