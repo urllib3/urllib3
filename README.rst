@@ -5,40 +5,18 @@
          <img src="https://codefund.io/properties/451/sponsor" />
       </a>
    </p>
-
-urllib3
-=======
-
-.. image:: https://travis-ci.org/urllib3/urllib3.svg?branch=master
-        :alt: Build status on Travis
-        :target: https://travis-ci.org/urllib3/urllib3
-
-.. image:: https://img.shields.io/appveyor/ci/urllib3/urllib3/master.svg
-        :alt: Build status on AppVeyor
-        :target: https://ci.appveyor.com/project/urllib3/urllib3
-
-.. image:: https://readthedocs.org/projects/urllib3/badge/?version=latest
-        :alt: Documentation Status
-        :target: https://urllib3.readthedocs.io/en/latest/
-
-.. image:: https://img.shields.io/codecov/c/github/urllib3/urllib3.svg
-        :alt: Coverage Status
-        :target: https://codecov.io/gh/urllib3/urllib3
-
-.. image:: https://img.shields.io/pypi/v/urllib3.svg?maxAge=86400
-        :alt: PyPI version
-        :target: https://pypi.org/project/urllib3/
-
-.. image:: https://badges.gitter.im/python-urllib3/Lobby.svg
-        :alt: Gitter
-        :target: https://gitter.im/python-urllib3/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
-
-.. image:: https://tidelift.com/badges/github/urllib3/urllib3
-        :alt: Tidelift Dependencies
-        :target: https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=docs
-
-.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
-    :target: https://github.com/psf/black
+   <p align="center">
+      <a href="https://github.com/urllib3/urllib3">
+         <img src="https://raw.githubusercontent.com/urllib3/urllib3/master/docs/images/banner.png" />
+      </a>
+   </p>
+   <p align="center">
+      <a href="https://travis-ci.org/urllib3/urllib3"><img alt="Build status on Travis" src="https://travis-ci.org/urllib3/urllib3.svg?branch=master" /></a>
+      <a href="https://ci.appveyor.com/project/urllib3/urllib3"><img alt="Build status on AppVeyor" src="https://img.shields.io/appveyor/ci/urllib3/urllib3/master.svg" /></a>
+      <a href="https://urllib3.readthedocs.io/en/latest/"><img alt="Documentation Status" src="https://readthedocs.org/projects/urllib3/badge/?version=latest" /></a>
+      <a href="https://codecov.io/gh/urllib3/urllib3"><img alt="Coverage Status" src="https://img.shields.io/codecov/c/github/urllib3/urllib3.svg" /></a>
+      <a href="https://pypi.org/project/urllib3/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/urllib3.svg?maxAge=86400" /></a>
+  </p>
 
 urllib3 is a powerful, *sanity-friendly* HTTP client for Python. Much of the
 Python ecosystem already uses urllib3 and you should too.
