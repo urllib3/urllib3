@@ -242,6 +242,11 @@ class ProxySchemeUnknown(AssertionError, ValueError):
         super(ProxySchemeUnknown, self).__init__(message)
 
 
+class ProxySchemeUnsupported(ValueError):
+    "Fetching HTTPS resources through HTTPS proxies is unsupported"
+    pass
+
+
 class HeaderParsingError(HTTPError):
     "Raised by assert_header_parsing, but we convert it to a log.warning statement."
 

@@ -111,10 +111,6 @@ class HTTPConnection(_HTTPConnection, object):
         #: The socket options provided by the user. If no options are
         #: provided, we use the default options.
         self.socket_options = kw.pop("socket_options", self.default_socket_options)
-
-        # Protocol used to talk to the proxy.
-        self.proxy_scheme = kw.pop("proxy_scheme", None)
-
         _HTTPConnection.__init__(self, *args, **kw)
 
     @property

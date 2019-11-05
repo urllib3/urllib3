@@ -6,7 +6,12 @@ import logging
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
-from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
+from .exceptions import (
+    LocationValueError,
+    MaxRetryError,
+    ProxySchemeUnknown,
+    ProxySchemeUnsupported,
+)
 from .packages import six
 from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
@@ -395,6 +400,11 @@ class ProxyManager(PoolManager):
         HTTPS/CONNECT case they are sent only once. Could be used for proxy
         authentication.
 
+    :param allow_https_proxy_to_see_traffic:
+        Allows forwarding of HTTPS requests to HTTPS proxies. The proxy will
+        have visibility of all the traffic sent. ONLY USE IF YOU KNOW WHAT
+        YOU'RE DOING.
+
     Example:
         >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
         >>> r1 = proxy.request('GET', 'http://google.com/')
@@ -414,6 +424,7 @@ class ProxyManager(PoolManager):
         num_pools=10,
         headers=None,
         proxy_headers=None,
+        allow_https_proxy_to_see_traffic=False,
         **connection_pool_kw
     ):
 
@@ -436,6 +447,8 @@ class ProxyManager(PoolManager):
 
         connection_pool_kw["_proxy"] = self.proxy
         connection_pool_kw["_proxy_headers"] = self.proxy_headers
+
+        self.allow_insecure_proxy = allow_https_proxy_to_see_traffic
 
         super(ProxyManager, self).__init__(num_pools, headers, **connection_pool_kw)
 
@@ -464,9 +477,18 @@ class ProxyManager(PoolManager):
             headers_.update(headers)
         return headers_
 
+    def _validate_proxy_scheme_url_selection(self, url_scheme):
+        if (
+            url_scheme == "https"
+            and self.proxy.scheme == "https"
+            and not self.allow_insecure_proxy
+        ):
+            raise ProxySchemeUnsupported("TLS within TLS is not yet supported.")
+
     def urlopen(self, method, url, redirect=True, **kw):
         "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
         u = parse_url(url)
+        self._validate_proxy_scheme_url_selection(u.scheme)
 
         if u.scheme == "http" or self.proxy.scheme == "https":
             # For connections using HTTP CONNECT, httplib sets the necessary

@@ -212,8 +212,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # We cannot know if the user has added default socket options, so we cannot replace the
             # list.
             self.conn_kw.setdefault("socket_options", [])
-            # Capture the proxy scheme to properly establish the connection.
-            self.conn_kw["proxy_scheme"] = self.proxy.scheme
 
     def _new_conn(self):
         """
