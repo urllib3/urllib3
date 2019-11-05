@@ -755,6 +755,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 timeout=timeout,
                 pool_timeout=pool_timeout,
                 release_conn=release_conn,
+                chunked=chunked,
                 body_pos=body_pos,
                 **response_kw
             )
