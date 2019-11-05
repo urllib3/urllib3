@@ -45,7 +45,6 @@ import mock
 import pytest
 
 from test import (
-    notPyPy2,
     fails_on_travis_gce,
     requires_ssl_context_keyfile_password,
     SHORT_TIMEOUT,
