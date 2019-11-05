@@ -5,6 +5,7 @@ urllib3
    :hidden:
    :maxdepth: 2
 
+   For Enterprise <https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=docs>
    user-guide
    advanced-usage
    reference/index
@@ -33,6 +34,21 @@ urllib3 is powerful and easy to use::
     200
     >>> r.data
     'User-agent: *\nDisallow: /deny\n'
+
+For Enterprise
+--------------
+
+`urllib3 is available as part of the Tidelift Subscription <https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=docs>`_
+
+urllib3 and the maintainers of thousands of other packages are working with Tidelift to deliver one enterprise subscription that covers all of the open source you use.
+If you want the flexibility of open source and the confidence of commercial-grade software, this is for you.
+
+|learn-more|_ |request-a-demo|_
+
+.. |learn-more| image:: https://raw.githubusercontent.com/urllib3/urllib3/master/docs/images/learn-more-button.png
+.. _learn-more: https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=docs
+.. |request-a-demo| image:: https://raw.githubusercontent.com/urllib3/urllib3/master/docs/images/demo-button.png
+.. _request-a-demo: https://tidelift.com/subscription/request-a-demo?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=docs
 
 Installing
 ----------

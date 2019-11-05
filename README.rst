@@ -5,9 +5,11 @@
          <img src="https://codefund.io/properties/451/sponsor" />
       </a>
    </p>
-
-urllib3
-=======
+   <p align="center">
+      <a href="https://github.com/urllib3/urllib3">
+         <img src="https://raw.githubusercontent.com/urllib3/urllib3/master/docs/images/banner.png" />
+      </a>
+   </p>
 
 .. image:: https://travis-ci.org/urllib3/urllib3.svg?branch=master
         :alt: Build status on Travis
