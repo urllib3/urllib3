@@ -84,7 +84,7 @@ Maintainers
 - `@theacodes <https://github.com/theacodes>`_ (Thea Flowers)
 - `@haikuginger <https://github.com/haikuginger>`_ (Jess Shapiro)
 - `@lukasa <https://github.com/lukasa>`_ (Cory Benfield)
-- `@sigmavirus24 <https://github.com/sigmavirus24>`_ (Ian Cordasco)
+- `@sigmavirus24 <https://github.com/sigmavirus24>`_ (Ian Stapleton Cordasco)
 - `@shazow <https://github.com/shazow>`_ (Andrey Petrov)
 
 👋
