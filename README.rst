@@ -7,7 +7,7 @@
    </p>
    <p align="center">
       <a href="https://github.com/urllib3/urllib3">
-         <img src="https://raw.githubusercontent.com/urllib3/urllib3/master/docs/images/banner.png" />
+         <img src="./docs/images/banner.svg" width="60%" alt="urllib3" />
       </a>
    </p>
    <p align="center">
