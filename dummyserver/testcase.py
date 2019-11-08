@@ -1,5 +1,4 @@
 import threading
-import unittest
 
 import pytest
 from tornado import ioloop, web
@@ -16,11 +15,16 @@ from dummyserver.proxy import ProxyHandler
 
 
 def consume_socket(sock, chunks=65536):
-    while not sock.recv(chunks).endswith(b"\r\n\r\n"):
-        pass
+    consumed = bytearray()
+    while True:
+        b = sock.recv(chunks)
+        consumed += b
+        if b.endswith(b"\r\n\r\n"):
+            break
+    return consumed
 
 
-class SocketDummyServerTestCase(unittest.TestCase):
+class SocketDummyServerTestCase(object):
     """
     A simple socket-based server is created for this class that is good for
     exactly one request.
@@ -67,7 +71,7 @@ class SocketDummyServerTestCase(unittest.TestCase):
         )
 
     @classmethod
-    def tearDownClass(cls):
+    def teardown_class(cls):
         if hasattr(cls, "server_thread"):
             cls.server_thread.join(0.1)
 
@@ -101,10 +105,10 @@ class IPV4SocketDummyServerTestCase(SocketDummyServerTestCase):
         cls.port = cls.server_thread.port
 
 
-class HTTPDummyServerTestCase(unittest.TestCase):
+class HTTPDummyServerTestCase(object):
     """ A simple HTTP server that runs when your test class runs
 
-    Have your unittest class inherit from this one, and then a simple server
+    Have your test class inherit from this one, and then a simple server
     will start when your tests run, and automatically shut down when they
     complete. For examples of what test requests you can send to the server,
     see the TestingApp in dummyserver/handlers.py.
@@ -131,11 +135,11 @@ class HTTPDummyServerTestCase(unittest.TestCase):
         cls.server_thread.join()
 
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         cls._start_server()
 
     @classmethod
-    def tearDownClass(cls):
+    def teardown_class(cls):
         cls._stop_server()
 
 
@@ -150,7 +154,7 @@ class IPV6HTTPSDummyServerTestCase(HTTPSDummyServerTestCase):
     host = "::1"
 
 
-class HTTPDummyProxyTestCase(unittest.TestCase):
+class HTTPDummyProxyTestCase(object):
 
     http_host = "localhost"
     http_host_alt = "127.0.0.1"
@@ -163,7 +167,7 @@ class HTTPDummyProxyTestCase(unittest.TestCase):
     proxy_host_alt = "127.0.0.1"
 
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         cls.io_loop = ioloop.IOLoop.current()
 
         app = web.Application([(r".*", TestingApp)])
@@ -184,7 +188,7 @@ class HTTPDummyProxyTestCase(unittest.TestCase):
         cls.server_thread = run_loop_in_thread(cls.io_loop)
 
     @classmethod
-    def tearDownClass(cls):
+    def teardown_class(cls):
         cls.io_loop.add_callback(cls.http_server.stop)
         cls.io_loop.add_callback(cls.https_server.stop)
         cls.io_loop.add_callback(cls.proxy_server.stop)

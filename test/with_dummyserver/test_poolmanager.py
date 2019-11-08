@@ -1,4 +1,3 @@
-import unittest
 import json
 
 import pytest
@@ -10,11 +9,18 @@ from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError
 from urllib3.util.retry import Retry
 
+from test import LONG_TIMEOUT
+
+# Retry failed tests
+pytestmark = pytest.mark.flaky
+
 
 class TestPoolManager(HTTPDummyServerTestCase):
-    def setUp(self):
-        self.base_url = "http://%s:%d" % (self.host, self.port)
-        self.base_url_alt = "http://%s:%d" % (self.host_alt, self.port)
+    @classmethod
+    def setup_class(cls):
+        super(TestPoolManager, cls).setup_class()
+        cls.base_url = "http://%s:%d" % (cls.host, cls.port)
+        cls.base_url_alt = "http://%s:%d" % (cls.host_alt, cls.port)
 
     def test_redirect(self):
         with PoolManager() as http:
@@ -38,7 +44,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_redirect_twice(self):
         with PoolManager() as http:
-
             r = http.request(
                 "GET",
                 "%s/redirect" % self.base_url,
@@ -61,7 +66,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_redirect_to_relative_url(self):
         with PoolManager() as http:
-
             r = http.request(
                 "GET",
                 "%s/redirect" % self.base_url,
@@ -80,28 +84,21 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_cross_host_redirect(self):
         with PoolManager() as http:
-
             cross_host_location = "%s/echo?a=b" % self.base_url_alt
-            try:
+            with pytest.raises(MaxRetryError):
                 http.request(
                     "GET",
                     "%s/redirect" % self.base_url,
                     fields={"target": cross_host_location},
-                    timeout=1,
+                    timeout=LONG_TIMEOUT,
                     retries=0,
                 )
-                self.fail(
-                    "Request succeeded instead of raising an exception like it should."
-                )
-
-            except MaxRetryError:
-                pass
 
             r = http.request(
                 "GET",
                 "%s/redirect" % self.base_url,
                 fields={"target": "%s/echo?a=b" % self.base_url_alt},
-                timeout=1,
+                timeout=LONG_TIMEOUT,
                 retries=1,
             )
 
@@ -109,9 +106,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_too_many_redirects(self):
         with PoolManager() as http:
-
-            try:
-                r = http.request(
+            with pytest.raises(MaxRetryError):
+                http.request(
                     "GET",
                     "%s/redirect" % self.base_url,
                     fields={
@@ -120,14 +116,9 @@ class TestPoolManager(HTTPDummyServerTestCase):
                     },
                     retries=1,
                 )
-                self.fail(
-                    "Failed to raise MaxRetryError exception, returned %r" % r.status
-                )
-            except MaxRetryError:
-                pass
 
-            try:
-                r = http.request(
+            with pytest.raises(MaxRetryError):
+                http.request(
                     "GET",
                     "%s/redirect" % self.base_url,
                     fields={
@@ -136,15 +127,9 @@ class TestPoolManager(HTTPDummyServerTestCase):
                     },
                     retries=Retry(total=None, redirect=1),
                 )
-                self.fail(
-                    "Failed to raise MaxRetryError exception, returned %r" % r.status
-                )
-            except MaxRetryError:
-                pass
 
     def test_redirect_cross_host_remove_headers(self):
         with PoolManager() as http:
-
             r = http.request(
                 "GET",
                 "%s/redirect" % self.base_url,
@@ -174,7 +159,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_redirect_cross_host_no_remove_headers(self):
         with PoolManager() as http:
-
             r = http.request(
                 "GET",
                 "%s/redirect" % self.base_url,
@@ -191,7 +175,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_redirect_cross_host_set_removed_headers(self):
         with PoolManager() as http:
-
             r = http.request(
                 "GET",
                 "%s/redirect" % self.base_url,
@@ -225,7 +208,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_raise_on_redirect(self):
         with PoolManager() as http:
-
             r = http.request(
                 "GET",
                 "%s/redirect" % self.base_url,
@@ -239,8 +221,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_raise_on_status(self):
         with PoolManager() as http:
-
-            try:
+            with pytest.raises(MaxRetryError):
                 # the default is to raise
                 r = http.request(
                     "GET",
@@ -248,13 +229,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
                     fields={"status": "500 Internal Server Error"},
                     retries=Retry(total=1, status_forcelist=range(500, 600)),
                 )
-                self.fail(
-                    "Failed to raise MaxRetryError exception, returned %r" % r.status
-                )
-            except MaxRetryError:
-                pass
 
-            try:
+            with pytest.raises(MaxRetryError):
                 # raise explicitly
                 r = http.request(
                     "GET",
@@ -264,11 +240,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
                         total=1, status_forcelist=range(500, 600), raise_on_status=True
                     ),
                 )
-                self.fail(
-                    "Failed to raise MaxRetryError exception, returned %r" % r.status
-                )
-            except MaxRetryError:
-                pass
 
             # don't raise
             r = http.request(
@@ -287,7 +258,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
         # will all such URLs fail with an error?
 
         with PoolManager() as http:
-
             # By globally adjusting `port_by_scheme` we pretend for a moment
             # that HTTP's default port is not 80, but is the port at which
             # our test server happens to be listening.
@@ -302,7 +272,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_headers(self):
         with PoolManager(headers={"Foo": "bar"}) as http:
-
             r = http.request("GET", "%s/headers" % self.base_url)
             returned_headers = json.loads(r.data.decode())
             assert returned_headers.get("Foo") == "bar"
@@ -335,26 +304,41 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_http_with_ssl_keywords(self):
         with PoolManager(ca_certs="REQUIRED") as http:
-
             r = http.request("GET", "http://%s:%s/" % (self.host, self.port))
             assert r.status == 200
 
     def test_http_with_ca_cert_dir(self):
         with PoolManager(ca_certs="REQUIRED", ca_cert_dir="/nosuchdir") as http:
-
             r = http.request("GET", "http://%s:%s/" % (self.host, self.port))
             assert r.status == 200
+
+    @pytest.mark.parametrize(
+        ["target", "expected_target"],
+        [
+            ("/echo_uri?q=1#fragment", b"/echo_uri?q=1"),
+            ("/echo_uri?#", b"/echo_uri?"),
+            ("/echo_uri#?", b"/echo_uri"),
+            ("/echo_uri#?#", b"/echo_uri"),
+            ("/echo_uri??#", b"/echo_uri??"),
+            ("/echo_uri?%3f#", b"/echo_uri?%3F"),
+            ("/echo_uri?%3F#", b"/echo_uri?%3F"),
+            ("/echo_uri?[]", b"/echo_uri?%5B%5D"),
+        ],
+    )
+    def test_encode_http_target(self, target, expected_target):
+        with PoolManager() as http:
+            url = "http://%s:%d%s" % (self.host, self.port, target)
+            r = http.request("GET", url)
+            assert r.data == expected_target
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
-    def setUp(self):
-        self.base_url = "http://[%s]:%d" % (self.host, self.port)
+    @classmethod
+    def setup_class(cls):
+        super(TestIPv6PoolManager, cls).setup_class()
+        cls.base_url = "http://[%s]:%d" % (cls.host, cls.port)
 
     def test_ipv6(self):
         with PoolManager() as http:
             http.request("GET", self.base_url)
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -6,7 +6,6 @@ Test what happens if Python was built without SSL
 """
 
 import sys
-import unittest
 import pytest
 
 
@@ -64,15 +63,16 @@ ssl_blocker = ImportBlocker("ssl", "_ssl")
 module_stash = ModuleStash("urllib3")
 
 
-class TestWithoutSSL(unittest.TestCase):
-    def setUp(self):
+class TestWithoutSSL(object):
+    @classmethod
+    def setup_class(cls):
         sys.modules.pop("ssl", None)
         sys.modules.pop("_ssl", None)
 
         module_stash.stash()
         sys.meta_path.insert(0, ssl_blocker)
 
-    def tearDown(self):
+    def teardown_class(cls):
         sys.meta_path.remove(ssl_blocker)
         module_stash.pop()
 

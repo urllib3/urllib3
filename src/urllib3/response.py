@@ -208,6 +208,7 @@ class HTTPResponse(io.IOBase):
         enforce_content_length=False,
         request_method=None,
         request_url=None,
+        auto_close=True,
     ):
 
         if isinstance(headers, HTTPHeaderDict):
@@ -221,6 +222,7 @@ class HTTPResponse(io.IOBase):
         self.decode_content = decode_content
         self.retries = retries
         self.enforce_content_length = enforce_content_length
+        self.auto_close = auto_close
 
         self._decoder = None
         self._body = None
@@ -493,16 +495,16 @@ class HTTPResponse(io.IOBase):
             return
 
         flush_decoder = False
-        data = None
+        fp_closed = getattr(self._fp, "closed", False)
 
         with self._error_catcher():
             if amt is None:
                 # cStringIO doesn't like amt=None
-                data = self._fp.read()
+                data = self._fp.read() if not fp_closed else b""
                 flush_decoder = True
             else:
                 cache_content = False
-                data = self._fp.read(amt)
+                data = self._fp.read(amt) if not fp_closed else b""
                 if (
                     amt != 0 and not data
                 ):  # Platform-specific: Buggy versions of Python.
@@ -615,9 +617,14 @@ class HTTPResponse(io.IOBase):
         if self._connection:
             self._connection.close()
 
+        if not self.auto_close:
+            io.IOBase.close(self)
+
     @property
     def closed(self):
-        if self._fp is None:
+        if not self.auto_close:
+            return io.IOBase.closed.__get__(self)
+        elif self._fp is None:
             return True
         elif hasattr(self._fp, "isclosed"):
             return self._fp.isclosed()
@@ -638,7 +645,11 @@ class HTTPResponse(io.IOBase):
             )
 
     def flush(self):
-        if self._fp is not None and hasattr(self._fp, "flush"):
+        if (
+            self._fp is not None
+            and hasattr(self._fp, "flush")
+            and not getattr(self._fp, "closed", False)
+        ):
             return self._fp.flush()
 
     def readable(self):

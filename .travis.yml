@@ -13,8 +13,6 @@ install:
 
 script:
   - ./_travis/run.sh
-
-after_success:
   - ./_travis/upload_coverage.sh
 
 cache:
@@ -103,11 +101,6 @@ matrix:
       stage: deploy
       script:
         - ./_travis/deploy.sh
-
-  allow_failures:
-    - python: 3.8-dev
-    - python: pypy3.5-6.0
-    - python: pypy2.7-6.0
 
 stages:
   - name: test

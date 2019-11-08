@@ -17,7 +17,7 @@ def choose_boundary():
     Our embarrassingly-simple replacement for mimetools.choose_boundary.
     """
     boundary = binascii.hexlify(os.urandom(16))
-    if six.PY3:
+    if not six.PY2:
         boundary = boundary.decode("ascii")
     return boundary
 

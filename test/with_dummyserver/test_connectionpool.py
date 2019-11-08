@@ -2,7 +2,6 @@ import io
 import logging
 import socket
 import sys
-import unittest
 import time
 import warnings
 import pytest
@@ -26,18 +25,17 @@ from urllib3.packages.six.moves.urllib.parse import urlencode
 from urllib3.util.retry import Retry, RequestHistory
 from urllib3.util.timeout import Timeout
 
+from test import SHORT_TIMEOUT, LONG_TIMEOUT
 from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
 from dummyserver.server import NoIPv6Warning, HAS_IPV6_AND_DNS
 
 from threading import Event
 
+pytestmark = pytest.mark.flaky
+
 log = logging.getLogger("urllib3.connectionpool")
 log.setLevel(logging.NOTSET)
 log.addHandler(logging.StreamHandler(sys.stdout))
-
-
-SHORT_TIMEOUT = 0.001
-LONG_TIMEOUT = 0.03
 
 
 def wait_for_socket(ready_event):
@@ -50,19 +48,16 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
         block_event = Event()
         ready_event = self.start_basic_handler(block_send=block_event, num=2)
 
-        # Pool-global timeout
-        with HTTPConnectionPool(
-            self.host, self.port, timeout=SHORT_TIMEOUT, retries=False
-        ) as pool:
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             wait_for_socket(ready_event)
             with pytest.raises(ReadTimeoutError):
-                pool.request("GET", "/")
+                pool.request("GET", "/", timeout=SHORT_TIMEOUT)
             block_event.set()  # Release block
 
             # Shouldn't raise this time
             wait_for_socket(ready_event)
             block_event.set()  # Pre-release block
-            pool.request("GET", "/")
+            pool.request("GET", "/", timeout=LONG_TIMEOUT)
 
     def test_conn_closed(self):
         block_event = Event()
@@ -74,9 +69,8 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
             conn = pool._get_conn()
             pool._put_conn(conn)
             try:
-                pool.urlopen("GET", "/")
-                self.fail("The request should fail with a timeout error.")
-            except ReadTimeoutError:
+                with pytest.raises(ReadTimeoutError):
+                    pool.urlopen("GET", "/")
                 if conn.sock:
                     with pytest.raises(socket.error):
                         conn.sock.recv(1024)
@@ -88,21 +82,13 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
     def test_timeout(self):
         # Requests should time out when expected
         block_event = Event()
-        ready_event = self.start_basic_handler(block_send=block_event, num=6)
+        ready_event = self.start_basic_handler(block_send=block_event, num=3)
 
         # Pool-global timeout
-        timeout = Timeout(read=SHORT_TIMEOUT)
+        short_timeout = Timeout(read=SHORT_TIMEOUT)
         with HTTPConnectionPool(
-            self.host, self.port, timeout=timeout, retries=False
+            self.host, self.port, timeout=short_timeout, retries=False
         ) as pool:
-
-            wait_for_socket(ready_event)
-            conn = pool._get_conn()
-            with pytest.raises(ReadTimeoutError):
-                pool._make_request(conn, "GET", "/")
-            pool._put_conn(conn)
-            block_event.set()  # Release request
-
             wait_for_socket(ready_event)
             block_event.clear()
             with pytest.raises(ReadTimeoutError):
@@ -111,43 +97,22 @@ class TestConnectionPoolTimeouts(SocketDummyServerTestCase):
 
         # Request-specific timeouts should raise errors
         with HTTPConnectionPool(
-            self.host, self.port, timeout=LONG_TIMEOUT, retries=False
+            self.host, self.port, timeout=short_timeout, retries=False
         ) as pool:
-
-            conn = pool._get_conn()
             wait_for_socket(ready_event)
             now = time.time()
             with pytest.raises(ReadTimeoutError):
-                pool._make_request(conn, "GET", "/", timeout=timeout)
-            delta = time.time() - now
-            block_event.set()  # Release request
-
-            message = "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT"
-            assert delta < LONG_TIMEOUT, message
-            pool._put_conn(conn)
-
-            wait_for_socket(ready_event)
-            now = time.time()
-            with pytest.raises(ReadTimeoutError):
-                pool.request("GET", "/", timeout=timeout)
+                pool.request("GET", "/", timeout=LONG_TIMEOUT)
             delta = time.time() - now
 
-            message = "timeout was pool-level LONG_TIMEOUT rather than request-level SHORT_TIMEOUT"
-            assert delta < LONG_TIMEOUT, message
+            message = "timeout was pool-level SHORT_TIMEOUT rather than request-level LONG_TIMEOUT"
+            assert delta >= LONG_TIMEOUT, message
             block_event.set()  # Release request
 
-            # Timeout int/float passed directly to request and _make_request should
-            # raise a request timeout
+            # Timeout passed directly to request should raise a request timeout
             wait_for_socket(ready_event)
             with pytest.raises(ReadTimeoutError):
                 pool.request("GET", "/", timeout=SHORT_TIMEOUT)
-            block_event.set()  # Release request
-
-            wait_for_socket(ready_event)
-            conn = pool._new_conn()
-            # FIXME: This assert flakes sometimes. Not sure why.
-            with pytest.raises(ReadTimeoutError):
-                pool._make_request(conn, "GET", "/", timeout=SHORT_TIMEOUT)
             block_event.set()  # Release request
 
     def test_connect_timeout(self):
@@ -386,11 +351,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         """ ECONNREFUSED error should raise a connection error, with retries """
         port = find_unused_port()
         with HTTPConnectionPool(self.host, port) as pool:
-            try:
+            with pytest.raises(MaxRetryError) as e:
                 pool.request("GET", "/", retries=Retry(connect=3))
-                self.fail("Should have failed with a connection error.")
-            except MaxRetryError as e:
-                assert type(e.reason) == NewConnectionError
+            assert type(e.value.reason) == NewConnectionError
 
     def test_timeout_success(self):
         timeout = Timeout(connect=3, read=5, total=None)
@@ -442,11 +405,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_bad_connect(self):
         with HTTPConnectionPool("badhost.invalid", self.port) as pool:
-            try:
+            with pytest.raises(MaxRetryError) as e:
                 pool.request("GET", "/", retries=5)
-                self.fail("should raise timeout exception here")
-            except MaxRetryError as e:
-                assert type(e.reason) == NewConnectionError
+            assert type(e.value.reason) == NewConnectionError
 
     def test_keepalive(self):
         with HTTPConnectionPool(self.host, self.port, block=True, maxsize=1) as pool:
@@ -461,7 +422,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         with HTTPConnectionPool(
             self.host, self.port, block=True, maxsize=1, timeout=2
         ) as pool:
-
             r = pool.request(
                 "GET", "/keepalive?close=1", retries=0, headers={"Connection": "close"}
             )
@@ -625,7 +585,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         with HTTPConnectionPool(
             self.host, self.port, block=True, maxsize=1, timeout=2
         ) as pool:
-
             payload_size = 1024 * 2
             first_chunk = 512
 
@@ -718,6 +677,11 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             with pytest.raises(MaxRetryError):
                 pool.request("GET", "/test", retries=2)
 
+    def test_percent_encode_invalid_target_chars(self):
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("GET", "/echo_params?q=\r&k=\n \n")
+            assert r.data == b"[('k', '\\n \\n'), ('q', '\\r')]"
+
     def test_source_address(self):
         for addr, is_ipv6 in VALID_SOURCE_ADDRESSES:
             if is_ipv6 and not HAS_IPV6_AND_DNS:
@@ -734,7 +698,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             with HTTPConnectionPool(
                 self.host, self.port, source_address=addr, retries=False
             ) as pool:
-                # FIXME: This assert flakes sometimes. Not sure why.
                 with pytest.raises(NewConnectionError):
                     pool.request("GET", "/source_address?{0}".format(addr))
 
@@ -822,13 +785,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 class TestRetry(HTTPDummyServerTestCase):
     def test_max_retry(self):
         with HTTPConnectionPool(self.host, self.port) as pool:
-            try:
-                r = pool.request("GET", "/redirect", fields={"target": "/"}, retries=0)
-                self.fail(
-                    "Failed to raise MaxRetryError exception, returned %r" % r.status
-                )
-            except MaxRetryError:
-                pass
+            with pytest.raises(MaxRetryError):
+                pool.request("GET", "/redirect", fields={"target": "/"}, retries=0)
 
     def test_disabled_retry(self):
         """ Disabled retries should disable redirect handling. """
@@ -1132,11 +1090,9 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
         # which is unsupported by BytesIO.
         headers = {"Content-Length": "8"}
         with HTTPConnectionPool(self.host, self.port, timeout=0.1) as pool:
-            try:
+            with pytest.raises(UnrewindableBodyError) as e:
                 pool.urlopen("PUT", url, headers=headers, body=body)
-                self.fail("PUT successful despite failed rewind.")
-            except UnrewindableBodyError as e:
-                assert "Unable to record file position for" in str(e)
+            assert "Unable to record file position for" in str(e.value)
 
 
 class TestRetryPoolSize(HTTPDummyServerTestCase):
@@ -1159,7 +1115,3 @@ class TestRedirectPoolSize(HTTPDummyServerTestCase):
         ) as pool:
             pool.urlopen("GET", "/redirect", preload_content=False)
             assert pool.num_connections == 1
-
-
-if __name__ == "__main__":
-    unittest.main()

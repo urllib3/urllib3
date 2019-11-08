@@ -7,6 +7,7 @@ import urllib3.util.url
 import urllib3.util.retry
 
 from test.with_dummyserver import test_connectionpool
+from test import SHORT_TIMEOUT
 
 
 # This class is used so we can re-use the tests from the connection pool.
@@ -37,7 +38,7 @@ class MockPool(object):
 # that URLFetch is used by the connection manager.
 @pytest.mark.usefixtures("testbed")
 class TestGAEConnectionManager(test_connectionpool.TestConnectionPool):
-    def setUp(self):
+    def setup_method(self, method):
         self.manager = appengine.AppEngineManager()
         self.pool = MockPool(self.host, self.port, self.manager)
 
@@ -46,7 +47,11 @@ class TestGAEConnectionManager(test_connectionpool.TestConnectionPool):
     def test_exceptions(self):
         # DeadlineExceededError -> TimeoutError
         with pytest.raises(urllib3.exceptions.TimeoutError):
-            self.pool.request("GET", "/sleep?seconds=0.005", timeout=0.001)
+            self.pool.request(
+                "GET",
+                "/sleep?seconds={}".format(5 * SHORT_TIMEOUT),
+                timeout=SHORT_TIMEOUT,
+            )
 
         # InvalidURLError -> ProtocolError
         with pytest.raises(urllib3.exceptions.ProtocolError):
@@ -105,7 +110,7 @@ class TestGAEConnectionManager(test_connectionpool.TestConnectionPool):
 
 @pytest.mark.usefixtures("testbed")
 class TestGAEConnectionManagerWithSSL(dummyserver.testcase.HTTPSDummyServerTestCase):
-    def setUp(self):
+    def setup_method(self, method):
         self.manager = appengine.AppEngineManager()
         self.pool = MockPool(self.host, self.port, self.manager, "https")
 
@@ -119,7 +124,7 @@ class TestGAEConnectionManagerWithSSL(dummyserver.testcase.HTTPSDummyServerTestC
 
 @pytest.mark.usefixtures("testbed")
 class TestGAERetry(test_connectionpool.TestRetry):
-    def setUp(self):
+    def setup_method(self, method):
         self.manager = appengine.AppEngineManager()
         self.pool = MockPool(self.host, self.port, self.manager)
 
@@ -159,7 +164,7 @@ class TestGAERetry(test_connectionpool.TestRetry):
 
 @pytest.mark.usefixtures("testbed")
 class TestGAERetryAfter(test_connectionpool.TestRetryAfter):
-    def setUp(self):
+    def setup_method(self, method):
         # Disable urlfetch which doesn't respect Retry-After header.
         self.manager = appengine.AppEngineManager(urlfetch_retries=False)
         self.pool = MockPool(self.host, self.port, self.manager)

@@ -26,7 +26,6 @@ from .exceptions import (
 from .packages.ssl_match_hostname import CertificateError
 from .packages import six
 from .packages.six.moves import queue
-from .packages.rfc3986.normalizers import normalize_host
 from .connection import (
     port_by_scheme,
     DummyConnection,
@@ -44,7 +43,13 @@ from .util.request import set_file_position
 from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.timeout import Timeout
-from .util.url import get_host, Url, NORMALIZABLE_SCHEMES
+from .util.url import (
+    get_host,
+    parse_url,
+    Url,
+    _normalize_host as normalize_host,
+    _encode_target,
+)
 from .util.queue import LifoQueue
 
 
@@ -252,7 +257,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if self.block:
                 raise EmptyPoolError(
                     self,
-                    "Pool reached maximum size and no more " "connections are allowed.",
+                    "Pool reached maximum size and no more connections are allowed.",
                 )
             pass  # Oh well, we'll create a new connection then
 
@@ -409,9 +414,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 # Python 3
                 try:
                     httplib_response = conn.getresponse()
-                except Exception as e:
-                    # Remove the TypeError from the exception chain in Python 3;
-                    # otherwise it looks like a programming error was the cause.
+                except BaseException as e:
+                    # Remove the TypeError from the exception chain in
+                    # Python 3 (including for exceptions like SystemExit).
+                    # Otherwise it looks like a bug in the code.
                     six.raise_from(e, None)
         except (SocketTimeout, BaseSSLError, SocketError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
@@ -604,6 +610,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if assert_same_host and not self.is_same_host(url):
             raise HostChangedError(self, url, retries)
 
+        # Ensure that the URL we're connecting to is properly encoded
+        if url.startswith("/"):
+            url = six.ensure_str(_encode_target(url))
+        else:
+            url = six.ensure_str(parse_url(url).url)
+
         conn = None
 
         # Track whether `conn` needs to be released before
@@ -614,7 +626,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         #
         # See issue #651 [1] for details.
         #
-        # [1] <https://github.com/shazow/urllib3/issues/651>
+        # [1] <https://github.com/urllib3/urllib3/issues/651>
         release_this_conn = release_conn
 
         # Merge the proxy headers. Only do this in HTTP. We have to copy the
@@ -730,10 +742,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if not conn:
             # Try again
             log.warning(
-                "Retrying (%r) after connection " "broken by '%r': %s",
-                retries,
-                err,
-                url,
+                "Retrying (%r) after connection broken by '%r': %s", retries, err, url
             )
             return self.urlopen(
                 method,
@@ -746,6 +755,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 timeout=timeout,
                 pool_timeout=pool_timeout,
                 release_conn=release_conn,
+                chunked=chunked,
                 body_pos=body_pos,
                 **response_kw
             )
@@ -797,6 +807,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 timeout=timeout,
                 pool_timeout=pool_timeout,
                 release_conn=release_conn,
+                chunked=chunked,
                 body_pos=body_pos,
                 **response_kw
             )
@@ -830,6 +841,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 timeout=timeout,
                 pool_timeout=pool_timeout,
                 release_conn=release_conn,
+                chunked=chunked,
                 body_pos=body_pos,
                 **response_kw
             )
@@ -949,7 +961,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
         if not self.ConnectionCls or self.ConnectionCls is DummyConnection:
             raise SSLError(
-                "Can't connect to HTTPS URL because the SSL " "module is not available."
+                "Can't connect to HTTPS URL because the SSL module is not available."
             )
 
         actual_host = self.host
@@ -1026,6 +1038,8 @@ def _normalize_host(host, scheme):
     Normalize hosts for comparisons and use with sockets.
     """
 
+    host = normalize_host(host, scheme)
+
     # httplib doesn't like it when we include brackets in IPv6 addresses
     # Specifically, if we include brackets but also pass the port then
     # httplib crazily doubles up the square brackets on the Host header.
@@ -1033,7 +1047,5 @@ def _normalize_host(host, scheme):
     # However, for backward compatibility reasons we can't actually
     # *assert* that.  See http://bugs.python.org/issue28539
     if host.startswith("[") and host.endswith("]"):
-        host = host.strip("[]")
-    if scheme in NORMALIZABLE_SCHEMES:
-        host = normalize_host(host)
+        host = host[1:-1]
     return host
