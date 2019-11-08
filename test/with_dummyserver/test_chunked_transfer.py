@@ -112,12 +112,17 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
                 if b"Transfer-Encoding: chunked" in request.split(b"\r\n"):
                     self.chunked_requests += 1
 
-                sock.send(b"HTTP/1.1 404 Not Found\r\n\r\n")
+                sock.send(
+                    b"HTTP/1.1 429 Too Many Requests\r\n"
+                    b"Content-Type: text/plain\r\n"
+                    b"Retry-After: 1\r\n"
+                    b"\r\n"
+                )
                 sock.close()
 
         self._start_server(socket_handler)
         with HTTPConnectionPool(self.host, self.port) as pool:
-            retries = Retry(total=1, raise_on_status=False, status_forcelist=[404])
+            retries = Retry(total=1)
             pool.urlopen(
                 "GET", "/", chunked=True, preload_content=False, retries=retries
             )
