@@ -400,10 +400,11 @@ class ProxyManager(PoolManager):
         HTTPS/CONNECT case they are sent only once. Could be used for proxy
         authentication.
 
-    :param allow_https_proxy_to_see_traffic:
+    :param _allow_https_proxy_to_see_traffic:
         Allows forwarding of HTTPS requests to HTTPS proxies. The proxy will
         have visibility of all the traffic sent. ONLY USE IF YOU KNOW WHAT
-        YOU'RE DOING.
+        YOU'RE DOING. This flag might be removed at any time in any future
+        update.
 
     Example:
         >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
@@ -424,7 +425,7 @@ class ProxyManager(PoolManager):
         num_pools=10,
         headers=None,
         proxy_headers=None,
-        allow_https_proxy_to_see_traffic=False,
+        _allow_https_proxy_to_see_traffic=False,
         **connection_pool_kw
     ):
 
@@ -448,7 +449,7 @@ class ProxyManager(PoolManager):
         connection_pool_kw["_proxy"] = self.proxy
         connection_pool_kw["_proxy_headers"] = self.proxy_headers
 
-        self.allow_insecure_proxy = allow_https_proxy_to_see_traffic
+        self.allow_insecure_proxy = _allow_https_proxy_to_see_traffic
 
         super(ProxyManager, self).__init__(num_pools, headers, **connection_pool_kw)
 

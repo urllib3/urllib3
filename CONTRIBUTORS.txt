@@ -282,5 +282,8 @@ In chronological order:
   * Remove a spurious TypeError from the exception chain inside
     HTTPConnectionPool._make_request(), also for BaseExceptions.
 
+* Jorge Lopez Silva<https://github.com/jalopezsilva>
+  * Added support for forwarding requests through HTTPS proxies.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

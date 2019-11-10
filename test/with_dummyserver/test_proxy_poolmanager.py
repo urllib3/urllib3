@@ -71,7 +71,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         with proxy_from_url(
             self.https_proxy_url,
             ca_certs=DEFAULT_CA,
-            allow_https_proxy_to_see_traffic=True,
+            _allow_https_proxy_to_see_traffic=True,
         ) as https:
             r = https.request("GET", "%s/" % self.http_url)
             https.request("GET", "%s/" % self.https_url)
