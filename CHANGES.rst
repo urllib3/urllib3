@@ -1,12 +1,18 @@
 Changes
 =======
 
-master (dev)
-------------
+1.25.7 (2019-11-11)
+-------------------
+
+* Preserve ``chunked`` parameter on retries (Pull #1715, Pull #1734)
+
+* Allow unset ``SERVER_SOFTWARE`` in App Engine (Pull #1704, Issue #1470)
 
 * Fix issue where URL fragment was sent within the request target. (Pull #1732)
 
 * Fix issue where an empty query section in a URL would fail to parse. (Pull #1732)
+
+* Remove TLS 1.3 support in SecureTransport due to Apple removing support (Pull #1703)
 
 
 1.25.6 (2019-09-24)
