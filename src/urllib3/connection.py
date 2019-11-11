@@ -200,6 +200,15 @@ class HTTPConnection(_HTTPConnection, object):
 
         return _HTTPConnection.putrequest(self, method, url, *args, **kwargs)
 
+    def request(self, method, url, **httplib_request_kw):
+        headers = httplib_request_kw.pop("headers", {})
+        headers = HTTPHeaderDict(headers)
+        if "user-agent" not in headers:
+            headers["User-Agent"] = _get_default_user_agent()
+        super(HTTPConnection, self).request(
+            method, url, headers=headers, **httplib_request_kw
+        )
+
     def request_chunked(self, method, url, body=None, headers=None):
         """
         Alternative to the common request method, which sends the
@@ -215,6 +224,8 @@ class HTTPConnection(_HTTPConnection, object):
             self.putheader(header, value)
         if "transfer-encoding" not in headers:
             self.putheader("Transfer-Encoding", "chunked")
+        if "user-agent" not in headers:
+            self.putheader("User-Agent", _get_default_user_agent())
         self.endheaders()
 
         if body is not None:
@@ -416,6 +427,12 @@ def _match_hostname(cert, asserted_hostname):
         # the cert when catching the exception, if they want to
         e._peer_cert = cert
         raise
+
+
+def _get_default_user_agent():
+    from . import __version__
+
+    return "python-urllib3/%s" % __version__
 
 
 if not ssl:

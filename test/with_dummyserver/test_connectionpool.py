@@ -1,4 +1,5 @@
 import io
+import json
 import logging
 import socket
 import sys
@@ -11,6 +12,7 @@ import mock
 from .. import TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES
 from ..port_helpers import find_unused_port
 from urllib3 import encode_multipart_formdata, HTTPConnectionPool
+from urllib3.connection import _get_default_user_agent
 from urllib3.exceptions import (
     ConnectTimeoutError,
     EmptyPoolError,
@@ -792,6 +794,39 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port) as pool:
             response = pool.request("GET", "/echo_uri/seg0/../seg2")
             assert response.data == b"/echo_uri/seg0/../seg2"
+
+    def test_user_agent_headers(self):
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            # Without anything else being specified, the default user agent should be sent.
+            r = pool.request("GET", "/headers")
+            request_headers = json.loads(r.data.decode("utf8"))
+            assert request_headers.get("User-Agent") == _get_default_user_agent()
+
+            # A specified user agent in a request, regardless of poor capitalization,
+            # will be sent in place of the default.
+            headers = {
+                "UsEr-AGENt": "I'm not a web scraper, what are you talking about?"
+            }
+            r = pool.request("GET", "/headers", headers=headers)
+            request_headers = json.loads(r.data.decode("utf8"))
+            assert (
+                request_headers.get("User-Agent")
+                == "I'm not a web scraper, what are you talking about?"
+            )
+
+            # If pool headers are specified without a user agent,
+            # the default will be sent, and the header dict left unmodified.
+            pool_headers = {"foo": "bar"}
+            pool.headers = pool_headers
+            r = pool.request("GET", "/headers")
+            request_headers = json.loads(r.data.decode("utf8"))
+            assert request_headers.get("User-Agent") == _get_default_user_agent()
+            assert "User-Agent" not in pool_headers
+
+            pool.headers.update({"User-Agent": "Yet Another User Agent"})
+            r = pool.request("GET", "/headers")
+            request_headers = json.loads(r.data.decode("utf8"))
+            assert request_headers.get("User-Agent") == "Yet Another User Agent"
 
 
 class TestRetry(HTTPDummyServerTestCase):

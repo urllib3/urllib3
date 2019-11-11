@@ -2,6 +2,7 @@
 # rather than the socket level-ness of it.
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.poolmanager import proxy_from_url
+from urllib3.connection import _get_default_user_agent
 from urllib3.exceptions import (
     MaxRetryError,
     ProxyError,
@@ -936,6 +937,7 @@ class TestProxyManager(SocketDummyServerTestCase):
                     b"Host: google.com",
                     b"Accept-Encoding: identity",
                     b"Accept: */*",
+                    b"User-Agent: " + _get_default_user_agent().encode("utf-8"),
                     b"",
                     b"",
                 ]
@@ -1434,6 +1436,41 @@ class TestHeaders(SocketDummyServerTestCase):
 
     def test_headers_are_sent_with_the_original_case(self):
         headers = {"foo": "bar", "bAz": "quux"}
+        parsed_headers = {}
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf += sock.recv(65536)
+
+            headers_list = [header for header in buf.split(b"\r\n")[1:] if header]
+
+            for header in headers_list:
+                (key, value) = header.split(b": ")
+                parsed_headers[key.decode("ascii")] = value.decode("ascii")
+
+            sock.send(
+                ("HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n").encode("utf-8")
+            )
+
+            sock.close()
+
+        self._start_server(socket_handler)
+        expected_headers = {
+            "Accept-Encoding": "identity",
+            "Host": "{0}:{1}".format(self.host, self.port),
+            "User-Agent": _get_default_user_agent(),
+        }
+        expected_headers.update(headers)
+
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            pool.request("GET", "/", headers=HTTPHeaderDict(headers))
+            assert expected_headers == parsed_headers
+
+    def test_ua_header_can_be_overwridden(self):
+        headers = {"uSeR-AgENt": "Definitely not urllib3!"}
         parsed_headers = {}
 
         def socket_handler(listener):
