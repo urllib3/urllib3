@@ -1,8 +1,8 @@
 Changes
 =======
 
-master (dev)
-------------
+1.25.7 (2019-11-11)
+-------------------
 
 * Fix issue where URL fragment was sent within the request target. (Pull #1732)
 
