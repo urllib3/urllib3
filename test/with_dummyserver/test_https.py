@@ -155,6 +155,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                     # Python 3.7.4+
                     or "WSAECONNRESET" in str(e)  # Windows
                     or "EPIPE" in str(e)  # macOS
+                    or "ECONNRESET" in str(e)  # OpenSSL
                 ):
                     raise
 
