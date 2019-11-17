@@ -81,6 +81,7 @@ Maintainers
 -----------
 
 - `@sethmlarson <https://github.com/sethmlarson>`_ (Seth M. Larson)
+- `@pquentin <https://github.com/pquentin>`_ (Quentin Pradet)
 - `@theacodes <https://github.com/theacodes>`_ (Thea Flowers)
 - `@haikuginger <https://github.com/haikuginger>`_ (Jess Shapiro)
 - `@lukasa <https://github.com/lukasa>`_ (Cory Benfield)
