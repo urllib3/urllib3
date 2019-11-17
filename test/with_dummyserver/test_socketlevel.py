@@ -506,7 +506,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 "/",
                 retries=0,
                 preload_content=False,
-                timeout=Timeout(connect=1, read=SHORT_TIMEOUT),
+                timeout=Timeout(connect=1, read=LONG_TIMEOUT),
             )
             try:
                 with pytest.raises(ReadTimeoutError):
