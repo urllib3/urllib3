@@ -54,9 +54,9 @@ log = logging.getLogger(__name__)
 
 port_by_scheme = {"http": 80, "https": 443}
 
-# When it comes time to update this value as a part of regular maintenance
-# (ie test_recent_date is failing) update it to ~6 months before the current date.
-RECENT_DATE = datetime.date(2019, 1, 1)
+# This value will be updated dynamically
+six_month = datetime.timedelta(days=30 * 6 + 3)
+RECENT_DATE = (datetime.datetime.today() - six_month).date()
 
 
 class DummyConnection(object):
