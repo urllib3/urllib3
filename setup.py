@@ -85,7 +85,7 @@ setup(
             "idna>=2.0.0",
             "certifi",
             "ipaddress",
-            "python==2.7",
+            "python_version",
         ],
         "socks": ["PySocks>=1.5.6,<2.0,!=1.5.7"],
     },
