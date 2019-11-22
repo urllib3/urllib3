@@ -996,12 +996,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         if not conn.is_verified:
             warnings.warn(
                 (
-                    "Unverified HTTPS request is being made to host '"
-                    + conn.host
-                    + "'. "
+                    "Unverified HTTPS request is being made to host '%s'. "
                     "Adding certificate verification is strongly advised. See: "
                     "https://urllib3.readthedocs.io/en/latest/advanced-usage.html"
-                    "#ssl-warnings"
+                    "#ssl-warnings" % conn.host
                 ),
                 InsecureRequestWarning,
             )
