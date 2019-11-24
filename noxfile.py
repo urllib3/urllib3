@@ -74,7 +74,7 @@ def app_engine(session):
 
 @nox.session()
 def blacken(session):
-    """Run black code formater."""
+    """Run black code formatter."""
     session.install("black")
     session.run("black", "src", "dummyserver", "test", "noxfile.py", "setup.py")
 
