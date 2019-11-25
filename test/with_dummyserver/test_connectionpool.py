@@ -11,6 +11,7 @@ import mock
 from .. import TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES
 from ..port_helpers import find_unused_port
 from urllib3 import encode_multipart_formdata, HTTPConnectionPool
+from urllib3.connection import HTTPConnection
 from urllib3.exceptions import (
     ConnectTimeoutError,
     EmptyPoolError,
@@ -29,7 +30,7 @@ from test import SHORT_TIMEOUT, LONG_TIMEOUT
 from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
 from dummyserver.server import NoIPv6Warning, HAS_IPV6_AND_DNS
 
-from threading import Event
+from threading import Event, Thread
 
 pytestmark = pytest.mark.flaky
 
@@ -1115,3 +1116,62 @@ class TestRedirectPoolSize(HTTPDummyServerTestCase):
         ) as pool:
             pool.urlopen("GET", "/redirect", preload_content=False)
             assert pool.num_connections == 1
+
+
+class TestConnectionNotDisplacedByNoneOnEmptyPoolError(SocketDummyServerTestCase):
+    def test_no_displacement(self):
+        block_send_event = Event()
+        handler_ready_event = self.start_basic_handler(block_send=block_send_event)
+        handler_ready_event.wait()
+
+        def consume_connection(pool):
+            pool.request(
+                "GET", "/", timeout=LONG_TIMEOUT, pool_timeout=SHORT_TIMEOUT,
+            )
+
+        with HTTPConnectionPool(
+            self.host, self.port, maxsize=1, block=True, retries=False,
+        ) as pool:
+            consume_connection_thread = Thread(target=consume_connection, args=(pool,))
+            consume_connection_thread.start()
+            try:
+                # Wait for connection pool is empty
+                while pool.num_requests < 1:
+                    time.sleep(0)
+                with pytest.raises(EmptyPoolError):
+                    consume_connection(pool)
+            finally:
+                block_send_event.set()
+                consume_connection_thread.join()
+
+            assert pool.pool.get(True, SHORT_TIMEOUT) is not None
+
+    def test_return_conn_to_pool_when_get_conn_failed(self):
+        class FaultyConnectionError(Exception):
+            pass
+
+        side_effect = mock.Mock(
+            side_effect=[
+                FaultyConnectionError("Somebody raises an exception in constructor"),
+                None,
+            ],
+        )
+
+        class FaultyConnection(HTTPConnection):
+            def __init__(self, *args, **kw):
+                super(FaultyConnection, self).__init__(*args, **kw)
+                side_effect()
+
+        def consume_connection():
+            pool.request("GET", "/", pool_timeout=SHORT_TIMEOUT)
+
+        self.start_basic_handler().wait()
+
+        with HTTPConnectionPool(
+            self.host, self.port, maxsize=1, block=True, retries=False
+        ) as pool:
+            pool.ConnectionCls = FaultyConnection
+            with pytest.raises(FaultyConnectionError):
+                consume_connection()
+
+            consume_connection()

@@ -261,17 +261,22 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 )
             pass  # Oh well, we'll create a new connection then
 
-        # If this is a persistent connection, check if it got disconnected
-        if conn and is_connection_dropped(conn):
-            log.debug("Resetting dropped connection: %s", self.host)
-            conn.close()
-            if getattr(conn, "auto_open", 1) == 0:
-                # This is a proxied connection that has been mutated by
-                # httplib._tunnel() and cannot be reused (since it would
-                # attempt to bypass the proxy)
-                conn = None
+        try:
+            # If this is a persistent connection, check if it got disconnected
+            if conn and is_connection_dropped(conn):
+                log.debug("Resetting dropped connection: %s", self.host)
+                conn.close()
+                if getattr(conn, "auto_open", 1) == 0:
+                    # This is a proxied connection that has been mutated by
+                    # httplib._tunnel() and cannot be reused (since it would
+                    # attempt to bypass the proxy)
+                    conn = None
 
-        return conn or self._new_conn()
+            return conn or self._new_conn()
+        except Exception:
+            # Return connection to the pool if something went wrong
+            self._put_conn(conn)
+            raise
 
     def _put_conn(self, conn):
         """
@@ -617,6 +622,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             url = six.ensure_str(parse_url(url).url)
 
         conn = None
+        is_conn_from_pool = False
 
         # Track whether `conn` needs to be released before
         # returning/raising/recursing. Update this variable if necessary, and
@@ -652,6 +658,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Request a connection from the queue.
             timeout_obj = self._get_timeout(timeout)
             conn = self._get_conn(timeout=pool_timeout)
+            is_conn_from_pool = True
 
             conn.timeout = timeout_obj.connect_timeout
 
@@ -731,7 +738,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 # Close the connection, set the variable to None, and make sure
                 # we put the None back in the pool to avoid leaking it.
                 conn = conn and conn.close()
-                release_this_conn = True
+                release_this_conn = is_conn_from_pool
 
             if release_this_conn:
                 # Put the connection back to be reused. If the connection is
