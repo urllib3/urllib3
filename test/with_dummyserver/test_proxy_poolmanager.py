@@ -4,7 +4,12 @@ import socket
 import pytest
 
 from dummyserver.testcase import HTTPDummyProxyTestCase, IPv6HTTPDummyProxyTestCase
-from dummyserver.server import DEFAULT_CA, DEFAULT_CA_BAD, get_unreachable_address
+from dummyserver.server import (
+    DEFAULT_CA,
+    DEFAULT_CA_BAD,
+    HAS_IPV6,
+    get_unreachable_address,
+)
 from .. import TARPIT_HOST, requires_network
 
 from urllib3._collections import HTTPHeaderDict
@@ -346,6 +351,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert r.status == 200
 
 
+@pytest.mark.skipif(not HAS_IPV6, reason="Only runs on IPv6 systems")
 class TestIPv6HTTPProxyManager(IPv6HTTPDummyProxyTestCase):
     @classmethod
     def setup_class(cls):
