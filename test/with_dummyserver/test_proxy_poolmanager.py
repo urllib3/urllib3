@@ -136,7 +136,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                     "GET",
                     "%s/redirect" % self.http_url,
                     fields={"target": cross_host_location},
-                    timeout=LONG_TIMEOUT,
                     retries=0,
                 )
 
@@ -144,7 +143,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                 "GET",
                 "%s/redirect" % self.http_url,
                 fields={"target": "%s/echo?a=b" % self.http_url_alt},
-                timeout=LONG_TIMEOUT,
                 retries=1,
             )
             assert r._pool.host != self.http_host_alt
@@ -157,7 +155,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                     "GET",
                     "%s/redirect" % self.http_url,
                     fields={"target": cross_protocol_location},
-                    timeout=LONG_TIMEOUT,
                     retries=0,
                 )
 
@@ -165,7 +162,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                 "GET",
                 "%s/redirect" % self.http_url,
                 fields={"target": "%s/echo?a=b" % self.https_url},
-                timeout=LONG_TIMEOUT,
                 retries=1,
             )
             assert r._pool.host == self.https_host
