@@ -1,10 +1,4 @@
 .. raw:: html
-
-   <p align="center">
-      <a href="https://codefund.io/properties/451/visit-sponsor">
-         <img src="https://codefund.io/properties/451/sponsor" />
-      </a>
-   </p>
    <p align="center">
       <a href="https://github.com/urllib3/urllib3">
          <img src="./docs/images/banner.svg" width="60%" alt="urllib3" />
