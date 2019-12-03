@@ -1,4 +1,5 @@
 .. raw:: html
+
    <p align="center">
       <a href="https://github.com/urllib3/urllib3">
          <img src="./docs/images/banner.svg" width="60%" alt="urllib3" />
