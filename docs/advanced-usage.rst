@@ -126,14 +126,19 @@ You can connect to a proxy using HTTP, HTTPS or SOCKS. urllib3's behavior will
 be different depending on the type of proxy you selected and the destination
 you're contacting.
 
-When contacting a HTTP website through a HTTP or HTTPS proxy, the request
-will be forwarded with the `absolute URI <https://tools.ietf.org/html/rfc7230#section-5.3.2>`_.
+When contacting a HTTP website through a HTTP or HTTPS proxy, the request will
+be forwarded with the `absolute URI
+<https://tools.ietf.org/html/rfc7230#section-5.3.2>`_.  
 
 When contacting a HTTPS website through a HTTP proxy, a TCP tunnel will be
 established with a HTTP CONNECT. Afterward a TLS connection will be established
 with the destination and your request will be sent.
 
 Contacting HTTPS websites through HTTPS proxies is currently not supported.
+
+To enable connecting to an HTTPS proxy you need to provide the flag
+``_enable_https_proxies``. In a future release we will change this to be the
+default behavior.
 
 For SOCKS, you can use :class:`~contrib.socks.SOCKSProxyManager` to connect to
 SOCKS4 or SOCKS5 proxies. In order to use SOCKS proxies you will need to

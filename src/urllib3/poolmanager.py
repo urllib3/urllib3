@@ -2,11 +2,13 @@ from __future__ import absolute_import
 import collections
 import functools
 import logging
+import warnings
 
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
 from .exceptions import (
+    HTTPWarning,
     LocationValueError,
     MaxRetryError,
     ProxySchemeUnknown,
@@ -20,6 +22,12 @@ from .util.retry import Retry
 
 
 __all__ = ["PoolManager", "ProxyManager", "proxy_from_url"]
+
+
+class InvalidProxyConfigurationWarning(HTTPWarning):
+    """Raised when a user has an HTTPS proxy without enabling HTTPS proxies."""
+
+    pass
 
 
 log = logging.getLogger(__name__)
@@ -400,6 +408,11 @@ class ProxyManager(PoolManager):
         HTTPS/CONNECT case they are sent only once. Could be used for proxy
         authentication.
 
+    :param _enable_https_proxies:
+        Setting this to true will enable contacting HTTPS proxies if one is
+        provided through the configuration. Defaults to False, will be switched
+        to True in a future release.
+
     :param _allow_https_proxy_to_see_traffic:
         Allows forwarding of HTTPS requests to HTTPS proxies. The proxy will
         have visibility of all the traffic sent. ONLY USE IF YOU KNOW WHAT
@@ -425,6 +438,7 @@ class ProxyManager(PoolManager):
         num_pools=10,
         headers=None,
         proxy_headers=None,
+        _enable_https_proxies=False,
         _allow_https_proxy_to_see_traffic=False,
         **connection_pool_kw
     ):
@@ -436,12 +450,23 @@ class ProxyManager(PoolManager):
                 proxy_url.port,
             )
         proxy = parse_url(proxy_url)
-        if not proxy.port:
-            port = port_by_scheme.get(proxy.scheme, 80)
-            proxy = proxy._replace(port=port)
 
         if proxy.scheme not in ("http", "https"):
             raise ProxySchemeUnknown(proxy.scheme)
+
+        if proxy.scheme == "https" and not _enable_https_proxies:
+            proxy = proxy._replace(scheme="http")
+            warnings.warn(
+                "Your proxy configuration specified an HTTPS scheme for the proxy. "
+                "urllib3 previoustly didn't support contacting a proxy through HTTPS."
+                "If you want to use HTTPS to contact the proxy, provide the "
+                "_enable_https_proxies flag. Otherwise set the proxy scheme to HTTP.",
+                InvalidProxyConfigurationWarning,
+            )
+
+        if not proxy.port:
+            port = port_by_scheme.get(proxy.scheme, 80)
+            proxy = proxy._replace(port=port)
 
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
