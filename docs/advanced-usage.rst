@@ -133,8 +133,7 @@ When contacting a HTTPS website through a HTTP proxy, a TCP tunnel will be
 established with a HTTP CONNECT. Afterward a TLS connection will be established
 with the destination and your request will be sent.
 
-Contacting HTTPS websites through HTTPS proxies is currently not supported but
-is being developed at this time.
+Contacting HTTPS websites through HTTPS proxies is currently not supported.
 
 For SOCKS, you can use :class:`~contrib.socks.SOCKSProxyManager` to connect to
 SOCKS4 or SOCKS5 proxies. In order to use SOCKS proxies you will need to
