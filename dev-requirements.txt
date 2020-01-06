@@ -1,6 +1,7 @@
 mock==3.0.5
 coverage~=4.5
-tornado==5.1.1
+tornado==5.1.1;python_version<="2.7"
+tornado==6.0.3;python_version>="3.5"
 PySocks==1.7.1
 # https://github.com/Anorov/PySocks/issues/131
 win-inet-pton==1.1.0
