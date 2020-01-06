@@ -1,6 +1,12 @@
 Changes
 =======
 
+dev
+---
+
+* Drop support for EOL Python 3.4 (Pull #1774)
+
+
 1.25.7 (2019-11-11)
 -------------------
 
