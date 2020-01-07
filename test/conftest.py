@@ -1,3 +1,6 @@
+import platform
+import sys
+
 import pytest
 import trustme
 
@@ -8,6 +11,15 @@ from dummyserver.server import (
     CLIENT_NO_INTERMEDIATE_PEM,
     CLIENT_INTERMEDIATE_KEY,
 )
+
+
+# The Python 3.8+ default loop on Windows breaks Tornado
+@pytest.fixture(scope="session", autouse=True)
+def configure_windows_event_loop():
+    if sys.version_info >= (3, 8) and platform.system() == "Windows":
+        import asyncio
+
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 @pytest.fixture(scope="session")
