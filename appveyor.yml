@@ -27,6 +27,11 @@ environment:
       PYTHON_ARCH: "64"
       NOX_SESSION: "test-3.7"
 
+    - PYTHON: "C:\\Python38-x64"
+      PYTHON_VERSION: "3.8.x"
+      PYTHON_ARCH: "64"
+      NOX_SESSION: "test-3.8"
+
 cache:
   - C:\Users\appveyor\AppData\Local\pip\Cache
 
