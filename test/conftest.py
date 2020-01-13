@@ -1,15 +1,23 @@
+import collections
+import contextlib
+import threading
 import platform
 import sys
 
 import pytest
 import trustme
+from tornado import web, ioloop
 
+from dummyserver.handlers import TestingApp
+from dummyserver.server import run_tornado_app
 from dummyserver.server import (
     DEFAULT_CA,
     DEFAULT_CA_KEY,
     CLIENT_INTERMEDIATE_PEM,
     CLIENT_NO_INTERMEDIATE_PEM,
     CLIENT_INTERMEDIATE_KEY,
+    NO_SAN_CA,
+    NO_SAN_CERTS,
 )
 
 
@@ -42,3 +50,27 @@ def certs_dir(tmp_path_factory):
     cert.cert_chain_pems[0].write_to_path(str(tmpdir / CLIENT_NO_INTERMEDIATE_PEM))
 
     yield tmpdir
+
+
+ServerConfig = collections.namedtuple("ServerConfig", ["host", "port", "ca_certs"])
+
+
+@contextlib.contextmanager
+def run_server_in_thread(scheme, host, ca_certs, server_certs):
+    io_loop = ioloop.IOLoop.current()
+    app = web.Application([(r".*", TestingApp)])
+    server, port = run_tornado_app(app, io_loop, server_certs, scheme, host)
+    server_thread = threading.Thread(target=io_loop.start)
+    server_thread.start()
+
+    yield ServerConfig(host, port, ca_certs)
+
+    io_loop.add_callback(server.stop)
+    io_loop.add_callback(io_loop.stop)
+    server_thread.join()
+
+
+@pytest.fixture
+def no_san_server(tmp_path_factory):
+    with run_server_in_thread("https", "localhost", NO_SAN_CA, NO_SAN_CERTS) as cfg:
+        yield cfg
