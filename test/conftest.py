@@ -16,8 +16,6 @@ from dummyserver.server import (
     CLIENT_INTERMEDIATE_PEM,
     CLIENT_NO_INTERMEDIATE_PEM,
     CLIENT_INTERMEDIATE_KEY,
-    NO_SAN_CA,
-    NO_SAN_CERTS,
 )
 
 
@@ -72,5 +70,22 @@ def run_server_in_thread(scheme, host, ca_certs, server_certs):
 
 @pytest.fixture
 def no_san_server(tmp_path_factory):
-    with run_server_in_thread("https", "localhost", NO_SAN_CA, NO_SAN_CERTS) as cfg:
+    tmpdir = tmp_path_factory.mktemp("certs")
+    ca = trustme.CA()
+    # only common name, no subject alternative names
+    server_cert = ca.issue_cert(common_name=u"localhost")
+
+    ca_cert_path = str(tmpdir / "ca.pem")
+    server_cert_path = str(tmpdir / "server.pem")
+    server_key_path = str(tmpdir / "server.key")
+    ca.cert_pem.write_to_path(ca_cert_path)
+    server_cert.private_key_pem.write_to_path(server_key_path)
+    server_cert.cert_chain_pems[0].write_to_path(server_cert_path)
+
+    with run_server_in_thread(
+        "https",
+        "localhost",
+        ca_cert_path,
+        {"keyfile": server_key_path, "certfile": server_cert_path},
+    ) as cfg:
         yield cfg
