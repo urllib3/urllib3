@@ -18,8 +18,6 @@ from dummyserver.server import (
     DEFAULT_CA,
     DEFAULT_CA_BAD,
     DEFAULT_CERTS,
-    NO_SAN_CERTS,
-    NO_SAN_CA,
     IPV6_ADDR_CERTS,
     IPV6_ADDR_CA,
     HAS_IPV6,
@@ -707,15 +705,16 @@ class TestHTTPS_TLSv1_3(TestHTTPS):
     certs = TLSv1_3_CERTS
 
 
-class TestHTTPS_NoSAN(HTTPSDummyServerTestCase):
-    certs = NO_SAN_CERTS
-
-    def test_warning_for_certs_without_a_san(self):
+class TestHTTPS_NoSAN:
+    def test_warning_for_certs_without_a_san(self, no_san_server):
         """Ensure that a warning is raised when the cert from the server has
         no Subject Alternative Name."""
         with mock.patch("warnings.warn") as warn:
             with HTTPSConnectionPool(
-                self.host, self.port, cert_reqs="CERT_REQUIRED", ca_certs=NO_SAN_CA
+                no_san_server.host,
+                no_san_server.port,
+                cert_reqs="CERT_REQUIRED",
+                ca_certs=no_san_server.ca_certs,
             ) as https_pool:
                 r = https_pool.request("GET", "/")
                 assert r.status == 200
