@@ -21,7 +21,6 @@ from dummyserver.server import (
     IPV6_ADDR_CERTS,
     IPV6_ADDR_CA,
     HAS_IPV6,
-    IP_SAN_CERTS,
     IPV6_SAN_CERTS,
     IPV6_SAN_CA,
     PASSWORD_CLIENT_KEYFILE,
@@ -721,10 +720,8 @@ class TestHTTPS_NoSAN:
                 assert warn.called
 
 
-class TestHTTPS_IPSAN(HTTPSDummyServerTestCase):
-    certs = IP_SAN_CERTS
-
-    def test_can_validate_ip_san(self):
+class TestHTTPS_IPSAN:
+    def test_can_validate_ip_san(self, ip_san_server):
         """Ensure that urllib3 can validate SANs with IP addresses in them."""
         try:
             import ipaddress  # noqa: F401
@@ -732,7 +729,10 @@ class TestHTTPS_IPSAN(HTTPSDummyServerTestCase):
             pytest.skip("Only runs on systems with an ipaddress module")
 
         with HTTPSConnectionPool(
-            "127.0.0.1", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
+            ip_san_server.host,
+            ip_san_server.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=ip_san_server.ca_certs,
         ) as https_pool:
             r = https_pool.request("GET", "/")
             assert r.status == 200
