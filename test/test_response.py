@@ -859,8 +859,9 @@ class TestResponse(object):
     @pytest.mark.parametrize(
         ["payload", "expected_stream"],
         [
-            (b"", [b""]),
+            (b"", []),
             (b"\n", [b"\n"]),
+            (b"\n\n\n", [b"\n", b"\n", b"\n"]),
             (b"abc\ndef", [b"abc\n", b"def"]),
             (b"Hello\nworld\n\n\n!", [b"Hello\n", b"world\n", b"\n", b"\n", b"!"]),
         ],
