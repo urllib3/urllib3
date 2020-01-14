@@ -39,10 +39,6 @@ CLIENT_INTERMEDIATE_KEY = "client_intermediate.key"
 CLIENT_CERT = os.path.join(CERTS_PATH, CLIENT_INTERMEDIATE_PEM)
 PASSWORD_KEYFILE = os.path.join(CERTS_PATH, "server_password.key")
 PASSWORD_CLIENT_KEYFILE = os.path.join(CERTS_PATH, "client_password.key")
-IP_SAN_CERTS = {
-    "certfile": os.path.join(CERTS_PATH, "server.ip_san.crt"),
-    "keyfile": DEFAULT_CERTS["keyfile"],
-}
 IPV6_ADDR_CERTS = {
     "certfile": os.path.join(CERTS_PATH, "server.ipv6addr.crt"),
     "keyfile": os.path.join(CERTS_PATH, "server.ipv6addr.key"),
