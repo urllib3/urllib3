@@ -149,11 +149,6 @@ class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
     certs = DEFAULT_CERTS
 
 
-@pytest.mark.skipif(not HAS_IPV6, reason="IPv6 not available")
-class IPV6HTTPSDummyServerTestCase(HTTPSDummyServerTestCase):
-    host = "::1"
-
-
 class HTTPDummyProxyTestCase(object):
 
     http_host = "localhost"
