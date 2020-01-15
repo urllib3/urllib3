@@ -16,10 +16,6 @@ from dummyserver.server import (
     CLIENT_INTERMEDIATE_PEM,
     CLIENT_NO_INTERMEDIATE_PEM,
     CLIENT_INTERMEDIATE_KEY,
-    IPV6_ADDR_CA,
-    IPV6_ADDR_CERTS,
-    IPV6_SAN_CERTS,
-    IPV6_SAN_CA,
 )
 
 
@@ -119,12 +115,46 @@ def ip_san_server(tmp_path_factory):
 
 
 @pytest.fixture
-def ipv6_addr_server():
-    with run_server_in_thread("https", "::1", IPV6_ADDR_CA, IPV6_ADDR_CERTS) as cfg:
+def ipv6_addr_server(tmp_path_factory):
+    tmpdir = tmp_path_factory.mktemp("certs")
+    ca = trustme.CA()
+    # IP address in Common Name
+    server_cert = ca.issue_cert(common_name=u"::1")
+
+    ca_cert_path = str(tmpdir / "ca.pem")
+    server_cert_path = str(tmpdir / "server.pem")
+    server_key_path = str(tmpdir / "server.key")
+    ca.cert_pem.write_to_path(ca_cert_path)
+    server_cert.private_key_pem.write_to_path(server_key_path)
+    server_cert.cert_chain_pems[0].write_to_path(server_cert_path)
+
+    with run_server_in_thread(
+        "https",
+        "::1",
+        ca_cert_path,
+        {"keyfile": server_key_path, "certfile": server_cert_path},
+    ) as cfg:
         yield cfg
 
 
 @pytest.fixture
-def ipv6_san_server():
-    with run_server_in_thread("https", "::1", IPV6_SAN_CA, IPV6_SAN_CERTS) as cfg:
+def ipv6_san_server(tmp_path_factory):
+    tmpdir = tmp_path_factory.mktemp("certs")
+    ca = trustme.CA()
+    # IP address in Subject Alternative Name
+    server_cert = ca.issue_cert(u"::1")
+
+    ca_cert_path = str(tmpdir / "ca.pem")
+    server_cert_path = str(tmpdir / "server.pem")
+    server_key_path = str(tmpdir / "server.key")
+    ca.cert_pem.write_to_path(ca_cert_path)
+    server_cert.private_key_pem.write_to_path(server_key_path)
+    server_cert.cert_chain_pems[0].write_to_path(server_cert_path)
+
+    with run_server_in_thread(
+        "https",
+        "::1",
+        ca_cert_path,
+        {"keyfile": server_key_path, "certfile": server_cert_path},
+    ) as cfg:
         yield cfg
