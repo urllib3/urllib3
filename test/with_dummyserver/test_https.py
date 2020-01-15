@@ -9,7 +9,7 @@ import warnings
 import mock
 import pytest
 
-from dummyserver.testcase import HTTPSDummyServerTestCase, IPV6HTTPSDummyServerTestCase
+from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import (
     CLIENT_CERT,
     CLIENT_INTERMEDIATE_PEM,
@@ -18,11 +18,7 @@ from dummyserver.server import (
     DEFAULT_CA,
     DEFAULT_CA_BAD,
     DEFAULT_CERTS,
-    IPV6_ADDR_CERTS,
-    IPV6_ADDR_CA,
     HAS_IPV6,
-    IPV6_SAN_CERTS,
-    IPV6_SAN_CA,
     PASSWORD_CLIENT_KEYFILE,
 )
 
@@ -738,23 +734,23 @@ class TestHTTPS_IPSAN:
             assert r.status == 200
 
 
-class TestHTTPS_IPv6Addr(IPV6HTTPSDummyServerTestCase):
-    certs = IPV6_ADDR_CERTS
-
+class TestHTTPS_IPv6Addr:
     @pytest.mark.skipif(not HAS_IPV6, reason="Only runs on IPv6 systems")
-    def test_strip_square_brackets_before_validating(self):
+    def test_strip_square_brackets_before_validating(self, ipv6_addr_server):
         """Test that the fix for #760 works."""
         with HTTPSConnectionPool(
-            "[::1]", self.port, cert_reqs="CERT_REQUIRED", ca_certs=IPV6_ADDR_CA
+            "[::1]",
+            ipv6_addr_server.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=ipv6_addr_server.ca_certs,
         ) as https_pool:
             r = https_pool.request("GET", "/")
             assert r.status == 200
 
 
-class TestHTTPS_IPV6SAN(IPV6HTTPSDummyServerTestCase):
-    certs = IPV6_SAN_CERTS
-
-    def test_can_validate_ipv6_san(self):
+class TestHTTPS_IPV6SAN:
+    @pytest.mark.skipif(not HAS_IPV6, reason="Only runs on IPv6 systems")
+    def test_can_validate_ipv6_san(self, ipv6_san_server):
         """Ensure that urllib3 can validate SANs with IPv6 addresses in them."""
         try:
             import ipaddress  # noqa: F401
@@ -762,7 +758,10 @@ class TestHTTPS_IPV6SAN(IPV6HTTPSDummyServerTestCase):
             pytest.skip("Only runs on systems with an ipaddress module")
 
         with HTTPSConnectionPool(
-            "[::1]", self.port, cert_reqs="CERT_REQUIRED", ca_certs=IPV6_SAN_CA
+            "[::1]",
+            ipv6_san_server.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=ipv6_san_server.ca_certs,
         ) as https_pool:
             r = https_pool.request("GET", "/")
             assert r.status == 200

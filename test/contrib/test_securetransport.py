@@ -10,6 +10,8 @@ try:
 except ImportError:
     pass
 
+pytestmark = pytest.mark.skip()
+
 
 def setup_module():
     try:
