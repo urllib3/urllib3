@@ -16,6 +16,7 @@ from dummyserver.server import (
     CLIENT_INTERMEDIATE_PEM,
     CLIENT_NO_INTERMEDIATE_PEM,
     CLIENT_INTERMEDIATE_KEY,
+    HAS_IPV6,
 )
 
 
@@ -100,6 +101,9 @@ def ip_san_server(tmp_path_factory):
 
 @pytest.fixture
 def ipv6_addr_server(tmp_path_factory):
+    if not HAS_IPV6:
+        pytest.skip("Only runs on IPv6 systems")
+
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # IP address in Common Name
@@ -111,6 +115,9 @@ def ipv6_addr_server(tmp_path_factory):
 
 @pytest.fixture
 def ipv6_san_server(tmp_path_factory):
+    if not HAS_IPV6:
+        pytest.skip("Only runs on IPv6 systems")
+
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # IP address in Subject Alternative Name
