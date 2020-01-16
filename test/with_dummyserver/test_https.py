@@ -18,7 +18,6 @@ from dummyserver.server import (
     DEFAULT_CA,
     DEFAULT_CA_BAD,
     DEFAULT_CERTS,
-    HAS_IPV6,
     PASSWORD_CLIENT_KEYFILE,
 )
 
@@ -735,7 +734,6 @@ class TestHTTPS_IPSAN:
 
 
 class TestHTTPS_IPv6Addr:
-    @pytest.mark.skipif(not HAS_IPV6, reason="Only runs on IPv6 systems")
     def test_strip_square_brackets_before_validating(self, ipv6_addr_server):
         """Test that the fix for #760 works."""
         with HTTPSConnectionPool(
@@ -749,7 +747,6 @@ class TestHTTPS_IPv6Addr:
 
 
 class TestHTTPS_IPV6SAN:
-    @pytest.mark.skipif(not HAS_IPV6, reason="Only runs on IPv6 systems")
     def test_can_validate_ipv6_san(self, ipv6_san_server):
         """Ensure that urllib3 can validate SANs with IPv6 addresses in them."""
         try:
