@@ -1,8 +1,8 @@
 Changes
 =======
 
-dev
----
+1.25.8 (2020-01-20)
+-------------------
 
 * Drop support for EOL Python 3.4 (Pull #1774)
 
