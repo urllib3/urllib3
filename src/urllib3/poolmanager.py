@@ -319,7 +319,7 @@ class PoolManager(RequestMethods):
                     base_pool_kwargs[key] = value
         return base_pool_kwargs
 
-    def _proxy_requires_complete_url(self, parsed_url):
+    def _proxy_requires_url_absolute_form(self, parsed_url):
         """
         Indicates if the proxy requires the complete destination URL in the
         request.
@@ -349,7 +349,7 @@ class PoolManager(RequestMethods):
         if "headers" not in kw:
             kw["headers"] = self.headers.copy()
 
-        if self._proxy_requires_complete_url(u):
+        if self._proxy_requires_url_absolute_form(u):
             response = conn.urlopen(method, url, **kw)
         else:
             response = conn.urlopen(method, u.request_uri, **kw)
@@ -408,11 +408,6 @@ class ProxyManager(PoolManager):
         HTTPS/CONNECT case they are sent only once. Could be used for proxy
         authentication.
 
-    :param _enable_https_proxies:
-        Setting this to true will enable contacting HTTPS proxies if one is
-        provided through the configuration. Defaults to False, will be switched
-        to True in a future release.
-
     :param _allow_https_proxy_to_see_traffic:
         Allows forwarding of HTTPS requests to HTTPS proxies. The proxy will
         have visibility of all the traffic sent. ONLY USE IF YOU KNOW WHAT
@@ -438,7 +433,6 @@ class ProxyManager(PoolManager):
         num_pools=10,
         headers=None,
         proxy_headers=None,
-        _enable_https_proxies=False,
         _allow_https_proxy_to_see_traffic=False,
         **connection_pool_kw
     ):
@@ -453,16 +447,6 @@ class ProxyManager(PoolManager):
 
         if proxy.scheme not in ("http", "https"):
             raise ProxySchemeUnknown(proxy.scheme)
-
-        if proxy.scheme == "https" and not _enable_https_proxies:
-            proxy = proxy._replace(scheme="http")
-            warnings.warn(
-                "Your proxy configuration specified an HTTPS scheme for the proxy. "
-                "urllib3 previoustly didn't support contacting a proxy through HTTPS."
-                "If you want to use HTTPS to contact the proxy, provide the "
-                "_enable_https_proxies flag. Otherwise set the proxy scheme to HTTP.",
-                InvalidProxyConfigurationWarning,
-            )
 
         if not proxy.port:
             port = port_by_scheme.get(proxy.scheme, 80)
@@ -509,7 +493,18 @@ class ProxyManager(PoolManager):
             and self.proxy.scheme == "https"
             and not self.allow_insecure_proxy
         ):
-            raise ProxySchemeUnsupported("TLS within TLS is not yet supported.")
+            warnings.warn(
+                "Your proxy configuration specified an HTTPS scheme for the proxy. "
+                "Are you sure you want to use HTTPS to contact the proxy? "
+                "This most likely indicates an error in your configuration."
+                "If you are sure you want use HTTPS to contact the proxy, enable "
+                "the _allow_https_proxy_to_see_traffic.",
+                InvalidProxyConfigurationWarning,
+            )
+
+            raise ProxySchemeUnsupported(
+                "Contacting HTTPS destinations through HTTPS proxies is not supported."
+            )
 
     def urlopen(self, method, url, redirect=True, **kw):
         "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."

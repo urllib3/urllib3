@@ -61,9 +61,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert r.status == 200
 
     def test_https_proxy(self):
-        with proxy_from_url(
-            self.https_proxy_url, ca_certs=DEFAULT_CA, _enable_https_proxies=True
-        ) as https:
+        with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
             r = https.request("GET", "%s/" % self.http_url)
             assert r.status == 200
 
@@ -74,19 +72,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             self.https_proxy_url,
             ca_certs=DEFAULT_CA,
             _allow_https_proxy_to_see_traffic=True,
-            _enable_https_proxies=True,
         ) as https:
             r = https.request("GET", "%s/" % self.http_url)
             https.request("GET", "%s/" % self.https_url)
-            assert r.status == 200
-
-    def test_http_proxy_with_https_scheme(self):
-        invalid_proxy_url = "https://%s:%d" % (self.proxy_host, self.proxy_port)
-        with proxy_from_url(invalid_proxy_url, ca_certs=DEFAULT_CA) as http:
-            r = http.request("GET", "%s/" % self.http_url)
-            assert r.status == 200
-
-            r = http.request("GET", "%s/" % self.https_url)
             assert r.status == 200
 
     def test_nagle_proxy(self):
@@ -317,7 +305,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             headers={"Foo": "bar"},
             proxy_headers={"Hickory": "dickory"},
             ca_certs=DEFAULT_CA,
-            _enable_https_proxies=True,
         ) as http:
 
             r = http.request_encode_url("GET", "%s/headers" % self.http_url)

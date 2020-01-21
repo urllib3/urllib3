@@ -38,11 +38,8 @@ class TestProxyManager(object):
     def test_default_port(self):
         with ProxyManager("http://something") as p:
             assert p.proxy.port == 80
-        with ProxyManager("https://something", _enable_https_proxies=True) as p:
-            assert p.proxy.port == 443
-        # HTTPS proxy without properly enabling it should default to HTTP.
         with ProxyManager("https://something") as p:
-            assert p.proxy.port == 80
+            assert p.proxy.port == 443
 
     def test_invalid_scheme(self):
         with pytest.raises(AssertionError):
@@ -54,9 +51,9 @@ class TestProxyManager(object):
         http_url = parse_url("http://example.com")
         https_url = parse_url("https://example.com")
         with ProxyManager("http://proxy:8080") as p:
-            assert p._proxy_requires_complete_url(http_url)
-            assert p._proxy_requires_complete_url(https_url) is False
+            assert p._proxy_requires_url_absolute_form(http_url)
+            assert p._proxy_requires_url_absolute_form(https_url) is False
 
-        with ProxyManager("https://proxy:8080", _enable_https_proxies=True) as p:
-            assert p._proxy_requires_complete_url(http_url)
-            assert p._proxy_requires_complete_url(https_url)
+        with ProxyManager("https://proxy:8080") as p:
+            assert p._proxy_requires_url_absolute_form(http_url)
+            assert p._proxy_requires_url_absolute_form(https_url)

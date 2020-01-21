@@ -136,10 +136,6 @@ with the destination and your request will be sent.
 
 Contacting HTTPS websites through HTTPS proxies is currently not supported.
 
-To enable connecting to an HTTPS proxy you need to provide the flag
-``_enable_https_proxies``. In a future release we will change this to be the
-default behavior.
-
 For SOCKS, you can use :class:`~contrib.socks.SOCKSProxyManager` to connect to
 SOCKS4 or SOCKS5 proxies. In order to use SOCKS proxies you will need to
 install `PySocks <https://pypi.org/project/PySocks/>`_ or install urllib3 with
