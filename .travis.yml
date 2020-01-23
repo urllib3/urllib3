@@ -1,6 +1,5 @@
 language: python
-sudo: false
-stage: test
+os: linux
 dist: xenial
 
 before_install:
@@ -29,7 +28,7 @@ env:
     - PYPI_USERNAME=urllib3
     # PYPI_PASSWORD is set in Travis control panel.
 
-matrix:
+jobs:
   include:
     # Lint & documentation.
     - python: 3.6
