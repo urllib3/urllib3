@@ -37,12 +37,10 @@ CLIENT_INTERMEDIATE_PEM = "client_intermediate.pem"
 CLIENT_NO_INTERMEDIATE_PEM = "client_no_intermediate.pem"
 CLIENT_INTERMEDIATE_KEY = "client_intermediate.key"
 CLIENT_CERT = os.path.join(CERTS_PATH, CLIENT_INTERMEDIATE_PEM)
-PASSWORD_KEYFILE = os.path.join(CERTS_PATH, "server_password.key")
 PASSWORD_CLIENT_KEYFILE = os.path.join(CERTS_PATH, "client_password.key")
 DEFAULT_CA = os.path.join(CERTS_PATH, "cacert.pem")
 DEFAULT_CA_KEY = os.path.join(CERTS_PATH, "cacert.key")
 DEFAULT_CA_BAD = os.path.join(CERTS_PATH, "client_bad.pem")
-COMBINED_CERT_AND_KEY = os.path.join(CERTS_PATH, "server.combined.pem")
 
 
 def _has_ipv6(host):
