@@ -271,8 +271,6 @@ class TestUtil(object):
         # Path/query/fragment
         ("?", Url(path="", query="")),
         ("#", Url(path="", fragment="")),
-        # Path normalization
-        ("/abc/../def", Url(path="/def")),
         # Empty Port
         ("http://google.com:", Url("http", host="google.com")),
         ("http://google.com:/", Url("http", host="google.com", path="/")),
@@ -315,16 +313,7 @@ class TestUtil(object):
         assert url == expected_url.url
 
     @pytest.mark.parametrize(
-        ["url", "expected_url"],
-        [
-            # RFC 3986 5.2.4
-            ("/abc/../def", Url(path="/def")),
-            ("/..", Url(path="/")),
-            ("/./abc/./def/", Url(path="/abc/def/")),
-            ("/.", Url(path="/")),
-            ("/./", Url(path="/")),
-            ("/abc/./.././d/././e/.././f/./../../ghi", Url(path="/ghi")),
-        ],
+        ["url", "expected_url"]
     )
     def test_parse_and_normalize_url_paths(self, url, expected_url):
         actual_url = parse_url(url)
