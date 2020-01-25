@@ -241,36 +241,6 @@ def _encode_invalid_chars(component, allowed_chars, encoding="utf-8"):
     return encoded_component.decode(encoding)
 
 
-def _remove_path_dot_segments(path):
-    # See http://tools.ietf.org/html/rfc3986#section-5.2.4 for pseudo-code
-    segments = path.split("/")  # Turn the path into a list of segments
-    output = []  # Initialize the variable to use to store output
-
-    for segment in segments:
-        # '.' is the current directory, so ignore it, it is superfluous
-        if segment == ".":
-            continue
-        # Anything other than '..', should be appended to the output
-        elif segment != "..":
-            output.append(segment)
-        # In this case segment == '..', if we can, we should pop the last
-        # element
-        elif output:
-            output.pop()
-
-    # If the path starts with '/' and the output is empty or the first string
-    # is non-empty
-    if path.startswith("/") and (not output or output[0]):
-        output.insert(0, "")
-
-    # If the path starts with '/.' or '/..' ensure we add one more empty
-    # string to add a trailing '/'
-    if path.endswith(("/.", "/..")):
-        output.append("")
-
-    return "/".join(output)
-
-
 def _normalize_host(host, scheme):
     if host:
         if isinstance(host, six.binary_type):
@@ -381,7 +351,6 @@ def parse_url(url):
         host = _normalize_host(host, scheme)
 
         if normalize_uri and path:
-            path = _remove_path_dot_segments(path)
             path = _encode_invalid_chars(path, PATH_CHARS)
         if normalize_uri and query:
             query = _encode_invalid_chars(query, QUERY_CHARS)
