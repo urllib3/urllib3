@@ -312,9 +312,6 @@ class TestUtil(object):
     def test_unparse_url(self, url, expected_url):
         assert url == expected_url.url
 
-    @pytest.mark.parametrize(
-        ["url", "expected_url"]
-    )
     def test_parse_and_normalize_url_paths(self, url, expected_url):
         actual_url = parse_url(url)
         assert actual_url == expected_url
