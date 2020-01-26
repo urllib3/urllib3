@@ -14,6 +14,7 @@ import trustme
 
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import (
+    encrypt_key_pem,
     CLIENT_CERT,
     CLIENT_INTERMEDIATE_PEM,
     CLIENT_NO_INTERMEDIATE_PEM,
@@ -96,9 +97,13 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         # client cert chain
         intermediate_ca = root_ca.create_child_ca()
         cert = intermediate_ca.issue_cert(u"example.com")
+        encrypted_key = encrypt_key_pem(cert.private_key_pem, b"letmein")
 
         cert.private_key_pem.write_to_path(
             os.path.join(cls.certs_dir, CLIENT_INTERMEDIATE_KEY)
+        )
+        encrypted_key.write_to_path(
+            os.path.join(cls.certs_dir, PASSWORD_CLIENT_KEYFILE)
         )
         # Write the client cert and the intermediate CA
         client_cert = os.path.join(cls.certs_dir, CLIENT_INTERMEDIATE_PEM)
@@ -192,21 +197,21 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.host,
             self.port,
             ca_certs=DEFAULT_CA,
-            key_file=PASSWORD_CLIENT_KEYFILE,
-            cert_file=CLIENT_CERT,
+            key_file=os.path.join(self.certs_dir, PASSWORD_CLIENT_KEYFILE),
+            cert_file=os.path.join(self.certs_dir, CLIENT_CERT),
             key_password="letmein",
         ) as https_pool:
             r = https_pool.request("GET", "/certificate")
             subject = json.loads(r.data.decode("utf-8"))
-            assert subject["organizationalUnitName"].startswith("Testing server cert")
+            assert subject["organizationalUnitName"].startswith("Testing cert")
 
     @requires_ssl_context_keyfile_password
     def test_client_encrypted_key_requires_password(self):
         with HTTPSConnectionPool(
             self.host,
             self.port,
-            key_file=PASSWORD_CLIENT_KEYFILE,
-            cert_file=CLIENT_CERT,
+            key_file=os.path.join(self.certs_dir, PASSWORD_CLIENT_KEYFILE),
+            cert_file=os.path.join(self.certs_dir, CLIENT_CERT),
             key_password=None,
         ) as https_pool:
             with pytest.raises(MaxRetryError) as e:
