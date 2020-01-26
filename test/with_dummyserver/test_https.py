@@ -15,15 +15,10 @@ import trustme
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import (
     encrypt_key_pem,
-    CLIENT_CERT,
-    CLIENT_INTERMEDIATE_PEM,
-    CLIENT_NO_INTERMEDIATE_PEM,
-    CLIENT_INTERMEDIATE_KEY,
     DEFAULT_CA,
     DEFAULT_CA_KEY,
     DEFAULT_CA_BAD,
     DEFAULT_CERTS,
-    PASSWORD_CLIENT_KEYFILE,
 )
 
 from test import (
@@ -80,6 +75,13 @@ TLSv1_2_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLSv1_2", None)
 
 TLSv1_3_CERTS = DEFAULT_CERTS.copy()
 TLSv1_3_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLS", None)
+
+
+CLIENT_INTERMEDIATE_PEM = "client_intermediate.pem"
+CLIENT_NO_INTERMEDIATE_PEM = "client_no_intermediate.pem"
+CLIENT_INTERMEDIATE_KEY = "client_intermediate.key"
+PASSWORD_CLIENT_KEYFILE = "client_password.key"
+CLIENT_CERT = CLIENT_INTERMEDIATE_PEM
 
 
 class TestHTTPS(HTTPSDummyServerTestCase):

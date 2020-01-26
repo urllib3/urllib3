@@ -36,11 +36,6 @@ DEFAULT_CERTS = {
     "cert_reqs": ssl.CERT_OPTIONAL,
     "ca_certs": os.path.join(CERTS_PATH, "cacert.pem"),
 }
-CLIENT_INTERMEDIATE_PEM = "client_intermediate.pem"
-CLIENT_NO_INTERMEDIATE_PEM = "client_no_intermediate.pem"
-CLIENT_INTERMEDIATE_KEY = "client_intermediate.key"
-CLIENT_CERT = CLIENT_INTERMEDIATE_PEM
-PASSWORD_CLIENT_KEYFILE = "client_password.key"
 DEFAULT_CA = os.path.join(CERTS_PATH, "cacert.pem")
 DEFAULT_CA_KEY = os.path.join(CERTS_PATH, "cacert.key")
 DEFAULT_CA_BAD = os.path.join(CERTS_PATH, "client_bad.pem")
