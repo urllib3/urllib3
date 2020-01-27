@@ -1,15 +1,15 @@
 import json
+import os.path
+import shutil
 import socket
+import tempfile
+
 
 import pytest
+import trustme
 
 from dummyserver.testcase import HTTPDummyProxyTestCase, IPv6HTTPDummyProxyTestCase
-from dummyserver.server import (
-    DEFAULT_CA,
-    DEFAULT_CA_BAD,
-    HAS_IPV6,
-    get_unreachable_address,
-)
+from dummyserver.server import DEFAULT_CA, HAS_IPV6, get_unreachable_address
 from .. import TARPIT_HOST, requires_network
 
 from urllib3._collections import HTTPHeaderDict
@@ -32,6 +32,18 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         cls.https_url = "https://%s:%d" % (cls.https_host, cls.https_port)
         cls.https_url_alt = "https://%s:%d" % (cls.https_host_alt, cls.https_port)
         cls.proxy_url = "http://%s:%d" % (cls.proxy_host, cls.proxy_port)
+
+        # Generate another CA to test verification failure
+        cls.certs_dir = tempfile.mkdtemp()
+        bad_ca = trustme.CA()
+
+        cls.bad_ca_path = os.path.join(cls.certs_dir, "ca_bad.pem")
+        bad_ca.cert_pem.write_to_path(cls.bad_ca_path)
+
+    @classmethod
+    def teardown_class(cls):
+        super(TestHTTPProxyManager, cls).teardown_class()
+        shutil.rmtree(cls.certs_dir)
 
     def test_basic_proxy(self):
         with proxy_from_url(self.proxy_url, ca_certs=DEFAULT_CA) as http:
@@ -84,7 +96,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_proxy_verified(self):
         with proxy_from_url(
-            self.proxy_url, cert_reqs="REQUIRED", ca_certs=DEFAULT_CA_BAD
+            self.proxy_url, cert_reqs="REQUIRED", ca_certs=self.bad_ca_path
         ) as http:
             https_pool = http._new_pool("https", self.https_host, self.https_port)
             with pytest.raises(MaxRetryError) as e:
