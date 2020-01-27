@@ -17,7 +17,6 @@ from dummyserver.server import (
     encrypt_key_pem,
     DEFAULT_CA,
     DEFAULT_CA_KEY,
-    DEFAULT_CA_BAD,
     DEFAULT_CERTS,
 )
 
@@ -95,6 +94,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         # Start from existing root CA as we don't want to change the server certificate yet
         with open(DEFAULT_CA, "rb") as crt, open(DEFAULT_CA_KEY, "rb") as key:
             root_ca = trustme.CA.from_pem(crt.read(), key.read())
+
+        # Generate another CA to test verification failure
+        bad_ca = trustme.CA()
+        cls.bad_ca_path = os.path.join(cls.certs_dir, "ca_bad.pem")
+        bad_ca.cert_pem.write_to_path(cls.bad_ca_path)
 
         # client cert chain
         intermediate_ca = root_ca.create_child_ca()
@@ -340,7 +344,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def test_verified_with_bad_ca_certs(self):
         with HTTPSConnectionPool(
-            self.host, self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA_BAD
+            self.host, self.port, cert_reqs="CERT_REQUIRED", ca_certs=self.bad_ca_path
         ) as https_pool:
             with pytest.raises(MaxRetryError) as e:
                 https_pool.request("GET", "/")
@@ -396,7 +400,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def test_ssl_unverified_with_ca_certs(self):
         with HTTPSConnectionPool(
-            self.host, self.port, cert_reqs="CERT_NONE", ca_certs=DEFAULT_CA_BAD
+            self.host, self.port, cert_reqs="CERT_NONE", ca_certs=self.bad_ca_path
         ) as pool:
             with mock.patch("warnings.warn") as warn:
                 r = pool.request("GET", "/")
@@ -508,7 +512,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def test_verify_none_and_bad_fingerprint(self):
         with HTTPSConnectionPool(
-            "127.0.0.1", self.port, cert_reqs="CERT_NONE", ca_certs=DEFAULT_CA_BAD
+            "127.0.0.1", self.port, cert_reqs="CERT_NONE", ca_certs=self.bad_ca_path
         ) as https_pool:
             https_pool.assert_fingerprint = (
                 "AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA"
@@ -519,7 +523,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def test_verify_none_and_good_fingerprint(self):
         with HTTPSConnectionPool(
-            "127.0.0.1", self.port, cert_reqs="CERT_NONE", ca_certs=DEFAULT_CA_BAD
+            "127.0.0.1", self.port, cert_reqs="CERT_NONE", ca_certs=self.bad_ca_path
         ) as https_pool:
             https_pool.assert_fingerprint = (
                 "92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A"

@@ -38,7 +38,6 @@ DEFAULT_CERTS = {
 }
 DEFAULT_CA = os.path.join(CERTS_PATH, "cacert.pem")
 DEFAULT_CA_KEY = os.path.join(CERTS_PATH, "cacert.key")
-DEFAULT_CA_BAD = os.path.join(CERTS_PATH, "client_bad.pem")
 
 
 def _has_ipv6(host):
