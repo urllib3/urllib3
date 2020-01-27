@@ -18,10 +18,13 @@ from datetime import datetime
 
 from urllib3.exceptions import HTTPWarning
 
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
 import tornado.httpserver
 import tornado.ioloop
 import tornado.netutil
 import tornado.web
+import trustme
 
 
 log = logging.getLogger(__name__)
@@ -33,11 +36,6 @@ DEFAULT_CERTS = {
     "cert_reqs": ssl.CERT_OPTIONAL,
     "ca_certs": os.path.join(CERTS_PATH, "cacert.pem"),
 }
-CLIENT_INTERMEDIATE_PEM = "client_intermediate.pem"
-CLIENT_NO_INTERMEDIATE_PEM = "client_no_intermediate.pem"
-CLIENT_INTERMEDIATE_KEY = "client_intermediate.key"
-CLIENT_CERT = os.path.join(CERTS_PATH, CLIENT_INTERMEDIATE_PEM)
-PASSWORD_CLIENT_KEYFILE = os.path.join(CERTS_PATH, "client_password.key")
 DEFAULT_CA = os.path.join(CERTS_PATH, "cacert.pem")
 DEFAULT_CA_KEY = os.path.join(CERTS_PATH, "cacert.key")
 DEFAULT_CA_BAD = os.path.join(CERTS_PATH, "client_bad.pem")
@@ -174,3 +172,15 @@ if __name__ == "__main__":
     server_thread = run_loop_in_thread(io_loop)
 
     print("Listening on http://{host}:{port}".format(host=host, port=port))
+
+
+def encrypt_key_pem(private_key_pem, password):
+    private_key = serialization.load_pem_private_key(
+        private_key_pem.bytes(), password=None, backend=default_backend()
+    )
+    encrypted_key = private_key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.TraditionalOpenSSL,
+        serialization.BestAvailableEncryption(password),
+    )
+    return trustme.Blob(encrypted_key)

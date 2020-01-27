@@ -17,7 +17,12 @@ from urllib3.util.retry import Retry
 from urllib3._collections import HTTPHeaderDict
 
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
-from dummyserver.server import DEFAULT_CERTS, DEFAULT_CA, get_unreachable_address
+from dummyserver.server import (
+    DEFAULT_CERTS,
+    DEFAULT_CA,
+    get_unreachable_address,
+    encrypt_key_pem,
+)
 
 from .. import onlyPy3, LogRecorder
 
@@ -39,8 +44,6 @@ import ssl
 import tempfile
 import mock
 
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
 import pytest
 import trustme
 
@@ -111,23 +114,11 @@ class TestClientCerts(SocketDummyServerTestCase):
     """
 
     @classmethod
-    def _encrypt_key(cls, private_key_pem, password):
-        private_key = serialization.load_pem_private_key(
-            private_key_pem.bytes(), password=None, backend=default_backend()
-        )
-        encrypted_key = private_key.private_bytes(
-            serialization.Encoding.PEM,
-            serialization.PrivateFormat.TraditionalOpenSSL,
-            serialization.BestAvailableEncryption(password),
-        )
-        return trustme.Blob(encrypted_key)
-
-    @classmethod
     def setup_class(cls):
         cls.tmpdir = tempfile.mkdtemp()
         ca = trustme.CA()
         cert = ca.issue_cert(u"localhost")
-        encrypted_key = cls._encrypt_key(cert.private_key_pem, b"letmein")
+        encrypted_key = encrypt_key_pem(cert.private_key_pem, b"letmein")
 
         cls.ca_path = os.path.join(cls.tmpdir, "ca.pem")
         cls.cert_combined_path = os.path.join(cls.tmpdir, "server.combined.pem")

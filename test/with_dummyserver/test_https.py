@@ -1,24 +1,24 @@
 import datetime
 import json
 import logging
+import os.path
 import ssl
 import sys
 import shutil
+import tempfile
 import warnings
 
 import mock
 import pytest
+import trustme
 
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from dummyserver.server import (
-    CLIENT_CERT,
-    CLIENT_INTERMEDIATE_PEM,
-    CLIENT_NO_INTERMEDIATE_PEM,
-    CLIENT_INTERMEDIATE_KEY,
+    encrypt_key_pem,
     DEFAULT_CA,
+    DEFAULT_CA_KEY,
     DEFAULT_CA_BAD,
     DEFAULT_CERTS,
-    PASSWORD_CLIENT_KEYFILE,
 )
 
 from test import (
@@ -77,8 +77,50 @@ TLSv1_3_CERTS = DEFAULT_CERTS.copy()
 TLSv1_3_CERTS["ssl_version"] = getattr(ssl, "PROTOCOL_TLS", None)
 
 
+CLIENT_INTERMEDIATE_PEM = "client_intermediate.pem"
+CLIENT_NO_INTERMEDIATE_PEM = "client_no_intermediate.pem"
+CLIENT_INTERMEDIATE_KEY = "client_intermediate.key"
+PASSWORD_CLIENT_KEYFILE = "client_password.key"
+CLIENT_CERT = CLIENT_INTERMEDIATE_PEM
+
+
 class TestHTTPS(HTTPSDummyServerTestCase):
     tls_protocol_name = None
+
+    @classmethod
+    def setup_class(cls):
+        super(TestHTTPS, cls).setup_class()
+
+        cls.certs_dir = tempfile.mkdtemp()
+        # Start from existing root CA as we don't want to change the server certificate yet
+        with open(DEFAULT_CA, "rb") as crt, open(DEFAULT_CA_KEY, "rb") as key:
+            root_ca = trustme.CA.from_pem(crt.read(), key.read())
+
+        # client cert chain
+        intermediate_ca = root_ca.create_child_ca()
+        cert = intermediate_ca.issue_cert(u"example.com")
+        encrypted_key = encrypt_key_pem(cert.private_key_pem, b"letmein")
+
+        cert.private_key_pem.write_to_path(
+            os.path.join(cls.certs_dir, CLIENT_INTERMEDIATE_KEY)
+        )
+        encrypted_key.write_to_path(
+            os.path.join(cls.certs_dir, PASSWORD_CLIENT_KEYFILE)
+        )
+        # Write the client cert and the intermediate CA
+        client_cert = os.path.join(cls.certs_dir, CLIENT_INTERMEDIATE_PEM)
+        cert.cert_chain_pems[0].write_to_path(client_cert)
+        cert.cert_chain_pems[1].write_to_path(client_cert, append=True)
+        # Write only the client cert
+        cert.cert_chain_pems[0].write_to_path(
+            os.path.join(cls.certs_dir, CLIENT_NO_INTERMEDIATE_PEM)
+        )
+
+    @classmethod
+    def teardown_class(cls):
+        super(TestHTTPS, cls).teardown_class()
+
+        shutil.rmtree(cls.certs_dir)
 
     def test_simple(self):
         with HTTPSConnectionPool(
@@ -95,7 +137,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             r = pool.request("GET", "/")
             assert r.status == 200, r.data
 
-    def test_client_intermediate(self, certs_dir):
+    def test_client_intermediate(self):
         """Check that certificate chains work well with client certs
 
         We generate an intermediate CA from the root CA, and issue a client certificate
@@ -106,15 +148,15 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host,
             self.port,
-            key_file=str(certs_dir / CLIENT_INTERMEDIATE_KEY),
-            cert_file=str(certs_dir / CLIENT_INTERMEDIATE_PEM),
+            key_file=os.path.join(self.certs_dir, CLIENT_INTERMEDIATE_KEY),
+            cert_file=os.path.join(self.certs_dir, CLIENT_INTERMEDIATE_PEM),
             ca_certs=DEFAULT_CA,
         ) as https_pool:
             r = https_pool.request("GET", "/certificate")
             subject = json.loads(r.data.decode("utf-8"))
             assert subject["organizationalUnitName"].startswith("Testing cert")
 
-    def test_client_no_intermediate(self, certs_dir):
+    def test_client_no_intermediate(self):
         """Check that missing links in certificate chains indeed break
 
         The only difference with test_client_intermediate is that we don't send the
@@ -123,8 +165,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         with HTTPSConnectionPool(
             self.host,
             self.port,
-            cert_file=str(certs_dir / CLIENT_NO_INTERMEDIATE_PEM),
-            key_file=str(certs_dir / CLIENT_INTERMEDIATE_KEY),
+            cert_file=os.path.join(self.certs_dir, CLIENT_NO_INTERMEDIATE_PEM),
+            key_file=os.path.join(self.certs_dir, CLIENT_INTERMEDIATE_KEY),
             ca_certs=DEFAULT_CA,
         ) as https_pool:
             try:
@@ -157,21 +199,21 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             self.host,
             self.port,
             ca_certs=DEFAULT_CA,
-            key_file=PASSWORD_CLIENT_KEYFILE,
-            cert_file=CLIENT_CERT,
+            key_file=os.path.join(self.certs_dir, PASSWORD_CLIENT_KEYFILE),
+            cert_file=os.path.join(self.certs_dir, CLIENT_CERT),
             key_password="letmein",
         ) as https_pool:
             r = https_pool.request("GET", "/certificate")
             subject = json.loads(r.data.decode("utf-8"))
-            assert subject["organizationalUnitName"].startswith("Testing server cert")
+            assert subject["organizationalUnitName"].startswith("Testing cert")
 
     @requires_ssl_context_keyfile_password
     def test_client_encrypted_key_requires_password(self):
         with HTTPSConnectionPool(
             self.host,
             self.port,
-            key_file=PASSWORD_CLIENT_KEYFILE,
-            cert_file=CLIENT_CERT,
+            key_file=os.path.join(self.certs_dir, PASSWORD_CLIENT_KEYFILE),
+            cert_file=os.path.join(self.certs_dir, CLIENT_CERT),
             key_password=None,
         ) as https_pool:
             with pytest.raises(MaxRetryError) as e:
