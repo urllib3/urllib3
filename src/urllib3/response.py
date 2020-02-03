@@ -238,7 +238,7 @@ class HTTPResponse(io.IOBase):
         self._pool = pool
         self._connection = connection
 
-        if hasattr(connection, 'peer_cert'):
+        if hasattr(connection, "peer_cert"):
             self.peer_cert = connection.peer_cert
 
         if hasattr(body, "read"):
