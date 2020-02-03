@@ -294,6 +294,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         self.assert_fingerprint = assert_fingerprint
         self.ca_certs = ca_certs and os.path.expanduser(ca_certs)
         self.ca_cert_dir = ca_cert_dir and os.path.expanduser(ca_cert_dir)
+        self.peer_cert = None
 
     def connect(self):
         # Add certificate verification
@@ -360,10 +361,10 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             ssl_context=context,
         )
 
+        self.peer_cert = self.sock.getpeercert(binary_form=True)
+
         if self.assert_fingerprint:
-            assert_fingerprint(
-                self.sock.getpeercert(binary_form=True), self.assert_fingerprint
-            )
+            assert_fingerprint(self.peer_cert, self.assert_fingerprint)
         elif (
             context.verify_mode != ssl.CERT_NONE
             and not getattr(context, "check_hostname", False)
