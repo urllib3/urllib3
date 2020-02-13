@@ -1,6 +1,13 @@
 Changes
 =======
 
+master (dev)
+------------
+
+* Raise ``ValueError`` if control characters are given in
+  the ``method`` parameter of ``HTTPConnection.request()`` (Pull #1800)
+
+
 1.25.8 (2020-01-20)
 -------------------
 
