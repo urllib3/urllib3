@@ -312,12 +312,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
             r = http.request("GET", "http://%s:%s/" % (self.host, self.port))
             assert r.status == 200
 
-    @pytest.mark.parametrize("char", [" ", "\r", "\n", "\x00"])
-    def test_invalid_method_not_allowed(self, char):
-        with pytest.raises(ValueError):
-            with PoolManager() as http:
-                http.request("GET" + char, "/")
-
     @pytest.mark.parametrize(
         ["target", "expected_target"],
         [

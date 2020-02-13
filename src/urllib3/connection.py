@@ -59,7 +59,7 @@ port_by_scheme = {"http": 80, "https": 443}
 # (ie test_recent_date is failing) update it to ~6 months before the current date.
 RECENT_DATE = datetime.date(2019, 1, 1)
 
-_CONTAINS_CONTROL_CHAR_RE = re.compile("[\x00-\x20\x7f]")
+_CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
 class DummyConnection(object):
@@ -191,7 +191,7 @@ class HTTPConnection(_HTTPConnection, object):
         match = _CONTAINS_CONTROL_CHAR_RE.search(method)
         if match:
             raise ValueError(
-                "Method cannot contain control characters. %r (found at least %r)"
+                "Method cannot contain non-token characters %r (found at least %r)"
                 % (method, match.group())
             )
 
