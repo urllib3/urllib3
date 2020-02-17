@@ -677,6 +677,12 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             with pytest.raises(MaxRetryError):
                 pool.request("GET", "/test", retries=2)
 
+    @pytest.mark.parametrize("char", [" ", "\r", "\n", "\x00"])
+    def test_invalid_method_not_allowed(self, char):
+        with pytest.raises(ValueError):
+            with HTTPConnectionPool(self.host, self.port) as pool:
+                pool.request("GET" + char, "/")
+
     def test_percent_encode_invalid_target_chars(self):
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("GET", "/echo_params?q=\r&k=\n \n")

@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import re
 import datetime
 import logging
 import os
@@ -57,6 +58,8 @@ port_by_scheme = {"http": 80, "https": 443}
 # When it comes time to update this value as a part of regular maintenance
 # (ie test_recent_date is failing) update it to ~6 months before the current date.
 RECENT_DATE = datetime.date(2019, 1, 1)
+
+_CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
 class DummyConnection(object):
@@ -183,6 +186,17 @@ class HTTPConnection(_HTTPConnection, object):
     def connect(self):
         conn = self._new_conn()
         self._prepare_conn(conn)
+
+    def putrequest(self, method, url, *args, **kwargs):
+        """Send a request to the server"""
+        match = _CONTAINS_CONTROL_CHAR_RE.search(method)
+        if match:
+            raise ValueError(
+                "Method cannot contain non-token characters %r (found at least %r)"
+                % (method, match.group())
+            )
+
+        return _HTTPConnection.putrequest(self, method, url, *args, **kwargs)
 
     def request_chunked(self, method, url, body=None, headers=None):
         """
