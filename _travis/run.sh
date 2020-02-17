@@ -2,7 +2,8 @@
 
 set -exo pipefail
 
-if [[ "$(uname -s)" == "Darwin" && "$NOX_SESSION" == "tests-2.7" ]]; then
+# Work around https://github.com/pypa/virtualenv/issues/1561
+if [[ "$(uname -s)" == "Darwin" && "$NOX_SESSION" == "test-2.7" ]]; then
     export PATH="/Library/Frameworks/Python.framework/Versions/2.7/bin":$PATH
 fi
 
