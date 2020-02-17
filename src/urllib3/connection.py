@@ -188,6 +188,7 @@ class HTTPConnection(_HTTPConnection, object):
         self._prepare_conn(conn)
 
     def putrequest(self, method, url, *args, **kwargs):
+        """Send a request to the server"""
         match = _CONTAINS_CONTROL_CHAR_RE.search(method)
         if match:
             raise ValueError(
