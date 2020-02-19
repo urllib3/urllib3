@@ -308,7 +308,7 @@ def ssl_wrap_socket(
     ssl_context=None,
     ca_cert_dir=None,
     key_password=None,
-    ca_data=None,
+    ca_cert_data=None,
 ):
     """
     All arguments except for server_hostname, ssl_context, and ca_cert_dir have
@@ -327,7 +327,7 @@ def ssl_wrap_socket(
         SSLContext.load_verify_locations().
     :param key_password:
         Optional password if the keyfile is encrypted.
-    :param ca_data:
+    :param ca_cert_data:
         Optional string containing CA certificates in PEM format suitable for
         passing as the cadata parameter to SSLContext.load_verify_locations()
     """
@@ -338,9 +338,9 @@ def ssl_wrap_socket(
         # this code.
         context = create_urllib3_context(ssl_version, cert_reqs, ciphers=ciphers)
 
-    if ca_certs or ca_cert_dir or ca_data:
+    if ca_certs or ca_cert_dir or ca_cert_data:
         try:
-            context.load_verify_locations(ca_certs, ca_cert_dir, ca_data)
+            context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
         except IOError as e:  # Platform-specific: Python 2.7
             raise SSLError(e)
         # Py33 raises FileNotFoundError which subclasses OSError

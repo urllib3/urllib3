@@ -750,7 +750,7 @@ class TestUtil(object):
         socket = object()
         mock_context = Mock()
         ssl_wrap_socket(
-            ssl_context=mock_context, ca_data="TOTALLY PEM DATA", sock=socket
+            ssl_context=mock_context, ca_cert_data="TOTALLY PEM DATA", sock=socket
         )
         mock_context.load_verify_locations.assert_called_once_with(
             None, None, "TOTALLY PEM DATA"
