@@ -285,5 +285,8 @@ In chronological order:
 * Benno Rice <benno@jeamland.net>
   * Allow cadata parameter to be passed to underlying ``SSLContext.load_verify_locations()``.
 
+* Keiichi Kobayashi <abok.1k@gmail.com>
+  * Rename VerifiedHTTPSConnection to HTTPSConnection
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

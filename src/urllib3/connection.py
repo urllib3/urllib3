@@ -237,7 +237,12 @@ class HTTPConnection(_HTTPConnection, object):
 class HTTPSConnection(HTTPConnection):
     default_port = port_by_scheme["https"]
 
+    cert_reqs = None
+    ca_certs = None
+    ca_cert_dir = None
+    ca_cert_data = None
     ssl_version = None
+    assert_fingerprint = None
 
     def __init__(
         self,
@@ -264,20 +269,6 @@ class HTTPSConnection(HTTPConnection):
         # Required property for Google AppEngine 1.9.0 which otherwise causes
         # HTTPS requests to go out as HTTP. (See Issue #356)
         self._protocol = "https"
-
-
-class VerifiedHTTPSConnection(HTTPSConnection):
-    """
-    Based on httplib.HTTPSConnection but wraps the socket with
-    SSL certification.
-    """
-
-    cert_reqs = None
-    ca_certs = None
-    ca_cert_dir = None
-    ca_cert_data = None
-    ssl_version = None
-    assert_fingerprint = None
 
     def set_cert(
         self,
@@ -425,9 +416,8 @@ def _match_hostname(cert, asserted_hostname):
         raise
 
 
-if ssl:
-    # Make a copy for testing.
-    UnverifiedHTTPSConnection = HTTPSConnection
-    HTTPSConnection = VerifiedHTTPSConnection
-else:
+if not ssl:
     HTTPSConnection = DummyConnection
+
+
+VerifiedHTTPSConnection = HTTPSConnection
