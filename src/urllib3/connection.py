@@ -277,6 +277,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
     cert_reqs = None
     ca_certs = None
     ca_cert_dir = None
+    ca_cert_data = None
     ssl_version = None
     assert_fingerprint = None
 
@@ -290,6 +291,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         assert_hostname=None,
         assert_fingerprint=None,
         ca_cert_dir=None,
+        ca_cert_data=None,
     ):
         """
         This method should only be called once, before the connection is used.
@@ -310,6 +312,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         self.assert_fingerprint = assert_fingerprint
         self.ca_certs = ca_certs and os.path.expanduser(ca_certs)
         self.ca_cert_dir = ca_cert_dir and os.path.expanduser(ca_cert_dir)
+        self.ca_cert_data = ca_cert_data
 
     def connect(self):
         # Add certificate verification
@@ -360,6 +363,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         if (
             not self.ca_certs
             and not self.ca_cert_dir
+            and not self.ca_cert_data
             and default_ssl_context
             and hasattr(context, "load_default_certs")
         ):
@@ -372,6 +376,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             key_password=self.key_password,
             ca_certs=self.ca_certs,
             ca_cert_dir=self.ca_cert_dir,
+            ca_cert_data=self.ca_cert_data,
             server_hostname=server_hostname,
             ssl_context=context,
         )

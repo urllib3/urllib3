@@ -732,7 +732,9 @@ class TestUtil(object):
         socket = object()
         mock_context = Mock()
         ssl_wrap_socket(ssl_context=mock_context, ca_certs="/path/to/pem", sock=socket)
-        mock_context.load_verify_locations.assert_called_once_with("/path/to/pem", None)
+        mock_context.load_verify_locations.assert_called_once_with(
+            "/path/to/pem", None, None
+        )
 
     def test_ssl_wrap_socket_loads_certificate_directories(self):
         socket = object()
@@ -741,7 +743,17 @@ class TestUtil(object):
             ssl_context=mock_context, ca_cert_dir="/path/to/pems", sock=socket
         )
         mock_context.load_verify_locations.assert_called_once_with(
-            None, "/path/to/pems"
+            None, "/path/to/pems", None
+        )
+
+    def test_ssl_wrap_socket_loads_certificate_data(self):
+        socket = object()
+        mock_context = Mock()
+        ssl_wrap_socket(
+            ssl_context=mock_context, ca_cert_data="TOTALLY PEM DATA", sock=socket
+        )
+        mock_context.load_verify_locations.assert_called_once_with(
+            None, None, "TOTALLY PEM DATA"
         )
 
     def test_ssl_wrap_socket_with_no_sni_warns(self):

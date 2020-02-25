@@ -138,7 +138,7 @@ def test_wrap_socket_given_ca_certs_no_load_default_certs(monkeypatch):
     ssl_.ssl_wrap_socket(sock, ca_certs="/tmp/fake-file")
 
     context.load_default_certs.assert_not_called()
-    context.load_verify_locations.assert_called_with("/tmp/fake-file", None)
+    context.load_verify_locations.assert_called_with("/tmp/fake-file", None, None)
 
 
 def test_wrap_socket_default_loads_default_certs(monkeypatch):

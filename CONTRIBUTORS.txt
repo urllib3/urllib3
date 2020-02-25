@@ -284,6 +284,9 @@ In chronological order:
 
 * Jorge Lopez Silva <https://github.com/jalopezsilva>
   * Added support for forwarding requests through HTTPS proxies.
+  
+* Benno Rice <benno@jeamland.net>
+  * Allow cadata parameter to be passed to underlying ``SSLContext.load_verify_locations()``.
 
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
