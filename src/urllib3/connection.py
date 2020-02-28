@@ -417,7 +417,7 @@ def _match_hostname(cert, asserted_hostname):
 
 
 if not ssl:
-    HTTPSConnection = DummyConnection
+    HTTPSConnection = DummyConnection  # noqa: F811
 
 
 VerifiedHTTPSConnection = HTTPSConnection
