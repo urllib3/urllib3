@@ -288,5 +288,8 @@ In chronological order:
 * Keiichi Kobayashi <abok.1k@gmail.com>
   * Rename VerifiedHTTPSConnection to HTTPSConnection
 
+* Himanshu Garg <garg_himanshu@outlook.com>
+  * DOC & LICENSE Update
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
