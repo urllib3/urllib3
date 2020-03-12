@@ -180,6 +180,14 @@ class HTTPDummyProxyTestCase(object):
             app, cls.io_loop, None, "http", cls.proxy_host
         )
 
+        upstream_ca_certs = cls.https_certs.get("ca_certs", None)
+        app = web.Application(
+            [(r".*", ProxyHandler)], upstream_ca_certs=upstream_ca_certs
+        )
+        cls.https_proxy_server, cls.https_proxy_port = run_tornado_app(
+            app, cls.io_loop, cls.https_certs, "https", cls.proxy_host
+        )
+
         cls.server_thread = run_loop_in_thread(cls.io_loop)
 
     @classmethod
@@ -187,6 +195,7 @@ class HTTPDummyProxyTestCase(object):
         cls.io_loop.add_callback(cls.http_server.stop)
         cls.io_loop.add_callback(cls.https_server.stop)
         cls.io_loop.add_callback(cls.proxy_server.stop)
+        cls.io_loop.add_callback(cls.https_proxy_server.stop)
         cls.io_loop.add_callback(cls.io_loop.stop)
         cls.server_thread.join()
 

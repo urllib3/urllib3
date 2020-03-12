@@ -34,6 +34,7 @@ import tornado.ioloop
 import tornado.iostream
 import tornado.web
 import tornado.httpclient
+import ssl
 
 __all__ = ["ProxyHandler", "run_proxy"]
 
@@ -66,6 +67,12 @@ class ProxyHandler(tornado.web.RequestHandler):
                     self.write(response.body)
                 self.finish()
 
+        upstream_ca_certs = self.application.settings.get("upstream_ca_certs", None)
+        ssl_options = None
+
+        if upstream_ca_certs:
+            ssl_options = ssl.create_default_context(cafile=upstream_ca_certs)
+
         req = tornado.httpclient.HTTPRequest(
             url=self.request.uri,
             method=self.request.method,
@@ -73,6 +80,7 @@ class ProxyHandler(tornado.web.RequestHandler):
             headers=self.request.headers,
             follow_redirects=False,
             allow_nonstandard_methods=True,
+            ssl_options=ssl_options,
         )
 
         client = tornado.httpclient.AsyncHTTPClient()
