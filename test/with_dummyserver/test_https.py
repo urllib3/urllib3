@@ -173,29 +173,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             key_file=os.path.join(self.certs_dir, CLIENT_INTERMEDIATE_KEY),
             ca_certs=DEFAULT_CA,
         ) as https_pool:
-            try:
+            with pytest.raises((SSLError, ProtocolError)):
                 https_pool.request("GET", "/certificate", retries=False)
-            except SSLError as e:
-                if not (
-                    "alert unknown ca" in str(e)
-                    or "invalid certificate chain" in str(e)
-                    or "unknown Cert Authority" in str(e)
-                    or
-                    # https://github.com/urllib3/urllib3/issues/1422
-                    "connection closed via error" in str(e)
-                    or "WSAECONNRESET" in str(e)
-                ):
-                    raise
-            except ProtocolError as e:
-                if not (
-                    "An existing connection was forcibly closed by the remote host"
-                    in str(e)
-                    # Python 3.7.4+
-                    or "WSAECONNRESET" in str(e)  # Windows
-                    or "EPIPE" in str(e)  # macOS
-                    or "ECONNRESET" in str(e)  # OpenSSL
-                ):
-                    raise
 
     @requires_ssl_context_keyfile_password
     def test_client_key_password(self):
