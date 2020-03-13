@@ -2,11 +2,6 @@
 
 set -exo pipefail
 
-# Work around https://github.com/pypa/virtualenv/issues/1561
-if [[ "$(uname -s)" == "Darwin" && "$NOX_SESSION" == "test-2.7" ]]; then
-    export PATH="/Library/Frameworks/Python.framework/Versions/2.7/bin":$PATH
-fi
-
 if [ -n "${NOX_SESSION}" ]; then
     if [[ "$(uname -s)" == 'Darwin' ]]; then
         # Explicitly use python3 on macOS as `nox` is not in the PATH
