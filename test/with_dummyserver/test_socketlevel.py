@@ -1395,7 +1395,6 @@ class TestSSL(SocketDummyServerTestCase):
         """
         with pytest.raises(SSLError) as exc:
             ssl_wrap_socket(None, ca_certs=os.devnull)
-        assert exc.type == SSLError
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):
