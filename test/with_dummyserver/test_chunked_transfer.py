@@ -102,12 +102,14 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
             host_headers = [x for x in header_lines if x.startswith(b"host")]
             assert len(host_headers) == 1
 
-    def test_preserve_chunked_on_retry(self):
+    def test_preserve_chunked_on_retry_after(self):
         self.chunked_requests = 0
+        self.socks = []
 
         def socket_handler(listener):
             for _ in range(2):
                 sock = listener.accept()[0]
+                self.socks.append(sock)
                 request = consume_socket(sock)
                 if b"Transfer-Encoding: chunked" in request.split(b"\r\n"):
                     self.chunked_requests += 1
@@ -116,16 +118,17 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
                     b"HTTP/1.1 429 Too Many Requests\r\n"
                     b"Content-Type: text/plain\r\n"
                     b"Retry-After: 1\r\n"
+                    b"Content-Length: 0\r\n"
+                    b"Connection: close\r\n"
                     b"\r\n"
                 )
-                sock.close()
 
         self._start_server(socket_handler)
         with HTTPConnectionPool(self.host, self.port) as pool:
             retries = Retry(total=1)
-            pool.urlopen(
-                "GET", "/", chunked=True, preload_content=False, retries=retries
-            )
+            pool.urlopen("GET", "/", chunked=True, retries=retries)
+            for sock in self.socks:
+                sock.close()
         assert self.chunked_requests == 2
 
     def test_preserve_chunked_on_redirect(self):
