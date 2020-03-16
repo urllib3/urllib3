@@ -10,6 +10,7 @@ from urllib3.exceptions import (
     ProtocolError,
 )
 from urllib3.response import httplib
+from urllib3.util import ssl_wrap_socket
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util import ssl_
 from urllib3.util.timeout import Timeout
@@ -37,6 +38,7 @@ except ImportError:
 from collections import OrderedDict
 import os.path
 from threading import Event
+import os
 import select
 import socket
 import shutil
@@ -1386,6 +1388,13 @@ class TestSSL(SocketDummyServerTestCase):
                     with pytest.raises(MaxRetryError):
                         pool.request("GET", "/", timeout=SHORT_TIMEOUT)
                     context.load_default_certs.assert_not_called()
+
+    def test_load_verify_locations_exception(self):
+        """
+        Ensure that load_verify_locations raises SSLError for all backends
+        """
+        with pytest.raises(SSLError):
+            ssl_wrap_socket(None, ca_certs=os.devnull)
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):
