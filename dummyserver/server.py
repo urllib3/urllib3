@@ -40,18 +40,18 @@ DEFAULT_CA = os.path.join(CERTS_PATH, "cacert.pem")
 DEFAULT_CA_KEY = os.path.join(CERTS_PATH, "cacert.key")
 
 
-def _sane_ipv6_dns():
-    """ Returns True if the system resolves localhost to an IPv6 address by default. """
-    sane_ipv6_dns = False
+def _resolves_to_ipv6(host):
+    """ Returns True if the system resolves host to an IPv6 address by default. """
+    resolves_to_ipv6 = False
     try:
         for res in socket.getaddrinfo(host, None, socket.AF_UNSPEC):
             af, _, _, _, _ = res
             if af == socket.AF_INET6:
-                sane_ipv6_dns = True
+                resolves_to_ipv6 = True
     except socket.gaierror:
         pass
 
-    return sane_ipv6_dns
+    return resolves_to_ipv6
 
 
 def _has_ipv6(host):
@@ -68,7 +68,7 @@ def _has_ipv6(host):
         try:
             sock = socket.socket(socket.AF_INET6)
             sock.bind((host, 0))
-            has_ipv6 = _sane_ipv6_dns()
+            has_ipv6 = _resolves_to_ipv6("localhost")
         except Exception:
             pass
 
