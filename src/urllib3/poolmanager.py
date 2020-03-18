@@ -2,12 +2,15 @@ from __future__ import absolute_import
 import collections
 import functools
 import logging
+from socket import error as SocketError
 import warnings
 
 from ._collections import RecentlyUsedContainer
-from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
+from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, BaseSSLError
 from .connectionpool import port_by_scheme
+
 from .exceptions import (
+    HTTPError,
     HTTPWarning,
     LocationValueError,
     MaxRetryError,
@@ -380,10 +383,25 @@ class PoolManager(RequestMethods):
                 if header.lower() in retries.remove_headers_on_redirect:
                     kw["headers"].pop(header, None)
 
+        def drain_and_release_conn(response):
+            try:
+                # discard any remaining response body, the connection will be
+                # released back to the pool once the entire response is read
+                response.read()
+            except (
+                HTTPError,
+                SocketError,
+                BaseSSLError,
+            ):
+                pass
+
         try:
             retries = retries.increment(method, url, response=response, _pool=conn)
         except MaxRetryError:
             if retries.raise_on_redirect:
+                # Drain and release the connection for this response, since
+                # we're not returning it to be released manually.
+                drain_and_release_conn(response)
                 raise
             return response
 
@@ -391,6 +409,9 @@ class PoolManager(RequestMethods):
         kw["redirect"] = redirect
 
         log.info("Redirecting %s -> %s", url, redirect_location)
+
+        # drain and return the connection to the pool before recursing
+        drain_and_release_conn(response)
         return self.urlopen(method, redirect_location, **kw)
 
 

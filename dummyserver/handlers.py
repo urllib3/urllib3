@@ -106,7 +106,11 @@ class TestingApp(RequestHandler):
 
     def index(self, _request):
         "Render simple message"
-        return Response("Dummy server!")
+        data = "Dummy server!"
+        if "page" in _request.arguments:
+            page = _request.arguments["page"][0]
+            data += " page %s" % page.decode()
+        return Response(data)
 
     def certificate(self, request):
         """Return the requester's certificate."""
