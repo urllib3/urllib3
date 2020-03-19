@@ -284,7 +284,7 @@ class TestRetry(object):
             retry.parse_retry_after(value)
 
     @pytest.mark.parametrize(
-        "value, expected", [("0", 0), ("1000", 1000), ("\t42 ", 42)]
+        "value, expected", [("0", 0), ("1000", 1000), ("\t42 ", 42), ("1m0s", 60)]
     )
     def test_parse_retry_after(self, value, expected):
         retry = Retry()
