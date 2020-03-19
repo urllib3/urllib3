@@ -36,7 +36,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 r1 = build_request(number=j, preload=True)
                 r2 = build_request(number=j, preload=False)
 
-                data = bytes("Dummy server! page %d" % j, "utf-8")
+                data = b"Dummy server! page %d" % j
                 assert r1.status == 200
                 assert r2.status == 200
                 assert r1.data == data
