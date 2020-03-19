@@ -31,7 +31,7 @@ else:
             host = "::1"
         else:
             raise ValueError(
-                "Only AF_INET and AF_INET6 socket address " "families are supported"
+                "Only AF_INET and AF_INET6 socket address families are supported"
             )
         if type != socket.SOCK_STREAM:
             raise ValueError("Only SOCK_STREAM socket type is supported")

@@ -222,7 +222,7 @@ class IncompleteRead(HTTPError, httplib_IncompleteRead):
         super(IncompleteRead, self).__init__(partial, expected)
 
     def __repr__(self):
-        return "IncompleteRead(%i bytes read, " "%i more expected)" % (
+        return "IncompleteRead(%i bytes read, %i more expected)" % (
             self.partial,
             self.expected,
         )
@@ -240,6 +240,11 @@ class ProxySchemeUnknown(AssertionError, ValueError):
     def __init__(self, scheme):
         message = "Not supported proxy scheme %s" % scheme
         super(ProxySchemeUnknown, self).__init__(message)
+
+
+class ProxySchemeUnsupported(ValueError):
+    "Fetching HTTPS resources through HTTPS proxies is unsupported"
+    pass
 
 
 class HeaderParsingError(HTTPError):

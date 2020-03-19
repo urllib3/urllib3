@@ -2,11 +2,18 @@ from __future__ import absolute_import
 import collections
 import functools
 import logging
+import warnings
 
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
-from .exceptions import LocationValueError, MaxRetryError, ProxySchemeUnknown
+from .exceptions import (
+    HTTPWarning,
+    LocationValueError,
+    MaxRetryError,
+    ProxySchemeUnknown,
+    ProxySchemeUnsupported,
+)
 from .packages import six
 from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
@@ -15,6 +22,12 @@ from .util.retry import Retry
 
 
 __all__ = ["PoolManager", "ProxyManager", "proxy_from_url"]
+
+
+class InvalidProxyConfigurationWarning(HTTPWarning):
+    """Raised when a user has an HTTPS proxy without enabling HTTPS proxies."""
+
+    pass
 
 
 log = logging.getLogger(__name__)
@@ -306,6 +319,18 @@ class PoolManager(RequestMethods):
                     base_pool_kwargs[key] = value
         return base_pool_kwargs
 
+    def _proxy_requires_url_absolute_form(self, parsed_url):
+        """
+        Indicates if the proxy requires the complete destination URL in the
+        request.
+
+        Normally this is only needed when not using an HTTP CONNECT tunnel.
+        """
+        if self.proxy is None:
+            return False
+
+        return parsed_url.scheme == "http" or self.proxy.scheme == "https"
+
     def urlopen(self, method, url, redirect=True, **kw):
         """
         Same as :meth:`urllib3.connectionpool.HTTPConnectionPool.urlopen`
@@ -324,7 +349,7 @@ class PoolManager(RequestMethods):
         if "headers" not in kw:
             kw["headers"] = self.headers.copy()
 
-        if self.proxy is not None and u.scheme == "http":
+        if self._proxy_requires_url_absolute_form(u):
             response = conn.urlopen(method, url, **kw)
         else:
             response = conn.urlopen(method, u.request_uri, **kw)
@@ -383,6 +408,12 @@ class ProxyManager(PoolManager):
         HTTPS/CONNECT case they are sent only once. Could be used for proxy
         authentication.
 
+    :param _allow_https_proxy_to_see_traffic:
+        Allows forwarding of HTTPS requests to HTTPS proxies. The proxy will
+        have visibility of all the traffic sent. ONLY USE IF YOU KNOW WHAT
+        YOU'RE DOING. This flag might be removed at any time in any future
+        update.
+
     Example:
         >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
         >>> r1 = proxy.request('GET', 'http://google.com/')
@@ -402,6 +433,7 @@ class ProxyManager(PoolManager):
         num_pools=10,
         headers=None,
         proxy_headers=None,
+        _allow_https_proxy_to_see_traffic=False,
         **connection_pool_kw
     ):
 
@@ -412,18 +444,21 @@ class ProxyManager(PoolManager):
                 proxy_url.port,
             )
         proxy = parse_url(proxy_url)
-        if not proxy.port:
-            port = port_by_scheme.get(proxy.scheme, 80)
-            proxy = proxy._replace(port=port)
 
         if proxy.scheme not in ("http", "https"):
             raise ProxySchemeUnknown(proxy.scheme)
+
+        if not proxy.port:
+            port = port_by_scheme.get(proxy.scheme, 80)
+            proxy = proxy._replace(port=port)
 
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
 
         connection_pool_kw["_proxy"] = self.proxy
         connection_pool_kw["_proxy_headers"] = self.proxy_headers
+
+        self.allow_insecure_proxy = _allow_https_proxy_to_see_traffic
 
         super(ProxyManager, self).__init__(num_pools, headers, **connection_pool_kw)
 
@@ -452,14 +487,35 @@ class ProxyManager(PoolManager):
             headers_.update(headers)
         return headers_
 
+    def _validate_proxy_scheme_url_selection(self, url_scheme):
+        if (
+            url_scheme == "https"
+            and self.proxy.scheme == "https"
+            and not self.allow_insecure_proxy
+        ):
+            warnings.warn(
+                "Your proxy configuration specified an HTTPS scheme for the proxy. "
+                "Are you sure you want to use HTTPS to contact the proxy? "
+                "This most likely indicates an error in your configuration."
+                "If you are sure you want use HTTPS to contact the proxy, enable "
+                "the _allow_https_proxy_to_see_traffic.",
+                InvalidProxyConfigurationWarning,
+            )
+
+            raise ProxySchemeUnsupported(
+                "Contacting HTTPS destinations through HTTPS proxies is not supported."
+            )
+
     def urlopen(self, method, url, redirect=True, **kw):
         "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
         u = parse_url(url)
+        self._validate_proxy_scheme_url_selection(u.scheme)
 
-        if u.scheme == "http":
-            # For proxied HTTPS requests, httplib sets the necessary headers
-            # on the CONNECT to the proxy. For HTTP, we'll definitely
-            # need to set 'Host' at the very least.
+        if u.scheme == "http" or self.proxy.scheme == "https":
+            # For connections using HTTP CONNECT, httplib sets the necessary
+            # headers on the CONNECT to the proxy. For HTTP or when talking
+            # HTTPS to the proxy, we'll definitely need to set 'Host' at the
+            # very least.
             headers = kw.get("headers", self.headers)
             kw["headers"] = self._set_proxy_headers(url, headers)
 

@@ -1,10 +1,14 @@
+# -*- coding: utf-8 -*-
+
+import re
 import socket
 import zlib
 
-from io import BytesIO, BufferedReader
+from io import BytesIO, BufferedReader, TextIOWrapper
 
 import pytest
 import mock
+import six
 
 from urllib3.response import HTTPResponse, brotli
 from urllib3.exceptions import (
@@ -349,6 +353,14 @@ class TestResponse(object):
         br.close()
         assert resp.closed
 
+        # HTTPResponse.read() by default closes the response
+        # https://github.com/urllib3/urllib3/issues/1305
+        fp = BytesIO(b"hello\nworld")
+        resp = HTTPResponse(fp, preload_content=False)
+        with pytest.raises(ValueError) as ctx:
+            list(BufferedReader(resp))
+        assert str(ctx.value) == "readline of closed file"
+
         b = b"fooandahalf"
         fp = BytesIO(b)
         resp = HTTPResponse(fp, preload_content=False)
@@ -361,6 +373,72 @@ class TestResponse(object):
         # gets tested.
         while not br.closed:
             br.read(5)
+
+    def test_io_not_autoclose_bufferedreader(self):
+        fp = BytesIO(b"hello\nworld")
+        resp = HTTPResponse(fp, preload_content=False, auto_close=False)
+        reader = BufferedReader(resp)
+        assert list(reader) == [b"hello\n", b"world"]
+
+        assert not reader.closed
+        assert not resp.closed
+        with pytest.raises(StopIteration):
+            next(reader)
+
+        reader.close()
+        assert reader.closed
+        assert resp.closed
+        with pytest.raises(ValueError) as ctx:
+            next(reader)
+        assert str(ctx.value) == "readline of closed file"
+
+    def test_io_textiowrapper(self):
+        fp = BytesIO(b"\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f")
+        resp = HTTPResponse(fp, preload_content=False)
+        br = TextIOWrapper(resp, encoding="utf8")
+
+        assert br.read() == u"äöüß"
+
+        br.close()
+        assert resp.closed
+
+        # HTTPResponse.read() by default closes the response
+        # https://github.com/urllib3/urllib3/issues/1305
+        fp = BytesIO(
+            b"\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f\n\xce\xb1\xce\xb2\xce\xb3\xce\xb4"
+        )
+        resp = HTTPResponse(fp, preload_content=False)
+        with pytest.raises(ValueError) as ctx:
+            if six.PY2:
+                # py2's implementation of TextIOWrapper requires `read1`
+                # method which is provided by `BufferedReader` wrapper
+                resp = BufferedReader(resp)
+            list(TextIOWrapper(resp))
+        assert re.match("I/O operation on closed file.?", str(ctx.value))
+
+    def test_io_not_autoclose_textiowrapper(self):
+        fp = BytesIO(
+            b"\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f\n\xce\xb1\xce\xb2\xce\xb3\xce\xb4"
+        )
+        resp = HTTPResponse(fp, preload_content=False, auto_close=False)
+        if six.PY2:
+            # py2's implementation of TextIOWrapper requires `read1`
+            # method which is provided by `BufferedReader` wrapper
+            resp = BufferedReader(resp)
+        reader = TextIOWrapper(resp, encoding="utf8")
+        assert list(reader) == [u"äöüß\n", u"αβγδ"]
+
+        assert not reader.closed
+        assert not resp.closed
+        with pytest.raises(StopIteration):
+            next(reader)
+
+        reader.close()
+        assert reader.closed
+        assert resp.closed
+        with pytest.raises(ValueError) as ctx:
+            next(reader)
+        assert re.match("I/O operation on closed file.?", str(ctx.value))
 
     def test_streaming(self):
         fp = BytesIO(b"foo")
@@ -434,13 +512,13 @@ class TestResponse(object):
 
         class MockCompressedDataReading(BytesIO):
             """
-            A ByteIO-like reader returning ``payload`` in ``NUMBER_OF_READS``
+            A BytesIO-like reader returning ``payload`` in ``NUMBER_OF_READS``
             calls to ``read``.
             """
 
             def __init__(self, payload, payload_part_size):
                 self.payloads = [
-                    payload[i * payload_part_size : (i + 1) * payload_part_size]  # noqa
+                    payload[i * payload_part_size : (i + 1) * payload_part_size]
                     for i in range(NUMBER_OF_READS + 1)
                 ]
 
@@ -633,7 +711,7 @@ class TestResponse(object):
             data = compress.compress(b"foobar")
             data += compress.flush()
             for i in range(0, len(data), 2):
-                yield data[i : i + 2]  # noqa
+                yield data[i : i + 2]
 
         fp = MockChunkedEncodingResponse(list(stream()))
         r = httplib.HTTPResponse(MockSock)
@@ -781,8 +859,9 @@ class TestResponse(object):
     @pytest.mark.parametrize(
         ["payload", "expected_stream"],
         [
-            (b"", [b""]),
+            (b"", []),
             (b"\n", [b"\n"]),
+            (b"\n\n\n", [b"\n", b"\n", b"\n"]),
             (b"abc\ndef", [b"abc\n", b"def"]),
             (b"Hello\nworld\n\n\n!", [b"Hello\n", b"world\n", b"\n", b"\n", b"!"]),
         ],
@@ -801,7 +880,7 @@ class TestResponse(object):
             data = compress.compress(b"foo\nbar")
             data += compress.flush()
             for i in range(0, len(data), 2):
-                yield data[i : i + 2]  # noqa
+                yield data[i : i + 2]
 
         fp = MockChunkedEncodingResponse(list(stream()))
         r = httplib.HTTPResponse(MockSock)
@@ -862,7 +941,7 @@ class MockChunkedEncodingResponse(object):
                 return b""
             else:
                 chunk_part = self.cur_chunk[: i + 2]
-                self.cur_chunk = self.cur_chunk[i + 2 :]  # noqa
+                self.cur_chunk = self.cur_chunk[i + 2 :]
                 return chunk_part
         elif amt <= -1:
             chunk_part = self.cur_chunk

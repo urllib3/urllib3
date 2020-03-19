@@ -3,6 +3,8 @@ import pytest
 from urllib3.util import ssl_
 from urllib3.exceptions import SNIMissingWarning
 
+from test import notPyPy2
+
 
 @pytest.mark.parametrize(
     "addr",
@@ -124,6 +126,7 @@ def test_wrap_socket_given_context_no_load_default_certs():
     context.load_default_certs.assert_not_called()
 
 
+@notPyPy2
 def test_wrap_socket_given_ca_certs_no_load_default_certs(monkeypatch):
     context = mock.create_autospec(ssl_.SSLContext)
     context.load_default_certs = mock.Mock()
@@ -135,7 +138,7 @@ def test_wrap_socket_given_ca_certs_no_load_default_certs(monkeypatch):
     ssl_.ssl_wrap_socket(sock, ca_certs="/tmp/fake-file")
 
     context.load_default_certs.assert_not_called()
-    context.load_verify_locations.assert_called_with("/tmp/fake-file", None)
+    context.load_verify_locations.assert_called_with("/tmp/fake-file", None, None)
 
 
 def test_wrap_socket_default_loads_default_certs(monkeypatch):
@@ -149,3 +152,18 @@ def test_wrap_socket_default_loads_default_certs(monkeypatch):
     ssl_.ssl_wrap_socket(sock)
 
     context.load_default_certs.assert_called_with()
+
+
+@pytest.mark.parametrize(
+    ["pha", "expected_pha"], [(None, None), (False, True), (True, True)]
+)
+def test_create_urllib3_context_pha(monkeypatch, pha, expected_pha):
+    context = mock.create_autospec(ssl_.SSLContext)
+    context.set_ciphers = mock.Mock()
+    context.options = 0
+    context.post_handshake_auth = pha
+    monkeypatch.setattr(ssl_, "SSLContext", lambda *_, **__: context)
+
+    assert ssl_.create_urllib3_context() is context
+
+    assert context.post_handshake_auth == expected_pha

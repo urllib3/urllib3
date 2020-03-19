@@ -52,10 +52,11 @@ from ..with_dummyserver.test_socketlevel import (  # noqa: F401
     TestSNI,
     TestSocketClosing,
     TestClientCerts,
+    TestSSL,
 )
 
 
-class TestPyOpenSSLHelpers(unittest.TestCase):
+class TestPyOpenSSLHelpers(object):
     """
     Tests for PyOpenSSL helper functions.
     """

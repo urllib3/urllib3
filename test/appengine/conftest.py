@@ -72,7 +72,7 @@ def sandbox(testbed):
 def pytest_ignore_collect(path, config):
     """Skip App Engine tests in python 3 or if no SDK is available."""
     if "appengine" in str(path):
-        if six.PY3:
+        if not six.PY2:
             return True
         if not os.environ.get("GAE_SDK_PATH"):
             return True

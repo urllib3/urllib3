@@ -46,19 +46,20 @@ class Timeout(object):
     :type total: integer, float, or None
 
     :param connect:
-        The maximum amount of time to wait for a connection attempt to a server
-        to succeed. Omitting the parameter will default the connect timeout to
-        the system default, probably `the global default timeout in socket.py
+        The maximum amount of time (in seconds) to wait for a connection
+        attempt to a server to succeed. Omitting the parameter will default the
+        connect timeout to the system default, probably `the global default
+        timeout in socket.py
         <http://hg.python.org/cpython/file/603b4d593758/Lib/socket.py#l535>`_.
         None will set an infinite timeout for connection attempts.
 
     :type connect: integer, float, or None
 
     :param read:
-        The maximum amount of time to wait between consecutive
-        read operations for a response from the server. Omitting
-        the parameter will default the read timeout to the system
-        default, probably `the global default timeout in socket.py
+        The maximum amount of time (in seconds) to wait between consecutive
+        read operations for a response from the server. Omitting the parameter
+        will default the read timeout to the system default, probably `the
+        global default timeout in socket.py
         <http://hg.python.org/cpython/file/603b4d593758/Lib/socket.py#l535>`_.
         None will set an infinite timeout.
 
@@ -97,13 +98,16 @@ class Timeout(object):
         self.total = self._validate_timeout(total, "total")
         self._start_connect = None
 
-    def __str__(self):
+    def __repr__(self):
         return "%s(connect=%r, read=%r, total=%r)" % (
             type(self).__name__,
             self._connect,
             self._read,
             self.total,
         )
+
+    # __str__ provided for backwards compatibility
+    __str__ = __repr__
 
     @classmethod
     def _validate_timeout(cls, value, name):
@@ -195,14 +199,14 @@ class Timeout(object):
     def get_connect_duration(self):
         """ Gets the time elapsed since the call to :meth:`start_connect`.
 
-        :return: Elapsed time.
+        :return: Elapsed time in seconds.
         :rtype: float
         :raises urllib3.exceptions.TimeoutStateError: if you attempt
             to get duration for a timer that hasn't been started.
         """
         if self._start_connect is None:
             raise TimeoutStateError(
-                "Can't get connect duration for timer " "that has not started."
+                "Can't get connect duration for timer that has not started."
             )
         return current_time() - self._start_connect
 

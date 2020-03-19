@@ -1,36 +1,17 @@
-urllib3
-=======
+.. raw:: html
 
-.. image:: https://travis-ci.org/urllib3/urllib3.svg?branch=master
-        :alt: Build status on Travis
-        :target: https://travis-ci.org/urllib3/urllib3
-
-.. image:: https://img.shields.io/appveyor/ci/urllib3/urllib3/master.svg
-        :alt: Build status on AppVeyor
-        :target: https://ci.appveyor.com/project/urllib3/urllib3
-
-.. image:: https://readthedocs.org/projects/urllib3/badge/?version=latest
-        :alt: Documentation Status
-        :target: https://urllib3.readthedocs.io/en/latest/
-        
-.. image:: https://img.shields.io/codecov/c/github/urllib3/urllib3.svg
-        :alt: Coverage Status
-        :target: https://codecov.io/gh/urllib3/urllib3
-
-.. image:: https://img.shields.io/pypi/v/urllib3.svg?maxAge=86400
-        :alt: PyPI version
-        :target: https://pypi.org/project/urllib3/
-
-.. image:: https://badges.gitter.im/python-urllib3/Lobby.svg
-        :alt: Gitter
-        :target: https://gitter.im/python-urllib3/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
-
-.. image:: https://tidelift.com/badges/github/urllib3/urllib3
-        :alt: Tidelift Dependencies
-        :target: https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=docs
-
-.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
-    :target: https://github.com/python/black
+   <p align="center">
+      <a href="https://github.com/urllib3/urllib3">
+         <img src="./docs/images/banner.svg" width="60%" alt="urllib3" />
+      </a>
+   </p>
+   <p align="center">
+      <a href="https://travis-ci.org/urllib3/urllib3"><img alt="Build status on Travis" src="https://travis-ci.org/urllib3/urllib3.svg?branch=master" /></a>
+      <a href="https://ci.appveyor.com/project/urllib3/urllib3"><img alt="Build status on AppVeyor" src="https://img.shields.io/appveyor/ci/urllib3/urllib3/master.svg" /></a>
+      <a href="https://urllib3.readthedocs.io/en/latest/"><img alt="Documentation Status" src="https://readthedocs.org/projects/urllib3/badge/?version=latest" /></a>
+      <a href="https://codecov.io/gh/urllib3/urllib3"><img alt="Coverage Status" src="https://img.shields.io/codecov/c/github/urllib3/urllib3.svg" /></a>
+      <a href="https://pypi.org/project/urllib3/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/urllib3.svg?maxAge=86400" /></a>
+  </p>
 
 urllib3 is a powerful, *sanity-friendly* HTTP client for Python. Much of the
 Python ecosystem already uses urllib3 and you should too.
@@ -94,11 +75,12 @@ Tidelift will coordinate the fix and disclosure with maintainers.
 Maintainers
 -----------
 
-- `@theacodes <https://github.com/theacodes>`_ (Thea Flowers)
 - `@sethmlarson <https://github.com/sethmlarson>`_ (Seth M. Larson)
+- `@pquentin <https://github.com/pquentin>`_ (Quentin Pradet)
+- `@theacodes <https://github.com/theacodes>`_ (Thea Flowers)
 - `@haikuginger <https://github.com/haikuginger>`_ (Jess Shapiro)
 - `@lukasa <https://github.com/lukasa>`_ (Cory Benfield)
-- `@sigmavirus24 <https://github.com/sigmavirus24>`_ (Ian Cordasco)
+- `@sigmavirus24 <https://github.com/sigmavirus24>`_ (Ian Stapleton Cordasco)
 - `@shazow <https://github.com/shazow>`_ (Andrey Petrov)
 
 👋
@@ -128,7 +110,7 @@ development <https://urllib3.readthedocs.io/en/latest/contributing.html#sponsors
 
 Sponsors include:
 
-- Google Cloud Platform (2018-present), sponsors `@theacodes <https://github.com/theacodes>`_'s work on an ongoing basis
-- Abbott (2018-present), sponsors `@sethmlarson <https://github.com/sethmlarson>`_'s work on an ongoing basis
+- Abbott (2018-2019), sponsored `@sethmlarson <https://github.com/sethmlarson>`_'s work on urllib3.
+- Google Cloud Platform (2018-2019), sponsored `@theacodes <https://github.com/theacodes>`_'s work on urllib3.
 - Akamai (2017-2018), sponsored `@haikuginger <https://github.com/haikuginger>`_'s work on urllib3
-- Hewlett Packard Enterprise (2016-2017), sponsored `@Lukasa’s <https://github.com/Lukasa>`_ work on urllib3
+- Hewlett Packard Enterprise (2016-2017), sponsored `@Lukasa’s <https://github.com/Lukasa>`_ work on urllib3.

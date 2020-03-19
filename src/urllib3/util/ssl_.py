@@ -2,14 +2,14 @@ from __future__ import absolute_import
 import errno
 import warnings
 import hmac
-import re
+import sys
 
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
+from .url import IPV4_RE, BRACELESS_IPV6_ADDRZ_RE
 from ..exceptions import SSLError, InsecurePlatformWarning, SNIMissingWarning
 from ..packages import six
-from ..packages.rfc3986 import abnf_regexp
 
 
 SSLContext = None
@@ -35,13 +35,6 @@ def _const_compare_digest_backport(a, b):
 
 
 _const_compare_digest = getattr(hmac, "compare_digest", _const_compare_digest_backport)
-
-# Borrow rfc3986's regular expressions for IPv4
-# and IPv6 addresses for use in is_ipaddress()
-_IP_ADDRESS_REGEX = re.compile(
-    r"^(?:%s|%s|%s)$"
-    % (abnf_regexp.IPv4_RE, abnf_regexp.IPv6_RE, abnf_regexp.IPv6_ADDRZ_RFC4007_RE)
-)
 
 try:  # Test for SSL features
     import ssl
@@ -126,11 +119,14 @@ except ImportError:
             self.certfile = certfile
             self.keyfile = keyfile
 
-        def load_verify_locations(self, cafile=None, capath=None):
+        def load_verify_locations(self, cafile=None, capath=None, cadata=None):
             self.ca_certs = cafile
 
             if capath is not None:
                 raise SSLError("CA directories not supported in older Pythons")
+
+            if cadata is not None:
+                raise SSLError("CA data not supported in older Pythons")
 
         def set_ciphers(self, cipher_suite):
             self.ciphers = cipher_suite
@@ -189,7 +185,7 @@ def resolve_cert_reqs(candidate):
     """
     Resolves the argument to a numeric constant, which can be passed to
     the wrap_socket function/method from the ssl module.
-    Defaults to :data:`ssl.CERT_NONE`.
+    Defaults to :data:`ssl.CERT_REQUIRED`.
     If given a string it is assumed to be the name of the constant in the
     :mod:`ssl` module or its abbreviation.
     (So you can specify `REQUIRED` instead of `CERT_REQUIRED`.
@@ -279,6 +275,17 @@ def create_urllib3_context(
 
     context.options |= options
 
+    # Enable post-handshake authentication for TLS 1.3, see GH #1634. PHA is
+    # necessary for conditional client cert authentication with TLS 1.3.
+    # The attribute is None for OpenSSL <= 1.1.0 or does not exist in older
+    # versions of Python.  We only enable on Python 3.7.4+ or if certificate
+    # verification is enabled to work around Python issue #37428
+    # See: https://bugs.python.org/issue37428
+    if (cert_reqs == ssl.CERT_REQUIRED or sys.version_info >= (3, 7, 4)) and getattr(
+        context, "post_handshake_auth", None
+    ) is not None:
+        context.post_handshake_auth = True
+
     context.verify_mode = cert_reqs
     if (
         getattr(context, "check_hostname", None) is not None
@@ -301,6 +308,7 @@ def ssl_wrap_socket(
     ssl_context=None,
     ca_cert_dir=None,
     key_password=None,
+    ca_cert_data=None,
 ):
     """
     All arguments except for server_hostname, ssl_context, and ca_cert_dir have
@@ -319,6 +327,9 @@ def ssl_wrap_socket(
         SSLContext.load_verify_locations().
     :param key_password:
         Optional password if the keyfile is encrypted.
+    :param ca_cert_data:
+        Optional string containing CA certificates in PEM format suitable for
+        passing as the cadata parameter to SSLContext.load_verify_locations()
     """
     context = ssl_context
     if context is None:
@@ -327,9 +338,9 @@ def ssl_wrap_socket(
         # this code.
         context = create_urllib3_context(ssl_version, cert_reqs, ciphers=ciphers)
 
-    if ca_certs or ca_cert_dir:
+    if ca_certs or ca_cert_dir or ca_cert_data:
         try:
-            context.load_verify_locations(ca_certs, ca_cert_dir)
+            context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
         except IOError as e:  # Platform-specific: Python 2.7
             raise SSLError(e)
         # Py33 raises FileNotFoundError which subclasses OSError
@@ -386,10 +397,10 @@ def is_ipaddress(hostname):
     :param str hostname: Hostname to examine.
     :return: True if the hostname is an IP address, False otherwise.
     """
-    if six.PY3 and isinstance(hostname, bytes):
+    if not six.PY2 and isinstance(hostname, bytes):
         # IDN A-label bytes are ASCII compatible.
         hostname = hostname.decode("ascii")
-    return _IP_ADDRESS_REGEX.match(hostname) is not None
+    return bool(IPV4_RE.match(hostname) or BRACELESS_IPV6_ADDRZ_RE.match(hostname))
 
 
 def _is_key_file_encrypted(key_file):

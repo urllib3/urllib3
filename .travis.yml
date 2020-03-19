@@ -1,6 +1,5 @@
 language: python
-sudo: false
-stage: test
+os: linux
 dist: xenial
 
 before_install:
@@ -13,8 +12,6 @@ install:
 
 script:
   - ./_travis/run.sh
-
-after_success:
   - ./_travis/upload_coverage.sh
 
 cache:
@@ -31,7 +28,7 @@ env:
     - PYPI_USERNAME=urllib3
     # PYPI_PASSWORD is set in Travis control panel.
 
-matrix:
+jobs:
   include:
     # Lint & documentation.
     - python: 3.6
@@ -42,16 +39,16 @@ matrix:
     # Unit tests
     - python: 2.7
       env: NOX_SESSION=test-2.7
-    - python: 3.4
-      env: NOX_SESSION=test-3.4
     - python: 3.5
       env: NOX_SESSION=test-3.5
     - python: 3.6
       env: NOX_SESSION=test-3.6
     - python: 3.7
       env: NOX_SESSION=test-3.7
-    - python: 3.8-dev
+    - python: 3.8
       env: NOX_SESSION=test-3.8
+    - python: nightly
+      env: NOX_SESSION=test-3.9
     - python: pypy2.7-6.0
       env: NOX_SESSION=test-pypy
     - python: pypy3.5-6.0
@@ -71,9 +68,6 @@ matrix:
       env: NOX_SESSION=test-2.7
     - language: generic
       os: osx
-      env: NOX_SESSION=test-3.4
-    - language: generic
-      os: osx
       env: NOX_SESSION=test-3.5
     - language: generic
       os: osx
@@ -81,6 +75,9 @@ matrix:
     - language: generic
       os: osx
       env: NOX_SESSION=test-3.7
+    - language: generic
+      os: osx
+      env: NOX_SESSION=test-3.8
 
     # Downstream integration tests.
     - python: 2.7
@@ -103,10 +100,6 @@ matrix:
       stage: deploy
       script:
         - ./_travis/deploy.sh
-
-  allow_failures:
-    - python: pypy3.5-6.0
-    - python: pypy2.7-6.0
 
 stages:
   - name: test

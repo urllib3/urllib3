@@ -29,16 +29,17 @@ def tests_impl(session, extras="socks,secure,brotli"):
         "-m",
         "pytest",
         "-r",
-        "sx",
-        "test",
-        *session.posargs,
+        "a",
+        "--tb=native",
+        "--no-success-flaky-report",
+        *(session.posargs or ("test/",)),
         env={"PYTHONWARNINGS": "always::DeprecationWarning"}
     )
     session.run("coverage", "combine")
     session.run("coverage", "report", "-m")
 
 
-@nox.session(python=["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "pypy"])
+@nox.session(python=["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy"])
 def test(session):
     tests_impl(session)
 
@@ -73,9 +74,11 @@ def app_engine(session):
 
 @nox.session()
 def blacken(session):
-    """Run black code formater."""
+    """Run black code formatter."""
     session.install("black")
     session.run("black", "src", "dummyserver", "test", "noxfile.py", "setup.py")
+
+    lint(session)
 
 
 @nox.session

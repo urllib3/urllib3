@@ -17,7 +17,7 @@ from datetime import timedelta
 
 from urllib3.packages.six.moves.http_client import responses
 from urllib3.packages.six.moves.urllib.parse import urlsplit
-from urllib3.packages.six import binary_type
+from urllib3.packages.six import binary_type, ensure_str
 
 log = logging.getLogger(__name__)
 
@@ -208,6 +208,12 @@ class TestingApp(RequestHandler):
         headers = [("Connection", "keep-alive")]
         return Response("Keeping alive", headers=headers)
 
+    def echo_params(self, request):
+        params = sorted(
+            [(ensure_str(k), ensure_str(v)) for k, v in request.params.items()]
+        )
+        return Response(repr(params))
+
     def sleep(self, request):
         "Sleep for a specified amount of ``seconds``"
         # DO NOT USE THIS, IT'S DEPRECATED.
@@ -222,6 +228,10 @@ class TestingApp(RequestHandler):
             return Response(request.query)
 
         return Response(request.body)
+
+    def echo_uri(self, request):
+        "Echo back the requested URI"
+        return Response(request.uri)
 
     def encodingrequest(self, request):
         "Check for UA accepting gzip/deflate encoding"

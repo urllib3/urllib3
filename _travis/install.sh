@@ -7,13 +7,14 @@ install_mac_python() {
     local FULL=$1
     local MINOR=$(echo $FULL | cut -d. -f1,2)
     local PYTHON_EXE=/Library/Frameworks/Python.framework/Versions/${MINOR}/bin/python${MINOR}
-
-    # Already installed.
-    if [[ -f "${PYTHON_EXE}" ]]; then
-        return 0;
+    if [[ "$MINOR" == "3.5" ]]; then
+        # The 3.5 python.org macOS build is only compiled with macOS 10.6
+        local COMPILER=10.6
+    else
+        local COMPILER=10.9
     fi
 
-    curl -Lo macpython.pkg https://www.python.org/ftp/python/${FULL}/python-${FULL}-macosx10.6.pkg
+    curl -Lo macpython.pkg https://www.python.org/ftp/python/${FULL}/python-${FULL}-macosx${COMPILER}.pkg
     sudo installer -pkg macpython.pkg -target /
 
     # The pip in older MacPython releases doesn't support a new enough TLS
@@ -25,24 +26,17 @@ install_mac_python() {
 if [[ "$(uname -s)" == 'Darwin' ]]; then
     # Mac OS setup.
     case "${NOX_SESSION}" in
-        test-2.7) MACPYTHON=2.7.15 ;;
-        test-3.4) MACPYTHON=3.4.4 ;;
-        test-3.5) MACPYTHON=3.5.4 ;;
-        test-3.6) MACPYTHON=3.6.7 ;;
-        test-3.7) MACPYTHON=3.7.1 ;;
+        test-2.7) MACPYTHON=2.7.17 ;;
+        test-3.5) MACPYTHON=3.5.4 ;;  # last binary release
+        test-3.6) MACPYTHON=3.6.8 ;;  # last binary release
+        test-3.7) MACPYTHON=3.7.6 ;;
+        test-3.8) MACPYTHON=3.8.1 ;;
     esac
 
-    # Install additional versions as needed.
     install_mac_python $MACPYTHON
 
-    # Always install 3.6 for Nox
-    install_mac_python "3.6.7"
-
-    # Enable TLS 1.3 on macOS
-    sudo defaults write /Library/Preferences/com.apple.networkd tcp_connect_enable_tls13 1
-
     # Install Nox
-    python3.6 -m pip install nox
+    python3 -m pip install nox
 
 else
     # Linux Setup

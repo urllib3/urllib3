@@ -2,14 +2,10 @@
 
 set -exo pipefail
 
-if [[ "$(uname -s)" == "Darwin" && "$NOX_SESSION" == "tests-2.7" ]]; then
-    export PATH="/Library/Frameworks/Python.framework/Versions/2.7/bin":$PATH
-fi
-
 if [ -n "${NOX_SESSION}" ]; then
     if [[ "$(uname -s)" == 'Darwin' ]]; then
-        # Explicitly use Python 3.6 on MacOS, otherwise it won't find Nox properly.
-        python3.6 -m nox -s "${NOX_SESSION}"
+        # Explicitly use python3 on macOS as `nox` is not in the PATH
+        python3 -m nox -s "${NOX_SESSION}"
     else
         nox -s "${NOX_SESSION}"
     fi

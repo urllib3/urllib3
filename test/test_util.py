@@ -13,7 +13,6 @@ import pytest
 from urllib3 import add_stderr_logger, disable_warnings
 from urllib3.util.request import make_headers, rewind_body, _FAILEDTELL
 from urllib3.util.response import assert_header_parsing
-from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
 from urllib3.util.url import get_host, parse_url, split_first, Url
 from urllib3.util.ssl_ import (
@@ -27,7 +26,6 @@ from urllib3.exceptions import (
     TimeoutStateError,
     InsecureRequestWarning,
     SNIMissingWarning,
-    InvalidHeader,
     UnrewindableBodyError,
 )
 from urllib3.util.connection import allowed_gai_family, _has_ipv6
@@ -156,10 +154,6 @@ class TestUtil(object):
     @pytest.mark.parametrize(
         "url",
         [
-            "http://user\\@google.com",
-            "http://google\\.com",
-            "user\\@google.com",
-            "http://user@user@google.com/",
             # Invalid IDNA labels
             u"http://\uD7FF.com",
             u"http://❤️",
@@ -177,12 +171,21 @@ class TestUtil(object):
         [
             ("HTTP://GOOGLE.COM/MAIL/", "http://google.com/MAIL/"),
             (
+                "http://user@domain.com:password@example.com/~tilde@?@",
+                "http://user%40domain.com:password@example.com/~tilde@?@",
+            ),
+            (
                 "HTTP://JeremyCline:Hunter2@Example.com:8080/",
                 "http://JeremyCline:Hunter2@example.com:8080/",
             ),
             ("HTTPS://Example.Com/?Key=Value", "https://example.com/?Key=Value"),
             ("Https://Example.Com/#Fragment", "https://example.com/#Fragment"),
-            ("[::Ff%etH0%Ff]/%ab%Af", "[::ff%25etH0%Ff]/%AB%AF"),
+            ("[::1%25]", "[::1%25]"),
+            ("[::Ff%etH0%Ff]/%ab%Af", "[::ff%etH0%FF]/%AB%AF"),
+            (
+                "http://user:pass@[AaAa::Ff%25etH0%Ff]/%ab%Af",
+                "http://user:pass@[aaaa::ff%etH0%FF]/%AB%AF",
+            ),
             # Invalid characters for the query/fragment getting encoded
             (
                 'http://google.com/p[]?parameter[]="hello"#fragment#',
@@ -200,6 +203,22 @@ class TestUtil(object):
         """Assert parse_url normalizes the scheme/host, and only the scheme/host"""
         actual_normalized_url = parse_url(url).url
         assert actual_normalized_url == expected_normalized_url
+
+    @pytest.mark.parametrize("char", [chr(i) for i in range(0x00, 0x21)] + ["\x7F"])
+    def test_control_characters_are_percent_encoded(self, char):
+        percent_char = "%" + (hex(ord(char))[2:].zfill(2).upper())
+        url = parse_url(
+            "http://user{0}@example.com/path{0}?query{0}#fragment{0}".format(char)
+        )
+
+        assert url == Url(
+            "http",
+            auth="user" + percent_char,
+            host="example.com",
+            path="/path" + percent_char,
+            query="query" + percent_char,
+            fragment="fragment" + percent_char,
+        )
 
     parse_url_host_map = [
         ("http://google.com/mail", Url("http", host="google.com", path="/mail")),
@@ -261,6 +280,15 @@ class TestUtil(object):
         (
             u"http://Königsgäßchen.de/straße",
             Url("http", host="xn--knigsgchen-b4a3dun.de", path="/stra%C3%9Fe"),
+        ),
+        # Percent-encode in userinfo
+        (
+            u"http://user@email.com:password@example.com/",
+            Url("http", auth="user%40email.com:password", host="example.com", path="/"),
+        ),
+        (
+            u'http://user":quoted@example.com/',
+            Url("http", auth="user%22:quoted", host="example.com", path="/"),
         ),
         # Unicode Surrogates
         (u"http://google.com/\uD800", Url("http", host="google.com", path="%ED%A0%80")),
@@ -704,7 +732,9 @@ class TestUtil(object):
         socket = object()
         mock_context = Mock()
         ssl_wrap_socket(ssl_context=mock_context, ca_certs="/path/to/pem", sock=socket)
-        mock_context.load_verify_locations.assert_called_once_with("/path/to/pem", None)
+        mock_context.load_verify_locations.assert_called_once_with(
+            "/path/to/pem", None, None
+        )
 
     def test_ssl_wrap_socket_loads_certificate_directories(self):
         socket = object()
@@ -713,7 +743,17 @@ class TestUtil(object):
             ssl_context=mock_context, ca_cert_dir="/path/to/pems", sock=socket
         )
         mock_context.load_verify_locations.assert_called_once_with(
-            None, "/path/to/pems"
+            None, "/path/to/pems", None
+        )
+
+    def test_ssl_wrap_socket_loads_certificate_data(self):
+        socket = object()
+        mock_context = Mock()
+        ssl_wrap_socket(
+            ssl_context=mock_context, ca_cert_data="TOTALLY PEM DATA", sock=socket
+        )
+        mock_context.load_verify_locations.assert_called_once_with(
+            None, None, "TOTALLY PEM DATA"
         )
 
     def test_ssl_wrap_socket_with_no_sni_warns(self):
@@ -781,19 +821,6 @@ class TestUtil(object):
     def test_ip_family_ipv6_disabled(self):
         with patch("urllib3.util.connection.HAS_IPV6", False):
             assert allowed_gai_family() == socket.AF_INET
-
-    @pytest.mark.parametrize("value", ["-1", "+1", "1.0", six.u("\xb2")])  # \xb2 = ^2
-    def test_parse_retry_after_invalid(self, value):
-        retry = Retry()
-        with pytest.raises(InvalidHeader):
-            retry.parse_retry_after(value)
-
-    @pytest.mark.parametrize(
-        "value, expected", [("0", 0), ("1000", 1000), ("\t42 ", 42)]
-    )
-    def test_parse_retry_after(self, value, expected):
-        retry = Retry()
-        assert retry.parse_retry_after(value) == expected
 
     @pytest.mark.parametrize("headers", [b"foo", None, object])
     def test_assert_header_parsing_throws_typeerror_with_non_headers(self, headers):
