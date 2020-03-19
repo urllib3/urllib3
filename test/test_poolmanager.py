@@ -6,24 +6,7 @@ from urllib3.poolmanager import PoolKey, key_fn_by_scheme, PoolManager
 from urllib3 import connection_from_url
 from urllib3.exceptions import ClosedPoolError, LocationValueError
 from urllib3.util import retry, timeout
-
-
-def _can_resolve(host):
-    """ Returns True if the system can resolve host to an address. """
-    can_resolve = False
-
-    try:
-        socket.getaddrinfo(host, None, socket.AF_UNSPEC)
-        can_resolve = True
-    except socket.gaierror:
-        pass
-
-    return can_resolve
-
-
-# Some systems might not resolve "localhost." correctly. We treat such
-# resolvers as unsupported. See https://github.com/urllib3/urllib3/issues/1809
-HAS_SUPPORTED_RESOLVER = _can_resolve("localhost.")
+from test import HAS_SUPPORTED_RESOLVER
 
 
 class TestPoolManager(object):

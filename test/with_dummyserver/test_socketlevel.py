@@ -55,6 +55,7 @@ from test import (
     SHORT_TIMEOUT,
     LONG_TIMEOUT,
     notPyPy2,
+    HAS_SUPPORTED_RESOLVER,
 )
 
 # Retry failed tests
@@ -1507,6 +1508,9 @@ class TestHeaders(SocketDummyServerTestCase):
             assert expected_request_headers == actual_request_headers
 
     @fails_on_travis_gce
+    @pytest.mark.skipif(
+        not HAS_SUPPORTED_RESOLVER, reason="Unsupported DNS resolver on this system"
+    )
     def test_request_host_header_ignores_fqdn_dot(self):
 
         received_headers = []

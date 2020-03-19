@@ -39,6 +39,24 @@ SHORT_TIMEOUT = 0.001
 LONG_TIMEOUT = 0.5 if os.environ.get("CI") else 0.01
 
 
+def _can_resolve(host):
+    """ Returns True if the system can resolve host to an address. """
+    can_resolve = False
+
+    try:
+        socket.getaddrinfo(host, None, socket.AF_UNSPEC)
+        can_resolve = True
+    except socket.gaierror:
+        pass
+
+    return can_resolve
+
+
+# Some systems might not resolve "localhost." correctly. We treat such
+# resolvers as unsupported. See https://github.com/urllib3/urllib3/issues/1809
+HAS_SUPPORTED_RESOLVER = _can_resolve("localhost.")
+
+
 def clear_warnings(cls=HTTPWarning):
     new_filters = []
     for f in warnings.filters:
