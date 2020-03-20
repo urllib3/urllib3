@@ -104,7 +104,8 @@ class TestSNI(SocketDummyServerTestCase):
                 pool.request("GET", "/", retries=0)
             except MaxRetryError:  # We are violating the protocol
                 pass
-            done_receiving.wait()
+            successful = done_receiving.wait(LONG_TIMEOUT)
+            assert successful, "Timed out waiting for connection accept"
             assert (
                 self.host.encode("ascii") in self.buf
             ), "missing hostname in SSL handshake"
