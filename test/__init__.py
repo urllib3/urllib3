@@ -41,15 +41,11 @@ LONG_TIMEOUT = 0.5 if os.environ.get("CI") else 0.01
 
 def _can_resolve(host):
     """ Returns True if the system can resolve host to an address. """
-    can_resolve = False
-
     try:
         socket.getaddrinfo(host, None, socket.AF_UNSPEC)
-        can_resolve = True
+        return True
     except socket.gaierror:
-        pass
-
-    return can_resolve
+        return False
 
 
 # Some systems might not resolve "localhost." correctly. We treat such
