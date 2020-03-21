@@ -26,7 +26,6 @@ from test import (
     notOpenSSL098,
     requires_network,
     requires_ssl_context_keyfile_password,
-    fails_on_travis_gce,
     requiresTLSv1,
     requiresTLSv1_1,
     requiresTLSv1_2,
@@ -34,7 +33,7 @@ from test import (
     TARPIT_HOST,
     SHORT_TIMEOUT,
     LONG_TIMEOUT,
-    HAS_SUPPORTED_RESOLVER,
+    resolvesLocalhostFQDN,
 )
 from urllib3 import HTTPSConnectionPool
 from urllib3.connection import VerifiedHTTPSConnection, RECENT_DATE
@@ -134,10 +133,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             r = https_pool.request("GET", "/")
             assert r.status == 200, r.data
 
-    @fails_on_travis_gce
-    @pytest.mark.skipif(
-        not HAS_SUPPORTED_RESOLVER, reason="Unsupported DNS resolver on this system"
-    )
+    @resolvesLocalhostFQDN
     def test_dotted_fqdn(self):
         with HTTPSConnectionPool(
             self.host + ".", self.port, ca_certs=DEFAULT_CA

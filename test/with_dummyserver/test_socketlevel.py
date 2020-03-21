@@ -50,12 +50,11 @@ import pytest
 import trustme
 
 from test import (
-    fails_on_travis_gce,
     requires_ssl_context_keyfile_password,
     SHORT_TIMEOUT,
     LONG_TIMEOUT,
     notPyPy2,
-    HAS_SUPPORTED_RESOLVER,
+    resolvesLocalhostFQDN,
 )
 
 # Retry failed tests
@@ -1507,10 +1506,7 @@ class TestHeaders(SocketDummyServerTestCase):
             pool.request("GET", "/", headers=OrderedDict(expected_request_headers))
             assert expected_request_headers == actual_request_headers
 
-    @fails_on_travis_gce
-    @pytest.mark.skipif(
-        not HAS_SUPPORTED_RESOLVER, reason="Unsupported DNS resolver on this system"
-    )
+    @resolvesLocalhostFQDN
     def test_request_host_header_ignores_fqdn_dot(self):
 
         received_headers = []
