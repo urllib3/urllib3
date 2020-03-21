@@ -249,7 +249,7 @@ def resolvesLocalhostFQDN(test):
     @six.wraps(test)
     def wrapper(*args, **kwargs):
         if not RESOLVES_LOCALHOST_FQDN:
-            pytest.skip("Cant resolve localhost.")
+            pytest.skip("Can't resolve localhost.")
         return test(*args, **kwargs)
 
     return wrapper
