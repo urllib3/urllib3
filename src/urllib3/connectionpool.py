@@ -65,6 +65,9 @@ class ConnectionPool(object):
     """
     Base class for all connection pools, such as
     :class:`.HTTPConnectionPool` and :class:`.HTTPSConnectionPool`.
+
+    .. note::
+       When used directly, does not normalize URLs.
     """
 
     scheme = None
