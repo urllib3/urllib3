@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import socket
 from .packages.six.moves.http_client import IncompleteRead as httplib_IncompleteRead
 
 # Base Exceptions
@@ -261,3 +262,11 @@ class HeaderParsingError(HTTPError):
 class UnrewindableBodyError(HTTPError):
     "urllib3 encountered an error when trying to rewind a body"
     pass
+
+
+class NameResolutionError(HTTPError, socket.gaierror):
+    "Raised when host name resolution fails"
+
+    def __init__(self, name, exc):
+        message = "Not found '%s' (%s)" % (name, exc)
+        HTTPError.__init__(self, message)

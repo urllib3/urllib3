@@ -22,6 +22,7 @@ from .exceptions import (
     TimeoutError,
     InsecureRequestWarning,
     NewConnectionError,
+    NameResolutionError,
 )
 from .packages.ssl_match_hostname import CertificateError
 from .packages import six
@@ -710,6 +711,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             BaseSSLError,
             SSLError,
             CertificateError,
+            NameResolutionError,
         ) as e:
             # Discard the connection for these exceptions. It will be
             # replaced during the next _get_conn() call.

@@ -35,6 +35,7 @@ from .exceptions import (
     ConnectTimeoutError,
     SubjectAltNameWarning,
     SystemTimeWarning,
+    NameResolutionError,
 )
 from .packages.ssl_match_hostname import match_hostname, CertificateError
 
@@ -158,6 +159,9 @@ class HTTPConnection(_HTTPConnection, object):
             conn = connection.create_connection(
                 (self._dns_host, self.port), self.timeout, **extra_kw
             )
+
+        except socket.gaierror as e:
+            raise NameResolutionError(self.host, e.args[1])
 
         except SocketTimeout:
             raise ConnectTimeoutError(

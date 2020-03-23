@@ -20,6 +20,7 @@ from urllib3.exceptions import (
     ProxyError,
     ConnectTimeoutError,
     ProxySchemeUnsupported,
+    NameResolutionError,
 )
 from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
 
@@ -106,7 +107,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
             with pytest.raises(MaxRetryError) as e:
                 http.request("GET", "%s/" % self.http_url)
-            assert type(e.value.reason) == ProxyError
+            assert type(e.value.reason) == NameResolutionError
 
     def test_oldapi(self):
         with ProxyManager(

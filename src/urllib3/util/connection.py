@@ -58,8 +58,12 @@ def create_connection(
     # The original create_connection function always returns all records.
     family = allowed_gai_family()
 
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
-        af, socktype, proto, canonname, sa = res
+    try:
+        res = socket.getaddrinfo(host, port, family, socket.SOCK_STREAM)
+    except socket.gaierror as e:
+        raise e
+
+    for af, socktype, proto, canonname, sa in res:
         sock = None
         try:
             sock = socket.socket(af, socktype, proto)
