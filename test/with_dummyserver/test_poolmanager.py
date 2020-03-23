@@ -25,11 +25,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
     def test_redirect_preload(self):
         def build_request(number, preload):
             return http.request(
-                    "GET",
-                    "%s/redirect" % self.base_url,
-                    fields={"target": "%s/?page=%d" % (self.base_url, number)},
-                    preload_content=preload
-                )
+                "GET",
+                "%s/redirect" % self.base_url,
+                fields={"target": "%s/?page=%d" % (self.base_url, number)},
+                preload_content=preload,
+            )
 
         with PoolManager(block=True, maxsize=3) as http:
             for j in range(1, 5):
