@@ -2,15 +2,13 @@ from __future__ import absolute_import
 import collections
 import functools
 import logging
-from socket import error as SocketError
 import warnings
 
 from ._collections import RecentlyUsedContainer
-from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, BaseSSLError
+from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
 
 from .exceptions import (
-    HTTPError,
     HTTPWarning,
     LocationValueError,
     MaxRetryError,
