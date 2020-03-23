@@ -1394,7 +1394,7 @@ class TestSSL(SocketDummyServerTestCase):
         Ensure that load_verify_locations raises SSLError for all backends
         """
         with pytest.raises(SSLError):
-            ssl_wrap_socket(None, ca_certs=os.devnull)
+            ssl_wrap_socket(None, ca_certs="/tmp/fake-file")
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):
