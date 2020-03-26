@@ -93,7 +93,7 @@ class TestingApp(RequestHandler):
         if not path.startswith("/"):
             path = urlsplit(path).path
 
-        target = path[1:].replace("/", "_")
+        target = path[1:].split("/", 1)[0]
         method = getattr(self, target, self.index)
 
         resp = method(req)

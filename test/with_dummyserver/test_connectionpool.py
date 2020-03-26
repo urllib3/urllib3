@@ -787,6 +787,12 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             response = pool.request("GET", "http://LoCaLhOsT:%d/" % self.port)
             assert response.status == 200
 
+    def test_preserves_path_dot_segments(self):
+        """ ConnectionPool preserves dot segments in the URI """
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.request("GET", "/echo_uri/seg0/../seg2")
+            assert response.data == b"/echo_uri/seg0/../seg2"
+
 
 class TestRetry(HTTPDummyServerTestCase):
     def test_max_retry(self):
