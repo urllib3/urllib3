@@ -18,7 +18,6 @@ from .exceptions import (
 from .packages import six
 from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
-from .response import drain_conn
 from .util.url import parse_url
 from .util.retry import Retry
 
@@ -386,7 +385,7 @@ class PoolManager(RequestMethods):
             retries = retries.increment(method, url, response=response, _pool=conn)
         except MaxRetryError:
             if retries.raise_on_redirect:
-                drain_conn(response)
+                response.drain_conn()
                 raise
             return response
 
@@ -395,7 +394,7 @@ class PoolManager(RequestMethods):
 
         log.info("Redirecting %s -> %s", url, redirect_location)
 
-        drain_conn(response)
+        response.drain_conn()
         return self.urlopen(method, redirect_location, **kw)
 
 
