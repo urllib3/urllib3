@@ -30,6 +30,17 @@ from .util.response import is_fp_closed, is_response_to_head
 log = logging.getLogger(__name__)
 
 
+def drain_conn(response):
+    """
+    Read and discard any remaining HTTP response data from the connection.
+    Unread data in the HTTPResponse connection blocks the connection from being released back to the pool
+    """
+    try:
+        response.read()
+    except (HTTPError, SocketError, BaseSSLError, HTTPException):
+        pass
+
+
 class DeflateDecoder(object):
     def __init__(self):
         self._first_try = True
@@ -270,16 +281,6 @@ class HTTPResponse(io.IOBase):
             return self.headers.get("location")
 
         return False
-
-    def drain(self):
-        """
-        Discard any outstanding data for the response data.
-        With no outstanding data, the connection used by this HTTPResponse object can be be released back to the pool
-        """
-        try:
-            self.read()
-        except (HTTPError, SocketError, BaseSSLError, HTTPException):
-            pass
 
     def release_conn(self):
         if not self._pool or not self._connection:

@@ -18,6 +18,7 @@ from .exceptions import (
 from .packages import six
 from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
+from .response import drain_conn
 from .util.url import parse_url
 from .util.retry import Retry
 
@@ -385,9 +386,7 @@ class PoolManager(RequestMethods):
             retries = retries.increment(method, url, response=response, _pool=conn)
         except MaxRetryError:
             if retries.raise_on_redirect:
-                # Drain (and release the connection for) this response, since
-                # we're not returning it to be released manually.
-                response.drain()
+                drain_conn(response)
                 raise
             return response
 
@@ -396,8 +395,7 @@ class PoolManager(RequestMethods):
 
         log.info("Redirecting %s -> %s", url, redirect_location)
 
-        # drain (and return the connection to the pool) before recursing
-        response.drain()
+        drain_conn(response)
         return self.urlopen(method, redirect_location, **kw)
 
 

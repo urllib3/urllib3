@@ -36,7 +36,7 @@ from .connection import (
     BaseSSLError,
 )
 from .request import RequestMethods
-from .response import HTTPResponse
+from .response import HTTPResponse, drain_conn
 
 from .util.connection import is_connection_dropped
 from .util.request import set_file_position
@@ -770,15 +770,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 retries = retries.increment(method, url, response=response, _pool=self)
             except MaxRetryError:
                 if retries.raise_on_redirect:
-                    # Drain (and release the connection for) this response, since
-                    # we're not returning it to be released manually.
-                    response.drain()
+                    drain_conn(response)
                     raise
                 return response
 
-            # drain (and return the connection to the pool) before recursing
-            response.drain()
-
+            drain_conn(response)
             retries.sleep_for_retry(response)
             log.debug("Redirecting %s -> %s", url, redirect_location)
             return self.urlopen(
@@ -804,15 +800,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 retries = retries.increment(method, url, response=response, _pool=self)
             except MaxRetryError:
                 if retries.raise_on_status:
-                    # Drain (and release the connection for) this response, since
-                    # we're not returning it to be released manually.
-                    response.drain()
+                    drain_conn(response)
                     raise
                 return response
 
-            # drain (thus returning the connection to the pool) before recursing
-            response.drain()
-
+            drain_conn(response)
             retries.sleep(response)
             log.debug("Retry: %s", url)
             return self.urlopen(
