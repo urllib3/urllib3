@@ -144,7 +144,7 @@ class RequestMethods(object):
         if headers is None:
             headers = self.headers
 
-        extra_kw = {"headers": {}}
+        extra_kw = {"headers": {"Content-Length": 0}}
 
         if fields:
             if "body" in urlopen_kw:
