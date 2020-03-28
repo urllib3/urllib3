@@ -1,7 +1,10 @@
 import pytest
 
+from .port_helpers import find_unused_port
 from urllib3.poolmanager import ProxyManager
 from urllib3.util.url import parse_url
+from urllib3.util.retry import Retry
+from urllib3.exceptions import ProxyError
 
 
 class TestProxyManager(object):
@@ -57,3 +60,10 @@ class TestProxyManager(object):
         with ProxyManager("https://proxy:8080") as p:
             assert p._proxy_requires_url_absolute_form(http_url)
             assert p._proxy_requires_url_absolute_form(https_url)
+
+    def test_proxy_connect_retry(self):
+        port = find_unused_port()
+        retry = Retry(total=None, connect=False)
+        with ProxyManager("http://localhost:{}".format(port)) as p:
+            with pytest.raises(ProxyError):
+                p.urlopen("HEAD", url="http://localhost/", retries=retry)
