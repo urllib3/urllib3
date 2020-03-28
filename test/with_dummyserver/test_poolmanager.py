@@ -22,27 +22,6 @@ class TestPoolManager(HTTPDummyServerTestCase):
         cls.base_url = "http://%s:%d" % (cls.host, cls.port)
         cls.base_url_alt = "http://%s:%d" % (cls.host_alt, cls.port)
 
-    def test_redirect_preload(self):
-        def build_request(number, preload):
-            return http.request(
-                "GET",
-                "%s/redirect" % self.base_url,
-                fields={"target": "%s/?page=%d" % (self.base_url, number)},
-                preload_content=preload,
-            )
-
-        with PoolManager(block=True, maxsize=3) as http:
-            for j in range(1, 5):
-                r1 = build_request(number=j, preload=True)
-                r2 = build_request(number=j, preload=False)
-
-                data = b"Dummy server! page %d" % j
-                assert r1.status == 200
-                assert r2.status == 200
-                assert r1.data == data
-                assert r2.data == data
-                r2.release_conn()  # Only need to release for preload=False
-
     def test_redirect(self):
         with PoolManager() as http:
             r = http.request(
@@ -226,6 +205,15 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert "x-api-secret" not in data
             assert "X-API-Secret" not in data
             assert data["Authorization"] == "bar"
+
+    def test_redirect_without_preload_releases_connection(self):
+        with PoolManager(block=True, maxsize=2) as http:
+            r = http.request(
+                "GET", "%s/redirect" % self.base_url, preload_content=False
+            )
+            assert r._pool.num_requests == 2
+            assert r._pool.num_connections == 1
+            assert len(http.pools) == 1
 
     def test_raise_on_redirect(self):
         with PoolManager() as http:

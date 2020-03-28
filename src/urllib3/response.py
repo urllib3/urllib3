@@ -281,7 +281,8 @@ class HTTPResponse(io.IOBase):
     def drain_conn(self):
         """
         Read and discard any remaining HTTP response data in the response connection.
-        Unread data in the HTTPResponse connection blocks the connection from being released back to the pool
+
+        Unread data in the HTTPResponse connection blocks the connection from being released back to the pool.
         """
         try:
             self.read()
