@@ -308,7 +308,7 @@ class Retry(object):
         request, so it should be safe to retry.
         """
         if isinstance(err, ProxyError):
-            err = err.args[1]
+            err = err.original_error
         return isinstance(err, ConnectTimeoutError)
 
     def _is_read_error(self, err):

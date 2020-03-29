@@ -4,7 +4,10 @@ from .port_helpers import find_unused_port
 from urllib3.poolmanager import ProxyManager
 from urllib3.util.url import parse_url
 from urllib3.util.retry import Retry
-from urllib3.exceptions import ProxyError
+from urllib3.exceptions import (
+    MaxRetryError,
+    ProxyError,
+)
 
 
 class TestProxyManager(object):
@@ -66,4 +69,9 @@ class TestProxyManager(object):
         retry = Retry(total=None, connect=False)
         with ProxyManager("http://localhost:{}".format(port)) as p:
             with pytest.raises(ProxyError):
+                p.urlopen("HEAD", url="http://localhost/", retries=retry)
+
+        retry = Retry(total=None, connect=2)
+        with ProxyManager("http://localhost:{}".format(port)) as p:
+            with pytest.raises(MaxRetryError):
                 p.urlopen("HEAD", url="http://localhost/", retries=retry)
