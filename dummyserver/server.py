@@ -7,8 +7,6 @@ from __future__ import print_function
 
 import logging
 import os
-import random
-import string
 import sys
 import threading
 import socket
@@ -160,17 +158,8 @@ def run_loop_in_thread(io_loop):
 
 
 def get_unreachable_address():
-    while True:
-        host = "".join(random.choice(string.ascii_lowercase) for _ in range(60))
-        sockaddr = (host, 54321)
-
-        # check if we are really "lucky" and hit an actual server
-        try:
-            s = socket.create_connection(sockaddr)
-        except socket.error:
-            return sockaddr
-        else:
-            s.close()
+    # reserved as per rfc2606
+    return ("something.invalid", 54321)
 
 
 if __name__ == "__main__":
