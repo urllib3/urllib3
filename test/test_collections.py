@@ -267,6 +267,7 @@ class TestHTTPHeaderDict(object):
         assert d.getlist("b") == []
         d.add("b", "asdf")
         assert d.getlist("b") == ["asdf"]
+        assert d.getlist("missing", default="baz") == "baz"
 
     def test_getlist_after_copy(self, d):
         assert d.getlist("cookie") == HTTPHeaderDict(d).getlist("cookie")
