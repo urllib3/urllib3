@@ -5,6 +5,9 @@ import nox
 
 
 def tests_impl(session, extras="socks,secure,brotli"):
+    py_major = session.python.split(".")[0]
+    py_other_major = "32".replace(py_major, "")
+
     # Install deps and the package itself.
     session.install("-r", "dev-requirements.txt")
     session.install(".[{extras}]".format(extras=extras))
@@ -36,7 +39,12 @@ def tests_impl(session, extras="socks,secure,brotli"):
         env={"PYTHONWARNINGS": "always::DeprecationWarning"}
     )
     session.run("coverage", "combine")
-    session.run("coverage", "report", "-m")
+    session.run(
+        "coverage",
+        "report",
+        "-m",
+        env={"PY_MAJOR": py_major, "PY_OTHER_MAJOR": py_other_major,},
+    )
 
 
 @nox.session(python=["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy"])

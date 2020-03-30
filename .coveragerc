@@ -24,6 +24,6 @@ exclude_lines =
     import
     raise
     .* # Platform-specific.*
-    .*:.* # Python \d.*
+    .*:.* # Python ${PY_OTHER_MAJOR}.*
     .* # Abstract
     .* # Defensive:
