@@ -107,12 +107,12 @@ if brotli is not None:
         def __init__(self):
             self._obj = brotli.Decompressor()
 
-        def decompress(self, data):
+        def decompress(self, data):  # Platform-specific
             if hasattr(self._obj, "decompress"):
                 return self._obj.decompress(data)
             return self._obj.process(data)
 
-        def flush(self):
+        def flush(self):  # Platform-specific
             if hasattr(self._obj, "flush"):
                 return self._obj.flush()
             return b""

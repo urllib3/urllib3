@@ -110,7 +110,7 @@ def null_wait_for_socket(*args, **kwargs):
     raise NoWayToWaitForSocketError("no select-equivalent available")
 
 
-def _have_working_poll():
+def _have_working_poll():  # Platform-specific
     # Apparently some systems have a select.poll that fails as soon as you try
     # to use it, either due to strange configuration or broken monkeypatching
     # from libraries like eventlet/greenlet.
@@ -123,7 +123,7 @@ def _have_working_poll():
         return True
 
 
-def wait_for_socket(*args, **kwargs):
+def wait_for_socket(*args, **kwargs):  # Platform-specific
     # We delay choosing which implementation to use until the first time we're
     # called. We could do it at import time, but then we might make the wrong
     # decision if someone goes wild with monkeypatching select.poll after
