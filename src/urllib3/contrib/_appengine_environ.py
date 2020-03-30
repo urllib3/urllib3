@@ -29,8 +29,3 @@ def is_prod_appengine():
     return "APPENGINE_RUNTIME" in os.environ and os.environ.get(
         "SERVER_SOFTWARE", ""
     ).startswith("Google App Engine/")
-
-
-def is_prod_appengine_mvms():
-    """Deprecated."""
-    return False

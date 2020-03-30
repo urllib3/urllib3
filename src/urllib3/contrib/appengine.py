@@ -311,4 +311,3 @@ is_appengine = _appengine_environ.is_appengine
 is_appengine_sandbox = _appengine_environ.is_appengine_sandbox
 is_local_appengine = _appengine_environ.is_local_appengine
 is_prod_appengine = _appengine_environ.is_prod_appengine
-is_prod_appengine_mvms = _appengine_environ.is_prod_appengine_mvms
