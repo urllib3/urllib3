@@ -37,6 +37,7 @@ def tests_impl(session, extras="socks,secure,brotli"):
     )
     session.run("coverage", "combine")
     session.run("coverage", "report", "-m")
+    session.run("coverage", "xml")
 
 
 @nox.session(python=["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy"])
@@ -70,6 +71,7 @@ def app_engine(session):
     )
     session.run("coverage", "combine")
     session.run("coverage", "report", "-m")
+    session.run("coverage", "xml")
 
 
 @nox.session()
