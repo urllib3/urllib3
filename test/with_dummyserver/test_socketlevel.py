@@ -55,6 +55,7 @@ from test import (
     SHORT_TIMEOUT,
     LONG_TIMEOUT,
     notPyPy2,
+    notSecureTransport,
 )
 
 # Retry failed tests
@@ -1167,6 +1168,7 @@ class TestSSL(SocketDummyServerTestCase):
                 pool.request("GET", "/", retries=0)
             assert isinstance(cm.value.reason, SSLError)
 
+    @notSecureTransport
     def test_ssl_read_timeout(self):
         timed_out = Event()
 
