@@ -65,7 +65,6 @@ else:
                         timeout = 0
                     if timeout == float("inf"):
                         timeout = None
-                    continue
 
 
 def select_wait_for_socket(sock, read=False, write=False, timeout=None):
