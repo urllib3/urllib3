@@ -39,6 +39,21 @@ SHORT_TIMEOUT = 0.001
 LONG_TIMEOUT = 0.5 if os.environ.get("CI") else 0.01
 
 
+def _can_resolve(host):
+    """ Returns True if the system can resolve host to an address. """
+    try:
+        socket.getaddrinfo(host, None, socket.AF_UNSPEC)
+        return True
+    except socket.gaierror:
+        return False
+
+
+# Some systems might not resolve "localhost." correctly.
+# See https://github.com/urllib3/urllib3/issues/1809 and
+# https://github.com/urllib3/urllib3/pull/1475#issuecomment-440788064.
+RESOLVES_LOCALHOST_FQDN = _can_resolve("localhost.")
+
+
 def clear_warnings(cls=HTTPWarning):
     new_filters = []
     for f in warnings.filters:
@@ -200,23 +215,6 @@ def requires_ssl_context_keyfile_password(test):
     return wrapper
 
 
-def fails_on_travis_gce(test):
-    """Expect the test to fail on Google Compute Engine instances for Travis.
-    Travis uses GCE for its sudo: enabled builds.
-
-    Reason for this decorator:
-    https://github.com/urllib3/urllib3/pull/1475#issuecomment-440788064
-    """
-
-    @six.wraps(test)
-    def wrapper(*args, **kwargs):
-        if os.environ.get("TRAVIS_INFRA") in ("gce", "unknown"):
-            pytest.xfail("%s is expected to fail on Travis GCE builds" % test.__name__)
-        return test(*args, **kwargs)
-
-    return wrapper
-
-
 def requiresTLSv1():
     """Test requires TLSv1 available"""
     return pytest.mark.skipif(
@@ -243,6 +241,18 @@ def requiresTLSv1_3():
     return pytest.mark.skipif(
         not getattr(ssl, "HAS_TLSv1_3", False), reason="Test requires TLSv1.3"
     )
+
+
+def resolvesLocalhostFQDN(test):
+    """Test requires successful resolving of 'localhost.'"""
+
+    @six.wraps(test)
+    def wrapper(*args, **kwargs):
+        if not RESOLVES_LOCALHOST_FQDN:
+            pytest.skip("Can't resolve localhost.")
+        return test(*args, **kwargs)
+
+    return wrapper
 
 
 class _ListHandler(logging.Handler):

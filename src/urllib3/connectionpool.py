@@ -65,6 +65,11 @@ class ConnectionPool(object):
     """
     Base class for all connection pools, such as
     :class:`.HTTPConnectionPool` and :class:`.HTTPSConnectionPool`.
+
+    .. note::
+       ConnectionPool.urlopen() does not normalize or percent-encode target URIs
+       which is useful if your target server doesn't support percent-encoded
+       target URIs.
     """
 
     scheme = None
