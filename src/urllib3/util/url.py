@@ -273,7 +273,7 @@ def _remove_path_dot_segments(path):
 
 def _normalize_host(host, scheme):
     if host:
-        if isinstance(host, six.binary_type):
+        if isinstance(host, six.binary_type):  # Python 2.7
             host = six.ensure_str(host)
 
         if scheme in NORMALIZABLE_SCHEMES:
@@ -405,7 +405,7 @@ def parse_url(url):
     # backwards compatibility.
     if isinstance(url, six.text_type):
         ensure_func = six.ensure_text
-    else:
+    else:  # Python 2.7
         ensure_func = six.ensure_str
 
     def ensure_type(x):

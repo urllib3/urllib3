@@ -21,11 +21,11 @@ except (ImportError, AttributeError):  # Platform-specific: No SSL.
         pass
 
 
-try:
-    # Python 3: not a no-op, we're adding this to the namespace so it can be imported.
+try:  # Python 3:
+    # not a no-op, we're adding this to the namespace so it can be imported.
     ConnectionError = ConnectionError
-except NameError:
-    # Python 2
+except NameError:  # Python 2.7
+
     class ConnectionError(Exception):
         pass
 
@@ -102,7 +102,7 @@ class HTTPConnection(_HTTPConnection, object):
     is_verified = False
 
     def __init__(self, *args, **kw):
-        if not six.PY2:
+        if not six.PY2:  # Python 3
             kw.pop("strict", None)
 
         # Pre-set source_address.

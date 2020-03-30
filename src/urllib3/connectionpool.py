@@ -412,18 +412,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Receive the response from the server
         try:
-            try:
-                # Python 2.7, use buffering of HTTP responses
+            if six.PY2:  # Python 2.7, use buffering of HTTP responses
                 httplib_response = conn.getresponse(buffering=True)
-            except TypeError:
-                # Python 3
-                try:
-                    httplib_response = conn.getresponse()
-                except BaseException as e:
-                    # Remove the TypeError from the exception chain in
-                    # Python 3 (including for exceptions like SystemExit).
-                    # Otherwise it looks like a bug in the code.
-                    six.raise_from(e, None)
+            else:  # Python 3
+                httplib_response = conn.getresponse()
         except (SocketTimeout, BaseSSLError, SocketError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
@@ -444,7 +436,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         try:
             assert_header_parsing(httplib_response.msg)
-        except (HeaderParsingError, TypeError) as hpe:  # Platform-specific: Python 3
+        except (HeaderParsingError, TypeError) as hpe:  # Python 3
             log.warning(
                 "Failed to parse headers (url=%s): %s",
                 self._absolute_url(url),

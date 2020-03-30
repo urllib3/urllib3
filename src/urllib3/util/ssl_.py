@@ -103,7 +103,7 @@ try:
     from ssl import SSLContext  # Modern SSL?
 except ImportError:
 
-    class SSLContext(object):  # Platform-specific: Python 2
+    class SSLContext(object):  # Python 2.7
         def __init__(self, protocol_version):
             self.protocol = protocol_version
             # Use default values from a real SSLContext
@@ -341,7 +341,7 @@ def ssl_wrap_socket(
     if ca_certs or ca_cert_dir or ca_cert_data:
         try:
             context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
-        except IOError as e:  # Platform-specific: Python 2.7
+        except IOError as e:  # Python 2.7
             raise SSLError(e)
         # Py33 raises FileNotFoundError which subclasses OSError
         # These are not equivalent unless we check the errno attribute
@@ -397,7 +397,7 @@ def is_ipaddress(hostname):
     :param str hostname: Hostname to examine.
     :return: True if the hostname is an IP address, False otherwise.
     """
-    if not six.PY2 and isinstance(hostname, bytes):
+    if not six.PY2 and isinstance(hostname, bytes):  # Python 3
         # IDN A-label bytes are ASCII compatible.
         hostname = hostname.decode("ascii")
     return bool(IPV4_RE.match(hostname) or BRACELESS_IPV6_ADDRZ_RE.match(hostname))

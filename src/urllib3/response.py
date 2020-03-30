@@ -578,10 +578,9 @@ class HTTPResponse(io.IOBase):
         headers = r.msg
 
         if not isinstance(headers, HTTPHeaderDict):
-            if PY3:
+            if PY3:  # Python 3
                 headers = HTTPHeaderDict(headers.items())
-            else:
-                # Python 2.7
+            else:  # Python 2.7
                 headers = HTTPHeaderDict.from_httplib(headers)
 
         # HTTPResponse objects in Python 3 don't have a .strict attribute

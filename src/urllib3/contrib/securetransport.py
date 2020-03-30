@@ -70,9 +70,9 @@ from ._securetransport.low_level import (
     _load_client_cert_chain,
 )
 
-try:  # Platform-specific: Python 2
+try:  # Python 2
     from socket import _fileobject
-except ImportError:  # Platform-specific: Python 3
+except ImportError:  # Python 3
     _fileobject = None
     from ..packages.backports.makefile import backport_makefile
 
@@ -720,14 +720,14 @@ class WrappedSocket(object):
             self._makefile_refs -= 1
 
 
-if _fileobject:  # Platform-specific: Python 2
+if _fileobject:  # Python 2
 
     def makefile(self, mode, bufsize=-1):
         self._makefile_refs += 1
         return _fileobject(self, mode, bufsize, close=True)
 
 
-else:  # Platform-specific: Python 3
+else:  # Python 3
 
     def makefile(self, mode="r", buffering=None, *args, **kwargs):
         # We disable buffering with SecureTransport because it conflicts with

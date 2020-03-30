@@ -35,7 +35,7 @@ def is_fp_closed(obj):
     raise ValueError("Unable to determine whether fp is closed.")
 
 
-def assert_header_parsing(headers):
+def assert_header_parsing(headers):  # Python 3
     """
     Asserts whether all headers have been successfully parsed.
     Extracts encountered errors from the result of parsing headers.
