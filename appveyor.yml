@@ -55,4 +55,4 @@ test_script:
 
 on_success:
   - pip install codecov
-  - codecov --env NOX_SESSION
+  - codecov --env NOX_SESSION --file coverage.xml
