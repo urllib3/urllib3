@@ -2,6 +2,7 @@
 # library test suite.
 
 import socket
+from contextlib import contextmanager
 
 
 # Don't use "localhost", since resolving it uses the DNS under recent
@@ -10,6 +11,7 @@ HOST = "127.0.0.1"
 HOSTv6 = "::1"
 
 
+@contextmanager
 def find_unused_port(family=socket.AF_INET, socktype=socket.SOCK_STREAM):
     """Returns an unused port that should be suitable for binding.  This is
     achieved by creating a temporary socket with the same family and type as
@@ -56,19 +58,12 @@ def find_unused_port(family=socket.AF_INET, socktype=socket.SOCK_STREAM):
     http://bugs.python.org/issue2550 for more info.  The following site also
     has a very thorough description about the implications of both REUSEADDR
     and EXCLUSIVEADDRUSE on Windows:
-    http://msdn2.microsoft.com/en-us/library/ms740621(VS.85).aspx)
-
-    XXX: although this approach is a vast improvement on previous attempts to
-    elicit unused ports, it rests heavily on the assumption that the ephemeral
-    port returned to us by the OS won't immediately be dished back out to some
-    other process when we close and delete our temporary socket but before our
-    calling code has a chance to bind the returned port.  We can deal with this
-    issue if/when we come across it."""
+    http://msdn2.microsoft.com/en-us/library/ms740621(VS.85).aspx)"""
     tempsock = socket.socket(family, socktype)
     port = bind_port(tempsock)
+    yield port
     tempsock.close()
     del tempsock
-    return port
 
 
 def bind_port(sock, host=HOST):

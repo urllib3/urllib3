@@ -349,11 +349,11 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_connection_error_retries(self):
         """ ECONNREFUSED error should raise a connection error, with retries """
-        port = find_unused_port()
-        with HTTPConnectionPool(self.host, port) as pool:
-            with pytest.raises(MaxRetryError) as e:
-                pool.request("GET", "/", retries=Retry(connect=3))
-            assert type(e.value.reason) == NewConnectionError
+        with find_unused_port() as port:
+            with HTTPConnectionPool(self.host, port) as pool:
+                with pytest.raises(MaxRetryError) as e:
+                    pool.request("GET", "/", retries=Retry(connect=3))
+                assert type(e.value.reason) == NewConnectionError
 
     def test_timeout_success(self):
         timeout = Timeout(connect=3, read=5, total=None)
