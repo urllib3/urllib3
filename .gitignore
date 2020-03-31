@@ -6,3 +6,4 @@
 /dist
 /build
 /docs/_build
+coverage.xml

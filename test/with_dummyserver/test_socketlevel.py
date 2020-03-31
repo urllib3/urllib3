@@ -54,6 +54,7 @@ from test import (
     SHORT_TIMEOUT,
     LONG_TIMEOUT,
     notPyPy2,
+    notSecureTransport,
     resolvesLocalhostFQDN,
 )
 
@@ -1168,6 +1169,7 @@ class TestSSL(SocketDummyServerTestCase):
                 pool.request("GET", "/", retries=0)
             assert isinstance(cm.value.reason, SSLError)
 
+    @notSecureTransport
     def test_ssl_read_timeout(self):
         timed_out = Event()
 
@@ -1395,7 +1397,7 @@ class TestSSL(SocketDummyServerTestCase):
         Ensure that load_verify_locations raises SSLError for all backends
         """
         with pytest.raises(SSLError):
-            ssl_wrap_socket(None, ca_certs=os.devnull)
+            ssl_wrap_socket(None, ca_certs="/tmp/fake-file")
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):
