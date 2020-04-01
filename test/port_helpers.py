@@ -17,8 +17,8 @@ def find_unused_port(family=socket.AF_INET, socktype=socket.SOCK_STREAM):
     achieved by creating a temporary socket with the same family and type as
     the 'sock' parameter (default is AF_INET, SOCK_STREAM), and binding it to
     the specified host address (defaults to 0.0.0.0) with the port set to 0,
-    eliciting an unused ephemeral port from the OS.  The temporary socket is
-    then closed and deleted, and the ephemeral port is returned.
+    eliciting an unused ephemeral port from the OS. The ephemeral port is
+    yielded, and finally the temporary socket is closed and deleted.
 
     Either this method or bind_port() should be used for any tests where a
     server socket needs to be bound to a particular port for the duration of
