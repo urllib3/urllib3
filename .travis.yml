@@ -62,23 +62,6 @@ jobs:
     - python: 3.7
       env: NOX_SESSION=google_brotli-3
 
-    # OS X unit tests.
-    - language: generic
-      os: osx
-      env: NOX_SESSION=test-2.7
-    - language: generic
-      os: osx
-      env: NOX_SESSION=test-3.5
-    - language: generic
-      os: osx
-      env: NOX_SESSION=test-3.6
-    - language: generic
-      os: osx
-      env: NOX_SESSION=test-3.7
-    - language: generic
-      os: osx
-      env: NOX_SESSION=test-3.8
-
     # Downstream integration tests.
     - python: 2.7
       env: DOWNSTREAM=requests
