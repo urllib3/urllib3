@@ -65,11 +65,11 @@ class TestProxyManager(object):
             assert p._proxy_requires_url_absolute_form(https_url)
 
     def test_proxy_connect_retry(self):
-        port = find_unused_port()
         retry = Retry(total=None, connect=False)
-        with ProxyManager("http://localhost:{}".format(port)) as p:
-            with pytest.raises(ProxyError):
-                p.urlopen("HEAD", url="http://localhost/", retries=retry)
+        with find_unused_port() as port:
+            with ProxyManager("http://localhost:{}".format(port)) as p:
+                with pytest.raises(ProxyError):
+                    p.urlopen("HEAD", url="http://localhost/", retries=retry)
 
         retry = Retry(total=None, connect=2)
         with ProxyManager("http://localhost:{}".format(port)) as p:
