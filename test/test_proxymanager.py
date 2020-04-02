@@ -7,6 +7,7 @@ from urllib3.util.retry import Retry
 from urllib3.exceptions import (
     MaxRetryError,
     ProxyError,
+    NewConnectionError,
 )
 
 
@@ -68,10 +69,12 @@ class TestProxyManager(object):
         retry = Retry(total=None, connect=False)
         with find_unused_port() as port:
             with ProxyManager("http://localhost:{}".format(port)) as p:
-                with pytest.raises(ProxyError):
+                with pytest.raises(ProxyError) as ei:
                     p.urlopen("HEAD", url="http://localhost/", retries=retry)
+                assert isinstance(ei.value.original_error, NewConnectionError)
 
         retry = Retry(total=None, connect=2)
         with ProxyManager("http://localhost:{}".format(port)) as p:
-            with pytest.raises(MaxRetryError):
+            with pytest.raises(MaxRetryError) as ei:
                 p.urlopen("HEAD", url="http://localhost/", retries=retry)
+            assert isinstance(ei.value.reason.original_error, NewConnectionError)
