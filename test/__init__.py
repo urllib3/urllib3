@@ -36,7 +36,9 @@ INVALID_SOURCE_ADDRESSES = [("192.0.2.255", 0), ("2001:db8::1", 0)]
 # 3. To test our timeout logic by using two different values, eg. by using different
 #    values at the pool level and at the request level.
 SHORT_TIMEOUT = 0.001
-LONG_TIMEOUT = 0.5 if os.environ.get("CI") else 0.01
+LONG_TIMEOUT = 0.01
+if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS") == "true":
+    LONG_TIMEOUT = 0.5
 
 
 def _can_resolve(host):
