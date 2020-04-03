@@ -115,6 +115,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                         % (self.base_url, self.base_url)
                     },
                     retries=1,
+                    preload_content=False,
                 )
 
             with pytest.raises(MaxRetryError):
@@ -126,7 +127,14 @@ class TestPoolManager(HTTPDummyServerTestCase):
                         % (self.base_url, self.base_url)
                     },
                     retries=Retry(total=None, redirect=1),
+                    preload_content=False,
                 )
+
+            # Even with preload_content=False and raise on redirects, we reused the same
+            # connection
+            assert len(http.pools) == 1
+            pool = http.connection_from_host(self.host, self.port)
+            assert pool.num_connections == 1
 
     def test_redirect_cross_host_remove_headers(self):
         with PoolManager() as http:
@@ -205,6 +213,15 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert "x-api-secret" not in data
             assert "X-API-Secret" not in data
             assert data["Authorization"] == "bar"
+
+    def test_redirect_without_preload_releases_connection(self):
+        with PoolManager(block=True, maxsize=2) as http:
+            r = http.request(
+                "GET", "%s/redirect" % self.base_url, preload_content=False
+            )
+            assert r._pool.num_requests == 2
+            assert r._pool.num_connections == 1
+            assert len(http.pools) == 1
 
     def test_raise_on_redirect(self):
         with PoolManager() as http:

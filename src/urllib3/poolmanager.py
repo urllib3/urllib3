@@ -7,6 +7,7 @@ import warnings
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from .connectionpool import port_by_scheme
+
 from .exceptions import (
     HTTPWarning,
     LocationValueError,
@@ -384,6 +385,7 @@ class PoolManager(RequestMethods):
             retries = retries.increment(method, url, response=response, _pool=conn)
         except MaxRetryError:
             if retries.raise_on_redirect:
+                response.drain_conn()
                 raise
             return response
 
@@ -391,6 +393,8 @@ class PoolManager(RequestMethods):
         kw["redirect"] = redirect
 
         log.info("Redirecting %s -> %s", url, redirect_location)
+
+        response.drain_conn()
         return self.urlopen(method, redirect_location, **kw)
 
 
