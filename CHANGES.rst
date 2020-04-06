@@ -4,10 +4,28 @@ Changes
 master (dev)
 ------------
 
-* Raise ``ValueError`` if control characters are given in
-  the ``method`` parameter of ``HTTPConnection.request()`` (Pull #1800)
+* Support HTTPS connections to proxies. (Pull #1679)
+
+  Until now, urllib3 would connect to HTTPS proxies using HTTP. This is now
+  fixed. If this breaks your code, make sure you use an ``http://`` URL when
+  configuring your proxy.
+
+  Contacting HTTPS websites through HTTPS proxies is not allowed by default, as
+  we don't implement TLS in TLS yet. If it was allowed, the HTTPS proxy could
+  see all your traffic. If this is acceptable for your use case, instantiate
+  ``ProxyManager`` with ``_allow_https_proxy_to_see_traffic=True``.
+
+* Drain connection after PoolManager redirect (Pull #1817)
+
+* Ensure load_verify_locations raises SSLError for all backends (Pull #1812)
 
 * Rename ``VerifiedHTTPSConnection`` to ``HTTPSConnection`` (Pull #1805)
+
+* Allow the CA certificate data to be passed as a string. (Pull #1804)
+
+* Raise ValueError if method contains control characters (Pull #1800)
+
+* Add __repr__ to Timeout (Pull #1795)
 
 
 1.25.8 (2020-01-20)
