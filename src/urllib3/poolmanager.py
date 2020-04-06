@@ -502,7 +502,7 @@ class ProxyManager(PoolManager):
                 "Are you sure you want to use HTTPS to contact the proxy? "
                 "This most likely indicates an error in your configuration."
                 "If you are sure you want use HTTPS to contact the proxy, enable "
-                "the _allow_https_proxy_to_see_traffic.",
+                "_allow_https_proxy_to_see_traffic.",
                 InvalidProxyConfigurationWarning,
             )
 
