@@ -54,8 +54,7 @@ class Retry(object):
         Total number of retries to allow. Takes precedence over other counts.
 
         Set to ``None`` to remove this constraint and fall back on other
-        counts. It's a good idea to set this to some sensibly-high value to
-        account for unexpected edge cases and avoid infinite retry loops.
+        counts.
 
         Set to ``0`` to fail on the first retry.
 
@@ -104,6 +103,9 @@ class Retry(object):
         request might have side-effects.
 
         Set to ``0`` to fail on the first retry of this type.
+
+        If ``total`` is not set, it's a good idea to set this to 0 to account
+        for unexpected edge cases and avoid infinite retry loops.
 
     :param iterable method_whitelist:
         Set of uppercased HTTP method verbs that we should retry on.
