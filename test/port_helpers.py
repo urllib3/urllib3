@@ -2,7 +2,6 @@
 # library test suite.
 
 import socket
-from contextlib import contextmanager
 
 
 # Don't use "localhost", since resolving it uses the DNS under recent
@@ -11,14 +10,13 @@ HOST = "127.0.0.1"
 HOSTv6 = "::1"
 
 
-@contextmanager
 def find_unused_port(family=socket.AF_INET, socktype=socket.SOCK_STREAM):
     """Returns an unused port that should be suitable for binding.  This is
     achieved by creating a temporary socket with the same family and type as
     the 'sock' parameter (default is AF_INET, SOCK_STREAM), and binding it to
     the specified host address (defaults to 0.0.0.0) with the port set to 0,
-    eliciting an unused ephemeral port from the OS. The ephemeral port is
-    yielded, and finally the temporary socket is closed and deleted.
+    eliciting an unused ephemeral port from the OS.  The temporary socket is
+    then closed and deleted, and the ephemeral port is returned.
 
     Either this method or bind_port() should be used for any tests where a
     server socket needs to be bound to a particular port for the duration of
@@ -58,12 +56,19 @@ def find_unused_port(family=socket.AF_INET, socktype=socket.SOCK_STREAM):
     http://bugs.python.org/issue2550 for more info.  The following site also
     has a very thorough description about the implications of both REUSEADDR
     and EXCLUSIVEADDRUSE on Windows:
-    http://msdn2.microsoft.com/en-us/library/ms740621(VS.85).aspx)"""
+    http://msdn2.microsoft.com/en-us/library/ms740621(VS.85).aspx)
+
+    XXX: although this approach is a vast improvement on previous attempts to
+    elicit unused ports, it rests heavily on the assumption that the ephemeral
+    port returned to us by the OS won't immediately be dished back out to some
+    other process when we close and delete our temporary socket but before our
+    calling code has a chance to bind the returned port.  We can deal with this
+    issue if/when we come across it."""
     tempsock = socket.socket(family, socktype)
     port = bind_port(tempsock)
-    yield port
     tempsock.close()
     del tempsock
+    return port
 
 
 def bind_port(sock, host=HOST):
