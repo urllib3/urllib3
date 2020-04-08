@@ -496,7 +496,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         try:
             self._start_server(socket_handler)
-            t = Timeout(connect=SHORT_TIMEOUT, read=LONG_TIMEOUT)
+            t = Timeout(connect=LONG_TIMEOUT, read=LONG_TIMEOUT)
             with HTTPConnectionPool(self.host, self.port, timeout=t) as pool:
                 response = pool.request("GET", "/", retries=1)
                 assert response.status == 200
