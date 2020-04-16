@@ -6,7 +6,7 @@ Changes
 
 * Added ``InvalidProxyConfigurationWarning`` which is raised when
   erroneously specifying an HTTPS proxy URL. urllib3 doesn't currently
-  support connecting to HTTP proxies with TLS but will soon be able to
+  support connecting to HTTPS proxies but will soon be able to
   and we would like users to migrate properly without much breakage.
 
   See `this GitHub issue <https://github.com/urllib3/urllib3/issues/1850>`_
