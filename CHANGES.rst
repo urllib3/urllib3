@@ -1,13 +1,28 @@
 Changes
 =======
 
-master (dev)
-------------
+1.25.9 (TODO)
+-------------
 
-* Raise ``ValueError`` if control characters are given in
-  the ``method`` parameter of ``HTTPConnection.request()`` (Pull #1800)
+* Added ``InvalidProxyConfigurationWarning`` which is raised when
+  erroneously specifying an HTTPS proxy URL. urllib3 doesn't currently
+  support connecting to HTTP proxies with TLS but will soon be able to
+  and we would like users to migrate properly without much breakage.
+
+  See `this GitHub issue <https://github.com/urllib3/urllib3/issues/1850>`_
+  for more information on how to fix your proxy config. (Pull #1851)
+
+* Drain connection after ``PoolManager`` redirect (Pull #1817)
+
+* Ensure ``load_verify_locations`` raises ``SSLError`` for all backends (Pull #1812)
 
 * Rename ``VerifiedHTTPSConnection`` to ``HTTPSConnection`` (Pull #1805)
+
+* Allow the CA certificate data to be passed as a string (Pull #1804)
+
+* Raise ``ValueError`` if method contains control characters (Pull #1800)
+
+* Add ``__repr__`` to ``Timeout`` (Pull #1795)
 
 
 1.25.8 (2020-01-20)
