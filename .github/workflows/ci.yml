@@ -3,6 +3,21 @@ name: CI
 on: [push, pull_request]
 
 jobs:
+  package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v1
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+      - name: Check packages
+        run: |
+          python3.7 -m pip install wheel twine;
+          python3.7 setup.py sdist bdist_wheel;
+          python3.7 -m twine check dist/*
   macOS:
     runs-on: macos-latest
     
