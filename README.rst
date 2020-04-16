@@ -1,5 +1,4 @@
 .. raw:: html
-
    <p align="center">
       <a href="https://github.com/urllib3/urllib3">
          <img src="./docs/images/banner.svg" width="60%" alt="urllib3" />
@@ -11,7 +10,7 @@
       <a href="https://urllib3.readthedocs.io/en/latest/"><img alt="Documentation Status" src="https://readthedocs.org/projects/urllib3/badge/?version=latest" /></a>
       <a href="https://codecov.io/gh/urllib3/urllib3"><img alt="Coverage Status" src="https://img.shields.io/codecov/c/github/urllib3/urllib3.svg" /></a>
       <a href="https://pypi.org/project/urllib3/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/urllib3.svg?maxAge=86400" /></a>
-  </p>
+   </p>
 
 urllib3 is a powerful, *sanity-friendly* HTTP client for Python. Much of the
 Python ecosystem already uses urllib3 and you should too.
