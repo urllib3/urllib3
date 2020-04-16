@@ -16,7 +16,18 @@ with open(os.path.join(base_path, "src", "urllib3", "__init__.py")) as fp:
 
 
 with codecs.open("README.rst", encoding="utf-8") as fp:
-    readme = fp.read()
+    # remove reST raw directive from README
+    mode = None
+    lines = []
+    for line in fp:
+        if line.startswith(".. raw"):
+            mode = "ignore_raw"
+        elif line == "\n":
+            mode = None
+
+        if mode != "ignore_raw":
+            lines.append(line)
+    readme = "".join(lines)
 
 with codecs.open("CHANGES.rst", encoding="utf-8") as fp:
     changes = fp.read()
@@ -28,6 +39,7 @@ setup(
     version=version,
     description="HTTP library with thread-safe connection pooling, file post, and more.",
     long_description=u"\n\n".join([readme, changes]),
+    long_description_content_type="text/x-rst",
     classifiers=[
         "Environment :: Web Environment",
         "Intended Audience :: Developers",
