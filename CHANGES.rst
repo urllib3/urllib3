@@ -1,8 +1,8 @@
 Changes
 =======
 
-1.25.9 (TODO)
--------------
+1.25.9 (2020-04-16)
+-------------------
 
 * Added ``InvalidProxyConfigurationWarning`` which is raised when
   erroneously specifying an HTTPS proxy URL. urllib3 doesn't currently
