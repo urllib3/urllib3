@@ -470,6 +470,7 @@ class ProxyManager(PoolManager):
                 "Read this issue for more info: "
                 "https://github.com/urllib3/urllib3/issues/1850",
                 InvalidProxyConfigurationWarning,
+                stacklevel=3,
             )
 
     def urlopen(self, method, url, redirect=True, **kw):
