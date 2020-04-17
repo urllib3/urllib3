@@ -1,4 +1,5 @@
 .. raw:: html
+
    <p align="center">
       <a href="https://github.com/urllib3/urllib3">
          <img src="./docs/images/banner.svg" width="60%" alt="urllib3" />
@@ -74,13 +75,13 @@ Tidelift will coordinate the fix and disclosure with maintainers.
 Maintainers
 -----------
 
-- `@sethmlarson <https://github.com/sethmlarson>`_ (Seth M. Larson)
-- `@pquentin <https://github.com/pquentin>`_ (Quentin Pradet)
-- `@theacodes <https://github.com/theacodes>`_ (Thea Flowers)
-- `@haikuginger <https://github.com/haikuginger>`_ (Jess Shapiro)
-- `@lukasa <https://github.com/lukasa>`_ (Cory Benfield)
-- `@sigmavirus24 <https://github.com/sigmavirus24>`_ (Ian Stapleton Cordasco)
-- `@shazow <https://github.com/shazow>`_ (Andrey Petrov)
+- `@sethmlarson <https://github.com/sethmlarson>`__ (Seth M. Larson)
+- `@pquentin <https://github.com/pquentin>`__ (Quentin Pradet)
+- `@theacodes <https://github.com/theacodes>`__ (Thea Flowers)
+- `@haikuginger <https://github.com/haikuginger>`__ (Jess Shapiro)
+- `@lukasa <https://github.com/lukasa>`__ (Cory Benfield)
+- `@sigmavirus24 <https://github.com/sigmavirus24>`__ (Ian Stapleton Cordasco)
+- `@shazow <https://github.com/shazow>`__ (Andrey Petrov)
 
 👋
 
