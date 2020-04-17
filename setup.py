@@ -16,16 +16,17 @@ with open(os.path.join(base_path, "src", "urllib3", "__init__.py")) as fp:
 
 
 with codecs.open("README.rst", encoding="utf-8") as fp:
-    # remove reST raw directive from README
+    # Remove reST raw directive from README as they're not allowed on PyPI
+    # Those blocks start with a newline and continue until the next newline
     mode = None
     lines = []
     for line in fp:
-        if line.startswith(".. raw"):
-            mode = "ignore_raw"
+        if line.startswith(".. raw::"):
+            mode = "ignore_nl"
         elif line == "\n":
-            mode = None
+            mode = "wait_nl" if mode == "ignore_nl" else None
 
-        if mode != "ignore_raw":
+        if mode is None:
             lines.append(line)
     readme = "".join(lines)
 
