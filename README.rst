@@ -1,4 +1,5 @@
 .. raw:: html
+
    <p align="center">
       <a href="https://github.com/urllib3/urllib3">
          <img src="./docs/images/banner.svg" width="60%" alt="urllib3" />
@@ -10,7 +11,7 @@
       <a href="https://urllib3.readthedocs.io/en/latest/"><img alt="Documentation Status" src="https://readthedocs.org/projects/urllib3/badge/?version=latest" /></a>
       <a href="https://codecov.io/gh/urllib3/urllib3"><img alt="Coverage Status" src="https://img.shields.io/codecov/c/github/urllib3/urllib3.svg" /></a>
       <a href="https://pypi.org/project/urllib3/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/urllib3.svg?maxAge=86400" /></a>
-</p>
+   </p>
 
 urllib3 is a powerful, *sanity-friendly* HTTP client for Python. Much of the
 Python ecosystem already uses urllib3 and you should too.
@@ -74,13 +75,13 @@ Tidelift will coordinate the fix and disclosure with maintainers.
 Maintainers
 -----------
 
-- `@sethmlarson <https://github.com/sethmlarson>`_ (Seth M. Larson)
-- `@pquentin <https://github.com/pquentin>`_ (Quentin Pradet)
-- `@theacodes <https://github.com/theacodes>`_ (Thea Flowers)
-- `@haikuginger <https://github.com/haikuginger>`_ (Jess Shapiro)
-- `@lukasa <https://github.com/lukasa>`_ (Cory Benfield)
-- `@sigmavirus24 <https://github.com/sigmavirus24>`_ (Ian Stapleton Cordasco)
-- `@shazow <https://github.com/shazow>`_ (Andrey Petrov)
+- `@sethmlarson <https://github.com/sethmlarson>`__ (Seth M. Larson)
+- `@pquentin <https://github.com/pquentin>`__ (Quentin Pradet)
+- `@theacodes <https://github.com/theacodes>`__ (Thea Flowers)
+- `@haikuginger <https://github.com/haikuginger>`__ (Jess Shapiro)
+- `@lukasa <https://github.com/lukasa>`__ (Cory Benfield)
+- `@sigmavirus24 <https://github.com/sigmavirus24>`__ (Ian Stapleton Cordasco)
+- `@shazow <https://github.com/shazow>`__ (Andrey Petrov)
 
 👋
 
