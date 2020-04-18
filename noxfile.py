@@ -106,7 +106,7 @@ def docs(session):
 
 @nox.session(python=["3.8"])
 def spelling(session):
-    session.run("apt", "install", "aspell")
+    session.run("sudo", "apt-get", "install", "aspell")
     session.install("spelling")
     session.run("python", "-m", "spelling")
 
