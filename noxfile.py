@@ -103,3 +103,10 @@ def docs(session):
     if os.path.exists("_build"):
         shutil.rmtree("_build")
     session.run("sphinx-build", "-W", ".", "_build/html")
+
+@nox.session(python=["3.8"])
+def spelling(session):
+    session.install("spelling")
+    session.run("python", "-m", "spelling")
+
+
