@@ -1,0 +1,55 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v1
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+      - name: Check packages
+        run: |
+          python3.7 -m pip install wheel twine rstcheck;
+          python3.7 setup.py sdist bdist_wheel;
+          rstcheck README.rst CHANGES.rst
+          python3.7 -m twine check dist/*
+  macOS:
+    runs-on: macos-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [2.7, 3.5, 3.6, 3.7, 3.8]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v1
+      - name: Set Up Python 3.7 to run nox
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+      - name: Set Up Python - ${{ matrix.python-version }}
+        if: matrix.python_version != '3.7'
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Dependencies
+        run: |
+          python3.7 -m pip install --upgrade nox
+      - name: Run Tests
+        run: |
+          nox -s test-${{ matrix.python-version }}
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          yml: ./codecov.yml
+          fail_ci_if_error: true

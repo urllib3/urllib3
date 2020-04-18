@@ -45,6 +45,7 @@ from ..with_dummyserver.test_socketlevel import (  # noqa: F401
     TestSNI,
     TestSocketClosing,
     TestClientCerts,
+    TestSSL,
 )
 
 

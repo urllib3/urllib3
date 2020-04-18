@@ -16,7 +16,19 @@ with open(os.path.join(base_path, "src", "urllib3", "__init__.py")) as fp:
 
 
 with codecs.open("README.rst", encoding="utf-8") as fp:
-    readme = fp.read()
+    # Remove reST raw directive from README as they're not allowed on PyPI
+    # Those blocks start with a newline and continue until the next newline
+    mode = None
+    lines = []
+    for line in fp:
+        if line.startswith(".. raw::"):
+            mode = "ignore_nl"
+        elif line == "\n":
+            mode = "wait_nl" if mode == "ignore_nl" else None
+
+        if mode is None:
+            lines.append(line)
+    readme = "".join(lines)
 
 with codecs.open("CHANGES.rst", encoding="utf-8") as fp:
     changes = fp.read()
@@ -28,6 +40,7 @@ setup(
     version=version,
     description="HTTP library with thread-safe connection pooling, file post, and more.",
     long_description=u"\n\n".join([readme, changes]),
+    long_description_content_type="text/x-rst",
     classifiers=[
         "Environment :: Web Environment",
         "Intended Audience :: Developers",
@@ -37,11 +50,11 @@ setup(
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
         "Topic :: Internet :: WWW/HTTP",
@@ -51,6 +64,11 @@ setup(
     author="Andrey Petrov",
     author_email="andrey.petrov@shazow.net",
     url="https://urllib3.readthedocs.io/",
+    project_urls={
+        "Documentation": "https://urllib3.readthedocs.io/",
+        "Code": "https://github.com/urllib3/urllib3",
+        "Issue tracker": "https://github.com/urllib3/urllib3/issues",
+    },
     license="MIT",
     packages=[
         "urllib3",
@@ -63,15 +81,7 @@ setup(
     ],
     package_dir={"": "src"},
     requires=[],
-    python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, <4",
-    tests_require=[
-        # These are a less-specific subset of dev-requirements.txt, for the
-        # convenience of distro package maintainers.
-        "pytest",
-        "mock",
-        "tornado",
-    ],
-    test_suite="test",
+    python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4",
     extras_require={
         "brotli": ["brotlipy>=0.6.0"],
         "secure": [

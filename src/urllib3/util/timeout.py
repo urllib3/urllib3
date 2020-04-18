@@ -98,13 +98,16 @@ class Timeout(object):
         self.total = self._validate_timeout(total, "total")
         self._start_connect = None
 
-    def __str__(self):
+    def __repr__(self):
         return "%s(connect=%r, read=%r, total=%r)" % (
             type(self).__name__,
             self._connect,
             self._read,
             self.total,
         )
+
+    # __str__ provided for backwards compatibility
+    __str__ = __repr__
 
     @classmethod
     def _validate_timeout(cls, value, name):
@@ -203,7 +206,7 @@ class Timeout(object):
         """
         if self._start_connect is None:
             raise TimeoutStateError(
-                "Can't get connect duration for timer " "that has not started."
+                "Can't get connect duration for timer that has not started."
             )
         return current_time() - self._start_connect
 

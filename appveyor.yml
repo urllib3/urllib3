@@ -12,11 +12,6 @@ environment:
       PYTHON_ARCH: "64"
       NOX_SESSION: "test-2.7"
 
-    - PYTHON: "C:\\Python34-x64"
-      PYTHON_VERSION: "3.4.x"
-      PYTHON_ARCH: "64"
-      NOX_SESSION: "test-3.4"
-
     - PYTHON: "C:\\Python35-x64"
       PYTHON_VERSION: "3.5.x"
       PYTHON_ARCH: "64"
@@ -31,6 +26,11 @@ environment:
       PYTHON_VERSION: "3.7.x"
       PYTHON_ARCH: "64"
       NOX_SESSION: "test-3.7"
+
+    - PYTHON: "C:\\Python38-x64"
+      PYTHON_VERSION: "3.8.x"
+      PYTHON_ARCH: "64"
+      NOX_SESSION: "test-3.8"
 
 cache:
   - C:\Users\appveyor\AppData\Local\pip\Cache
@@ -55,4 +55,4 @@ test_script:
 
 on_success:
   - pip install codecov
-  - codecov --env PLATFORM,TOXENV
+  - codecov --env NOX_SESSION --file coverage.xml

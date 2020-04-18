@@ -171,6 +171,10 @@ class TestUtil(object):
         [
             ("HTTP://GOOGLE.COM/MAIL/", "http://google.com/MAIL/"),
             (
+                "http://user@domain.com:password@example.com/~tilde@?@",
+                "http://user%40domain.com:password@example.com/~tilde@?@",
+            ),
+            (
                 "HTTP://JeremyCline:Hunter2@Example.com:8080/",
                 "http://JeremyCline:Hunter2@example.com:8080/",
             ),
@@ -419,6 +423,18 @@ class TestUtil(object):
                 port=6379,
                 path="",
                 query="%0D%0ASET%20test%20failure12%0D%0A:8080/test/?test=a",
+            ),
+        ),
+        # See https://bugs.xdavidhu.me/google/2020/03/08/the-unexpected-google-wide-domain-check-bypass/
+        (
+            "https://user:pass@xdavidhu.me\\test.corp.google.com:8080/path/to/something?param=value#hash",
+            Url(
+                scheme="https",
+                auth="user:pass",
+                host="xdavidhu.me",
+                path="/%5Ctest.corp.google.com:8080/path/to/something",
+                query="param=value",
+                fragment="hash",
             ),
         ),
     ]
@@ -728,7 +744,9 @@ class TestUtil(object):
         socket = object()
         mock_context = Mock()
         ssl_wrap_socket(ssl_context=mock_context, ca_certs="/path/to/pem", sock=socket)
-        mock_context.load_verify_locations.assert_called_once_with("/path/to/pem", None)
+        mock_context.load_verify_locations.assert_called_once_with(
+            "/path/to/pem", None, None
+        )
 
     def test_ssl_wrap_socket_loads_certificate_directories(self):
         socket = object()
@@ -737,7 +755,17 @@ class TestUtil(object):
             ssl_context=mock_context, ca_cert_dir="/path/to/pems", sock=socket
         )
         mock_context.load_verify_locations.assert_called_once_with(
-            None, "/path/to/pems"
+            None, "/path/to/pems", None
+        )
+
+    def test_ssl_wrap_socket_loads_certificate_data(self):
+        socket = object()
+        mock_context = Mock()
+        ssl_wrap_socket(
+            ssl_context=mock_context, ca_cert_data="TOTALLY PEM DATA", sock=socket
+        )
+        mock_context.load_verify_locations.assert_called_once_with(
+            None, None, "TOTALLY PEM DATA"
         )
 
     def test_ssl_wrap_socket_with_no_sni_warns(self):

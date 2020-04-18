@@ -3,6 +3,8 @@ import pytest
 from urllib3.util import ssl_
 from urllib3.exceptions import SNIMissingWarning
 
+from test import notPyPy2
+
 
 @pytest.mark.parametrize(
     "addr",
@@ -124,6 +126,7 @@ def test_wrap_socket_given_context_no_load_default_certs():
     context.load_default_certs.assert_not_called()
 
 
+@notPyPy2
 def test_wrap_socket_given_ca_certs_no_load_default_certs(monkeypatch):
     context = mock.create_autospec(ssl_.SSLContext)
     context.load_default_certs = mock.Mock()
@@ -135,7 +138,7 @@ def test_wrap_socket_given_ca_certs_no_load_default_certs(monkeypatch):
     ssl_.ssl_wrap_socket(sock, ca_certs="/tmp/fake-file")
 
     context.load_default_certs.assert_not_called()
-    context.load_verify_locations.assert_called_with("/tmp/fake-file", None)
+    context.load_verify_locations.assert_called_with("/tmp/fake-file", None, None)
 
 
 def test_wrap_socket_default_loads_default_certs(monkeypatch):
