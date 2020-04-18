@@ -702,7 +702,7 @@ class TestResponse(object):
             assert c == stream[i]
 
     def test_mock_gzipped_transfer_encoding_chunked_decoded(self):
-        """Show that we can decode the gizpped and chunked body."""
+        """Show that we can decode the gzipped and chunked body."""
 
         def stream():
             # Set up a generator to chunk the gzipped body

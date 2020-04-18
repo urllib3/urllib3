@@ -90,7 +90,7 @@ class AppEngineManager(RequestMethods):
         * If you attempt to use this on App Engine Flexible, as full socket
           support is available.
         * If a request size is more than 10 megabytes.
-        * If a response size is more than 32 megabtyes.
+        * If a response size is more than 32 megabytes.
         * If you use an unsupported request method such as OPTIONS.
 
     Beyond those cases, it will raise normal urllib3 errors.

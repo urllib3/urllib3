@@ -60,7 +60,7 @@ class TestGAEConnectionManager(test_connectionpool.TestConnectionPool):
         with pytest.raises(appengine.AppEnginePlatformError):
             self.pool.request(
                 "GET", "/nbytes?length=33554433"
-            )  # One byte over 32 megabtyes.
+            )  # One byte over 32 megabytes.
 
         # URLFetch reports the request too large error as a InvalidURLError,
         # which maps to a AppEnginePlatformError.
