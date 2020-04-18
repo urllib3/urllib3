@@ -1,8 +1,69 @@
 Changes
 =======
 
-dev (master)
-------------
+1.25.9 (2020-04-16)
+-------------------
+
+* Added ``InvalidProxyConfigurationWarning`` which is raised when
+  erroneously specifying an HTTPS proxy URL. urllib3 doesn't currently
+  support connecting to HTTPS proxies but will soon be able to
+  and we would like users to migrate properly without much breakage.
+
+  See `this GitHub issue <https://github.com/urllib3/urllib3/issues/1850>`_
+  for more information on how to fix your proxy config. (Pull #1851)
+
+* Drain connection after ``PoolManager`` redirect (Pull #1817)
+
+* Ensure ``load_verify_locations`` raises ``SSLError`` for all backends (Pull #1812)
+
+* Rename ``VerifiedHTTPSConnection`` to ``HTTPSConnection`` (Pull #1805)
+
+* Allow the CA certificate data to be passed as a string (Pull #1804)
+
+* Raise ``ValueError`` if method contains control characters (Pull #1800)
+
+* Add ``__repr__`` to ``Timeout`` (Pull #1795)
+
+
+1.25.8 (2020-01-20)
+-------------------
+
+* Drop support for EOL Python 3.4 (Pull #1774)
+
+* Optimize _encode_invalid_chars (Pull #1787)
+
+
+1.25.7 (2019-11-11)
+-------------------
+
+* Preserve ``chunked`` parameter on retries (Pull #1715, Pull #1734)
+
+* Allow unset ``SERVER_SOFTWARE`` in App Engine (Pull #1704, Issue #1470)
+
+* Fix issue where URL fragment was sent within the request target. (Pull #1732)
+
+* Fix issue where an empty query section in a URL would fail to parse. (Pull #1732)
+
+* Remove TLS 1.3 support in SecureTransport due to Apple removing support (Pull #1703)
+
+
+1.25.6 (2019-09-24)
+-------------------
+
+* Fix issue where tilde (``~``) characters were incorrectly
+  percent-encoded in the path. (Pull #1692)
+
+
+1.25.5 (2019-09-19)
+-------------------
+
+* Add mitigation for BPO-37428 affecting Python <3.7.4 and OpenSSL 1.1.1+ which
+  caused certificate verification to be enabled when using ``cert_reqs=CERT_NONE``.
+  (Issue #1682)
+
+
+1.25.4 (2019-09-19)
+-------------------
 
 * Propagate Retry-After header settings to subsequent retries. (Pull #1607)
 
@@ -16,6 +77,8 @@ dev (master)
 
 * Add support for ``HTTPResponse.auto_close = False`` which makes HTTP responses
   work well with BufferedReaders and other ``io`` module features. (Pull #1652)
+
+* Percent-encode invalid characters in URL for ``HTTPConnectionPool.request()`` (Pull #1673)
 
 
 1.25.3 (2019-05-23)

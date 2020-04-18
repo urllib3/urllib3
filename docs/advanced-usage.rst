@@ -72,7 +72,7 @@ Setting ``preload_content`` to ``False`` means that urllib3 will stream the
 response content. :meth:`~response.HTTPResponse.stream` lets you iterate over
 chunks of the response content.
 
-.. note:: When using ``preload_content=False``, you should call 
+.. note:: When using ``preload_content=False``, you should call
     :meth:`~response.HTTPResponse.release_conn` to release the http connection
     back to the connection pool so that it can be re-used.
 
@@ -87,7 +87,7 @@ a file-like object. This allows you to do buffering::
     b'\x88\x1f\x8b\xe5'
 
 Calls to :meth:`~response.HTTPResponse.read()` will block until more response
-data is available. 
+data is available.
 
     >>> import io
     >>> reader = io.BufferedReader(r, 8)
@@ -122,10 +122,24 @@ HTTP proxy::
 The usage of :class:`~poolmanager.ProxyManager` is the same as
 :class:`~poolmanager.PoolManager`.
 
-You can use :class:`~contrib.socks.SOCKSProxyManager` to connect to SOCKS4 or
-SOCKS5 proxies. In order to use SOCKS proxies you will need to install
-`PySocks <https://pypi.org/project/PySocks/>`_ or install urllib3 with the
-``socks`` extra::
+You can connect to a proxy using HTTP, HTTPS or SOCKS. urllib3's behavior will
+be different depending on the type of proxy you selected and the destination
+you're contacting.
+
+When contacting a HTTP website through a HTTP or HTTPS proxy, the request will
+be forwarded with the `absolute URI
+<https://tools.ietf.org/html/rfc7230#section-5.3.2>`_.  
+
+When contacting a HTTPS website through a HTTP proxy, a TCP tunnel will be
+established with a HTTP CONNECT. Afterward a TLS connection will be established
+with the destination and your request will be sent.
+
+Contacting HTTPS websites through HTTPS proxies is currently not supported.
+
+For SOCKS, you can use :class:`~contrib.socks.SOCKSProxyManager` to connect to
+SOCKS4 or SOCKS5 proxies. In order to use SOCKS proxies you will need to
+install `PySocks <https://pypi.org/project/PySocks/>`_ or install urllib3 with
+the ``socks`` extra::
 
     pip install urllib3[socks]
 

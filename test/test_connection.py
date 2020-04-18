@@ -37,7 +37,7 @@ class TestConnection(object):
         except CertificateError as e:
             assert "hostname 'bar' doesn't match 'foo'" in str(e)
             mock_log.assert_called_once_with(
-                "Certificate did not match expected hostname: %s. " "Certificate: %s",
+                "Certificate did not match expected hostname: %s. Certificate: %s",
                 "bar",
                 {"subjectAltName": [("DNS", "foo")]},
             )

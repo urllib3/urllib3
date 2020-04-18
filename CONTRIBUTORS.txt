@@ -282,5 +282,23 @@ In chronological order:
   * Remove a spurious TypeError from the exception chain inside
     HTTPConnectionPool._make_request(), also for BaseExceptions.
 
+* Jorge Lopez Silva <https://github.com/jalopezsilva>
+  * Added support for forwarding requests through HTTPS proxies.
+
+* Benno Rice <benno@jeamland.net>
+  * Allow cadata parameter to be passed to underlying ``SSLContext.load_verify_locations()``.
+
+* Keiichi Kobayashi <abok.1k@gmail.com>
+  * Rename VerifiedHTTPSConnection to HTTPSConnection
+
+* Himanshu Garg <garg_himanshu@outlook.com>
+  * DOC & LICENSE Update
+
+* Hod Bin Noon <bin.noon.hod@gmail.com>
+  * Test improvements
+
+* Chris Olufson <tycarac@gmail.com>
+  * Fix for connection not being released on HTTP redirect and response not preloaded
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
