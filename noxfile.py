@@ -1,5 +1,6 @@
 import os
 import shutil
+import subprocess
 
 import nox
 
@@ -104,10 +105,9 @@ def docs(session):
         shutil.rmtree("_build")
     session.run("sphinx-build", "-W", ".", "_build/html")
 
+
 @nox.session(python=["3.8"])
 def spelling(session):
-    session.run("sudo", "apt-get", "install", "aspell")
+    subprocess.call(["sudo", "apt-get", "install", "-y", "aspell"])
     session.install("spelling")
     session.run("python", "-m", "spelling")
-
-
