@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# This file is protected via CODEOWNERS
 
 from setuptools import setup
 
@@ -9,7 +10,7 @@ import codecs
 base_path = os.path.dirname(__file__)
 
 # Get the version (borrowed from SQLAlchemy)
-with open(os.path.join(base_path, "src", "urllib3", "__init__.py")) as fp:
+with open(os.path.join(base_path, "src", "urllib3", "_version.py")) as fp:
     VERSION = (
         re.compile(r""".*__version__ = ["'](.*?)['"]""", re.S).match(fp.read()).group(1)
     )
