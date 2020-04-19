@@ -291,7 +291,7 @@ class HTTPResponse(io.IOBase):
 
     @property
     def data(self):
-        # For backwords-compat with earlier urllib3 0.4 and earlier.
+        # For backwards-compat with earlier urllib3 0.4 and earlier.
         if self._body:
             return self._body
 
