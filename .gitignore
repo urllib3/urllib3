@@ -1,4 +1,5 @@
 .*
+!/.github/
 *.py[co]
 *.egg
 *.egg-info
