@@ -13,28 +13,32 @@ class TestVersionCompatibility(object):
             warnings.simplefilter("always")
 
             # strict=True is deprecated in Py33+
-            HTTPConnection('localhost', 12345, strict=True)
+            HTTPConnection("localhost", 12345, strict=True)
 
             if w:
-                pytest.fail('HTTPConnection raised warning on strict=True: %r' % w[0].message)
+                pytest.fail(
+                    "HTTPConnection raised warning on strict=True: %r" % w[0].message
+                )
 
     def test_connection_source_address(self):
         try:
             # source_address does not exist in Py26-
-            HTTPConnection('localhost', 12345, source_address='127.0.0.1')
+            HTTPConnection("localhost", 12345, source_address="127.0.0.1")
         except TypeError as e:
-            pytest.fail('HTTPConnection raised TypeError on source_adddress: %r' % e)
+            pytest.fail("HTTPConnection raised TypeError on source_address: %r" % e)
 
 
 class TestCookiejar(object):
     def test_extract(self):
-        request = urllib.request.Request('http://google.com')
+        request = urllib.request.Request("http://google.com")
         cookiejar = http_cookiejar.CookieJar()
         response = HTTPResponse()
 
-        cookies = ["sessionhash=abcabcabcabcab; path=/; HttpOnly",
-                   "lastvisit=1348253375; expires=Sat, 21-Sep-2050 18:49:35 GMT; path=/"]
+        cookies = [
+            "sessionhash=abcabcabcabcab; path=/; HttpOnly",
+            "lastvisit=1348253375; expires=Sat, 21-Sep-2050 18:49:35 GMT; path=/",
+        ]
         for c in cookies:
-            response.headers.add('set-cookie', c)
+            response.headers.add("set-cookie", c)
         cookiejar.extract_cookies(response, request)
         assert len(cookiejar) == len(cookies)

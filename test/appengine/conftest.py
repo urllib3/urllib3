@@ -20,7 +20,7 @@ try:
     from gcp_devrel.testing.appengine import (
         pytest_configure,
         pytest_runtest_call,
-        testbed
+        testbed,
     )
 except ImportError:
     pass
@@ -30,11 +30,11 @@ import six
 
 
 __all__ = [
-    'pytest_configure',
-    'pytest_runtest_call',
-    'pytest_ignore_collect',
-    'testbed',
-    'sandbox',
+    "pytest_configure",
+    "pytest_runtest_call",
+    "pytest_ignore_collect",
+    "testbed",
+    "sandbox",
 ]
 
 
@@ -59,8 +59,8 @@ def sandbox(testbed):
     yield testbed
 
     sys.meta_path = [
-        x for x in sys.meta_path
-        if not isinstance(x, sandbox.StubModuleImportHook)]
+        x for x in sys.meta_path if not isinstance(x, sandbox.StubModuleImportHook)
+    ]
     sys.path_importer_cache = {}
 
     # Delete any instances of sandboxed modules.
@@ -71,9 +71,9 @@ def sandbox(testbed):
 
 def pytest_ignore_collect(path, config):
     """Skip App Engine tests in python 3 or if no SDK is available."""
-    if 'appengine' in str(path):
-        if six.PY3:
+    if "appengine" in str(path):
+        if not six.PY2:
             return True
-        if not os.environ.get('GAE_SDK_PATH'):
+        if not os.environ.get("GAE_SDK_PATH"):
             return True
     return False

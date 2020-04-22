@@ -14,7 +14,7 @@ except NameError:
     except NameError:
         _CONNECT_ERROR = (OSError, socket.error)
 
-if hasattr(socket, 'socketpair'):
+if hasattr(socket, "socketpair"):
     # Since Python 3.5, socket.socketpair() is now also available on Windows
     socketpair = socket.socketpair
 else:
@@ -26,12 +26,13 @@ else:
         Public domain.
         """
         if family == socket.AF_INET:
-            host = '127.0.0.1'
+            host = "127.0.0.1"
         elif family == socket.AF_INET6:
-            host = '::1'
+            host = "::1"
         else:
-            raise ValueError("Only AF_INET and AF_INET6 socket address "
-                             "families are supported")
+            raise ValueError(
+                "Only AF_INET and AF_INET6 socket address families are supported"
+            )
         if type != socket.SOCK_STREAM:
             raise ValueError("Only SOCK_STREAM socket type is supported")
         if proto != 0:

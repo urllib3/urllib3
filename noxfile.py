@@ -23,17 +23,24 @@ def tests_impl(session, extras="socks,secure,brotli"):
     # and collapse them into src/urllib3/__init__.py.
 
     session.run(
-        "coverage", "run", "--parallel-mode", "-m",
-        "pytest", "-r", "sx", "test",
-        *session.posargs,
-        env={
-            "PYTHONWARNINGS": "always::DeprecationWarning"
-        })
+        "coverage",
+        "run",
+        "--parallel-mode",
+        "-m",
+        "pytest",
+        "-r",
+        "a",
+        "--tb=native",
+        "--no-success-flaky-report",
+        *(session.posargs or ("test/",)),
+        env={"PYTHONWARNINGS": "always::DeprecationWarning"}
+    )
     session.run("coverage", "combine")
     session.run("coverage", "report", "-m")
+    session.run("coverage", "xml")
 
 
-@nox.session(python=["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "pypy"])
+@nox.session(python=["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy"])
 def test(session):
     tests_impl(session)
 
@@ -52,17 +59,38 @@ def app_engine(session):
     session.install("-r", "dev-requirements.txt")
     session.install(".")
     session.run(
-            "coverage", "run", "--parallel-mode", "-m",
-            "pytest", "-r", "sx", "test/appengine",
-            *session.posargs)
+        "coverage",
+        "run",
+        "--parallel-mode",
+        "-m",
+        "pytest",
+        "-r",
+        "sx",
+        "test/appengine",
+        *session.posargs
+    )
     session.run("coverage", "combine")
     session.run("coverage", "report", "-m")
+    session.run("coverage", "xml")
+
+
+@nox.session()
+def blacken(session):
+    """Run black code formatter."""
+    session.install("black")
+    session.run("black", "src", "dummyserver", "test", "noxfile.py", "setup.py")
+
+    lint(session)
 
 
 @nox.session
 def lint(session):
-    session.install("flake8")
+    session.install("flake8", "black")
     session.run("flake8", "--version")
+    session.run("black", "--version")
+    session.run(
+        "black", "--check", "src", "dummyserver", "test", "noxfile.py", "setup.py"
+    )
     session.run("flake8", "setup.py", "docs", "dummyserver", "src", "test")
 
 
