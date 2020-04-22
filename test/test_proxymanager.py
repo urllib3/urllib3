@@ -67,11 +67,11 @@ class TestProxyManager(object):
 
     def test_proxy_connect_retry(self):
         retry = Retry(total=None, connect=False)
-        with find_unused_port() as port:
-            with ProxyManager("http://localhost:{}".format(port)) as p:
-                with pytest.raises(ProxyError) as ei:
-                    p.urlopen("HEAD", url="http://localhost/", retries=retry)
-                assert isinstance(ei.value.original_error, NewConnectionError)
+        port = find_unused_port()
+        with ProxyManager("http://localhost:{}".format(port)) as p:
+            with pytest.raises(ProxyError) as ei:
+                p.urlopen("HEAD", url="http://localhost/", retries=retry)
+            assert isinstance(ei.value.original_error, NewConnectionError)
 
         retry = Retry(total=None, connect=2)
         with ProxyManager("http://localhost:{}".format(port)) as p:

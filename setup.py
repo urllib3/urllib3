@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# This file is protected via CODEOWNERS
 
 from setuptools import setup
 
@@ -9,14 +10,26 @@ import codecs
 base_path = os.path.dirname(__file__)
 
 # Get the version (borrowed from SQLAlchemy)
-with open(os.path.join(base_path, "src", "urllib3", "__init__.py")) as fp:
+with open(os.path.join(base_path, "src", "urllib3", "_version.py")) as fp:
     VERSION = (
         re.compile(r""".*__version__ = ["'](.*?)['"]""", re.S).match(fp.read()).group(1)
     )
 
 
 with codecs.open("README.rst", encoding="utf-8") as fp:
-    readme = fp.read()
+    # Remove reST raw directive from README as they're not allowed on PyPI
+    # Those blocks start with a newline and continue until the next newline
+    mode = None
+    lines = []
+    for line in fp:
+        if line.startswith(".. raw::"):
+            mode = "ignore_nl"
+        elif line == "\n":
+            mode = "wait_nl" if mode == "ignore_nl" else None
+
+        if mode is None:
+            lines.append(line)
+    readme = "".join(lines)
 
 with codecs.open("CHANGES.rst", encoding="utf-8") as fp:
     changes = fp.read()
@@ -28,6 +41,7 @@ setup(
     version=version,
     description="HTTP library with thread-safe connection pooling, file post, and more.",
     long_description=u"\n\n".join([readme, changes]),
+    long_description_content_type="text/x-rst",
     classifiers=[
         "Environment :: Web Environment",
         "Intended Audience :: Developers",
