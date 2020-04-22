@@ -89,7 +89,7 @@ def lint(session):
     session.install("flake8", "black", "spelling")
     session.run("flake8", "--version")
     session.run("black", "--version")
-    session.run("spelling", "--version")
+    session.run("python", "-m", "spelling", "--version")
     session.run(
         "black", "--check", "src", "dummyserver", "test", "noxfile.py", "setup.py"
     )
