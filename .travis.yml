@@ -1,5 +1,4 @@
 language: python
-os: linux
 dist: xenial
 
 before_install:
@@ -61,8 +60,6 @@ jobs:
       env: NOX_SESSION=google_brotli-2
     - python: 3.7
       env: NOX_SESSION=google_brotli-3
-    - python: 3.8
-      env: NOX_SESSION=spelling
 
     # Downstream integration tests.
     - python: 2.7
