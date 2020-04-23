@@ -45,6 +45,7 @@ import socket
 import shutil
 import ssl
 import tempfile
+import time
 import mock
 
 import pytest
@@ -1810,6 +1811,9 @@ class TestBrokenPipe(SocketDummyServerTestCase):
         def connect_and_wait(*args, **kw):
             ret = orig_connect(*args, **kw)
             assert sock_shut.wait(5)
+            # sleep a bit to let osx tear the socket completely
+            # See https://erickt.github.io/blog/2014/11/19/adventures-in-debugging-a-potential-osx-kernel-bug/
+            time.sleep(2)
             return ret
 
         def socket_handler(listener):
