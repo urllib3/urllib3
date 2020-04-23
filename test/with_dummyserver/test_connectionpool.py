@@ -11,7 +11,6 @@ import mock
 from .. import TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES
 from ..port_helpers import find_unused_port
 from urllib3 import encode_multipart_formdata, HTTPConnectionPool
-from urllib3.contrib.appengine import is_appengine
 from urllib3.exceptions import (
     ConnectTimeoutError,
     EmptyPoolError,
@@ -793,17 +792,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port) as pool:
             response = pool.request("GET", "/echo_uri/seg0/../seg2")
             assert response.data == b"/echo_uri/seg0/../seg2"
-
-    def test_broken_pipe_ignore(self):
-        resp = self.pool.urlopen('POST', '/admin')
-        assert resp.status == 401
-
-    def test_broken_pipe_ignore_chunked(self):
-        if is_appengine():
-            self.skipTest("Google App Engine does not support chunked requests in URLFetch")
-
-        resp = self.pool.urlopen('POST', '/admin', chunked=True)
-        assert resp.status == 401
 
 
 class TestRetry(HTTPDummyServerTestCase):

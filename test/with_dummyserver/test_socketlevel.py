@@ -1,6 +1,7 @@
 # TODO: Break this module up into pieces. Maybe group by functionality tested
 # rather than the socket level-ness of it.
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
+from urllib3.connection import HTTPConnection
 from urllib3.poolmanager import proxy_from_url
 from urllib3.exceptions import (
     MaxRetryError,
@@ -1797,3 +1798,33 @@ class TestRetryPoolSizeDrainFail(SocketDummyServerTestCase):
         ) as pool:
             pool.urlopen("GET", "/not_found", preload_content=False)
             assert pool.num_connections == 1
+
+
+class TestBrokenPipe(SocketDummyServerTestCase):
+    def test_broken_pipe_ignore(self, monkeypatch):
+        sock_shut = Event()
+        orig_connect = HTTPConnection.connect
+        # a buffer that will cause two sendall calls
+        buf = "a" * 1024 * 1024 * 4
+
+        def connect_and_wait(*args, **kw):
+            ret = orig_connect(*args, **kw)
+            assert sock_shut.wait(5)
+            return ret
+
+        def socket_handler(listener):
+            resp_404 = b"HTTP/1.1 404 NOT FOUND\r\n\r\n"
+            for i in range(2):
+                sock = listener.accept()[0]
+                sock.send(resp_404)
+                sock.shutdown(socket.SHUT_RDWR)
+                sock_shut.set()
+                sock.close()
+
+        monkeypatch.setattr(HTTPConnection, "connect", connect_and_wait)
+        self._start_server(socket_handler)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("POST", "/", body=buf)
+            assert r.status == 404
+            r = pool.request("POST", "/admin", chunked=True, body=buf)
+            assert r.status == 404
