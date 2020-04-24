@@ -24,7 +24,8 @@ if platform.system() == "Windows":
     # Reserved loopback subnet address
     TARPIT_HOST = "127.0.0.0"
 else:
-    # Reserved internet scoped address. See https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
+    # Reserved internet scoped address
+    # https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
     TARPIT_HOST = "240.0.0.0"
 
 # (Arguments for socket, is it IPv6 address?)
