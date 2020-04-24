@@ -19,8 +19,14 @@ from urllib3.packages import six
 from urllib3.util import ssl_
 
 # We need a host that will not immediately close the connection with a TCP
-# Reset. SO suggests this hostname
-TARPIT_HOST = "10.255.255.1"
+# Reset.
+if platform.system() == "Windows":
+    # Reserved loopback subnet address
+    TARPIT_HOST = "127.0.0.0"
+else:
+    # Reserved internet scoped address
+    # https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
+    TARPIT_HOST = "240.0.0.0"
 
 # (Arguments for socket, is it IPv6 address?)
 VALID_SOURCE_ADDRESSES = [(("::1", 0), True), (("127.0.0.1", 0), False)]
