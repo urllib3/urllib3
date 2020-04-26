@@ -300,5 +300,8 @@ In chronological order:
 * Chris Olufson <tycarac@gmail.com>
   * Fix for connection not being released on HTTP redirect and response not preloaded
 
+* Eduardo Enriquez <eduardo.a.enriquez@gmail.com>
+  * Test improvements with trustme
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

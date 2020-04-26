@@ -22,15 +22,19 @@ def configure_windows_event_loop():
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
+@pytest.fixture(scope="session")
+def cert_authority():
+    return trustme.CA()
+
 ServerConfig = collections.namedtuple("ServerConfig", ["host", "port", "ca_certs"])
 
 
 @contextlib.contextmanager
-def run_server_in_thread(scheme, host, tmpdir, ca, server_cert):
+def run_server_in_thread(scheme, host, tmpdir, cert_authority, server_cert):
     ca_cert_path = str(tmpdir / "ca.pem")
     server_cert_path = str(tmpdir / "server.pem")
     server_key_path = str(tmpdir / "server.key")
-    ca.cert_pem.write_to_path(ca_cert_path)
+    cert_authority.cert_pem.write_to_path(ca_cert_path)
     server_cert.private_key_pem.write_to_path(server_key_path)
     server_cert.cert_chain_pems[0].write_to_path(server_cert_path)
     server_certs = {"keyfile": server_key_path, "certfile": server_cert_path}
@@ -49,29 +53,27 @@ def run_server_in_thread(scheme, host, tmpdir, ca, server_cert):
 
 
 @pytest.fixture
-def no_san_server(tmp_path_factory):
+def no_san_server(tmp_path_factory, cert_authority):
     tmpdir = tmp_path_factory.mktemp("certs")
-    ca = trustme.CA()
     # only common name, no subject alternative names
-    server_cert = ca.issue_cert(common_name=u"localhost")
+    server_cert = cert_authority.issue_cert(common_name=u"localhost")
 
-    with run_server_in_thread("https", "localhost", tmpdir, ca, server_cert) as cfg:
+    with run_server_in_thread("https", "localhost", tmpdir, cert_authority, server_cert) as cfg:
         yield cfg
 
 
 @pytest.fixture
-def ip_san_server(tmp_path_factory):
+def ip_san_server(tmp_path_factory, cert_authority):
     tmpdir = tmp_path_factory.mktemp("certs")
-    ca = trustme.CA()
     # IP address in Subject Alternative Name
-    server_cert = ca.issue_cert(u"127.0.0.1")
+    server_cert = cert_authority.issue_cert(u"127.0.0.1")
 
-    with run_server_in_thread("https", "127.0.0.1", tmpdir, ca, server_cert) as cfg:
+    with run_server_in_thread("https", "127.0.0.1", tmpdir, cert_authority, server_cert) as cfg:
         yield cfg
 
 
 @pytest.fixture
-def ipv6_addr_server(tmp_path_factory):
+def ipv6_addr_server(tmp_path_factory, cert_authority):
     if not HAS_IPV6:
         pytest.skip("Only runs on IPv6 systems")
 
@@ -80,19 +82,18 @@ def ipv6_addr_server(tmp_path_factory):
     # IP address in Common Name
     server_cert = ca.issue_cert(common_name=u"::1")
 
-    with run_server_in_thread("https", "::1", tmpdir, ca, server_cert) as cfg:
+    with run_server_in_thread("https", "::1", tmpdir, cert_authority, server_cert) as cfg:
         yield cfg
 
 
 @pytest.fixture
-def ipv6_san_server(tmp_path_factory):
+def ipv6_san_server(tmp_path_factory, cert_authority):
     if not HAS_IPV6:
         pytest.skip("Only runs on IPv6 systems")
 
     tmpdir = tmp_path_factory.mktemp("certs")
-    ca = trustme.CA()
     # IP address in Subject Alternative Name
-    server_cert = ca.issue_cert(u"::1")
+    server_cert = cert_authority.issue_cert(u"::1")
 
-    with run_server_in_thread("https", "::1", tmpdir, ca, server_cert) as cfg:
+    with run_server_in_thread("https", "::1", tmpdir, cert_authority, server_cert) as cfg:
         yield cfg
