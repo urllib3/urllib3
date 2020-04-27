@@ -13,6 +13,7 @@ from urllib3.exceptions import (
     MaxRetryError,
     ReadTimeoutError,
     ResponseError,
+    SSLError,
 )
 
 
@@ -83,6 +84,7 @@ class TestRetry(object):
         assert retry.connect is None
         assert retry.read is None
         assert retry.redirect is None
+        assert retry.other is None
 
         error = ConnectTimeoutError()
         retry = Retry(connect=1)
@@ -96,6 +98,20 @@ class TestRetry(object):
 
         assert Retry(0).raise_on_redirect
         assert not Retry(False).raise_on_redirect
+
+    def test_retry_other(self):
+        """ If an unexpected error is raised, should retry other times """
+        other_error = SSLError()
+        retry = Retry(connect=1)
+        retry = retry.increment(error=other_error)
+        retry = retry.increment(error=other_error)
+        assert not retry.is_exhausted()
+
+        retry = Retry(other=1)
+        retry = retry.increment(error=other_error)
+        with pytest.raises(MaxRetryError) as e:
+            retry.increment(error=other_error)
+        assert e.value.reason == other_error
 
     def test_retry_read_zero(self):
         """ No second chances on read timeouts, by default """

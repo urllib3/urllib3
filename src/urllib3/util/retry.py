@@ -54,8 +54,7 @@ class Retry(object):
         Total number of retries to allow. Takes precedence over other counts.
 
         Set to ``None`` to remove this constraint and fall back on other
-        counts. It's a good idea to set this to some sensibly-high value to
-        account for unexpected edge cases and avoid infinite retry loops.
+        counts.
 
         Set to ``0`` to fail on the first retry.
 
@@ -95,6 +94,18 @@ class Retry(object):
         ``status_forcelist``.
 
         Set to ``0`` to fail on the first retry of this type.
+
+    :param int other:
+        How many times to retry on other errors.
+
+        Other errors are errors that are not connect, read, redirect or status errors.
+        These errors might be raised after the request was sent to the server, so the
+        request might have side-effects.
+
+        Set to ``0`` to fail on the first retry of this type.
+
+        If ``total`` is not set, it's a good idea to set this to 0 to account
+        for unexpected edge cases and avoid infinite retry loops.
 
     :param iterable method_whitelist:
         Set of uppercased HTTP method verbs that we should retry on.
@@ -166,6 +177,7 @@ class Retry(object):
         read=None,
         redirect=None,
         status=None,
+        other=None,
         method_whitelist=DEFAULT_METHOD_WHITELIST,
         status_forcelist=None,
         backoff_factor=0,
@@ -180,6 +192,7 @@ class Retry(object):
         self.connect = connect
         self.read = read
         self.status = status
+        self.other = other
 
         if redirect is False or total is False:
             redirect = 0
@@ -204,6 +217,7 @@ class Retry(object):
             read=self.read,
             redirect=self.redirect,
             status=self.status,
+            other=self.other,
             method_whitelist=self.method_whitelist,
             status_forcelist=self.status_forcelist,
             backoff_factor=self.backoff_factor,
@@ -348,7 +362,14 @@ class Retry(object):
 
     def is_exhausted(self):
         """ Are we out of retries? """
-        retry_counts = (self.total, self.connect, self.read, self.redirect, self.status)
+        retry_counts = (
+            self.total,
+            self.connect,
+            self.read,
+            self.redirect,
+            self.status,
+            self.other,
+        )
         retry_counts = list(filter(None, retry_counts))
         if not retry_counts:
             return False
@@ -386,6 +407,7 @@ class Retry(object):
         read = self.read
         redirect = self.redirect
         status_count = self.status
+        other = self.other
         cause = "unknown"
         status = None
         redirect_location = None
@@ -403,6 +425,11 @@ class Retry(object):
                 raise six.reraise(type(error), error, _stacktrace)
             elif read is not None:
                 read -= 1
+
+        elif error:
+            # Other retry?
+            if other is not None:
+                other -= 1
 
         elif response and response.get_redirect_location():
             # Redirect retry?
@@ -432,6 +459,7 @@ class Retry(object):
             read=read,
             redirect=redirect,
             status=status_count,
+            other=other,
             history=history,
         )
 
