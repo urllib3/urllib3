@@ -393,13 +393,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             else:
                 conn.request(method, url, **httplib_request_kw)
 
-        # We are shallowing BrokenPipeError (errno.EPIPE) since the server is
+        # We are swallowing BrokenPipeError (errno.EPIPE) since the server is
         # legitimately able to close the connection after sending a valid response.
         # With this behaviour, the received response is still readable.
         except BrokenPipeError:  # Python 3
             pass
-        except IOError as e:  # Python 2
-            if e.errno != errno.EPIPE:
+        except IOError as e:
+            # https://erickt.github.io/blog/2014/11/19/adventures-in-debugging-a-potential-osx-kernel-bug/
+            if e.errno == errno.EPROTOTYPE:  # macOS
+                pass
+            elif e.errno != errno.EPIPE:  # Python 2
                 raise
 
         # Reset the timeout for the recv() on the socket

@@ -45,7 +45,6 @@ import socket
 import shutil
 import ssl
 import tempfile
-import time
 import mock
 
 import pytest
@@ -1811,16 +1810,17 @@ class TestBrokenPipe(SocketDummyServerTestCase):
         def connect_and_wait(*args, **kw):
             ret = orig_connect(*args, **kw)
             assert sock_shut.wait(5)
-            # sleep a bit to let osx tear the socket completely
-            # See https://erickt.github.io/blog/2014/11/19/adventures-in-debugging-a-potential-osx-kernel-bug/
-            time.sleep(2)
             return ret
 
         def socket_handler(listener):
-            resp_404 = b"HTTP/1.1 404 NOT FOUND\r\n\r\n"
             for i in range(2):
                 sock = listener.accept()[0]
-                sock.send(resp_404)
+                sock.send(
+                    b"HTTP/1.1 404 Not Found\r\n"
+                    b"Connection: close\r\n"
+                    b"Content-Length: 0\r\n"
+                    b"\r\n"
+                )
                 sock.shutdown(socket.SHUT_RDWR)
                 sock_shut.set()
                 sock.close()
