@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import ssl
 import pytest
+from mock import Mock
 
 from urllib3.connectionpool import (
     connection_from_url,
@@ -279,7 +280,6 @@ class TestConnectionPool(object):
 
             # Make sure that all of the exceptions return the connection
             # to the pool
-            _test(Empty, EmptyPoolError)
             _test(BaseSSLError, MaxRetryError, SSLError)
             _test(CertificateError, MaxRetryError, SSLError)
 
@@ -291,6 +291,15 @@ class TestConnectionPool(object):
             with pytest.raises(MaxRetryError):
                 pool.request("GET", "/", retries=1, pool_timeout=SHORT_TIMEOUT)
             assert pool.pool.qsize() == POOL_SIZE
+
+    def test_empty_does_not_put_conn(self):
+        """Do not put None back in the pool if the pool was empty"""
+
+        with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
+            pool._get_conn = Mock(side_effect=EmptyPoolError(pool, "Pool is empty"))
+            pool._put_conn = Mock(side_effect=AssertionError("Unexpected _put_conn"))
+            with pytest.raises(EmptyPoolError):
+                pool.request("GET", "/")
 
     def test_assert_same_host(self):
         with connection_from_url("http://google.com:80") as c:

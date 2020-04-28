@@ -698,9 +698,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Everything went great!
             clean_exit = True
 
-        except queue.Empty:
-            # Timed out by queue.
-            raise EmptyPoolError(self, "No pool connections are available.")
+        except EmptyPoolError:
+            # Didn't get a connection from the pool, no need to clean up
+            clean_exit = True
+            release_this_conn = False
+            raise
 
         except (
             TimeoutError,
