@@ -698,6 +698,27 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             finally:
                 conn.close()
 
+    def test_sslkeylogfile(self, tmpdir):
+        if not hasattr(ssl.SSLContext, "keylog_filename"):
+            pytest.skip("SSLContext does not support keylog_filename")
+        try:
+            keylog_file = tmpdir.join("keylogfile")
+            os.environ["SSLKEYLOGFILE"] = str(keylog_file)
+            with HTTPSConnectionPool(
+                self.host, self.port, ca_certs=DEFAULT_CA
+            ) as https_pool:
+                r = https_pool.request("GET", "/")
+                assert r.status == 200, r.data
+                assert keylog_file.check(file=1), "keylogfile '%s' should exist" % str(
+                    keylog_file
+                )
+                assert keylog_file.read().startswith("# TLS secrets log file"), (
+                    "keylogfile '%s' should start with '# TLS secrets log file'"
+                    % str(keylog_file)
+                )
+        finally:
+            del os.environ["SSLKEYLOGFILE"]
+
 
 @requiresTLSv1()
 class TestHTTPS_TLSv1(TestHTTPS):
