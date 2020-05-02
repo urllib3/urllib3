@@ -3,7 +3,7 @@ import os.path
 import shutil
 import socket
 import tempfile
-
+import warnings
 
 import pytest
 import trustme
@@ -14,7 +14,13 @@ from .. import TARPIT_HOST, requires_network
 
 from urllib3._collections import HTTPHeaderDict
 from urllib3.poolmanager import proxy_from_url, ProxyManager
-from urllib3.exceptions import MaxRetryError, SSLError, ProxyError, ConnectTimeoutError
+from urllib3.exceptions import (
+    MaxRetryError,
+    SSLError,
+    ProxyError,
+    ConnectTimeoutError,
+    InvalidProxyConfigurationWarning,
+)
 from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
 
 from test import SHORT_TIMEOUT, LONG_TIMEOUT
@@ -32,6 +38,11 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         cls.https_url = "https://%s:%d" % (cls.https_host, cls.https_port)
         cls.https_url_alt = "https://%s:%d" % (cls.https_host_alt, cls.https_port)
         cls.proxy_url = "http://%s:%d" % (cls.proxy_host, cls.proxy_port)
+
+        # This URL is used only to test that a warning is
+        # raised due to an improper config. urllib3 doesn't
+        # support HTTPS proxies in v1.25.*
+        cls.https_proxy_url = "https://%s:%d" % (cls.proxy_host, cls.proxy_port)
 
         # Generate another CA to test verification failure
         cls.certs_dir = tempfile.mkdtemp()
@@ -52,6 +63,22 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
             r = http.request("GET", "%s/" % self.https_url)
             assert r.status == 200
+
+    def test_https_proxy_warning(self):
+        with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as http:
+            with warnings.catch_warnings(record=True) as warn:
+                r = http.request("GET", "%s/" % self.https_url)
+
+            assert r.status == 200
+            assert len(warn) == 1
+            assert warn[0].category == InvalidProxyConfigurationWarning
+            assert str(warn[0].message) == (
+                "Your proxy configuration specified an HTTPS scheme for the proxy. "
+                "Are you sure you want to use HTTPS to contact the proxy? "
+                "This most likely indicates an error in your configuration. "
+                "Read this issue for more info: "
+                "https://github.com/urllib3/urllib3/issues/1850"
+            )
 
     def test_nagle_proxy(self):
         """ Test that proxy connections do not have TCP_NODELAY turned on """
