@@ -246,7 +246,7 @@ class InvalidHeader(HTTPError):
     pass
 
 
-class ProxySchemeUnknown(AssertionError, ValueError):
+class ProxySchemeUnknown(AssertionError, URLSchemeUnknown):
     "ProxyManager does not support the supplied scheme"
     # TODO(t-8ch): Stop inheriting from AssertionError in v2.0.
 
