@@ -31,13 +31,13 @@ def teardown_module():
 
 # SecureTransport does not support TLSv1.3
 # https://github.com/urllib3/urllib3/issues/1674
-from ..with_dummyserver.test_https import (  # noqa: F401
+from ..with_dummyserver.test_https import (  # noqa: E402, F401
     TestHTTPS,
     TestHTTPS_TLSv1,
     TestHTTPS_TLSv1_1,
     TestHTTPS_TLSv1_2,
 )
-from ..with_dummyserver.test_socketlevel import (  # noqa: F401
+from ..with_dummyserver.test_socketlevel import (  # noqa: E402, F401
     TestSNI,
     TestSocketClosing,
     TestClientCerts,
