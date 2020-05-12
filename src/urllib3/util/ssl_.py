@@ -29,8 +29,8 @@ def _const_compare_digest_backport(a, b):
     Returns True if the digests match, and False otherwise.
     """
     result = abs(len(a) - len(b))
-    for l, r in zip(bytearray(a), bytearray(b)):
-        result |= l ^ r
+    for left, right in zip(bytearray(a), bytearray(b)):
+        result |= left ^ right
     return result == 0
 
 
