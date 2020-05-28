@@ -705,7 +705,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
     @pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8+")
     @pytest.mark.xfail(
         sys.platform == "win32",
-        reason="does not work reliably in Appveyor test enviroment for not yet known reasons"
+        reason="does not work reliably in Appveyor test enviroment for not yet known reasons",
     )
     def test_sslkeylogfile(self, tmpdir, monkeypatch):
         keylog_file = tmpdir.join("keylogfile.txt")
