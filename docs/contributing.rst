@@ -73,6 +73,19 @@ suite::
 Our test suite `runs continuously on Travis CI
 <https://travis-ci.org/urllib3/urllib3>`_ with every pull request.
 
+To run specific tests or quickly re-run without nox recreating the env, do the following::
+
+  $ nox --reuse-existing-virtualenvs --sessions test-3.8 -- testCase1 testCase2 testCaseN
+  [ Nox will create virtualenv, install the specified dependencies, and run the commands in order.]
+  nox > Running session test-3.8
+  nox > Re-using existing virtual environment at .nox/test-3-8.
+  .......
+  .......
+  nox > Session test-3.8 was successful.
+
+Where ``testcase1`` would have the format: ``test/dir/module.py::TestClassName::test_method_name``.
+For example: ``test/with_dummyserver/test_https.py::TestHTTPS::test_simple``.
+
 Releases
 --------
 
