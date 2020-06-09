@@ -231,6 +231,28 @@ class IncompleteRead(HTTPError, httplib_IncompleteRead):
         )
 
 
+class InvalidChunkLength(HTTPError, httplib_IncompleteRead):
+    """Invalid chunk length in a chunked response."""
+
+    def __init__(self, response, length):
+        super(InvalidChunkLength, self).__init__(
+            response.tell(), response.length_remaining
+        )
+        self.response = response
+        self.length = length
+
+    def __repr__(self):
+        if self.expected is not None:
+            e = ", %i more expected" % self.expected
+        else:
+            e = ""
+        return "InvalidChunkLength(got length %r, %i bytes read%s)" % (
+            self.length,
+            self.partial,
+            e,
+        )
+
+
 class InvalidHeader(HTTPError):
     "The header provided was somehow invalid."
     pass

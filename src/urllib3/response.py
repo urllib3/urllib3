@@ -19,11 +19,12 @@ from .exceptions import (
     ReadTimeoutError,
     ResponseNotChunked,
     IncompleteRead,
+    InvalidChunkLength,
     InvalidHeader,
     HTTPError,
 )
 from .packages.six import string_types as basestring, PY3
-from .packages.six.moves import http_client as httplib
+from .packages.six.moves import http_client as httplib  # noqa: F401
 from .connection import HTTPException, BaseSSLError
 from .util.response import is_fp_closed, is_response_to_head
 
@@ -697,7 +698,7 @@ class HTTPResponse(io.IOBase):
         except ValueError:
             # Invalid chunked protocol response, abort.
             self.close()
-            raise httplib.IncompleteRead(line)
+            raise InvalidChunkLength(self, line)
 
     def _handle_chunk(self, amt):
         returned_chunk = None
