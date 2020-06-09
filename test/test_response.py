@@ -762,7 +762,7 @@ class TestResponse(object):
             next(r)
 
     def test_buggy_incomplete_read(self):
-        # Simulate buggy versions of Python
+        # Simulate buggy versions of Python (<2.7.4)
         # See http://bugs.python.org/issue16298
         content_length = 1337
         fp = BytesIO(b"")
