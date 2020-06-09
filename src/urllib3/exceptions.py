@@ -242,14 +242,9 @@ class InvalidChunkLength(HTTPError, httplib_IncompleteRead):
         self.length = length
 
     def __repr__(self):
-        if self.expected is not None:
-            e = ", %i more expected" % self.expected
-        else:
-            e = ""
-        return "InvalidChunkLength(got length %r, %i bytes read%s)" % (
+        return "InvalidChunkLength(got length %r, %i bytes read)" % (
             self.length,
             self.partial,
-            e,
         )
 
 
