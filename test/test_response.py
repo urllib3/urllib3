@@ -17,6 +17,7 @@ from urllib3.exceptions import (
     ProtocolError,
     InvalidHeader,
     httplib_IncompleteRead,
+    IncompleteRead,
     InvalidChunkLength,
 )
 from urllib3.packages.six.moves import http_client as httplib
@@ -759,6 +760,25 @@ class TestResponse(object):
         r = resp.read_chunked()
         with pytest.raises(ResponseNotChunked):
             next(r)
+
+    def test_buggy_incomplete_read(self):
+        # Simulate buggy versions of Python
+        # See http://bugs.python.org/issue16298
+        content_length = 1337
+        fp = BytesIO(b"")
+        resp = HTTPResponse(
+            fp,
+            headers={"content-length": str(content_length)},
+            preload_content=False,
+            enforce_content_length=True,
+        )
+        with pytest.raises(ProtocolError) as ctx:
+            resp.read(3)
+
+        orig_ex = ctx.value.args[1]
+        assert isinstance(orig_ex, IncompleteRead)
+        assert orig_ex.partial == 0
+        assert orig_ex.expected == content_length
 
     def test_incomplete_chunk(self):
         stream = [b"foooo", b"bbbbaaaaar"]
