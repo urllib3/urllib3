@@ -10,7 +10,7 @@ from urllib3.exceptions import (
     SSLError,
     ProtocolError,
 )
-from urllib3.response import httplib
+from urllib3.packages.six.moves import http_client as httplib
 from urllib3.util import ssl_wrap_socket
 from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util import ssl_

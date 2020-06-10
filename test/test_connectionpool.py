@@ -10,8 +10,9 @@ from urllib3.connectionpool import (
     HTTPConnectionPool,
     HTTPSConnectionPool,
 )
-from urllib3.response import httplib, HTTPResponse
+from urllib3.response import HTTPResponse
 from urllib3.util.timeout import Timeout
+from urllib3.packages.six.moves import http_client as httplib
 from urllib3.packages.six.moves.http_client import HTTPException
 from urllib3.packages.six.moves.queue import Empty
 from urllib3.packages.ssl_match_hostname import CertificateError
