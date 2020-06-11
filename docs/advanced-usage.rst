@@ -128,7 +128,7 @@ you're contacting.
 
 When contacting a HTTP website through a HTTP or HTTPS proxy, the request will
 be forwarded with the `absolute URI
-<https://tools.ietf.org/html/rfc7230#section-5.3.2>`_.  
+<https://tools.ietf.org/html/rfc7230#section-5.3.2>`_.
 
 When contacting a HTTPS website through a HTTP proxy, a TCP tunnel will be
 established with a HTTP CONNECT. Afterward a TLS connection will be established
@@ -303,3 +303,16 @@ Here's an example using brotli encoding via the ``Accept-Encoding`` header::
     >>> from urllib3 import PoolManager
     >>> http = PoolManager()
     >>> http.request('GET', 'https://www.google.com/', headers={'Accept-Encoding': 'br'})
+
+Decrypting captured TLS sessions with Wireshark
+-----------------------------------------------
+Python 3.8 and higher support logging of TLS pre-master secrets.
+With these secrets tools like `Wireshark <https://wireshark.org>`_ can decrypt captured
+network traffic.
+
+To enable this simply define environment variable `SSLKEYLOGFILE`:
+
+    export SSLKEYLOGFILE=/path/to/keylogfile.txt
+
+Then configure the key logfile in `Wireshark <https://wireshark.org>`_, see
+`Wireshark TLS Decryption <https://wiki.wireshark.org/TLS#TLS_Decryption>`_ for instructions.
