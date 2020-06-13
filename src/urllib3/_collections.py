@@ -154,6 +154,8 @@ class HTTPHeaderDict(MutableMapping):
 
     def __getitem__(self, key):
         val = self._container[key.lower()]
+        if val[1] is None:
+            return None
         return ", ".join(val[1:])
 
     def __delitem__(self, key):
@@ -302,7 +304,10 @@ class HTTPHeaderDict(MutableMapping):
         """Iterate over all headers, merging duplicate ones together."""
         for key in self:
             val = self._container[key.lower()]
-            yield val[0], ", ".join(val[1:])
+            if val[1] is None:
+                yield val[0], None
+            else:
+                yield val[0], ", ".join(val[1:])
 
     def items(self):
         return list(self.iteritems())

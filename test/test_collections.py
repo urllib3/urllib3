@@ -196,6 +196,23 @@ class TestHTTPHeaderDict(object):
         assert h is not org
         assert h == org
 
+    def test_allow_none_value(self, d):
+        d["Some-Header"] = None
+        assert d["Some-Header"] is None
+        assert "Some-Header" in d
+        assert d.getlist("Some-Header") == [None]
+        d.add("cookie2", None)
+        d.add("cookie2", "value")
+        assert d["Cookie2"] is None
+
+    def test_itermerged(self, d):
+        d["boo"] = "far"
+        d["nothing"] = None
+        i = d.itermerged()
+        assert next(i) == ("Cookie", "foo, bar")
+        assert next(i) == ("boo", "far")
+        assert next(i) == ("nothing", None)
+
     def test_setitem(self, d):
         d["Cookie"] = "foo"
         assert d["cookie"] == "foo"
