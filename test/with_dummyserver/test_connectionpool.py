@@ -795,38 +795,35 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             response = pool.request("GET", "/echo_uri/seg0/../seg2")
             assert response.data == b"/echo_uri/seg0/../seg2"
 
-    def test_user_agent_headers(self):
+    def test_default_user_agent_header(self):
+        """ ConnectionPool has a default user agent """
+        default_ua = _get_default_user_agent()
+        custom_ua = "I'm not a web scraper, what are you talking about?"
+        custom_ua2 = "Yet Another User Agent"
         with HTTPConnectionPool(self.host, self.port) as pool:
-            # Without anything else being specified, the default user agent should be sent.
+            # Use default user agent if no user agent was specified.
             r = pool.request("GET", "/headers")
             request_headers = json.loads(r.data.decode("utf8"))
             assert request_headers.get("User-Agent") == _get_default_user_agent()
 
-            # A specified user agent in a request, regardless of poor capitalization,
-            # will be sent in place of the default.
-            headers = {
-                "UsEr-AGENt": "I'm not a web scraper, what are you talking about?"
-            }
+            # Prefer the request user agent over the default.
+            headers = {"UsEr-AGENt": custom_ua}
             r = pool.request("GET", "/headers", headers=headers)
             request_headers = json.loads(r.data.decode("utf8"))
-            assert (
-                request_headers.get("User-Agent")
-                == "I'm not a web scraper, what are you talking about?"
-            )
+            assert request_headers.get("User-Agent") == custom_ua
 
-            # If pool headers are specified without a user agent,
-            # the default will be sent, and the header dict left unmodified.
+            # Do not modify pool headers when using the default user agent.
             pool_headers = {"foo": "bar"}
             pool.headers = pool_headers
             r = pool.request("GET", "/headers")
             request_headers = json.loads(r.data.decode("utf8"))
-            assert request_headers.get("User-Agent") == _get_default_user_agent()
+            assert request_headers.get("User-Agent") == default_ua
             assert "User-Agent" not in pool_headers
 
-            pool.headers.update({"User-Agent": "Yet Another User Agent"})
+            pool.headers.update({"User-Agent": custom_ua2})
             r = pool.request("GET", "/headers")
             request_headers = json.loads(r.data.decode("utf8"))
-            assert request_headers.get("User-Agent") == "Yet Another User Agent"
+            assert request_headers.get("User-Agent") == custom_ua2
 
 
 class TestRetry(HTTPDummyServerTestCase):

@@ -1469,7 +1469,7 @@ class TestHeaders(SocketDummyServerTestCase):
             pool.request("GET", "/", headers=HTTPHeaderDict(headers))
             assert expected_headers == parsed_headers
 
-    def test_ua_header_can_be_overwridden(self):
+    def test_ua_header_can_be_overridden(self):
         headers = {"uSeR-AgENt": "Definitely not urllib3!"}
         parsed_headers = {}
 
