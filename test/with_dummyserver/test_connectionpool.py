@@ -825,33 +825,6 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             request_headers = json.loads(r.data.decode("utf8"))
             assert request_headers.get("User-Agent") == custom_ua2
 
-    def test_no_user_agent_header(self):
-        """ ConnectionPool can suppress sending a user agent header """
-        custom_ua = "I'm not a web scraper, what are you talking about?"
-        with HTTPConnectionPool(self.host, self.port) as pool:
-            # Suppress user agent in the request headers.
-            no_ua_headers = {"User-Agent": None}
-            r = pool.request("GET", "/headers", headers=no_ua_headers)
-            request_headers = json.loads(r.data.decode("utf8"))
-            assert "User-Agent" not in request_headers
-            assert no_ua_headers["User-Agent"] is None
-
-            # Suppress user agent in the pool headers.
-            pool.headers = no_ua_headers
-            r = pool.request("GET", "/headers")
-            request_headers = json.loads(r.data.decode("utf8"))
-            assert "User-Agent" not in request_headers
-            assert no_ua_headers["User-Agent"] is None
-
-            # Request headers override pool headers.
-            pool_headers = {"User-Agent": custom_ua}
-            pool.headers = pool_headers
-            r = pool.request("GET", "/headers", headers=no_ua_headers)
-            request_headers = json.loads(r.data.decode("utf8"))
-            assert "User-Agent" not in request_headers
-            assert no_ua_headers["User-Agent"] is None
-            assert pool_headers.get("User-Agent") == custom_ua
-
 
 class TestRetry(HTTPDummyServerTestCase):
     def test_max_retry(self):

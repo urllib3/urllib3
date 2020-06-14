@@ -205,8 +205,6 @@ class HTTPConnection(_HTTPConnection, object):
         headers = HTTPHeaderDict(headers if headers is not None else {})
         if "user-agent" not in headers:
             headers["User-Agent"] = _get_default_user_agent()
-        elif headers["User-Agent"] is None:
-            del headers["User-Agent"]
         super(HTTPConnection, self).request(method, url, body=body, headers=headers)
 
     def request_chunked(self, method, url, body=None, headers=None):
@@ -222,8 +220,6 @@ class HTTPConnection(_HTTPConnection, object):
         )
         if "user-agent" not in headers:
             headers["User-Agent"] = _get_default_user_agent()
-        elif headers["User-Agent"] is None:
-            del headers["User-Agent"]
         for header, value in headers.items():
             self.putheader(header, value)
         if "transfer-encoding" not in headers:
