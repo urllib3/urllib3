@@ -13,8 +13,8 @@ If you wish to add a new feature or fix a bug:
    to start making your changes.
 #. Write a test which shows that the bug was fixed or that the feature works
    as expected.
-#. Format your changes with black using command `$ nox -s blacken` and lint your
-   changes using command `nox -s lint`.
+#. Format your changes with black using command `$ nox -rs blacken` and lint your
+   changes using command `nox -rs lint`.
 #. Send a pull request and bug the maintainer until it gets merged and published.
    :) Make sure to add yourself to ``CONTRIBUTORS.txt``.
 
@@ -35,8 +35,8 @@ We use some external dependencies, multiple interpreters and code coverage
 analysis while running test suite. Our ``noxfile.py`` handles much of this for
 you::
 
-  $ nox --sessions test-2.7 test-3.7
-  [ Nox will create virtualenv, install the specified dependencies, and run the commands in order.]
+  $ nox --reuse-existing-virtualenvs --sessions test-2.7 test-3.7
+  [ Nox will create virtualenv if needed, install the specified dependencies, and run the commands in order.]
   nox > Running session test-2.7
   .......
   .......
@@ -51,15 +51,15 @@ you::
 There is also a nox command for running all of our tests and multiple python
 versions.
 
-  $ nox --sessions test
+  $ nox --reuse-existing-virtualenvs --sessions test
 
 Note that code coverage less than 100% is regarded as a failing run. Some
 platform-specific tests are skipped unless run in that platform.  To make sure
 the code works in all of urllib3's supported platforms, you can run our ``tox``
 suite::
 
-  $ nox --sessions test
-  [ Nox will create virtualenv, install the specified dependencies, and run the commands in order.]
+  $ nox --reuse-existing-virtualenvs --sessions test
+  [ Nox will create virtualenv if needed, install the specified dependencies, and run the commands in order.]
   .......
   .......
   nox > Session test-2.7 was successful.
@@ -75,7 +75,7 @@ Our test suite `runs continuously on Travis CI
 
 To run specific tests or quickly re-run without nox recreating the env, do the following::
 
-  $ nox --reuse-existing-virtualenvs --sessions test-3.8 -- testCase1 testCase2 testCaseN
+  $ nox --reuse-existing-virtualenvs --sessions test-3.8 -- pyTestArgument1 pyTestArgument2 pyTestArgumentN
   [ Nox will create virtualenv, install the specified dependencies, and run the commands in order.]
   nox > Running session test-3.8
   nox > Re-using existing virtual environment at .nox/test-3-8.
@@ -83,8 +83,17 @@ To run specific tests or quickly re-run without nox recreating the env, do the f
   .......
   nox > Session test-3.8 was successful.
 
-Where ``testcase1`` would have the format: ``test/dir/module.py::TestClassName::test_method_name``.
-For example: ``test/with_dummyserver/test_https.py::TestHTTPS::test_simple``.
+After the ``--`` indicator, any arguments will be passed to pytest.
+To specify an exact test case the following syntax also works:
+``test/dir/module_name.py::TestClassName::test_method_name``
+(eg.: ``test/with_dummyserver/test_https.py::TestHTTPS::test_simple``).
+The following argument is another valid example to pass to pytest: ``-k test_methode_name``.
+These are useful when developing new test cases and there is no point
+re-running ther entire test suite every iteration. It is also possible to
+further parameterize pytest for local testing.
+
+For all valid arguments, check `the pytest documentation
+<https://docs.pytest.org/en/stable/usage.html#stopping-after-the-first-or-n-failures>`_.
 
 Releases
 --------
