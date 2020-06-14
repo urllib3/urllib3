@@ -47,7 +47,7 @@ from .util.ssl_ import (
 )
 
 
-from .util import connection
+from .util import connection, SUPPRESS_USER_AGENT
 
 from ._collections import HTTPHeaderDict
 from ._version import __version__
@@ -205,6 +205,8 @@ class HTTPConnection(_HTTPConnection, object):
         headers = HTTPHeaderDict(headers if headers is not None else {})
         if "user-agent" not in headers:
             headers["User-Agent"] = _get_default_user_agent()
+        elif headers["user-agent"] == SUPPRESS_USER_AGENT:
+            del headers["user-agent"]
         super(HTTPConnection, self).request(method, url, body=body, headers=headers)
 
     def request_chunked(self, method, url, body=None, headers=None):
@@ -220,6 +222,8 @@ class HTTPConnection(_HTTPConnection, object):
         )
         if "user-agent" not in headers:
             headers["User-Agent"] = _get_default_user_agent()
+        elif headers["user-agent"] == SUPPRESS_USER_AGENT:
+            del headers["user-agent"]
         for header, value in headers.items():
             self.putheader(header, value)
         if "transfer-encoding" not in headers:

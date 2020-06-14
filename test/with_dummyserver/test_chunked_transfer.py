@@ -4,6 +4,7 @@ import pytest
 
 from urllib3 import HTTPConnectionPool
 from urllib3.util.retry import Retry
+from urllib3.util import SUPPRESS_USER_AGENT
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 
 # Retry failed tests
@@ -109,6 +110,21 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
 
             ua_headers = self._get_header_lines(b"user-agent")
             assert len(ua_headers) == 1
+
+    def test_remove_user_agent_header(self):
+        self.start_chunked_handler()
+        chunks = ["foo", "bar", "", "bazzzzzzzzzzzzzzzzzzzzzz"]
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            pool.urlopen(
+                "GET",
+                "/",
+                chunks,
+                headers={"User-Agent": SUPPRESS_USER_AGENT},
+                chunked=True,
+            )
+
+            ua_headers = self._get_header_lines(b"user-agent")
+            assert len(ua_headers) == 0
 
     def test_preserve_chunked_on_retry_after(self):
         self.chunked_requests = 0
