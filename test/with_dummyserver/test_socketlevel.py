@@ -10,8 +10,8 @@ from urllib3.exceptions import (
     ProtocolError,
 )
 from urllib3.packages.six.moves import http_client as httplib
+from urllib3 import util
 from urllib3.util import ssl_wrap_socket
-from urllib3.util.ssl_ import HAS_SNI
 from urllib3.util import ssl_
 from urllib3.util.timeout import Timeout
 from urllib3.util.retry import Retry
@@ -87,8 +87,9 @@ class TestCookies(SocketDummyServerTestCase):
 
 
 class TestSNI(SocketDummyServerTestCase):
-    @pytest.mark.skipif(not HAS_SNI, reason="SNI-support not available")
     def test_hostname_in_first_request_packet(self):
+        if not util.HAS_SNI:
+            pytest.skip("SNI-support not available")
         done_receiving = Event()
         self.buf = b""
 
