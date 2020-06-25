@@ -15,6 +15,7 @@ import ssl
 from datetime import datetime
 
 from urllib3.exceptions import HTTPWarning
+from urllib3.util import resolve_cert_reqs, resolve_ssl_version
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -133,6 +134,36 @@ class SocketServerThread(threading.Thread):
         self.server = self._start_server()
 
 
+def ssl_options_to_context(
+    keyfile=None,
+    certfile=None,
+    server_side=None,
+    cert_reqs=None,
+    ssl_version=None,
+    ca_certs=None,
+    do_handshake_on_connect=None,
+    suppress_ragged_eofs=None,
+    ciphers=None,
+    alpn_protocols=None,
+):
+    """Return an equivalent SSLContext based on ssl.wrap_socket args."""
+    ssl_version = resolve_ssl_version(ssl_version)
+    cert_none = resolve_cert_reqs("CERT_NONE")
+    if cert_reqs is None:
+        cert_reqs = cert_none
+    else:
+        cert_reqs = resolve_cert_reqs(cert_reqs)
+
+    ctx = ssl.SSLContext(ssl_version)
+    ctx.load_cert_chain(certfile, keyfile)
+    ctx.verify_mode = cert_reqs
+    if ctx.verify_mode != cert_none:
+        ctx.load_verify_locations(cafile=ca_certs)
+    if alpn_protocols:
+        ctx.set_alpn_protocols(alpn_protocols)
+    return ctx
+
+
 def run_tornado_app(app, io_loop, certs, scheme, host):
     assert io_loop == tornado.ioloop.IOLoop.current()
 
@@ -141,7 +172,11 @@ def run_tornado_app(app, io_loop, certs, scheme, host):
     app.last_req = datetime(1970, 1, 1)
 
     if scheme == "https":
-        http_server = tornado.httpserver.HTTPServer(app, ssl_options=certs)
+        if sys.version_info < (2, 7, 9):
+            ssl_opts = certs
+        else:
+            ssl_opts = ssl_options_to_context(**certs)
+        http_server = tornado.httpserver.HTTPServer(app, ssl_options=ssl_opts)
     else:
         http_server = tornado.httpserver.HTTPServer(app)
 

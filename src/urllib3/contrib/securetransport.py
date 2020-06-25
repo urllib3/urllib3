@@ -81,7 +81,12 @@ __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 # SNI always works
 HAS_SNI = True
 
+# TODO: ALPN is currently not implemented.
+# See https://developer.apple.com/documentation/security/2976269-sec_protocol_options_add_tls_app
+HAS_ALPN = False
+
 orig_util_HAS_SNI = util.HAS_SNI
+orig_util_HAS_ALPN = util.HAS_ALPN
 orig_util_SSLContext = util.ssl_.SSLContext
 
 # This dictionary is used by the read callback to obtain a handle to the
@@ -185,6 +190,8 @@ def inject_into_urllib3():
     util.ssl_.SSLContext = SecureTransportContext
     util.HAS_SNI = HAS_SNI
     util.ssl_.HAS_SNI = HAS_SNI
+    util.HAS_ALPN = HAS_ALPN
+    util.ssl_.HAS_ALPN = HAS_ALPN
     util.IS_SECURETRANSPORT = True
     util.ssl_.IS_SECURETRANSPORT = True
 
@@ -197,6 +204,8 @@ def extract_from_urllib3():
     util.ssl_.SSLContext = orig_util_SSLContext
     util.HAS_SNI = orig_util_HAS_SNI
     util.ssl_.HAS_SNI = orig_util_HAS_SNI
+    util.HAS_ALPN = orig_util_HAS_ALPN
+    util.ssl_.HAS_ALPN = orig_util_HAS_ALPN
     util.IS_SECURETRANSPORT = False
     util.ssl_.IS_SECURETRANSPORT = False
 

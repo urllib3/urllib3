@@ -15,8 +15,12 @@ from ..packages import six
 
 SSLContext = None
 HAS_SNI = False
+HAS_ALPN = False
 IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
+DEFAULT_ALPN_PROTOCOLS = ["http/1.1"]
+#: A sentinel object to suppress the default ALPN protcols
+SUPPRESS_ALPN = object()
 
 # Maps the length of a digest to a possible hash function producing this digest
 HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
@@ -41,6 +45,7 @@ try:  # Test for SSL features
     import ssl
     from ssl import wrap_socket, CERT_REQUIRED
     from ssl import HAS_SNI  # Has SNI?
+    from ssl import HAS_ALPN  # Has ALPN?
 except ImportError:
     pass
 
@@ -316,6 +321,7 @@ def ssl_wrap_socket(
     ca_cert_dir=None,
     key_password=None,
     ca_cert_data=None,
+    alpn_protocols=None,
 ):
     """
     All arguments except for server_hostname, ssl_context, and ca_cert_dir have
@@ -337,6 +343,8 @@ def ssl_wrap_socket(
     :param ca_cert_data:
         Optional string containing CA certificates in PEM format suitable for
         passing as the cadata parameter to SSLContext.load_verify_locations()
+    :param alpn_protocols:
+        When ALPN is supported, the ALPN protocols to negotiate. :data:`SUPPRESS_ALPN` will suppress sending :data:`DEFAULT_ALPN_PROTOCOLS`.
     """
     context = ssl_context
     if context is None:
@@ -372,6 +380,11 @@ def ssl_wrap_socket(
             context.load_cert_chain(certfile, keyfile)
         else:
             context.load_cert_chain(certfile, keyfile, key_password)
+
+    if HAS_ALPN and alpn_protocols is not SUPPRESS_ALPN:
+        if alpn_protocols is None:
+            alpn_protocols = DEFAULT_ALPN_PROTOCOLS
+        context.set_alpn_protocols(alpn_protocols)
 
     # If we detect server_hostname is an IP address then the SNI
     # extension should not be used according to RFC3546 Section 3.1

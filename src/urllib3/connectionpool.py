@@ -846,7 +846,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     If ``assert_hostname`` is False, no verification is done.
 
     The ``key_file``, ``cert_file``, ``cert_reqs``, ``ca_certs``,
-    ``ca_cert_dir``, ``ssl_version``, ``key_password`` are only used if :mod:`ssl`
+    ``ca_cert_dir``, ``ssl_version``, ``key_password``, ``alpn_protocols`` are only used if :mod:`ssl`
     is available and are fed into :meth:`urllib3.util.ssl_wrap_socket` to upgrade
     the connection socket into an SSL socket.
     """
@@ -875,6 +875,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         assert_hostname=None,
         assert_fingerprint=None,
         ca_cert_dir=None,
+        alpn_protocols=None,
         **conn_kw
     ):
 
@@ -902,6 +903,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.ssl_version = ssl_version
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
+        self.alpn_protocols = alpn_protocols
 
     def _prepare_conn(self, conn):
         """
@@ -919,6 +921,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                 ca_cert_dir=self.ca_cert_dir,
                 assert_hostname=self.assert_hostname,
                 assert_fingerprint=self.assert_fingerprint,
+                alpn_protocols=self.alpn_protocols,
             )
             conn.ssl_version = self.ssl_version
         return conn

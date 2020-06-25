@@ -113,6 +113,32 @@ class TestSNI(SocketDummyServerTestCase):
                 self.host.encode("ascii") in self.buf
             ), "missing hostname in SSL handshake"
 
+    def test_alpn_protocol_in_first_request_packet(self):
+        if not util.HAS_ALPN:
+            pytest.skip("ALPN-support not available")
+        done_receiving = Event()
+        self.buf = b""
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            self.buf = sock.recv(65536)  # We only accept one packet
+            done_receiving.set()  # let the test know it can proceed
+            sock.close()
+
+        self._start_server(socket_handler)
+        with HTTPSConnectionPool(self.host, self.port) as pool:
+            try:
+                pool.request("GET", "/", retries=0)
+            except MaxRetryError:  # We are violating the protocol
+                pass
+            successful = done_receiving.wait(LONG_TIMEOUT)
+            assert successful, "Timed out waiting for connection accept"
+            for protocol in util.DEFAULT_ALPN_PROTOCOLS:
+                assert (
+                    protocol.encode("ascii") in self.buf
+                ), "missing ALPN protocol in SSL handshake"
+
 
 class TestClientCerts(SocketDummyServerTestCase):
     """
