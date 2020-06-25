@@ -102,7 +102,7 @@ class TestSNI(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        with HTTPConnectionPool(self.host, self.port) as pool:
+        with HTTPSConnectionPool(self.host, self.port) as pool:
             try:
                 pool.request("GET", "/", retries=0)
             except MaxRetryError:  # We are violating the protocol
