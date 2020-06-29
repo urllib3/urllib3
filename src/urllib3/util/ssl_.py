@@ -16,6 +16,8 @@ SSLContext = None
 HAS_SNI = False
 IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
+# SSLSocket.session -> version 3.6
+IS_SSL_SESSION_SUPPORTED = sys.version_info >= (3, 6)
 ALPN_PROTOCOLS = ["http/1.1"]
 
 # Maps the length of a digest to a possible hash function producing this digest
@@ -103,6 +105,7 @@ DEFAULT_CIPHERS = ":".join(
 try:
     from ssl import SSLContext  # Modern SSL?
 except ImportError:
+    IS_SSL_SESSION_SUPPORTED = False
 
     class SSLContext(object):  # Platform-specific: Python 2
         def __init__(self, protocol_version):
@@ -316,9 +319,10 @@ def ssl_wrap_socket(
     ca_cert_dir=None,
     key_password=None,
     ca_cert_data=None,
+    ssl_session=None,
 ):
     """
-    All arguments except for server_hostname, ssl_context, and ca_cert_dir have
+    All arguments except for server_hostname, ssl_context, ssl_session, and ca_cert_dir have
     the same meaning as they do when using :func:`ssl.wrap_socket`.
 
     :param server_hostname:
@@ -337,6 +341,18 @@ def ssl_wrap_socket(
     :param ca_cert_data:
         Optional string containing CA certificates in PEM format suitable for
         passing as the cadata parameter to SSLContext.load_verify_locations()
+    :param ssl_session:
+        If not ``None``, will be passed to :func:`ssl.wrap_socket`
+        as the `session` keyword argument.
+        An `_ssl.Session` object is obtained from a previously created
+        ``SSLSocket`` object, that had a completed handshake.
+        If provided, the ssl layer may attempt session resumption
+        depending on the ssl bindings in use and whether a ticket/id
+        to use for resumption was sent by the SSL server, but there is
+        no guarantee that a resumption will be attempted, nor that it will succeed.
+        In case the resumption fails or does not happen, the underlying ssl
+        layer will fall back to a full handshake - ie. same as when establishing
+        a new connection, so this failure is transparent to a caller.
     """
     context = ssl_context
     if context is None:
@@ -393,11 +409,17 @@ def ssl_wrap_socket(
             SNIMissingWarning,
         )
 
+    # Depending on the underlying wrap_socket,
+    # it may not accept the `session` kwarg even if it is provided by caller
+    send_session = IS_SSL_SESSION_SUPPORTED and ssl_session is not None
+
+    wrap_kwargs = {}
     if send_sni:
-        ssl_sock = context.wrap_socket(sock, server_hostname=server_hostname)
-    else:
-        ssl_sock = context.wrap_socket(sock)
-    return ssl_sock
+        wrap_kwargs["server_hostname"] = server_hostname
+    if send_session:
+        wrap_kwargs["session"] = ssl_session
+
+    return context.wrap_socket(sock, **wrap_kwargs)
 
 
 def is_ipaddress(hostname):

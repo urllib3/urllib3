@@ -36,7 +36,12 @@ from test import (
     resolvesLocalhostFQDN,
 )
 from urllib3 import HTTPSConnectionPool
-from urllib3.connection import VerifiedHTTPSConnection, RECENT_DATE
+from urllib3.connection import (
+    HTTPSConnection,
+    VerifiedHTTPSConnection,
+    RECENT_DATE,
+    SSL_OP_NO_TICKET,
+)
 from urllib3.exceptions import (
     SSLError,
     ConnectTimeoutError,
@@ -133,6 +138,104 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         ) as https_pool:
             r = https_pool.request("GET", "/")
             assert r.status == 200, r.data
+
+    def __ssl_resumption_assertions(self, https_pool):
+        def is_sock_ssl_session_capable(sock):
+            return isinstance(sock, ssl.SSLSocket) and hasattr(sock, "session")
+
+        def https_conn_assertions(https_conn, resume_ssl_sessions):
+            if SSL_OP_NO_TICKET is not None:
+                if resume_ssl_sessions:
+                    assert (SSL_OP_NO_TICKET & https_conn.ssl_context.options) == 0
+                else:
+                    assert (SSL_OP_NO_TICKET & https_conn.ssl_context.options) != 0
+
+            if resume_ssl_sessions and is_sock_ssl_session_capable(https_conn.sock):
+                assert https_conn._ssl_session is not None
+            else:
+                assert https_conn._ssl_session is None
+
+        # in case it's none, get the default that it will be
+        resume_ssl_sessions = https_pool.conn_kw.get(
+            "resume_ssl_sessions", HTTPSConnection.default_resume_ssl_sessions
+        )
+        r = https_pool.request("GET", "/")
+        assert r.status == 200, r.data
+        https_conn = https_pool.pool.get_nowait()
+        assert https_conn is not None
+        https_pool.pool.put(
+            https_conn
+        )  # put https_conn back so next request can use it
+
+        https_conn_assertions(https_conn, resume_ssl_sessions)
+
+        # force next call to reopen TCP layer by closing it
+        https_conn.sock.close()
+        first_req_sock = https_conn.sock
+        https_conn.sock = None
+
+        r = https_pool.request("GET", "/")
+        assert r.status == 200, r.data
+        assert first_req_sock is not https_conn.sock
+
+        https_conn_assertions(https_conn, resume_ssl_sessions)
+        #    FIXME: For some reason the Tornado HTTPS server ignores the
+        #    session ticket that itself sent in `first_req_sock.session`,
+        #    even though with pcap tools it can be observed that
+        #    the 2nd ClientHello contains the session key as expected.
+        #    Is Tornado messing up, or ssl.wrap_socket/do_handshake?
+        #    Uncomment this when the HTTPS server handles session tickets properly:
+        # assert (
+        #     not is_sock_ssl_session_capable(https_conn.sock)
+        #     or https_conn.sock.session_reused == resume_ssl_sessions
+        # )
+
+    def test_resume_ssl_sessions_enabled(self):
+        """
+        Test the cases where HTTPSConnection objects are implicitly
+        or explitictly told to try to reuse their previous ssl_sessions if possible.
+        Test both the SNI and IP address requests to cover both branches in ssl_.py.
+        """
+        for host in ("127.0.0.1", self.host):
+            with mock.patch("warnings.warn"):
+                # implicitly:
+                with HTTPSConnectionPool(
+                    host,
+                    self.port,
+                    ca_certs=DEFAULT_CA,
+                    cert_reqs=ssl.CERT_NONE,
+                    # resume_ssl_sessions=True,
+                ) as https_pool:
+                    self.__ssl_resumption_assertions(https_pool)
+
+                # explicitly:
+                with HTTPSConnectionPool(
+                    host,
+                    self.port,
+                    ca_certs=DEFAULT_CA,
+                    cert_reqs=ssl.CERT_NONE,
+                    resume_ssl_sessions=True,
+                ) as https_pool:
+                    self.__ssl_resumption_assertions(https_pool)
+
+    def test_resume_ssl_sessions_disabled(self):
+        """
+        Test the cases where HTTPSConnection objects are explicitly
+        told not to reuse their previous ssl_sessions.
+        In this case, OP_NO_TICKET should be set in the default sslctx of
+        the connection objects as well.
+        Test both the SNI and IP address requests to cover both branches in ssl_.py.
+        """
+        for host in ("127.0.0.1", self.host):
+            with mock.patch("warnings.warn"):
+                with HTTPSConnectionPool(
+                    host,
+                    self.port,
+                    ca_certs=DEFAULT_CA,
+                    cert_reqs=ssl.CERT_NONE,
+                    resume_ssl_sessions=False,
+                ) as https_pool:
+                    self.__ssl_resumption_assertions(https_pool)
 
     @resolvesLocalhostFQDN
     def test_dotted_fqdn(self):

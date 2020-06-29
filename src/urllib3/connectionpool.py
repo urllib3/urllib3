@@ -868,6 +868,32 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     ``ca_cert_dir``, ``ssl_version``, ``key_password`` are only used if :mod:`ssl`
     is available and are fed into :meth:`urllib3.util.ssl_wrap_socket` to upgrade
     the connection socket into an SSL socket.
+
+    When running on CPython >=3.6 compiled with :mod:`ssl` (openssl binding),
+    it is possible to resume TLS sessions in case the TCP socket level was dropped/closed.
+    This feature is enabled by default when supported by the underlying openssl bindings.
+    To disable it for all connections in this pool, set the kwarg ``resume_ssl_sessions``
+    to ``False``.
+
+        >> from urllib3 import HTTPSConnectionPool
+        >> pool_with_resumption_enabled = HTTPSConnectionPool('localhost', 443)
+        >> pool_with_resumption_disabled = HTTPSConnectionPool('localhost', 443, resume_ssl_sessions=False)
+
+    To globally change the default behavior in your application
+    without this explicit kwarg, it is also possible to the following:
+
+        >> from urllib3 import HTTPSConnectionPool
+        >> from urllib3.connection import HTTPSConnection
+        >> HTTPSConnection.default_resume_ssl_sessions = False
+        >> pool_with_resumption_disabled = HTTPSConnectionPool('localhost', 443)
+
+    .. note::
+        In most cases the ``Connection: keep-alive`` directive of the HTTP layer solves
+        largely the same issue and does it better.
+        However, there are some cases where ``keep-alive`` does not work,
+        or a middlebox does not agree with too long-lived TCP connections.
+        In such cases reconnection may be accelerated by TLS resumption,
+        which will save some CPU work and network traffic for both sides.
     """
 
     scheme = "https"
@@ -1027,6 +1053,8 @@ def connection_from_url(url, **kw):
         Passes additional parameters to the constructor of the appropriate
         :class:`.ConnectionPool`. Useful for specifying things like
         timeout, maxsize, headers, etc.
+        For the keyword args available, see :class:`.HTTPConnectionPool`
+        or :class:`.HTTPSConnectionPool`, depending on your url.
 
     Example::
 

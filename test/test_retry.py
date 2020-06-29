@@ -334,11 +334,7 @@ class TestRetry(object):
     )
     @pytest.mark.parametrize(
         "stub_timezone",
-        [
-            "UTC",
-            "Asia/Jerusalem",
-            None,
-        ],
+        ["UTC", "Asia/Jerusalem", None],
         indirect=True,
     )
     @pytest.mark.usefixtures("stub_timezone")

@@ -71,6 +71,9 @@ RECENT_DATE = datetime.date(2019, 1, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
+# OP_NO_TICKET is only available in Python 3.6+
+SSL_OP_NO_TICKET = getattr(ssl, "OP_NO_TICKET", None)
+
 
 class HTTPConnection(_HTTPConnection, object):
     """
@@ -262,6 +265,7 @@ class HTTPSConnection(HTTPConnection):
     """
 
     default_port = port_by_scheme["https"]
+    default_resume_ssl_sessions = True
 
     cert_reqs = None
     ca_certs = None
@@ -283,7 +287,10 @@ class HTTPSConnection(HTTPConnection):
         server_hostname=None,
         **kw
     ):
-
+        # do this before calling base class:
+        self.resume_ssl_sessions = kw.pop(
+            "resume_ssl_sessions", HTTPSConnection.default_resume_ssl_sessions
+        )
         HTTPConnection.__init__(self, host, port, strict=strict, timeout=timeout, **kw)
 
         self.key_file = key_file
@@ -292,6 +299,8 @@ class HTTPSConnection(HTTPConnection):
         self.ssl_context = ssl_context
         self.server_hostname = server_hostname
 
+        # This may get a value after the first call to .connect():
+        self._ssl_session = None
         # Required property for Google AppEngine 1.9.0 which otherwise causes
         # HTTPS requests to go out as HTTP. (See Issue #356)
         self._protocol = "https"
@@ -369,6 +378,18 @@ class HTTPSConnection(HTTPConnection):
                 ssl_version=resolve_ssl_version(self.ssl_version),
                 cert_reqs=resolve_cert_reqs(self.cert_reqs),
             )
+            if SSL_OP_NO_TICKET is not None:
+                # Unset this sslctx flag, so that we express
+                # to  the server we support tickets on TLSv1.2 and below.
+                # On TLSv1.3, this flag does nothing, and is ignored
+                # by openssl, as the TLS client no longer states
+                # it supports tickets to the server explicitly:
+                if self.resume_ssl_sessions:
+                    self.ssl_context.options &= ~SSL_OP_NO_TICKET
+                # In other cases, set the flag, expressing
+                # to the server we don't want a ticket:
+                else:
+                    self.ssl_context.options |= SSL_OP_NO_TICKET
 
         context = self.ssl_context
         context.verify_mode = resolve_cert_reqs(self.cert_reqs)
@@ -384,6 +405,9 @@ class HTTPSConnection(HTTPConnection):
         ):
             context.load_default_certs()
 
+        # If this is None, it will be the same as if it were ommitted in kwargs:
+        prev_ssl_session = self._ssl_session
+
         self.sock = ssl_wrap_socket(
             sock=conn,
             keyfile=self.key_file,
@@ -394,6 +418,7 @@ class HTTPSConnection(HTTPConnection):
             ca_cert_data=self.ca_cert_data,
             server_hostname=server_hostname,
             ssl_context=context,
+            ssl_session=prev_ssl_session,
         )
 
         if self.assert_fingerprint:
@@ -425,6 +450,17 @@ class HTTPSConnection(HTTPConnection):
             context.verify_mode == ssl.CERT_REQUIRED
             or self.assert_fingerprint is not None
         )
+
+        if prev_ssl_session is not None:
+            log.debug(
+                "For %s: new socket created, socket.session_reused=%s",
+                self,
+                getattr(self.sock, "session_reused", None),
+            )
+
+        curr_ssl_session = getattr(self.sock, "session", None)
+        if curr_ssl_session is not None and self.resume_ssl_sessions:
+            self._ssl_session = curr_ssl_session
 
 
 def _match_hostname(cert, asserted_hostname):
