@@ -153,6 +153,16 @@ class LocationParseError(LocationValueError):
         self.location = location
 
 
+class URLSchemeUnknown(LocationValueError):
+    "Raised when a URL input has an unsupported scheme."
+
+    def __init__(self, scheme):
+        message = "Not supported URL scheme %s" % scheme
+        super(URLSchemeUnknown, self).__init__(message)
+
+        self.scheme = scheme
+
+
 class ResponseError(HTTPError):
     "Used as a container for an error reason supplied in a MaxRetryError."
     GENERIC_ERROR = "too many error responses"
@@ -253,7 +263,7 @@ class InvalidHeader(HTTPError):
     pass
 
 
-class ProxySchemeUnknown(AssertionError, ValueError):
+class ProxySchemeUnknown(AssertionError, URLSchemeUnknown):
     "ProxyManager does not support the supplied scheme"
     # TODO(t-8ch): Stop inheriting from AssertionError in v2.0.
 

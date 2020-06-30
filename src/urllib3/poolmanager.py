@@ -14,6 +14,7 @@ from .exceptions import (
     MaxRetryError,
     ProxySchemeUnknown,
     ProxySchemeUnsupported,
+    URLSchemeUnknown,
 )
 from .packages import six
 from .packages.six.moves.urllib.parse import urljoin
@@ -255,7 +256,9 @@ class PoolManager(RequestMethods):
         value must be a key in ``key_fn_by_scheme`` instance variable.
         """
         scheme = request_context["scheme"].lower()
-        pool_key_constructor = self.key_fn_by_scheme[scheme]
+        pool_key_constructor = self.key_fn_by_scheme.get(scheme)
+        if not pool_key_constructor:
+            raise URLSchemeUnknown(scheme)
         pool_key = pool_key_constructor(request_context)
 
         return self.connection_from_pool_key(pool_key, request_context=request_context)
