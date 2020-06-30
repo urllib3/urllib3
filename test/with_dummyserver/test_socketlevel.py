@@ -3,6 +3,7 @@
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.connection import HTTPConnection
 from urllib3.poolmanager import proxy_from_url
+from urllib3.connection import _get_default_user_agent
 from urllib3.exceptions import (
     MaxRetryError,
     ProxyError,
@@ -938,6 +939,7 @@ class TestProxyManager(SocketDummyServerTestCase):
                     b"Host: google.com",
                     b"Accept-Encoding: identity",
                     b"Accept: */*",
+                    b"User-Agent: " + _get_default_user_agent().encode("utf-8"),
                     b"",
                     b"",
                 ]
@@ -1434,9 +1436,9 @@ class TestHeaders(SocketDummyServerTestCase):
             r = pool.request("GET", "/")
             assert HEADERS == dict(r.headers.items())  # to preserve case sensitivity
 
-    def test_headers_are_sent_with_the_original_case(self):
-        headers = {"foo": "bar", "bAz": "quux"}
-        parsed_headers = {}
+    def start_parsing_handler(self):
+        self.parsed_headers = OrderedDict()
+        self.received_headers = []
 
         def socket_handler(listener):
             sock = listener.accept()[0]
@@ -1445,11 +1447,13 @@ class TestHeaders(SocketDummyServerTestCase):
             while not buf.endswith(b"\r\n\r\n"):
                 buf += sock.recv(65536)
 
-            headers_list = [header for header in buf.split(b"\r\n")[1:] if header]
+            self.received_headers = [
+                header for header in buf.split(b"\r\n")[1:] if header
+            ]
 
-            for header in headers_list:
+            for header in self.received_headers:
                 (key, value) = header.split(b": ")
-                parsed_headers[key.decode("ascii")] = value.decode("ascii")
+                self.parsed_headers[key.decode("ascii")] = value.decode("ascii")
 
             sock.send(
                 ("HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n").encode("utf-8")
@@ -1458,6 +1462,26 @@ class TestHeaders(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
+
+    def test_headers_are_sent_with_the_original_case(self):
+        headers = {"foo": "bar", "bAz": "quux"}
+
+        self.start_parsing_handler()
+        expected_headers = {
+            "Accept-Encoding": "identity",
+            "Host": "{0}:{1}".format(self.host, self.port),
+            "User-Agent": _get_default_user_agent(),
+        }
+        expected_headers.update(headers)
+
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            pool.request("GET", "/", headers=HTTPHeaderDict(headers))
+            assert expected_headers == self.parsed_headers
+
+    def test_ua_header_can_be_overridden(self):
+        headers = {"uSeR-AgENt": "Definitely not urllib3!"}
+
+        self.start_parsing_handler()
         expected_headers = {
             "Accept-Encoding": "identity",
             "Host": "{0}:{1}".format(self.host, self.port),
@@ -1466,7 +1490,7 @@ class TestHeaders(SocketDummyServerTestCase):
 
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             pool.request("GET", "/", headers=HTTPHeaderDict(headers))
-            assert expected_headers == parsed_headers
+            assert expected_headers == self.parsed_headers
 
     def test_request_headers_are_sent_in_the_original_order(self):
         # NOTE: Probability this test gives a false negative is 1/(K!)
@@ -1478,69 +1502,26 @@ class TestHeaders(SocketDummyServerTestCase):
             (u"X-Header-%d" % i, str(i)) for i in reversed(range(K))
         ]
 
-        actual_request_headers = []
+        def filter_non_x_headers(d):
+            return [(k, v) for (k, v) in d.items() if k.startswith("X-Header-")]
 
-        def socket_handler(listener):
-            sock = listener.accept()[0]
+        request_headers = OrderedDict()
 
-            buf = b""
-            while not buf.endswith(b"\r\n\r\n"):
-                buf += sock.recv(65536)
-
-            headers_list = [header for header in buf.split(b"\r\n")[1:] if header]
-
-            for header in headers_list:
-                (key, value) = header.split(b": ")
-                if not key.decode("ascii").startswith(u"X-Header-"):
-                    continue
-                actual_request_headers.append(
-                    (key.decode("ascii"), value.decode("ascii"))
-                )
-
-            sock.send(
-                (u"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n").encode(
-                    "ascii"
-                )
-            )
-
-            sock.close()
-
-        self._start_server(socket_handler)
+        self.start_parsing_handler()
 
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             pool.request("GET", "/", headers=OrderedDict(expected_request_headers))
-            assert expected_request_headers == actual_request_headers
+            request_headers = filter_non_x_headers(self.parsed_headers)
+            assert expected_request_headers == request_headers
 
     @resolvesLocalhostFQDN
     def test_request_host_header_ignores_fqdn_dot(self):
-
-        received_headers = []
-
-        def socket_handler(listener):
-            sock = listener.accept()[0]
-
-            buf = b""
-            while not buf.endswith(b"\r\n\r\n"):
-                buf += sock.recv(65536)
-
-            for header in buf.split(b"\r\n")[1:]:
-                if header:
-                    received_headers.append(header)
-
-            sock.send(
-                (u"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n").encode(
-                    "ascii"
-                )
-            )
-
-            sock.close()
-
-        self._start_server(socket_handler)
+        self.start_parsing_handler()
 
         with HTTPConnectionPool(self.host + ".", self.port, retries=False) as pool:
             pool.request("GET", "/")
             self.assert_header_received(
-                received_headers, "Host", "%s:%s" % (self.host, self.port)
+                self.received_headers, "Host", "%s:%s" % (self.host, self.port)
             )
 
     def test_response_headers_are_returned_in_the_original_order(self):
