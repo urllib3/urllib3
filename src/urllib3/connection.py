@@ -47,9 +47,10 @@ from .util.ssl_ import (
 )
 
 
-from .util import connection
+from .util import connection, SUPPRESS_USER_AGENT
 
 from ._collections import HTTPHeaderDict
+from ._version import __version__
 
 log = logging.getLogger(__name__)
 
@@ -200,6 +201,14 @@ class HTTPConnection(_HTTPConnection, object):
 
         return _HTTPConnection.putrequest(self, method, url, *args, **kwargs)
 
+    def request(self, method, url, body=None, headers=None):
+        headers = HTTPHeaderDict(headers if headers is not None else {})
+        if "user-agent" not in headers:
+            headers["User-Agent"] = _get_default_user_agent()
+        elif headers["user-agent"] == SUPPRESS_USER_AGENT:
+            del headers["user-agent"]
+        super(HTTPConnection, self).request(method, url, body=body, headers=headers)
+
     def request_chunked(self, method, url, body=None, headers=None):
         """
         Alternative to the common request method, which sends the
@@ -211,6 +220,10 @@ class HTTPConnection(_HTTPConnection, object):
         self.putrequest(
             method, url, skip_accept_encoding=skip_accept_encoding, skip_host=skip_host
         )
+        if "user-agent" not in headers:
+            headers["User-Agent"] = _get_default_user_agent()
+        elif headers["user-agent"] == SUPPRESS_USER_AGENT:
+            del headers["user-agent"]
         for header, value in headers.items():
             self.putheader(header, value)
         if "transfer-encoding" not in headers:
@@ -416,6 +429,10 @@ def _match_hostname(cert, asserted_hostname):
         # the cert when catching the exception, if they want to
         e._peer_cert = cert
         raise
+
+
+def _get_default_user_agent():
+    return "python-urllib3/%s" % __version__
 
 
 if not ssl:
