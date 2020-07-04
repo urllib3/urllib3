@@ -49,7 +49,7 @@ you::
   nox > Session test-3.7 was successful.
 
 There is also a nox command for running all of our tests and multiple python
-versions.
+versions.::
 
   $ nox --reuse-existing-virtualenvs --sessions test
 
