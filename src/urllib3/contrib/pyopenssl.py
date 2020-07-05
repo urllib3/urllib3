@@ -78,8 +78,6 @@ __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 # SNI always works.
 HAS_SNI = True
 
-HAS_ALPN = hasattr(OpenSSL.SSL.Context, "set_alpn_protos")
-
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
 _openssl_versions = {
     util.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,
@@ -108,7 +106,6 @@ _openssl_to_stdlib_verify = dict((v, k) for k, v in _stdlib_to_openssl_verify.it
 SSL_WRITE_BLOCKSIZE = 16384
 
 orig_util_HAS_SNI = util.HAS_SNI
-orig_util_HAS_ALPN = util.HAS_ALPN
 orig_util_SSLContext = util.ssl_.SSLContext
 
 
@@ -124,8 +121,6 @@ def inject_into_urllib3():
     util.ssl_.SSLContext = PyOpenSSLContext
     util.HAS_SNI = HAS_SNI
     util.ssl_.HAS_SNI = HAS_SNI
-    util.HAS_ALPN = HAS_ALPN
-    util.ssl_.HAS_ALPN = HAS_ALPN
     util.IS_PYOPENSSL = True
     util.ssl_.IS_PYOPENSSL = True
 
@@ -137,8 +132,6 @@ def extract_from_urllib3():
     util.ssl_.SSLContext = orig_util_SSLContext
     util.HAS_SNI = orig_util_HAS_SNI
     util.ssl_.HAS_SNI = orig_util_HAS_SNI
-    util.HAS_ALPN = orig_util_HAS_ALPN
-    util.ssl_.HAS_ALPN = orig_util_HAS_ALPN
     util.IS_PYOPENSSL = False
     util.ssl_.IS_PYOPENSSL = False
 

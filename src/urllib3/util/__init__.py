@@ -7,16 +7,15 @@ from .response import is_fp_closed
 from .ssl_ import (
     SSLContext,
     HAS_SNI,
-    HAS_ALPN,
     IS_PYOPENSSL,
     IS_SECURETRANSPORT,
     assert_fingerprint,
     resolve_cert_reqs,
     resolve_ssl_version,
     ssl_wrap_socket,
+    has_alpn,
     PROTOCOL_TLS,
-    DEFAULT_ALPN_PROTOCOLS,
-    SUPPRESS_ALPN,
+    ALPN_PROTOCOLS,
 )
 from .timeout import current_time, Timeout
 
@@ -26,13 +25,11 @@ from .wait import wait_for_read, wait_for_write
 
 __all__ = (
     "HAS_SNI",
-    "HAS_ALPN",
     "IS_PYOPENSSL",
     "IS_SECURETRANSPORT",
     "SSLContext",
     "PROTOCOL_TLS",
-    "DEFAULT_ALPN_PROTOCOLS",
-    "SUPPRESS_ALPN",
+    "ALPN_PROTOCOLS",
     "Retry",
     "Timeout",
     "Url",
@@ -47,6 +44,7 @@ __all__ = (
     "resolve_ssl_version",
     "split_first",
     "ssl_wrap_socket",
+    "has_alpn",
     "wait_for_read",
     "wait_for_write",
     "SUPPRESS_USER_AGENT",

@@ -43,7 +43,6 @@ SSL_KEYWORDS = (
     "ca_cert_dir",
     "ssl_context",
     "key_password",
-    "alpn_protocols",
 )
 
 # All known keyword arguments that could be provided to the pool manager, its
@@ -74,7 +73,6 @@ _key_fields = (
     "key_assert_hostname",  # bool or string
     "key_assert_fingerprint",  # str
     "key_server_hostname",  # str
-    "key_alpn_protocols",  # list of str
 )
 
 #: The namedtuple class used to construct keys for the connection pool.

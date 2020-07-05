@@ -296,7 +296,6 @@ class HTTPSConnection(HTTPConnection):
         assert_fingerprint=None,
         ca_cert_dir=None,
         ca_cert_data=None,
-        alpn_protocols=None,
     ):
         """
         This method should only be called once, before the connection is used.
@@ -318,7 +317,6 @@ class HTTPSConnection(HTTPConnection):
         self.ca_certs = ca_certs and os.path.expanduser(ca_certs)
         self.ca_cert_dir = ca_cert_dir and os.path.expanduser(ca_cert_dir)
         self.ca_cert_data = ca_cert_data
-        self.alpn_protocols = alpn_protocols
 
     def connect(self):
         # Add certificate verification
@@ -385,7 +383,6 @@ class HTTPSConnection(HTTPConnection):
             ca_cert_data=self.ca_cert_data,
             server_hostname=server_hostname,
             ssl_context=context,
-            alpn_protocols=self.alpn_protocols,
         )
 
         if self.assert_fingerprint:

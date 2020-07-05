@@ -717,6 +717,15 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 % str(keylog_file)
             )
 
+    def test_alpn_default(self):
+        """Default ALPN protocols are sent by default."""
+        if not util.has_alpn() or not util.has_alpn(ssl.SSLContext):
+            pytest.skip("ALPN-support not available")
+        with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
+            r = pool.request("GET", "/alpn_protocol", retries=0)
+            assert r.status == 200
+            assert r.data.decode("utf-8") == util.ALPN_PROTOCOLS[0]
+
 
 @requiresTLSv1()
 class TestHTTPS_TLSv1(TestHTTPS):
@@ -805,44 +814,3 @@ class TestHTTPS_IPV6SAN:
         ) as https_pool:
             r = https_pool.request("GET", "/")
             assert r.status == 200
-
-
-class TestHTTPS_ALPN(TestHTTPS):
-    servers_last = "secondproto"
-    alpn_protos = util.DEFAULT_ALPN_PROTOCOLS + [servers_last]
-    servers_first = alpn_protos[0]
-    certs = dict(DEFAULT_CERTS, alpn_protocols=alpn_protos)
-
-    def _get_pool(self, **kwargs):
-        return HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA, **kwargs)
-
-    def test_alpn_custom(self):
-        """Setting custom ALPN protocols chooses the right protocol."""
-        # choose the right protocol (server's first, client's last)
-        with self._get_pool(alpn_protocols=["fakeproto", self.servers_first]) as pool:
-            r = pool.request("GET", "/alpn_protocol")
-            assert r.status == 200
-            assert r.data.decode("utf-8") == self.servers_first
-        # choose the right protocol (client's first, server's last)
-        with self._get_pool(alpn_protocols=[self.servers_last, "fakeproto"]) as pool:
-            r = pool.request("GET", "/alpn_protocol")
-            assert r.status == 200
-            assert r.data.decode("utf-8") == self.servers_last
-        # don't choose a protocol
-        with self._get_pool(alpn_protocols=["fakeproto"]) as pool:
-            r = pool.request("GET", "/alpn_protocol", retries=0)
-            assert r.status == 200
-            assert r.data.decode("utf-8") == ""
-
-    def test_alpn_default(self):
-        """Default ALPN protocols are sent by default, but can be suppressed."""
-        # sends default alpn protocols
-        with self._get_pool() as pool:
-            r = pool.request("GET", "/alpn_protocol", retries=0)
-            assert r.status == 200
-            assert r.data.decode("utf-8") == util.DEFAULT_ALPN_PROTOCOLS[0]
-        # can suppress default alpn protocols
-        with self._get_pool(alpn_protocols=util.SUPPRESS_ALPN) as pool:
-            r = pool.request("GET", "/alpn_protocol")
-            assert r.status == 200
-            assert r.data.decode("utf-8") == ""

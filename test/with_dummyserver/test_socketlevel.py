@@ -113,9 +113,12 @@ class TestSNI(SocketDummyServerTestCase):
                 self.host.encode("ascii") in self.buf
             ), "missing hostname in SSL handshake"
 
+
+class TestALPN(SocketDummyServerTestCase):
     def test_alpn_protocol_in_first_request_packet(self):
-        if not util.HAS_ALPN:
+        if not util.has_alpn():
             pytest.skip("ALPN-support not available")
+
         done_receiving = Event()
         self.buf = b""
 
@@ -134,7 +137,7 @@ class TestSNI(SocketDummyServerTestCase):
                 pass
             successful = done_receiving.wait(LONG_TIMEOUT)
             assert successful, "Timed out waiting for connection accept"
-            for protocol in util.DEFAULT_ALPN_PROTOCOLS:
+            for protocol in util.ALPN_PROTOCOLS:
                 assert (
                     protocol.encode("ascii") in self.buf
                 ), "missing ALPN protocol in SSL handshake"

@@ -15,7 +15,7 @@ import ssl
 from datetime import datetime
 
 from urllib3.exceptions import HTTPWarning
-from urllib3.util import resolve_cert_reqs, resolve_ssl_version
+from urllib3.util import resolve_cert_reqs, resolve_ssl_version, ALPN_PROTOCOLS
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -34,6 +34,7 @@ DEFAULT_CERTS = {
     "keyfile": os.path.join(CERTS_PATH, "server.key"),
     "cert_reqs": ssl.CERT_OPTIONAL,
     "ca_certs": os.path.join(CERTS_PATH, "cacert.pem"),
+    "alpn_protocols": ALPN_PROTOCOLS,
 }
 DEFAULT_CA = os.path.join(CERTS_PATH, "cacert.pem")
 DEFAULT_CA_KEY = os.path.join(CERTS_PATH, "cacert.key")
@@ -159,8 +160,11 @@ def ssl_options_to_context(
     ctx.verify_mode = cert_reqs
     if ctx.verify_mode != cert_none:
         ctx.load_verify_locations(cafile=ca_certs)
-    if alpn_protocols:
-        ctx.set_alpn_protocols(alpn_protocols)
+    if alpn_protocols and hasattr(ctx, "set_alpn_protocols"):
+        try:
+            ctx.set_alpn_protocols(alpn_protocols)
+        except NotImplementedError:
+            pass
     return ctx
 
 
