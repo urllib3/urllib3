@@ -378,6 +378,10 @@ def ssl_wrap_socket(
 
     if ca_certs or ca_cert_dir or ca_cert_data:
         try:
+            if ca_cert_data:
+                # This feature was backported from Python 3
+                # See https://bugs.python.org/issue37079
+                ca_cert_data = six.ensure_text(ca_cert_data)
             context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
         except (IOError, OSError) as e:
             raise SSLError(e)
