@@ -60,7 +60,6 @@ except ImportError:
         pass
 
 
-from io import BytesIO
 from socket import error as SocketError
 from socket import timeout
 
@@ -455,9 +454,16 @@ class PyOpenSSLContext(object):
         if capath is not None:
             capath = capath.encode("utf-8")
         try:
-            self._ctx.load_verify_locations(cafile, capath)
+            if cafile or capath:
+                self._ctx.load_verify_locations(cafile, capath)
             if cadata is not None:
-                self._ctx.load_verify_locations(BytesIO(cadata))
+                # PyOpenSSL's load_verify_locations does not support ca_cert_data.
+                # Instead, add the certificate directly to the store.
+                store = self._ctx.get_cert_store()
+                cert = OpenSSL.crypto.load_certificate(
+                    OpenSSL.crypto.FILETYPE_PEM, cadata
+                )
+                store.add_cert(cert)
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError("unable to load trusted certificates: %r" % e)
 
