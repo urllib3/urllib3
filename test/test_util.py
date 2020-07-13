@@ -10,7 +10,7 @@ from itertools import chain
 from mock import patch, Mock
 import pytest
 
-from urllib3 import add_stderr_logger, disable_warnings
+from urllib3 import add_stderr_logger, disable_warnings, util
 from urllib3.util.request import make_headers, rewind_body, _FAILEDTELL
 from urllib3.util.response import assert_header_parsing
 from urllib3.util.timeout import Timeout
@@ -29,7 +29,7 @@ from urllib3.exceptions import (
     UnrewindableBodyError,
 )
 from urllib3.util.connection import allowed_gai_family, _has_ipv6
-from urllib3.util import is_fp_closed, ssl_
+from urllib3.util import is_fp_closed
 from urllib3.packages import six
 
 from . import clear_warnings
@@ -823,22 +823,42 @@ class TestUtilSSL(object):
             None, None, "TOTALLY PEM DATA"
         )
 
-    def test_ssl_wrap_socket_with_no_sni_warns(self):
-        socket = object()
+    def _wrap_socket_and_mock_warn(self, sock, server_hostname):
         mock_context = Mock()
-        # Ugly preservation of original value
-        HAS_SNI = ssl_.HAS_SNI
-        ssl_.HAS_SNI = False
-        try:
-            with patch("warnings.warn") as warn:
-                ssl_wrap_socket(
-                    ssl_context=mock_context,
-                    sock=socket,
-                    server_hostname="www.google.com",
-                )
-            mock_context.wrap_socket.assert_called_once_with(socket)
+        with patch("warnings.warn") as warn:
+            ssl_wrap_socket(
+                ssl_context=mock_context, sock=sock, server_hostname=server_hostname,
+            )
+        return mock_context, warn
+
+    def test_ssl_wrap_socket_sni_hostname_use_or_warn(self):
+        """Test that either an SNI hostname is used or a warning is made."""
+        sock = object()
+        context, warn = self._wrap_socket_and_mock_warn(sock, "www.google.com")
+        if util.HAS_SNI:
+            warn.assert_not_called()
+            context.wrap_socket.assert_called_once_with(
+                sock, server_hostname="www.google.com"
+            )
+        else:
             assert warn.call_count >= 1
             warnings = [call[0][1] for call in warn.call_args_list]
             assert SNIMissingWarning in warnings
-        finally:
-            ssl_.HAS_SNI = HAS_SNI
+            context.wrap_socket.assert_called_once_with(sock)
+
+    def test_ssl_wrap_socket_sni_ip_address_no_warn(self):
+        """Test that a warning is not made if server_hostname is an IP address."""
+        sock = object()
+        context, warn = self._wrap_socket_and_mock_warn(sock, "8.8.8.8")
+        if util.IS_SECURETRANSPORT:
+            context.wrap_socket.assert_called_once_with(sock, server_hostname="8.8.8.8")
+        else:
+            context.wrap_socket.assert_called_once_with(sock)
+        warn.assert_not_called()
+
+    def test_ssl_wrap_socket_sni_none_no_warn(self):
+        """Test that a warning is not made if server_hostname is not given."""
+        sock = object()
+        context, warn = self._wrap_socket_and_mock_warn(sock, None)
+        context.wrap_socket.assert_called_once_with(sock)
+        warn.assert_not_called()
