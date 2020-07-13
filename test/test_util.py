@@ -666,31 +666,6 @@ class TestUtil(object):
         current_time.return_value = TIMEOUT_EPOCH + 37
         assert timeout.get_connect_duration() == 37
 
-    @pytest.mark.parametrize(
-        "candidate, requirements",
-        [
-            (None, ssl.CERT_REQUIRED),
-            (ssl.CERT_NONE, ssl.CERT_NONE),
-            (ssl.CERT_REQUIRED, ssl.CERT_REQUIRED),
-            ("REQUIRED", ssl.CERT_REQUIRED),
-            ("CERT_REQUIRED", ssl.CERT_REQUIRED),
-        ],
-    )
-    def test_resolve_cert_reqs(self, candidate, requirements):
-        assert resolve_cert_reqs(candidate) == requirements
-
-    @pytest.mark.parametrize(
-        "candidate, version",
-        [
-            (ssl.PROTOCOL_TLSv1, ssl.PROTOCOL_TLSv1),
-            ("PROTOCOL_TLSv1", ssl.PROTOCOL_TLSv1),
-            ("TLSv1", ssl.PROTOCOL_TLSv1),
-            (ssl.PROTOCOL_SSLv23, ssl.PROTOCOL_SSLv23),
-        ],
-    )
-    def test_resolve_ssl_version(self, candidate, version):
-        assert resolve_ssl_version(candidate) == version
-
     def test_is_fp_closed_object_supports_closed(self):
         class ClosedFile(object):
             @property
@@ -721,6 +696,86 @@ class TestUtil(object):
 
         with pytest.raises(ValueError):
             is_fp_closed(NotReallyAFile())
+
+    def test_const_compare_digest_fallback(self):
+        target = hashlib.sha256(b"abcdef").digest()
+        assert _const_compare_digest_backport(target, target)
+
+        prefix = target[:-1]
+        assert not _const_compare_digest_backport(target, prefix)
+
+        suffix = target + b"0"
+        assert not _const_compare_digest_backport(target, suffix)
+
+        incorrect = hashlib.sha256(b"xyz").digest()
+        assert not _const_compare_digest_backport(target, incorrect)
+
+    def test_has_ipv6_disabled_on_compile(self):
+        with patch("socket.has_ipv6", False):
+            assert not _has_ipv6("::1")
+
+    def test_has_ipv6_enabled_but_fails(self):
+        with patch("socket.has_ipv6", True):
+            with patch("socket.socket") as mock:
+                instance = mock.return_value
+                instance.bind = Mock(side_effect=Exception("No IPv6 here!"))
+                assert not _has_ipv6("::1")
+
+    def test_has_ipv6_enabled_and_working(self):
+        with patch("socket.has_ipv6", True):
+            with patch("socket.socket") as mock:
+                instance = mock.return_value
+                instance.bind.return_value = True
+                assert _has_ipv6("::1")
+
+    def test_has_ipv6_disabled_on_appengine(self):
+        gae_patch = patch(
+            "urllib3.contrib._appengine_environ.is_appengine_sandbox", return_value=True
+        )
+        with gae_patch:
+            assert not _has_ipv6("::1")
+
+    def test_ip_family_ipv6_enabled(self):
+        with patch("urllib3.util.connection.HAS_IPV6", True):
+            assert allowed_gai_family() == socket.AF_UNSPEC
+
+    def test_ip_family_ipv6_disabled(self):
+        with patch("urllib3.util.connection.HAS_IPV6", False):
+            assert allowed_gai_family() == socket.AF_INET
+
+    @pytest.mark.parametrize("headers", [b"foo", None, object])
+    def test_assert_header_parsing_throws_typeerror_with_non_headers(self, headers):
+        with pytest.raises(TypeError):
+            assert_header_parsing(headers)
+
+
+class TestUtilSSL(object):
+    """Test utils that use an SSL backend."""
+
+    @pytest.mark.parametrize(
+        "candidate, requirements",
+        [
+            (None, ssl.CERT_REQUIRED),
+            (ssl.CERT_NONE, ssl.CERT_NONE),
+            (ssl.CERT_REQUIRED, ssl.CERT_REQUIRED),
+            ("REQUIRED", ssl.CERT_REQUIRED),
+            ("CERT_REQUIRED", ssl.CERT_REQUIRED),
+        ],
+    )
+    def test_resolve_cert_reqs(self, candidate, requirements):
+        assert resolve_cert_reqs(candidate) == requirements
+
+    @pytest.mark.parametrize(
+        "candidate, version",
+        [
+            (ssl.PROTOCOL_TLSv1, ssl.PROTOCOL_TLSv1),
+            ("PROTOCOL_TLSv1", ssl.PROTOCOL_TLSv1),
+            ("TLSv1", ssl.PROTOCOL_TLSv1),
+            (ssl.PROTOCOL_SSLv23, ssl.PROTOCOL_SSLv23),
+        ],
+    )
+    def test_resolve_ssl_version(self, candidate, version):
+        assert resolve_ssl_version(candidate) == version
 
     def test_ssl_wrap_socket_loads_the_cert_chain(self):
         socket = object()
@@ -787,54 +842,3 @@ class TestUtil(object):
             assert SNIMissingWarning in warnings
         finally:
             ssl_.HAS_SNI = HAS_SNI
-
-    def test_const_compare_digest_fallback(self):
-        target = hashlib.sha256(b"abcdef").digest()
-        assert _const_compare_digest_backport(target, target)
-
-        prefix = target[:-1]
-        assert not _const_compare_digest_backport(target, prefix)
-
-        suffix = target + b"0"
-        assert not _const_compare_digest_backport(target, suffix)
-
-        incorrect = hashlib.sha256(b"xyz").digest()
-        assert not _const_compare_digest_backport(target, incorrect)
-
-    def test_has_ipv6_disabled_on_compile(self):
-        with patch("socket.has_ipv6", False):
-            assert not _has_ipv6("::1")
-
-    def test_has_ipv6_enabled_but_fails(self):
-        with patch("socket.has_ipv6", True):
-            with patch("socket.socket") as mock:
-                instance = mock.return_value
-                instance.bind = Mock(side_effect=Exception("No IPv6 here!"))
-                assert not _has_ipv6("::1")
-
-    def test_has_ipv6_enabled_and_working(self):
-        with patch("socket.has_ipv6", True):
-            with patch("socket.socket") as mock:
-                instance = mock.return_value
-                instance.bind.return_value = True
-                assert _has_ipv6("::1")
-
-    def test_has_ipv6_disabled_on_appengine(self):
-        gae_patch = patch(
-            "urllib3.contrib._appengine_environ.is_appengine_sandbox", return_value=True
-        )
-        with gae_patch:
-            assert not _has_ipv6("::1")
-
-    def test_ip_family_ipv6_enabled(self):
-        with patch("urllib3.util.connection.HAS_IPV6", True):
-            assert allowed_gai_family() == socket.AF_UNSPEC
-
-    def test_ip_family_ipv6_disabled(self):
-        with patch("urllib3.util.connection.HAS_IPV6", False):
-            assert allowed_gai_family() == socket.AF_INET
-
-    @pytest.mark.parametrize("headers", [b"foo", None, object])
-    def test_assert_header_parsing_throws_typeerror_with_non_headers(self, headers):
-        with pytest.raises(TypeError):
-            assert_header_parsing(headers)
