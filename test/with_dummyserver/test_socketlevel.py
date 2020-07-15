@@ -26,7 +26,7 @@ from dummyserver.server import (
     encrypt_key_pem,
 )
 
-from .. import onlyPy3, LogRecorder
+from .. import onlyPy3, LogRecorder, has_alpn
 
 try:
     from mimetools import Message as MimeToolMessage
@@ -116,7 +116,7 @@ class TestSNI(SocketDummyServerTestCase):
 
 class TestALPN(SocketDummyServerTestCase):
     def test_alpn_protocol_in_first_request_packet(self):
-        if not util.has_alpn():
+        if not has_alpn():
             pytest.skip("ALPN-support not available")
 
         done_receiving = Event()

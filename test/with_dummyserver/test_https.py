@@ -49,6 +49,7 @@ from urllib3.exceptions import (
 from urllib3.packages import six
 from urllib3.util.timeout import Timeout
 import urllib3.util as util
+from .. import has_alpn
 
 # Retry failed tests
 pytestmark = pytest.mark.flaky
@@ -719,7 +720,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def test_alpn_default(self):
         """Default ALPN protocols are sent by default."""
-        if not util.has_alpn() or not util.has_alpn(ssl.SSLContext):
+        if not has_alpn() or not has_alpn(ssl.SSLContext):
             pytest.skip("ALPN-support not available")
         with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
             r = pool.request("GET", "/alpn_protocol", retries=0)

@@ -382,12 +382,12 @@ class WrappedSocket(object):
         """
         if not protocols:
             return
-        protos_arr = _create_cfstring_array(protocols)
+        protocols_arr = _create_cfstring_array(protocols)
         try:
-            result = Security.SSLSetALPNProtocols(self.context, protos_arr)
+            result = Security.SSLSetALPNProtocols(self.context, protocols_arr)
             _assert_no_error(result)
         finally:
-            CoreFoundation.CFRelease(protos_arr)
+            CoreFoundation.CFRelease(protocols_arr)
 
     def _custom_validate(self, verify, trust_bundle):
         """
@@ -456,7 +456,7 @@ class WrappedSocket(object):
         client_cert,
         client_key,
         client_key_passphrase,
-        alpn_protos,
+        alpn_protocols,
     ):
         """
         Actually performs the TLS handshake. This is run automatically by
@@ -498,7 +498,7 @@ class WrappedSocket(object):
         self._set_ciphers()
 
         # Setup the ALPN protocols.
-        self._set_alpn_protocols(alpn_protos)
+        self._set_alpn_protocols(alpn_protocols)
 
         # Set the minimum and maximum TLS versions.
         result = Security.SSLSetProtocolVersionMin(self.context, min_version)
@@ -773,7 +773,7 @@ class SecureTransportContext(object):
         self._client_cert = None
         self._client_key = None
         self._client_key_passphrase = None
-        self._alpn_protos = None
+        self._alpn_protocols = None
 
     @property
     def check_hostname(self):
@@ -861,7 +861,7 @@ class SecureTransportContext(object):
             raise NotImplementedError(
                 "SecureTransport supports ALPN only in macOS 10.12+"
             )
-        self._alpn_protos = [six.ensure_binary(p) for p in protocols]
+        self._alpn_protocols = [six.ensure_binary(p) for p in protocols]
 
     def wrap_socket(
         self,
@@ -892,6 +892,6 @@ class SecureTransportContext(object):
             self._client_cert,
             self._client_key,
             self._client_key_passphrase,
-            self._alpn_protos,
+            self._alpn_protocols,
         )
         return wrapped_socket

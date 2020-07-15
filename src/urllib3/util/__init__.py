@@ -13,7 +13,6 @@ from .ssl_ import (
     resolve_cert_reqs,
     resolve_ssl_version,
     ssl_wrap_socket,
-    has_alpn,
     PROTOCOL_TLS,
     ALPN_PROTOCOLS,
 )
@@ -44,7 +43,6 @@ __all__ = (
     "resolve_ssl_version",
     "split_first",
     "ssl_wrap_socket",
-    "has_alpn",
     "wait_for_read",
     "wait_for_write",
     "SUPPRESS_USER_AGENT",

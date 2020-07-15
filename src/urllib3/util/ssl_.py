@@ -404,19 +404,6 @@ def ssl_wrap_socket(
     return context.wrap_socket(sock)
 
 
-def has_alpn(ctx_cls=None):
-    """Detect if ALPN support is enabled."""
-    ctx_cls = ctx_cls or SSLContext
-    ctx = ctx_cls(protocol=PROTOCOL_TLS)
-    try:
-        if hasattr(ctx, "set_alpn_protocols"):
-            ctx.set_alpn_protocols(ALPN_PROTOCOLS)
-            return True
-    except NotImplementedError:
-        pass
-    return False
-
-
 def is_ipaddress(hostname):
     """Detects whether the hostname given is an IPv4 or IPv6 address.
     Also detects IPv6 addresses with Zone IDs.
