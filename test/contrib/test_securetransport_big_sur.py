@@ -11,7 +11,6 @@ class TestSecureTransportBigSur(object):
     def test_import_current_version(self, mock_mac_ver):
         try:
             import urllib3.contrib.securetransport as securetransport
-
         except ImportError:
             securetransport = None
         assert securetransport
@@ -20,7 +19,6 @@ class TestSecureTransportBigSur(object):
     def test_import_future_version(self, mock_mac_ver):
         try:
             import urllib3.contrib.securetransport as securetransport
-
         except ImportError:
             securetransport = None
         assert securetransport

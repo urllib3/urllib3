@@ -44,6 +44,9 @@ from ctypes import (
     c_bool,
 )
 from ctypes import CDLL, POINTER, CFUNCTYPE
+from ctypes.util import find_library
+
+from urllib3.packages.six import raise_from
 
 
 version = platform.mac_ver()[0]
@@ -54,18 +57,30 @@ if platform.system() != "Darwin" or version_info < (10, 8):
         % (version_info[0], version_info[1])
     )
 
-security_path = "/System/Library/Frameworks/Security.framework/Security"
-core_foundation_path = (
-    "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation"
+
+def load_cdll(name, macos10_16_path):
+    """Loads a CDLL by name, falling back to known path on 10.16+"""
+    try:
+        # Big Sur is technically 11 but we use 10.16 due to the Big Sur
+        # beta being labeled as 10.16.
+        if version_info >= (10, 16):
+            path = macos10_16_path
+        else:
+            path = find_library(name)
+        if not path:
+            raise OSError  # Caught and reraised as 'ImportError'
+        return CDLL(path, use_errno=True)
+    except OSError:
+        raise_from(ImportError("The library %s failed to load" % name), None)
+
+
+Security = load_cdll(
+    "Security", "/System/Library/Frameworks/Security.framework/Security"
 )
-try:
-    Security = CDLL(security_path, use_errno=True)
-except OSError:
-    raise ImportError("The library {} failed to load.".format(security_path))
-try:
-    CoreFoundation = CDLL(core_foundation_path, use_errno=True)
-except OSError:
-    raise ImportError("The library {} failed to load.".format(core_foundation_path))
+CoreFoundation = load_cdll(
+    "CoreFoundation",
+    "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+)
 
 
 Boolean = c_bool
