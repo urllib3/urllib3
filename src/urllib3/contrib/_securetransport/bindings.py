@@ -49,7 +49,7 @@ from ctypes import CDLL, POINTER, CFUNCTYPE
 
 version = platform.mac_ver()[0]
 version_info = tuple(map(int, version.split(".")))
-if version_info < (10, 8):
+if platform.system() != "Darwin" or version_info < (10, 8):
     raise OSError(
         "Only OS X 10.8 and newer are supported, not %s.%s"
         % (version_info[0], version_info[1])
