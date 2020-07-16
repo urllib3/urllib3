@@ -47,16 +47,6 @@ from ctypes import (
 from ctypes import CDLL, POINTER, CFUNCTYPE
 
 
-security_path = find_library("Security")
-if not security_path:
-    raise ImportError("The library Security could not be found")
-
-
-core_foundation_path = find_library("CoreFoundation")
-if not core_foundation_path:
-    raise ImportError("The library CoreFoundation could not be found")
-
-
 version = platform.mac_ver()[0]
 version_info = tuple(map(int, version.split(".")))
 if version_info < (10, 8):
@@ -64,6 +54,28 @@ if version_info < (10, 8):
         "Only OS X 10.8 and newer are supported, not %s.%s"
         % (version_info[0], version_info[1])
     )
+
+# Big Sur is currently "10.16", although allegedly it will be "11" at
+# release.
+if version_info < (10, 16):
+    security_path = find_library("Security")
+else:
+    # The file won't be there; just trust apple and load per their
+    # instructions.
+    security_path = "/System/Library/Frameworks/Security.framework/Security"
+if not security_path:
+    raise ImportError("The library Security could not be found")
+
+
+if version_info < (10, 16):
+    core_foundation_path = find_library("CoreFoundation")
+else:
+    core_foundation_path = (
+        "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation"
+    )
+if not core_foundation_path:
+    raise ImportError("The library CoreFoundation could not be found")
+
 
 Security = CDLL(security_path, use_errno=True)
 CoreFoundation = CDLL(core_foundation_path, use_errno=True)
