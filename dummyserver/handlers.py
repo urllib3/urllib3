@@ -116,6 +116,11 @@ class TestingApp(RequestHandler):
             subject = dict((k, v) for (k, v) in [y for z in cert["subject"] for y in z])
         return Response(json.dumps(subject))
 
+    def alpn_protocol(self, request):
+        """Return the selected ALPN protocol."""
+        proto = request.connection.stream.socket.selected_alpn_protocol()
+        return Response(proto.encode("utf8") if proto is not None else u"")
+
     def source_address(self, request):
         """Return the requester's IP address."""
         return Response(request.remote_ip)

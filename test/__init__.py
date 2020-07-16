@@ -17,6 +17,7 @@ except ImportError:
 from urllib3.exceptions import HTTPWarning
 from urllib3.packages import six
 from urllib3.util import ssl_
+from urllib3 import util
 
 # We need a host that will not immediately close the connection with a TCP
 # Reset.
@@ -54,6 +55,19 @@ def _can_resolve(host):
         return True
     except socket.gaierror:
         return False
+
+
+def has_alpn(ctx_cls=None):
+    """ Detect if ALPN support is enabled. """
+    ctx_cls = ctx_cls or util.SSLContext
+    ctx = ctx_cls(protocol=ssl_.PROTOCOL_TLS)
+    try:
+        if hasattr(ctx, "set_alpn_protocols"):
+            ctx.set_alpn_protocols(ssl_.ALPN_PROTOCOLS)
+            return True
+    except NotImplementedError:
+        pass
+    return False
 
 
 # Some systems might not resolve "localhost." correctly.

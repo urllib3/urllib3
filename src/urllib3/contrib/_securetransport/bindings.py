@@ -276,6 +276,13 @@ try:
     Security.SSLSetProtocolVersionMax.argtypes = [SSLContextRef, SSLProtocol]
     Security.SSLSetProtocolVersionMax.restype = OSStatus
 
+    try:
+        Security.SSLSetALPNProtocols.argtypes = [SSLContextRef, CFArrayRef]
+        Security.SSLSetALPNProtocols.restype = OSStatus
+    except AttributeError:
+        # Supported only in 10.12+
+        pass
+
     Security.SecCopyErrorMessageString.argtypes = [OSStatus, c_void_p]
     Security.SecCopyErrorMessageString.restype = CFStringRef
 

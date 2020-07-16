@@ -26,7 +26,7 @@ from dummyserver.server import (
     encrypt_key_pem,
 )
 
-from .. import onlyPy3, LogRecorder
+from .. import onlyPy3, LogRecorder, has_alpn
 
 try:
     from mimetools import Message as MimeToolMessage
@@ -102,7 +102,7 @@ class TestSNI(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
-        with HTTPConnectionPool(self.host, self.port) as pool:
+        with HTTPSConnectionPool(self.host, self.port) as pool:
             try:
                 pool.request("GET", "/", retries=0)
             except MaxRetryError:  # We are violating the protocol
@@ -112,6 +112,35 @@ class TestSNI(SocketDummyServerTestCase):
             assert (
                 self.host.encode("ascii") in self.buf
             ), "missing hostname in SSL handshake"
+
+
+class TestALPN(SocketDummyServerTestCase):
+    def test_alpn_protocol_in_first_request_packet(self):
+        if not has_alpn():
+            pytest.skip("ALPN-support not available")
+
+        done_receiving = Event()
+        self.buf = b""
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+
+            self.buf = sock.recv(65536)  # We only accept one packet
+            done_receiving.set()  # let the test know it can proceed
+            sock.close()
+
+        self._start_server(socket_handler)
+        with HTTPSConnectionPool(self.host, self.port) as pool:
+            try:
+                pool.request("GET", "/", retries=0)
+            except MaxRetryError:  # We are violating the protocol
+                pass
+            successful = done_receiving.wait(LONG_TIMEOUT)
+            assert successful, "Timed out waiting for connection accept"
+            for protocol in util.ALPN_PROTOCOLS:
+                assert (
+                    protocol.encode("ascii") in self.buf
+                ), "missing ALPN protocol in SSL handshake"
 
 
 class TestClientCerts(SocketDummyServerTestCase):

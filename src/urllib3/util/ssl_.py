@@ -17,6 +17,7 @@ SSLContext = None
 HAS_SNI = False
 IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
+ALPN_PROTOCOLS = ["http/1.1"]
 
 # Maps the length of a digest to a possible hash function producing this digest
 HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
@@ -372,6 +373,12 @@ def ssl_wrap_socket(
             context.load_cert_chain(certfile, keyfile)
         else:
             context.load_cert_chain(certfile, keyfile, key_password)
+
+    try:
+        if hasattr(context, "set_alpn_protocols"):
+            context.set_alpn_protocols(ALPN_PROTOCOLS)
+    except NotImplementedError:
+        pass
 
     # If we detect server_hostname is an IP address then the SNI
     # extension should not be used according to RFC3546 Section 3.1
