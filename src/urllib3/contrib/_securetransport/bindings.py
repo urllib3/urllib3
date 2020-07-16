@@ -32,7 +32,6 @@ license and by oscrypto's:
 from __future__ import absolute_import
 
 import platform
-from ctypes.util import find_library
 from ctypes import (
     c_void_p,
     c_int32,
@@ -55,30 +54,19 @@ if platform.system() != "Darwin" or version_info < (10, 8):
         % (version_info[0], version_info[1])
     )
 
-# Big Sur is currently "10.16", although allegedly it will be "11" at
-# release.
-if version_info < (10, 16):
-    security_path = find_library("Security")
-else:
-    # The file won't be there; just trust apple and load per their
-    # instructions.
-    security_path = "/System/Library/Frameworks/Security.framework/Security"
-if not security_path:
-    raise ImportError("The library Security could not be found")
+security_path = "/System/Library/Frameworks/Security.framework/Security"
+core_foundation_path = (
+    "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation"
+)
+try:
+    Security = CDLL(security_path, use_errno=True)
+except OSError:
+    raise ImportError("The library {} failed to load.".format(security_path))
+try:
+    CoreFoundation = CDLL(core_foundation_path, use_errno=True)
+except OSError:
+    raise ImportError("The library {} failed to load.".format(core_foundation_path))
 
-
-if version_info < (10, 16):
-    core_foundation_path = find_library("CoreFoundation")
-else:
-    core_foundation_path = (
-        "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation"
-    )
-if not core_foundation_path:
-    raise ImportError("The library CoreFoundation could not be found")
-
-
-Security = CDLL(security_path, use_errno=True)
-CoreFoundation = CDLL(core_foundation_path, use_errno=True)
 
 Boolean = c_bool
 CFIndex = c_long
