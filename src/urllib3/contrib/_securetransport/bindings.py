@@ -32,6 +32,7 @@ license and by oscrypto's:
 from __future__ import absolute_import
 
 import platform
+from ctypes.util import find_library
 from ctypes import (
     c_void_p,
     c_int32,
@@ -44,8 +45,6 @@ from ctypes import (
     c_bool,
 )
 from ctypes import CDLL, POINTER, CFUNCTYPE
-from ctypes.util import find_library
-
 from urllib3.packages.six import raise_from
 
 
@@ -55,7 +54,7 @@ if platform.system() != "Darwin":
 version = platform.mac_ver()[0]
 version_info = tuple(map(int, version.split(".")))
 if version_info < (10, 8):
-    raise OSError(
+    raise ImportError(
         "Only OS X 10.8 and newer are supported, not %s.%s"
         % (version_info[0], version_info[1])
     )
