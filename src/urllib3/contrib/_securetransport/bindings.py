@@ -54,7 +54,7 @@ if platform.system() != "Darwin":
 version = platform.mac_ver()[0]
 version_info = tuple(map(int, version.split(".")))
 if version_info < (10, 8):
-    raise ImportError(
+    raise OSError(
         "Only OS X 10.8 and newer are supported, not %s.%s"
         % (version_info[0], version_info[1])
     )
