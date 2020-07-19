@@ -49,7 +49,7 @@ from urllib3.packages.six import raise_from
 
 
 if platform.system() != "Darwin":
-    raise OSError("Only macOS is supported")
+    raise ImportError("Only macOS is supported")
 
 version = platform.mac_ver()[0]
 version_info = tuple(map(int, version.split(".")))
