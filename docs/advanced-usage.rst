@@ -172,6 +172,45 @@ verified with that bundle will succeed. It's recommended to use a separate
 :class:`~poolmanager.PoolManager` to make requests to URLs that do not need
 the custom certificate.
 
+.. _sni_custom:
+
+Custom SNI Hostname
+-------------------
+
+If you want to create a connection to a host over HTTPS which uses SNI, there
+are two places where the hostname is expected. It must be included in the Host
+header sent, so that the server will know which host is being requested. The
+hostname should also match the certificate served by the server, which is
+checked by urllib3.
+
+Normally, urllib3 takes care of setting and checking these values for you when
+you connect to a host by name. However, it's sometimes useful to set a
+connection's expected Host header and certificate hostname (subject),
+especially when you are connecting without using name resolution. For example,
+you could connect to a server by IP using HTTPS like so::
+
+    >>> import urllib3
+    >>> pool = urllib3.HTTPSConnectionPool(
+    ...     "10.0.0.10",
+    ...     assert_hostname="example.org",
+    ...     server_hostname="example.org"
+    ... )
+    >>> pool.urlopen(
+    ...     "GET",
+    ...     "/",
+    ...     headers={"Host": "example.org"},
+    ...     assert_same_host=False
+    ... )
+
+
+Note that when you use a connection in this way, you must specify
+``assert_same_host=False``.
+
+This is useful when DNS resolution for ``example.org`` does not match the
+address that you would like to use. The IP may be for a private interface, or
+you may want to use a specific host under round-robin DNS.
+
+
 .. _ssl_client:
 
 Client certificates
