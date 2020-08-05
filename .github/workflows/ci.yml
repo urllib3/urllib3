@@ -46,7 +46,7 @@ jobs:
         run: |
           version=${{ matrix.python-version }}
           NOX_SESSION=test-${version%-dev}
-          nox -s $NOX_SESSION
+          nox -s $NOX_SESSION --error-on-missing-interpreters
       - name: Upload Coverage
         uses: codecov/codecov-action@v1
         with:
