@@ -251,6 +251,11 @@ class HTTPConnection(_HTTPConnection, object):
 
 
 class HTTPSConnection(HTTPConnection):
+    """
+    Many of the parameters to this constructor are passed to the underlying SSL
+    socket by means of :py:func:`util.ssl_wrap_socket`.
+    """
+
     default_port = port_by_scheme["https"]
 
     cert_reqs = None
