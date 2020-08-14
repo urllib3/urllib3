@@ -29,6 +29,8 @@ env:
     # PYPI_PASSWORD is set in Travis control panel.
 
 jobs:
+  allow_failures:
+    - python: nightly
   include:
     # Lint & documentation.
     - python: 3.6
