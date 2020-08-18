@@ -63,7 +63,7 @@ def test_context_sni_with_ip_address(monkeypatch, has_sni, server_hostname, uses
     if uses_sni:
         context.wrap_socket.assert_called_with(sock, server_hostname=server_hostname)
     else:
-        context.wrap_socket.assert_called_with(sock)
+        context.wrap_socket.assert_called_with(sock, server_hostname=None)
 
 
 @pytest.mark.parametrize(

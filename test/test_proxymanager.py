@@ -63,6 +63,10 @@ class TestProxyManager(object):
 
         with ProxyManager("https://proxy:8080") as p:
             assert p._proxy_requires_url_absolute_form(http_url)
+            assert p._proxy_requires_url_absolute_form(https_url) is False
+
+        with ProxyManager("https://proxy:8080", _use_forwarding_for_https=True) as p:
+            assert p._proxy_requires_url_absolute_form(http_url)
             assert p._proxy_requires_url_absolute_form(https_url)
 
     def test_proxy_connect_retry(self):

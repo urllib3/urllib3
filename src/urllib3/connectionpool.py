@@ -39,6 +39,7 @@ from .request import RequestMethods
 from .response import HTTPResponse
 
 from .util.connection import is_connection_dropped
+from .util.proxy import connection_requires_http_tunnel
 from .util.request import set_file_position
 from .util.response import assert_header_parsing
 from .util.retry import Retry
@@ -181,6 +182,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         retries=None,
         _proxy=None,
         _proxy_headers=None,
+        _proxy_config=None,
+        _destination_scheme=None,
         **conn_kw
     ):
         ConnectionPool.__init__(self, host, port)
@@ -202,6 +205,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         self.proxy = _proxy
         self.proxy_headers = _proxy_headers or {}
+        self.proxy_config = _proxy_config
+        self.destination_scheme = _destination_scheme
 
         # Fill the queue up so that doing get() on it will block properly
         for _ in xrange(maxsize):
@@ -217,6 +222,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # We cannot know if the user has added default socket options, so we cannot replace the
             # list.
             self.conn_kw.setdefault("socket_options", [])
+
+            self.conn_kw["proxy"] = self.proxy
+            self.conn_kw["proxy_config"] = self.proxy_config
+            self.conn_kw["destination_scheme"] = self.destination_scheme
 
     def _new_conn(self):
         """
@@ -637,7 +646,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Merge the proxy headers. Only done when not using HTTP CONNECT. We
         # have to copy the headers dict so we can safely change it without those
         # changes being reflected in anyone else's copy.
-        if self.scheme == "http" or (self.proxy and self.proxy.scheme == "https"):
+        if not connection_requires_http_tunnel(
+            self.proxy, self.proxy_config, self.destination_scheme
+        ):
             headers = headers.copy()
             headers.update(self.proxy_headers)
 
@@ -931,7 +942,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         improperly set Host: header to proxy's IP:port.
         """
 
-        if self.proxy.scheme != "https":
+        if connection_requires_http_tunnel(
+            self.proxy, self.proxy_config, self.destination_scheme
+        ):
             conn.set_tunnel(self._proxy_host, self.port, self.proxy_headers)
 
         conn.connect()

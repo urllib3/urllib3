@@ -9,6 +9,7 @@ import warnings
 from .packages import six
 from .packages.six.moves.http_client import HTTPConnection as _HTTPConnection
 from .packages.six.moves.http_client import HTTPException  # noqa: F401
+from .util.proxy import connection_requires_http_tunnel, generate_proxy_ssl_context
 
 try:  # Compiled with SSL?
     import ssl
@@ -112,6 +113,12 @@ class HTTPConnection(_HTTPConnection, object):
         #: The socket options provided by the user. If no options are
         #: provided, we use the default options.
         self.socket_options = kw.pop("socket_options", self.default_socket_options)
+
+        # Proxy options provided by the user.
+        self.proxy = kw.pop("proxy", None)
+        self.proxy_config = kw.pop("proxy_config", None)
+        self.destination_scheme = kw.pop("destination_scheme", None)
+
         _HTTPConnection.__init__(self, *args, **kw)
 
     @property
@@ -328,8 +335,13 @@ class HTTPSConnection(HTTPConnection):
         # Add certificate verification
         conn = self._new_conn()
         hostname = self.host
+        tls_in_tls = False
 
         if self._is_using_tunnel():
+            if self._connection_requires_tls_in_tls():
+                conn = self._connect_tls_proxy(hostname, conn)
+                tls_in_tls = True
+
             self.sock = conn
 
             # Calls self._set_hostport(), so self.host is
@@ -389,6 +401,7 @@ class HTTPSConnection(HTTPConnection):
             ca_cert_data=self.ca_cert_data,
             server_hostname=server_hostname,
             ssl_context=context,
+            tls_in_tls=tls_in_tls,
         )
 
         if self.assert_fingerprint:
@@ -419,6 +432,45 @@ class HTTPSConnection(HTTPConnection):
         self.is_verified = (
             context.verify_mode == ssl.CERT_REQUIRED
             or self.assert_fingerprint is not None
+        )
+
+    def _connection_requires_tls_in_tls(self):
+        """
+        Indicates if the current connection requires two TLS connections, one to
+        the proxy and one to the destination server.
+        """
+        if not self.proxy or self.proxy.scheme != "https":
+            return False
+
+        return connection_requires_http_tunnel(
+            self.proxy, self.proxy_config, self.destination_scheme
+        )
+
+    def _connect_tls_proxy(self, hostname, conn):
+        """
+        Establish a TLS connection to the proxy using the provided SSL context.
+        """
+        proxy_config = self.proxy_config
+        ssl_context = proxy_config.ssl_context
+        if not ssl_context:
+            ssl_context = generate_proxy_ssl_context(
+                self.ssl_version,
+                self.cert_reqs,
+                self.ca_certs,
+                self.ca_cert_dir,
+                self.ca_cert_data,
+            )
+
+        return ssl_wrap_socket(
+            sock=conn,
+            keyfile=self.key_file,
+            certfile=self.cert_file,
+            key_password=self.key_password,
+            ca_certs=self.ca_certs,
+            ca_cert_dir=self.ca_cert_dir,
+            ca_cert_data=self.ca_cert_data,
+            server_hostname=hostname,
+            ssl_context=ssl_context,
         )
 
 

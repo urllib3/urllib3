@@ -4,6 +4,7 @@ import warnings
 import logging
 import io
 import ssl
+import os
 import socket
 from itertools import chain
 
@@ -28,9 +29,19 @@ from urllib3.exceptions import (
     SNIMissingWarning,
     UnrewindableBodyError,
 )
-from urllib3.util.connection import allowed_gai_family, _has_ipv6
+from urllib3.util.connection import (
+    allowed_gai_family,
+    _has_ipv6,
+)
+from urllib3.util.proxy import (
+    connection_requires_http_tunnel,
+    client_certificate_and_key_from_env,
+    generate_proxy_ssl_context,
+)
 from urllib3.util import is_fp_closed, ssl_
 from urllib3.packages import six
+
+from urllib3.poolmanager import ProxyConfig
 
 from . import clear_warnings
 
@@ -781,7 +792,9 @@ class TestUtil(object):
                     sock=socket,
                     server_hostname="www.google.com",
                 )
-            mock_context.wrap_socket.assert_called_once_with(socket)
+            mock_context.wrap_socket.assert_called_once_with(
+                socket, server_hostname=None
+            )
             assert warn.call_count >= 1
             warnings = [call[0][1] for call in warn.call_args_list]
             assert SNIMissingWarning in warnings
@@ -838,3 +851,51 @@ class TestUtil(object):
     def test_assert_header_parsing_throws_typeerror_with_non_headers(self, headers):
         with pytest.raises(TypeError):
             assert_header_parsing(headers)
+
+    def test_connection_requires_http_tunnel_no_proxy(self):
+        assert not connection_requires_http_tunnel(
+            proxy_url=None, proxy_config=None, destination_scheme=None
+        )
+
+    def test_connection_requires_http_tunnel_http_proxy(self):
+        proxy = parse_url("http://proxy:8080")
+        proxy_config = ProxyConfig(ssl_context=None, use_forwarding_for_https=False)
+        destination_scheme = "http"
+        assert not connection_requires_http_tunnel(
+            proxy, proxy_config, destination_scheme
+        )
+
+        destination_scheme = "https"
+        assert connection_requires_http_tunnel(proxy, proxy_config, destination_scheme)
+
+    def test_connection_requires_http_tunnel_https_proxy(self):
+        proxy = parse_url("https://proxy:8443")
+        proxy_config = ProxyConfig(ssl_context=None, use_forwarding_for_https=False)
+        destination_scheme = "http"
+        assert not connection_requires_http_tunnel(
+            proxy, proxy_config, destination_scheme
+        )
+
+    def test_client_certificate_and_key_from_env(self):
+        test_cert = "cert"
+        test_key = "key"
+        test_pwd = "pwd"
+
+        os.environ["PROXY_SSLCERT"] = test_cert
+        os.environ["PROXY_SSLKEY"] = test_key
+        os.environ["PROXY_SSLPWD"] = test_pwd
+
+        test_cert, test_key, test_pwd == client_certificate_and_key_from_env()
+
+        del os.environ["PROXY_SSLCERT"]
+        del os.environ["PROXY_SSLKEY"]
+        del os.environ["PROXY_SSLPWD"]
+
+        cert, key, pwd = client_certificate_and_key_from_env()
+        assert cert is None
+        assert key is None
+        assert pwd is None
+
+    def test_generate_proxy_ssl_context(self):
+        ssl_context = generate_proxy_ssl_context(ssl_version=None, cert_reqs=None)
+        ssl_context.verify_mode = ssl.CERT_REQUIRED
