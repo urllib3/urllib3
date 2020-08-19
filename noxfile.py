@@ -1,7 +1,16 @@
 import os
 import shutil
+import subprocess
 
 import nox
+
+
+# Whenever type-hints are completed on a file it should
+# be added here so that this file will continue to be checked
+# by mypy. Errors from other files are ignored.
+TYPED_FILES = {
+    "src/urllib3/packages/ssl_match_hostname/__init__.py",
+}
 
 
 def tests_impl(session, extras="socks,secure,brotli"):
@@ -33,7 +42,7 @@ def tests_impl(session, extras="socks,secure,brotli"):
         "--tb=native",
         "--no-success-flaky-report",
         *(session.posargs or ("test/",)),
-        env={"PYTHONWARNINGS": "always::DeprecationWarning"}
+        env={"PYTHONWARNINGS": "always::DeprecationWarning"},
     )
     session.run("coverage", "combine")
     session.run("coverage", "report", "-m")
@@ -67,7 +76,7 @@ def app_engine(session):
         "-r",
         "sx",
         "test/appengine",
-        *session.posargs
+        *session.posargs,
     )
     session.run("coverage", "combine")
     session.run("coverage", "report", "-m")
@@ -92,6 +101,27 @@ def lint(session):
         "black", "--check", "src", "dummyserver", "test", "noxfile.py", "setup.py"
     )
     session.run("flake8", "setup.py", "docs", "dummyserver", "src", "test")
+
+    # TODO: When all files are typed we can change this to .run("mypy", "--strict", "src/urllib3/")
+    session.log("mypy --strict src/urllib3/")
+    for typed_file in TYPED_FILES:
+        if not os.path.isfile(typed_file):
+            session.error(f"The file {typed_file!r} couldn't be found")
+        popen = subprocess.Popen(
+            f"mypy --strict --follow-imports=skip {typed_file}",
+            env=session.env,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        popen.wait()
+        errors = []
+        for line in popen.stdout.read().decode().split("\n"):
+            filepath = line.partition(":")[0]
+            if filepath in TYPED_FILES:
+                errors.append(line)
+        if errors:
+            session.error("\n" + "\n".join(sorted(set(errors))))
 
 
 @nox.session
