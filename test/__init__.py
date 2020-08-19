@@ -19,7 +19,10 @@ from urllib3.packages import six
 from urllib3.util import ssl_
 from urllib3 import util
 
-import urllib3.contrib.pyopenssl as pyopenssl
+try:
+    import urllib3.contrib.pyopenssl as pyopenssl
+except ImportError:
+    pyopenssl = None
 
 # We need a host that will not immediately close the connection with a TCP
 # Reset.
@@ -182,7 +185,7 @@ def notSecureTransport(test):
 
 
 def notOpenSSL098(test):
-    """Skips this test for Python 3.5 , macOS python.org distribution"""
+    """Skips this test for Python 3.5 macOS python.org distribution"""
 
     @six.wraps(test)
     def wrapper(*args, **kwargs):
@@ -295,6 +298,10 @@ def resolvesLocalhostFQDN(test):
 def withPyOpenSSL(test):
     @six.wraps(test)
     def wrapper(*args, **kwargs):
+        if not pyopenssl:
+            pytest.skip("pyopenssl not available, skipping test.")
+            return test(*args, **kwargs)
+
         pyopenssl.inject_into_urllib3()
         result = test(*args, **kwargs)
         pyopenssl.extract_from_urllib3()
