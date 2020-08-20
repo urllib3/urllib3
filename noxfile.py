@@ -5,11 +5,12 @@ import subprocess
 import nox
 
 
-# Whenever type-hints are completed on a file it should
-# be added here so that this file will continue to be checked
-# by mypy. Errors from other files are ignored.
-TYPED_FILES = {
-    "src/urllib3/packages/ssl_match_hostname/__init__.py",
+# Whenever type-hints are completed on a file it should be added here so that
+# this file will continue to be checked by mypy. Errors from other files are
+# ignored.
+STUB_FILES = {
+    "src/urllib3/packages/ssl_match_hostname/__init__.pyi",
+    "src/urllib3/packages/ssl_match_hostname/_implementation.pyi",
 }
 
 
@@ -102,26 +103,26 @@ def lint(session):
     )
     session.run("flake8", "setup.py", "docs", "dummyserver", "src", "test")
 
-    # TODO: When all files are typed we can change this to .run("mypy", "--strict", "src/urllib3/")
-    session.log("mypy --strict src/urllib3/")
-    for typed_file in TYPED_FILES:
-        if not os.path.isfile(typed_file):
-            session.error("The file {} couldn't be found".format(typed_file))
-        popen = subprocess.Popen(
-            "mypy --strict --follow-imports=skip {}".format(typed_file),
-            env=session.env,
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
-        popen.wait()
-        errors = []
-        for line in popen.stdout.read().decode().split("\n"):
-            filepath = line.partition(":")[0]
-            if filepath in TYPED_FILES:
-                errors.append(line)
-        if errors:
-            session.error("\n" + "\n".join(sorted(set(errors))))
+    errors = []
+    popen = subprocess.Popen(
+        "mypy --strict src/urllib3",
+        env=session.env,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+    mypy_output = ""
+    while popen.poll() is None:
+        mypy_output += popen.stdout.read(8192).decode()
+    mypy_output += popen.stdout.read().decode()
+
+    for line in mypy_output.split("\n"):
+        filepath = line.partition(":")[0]
+        if filepath in STUB_FILES:
+            errors.append(line)
+    if errors:
+        session.error("\n" + "\n".join(sorted(set(errors))))
 
 
 @nox.session
