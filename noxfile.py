@@ -1,17 +1,11 @@
 import os
 import shutil
-import subprocess
 
 import nox
 
 
-# Whenever type-hints are completed on a file it should be added here so that
-# this file will continue to be checked by mypy. Errors from other files are
-# ignored.
-
-
 def tests_impl(session, extras="socks,secure,brotli"):
-    # Install deps and the package itself.
+    # Install deps and package itself.
     session.install("-r", "dev-requirements.txt")
     session.install(".[{extras}]".format(extras=extras))
 
