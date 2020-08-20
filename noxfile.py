@@ -106,9 +106,9 @@ def lint(session):
     session.log("mypy --strict src/urllib3/")
     for typed_file in TYPED_FILES:
         if not os.path.isfile(typed_file):
-            session.error(f"The file {typed_file!r} couldn't be found")
+            session.error("The file {} couldn't be found".format(typed_file))
         popen = subprocess.Popen(
-            f"mypy --strict --follow-imports=skip {typed_file}",
+            "mypy --strict --follow-imports=skip {}".format(typed_file),
             env=session.env,
             shell=True,
             stdout=subprocess.PIPE,
