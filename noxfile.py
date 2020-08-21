@@ -1,7 +1,17 @@
 import os
 import shutil
+import subprocess
 
 import nox
+
+
+# Whenever type-hints are completed on a file it should be added here so that
+# this file will continue to be checked by mypy. Errors from other files are
+# ignored.
+STUB_FILES = {
+    "src/urllib3/packages/ssl_match_hostname/__init__.pyi",
+    "src/urllib3/packages/ssl_match_hostname/_implementation.pyi",
+}
 
 
 def tests_impl(session, extras="socks,secure,brotli"):
@@ -33,7 +43,7 @@ def tests_impl(session, extras="socks,secure,brotli"):
         "--tb=native",
         "--no-success-flaky-report",
         *(session.posargs or ("test/",)),
-        env={"PYTHONWARNINGS": "always::DeprecationWarning"}
+        env={"PYTHONWARNINGS": "always::DeprecationWarning"},
     )
     session.run("coverage", "combine")
     session.run("coverage", "report", "-m")
@@ -67,7 +77,7 @@ def app_engine(session):
         "-r",
         "sx",
         "test/appengine",
-        *session.posargs
+        *session.posargs,
     )
     session.run("coverage", "combine")
     session.run("coverage", "report", "-m")
@@ -92,6 +102,27 @@ def lint(session):
         "black", "--check", "src", "dummyserver", "test", "noxfile.py", "setup.py"
     )
     session.run("flake8", "setup.py", "docs", "dummyserver", "src", "test")
+
+    errors = []
+    popen = subprocess.Popen(
+        "mypy --strict src/urllib3",
+        env=session.env,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+    mypy_output = ""
+    while popen.poll() is None:
+        mypy_output += popen.stdout.read(8192).decode()
+    mypy_output += popen.stdout.read().decode()
+
+    for line in mypy_output.split("\n"):
+        filepath = line.partition(":")[0]
+        if filepath in STUB_FILES:
+            errors.append(line)
+    if errors:
+        session.error("\n" + "\n".join(sorted(set(errors))))
 
 
 @nox.session
