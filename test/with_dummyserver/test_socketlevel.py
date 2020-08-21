@@ -709,7 +709,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             timeout = Timeout(connect=LONG_TIMEOUT, read=SHORT_TIMEOUT)
             try:
                 with pytest.raises(ReadTimeoutError):
-                    response = pool.urlopen(
+                    pool.urlopen(
                         "GET", "/", retries=Retry(total=False), timeout=timeout,
                     )
                 assert poolsize == pool.pool.qsize()
