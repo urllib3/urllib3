@@ -22,10 +22,9 @@ If you wish to add a new feature or fix a bug:
 Setting up your development environment
 ---------------------------------------
 
-In order to setup the development environment all that you need is 
-`nox <https://nox.thea.codes/en/stable/index.html>`_ installed in your machine::
+In order to setup the development environment, you'll need `nox <https://nox.thea.codes/en/stable/index.html>`_ and `mypy <http://mypy-lang.org>`_ installed in your machine::
 
-  $ pip install --user --upgrade nox
+  $ pip install --user --upgrade nox mypy
 
 
 Running the tests
