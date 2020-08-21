@@ -1,7 +1,11 @@
 import os
 import shutil
+import subprocess
 
 import nox
+
+
+STUB_FILES = {}
 
 
 def tests_impl(session, extras="socks,secure,brotli"):
@@ -92,6 +96,27 @@ def lint(session):
         "black", "--check", "src", "dummyserver", "test", "noxfile.py", "setup.py"
     )
     session.run("flake8", "setup.py", "docs", "dummyserver", "src", "test")
+
+    errors = []
+    popen = subprocess.Popen(
+        "mypy --strict src/urllib3",
+        env=session.env,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+    mypy_output = ""
+    while popen.poll() is None:
+        mypy_output += popen.stdout.read(8192).decode()
+    mypy_output += popen.stdout.read().decode()
+
+    for line in mypy_output.split("\n"):
+        filepath = line.partition(":")[0]
+        if filepath in STUB_FILES:
+            errors.append(line)
+    if errors:
+        session.error("\n" + "\n".join(sorted(set(errors))))
 
 
 @nox.session
