@@ -95,9 +95,10 @@ def blacken(session):
 
 @nox.session
 def lint(session):
-    session.install("flake8", "black")
+    session.install("flake8", "black", "mypy")
     session.run("flake8", "--version")
     session.run("black", "--version")
+    session.run("mypy", "--version")
     session.run(
         "black", "--check", "src", "dummyserver", "test", "noxfile.py", "setup.py"
     )
@@ -105,7 +106,7 @@ def lint(session):
 
     errors = []
     popen = subprocess.Popen(
-        "mypy --strict src/urllib3",
+        ["mypy", "--strict", " src/urllib3"],
         env=session.env,
         shell=True,
         stdout=subprocess.PIPE,
