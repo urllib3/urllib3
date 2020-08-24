@@ -252,10 +252,10 @@ class Retry(object):
         if re.match(r"^\s*[0-9]+\s*$", retry_after):
             seconds = int(retry_after)
         else:
-            retry_date_tuple = email.utils.parsedate(retry_after)
+            retry_date_tuple = email.utils.parsedate_tz(retry_after)
             if retry_date_tuple is None:
                 raise InvalidHeader("Invalid Retry-After header: %s" % retry_after)
-            retry_date = time.mktime(retry_date_tuple)
+            retry_date = email.utils.mktime_tz(retry_date_tuple)
             seconds = retry_date - time.time()
 
         if seconds < 0:
