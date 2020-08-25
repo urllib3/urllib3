@@ -104,6 +104,7 @@ def lint(session):
     )
     session.run("flake8", "setup.py", "docs", "dummyserver", "src", "test")
 
+    session.log("mypy --strict src/urllib3")
     errors = []
     process = subprocess.run(
         ["mypy", "--strict", "src/urllib3"],
