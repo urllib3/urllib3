@@ -95,29 +95,28 @@ def blacken(session):
 
 @nox.session
 def lint(session):
-    session.install("flake8", "black")
+    session.install("flake8", "black", "mypy")
     session.run("flake8", "--version")
     session.run("black", "--version")
+    session.run("mypy", "--version")
     session.run(
         "black", "--check", "src", "dummyserver", "test", "noxfile.py", "setup.py"
     )
     session.run("flake8", "setup.py", "docs", "dummyserver", "src", "test")
 
+    session.log("mypy --strict src/urllib3")
     errors = []
-    popen = subprocess.Popen(
-        "mypy --strict src/urllib3",
+    process = subprocess.run(
+        ["mypy", "--strict", "src/urllib3"],
         env=session.env,
-        shell=True,
+        text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
+    # Ensure that mypy itself ran succesfully
+    assert process.returncode in (0, 1)
 
-    mypy_output = ""
-    while popen.poll() is None:
-        mypy_output += popen.stdout.read(8192).decode()
-    mypy_output += popen.stdout.read().decode()
-
-    for line in mypy_output.split("\n"):
+    for line in process.stdout.split("\n"):
         filepath = line.partition(":")[0]
         if filepath in STUB_FILES:
             errors.append(line)
