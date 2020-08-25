@@ -105,19 +105,15 @@ def lint(session):
     session.run("flake8", "setup.py", "docs", "dummyserver", "src", "test")
 
     errors = []
-    popen = subprocess.Popen(
+    process = subprocess.run(
         ["mypy", "--strict", "src/urllib3"],
         env=session.env,
+        text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
 
-    mypy_output = ""
-    while popen.poll() is None:
-        mypy_output += popen.stdout.read(8192).decode()
-    mypy_output += popen.stdout.read().decode()
-
-    for line in mypy_output.split("\n"):
+    for line in process.stdout.split("\n"):
         filepath = line.partition(":")[0]
         if filepath in STUB_FILES:
             errors.append(line)
