@@ -106,7 +106,7 @@ def lint(session):
 
     errors = []
     popen = subprocess.Popen(
-        ["mypy", "--strict", " src/urllib3"],
+        ["mypy", "--strict", "src/urllib3"],
         env=session.env,
         shell=True,
         stdout=subprocess.PIPE,
