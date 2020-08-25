@@ -113,6 +113,8 @@ def lint(session):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
+    # Ensure that mypy itself ran succesfully
+    assert process.returncode in (0, 1)
 
     for line in process.stdout.split("\n"):
         filepath = line.partition(":")[0]
