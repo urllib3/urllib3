@@ -108,7 +108,6 @@ def lint(session):
     popen = subprocess.Popen(
         ["mypy", "--strict", "src/urllib3"],
         env=session.env,
-        shell=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
