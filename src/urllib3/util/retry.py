@@ -269,6 +269,12 @@ class Retry(object):
             retry_date_tuple = email.utils.parsedate_tz(retry_after)
             if retry_date_tuple is None:
                 raise InvalidHeader("Invalid Retry-After header: %s" % retry_after)
+            if retry_date_tuple[9] is None:  # Python 2
+                # Assume UTC if no timezone was specified
+                tmp = list(retry_date_tuple)
+                tmp[9] = 0
+                retry_date_tuple = tuple(tmp)
+
             retry_date = email.utils.mktime_tz(retry_date_tuple)
             seconds = retry_date - time.time()
 
