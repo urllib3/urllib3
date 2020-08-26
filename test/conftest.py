@@ -8,6 +8,8 @@ import pytest
 import trustme
 from tornado import web, ioloop
 
+from .tz_stub import stub_timezone_ctx
+
 from dummyserver.handlers import TestingApp
 from dummyserver.server import run_tornado_app
 from dummyserver.server import HAS_IPV6
@@ -96,3 +98,12 @@ def ipv6_san_server(tmp_path_factory):
 
     with run_server_in_thread("https", "::1", tmpdir, ca, server_cert) as cfg:
         yield cfg
+
+
+@pytest.yield_fixture
+def stub_timezone(request):
+    """
+    A pytest fixture that runs the test with a stub timezone.
+    """
+    with stub_timezone_ctx(request.param):
+        yield
