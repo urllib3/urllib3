@@ -1,4 +1,3 @@
-import pytz
 from contextlib import contextmanager
 import time
 import datetime
