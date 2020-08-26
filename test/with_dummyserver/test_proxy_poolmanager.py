@@ -38,7 +38,10 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         cls.https_url = "https://%s:%d" % (cls.https_host, cls.https_port)
         cls.https_url_alt = "https://%s:%d" % (cls.https_host_alt, cls.https_port)
         cls.proxy_url = "http://%s:%d" % (cls.proxy_host, cls.proxy_port)
-        cls.https_proxy_url = "https://%s:%d" % (cls.proxy_host, cls.https_proxy_port,)
+        cls.https_proxy_url = "https://%s:%d" % (
+            cls.proxy_host,
+            cls.https_proxy_port,
+        )
 
         # Generate another CA to test verification failure
         cls.certs_dir = tempfile.mkdtemp()

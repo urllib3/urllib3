@@ -144,7 +144,7 @@ class HTTPConnection(_HTTPConnection, object):
         self._dns_host = value
 
     def _new_conn(self):
-        """ Establish a socket connection and set nodelay settings on it.
+        """Establish a socket connection and set nodelay settings on it.
 
         :return: New socket connection.
         """
