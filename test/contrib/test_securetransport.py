@@ -29,6 +29,8 @@ def teardown_module():
         pass
 
 
+from ..test_util import TestUtilSSL  # noqa: E402, F401
+
 # SecureTransport does not support TLSv1.3
 # https://github.com/urllib3/urllib3/issues/1674
 from ..with_dummyserver.test_https import (  # noqa: E402, F401

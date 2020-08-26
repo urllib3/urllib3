@@ -33,9 +33,9 @@ jobs:
     - python: nightly
   include:
     # Lint & documentation.
-    - python: 3.6
+    - python: 3.8
       env: NOX_SESSION=lint
-    - python: 3.6
+    - python: 3.8
       env: NOX_SESSION=docs
 
     # Unit tests
