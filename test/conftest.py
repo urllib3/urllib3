@@ -8,7 +8,7 @@ import pytest
 import trustme
 from tornado import web, ioloop
 
-from .tz_fake import fake_timezone_ctx
+from .tz_stub import stub_timezone_ctx
 
 from dummyserver.handlers import TestingApp
 from dummyserver.server import run_tornado_app
@@ -101,9 +101,9 @@ def ipv6_san_server(tmp_path_factory):
 
 
 @pytest.yield_fixture
-def fake_timezone(request):
+def stub_timezone(request):
     """
-    A pytest fixture that runs the test with a fake timezone.
+    A pytest fixture that runs the test with a stub timezone.
     """
-    with fake_timezone_ctx(request.param):
+    with stub_timezone_ctx(request.param):
         yield

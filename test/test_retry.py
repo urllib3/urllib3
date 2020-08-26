@@ -333,7 +333,7 @@ class TestRetry(object):
         ],
     )
     @pytest.mark.parametrize(
-        "fake_timezone",
+        "stub_timezone",
         [
             "UTC",
             "Asia/Jerusalem",
@@ -341,7 +341,7 @@ class TestRetry(object):
         ],
         indirect=True,
     )
-    @pytest.mark.usefixtures("fake_timezone")
+    @pytest.mark.usefixtures("stub_timezone")
     def test_respect_retry_after_header_sleep(
         self, retry_after_header, respect_retry_after_header, sleep_duration
     ):
