@@ -316,6 +316,16 @@ class TestRetry(object):
             ("Mon Jun  3 11:30:12 2019", True, 1812),
         ],
     )
+    @pytest.mark.parametrize(
+        "stub_timezone",
+        [
+            "UTC",
+            "Asia/Jerusalem",
+            None,
+        ],
+        indirect=True,
+    )
+    @pytest.mark.usefixtures("stub_timezone")
     def test_respect_retry_after_header_sleep(
         self, retry_after_header, respect_retry_after_header, sleep_duration
     ):
