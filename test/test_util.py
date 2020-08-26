@@ -827,7 +827,9 @@ class TestUtilSSL(object):
         mock_context = Mock()
         with patch("warnings.warn") as warn:
             ssl_wrap_socket(
-                ssl_context=mock_context, sock=sock, server_hostname=server_hostname,
+                ssl_context=mock_context,
+                sock=sock,
+                server_hostname=server_hostname,
             )
         return mock_context, warn
 

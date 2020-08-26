@@ -63,7 +63,9 @@ def _cfstr(py_bstr):
     """
     c_str = ctypes.c_char_p(py_bstr)
     cf_str = CoreFoundation.CFStringCreateWithCString(
-        CoreFoundation.kCFAllocatorDefault, c_str, CFConst.kCFStringEncodingUTF8,
+        CoreFoundation.kCFAllocatorDefault,
+        c_str,
+        CFConst.kCFStringEncodingUTF8,
     )
     return cf_str
 
