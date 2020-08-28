@@ -321,7 +321,7 @@ class TestingApp(RequestHandler):
         date = request.params.get("date")
         if date:
             retry_after = str(
-                httputil.format_timestamp(datetime.fromtimestamp(float(date)))
+                httputil.format_timestamp(datetime.utcfromtimestamp(float(date)))
             )
         else:
             retry_after = "1"
