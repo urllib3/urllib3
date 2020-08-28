@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import re
 import datetime
 import logging
 import os
@@ -46,9 +47,10 @@ from .util.ssl_ import (
 )
 
 
-from .util import connection
+from .util import connection, SUPPRESS_USER_AGENT
 
 from ._collections import HTTPHeaderDict
+from ._version import __version__
 
 log = logging.getLogger(__name__)
 
@@ -57,6 +59,8 @@ port_by_scheme = {"http": 80, "https": 443}
 # When it comes time to update this value as a part of regular maintenance
 # (ie test_recent_date is failing) update it to ~6 months before the current date.
 RECENT_DATE = datetime.date(2019, 1, 1)
+
+_CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
 class DummyConnection(object):
@@ -108,7 +112,6 @@ class HTTPConnection(_HTTPConnection, object):
         #: The socket options provided by the user. If no options are
         #: provided, we use the default options.
         self.socket_options = kw.pop("socket_options", self.default_socket_options)
-
         _HTTPConnection.__init__(self, *args, **kw)
 
     @property
@@ -141,7 +144,7 @@ class HTTPConnection(_HTTPConnection, object):
         self._dns_host = value
 
     def _new_conn(self):
-        """ Establish a socket connection and set nodelay settings on it.
+        """Establish a socket connection and set nodelay settings on it.
 
         :return: New socket connection.
         """
@@ -171,10 +174,13 @@ class HTTPConnection(_HTTPConnection, object):
 
         return conn
 
+    def _is_using_tunnel(self):
+        # Google App Engine's httplib does not define _tunnel_host
+        return getattr(self, "_tunnel_host", None)
+
     def _prepare_conn(self, conn):
         self.sock = conn
-        # Google App Engine's httplib does not define _tunnel_host
-        if getattr(self, "_tunnel_host", None):
+        if self._is_using_tunnel():
             # TODO: Fix tunnel so it doesn't depend on self.sock state.
             self._tunnel()
             # Mark this connection as not reusable
@@ -183,6 +189,25 @@ class HTTPConnection(_HTTPConnection, object):
     def connect(self):
         conn = self._new_conn()
         self._prepare_conn(conn)
+
+    def putrequest(self, method, url, *args, **kwargs):
+        """Send a request to the server"""
+        match = _CONTAINS_CONTROL_CHAR_RE.search(method)
+        if match:
+            raise ValueError(
+                "Method cannot contain non-token characters %r (found at least %r)"
+                % (method, match.group())
+            )
+
+        return _HTTPConnection.putrequest(self, method, url, *args, **kwargs)
+
+    def request(self, method, url, body=None, headers=None):
+        headers = HTTPHeaderDict(headers if headers is not None else {})
+        if "user-agent" not in headers:
+            headers["User-Agent"] = _get_default_user_agent()
+        elif headers["user-agent"] == SUPPRESS_USER_AGENT:
+            del headers["user-agent"]
+        super(HTTPConnection, self).request(method, url, body=body, headers=headers)
 
     def request_chunked(self, method, url, body=None, headers=None):
         """
@@ -195,6 +220,10 @@ class HTTPConnection(_HTTPConnection, object):
         self.putrequest(
             method, url, skip_accept_encoding=skip_accept_encoding, skip_host=skip_host
         )
+        if "user-agent" not in headers:
+            headers["User-Agent"] = _get_default_user_agent()
+        elif headers["user-agent"] == SUPPRESS_USER_AGENT:
+            del headers["user-agent"]
         for header, value in headers.items():
             self.putheader(header, value)
         if "transfer-encoding" not in headers:
@@ -211,19 +240,30 @@ class HTTPConnection(_HTTPConnection, object):
                 if not isinstance(chunk, bytes):
                     chunk = chunk.encode("utf8")
                 len_str = hex(len(chunk))[2:]
-                self.send(len_str.encode("utf-8"))
-                self.send(b"\r\n")
-                self.send(chunk)
-                self.send(b"\r\n")
+                to_send = bytearray(len_str.encode())
+                to_send += b"\r\n"
+                to_send += chunk
+                to_send += b"\r\n"
+                self.send(to_send)
 
         # After the if clause, to always have a closed body
         self.send(b"0\r\n\r\n")
 
 
 class HTTPSConnection(HTTPConnection):
+    """
+    Many of the parameters to this constructor are passed to the underlying SSL
+    socket by means of :py:func:`util.ssl_wrap_socket`.
+    """
+
     default_port = port_by_scheme["https"]
 
+    cert_reqs = None
+    ca_certs = None
+    ca_cert_dir = None
+    ca_cert_data = None
     ssl_version = None
+    assert_fingerprint = None
 
     def __init__(
         self,
@@ -251,53 +291,6 @@ class HTTPSConnection(HTTPConnection):
         # HTTPS requests to go out as HTTP. (See Issue #356)
         self._protocol = "https"
 
-    def connect(self):
-        conn = self._new_conn()
-        self._prepare_conn(conn)
-
-        # Wrap socket using verification with the root certs in
-        # trusted_root_certs
-        default_ssl_context = False
-        if self.ssl_context is None:
-            default_ssl_context = True
-            self.ssl_context = create_urllib3_context(
-                ssl_version=resolve_ssl_version(self.ssl_version),
-                cert_reqs=resolve_cert_reqs(self.cert_reqs),
-            )
-
-        # Try to load OS default certs if none are given.
-        # Works well on Windows (requires Python3.4+)
-        context = self.ssl_context
-        if (
-            not self.ca_certs
-            and not self.ca_cert_dir
-            and default_ssl_context
-            and hasattr(context, "load_default_certs")
-        ):
-            context.load_default_certs()
-
-        self.sock = ssl_wrap_socket(
-            sock=conn,
-            keyfile=self.key_file,
-            certfile=self.cert_file,
-            key_password=self.key_password,
-            ssl_context=self.ssl_context,
-            server_hostname=self.server_hostname,
-        )
-
-
-class VerifiedHTTPSConnection(HTTPSConnection):
-    """
-    Based on httplib.HTTPSConnection but wraps the socket with
-    SSL certification.
-    """
-
-    cert_reqs = None
-    ca_certs = None
-    ca_cert_dir = None
-    ssl_version = None
-    assert_fingerprint = None
-
     def set_cert(
         self,
         key_file=None,
@@ -308,6 +301,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         assert_hostname=None,
         assert_fingerprint=None,
         ca_cert_dir=None,
+        ca_cert_data=None,
     ):
         """
         This method should only be called once, before the connection is used.
@@ -328,15 +322,16 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         self.assert_fingerprint = assert_fingerprint
         self.ca_certs = ca_certs and os.path.expanduser(ca_certs)
         self.ca_cert_dir = ca_cert_dir and os.path.expanduser(ca_cert_dir)
+        self.ca_cert_data = ca_cert_data
 
     def connect(self):
         # Add certificate verification
         conn = self._new_conn()
         hostname = self.host
 
-        # Google App Engine's httplib does not define _tunnel_host
-        if getattr(self, "_tunnel_host", None):
+        if self._is_using_tunnel():
             self.sock = conn
+
             # Calls self._set_hostport(), so self.host is
             # self._tunnel_host below.
             self._tunnel()
@@ -378,6 +373,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
         if (
             not self.ca_certs
             and not self.ca_cert_dir
+            and not self.ca_cert_data
             and default_ssl_context
             and hasattr(context, "load_default_certs")
         ):
@@ -390,6 +386,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
             key_password=self.key_password,
             ca_certs=self.ca_certs,
             ca_cert_dir=self.ca_cert_dir,
+            ca_cert_data=self.ca_cert_data,
             server_hostname=server_hostname,
             ssl_context=context,
         )
@@ -412,7 +409,7 @@ class VerifiedHTTPSConnection(HTTPSConnection):
                     (
                         "Certificate for {0} has no `subjectAltName`, falling back to check for a "
                         "`commonName` for now. This feature is being removed by major browsers and "
-                        "deprecated by RFC 2818. (See https://github.com/shazow/urllib3/issues/497 "
+                        "deprecated by RFC 2818. (See https://github.com/urllib3/urllib3/issues/497 "
                         "for details.)".format(hostname)
                     ),
                     SubjectAltNameWarning,
@@ -440,9 +437,12 @@ def _match_hostname(cert, asserted_hostname):
         raise
 
 
-if ssl:
-    # Make a copy for testing.
-    UnverifiedHTTPSConnection = HTTPSConnection
-    HTTPSConnection = VerifiedHTTPSConnection
-else:
-    HTTPSConnection = DummyConnection
+def _get_default_user_agent():
+    return "python-urllib3/%s" % __version__
+
+
+if not ssl:
+    HTTPSConnection = DummyConnection  # noqa: F811
+
+
+VerifiedHTTPSConnection = HTTPSConnection

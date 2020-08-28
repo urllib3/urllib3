@@ -1,6 +1,5 @@
 language: python
-sudo: false
-stage: test
+os: linux
 dist: xenial
 
 before_install:
@@ -29,27 +28,31 @@ env:
     - PYPI_USERNAME=urllib3
     # PYPI_PASSWORD is set in Travis control panel.
 
-matrix:
+jobs:
+  allow_failures:
+    - python: nightly
   include:
     # Lint & documentation.
-    - python: 3.6
+    - python: 3.8
       env: NOX_SESSION=lint
-    - python: 3.6
+    - python: 3.8
       env: NOX_SESSION=docs
 
     # Unit tests
     - python: 2.7
       env: NOX_SESSION=test-2.7
-    - python: 3.4
-      env: NOX_SESSION=test-3.4
     - python: 3.5
       env: NOX_SESSION=test-3.5
     - python: 3.6
       env: NOX_SESSION=test-3.6
     - python: 3.7
       env: NOX_SESSION=test-3.7
-    - python: 3.8-dev
+    - python: 3.8
       env: NOX_SESSION=test-3.8
+    - python: 3.9-dev
+      env: NOX_SESSION=test-3.9
+    - python: nightly
+      env: NOX_SESSION=test-3.10
     - python: pypy2.7-6.0
       env: NOX_SESSION=test-pypy
     - python: pypy3.5-6.0
@@ -62,23 +65,6 @@ matrix:
       env: NOX_SESSION=google_brotli-2
     - python: 3.7
       env: NOX_SESSION=google_brotli-3
-
-    # OS X unit tests.
-    - language: generic
-      os: osx
-      env: NOX_SESSION=test-2.7
-    - language: generic
-      os: osx
-      env: NOX_SESSION=test-3.4
-    - language: generic
-      os: osx
-      env: NOX_SESSION=test-3.5
-    - language: generic
-      os: osx
-      env: NOX_SESSION=test-3.6
-    - language: generic
-      os: osx
-      env: NOX_SESSION=test-3.7
 
     # Downstream integration tests.
     - python: 2.7

@@ -72,7 +72,7 @@ Setting ``preload_content`` to ``False`` means that urllib3 will stream the
 response content. :meth:`~response.HTTPResponse.stream` lets you iterate over
 chunks of the response content.
 
-.. note:: When using ``preload_content=False``, you should call 
+.. note:: When using ``preload_content=False``, you should call
     :meth:`~response.HTTPResponse.release_conn` to release the http connection
     back to the connection pool so that it can be re-used.
 
@@ -87,7 +87,7 @@ a file-like object. This allows you to do buffering::
     b'\x88\x1f\x8b\xe5'
 
 Calls to :meth:`~response.HTTPResponse.read()` will block until more response
-data is available. 
+data is available.
 
     >>> import io
     >>> reader = io.BufferedReader(r, 8)
@@ -122,10 +122,24 @@ HTTP proxy::
 The usage of :class:`~poolmanager.ProxyManager` is the same as
 :class:`~poolmanager.PoolManager`.
 
-You can use :class:`~contrib.socks.SOCKSProxyManager` to connect to SOCKS4 or
-SOCKS5 proxies. In order to use SOCKS proxies you will need to install
-`PySocks <https://pypi.org/project/PySocks/>`_ or install urllib3 with the
-``socks`` extra::
+You can connect to a proxy using HTTP, HTTPS or SOCKS. urllib3's behavior will
+be different depending on the type of proxy you selected and the destination
+you're contacting.
+
+When contacting a HTTP website through a HTTP or HTTPS proxy, the request will
+be forwarded with the `absolute URI
+<https://tools.ietf.org/html/rfc7230#section-5.3.2>`_.
+
+When contacting a HTTPS website through a HTTP proxy, a TCP tunnel will be
+established with a HTTP CONNECT. Afterward a TLS connection will be established
+with the destination and your request will be sent.
+
+Contacting HTTPS websites through HTTPS proxies is currently not supported.
+
+For SOCKS, you can use :class:`~contrib.socks.SOCKSProxyManager` to connect to
+SOCKS4 or SOCKS5 proxies. In order to use SOCKS proxies you will need to
+install `PySocks <https://pypi.org/project/PySocks/>`_ or install urllib3 with
+the ``socks`` extra::
 
     pip install urllib3[socks]
 
@@ -157,6 +171,45 @@ When you specify your own certificate bundle only requests that can be
 verified with that bundle will succeed. It's recommended to use a separate
 :class:`~poolmanager.PoolManager` to make requests to URLs that do not need
 the custom certificate.
+
+.. _sni_custom:
+
+Custom SNI Hostname
+-------------------
+
+If you want to create a connection to a host over HTTPS which uses SNI, there
+are two places where the hostname is expected. It must be included in the Host
+header sent, so that the server will know which host is being requested. The
+hostname should also match the certificate served by the server, which is
+checked by urllib3.
+
+Normally, urllib3 takes care of setting and checking these values for you when
+you connect to a host by name. However, it's sometimes useful to set a
+connection's expected Host header and certificate hostname (subject),
+especially when you are connecting without using name resolution. For example,
+you could connect to a server by IP using HTTPS like so::
+
+    >>> import urllib3
+    >>> pool = urllib3.HTTPSConnectionPool(
+    ...     "10.0.0.10",
+    ...     assert_hostname="example.org",
+    ...     server_hostname="example.org"
+    ... )
+    >>> pool.urlopen(
+    ...     "GET",
+    ...     "/",
+    ...     headers={"Host": "example.org"},
+    ...     assert_same_host=False
+    ... )
+
+
+Note that when you use a connection in this way, you must specify
+``assert_same_host=False``.
+
+This is useful when DNS resolution for ``example.org`` does not match the
+address that you would like to use. The IP may be for a private interface, or
+you may want to use a specific host under round-robin DNS.
+
 
 .. _ssl_client:
 
@@ -289,3 +342,16 @@ Here's an example using brotli encoding via the ``Accept-Encoding`` header::
     >>> from urllib3 import PoolManager
     >>> http = PoolManager()
     >>> http.request('GET', 'https://www.google.com/', headers={'Accept-Encoding': 'br'})
+
+Decrypting captured TLS sessions with Wireshark
+-----------------------------------------------
+Python 3.8 and higher support logging of TLS pre-master secrets.
+With these secrets tools like `Wireshark <https://wireshark.org>`_ can decrypt captured
+network traffic.
+
+To enable this simply define environment variable `SSLKEYLOGFILE`:
+
+    export SSLKEYLOGFILE=/path/to/keylogfile.txt
+
+Then configure the key logfile in `Wireshark <https://wireshark.org>`_, see
+`Wireshark TLS Decryption <https://wiki.wireshark.org/TLS#TLS_Decryption>`_ for instructions.

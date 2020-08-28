@@ -1,11 +1,11 @@
 import warnings
 import sys
 import errno
-import functools
 import logging
 import socket
 import ssl
 import os
+import platform
 
 import pytest
 
@@ -17,16 +17,63 @@ except ImportError:
 from urllib3.exceptions import HTTPWarning
 from urllib3.packages import six
 from urllib3.util import ssl_
+from urllib3 import util
 
 # We need a host that will not immediately close the connection with a TCP
-# Reset. SO suggests this hostname
-TARPIT_HOST = "10.255.255.1"
+# Reset.
+if platform.system() == "Windows":
+    # Reserved loopback subnet address
+    TARPIT_HOST = "127.0.0.0"
+else:
+    # Reserved internet scoped address
+    # https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
+    TARPIT_HOST = "240.0.0.0"
 
 # (Arguments for socket, is it IPv6 address?)
 VALID_SOURCE_ADDRESSES = [(("::1", 0), True), (("127.0.0.1", 0), False)]
 # RFC 5737: 192.0.2.0/24 is for testing only.
 # RFC 3849: 2001:db8::/32 is for documentation only.
 INVALID_SOURCE_ADDRESSES = [("192.0.2.255", 0), ("2001:db8::1", 0)]
+
+# We use timeouts in three different ways in our tests
+#
+# 1. To make sure that the operation timeouts, we can use a short timeout.
+# 2. To make sure that the test does not hang even if the operation should succeed, we
+#    want to use a long timeout, even more so on CI where tests can be really slow
+# 3. To test our timeout logic by using two different values, eg. by using different
+#    values at the pool level and at the request level.
+SHORT_TIMEOUT = 0.001
+LONG_TIMEOUT = 0.01
+if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS") == "true":
+    LONG_TIMEOUT = 0.5
+
+
+def _can_resolve(host):
+    """ Returns True if the system can resolve host to an address. """
+    try:
+        socket.getaddrinfo(host, None, socket.AF_UNSPEC)
+        return True
+    except socket.gaierror:
+        return False
+
+
+def has_alpn(ctx_cls=None):
+    """ Detect if ALPN support is enabled. """
+    ctx_cls = ctx_cls or util.SSLContext
+    ctx = ctx_cls(protocol=ssl_.PROTOCOL_TLS)
+    try:
+        if hasattr(ctx, "set_alpn_protocols"):
+            ctx.set_alpn_protocols(ssl_.ALPN_PROTOCOLS)
+            return True
+    except NotImplementedError:
+        pass
+    return False
+
+
+# Some systems might not resolve "localhost." correctly.
+# See https://github.com/urllib3/urllib3/issues/1809 and
+# https://github.com/urllib3/urllib3/pull/1475#issuecomment-440788064.
+RESOLVES_LOCALHOST_FQDN = _can_resolve("localhost.")
 
 
 def clear_warnings(cls=HTTPWarning):
@@ -46,7 +93,7 @@ def setUp():
 def onlyPy279OrNewer(test):
     """Skips this test unless you are on Python 2.7.9 or later."""
 
-    @functools.wraps(test)
+    @six.wraps(test)
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python 2.7.9+ to run".format(name=test.__name__)
         if sys.version_info < (2, 7, 9):
@@ -59,7 +106,7 @@ def onlyPy279OrNewer(test):
 def onlyPy2(test):
     """Skips this test unless you are on Python 2.x"""
 
-    @functools.wraps(test)
+    @six.wraps(test)
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python 2.x to run".format(name=test.__name__)
         if not six.PY2:
@@ -72,11 +119,25 @@ def onlyPy2(test):
 def onlyPy3(test):
     """Skips this test unless you are on Python3.x"""
 
-    @functools.wraps(test)
+    @six.wraps(test)
     def wrapper(*args, **kwargs):
         msg = "{name} requires Python3.x to run".format(name=test.__name__)
         if six.PY2:
             pytest.skip(msg)
+        return test(*args, **kwargs)
+
+    return wrapper
+
+
+def notPyPy2(test):
+    """Skips this test on PyPy2"""
+
+    @six.wraps(test)
+    def wrapper(*args, **kwargs):
+        # https://github.com/testing-cabal/mock/issues/438
+        msg = "{} fails with PyPy 2 dues to funcsigs bugs".format(test.__name__)
+        if platform.python_implementation() == "PyPy" and sys.version_info[0] == 2:
+            pytest.xfail(msg)
         return test(*args, **kwargs)
 
     return wrapper
@@ -95,7 +156,7 @@ def notBrotlipy():
 def notSecureTransport(test):
     """Skips this test when SecureTransport is in use."""
 
-    @functools.wraps(test)
+    @six.wraps(test)
     def wrapper(*args, **kwargs):
         msg = "{name} does not run with SecureTransport".format(name=test.__name__)
         if ssl_.IS_SECURETRANSPORT:
@@ -106,9 +167,9 @@ def notSecureTransport(test):
 
 
 def notOpenSSL098(test):
-    """Skips this test for Python 3.4 and 3.5 macOS python.org distributions"""
+    """Skips this test for Python 3.5 macOS python.org distribution"""
 
-    @functools.wraps(test)
+    @six.wraps(test)
     def wrapper(*args, **kwargs):
         is_stdlib_ssl = not ssl_.IS_SECURETRANSPORT and not ssl_.IS_PYOPENSSL
         if is_stdlib_ssl and ssl.OPENSSL_VERSION == "OpenSSL 0.9.8zh 14 Jan 2016":
@@ -127,8 +188,8 @@ def requires_network(test):
     def _is_unreachable_err(err):
         return getattr(err, "errno", None) in (
             errno.ENETUNREACH,
-            errno.EHOSTUNREACH,
-        )  # For OSX
+            errno.EHOSTUNREACH,  # For OSX
+        )
 
     def _has_route():
         try:
@@ -143,7 +204,7 @@ def requires_network(test):
             else:
                 raise
 
-    @functools.wraps(test)
+    @six.wraps(test)
     def wrapper(*args, **kwargs):
         global _requires_network_has_route
 
@@ -162,7 +223,7 @@ def requires_network(test):
 
 
 def requires_ssl_context_keyfile_password(test):
-    @functools.wraps(test)
+    @six.wraps(test)
     def wrapper(*args, **kwargs):
         if (
             not ssl_.IS_PYOPENSSL and sys.version_info < (2, 7, 9)
@@ -171,23 +232,6 @@ def requires_ssl_context_keyfile_password(test):
                 "%s requires password parameter for "
                 "SSLContext.load_cert_chain()" % test.__name__
             )
-        return test(*args, **kwargs)
-
-    return wrapper
-
-
-def fails_on_travis_gce(test):
-    """Expect the test to fail on Google Compute Engine instances for Travis.
-    Travis uses GCE for its sudo: enabled builds.
-
-    Reason for this decorator:
-    https://github.com/urllib3/urllib3/pull/1475#issuecomment-440788064
-    """
-
-    @functools.wraps(test)
-    def wrapper(*args, **kwargs):
-        if os.environ.get("TRAVIS_INFRA") in ("gce", "unknown"):
-            pytest.xfail("%s is expected to fail on Travis GCE builds" % test.__name__)
         return test(*args, **kwargs)
 
     return wrapper
@@ -219,6 +263,18 @@ def requiresTLSv1_3():
     return pytest.mark.skipif(
         not getattr(ssl, "HAS_TLSv1_3", False), reason="Test requires TLSv1.3"
     )
+
+
+def resolvesLocalhostFQDN(test):
+    """Test requires successful resolving of 'localhost.'"""
+
+    @six.wraps(test)
+    def wrapper(*args, **kwargs):
+        if not RESOLVES_LOCALHOST_FQDN:
+            pytest.skip("Can't resolve localhost.")
+        return test(*args, **kwargs)
+
+    return wrapper
 
 
 class _ListHandler(logging.Handler):

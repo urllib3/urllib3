@@ -16,6 +16,9 @@ from urllib3.exceptions import (
     ResponseNotChunked,
     ProtocolError,
     InvalidHeader,
+    httplib_IncompleteRead,
+    IncompleteRead,
+    InvalidChunkLength,
 )
 from urllib3.packages.six.moves import http_client as httplib
 from urllib3.util.retry import Retry, RequestHistory
@@ -703,7 +706,7 @@ class TestResponse(object):
             assert c == stream[i]
 
     def test_mock_gzipped_transfer_encoding_chunked_decoded(self):
-        """Show that we can decode the gizpped and chunked body."""
+        """Show that we can decode the gzipped and chunked body."""
 
         def stream():
             # Set up a generator to chunk the gzipped body
@@ -758,9 +761,28 @@ class TestResponse(object):
         with pytest.raises(ResponseNotChunked):
             next(r)
 
-    def test_invalid_chunks(self):
+    def test_buggy_incomplete_read(self):
+        # Simulate buggy versions of Python (<2.7.4)
+        # See http://bugs.python.org/issue16298
+        content_length = 1337
+        fp = BytesIO(b"")
+        resp = HTTPResponse(
+            fp,
+            headers={"content-length": str(content_length)},
+            preload_content=False,
+            enforce_content_length=True,
+        )
+        with pytest.raises(ProtocolError) as ctx:
+            resp.read(3)
+
+        orig_ex = ctx.value.args[1]
+        assert isinstance(orig_ex, IncompleteRead)
+        assert orig_ex.partial == 0
+        assert orig_ex.expected == content_length
+
+    def test_incomplete_chunk(self):
         stream = [b"foooo", b"bbbbaaaaar"]
-        fp = MockChunkedInvalidEncoding(stream)
+        fp = MockChunkedIncompleteRead(stream)
         r = httplib.HTTPResponse(MockSock)
         r.fp = fp
         r.chunked = True
@@ -768,8 +790,28 @@ class TestResponse(object):
         resp = HTTPResponse(
             r, preload_content=False, headers={"transfer-encoding": "chunked"}
         )
-        with pytest.raises(ProtocolError):
+        with pytest.raises(ProtocolError) as ctx:
             next(resp.read_chunked())
+
+        orig_ex = ctx.value.args[1]
+        assert isinstance(orig_ex, httplib_IncompleteRead)
+
+    def test_invalid_chunk_length(self):
+        stream = [b"foooo", b"bbbbaaaaar"]
+        fp = MockChunkedInvalidChunkLength(stream)
+        r = httplib.HTTPResponse(MockSock)
+        r.fp = fp
+        r.chunked = True
+        r.chunk_left = None
+        resp = HTTPResponse(
+            r, preload_content=False, headers={"transfer-encoding": "chunked"}
+        )
+        with pytest.raises(ProtocolError) as ctx:
+            next(resp.read_chunked())
+
+        orig_ex = ctx.value.args[1]
+        assert isinstance(orig_ex, InvalidChunkLength)
+        assert orig_ex.length == six.b(fp.BAD_LENGTH_LINE)
 
     def test_chunked_response_without_crlf_on_end(self):
         stream = [b"foo", b"bar", b"baz"]
@@ -859,8 +901,9 @@ class TestResponse(object):
     @pytest.mark.parametrize(
         ["payload", "expected_stream"],
         [
-            (b"", [b""]),
+            (b"", []),
             (b"\n", [b"\n"]),
+            (b"\n\n\n", [b"\n", b"\n", b"\n"]),
             (b"abc\ndef", [b"abc\n", b"def"]),
             (b"Hello\nworld\n\n\n!", [b"Hello\n", b"world\n", b"\n", b"\n", b"!"]),
         ],
@@ -970,9 +1013,16 @@ class MockChunkedEncodingResponse(object):
         self.closed = True
 
 
-class MockChunkedInvalidEncoding(MockChunkedEncodingResponse):
+class MockChunkedIncompleteRead(MockChunkedEncodingResponse):
     def _encode_chunk(self, chunk):
-        return "ZZZ\r\n%s\r\n" % chunk.decode()
+        return "9999\r\n%s\r\n" % chunk.decode()
+
+
+class MockChunkedInvalidChunkLength(MockChunkedEncodingResponse):
+    BAD_LENGTH_LINE = "ZZZ\r\n"
+
+    def _encode_chunk(self, chunk):
+        return "%s%s\r\n" % (self.BAD_LENGTH_LINE, chunk.decode())
 
 
 class MockChunkedEncodingWithoutCRLFOnEnd(MockChunkedEncodingResponse):

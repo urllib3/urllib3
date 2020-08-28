@@ -1,4 +1,5 @@
 .*
+!/.github/
 *.py[co]
 *.egg
 *.egg-info
@@ -6,3 +7,4 @@
 /dist
 /build
 /docs/_build
+coverage.xml

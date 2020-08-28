@@ -1,24 +1,17 @@
-Creating a new SAN-less CRT
+Generating new certificates
 ---------------------------
 
-(Instructions lifted from Heroku_)
+Here's how you can regenerate the certificates::
 
-1. Generate a new CSR::
-   
-       openssl req -new -key server.key -out server.new.csr -nodes -days 10957
+    import trustme
 
-2. Generate a new CRT::
+    ca = trustme.CA()
+    server_cert = ca.issue_cert(u"localhost")
 
-       openssl x509 -req -in server.new.csr -signkey server.key -out server.new.crt -days 10957
+    ca.cert_pem.write_to_path("cacert.pem")
+    ca.private_key_pem.write_to_path("cacert.key")
+    server_cert.cert_chain_pems[0].write_to_path("server.crt")
+    server_cert.private_key_pem.write_to_path("server.key")
 
-Creating a new PEM file with your new CRT
------------------------------------------
-
-1. Concatenate the ``crt`` and ``key`` files into one::
-
-       cat server.new.crt server.key > cacert.new.pem
-
-
-:Last Modified: 1 Nov 2014
-
-.. _Heroku: https://devcenter.heroku.com/articles/ssl-certificate-self
+This will break a number of tests: you will need to update the
+relevant fingerprints and hashes.

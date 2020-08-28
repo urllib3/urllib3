@@ -15,8 +15,13 @@ from dummyserver.proxy import ProxyHandler
 
 
 def consume_socket(sock, chunks=65536):
-    while not sock.recv(chunks).endswith(b"\r\n\r\n"):
-        pass
+    consumed = bytearray()
+    while True:
+        b = sock.recv(chunks)
+        consumed += b
+        if b.endswith(b"\r\n\r\n"):
+            break
+    return consumed
 
 
 class SocketDummyServerTestCase(object):
@@ -101,7 +106,7 @@ class IPV4SocketDummyServerTestCase(SocketDummyServerTestCase):
 
 
 class HTTPDummyServerTestCase(object):
-    """ A simple HTTP server that runs when your test class runs
+    """A simple HTTP server that runs when your test class runs
 
     Have your test class inherit from this one, and then a simple server
     will start when your tests run, and automatically shut down when they
@@ -144,11 +149,6 @@ class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
     certs = DEFAULT_CERTS
 
 
-@pytest.mark.skipif(not HAS_IPV6, reason="IPv6 not available")
-class IPV6HTTPSDummyServerTestCase(HTTPSDummyServerTestCase):
-    host = "::1"
-
-
 class HTTPDummyProxyTestCase(object):
 
     http_host = "localhost"
@@ -180,6 +180,14 @@ class HTTPDummyProxyTestCase(object):
             app, cls.io_loop, None, "http", cls.proxy_host
         )
 
+        upstream_ca_certs = cls.https_certs.get("ca_certs", None)
+        app = web.Application(
+            [(r".*", ProxyHandler)], upstream_ca_certs=upstream_ca_certs
+        )
+        cls.https_proxy_server, cls.https_proxy_port = run_tornado_app(
+            app, cls.io_loop, cls.https_certs, "https", cls.proxy_host
+        )
+
         cls.server_thread = run_loop_in_thread(cls.io_loop)
 
     @classmethod
@@ -187,6 +195,7 @@ class HTTPDummyProxyTestCase(object):
         cls.io_loop.add_callback(cls.http_server.stop)
         cls.io_loop.add_callback(cls.https_server.stop)
         cls.io_loop.add_callback(cls.proxy_server.stop)
+        cls.io_loop.add_callback(cls.https_proxy_server.stop)
         cls.io_loop.add_callback(cls.io_loop.stop)
         cls.server_thread.join()
 

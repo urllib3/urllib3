@@ -1,7 +1,5 @@
-import datetime
 import mock
 import pytest
-import time
 
 from urllib3.response import HTTPResponse
 from urllib3.packages import six
@@ -13,6 +11,7 @@ from urllib3.exceptions import (
     MaxRetryError,
     ReadTimeoutError,
     ResponseError,
+    SSLError,
 )
 
 
@@ -83,6 +82,7 @@ class TestRetry(object):
         assert retry.connect is None
         assert retry.read is None
         assert retry.redirect is None
+        assert retry.other is None
 
         error = ConnectTimeoutError()
         retry = Retry(connect=1)
@@ -96,6 +96,20 @@ class TestRetry(object):
 
         assert Retry(0).raise_on_redirect
         assert not Retry(False).raise_on_redirect
+
+    def test_retry_other(self):
+        """ If an unexpected error is raised, should retry other times """
+        other_error = SSLError()
+        retry = Retry(connect=1)
+        retry = retry.increment(error=other_error)
+        retry = retry.increment(error=other_error)
+        assert not retry.is_exhausted()
+
+        retry = Retry(other=1)
+        retry = retry.increment(error=other_error)
+        with pytest.raises(MaxRetryError) as e:
+            retry.increment(error=other_error)
+        assert e.value.reason == other_error
 
     def test_retry_read_zero(self):
         """ No second chances on read timeouts, by default """
@@ -297,6 +311,7 @@ class TestRetry(object):
         new_retry = retry.new()
         assert new_retry.respect_retry_after_header == respect_retry_after_header
 
+    @pytest.mark.freeze_time("2019-06-03 11:00:00", tz_offset=0)
     @pytest.mark.parametrize(
         "retry_after_header,respect_retry_after_header,sleep_duration",
         [
@@ -310,24 +325,29 @@ class TestRetry(object):
             ("Mon, 3 Jun 2019 11:00:00 UTC", True, None),
             # Won't sleep due to current time reached + not respecting header
             ("Mon, 3 Jun 2019 11:00:00 UTC", False, None),
+            # Handle all the formats in RFC 7231 Section 7.1.1.1
+            ("Mon, 03 Jun 2019 11:30:12 GMT", True, 1812),
+            ("Monday, 03-Jun-19 11:30:12 GMT", True, 1812),
+            # Assume that datetimes without a timezone are in UTC per RFC 7231
+            ("Mon Jun  3 11:30:12 2019", True, 1812),
         ],
     )
+    @pytest.mark.parametrize(
+        "stub_timezone",
+        [
+            "UTC",
+            "Asia/Jerusalem",
+            None,
+        ],
+        indirect=True,
+    )
+    @pytest.mark.usefixtures("stub_timezone")
     def test_respect_retry_after_header_sleep(
         self, retry_after_header, respect_retry_after_header, sleep_duration
     ):
         retry = Retry(respect_retry_after_header=respect_retry_after_header)
 
-        # Date header syntax can specify an absolute date; compare this to the
-        # time in the parametrized inputs above.
-        current_time = mock.MagicMock(
-            return_value=time.mktime(
-                datetime.datetime(year=2019, month=6, day=3, hour=11).timetuple()
-            )
-        )
-
-        with mock.patch("time.sleep") as sleep_mock, mock.patch(
-            "time.time", current_time
-        ):
+        with mock.patch("time.sleep") as sleep_mock:
             # for the default behavior, it must be in RETRY_AFTER_STATUS_CODES
             response = HTTPResponse(
                 status=503, headers={"Retry-After": retry_after_header}

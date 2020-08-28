@@ -65,6 +65,11 @@ class ConnectionPool(object):
     """
     Base class for all connection pools, such as
     :class:`.HTTPConnectionPool` and :class:`.HTTPSConnectionPool`.
+
+    .. note::
+       ConnectionPool.urlopen() does not normalize or percent-encode target URIs
+       which is useful if your target server doesn't support percent-encoded
+       target URIs.
     """
 
     scheme = None
@@ -626,13 +631,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         #
         # See issue #651 [1] for details.
         #
-        # [1] <https://github.com/shazow/urllib3/issues/651>
+        # [1] <https://github.com/urllib3/urllib3/issues/651>
         release_this_conn = release_conn
 
-        # Merge the proxy headers. Only do this in HTTP. We have to copy the
-        # headers dict so we can safely change it without those changes being
-        # reflected in anyone else's copy.
-        if self.scheme == "http":
+        # Merge the proxy headers. Only done when not using HTTP CONNECT. We
+        # have to copy the headers dict so we can safely change it without those
+        # changes being reflected in anyone else's copy.
+        if self.scheme == "http" or (self.proxy and self.proxy.scheme == "https"):
             headers = headers.copy()
             headers.update(self.proxy_headers)
 
@@ -693,9 +698,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Everything went great!
             clean_exit = True
 
-        except queue.Empty:
-            # Timed out by queue.
-            raise EmptyPoolError(self, "No pool connections are available.")
+        except EmptyPoolError:
+            # Didn't get a connection from the pool, no need to clean up
+            clean_exit = True
+            release_this_conn = False
+            raise
 
         except (
             TimeoutError,
@@ -755,24 +762,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 timeout=timeout,
                 pool_timeout=pool_timeout,
                 release_conn=release_conn,
+                chunked=chunked,
                 body_pos=body_pos,
                 **response_kw
             )
-
-        def drain_and_release_conn(response):
-            try:
-                # discard any remaining response body, the connection will be
-                # released back to the pool once the entire response is read
-                response.read()
-            except (
-                TimeoutError,
-                HTTPException,
-                SocketError,
-                ProtocolError,
-                BaseSSLError,
-                SSLError,
-            ):
-                pass
 
         # Handle redirect?
         redirect_location = redirect and response.get_redirect_location()
@@ -784,15 +777,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 retries = retries.increment(method, url, response=response, _pool=self)
             except MaxRetryError:
                 if retries.raise_on_redirect:
-                    # Drain and release the connection for this response, since
-                    # we're not returning it to be released manually.
-                    drain_and_release_conn(response)
+                    response.drain_conn()
                     raise
                 return response
 
-            # drain and return the connection to the pool before recursing
-            drain_and_release_conn(response)
-
+            response.drain_conn()
             retries.sleep_for_retry(response)
             log.debug("Redirecting %s -> %s", url, redirect_location)
             return self.urlopen(
@@ -806,6 +795,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 timeout=timeout,
                 pool_timeout=pool_timeout,
                 release_conn=release_conn,
+                chunked=chunked,
                 body_pos=body_pos,
                 **response_kw
             )
@@ -817,15 +807,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 retries = retries.increment(method, url, response=response, _pool=self)
             except MaxRetryError:
                 if retries.raise_on_status:
-                    # Drain and release the connection for this response, since
-                    # we're not returning it to be released manually.
-                    drain_and_release_conn(response)
+                    response.drain_conn()
                     raise
                 return response
 
-            # drain and return the connection to the pool before recursing
-            drain_and_release_conn(response)
-
+            response.drain_conn()
             retries.sleep(response)
             log.debug("Retry: %s", url)
             return self.urlopen(
@@ -839,6 +825,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 timeout=timeout,
                 pool_timeout=pool_timeout,
                 release_conn=release_conn,
+                chunked=chunked,
                 body_pos=body_pos,
                 **response_kw
             )
@@ -938,10 +925,15 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     def _prepare_proxy(self, conn):
         """
-        Establish tunnel connection early, because otherwise httplib
-        would improperly set Host: header to proxy's IP:port.
+        Establishes a tunnel connection through HTTP CONNECT.
+
+        Tunnel connection is established early because otherwise httplib would
+        improperly set Host: header to proxy's IP:port.
         """
-        conn.set_tunnel(self._proxy_host, self.port, self.proxy_headers)
+
+        if self.proxy.scheme != "https":
+            conn.set_tunnel(self._proxy_host, self.port, self.proxy_headers)
+
         conn.connect()
 
     def _new_conn(self):
@@ -993,10 +985,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         if not conn.is_verified:
             warnings.warn(
                 (
-                    "Unverified HTTPS request is being made. "
+                    "Unverified HTTPS request is being made to host '%s'. "
                     "Adding certificate verification is strongly advised. See: "
                     "https://urllib3.readthedocs.io/en/latest/advanced-usage.html"
-                    "#ssl-warnings"
+                    "#ssl-warnings" % conn.host
                 ),
                 InsecureRequestWarning,
             )

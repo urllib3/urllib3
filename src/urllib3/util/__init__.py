@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 # For backwards compatibility, provide imports that used to be here.
 from .connection import is_connection_dropped
-from .request import make_headers
+from .request import make_headers, SUPPRESS_USER_AGENT
 from .response import is_fp_closed
 from .ssl_ import (
     SSLContext,
@@ -14,6 +14,7 @@ from .ssl_ import (
     resolve_ssl_version,
     ssl_wrap_socket,
     PROTOCOL_TLS,
+    ALPN_PROTOCOLS,
 )
 from .timeout import current_time, Timeout
 
@@ -27,6 +28,7 @@ __all__ = (
     "IS_SECURETRANSPORT",
     "SSLContext",
     "PROTOCOL_TLS",
+    "ALPN_PROTOCOLS",
     "Retry",
     "Timeout",
     "Url",
@@ -43,4 +45,5 @@ __all__ = (
     "ssl_wrap_socket",
     "wait_for_read",
     "wait_for_write",
+    "SUPPRESS_USER_AGENT",
 )

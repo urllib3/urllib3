@@ -56,6 +56,7 @@ import ctypes
 import errno
 import os.path
 import shutil
+import six
 import socket
 import ssl
 import threading
@@ -68,6 +69,7 @@ from ._securetransport.low_level import (
     _cert_array_from_pem,
     _temporary_keychain,
     _load_client_cert_chain,
+    _create_cfstring_array,
 )
 
 try:  # Platform-specific: Python 2
@@ -144,13 +146,10 @@ CIPHER_SUITES = [
 ]
 
 # Basically this is simple: for PROTOCOL_SSLv23 we turn it into a low of
-# TLSv1 and a high of TLSv1.3. For everything else, we pin to that version.
-# TLSv1 to 1.2 are supported on macOS 10.8+ and TLSv1.3 is macOS 10.13+
+# TLSv1 and a high of TLSv1.2. For everything else, we pin to that version.
+# TLSv1 to 1.2 are supported on macOS 10.8+
 _protocol_to_min_max = {
-    util.PROTOCOL_TLS: (
-        SecurityConst.kTLSProtocol1,
-        SecurityConst.kTLSProtocolMaxSupported,
-    )
+    util.PROTOCOL_TLS: (SecurityConst.kTLSProtocol1, SecurityConst.kTLSProtocol12)
 }
 
 if hasattr(ssl, "PROTOCOL_SSLv2"):
@@ -377,6 +376,19 @@ class WrappedSocket(object):
         )
         _assert_no_error(result)
 
+    def _set_alpn_protocols(self, protocols):
+        """
+        Sets up the ALPN protocols on the context.
+        """
+        if not protocols:
+            return
+        protocols_arr = _create_cfstring_array(protocols)
+        try:
+            result = Security.SSLSetALPNProtocols(self.context, protocols_arr)
+            _assert_no_error(result)
+        finally:
+            CoreFoundation.CFRelease(protocols_arr)
+
     def _custom_validate(self, verify, trust_bundle):
         """
         Called when we have set custom validation. We do this in two cases:
@@ -444,6 +456,7 @@ class WrappedSocket(object):
         client_cert,
         client_key,
         client_key_passphrase,
+        alpn_protocols,
     ):
         """
         Actually performs the TLS handshake. This is run automatically by
@@ -484,19 +497,14 @@ class WrappedSocket(object):
         # Setup the ciphers.
         self._set_ciphers()
 
+        # Setup the ALPN protocols.
+        self._set_alpn_protocols(alpn_protocols)
+
         # Set the minimum and maximum TLS versions.
         result = Security.SSLSetProtocolVersionMin(self.context, min_version)
         _assert_no_error(result)
 
-        # TLS 1.3 isn't necessarily enabled by the OS
-        # so we have to detect when we error out and try
-        # setting TLS 1.3 if it's allowed. kTLSProtocolMaxSupported
-        # was added in macOS 10.13 along with kTLSProtocol13.
         result = Security.SSLSetProtocolVersionMax(self.context, max_version)
-        if result != 0 and max_version == SecurityConst.kTLSProtocolMaxSupported:
-            result = Security.SSLSetProtocolVersionMax(
-                self.context, SecurityConst.kTLSProtocol12
-            )
         _assert_no_error(result)
 
         # If there's a trust DB, we need to use it. We do that by telling
@@ -707,7 +715,7 @@ class WrappedSocket(object):
         )
         _assert_no_error(result)
         if protocol.value == SecurityConst.kTLSProtocol13:
-            return "TLSv1.3"
+            raise ssl.SSLError("SecureTransport does not support TLS 1.3")
         elif protocol.value == SecurityConst.kTLSProtocol12:
             return "TLSv1.2"
         elif protocol.value == SecurityConst.kTLSProtocol11:
@@ -765,6 +773,7 @@ class SecureTransportContext(object):
         self._client_cert = None
         self._client_key = None
         self._client_key_passphrase = None
+        self._alpn_protocols = None
 
     @property
     def check_hostname(self):
@@ -830,12 +839,29 @@ class SecureTransportContext(object):
         if capath is not None:
             raise ValueError("SecureTransport does not support cert directories")
 
+        # Raise if cafile does not exist.
+        if cafile is not None:
+            with open(cafile):
+                pass
+
         self._trust_bundle = cafile or cadata
 
     def load_cert_chain(self, certfile, keyfile=None, password=None):
         self._client_cert = certfile
         self._client_key = keyfile
         self._client_cert_passphrase = password
+
+    def set_alpn_protocols(self, protocols):
+        """
+        Sets the ALPN protocols that will later be set on the context.
+
+        Raises a NotImplementedError if ALPN is not supported.
+        """
+        if not hasattr(Security, "SSLSetALPNProtocols"):
+            raise NotImplementedError(
+                "SecureTransport supports ALPN only in macOS 10.12+"
+            )
+        self._alpn_protocols = [six.ensure_binary(p) for p in protocols]
 
     def wrap_socket(
         self,
@@ -866,5 +892,6 @@ class SecureTransportContext(object):
             self._client_cert,
             self._client_key,
             self._client_key_passphrase,
+            self._alpn_protocols,
         )
         return wrapped_socket

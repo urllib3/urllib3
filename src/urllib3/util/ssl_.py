@@ -2,6 +2,7 @@ from __future__ import absolute_import
 import errno
 import warnings
 import hmac
+import os
 import sys
 
 from binascii import hexlify, unhexlify
@@ -16,6 +17,7 @@ SSLContext = None
 HAS_SNI = False
 IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
+ALPN_PROTOCOLS = ["http/1.1"]
 
 # Maps the length of a digest to a possible hash function producing this digest
 HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
@@ -29,8 +31,8 @@ def _const_compare_digest_backport(a, b):
     Returns True if the digests match, and False otherwise.
     """
     result = abs(len(a) - len(b))
-    for l, r in zip(bytearray(a), bytearray(b)):
-        result |= l ^ r
+    for left, right in zip(bytearray(a), bytearray(b)):
+        result |= left ^ right
     return result == 0
 
 
@@ -119,11 +121,14 @@ except ImportError:
             self.certfile = certfile
             self.keyfile = keyfile
 
-        def load_verify_locations(self, cafile=None, capath=None):
+        def load_verify_locations(self, cafile=None, capath=None, cadata=None):
             self.ca_certs = cafile
 
             if capath is not None:
                 raise SSLError("CA directories not supported in older Pythons")
+
+            if cadata is not None:
+                raise SSLError("CA data not supported in older Pythons")
 
         def set_ciphers(self, cipher_suite):
             self.ciphers = cipher_suite
@@ -182,7 +187,7 @@ def resolve_cert_reqs(candidate):
     """
     Resolves the argument to a numeric constant, which can be passed to
     the wrap_socket function/method from the ssl module.
-    Defaults to :data:`ssl.CERT_NONE`.
+    Defaults to :data:`ssl.CERT_REQUIRED`.
     If given a string it is assumed to be the name of the constant in the
     :mod:`ssl` module or its abbreviation.
     (So you can specify `REQUIRED` instead of `CERT_REQUIRED`.
@@ -290,6 +295,12 @@ def create_urllib3_context(
         # We do our own verification, including fingerprints and alternative
         # hostnames. So disable it here
         context.check_hostname = False
+
+    # Enable logging of TLS session keys via defacto standard environment variable
+    # 'SSLKEYLOGFILE', if the feature is available (Python 3.8+).
+    if hasattr(context, "keylog_filename"):
+        context.keylog_filename = os.environ.get("SSLKEYLOGFILE")
+
     return context
 
 
@@ -305,6 +316,7 @@ def ssl_wrap_socket(
     ssl_context=None,
     ca_cert_dir=None,
     key_password=None,
+    ca_cert_data=None,
 ):
     """
     All arguments except for server_hostname, ssl_context, and ca_cert_dir have
@@ -323,6 +335,9 @@ def ssl_wrap_socket(
         SSLContext.load_verify_locations().
     :param key_password:
         Optional password if the keyfile is encrypted.
+    :param ca_cert_data:
+        Optional string containing CA certificates in PEM format suitable for
+        passing as the cadata parameter to SSLContext.load_verify_locations()
     """
     context = ssl_context
     if context is None:
@@ -331,9 +346,9 @@ def ssl_wrap_socket(
         # this code.
         context = create_urllib3_context(ssl_version, cert_reqs, ciphers=ciphers)
 
-    if ca_certs or ca_cert_dir:
+    if ca_certs or ca_cert_dir or ca_cert_data:
         try:
-            context.load_verify_locations(ca_certs, ca_cert_dir)
+            context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
         except IOError as e:  # Platform-specific: Python 2.7
             raise SSLError(e)
         # Py33 raises FileNotFoundError which subclasses OSError
@@ -359,16 +374,21 @@ def ssl_wrap_socket(
         else:
             context.load_cert_chain(certfile, keyfile, key_password)
 
+    try:
+        if hasattr(context, "set_alpn_protocols"):
+            context.set_alpn_protocols(ALPN_PROTOCOLS)
+    except NotImplementedError:
+        pass
+
     # If we detect server_hostname is an IP address then the SNI
     # extension should not be used according to RFC3546 Section 3.1
-    # We shouldn't warn the user if SNI isn't available but we would
-    # not be using SNI anyways due to IP address for server_hostname.
-    if (
-        server_hostname is not None and not is_ipaddress(server_hostname)
-    ) or IS_SECURETRANSPORT:
-        if HAS_SNI and server_hostname is not None:
-            return context.wrap_socket(sock, server_hostname=server_hostname)
-
+    use_sni_hostname = server_hostname and not is_ipaddress(server_hostname)
+    # SecureTransport uses server_hostname in certificate verification.
+    send_sni = (use_sni_hostname and HAS_SNI) or (
+        IS_SECURETRANSPORT and server_hostname
+    )
+    # Do not warn the user if server_hostname is an invalid SNI hostname.
+    if not HAS_SNI and use_sni_hostname:
         warnings.warn(
             "An HTTPS request has been made, but the SNI (Server Name "
             "Indication) extension to TLS is not available on this platform. "
@@ -380,7 +400,11 @@ def ssl_wrap_socket(
             SNIMissingWarning,
         )
 
-    return context.wrap_socket(sock)
+    if send_sni:
+        ssl_sock = context.wrap_socket(sock, server_hostname=server_hostname)
+    else:
+        ssl_sock = context.wrap_socket(sock)
+    return ssl_sock
 
 
 def is_ipaddress(hostname):
