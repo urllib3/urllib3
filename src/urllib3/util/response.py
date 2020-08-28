@@ -68,19 +68,24 @@ def assert_header_parsing(headers):
             if isinstance(payload, (bytes, str)):
                 unparsed_data = payload
     if defects:
+        # httplib is assuming a response body is available
+        # when parsing headers even when httplib only sends
+        # header data to parse_headers() This results in
+        # defects on multipart responses in particular.
         # See: https://github.com/urllib3/urllib3/issues/800
-        # When parsing the headers, httplib is telling to parse it as a complete response.
-        # Since we only care about parsing the headers, I don't think we would ever care about these exceptions.
-        new_defects = []
-        for parse_error in defects:
-            if isinstance(parse_error, StartBoundaryNotFoundDefect):
-                # Description from the docs: The claimed start boundary was never found.
-                continue
-            if isinstance(parse_error, MultipartInvariantViolationDefect):
-                # Description from the docs: A message claimed to be a multipart but no subparts were found.
-                continue
-            new_defects.append(parse_error)
-        defects = new_defects
+
+        # So we ignore the following defects:
+        # - StartBoundaryNotFoundDefect:
+        #     The claimed start boundary was never found.
+        # - MultipartInvariantViolationDefect:
+        #     A message claimed to be a multipart but no subparts were found.
+        defects = [
+            defect
+            for defect in defects
+            if not isinstance(
+                defect, (StartBoundaryNotFoundDefect, MultipartInvariantViolationDefect)
+            )
+        ]
 
     if defects or unparsed_data:
         raise HeaderParsingError(defects=defects, unparsed_data=unparsed_data)
