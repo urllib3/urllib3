@@ -152,6 +152,19 @@ def notSecureTransport(test):
     return wrapper
 
 
+def notWindows(test):
+    """Skips this test when running on Windows"""
+
+    @six.wraps(test)
+    def wrapper(*args, **kwargs):
+        msg = "{name} does not run on Windows".format(name=test.__name__)
+        if platform.system() == "Windows":
+            pytest.skip(msg)
+        return test(*args, **kwargs)
+
+    return wrapper
+
+
 def notOpenSSL098(test):
     """Skips this test for Python 3.5 macOS python.org distribution"""
 

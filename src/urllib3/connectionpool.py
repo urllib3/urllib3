@@ -400,10 +400,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Python 3
             pass
         except IOError as e:
-            # EPIPE and ESHUTDOWN are BrokenPipeError on Python 2, and EPROTOTYPE is
-            # needed on macOS
+            # Python 2 and macOS/Linux
+            # EPIPE and ESHUTDOWN are BrokenPipeError on Python 2, and EPROTOTYPE is needed on macOS
             # https://erickt.github.io/blog/2014/11/19/adventures-in-debugging-a-potential-osx-kernel-bug/
-            if e.errno not in (errno.EPIPE, errno.ESHUTDOWN, errno.EPROTOTYPE):
+            if e.errno not in {
+                errno.EPIPE,
+                errno.ESHUTDOWN,
+                errno.EPROTOTYPE,
+            }:
                 raise
 
         # Reset the timeout for the recv() on the socket

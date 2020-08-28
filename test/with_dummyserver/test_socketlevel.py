@@ -57,6 +57,7 @@ from test import (
     LONG_TIMEOUT,
     notPyPy2,
     notSecureTransport,
+    notWindows,
     resolvesLocalhostFQDN,
 )
 
@@ -1783,7 +1784,10 @@ class TestRetryPoolSizeDrainFail(SocketDummyServerTestCase):
 
 
 class TestBrokenPipe(SocketDummyServerTestCase):
-    def test_broken_pipe_ignore(self, monkeypatch):
+    @notWindows
+    def test_ignore_broken_pipe_errors(self, monkeypatch):
+        # On Windows an aborted connection raises an error on
+        # attempts to read data out of a socket that's been closed.
         sock_shut = Event()
         orig_connect = HTTPConnection.connect
         # a buffer that will cause two sendall calls
@@ -1800,8 +1804,9 @@ class TestBrokenPipe(SocketDummyServerTestCase):
                 sock.send(
                     b"HTTP/1.1 404 Not Found\r\n"
                     b"Connection: close\r\n"
-                    b"Content-Length: 0\r\n"
+                    b"Content-Length: 10\r\n"
                     b"\r\n"
+                    b"xxxxxxxxxx"
                 )
                 sock.shutdown(socket.SHUT_RDWR)
                 sock_shut.set()
@@ -1812,5 +1817,10 @@ class TestBrokenPipe(SocketDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("POST", "/", body=buf)
             assert r.status == 404
+            assert r.headers["content-length"] == "10"
+            assert r.data == b"xxxxxxxxxx"
+
             r = pool.request("POST", "/admin", chunked=True, body=buf)
             assert r.status == 404
+            assert r.headers["content-length"] == "10"
+            assert r.data == b"xxxxxxxxxx"
