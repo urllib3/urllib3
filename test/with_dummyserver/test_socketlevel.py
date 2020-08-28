@@ -1808,3 +1808,37 @@ class TestRetryPoolSizeDrainFail(SocketDummyServerTestCase):
         ) as pool:
             pool.urlopen("GET", "/not_found", preload_content=False)
             assert pool.num_connections == 1
+
+
+class TestMultipartResponse(SocketDummyServerTestCase):
+    def test_multipart_assert_header_parsing_no_defects(self):
+        def socket_handler(listener):
+            for _ in range(2):
+                sock = listener.accept()[0]
+                while not sock.recv(65536).endswith(b"\r\n\r\n"):
+                    pass
+
+                sock.sendall(
+                    b"HTTP/1.1 404 Not Found\r\n"
+                    b"Server: example.com\r\n"
+                    b"Content-Type: multipart/mixed; boundary=36eeb8c4e26d842a\r\n"
+                    b"Content-Length: 73\r\n"
+                    b"\r\n"
+                    b"--36eeb8c4e26d842a\r\n"
+                    b"Content-Type: text/plain\r\n"
+                    b"\r\n"
+                    b"1\r\n"
+                    b"--36eeb8c4e26d842a--\r\n",
+                )
+                sock.close()
+
+        self._start_server(socket_handler)
+        from urllib3.connectionpool import log
+
+        with mock.patch.object(log, "warning") as log_warning:
+            with HTTPConnectionPool(self.host, self.port, timeout=3) as pool:
+                resp = pool.urlopen("GET", "/")
+                assert resp.status == 404
+                assert resp.headers["content-type"] == "multipart/mixed; boundary=36eeb8c4e26d842a"
+                assert len(resp.data) == 73
+                log_warning.assert_not_called()
