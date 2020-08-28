@@ -1839,6 +1839,9 @@ class TestMultipartResponse(SocketDummyServerTestCase):
             with HTTPConnectionPool(self.host, self.port, timeout=3) as pool:
                 resp = pool.urlopen("GET", "/")
                 assert resp.status == 404
-                assert resp.headers["content-type"] == "multipart/mixed; boundary=36eeb8c4e26d842a"
+                assert (
+                    resp.headers["content-type"]
+                    == "multipart/mixed; boundary=36eeb8c4e26d842a"
+                )
                 assert len(resp.data) == 73
                 log_warning.assert_not_called()

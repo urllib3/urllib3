@@ -764,6 +764,7 @@ class TestUtil(object):
         header_msg.seek(0)
         assert_header_parsing(client.parse_headers(header_msg))
 
+
 class TestUtilSSL(object):
     """Test utils that use an SSL backend."""
 
