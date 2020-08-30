@@ -110,7 +110,7 @@ def lint(session):
     session.run("flake8", "setup.py", "docs", "dummyserver", "src", "test")
 
     session.log("mypy --strict src/urllib3")
-    errors = []
+    all_errors, errors = [], []
     process = subprocess.run(
         ["mypy", "--strict", "src/urllib3"],
         env=session.env,
@@ -122,9 +122,11 @@ def lint(session):
     assert process.returncode in (0, 1)
 
     for line in process.stdout.split("\n"):
+        all_errors.append(line)
         filepath = line.partition(":")[0]
         if filepath.replace(".pyi", ".py") in TYPED_FILES:
             errors.append(line)
+    session.log("all errors count: {}".format(len(all_errors)))
     if errors:
         session.error("\n" + "\n".join(sorted(set(errors))))
 
