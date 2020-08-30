@@ -22,8 +22,6 @@ from .util.retry import Retry
 from .util.proxy import connection_requires_http_tunnel
 from .packages.six import PY3
 
-import urllib3.util.ssl_ as ssl_utils
-
 
 __all__ = ["PoolManager", "ProxyManager", "proxy_from_url"]
 
@@ -65,7 +63,6 @@ _key_fields = (
     "key__proxy",  # parsed proxy url
     "key__proxy_headers",  # dict
     "key__proxy_config",  # class
-    "key__destination_scheme",  # str
     "key_socket_options",  # list of (level (int), optname (int), value (int or str)) tuples
     "key__socks_options",  # dict
     "key_assert_hostname",  # bool or string
@@ -354,13 +351,6 @@ class PoolManager(RequestMethods):
                 "Contacting HTTPS destinations through HTTPS proxies is not supported on py2."
             )
 
-        if (
-            ssl_utils.IS_PYOPENSSL or ssl_utils.IS_SECURETRANSPORT
-        ) and not self.proxy_config.use_forwarding_for_https:
-            raise ProxySchemeUnsupported(
-                "PyOpenSSL/SecureTransport don't support HTTPS proxies"
-            )
-
     def urlopen(self, method, url, redirect=True, **kw):
         """
         Same as :meth:`urllib3.connectionpool.HTTPConnectionPool.urlopen`
@@ -447,9 +437,14 @@ class ProxyManager(PoolManager):
         The proxy SSL context is used to establish the TLS connection to the
         proxy when using HTTPS proxies.
 
-    :param _use_forwarding_for_https:
-        Allows forwarding of HTTPS requests to HTTPS proxies. The proxy will
-        have visibility of all the traffic sent which is HIGHLY INSECURE.
+    :param use_forwarding_for_https:
+        (Defaults to False) If set to True will forward requests to the HTTPS
+        proxy to be made on behalf of the client instead of creating a TLS
+        tunnel via the CONNECT method. **Enabling this flag means that request
+        and response headers and content will be visible from the HTTPS proxy**
+        whereas tunneling keeps request and response headers and content
+        private.  IP address, target hostname, SNI, and port are always visible
+        to an HTTPS proxy even when this flag is disabled.
 
     Example:
         >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
@@ -471,7 +466,7 @@ class ProxyManager(PoolManager):
         headers=None,
         proxy_headers=None,
         proxy_ssl_context=None,
-        _use_forwarding_for_https=False,
+        use_forwarding_for_https=False,
         **connection_pool_kw
     ):
 
@@ -493,7 +488,7 @@ class ProxyManager(PoolManager):
         self.proxy = proxy
         self.proxy_headers = proxy_headers or {}
         self.proxy_ssl_context = proxy_ssl_context
-        self.proxy_config = ProxyConfig(proxy_ssl_context, _use_forwarding_for_https)
+        self.proxy_config = ProxyConfig(proxy_ssl_context, use_forwarding_for_https)
 
         connection_pool_kw["_proxy"] = self.proxy
         connection_pool_kw["_proxy_headers"] = self.proxy_headers
@@ -503,7 +498,6 @@ class ProxyManager(PoolManager):
 
     def connection_from_host(self, host, port=None, scheme="http", pool_kwargs=None):
         # Original destination is needed to identify if we need TLS within TLS.
-        self._set_destination_scheme(scheme)
         if scheme == "https":
             return super(ProxyManager, self).connection_from_host(
                 host, port, scheme, pool_kwargs=pool_kwargs
@@ -531,8 +525,6 @@ class ProxyManager(PoolManager):
     def urlopen(self, method, url, redirect=True, **kw):
         "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
         u = parse_url(url)
-        self._set_destination_scheme(u.scheme)
-
         if not connection_requires_http_tunnel(self.proxy, self.proxy_config, u.scheme):
             # For connections using HTTP CONNECT, httplib sets the necessary
             # headers on the CONNECT to the proxy. If we're not using CONNECT,
@@ -541,15 +533,6 @@ class ProxyManager(PoolManager):
             kw["headers"] = self._set_proxy_headers(url, headers)
 
         return super(ProxyManager, self).urlopen(method, url, redirect=redirect, **kw)
-
-    def _set_destination_scheme(self, destination_scheme):
-        """
-        Set the destination scheme for connection pools generated with this
-        ProxyManager.
-
-        The destination scheme is needed for HTTPS proxy connections.
-        """
-        self.connection_pool_kw["_destination_scheme"] = destination_scheme
 
 
 def proxy_from_url(url, **kw):

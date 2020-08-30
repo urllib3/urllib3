@@ -13,12 +13,12 @@ def connection_requires_http_tunnel(
     """
     Returns True if the connection requires an HTTP CONNECT through the proxy.
 
-    :param destination_url:
-        :URL URL of the destination.
     :param proxy_url:
         :URL URL of the proxy.
     :param proxy_config:
-        :class:`PoolManager.ProxyConfig` proxy configuration
+        :class:`ProxyConfig` proxy configuration from poolmanager.py
+    :param destination_scheme:
+        :str: The scheme of the destination. (i.e https, http, etc)
     """
     # If we're not using a proxy, no way to use a tunnel.
     if proxy_url is None:
@@ -61,8 +61,13 @@ def generate_proxy_ssl_context(
 
     proxy_cert, proxy_key, proxy_pass = client_certificate_and_key_from_env()
 
-    if proxy_cert:
+    if not proxy_cert:
+        return ssl_context
+
+    if proxy_key and proxy_pass:
         ssl_context.load_cert_chain(proxy_cert, keyfile=proxy_key, password=proxy_pass)
+    elif proxy_key:
+        ssl_context.load_cert_chain(proxy_cert, keyfile=proxy_key)
 
     return ssl_context
 

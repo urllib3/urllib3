@@ -65,7 +65,7 @@ class TestProxyManager(object):
             assert p._proxy_requires_url_absolute_form(http_url)
             assert p._proxy_requires_url_absolute_form(https_url) is False
 
-        with ProxyManager("https://proxy:8080", _use_forwarding_for_https=True) as p:
+        with ProxyManager("https://proxy:8080", use_forwarding_for_https=True) as p:
             assert p._proxy_requires_url_absolute_form(http_url)
             assert p._proxy_requires_url_absolute_form(https_url)
 

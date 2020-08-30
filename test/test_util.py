@@ -792,9 +792,7 @@ class TestUtil(object):
                     sock=socket,
                     server_hostname="www.google.com",
                 )
-            mock_context.wrap_socket.assert_called_once_with(
-                socket, server_hostname=None
-            )
+            mock_context.wrap_socket.assert_called_once_with(socket)
             assert warn.call_count >= 1
             warnings = [call[0][1] for call in warn.call_args_list]
             assert SNIMissingWarning in warnings

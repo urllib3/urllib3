@@ -71,10 +71,10 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     @onlyPy3
     def test_https_proxy(self):
         with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
-            r = https.request("GET", "%s/" % self.http_url)
+            r = https.request("GET", "%s/" % self.https_url)
             assert r.status == 200
 
-            r = https.request("GET", "%s/" % self.https_url)
+            r = https.request("GET", "%s/" % self.http_url)
             assert r.status == 200
 
     @onlyPy2
@@ -108,7 +108,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_https_proxy_insecure(self):
         with proxy_from_url(
-            self.https_proxy_url, ca_certs=DEFAULT_CA, _use_forwarding_for_https=True,
+            self.https_proxy_url,
+            ca_certs=DEFAULT_CA,
+            use_forwarding_for_https=True,
         ) as https:
             r = https.request("GET", "%s/" % self.http_url)
             assert r.status == 200
@@ -383,7 +385,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             headers={"Foo": "bar"},
             proxy_headers={"Hickory": "dickory"},
             ca_certs=DEFAULT_CA,
-            _use_forwarding_for_https=True,
+            use_forwarding_for_https=True,
         ) as http:
 
             r = http.request_encode_url("GET", "%s/headers" % self.https_url)

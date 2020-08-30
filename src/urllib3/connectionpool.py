@@ -183,7 +183,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         _proxy=None,
         _proxy_headers=None,
         _proxy_config=None,
-        _destination_scheme=None,
         **conn_kw
     ):
         ConnectionPool.__init__(self, host, port)
@@ -206,7 +205,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.proxy = _proxy
         self.proxy_headers = _proxy_headers or {}
         self.proxy_config = _proxy_config
-        self.destination_scheme = _destination_scheme
 
         # Fill the queue up so that doing get() on it will block properly
         for _ in xrange(maxsize):
@@ -225,7 +223,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
             self.conn_kw["proxy"] = self.proxy
             self.conn_kw["proxy_config"] = self.proxy_config
-            self.conn_kw["destination_scheme"] = self.destination_scheme
 
     def _new_conn(self):
         """
@@ -321,7 +318,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         pass
 
-    def _prepare_proxy(self, conn):
+    def _prepare_proxy(self, conn, destination_scheme):
         # Nothing to do for HTTP connections.
         pass
 
@@ -519,6 +516,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         release_conn=None,
         chunked=False,
         body_pos=None,
+        destination_scheme=None,
         **response_kw
     ):
         """
@@ -607,10 +605,18 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             redirect. Typically this won't need to be set because urllib3 will
             auto-populate the value when needed.
 
+        :param str destination_scheme:
+            Indicates the ultimate destination scheme (e.g HTTPS/HTTP) when using
+            proxies.
+
         :param \\**response_kw:
             Additional parameters are passed to
             :meth:`urllib3.response.HTTPResponse.from_httplib`
         """
+
+        parsed_url = parse_url(url)
+        destination_scheme = parsed_url.scheme
+
         if headers is None:
             headers = self.headers
 
@@ -628,7 +634,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if url.startswith("/"):
             url = six.ensure_str(_encode_target(url))
         else:
-            url = six.ensure_str(parse_url(url).url)
+            url = six.ensure_str(parsed_url.url)
 
         conn = None
 
@@ -647,7 +653,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # have to copy the headers dict so we can safely change it without those
         # changes being reflected in anyone else's copy.
         if not connection_requires_http_tunnel(
-            self.proxy, self.proxy_config, self.destination_scheme
+            self.proxy, self.proxy_config, destination_scheme
         ):
             headers = headers.copy()
             headers.update(self.proxy_headers)
@@ -675,7 +681,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 conn, "sock", None
             )
             if is_new_proxy_conn:
-                self._prepare_proxy(conn)
+                self._prepare_proxy(conn, destination_scheme)
 
             # Make the request on the httplib connection object.
             httplib_response = self._make_request(
@@ -775,6 +781,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 release_conn=release_conn,
                 chunked=chunked,
                 body_pos=body_pos,
+                destination_scheme=destination_scheme,
                 **response_kw
             )
 
@@ -808,6 +815,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 release_conn=release_conn,
                 chunked=chunked,
                 body_pos=body_pos,
+                destination_scheme=destination_scheme,
                 **response_kw
             )
 
@@ -838,6 +846,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 release_conn=release_conn,
                 chunked=chunked,
                 body_pos=body_pos,
+                destination_scheme=destination_scheme,
                 **response_kw
             )
 
@@ -934,7 +943,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             conn.ssl_version = self.ssl_version
         return conn
 
-    def _prepare_proxy(self, conn):
+    def _prepare_proxy(self, conn, destination_scheme):
         """
         Establishes a tunnel connection through HTTP CONNECT.
 
@@ -943,9 +952,12 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         """
 
         if connection_requires_http_tunnel(
-            self.proxy, self.proxy_config, self.destination_scheme
+            self.proxy, self.proxy_config, destination_scheme
         ):
             conn.set_tunnel(self._proxy_host, self.port, self.proxy_headers)
+
+            if self.proxy.scheme == "https":
+                conn.set_tls_in_tls_required()
 
         conn.connect()
 

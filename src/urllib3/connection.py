@@ -9,7 +9,7 @@ import warnings
 from .packages import six
 from .packages.six.moves.http_client import HTTPConnection as _HTTPConnection
 from .packages.six.moves.http_client import HTTPException  # noqa: F401
-from .util.proxy import connection_requires_http_tunnel, generate_proxy_ssl_context
+from .util.proxy import generate_proxy_ssl_context
 
 try:  # Compiled with SSL?
     import ssl
@@ -117,7 +117,6 @@ class HTTPConnection(_HTTPConnection, object):
         # Proxy options provided by the user.
         self.proxy = kw.pop("proxy", None)
         self.proxy_config = kw.pop("proxy_config", None)
-        self.destination_scheme = kw.pop("destination_scheme", None)
 
         _HTTPConnection.__init__(self, *args, **kw)
 
@@ -271,6 +270,7 @@ class HTTPSConnection(HTTPConnection):
     ca_cert_data = None
     ssl_version = None
     assert_fingerprint = None
+    tls_in_tls_required = False
 
     def __init__(
         self,
@@ -434,17 +434,15 @@ class HTTPSConnection(HTTPConnection):
             or self.assert_fingerprint is not None
         )
 
+    def set_tls_in_tls_required(self):
+        self.tls_in_tls_required = True
+
     def _connection_requires_tls_in_tls(self):
         """
         Indicates if the current connection requires two TLS connections, one to
         the proxy and one to the destination server.
         """
-        if not self.proxy or self.proxy.scheme != "https":
-            return False
-
-        return connection_requires_http_tunnel(
-            self.proxy, self.proxy_config, self.destination_scheme
-        )
+        return self.tls_in_tls_required
 
     def _connect_tls_proxy(self, hostname, conn):
         """
