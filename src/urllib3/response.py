@@ -22,6 +22,7 @@ from .exceptions import (
     InvalidChunkLength,
     InvalidHeader,
     HTTPError,
+    SSLError,
 )
 from .packages.six import string_types as basestring, PY3
 from .connection import HTTPException, BaseSSLError
@@ -443,9 +444,8 @@ class HTTPResponse(io.IOBase):
             except BaseSSLError as e:
                 # FIXME: Is there a better way to differentiate between SSLErrors?
                 if "read operation timed out" not in str(e):  # Defensive:
-                    # This shouldn't happen but just in case we're missing an edge
-                    # case, let's avoid swallowing SSL errors.
-                    raise
+                    # SSL errors related to framing/MAC get wrapped and reraised here
+                    raise SSLError(e)
 
                 raise ReadTimeoutError(self._pool, None, "Read timed out.")
 
