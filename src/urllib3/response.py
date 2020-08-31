@@ -443,7 +443,7 @@ class HTTPResponse(io.IOBase):
 
             except BaseSSLError as e:
                 # FIXME: Is there a better way to differentiate between SSLErrors?
-                if "read operation timed out" not in str(e):  # Defensive:
+                if "read operation timed out" not in str(e):
                     # SSL errors related to framing/MAC get wrapped and reraised here
                     raise SSLError(e)
 
