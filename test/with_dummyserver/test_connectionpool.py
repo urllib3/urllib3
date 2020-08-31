@@ -853,6 +853,14 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             assert no_ua_headers["User-Agent"] == SUPPRESS_USER_AGENT
             assert pool_headers.get("User-Agent") == custom_ua
 
+    def test_bytes_header(self):
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            headers = {"User-Agent": b"test header"}
+            r = pool.request("GET", "/headers", headers=headers)
+            request_headers = json.loads(r.data.decode("utf8"))
+            assert "User-Agent" in request_headers
+            assert request_headers["User-Agent"] == "test header"
+
 
 class TestRetry(HTTPDummyServerTestCase):
     def test_max_retry(self):
