@@ -3,9 +3,14 @@ import os
 
 import mock
 import pytest
+import ssl
 
 try:
-    from urllib3.contrib.pyopenssl import _dnsname_to_stdlib, get_subj_alt_name
+    from urllib3.contrib.pyopenssl import (
+        _dnsname_to_stdlib,
+        get_subj_alt_name,
+        PyOpenSSLContext,
+    )
     from cryptography import x509
     from OpenSSL.crypto import FILETYPE_PEM, load_certificate
 except ImportError:
@@ -97,3 +102,9 @@ class TestPyOpenSSLHelpers(object):
 
         assert mock_warning.call_count == 1
         assert isinstance(mock_warning.call_args[0][1], x509.DuplicateExtension)
+
+
+def test_load_verify_locations_with_cadata():
+    context = PyOpenSSLContext(2)
+    with pytest.raises(ssl.SSLError):
+        context.load_verify_locations(None, None, "Test CA Data")

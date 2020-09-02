@@ -57,7 +57,6 @@ except ImportError:
 
 
 from socket import timeout, error as SocketError
-from io import BytesIO
 
 try:  # Platform-specific: Python 2
     from socket import _fileobject
@@ -446,14 +445,14 @@ class PyOpenSSLContext(object):
         self._ctx.set_cipher_list(ciphers)
 
     def load_verify_locations(self, cafile=None, capath=None, cadata=None):
+        if cadata is not None:
+            raise ssl.SSLError("CA data not supported in PyOpenSSL")
         if cafile is not None:
             cafile = cafile.encode("utf-8")
         if capath is not None:
             capath = capath.encode("utf-8")
         try:
             self._ctx.load_verify_locations(cafile, capath)
-            if cadata is not None:
-                self._ctx.load_verify_locations(BytesIO(cadata))
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError("unable to load trusted certificates: %r" % e)
 
