@@ -748,6 +748,20 @@ class TestUtil(object):
         with pytest.raises(TypeError):
             assert_header_parsing(headers)
 
+    @onlyPy3
+    def test_assert_header_parsing_no_error_on_multipart(self):
+        from http import client
+
+        header_msg = io.BytesIO()
+        header_msg.write(
+            b'Content-Type: multipart/encrypted;protocol="application/'
+            b'HTTP-SPNEGO-session-encrypted";boundary="Encrypted Boundary"'
+            b"\nServer: Microsoft-HTTPAPI/2.0\nDate: Fri, 16 Aug 2019 19:28:01 GMT"
+            b"\nContent-Length: 1895\n\n\n"
+        )
+        header_msg.seek(0)
+        assert_header_parsing(client.parse_headers(header_msg))
+
 
 class TestUtilSSL(object):
     """Test utils that use an SSL backend."""
