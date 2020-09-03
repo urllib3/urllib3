@@ -394,7 +394,7 @@ class WrappedSocket(object):
         finally:
             CoreFoundation.CFRelease(protocols_arr)
 
-    def _custom_validate(self, verify, trust_bundle):
+    def _custom_validate(self, verify, trust_bundles):
         """
         Called when we have set custom validation. We do this in two cases:
         first, when cert validation is entirely disabled; and second, when
@@ -410,9 +410,11 @@ class WrappedSocket(object):
             SecurityConst.kSecTrustResultProceed,
         )
         try:
-            trust_result = self._evaluate_trust(trust_bundle)
-            if trust_result in successes:
-                return
+            for trust_bundle in trust_bundles:
+                trust_result = self._evaluate_trust(trust_bundle)
+                if trust_result in successes:
+                    # Trusted by at least one trust bundle
+                    return
             reason = "error code: %d" % (trust_result,)
         except Exception as e:
             # Do not trust on error
@@ -473,7 +475,7 @@ class WrappedSocket(object):
         self,
         server_hostname,
         verify,
-        trust_bundle,
+        trust_bundles,
         min_version,
         max_version,
         client_cert,
@@ -534,7 +536,7 @@ class WrappedSocket(object):
         # SecureTransport to break on server auth. We also do that if we don't
         # want to validate the certs at all: we just won't actually do any
         # authing in that case.
-        if not verify or trust_bundle is not None:
+        if not verify or len(trust_bundles) > 0:
             result = Security.SSLSetSessionOption(
                 self.context, SecurityConst.kSSLSessionOptionBreakOnServerAuth, True
             )
@@ -556,7 +558,7 @@ class WrappedSocket(object):
                 if result == SecurityConst.errSSLWouldBlock:
                     raise socket.timeout("handshake timed out")
                 elif result == SecurityConst.errSSLServerAuthCompleted:
-                    self._custom_validate(verify, trust_bundle)
+                    self._custom_validate(verify, trust_bundles)
                     continue
                 else:
                     _assert_no_error(result)
@@ -792,7 +794,7 @@ class SecureTransportContext(object):
         self._min_version, self._max_version = _protocol_to_min_max[protocol]
         self._options = 0
         self._verify = False
-        self._trust_bundle = None
+        self._trust_bundles = []
         self._client_cert = None
         self._client_key = None
         self._client_key_passphrase = None
@@ -866,8 +868,11 @@ class SecureTransportContext(object):
         if cafile is not None:
             with open(cafile):
                 pass
+            self._trust_bundles.append(cafile)
 
-        self._trust_bundle = cafile or cadata
+        if cadata is not None:
+            cadata = six.ensure_binary(cadata)
+            self._trust_bundles.append(cadata)
 
     def load_cert_chain(self, certfile, keyfile=None, password=None):
         self._client_cert = certfile
@@ -909,7 +914,7 @@ class SecureTransportContext(object):
         wrapped_socket.handshake(
             server_hostname,
             self._verify,
-            self._trust_bundle,
+            self._trust_bundles,
             self._min_version,
             self._max_version,
             self._client_cert,
