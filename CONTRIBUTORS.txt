@@ -303,5 +303,8 @@ In chronological order:
 * [Bastiaan Bakker] <https://github.com/bastiaanb>
   * Support for logging session keys via environment variable ``SSLKEYLOGFILE`` (Python 3.8+)
 
+* [Ezzeri Esa] <https://github.com/savarin>
+  * Ports and extends on types from typeshed
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

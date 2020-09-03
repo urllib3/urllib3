@@ -713,9 +713,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             assert keylog_file.check(file=1), "keylogfile '%s' should exist" % str(
                 keylog_file
             )
-            assert keylog_file.read().startswith("# TLS secrets log file"), (
-                "keylogfile '%s' should start with '# TLS secrets log file'"
-                % str(keylog_file)
+            assert keylog_file.read().startswith(
+                "# TLS secrets log file"
+            ), "keylogfile '%s' should start with '# TLS secrets log file'" % str(
+                keylog_file
             )
 
     def test_alpn_default(self):

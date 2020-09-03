@@ -11,7 +11,7 @@ urllib3
    reference/index
    contributing
 
-urllib3 is a powerful, *sanity-friendly* HTTP client for Python. Much of the
+urllib3 is a powerful, *user-friendly* HTTP client for Python. Much of the
 Python ecosystem :ref:`already uses <who-uses>` urllib3 and you should too.
 urllib3 brings many critical features that are missing from the Python
 standard libraries:

@@ -43,7 +43,7 @@ Response content
 
 The :class:`~response.HTTPResponse` object provides
 :attr:`~response.HTTPResponse.status`, :attr:`~response.HTTPResponse.data`, and
-:attr:`~response.HTTPResponse.header` attributes::
+:attr:`~response.HTTPResponse.headers` attributes::
 
     >>> r = http.request('GET', 'http://httpbin.org/ip')
     >>> r.status

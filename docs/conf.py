@@ -133,7 +133,7 @@ html_theme = 'alabaster'
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-    'description': 'Sanity-friendly HTTP client.',
+    'description': 'Powerful and user-friendly HTTP client',
     'github_user': 'urllib3',
     'github_repo': 'urllib3',
     'github_button': False,
@@ -271,4 +271,4 @@ man_pages = [
 ]
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3.7', None),}
+    'python': ('https://docs.python.org/3', None),}
