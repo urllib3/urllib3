@@ -750,9 +750,7 @@ class TestUtil(object):
 
     @onlyPy3
     def test_assert_header_parsing_no_error_on_multipart(self):
-        if six.PY2:
-            pytest.skip("Error does not show up on Python2")
-        from http import client  # Does not exist in Python 2
+        from http import client
 
         header_msg = io.BytesIO()
         header_msg.write(
