@@ -57,6 +57,7 @@ import contextlib
 import ctypes
 import errno
 import os.path
+import platform
 import shutil
 import socket
 import ssl
@@ -206,6 +207,15 @@ def extract_from_urllib3():
     util.ssl_.HAS_SNI = orig_util_HAS_SNI
     util.IS_SECURETRANSPORT = False
     util.ssl_.IS_SECURETRANSPORT = False
+
+
+def _get_mac_version():
+    """
+    Get macOS version tuple in the form: (major, minor, patch).
+    """
+    version = platform.mac_ver()[0] + ".0"
+    maj, min_, patch = map(float, version.split(".", 2))
+    return (maj, min_, patch)
 
 
 def _read_callback(connection_id, data_buffer, data_length_pointer):
@@ -541,6 +551,12 @@ class WrappedSocket(object):
                 self.context, SecurityConst.kSSLSessionOptionBreakOnServerAuth, True
             )
             _assert_no_error(result)
+
+            # Support older cats (Snow Leopard and Lion)
+            # See https://github.com/curl/curl/commit/e3ed2b82e6fdc645af630a1f6a72f7d59de013d1
+            if (10, 6) <= _get_mac_version() < (10, 8):
+                result = Security.SSLSetEnableCertVerify(self.context, False)
+                _assert_no_error(result)
 
         # If there's a client cert, we need to use it.
         if client_cert:
