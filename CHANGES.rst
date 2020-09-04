@@ -1,6 +1,25 @@
 Changes
 =======
 
+1.25.10 (2020-07-22)
+--------------------
+
+* Added support for ``SSLKEYLOGFILE`` environment variable for
+  logging TLS session keys with use with programs like
+  Wireshark for decrypting captured web traffic (Pull #1867)
+
+* Fixed loading of SecureTransport libraries on macOS Big Sur
+  due to the new dynamic linker cache (Pull #1905)
+
+* Collapse chunked request bodies data and framing into one
+  call to ``send()`` to reduce the number of TCP packets by 2-4x (Pull #1906)
+
+* Don't insert ``None`` into ``ConnectionPool`` if the pool
+  was empty when requesting a connection (Pull #1866)
+
+* Avoid ``hasattr`` call in ``BrotliDecoder.decompress()`` (Pull #1858)
+
+
 1.25.9 (2020-04-16)
 -------------------
 

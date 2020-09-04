@@ -14,6 +14,7 @@ from .ssl_ import (
     resolve_ssl_version,
     ssl_wrap_socket,
     PROTOCOL_TLS,
+    ALPN_PROTOCOLS,
 )
 from .timeout import current_time, Timeout
 
@@ -27,6 +28,7 @@ __all__ = (
     "IS_SECURETRANSPORT",
     "SSLContext",
     "PROTOCOL_TLS",
+    "ALPN_PROTOCOLS",
     "Retry",
     "Timeout",
     "Url",

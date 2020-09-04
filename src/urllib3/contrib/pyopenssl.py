@@ -465,6 +465,10 @@ class PyOpenSSLContext(object):
             self._ctx.set_passwd_cb(lambda *_: password)
         self._ctx.use_privatekey_file(keyfile or certfile)
 
+    def set_alpn_protocols(self, protocols):
+        protocols = [six.ensure_binary(p) for p in protocols]
+        return self._ctx.set_alpn_protos(protocols)
+
     def wrap_socket(
         self,
         sock,

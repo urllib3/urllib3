@@ -29,11 +29,13 @@ env:
     # PYPI_PASSWORD is set in Travis control panel.
 
 jobs:
+  allow_failures:
+    - python: nightly
   include:
     # Lint & documentation.
-    - python: 3.6
+    - python: 3.8
       env: NOX_SESSION=lint
-    - python: 3.6
+    - python: 3.8
       env: NOX_SESSION=docs
 
     # Unit tests
@@ -47,8 +49,10 @@ jobs:
       env: NOX_SESSION=test-3.7
     - python: 3.8
       env: NOX_SESSION=test-3.8
-    - python: nightly
+    - python: 3.9-dev
       env: NOX_SESSION=test-3.9
+    - python: nightly
+      env: NOX_SESSION=test-3.10
     - python: pypy2.7-6.0
       env: NOX_SESSION=test-pypy
     - python: pypy3.5-6.0

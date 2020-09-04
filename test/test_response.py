@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
+import contextlib
 import re
 import socket
+import ssl
 import zlib
 
 from io import BytesIO, BufferedReader, TextIOWrapper
@@ -19,6 +21,7 @@ from urllib3.exceptions import (
     httplib_IncompleteRead,
     IncompleteRead,
     InvalidChunkLength,
+    SSLError,
 )
 from urllib3.packages.six.moves import http_client as httplib
 from urllib3.util.retry import Retry, RequestHistory
@@ -935,6 +938,30 @@ class TestResponse(object):
             data += c
 
         assert b"foo\nbar" == data
+
+    def test_non_timeout_ssl_error_on_read(self):
+        mac_error = ssl.SSLError(
+            "SSL routines", "ssl3_get_record", "decryption failed or bad record mac"
+        )
+
+        @contextlib.contextmanager
+        def make_bad_mac_fp():
+            fp = BytesIO(b"")
+            with mock.patch.object(fp, "read") as fp_read:
+                # mac/decryption error
+                fp_read.side_effect = mac_error
+                yield fp
+
+        with make_bad_mac_fp() as fp:
+            with pytest.raises(SSLError) as e:
+                HTTPResponse(fp)
+            assert e.value.args[0] == mac_error
+
+        with make_bad_mac_fp() as fp:
+            resp = HTTPResponse(fp, preload_content=False)
+            with pytest.raises(SSLError) as e:
+                resp.read()
+            assert e.value.args[0] == mac_error
 
 
 class MockChunkedEncodingResponse(object):

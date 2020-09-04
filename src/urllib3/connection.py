@@ -153,7 +153,7 @@ class HTTPConnection(_HTTPConnection, object):
         self._dns_host = value
 
     def _new_conn(self):
-        """ Establish a socket connection and set nodelay settings on it.
+        """Establish a socket connection and set nodelay settings on it.
 
         :return: New socket connection.
         """
@@ -249,16 +249,22 @@ class HTTPConnection(_HTTPConnection, object):
                 if not isinstance(chunk, bytes):
                     chunk = chunk.encode("utf8")
                 len_str = hex(len(chunk))[2:]
-                self.send(len_str.encode("utf-8"))
-                self.send(b"\r\n")
-                self.send(chunk)
-                self.send(b"\r\n")
+                to_send = bytearray(len_str.encode())
+                to_send += b"\r\n"
+                to_send += chunk
+                to_send += b"\r\n"
+                self.send(to_send)
 
         # After the if clause, to always have a closed body
         self.send(b"0\r\n\r\n")
 
 
 class HTTPSConnection(HTTPConnection):
+    """
+    Many of the parameters to this constructor are passed to the underlying SSL
+    socket by means of :py:func:`util.ssl_wrap_socket`.
+    """
+
     default_port = port_by_scheme["https"]
 
     cert_reqs = None

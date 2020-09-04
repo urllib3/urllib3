@@ -17,6 +17,7 @@ SSLContext = None
 HAS_SNI = False
 IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
+ALPN_PROTOCOLS = ["http/1.1"]
 
 # Maps the length of a digest to a possible hash function producing this digest
 HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
@@ -373,16 +374,21 @@ def ssl_wrap_socket(
         else:
             context.load_cert_chain(certfile, keyfile, key_password)
 
+    try:
+        if hasattr(context, "set_alpn_protocols"):
+            context.set_alpn_protocols(ALPN_PROTOCOLS)
+    except NotImplementedError:
+        pass
+
     # If we detect server_hostname is an IP address then the SNI
     # extension should not be used according to RFC3546 Section 3.1
-    # We shouldn't warn the user if SNI isn't available but we would
-    # not be using SNI anyways due to IP address for server_hostname.
-    if (
-        server_hostname is not None and not is_ipaddress(server_hostname)
-    ) or IS_SECURETRANSPORT:
-        if HAS_SNI and server_hostname is not None:
-            return context.wrap_socket(sock, server_hostname=server_hostname)
-
+    use_sni_hostname = server_hostname and not is_ipaddress(server_hostname)
+    # SecureTransport uses server_hostname in certificate verification.
+    send_sni = (use_sni_hostname and HAS_SNI) or (
+        IS_SECURETRANSPORT and server_hostname
+    )
+    # Do not warn the user if server_hostname is an invalid SNI hostname.
+    if not HAS_SNI and use_sni_hostname:
         warnings.warn(
             "An HTTPS request has been made, but the SNI (Server Name "
             "Indication) extension to TLS is not available on this platform. "
@@ -394,7 +400,11 @@ def ssl_wrap_socket(
             SNIMissingWarning,
         )
 
-    return context.wrap_socket(sock)
+    if send_sni:
+        ssl_sock = context.wrap_socket(sock, server_hostname=server_hostname)
+    else:
+        ssl_sock = context.wrap_socket(sock)
+    return ssl_sock
 
 
 def is_ipaddress(hostname):

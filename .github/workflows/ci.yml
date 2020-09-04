@@ -8,9 +8,9 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
       - name: Set up Python 3.7
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: 3.7
       - name: Check packages
@@ -25,18 +25,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [2.7, 3.5, 3.6, 3.7, 3.8]
+        python-version: [2.7, 3.5, 3.6, 3.7, 3.8, 3.9-dev]
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
       - name: Set Up Python 3.7 to run nox
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: 3.7
       - name: Set Up Python - ${{ matrix.python-version }}
         if: matrix.python_version != '3.7'
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install Dependencies
@@ -44,7 +44,9 @@ jobs:
           python3.7 -m pip install --upgrade nox
       - name: Run Tests
         run: |
-          nox -s test-${{ matrix.python-version }}
+          version=${{ matrix.python-version }}
+          NOX_SESSION=test-${version%-dev}
+          nox -s $NOX_SESSION --error-on-missing-interpreters
       - name: Upload Coverage
         uses: codecov/codecov-action@v1
         with:

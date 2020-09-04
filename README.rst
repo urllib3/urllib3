@@ -13,7 +13,7 @@
       <a href="https://pypi.org/project/urllib3/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/urllib3.svg?maxAge=86400" /></a>
    </p>
 
-urllib3 is a powerful, *sanity-friendly* HTTP client for Python. Much of the
+urllib3 is a powerful, *user-friendly* HTTP client for Python. Much of the
 Python ecosystem already uses urllib3 and you should too.
 urllib3 brings many critical features that are missing from the Python
 standard libraries:

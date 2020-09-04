@@ -28,7 +28,7 @@ RequestHistory = namedtuple(
 
 
 class Retry(object):
-    """ Retry configuration.
+    """Retry configuration.
 
     Each retry attempt will create a new Retry object with updated values, so
     they can be safely reused.
@@ -245,7 +245,7 @@ class Retry(object):
         return new_retries
 
     def get_backoff_time(self):
-        """ Formula for computing the current backoff
+        """Formula for computing the current backoff
 
         :rtype: float
         """
@@ -266,10 +266,17 @@ class Retry(object):
         if re.match(r"^\s*[0-9]+\s*$", retry_after):
             seconds = int(retry_after)
         else:
-            retry_date_tuple = email.utils.parsedate(retry_after)
+            retry_date_tuple = email.utils.parsedate_tz(retry_after)
             if retry_date_tuple is None:
                 raise InvalidHeader("Invalid Retry-After header: %s" % retry_after)
-            retry_date = time.mktime(retry_date_tuple)
+            if retry_date_tuple[9] is None:  # Python 2
+                # Assume UTC if no timezone was specified
+                # On Python2.7, parsedate_tz returns None for a timezone offset
+                # instead of 0 if no timezone is given, where mktime_tz treats
+                # a None timezone offset as local time.
+                retry_date_tuple = retry_date_tuple[:9] + (0,) + retry_date_tuple[10:]
+
+            retry_date = email.utils.mktime_tz(retry_date_tuple)
             seconds = retry_date - time.time()
 
         if seconds < 0:
@@ -302,7 +309,7 @@ class Retry(object):
         time.sleep(backoff)
 
     def sleep(self, response=None):
-        """ Sleep between retry attempts.
+        """Sleep between retry attempts.
 
         This method will respect a server's ``Retry-After`` response header
         and sleep the duration of the time requested. If that is not present, it
@@ -318,7 +325,7 @@ class Retry(object):
         self._sleep_backoff()
 
     def _is_connection_error(self, err):
-        """ Errors when we're fairly sure that the server did not receive the
+        """Errors when we're fairly sure that the server did not receive the
         request, so it should be safe to retry.
         """
         if isinstance(err, ProxyError):
@@ -326,13 +333,13 @@ class Retry(object):
         return isinstance(err, ConnectTimeoutError)
 
     def _is_read_error(self, err):
-        """ Errors that occur after the request has been started, so we should
+        """Errors that occur after the request has been started, so we should
         assume that the server began processing it.
         """
         return isinstance(err, (ReadTimeoutError, ProtocolError))
 
     def _is_method_retryable(self, method):
-        """ Checks if a given HTTP method should be retried upon, depending if
+        """Checks if a given HTTP method should be retried upon, depending if
         it is included on the method whitelist.
         """
         if self.method_whitelist and method.upper() not in self.method_whitelist:
@@ -341,7 +348,7 @@ class Retry(object):
         return True
 
     def is_retry(self, method, status_code, has_retry_after=False):
-        """ Is this method/status code retryable? (Based on whitelists and control
+        """Is this method/status code retryable? (Based on whitelists and control
         variables such as the number of total retries to allow, whether to
         respect the Retry-After header, whether this header is present, and
         whether the returned status code is on the list of status codes to
@@ -385,7 +392,7 @@ class Retry(object):
         _pool=None,
         _stacktrace=None,
     ):
-        """ Return a new Retry object with incremented retry counters.
+        """Return a new Retry object with incremented retry counters.
 
         :param response: A response object, or None, if the server did not
             return a response.

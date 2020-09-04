@@ -22,7 +22,7 @@ If you wish to add a new feature or fix a bug:
 Setting up your development environment
 ---------------------------------------
 
-In order to setup the development environment all that you need is 
+In order to setup the development environment all that you need is
 `nox <https://nox.thea.codes/en/stable/index.html>`_ installed in your machine::
 
   $ pip install --user --upgrade nox
@@ -49,7 +49,7 @@ you::
   nox > Session test-3.7 was successful.
 
 There is also a nox command for running all of our tests and multiple python
-versions.
+versions.::
 
   $ nox --reuse-existing-virtualenvs --sessions test
 
@@ -89,7 +89,7 @@ To specify an exact test case the following syntax also works:
 (eg.: ``test/with_dummyserver/test_https.py::TestHTTPS::test_simple``).
 The following argument is another valid example to pass to pytest: ``-k test_methode_name``.
 These are useful when developing new test cases and there is no point
-re-running ther entire test suite every iteration. It is also possible to
+re-running the entire test suite every iteration. It is also possible to
 further parameterize pytest for local testing.
 
 For all valid arguments, check `the pytest documentation
