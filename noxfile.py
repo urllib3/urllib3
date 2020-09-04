@@ -8,9 +8,14 @@ import nox
 # Whenever type-hints are completed on a file it should be added here so that
 # this file will continue to be checked by mypy. Errors from other files are
 # ignored.
-STUB_FILES = {
-    "src/urllib3/packages/ssl_match_hostname/__init__.pyi",
-    "src/urllib3/packages/ssl_match_hostname/_implementation.pyi",
+TYPED_FILES = {
+    "src/urllib3/exceptions.py",
+    "src/urllib3/fields.py",
+    "src/urllib3/packages/__init__.py",
+    "src/urllib3/packages/six.py",
+    "src/urllib3/packages/ssl_match_hostname/__init__.py",
+    "src/urllib3/packages/ssl_match_hostname/_implementation.py",
+    "src/urllib3/util/queue.py",
 }
 
 
@@ -105,7 +110,7 @@ def lint(session):
     session.run("flake8", "setup.py", "docs", "dummyserver", "src", "test")
 
     session.log("mypy --strict src/urllib3")
-    errors = []
+    all_errors, errors = [], []
     process = subprocess.run(
         ["mypy", "--strict", "src/urllib3"],
         env=session.env,
@@ -117,9 +122,11 @@ def lint(session):
     assert process.returncode in (0, 1)
 
     for line in process.stdout.split("\n"):
+        all_errors.append(line)
         filepath = line.partition(":")[0]
-        if filepath in STUB_FILES:
+        if filepath.replace(".pyi", ".py") in TYPED_FILES:
             errors.append(line)
+    session.log("all errors count: {}".format(len(all_errors)))
     if errors:
         session.error("\n" + "\n".join(sorted(set(errors))))
 
