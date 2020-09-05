@@ -1427,6 +1427,147 @@ class TestSSL(SocketDummyServerTestCase):
         with pytest.raises(SSLError):
             ssl_wrap_socket(None, ca_certs="/tmp/fake-file")
 
+    from contextlib import contextmanager
+
+    @contextmanager
+    def _simple_https_pool(self, *args, **kwargs):
+        with HTTPSConnectionPool(
+            self.host, self.port, *args, retries=False, **kwargs
+        ) as pool:
+            yield pool
+
+    def test_load_verify_locations_cadata(self, good_ca_chain):
+        """
+        Ensure that load_verify_locations can load cadata for all backends
+        """
+        ca_cert, server_cert, server_key = good_ca_chain
+
+        def socket_handler(listener):
+            for i in range(2):
+                sock = listener.accept()[0]
+                try:
+                    ssl_sock = ssl.wrap_socket(
+                        sock,
+                        server_side=True,
+                        keyfile=server_key["file"],
+                        certfile=server_cert["file"],
+                        ca_certs=ca_cert["file"],
+                    )
+                except Exception:
+                    sock.close()
+                    continue
+
+                buf = b""
+                while not buf.endswith(b"\r\n\r\n"):
+                    buf += ssl_sock.recv(65536)
+
+                ssl_sock.send(
+                    b"HTTP/1.1 200 OK\r\n"
+                    b"Content-Type: text/plain\r\n"
+                    b"Content-Length: 0\r\n\r\n"
+                )
+
+                ssl_sock.close()
+
+        self._start_server(socket_handler)
+
+        # fail with wrong CA
+        with self._simple_https_pool(ca_certs=DEFAULT_CA) as pool:
+            with pytest.raises(SSLError):
+                pool.request("GET", "/", timeout=LONG_TIMEOUT)
+
+        # data
+        with self._simple_https_pool(ca_cert_data=ca_cert["data"]) as pool:
+            r = pool.request("GET", "/", timeout=LONG_TIMEOUT)
+            assert r.status == 200
+
+    @pytest.mark.parametrize(
+        "cafile,capath,cadata",
+        [
+            # Fail
+            (False, None, None),
+            (None, False, None),
+            (None, None, False),
+            (False, False, None),
+            (None, False, False),
+            (False, False, False),
+            # Succeed
+            (True, None, None),
+            (None, True, None),
+            (None, None, True),
+            (True, True, None),
+            (None, True, True),
+            (True, True, True),
+            (True, False, None),
+            (True, None, False),
+            (False, True, None),
+            (None, True, False),
+            (False, None, True),
+            (None, False, True),
+            (True, True, False),
+            (True, False, True),
+            (False, True, True),
+        ],
+    )
+    def test_load_verify_locations_multiple(
+        self, cafile, capath, cadata, good_ca_chain, bad_ca_chain
+    ):
+        """
+        Ensure that validation succeeds iff cafile or capth or cadata is valid
+        """
+        if capath is not None and ssl_.IS_SECURETRANSPORT:
+            pytest.skip("SecureTransport does not support capath")
+        should_succeed = cafile or capath or cadata
+        good_ca_cert, server_cert, server_key = good_ca_chain
+        bad_ca_cert, _, _ = bad_ca_chain
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            try:
+                ssl_sock = ssl.wrap_socket(
+                    sock,
+                    server_side=True,
+                    keyfile=server_key["file"],
+                    certfile=server_cert["file"],
+                    ca_certs=good_ca_cert["file"],
+                )
+            except Exception:
+                sock.close()
+                return
+
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf += ssl_sock.recv(65536)
+
+            ssl_sock.send(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: text/plain\r\n"
+                b"Content-Length: 0\r\n\r\n"
+            )
+
+            ssl_sock.close()
+
+        self._start_server(socket_handler)
+
+        kwargs = {}
+        if cafile is not None:
+            kwargs["ca_certs"] = good_ca_cert["file"] if cafile else bad_ca_cert["file"]
+        if capath is not None:
+            kwargs["ca_cert_dir"] = (
+                good_ca_cert["path"] if capath else bad_ca_cert["path"]
+            )
+        if cadata is not None:
+            kwargs["ca_cert_data"] = (
+                good_ca_cert["data"] if cadata else bad_ca_cert["data"]
+            )
+        with self._simple_https_pool(**kwargs) as pool:
+            if should_succeed:
+                r = pool.request("GET", "/", timeout=LONG_TIMEOUT)
+                assert r.status == 200
+            else:
+                with pytest.raises(SSLError):
+                    pool.request("GET", "/", timeout=LONG_TIMEOUT)
+
     def test_ssl_custom_validation_failure_terminates(self, tmpdir):
         """
         Ensure that the underlying socket is terminated if custom validation fails.

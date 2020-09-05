@@ -861,32 +861,32 @@ class TestUtilSSL(object):
             None, "CERT_REQUIRED", ciphers=None
         )
 
-    def test_ssl_wrap_socket_loads_verify_locations(self):
-        socket = object()
-        mock_context = Mock()
-        ssl_wrap_socket(ssl_context=mock_context, ca_certs="/path/to/pem", sock=socket)
-        mock_context.load_verify_locations.assert_called_once_with(
-            "/path/to/pem", None, None
-        )
-
-    def test_ssl_wrap_socket_loads_certificate_directories(self):
-        socket = object()
-        mock_context = Mock()
-        ssl_wrap_socket(
-            ssl_context=mock_context, ca_cert_dir="/path/to/pems", sock=socket
-        )
-        mock_context.load_verify_locations.assert_called_once_with(
-            None, "/path/to/pems", None
-        )
-
-    def test_ssl_wrap_socket_loads_certificate_data(self):
+    @pytest.mark.parametrize(
+        "ca_certs,ca_cert_dir,ca_cert_data",
+        [
+            ("/path/to/pem", None, None),
+            (None, "/path/to/pems", None),
+            (None, None, "TOTALLY PEM DATA"),
+            ("/path/to/pem", "/path/to/pems", None),
+            ("/path/to/pem", None, "TOTALLY PEM DATA"),
+            (None, "/path/to/pems", "TOTALLY PEM DATA"),
+            ("/path/to/pem", "/path/to/pems", "TOTALLY PEM DATA"),
+        ],
+    )
+    def test_ssl_wrap_socket_loads_verify_locations(
+        self, ca_certs, ca_cert_dir, ca_cert_data
+    ):
         socket = object()
         mock_context = Mock()
         ssl_wrap_socket(
-            ssl_context=mock_context, ca_cert_data="TOTALLY PEM DATA", sock=socket
+            ssl_context=mock_context,
+            ca_certs=ca_certs,
+            ca_cert_dir=ca_cert_dir,
+            ca_cert_data=ca_cert_data,
+            sock=socket,
         )
         mock_context.load_verify_locations.assert_called_once_with(
-            None, None, "TOTALLY PEM DATA"
+            ca_certs, ca_cert_dir, ca_cert_data
         )
 
     def _wrap_socket_and_mock_warn(self, sock, server_hostname):

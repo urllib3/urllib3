@@ -1,13 +1,19 @@
 import collections
 import contextlib
+import hashlib
+import os
 import platform
 import socket
 import ssl
+import struct
 import sys
 import threading
 
 import pytest
+import six
 import trustme
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
 from tornado import ioloop, web
 
 from dummyserver.handlers import TestingApp
@@ -174,3 +180,89 @@ def requires_tlsv1_3(supported_tls_versions):
         or "TLSv1.3" not in supported_tls_versions
     ):
         pytest.skip("Test requires TLSv1.3")
+
+
+def _generate_ca_chain(tmp, subdir=None):
+    """
+    Create a custom CA, certificate and key
+    """
+
+    def normalize_names(obj):
+        """
+        Copy the X509Name with names in lowercase.
+        """
+        if hasattr(obj, "_attributes"):
+            klass = obj.__class__
+            return klass(map(normalize_names, obj._attributes))
+        if type(obj) is x509.name.NameAttribute:
+            val = obj.value
+            if type(obj.value) is six.text_type:
+                val = obj.value.lower()
+            return x509.name.NameAttribute(obj.oid, val)
+
+    def subject_name_hash(cert_pem):
+        """
+        New-style OpenSSL certificate subject name hash.
+        """
+        cert = x509.load_pem_x509_certificate(cert_pem, default_backend())
+        subject = normalize_names(cert.subject)
+        subject_der = subject.public_bytes(default_backend())
+        assert subject_der[:2] == b"\x30\x40"
+        skip_seq = subject_der[2:]
+        full_hash = hashlib.sha1(skip_seq).digest()
+        hash_dword = struct.unpack("<I", full_hash[:4])[0]
+        return "%08x.0" % (hash_dword,)
+
+    # prepare filenames and directories
+    if subdir is not None:
+        tmp = tmp / subdir
+        os.makedirs(str(tmp))
+    ca_cert_file = str(tmp / "ca.pem")
+    ca_cert_dir = str(tmp / "capath")
+    server_cert_file = str(tmp / "server.pem")
+    server_key_file = str(tmp / "server.key")
+    os.makedirs(ca_cert_dir)
+
+    # generate a CA and a certificate
+    ca = trustme.CA()
+    ca_cert_data = ca.cert_pem.bytes()
+    snh = subject_name_hash(ca_cert_data)
+    ca_cert_file_in_dir = os.path.join(ca_cert_dir, snh)
+    cert = ca.issue_cert(u"localhost")
+
+    # write certificates to files
+    ca.cert_pem.write_to_path(ca_cert_file)
+    ca.cert_pem.write_to_path(ca_cert_file_in_dir)
+    cert.cert_chain_pems[0].write_to_path(server_cert_file)
+    cert.private_key_pem.write_to_path(server_key_file)
+    return (
+        {
+            "file": ca_cert_file,
+            "path": ca_cert_dir,
+            "data": ca_cert_data,
+        },
+        {
+            "file": server_cert_file,
+        },
+        {
+            "file": server_key_file,
+        },
+    )
+
+
+def ca_chain(subdir):
+    """
+    A temporary and valid CA chain.
+    """
+
+    @pytest.fixture(scope="session")
+    def _gen(tmp_path_factory):
+        tmp = tmp_path_factory.mktemp("cachain")
+        return _generate_ca_chain(tmp, subdir)
+
+    return _gen
+
+
+# Two different chains
+good_ca_chain = ca_chain("good")
+bad_ca_chain = ca_chain("bad")
