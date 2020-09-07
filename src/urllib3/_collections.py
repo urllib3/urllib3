@@ -58,7 +58,6 @@ class RecentlyUsedContainer(MutableMapping):
             return item
 
     def __setitem__(self, key, value):
-        evicted_value = _Null
         with self.lock:
             # Possibly evict the existing value of 'key'
             evicted_value = self._container.get(key, _Null)
