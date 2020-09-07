@@ -17,6 +17,14 @@ TYPED_FILES = {
     "src/urllib3/packages/ssl_match_hostname/_implementation.py",
     "src/urllib3/util/queue.py",
 }
+SOURCE_FILES = [
+    "docs/",
+    "dummyserver/",
+    "src/",
+    "test/",
+    "noxfile.py",
+    "setup.py",
+]
 
 
 def tests_impl(session, extras="socks,secure,brotli"):
@@ -93,7 +101,7 @@ def app_engine(session):
 def blacken(session):
     """Run black code formatter."""
     session.install("black")
-    session.run("black", "src", "dummyserver", "test", "noxfile.py", "setup.py")
+    session.run("black", *SOURCE_FILES)
 
     lint(session)
 
@@ -104,10 +112,8 @@ def lint(session):
     session.run("flake8", "--version")
     session.run("black", "--version")
     session.run("mypy", "--version")
-    session.run(
-        "black", "--check", "src", "dummyserver", "test", "noxfile.py", "setup.py"
-    )
-    session.run("flake8", "setup.py", "docs", "dummyserver", "src", "test")
+    session.run("black", "--check", *SOURCE_FILES)
+    session.run("flake8", *SOURCE_FILES)
 
     session.log("mypy --strict src/urllib3")
     all_errors, errors = [], []
@@ -139,4 +145,4 @@ def docs(session):
     session.chdir("docs")
     if os.path.exists("_build"):
         shutil.rmtree("_build")
-    session.run("sphinx-build", "-W", ".", "_build/html")
+    session.run("sphinx-build", "-b", "dirhtml", "-W", ".", "_build/html")
