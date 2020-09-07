@@ -118,7 +118,7 @@ def lint(session):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
-    # Ensure that mypy itself ran succesfully
+    # Ensure that mypy itself ran successfully
     assert process.returncode in (0, 1)
 
     for line in process.stdout.split("\n"):
