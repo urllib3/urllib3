@@ -349,14 +349,9 @@ def ssl_wrap_socket(
     if ca_certs or ca_cert_dir or ca_cert_data:
         try:
             context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
-        except IOError as e:  # Platform-specific: Python 2.7
+        except IOError as e:
+            # TODO: Can be more strict in Python3
             raise SSLError(e)
-        # Py33 raises FileNotFoundError which subclasses OSError
-        # These are not equivalent unless we check the errno attribute
-        except OSError as e:  # Platform-specific: Python 3.3 and beyond
-            if e.errno == errno.ENOENT:
-                raise SSLError(e)
-            raise
 
     elif ssl_context is None and hasattr(context, "load_default_certs"):
         # try to load OS default certs; works well on Windows (require Python3.4+)
