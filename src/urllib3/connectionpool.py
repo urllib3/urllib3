@@ -516,7 +516,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         release_conn=None,
         chunked=False,
         body_pos=None,
-        destination_scheme=None,
         **response_kw
     ):
         """
@@ -604,10 +603,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             Position to seek to in file-like body in the event of a retry or
             redirect. Typically this won't need to be set because urllib3 will
             auto-populate the value when needed.
-
-        :param str destination_scheme:
-            Indicates the ultimate destination scheme (e.g HTTPS/HTTP) when using
-            proxies.
 
         :param \\**response_kw:
             Additional parameters are passed to
@@ -781,7 +776,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 release_conn=release_conn,
                 chunked=chunked,
                 body_pos=body_pos,
-                destination_scheme=destination_scheme,
                 **response_kw
             )
 
@@ -815,7 +809,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 release_conn=release_conn,
                 chunked=chunked,
                 body_pos=body_pos,
-                destination_scheme=destination_scheme,
                 **response_kw
             )
 
@@ -846,7 +839,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 release_conn=release_conn,
                 chunked=chunked,
                 body_pos=body_pos,
-                destination_scheme=destination_scheme,
                 **response_kw
             )
 
