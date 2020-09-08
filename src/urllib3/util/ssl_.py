@@ -44,7 +44,7 @@ try:  # Test for SSL features
     import ssl
     from ssl import wrap_socket, CERT_REQUIRED
     from ssl import HAS_SNI  # Has SNI?
-    from ..contrib.ssl import SSLTransport, validate_ssl_context_for_tls_in_tls
+    from .ssltransport import SSLTransport, validate_ssl_context_for_tls_in_tls
 except ImportError:
     pass
 
