@@ -706,9 +706,8 @@ class TestSocketClosing(SocketDummyServerTestCase):
         self._start_server(socket_handler)
         with HTTPConnectionPool(self.host, self.port) as pool:
             poolsize = pool.pool.qsize()
-            timeout = Timeout(connect=LONG_TIMEOUT, read=SHORT_TIMEOUT)
             response = pool.urlopen(
-                "GET", "/", retries=0, preload_content=False, timeout=timeout
+                "GET", "/", retries=0, preload_content=False, timeout=LONG_TIMEOUT
             )
             try:
                 with pytest.raises(ReadTimeoutError):
