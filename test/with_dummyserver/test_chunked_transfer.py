@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 
-import os
-
 import pytest
 
 from urllib3 import HTTPConnectionPool
 from urllib3.util.retry import Retry
 from urllib3.util import SUPPRESS_USER_AGENT
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
+from test import notWindows
 
 # Retry failed tests
 pytestmark = pytest.mark.flaky
@@ -157,7 +156,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
                 sock.close()
         assert self.chunked_requests == 2
 
-    @pytest.mark.skipif(os.name == "nt", reason="flaky on Windows")
+    @notWindows
     def test_preserve_chunked_on_redirect(self):
         self.chunked_requests = 0
 
@@ -185,7 +184,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
             )
         assert self.chunked_requests == 2
 
-    @pytest.mark.skipif(os.name == "nt", reason="flaky on Windows")
+    @notWindows
     def test_preserve_chunked_on_broken_connection(self):
         self.chunked_requests = 0
 
