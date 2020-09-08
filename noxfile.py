@@ -145,4 +145,4 @@ def docs(session):
     session.chdir("docs")
     if os.path.exists("_build"):
         shutil.rmtree("_build")
-    session.run("sphinx-build", "-b", "dirhtml", "-W", ".", "_build/html")
+    session.run("sphinx-build", "-b", "html", "-W", ".", "_build/html")

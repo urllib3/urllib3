@@ -74,5 +74,9 @@ pygments_style = "friendly"
 # a list of builtin themes.
 html_theme = "furo"
 html_favicon = "images/favicon.png"
+html_logo = "images/banner.svg"
+
+html_static_path = ["_static"]
+html_css_files = ["tweaks.css"]
 
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
