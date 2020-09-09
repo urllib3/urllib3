@@ -30,10 +30,7 @@ jobs:
         run: |
           nox -s test-${{ matrix.python-version }}
       - name: Upload Coverage
-        uses: codecov/codecov-action@v1
-        with:
-          file: ./coverage.xml
-          flags: unittests
-          name: codecov-umbrella
-          yml: ./codecov.yml
-          fail_ci_if_error: true
+        run: ./ci/upload_coverage.sh
+        shell: bash
+        env:
+          JOB_NAME: 'macOS (${{ matrix.python-version }})'
