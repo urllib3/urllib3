@@ -440,12 +440,32 @@ class TestSocketClosing(SocketDummyServerTestCase):
         # BadStatusLine exception for py2.
         # RemoteDisconnected exception for py3.
 
+        fin = Event()
+
         def socket_handler(listener):
             sock = listener.accept()[0]
+
+            # Read data
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf = sock.recv(65536)
+            # Send reply
+            body = "OK"
+            sock.send(
+                (
+                        "HTTP/1.1 200 OK\r\n"
+                        "Content-Type: text/plain\r\n"
+                        "Content-Length: %d\r\n"
+                        "\r\n"
+                        "%s" % (len(body), body)
+                ).encode("utf-8")
+            )
+
             # Shut down the connection.
             # Further sends and receives are disallowed.
-            sock.shutdown(2)
-            sock.close()
+            sock.shutdown(2) # simulate a server sent a FIN
+            fin.set() # let the test know it can proceed
+            sock.close() # close connection
 
         data = "I'm in ur multipart form-data, hazing a cheezburgr"
         fields = {
@@ -457,6 +477,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
         with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.request("POST", "/upload", fields=fields,
+                                    retries=0)
+            assert response.status == 200
+            fin.wait()
             with pytest.raises(MaxRetryError):
                 response = pool.request("POST", "/upload", fields=fields, retries=0)
 

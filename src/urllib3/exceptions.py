@@ -61,6 +61,14 @@ class ProtocolError(HTTPError):
     pass
 
 
+class RemoteDisconnectedError(HTTPError):
+    "Raised when the connection to a server fails."
+
+    def __init__(self, message, error, *args):
+        super(RemoteDisconnectedError, self).__init__(message, error, *args)
+        self.original_error = error
+
+
 #: Renamed to ProtocolError but aliased for backwards compatibility.
 ConnectionError = ProtocolError
 

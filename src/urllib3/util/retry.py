@@ -10,6 +10,7 @@ from ..exceptions import (
     ConnectTimeoutError,
     MaxRetryError,
     ProtocolError,
+    RemoteDisconnectedError,
     ReadTimeoutError,
     ResponseError,
     InvalidHeader,
@@ -329,6 +330,8 @@ class Retry(object):
         request, so it should be safe to retry.
         """
         if isinstance(err, ProxyError):
+            err = err.original_error
+        if isinstance(err, RemoteDisconnectedError):
             err = err.original_error
         return isinstance(err, ConnectTimeoutError)
 
