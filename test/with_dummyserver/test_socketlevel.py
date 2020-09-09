@@ -887,7 +887,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 retries=1,
                 release_conn=False,
                 preload_content=False,
-                timeout=Timeout(connect=LONG_TIMEOUT, read=SHORT_TIMEOUT),
+                timeout=LONG_TIMEOUT,
             )
 
             # The connection should still be on the response object, and none
