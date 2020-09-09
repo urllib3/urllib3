@@ -74,7 +74,7 @@ For Enterprise
 Installing
 ----------
 
-urllib3 can be installed with `Pip <https://pip.pypa.io>`_
+urllib3 can be installed with `pip <https://pip.pypa.io>`_
 
 .. code-block:: bash
 
