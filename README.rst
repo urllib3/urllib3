@@ -27,7 +27,9 @@ standard libraries:
 - Proxy support for HTTP and SOCKS.
 - 100% test coverage.
 
-urllib3 is powerful and easy to use::
+urllib3 is powerful and easy to use:
+
+.. code-block:: python
 
     >>> import urllib3
     >>> http = urllib3.PoolManager()
@@ -41,7 +43,7 @@ urllib3 is powerful and easy to use::
 Installing
 ----------
 
-urllib3 can be installed with `Pip <https://pip.pypa.io>`_::
+urllib3 can be installed with `pip <https://pip.pypa.io>`_::
 
     $ python -m pip install urllib3
 
@@ -61,7 +63,7 @@ Contributing
 ------------
 
 urllib3 happily accepts contributions. Please see our
-`contributing documentation <https://urllib3.readthedocs.io/contributing.html>`_
+`contributing documentation <https://urllib3.readthedocs.io/en/latest/contributing.html>`_
 for some tips on getting started.
 
 
@@ -91,7 +93,7 @@ Sponsorship
 -----------
 
 If your company benefits from this library, please consider `sponsoring its
-development <https://urllib3.readthedocs.io/sponsors.html>`_.
+development <https://urllib3.readthedocs.io/en/latest/sponsors.html>`_.
 
 
 For Enterprise
