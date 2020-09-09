@@ -348,8 +348,7 @@ def ssl_wrap_socket(
     if ca_certs or ca_cert_dir or ca_cert_data:
         try:
             context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
-        except IOError as e:
-            # TODO: Can be more strict in Python3
+        except (IOError, OSError) as e:
             raise SSLError(e)
 
     elif ssl_context is None and hasattr(context, "load_default_certs"):
