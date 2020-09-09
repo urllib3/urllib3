@@ -1,0 +1,14 @@
+version: 2
+
+python:
+  install:
+    - method: pip
+      path: .
+      extra_requirements:
+        - brotli
+        - secure
+        - socks
+    - requirements: docs/requirements.txt
+
+sphinx:
+  fail_on_warning: true
