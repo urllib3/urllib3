@@ -414,6 +414,52 @@ class TestSocketClosing(SocketDummyServerTestCase):
             assert response.status == 200
             assert response.data == b"Response 1"
 
+    def test_server_closed_connection_right_before_request(self):
+        # This test is simulating situation, when request is sent
+        # to server, but in same time server already closed connection.
+        #
+        # This also means that request wil never reach destination, because
+        # already closed connection.
+        #
+        # Test scenario:
+        #
+        # 1. Request should raise MaxRetryError, because max_retries=0
+        #
+        # https://bugs.python.org/issue41345
+        # https://github.com/psf/requests/issues/4664
+        # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=899406
+        # https://bugs.python.org/issue3566
+        # https://hg.python.org/cpython/rev/eba80326ba53
+        #
+        # Note from https://bugs.python.org/issue3566
+        #
+        # If the server closed the connection,
+        # by calling close() or shutdown(SHUT_WR),
+        # before receiving a short request (<= 1 MB),
+        # the "http.client" ("httlib" in py2) module raises:
+        # BadStatusLine exception for py2.
+        # RemoteDisconnected exception for py3.
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            # Shut down the connection.
+            # Further sends and receives are disallowed.
+            sock.shutdown(2)
+            sock.close()
+
+        data = "I'm in ur multipart form-data, hazing a cheezburgr"
+        fields = {
+            "upload_param": "filefield",
+            "upload_filename": "lolcat.txt",
+            "upload_size": len(data),
+            "filefield": ("lolcat.txt", data),
+        }
+
+        self._start_server(socket_handler)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            with pytest.raises(MaxRetryError):
+                response = pool.request("POST", "/upload", fields=fields, retries=0)
+
     def test_connection_refused(self):
         # Does the pool retry if there is no listener on the port?
         host, port = get_unreachable_address()
