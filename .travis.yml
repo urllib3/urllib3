@@ -8,11 +8,11 @@ before_install:
   - python -c "import ssl; print(ssl.OPENSSL_VERSION)"
 
 install:
-  - ./_travis/install.sh
+  - ./ci/install.sh
 
 script:
-  - ./_travis/run.sh
-  - ./_travis/upload_coverage.sh
+  - ./ci/run.sh
+  - ./ci/upload_coverage.sh
 
 cache:
   directories:
@@ -82,7 +82,7 @@ jobs:
     - python: 3.7
       stage: deploy
       script:
-        - ./_travis/deploy.sh
+        - ./ci/deploy.sh
 
 stages:
   - name: test
