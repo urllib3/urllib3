@@ -148,7 +148,7 @@ def notWindows(test):
 
     @six.wraps(test)
     def wrapper(*args, **kwargs):
-        msg = "{} is flaky on Windows".format(test.__name__)
+        msg = "{name} does not run on Windows".format(name=test.__name__)
         if platform.system() == "Windows":
             pytest.skip(msg)
         return test(*args, **kwargs)

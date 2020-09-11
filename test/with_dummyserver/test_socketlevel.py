@@ -1,6 +1,7 @@
 # TODO: Break this module up into pieces. Maybe group by functionality tested
 # rather than the socket level-ness of it.
 from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
+from urllib3.connection import HTTPConnection
 from urllib3.poolmanager import proxy_from_url
 from urllib3.connection import _get_default_user_agent
 from urllib3.exceptions import (
@@ -56,6 +57,7 @@ from test import (
     LONG_TIMEOUT,
     notPyPy2,
     notSecureTransport,
+    notWindows,
     resolvesLocalhostFQDN,
 )
 
@@ -1807,6 +1809,49 @@ class TestRetryPoolSizeDrainFail(SocketDummyServerTestCase):
         ) as pool:
             pool.urlopen("GET", "/not_found", preload_content=False)
             assert pool.num_connections == 1
+
+
+class TestBrokenPipe(SocketDummyServerTestCase):
+    @notWindows
+    def test_ignore_broken_pipe_errors(self, monkeypatch):
+        # On Windows an aborted connection raises an error on
+        # attempts to read data out of a socket that's been closed.
+        sock_shut = Event()
+        orig_connect = HTTPConnection.connect
+        # a buffer that will cause two sendall calls
+        buf = "a" * 1024 * 1024 * 4
+
+        def connect_and_wait(*args, **kw):
+            ret = orig_connect(*args, **kw)
+            assert sock_shut.wait(5)
+            return ret
+
+        def socket_handler(listener):
+            for i in range(2):
+                sock = listener.accept()[0]
+                sock.send(
+                    b"HTTP/1.1 404 Not Found\r\n"
+                    b"Connection: close\r\n"
+                    b"Content-Length: 10\r\n"
+                    b"\r\n"
+                    b"xxxxxxxxxx"
+                )
+                sock.shutdown(socket.SHUT_RDWR)
+                sock_shut.set()
+                sock.close()
+
+        monkeypatch.setattr(HTTPConnection, "connect", connect_and_wait)
+        self._start_server(socket_handler)
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("POST", "/", body=buf)
+            assert r.status == 404
+            assert r.headers["content-length"] == "10"
+            assert r.data == b"xxxxxxxxxx"
+
+            r = pool.request("POST", "/admin", chunked=True, body=buf)
+            assert r.status == 404
+            assert r.headers["content-length"] == "10"
+            assert r.data == b"xxxxxxxxxx"
 
 
 class TestMultipartResponse(SocketDummyServerTestCase):

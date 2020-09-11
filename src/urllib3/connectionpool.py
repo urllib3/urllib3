@@ -34,6 +34,7 @@ from .connection import (
     VerifiedHTTPSConnection,
     HTTPException,
     BaseSSLError,
+    BrokenPipeError,
 )
 from .request import RequestMethods
 from .response import HTTPResponse
@@ -386,10 +387,28 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # conn.request() calls httplib.*.request, not the method in
         # urllib3.request. It also calls makefile (recv) on the socket.
-        if chunked:
-            conn.request_chunked(method, url, **httplib_request_kw)
-        else:
-            conn.request(method, url, **httplib_request_kw)
+        try:
+            if chunked:
+                conn.request_chunked(method, url, **httplib_request_kw)
+            else:
+                conn.request(method, url, **httplib_request_kw)
+
+        # We are swallowing BrokenPipeError (errno.EPIPE) since the server is
+        # legitimately able to close the connection after sending a valid response.
+        # With this behaviour, the received response is still readable.
+        except BrokenPipeError:
+            # Python 3
+            pass
+        except IOError as e:
+            # Python 2 and macOS/Linux
+            # EPIPE and ESHUTDOWN are BrokenPipeError on Python 2, and EPROTOTYPE is needed on macOS
+            # https://erickt.github.io/blog/2014/11/19/adventures-in-debugging-a-potential-osx-kernel-bug/
+            if e.errno not in {
+                errno.EPIPE,
+                errno.ESHUTDOWN,
+                errno.EPROTOTYPE,
+            }:
+                raise
 
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout

@@ -30,6 +30,15 @@ except NameError:
         pass
 
 
+try:  # Python 3:
+    # Not a no-op, we're adding this to the namespace so it can be imported.
+    BrokenPipeError = BrokenPipeError
+except NameError:  # Python 2:
+
+    class BrokenPipeError(Exception):
+        pass
+
+
 from .exceptions import (
     NewConnectionError,
     ConnectTimeoutError,
