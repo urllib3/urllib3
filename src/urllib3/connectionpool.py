@@ -155,11 +155,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     :param _proxy:
         Parsed proxy URL, should not be used directly, instead, see
-        :class:`urllib3.connectionpool.ProxyManager`"
+        :class:`urllib3.connectionpool.ProxyManager`
 
     :param _proxy_headers:
         A dictionary with proxy headers, should not be used directly,
-        instead, see :class:`urllib3.connectionpool.ProxyManager`"
+        instead, see :class:`urllib3.connectionpool.ProxyManager`
 
     :param \\**conn_kw:
         Additional parameters are used to create fresh :class:`urllib3.connection.HTTPConnection`,

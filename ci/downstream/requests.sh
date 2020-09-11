@@ -7,7 +7,7 @@ case "${1}" in
         git clone --depth 1 https://github.com/psf/requests
         cd requests
         git rev-parse HEAD
-        python -m pip install -r ${TRAVIS_BUILD_DIR}/_travis/downstream/requests-requirements.txt
+        python -m pip install -r ${TRAVIS_BUILD_DIR}/ci/downstream/requests-requirements.txt
         python -m pip install .
         ;;
     run)

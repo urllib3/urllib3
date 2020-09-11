@@ -191,7 +191,7 @@ class PoolManager(RequestMethods):
 
     def _new_pool(self, scheme, host, port, request_context=None):
         """
-        Create a new :class:`ConnectionPool` based on host, port, scheme, and
+        Create a new :class:`urllib3.connectionpool.ConnectionPool` based on host, port, scheme, and
         any additional pool keyword arguments.
 
         If ``request_context`` is provided, it is provided as keyword arguments
@@ -227,7 +227,7 @@ class PoolManager(RequestMethods):
 
     def connection_from_host(self, host, port=None, scheme="http", pool_kwargs=None):
         """
-        Get a :class:`ConnectionPool` based on the host, port, and scheme.
+        Get a :class:`urllib3.connectionpool.ConnectionPool` based on the host, port, and scheme.
 
         If ``port`` isn't given, it will be derived from the ``scheme`` using
         ``urllib3.connectionpool.port_by_scheme``. If ``pool_kwargs`` is
@@ -250,7 +250,7 @@ class PoolManager(RequestMethods):
 
     def connection_from_context(self, request_context):
         """
-        Get a :class:`ConnectionPool` based on the request context.
+        Get a :class:`urllib3.connectionpool.ConnectionPool` based on the request context.
 
         ``request_context`` must at least contain the ``scheme`` key and its
         value must be a key in ``key_fn_by_scheme`` instance variable.
@@ -265,7 +265,7 @@ class PoolManager(RequestMethods):
 
     def connection_from_pool_key(self, pool_key, request_context=None):
         """
-        Get a :class:`ConnectionPool` based on the provided pool key.
+        Get a :class:`urllib3.connectionpool.ConnectionPool` based on the provided pool key.
 
         ``pool_key`` should be a namedtuple that only contains immutable
         objects. At a minimum it must have the ``scheme``, ``host``, and

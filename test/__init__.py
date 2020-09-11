@@ -143,6 +143,19 @@ def notPyPy2(test):
     return wrapper
 
 
+def notWindows(test):
+    """Skips this test on Windows"""
+
+    @six.wraps(test)
+    def wrapper(*args, **kwargs):
+        msg = "{} is flaky on Windows".format(test.__name__)
+        if platform.system() == "Windows":
+            pytest.skip(msg)
+        return test(*args, **kwargs)
+
+    return wrapper
+
+
 def onlyBrotlipy():
     return pytest.mark.skipif(brotli is None, reason="only run if brotlipy is present")
 

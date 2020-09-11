@@ -65,7 +65,6 @@ _HTML5_REPLACEMENTS = {
     u"\u0022": u"%22",
     # Replace "\" with "\\".
     u"\u005C": u"\u005C\u005C",
-    u"\u005C": u"\u005C\u005C",
 }
 
 # All control characters from 0x00 to 0x1F *except* 0x1B.

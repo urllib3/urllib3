@@ -48,10 +48,7 @@ jobs:
           NOX_SESSION=test-${version%-dev}
           nox -s $NOX_SESSION --error-on-missing-interpreters
       - name: Upload Coverage
-        uses: codecov/codecov-action@v1
-        with:
-          file: ./coverage.xml
-          flags: unittests
-          name: codecov-umbrella
-          yml: ./codecov.yml
-          fail_ci_if_error: true
+        run: ./ci/upload_coverage.sh
+        shell: bash
+        env:
+          JOB_NAME: 'macOS (${{ matrix.python-version }})'
