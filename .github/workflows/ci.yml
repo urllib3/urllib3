@@ -21,7 +21,7 @@ jobs:
           python3.7 -m twine check dist/*
   macOS:
     runs-on: macos-latest
-    
+
     strategy:
       fail-fast: false
       matrix:
@@ -51,4 +51,41 @@ jobs:
         run: ./ci/upload_coverage.sh
         shell: bash
         env:
-          JOB_NAME: 'macOS (${{ matrix.python-version }})'
+          JOB_NAME: "macOS (${{ matrix.python-version }})"
+
+  win32:
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [2.7, 3.5, 3.6, 3.7, 3.8, 3.9-dev]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+      - name: Set Up Python 3.7 to run nox
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: Mark Python3.7 as base version
+        run: copy ${env:pythonLocation}\python.exe ${env:pythonLocation}\python_base.exe
+      - name: Set Up Python - ${{ matrix.python-version }}
+        if: matrix.python_version != '3.7'
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Dependencies
+        run: |
+          python_base -m pip install --upgrade nox
+      - name: Run Tests
+        run: |
+          ${env:version}="${{ matrix.python-version }}"
+          ${env:NOX_SESSION}="test-" + ${env:version}.Replace("-dev", "")
+          nox -s ${env:NOX_SESSION} --error-on-missing-interpreters
+      - name: Upload Coverage
+        run: |
+          python_base -m pip install --upgrade codecov
+          codecov --env NOX_SESSION --file coverage.xml
+        env:
+          JOB_NAME: "win32 (${{ matrix.python-version }})"
