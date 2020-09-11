@@ -270,7 +270,7 @@ Certificate Verification
 
     HTTPS connections are now verified by default (``cert_reqs = 'CERT_REQUIRED'``).
 
-While you can disable certification verification, it is highly recommend to leave it on.
+While you can disable certification verification by setting ``cert_reqs = 'CERT_NONE'``, it is highly recommend to leave it on.
 
 Unless otherwise specified urllib3 will try to load the default system certificate stores.
 The most reliable cross-platform method is to use the `certifi <https://certifi.io/>`_
