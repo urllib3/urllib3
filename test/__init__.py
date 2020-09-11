@@ -148,7 +148,7 @@ def notWindows(test):
 
     @six.wraps(test)
     def wrapper(*args, **kwargs):
-        msg = "{} is flaky on Windows".format(test.__name__)
+        msg = "{name} does not run on Windows".format(name=test.__name__)
         if platform.system() == "Windows":
             pytest.skip(msg)
         return test(*args, **kwargs)
@@ -173,19 +173,6 @@ def notSecureTransport(test):
     def wrapper(*args, **kwargs):
         msg = "{name} does not run with SecureTransport".format(name=test.__name__)
         if ssl_.IS_SECURETRANSPORT:
-            pytest.skip(msg)
-        return test(*args, **kwargs)
-
-    return wrapper
-
-
-def notWindows(test):
-    """Skips this test when running on Windows"""
-
-    @six.wraps(test)
-    def wrapper(*args, **kwargs):
-        msg = "{name} does not run on Windows".format(name=test.__name__)
-        if platform.system() == "Windows":
             pytest.skip(msg)
         return test(*args, **kwargs)
 
