@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-import errno
 import warnings
 import hmac
 import os
@@ -355,14 +354,8 @@ def ssl_wrap_socket(
     if ca_certs or ca_cert_dir or ca_cert_data:
         try:
             context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
-        except IOError as e:  # Platform-specific: Python 2.7
+        except (IOError, OSError) as e:
             raise SSLError(e)
-        # Py33 raises FileNotFoundError which subclasses OSError
-        # These are not equivalent unless we check the errno attribute
-        except OSError as e:  # Platform-specific: Python 3.3 and beyond
-            if e.errno == errno.ENOENT:
-                raise SSLError(e)
-            raise
 
     elif ssl_context is None and hasattr(context, "load_default_certs"):
         # try to load OS default certs; works well on Windows (require Python3.4+)
@@ -388,14 +381,13 @@ def ssl_wrap_socket(
 
     # If we detect server_hostname is an IP address then the SNI
     # extension should not be used according to RFC3546 Section 3.1
-    # We shouldn't warn the user if SNI isn't available but we would
-    # not be using SNI anyways due to IP address for server_hostname.
-    if (
-        server_hostname is not None and not is_ipaddress(server_hostname)
-    ) or IS_SECURETRANSPORT:
-        if HAS_SNI and server_hostname is not None:
-            return _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
-
+    use_sni_hostname = server_hostname and not is_ipaddress(server_hostname)
+    # SecureTransport uses server_hostname in certificate verification.
+    send_sni = (use_sni_hostname and HAS_SNI) or (
+        IS_SECURETRANSPORT and server_hostname
+    )
+    # Do not warn the user if server_hostname is an invalid SNI hostname.
+    if not HAS_SNI and use_sni_hostname:
         warnings.warn(
             "An HTTPS request has been made, but the SNI (Server Name "
             "Indication) extension to TLS is not available on this platform. "
@@ -407,7 +399,13 @@ def ssl_wrap_socket(
             SNIMissingWarning,
         )
 
-    return _ssl_wrap_socket_impl(sock, context, tls_in_tls)
+    if send_sni:
+        ssl_sock = _ssl_wrap_socket_impl(
+            sock, context, tls_in_tls, server_hostname=server_hostname
+        )
+    else:
+        ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls)
+    return ssl_sock
 
 
 def is_ipaddress(hostname):

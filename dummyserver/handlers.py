@@ -266,7 +266,7 @@ class TestingApp(RequestHandler):
         return Response(json.dumps(dict(request.headers)))
 
     def successful_retry(self, request):
-        """ Handler which will return an error and then success
+        """Handler which will return an error and then success
 
         It's not currently very flexible as the number of retries is hard-coded.
         """
@@ -321,7 +321,7 @@ class TestingApp(RequestHandler):
         date = request.params.get("date")
         if date:
             retry_after = str(
-                httputil.format_timestamp(datetime.fromtimestamp(float(date)))
+                httputil.format_timestamp(datetime.utcfromtimestamp(float(date)))
             )
         else:
             retry_after = "1"

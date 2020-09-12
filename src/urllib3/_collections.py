@@ -18,7 +18,7 @@ except ImportError:  # Platform-specific: No threads available
 
 from collections import OrderedDict
 from .exceptions import InvalidHeader
-from .packages.six import iterkeys, itervalues, PY3
+from .packages.six import ensure_str, iterkeys, itervalues, PY3
 
 
 __all__ = ["RecentlyUsedContainer", "HTTPHeaderDict"]
@@ -154,7 +154,7 @@ class HTTPHeaderDict(MutableMapping):
 
     def __getitem__(self, key):
         val = self._container[key.lower()]
-        return ", ".join(val[1:])
+        return ", ".join([ensure_str(v, "ascii") for v in val[1:]])
 
     def __delitem__(self, key):
         del self._container[key.lower()]
@@ -190,7 +190,7 @@ class HTTPHeaderDict(MutableMapping):
 
     def pop(self, key, default=__marker):
         """D.pop(k[,d]) -> v, remove specified key and return the corresponding value.
-          If key is not found, d is returned if given, otherwise KeyError is raised.
+        If key is not found, d is returned if given, otherwise KeyError is raised.
         """
         # Using the MutableMapping function directly fails due to the private marker.
         # Using ordinary dict.pop would expose the internal structures.

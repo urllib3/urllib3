@@ -106,7 +106,7 @@ class IPV4SocketDummyServerTestCase(SocketDummyServerTestCase):
 
 
 class HTTPDummyServerTestCase(object):
-    """ A simple HTTP server that runs when your test class runs
+    """A simple HTTP server that runs when your test class runs
 
     Have your test class inherit from this one, and then a simple server
     will start when your tests run, and automatically shut down when they
