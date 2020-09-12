@@ -34,9 +34,6 @@ jobs:
           - python-version: 3.9-dev
             os: macos-latest
             experimental: true
-          - python-version: 3.9-dev
-            os: windows-latest
-            experimental: true
 
     runs-on: ${{ matrix.os }}
     name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows"}')[matrix.os] }} (${{ matrix.python-version }})
