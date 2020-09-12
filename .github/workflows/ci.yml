@@ -31,7 +31,7 @@ jobs:
         os: [macos-latest, windows-latest]
 
     runs-on: ${{ matrix.os }}
-    name: ${{ matrix.os }} (${{ matrix.python-version }})
+    name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows"}')[matrix.os] }} (${{ matrix.python-version }})
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
