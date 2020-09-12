@@ -7,7 +7,6 @@
    </p>
    <p align="center">
       <a href="https://travis-ci.org/urllib3/urllib3"><img alt="Build status on Travis" src="https://travis-ci.org/urllib3/urllib3.svg?branch=master" /></a>
-      <a href="https://ci.appveyor.com/project/urllib3/urllib3"><img alt="Build status on AppVeyor" src="https://img.shields.io/appveyor/ci/urllib3/urllib3/master.svg" /></a>
       <a href="https://urllib3.readthedocs.io/en/latest/"><img alt="Documentation Status" src="https://readthedocs.org/projects/urllib3/badge/?version=latest" /></a>
       <a href="https://codecov.io/gh/urllib3/urllib3"><img alt="Coverage Status" src="https://img.shields.io/codecov/c/github/urllib3/urllib3.svg" /></a>
       <a href="https://pypi.org/project/urllib3/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/urllib3.svg?maxAge=86400" /></a>
