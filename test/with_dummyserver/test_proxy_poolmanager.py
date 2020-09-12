@@ -86,8 +86,10 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             r = https.request("GET", "%s/" % self.http_url)
             assert r.status == 200
 
-            with pytest.raises(ProxySchemeUnsupported):
+            with pytest.raises(ProxySchemeUnsupported) as excinfo:
                 https.request("GET", "%s/" % self.https_url)
+
+            assert "is not supported on Python 2" in str(excinfo.value)
 
     @withPyOpenSSL
     @onlyPy3
@@ -96,8 +98,10 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             r = https.request("GET", "%s/" % self.http_url)
             assert r.status == 200
 
-            with pytest.raises(ProxySchemeUnsupported):
+            with pytest.raises(ProxySchemeUnsupported) as excinfo:
                 https.request("GET", "%s/" % self.https_url)
+
+            assert "isn't available on non-native SSLContext" in str(excinfo.value)
 
     @onlySecureTransport
     @onlyPy3

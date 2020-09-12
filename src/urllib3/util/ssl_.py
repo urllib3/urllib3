@@ -14,7 +14,6 @@ from ..packages import six
 
 SSLContext = None
 SSLTransport = None
-validate_ssl_context_for_tls_in_tls = None
 HAS_SNI = False
 IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
@@ -43,7 +42,7 @@ try:  # Test for SSL features
     import ssl
     from ssl import wrap_socket, CERT_REQUIRED
     from ssl import HAS_SNI  # Has SNI?
-    from .ssltransport import SSLTransport, validate_ssl_context_for_tls_in_tls
+    from .ssltransport import SSLTransport
 except ImportError:
     pass
 
@@ -342,7 +341,7 @@ def ssl_wrap_socket(
         Optional string containing CA certificates in PEM format suitable for
         passing as the cadata parameter to SSLContext.load_verify_locations()
     :param tls_in_tls:
-        Use SSLTransport of attempting to wrap the existing socket.
+        Use SSLTransport to wrap the existing socket.
     """
     context = ssl_context
     if context is None:
@@ -432,16 +431,12 @@ def _is_key_file_encrypted(key_file):
     return False
 
 
-def _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname=None):
+def _ssl_wrap_socket_impl(sock, ssl_context, tls_in_tls, server_hostname=None):
     if tls_in_tls and SSLTransport:
-        validate_ssl_context_for_tls_in_tls(context)
-        return SSLTransport(sock, context, server_hostname)
-
-    wrapped_sock = None
+        SSLTransport.validate_ssl_context_for_tls_in_tls(ssl_context)
+        return SSLTransport(sock, ssl_context, server_hostname)
 
     if server_hostname:
-        wrapped_sock = context.wrap_socket(sock, server_hostname=server_hostname)
+        return ssl_context.wrap_socket(sock, server_hostname=server_hostname)
     else:
-        wrapped_sock = context.wrap_socket(sock)
-
-    return wrapped_sock
+        return ssl_context.wrap_socket(sock)

@@ -4,7 +4,6 @@ import warnings
 import logging
 import io
 import ssl
-import os
 import socket
 from itertools import chain
 
@@ -31,7 +30,6 @@ from urllib3.exceptions import (
 )
 from urllib3.util.proxy import (
     connection_requires_http_tunnel,
-    client_certificate_and_key_from_env,
     generate_proxy_ssl_context,
 )
 from urllib3.util import is_fp_closed
@@ -779,26 +777,6 @@ class TestUtil(object):
         assert not connection_requires_http_tunnel(
             proxy, proxy_config, destination_scheme
         )
-
-    def test_client_certificate_and_key_from_env(self):
-        test_cert = "cert"
-        test_key = "key"
-        test_pwd = "pwd"
-
-        os.environ["PROXY_SSLCERT"] = test_cert
-        os.environ["PROXY_SSLKEY"] = test_key
-        os.environ["PROXY_SSLPWD"] = test_pwd
-
-        test_cert, test_key, test_pwd == client_certificate_and_key_from_env()
-
-        del os.environ["PROXY_SSLCERT"]
-        del os.environ["PROXY_SSLKEY"]
-        del os.environ["PROXY_SSLPWD"]
-
-        cert, key, pwd = client_certificate_and_key_from_env()
-        assert cert is None
-        assert key is None
-        assert pwd is None
 
     def test_generate_proxy_ssl_context(self):
         ssl_context = generate_proxy_ssl_context(ssl_version=None, cert_reqs=None)

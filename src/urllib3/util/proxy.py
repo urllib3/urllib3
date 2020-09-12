@@ -1,5 +1,3 @@
-import os
-
 from .ssl_ import (
     resolve_cert_reqs,
     resolve_ssl_version,
@@ -13,12 +11,12 @@ def connection_requires_http_tunnel(
     """
     Returns True if the connection requires an HTTP CONNECT through the proxy.
 
-    :param proxy_url:
-        :URL URL of the proxy.
-    :param proxy_config:
-        :class:`ProxyConfig` proxy configuration from poolmanager.py
-    :param destination_scheme:
-        :str: The scheme of the destination. (i.e https, http, etc)
+    :param URL proxy_url:
+        URL of the proxy.
+    :param ProxyConfig proxy_config:
+        Proxy configuration from poolmanager.py
+    :param str destination_scheme:
+        The scheme of the destination. (i.e https, http, etc)
     """
     # If we're not using a proxy, no way to use a tunnel.
     if proxy_url is None:
@@ -59,26 +57,4 @@ def generate_proxy_ssl_context(
     ):
         ssl_context.load_default_certs()
 
-    proxy_cert, proxy_key, proxy_pass = client_certificate_and_key_from_env()
-
-    if not proxy_cert:
-        return ssl_context
-
-    if proxy_key and proxy_pass:
-        ssl_context.load_cert_chain(proxy_cert, keyfile=proxy_key, password=proxy_pass)
-    elif proxy_key:
-        ssl_context.load_cert_chain(proxy_cert, keyfile=proxy_key)
-
     return ssl_context
-
-
-def client_certificate_and_key_from_env():
-    """
-    Attempts to retrieve a client certificate and key from the environment
-    variables to use with the proxy.
-    """
-    proxy_cert = os.environ.get("PROXY_SSLCERT")
-    proxy_key = os.environ.get("PROXY_SSLKEY")
-    proxy_pass = os.environ.get("PROXY_KEYPASSWD")
-
-    return proxy_cert, proxy_key, proxy_pass

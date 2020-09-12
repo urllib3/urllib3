@@ -3,23 +3,9 @@ import socket
 import io
 
 from urllib3.exceptions import ProxySchemeUnsupported
+from urllib3.packages.six import PY3
 
 SSL_BLOCKSIZE = 16384
-
-
-def validate_ssl_context_for_tls_in_tls(ssl_context):
-    """
-    Raises a RuntimeError if the provided ssl_context can't be used for TLS in
-    TLS.
-
-    The only requirement is that the ssl_context provides the 'wrap_bio'
-    methods.
-    """
-
-    if not hasattr(ssl_context, "wrap_bio"):
-        raise ProxySchemeUnsupported(
-            "TLS in TLS is only supported with Python3+ versions of ssl.SSLContext"
-        )
 
 
 class SSLTransport:
@@ -32,6 +18,28 @@ class SSLTransport:
 
     The class supports most of the socket API operations.
     """
+
+    @classmethod
+    def validate_ssl_context_for_tls_in_tls(cls, ssl_context):
+        """
+        Raises a ProxySchemeUnsupported if the provided ssl_context can't be used
+        for TLS in TLS.
+
+        The only requirement is that the ssl_context provides the 'wrap_bio'
+        methods.
+        """
+
+        if not hasattr(ssl_context, "wrap_bio"):
+            if not PY3:
+                raise ProxySchemeUnsupported(
+                    "TLS in TLS requires SSLContext.wrap_bio() which isn't "
+                    "supported on Python 2"
+                )
+            else:
+                raise ProxySchemeUnsupported(
+                    "TLS in TLS requires SSLContext.wrap_bio() which isn't "
+                    "available on non-native SSLContext"
+                )
 
     def __init__(
         self, socket, ssl_context, suppress_ragged_eofs=True, server_hostname=None
