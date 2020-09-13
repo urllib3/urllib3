@@ -2,35 +2,66 @@ name: CI
 
 on: [push, pull_request]
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  macOS:
-    runs-on: macos-latest
-    
+  package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: Check packages
+        run: |
+          python3.7 -m pip install wheel twine rstcheck;
+          python3.7 setup.py sdist bdist_wheel;
+          rstcheck README.rst CHANGES.rst
+          python3.7 -m twine check dist/*
+  test:
     strategy:
       fail-fast: false
       matrix:
         python-version: [2.7, 3.5, 3.6, 3.7, 3.8]
+        os: [macos-latest, windows-latest]
+        experimental: [false]
+        include:
+          - python-version: 3.9-dev
+            os: macos-latest
+            experimental: true
 
+    runs-on: ${{ matrix.os }}
+    name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows"}')[matrix.os] }} (${{ matrix.python-version }})
+    continue-on-error: ${{ matrix.experimental }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v1
-      - name: Set Up Python 3.7 to run nox
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.7
+        uses: actions/checkout@v2
+
       - name: Set Up Python - ${{ matrix.python-version }}
-        if: matrix.python_version != '3.7'
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Set Up Python 3.7 to run nox
+        if: matrix.python-version != '3.7'
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+
       - name: Install Dependencies
-        run: |
-          python3.7 -m pip install --upgrade nox
+        run: python -m pip install --upgrade nox
+
       - name: Run Tests
-        run: |
-          nox -s test-${{ matrix.python-version }}
+        run: ./ci/run_tests.sh
+        env:
+          PYTHON_VERSION: ${{ matrix.python-version }}
+
       - name: Upload Coverage
         run: ./ci/upload_coverage.sh
-        shell: bash
         env:
-          JOB_NAME: 'macOS (${{ matrix.python-version }})'
+          JOB_NAME: "${{ runner.os }} (${{ matrix.python-version }})"
