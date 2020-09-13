@@ -381,38 +381,8 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
             assert e.type in [ssl.SSLError, ssl.CertificateError]
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
-    def test_tls_in_tls_makefile_rw_binary(self):
-        """
-        Uses makefile with read, write and binary modes.
-        """
-        self.start_destination_server()
-        self.start_proxy_server()
-
-        sock = socket.create_connection(
-            (self.proxy_server.host, self.proxy_server.port)
-        )
-        with self.client_context.wrap_socket(
-            sock, server_hostname="localhost"
-        ) as proxy_sock:
-            with SSLTransport(
-                proxy_sock, self.client_context, server_hostname="localhost"
-            ) as destination_sock:
-
-                file = destination_sock.makefile("rwb")
-                file.write(sample_request())
-                file.flush()
-
-                response = bytearray(65536)
-                wrote = file.readinto(response)
-                assert wrote is not None
-                # Allocated response is bigger than the actual response, we
-                # rtrim remaining x00 bytes.
-                str_response = response.decode("utf-8").rstrip("\x00")
-                validate_response(str_response, binary=False)
-                file.close()
-
-    @pytest.mark.timeout(PER_TEST_TIMEOUT)
-    def test_tls_in_tls_makefile_raw_rw_binary(self):
+    @pytest.mark.parametrize("buffering", [None, 0])
+    def test_tls_in_tls_makefile_raw_rw_binary(self, buffering):
         """
         Uses makefile with read, write and binary modes without buffering.
         """
@@ -429,7 +399,7 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 proxy_sock, self.client_context, server_hostname="localhost"
             ) as destination_sock:
 
-                file = destination_sock.makefile("rwb", buffering=0)
+                file = destination_sock.makefile("rwb", buffering)
                 file.write(sample_request())
                 file.flush()
 
