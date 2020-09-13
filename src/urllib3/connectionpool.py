@@ -319,7 +319,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         pass
 
-    def _prepare_proxy(self, conn, destination_scheme):
+    def _prepare_proxy(self, conn):
         # Nothing to do for HTTP connections.
         pass
 
@@ -663,12 +663,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # [1] <https://github.com/urllib3/urllib3/issues/651>
         release_this_conn = release_conn
 
+        http_tunnel_required = connection_requires_http_tunnel(
+            self.proxy, self.proxy_config, destination_scheme
+        )
+
         # Merge the proxy headers. Only done when not using HTTP CONNECT. We
         # have to copy the headers dict so we can safely change it without those
         # changes being reflected in anyone else's copy.
-        if not connection_requires_http_tunnel(
-            self.proxy, self.proxy_config, destination_scheme
-        ):
+        if not http_tunnel_required:
             headers = headers.copy()
             headers.update(self.proxy_headers)
 
@@ -694,8 +696,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             is_new_proxy_conn = self.proxy is not None and not getattr(
                 conn, "sock", None
             )
-            if is_new_proxy_conn:
-                self._prepare_proxy(conn, destination_scheme)
+            if is_new_proxy_conn and http_tunnel_required:
+                self._prepare_proxy(conn)
 
             # Make the request on the httplib connection object.
             httplib_response = self._make_request(
@@ -954,7 +956,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             conn.ssl_version = self.ssl_version
         return conn
 
-    def _prepare_proxy(self, conn, destination_scheme):
+    def _prepare_proxy(self, conn):
         """
         Establishes a tunnel connection through HTTP CONNECT.
 
@@ -962,13 +964,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         improperly set Host: header to proxy's IP:port.
         """
 
-        if connection_requires_http_tunnel(
-            self.proxy, self.proxy_config, destination_scheme
-        ):
-            conn.set_tunnel(self._proxy_host, self.port, self.proxy_headers)
+        conn.set_tunnel(self._proxy_host, self.port, self.proxy_headers)
 
-            if self.proxy.scheme == "https":
-                conn.set_tls_in_tls_required()
+        if self.proxy.scheme == "https":
+            conn.set_tls_in_tls_required()
 
         conn.connect()
 

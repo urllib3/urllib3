@@ -8,7 +8,12 @@ from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
 from .url import IPV4_RE, BRACELESS_IPV6_ADDRZ_RE
-from ..exceptions import SSLError, InsecurePlatformWarning, SNIMissingWarning
+from ..exceptions import (
+    SSLError,
+    InsecurePlatformWarning,
+    SNIMissingWarning,
+    ProxySchemeUnsupported,
+)
 from ..packages import six
 
 
@@ -432,8 +437,14 @@ def _is_key_file_encrypted(key_file):
 
 
 def _ssl_wrap_socket_impl(sock, ssl_context, tls_in_tls, server_hostname=None):
-    if tls_in_tls and SSLTransport:
-        SSLTransport.validate_ssl_context_for_tls_in_tls(ssl_context)
+    if tls_in_tls:
+        if not SSLTransport:
+            # Import error, ssl is not available.
+            raise ProxySchemeUnsupported(
+                "TLS in TLS requires support for the 'ssl' module"
+            )
+
+        SSLTransport._validate_ssl_context_for_tls_in_tls(ssl_context)
         return SSLTransport(sock, ssl_context, server_hostname)
 
     if server_hostname:

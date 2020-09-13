@@ -19,8 +19,8 @@ class SSLTransport:
     The class supports most of the socket API operations.
     """
 
-    @classmethod
-    def validate_ssl_context_for_tls_in_tls(cls, ssl_context):
+    @staticmethod
+    def _validate_ssl_context_for_tls_in_tls(ssl_context):
         """
         Raises a ProxySchemeUnsupported if the provided ssl_context can't be used
         for TLS in TLS.
