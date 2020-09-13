@@ -164,26 +164,26 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
 
             request = consume_socket(ssl_sock)
             validate_request(request)
-            ssl_sock.send(sample_response())
+            ssl_sock.sendall(sample_response())
 
             unwrapped_sock = ssl_sock.unwrap()
 
             request = consume_socket(unwrapped_sock)
             validate_request(request)
-            unwrapped_sock.send(sample_response())
+            unwrapped_sock.sendall(sample_response())
 
         self.start_dummy_server(shutdown_handler)
         sock = socket.create_connection((self.host, self.port))
         ssock = SSLTransport(sock, self.client_context, server_hostname="localhost")
 
         # request/response over TLS.
-        ssock.send(sample_request())
+        ssock.sendall(sample_request())
         response = consume_socket(ssock)
         validate_response(response)
 
         # request/response over plaintext after unwrap.
         ssock.unwrap()
-        sock.send(sample_request())
+        sock.sendall(sample_request())
         response = consume_socket(sock)
         validate_response(response)
 
