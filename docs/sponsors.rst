@@ -1,11 +1,48 @@
-Sponsors
-========
+Sponsors and Supporters
+=======================
 
 Please consider sponsoring urllib3 development, especially if your company
 benefits from this library.
 
 Your contribution will go towards adding new features to urllib3 and making
 sure all functionality continues to meet our high quality standards.
+
+
+v2.0 Sponsor Perks
+------------------
+
+.. important::
+
+   `Get in contact <mailto:sethmichaellarson@gmail.com>`_ for additional
+   details on sponsorship and perks before making a contribution
+   through `Open Collective <https://opencollective.com/urllib3>`_ if you have questions.
+
+
+Gold v2.0 Sponsors Perks
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+These are the perks for `Gold v2.0 Sponsors on Open Collective <https://opencollective.com/urllib3/contribute/gold-v2-sponsor-20443/checkout>`_:
+
+- Organization logo and URL listed on top of the v2.0 Roadmap
+- Call with one or more urllib3 maintainer(s) to discuss
+  the v2.0 release and how it impacts your organization
+- Your organization will be thanked within the v2.0 release
+  announcement, within all blog posts and public updates related to v2.0
+  development, and multiple thank-you's on Twitter from
+  urllib3 maintainers throughout v2.0 development.
+- All perks from the **Silver v2.0 Sponsors Perks** below
+
+
+Silver v2.0 Sponsor Perks
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+These are the perks for `Silver v2.0 Sponsors on Open Collective <https://opencollective.com/urllib3/contribute/silver-v2-sponsor-20442/checkout>`_:
+
+- Your organization name and URL permanently added
+  to the **Sponsors and Grants** section below
+- Thank you within the v2.0 release announcement
+  and on Twitter from urllib3 maintainers
+
 
 Sponsors and Grants
 -------------------
@@ -22,6 +59,9 @@ We also welcome sponsorship in the form of time. We greatly appreciate companies
 who encourage employees to contribute on an ongoing basis during their work hours.
 Let us know and we'll be glad to add you to our sponsors list.
 
+* `GitCoin Grants <https://gitcoin.co/grants>`_ (2019-2020), sponsored `@sethmlarson <https://github.com/sethmlarson>`_
+  and `@pquentin <https://github.com/pquentin>`_
+
 * `Abbott <https://abbott.com>`_ (2018-2019), sponsored `@sethmlarson <https://github.com/sethmlarson>`_
 
 * `Google Cloud Platform <https://cloud.google.com>`_ (2018-2019), sponsored `@theacodes <https://github.com/theacodes>`_
@@ -31,6 +71,15 @@ Let us know and we'll be glad to add you to our sponsors list.
 * `Akamai <https://akamai.com>`_ (2017-2018) sponsored `@haikuginger <https://github.com/haikuginger>`_
 
 * `Hewlett Packard Enterprise <https://hpe.com>`_ (2016-2017) sponsored
-  `@Lukasa’s <https://github.com/Lukasa>`_
+  `@Lukasa <https://github.com/Lukasa>`_
 
 * `Stripe <https://stripe.com>`_ (June 23, 2014)
+
+
+Open Collective Supporters
+--------------------------
+
+All donations are currently going towards the development of new features for urllib3 v2.0.
+Donate $5 or more as an individual or $50 or more as an organization to be added to the list of supporters.
+
+Thanks to all our supporters on `Open Collective <https://opencollective.com/urllib3>`_:

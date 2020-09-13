@@ -78,5 +78,14 @@ html_logo = "images/banner.svg"
 
 html_static_path = ["_static"]
 html_css_files = ["tweaks.css"]
+html_theme_options = {
+    "announcement": """
+        <a style=\"font-size: 1.25em; color: white; text-decoration: none;\" 
+           class=\"announcement-sponsor-link\"
+           href=\"https://opencollective.com/urllib3\">
+           <img src=\"_static/favicon.png\"/> Sponsor urllib3 v2.0 on Open Collective</a>
+    """,
+    "sidebar_hide_name": True,
+}
 
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
