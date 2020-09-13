@@ -12,7 +12,6 @@ import socket
 import ssl
 import sys
 import platform
-import threading
 
 
 # consume_socket can iterate forever, we add timeouts to prevent halting.
@@ -156,30 +155,36 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
     def test_unwrap_existing_socket(self):
         """
         Validates we can break up the TLS layer
-        Request is sent over TLS. response received over regular TCP.
+        A full request/response is sent over TLS, and later over plain text.
         """
-        unwrap_event = threading.Event()
 
         def shutdown_handler(listener):
             sock = listener.accept()[0]
             ssl_sock = self.server_context.wrap_socket(sock, server_side=True)
-            request = bytearray(65536)
-            ssl_sock.recv_into(request)
-            validate_request(request.strip(b"\x00"))
-            sock = ssl_sock.unwrap()
-            unwrap_event.set()
-            sock.send(sample_response())
+
+            request = consume_socket(ssl_sock)
+            validate_request(request)
+            ssl_sock.send(sample_response())
+
+            unwrapped_sock = ssl_sock.unwrap()
+
+            request = consume_socket(unwrapped_sock)
+            validate_request(request)
+            unwrapped_sock.send(sample_response())
 
         self.start_dummy_server(shutdown_handler)
         sock = socket.create_connection((self.host, self.port))
         ssock = SSLTransport(sock, self.client_context, server_hostname="localhost")
-        ssock.send(sample_request())
-        ssock.unwrap()
 
-        unwrap_event.wait(5)
-        if not unwrap_event.is_set():
-            raise RuntimeError("Unable to validate unwrapping.")
-        response = sock.recv(4096)
+        # request/response over TLS.
+        ssock.send(sample_request())
+        response = consume_socket(ssock)
+        validate_response(response)
+
+        # request/response over plaintext after unwrap.
+        ssock.unwrap()
+        sock.send(sample_request())
+        response = consume_socket(sock)
         validate_response(response)
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
