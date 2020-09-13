@@ -12,6 +12,7 @@ import socket
 import ssl
 import sys
 import platform
+import threading
 
 
 # consume_socket can iterate forever, we add timeouts to prevent halting.
@@ -151,20 +152,21 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
             response = consume_socket(ssock)
             validate_response(response)
 
-    @pytest.mark.skip(reason="Disabled as it's currently flaky.")
+    @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_unwrap_existing_socket(self):
         """
         Validates we can break up the TLS layer
         Request is sent over TLS. response received over regular TCP.
-
-        Currently disabled as its flaky on occassion.
         """
+        unwrap_event = threading.Event()
 
         def shutdown_handler(listener):
             sock = listener.accept()[0]
             ssl_sock = self.server_context.wrap_socket(sock, server_side=True)
-            request = consume_socket(ssl_sock)
-            validate_request(request)
+            request = bytearray(65536)
+            ssl_sock.recv_into(request)
+            validate_request(request.strip(b"\x00"))
+            unwrap_event.set()
             sock = ssl_sock.unwrap()
             sock.send(sample_response())
 
@@ -172,8 +174,13 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
         sock = socket.create_connection((self.host, self.port))
         ssock = SSLTransport(sock, self.client_context, server_hostname="localhost")
         ssock.send(sample_request())
+
+        unwrap_event.wait(5)
+        if not unwrap_event.is_set():
+            raise RuntimeError("Unable to validate unwrapping.")
+
         ssock.unwrap()
-        response = consume_socket(sock)
+        response = sock.recv(4096)
         validate_response(response)
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
@@ -373,10 +380,6 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
             # before. After python3.7 it's a child of SSLError
             assert e.type in [ssl.SSLError, ssl.CertificateError]
 
-    @pytest.mark.skipif(
-        platform.system() == "Windows",
-        reason="Skipping windows due to text makefile support",
-    )
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_tls_in_tls_makefile_rw_binary(self):
         """
@@ -396,6 +399,37 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
             ) as destination_sock:
 
                 file = destination_sock.makefile("rwb")
+                file.write(sample_request())
+                file.flush()
+
+                response = bytearray(65536)
+                wrote = file.readinto(response)
+                assert wrote is not None
+                # Allocated response is bigger than the actual response, we
+                # rtrim remaining x00 bytes.
+                str_response = response.decode("utf-8").rstrip("\x00")
+                validate_response(str_response, binary=False)
+                file.close()
+
+    @pytest.mark.timeout(PER_TEST_TIMEOUT)
+    def test_tls_in_tls_makefile_raw_rw_binary(self):
+        """
+        Uses makefile with read, write and binary modes without buffering.
+        """
+        self.start_destination_server()
+        self.start_proxy_server()
+
+        sock = socket.create_connection(
+            (self.proxy_server.host, self.proxy_server.port)
+        )
+        with self.client_context.wrap_socket(
+            sock, server_hostname="localhost"
+        ) as proxy_sock:
+            with SSLTransport(
+                proxy_sock, self.client_context, server_hostname="localhost"
+            ) as destination_sock:
+
+                file = destination_sock.makefile("rwb", buffering=0)
                 file.write(sample_request())
                 file.flush()
 
@@ -468,3 +502,25 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 destination_sock.recv_into(response)
                 str_response = response.decode("utf-8").rstrip("\x00")
                 validate_response(str_response, binary=False)
+
+    @pytest.mark.timeout(PER_TEST_TIMEOUT)
+    def test_tls_in_tls_recv_into_unbuffered(self):
+        """
+        Valides recv_into without a preallocated buffer.
+        """
+        self.start_destination_server()
+        self.start_proxy_server()
+
+        sock = socket.create_connection(
+            (self.proxy_server.host, self.proxy_server.port)
+        )
+        with self.client_context.wrap_socket(
+            sock, server_hostname="localhost"
+        ) as proxy_sock:
+            with SSLTransport(
+                proxy_sock, self.client_context, server_hostname="localhost"
+            ) as destination_sock:
+
+                destination_sock.send(sample_request())
+                response = destination_sock.recv_into(None)
+                validate_response(response)
