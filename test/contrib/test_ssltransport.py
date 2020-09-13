@@ -166,20 +166,19 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
             request = bytearray(65536)
             ssl_sock.recv_into(request)
             validate_request(request.strip(b"\x00"))
-            unwrap_event.set()
             sock = ssl_sock.unwrap()
+            unwrap_event.set()
             sock.send(sample_response())
 
         self.start_dummy_server(shutdown_handler)
         sock = socket.create_connection((self.host, self.port))
         ssock = SSLTransport(sock, self.client_context, server_hostname="localhost")
         ssock.send(sample_request())
+        ssock.unwrap()
 
         unwrap_event.wait(5)
         if not unwrap_event.is_set():
             raise RuntimeError("Unable to validate unwrapping.")
-
-        ssock.unwrap()
         response = sock.recv(4096)
         validate_response(response)
 
