@@ -4,6 +4,8 @@ from contextlib import contextmanager
 import pytest
 from tornado import ioloop, web
 
+from urllib3.connection import HTTPConnection
+
 from dummyserver.server import (
     SocketServerThread,
     run_tornado_app,
@@ -233,7 +235,6 @@ class ConnectionMarker(object):
         """
         Mark connections under in that context.
         """
-        from urllib3.connection import HTTPConnection
 
         orig_request = HTTPConnection.request
         orig_request_chunked = HTTPConnection.request_chunked
