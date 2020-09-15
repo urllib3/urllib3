@@ -225,6 +225,9 @@ class IPv6HTTPDummyProxyTestCase(HTTPDummyProxyTestCase):
 class ConnectionMarker(object):
     """
     Marks an HTTP(S)Connection's socket after a request was made.
+
+    Helps a test server understand when a client finished a request,
+    without implementing a complete HTTP server.
     """
 
     MARK_FORMAT = b"$#MARK%04x*!"
