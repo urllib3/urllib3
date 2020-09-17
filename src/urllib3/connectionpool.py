@@ -112,16 +112,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     :param host:
         Host used for this HTTP Connection (e.g. "localhost"), passed into
-        :class:`httplib.HTTPConnection`.
+        :class:`http.client.HTTPConnection`.
 
     :param port:
         Port used for this HTTP Connection (None is equivalent to 80), passed
-        into :class:`httplib.HTTPConnection`.
+        into :class:`http.client.HTTPConnection`.
 
     :param strict:
         Causes BadStatusLine to be raised if the status line can't be parsed
         as a valid HTTP/1.0 or 1.1 status line, passed into
-        :class:`httplib.HTTPConnection`.
+        :class:`http.client.HTTPConnection`.
 
         .. note::
            Only works in Python 2. This parameter is ignored in Python 3.
@@ -155,11 +155,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     :param _proxy:
         Parsed proxy URL, should not be used directly, instead, see
-        :class:`urllib3.connectionpool.ProxyManager`
+        :class:`urllib3.ProxyManager`
 
     :param _proxy_headers:
         A dictionary with proxy headers, should not be used directly,
-        instead, see :class:`urllib3.connectionpool.ProxyManager`
+        instead, see :class:`urllib3.ProxyManager`
 
     :param \\**conn_kw:
         Additional parameters are used to create fresh :class:`urllib3.connection.HTTPConnection`,
@@ -273,7 +273,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             conn.close()
             if getattr(conn, "auto_open", 1) == 0:
                 # This is a proxied connection that has been mutated by
-                # httplib._tunnel() and cannot be reused (since it would
+                # http.client._tunnel() and cannot be reused (since it would
                 # attempt to bypass the proxy)
                 conn = None
 
@@ -385,7 +385,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
             raise
 
-        # conn.request() calls httplib.*.request, not the method in
+        # conn.request() calls http.client.*.request, not the method in
         # urllib3.request. It also calls makefile (recv) on the socket.
         try:
             if chunked:
@@ -584,7 +584,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         :param assert_same_host:
             If ``True``, will make sure that the host of the pool requests is
-            consistent else will raise HostChangedError. When False, you can
+            consistent else will raise HostChangedError. When ``False``, you can
             use the pool on an HTTP proxy and request foreign hosts.
 
         :param timeout:
@@ -856,11 +856,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
     """
     Same as :class:`.HTTPConnectionPool`, but HTTPS.
 
-    When Python is compiled with the :mod:`ssl` module, then
-    :class:`.VerifiedHTTPSConnection` is used, which *can* verify certificates,
-    instead of :class:`.HTTPSConnection`.
-
-    :class:`.VerifiedHTTPSConnection` uses one of ``assert_fingerprint``,
+    :class:`.HTTPSConnection` uses one of ``assert_fingerprint``,
     ``assert_hostname`` and ``host`` in this order to verify connections.
     If ``assert_hostname`` is False, no verification is done.
 
@@ -957,7 +953,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     def _new_conn(self):
         """
-        Return a fresh :class:`httplib.HTTPSConnection`.
+        Return a fresh :class:`http.client.HTTPSConnection`.
         """
         self.num_connections += 1
         log.debug(

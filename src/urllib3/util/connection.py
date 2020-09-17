@@ -9,7 +9,7 @@ def is_connection_dropped(conn):  # Platform-specific
     Returns True if the connection is dropped and should be closed.
 
     :param conn:
-        :class:`httplib.HTTPConnection` object.
+        :class:`http.client.HTTPConnection` object.
 
     Note: For platforms like AppEngine, this will always return ``False`` to
     let the platform handle connection recycling transparently for us.
@@ -42,7 +42,7 @@ def create_connection(
     port)``) and return the socket object.  Passing the optional
     *timeout* parameter will set the timeout on the socket instance
     before attempting to connect.  If no *timeout* is supplied, the
-    global default timeout setting returned by :func:`getdefaulttimeout`
+    global default timeout setting returned by :func:`socket.getdefaulttimeout`
     is used.  If *source_address* is set it must be a tuple of (host, port)
     for the socket to bind as a source address before making the connection.
     An host of '' or port 0 tells the OS to use the default.

@@ -337,7 +337,7 @@ class PoolManager(RequestMethods):
 
     def urlopen(self, method, url, redirect=True, **kw):
         """
-        Same as :meth:`urllib3.connectionpool.HTTPConnectionPool.urlopen`
+        Same as :meth:`urllib3.HTTPConnectionPool.urlopen`
         with custom cross-host redirect logic and only sends the request-uri
         portion of the ``url``.
 
