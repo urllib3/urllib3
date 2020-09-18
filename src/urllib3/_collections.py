@@ -16,7 +16,15 @@ except ImportError:  # Platform-specific: No threads available
             pass
 
 
-from collections import OrderedDict
+from sys import version_info
+
+# Since Python 3.7, `dict` must be ordered (language-level requirement)
+# so it is ok to use it instead of OrderedDict, and it is faster in CPython.
+if version_info >= (3, 7):
+    OrderedDictCls = dict
+else:
+    from collections import OrderedDict as OrderedDictCls
+
 from .exceptions import InvalidHeader
 from .packages.six import ensure_str, iterkeys, itervalues, PY3
 
@@ -41,7 +49,7 @@ class RecentlyUsedContainer(MutableMapping):
         ``dispose_func(value)`` is called.  Callback which will get called
     """
 
-    ContainerCls = OrderedDict
+    ContainerCls = OrderedDictCls
 
     def __init__(self, maxsize=10, dispose_func=None):
         self._maxsize = maxsize
@@ -139,7 +147,7 @@ class HTTPHeaderDict(MutableMapping):
 
     def __init__(self, headers=None, **kwargs):
         super(HTTPHeaderDict, self).__init__()
-        self._container = OrderedDict()
+        self._container = OrderedDictCls()
         if headers is not None:
             if isinstance(headers, HTTPHeaderDict):
                 self._copy_from(headers)
