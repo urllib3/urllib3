@@ -58,10 +58,11 @@ except ImportError:
 
 
 try:
-    from ssl import OP_NO_SSLv2, OP_NO_SSLv3, OP_NO_COMPRESSION
+    from ssl import OP_NO_SSLv2, OP_NO_SSLv3, OP_NO_COMPRESSION, OP_NO_TICKET
 except ImportError:
     OP_NO_SSLv2, OP_NO_SSLv3 = 0x1000000, 0x2000000
     OP_NO_COMPRESSION = 0x20000
+    OP_NO_TICKET = 0x4000
 
 
 # A secure default.
@@ -273,6 +274,11 @@ def create_urllib3_context(
         # Disable compression to prevent CRIME attacks for OpenSSL 1.0+
         # (issue #309)
         options |= OP_NO_COMPRESSION
+        # TLSv1.2 only. Unless set explicitly, do not request tickets.
+        # This may save some bandwidth on wire, and although the ticket is encrypted,
+        # there is a risk associated with it being on wire,
+        # if the server is not rotating its ticketing keys properly.
+        options |= OP_NO_TICKET
 
     context.options |= options
 
