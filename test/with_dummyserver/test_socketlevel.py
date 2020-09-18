@@ -485,7 +485,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
         with HTTPSConnectionPool(
-            self.host, self.port, timeout=SHORT_TIMEOUT, retries=False
+            self.host, self.port, timeout=LONG_TIMEOUT, retries=False
         ) as pool:
             try:
                 with pytest.raises(ReadTimeoutError):
