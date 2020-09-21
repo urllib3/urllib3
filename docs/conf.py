@@ -76,14 +76,12 @@ html_theme = "furo"
 html_favicon = "images/favicon.png"
 html_logo = "images/banner.svg"
 
-html_static_path = ["_static"]
-html_css_files = ["tweaks.css"]
 html_theme_options = {
     "announcement": """
-        <a style=\"font-size: 1.25em; color: white; text-decoration: none;\" 
-           class=\"announcement-sponsor-link\"
+        <a style=\"text-decoration: none; color: white;\" 
            href=\"https://opencollective.com/urllib3\">
-           <img src=\"_static/favicon.png\"/> Sponsor urllib3 v2.0 on Open Collective</a>
+           <img src=\"_static/favicon.png\"/> Sponsor urllib3 v2.0 on Open Collective
+        </a>
     """,
     "sidebar_hide_name": True,
 }

@@ -18,10 +18,20 @@ v2.0 Sponsor Perks
    through `Open Collective <https://opencollective.com/urllib3>`_ if you have questions.
 
 
-Gold v2.0 Sponsors Perks
-~~~~~~~~~~~~~~~~~~~~~~~~
+Silver v2.0 Sponsor Perks
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-These are the perks for `Gold v2.0 Sponsors on Open Collective <https://opencollective.com/urllib3/contribute/gold-v2-sponsor-20443/checkout>`_:
+- Your organization name and URL permanently added
+  to the **Sponsors and Grants** section below
+- Thank you within the v2.0 release announcement
+  and on Twitter from urllib3 maintainers
+
+➤ `Contribute to the "Silver v2.0 Sponsor" tier <https://opencollective.com/urllib3/contribute/silver-v2-sponsor-20442/checkout>`_
+on Open Collective.
+
+
+Gold v2.0 Sponsor Perks
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Organization logo and URL listed on top of the v2.0 Roadmap
 - Call with one or more urllib3 maintainer(s) to discuss
@@ -29,19 +39,11 @@ These are the perks for `Gold v2.0 Sponsors on Open Collective <https://opencoll
 - Your organization will be thanked within the v2.0 release
   announcement, within all blog posts and public updates related to v2.0
   development, and multiple thank-you's on Twitter from
-  urllib3 maintainers throughout v2.0 development.
-- All perks from the **Silver v2.0 Sponsors Perks** below
+  urllib3 maintainers throughout v2.0 development
+- All perks from the **Silver v2.0 Sponsors Perks** above
 
-
-Silver v2.0 Sponsor Perks
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-These are the perks for `Silver v2.0 Sponsors on Open Collective <https://opencollective.com/urllib3/contribute/silver-v2-sponsor-20442/checkout>`_:
-
-- Your organization name and URL permanently added
-  to the **Sponsors and Grants** section below
-- Thank you within the v2.0 release announcement
-  and on Twitter from urllib3 maintainers
+➤ `Contribute to the "Gold v2.0 Sponsor" tier <https://opencollective.com/urllib3/contribute/gold-v2-sponsor-20443/checkout>`_
+on Open Collective.
 
 
 Sponsors and Grants
@@ -80,6 +82,6 @@ Open Collective Supporters
 --------------------------
 
 All donations are currently going towards the development of new features for urllib3 v2.0.
-Donate $5 or more as an individual or $50 or more as an organization to be added to the list of supporters.
+Donate $5 or more as an individual or $50 or more as an organization to be added to the list of supporters below (coming soon).
 
-Thanks to all our supporters on `Open Collective <https://opencollective.com/urllib3>`_:
+`Thanks to all our supporters on Open Collective <https://opencollective.com/urllib3#section-contributors>`_!

@@ -1,10 +1,6 @@
 v2.0 Roadmap
 ============
 
-
-**📅 Release and Migration Schedule**
--------------------------------------
-
 .. important::
 
    We're seeking `sponsors and supporters for urllib3 v2.0 on Open Collective <https://opencollective.com/urllib3>`_.
@@ -13,43 +9,6 @@ v2.0 Roadmap
    for the additional effort required for a large release like ``v2.0``.
 
    Additional information available within the :doc:`sponsors` section of our documentation.
-
-
-We're aiming for all ``v2.x`` features to be released in **mid-to-late 2021**.
-
-Here's what the release and migration schedule will look like leading up
-to v2.0 being released:
-
-- Development of ``v2.x`` breaking changes starts.
-- Release ``v1.26.0`` with deprecation warnings for ``v2.0.0`` breaking changes.
-  This will be the last non-patch release within the ``v1.x`` stream.
-- Release ``v2.0.0-alpha1`` once all breaking changes have been completed.
-  We'll wait for users to report issues, bugs, and unexpected
-  breakages at this stage to ensure the release ``v2.0.0`` goes smoothly.
-- Development of remaining ``v2.x`` features starts.
-- Release ``v2.0.0`` which will be identical to ``v2.0.0-alpha1``.
-- Release ``v2.1.0`` with remaining ``v2.x`` features.
-
-Deprecation warnings within ``v1.26.x`` will be opt-in by default.
-
-Package and Application Developers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Since this is the first major release in almost 9 years some users may
-be caught off-guard by a new major release of urllib3. We're mitigating this by
-trying to make ``v2.x`` API-compatible with ``v1.x``.
-
-If your application or library uses urllib3 and you'd like to be extra
-cautious about not breaking your users, you can pin urllib3 like so
-until you ensure compatibility with ``v2.x``:
-
-.. code-block:: python
-
-   # requirements.txt or 'install_requires'
-   "urllib3>=1.25,<2"
-
-We'd really appreciate testing compatibility
-and providing feedback on ``v2.0.0-alpha1`` once released.
 
 
 **🚀 Functional API Compatibility**
@@ -134,12 +93,12 @@ performance and reduce the amount of code that needs to be executed
 in order to support legacy versions.
 
 
-**📡 Telemetry and Tracing**
-----------------------------
+**🔮 Tracing**
+--------------
 
 Currently with urllib3 it's tough to get low-level insights into what
 how your HTTP client is performing and what your connection information
-looks like. In v2.0 we'll be adding telemetry and tracing information
+looks like. In v2.0 we'll be adding tracing and telemetry information
 to HTTP response objects including:
 
 - Connection ID
@@ -156,7 +115,7 @@ to HTTP response objects including:
 You'll finally be able to run Mypy or other type-checkers
 on code using urllib3. This also means that for IDEs
 that support type hints you'll receive better suggestions
-from auto-complete. No more ``**kwargs`` problem!
+from auto-complete. No more confusing with ``**kwargs``!
 
 We'll also add API interfaces to ensure that when
 you're sub-classing an interface you're only using
@@ -169,7 +128,7 @@ minimize breakages down the road.
 
 - Top-level ``urllib3.request()`` API
 - Open Possibility to Alternate HTTP Implementations
-- Translated Documentation
+- Translated Guides
 - Support Zstandard Compression
 - Streaming ``multipart/form-encoded`` Request Data
 - More Powerful and Configurable Retry Logic
@@ -177,3 +136,45 @@ minimize breakages down the road.
 If there's a feature you don't see here but would like to see
 in urllib3 v2.0, there's an open GitHub issue for making
 feature suggestions.
+
+
+**📅 Release and Migration Schedule**
+-------------------------------------
+
+We're aiming for all ``v2.x`` features to be released in **mid-to-late 2021**.
+
+Here's what the release and migration schedule will look like leading up
+to v2.0 being released:
+
+- Development of ``v2.x`` breaking changes starts.
+- Release ``v1.26.0`` with deprecation warnings for ``v2.0.0`` breaking changes.
+  This will be the last non-patch release within the ``v1.x`` stream.
+- Release ``v2.0.0-alpha1`` once all breaking changes have been completed.
+  We'll wait for users to report issues, bugs, and unexpected
+  breakages at this stage to ensure the release ``v2.0.0`` goes smoothly.
+- Development of remaining ``v2.x`` features starts.
+- Release ``v2.0.0`` which will be identical to ``v2.0.0-alpha1``.
+- Release ``v2.1.0`` with remaining ``v2.x`` features.
+
+Deprecation warnings within ``v1.26.x`` will be opt-in by default.
+
+**More detailed Application Migration Guide coming soon.**
+
+For Package Maintainers
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Since this is the first major release in almost 9 years some users may
+be caught off-guard by a new major release of urllib3. We're mitigating this by
+trying to make ``v2.x`` API-compatible with ``v1.x``.
+
+If your application or library uses urllib3 and you'd like to be extra
+cautious about not breaking your users, you can pin urllib3 like so
+until you ensure compatibility with ``v2.x``:
+
+.. code-block:: python
+
+   # 'install_requires' or 'requirements.txt'
+   "urllib3>=1.25,<2"
+
+We'd really appreciate testing compatibility
+and providing feedback on ``v2.0.0-alpha1`` once released.
