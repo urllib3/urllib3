@@ -151,28 +151,39 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
             response = consume_socket(ssock)
             validate_response(response)
 
-    @pytest.mark.skip(reason="Disabled as it's currently flaky.")
+    @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_unwrap_existing_socket(self):
         """
         Validates we can break up the TLS layer
-        Request is sent over TLS. response received over regular TCP.
-
-        Currently disabled as its flaky on occassion.
+        A full request/response is sent over TLS, and later over plain text.
         """
 
         def shutdown_handler(listener):
             sock = listener.accept()[0]
             ssl_sock = self.server_context.wrap_socket(sock, server_side=True)
+
             request = consume_socket(ssl_sock)
             validate_request(request)
-            sock = ssl_sock.unwrap()
-            sock.send(sample_response())
+            ssl_sock.sendall(sample_response())
+
+            unwrapped_sock = ssl_sock.unwrap()
+
+            request = consume_socket(unwrapped_sock)
+            validate_request(request)
+            unwrapped_sock.sendall(sample_response())
 
         self.start_dummy_server(shutdown_handler)
         sock = socket.create_connection((self.host, self.port))
         ssock = SSLTransport(sock, self.client_context, server_hostname="localhost")
-        ssock.send(sample_request())
+
+        # request/response over TLS.
+        ssock.sendall(sample_request())
+        response = consume_socket(ssock)
+        validate_response(response)
+
+        # request/response over plaintext after unwrap.
         ssock.unwrap()
+        sock.sendall(sample_request())
         response = consume_socket(sock)
         validate_response(response)
 
@@ -373,14 +384,11 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
             # before. After python3.7 it's a child of SSLError
             assert e.type in [ssl.SSLError, ssl.CertificateError]
 
-    @pytest.mark.skipif(
-        platform.system() == "Windows",
-        reason="Skipping windows due to text makefile support",
-    )
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
-    def test_tls_in_tls_makefile_rw_binary(self):
+    @pytest.mark.parametrize("buffering", [None, 0])
+    def test_tls_in_tls_makefile_raw_rw_binary(self, buffering):
         """
-        Uses makefile with read, write and binary modes.
+        Uses makefile with read, write and binary modes without buffering.
         """
         self.start_destination_server()
         self.start_proxy_server()
@@ -395,7 +403,7 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 proxy_sock, self.client_context, server_hostname="localhost"
             ) as destination_sock:
 
-                file = destination_sock.makefile("rwb")
+                file = destination_sock.makefile("rwb", buffering)
                 file.write(sample_request())
                 file.flush()
 
@@ -468,3 +476,25 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 destination_sock.recv_into(response)
                 str_response = response.decode("utf-8").rstrip("\x00")
                 validate_response(str_response, binary=False)
+
+    @pytest.mark.timeout(PER_TEST_TIMEOUT)
+    def test_tls_in_tls_recv_into_unbuffered(self):
+        """
+        Valides recv_into without a preallocated buffer.
+        """
+        self.start_destination_server()
+        self.start_proxy_server()
+
+        sock = socket.create_connection(
+            (self.proxy_server.host, self.proxy_server.port)
+        )
+        with self.client_context.wrap_socket(
+            sock, server_hostname="localhost"
+        ) as proxy_sock:
+            with SSLTransport(
+                proxy_sock, self.client_context, server_hostname="localhost"
+            ) as destination_sock:
+
+                destination_sock.send(sample_request())
+                response = destination_sock.recv_into(None)
+                validate_response(response)

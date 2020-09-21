@@ -5,8 +5,11 @@ import pytest
 from urllib3 import HTTPConnectionPool
 from urllib3.util.retry import Retry
 from urllib3.util import SUPPRESS_USER_AGENT
-from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
-from test import notWindows
+from dummyserver.testcase import (
+    SocketDummyServerTestCase,
+    consume_socket,
+    ConnectionMarker,
+)
 
 # Retry failed tests
 pytestmark = pytest.mark.flaky
@@ -156,56 +159,56 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
                 sock.close()
         assert self.chunked_requests == 2
 
-    @notWindows
-    def test_preserve_chunked_on_redirect(self):
+    def test_preserve_chunked_on_redirect(self, monkeypatch):
         self.chunked_requests = 0
 
         def socket_handler(listener):
             for i in range(2):
                 sock = listener.accept()[0]
-                request = consume_socket(sock)
+                request = ConnectionMarker.consume_request(sock)
                 if b"Transfer-Encoding: chunked" in request.split(b"\r\n"):
                     self.chunked_requests += 1
 
                 if i == 0:
-                    sock.send(
+                    sock.sendall(
                         b"HTTP/1.1 301 Moved Permanently\r\n"
                         b"Location: /redirect\r\n\r\n"
                     )
                 else:
-                    sock.send(b"HTTP/1.1 200 OK\r\n\r\n")
+                    sock.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
                 sock.close()
 
         self._start_server(socket_handler)
-        with HTTPConnectionPool(self.host, self.port) as pool:
-            retries = Retry(redirect=1)
-            pool.urlopen(
-                "GET", "/", chunked=True, preload_content=False, retries=retries
-            )
+        with ConnectionMarker.mark(monkeypatch):
+            with HTTPConnectionPool(self.host, self.port) as pool:
+                retries = Retry(redirect=1)
+                pool.urlopen(
+                    "GET", "/", chunked=True, preload_content=False, retries=retries
+                )
         assert self.chunked_requests == 2
 
-    @notWindows
-    def test_preserve_chunked_on_broken_connection(self):
+    def test_preserve_chunked_on_broken_connection(self, monkeypatch):
         self.chunked_requests = 0
 
         def socket_handler(listener):
             for i in range(2):
                 sock = listener.accept()[0]
-                request = consume_socket(sock)
+                request = ConnectionMarker.consume_request(sock)
                 if b"Transfer-Encoding: chunked" in request.split(b"\r\n"):
                     self.chunked_requests += 1
 
                 if i == 0:
                     # Bad HTTP version will trigger a connection close
-                    sock.send(b"HTTP/0.5 200 OK\r\n\r\n")
+                    sock.sendall(b"HTTP/0.5 200 OK\r\n\r\n")
                 else:
-                    sock.send(b"HTTP/1.1 200 OK\r\n\r\n")
+                    sock.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
                 sock.close()
 
         self._start_server(socket_handler)
-        with HTTPConnectionPool(self.host, self.port) as pool:
-            retries = Retry(read=1)
-            pool.urlopen(
-                "GET", "/", chunked=True, preload_content=False, retries=retries
-            )
-        assert self.chunked_requests == 2
+        with ConnectionMarker.mark(monkeypatch):
+            with HTTPConnectionPool(self.host, self.port) as pool:
+                retries = Retry(read=1)
+                pool.urlopen(
+                    "GET", "/", chunked=True, preload_content=False, retries=retries
+                )
+            assert self.chunked_requests == 2

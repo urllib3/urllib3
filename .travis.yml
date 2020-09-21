@@ -34,8 +34,6 @@ jobs:
   include:
     # Lint & documentation.
     - python: 3.8
-      env: NOX_SESSION=lint
-    - python: 3.8
       env: NOX_SESSION=docs
 
     # Unit tests
