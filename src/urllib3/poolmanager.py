@@ -498,7 +498,6 @@ class ProxyManager(PoolManager):
         super(ProxyManager, self).__init__(num_pools, headers, **connection_pool_kw)
 
     def connection_from_host(self, host, port=None, scheme="http", pool_kwargs=None):
-        # Original destination is needed to identify if we need TLS within TLS.
         if scheme == "https":
             return super(ProxyManager, self).connection_from_host(
                 host, port, scheme, pool_kwargs=pool_kwargs
