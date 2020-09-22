@@ -1427,6 +1427,48 @@ class TestSSL(SocketDummyServerTestCase):
         with pytest.raises(SSLError):
             ssl_wrap_socket(None, ca_certs="/tmp/fake-file")
 
+    def test_ssl_custom_validation_failure_terminates(self, tmpdir):
+        """
+        Ensure that the underlying socket is terminated if custom validation fails.
+        """
+        server_closed = Event()
+
+        def is_closed_socket(sock):
+            try:
+                sock.settimeout(SHORT_TIMEOUT)  # Python 3
+                sock.recv(1)  # Python 2
+            except (OSError, socket.error):
+                return True
+            return False
+
+        def socket_handler(listener):
+            sock = listener.accept()[0]
+            try:
+                _ = ssl.wrap_socket(
+                    sock,
+                    server_side=True,
+                    keyfile=DEFAULT_CERTS["keyfile"],
+                    certfile=DEFAULT_CERTS["certfile"],
+                    ca_certs=DEFAULT_CA,
+                )
+            except ssl.SSLError:
+                if is_closed_socket(sock):
+                    server_closed.set()
+
+        self._start_server(socket_handler)
+
+        # client uses a different ca
+        other_ca = trustme.CA()
+        other_ca_path = str(tmpdir / "ca.pem")
+        other_ca.cert_pem.write_to_path(other_ca_path)
+
+        with HTTPSConnectionPool(
+            self.host, self.port, cert_reqs="REQUIRED", ca_certs=other_ca_path
+        ) as pool:
+            with pytest.raises(SSLError):
+                pool.request("GET", "/", retries=False, timeout=LONG_TIMEOUT)
+        assert server_closed.wait(LONG_TIMEOUT), "The socket was not terminated"
+
 
 class TestErrorWrapping(SocketDummyServerTestCase):
     def test_bad_statusline(self):
