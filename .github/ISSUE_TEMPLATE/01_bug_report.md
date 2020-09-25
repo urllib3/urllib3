@@ -21,15 +21,15 @@ print("Python : %s" % (platform.python_build()[0], ))
 print("urllib3: %s" % (urllib3.__version__, ))
 ```
 
-### Steps to reproduce
+### Steps to Reproduce
 
 A simple and isolated way to reproduce the issue. A code snippet would be great.
 
-### Expected behavior
+### Expected Behavior
 
 What should happen.
 
-### Actual behavior
+### Actual Behavior
 
 What happens instead.
 You may attach logs, packet captures, etc.
