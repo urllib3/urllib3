@@ -58,10 +58,15 @@ except ImportError:
 
 
 try:
-    from ssl import OP_NO_SSLv2, OP_NO_SSLv3, OP_NO_COMPRESSION, OP_NO_TICKET
+    from ssl import OP_NO_SSLv2, OP_NO_SSLv3, OP_NO_COMPRESSION
 except ImportError:
     OP_NO_SSLv2, OP_NO_SSLv3 = 0x1000000, 0x2000000
     OP_NO_COMPRESSION = 0x20000
+
+
+try:  # OP_NO_TICKET was added in Python 3.6
+    from ssl import OP_NO_TICKET
+except ImportError:
     OP_NO_TICKET = 0x4000
 
 
