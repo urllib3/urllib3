@@ -14,5 +14,4 @@ but can also be used independently.
 
 .. automodule:: urllib3.util
     :members:
-    :undoc-members:
     :show-inheritance:

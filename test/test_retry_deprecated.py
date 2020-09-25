@@ -16,11 +16,12 @@ from urllib3.exceptions import (
 )
 
 
-@pytest.fixture(scope="function", autouse=True)
-def no_retry_deprecations():
+# TODO: Remove this entire file once deprecated Retry options are removed.
+@pytest.fixture(scope="function")
+def expect_retry_deprecation():
     with warnings.catch_warnings(record=True) as w:
         yield
-    assert len([str(x.message) for x in w if "Retry" in str(x.message)]) == 0
+    assert len([str(x.message) for x in w if "Retry" in str(x.message)]) > 0
 
 
 class TestRetry(object):
@@ -204,14 +205,14 @@ class TestRetry(object):
         retry = Retry(total=1, status_forcelist=["418"])
         assert not retry.is_retry("GET", status_code=418)
 
-    def test_method_allowlist_with_status_forcelist(self):
-        # Falsey method_allowlist means to retry on any method.
-        retry = Retry(status_forcelist=[500], method_allowlist=None)
+    def test_method_whitelist_with_status_forcelist(self, expect_retry_deprecation):
+        # Falsey method_whitelist means to retry on any method.
+        retry = Retry(status_forcelist=[500], method_whitelist=None)
         assert retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
 
-        # Criteria of method_allowlist and status_forcelist are ANDed.
-        retry = Retry(status_forcelist=[500], method_allowlist=["POST"])
+        # Criteria of method_whitelist and status_forcelist are ANDed.
+        retry = Retry(status_forcelist=[500], method_whitelist=["POST"])
         assert not retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
 
@@ -258,8 +259,8 @@ class TestRetry(object):
         assert "Caused by redirect" not in str(e.value)
         assert str(e.value.reason) == "conntimeout"
 
-    def test_history(self):
-        retry = Retry(total=10, method_allowlist=frozenset(["GET", "POST"]))
+    def test_history(self, expect_retry_deprecation):
+        retry = Retry(total=10, method_whitelist=frozenset(["GET", "POST"]))
         assert retry.history == tuple()
         connection_error = ConnectTimeoutError("conntimeout")
         retry = retry.increment("GET", "/test1", None, connection_error)
@@ -369,3 +370,100 @@ class TestRetry(object):
                 sleep_mock.assert_called_with(sleep_duration)
             else:
                 sleep_mock.assert_not_called()
+
+
+class TestRetryDeprecations(object):
+    def test_cls_get_default_method_whitelist(self, expect_retry_deprecation):
+        assert Retry.DEFAULT_METHOD_ALLOWLIST == Retry.DEFAULT_METHOD_WHITELIST
+
+    def test_cls_get_default_redirect_headers_blacklist(self, expect_retry_deprecation):
+        assert (
+            Retry.DEFAULT_REMOVE_HEADERS_ON_REDIRECT
+            == Retry.DEFAULT_REDIRECT_HEADERS_BLACKLIST
+        )
+
+    def test_cls_set_default_method_whitelist(self, expect_retry_deprecation):
+        old_setting = Retry.DEFAULT_METHOD_WHITELIST
+        try:
+            Retry.DEFAULT_METHOD_WHITELIST = {"GET"}
+            retry = Retry()
+            assert retry.DEFAULT_METHOD_ALLOWLIST == {"GET"}
+            assert retry.DEFAULT_METHOD_WHITELIST == {"GET"}
+            assert retry.method_allowlist == {"GET"}
+            assert retry.method_whitelist == {"GET"}
+
+            # Test that the default can be overridden both ways
+            retry = Retry(method_allowlist={"GET", "POST"})
+            assert retry.DEFAULT_METHOD_ALLOWLIST == {"GET"}
+            assert retry.DEFAULT_METHOD_WHITELIST == {"GET"}
+            assert retry.method_allowlist == {"GET", "POST"}
+            assert retry.method_whitelist == {"GET", "POST"}
+
+            retry = Retry(method_whitelist={"POST"})
+            assert retry.DEFAULT_METHOD_ALLOWLIST == {"GET"}
+            assert retry.DEFAULT_METHOD_WHITELIST == {"GET"}
+            assert retry.method_allowlist == {"POST"}
+            assert retry.method_whitelist == {"POST"}
+        finally:
+            Retry.DEFAULT_METHOD_WHITELIST = old_setting
+            assert Retry.DEFAULT_METHOD_ALLOWLIST == old_setting
+
+    def test_cls_set_default_redirect_headers_blacklist(self, expect_retry_deprecation):
+        old_setting = Retry.DEFAULT_REDIRECT_HEADERS_BLACKLIST
+        try:
+            Retry.DEFAULT_REDIRECT_HEADERS_BLACKLIST = {"test"}
+            retry = Retry()
+            assert retry.DEFAULT_REMOVE_HEADERS_ON_REDIRECT == {"test"}
+            assert retry.DEFAULT_REDIRECT_HEADERS_BLACKLIST == {"test"}
+            assert retry.remove_headers_on_redirect == {"test"}
+            assert retry.remove_headers_on_redirect == {"test"}
+
+            retry = Retry(remove_headers_on_redirect={"test2"})
+            assert retry.DEFAULT_REMOVE_HEADERS_ON_REDIRECT == {"test"}
+            assert retry.DEFAULT_REDIRECT_HEADERS_BLACKLIST == {"test"}
+            assert retry.remove_headers_on_redirect == {"test2"}
+            assert retry.remove_headers_on_redirect == {"test2"}
+        finally:
+            Retry.DEFAULT_REDIRECT_HEADERS_BLACKLIST = old_setting
+            assert Retry.DEFAULT_REDIRECT_HEADERS_BLACKLIST == old_setting
+
+    @pytest.mark.parametrize(
+        "options", [(None, None), ({"GET"}, None), (None, {"GET"}), ({"GET"}, {"GET"})]
+    )
+    def test_retry_method_allowlist_and_whitelist_error(self, options):
+        with pytest.raises(ValueError) as e:
+            Retry(method_allowlist=options[0], method_whitelist=options[1])
+        assert str(e.value) == (
+            "Using both 'method_allowlist' and 'method_whitelist' together "
+            "is not allowed. Instead only use 'method_allowlist'"
+        )
+
+    def test_retry_subclass_that_sets_method_whitelist(self, expect_retry_deprecation):
+        class SubclassRetry(Retry):
+            def __init__(self, **kwargs):
+                if "method_allowlist" in kwargs:
+                    raise AssertionError(
+                        "This subclass likely doesn't use 'method_allowlist'"
+                    )
+
+                super(SubclassRetry, self).__init__(**kwargs)
+
+                # Since we're setting 'method_whiteist' we get fallbacks
+                # within Retry.new() and Retry._is_method_retryable()
+                # to use 'method_whitelist' instead of 'method_allowlist'
+                self.method_whitelist = self.method_whitelist | {"POST"}
+
+        retry = SubclassRetry()
+        assert retry.method_whitelist == Retry.DEFAULT_METHOD_ALLOWLIST | {"POST"}
+        assert retry.new(read=0).method_whitelist == retry.method_whitelist
+        assert retry._is_method_retryable("POST")
+        assert not retry._is_method_retryable("CONNECT")
+
+        assert retry.new(method_whitelist={"GET"}).method_whitelist == {"GET", "POST"}
+
+        # urllib3 doesn't do this during normal operation
+        # so we don't want users passing in 'method_allowlist'
+        # when their subclass doesn't support the option yet.
+        with pytest.raises(AssertionError) as e:
+            retry.new(method_allowlist={"GET"})
+        assert str(e.value) == "This subclass likely doesn't use 'method_allowlist'"
