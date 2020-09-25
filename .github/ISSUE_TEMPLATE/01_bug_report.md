@@ -13,12 +13,12 @@ Describe your environment.
 At least, paste here the output of:
 
 ```python
-from __future__ import print_function
 import platform
 import urllib3
-print("OS     : %s" % (platform.platform(), ))
-print("Python : %s" % (platform.python_build()[0], ))
-print("urllib3: %s" % (urllib3.__version__, ))
+
+print("OS", platform.platform())
+print("Python", platform.python_version())
+print("urllib3", urllib3.__version__)
 ```
 
 ### Steps to Reproduce
