@@ -256,7 +256,7 @@ def create_urllib3_context(
         ``ssl.CERT_REQUIRED``.
     :param options:
         Specific OpenSSL options. These default to ``ssl.OP_NO_SSLv2``,
-        ``ssl.OP_NO_SSLv3``, ``ssl.OP_NO_COMPRESSION``.
+        ``ssl.OP_NO_SSLv3``, ``ssl.OP_NO_COMPRESSION``, and ``ssl.OP_NO_TICKET``.
     :param ciphers:
         Which cipher suites to allow the server to select.
     :returns:
