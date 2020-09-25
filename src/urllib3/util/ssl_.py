@@ -64,6 +64,12 @@ except ImportError:
     OP_NO_COMPRESSION = 0x20000
 
 
+try:  # OP_NO_TICKET was added in Python 3.6
+    from ssl import OP_NO_TICKET
+except ImportError:
+    OP_NO_TICKET = 0x4000
+
+
 # A secure default.
 # Sources for more information on TLS ciphers:
 #
@@ -250,7 +256,7 @@ def create_urllib3_context(
         ``ssl.CERT_REQUIRED``.
     :param options:
         Specific OpenSSL options. These default to ``ssl.OP_NO_SSLv2``,
-        ``ssl.OP_NO_SSLv3``, ``ssl.OP_NO_COMPRESSION``.
+        ``ssl.OP_NO_SSLv3``, ``ssl.OP_NO_COMPRESSION``, and ``ssl.OP_NO_TICKET``.
     :param ciphers:
         Which cipher suites to allow the server to select.
     :returns:
@@ -273,6 +279,11 @@ def create_urllib3_context(
         # Disable compression to prevent CRIME attacks for OpenSSL 1.0+
         # (issue #309)
         options |= OP_NO_COMPRESSION
+        # TLSv1.2 only. Unless set explicitly, do not request tickets.
+        # This may save some bandwidth on wire, and although the ticket is encrypted,
+        # there is a risk associated with it being on wire,
+        # if the server is not rotating its ticketing keys properly.
+        options |= OP_NO_TICKET
 
     context.options |= options
 
