@@ -22,6 +22,7 @@ from urllib3.exceptions import (
     ProxySchemeUnsupported,
 )
 from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
+from urllib3.util.ssl_ import create_urllib3_context
 
 from test import (
     SHORT_TIMEOUT,
@@ -74,6 +75,21 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     @onlyPy3
     def test_https_proxy(self):
         with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
+            r = https.request("GET", "%s/" % self.https_url)
+            assert r.status == 200
+
+            r = https.request("GET", "%s/" % self.http_url)
+            assert r.status == 200
+
+    @onlyPy3
+    def test_https_proxy_with_proxy_ssl_context(self):
+        proxy_ssl_context = create_urllib3_context()
+        proxy_ssl_context.load_verify_locations(DEFAULT_CA)
+        with proxy_from_url(
+            self.https_proxy_url,
+            proxy_ssl_context=proxy_ssl_context,
+            ca_certs=DEFAULT_CA,
+        ) as https:
             r = https.request("GET", "%s/" % self.https_url)
             assert r.status == 200
 
