@@ -9,7 +9,7 @@ import warnings
 from .packages import six
 from .packages.six.moves.http_client import HTTPConnection as _HTTPConnection
 from .packages.six.moves.http_client import HTTPException  # noqa: F401
-from .util.proxy import generate_proxy_ssl_context
+from .util.proxy import create_proxy_ssl_context
 
 try:  # Compiled with SSL?
     import ssl
@@ -345,7 +345,7 @@ class HTTPSConnection(HTTPConnection):
         tls_in_tls = False
 
         if self._is_using_tunnel():
-            if self._connection_requires_tls_in_tls():
+            if self.tls_in_tls_required:
                 conn = self._connect_tls_proxy(hostname, conn)
                 tls_in_tls = True
 
@@ -441,36 +441,33 @@ class HTTPSConnection(HTTPConnection):
             or self.assert_fingerprint is not None
         )
 
-    def set_tls_in_tls_required(self):
-        self.tls_in_tls_required = True
-
-    def _connection_requires_tls_in_tls(self):
-        """
-        Indicates if the current connection requires two TLS connections, one to
-        the proxy and one to the destination server.
-        """
-        return self.tls_in_tls_required
-
     def _connect_tls_proxy(self, hostname, conn):
         """
         Establish a TLS connection to the proxy using the provided SSL context.
         """
         proxy_config = self.proxy_config
         ssl_context = proxy_config.ssl_context
-        if not ssl_context:
-            ssl_context = generate_proxy_ssl_context(
-                self.ssl_version,
-                self.cert_reqs,
-                self.ca_certs,
-                self.ca_cert_dir,
-                self.ca_cert_data,
+        if ssl_context:
+            # If the user provided a proxy context, we assume CA and client
+            # certificates have already been set
+            return ssl_wrap_socket(
+                sock=conn,
+                server_hostname=hostname,
+                ssl_context=ssl_context,
             )
 
+        ssl_context = create_proxy_ssl_context(
+            self.ssl_version,
+            self.cert_reqs,
+            self.ca_certs,
+            self.ca_cert_dir,
+            self.ca_cert_data,
+        )
+
+        # If no cert was provided, use only the default options for server
+        # certificate validation
         return ssl_wrap_socket(
             sock=conn,
-            keyfile=self.key_file,
-            certfile=self.cert_file,
-            key_password=self.key_password,
             ca_certs=self.ca_certs,
             ca_cert_dir=self.ca_cert_dir,
             ca_cert_data=self.ca_cert_data,

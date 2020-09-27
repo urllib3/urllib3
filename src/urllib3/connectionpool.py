@@ -963,7 +963,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         conn.set_tunnel(self._proxy_host, self.port, self.proxy_headers)
 
         if self.proxy.scheme == "https":
-            conn.set_tls_in_tls_required()
+            conn.tls_in_tls_required = True
 
         conn.connect()
 

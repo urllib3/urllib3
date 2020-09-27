@@ -30,7 +30,7 @@ from urllib3.exceptions import (
 )
 from urllib3.util.proxy import (
     connection_requires_http_tunnel,
-    generate_proxy_ssl_context,
+    create_proxy_ssl_context,
 )
 from urllib3.util import is_fp_closed
 from urllib3.util.connection import allowed_gai_family, _has_ipv6
@@ -778,8 +778,8 @@ class TestUtil(object):
             proxy, proxy_config, destination_scheme
         )
 
-    def test_generate_proxy_ssl_context(self):
-        ssl_context = generate_proxy_ssl_context(ssl_version=None, cert_reqs=None)
+    def test_create_proxy_ssl_context(self):
+        ssl_context = create_proxy_ssl_context(ssl_version=None, cert_reqs=None)
         ssl_context.verify_mode = ssl.CERT_REQUIRED
 
     @onlyPy3

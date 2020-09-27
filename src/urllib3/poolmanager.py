@@ -348,8 +348,8 @@ class PoolManager(RequestMethods):
 
         if not PY3 and not self.proxy_config.use_forwarding_for_https:
             raise ProxySchemeUnsupported(
-                "Contacting HTTPS destinations through HTTPS proxies is not "
-                "supported on Python 2."
+                "Contacting HTTPS destinations through HTTPS proxies "
+                "'via CONNECT tunnels' is not supported in Python 2"
             )
 
     def urlopen(self, method, url, redirect=True, **kw):

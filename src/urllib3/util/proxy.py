@@ -38,7 +38,7 @@ def connection_requires_http_tunnel(
     return True
 
 
-def generate_proxy_ssl_context(
+def create_proxy_ssl_context(
     ssl_version, cert_reqs, ca_certs=None, ca_cert_dir=None, ca_cert_data=None
 ):
     """
