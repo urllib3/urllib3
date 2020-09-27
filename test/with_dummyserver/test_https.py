@@ -699,6 +699,35 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             finally:
                 conn.close()
 
+    def test_default_tls_version_deprecations(self):
+        if self.tls_protocol_name is None:
+            pytest.skip("Skipping base test class")
+
+        w = None
+        with HTTPSConnectionPool(
+            self.host, self.port, ca_certs=DEFAULT_CA
+        ) as https_pool:
+            conn = https_pool._get_conn()
+            try:
+                with warnings.catch_warnings(record=True) as w:
+                    conn.connect()
+                    if not hasattr(conn.sock, "version"):
+                        pytest.skip("SSLSocket.version() not available")
+            finally:
+                conn.close()
+
+        assert w is not None
+        if self.tls_protocol_name in ("TLSv1", "TSLv1.1"):
+            assert len(w) == 1
+            assert w[0].message == (
+                "Negotiating TLSv1/TLSv1.1 by default is deprecated "
+                "and will be disabled in urllib3 v2.0.0. Connecting to"
+                "'%s' with '%s' can be enabled by explicitly opting-in "
+                "with 'ssl_version'" % (self.host, self.tls_protocol_name)
+            )
+        else:
+            assert len(w) == 0
+
     @pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8+")
     def test_sslkeylogfile(self, tmpdir, monkeypatch):
         if not hasattr(util.SSLContext, "keylog_filename"):
