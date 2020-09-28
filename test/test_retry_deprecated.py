@@ -1,3 +1,4 @@
+# This is a copy-paste of test_retry.py with extra asserts about deprecated options. It will be removed for v2.
 import mock
 import pytest
 import warnings
