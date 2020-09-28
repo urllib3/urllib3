@@ -4,7 +4,7 @@ from dummyserver.server import (
     DEFAULT_CA,
 )
 
-from urllib3.contrib.ssl import SSLTransport
+from urllib3.util.ssltransport import SSLTransport
 
 import select
 import pytest

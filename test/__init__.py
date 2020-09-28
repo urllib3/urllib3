@@ -19,6 +19,11 @@ from urllib3.packages import six
 from urllib3.util import ssl_
 from urllib3 import util
 
+try:
+    import urllib3.contrib.pyopenssl as pyopenssl
+except ImportError:
+    pyopenssl = None
+
 # We need a host that will not immediately close the connection with a TCP
 # Reset.
 if platform.system() == "Windows":
@@ -166,6 +171,19 @@ def notBrotlipy():
     )
 
 
+def onlySecureTransport(test):
+    """Runs this test when SecureTransport is in use."""
+
+    @six.wraps(test)
+    def wrapper(*args, **kwargs):
+        msg = "{name} only runs with SecureTransport".format(name=test.__name__)
+        if not ssl_.IS_SECURETRANSPORT:
+            pytest.skip(msg)
+        return test(*args, **kwargs)
+
+    return wrapper
+
+
 def notSecureTransport(test):
     """Skips this test when SecureTransport is in use."""
 
@@ -286,6 +304,21 @@ def resolvesLocalhostFQDN(test):
         if not RESOLVES_LOCALHOST_FQDN:
             pytest.skip("Can't resolve localhost.")
         return test(*args, **kwargs)
+
+    return wrapper
+
+
+def withPyOpenSSL(test):
+    @six.wraps(test)
+    def wrapper(*args, **kwargs):
+        if not pyopenssl:
+            pytest.skip("pyopenssl not available, skipping test.")
+            return test(*args, **kwargs)
+
+        pyopenssl.inject_into_urllib3()
+        result = test(*args, **kwargs)
+        pyopenssl.extract_from_urllib3()
+        return result
 
     return wrapper
 

@@ -8,11 +8,17 @@ from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
 from .url import IPV4_RE, BRACELESS_IPV6_ADDRZ_RE
-from ..exceptions import SSLError, InsecurePlatformWarning, SNIMissingWarning
+from ..exceptions import (
+    SSLError,
+    InsecurePlatformWarning,
+    SNIMissingWarning,
+    ProxySchemeUnsupported,
+)
 from ..packages import six
 
 
 SSLContext = None
+SSLTransport = None
 HAS_SNI = False
 IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
@@ -41,6 +47,7 @@ try:  # Test for SSL features
     import ssl
     from ssl import wrap_socket, CERT_REQUIRED
     from ssl import HAS_SNI  # Has SNI?
+    from .ssltransport import SSLTransport
 except ImportError:
     pass
 
@@ -327,6 +334,7 @@ def ssl_wrap_socket(
     ca_cert_dir=None,
     key_password=None,
     ca_cert_data=None,
+    tls_in_tls=False,
 ):
     """
     All arguments except for server_hostname, ssl_context, and ca_cert_dir have
@@ -348,6 +356,8 @@ def ssl_wrap_socket(
     :param ca_cert_data:
         Optional string containing CA certificates in PEM format suitable for
         passing as the cadata parameter to SSLContext.load_verify_locations()
+    :param tls_in_tls:
+        Use SSLTransport to wrap the existing socket.
     """
     context = ssl_context
     if context is None:
@@ -405,9 +415,11 @@ def ssl_wrap_socket(
         )
 
     if send_sni:
-        ssl_sock = context.wrap_socket(sock, server_hostname=server_hostname)
+        ssl_sock = _ssl_wrap_socket_impl(
+            sock, context, tls_in_tls, server_hostname=server_hostname
+        )
     else:
-        ssl_sock = context.wrap_socket(sock)
+        ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls)
     return ssl_sock
 
 
@@ -433,3 +445,20 @@ def _is_key_file_encrypted(key_file):
                 return True
 
     return False
+
+
+def _ssl_wrap_socket_impl(sock, ssl_context, tls_in_tls, server_hostname=None):
+    if tls_in_tls:
+        if not SSLTransport:
+            # Import error, ssl is not available.
+            raise ProxySchemeUnsupported(
+                "TLS in TLS requires support for the 'ssl' module"
+            )
+
+        SSLTransport._validate_ssl_context_for_tls_in_tls(ssl_context)
+        return SSLTransport(sock, ssl_context, server_hostname)
+
+    if server_hostname:
+        return ssl_context.wrap_socket(sock, server_hostname=server_hostname)
+    else:
+        return ssl_context.wrap_socket(sock)

@@ -22,8 +22,17 @@ from urllib3.exceptions import (
     ProxySchemeUnsupported,
 )
 from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
+from urllib3.util.ssl_ import create_urllib3_context
 
-from test import SHORT_TIMEOUT, LONG_TIMEOUT
+from test import (
+    SHORT_TIMEOUT,
+    LONG_TIMEOUT,
+    onlyPy3,
+    onlyPy2,
+    withPyOpenSSL,
+    onlySecureTransport,
+)
+
 
 # Retry failed tests
 pytestmark = pytest.mark.flaky
@@ -63,21 +72,75 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             r = http.request("GET", "%s/" % self.https_url)
             assert r.status == 200
 
+    @onlyPy3
     def test_https_proxy(self):
+        with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
+            r = https.request("GET", "%s/" % self.https_url)
+            assert r.status == 200
+
+            r = https.request("GET", "%s/" % self.http_url)
+            assert r.status == 200
+
+    @onlyPy3
+    def test_https_proxy_with_proxy_ssl_context(self):
+        proxy_ssl_context = create_urllib3_context()
+        proxy_ssl_context.load_verify_locations(DEFAULT_CA)
+        with proxy_from_url(
+            self.https_proxy_url,
+            proxy_ssl_context=proxy_ssl_context,
+            ca_certs=DEFAULT_CA,
+        ) as https:
+            r = https.request("GET", "%s/" % self.https_url)
+            assert r.status == 200
+
+            r = https.request("GET", "%s/" % self.http_url)
+            assert r.status == 200
+
+    @onlyPy2
+    def test_https_proxy_not_supported(self):
         with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
             r = https.request("GET", "%s/" % self.http_url)
             assert r.status == 200
 
-            with pytest.raises(ProxySchemeUnsupported):
+            with pytest.raises(ProxySchemeUnsupported) as excinfo:
                 https.request("GET", "%s/" % self.https_url)
 
+            assert "is not supported in Python 2" in str(excinfo.value)
+
+    @withPyOpenSSL
+    @onlyPy3
+    def test_https_proxy_pyopenssl_not_supported(self):
+        with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
+            r = https.request("GET", "%s/" % self.http_url)
+            assert r.status == 200
+
+            with pytest.raises(ProxySchemeUnsupported) as excinfo:
+                https.request("GET", "%s/" % self.https_url)
+
+            assert "isn't available on non-native SSLContext" in str(excinfo.value)
+
+    @onlySecureTransport
+    @onlyPy3
+    def test_https_proxy_securetransport_not_supported(self):
+        with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
+            r = https.request("GET", "%s/" % self.http_url)
+            assert r.status == 200
+
+            with pytest.raises(ProxySchemeUnsupported) as excinfo:
+                https.request("GET", "%s/" % self.https_url)
+
+            assert "isn't available on non-native SSLContext" in str(excinfo.value)
+
+    def test_https_proxy_forwarding_for_https(self):
         with proxy_from_url(
             self.https_proxy_url,
             ca_certs=DEFAULT_CA,
-            _allow_https_proxy_to_see_traffic=True,
+            use_forwarding_for_https=True,
         ) as https:
             r = https.request("GET", "%s/" % self.http_url)
-            https.request("GET", "%s/" % self.https_url)
+            assert r.status == 200
+
+            r = https.request("GET", "%s/" % self.https_url)
             assert r.status == 200
 
     def test_nagle_proxy(self):
@@ -302,6 +365,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                 self.https_port,
             )
 
+    @onlyPy3
     def test_https_headers(self):
         with proxy_from_url(
             self.https_proxy_url,
@@ -328,19 +392,34 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                 self.http_port,
             )
 
-            with pytest.raises(ProxySchemeUnsupported):
-                http.request_encode_url("GET", "%s/headers" % self.https_url)
-
-            r = http.request_encode_url(
-                "GET", "%s/headers" % self.http_url, headers={"Baz": "quux"}
+            r = http.request_encode_body(
+                "GET", "%s/headers" % self.https_url, headers={"Baz": "quux"}
             )
             returned_headers = json.loads(r.data.decode())
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
+            assert returned_headers.get("Hickory") is None
+            assert returned_headers.get("Host") == "%s:%s" % (
+                self.https_host,
+                self.https_port,
+            )
+
+    def test_https_headers_forwarding_for_https(self):
+        with proxy_from_url(
+            self.https_proxy_url,
+            headers={"Foo": "bar"},
+            proxy_headers={"Hickory": "dickory"},
+            ca_certs=DEFAULT_CA,
+            use_forwarding_for_https=True,
+        ) as http:
+
+            r = http.request_encode_url("GET", "%s/headers" % self.https_url)
+            returned_headers = json.loads(r.data.decode())
+            assert returned_headers.get("Foo") == "bar"
             assert returned_headers.get("Hickory") == "dickory"
             assert returned_headers.get("Host") == "%s:%s" % (
-                self.http_host,
-                self.http_port,
+                self.https_host,
+                self.https_port,
             )
 
     def test_headerdict(self):
