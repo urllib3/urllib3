@@ -24,7 +24,7 @@ from .exceptions import (
     HTTPError,
     SSLError,
 )
-from .packages.six import string_types as basestring, PY3
+from .packages import six
 from .connection import HTTPException, BaseSSLError
 from .util.response import is_fp_closed, is_response_to_head
 
@@ -233,7 +233,7 @@ class HTTPResponse(io.IOBase):
         self.msg = msg
         self._request_url = request_url
 
-        if body and isinstance(body, (basestring, bytes)):
+        if body and isinstance(body, (six.string_types, bytes)):
             self._body = body
 
         self._pool = pool
@@ -589,11 +589,11 @@ class HTTPResponse(io.IOBase):
         headers = r.msg
 
         if not isinstance(headers, HTTPHeaderDict):
-            if PY3:
-                headers = HTTPHeaderDict(headers.items())
-            else:
+            if six.PY2:
                 # Python 2.7
                 headers = HTTPHeaderDict.from_httplib(headers)
+            else:
+                headers = HTTPHeaderDict(headers.items())
 
         # HTTPResponse objects in Python 3 don't have a .strict attribute
         strict = getattr(r, "strict", 0)

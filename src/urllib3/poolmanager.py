@@ -20,7 +20,6 @@ from .request import RequestMethods
 from .util.url import parse_url
 from .util.retry import Retry
 from .util.proxy import connection_requires_http_tunnel
-from .packages.six import PY3
 
 
 __all__ = ["PoolManager", "ProxyManager", "proxy_from_url"]
@@ -346,7 +345,7 @@ class PoolManager(RequestMethods):
         if self.proxy.scheme != "https":
             return
 
-        if not PY3 and not self.proxy_config.use_forwarding_for_https:
+        if six.PY2 and not self.proxy_config.use_forwarding_for_https:
             raise ProxySchemeUnsupported(
                 "Contacting HTTPS destinations through HTTPS proxies "
                 "'via CONNECT tunnels' is not supported in Python 2"
