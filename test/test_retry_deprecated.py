@@ -16,7 +16,7 @@ from urllib3.exceptions import (
 )
 
 
-# TODO: Remove this entire file once deprecated Retry options are removed.
+# TODO: Remove this entire file once deprecated Retry options are removed in v2.
 @pytest.fixture(scope="function")
 def expect_retry_deprecation():
     with warnings.catch_warnings(record=True) as w:
