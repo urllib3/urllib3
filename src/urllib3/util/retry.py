@@ -32,7 +32,7 @@ RequestHistory = namedtuple(
 _Default = object()
 
 
-class RetryMeta(type):
+class _RetryMeta(type):
     @property
     def DEFAULT_METHOD_WHITELIST(cls):
         warnings.warn(
@@ -70,7 +70,7 @@ class RetryMeta(type):
         cls.DEFAULT_REMOVE_HEADERS_ON_REDIRECT = value
 
 
-@six.add_metaclass(RetryMeta)
+@six.add_metaclass(_RetryMeta)
 class Retry(object):
     """Retry configuration.
 
