@@ -428,7 +428,7 @@ class Retry(object):
 
     def _is_method_retryable(self, method):
         """Checks if a given HTTP method should be retried upon, depending if
-        it is included on the method allowlist.
+        it is included in the allowed_methods
         """
         # TODO: For now favor if the Retry implementation sets its own method_whitelist
         # property outside of our constructor to avoid breaking custom implementations.
