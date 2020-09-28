@@ -131,7 +131,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
             assert "isn't available on non-native SSLContext" in str(excinfo.value)
 
-    def test_https_proxy_insecure(self):
+    def test_https_proxy_forwarding_for_https(self):
         with proxy_from_url(
             self.https_proxy_url,
             ca_certs=DEFAULT_CA,
