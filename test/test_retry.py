@@ -204,14 +204,14 @@ class TestRetry(object):
         retry = Retry(total=1, status_forcelist=["418"])
         assert not retry.is_retry("GET", status_code=418)
 
-    def test_method_allowlist_with_status_forcelist(self):
-        # Falsey method_allowlist means to retry on any method.
-        retry = Retry(status_forcelist=[500], method_allowlist=None)
+    def test_allowed_methods_with_status_forcelist(self):
+        # Falsey allowed_methods means to retry on any method.
+        retry = Retry(status_forcelist=[500], allowed_methods=None)
         assert retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
 
-        # Criteria of method_allowlist and status_forcelist are ANDed.
-        retry = Retry(status_forcelist=[500], method_allowlist=["POST"])
+        # Criteria of allowed_methods and status_forcelist are ANDed.
+        retry = Retry(status_forcelist=[500], allowed_methods=["POST"])
         assert not retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
 
@@ -259,7 +259,7 @@ class TestRetry(object):
         assert str(e.value.reason) == "conntimeout"
 
     def test_history(self):
-        retry = Retry(total=10, method_allowlist=frozenset(["GET", "POST"]))
+        retry = Retry(total=10, allowed_methods=frozenset(["GET", "POST"]))
         assert retry.history == tuple()
         connection_error = ConnectTimeoutError("conntimeout")
         retry = retry.increment("GET", "/test1", None, connection_error)

@@ -37,19 +37,19 @@ class RetryMeta(type):
     def DEFAULT_METHOD_WHITELIST(cls):
         warnings.warn(
             "Using 'Retry.DEFAULT_METHOD_WHITELIST' is deprecated and "
-            "will be removed in v2.0. Use 'Retry.DEFAULT_METHOD_ALLOWLIST' instead",
+            "will be removed in v2.0. Use 'Retry.DEFAULT_METHODS_ALLOWED' instead",
             DeprecationWarning,
         )
-        return cls.DEFAULT_METHOD_ALLOWLIST
+        return cls.DEFAULT_ALLOWED_METHODS
 
     @DEFAULT_METHOD_WHITELIST.setter
     def DEFAULT_METHOD_WHITELIST(cls, value):
         warnings.warn(
             "Using 'Retry.DEFAULT_METHOD_WHITELIST' is deprecated and "
-            "will be removed in v2.0. Use 'Retry.DEFAULT_METHOD_ALLOWLIST' instead",
+            "will be removed in v2.0. Use 'Retry.DEFAULT_ALLOWED_METHODS' instead",
             DeprecationWarning,
         )
-        cls.DEFAULT_METHOD_ALLOWLIST = value
+        cls.DEFAULT_ALLOWED_METHODS = value
 
     @property
     def DEFAULT_REDIRECT_HEADERS_BLACKLIST(cls):
@@ -151,12 +151,12 @@ class Retry(object):
         If ``total`` is not set, it's a good idea to set this to 0 to account
         for unexpected edge cases and avoid infinite retry loops.
 
-    :param iterable method_allowlist:
+    :param iterable allowed_methods:
         Set of uppercased HTTP method verbs that we should retry on.
 
         By default, we only retry on methods which are considered to be
         idempotent (multiple requests with the same parameters end with the
-        same state). See :attr:`Retry.DEFAULT_METHOD_ALLOWLIST`.
+        same state). See :attr:`Retry.DEFAULT_ALLOWED_METHODS`.
 
         Set to a ``False`` value to retry on any verb.
 
@@ -167,7 +167,7 @@ class Retry(object):
 
     :param iterable status_forcelist:
         A set of integer HTTP status codes that we should force a retry on.
-        A retry is initiated if the request method is in ``method_allowlist``
+        A retry is initiated if the request method is in ``allowed_methods``
         and the response status code is in ``status_forcelist``.
 
         By default, this is disabled with ``None``.
@@ -208,8 +208,8 @@ class Retry(object):
         request.
     """
 
-    #: Default methods to be used for ``method_allowlist``
-    DEFAULT_METHOD_ALLOWLIST = frozenset(
+    #: Default methods to be used for ``allowed_methods``
+    DEFAULT_ALLOWED_METHODS = frozenset(
         ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"]
     )
 
@@ -230,7 +230,7 @@ class Retry(object):
         redirect=None,
         status=None,
         other=None,
-        method_allowlist=_Default,
+        allowed_methods=_Default,
         status_forcelist=None,
         backoff_factor=0,
         raise_on_redirect=True,
@@ -243,20 +243,20 @@ class Retry(object):
     ):
 
         if method_whitelist is not _Default:
-            if method_allowlist is not _Default:
+            if allowed_methods is not _Default:
                 raise ValueError(
-                    "Using both 'method_allowlist' and "
+                    "Using both 'allowed_methods' and "
                     "'method_whitelist' together is not allowed. "
-                    "Instead only use 'method_allowlist'"
+                    "Instead only use 'allowed_methods'"
                 )
             warnings.warn(
                 "Using 'method_whitelist' with Retry is deprecated and "
-                "will be removed in v2.0. Use 'method_allowlist' instead",
+                "will be removed in v2.0. Use 'allowed_methods' instead",
                 DeprecationWarning,
             )
-            method_allowlist = method_whitelist
-        if method_allowlist is _Default:
-            method_allowlist = self.DEFAULT_METHOD_ALLOWLIST
+            allowed_methods = method_whitelist
+        if allowed_methods is _Default:
+            allowed_methods = self.DEFAULT_ALLOWED_METHODS
         if remove_headers_on_redirect is _Default:
             remove_headers_on_redirect = self.DEFAULT_REMOVE_HEADERS_ON_REDIRECT
 
@@ -272,7 +272,7 @@ class Retry(object):
 
         self.redirect = redirect
         self.status_forcelist = status_forcelist or set()
-        self.method_allowlist = method_allowlist
+        self.allowed_methods = allowed_methods
         self.backoff_factor = backoff_factor
         self.raise_on_redirect = raise_on_redirect
         self.raise_on_status = raise_on_status
@@ -303,17 +303,17 @@ class Retry(object):
         # If not given we need to figure out what to pass. We decide
         # based on whether our class has the 'method_whitelist' property
         # and if so we pass the deprecated 'method_whitelist' otherwise
-        # we use 'method_allowlist'. Remove in v2.0
-        if "method_whitelist" not in kw and "method_allowlist" not in kw:
+        # we use 'allowed_methods'. Remove in v2.0
+        if "method_whitelist" not in kw and "allowed_methods" not in kw:
             if "method_whitelist" in self.__dict__:
                 warnings.warn(
                     "Using 'method_whitelist' with Retry is deprecated and "
-                    "will be removed in v2.0. Use 'method_allowlist' instead",
+                    "will be removed in v2.0. Use 'allowed_methods' instead",
                     DeprecationWarning,
                 )
-                kw["method_whitelist"] = self.method_allowlist
+                params["method_whitelist"] = self.allowed_methods
             else:
-                kw["method_allowlist"] = self.method_allowlist
+                params["allowed_methods"] = self.allowed_methods
 
         params.update(kw)
         return type(self)(**params)
@@ -435,14 +435,14 @@ class Retry(object):
         if "method_whitelist" in self.__dict__:
             warnings.warn(
                 "Using 'method_whitelist' with Retry is deprecated and "
-                "will be removed in v2.0. Use 'method_allowlist' instead",
+                "will be removed in v2.0. Use 'allowed_methods' instead",
                 DeprecationWarning,
             )
-            method_allowlist = self.method_whitelist
+            allowed_methods = self.method_whitelist
         else:
-            method_allowlist = self.method_allowlist
+            allowed_methods = self.allowed_methods
 
-        if method_allowlist and method.upper() not in method_allowlist:
+        if allowed_methods and method.upper() not in allowed_methods:
             return False
         return True
 
@@ -547,7 +547,7 @@ class Retry(object):
 
         else:
             # Incrementing because of a server error like a 500 in
-            # status_forcelist and the given method is in the method_allowlist
+            # status_forcelist and the given method is in the allowed_methods
             cause = ResponseError.GENERIC_ERROR
             if response and response.status:
                 if status_count is not None:
@@ -587,10 +587,10 @@ class Retry(object):
             # TODO: Remove this deprecated alias in v2.0
             warnings.warn(
                 "Using 'method_whitelist' with Retry is deprecated and "
-                "will be removed in v2.0. Use 'method_allowlist' instead",
+                "will be removed in v2.0. Use 'allowed_methods' instead",
                 DeprecationWarning,
             )
-            return self.method_allowlist
+            return self.allowed_methods
         try:
             return getattr(super(Retry, self), item)
         except AttributeError:
