@@ -111,7 +111,7 @@ def blacken(session):
 
 @nox.session
 def lint(session):
-    session.install("flake8", "black", "mypy")
+    session.install("flake8", "flake8-2020", "black", "mypy")
     session.run("flake8", "--version")
     session.run("black", "--version")
     session.run("mypy", "--version")

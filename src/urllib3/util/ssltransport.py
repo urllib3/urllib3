@@ -3,7 +3,7 @@ import socket
 import io
 
 from urllib3.exceptions import ProxySchemeUnsupported
-from urllib3.packages.six import PY3
+from urllib3.packages import six
 
 SSL_BLOCKSIZE = 16384
 
@@ -30,7 +30,7 @@ class SSLTransport:
         """
 
         if not hasattr(ssl_context, "wrap_bio"):
-            if not PY3:
+            if six.PY2:
                 raise ProxySchemeUnsupported(
                     "TLS in TLS requires SSLContext.wrap_bio() which isn't "
                     "supported on Python 2"
