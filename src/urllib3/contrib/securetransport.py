@@ -60,6 +60,7 @@ import os.path
 import shutil
 import socket
 import ssl
+import struct
 import threading
 import weakref
 
@@ -67,6 +68,11 @@ import six
 
 from .. import util
 from ._securetransport.bindings import CoreFoundation, Security, SecurityConst
+from ._securetransport.record import (
+    build_tls_alert_record,
+    TLS_ALERT_SEVERITY_FATAL,
+    TLS_ALERT_DESCRIPTION_UNKNOWN_CA,
+)
 from ._securetransport.low_level import (
     _assert_no_error,
     _cert_array_from_pem,
@@ -416,6 +422,16 @@ class WrappedSocket(object):
             # Do not trust on error
             reason = "exception: %r" % (e,)
 
+        # SecureTransport does not send an alert nor shuts down the connection.
+        rec = build_tls_alert_record(
+            self.version(), TLS_ALERT_SEVERITY_FATAL, TLS_ALERT_DESCRIPTION_UNKNOWN_CA
+        )
+        self.socket.sendall(rec)
+        # close the connection immediately
+        opts = struct.pack("ii", 1, 0)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, opts)
+        self.socket.shutdown(socket.SHUT_RDWR)
+        self.socket.close()
         raise ssl.SSLError("certificate verify failed, %s" % reason)
 
     def _evaluate_trust(self, trust_bundle):
