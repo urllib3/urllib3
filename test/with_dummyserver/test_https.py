@@ -477,29 +477,33 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             https_pool.request("GET", "/")
 
     def test_assert_invalid_fingerprint(self):
+        def _test_request(pool):
+            with pytest.raises(MaxRetryError) as cm:
+                pool.request("GET", "/", retries=0)
+            assert isinstance(cm.value.reason, SSLError)
+            return cm.value.reason
+
         with HTTPSConnectionPool(
             self.host, self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
+
             https_pool.assert_fingerprint = (
                 "AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA"
             )
-
-            def _test_request(pool):
-                with pytest.raises(MaxRetryError) as cm:
-                    pool.request("GET", "/", retries=0)
-                assert isinstance(cm.value.reason, SSLError)
-
-            _test_request(https_pool)
+            e = _test_request(https_pool)
+            assert "Fingerprints did not match." in str(e)
             https_pool._get_conn()
 
             # Uneven length
             https_pool.assert_fingerprint = "AA:A"
-            _test_request(https_pool)
+            e = _test_request(https_pool)
+            assert "Fingerprint of invalid length:" in str(e)
             https_pool._get_conn()
 
             # Invalid length
             https_pool.assert_fingerprint = "AA"
-            _test_request(https_pool)
+            e = _test_request(https_pool)
+            assert "Fingerprint of invalid length:" in str(e)
 
     def test_verify_none_and_bad_fingerprint(self):
         with HTTPSConnectionPool(
