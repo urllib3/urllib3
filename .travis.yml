@@ -32,10 +32,6 @@ jobs:
   allow_failures:
     - python: nightly
   include:
-    # Lint & documentation.
-    - python: 3.8
-      env: NOX_SESSION=docs
-
     # Unit tests
     - python: 2.7
       env: NOX_SESSION=test-2.7
