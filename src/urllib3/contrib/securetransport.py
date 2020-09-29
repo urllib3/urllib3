@@ -430,7 +430,12 @@ class WrappedSocket(object):
         # close the connection immediately
         opts = struct.pack("ii", 1, 0)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, opts)
-        self.socket.shutdown(socket.SHUT_RDWR)
+        try:
+            self.socket.shutdown(socket.SHUT_RDWR)
+        except socket.error as e:
+            # See http://bugs.python.org/issue4397
+            if e.errno != errno.ENOTCONN:
+                raise
         self.socket.close()
         raise ssl.SSLError("certificate verify failed, %s" % reason)
 
