@@ -478,7 +478,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def test_assert_invalid_fingerprint(self):
         with HTTPSConnectionPool(
-            "127.0.0.1", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
+            self.host, self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
             https_pool.assert_fingerprint = (
                 "AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA"
