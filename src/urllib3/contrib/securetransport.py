@@ -397,11 +397,28 @@ class WrappedSocket(object):
         Called when we have set custom validation. We do this in two cases:
         first, when cert validation is entirely disabled; and second, when
         using a custom trust DB.
+        Raises an SSLError if the connection is not trusted.
         """
         # If we disabled cert validation, just say: cool.
         if not verify:
             return
 
+        successes = (
+            SecurityConst.kSecTrustResultUnspecified,
+            SecurityConst.kSecTrustResultProceed,
+        )
+        try:
+            trust_result = self._evaluate_trust(trust_bundle)
+            if trust_result in successes:
+                return
+            reason = "error code: %d" % (trust_result,)
+        except Exception as e:
+            # Do not trust on error
+            reason = "exception: %r" % (e,)
+
+        raise ssl.SSLError("certificate verify failed, %s" % reason)
+
+    def _evaluate_trust(self, trust_bundle):
         # We want data in memory, so load it up.
         if os.path.isfile(trust_bundle):
             with open(trust_bundle, "rb") as f:
@@ -439,15 +456,7 @@ class WrappedSocket(object):
             if cert_array is not None:
                 CoreFoundation.CFRelease(cert_array)
 
-        # Ok, now we can look at what the result was.
-        successes = (
-            SecurityConst.kSecTrustResultUnspecified,
-            SecurityConst.kSecTrustResultProceed,
-        )
-        if trust_result.value not in successes:
-            raise ssl.SSLError(
-                "certificate verify failed, error code: %d" % trust_result.value
-            )
+        return trust_result.value
 
     def handshake(
         self,
