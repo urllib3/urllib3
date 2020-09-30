@@ -1,7 +1,11 @@
 from __future__ import absolute_import
 import socket
+
+from urllib3.exceptions import LocationParseError
+
 from .wait import NoWayToWaitForSocketError, wait_for_read
 from ..contrib import _appengine_environ
+from ..packages import six
 
 
 def is_connection_dropped(conn):  # Platform-specific
@@ -57,6 +61,13 @@ def create_connection(
     # us select whether to work with IPv4 DNS records, IPv6 records, or both.
     # The original create_connection function always returns all records.
     family = allowed_gai_family()
+
+    try:
+        host.encode("idna")
+    except UnicodeError:
+        return six.raise_from(
+            LocationParseError(u"'%s', label empty or too long" % host), None
+        )
 
     for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
         af, socktype, proto, canonname, sa = res

@@ -11,6 +11,7 @@ from mock import patch, Mock
 import pytest
 
 from urllib3 import add_stderr_logger, disable_warnings, util
+from urllib3.util.connection import create_connection
 from urllib3.util.request import make_headers, rewind_body, _FAILEDTELL
 from urllib3.util.response import assert_header_parsing
 from urllib3.util.timeout import Timeout
@@ -795,6 +796,29 @@ class TestUtil(object):
         )
         header_msg.seek(0)
         assert_header_parsing(client.parse_headers(header_msg))
+
+    @pytest.mark.parametrize("host", [".localhost", "...", "t" * 64])
+    def test_create_connection_with_invalid_idna_labels(self, host):
+        with pytest.raises(LocationParseError) as ctx:
+            create_connection((host, 80))
+        assert str(ctx.value) == "Failed to parse: '%s', label empty or too long" % host
+
+    @pytest.mark.parametrize(
+        "host",
+        [
+            "a.example.com",
+            "localhost.",
+            "[dead::beef]",
+            "[dead::beef%en5]",
+            "[dead::beef%en5.]",
+        ],
+    )
+    @patch("socket.getaddrinfo")
+    @patch("socket.socket")
+    def test_create_connection_with_valid_idna_labels(self, socket, getaddrinfo, host):
+        getaddrinfo.return_value = [(None, None, None, None, None)]
+        socket.return_value = Mock()
+        create_connection((host, 80))
 
 
 class TestUtilSSL(object):
