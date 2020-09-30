@@ -767,10 +767,7 @@ class TestUtil(object):
     def test_create_connection_with_invalid_idna_labels(self, host):
         with pytest.raises(LocationParseError) as ctx:
             create_connection((host, 80))
-        assert (
-            str(ctx.value)
-            == "Failed to parse: '%s', label empty or too long" % host
-        )
+        assert str(ctx.value) == "Failed to parse: '%s', label empty or too long" % host
 
     @pytest.mark.parametrize(
         "host",
