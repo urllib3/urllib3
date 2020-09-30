@@ -766,7 +766,7 @@ class TestUtil(object):
     @pytest.mark.parametrize("host", [".localhost", "...", "t" * 64])
     def test_create_connection_with_invalid_idna_labels(self, host):
         with pytest.raises(LocationParseError) as ctx:
-            create_connection((label, 80))
+            create_connection((host, 80))
         assert (
             str(ctx.value)
             == "Failed to parse: '%s', label empty or too long" % host
@@ -787,7 +787,7 @@ class TestUtil(object):
     def test_create_connection_with_valid_idna_labels(self, socket, getaddrinfo, host):
         getaddrinfo.return_value = [(None, None, None, None, None)]
         socket.return_value = Mock()
-        create_connection((label, 80))
+        create_connection((host, 80))
 
 
 class TestUtilSSL(object):
