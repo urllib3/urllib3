@@ -68,13 +68,9 @@ import six
 
 from .. import util
 from ._securetransport.bindings import CoreFoundation, Security, SecurityConst
-from ._securetransport.record import (
-    build_tls_alert_record,
-    TLS_ALERT_SEVERITY_FATAL,
-    TLS_ALERT_DESCRIPTION_UNKNOWN_CA,
-)
 from ._securetransport.low_level import (
     _assert_no_error,
+    _build_tls_unknown_ca_alert,
     _cert_array_from_pem,
     _create_cfstring_array,
     _load_client_cert_chain,
@@ -423,9 +419,7 @@ class WrappedSocket(object):
             reason = "exception: %r" % (e,)
 
         # SecureTransport does not send an alert nor shuts down the connection.
-        rec = build_tls_alert_record(
-            self.version(), TLS_ALERT_SEVERITY_FATAL, TLS_ALERT_DESCRIPTION_UNKNOWN_CA
-        )
+        rec = _build_tls_unknown_ca_alert(self.version())
         self.socket.sendall(rec)
         # close the connection immediately
         opts = struct.pack("ii", 1, 0)
