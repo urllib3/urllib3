@@ -492,13 +492,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             )
             e = _test_request(https_pool)
             assert "Fingerprints did not match." in str(e)
-            https_pool._get_conn()
 
             # Uneven length
             https_pool.assert_fingerprint = "AA:A"
             e = _test_request(https_pool)
             assert "Fingerprint of invalid length:" in str(e)
-            https_pool._get_conn()
 
             # Invalid length
             https_pool.assert_fingerprint = "AA"
