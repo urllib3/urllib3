@@ -422,6 +422,8 @@ class WrappedSocket(object):
         rec = _build_tls_unknown_ca_alert(self.version())
         self.socket.sendall(rec)
         # close the connection immediately
+        # l_onoff = 1, activate linger
+        # l_linger = 0, linger for 0 seoncds
         opts = struct.pack("ii", 1, 0)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, opts)
         try:
