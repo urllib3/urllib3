@@ -763,18 +763,19 @@ class TestUtil(object):
         header_msg.seek(0)
         assert_header_parsing(client.parse_headers(header_msg))
 
-    @pytest.mark.parametrize("label", ["...", "t" * 64])
-    def test_create_connection_with_invalid_idna_labels(self, label):
+    @pytest.mark.parametrize("host", [".localhost", "...", "t" * 64])
+    def test_create_connection_with_invalid_idna_labels(self, host):
         with pytest.raises(LocationParseError) as ctx:
             create_connection((label, 80))
         assert (
             str(ctx.value)
-            == "Failed to parse: Host '%s' is not a valid IDNA label" % label
+            == "Failed to parse: '%s', label empty or too long" % host
         )
 
     @pytest.mark.parametrize(
-        "label",
+        "host",
         [
+            "a.example.com",
             "localhost.",
             "[dead::beef]",
             "[dead::beef%en5]",
@@ -783,7 +784,7 @@ class TestUtil(object):
     )
     @patch("socket.getaddrinfo")
     @patch("socket.socket")
-    def test_create_connection_with_valid_idna_labels(self, socket, getaddrinfo, label):
+    def test_create_connection_with_valid_idna_labels(self, socket, getaddrinfo, host):
         getaddrinfo.return_value = [(None, None, None, None, None)]
         socket.return_value = Mock()
         create_connection((label, 80))
