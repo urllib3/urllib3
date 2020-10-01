@@ -1,8 +1,9 @@
 from __future__ import absolute_import
+
 from base64 import b64encode
 
-from ..packages.six import b, integer_types
 from ..exceptions import UnrewindableBodyError
+from ..packages.six import b, integer_types
 
 # Use an invalid User-Agent to represent suppressing of default user agent.
 # See https://tools.ietf.org/html/rfc7231#section-5.5.3 and

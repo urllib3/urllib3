@@ -2,14 +2,14 @@
 
 import pytest
 
-from urllib3 import HTTPConnectionPool
-from urllib3.util.retry import Retry
-from urllib3.util import SUPPRESS_USER_AGENT
 from dummyserver.testcase import (
+    ConnectionMarker,
     SocketDummyServerTestCase,
     consume_socket,
-    ConnectionMarker,
 )
+from urllib3 import HTTPConnectionPool
+from urllib3.util import SUPPRESS_USER_AGENT
+from urllib3.util.retry import Retry
 
 # Retry failed tests
 pytestmark = pytest.mark.flaky

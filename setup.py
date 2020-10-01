@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # This file is protected via CODEOWNERS
 
-from setuptools import setup
-
+import codecs
 import os
 import re
-import codecs
+
+from setuptools import setup
 
 base_path = os.path.dirname(__file__)
 

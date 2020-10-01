@@ -1,21 +1,20 @@
 from __future__ import absolute_import
-import warnings
+
 import hmac
 import os
 import sys
-
+import warnings
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
-from .url import IPV4_RE, BRACELESS_IPV6_ADDRZ_RE
 from ..exceptions import (
-    SSLError,
     InsecurePlatformWarning,
-    SNIMissingWarning,
     ProxySchemeUnsupported,
+    SNIMissingWarning,
+    SSLError,
 )
 from ..packages import six
-
+from .url import BRACELESS_IPV6_ADDRZ_RE, IPV4_RE
 
 SSLContext = None
 SSLTransport = None
@@ -45,8 +44,9 @@ _const_compare_digest = getattr(hmac, "compare_digest", _const_compare_digest_ba
 
 try:  # Test for SSL features
     import ssl
-    from ssl import wrap_socket, CERT_REQUIRED
     from ssl import HAS_SNI  # Has SNI?
+    from ssl import CERT_REQUIRED, wrap_socket
+
     from .ssltransport import SSLTransport
 except ImportError:
     pass
@@ -65,7 +65,7 @@ except ImportError:
 
 
 try:
-    from ssl import OP_NO_SSLv2, OP_NO_SSLv3, OP_NO_COMPRESSION
+    from ssl import OP_NO_COMPRESSION, OP_NO_SSLv2, OP_NO_SSLv3
 except ImportError:
     OP_NO_SSLv2, OP_NO_SSLv3 = 0x1000000, 0x2000000
     OP_NO_COMPRESSION = 0x20000

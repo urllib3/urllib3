@@ -1,14 +1,11 @@
 import pytest
 
-from .port_helpers import find_unused_port
+from urllib3.exceptions import MaxRetryError, NewConnectionError, ProxyError
 from urllib3.poolmanager import ProxyManager
-from urllib3.util.url import parse_url
 from urllib3.util.retry import Retry
-from urllib3.exceptions import (
-    MaxRetryError,
-    ProxyError,
-    NewConnectionError,
-)
+from urllib3.util.url import parse_url
+
+from .port_helpers import find_unused_port
 
 
 class TestProxyManager(object):

@@ -1,23 +1,23 @@
 from __future__ import absolute_import
-import time
+
+import email
 import logging
+import re
+import time
+import warnings
 from collections import namedtuple
 from itertools import takewhile
-import email
-import re
-import warnings
 
 from ..exceptions import (
     ConnectTimeoutError,
+    InvalidHeader,
     MaxRetryError,
     ProtocolError,
+    ProxyError,
     ReadTimeoutError,
     ResponseError,
-    InvalidHeader,
-    ProxyError,
 )
 from ..packages import six
-
 
 log = logging.getLogger(__name__)
 

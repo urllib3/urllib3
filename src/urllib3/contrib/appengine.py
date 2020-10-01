@@ -39,24 +39,24 @@ urllib3 on Google App Engine:
 """
 
 from __future__ import absolute_import
+
 import io
 import logging
 import warnings
-from ..packages.six.moves.urllib.parse import urljoin
 
 from ..exceptions import (
     HTTPError,
     HTTPWarning,
     MaxRetryError,
     ProtocolError,
-    TimeoutError,
     SSLError,
+    TimeoutError,
 )
-
+from ..packages.six.moves.urllib.parse import urljoin
 from ..request import RequestMethods
 from ..response import HTTPResponse
-from ..util.timeout import Timeout
 from ..util.retry import Retry
+from ..util.timeout import Timeout
 from . import _appengine_environ
 
 try:

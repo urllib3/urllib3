@@ -10,13 +10,12 @@ appropriate and useful assistance to the higher-level code.
 import base64
 import ctypes
 import itertools
-import re
 import os
+import re
 import ssl
 import tempfile
 
-from .bindings import Security, CoreFoundation, CFConst
-
+from .bindings import CFConst, CoreFoundation, Security
 
 # This regular expression is used to grab PEM data out of a PEM bundle.
 _PEM_CERTS_RE = re.compile(

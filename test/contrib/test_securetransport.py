@@ -40,9 +40,9 @@ from ..with_dummyserver.test_https import (  # noqa: E402, F401
     TestHTTPS_TLSv1_2,
 )
 from ..with_dummyserver.test_socketlevel import (  # noqa: E402, F401
+    TestClientCerts,
     TestSNI,
     TestSocketClosing,
-    TestClientCerts,
     TestSSL,
 )
 

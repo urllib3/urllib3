@@ -58,20 +58,21 @@ import ctypes
 import errno
 import os.path
 import shutil
-import six
 import socket
 import ssl
 import threading
 import weakref
 
+import six
+
 from .. import util
-from ._securetransport.bindings import Security, SecurityConst, CoreFoundation
+from ._securetransport.bindings import CoreFoundation, Security, SecurityConst
 from ._securetransport.low_level import (
     _assert_no_error,
     _cert_array_from_pem,
-    _temporary_keychain,
-    _load_client_cert_chain,
     _create_cfstring_array,
+    _load_client_cert_chain,
+    _temporary_keychain,
 )
 
 try:  # Platform-specific: Python 2

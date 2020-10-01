@@ -1,8 +1,9 @@
 from __future__ import absolute_import
-from email.errors import StartBoundaryNotFoundDefect, MultipartInvariantViolationDefect
-from ..packages.six.moves import http_client as httplib
+
+from email.errors import MultipartInvariantViolationDefect, StartBoundaryNotFoundDefect
 
 from ..exceptions import HeaderParsingError
+from ..packages.six.moves import http_client as httplib
 
 
 def is_fp_closed(obj):

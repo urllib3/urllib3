@@ -6,19 +6,21 @@ try:
     from time import monotonic
 except ImportError:
     from time import time as monotonic
+
 import time
 
 import pytest
 
-from .socketpair_helper import socketpair
 from urllib3.util.wait import (
-    wait_for_read,
-    wait_for_write,
-    wait_for_socket,
-    select_wait_for_socket,
-    poll_wait_for_socket,
     _have_working_poll,
+    poll_wait_for_socket,
+    select_wait_for_socket,
+    wait_for_read,
+    wait_for_socket,
+    wait_for_write,
 )
+
+from .socketpair_helper import socketpair
 
 
 @pytest.fixture

@@ -1,10 +1,11 @@
 from __future__ import absolute_import
-from contextlib import contextmanager
-import zlib
+
 import io
 import logging
-from socket import timeout as SocketTimeout
+import zlib
+from contextlib import contextmanager
 from socket import error as SocketError
+from socket import timeout as SocketTimeout
 
 try:
     import brotli
@@ -12,20 +13,20 @@ except ImportError:
     brotli = None
 
 from ._collections import HTTPHeaderDict
+from .connection import BaseSSLError, HTTPException
 from .exceptions import (
     BodyNotHttplibCompatible,
-    ProtocolError,
     DecodeError,
-    ReadTimeoutError,
-    ResponseNotChunked,
+    HTTPError,
     IncompleteRead,
     InvalidChunkLength,
     InvalidHeader,
-    HTTPError,
+    ProtocolError,
+    ReadTimeoutError,
+    ResponseNotChunked,
     SSLError,
 )
 from .packages import six
-from .connection import HTTPException, BaseSSLError
 from .util.response import is_fp_closed, is_response_to_head
 
 log = logging.getLogger(__name__)

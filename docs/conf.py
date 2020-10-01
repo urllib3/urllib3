@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from datetime import date
 import os
 import sys
+from datetime import date
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -29,7 +29,6 @@ sys.modules.update((mod_name, MockModule()) for mod_name in MOCK_MODULES)
 
 
 import urllib3
-
 
 # -- General configuration -----------------------------------------------------
 

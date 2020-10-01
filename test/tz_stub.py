@@ -1,7 +1,8 @@
-from contextlib import contextmanager
-import time
 import datetime
 import os
+import time
+from contextlib import contextmanager
+
 import pytest
 from dateutil import tz
 

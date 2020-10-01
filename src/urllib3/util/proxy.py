@@ -1,8 +1,4 @@
-from .ssl_ import (
-    resolve_cert_reqs,
-    resolve_ssl_version,
-    create_urllib3_context,
-)
+from .ssl_ import create_urllib3_context, resolve_cert_reqs, resolve_ssl_version
 
 
 def connection_requires_http_tunnel(
