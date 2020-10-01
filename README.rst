@@ -6,14 +6,15 @@
       </a>
    </p>
    <p align="center">
-      <a href="https://travis-ci.org/urllib3/urllib3"><img alt="Build status on Travis" src="https://travis-ci.org/urllib3/urllib3.svg?branch=master" /></a>
-      <a href="https://ci.appveyor.com/project/urllib3/urllib3"><img alt="Build status on AppVeyor" src="https://img.shields.io/appveyor/ci/urllib3/urllib3/master.svg" /></a>
-      <a href="https://urllib3.readthedocs.io/en/latest/"><img alt="Documentation Status" src="https://readthedocs.org/projects/urllib3/badge/?version=latest" /></a>
+      <a href="https://pypi.org/project/urllib3"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/urllib3.svg?maxAge=86400" /></a>
+      <a href="https://discord.gg/CHEgCZN"><img alt="Join our Discord" src="https://img.shields.io/discord/756342717725933608?color=%237289da&label=discord" /></a>
       <a href="https://codecov.io/gh/urllib3/urllib3"><img alt="Coverage Status" src="https://img.shields.io/codecov/c/github/urllib3/urllib3.svg" /></a>
-      <a href="https://pypi.org/project/urllib3/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/urllib3.svg?maxAge=86400" /></a>
+      <a href="https://github.com/urllib3/urllib3/actions?query=workflow%3ACI"><img alt="Build Status on GitHub" src="https://github.com/urllib3/urllib3/workflows/CI/badge.svg" /></a>
+      <a href="https://travis-ci.org/urllib3/urllib3"><img alt="Build Status on Travis" src="https://travis-ci.org/urllib3/urllib3.svg?branch=master" /></a>
+      <a href="https://urllib3.readthedocs.io"><img alt="Documentation Status" src="https://readthedocs.org/projects/urllib3/badge/?version=latest" /></a>
    </p>
 
-urllib3 is a powerful, *sanity-friendly* HTTP client for Python. Much of the
+urllib3 is a powerful, *user-friendly* HTTP client for Python. Much of the
 Python ecosystem already uses urllib3 and you should too.
 urllib3 brings many critical features that are missing from the Python
 standard libraries:
@@ -27,7 +28,9 @@ standard libraries:
 - Proxy support for HTTP and SOCKS.
 - 100% test coverage.
 
-urllib3 is powerful and easy to use::
+urllib3 is powerful and easy to use:
+
+.. code-block:: python
 
     >>> import urllib3
     >>> http = urllib3.PoolManager()
@@ -43,7 +46,7 @@ Installing
 
 urllib3 can be installed with `pip <https://pip.pypa.io>`_::
 
-    $ pip install urllib3
+    $ python -m pip install urllib3
 
 Alternatively, you can grab the latest source code from `GitHub <https://github.com/urllib3/urllib3>`_::
 
@@ -72,6 +75,7 @@ To report a security vulnerability, please use the
 `Tidelift security contact <https://tidelift.com/security>`_.
 Tidelift will coordinate the fix and disclosure with maintainers.
 
+
 Maintainers
 -----------
 
@@ -89,6 +93,13 @@ Maintainers
 Sponsorship
 -----------
 
+If your company benefits from this library, please consider `sponsoring its
+development <https://urllib3.readthedocs.io/en/latest/sponsors.html>`_.
+
+
+For Enterprise
+--------------
+
 .. |tideliftlogo| image:: https://nedbatchelder.com/pix/Tidelift_Logos_RGB_Tidelift_Shorthand_On-White_small.png
    :width: 75
    :alt: Tidelift
@@ -104,13 +115,3 @@ Sponsorship
        tools.
 
 .. _Tidelift Subscription: https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=readme
-
-If your company benefits from this library, please consider `sponsoring its
-development <https://urllib3.readthedocs.io/en/latest/contributing.html#sponsorship-project-grants>`_.
-
-Sponsors include:
-
-- Abbott (2018-2019), sponsored `@sethmlarson <https://github.com/sethmlarson>`_'s work on urllib3.
-- Google Cloud Platform (2018-2019), sponsored `@theacodes <https://github.com/theacodes>`_'s work on urllib3.
-- Akamai (2017-2018), sponsored `@haikuginger <https://github.com/haikuginger>`_'s work on urllib3
-- Hewlett Packard Enterprise (2016-2017), sponsored `@Lukasa’s <https://github.com/Lukasa>`_ work on urllib3.

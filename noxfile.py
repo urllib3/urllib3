@@ -4,14 +4,29 @@ import subprocess
 
 import nox
 
-
 # Whenever type-hints are completed on a file it should be added here so that
 # this file will continue to be checked by mypy. Errors from other files are
 # ignored.
-STUB_FILES = {
-    "src/urllib3/packages/ssl_match_hostname/__init__.pyi",
-    "src/urllib3/packages/ssl_match_hostname/_implementation.pyi",
+TYPED_FILES = {
+    "src/urllib3/contrib/__init__.py",
+    "src/urllib3/exceptions.py",
+    "src/urllib3/fields.py",
+    "src/urllib3/filepost.py",
+    "src/urllib3/packages/__init__.py",
+    "src/urllib3/packages/six.py",
+    "src/urllib3/packages/ssl_match_hostname/__init__.py",
+    "src/urllib3/packages/ssl_match_hostname/_implementation.py",
+    "src/urllib3/util/queue.py",
+    "src/urllib3/util/url.py",
 }
+SOURCE_FILES = [
+    "docs/",
+    "dummyserver/",
+    "src/",
+    "test/",
+    "noxfile.py",
+    "setup.py",
+]
 
 
 def tests_impl(session, extras="socks,secure,brotli"):
@@ -85,27 +100,28 @@ def app_engine(session):
 
 
 @nox.session()
-def blacken(session):
-    """Run black code formatter."""
-    session.install("black")
-    session.run("black", "src", "dummyserver", "test", "noxfile.py", "setup.py")
+def format(session):
+    """Run code formatters."""
+    session.install("black", "isort")
+    session.run("black", *SOURCE_FILES)
+    session.run("isort", "--profile", "black", *SOURCE_FILES)
 
     lint(session)
 
 
 @nox.session
 def lint(session):
-    session.install("flake8", "black", "mypy")
+    session.install("flake8", "flake8-2020", "black", "isort", "mypy")
     session.run("flake8", "--version")
     session.run("black", "--version")
+    session.run("isort", "--version")
     session.run("mypy", "--version")
-    session.run(
-        "black", "--check", "src", "dummyserver", "test", "noxfile.py", "setup.py"
-    )
-    session.run("flake8", "setup.py", "docs", "dummyserver", "src", "test")
+    session.run("black", "--check", *SOURCE_FILES)
+    session.run("isort", "--profile", "black", "--check", *SOURCE_FILES)
+    session.run("flake8", *SOURCE_FILES)
 
     session.log("mypy --strict src/urllib3")
-    errors = []
+    all_errors, errors = [], []
     process = subprocess.run(
         ["mypy", "--strict", "src/urllib3"],
         env=session.env,
@@ -113,13 +129,15 @@ def lint(session):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
-    # Ensure that mypy itself ran succesfully
+    # Ensure that mypy itself ran successfully
     assert process.returncode in (0, 1)
 
     for line in process.stdout.split("\n"):
+        all_errors.append(line)
         filepath = line.partition(":")[0]
-        if filepath in STUB_FILES:
+        if filepath.replace(".pyi", ".py") in TYPED_FILES:
             errors.append(line)
+    session.log("all errors count: {}".format(len(all_errors)))
     if errors:
         session.error("\n" + "\n".join(sorted(set(errors))))
 
@@ -132,4 +150,4 @@ def docs(session):
     session.chdir("docs")
     if os.path.exists("_build"):
         shutil.rmtree("_build")
-    session.run("sphinx-build", "-W", ".", "_build/html")
+    session.run("sphinx-build", "-b", "html", "-W", ".", "_build/html")

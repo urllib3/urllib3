@@ -4,7 +4,7 @@ Advanced Usage
 .. currentmodule:: urllib3
 
 
-Customizing pool behavior
+Customizing Pool Behavior
 -------------------------
 
 The :class:`~poolmanager.PoolManager` class automatically handles creating
@@ -48,9 +48,10 @@ This is a great way to prevent flooding a host with too many connections in
 multi-threaded applications.
 
 .. _stream:
+.. _streaming_and_io:
 
-Streaming and IO
-----------------
+Streaming and I/O
+-----------------
 
 When dealing with large responses it's often better to stream the response
 content::
@@ -152,8 +153,9 @@ Once PySocks is installed, you can use
 
 
 .. _ssl_custom:
+.. _custom_ssl_certificates:
 
-Custom SSL certificates
+Custom TLS Certificates
 -----------------------
 
 Instead of using `certifi <https://certifi.io/>`_ you can provide your
@@ -213,7 +215,7 @@ you may want to use a specific host under round-robin DNS.
 
 .. _ssl_client:
 
-Client certificates
+Client Certificates
 -------------------
 
 You can also specify a client certificate. This is useful when both the server
@@ -238,9 +240,10 @@ the ``key_password`` parameter to specify a password to decrypt the key. ::
 If your key isn't encrypted the ``key_password`` parameter isn't required.
 
 .. _ssl_mac:
+.. _certificate_validation_and_mac_os_x:
 
-Certificate validation and Mac OS X
------------------------------------
+Certificate Validation and macOS
+--------------------------------
 
 Apple-provided Python and OpenSSL libraries contain a patches that make them
 automatically check the system keychain's certificates. This can be
@@ -255,7 +258,7 @@ has more in-depth analysis and explanation.
 
 .. _ssl_warnings:
 
-SSL Warnings
+TLS Warnings
 ------------
 
 urllib3 will issue several different warnings based on the level of certificate
@@ -285,12 +288,16 @@ be resolved in different ways.
 .. _disable_ssl_warnings:
 
 Making unverified HTTPS requests is **strongly** discouraged, however, if you
-understand the risks and wish to disable these warnings, you can use :func:`~urllib3.disable_warnings`::
+understand the risks and wish to disable these warnings, you can use :func:`~urllib3.disable_warnings`:
+
+.. code-block:: pycon
 
     >>> import urllib3
     >>> urllib3.disable_warnings()
 
-Alternatively you can capture the warnings with the standard :mod:`logging` module::
+Alternatively you can capture the warnings with the standard :mod:`logging` module:
+
+.. code-block:: pycon
 
     >>> logging.captureWarnings(True)
 
@@ -312,14 +319,18 @@ you either have to use :mod:`urllib3.contrib.appengine`'s
 :class:`~urllib3.contrib.appengine.AppEngineManager` or use the `Sockets API
 <https://cloud.google.com/appengine/docs/python/sockets/>`_
 
-To use :class:`~urllib3.contrib.appengine.AppEngineManager`::
+To use :class:`~urllib3.contrib.appengine.AppEngineManager`:
+
+.. code-block:: pycon
 
     >>> from urllib3.contrib.appengine import AppEngineManager
     >>> http = AppEngineManager()
     >>> http.request('GET', 'https://google.com/')
 
 To use the Sockets API, add the following to your app.yaml and use
-:class:`~urllib3.poolmanager.PoolManager` as usual::
+:class:`~urllib3.poolmanager.PoolManager` as usual:
+
+.. code-block:: yaml
 
     env_variables:
         GAE_USE_SOCKETS_HTTPLIB : 'true'
@@ -333,23 +344,29 @@ Brotli Encoding
 Brotli is a compression algorithm created by Google with better compression
 than gzip and deflate and is supported by urllib3 if the
 `brotlipy <https://github.com/python-hyper/brotlipy>`_ package is installed.
-You may also request the package be installed via the ``urllib3[brotli]`` extra::
+You may also request the package be installed via the ``urllib3[brotli]`` extra:
 
-    python -m pip install urllib3[brotli]
+.. code-block:: bash
 
-Here's an example using brotli encoding via the ``Accept-Encoding`` header::
+    $ python -m pip install urllib3[brotli]
+
+Here's an example using brotli encoding via the ``Accept-Encoding`` header:
+
+.. code-block:: pycon
 
     >>> from urllib3 import PoolManager
     >>> http = PoolManager()
     >>> http.request('GET', 'https://www.google.com/', headers={'Accept-Encoding': 'br'})
 
-Decrypting captured TLS sessions with Wireshark
+Decrypting Captured TLS Sessions with Wireshark
 -----------------------------------------------
 Python 3.8 and higher support logging of TLS pre-master secrets.
 With these secrets tools like `Wireshark <https://wireshark.org>`_ can decrypt captured
 network traffic.
 
 To enable this simply define environment variable `SSLKEYLOGFILE`:
+
+.. code-block:: bash
 
     export SSLKEYLOGFILE=/path/to/keylogfile.txt
 

@@ -1,40 +1,41 @@
 # coding: utf-8
 import hashlib
-import warnings
-import logging
 import io
-import ssl
+import logging
 import socket
+import ssl
+import warnings
 from itertools import chain
+from test import notBrotlipy, onlyBrotlipy, onlyPy2, onlyPy3
 
-from mock import patch, Mock
 import pytest
+from mock import Mock, patch
 
 from urllib3 import add_stderr_logger, disable_warnings, util
-from urllib3.util.request import make_headers, rewind_body, _FAILEDTELL
+from urllib3.exceptions import (
+    InsecureRequestWarning,
+    LocationParseError,
+    SNIMissingWarning,
+    TimeoutStateError,
+    UnrewindableBodyError,
+)
+from urllib3.packages import six
+from urllib3.poolmanager import ProxyConfig
+from urllib3.util import is_fp_closed
+from urllib3.util.connection import _has_ipv6, allowed_gai_family, create_connection
+from urllib3.util.proxy import connection_requires_http_tunnel, create_proxy_ssl_context
+from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
-from urllib3.util.timeout import Timeout
-from urllib3.util.url import get_host, parse_url, split_first, Url
 from urllib3.util.ssl_ import (
+    _const_compare_digest_backport,
     resolve_cert_reqs,
     resolve_ssl_version,
     ssl_wrap_socket,
-    _const_compare_digest_backport,
 )
-from urllib3.exceptions import (
-    LocationParseError,
-    TimeoutStateError,
-    InsecureRequestWarning,
-    SNIMissingWarning,
-    UnrewindableBodyError,
-)
-from urllib3.util.connection import allowed_gai_family, _has_ipv6
-from urllib3.util import is_fp_closed
-from urllib3.packages import six
+from urllib3.util.timeout import Timeout
+from urllib3.util.url import Url, get_host, parse_url, split_first
 
 from . import clear_warnings
-
-from test import onlyPy3, onlyPy2, onlyBrotlipy, notBrotlipy
 
 # This number represents a time in seconds, it doesn't mean anything in
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller
@@ -747,6 +748,71 @@ class TestUtil(object):
     def test_assert_header_parsing_throws_typeerror_with_non_headers(self, headers):
         with pytest.raises(TypeError):
             assert_header_parsing(headers)
+
+    def test_connection_requires_http_tunnel_no_proxy(self):
+        assert not connection_requires_http_tunnel(
+            proxy_url=None, proxy_config=None, destination_scheme=None
+        )
+
+    def test_connection_requires_http_tunnel_http_proxy(self):
+        proxy = parse_url("http://proxy:8080")
+        proxy_config = ProxyConfig(ssl_context=None, use_forwarding_for_https=False)
+        destination_scheme = "http"
+        assert not connection_requires_http_tunnel(
+            proxy, proxy_config, destination_scheme
+        )
+
+        destination_scheme = "https"
+        assert connection_requires_http_tunnel(proxy, proxy_config, destination_scheme)
+
+    def test_connection_requires_http_tunnel_https_proxy(self):
+        proxy = parse_url("https://proxy:8443")
+        proxy_config = ProxyConfig(ssl_context=None, use_forwarding_for_https=False)
+        destination_scheme = "http"
+        assert not connection_requires_http_tunnel(
+            proxy, proxy_config, destination_scheme
+        )
+
+    def test_create_proxy_ssl_context(self):
+        ssl_context = create_proxy_ssl_context(ssl_version=None, cert_reqs=None)
+        ssl_context.verify_mode = ssl.CERT_REQUIRED
+
+    @onlyPy3
+    def test_assert_header_parsing_no_error_on_multipart(self):
+        from http import client
+
+        header_msg = io.BytesIO()
+        header_msg.write(
+            b'Content-Type: multipart/encrypted;protocol="application/'
+            b'HTTP-SPNEGO-session-encrypted";boundary="Encrypted Boundary"'
+            b"\nServer: Microsoft-HTTPAPI/2.0\nDate: Fri, 16 Aug 2019 19:28:01 GMT"
+            b"\nContent-Length: 1895\n\n\n"
+        )
+        header_msg.seek(0)
+        assert_header_parsing(client.parse_headers(header_msg))
+
+    @pytest.mark.parametrize("host", [".localhost", "...", "t" * 64])
+    def test_create_connection_with_invalid_idna_labels(self, host):
+        with pytest.raises(LocationParseError) as ctx:
+            create_connection((host, 80))
+        assert str(ctx.value) == "Failed to parse: '%s', label empty or too long" % host
+
+    @pytest.mark.parametrize(
+        "host",
+        [
+            "a.example.com",
+            "localhost.",
+            "[dead::beef]",
+            "[dead::beef%en5]",
+            "[dead::beef%en5.]",
+        ],
+    )
+    @patch("socket.getaddrinfo")
+    @patch("socket.socket")
+    def test_create_connection_with_valid_idna_labels(self, socket, getaddrinfo, host):
+        getaddrinfo.return_value = [(None, None, None, None, None)]
+        socket.return_value = Mock()
+        create_connection((host, 80))
 
 
 class TestUtilSSL(object):

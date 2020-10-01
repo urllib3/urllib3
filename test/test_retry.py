@@ -1,10 +1,8 @@
+import warnings
+
 import mock
 import pytest
 
-from urllib3.response import HTTPResponse
-from urllib3.packages import six
-from urllib3.packages.six.moves import xrange
-from urllib3.util.retry import Retry, RequestHistory
 from urllib3.exceptions import (
     ConnectTimeoutError,
     InvalidHeader,
@@ -13,6 +11,17 @@ from urllib3.exceptions import (
     ResponseError,
     SSLError,
 )
+from urllib3.packages import six
+from urllib3.packages.six.moves import xrange
+from urllib3.response import HTTPResponse
+from urllib3.util.retry import RequestHistory, Retry
+
+
+@pytest.fixture(scope="function", autouse=True)
+def no_retry_deprecations():
+    with warnings.catch_warnings(record=True) as w:
+        yield
+    assert len([str(x.message) for x in w if "Retry" in str(x.message)]) == 0
 
 
 class TestRetry(object):
@@ -196,14 +205,14 @@ class TestRetry(object):
         retry = Retry(total=1, status_forcelist=["418"])
         assert not retry.is_retry("GET", status_code=418)
 
-    def test_method_whitelist_with_status_forcelist(self):
-        # Falsey method_whitelist means to retry on any method.
-        retry = Retry(status_forcelist=[500], method_whitelist=None)
+    def test_allowed_methods_with_status_forcelist(self):
+        # Falsey allowed_methods means to retry on any method.
+        retry = Retry(status_forcelist=[500], allowed_methods=None)
         assert retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
 
-        # Criteria of method_whitelist and status_forcelist are ANDed.
-        retry = Retry(status_forcelist=[500], method_whitelist=["POST"])
+        # Criteria of allowed_methods and status_forcelist are ANDed.
+        retry = Retry(status_forcelist=[500], allowed_methods=["POST"])
         assert not retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
 
@@ -251,7 +260,7 @@ class TestRetry(object):
         assert str(e.value.reason) == "conntimeout"
 
     def test_history(self):
-        retry = Retry(total=10, method_whitelist=frozenset(["GET", "POST"]))
+        retry = Retry(total=10, allowed_methods=frozenset(["GET", "POST"]))
         assert retry.history == tuple()
         connection_error = ConnectTimeoutError("conntimeout")
         retry = retry.increment("GET", "/test1", None, connection_error)

@@ -8,11 +8,11 @@ before_install:
   - python -c "import ssl; print(ssl.OPENSSL_VERSION)"
 
 install:
-  - ./_travis/install.sh
+  - ./ci/install.sh
 
 script:
-  - ./_travis/run.sh
-  - ./_travis/upload_coverage.sh
+  - ./ci/run.sh
+  - ./ci/upload_coverage.sh
 
 cache:
   directories:
@@ -32,12 +32,6 @@ jobs:
   allow_failures:
     - python: nightly
   include:
-    # Lint & documentation.
-    - python: 3.8
-      env: NOX_SESSION=lint
-    - python: 3.8
-      env: NOX_SESSION=docs
-
     # Unit tests
     - python: 2.7
       env: NOX_SESSION=test-2.7
@@ -86,7 +80,7 @@ jobs:
     - python: 3.7
       stage: deploy
       script:
-        - ./_travis/deploy.sh
+        - ./ci/deploy.sh
 
 stages:
   - name: test

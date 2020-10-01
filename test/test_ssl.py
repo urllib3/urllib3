@@ -1,9 +1,10 @@
+from test import notPyPy2
+
 import mock
 import pytest
-from urllib3.util import ssl_
-from urllib3.exceptions import SNIMissingWarning
 
-from test import notPyPy2
+from urllib3.exceptions import SNIMissingWarning
+from urllib3.util import ssl_
 
 
 @pytest.mark.parametrize(

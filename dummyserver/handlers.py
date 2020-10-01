@@ -8,16 +8,15 @@ import logging
 import sys
 import time
 import zlib
-
+from datetime import datetime, timedelta
 from io import BytesIO
-from tornado.web import RequestHandler
-from tornado import httputil
-from datetime import datetime
-from datetime import timedelta
 
+from tornado import httputil
+from tornado.web import RequestHandler
+
+from urllib3.packages.six import binary_type, ensure_str
 from urllib3.packages.six.moves.http_client import responses
 from urllib3.packages.six.moves.urllib.parse import urlsplit
-from urllib3.packages.six import binary_type, ensure_str
 
 log = logging.getLogger(__name__)
 
