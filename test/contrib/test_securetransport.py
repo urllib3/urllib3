@@ -37,8 +37,8 @@ from ..test_util import TestUtilSSL  # noqa: E402, F401
 
 # SecureTransport does not support TLSv1.3
 # https://github.com/urllib3/urllib3/issues/1674
-from ..with_dummyserver.test_https import TestHTTPS  # noqa: E402, F401
-from ..with_dummyserver.test_https import (
+from ..with_dummyserver.test_https import (  # noqa: E402, F401
+    TestHTTPS,
     TestHTTPS_TLSv1,
     TestHTTPS_TLSv1_1,
     TestHTTPS_TLSv1_2,

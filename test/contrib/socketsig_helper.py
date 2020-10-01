@@ -1,5 +1,5 @@
-import sys
 import socket
+import sys
 
 
 def socket_signature_validators():
