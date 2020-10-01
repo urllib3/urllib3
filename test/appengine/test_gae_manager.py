@@ -1,13 +1,13 @@
-import dummyserver.testcase
+from test import SHORT_TIMEOUT
+from test.with_dummyserver import test_connectionpool
+
 import pytest
 
-from urllib3.contrib import appengine
+import dummyserver.testcase
 import urllib3.exceptions
-import urllib3.util.url
 import urllib3.util.retry
-
-from test.with_dummyserver import test_connectionpool
-from test import SHORT_TIMEOUT
+import urllib3.util.url
+from urllib3.contrib import appengine
 
 
 # This class is used so we can re-use the tests from the connection pool.

@@ -1,11 +1,14 @@
 from __future__ import absolute_import
-import re
+
 import datetime
 import logging
 import os
+import re
 import socket
-from socket import error as SocketError, timeout as SocketTimeout
 import warnings
+from socket import error as SocketError
+from socket import timeout as SocketTimeout
+
 from .packages import six
 from .packages.six.moves.http_client import HTTPConnection as _HTTPConnection
 from .packages.six.moves.http_client import HTTPException  # noqa: F401
@@ -40,27 +43,23 @@ except NameError:  # Python 2:
         pass
 
 
+from ._collections import HTTPHeaderDict
+from ._version import __version__
 from .exceptions import (
-    NewConnectionError,
     ConnectTimeoutError,
+    NewConnectionError,
     SubjectAltNameWarning,
     SystemTimeWarning,
 )
-from .packages.ssl_match_hostname import match_hostname, CertificateError
-
+from .packages.ssl_match_hostname import CertificateError, match_hostname
+from .util import SUPPRESS_USER_AGENT, connection
 from .util.ssl_ import (
-    resolve_cert_reqs,
-    resolve_ssl_version,
     assert_fingerprint,
     create_urllib3_context,
+    resolve_cert_reqs,
+    resolve_ssl_version,
     ssl_wrap_socket,
 )
-
-
-from .util import connection, SUPPRESS_USER_AGENT
-
-from ._collections import HTTPHeaderDict
-from ._version import __version__
 
 log = logging.getLogger(__name__)
 

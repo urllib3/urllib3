@@ -5,9 +5,10 @@ import mock
 import pytest
 
 try:
-    from urllib3.contrib.pyopenssl import _dnsname_to_stdlib, get_subj_alt_name
     from cryptography import x509
     from OpenSSL.crypto import FILETYPE_PEM, load_certificate
+
+    from urllib3.contrib.pyopenssl import _dnsname_to_stdlib, get_subj_alt_name
 except ImportError:
     pass
 
@@ -33,19 +34,19 @@ def teardown_module():
 from ..test_util import TestUtilSSL  # noqa: E402, F401
 from ..with_dummyserver.test_https import (  # noqa: E402, F401
     TestHTTPS,
+    TestHTTPS_IPSAN,
+    TestHTTPS_IPv6Addr,
+    TestHTTPS_IPV6SAN,
+    TestHTTPS_NoSAN,
     TestHTTPS_TLSv1,
     TestHTTPS_TLSv1_1,
     TestHTTPS_TLSv1_2,
     TestHTTPS_TLSv1_3,
-    TestHTTPS_IPSAN,
-    TestHTTPS_IPv6Addr,
-    TestHTTPS_NoSAN,
-    TestHTTPS_IPV6SAN,
 )
 from ..with_dummyserver.test_socketlevel import (  # noqa: E402, F401
+    TestClientCerts,
     TestSNI,
     TestSocketClosing,
-    TestClientCerts,
     TestSSL,
 )
 

@@ -1,21 +1,21 @@
 from __future__ import absolute_import
 
 import ssl
+from socket import error as SocketError
+from ssl import SSLError as BaseSSLError
+from test import SHORT_TIMEOUT
+
 import pytest
 from mock import Mock
 
+from dummyserver.server import DEFAULT_CA
+from urllib3._collections import HTTPHeaderDict
 from urllib3.connectionpool import (
-    connection_from_url,
     HTTPConnection,
     HTTPConnectionPool,
     HTTPSConnectionPool,
+    connection_from_url,
 )
-from urllib3.response import HTTPResponse
-from urllib3.util.timeout import Timeout
-from urllib3.packages.six.moves import http_client as httplib
-from urllib3.packages.six.moves.http_client import HTTPException
-from urllib3.packages.six.moves.queue import Empty
-from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.exceptions import (
     ClosedPoolError,
     EmptyPoolError,
@@ -26,14 +26,14 @@ from urllib3.exceptions import (
     SSLError,
     TimeoutError,
 )
-from urllib3._collections import HTTPHeaderDict
+from urllib3.packages.six.moves import http_client as httplib
+from urllib3.packages.six.moves.http_client import HTTPException
+from urllib3.packages.six.moves.queue import Empty
+from urllib3.packages.ssl_match_hostname import CertificateError
+from urllib3.response import HTTPResponse
+from urllib3.util.timeout import Timeout
+
 from .test_response import MockChunkedEncodingResponse, MockSock
-
-from socket import error as SocketError
-from ssl import SSLError as BaseSSLError
-
-from dummyserver.server import DEFAULT_CA
-from test import SHORT_TIMEOUT
 
 
 class HTTPUnixConnection(HTTPConnection):

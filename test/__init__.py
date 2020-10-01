@@ -1,11 +1,11 @@
-import warnings
-import sys
 import errno
 import logging
-import socket
-import ssl
 import os
 import platform
+import socket
+import ssl
+import sys
+import warnings
 
 import pytest
 
@@ -14,10 +14,10 @@ try:
 except ImportError:
     brotli = None
 
+from urllib3 import util
 from urllib3.exceptions import HTTPWarning
 from urllib3.packages import six
 from urllib3.util import ssl_
-from urllib3 import util
 
 try:
     import urllib3.contrib.pyopenssl as pyopenssl

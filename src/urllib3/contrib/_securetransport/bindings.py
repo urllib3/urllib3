@@ -32,21 +32,23 @@ license and by oscrypto's:
 from __future__ import absolute_import
 
 import platform
-from ctypes.util import find_library
 from ctypes import (
-    c_void_p,
-    c_int32,
-    c_char_p,
-    c_size_t,
+    CDLL,
+    CFUNCTYPE,
+    POINTER,
+    c_bool,
     c_byte,
+    c_char_p,
+    c_int32,
+    c_long,
+    c_size_t,
     c_uint32,
     c_ulong,
-    c_long,
-    c_bool,
+    c_void_p,
 )
-from ctypes import CDLL, POINTER, CFUNCTYPE
-from urllib3.packages.six import raise_from
+from ctypes.util import find_library
 
+from urllib3.packages.six import raise_from
 
 if platform.system() != "Darwin":
     raise ImportError("Only macOS is supported")

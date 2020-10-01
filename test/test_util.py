@@ -1,47 +1,41 @@
 # coding: utf-8
 import hashlib
-import warnings
-import logging
 import io
-import ssl
+import logging
 import socket
+import ssl
+import warnings
 from itertools import chain
+from test import notBrotlipy, onlyBrotlipy, onlyPy2, onlyPy3
 
-from mock import patch, Mock
 import pytest
+from mock import Mock, patch
 
 from urllib3 import add_stderr_logger, disable_warnings, util
-from urllib3.util.connection import create_connection
-from urllib3.util.request import make_headers, rewind_body, _FAILEDTELL
+from urllib3.exceptions import (
+    InsecureRequestWarning,
+    LocationParseError,
+    SNIMissingWarning,
+    TimeoutStateError,
+    UnrewindableBodyError,
+)
+from urllib3.packages import six
+from urllib3.poolmanager import ProxyConfig
+from urllib3.util import is_fp_closed
+from urllib3.util.connection import _has_ipv6, allowed_gai_family, create_connection
+from urllib3.util.proxy import connection_requires_http_tunnel, create_proxy_ssl_context
+from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
-from urllib3.util.timeout import Timeout
-from urllib3.util.url import get_host, parse_url, split_first, Url
 from urllib3.util.ssl_ import (
+    _const_compare_digest_backport,
     resolve_cert_reqs,
     resolve_ssl_version,
     ssl_wrap_socket,
-    _const_compare_digest_backport,
 )
-from urllib3.exceptions import (
-    LocationParseError,
-    TimeoutStateError,
-    InsecureRequestWarning,
-    SNIMissingWarning,
-    UnrewindableBodyError,
-)
-from urllib3.util.proxy import (
-    connection_requires_http_tunnel,
-    create_proxy_ssl_context,
-)
-from urllib3.util import is_fp_closed
-from urllib3.util.connection import allowed_gai_family, _has_ipv6
-from urllib3.packages import six
-
-from urllib3.poolmanager import ProxyConfig
+from urllib3.util.timeout import Timeout
+from urllib3.util.url import Url, get_host, parse_url, split_first
 
 from . import clear_warnings
-
-from test import onlyPy3, onlyPy2, onlyBrotlipy, notBrotlipy
 
 # This number represents a time in seconds, it doesn't mean anything in
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller

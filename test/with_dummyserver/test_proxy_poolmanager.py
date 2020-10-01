@@ -3,36 +3,33 @@ import os.path
 import shutil
 import socket
 import tempfile
-
+from test import (
+    LONG_TIMEOUT,
+    SHORT_TIMEOUT,
+    onlyPy2,
+    onlyPy3,
+    onlySecureTransport,
+    withPyOpenSSL,
+)
 
 import pytest
 import trustme
 
-from dummyserver.testcase import HTTPDummyProxyTestCase, IPv6HTTPDummyProxyTestCase
 from dummyserver.server import DEFAULT_CA, HAS_IPV6, get_unreachable_address
-from .. import TARPIT_HOST, requires_network
-
+from dummyserver.testcase import HTTPDummyProxyTestCase, IPv6HTTPDummyProxyTestCase
 from urllib3._collections import HTTPHeaderDict
-from urllib3.poolmanager import proxy_from_url, ProxyManager
+from urllib3.connectionpool import VerifiedHTTPSConnection, connection_from_url
 from urllib3.exceptions import (
-    MaxRetryError,
-    SSLError,
-    ProxyError,
     ConnectTimeoutError,
+    MaxRetryError,
+    ProxyError,
     ProxySchemeUnsupported,
+    SSLError,
 )
-from urllib3.connectionpool import connection_from_url, VerifiedHTTPSConnection
+from urllib3.poolmanager import ProxyManager, proxy_from_url
 from urllib3.util.ssl_ import create_urllib3_context
 
-from test import (
-    SHORT_TIMEOUT,
-    LONG_TIMEOUT,
-    onlyPy3,
-    onlyPy2,
-    withPyOpenSSL,
-    onlySecureTransport,
-)
-
+from .. import TARPIT_HOST, requires_network
 
 # Retry failed tests
 pytestmark = pytest.mark.flaky

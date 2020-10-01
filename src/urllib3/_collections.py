@@ -17,10 +17,10 @@ except ImportError:  # Platform-specific: No threads available
 
 
 from collections import OrderedDict
+
 from .exceptions import InvalidHeader
 from .packages import six
 from .packages.six import iterkeys, itervalues
-
 
 __all__ = ["RecentlyUsedContainer", "HTTPHeaderDict"]
 
