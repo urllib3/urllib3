@@ -1,15 +1,14 @@
 import json
+from test import LONG_TIMEOUT
 
 import pytest
 
 from dummyserver.server import HAS_IPV6
 from dummyserver.testcase import HTTPDummyServerTestCase, IPv6HTTPDummyServerTestCase
-from urllib3.poolmanager import PoolManager
 from urllib3.connectionpool import port_by_scheme
-from urllib3.exceptions import MaxRetryError
+from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
+from urllib3.poolmanager import PoolManager
 from urllib3.util.retry import Retry
-
-from test import LONG_TIMEOUT
 
 # Retry failed tests
 pytestmark = pytest.mark.flaky
@@ -115,6 +114,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                         % (self.base_url, self.base_url)
                     },
                     retries=1,
+                    preload_content=False,
                 )
 
             with pytest.raises(MaxRetryError):
@@ -126,7 +126,14 @@ class TestPoolManager(HTTPDummyServerTestCase):
                         % (self.base_url, self.base_url)
                     },
                     retries=Retry(total=None, redirect=1),
+                    preload_content=False,
                 )
+
+            # Even with preload_content=False and raise on redirects, we reused the same
+            # connection
+            assert len(http.pools) == 1
+            pool = http.connection_from_host(self.host, self.port)
+            assert pool.num_connections == 1
 
     def test_redirect_cross_host_remove_headers(self):
         with PoolManager() as http:
@@ -205,6 +212,38 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert "x-api-secret" not in data
             assert "X-API-Secret" not in data
             assert data["Authorization"] == "bar"
+
+    def test_redirect_without_preload_releases_connection(self):
+        with PoolManager(block=True, maxsize=2) as http:
+            r = http.request(
+                "GET", "%s/redirect" % self.base_url, preload_content=False
+            )
+            assert r._pool.num_requests == 2
+            assert r._pool.num_connections == 1
+            assert len(http.pools) == 1
+
+    def test_unknown_scheme(self):
+        with PoolManager() as http:
+            unknown_scheme = "unknown"
+            unknown_scheme_url = "%s://host" % unknown_scheme
+            with pytest.raises(URLSchemeUnknown) as e:
+                r = http.request("GET", unknown_scheme_url)
+            assert e.value.scheme == unknown_scheme
+            r = http.request(
+                "GET",
+                "%s/redirect" % self.base_url,
+                fields={"target": unknown_scheme_url},
+                redirect=False,
+            )
+            assert r.status == 303
+            assert r.headers.get("Location") == unknown_scheme_url
+            with pytest.raises(URLSchemeUnknown) as e:
+                r = http.request(
+                    "GET",
+                    "%s/redirect" % self.base_url,
+                    fields={"target": unknown_scheme_url},
+                )
+            assert e.value.scheme == unknown_scheme
 
     def test_raise_on_redirect(self):
         with PoolManager() as http:

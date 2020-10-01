@@ -7,25 +7,23 @@ from __future__ import print_function
 
 import logging
 import os
-import random
-import string
+import socket
+import ssl
 import sys
 import threading
-import socket
 import warnings
-import ssl
 from datetime import datetime
 
-from urllib3.exceptions import HTTPWarning
-
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
 import tornado.httpserver
 import tornado.ioloop
 import tornado.netutil
 import tornado.web
 import trustme
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
 
+from urllib3.exceptions import HTTPWarning
+from urllib3.util import ALPN_PROTOCOLS, resolve_cert_reqs, resolve_ssl_version
 
 log = logging.getLogger(__name__)
 
@@ -35,9 +33,24 @@ DEFAULT_CERTS = {
     "keyfile": os.path.join(CERTS_PATH, "server.key"),
     "cert_reqs": ssl.CERT_OPTIONAL,
     "ca_certs": os.path.join(CERTS_PATH, "cacert.pem"),
+    "alpn_protocols": ALPN_PROTOCOLS,
 }
 DEFAULT_CA = os.path.join(CERTS_PATH, "cacert.pem")
 DEFAULT_CA_KEY = os.path.join(CERTS_PATH, "cacert.key")
+
+
+def _resolves_to_ipv6(host):
+    """ Returns True if the system resolves host to an IPv6 address by default. """
+    resolves_to_ipv6 = False
+    try:
+        for res in socket.getaddrinfo(host, None, socket.AF_UNSPEC):
+            af, _, _, _, _ = res
+            if af == socket.AF_INET6:
+                resolves_to_ipv6 = True
+    except socket.gaierror:
+        pass
+
+    return resolves_to_ipv6
 
 
 def _has_ipv6(host):
@@ -54,7 +67,7 @@ def _has_ipv6(host):
         try:
             sock = socket.socket(socket.AF_INET6)
             sock.bind((host, 0))
-            has_ipv6 = True
+            has_ipv6 = _resolves_to_ipv6("localhost")
         except Exception:
             pass
 
@@ -121,6 +134,39 @@ class SocketServerThread(threading.Thread):
         self.server = self._start_server()
 
 
+def ssl_options_to_context(
+    keyfile=None,
+    certfile=None,
+    server_side=None,
+    cert_reqs=None,
+    ssl_version=None,
+    ca_certs=None,
+    do_handshake_on_connect=None,
+    suppress_ragged_eofs=None,
+    ciphers=None,
+    alpn_protocols=None,
+):
+    """Return an equivalent SSLContext based on ssl.wrap_socket args."""
+    ssl_version = resolve_ssl_version(ssl_version)
+    cert_none = resolve_cert_reqs("CERT_NONE")
+    if cert_reqs is None:
+        cert_reqs = cert_none
+    else:
+        cert_reqs = resolve_cert_reqs(cert_reqs)
+
+    ctx = ssl.SSLContext(ssl_version)
+    ctx.load_cert_chain(certfile, keyfile)
+    ctx.verify_mode = cert_reqs
+    if ctx.verify_mode != cert_none:
+        ctx.load_verify_locations(cafile=ca_certs)
+    if alpn_protocols and hasattr(ctx, "set_alpn_protocols"):
+        try:
+            ctx.set_alpn_protocols(alpn_protocols)
+        except NotImplementedError:
+            pass
+    return ctx
+
+
 def run_tornado_app(app, io_loop, certs, scheme, host):
     assert io_loop == tornado.ioloop.IOLoop.current()
 
@@ -129,7 +175,11 @@ def run_tornado_app(app, io_loop, certs, scheme, host):
     app.last_req = datetime(1970, 1, 1)
 
     if scheme == "https":
-        http_server = tornado.httpserver.HTTPServer(app, ssl_options=certs)
+        if sys.version_info < (2, 7, 9):
+            ssl_opts = certs
+        else:
+            ssl_opts = ssl_options_to_context(**certs)
+        http_server = tornado.httpserver.HTTPServer(app, ssl_options=ssl_opts)
     else:
         http_server = tornado.httpserver.HTTPServer(app)
 
@@ -146,17 +196,8 @@ def run_loop_in_thread(io_loop):
 
 
 def get_unreachable_address():
-    while True:
-        host = "".join(random.choice(string.ascii_lowercase) for _ in range(60))
-        sockaddr = (host, 54321)
-
-        # check if we are really "lucky" and hit an actual server
-        try:
-            s = socket.create_connection(sockaddr)
-        except socket.error:
-            return sockaddr
-        else:
-            s.close()
+    # reserved as per rfc2606
+    return ("something.invalid", 54321)
 
 
 if __name__ == "__main__":

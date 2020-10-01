@@ -8,11 +8,11 @@ before_install:
   - python -c "import ssl; print(ssl.OPENSSL_VERSION)"
 
 install:
-  - ./_travis/install.sh
+  - ./ci/install.sh
 
 script:
-  - ./_travis/run.sh
-  - ./_travis/upload_coverage.sh
+  - ./ci/run.sh
+  - ./ci/upload_coverage.sh
 
 cache:
   directories:
@@ -29,13 +29,9 @@ env:
     # PYPI_PASSWORD is set in Travis control panel.
 
 jobs:
+  allow_failures:
+    - python: nightly
   include:
-    # Lint & documentation.
-    - python: 3.6
-      env: NOX_SESSION=lint
-    - python: 3.6
-      env: NOX_SESSION=docs
-
     # Unit tests
     - python: 2.7
       env: NOX_SESSION=test-2.7
@@ -47,8 +43,10 @@ jobs:
       env: NOX_SESSION=test-3.7
     - python: 3.8
       env: NOX_SESSION=test-3.8
-    - python: nightly
+    - python: 3.9-dev
       env: NOX_SESSION=test-3.9
+    - python: nightly
+      env: NOX_SESSION=test-3.10
     - python: pypy2.7-6.0
       env: NOX_SESSION=test-pypy
     - python: pypy3.5-6.0
@@ -61,23 +59,6 @@ jobs:
       env: NOX_SESSION=google_brotli-2
     - python: 3.7
       env: NOX_SESSION=google_brotli-3
-
-    # OS X unit tests.
-    - language: generic
-      os: osx
-      env: NOX_SESSION=test-2.7
-    - language: generic
-      os: osx
-      env: NOX_SESSION=test-3.5
-    - language: generic
-      os: osx
-      env: NOX_SESSION=test-3.6
-    - language: generic
-      os: osx
-      env: NOX_SESSION=test-3.7
-    - language: generic
-      os: osx
-      env: NOX_SESSION=test-3.8
 
     # Downstream integration tests.
     - python: 2.7
@@ -99,7 +80,7 @@ jobs:
     - python: 3.7
       stage: deploy
       script:
-        - ./_travis/deploy.sh
+        - ./ci/deploy.sh
 
 stages:
   - name: test

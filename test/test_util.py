@@ -1,40 +1,41 @@
 # coding: utf-8
 import hashlib
-import warnings
-import logging
 import io
-import ssl
+import logging
 import socket
+import ssl
+import warnings
 from itertools import chain
+from test import notBrotlipy, onlyBrotlipy, onlyPy2, onlyPy3
 
-from mock import patch, Mock
 import pytest
+from mock import Mock, patch
 
-from urllib3 import add_stderr_logger, disable_warnings
-from urllib3.util.request import make_headers, rewind_body, _FAILEDTELL
+from urllib3 import add_stderr_logger, disable_warnings, util
+from urllib3.exceptions import (
+    InsecureRequestWarning,
+    LocationParseError,
+    SNIMissingWarning,
+    TimeoutStateError,
+    UnrewindableBodyError,
+)
+from urllib3.packages import six
+from urllib3.poolmanager import ProxyConfig
+from urllib3.util import is_fp_closed
+from urllib3.util.connection import _has_ipv6, allowed_gai_family, create_connection
+from urllib3.util.proxy import connection_requires_http_tunnel, create_proxy_ssl_context
+from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
-from urllib3.util.timeout import Timeout
-from urllib3.util.url import get_host, parse_url, split_first, Url
 from urllib3.util.ssl_ import (
+    _const_compare_digest_backport,
     resolve_cert_reqs,
     resolve_ssl_version,
     ssl_wrap_socket,
-    _const_compare_digest_backport,
 )
-from urllib3.exceptions import (
-    LocationParseError,
-    TimeoutStateError,
-    InsecureRequestWarning,
-    SNIMissingWarning,
-    UnrewindableBodyError,
-)
-from urllib3.util.connection import allowed_gai_family, _has_ipv6
-from urllib3.util import is_fp_closed, ssl_
-from urllib3.packages import six
+from urllib3.util.timeout import Timeout
+from urllib3.util.url import Url, get_host, parse_url, split_first
 
 from . import clear_warnings
-
-from test import onlyPy3, onlyPy2, onlyBrotlipy, notBrotlipy
 
 # This number represents a time in seconds, it doesn't mean anything in
 # isolation. Setting to a high-ish value to avoid conflicts with the smaller
@@ -425,6 +426,18 @@ class TestUtil(object):
                 query="%0D%0ASET%20test%20failure12%0D%0A:8080/test/?test=a",
             ),
         ),
+        # See https://bugs.xdavidhu.me/google/2020/03/08/the-unexpected-google-wide-domain-check-bypass/
+        (
+            "https://user:pass@xdavidhu.me\\test.corp.google.com:8080/path/to/something?param=value#hash",
+            Url(
+                scheme="https",
+                auth="user:pass",
+                host="xdavidhu.me",
+                path="/%5Ctest.corp.google.com:8080/path/to/something",
+                query="param=value",
+                fragment="hash",
+            ),
+        ),
     ]
 
     @pytest.mark.parametrize("url, expected_url", url_vulnerabilities)
@@ -654,31 +667,6 @@ class TestUtil(object):
         current_time.return_value = TIMEOUT_EPOCH + 37
         assert timeout.get_connect_duration() == 37
 
-    @pytest.mark.parametrize(
-        "candidate, requirements",
-        [
-            (None, ssl.CERT_REQUIRED),
-            (ssl.CERT_NONE, ssl.CERT_NONE),
-            (ssl.CERT_REQUIRED, ssl.CERT_REQUIRED),
-            ("REQUIRED", ssl.CERT_REQUIRED),
-            ("CERT_REQUIRED", ssl.CERT_REQUIRED),
-        ],
-    )
-    def test_resolve_cert_reqs(self, candidate, requirements):
-        assert resolve_cert_reqs(candidate) == requirements
-
-    @pytest.mark.parametrize(
-        "candidate, version",
-        [
-            (ssl.PROTOCOL_TLSv1, ssl.PROTOCOL_TLSv1),
-            ("PROTOCOL_TLSv1", ssl.PROTOCOL_TLSv1),
-            ("TLSv1", ssl.PROTOCOL_TLSv1),
-            (ssl.PROTOCOL_SSLv23, ssl.PROTOCOL_SSLv23),
-        ],
-    )
-    def test_resolve_ssl_version(self, candidate, version):
-        assert resolve_ssl_version(candidate) == version
-
     def test_is_fp_closed_object_supports_closed(self):
         class ClosedFile(object):
             @property
@@ -709,72 +697,6 @@ class TestUtil(object):
 
         with pytest.raises(ValueError):
             is_fp_closed(NotReallyAFile())
-
-    def test_ssl_wrap_socket_loads_the_cert_chain(self):
-        socket = object()
-        mock_context = Mock()
-        ssl_wrap_socket(
-            ssl_context=mock_context, sock=socket, certfile="/path/to/certfile"
-        )
-
-        mock_context.load_cert_chain.assert_called_once_with("/path/to/certfile", None)
-
-    @patch("urllib3.util.ssl_.create_urllib3_context")
-    def test_ssl_wrap_socket_creates_new_context(self, create_urllib3_context):
-        socket = object()
-        ssl_wrap_socket(sock=socket, cert_reqs="CERT_REQUIRED")
-
-        create_urllib3_context.assert_called_once_with(
-            None, "CERT_REQUIRED", ciphers=None
-        )
-
-    def test_ssl_wrap_socket_loads_verify_locations(self):
-        socket = object()
-        mock_context = Mock()
-        ssl_wrap_socket(ssl_context=mock_context, ca_certs="/path/to/pem", sock=socket)
-        mock_context.load_verify_locations.assert_called_once_with(
-            "/path/to/pem", None, None
-        )
-
-    def test_ssl_wrap_socket_loads_certificate_directories(self):
-        socket = object()
-        mock_context = Mock()
-        ssl_wrap_socket(
-            ssl_context=mock_context, ca_cert_dir="/path/to/pems", sock=socket
-        )
-        mock_context.load_verify_locations.assert_called_once_with(
-            None, "/path/to/pems", None
-        )
-
-    def test_ssl_wrap_socket_loads_certificate_data(self):
-        socket = object()
-        mock_context = Mock()
-        ssl_wrap_socket(
-            ssl_context=mock_context, ca_cert_data="TOTALLY PEM DATA", sock=socket
-        )
-        mock_context.load_verify_locations.assert_called_once_with(
-            None, None, "TOTALLY PEM DATA"
-        )
-
-    def test_ssl_wrap_socket_with_no_sni_warns(self):
-        socket = object()
-        mock_context = Mock()
-        # Ugly preservation of original value
-        HAS_SNI = ssl_.HAS_SNI
-        ssl_.HAS_SNI = False
-        try:
-            with patch("warnings.warn") as warn:
-                ssl_wrap_socket(
-                    ssl_context=mock_context,
-                    sock=socket,
-                    server_hostname="www.google.com",
-                )
-            mock_context.wrap_socket.assert_called_once_with(socket)
-            assert warn.call_count >= 1
-            warnings = [call[0][1] for call in warn.call_args_list]
-            assert SNIMissingWarning in warnings
-        finally:
-            ssl_.HAS_SNI = HAS_SNI
 
     def test_const_compare_digest_fallback(self):
         target = hashlib.sha256(b"abcdef").digest()
@@ -826,3 +748,185 @@ class TestUtil(object):
     def test_assert_header_parsing_throws_typeerror_with_non_headers(self, headers):
         with pytest.raises(TypeError):
             assert_header_parsing(headers)
+
+    def test_connection_requires_http_tunnel_no_proxy(self):
+        assert not connection_requires_http_tunnel(
+            proxy_url=None, proxy_config=None, destination_scheme=None
+        )
+
+    def test_connection_requires_http_tunnel_http_proxy(self):
+        proxy = parse_url("http://proxy:8080")
+        proxy_config = ProxyConfig(ssl_context=None, use_forwarding_for_https=False)
+        destination_scheme = "http"
+        assert not connection_requires_http_tunnel(
+            proxy, proxy_config, destination_scheme
+        )
+
+        destination_scheme = "https"
+        assert connection_requires_http_tunnel(proxy, proxy_config, destination_scheme)
+
+    def test_connection_requires_http_tunnel_https_proxy(self):
+        proxy = parse_url("https://proxy:8443")
+        proxy_config = ProxyConfig(ssl_context=None, use_forwarding_for_https=False)
+        destination_scheme = "http"
+        assert not connection_requires_http_tunnel(
+            proxy, proxy_config, destination_scheme
+        )
+
+    def test_create_proxy_ssl_context(self):
+        ssl_context = create_proxy_ssl_context(ssl_version=None, cert_reqs=None)
+        ssl_context.verify_mode = ssl.CERT_REQUIRED
+
+    @onlyPy3
+    def test_assert_header_parsing_no_error_on_multipart(self):
+        from http import client
+
+        header_msg = io.BytesIO()
+        header_msg.write(
+            b'Content-Type: multipart/encrypted;protocol="application/'
+            b'HTTP-SPNEGO-session-encrypted";boundary="Encrypted Boundary"'
+            b"\nServer: Microsoft-HTTPAPI/2.0\nDate: Fri, 16 Aug 2019 19:28:01 GMT"
+            b"\nContent-Length: 1895\n\n\n"
+        )
+        header_msg.seek(0)
+        assert_header_parsing(client.parse_headers(header_msg))
+
+    @pytest.mark.parametrize("host", [".localhost", "...", "t" * 64])
+    def test_create_connection_with_invalid_idna_labels(self, host):
+        with pytest.raises(LocationParseError) as ctx:
+            create_connection((host, 80))
+        assert str(ctx.value) == "Failed to parse: '%s', label empty or too long" % host
+
+    @pytest.mark.parametrize(
+        "host",
+        [
+            "a.example.com",
+            "localhost.",
+            "[dead::beef]",
+            "[dead::beef%en5]",
+            "[dead::beef%en5.]",
+        ],
+    )
+    @patch("socket.getaddrinfo")
+    @patch("socket.socket")
+    def test_create_connection_with_valid_idna_labels(self, socket, getaddrinfo, host):
+        getaddrinfo.return_value = [(None, None, None, None, None)]
+        socket.return_value = Mock()
+        create_connection((host, 80))
+
+
+class TestUtilSSL(object):
+    """Test utils that use an SSL backend."""
+
+    @pytest.mark.parametrize(
+        "candidate, requirements",
+        [
+            (None, ssl.CERT_REQUIRED),
+            (ssl.CERT_NONE, ssl.CERT_NONE),
+            (ssl.CERT_REQUIRED, ssl.CERT_REQUIRED),
+            ("REQUIRED", ssl.CERT_REQUIRED),
+            ("CERT_REQUIRED", ssl.CERT_REQUIRED),
+        ],
+    )
+    def test_resolve_cert_reqs(self, candidate, requirements):
+        assert resolve_cert_reqs(candidate) == requirements
+
+    @pytest.mark.parametrize(
+        "candidate, version",
+        [
+            (ssl.PROTOCOL_TLSv1, ssl.PROTOCOL_TLSv1),
+            ("PROTOCOL_TLSv1", ssl.PROTOCOL_TLSv1),
+            ("TLSv1", ssl.PROTOCOL_TLSv1),
+            (ssl.PROTOCOL_SSLv23, ssl.PROTOCOL_SSLv23),
+        ],
+    )
+    def test_resolve_ssl_version(self, candidate, version):
+        assert resolve_ssl_version(candidate) == version
+
+    def test_ssl_wrap_socket_loads_the_cert_chain(self):
+        socket = object()
+        mock_context = Mock()
+        ssl_wrap_socket(
+            ssl_context=mock_context, sock=socket, certfile="/path/to/certfile"
+        )
+
+        mock_context.load_cert_chain.assert_called_once_with("/path/to/certfile", None)
+
+    @patch("urllib3.util.ssl_.create_urllib3_context")
+    def test_ssl_wrap_socket_creates_new_context(self, create_urllib3_context):
+        socket = object()
+        ssl_wrap_socket(sock=socket, cert_reqs="CERT_REQUIRED")
+
+        create_urllib3_context.assert_called_once_with(
+            None, "CERT_REQUIRED", ciphers=None
+        )
+
+    def test_ssl_wrap_socket_loads_verify_locations(self):
+        socket = object()
+        mock_context = Mock()
+        ssl_wrap_socket(ssl_context=mock_context, ca_certs="/path/to/pem", sock=socket)
+        mock_context.load_verify_locations.assert_called_once_with(
+            "/path/to/pem", None, None
+        )
+
+    def test_ssl_wrap_socket_loads_certificate_directories(self):
+        socket = object()
+        mock_context = Mock()
+        ssl_wrap_socket(
+            ssl_context=mock_context, ca_cert_dir="/path/to/pems", sock=socket
+        )
+        mock_context.load_verify_locations.assert_called_once_with(
+            None, "/path/to/pems", None
+        )
+
+    def test_ssl_wrap_socket_loads_certificate_data(self):
+        socket = object()
+        mock_context = Mock()
+        ssl_wrap_socket(
+            ssl_context=mock_context, ca_cert_data="TOTALLY PEM DATA", sock=socket
+        )
+        mock_context.load_verify_locations.assert_called_once_with(
+            None, None, "TOTALLY PEM DATA"
+        )
+
+    def _wrap_socket_and_mock_warn(self, sock, server_hostname):
+        mock_context = Mock()
+        with patch("warnings.warn") as warn:
+            ssl_wrap_socket(
+                ssl_context=mock_context,
+                sock=sock,
+                server_hostname=server_hostname,
+            )
+        return mock_context, warn
+
+    def test_ssl_wrap_socket_sni_hostname_use_or_warn(self):
+        """Test that either an SNI hostname is used or a warning is made."""
+        sock = object()
+        context, warn = self._wrap_socket_and_mock_warn(sock, "www.google.com")
+        if util.HAS_SNI:
+            warn.assert_not_called()
+            context.wrap_socket.assert_called_once_with(
+                sock, server_hostname="www.google.com"
+            )
+        else:
+            assert warn.call_count >= 1
+            warnings = [call[0][1] for call in warn.call_args_list]
+            assert SNIMissingWarning in warnings
+            context.wrap_socket.assert_called_once_with(sock)
+
+    def test_ssl_wrap_socket_sni_ip_address_no_warn(self):
+        """Test that a warning is not made if server_hostname is an IP address."""
+        sock = object()
+        context, warn = self._wrap_socket_and_mock_warn(sock, "8.8.8.8")
+        if util.IS_SECURETRANSPORT:
+            context.wrap_socket.assert_called_once_with(sock, server_hostname="8.8.8.8")
+        else:
+            context.wrap_socket.assert_called_once_with(sock)
+        warn.assert_not_called()
+
+    def test_ssl_wrap_socket_sni_none_no_warn(self):
+        """Test that a warning is not made if server_hostname is not given."""
+        sock = object()
+        context, warn = self._wrap_socket_and_mock_warn(sock, None)
+        context.wrap_socket.assert_called_once_with(sock)
+        warn.assert_not_called()

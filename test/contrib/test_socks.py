@@ -1,17 +1,17 @@
-import threading
 import socket
+import threading
+from test import SHORT_TIMEOUT
 
+import pytest
+
+from dummyserver.server import DEFAULT_CA, DEFAULT_CERTS
+from dummyserver.testcase import IPV4SocketDummyServerTestCase
 from urllib3.contrib import socks
 from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
-from dummyserver.server import DEFAULT_CERTS, DEFAULT_CA
-from dummyserver.testcase import IPV4SocketDummyServerTestCase
-
-import pytest
-from test import SHORT_TIMEOUT
-
 try:
     import ssl
+
     from urllib3.util import ssl_ as better_ssl
 
     HAS_SSL = True

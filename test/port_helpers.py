@@ -3,7 +3,6 @@
 
 import socket
 
-
 # Don't use "localhost", since resolving it uses the DNS under recent
 # Windows versions (see issue #18792).
 HOST = "127.0.0.1"

@@ -8,16 +8,15 @@ import logging
 import sys
 import time
 import zlib
-
+from datetime import datetime, timedelta
 from io import BytesIO
-from tornado.web import RequestHandler
-from tornado import httputil
-from datetime import datetime
-from datetime import timedelta
 
+from tornado import httputil
+from tornado.web import RequestHandler
+
+from urllib3.packages.six import binary_type, ensure_str
 from urllib3.packages.six.moves.http_client import responses
 from urllib3.packages.six.moves.urllib.parse import urlsplit
-from urllib3.packages.six import binary_type, ensure_str
 
 log = logging.getLogger(__name__)
 
@@ -93,7 +92,7 @@ class TestingApp(RequestHandler):
         if not path.startswith("/"):
             path = urlsplit(path).path
 
-        target = path[1:].replace("/", "_")
+        target = path[1:].split("/", 1)[0]
         method = getattr(self, target, self.index)
 
         resp = method(req)
@@ -115,6 +114,11 @@ class TestingApp(RequestHandler):
         if cert is not None:
             subject = dict((k, v) for (k, v) in [y for z in cert["subject"] for y in z])
         return Response(json.dumps(subject))
+
+    def alpn_protocol(self, request):
+        """Return the selected ALPN protocol."""
+        proto = request.connection.stream.socket.selected_alpn_protocol()
+        return Response(proto.encode("utf8") if proto is not None else u"")
 
     def source_address(self, request):
         """Return the requester's IP address."""
@@ -261,7 +265,7 @@ class TestingApp(RequestHandler):
         return Response(json.dumps(dict(request.headers)))
 
     def successful_retry(self, request):
-        """ Handler which will return an error and then success
+        """Handler which will return an error and then success
 
         It's not currently very flexible as the number of retries is hard-coded.
         """
@@ -316,7 +320,7 @@ class TestingApp(RequestHandler):
         date = request.params.get("date")
         if date:
             retry_after = str(
-                httputil.format_timestamp(datetime.fromtimestamp(float(date)))
+                httputil.format_timestamp(datetime.utcfromtimestamp(float(date)))
             )
         else:
             retry_after = "1"

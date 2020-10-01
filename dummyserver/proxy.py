@@ -25,16 +25,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import sys
 import socket
+import ssl
+import sys
 
 import tornado.gen
+import tornado.httpclient
 import tornado.httpserver
 import tornado.ioloop
 import tornado.iostream
 import tornado.web
-import tornado.httpclient
-import ssl
 
 __all__ = ["ProxyHandler", "run_proxy"]
 

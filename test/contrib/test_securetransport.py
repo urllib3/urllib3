@@ -7,15 +7,12 @@ import ssl
 import mock
 import pytest
 
-
 try:
     from urllib3.contrib.securetransport import WrappedSocket
 except ImportError:
     pass
 
 from .socketsig_helper import socket_signature_validators
-
-pytestmark = pytest.mark.skip()
 
 
 def setup_module():
@@ -36,18 +33,20 @@ def teardown_module():
         pass
 
 
+from ..test_util import TestUtilSSL  # noqa: E402, F401
+
 # SecureTransport does not support TLSv1.3
 # https://github.com/urllib3/urllib3/issues/1674
-from ..with_dummyserver.test_https import (  # noqa: F401
-    TestHTTPS,
+from ..with_dummyserver.test_https import TestHTTPS  # noqa: E402, F401
+from ..with_dummyserver.test_https import (
     TestHTTPS_TLSv1,
     TestHTTPS_TLSv1_1,
     TestHTTPS_TLSv1_2,
 )
-from ..with_dummyserver.test_socketlevel import (  # noqa: F401
+from ..with_dummyserver.test_socketlevel import (  # noqa: E402, F401
+    TestClientCerts,
     TestSNI,
     TestSocketClosing,
-    TestClientCerts,
     TestSSL,
 )
 

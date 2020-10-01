@@ -1,35 +1,37 @@
 import io
+import json
 import logging
 import socket
 import sys
 import time
 import warnings
-import pytest
+from test import LONG_TIMEOUT, SHORT_TIMEOUT
+from threading import Event
 
 import mock
+import pytest
 
-from .. import TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES
-from ..port_helpers import find_unused_port
-from urllib3 import encode_multipart_formdata, HTTPConnectionPool
+from dummyserver.server import HAS_IPV6_AND_DNS, NoIPv6Warning
+from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
+from urllib3 import HTTPConnectionPool, encode_multipart_formdata
+from urllib3.connection import _get_default_user_agent
 from urllib3.exceptions import (
     ConnectTimeoutError,
-    EmptyPoolError,
     DecodeError,
+    EmptyPoolError,
     MaxRetryError,
-    ReadTimeoutError,
     NewConnectionError,
+    ReadTimeoutError,
     UnrewindableBodyError,
 )
 from urllib3.packages.six import b, u
 from urllib3.packages.six.moves.urllib.parse import urlencode
-from urllib3.util.retry import Retry, RequestHistory
+from urllib3.util import SUPPRESS_USER_AGENT
+from urllib3.util.retry import RequestHistory, Retry
 from urllib3.util.timeout import Timeout
 
-from test import SHORT_TIMEOUT, LONG_TIMEOUT
-from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
-from dummyserver.server import NoIPv6Warning, HAS_IPV6_AND_DNS
-
-from threading import Event
+from .. import INVALID_SOURCE_ADDRESSES, TARPIT_HOST, VALID_SOURCE_ADDRESSES
+from ..port_helpers import find_unused_port
 
 pytestmark = pytest.mark.flaky
 
@@ -786,6 +788,77 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         with HTTPConnectionPool("LoCaLhOsT", self.port) as pool:
             response = pool.request("GET", "http://LoCaLhOsT:%d/" % self.port)
             assert response.status == 200
+
+    def test_preserves_path_dot_segments(self):
+        """ ConnectionPool preserves dot segments in the URI """
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            response = pool.request("GET", "/echo_uri/seg0/../seg2")
+            assert response.data == b"/echo_uri/seg0/../seg2"
+
+    def test_default_user_agent_header(self):
+        """ ConnectionPool has a default user agent """
+        default_ua = _get_default_user_agent()
+        custom_ua = "I'm not a web scraper, what are you talking about?"
+        custom_ua2 = "Yet Another User Agent"
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            # Use default user agent if no user agent was specified.
+            r = pool.request("GET", "/headers")
+            request_headers = json.loads(r.data.decode("utf8"))
+            assert request_headers.get("User-Agent") == _get_default_user_agent()
+
+            # Prefer the request user agent over the default.
+            headers = {"UsEr-AGENt": custom_ua}
+            r = pool.request("GET", "/headers", headers=headers)
+            request_headers = json.loads(r.data.decode("utf8"))
+            assert request_headers.get("User-Agent") == custom_ua
+
+            # Do not modify pool headers when using the default user agent.
+            pool_headers = {"foo": "bar"}
+            pool.headers = pool_headers
+            r = pool.request("GET", "/headers")
+            request_headers = json.loads(r.data.decode("utf8"))
+            assert request_headers.get("User-Agent") == default_ua
+            assert "User-Agent" not in pool_headers
+
+            pool.headers.update({"User-Agent": custom_ua2})
+            r = pool.request("GET", "/headers")
+            request_headers = json.loads(r.data.decode("utf8"))
+            assert request_headers.get("User-Agent") == custom_ua2
+
+    def test_no_user_agent_header(self):
+        """ ConnectionPool can suppress sending a user agent header """
+        custom_ua = "I'm not a web scraper, what are you talking about?"
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            # Suppress user agent in the request headers.
+            no_ua_headers = {"User-Agent": SUPPRESS_USER_AGENT}
+            r = pool.request("GET", "/headers", headers=no_ua_headers)
+            request_headers = json.loads(r.data.decode("utf8"))
+            assert "User-Agent" not in request_headers
+            assert no_ua_headers["User-Agent"] == SUPPRESS_USER_AGENT
+
+            # Suppress user agent in the pool headers.
+            pool.headers = no_ua_headers
+            r = pool.request("GET", "/headers")
+            request_headers = json.loads(r.data.decode("utf8"))
+            assert "User-Agent" not in request_headers
+            assert no_ua_headers["User-Agent"] == SUPPRESS_USER_AGENT
+
+            # Request headers override pool headers.
+            pool_headers = {"User-Agent": custom_ua}
+            pool.headers = pool_headers
+            r = pool.request("GET", "/headers", headers=no_ua_headers)
+            request_headers = json.loads(r.data.decode("utf8"))
+            assert "User-Agent" not in request_headers
+            assert no_ua_headers["User-Agent"] == SUPPRESS_USER_AGENT
+            assert pool_headers.get("User-Agent") == custom_ua
+
+    def test_bytes_header(self):
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            headers = {"User-Agent": b"test header"}
+            r = pool.request("GET", "/headers", headers=headers)
+            request_headers = json.loads(r.data.decode("utf8"))
+            assert "User-Agent" in request_headers
+            assert request_headers["User-Agent"] == "test header"
 
 
 class TestRetry(HTTPDummyServerTestCase):

@@ -4,11 +4,11 @@ Test connections without the builtin ssl module
 Note: Import urllib3 inside the test functions to get the importblocker to work
 """
 import pytest
-from ..test_no_ssl import TestWithoutSSL
-
-from dummyserver.testcase import HTTPDummyServerTestCase, HTTPSDummyServerTestCase
 
 import urllib3
+from dummyserver.testcase import HTTPDummyServerTestCase, HTTPSDummyServerTestCase
+
+from ..test_no_ssl import TestWithoutSSL
 
 # Retry failed tests
 pytestmark = pytest.mark.flaky

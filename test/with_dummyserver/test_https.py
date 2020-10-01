@@ -2,53 +2,54 @@ import datetime
 import json
 import logging
 import os.path
+import shutil
 import ssl
 import sys
-import shutil
 import tempfile
 import warnings
+from test import (
+    LONG_TIMEOUT,
+    SHORT_TIMEOUT,
+    TARPIT_HOST,
+    notOpenSSL098,
+    notSecureTransport,
+    onlyPy279OrNewer,
+    requires_network,
+    requires_ssl_context_keyfile_password,
+    requiresTLSv1,
+    requiresTLSv1_1,
+    requiresTLSv1_2,
+    requiresTLSv1_3,
+    resolvesLocalhostFQDN,
+)
 
 import mock
 import pytest
 import trustme
 
-from dummyserver.testcase import HTTPSDummyServerTestCase
+import urllib3.util as util
 from dummyserver.server import (
-    encrypt_key_pem,
     DEFAULT_CA,
     DEFAULT_CA_KEY,
     DEFAULT_CERTS,
+    encrypt_key_pem,
 )
-
-from test import (
-    onlyPy279OrNewer,
-    notSecureTransport,
-    notOpenSSL098,
-    requires_network,
-    requires_ssl_context_keyfile_password,
-    fails_on_travis_gce,
-    requiresTLSv1,
-    requiresTLSv1_1,
-    requiresTLSv1_2,
-    requiresTLSv1_3,
-    TARPIT_HOST,
-    SHORT_TIMEOUT,
-    LONG_TIMEOUT,
-)
+from dummyserver.testcase import HTTPSDummyServerTestCase
 from urllib3 import HTTPSConnectionPool
-from urllib3.connection import VerifiedHTTPSConnection, RECENT_DATE
+from urllib3.connection import RECENT_DATE, VerifiedHTTPSConnection
 from urllib3.exceptions import (
-    SSLError,
     ConnectTimeoutError,
-    InsecureRequestWarning,
-    SystemTimeWarning,
     InsecurePlatformWarning,
+    InsecureRequestWarning,
     MaxRetryError,
     ProtocolError,
+    SSLError,
+    SystemTimeWarning,
 )
 from urllib3.packages import six
 from urllib3.util.timeout import Timeout
-import urllib3.util as util
+
+from .. import has_alpn
 
 # Retry failed tests
 pytestmark = pytest.mark.flaky
@@ -133,7 +134,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             r = https_pool.request("GET", "/")
             assert r.status == 200, r.data
 
-    @fails_on_travis_gce
+    @resolvesLocalhostFQDN
     def test_dotted_fqdn(self):
         with HTTPSConnectionPool(
             self.host + ".", self.port, ca_certs=DEFAULT_CA
@@ -297,7 +298,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         # OpenSSL looks up certificates by the hash for their name, see c_rehash
         # TODO infer the bytes using `cryptography.x509.Name.public_bytes`.
         # https://github.com/pyca/cryptography/pull/3236
-        shutil.copyfile(DEFAULT_CA, str(tmpdir / "b6b9ccf9.0"))
+        shutil.copyfile(DEFAULT_CA, str(tmpdir / "81deb5f7.0"))
 
         with HTTPSConnectionPool(
             self.host, self.port, cert_reqs="CERT_REQUIRED", ca_cert_dir=str(tmpdir)
@@ -439,7 +440,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             "localhost", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
             https_pool.assert_fingerprint = (
-                "F2:06:5A:42:10:3F:45:1C:17:FE:E6:07:1E:8A:86:E5"
+                "55:39:BF:70:05:12:43:FA:1F:D1:BF:4E:E8:1B:07:1D"
             )
 
             https_pool.request("GET", "/")
@@ -449,7 +450,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             "localhost", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
             https_pool.assert_fingerprint = (
-                "92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A"
+                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
             )
             https_pool.request("GET", "/")
 
@@ -458,9 +459,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             "localhost", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
             https_pool.assert_fingerprint = (
-                "C5:4D:0B:83:84:89:2E:AE:B4:58:BB:12:"
-                "F7:A6:C4:76:05:03:88:D8:57:65:51:F3:"
-                "1E:60:B0:8B:70:18:64:E6"
+                "E3:59:8E:69:FF:C5:9F:C7:88:87:44:58:22:7F:90:8D:D9:BC:12:C4:90:79:D5:"
+                "DC:A8:5D:4F:60:40:1E:A6:D2"
             )
             https_pool.request("GET", "/")
 
@@ -505,7 +505,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             "127.0.0.1", self.port, cert_reqs="CERT_NONE", ca_certs=self.bad_ca_path
         ) as https_pool:
             https_pool.assert_fingerprint = (
-                "92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A"
+                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
             )
             https_pool.request("GET", "/")
 
@@ -519,7 +519,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             "127.0.0.1", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
             https_pool.assert_fingerprint = (
-                "92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A"
+                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
             )
             https_pool.request("GET", "/")
 
@@ -547,7 +547,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         ) as https_pool:
             https_pool.ca_certs = DEFAULT_CA
             https_pool.assert_fingerprint = (
-                "92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A"
+                "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
             )
 
         timeout = Timeout(total=None)
@@ -616,7 +616,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 conn.close()
 
     def test_enhanced_ssl_connection(self):
-        fingerprint = "92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A"
+        fingerprint = "72:8B:55:4C:9A:FC:1E:88:A1:1C:AD:1B:B2:E7:CC:3E:DB:C8:F9:8A"
 
         with HTTPSConnectionPool(
             self.host,
@@ -698,6 +698,35 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 assert conn.sock.version() == self.tls_protocol_name
             finally:
                 conn.close()
+
+    @pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8+")
+    def test_sslkeylogfile(self, tmpdir, monkeypatch):
+        if not hasattr(util.SSLContext, "keylog_filename"):
+            pytest.skip("requires OpenSSL 1.1.1+")
+        keylog_file = tmpdir.join("keylogfile.txt")
+        monkeypatch.setenv("SSLKEYLOGFILE", str(keylog_file))
+        with HTTPSConnectionPool(
+            self.host, self.port, ca_certs=DEFAULT_CA
+        ) as https_pool:
+            r = https_pool.request("GET", "/")
+            assert r.status == 200, r.data
+            assert keylog_file.check(file=1), "keylogfile '%s' should exist" % str(
+                keylog_file
+            )
+            assert keylog_file.read().startswith(
+                "# TLS secrets log file"
+            ), "keylogfile '%s' should start with '# TLS secrets log file'" % str(
+                keylog_file
+            )
+
+    def test_alpn_default(self):
+        """Default ALPN protocols are sent by default."""
+        if not has_alpn() or not has_alpn(ssl.SSLContext):
+            pytest.skip("ALPN-support not available")
+        with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
+            r = pool.request("GET", "/alpn_protocol", retries=0)
+            assert r.status == 200
+            assert r.data.decode("utf-8") == util.ALPN_PROTOCOLS[0]
 
 
 @requiresTLSv1()
