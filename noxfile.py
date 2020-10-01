@@ -104,7 +104,7 @@ def format(session):
     """Run code formatters."""
     session.install("black", "isort")
     session.run("black", *SOURCE_FILES)
-    session.run("isort", "--profile", "black", *SOURCE_FILES)
+    session.run("isort", *SOURCE_FILES)
 
     lint(session)
 
@@ -117,7 +117,7 @@ def lint(session):
     session.run("isort", "--version")
     session.run("mypy", "--version")
     session.run("black", "--check", *SOURCE_FILES)
-    session.run("isort", "--profile", "black", "--check", *SOURCE_FILES)
+    session.run("isort", "--check", *SOURCE_FILES)
     session.run("flake8", *SOURCE_FILES)
 
     session.log("mypy --strict src/urllib3")
