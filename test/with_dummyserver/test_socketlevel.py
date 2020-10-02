@@ -447,7 +447,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
             assert http.pool.qsize() == http.pool.maxsize
 
-    def test_read_timeout_dont_retry_method_not_in_whitelist(self):
+    def test_read_timeout_dont_retry_method_not_in_allowlist(self):
         timed_out = Event()
 
         def socket_handler(listener):
@@ -458,7 +458,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
         with HTTPConnectionPool(
-            self.host, self.port, timeout=SHORT_TIMEOUT, retries=True
+            self.host, self.port, timeout=LONG_TIMEOUT, retries=True
         ) as pool:
             try:
                 with pytest.raises(ReadTimeoutError):
