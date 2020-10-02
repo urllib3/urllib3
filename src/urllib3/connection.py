@@ -510,6 +510,7 @@ class HTTPSConnection(HTTPConnection):
             ssl_context=ssl_context,
         )
 
+
 def _match_hostname(cert, asserted_hostname):
     try:
         match_hostname(cert, asserted_hostname)

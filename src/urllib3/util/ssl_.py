@@ -430,17 +430,30 @@ def ssl_wrap_socket(
             SNIMissingWarning,
         )
 
+    wrap_sock_kwargs = {}
+    # do not pass it if not sending SNI
+    if send_sni:
+        wrap_sock_kwargs["server_hostname"] = server_hostname
     # Depending on the underlying wrap_socket,
     # it may not accept the `session` kwarg even if it is provided by caller
-    send_session = IS_SSL_SESSION_SUPPORTED and ssl_session is not None
+    if IS_SSL_SESSION_SUPPORTED and ssl_session is not None:
+        wrap_sock_kwargs["session"] = ssl_session
 
-    wrap_kwargs = {}
-    if send_sni:
-        wrap_kwargs["server_hostname"] = server_hostname
-    if send_session:
-        wrap_kwargs["session"] = ssl_session
+    return _ssl_wrap_socket_impl(sock, context, tls_in_tls, wrap_sock_kwargs)
 
-    return _ssl_wrap_socket_impl(sock, context, tls_in_tls, **wrap_kwargs)
+
+def _ssl_wrap_socket_impl(sock, ssl_context, tls_in_tls, wrap_sock_kwargs):
+    if tls_in_tls:
+        if not SSLTransport:
+            # Import error, ssl is not available.
+            raise ProxySchemeUnsupported(
+                "TLS in TLS requires support for the 'ssl' module"
+            )
+
+        SSLTransport._validate_ssl_context_for_tls_in_tls(ssl_context)
+        return SSLTransport(sock, ssl_context, **wrap_sock_kwargs)
+
+    return ssl_context.wrap_socket(sock, **wrap_sock_kwargs)
 
 
 def is_ipaddress(hostname):
@@ -465,17 +478,3 @@ def _is_key_file_encrypted(key_file):
                 return True
 
     return False
-
-
-def _ssl_wrap_socket_impl(sock, ssl_context, tls_in_tls, **kwargs):
-    if tls_in_tls:
-        if not SSLTransport:
-            # Import error, ssl is not available.
-            raise ProxySchemeUnsupported(
-                "TLS in TLS requires support for the 'ssl' module"
-            )
-
-        SSLTransport._validate_ssl_context_for_tls_in_tls(ssl_context)
-        return SSLTransport(sock, ssl_context, server_hostname=kwargs.get("server_hostname"))
-
-    return ssl_context.wrap_socket(sock, **kwargs)

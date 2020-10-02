@@ -37,10 +37,10 @@ from dummyserver.server import (
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from urllib3 import HTTPSConnectionPool
 from urllib3.connection import (
-    HTTPSConnection,
-    VerifiedHTTPSConnection,
     RECENT_DATE,
     SSL_OP_NO_TICKET,
+    HTTPSConnection,
+    VerifiedHTTPSConnection,
 )
 from urllib3.exceptions import (
     ConnectTimeoutError,
