@@ -42,12 +42,7 @@ class SSLTransport:
                 )
 
     def __init__(
-        self,
-        socket,
-        ssl_context,
-        suppress_ragged_eofs=True,
-        server_hostname=None,
-        session=None,
+        self, socket, ssl_context, suppress_ragged_eofs=True, **wrap_bio_kwargs
     ):
         """
         Create an SSLTransport around socket using the provided ssl_context.
@@ -58,13 +53,8 @@ class SSLTransport:
             :class:`ssl.SSLContext` to use call :func:`ssl.SSLContext.wrap_bio` on.
         :param suppress_ragged_eofs:
             Suppress ``ssl.SSL_ERROR_EOF`` read errors.
-        :param server_hostname:
-            If not ``None``, will be passed to :func:`ssl.SSLContext.wrap_bio`
-        :param session:
-            If not ``None``, will be passed to :func:`ssl.SSLContext.wrap_bio`.
-            Should be an :class:`ssl.SSLSession` object from a previously established
-            :class:`ssl.SSLSocket`, that was created with the same
-            :class:`ssl.SSLContext` as the one being passed.
+        :param wrap_bio_kwargs:
+            These args will be passed to :func:`ssl.SSLContext.wrap_bio`
         """
         self.incoming = ssl.MemoryBIO()
         self.outgoing = ssl.MemoryBIO()
@@ -73,10 +63,7 @@ class SSLTransport:
         self.socket = socket
 
         self.sslobj = ssl_context.wrap_bio(
-            self.incoming,
-            self.outgoing,
-            server_hostname=server_hostname,
-            session=session,
+            self.incoming, self.outgoing, **wrap_bio_kwargs
         )
 
         # Perform initial handshake.

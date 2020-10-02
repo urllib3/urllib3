@@ -373,7 +373,7 @@ def ssl_wrap_socket(
         layer will fall back to a full handshake - ie. same as when establishing
         a new connection, so this failure is transparent to a caller.
     :param tls_in_tls:
-        Use SSLTransport to wrap the existing socket.
+        Use :class:`SSLTransport` to wrap the existing socket if available.
     """
     context = ssl_context
     if context is None:
