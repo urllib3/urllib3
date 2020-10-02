@@ -51,6 +51,7 @@ jobs:
       env: NOX_SESSION=test-pypy
     - python: pypy3.6-7.3.1
       env: NOX_SESSION=test-pypy
+      dist: bionic
 
     # Extras
     - python: 2.7
