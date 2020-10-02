@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from datetime import date
 import os
 import sys
+from datetime import date
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -29,7 +29,6 @@ sys.modules.update((mod_name, MockModule()) for mod_name in MOCK_MODULES)
 
 
 import urllib3
-
 
 # -- General configuration -----------------------------------------------------
 
@@ -76,7 +75,14 @@ html_theme = "furo"
 html_favicon = "images/favicon.png"
 html_logo = "images/banner.svg"
 
-html_static_path = ["_static"]
-html_css_files = ["tweaks.css"]
+html_theme_options = {
+    "announcement": """
+        <a style=\"text-decoration: none; color: white;\" 
+           href=\"https://opencollective.com/urllib3\">
+           <img src=\"_static/favicon.png\"/> Sponsor urllib3 v2.0 on Open Collective
+        </a>
+    """,
+    "sidebar_hide_name": True,
+}
 
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}

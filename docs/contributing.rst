@@ -13,7 +13,7 @@ If you wish to add a new feature or fix a bug:
    to start making your changes.
 #. Write a test which shows that the bug was fixed or that the feature works
    as expected.
-#. Format your changes with black using command `$ nox -rs blacken` and lint your
+#. Format your changes with black using command `$ nox -rs format` and lint your
    changes using command `nox -rs lint`.
 #. Send a pull request and bug the maintainer until it gets merged and published.
    :) Make sure to add yourself to ``CONTRIBUTORS.txt``.

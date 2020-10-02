@@ -6,6 +6,7 @@ Test what happens if Python was built without SSL
 """
 
 import sys
+
 import pytest
 
 

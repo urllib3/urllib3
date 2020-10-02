@@ -4,7 +4,6 @@ import subprocess
 
 import nox
 
-
 # Whenever type-hints are completed on a file it should be added here so that
 # this file will continue to be checked by mypy. Errors from other files are
 # ignored.
@@ -101,21 +100,24 @@ def app_engine(session):
 
 
 @nox.session()
-def blacken(session):
-    """Run black code formatter."""
-    session.install("black")
+def format(session):
+    """Run code formatters."""
+    session.install("black", "isort")
     session.run("black", *SOURCE_FILES)
+    session.run("isort", *SOURCE_FILES)
 
     lint(session)
 
 
 @nox.session
 def lint(session):
-    session.install("flake8", "black", "mypy")
+    session.install("flake8", "flake8-2020", "black", "isort", "mypy")
     session.run("flake8", "--version")
     session.run("black", "--version")
+    session.run("isort", "--version")
     session.run("mypy", "--version")
     session.run("black", "--check", *SOURCE_FILES)
+    session.run("isort", "--check", *SOURCE_FILES)
     session.run("flake8", *SOURCE_FILES)
 
     session.log("mypy --strict src/urllib3")

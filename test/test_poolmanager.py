@@ -1,12 +1,12 @@
 import socket
+from test import resolvesLocalhostFQDN
 
 import pytest
 
-from urllib3.poolmanager import PoolKey, key_fn_by_scheme, PoolManager
 from urllib3 import connection_from_url
 from urllib3.exceptions import ClosedPoolError, LocationValueError
+from urllib3.poolmanager import PoolKey, PoolManager, key_fn_by_scheme
 from urllib3.util import retry, timeout
-from test import resolvesLocalhostFQDN
 
 
 class TestPoolManager(object):
@@ -366,3 +366,9 @@ class TestPoolManager(object):
         p = PoolManager(strict=True)
         merged = p._merge_pool_kwargs({"invalid_key": None})
         assert p.connection_pool_kw == merged
+
+    def test_pool_manager_no_url_absolute_form(self):
+        """Valides we won't send a request with absolute form without a proxy"""
+        p = PoolManager(strict=True)
+        assert p._proxy_requires_url_absolute_form("http://example.com") is False
+        assert p._proxy_requires_url_absolute_form("https://example.com") is False

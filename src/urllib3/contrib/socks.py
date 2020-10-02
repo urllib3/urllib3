@@ -44,6 +44,7 @@ try:
     import socks
 except ImportError:
     import warnings
+
     from ..exceptions import DependencyWarning
 
     warnings.warn(
@@ -56,7 +57,8 @@ except ImportError:
     )
     raise
 
-from socket import error as SocketError, timeout as SocketTimeout
+from socket import error as SocketError
+from socket import timeout as SocketTimeout
 
 from ..connection import HTTPConnection, HTTPSConnection
 from ..connectionpool import HTTPConnectionPool, HTTPSConnectionPool

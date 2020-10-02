@@ -3,10 +3,9 @@ Connections
 
 .. autoclass:: urllib3.connection.HTTPConnection
     :members:
-    :undoc-members:
+    :exclude-members: putrequest
     :show-inheritance:
 
 .. autoclass:: urllib3.connection.HTTPSConnection
     :members:
-    :undoc-members:
     :show-inheritance:

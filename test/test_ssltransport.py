@@ -1,18 +1,14 @@
-from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
-from dummyserver.server import (
-    DEFAULT_CERTS,
-    DEFAULT_CA,
-)
-
-from urllib3.contrib.ssl import SSLTransport
-
+import platform
 import select
-import pytest
 import socket
 import ssl
 import sys
-import platform
 
+import pytest
+
+from dummyserver.server import DEFAULT_CA, DEFAULT_CERTS
+from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
+from urllib3.util.ssltransport import SSLTransport
 
 # consume_socket can iterate forever, we add timeouts to prevent halting.
 PER_TEST_TIMEOUT = 60

@@ -3,8 +3,8 @@ import warnings
 import pytest
 
 from urllib3.connection import HTTPConnection
-from urllib3.response import HTTPResponse
 from urllib3.packages.six.moves import http_cookiejar, urllib
+from urllib3.response import HTTPResponse
 
 
 class TestVersionCompatibility(object):
