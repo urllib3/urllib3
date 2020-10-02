@@ -18,7 +18,7 @@ def server_client_ssl_contexts():
     if hasattr(ssl, "PROTOCOL_TLS_SERVER"):
         server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     else:
-        # python 2.7 and 3.5 workaround.
+        # python 2.7 workaround.
         # PROTOCOL_TLS_SERVER was added in 3.6
         server_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
     server_context.load_cert_chain(DEFAULT_CERTS["certfile"], DEFAULT_CERTS["keyfile"])
@@ -26,7 +26,7 @@ def server_client_ssl_contexts():
     if hasattr(ssl, "PROTOCOL_TLS_CLIENT"):
         client_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     else:
-        # python 2.7 and 3.5 workaround.
+        # python 2.7 workaround.
         # PROTOCOL_TLS_SERVER was added in 3.6
         client_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
         client_context.verify_mode = ssl.CERT_REQUIRED
@@ -75,7 +75,7 @@ def validate_peercert(ssl_socket):
     assert cert["serialNumber"] != ""
 
 
-@pytest.mark.skipif(sys.version_info < (3, 5), reason="requires python3.5 or higher")
+@pytest.mark.skipif(sys.version_info < (3, 6), reason="requires python3.6 or higher")
 class SingleTLSLayerTestCase(SocketDummyServerTestCase):
     """
     Uses the SocketDummyServer to validate a single TLS layer can be
@@ -292,7 +292,7 @@ class SocketProxyDummyServer(SocketDummyServerTestCase):
                         return
 
 
-@pytest.mark.skipif(sys.version_info < (3, 5), reason="requires python3.5 or higher")
+@pytest.mark.skipif(sys.version_info < (3, 6), reason="requires python3.6 or higher")
 class TlsInTlsTestCase(SocketDummyServerTestCase):
     """
     Creates a TLS in TLS tunnel by chaining a 'SocketProxyDummyServer' and a

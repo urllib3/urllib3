@@ -37,7 +37,7 @@ class NoWayToWaitForSocketError(Exception):
 # So: on Windows we use select(), and everywhere else we use poll(). We also
 # fall back to select() in case poll() is somehow broken or missing.
 
-if sys.version_info >= (3, 5):
+if sys.version_info >= (3, 6):
     # Modern Python, that retries syscalls by default
     def _retry_on_intr(fn, timeout):
         return fn(timeout)

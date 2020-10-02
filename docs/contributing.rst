@@ -63,8 +63,6 @@ suite::
   .......
   .......
   nox > Session test-2.7 was successful.
-  nox > Session test-3.4 was successful.
-  nox > Session test-3.5 was successful.
   nox > Session test-3.6 was successful.
   nox > Session test-3.7 was successful.
   nox > Session test-3.8 was successful.

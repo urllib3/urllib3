@@ -197,19 +197,6 @@ def notSecureTransport(test):
     return wrapper
 
 
-def notOpenSSL098(test):
-    """Skips this test for Python 3.5 macOS python.org distribution"""
-
-    @six.wraps(test)
-    def wrapper(*args, **kwargs):
-        is_stdlib_ssl = not ssl_.IS_SECURETRANSPORT and not ssl_.IS_PYOPENSSL
-        if is_stdlib_ssl and ssl.OPENSSL_VERSION == "OpenSSL 0.9.8zh 14 Jan 2016":
-            pytest.xfail("{name} fails with OpenSSL 0.9.8zh".format(name=test.__name__))
-        return test(*args, **kwargs)
-
-    return wrapper
-
-
 _requires_network_has_route = None
 
 
