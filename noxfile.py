@@ -55,6 +55,8 @@ def tests_impl(session, extras="socks,secure,brotli"):
         "pytest",
         "-r",
         "a",
+        "-k",
+        "test_tls_protocol_name_of_socket",
         "--tb=native",
         "--no-success-flaky-report",
         *(session.posargs or ("test/",)),
