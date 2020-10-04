@@ -28,7 +28,6 @@ except ImportError:
 import pytest
 import six
 
-
 __all__ = [
     "pytest_configure",
     "pytest_runtest_call",

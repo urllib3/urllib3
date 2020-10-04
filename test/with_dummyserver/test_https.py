@@ -2,53 +2,53 @@ import datetime
 import json
 import logging
 import os.path
+import shutil
 import ssl
 import sys
-import shutil
 import tempfile
 import warnings
-
-import mock
-import pytest
-import trustme
-
-from dummyserver.testcase import HTTPSDummyServerTestCase
-from dummyserver.server import (
-    encrypt_key_pem,
-    DEFAULT_CA,
-    DEFAULT_CA_KEY,
-    DEFAULT_CERTS,
-)
-
 from test import (
-    onlyPy279OrNewer,
-    notSecureTransport,
+    LONG_TIMEOUT,
+    SHORT_TIMEOUT,
+    TARPIT_HOST,
     notOpenSSL098,
+    notSecureTransport,
+    onlyPy279OrNewer,
     requires_network,
     requires_ssl_context_keyfile_password,
     requiresTLSv1,
     requiresTLSv1_1,
     requiresTLSv1_2,
     requiresTLSv1_3,
-    TARPIT_HOST,
-    SHORT_TIMEOUT,
-    LONG_TIMEOUT,
     resolvesLocalhostFQDN,
 )
+
+import mock
+import pytest
+import trustme
+
+import urllib3.util as util
+from dummyserver.server import (
+    DEFAULT_CA,
+    DEFAULT_CA_KEY,
+    DEFAULT_CERTS,
+    encrypt_key_pem,
+)
+from dummyserver.testcase import HTTPSDummyServerTestCase
 from urllib3 import HTTPSConnectionPool
-from urllib3.connection import VerifiedHTTPSConnection, RECENT_DATE
+from urllib3.connection import RECENT_DATE, VerifiedHTTPSConnection
 from urllib3.exceptions import (
-    SSLError,
     ConnectTimeoutError,
-    InsecureRequestWarning,
-    SystemTimeWarning,
     InsecurePlatformWarning,
+    InsecureRequestWarning,
     MaxRetryError,
     ProtocolError,
+    SSLError,
+    SystemTimeWarning,
 )
 from urllib3.packages import six
 from urllib3.util.timeout import Timeout
-import urllib3.util as util
+
 from .. import has_alpn
 
 # Retry failed tests

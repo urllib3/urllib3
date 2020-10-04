@@ -1,33 +1,29 @@
 # TODO: Break this module up into pieces. Maybe group by functionality tested
 # rather than the socket level-ness of it.
-from urllib3 import HTTPConnectionPool, HTTPSConnectionPool
-from urllib3.connection import HTTPConnection
-from urllib3.poolmanager import proxy_from_url
-from urllib3.connection import _get_default_user_agent
+from dummyserver.server import (
+    DEFAULT_CA,
+    DEFAULT_CERTS,
+    encrypt_key_pem,
+    get_unreachable_address,
+)
+from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
+from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, util
+from urllib3._collections import HTTPHeaderDict
+from urllib3.connection import HTTPConnection, _get_default_user_agent
 from urllib3.exceptions import (
     MaxRetryError,
+    ProtocolError,
     ProxyError,
     ReadTimeoutError,
     SSLError,
-    ProtocolError,
 )
 from urllib3.packages.six.moves import http_client as httplib
-from urllib3 import util
-from urllib3.util import ssl_wrap_socket
-from urllib3.util import ssl_
-from urllib3.util.timeout import Timeout
+from urllib3.poolmanager import proxy_from_url
+from urllib3.util import ssl_, ssl_wrap_socket
 from urllib3.util.retry import Retry
-from urllib3._collections import HTTPHeaderDict
+from urllib3.util.timeout import Timeout
 
-from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
-from dummyserver.server import (
-    DEFAULT_CERTS,
-    DEFAULT_CA,
-    get_unreachable_address,
-    encrypt_key_pem,
-)
-
-from .. import onlyPy3, LogRecorder, has_alpn
+from .. import LogRecorder, has_alpn, onlyPy3
 
 try:
     from mimetools import Message as MimeToolMessage
@@ -37,29 +33,28 @@ except ImportError:
         pass
 
 
-from collections import OrderedDict
-import os.path
-from threading import Event
 import os
+import os.path
 import select
-import socket
 import shutil
+import socket
 import ssl
 import tempfile
-import mock
-
-import pytest
-import trustme
-
+from collections import OrderedDict
 from test import (
-    requires_ssl_context_keyfile_password,
-    SHORT_TIMEOUT,
     LONG_TIMEOUT,
+    SHORT_TIMEOUT,
     notPyPy2,
     notSecureTransport,
     notWindows,
+    requires_ssl_context_keyfile_password,
     resolvesLocalhostFQDN,
 )
+from threading import Event
+
+import mock
+import pytest
+import trustme
 
 # Retry failed tests
 pytestmark = pytest.mark.flaky
@@ -452,7 +447,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
             assert http.pool.qsize() == http.pool.maxsize
 
-    def test_read_timeout_dont_retry_method_not_in_whitelist(self):
+    def test_read_timeout_dont_retry_method_not_in_allowlist(self):
         timed_out = Event()
 
         def socket_handler(listener):
@@ -463,7 +458,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
         with HTTPConnectionPool(
-            self.host, self.port, timeout=SHORT_TIMEOUT, retries=True
+            self.host, self.port, timeout=LONG_TIMEOUT, retries=True
         ) as pool:
             try:
                 with pytest.raises(ReadTimeoutError):

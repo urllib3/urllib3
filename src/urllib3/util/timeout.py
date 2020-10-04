@@ -1,9 +1,10 @@
 from __future__ import absolute_import
 
+import time
+
 # The default socket timeout, used by httplib to indicate that no timeout was
 # specified by the user
 from socket import _GLOBAL_DEFAULT_TIMEOUT
-import time
 
 from ..exceptions import TimeoutStateError
 

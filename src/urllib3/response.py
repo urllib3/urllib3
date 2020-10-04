@@ -1,10 +1,11 @@
 from __future__ import absolute_import
-from contextlib import contextmanager
-import zlib
+
 import io
 import logging
-from socket import timeout as SocketTimeout
+import zlib
+from contextlib import contextmanager
 from socket import error as SocketError
+from socket import timeout as SocketTimeout
 
 try:
     import brotli
@@ -12,20 +13,20 @@ except ImportError:
     brotli = None
 
 from ._collections import HTTPHeaderDict
+from .connection import BaseSSLError, HTTPException
 from .exceptions import (
     BodyNotHttplibCompatible,
-    ProtocolError,
     DecodeError,
-    ReadTimeoutError,
-    ResponseNotChunked,
+    HTTPError,
     IncompleteRead,
     InvalidChunkLength,
     InvalidHeader,
-    HTTPError,
+    ProtocolError,
+    ReadTimeoutError,
+    ResponseNotChunked,
     SSLError,
 )
-from .packages.six import string_types as basestring, PY3
-from .connection import HTTPException, BaseSSLError
+from .packages import six
 from .util.response import is_fp_closed, is_response_to_head
 
 log = logging.getLogger(__name__)
@@ -233,7 +234,7 @@ class HTTPResponse(io.IOBase):
         self.msg = msg
         self._request_url = request_url
 
-        if body and isinstance(body, (basestring, bytes)):
+        if body and isinstance(body, (six.string_types, bytes)):
             self._body = body
 
         self._pool = pool
@@ -589,11 +590,11 @@ class HTTPResponse(io.IOBase):
         headers = r.msg
 
         if not isinstance(headers, HTTPHeaderDict):
-            if PY3:
-                headers = HTTPHeaderDict(headers.items())
-            else:
+            if six.PY2:
                 # Python 2.7
                 headers = HTTPHeaderDict.from_httplib(headers)
+            else:
+                headers = HTTPHeaderDict(headers.items())
 
         # HTTPResponse objects in Python 3 don't have a .strict attribute
         strict = getattr(r, "strict", 0)

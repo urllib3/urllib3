@@ -3,7 +3,6 @@ from __future__ import absolute_import
 from .filepost import encode_multipart_formdata
 from .packages.six.moves.urllib.parse import urlencode
 
-
 __all__ = ["RequestMethods"]
 
 

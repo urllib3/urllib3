@@ -1,9 +1,9 @@
 import datetime
-import mock
 
+import mock
 import pytest
 
-from urllib3.connection import CertificateError, _match_hostname, RECENT_DATE
+from urllib3.connection import RECENT_DATE, CertificateError, _match_hostname
 
 
 class TestConnection(object):

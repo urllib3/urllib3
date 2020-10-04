@@ -1,14 +1,18 @@
 from __future__ import absolute_import
-import re
+
 import datetime
 import logging
 import os
+import re
 import socket
-from socket import error as SocketError, timeout as SocketTimeout
 import warnings
+from socket import error as SocketError
+from socket import timeout as SocketTimeout
+
 from .packages import six
 from .packages.six.moves.http_client import HTTPConnection as _HTTPConnection
 from .packages.six.moves.http_client import HTTPException  # noqa: F401
+from .util.proxy import create_proxy_ssl_context
 
 try:  # Compiled with SSL?
     import ssl
@@ -39,27 +43,23 @@ except NameError:  # Python 2:
         pass
 
 
+from ._collections import HTTPHeaderDict
+from ._version import __version__
 from .exceptions import (
-    NewConnectionError,
     ConnectTimeoutError,
+    NewConnectionError,
     SubjectAltNameWarning,
     SystemTimeWarning,
 )
-from .packages.ssl_match_hostname import match_hostname, CertificateError
-
+from .packages.ssl_match_hostname import CertificateError, match_hostname
+from .util import SUPPRESS_USER_AGENT, connection
 from .util.ssl_ import (
-    resolve_cert_reqs,
-    resolve_ssl_version,
     assert_fingerprint,
     create_urllib3_context,
+    resolve_cert_reqs,
+    resolve_ssl_version,
     ssl_wrap_socket,
 )
-
-
-from .util import connection, SUPPRESS_USER_AGENT
-
-from ._collections import HTTPHeaderDict
-from ._version import __version__
 
 log = logging.getLogger(__name__)
 
@@ -117,6 +117,11 @@ class HTTPConnection(_HTTPConnection, object):
         #: The socket options provided by the user. If no options are
         #: provided, we use the default options.
         self.socket_options = kw.pop("socket_options", self.default_socket_options)
+
+        # Proxy options provided by the user.
+        self.proxy = kw.pop("proxy", None)
+        self.proxy_config = kw.pop("proxy_config", None)
+
         _HTTPConnection.__init__(self, *args, **kw)
 
     @property
@@ -271,6 +276,7 @@ class HTTPSConnection(HTTPConnection):
     ca_cert_data = None
     ssl_version = None
     assert_fingerprint = None
+    tls_in_tls_required = False
 
     def __init__(
         self,
@@ -335,8 +341,13 @@ class HTTPSConnection(HTTPConnection):
         # Add certificate verification
         conn = self._new_conn()
         hostname = self.host
+        tls_in_tls = False
 
         if self._is_using_tunnel():
+            if self.tls_in_tls_required:
+                conn = self._connect_tls_proxy(hostname, conn)
+                tls_in_tls = True
+
             self.sock = conn
 
             # Calls self._set_hostport(), so self.host is
@@ -396,6 +407,7 @@ class HTTPSConnection(HTTPConnection):
             ca_cert_data=self.ca_cert_data,
             server_hostname=server_hostname,
             ssl_context=context,
+            tls_in_tls=tls_in_tls,
         )
 
         if self.assert_fingerprint:
@@ -426,6 +438,40 @@ class HTTPSConnection(HTTPConnection):
         self.is_verified = (
             context.verify_mode == ssl.CERT_REQUIRED
             or self.assert_fingerprint is not None
+        )
+
+    def _connect_tls_proxy(self, hostname, conn):
+        """
+        Establish a TLS connection to the proxy using the provided SSL context.
+        """
+        proxy_config = self.proxy_config
+        ssl_context = proxy_config.ssl_context
+        if ssl_context:
+            # If the user provided a proxy context, we assume CA and client
+            # certificates have already been set
+            return ssl_wrap_socket(
+                sock=conn,
+                server_hostname=hostname,
+                ssl_context=ssl_context,
+            )
+
+        ssl_context = create_proxy_ssl_context(
+            self.ssl_version,
+            self.cert_reqs,
+            self.ca_certs,
+            self.ca_cert_dir,
+            self.ca_cert_data,
+        )
+
+        # If no cert was provided, use only the default options for server
+        # certificate validation
+        return ssl_wrap_socket(
+            sock=conn,
+            ca_certs=self.ca_certs,
+            ca_cert_dir=self.ca_cert_dir,
+            ca_cert_data=self.ca_cert_data,
+            server_hostname=hostname,
+            ssl_context=ssl_context,
         )
 
 

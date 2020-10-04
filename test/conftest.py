@@ -1,18 +1,17 @@
 import collections
 import contextlib
-import threading
 import platform
 import sys
+import threading
 
 import pytest
 import trustme
-from tornado import web, ioloop
-
-from .tz_stub import stub_timezone_ctx
+from tornado import ioloop, web
 
 from dummyserver.handlers import TestingApp
-from dummyserver.server import run_tornado_app
-from dummyserver.server import HAS_IPV6
+from dummyserver.server import HAS_IPV6, run_tornado_app
+
+from .tz_stub import stub_timezone_ctx
 
 
 # The Python 3.8+ default loop on Windows breaks Tornado

@@ -4,17 +4,16 @@ from contextlib import contextmanager
 import pytest
 from tornado import ioloop, web
 
-from urllib3.connection import HTTPConnection
-
-from dummyserver.server import (
-    SocketServerThread,
-    run_tornado_app,
-    run_loop_in_thread,
-    DEFAULT_CERTS,
-    HAS_IPV6,
-)
 from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
+from dummyserver.server import (
+    DEFAULT_CERTS,
+    HAS_IPV6,
+    SocketServerThread,
+    run_loop_in_thread,
+    run_tornado_app,
+)
+from urllib3.connection import HTTPConnection
 
 
 def consume_socket(sock, chunks=65536):

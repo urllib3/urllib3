@@ -3,10 +3,9 @@ App Engine sandbox enabled that urllib3 appropriately uses the App
 Engine-patched version of httplib to make requests."""
 
 import httplib
-import StringIO
-
-from mock import patch
 import pytest
+import StringIO
+from mock import patch
 
 from ..test_no_ssl import TestWithoutSSL
 

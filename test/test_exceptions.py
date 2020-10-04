@@ -2,18 +2,18 @@ import pickle
 
 import pytest
 
-from urllib3.exceptions import (
-    HTTPError,
-    MaxRetryError,
-    LocationParseError,
-    ClosedPoolError,
-    EmptyPoolError,
-    HostChangedError,
-    ReadTimeoutError,
-    ConnectTimeoutError,
-    HeaderParsingError,
-)
 from urllib3.connectionpool import HTTPConnectionPool
+from urllib3.exceptions import (
+    ClosedPoolError,
+    ConnectTimeoutError,
+    EmptyPoolError,
+    HeaderParsingError,
+    HostChangedError,
+    HTTPError,
+    LocationParseError,
+    MaxRetryError,
+    ReadTimeoutError,
+)
 
 
 class TestPickle(object):

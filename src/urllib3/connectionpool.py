@@ -1,58 +1,53 @@
 from __future__ import absolute_import
+
 import errno
 import logging
+import socket
 import sys
 import warnings
+from socket import error as SocketError
+from socket import timeout as SocketTimeout
 
-from socket import error as SocketError, timeout as SocketTimeout
-import socket
-
-
+from .connection import (
+    BaseSSLError,
+    BrokenPipeError,
+    DummyConnection,
+    HTTPConnection,
+    HTTPException,
+    HTTPSConnection,
+    VerifiedHTTPSConnection,
+    port_by_scheme,
+)
 from .exceptions import (
     ClosedPoolError,
-    ProtocolError,
     EmptyPoolError,
     HeaderParsingError,
     HostChangedError,
+    InsecureRequestWarning,
     LocationValueError,
     MaxRetryError,
+    NewConnectionError,
+    ProtocolError,
     ProxyError,
     ReadTimeoutError,
     SSLError,
     TimeoutError,
-    InsecureRequestWarning,
-    NewConnectionError,
 )
-from .packages.ssl_match_hostname import CertificateError
 from .packages import six
 from .packages.six.moves import queue
-from .connection import (
-    port_by_scheme,
-    DummyConnection,
-    HTTPConnection,
-    HTTPSConnection,
-    VerifiedHTTPSConnection,
-    HTTPException,
-    BaseSSLError,
-    BrokenPipeError,
-)
+from .packages.ssl_match_hostname import CertificateError
 from .request import RequestMethods
 from .response import HTTPResponse
-
 from .util.connection import is_connection_dropped
+from .util.proxy import connection_requires_http_tunnel
+from .util.queue import LifoQueue
 from .util.request import set_file_position
 from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.timeout import Timeout
-from .util.url import (
-    get_host,
-    parse_url,
-    Url,
-    _normalize_host as normalize_host,
-    _encode_target,
-)
-from .util.queue import LifoQueue
-
+from .util.url import Url, _encode_target
+from .util.url import _normalize_host as normalize_host
+from .util.url import get_host, parse_url
 
 xrange = six.moves.xrange
 
@@ -182,6 +177,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         retries=None,
         _proxy=None,
         _proxy_headers=None,
+        _proxy_config=None,
         **conn_kw
     ):
         ConnectionPool.__init__(self, host, port)
@@ -203,6 +199,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         self.proxy = _proxy
         self.proxy_headers = _proxy_headers or {}
+        self.proxy_config = _proxy_config
 
         # Fill the queue up so that doing get() on it will block properly
         for _ in xrange(maxsize):
@@ -218,6 +215,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # We cannot know if the user has added default socket options, so we cannot replace the
             # list.
             self.conn_kw.setdefault("socket_options", [])
+
+            self.conn_kw["proxy"] = self.proxy
+            self.conn_kw["proxy_config"] = self.proxy_config
 
     def _new_conn(self):
         """
@@ -621,6 +621,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             Additional parameters are passed to
             :meth:`urllib3.response.HTTPResponse.from_httplib`
         """
+
+        parsed_url = parse_url(url)
+        destination_scheme = parsed_url.scheme
+
         if headers is None:
             headers = self.headers
 
@@ -638,7 +642,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if url.startswith("/"):
             url = six.ensure_str(_encode_target(url))
         else:
-            url = six.ensure_str(parse_url(url).url)
+            url = six.ensure_str(parsed_url.url)
 
         conn = None
 
@@ -653,10 +657,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # [1] <https://github.com/urllib3/urllib3/issues/651>
         release_this_conn = release_conn
 
+        http_tunnel_required = connection_requires_http_tunnel(
+            self.proxy, self.proxy_config, destination_scheme
+        )
+
         # Merge the proxy headers. Only done when not using HTTP CONNECT. We
         # have to copy the headers dict so we can safely change it without those
         # changes being reflected in anyone else's copy.
-        if self.scheme == "http" or (self.proxy and self.proxy.scheme == "https"):
+        if not http_tunnel_required:
             headers = headers.copy()
             headers.update(self.proxy_headers)
 
@@ -682,7 +690,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             is_new_proxy_conn = self.proxy is not None and not getattr(
                 conn, "sock", None
             )
-            if is_new_proxy_conn:
+            if is_new_proxy_conn and http_tunnel_required:
                 self._prepare_proxy(conn)
 
             # Make the request on the httplib connection object.
@@ -946,8 +954,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         improperly set Host: header to proxy's IP:port.
         """
 
-        if self.proxy.scheme != "https":
-            conn.set_tunnel(self._proxy_host, self.port, self.proxy_headers)
+        conn.set_tunnel(self._proxy_host, self.port, self.proxy_headers)
+
+        if self.proxy.scheme == "https":
+            conn.tls_in_tls_required = True
 
         conn.connect()
 

@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
 if TYPE_CHECKING:
     from urllib3.connectionpool import ConnectionPool

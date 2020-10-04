@@ -5,31 +5,28 @@ import re
 import socket
 import ssl
 import zlib
-
-from io import BytesIO, BufferedReader, TextIOWrapper
-
-import pytest
-import mock
-import six
-
-from urllib3.response import HTTPResponse, brotli
-from urllib3.exceptions import (
-    DecodeError,
-    ResponseNotChunked,
-    ProtocolError,
-    InvalidHeader,
-    httplib_IncompleteRead,
-    IncompleteRead,
-    InvalidChunkLength,
-    SSLError,
-)
-from urllib3.packages.six.moves import http_client as httplib
-from urllib3.util.retry import Retry, RequestHistory
-from urllib3.util.response import is_fp_closed
-
+from base64 import b64decode
+from io import BufferedReader, BytesIO, TextIOWrapper
 from test import onlyBrotlipy
 
-from base64 import b64decode
+import mock
+import pytest
+import six
+
+from urllib3.exceptions import (
+    DecodeError,
+    IncompleteRead,
+    InvalidChunkLength,
+    InvalidHeader,
+    ProtocolError,
+    ResponseNotChunked,
+    SSLError,
+    httplib_IncompleteRead,
+)
+from urllib3.packages.six.moves import http_client as httplib
+from urllib3.response import HTTPResponse, brotli
+from urllib3.util.response import is_fp_closed
+from urllib3.util.retry import RequestHistory, Retry
 
 # A known random (i.e, not-too-compressible) payload generated with:
 #    "".join(random.choice(string.printable) for i in xrange(512))

@@ -5,34 +5,33 @@ import socket
 import sys
 import time
 import warnings
-import pytest
+from test import LONG_TIMEOUT, SHORT_TIMEOUT
+from threading import Event
 
 import mock
+import pytest
 
-from .. import TARPIT_HOST, VALID_SOURCE_ADDRESSES, INVALID_SOURCE_ADDRESSES
-from ..port_helpers import find_unused_port
-from urllib3 import encode_multipart_formdata, HTTPConnectionPool
+from dummyserver.server import HAS_IPV6_AND_DNS, NoIPv6Warning
+from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
+from urllib3 import HTTPConnectionPool, encode_multipart_formdata
 from urllib3.connection import _get_default_user_agent
 from urllib3.exceptions import (
     ConnectTimeoutError,
-    EmptyPoolError,
     DecodeError,
+    EmptyPoolError,
     MaxRetryError,
-    ReadTimeoutError,
     NewConnectionError,
+    ReadTimeoutError,
     UnrewindableBodyError,
 )
 from urllib3.packages.six import b, u
 from urllib3.packages.six.moves.urllib.parse import urlencode
 from urllib3.util import SUPPRESS_USER_AGENT
-from urllib3.util.retry import Retry, RequestHistory
+from urllib3.util.retry import RequestHistory, Retry
 from urllib3.util.timeout import Timeout
 
-from test import SHORT_TIMEOUT, LONG_TIMEOUT
-from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
-from dummyserver.server import NoIPv6Warning, HAS_IPV6_AND_DNS
-
-from threading import Event
+from .. import INVALID_SOURCE_ADDRESSES, TARPIT_HOST, VALID_SOURCE_ADDRESSES
+from ..port_helpers import find_unused_port
 
 pytestmark = pytest.mark.flaky
 
