@@ -426,13 +426,7 @@ class WrappedSocket(object):
         # l_linger = 0, linger for 0 seoncds
         opts = struct.pack("ii", 1, 0)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, opts)
-        try:
-            self.socket.shutdown(socket.SHUT_RDWR)
-        except socket.error as e:
-            # See http://bugs.python.org/issue4397
-            if e.errno != errno.ENOTCONN:
-                raise
-        self.socket.close()
+        self.close()
         raise ssl.SSLError("certificate verify failed, %s" % reason)
 
     def _evaluate_trust(self, trust_bundle):
