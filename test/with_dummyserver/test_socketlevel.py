@@ -1451,7 +1451,8 @@ class TestSSL(SocketDummyServerTestCase):
                     certfile=DEFAULT_CERTS["certfile"],
                     ca_certs=DEFAULT_CA,
                 )
-            except ssl.SSLError:
+            except ssl.SSLError as e:
+                assert "alert unknown ca" in str(e)
                 if is_closed_socket(sock):
                     server_closed.set()
 
