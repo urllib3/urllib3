@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import io
 import json
 import logging
@@ -26,7 +28,7 @@ from urllib3.exceptions import (
 )
 from urllib3.packages.six import b, u
 from urllib3.packages.six.moves.urllib.parse import urlencode
-from urllib3.util import SUPPRESS_USER_AGENT
+from urllib3.util import SKIP_USER_AGENT
 from urllib3.util.retry import RequestHistory, Retry
 from urllib3.util.timeout import Timeout
 
@@ -830,18 +832,18 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         custom_ua = "I'm not a web scraper, what are you talking about?"
         with HTTPConnectionPool(self.host, self.port) as pool:
             # Suppress user agent in the request headers.
-            no_ua_headers = {"User-Agent": SUPPRESS_USER_AGENT}
+            no_ua_headers = {"User-Agent": SKIP_USER_AGENT}
             r = pool.request("GET", "/headers", headers=no_ua_headers)
             request_headers = json.loads(r.data.decode("utf8"))
             assert "User-Agent" not in request_headers
-            assert no_ua_headers["User-Agent"] == SUPPRESS_USER_AGENT
+            assert no_ua_headers["User-Agent"] == SKIP_USER_AGENT
 
             # Suppress user agent in the pool headers.
             pool.headers = no_ua_headers
             r = pool.request("GET", "/headers")
             request_headers = json.loads(r.data.decode("utf8"))
             assert "User-Agent" not in request_headers
-            assert no_ua_headers["User-Agent"] == SUPPRESS_USER_AGENT
+            assert no_ua_headers["User-Agent"] == SKIP_USER_AGENT
 
             # Request headers override pool headers.
             pool_headers = {"User-Agent": custom_ua}
@@ -849,7 +851,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             r = pool.request("GET", "/headers", headers=no_ua_headers)
             request_headers = json.loads(r.data.decode("utf8"))
             assert "User-Agent" not in request_headers
-            assert no_ua_headers["User-Agent"] == SUPPRESS_USER_AGENT
+            assert no_ua_headers["User-Agent"] == SKIP_USER_AGENT
             assert pool_headers.get("User-Agent") == custom_ua
 
     def test_bytes_header(self):
@@ -859,6 +861,20 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             request_headers = json.loads(r.data.decode("utf8"))
             assert "User-Agent" in request_headers
             assert request_headers["User-Agent"] == "test header"
+
+    @pytest.mark.parametrize(
+        "user_agent", [u"Schönefeld/1.18.0", u"Schönefeld/1.18.0".encode("iso-8859-1")]
+    )
+    def test_user_agent_non_ascii_user_agent(self, user_agent):
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            r = pool.urlopen(
+                "GET",
+                "/headers",
+                headers={"User-Agent": user_agent},
+            )
+            request_headers = json.loads(r.data.decode("utf8"))
+            assert "User-Agent" in request_headers
+            assert request_headers["User-Agent"] == u"Schönefeld/1.18.0"
 
 
 class TestRetry(HTTPDummyServerTestCase):

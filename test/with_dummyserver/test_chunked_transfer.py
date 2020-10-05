@@ -8,7 +8,7 @@ from dummyserver.testcase import (
     consume_socket,
 )
 from urllib3 import HTTPConnectionPool
-from urllib3.util import SUPPRESS_USER_AGENT
+from urllib3.util import SKIP_USER_AGENT
 from urllib3.util.retry import Retry
 
 # Retry failed tests
@@ -123,12 +123,30 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
                 "GET",
                 "/",
                 chunks,
-                headers={"User-Agent": SUPPRESS_USER_AGENT},
+                headers={"User-Agent": SKIP_USER_AGENT},
                 chunked=True,
             )
 
             ua_headers = self._get_header_lines(b"user-agent")
             assert len(ua_headers) == 0
+
+    @pytest.mark.parametrize(
+        "user_agent", [u"Schönefeld/1.18.0", u"Schönefeld/1.18.0".encode("iso-8859-1")]
+    )
+    def test_user_agent_non_ascii_user_agent(self, user_agent):
+        self.start_chunked_handler()
+        chunks = ["foo", "bar", "", "bazzzzzzzzzzzzzzzzzzzzzz"]
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            pool.urlopen(
+                "GET",
+                "/",
+                chunks,
+                headers={"User-Agent": user_agent},
+                chunked=True,
+            )
+
+            ua_headers = self._get_header_lines(b"user-agent")
+            assert ua_headers == [b"user-agent: sch\xf6nefeld/1.18.0"]
 
     def test_preserve_chunked_on_retry_after(self):
         self.chunked_requests = 0

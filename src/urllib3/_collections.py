@@ -155,7 +155,7 @@ class HTTPHeaderDict(MutableMapping):
 
     def __getitem__(self, key):
         val = self._container[key.lower()]
-        return ", ".join([six.ensure_str(v, "ascii") for v in val[1:]])
+        return ", ".join(val[1:])
 
     def __delitem__(self, key):
         del self._container[key.lower()]

@@ -52,7 +52,7 @@ from .exceptions import (
     SystemTimeWarning,
 )
 from .packages.ssl_match_hostname import CertificateError, match_hostname
-from .util import SUPPRESS_USER_AGENT, connection
+from .util import SKIP_USER_AGENT, connection
 from .util.ssl_ import (
     assert_fingerprint,
     create_urllib3_context,
@@ -217,7 +217,7 @@ class HTTPConnection(_HTTPConnection, object):
         headers = HTTPHeaderDict(headers if headers is not None else {})
         if "user-agent" not in headers:
             headers["User-Agent"] = _get_default_user_agent()
-        elif headers["user-agent"] == SUPPRESS_USER_AGENT:
+        elif SKIP_USER_AGENT in headers.get_all("user-agent"):
             del headers["user-agent"]
         super(HTTPConnection, self).request(method, url, body=body, headers=headers)
 
@@ -234,7 +234,7 @@ class HTTPConnection(_HTTPConnection, object):
         )
         if "user-agent" not in headers:
             headers["User-Agent"] = _get_default_user_agent()
-        elif headers["user-agent"] == SUPPRESS_USER_AGENT:
+        elif SKIP_USER_AGENT in headers.get_all("user-agent"):
             del headers["user-agent"]
         for header, value in headers.items():
             self.putheader(header, value)

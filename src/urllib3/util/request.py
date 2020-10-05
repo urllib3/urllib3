@@ -8,7 +8,7 @@ from ..packages.six import b, integer_types
 # Use an invalid User-Agent to represent suppressing of default user agent.
 # See https://tools.ietf.org/html/rfc7231#section-5.5.3 and
 # https://tools.ietf.org/html/rfc7230#section-3.2.6
-SUPPRESS_USER_AGENT = "@@@INVALID_USER_AGENT@@@"
+SKIP_USER_AGENT = "@@@SKIP_USER_AGENT@@@"
 ACCEPT_ENCODING = "gzip,deflate"
 try:
     import brotli as _unused_module_brotli  # noqa: F401
