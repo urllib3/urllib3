@@ -1,21 +1,16 @@
 #!/usr/bin/env python
 # This file is protected via CODEOWNERS
-
 from setuptools import setup
 
 import os
 import re
 import codecs
-
 base_path = os.path.dirname(__file__)
-
 # Get the version (borrowed from SQLAlchemy)
 with open(os.path.join(base_path, "src", "urllib3", "_version.py")) as fp:
     VERSION = (
         re.compile(r""".*__version__ = ["'](.*?)['"]""", re.S).match(fp.read()).group(1)
     )
-
-
 with codecs.open("README.rst", encoding="utf-8") as fp:
     # Remove reST raw directive from README as they're not allowed on PyPI
     # Those blocks start with a newline and continue until the next newline
@@ -35,7 +30,6 @@ with codecs.open("CHANGES.rst", encoding="utf-8") as fp:
     changes = fp.read()
 
 version = VERSION
-
 setup(
     name="urllib3",
     version=version,
