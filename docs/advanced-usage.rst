@@ -127,30 +127,69 @@ You can connect to a proxy using HTTP, HTTPS or SOCKS. urllib3's behavior will
 be different depending on the type of proxy you selected and the destination
 you're contacting.
 
-When contacting a HTTP website through a HTTP or HTTPS proxy, the request will
-be forwarded with the `absolute URI
-<https://tools.ietf.org/html/rfc7230#section-5.3.2>`_.
+HTTP and HTTPS Proxies
+~~~~~~~~~~~~~~~~~~~~~~
 
-When contacting a HTTPS website through a HTTP proxy, a TCP tunnel will be
-established with a HTTP CONNECT. Afterward a TLS connection will be established
-with the destination and your request will be sent.
+Both HTTP/HTTPS proxies support HTTP and HTTPS destinations. The only
+difference between them is if you need to establish a TLS connection to the
+proxy first. You can specify which proxy you need to contact by specifying the
+proper proxy scheme. (i.e ``http://`` or ``https://``)
 
-Contacting HTTPS websites through HTTPS proxies is currently not supported.
+urllib3's behavior will be different depending on your proxy and destination:
+
+* HTTP proxy + HTTP destination
+   Your request will be forwarded with the `absolute URI
+   <https://tools.ietf.org/html/rfc7230#section-5.3.2>`_.
+
+* HTTP proxy + HTTPS destination
+    A TCP tunnel will be established with a `HTTP
+    CONNECT <https://tools.ietf.org/html/rfc7231#section-4.3.6>`_. Afterward a
+    TLS connection will be established with the destination and your request
+    will be sent.
+
+* HTTPS proxy + HTTP destination
+    A TLS connection will be established to the proxy and later your request
+    will be forwarded with the `absolute URI
+    <https://tools.ietf.org/html/rfc7230#section-5.3.2>`_.
+
+* HTTPS proxy + HTTPS destination
+    A TLS-in-TLS tunnel will be established.  An initial TLS connection will be
+    established to the proxy, then an `HTTP CONNECT
+    <https://tools.ietf.org/html/rfc7231#section-4.3.6>`_ will be sent to
+    establish a TCP connection to the destination and finally a second TLS
+    connection will be established to the destination. You can customize the
+    :class:`ssl.SSLContext` used for the proxy TLS connection through the
+    ``proxy_ssl_context`` argument of the :class:`~poolmanager.ProxyManager`
+    class.
+
+For HTTPS proxies we also support forwarding your requests to HTTPS destinations with
+an `absolute URI <https://tools.ietf.org/html/rfc7230#section-5.3.2>`_ if the
+``use_forwarding_for_https`` argument is set to ``True``. We strongly recommend you
+**only use this option with trusted or corporate proxies** as the proxy will have
+full visibility of your requests.
+
+SOCKS Proxies
+~~~~~~~~~~~~~
+
 
 For SOCKS, you can use :class:`~contrib.socks.SOCKSProxyManager` to connect to
 SOCKS4 or SOCKS5 proxies. In order to use SOCKS proxies you will need to
 install `PySocks <https://pypi.org/project/PySocks/>`_ or install urllib3 with
 the ``socks`` extra::
 
-    pip install urllib3[socks]
+     python -m pip install urllib3[socks]
 
 Once PySocks is installed, you can use
 :class:`~contrib.socks.SOCKSProxyManager`::
 
     >>> from urllib3.contrib.socks import SOCKSProxyManager
-    >>> proxy = SOCKSProxyManager('socks5://localhost:8889/')
+    >>> proxy = SOCKSProxyManager('socks5h://localhost:8889/')
     >>> proxy.request('GET', 'http://google.com/')
 
+.. note::
+      It is recommended to use ``socks5h://`` or ``socks4a://`` schemes in
+      your ``proxy_url`` to ensure that DNS resolution is done from the remote
+      server instead of client-side when connecting to a domain name.
 
 .. _ssl_custom:
 .. _custom_ssl_certificates:
