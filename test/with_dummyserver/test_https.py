@@ -87,6 +87,9 @@ CLIENT_CERT = CLIENT_INTERMEDIATE_PEM
 class TestHTTPS(HTTPSDummyServerTestCase):
     tls_protocol_name = None
 
+    def tls_protocol_deprecated(self):
+        return self.tls_protocol_name in {"TLSv1", "TLSv1.1"}
+
     @classmethod
     def setup_class(cls):
         super(TestHTTPS, cls).setup_class()
@@ -213,26 +216,25 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             conn = https_pool._new_conn()
             assert conn.__class__ == VerifiedHTTPSConnection
 
-            with mock.patch("warnings.warn") as warn:
+            with warnings.catch_warnings(record=True) as w:
                 r = https_pool.request("GET", "/")
                 assert r.status == 200
 
-                # Modern versions of Python, or systems using PyOpenSSL, don't
-                # emit warnings.
-                if (
-                    sys.version_info >= (2, 7, 9)
-                    or util.IS_PYOPENSSL
-                    or util.IS_SECURETRANSPORT
-                ):
-                    assert not warn.called, warn.call_args_list
-                else:
-                    assert warn.called
-                    if util.HAS_SNI:
-                        call = warn.call_args_list[0]
-                    else:
-                        call = warn.call_args_list[1]
-                    error = call[0][1]
-                    assert error == InsecurePlatformWarning
+            # If we're using a deprecated TLS version we can remove 'DeprecationWarning'
+            if self.tls_protocol_deprecated():
+                w = [x for x in w if x.category != DeprecationWarning]
+
+            # Modern versions of Python, or systems using PyOpenSSL, don't
+            # emit warnings.
+            if (
+                sys.version_info >= (2, 7, 9)
+                or util.IS_PYOPENSSL
+                or util.IS_SECURETRANSPORT
+            ):
+                assert w == []
+            else:
+                assert len(w) > 1
+                assert any(x.category == InsecureRequestWarning for x in w)
 
     def test_verified_with_context(self):
         ctx = util.ssl_.create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
@@ -306,10 +308,15 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             conn = https_pool._new_conn()
             assert conn.__class__ == VerifiedHTTPSConnection
 
-            with mock.patch("warnings.warn") as warn:
+            with warnings.catch_warnings(record=True) as w:
                 r = https_pool.request("GET", "/")
                 assert r.status == 200
-                assert not warn.called, warn.call_args_list
+
+            # If we're using a deprecated TLS version we can remove 'DeprecationWarning'
+            if self.tls_protocol_deprecated():
+                w = [x for x in w if x.category != DeprecationWarning]
+
+            assert w == []
 
     def test_invalid_common_name(self):
         with HTTPSConnectionPool(
@@ -391,6 +398,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 # the unverified warning. Older systems may also emit other
                 # warnings, which we want to ignore here.
                 calls = warn.call_args_list
+
+                # If we're using a deprecated TLS version we can remove 'DeprecationWarning'
+                if self.tls_protocol_deprecated():
+                    calls = [call for call in calls if call[0][1] != DeprecationWarning]
+
                 if (
                     sys.version_info >= (2, 7, 9)
                     or util.IS_PYOPENSSL
@@ -665,7 +677,13 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             ) as https_pool:
                 https_pool.request(method, url)
 
-        return [x for x in w if not isinstance(x.message, ResourceWarning)]
+        w = [x for x in w if not isinstance(x.message, ResourceWarning)]
+
+        # If we're using a deprecated TLS version we can remove 'DeprecationWarning'
+        if self.tls_protocol_deprecated():
+            w = [x for x in w if x.category != DeprecationWarning]
+
+        return w
 
     def test_set_ssl_version_to_tls_version(self):
         if self.tls_protocol_name is None:
@@ -698,6 +716,68 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 assert conn.sock.version() == self.tls_protocol_name
             finally:
                 conn.close()
+
+    def test_default_tls_version_deprecations(self):
+        if self.tls_protocol_name is None:
+            pytest.skip("Skipping base test class")
+
+        with HTTPSConnectionPool(
+            self.host, self.port, ca_certs=DEFAULT_CA
+        ) as https_pool:
+            conn = https_pool._get_conn()
+            try:
+                with warnings.catch_warnings(record=True) as w:
+                    conn.connect()
+                    if not hasattr(conn.sock, "version"):
+                        pytest.skip("SSLSocket.version() not available")
+            finally:
+                conn.close()
+
+        if self.tls_protocol_deprecated():
+            assert len(w) == 1
+            assert str(w[0].message) == (
+                "Negotiating TLSv1/TLSv1.1 by default is deprecated "
+                "and will be disabled in urllib3 v2.0.0. Connecting to "
+                "'%s' with '%s' can be enabled by explicitly opting-in "
+                "with 'ssl_version'" % (self.host, self.tls_protocol_name)
+            )
+        else:
+            assert w == []
+
+    def test_no_tls_version_deprecation_with_ssl_version(self):
+        if self.tls_protocol_name is None:
+            pytest.skip("Skipping base test class")
+
+        with HTTPSConnectionPool(
+            self.host, self.port, ca_certs=DEFAULT_CA, ssl_version=util.PROTOCOL_TLS
+        ) as https_pool:
+            conn = https_pool._get_conn()
+            try:
+                with warnings.catch_warnings(record=True) as w:
+                    conn.connect()
+            finally:
+                conn.close()
+
+        assert w == []
+
+    def test_no_tls_version_deprecation_with_ssl_context(self):
+        if self.tls_protocol_name is None:
+            pytest.skip("Skipping base test class")
+
+        with HTTPSConnectionPool(
+            self.host,
+            self.port,
+            ca_certs=DEFAULT_CA,
+            ssl_context=util.ssl_.create_urllib3_context(),
+        ) as https_pool:
+            conn = https_pool._get_conn()
+            try:
+                with warnings.catch_warnings(record=True) as w:
+                    conn.connect()
+            finally:
+                conn.close()
+
+        assert w == []
 
     @pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8+")
     def test_sslkeylogfile(self, tmpdir, monkeypatch):
