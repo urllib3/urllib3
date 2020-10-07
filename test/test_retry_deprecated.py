@@ -23,7 +23,16 @@ from urllib3.util.retry import RequestHistory, Retry
 def expect_retry_deprecation():
     with warnings.catch_warnings(record=True) as w:
         yield
-    assert len([str(x.message) for x in w if "Retry" in str(x.message)]) > 0
+    assert (
+        len(
+            [
+                str(x.message)
+                for x in w
+                if "Retry" in str(x.message) and x.category == DeprecationWarning
+            ]
+        )
+        > 0
+    )
 
 
 class TestRetry(object):
@@ -193,7 +202,7 @@ class TestRetry(object):
         retry = retry.increment(method="GET")
         retry.sleep()
 
-    def test_status_forcelist(self):
+    def test_status_forcelist(self, expect_retry_deprecation):
         retry = Retry(status_forcelist=xrange(500, 600))
         assert not retry.is_retry("GET", status_code=200)
         assert not retry.is_retry("GET", status_code=400)
@@ -217,6 +226,17 @@ class TestRetry(object):
         retry = Retry(status_forcelist=[500], method_whitelist=["POST"])
         assert not retry.is_retry("GET", status_code=500)
         assert retry.is_retry("POST", status_code=500)
+
+    def test_is_retry_deprecated(self):
+        retry = Retry()
+        with warnings.catch_warnings(record=True) as w:
+            retry.is_retry("GET", 500, has_retry_after=False)
+        assert len(w) == 1
+        assert (
+            w[0].category == DeprecationWarning
+            and str(w[0].message)
+            == "Retry.is_retry() is deprecated in favor of Retry.should_retry()"
+        )
 
     def test_exhausted(self):
         assert not Retry(0).is_exhausted()

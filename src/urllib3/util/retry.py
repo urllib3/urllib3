@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import email
+import inspect
 import logging
 import re
 import time
@@ -213,7 +214,7 @@ class Retry(object):
         ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"]
     )
 
-    #: Default status codes to be used for ``status_forcelist``
+    #: Status codes that will be retried if the 'Retry-After' header is present
     RETRY_AFTER_STATUS_CODES = frozenset([413, 429, 503])
 
     #: Default headers to be used for ``remove_headers_on_redirect``
@@ -446,13 +447,44 @@ class Retry(object):
             return False
         return True
 
-    def is_retry(self, method, status_code, has_retry_after=False):
+    def should_retry(self, response):
         """Is this method/status code retryable? (Based on allowlists and control
         variables such as the number of total retries to allow, whether to
         respect the Retry-After header, whether this header is present, and
         whether the returned status code is on the list of status codes to
         be retried upon on the presence of the aforementioned header)
+
+        :returns: True if the response should be retried, False if not.
         """
+        is_retry_argspec = inspect.getfullargspec(self.is_retry)
+        kwargs = {}
+
+        # Makes sure the user sees the DeprecationWarning regardless
+        # if they've overwritten 'is_retry()' or not.
+        if "_is_retry_deprecated" in is_retry_argspec.args:
+            kwargs["_is_retry_deprecated"] = False
+        else:
+            warnings.warn(
+                "Retry.is_retry() is deprecated in favor of Retry.should_retry()",
+                DeprecationWarning,
+            )
+
+        return self.is_retry(
+            response.request.method,
+            response.status,
+            has_retry_after=bool(response.getheader("Retry-After")),
+            **kwargs
+        )
+
+    def is_retry(
+        self, method, status_code, has_retry_after=False, _is_retry_deprecated=True
+    ):
+        if _is_retry_deprecated:
+            warnings.warn(
+                "Retry.is_retry() is deprecated in favor of Retry.should_retry()",
+                DeprecationWarning,
+            )
+
         if not self._is_method_retryable(method):
             return False
 

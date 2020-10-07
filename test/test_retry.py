@@ -24,6 +24,14 @@ def no_retry_deprecations():
     assert len([str(x.message) for x in w if "Retry" in str(x.message)]) == 0
 
 
+def make_response(status, request_method, headers={}):
+    resp = mock.Mock()
+    resp.status = status
+    resp.request.method = request_method
+    resp.headers = headers
+    return resp
+
+
 class TestRetry(object):
     def test_string(self):
         """ Retry string representation looks the way we expect """
@@ -193,28 +201,37 @@ class TestRetry(object):
 
     def test_status_forcelist(self):
         retry = Retry(status_forcelist=xrange(500, 600))
-        assert not retry.is_retry("GET", status_code=200)
-        assert not retry.is_retry("GET", status_code=400)
-        assert retry.is_retry("GET", status_code=500)
+        assert not retry.should_retry(make_response(200, "GET"))
+        assert not retry.should_retry(make_response(400, "GET"))
+        assert retry.should_retry(make_response(500, "GET"))
 
         retry = Retry(total=1, status_forcelist=[418])
-        assert not retry.is_retry("GET", status_code=400)
-        assert retry.is_retry("GET", status_code=418)
+        assert not retry.should_retry(make_response(400, "GET"))
+        assert retry.should_retry(make_response(418, "GET"))
 
         # String status codes are not matched.
         retry = Retry(total=1, status_forcelist=["418"])
-        assert not retry.is_retry("GET", status_code=418)
+        assert not retry.should_retry(make_response(418, "GET"))
 
     def test_allowed_methods_with_status_forcelist(self):
         # Falsey allowed_methods means to retry on any method.
         retry = Retry(status_forcelist=[500], allowed_methods=None)
-        assert retry.is_retry("GET", status_code=500)
-        assert retry.is_retry("POST", status_code=500)
+        assert retry.should_retry(make_response(500, "GET"))
+        assert retry.should_retry(make_response(500, "POST"))
 
         # Criteria of allowed_methods and status_forcelist are ANDed.
         retry = Retry(status_forcelist=[500], allowed_methods=["POST"])
-        assert not retry.is_retry("GET", status_code=500)
-        assert retry.is_retry("POST", status_code=500)
+        assert not retry.should_retry(make_response(500, "GET"))
+        assert retry.should_retry(make_response(500, "POST"))
+
+    def test_retry_after_status(self):
+        retry = Retry()
+        assert retry.should_retry(
+            make_response(413, "GET", headers={"Retry-After": "10"})
+        )
+        assert not retry.should_retry(
+            make_response(414, "GET", headers={"Retry-After": "10"})
+        )
 
     def test_exhausted(self):
         assert not Retry(0).is_exhausted()

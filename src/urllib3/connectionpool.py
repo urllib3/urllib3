@@ -828,8 +828,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             )
 
         # Check if we should retry the HTTP response.
-        has_retry_after = bool(response.getheader("Retry-After"))
-        if retries.is_retry(method, response.status, has_retry_after):
+        if retries.should_retry(response):
             try:
                 retries = retries.increment(method, url, response=response, _pool=self)
             except MaxRetryError:

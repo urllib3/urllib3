@@ -154,6 +154,20 @@ def _get_decoder(mode):
     return DeflateDecoder()
 
 
+class _HTTPResponseRequest(object):
+    # This class is only used by Retry.should_retry() API
+    # and will be expanded in urllib3 v2.0. For now it is read-only.
+
+    __slots__ = ("_response",)
+
+    def __init__(self, response):
+        self._response = response
+
+    @property
+    def method(self):
+        return self._response._request_method
+
+
 class HTTPResponse(io.IOBase):
     """
     HTTP Response container.
@@ -233,6 +247,7 @@ class HTTPResponse(io.IOBase):
         self._fp_bytes_read = 0
         self.msg = msg
         self._request_url = request_url
+        self._request_method = request_method
 
         if body and isinstance(body, (six.string_types, bytes)):
             self._body = body
@@ -313,6 +328,10 @@ class HTTPResponse(io.IOBase):
         if bytes are encoded on the wire (e.g, compressed).
         """
         return self._fp_bytes_read
+
+    @property
+    def request(self):
+        return _HTTPResponseRequest(self)
 
     def _init_length(self, request_method):
         """
