@@ -409,7 +409,7 @@ class HTTPSConnection(HTTPConnection):
         ):
             warnings.warn(
                 "Negotiating TLSv1/TLSv1.1 by default is deprecated "
-                "and will be disabled in urllib3 v2.0.0. Connecting to"
+                "and will be disabled in urllib3 v2.0.0. Connecting to "
                 "'%s' with '%s' can be enabled by explicitly opting-in "
                 "with 'ssl_version'" % (self.host, self.sock.version()),
                 DeprecationWarning,

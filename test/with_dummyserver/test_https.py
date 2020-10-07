@@ -733,17 +733,51 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             finally:
                 conn.close()
 
-        assert w is not None
         if self.tls_protocol_deprecated():
             assert len(w) == 1
             assert str(w[0].message) == (
                 "Negotiating TLSv1/TLSv1.1 by default is deprecated "
-                "and will be disabled in urllib3 v2.0.0. Connecting to"
+                "and will be disabled in urllib3 v2.0.0. Connecting to "
                 "'%s' with '%s' can be enabled by explicitly opting-in "
                 "with 'ssl_version'" % (self.host, self.tls_protocol_name)
             )
         else:
             assert w == []
+
+    def test_no_tls_version_deprecation_with_ssl_version(self):
+        if self.tls_protocol_name is None:
+            pytest.skip("Skipping base test class")
+
+        with HTTPSConnectionPool(
+            self.host, self.port, ca_certs=DEFAULT_CA, ssl_version=util.PROTOCOL_TLS
+        ) as https_pool:
+            conn = https_pool._get_conn()
+            try:
+                with warnings.catch_warnings(record=True) as w:
+                    conn.connect()
+            finally:
+                conn.close()
+
+        assert w == []
+
+    def test_no_tls_version_deprecation_with_ssl_context(self):
+        if self.tls_protocol_name is None:
+            pytest.skip("Skipping base test class")
+
+        with HTTPSConnectionPool(
+            self.host,
+            self.port,
+            ca_certs=DEFAULT_CA,
+            ssl_context=util.ssl_.create_urllib3_context(),
+        ) as https_pool:
+            conn = https_pool._get_conn()
+            try:
+                with warnings.catch_warnings(record=True) as w:
+                    conn.connect()
+            finally:
+                conn.close()
+
+        assert w == []
 
     @pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8+")
     def test_sslkeylogfile(self, tmpdir, monkeypatch):
