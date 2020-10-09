@@ -16,6 +16,7 @@ import pytest
 from dummyserver.server import HAS_IPV6_AND_DNS, NoIPv6Warning
 from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
 from urllib3 import HTTPConnectionPool, encode_multipart_formdata
+from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import _get_default_user_agent
 from urllib3.exceptions import (
     ConnectTimeoutError,
@@ -853,6 +854,20 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             assert "User-Agent" not in request_headers
             assert no_ua_headers["User-Agent"] == SKIP_USER_AGENT
             assert pool_headers.get("User-Agent") == custom_ua
+
+            # Suppress user agent when multiple user agents are sent
+            # if 'SKIP_USER_AGENT' is one of the values.
+            multi_ua_headers = HTTPHeaderDict()
+            multi_ua_headers.add("User-Agent", custom_ua)
+            multi_ua_headers.extend(no_ua_headers)
+            pool.headers = multi_ua_headers
+            r = pool.request("GET", "/headers")
+            request_headers = json.loads(r.data.decode("utf8"))
+            assert "User-Agent" not in request_headers
+            assert multi_ua_headers.get_all("User-Agent") == [
+                custom_ua,
+                SKIP_USER_AGENT,
+            ]
 
     def test_bytes_header(self):
         with HTTPConnectionPool(self.host, self.port) as pool:
