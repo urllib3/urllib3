@@ -7,11 +7,12 @@ import socket
 import sys
 import time
 import warnings
-from test import LONG_TIMEOUT, SHORT_TIMEOUT
+from test import LONG_TIMEOUT, SHORT_TIMEOUT, onlyPy2
 from threading import Event
 
 import mock
 import pytest
+import six
 
 from dummyserver.server import HAS_IPV6_AND_DNS, NoIPv6Warning
 from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
@@ -881,6 +882,11 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         "user_agent", [u"Schönefeld/1.18.0", u"Schönefeld/1.18.0".encode("iso-8859-1")]
     )
     def test_user_agent_non_ascii_user_agent(self, user_agent):
+        if six.PY2 and not isinstance(user_agent, str):
+            pytest.skip(
+                "Python 2 raises UnicodeEncodeError when passed a unicode header"
+            )
+
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             r = pool.urlopen(
                 "GET",
@@ -890,6 +896,20 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             request_headers = json.loads(r.data.decode("utf8"))
             assert "User-Agent" in request_headers
             assert request_headers["User-Agent"] == u"Schönefeld/1.18.0"
+
+    @onlyPy2
+    def test_user_agent_non_ascii_fails_on_python_2(self):
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            with pytest.raises(UnicodeEncodeError) as e:
+                pool.urlopen(
+                    "GET",
+                    "/headers",
+                    headers={"User-Agent": u"Schönefeld/1.18.0"},
+                )
+            assert str(e.value) == (
+                "'ascii' codec can't encode character u'\\xf6' in "
+                "position 3: ordinal not in range(128)"
+            )
 
 
 class TestRetry(HTTPDummyServerTestCase):
