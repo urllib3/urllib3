@@ -50,6 +50,7 @@ def tests_impl(session, extras="socks,secure,brotli"):
     session.run(
         "coverage",
         "run",
+        "--branch",
         "--parallel-mode",
         "-m",
         "pytest",
