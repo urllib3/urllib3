@@ -718,6 +718,18 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 keylog_file
             )
 
+    @pytest.mark.parametrize("sslkeylogfile", [None, ""])
+    def test_sslkeylogfile_empty(self, monkeypatch, sslkeylogfile):
+        # Assert that an HTTPS connection doesn't error out when given
+        # no SSLKEYLOGFILE or an empty value (ie 'SSLKEYLOGFILE=')
+        if sslkeylogfile is not None:
+            monkeypatch.setenv("SSLKEYLOGFILE", sslkeylogfile)
+        else:
+            monkeypatch.delenv("SSLKEYLOGFILE", raising=False)
+        with HTTPSConnectionPool(self.host, self.port, ca_certs=DEFAULT_CA) as pool:
+            r = pool.request("GET", "/")
+            assert r.status == 200, r.data
+
 
 @requiresTLSv1()
 class TestHTTPS_TLSv1(TestHTTPS):

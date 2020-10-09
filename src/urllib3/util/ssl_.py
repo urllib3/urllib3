@@ -296,9 +296,11 @@ def create_urllib3_context(
         context.check_hostname = False
 
     # Enable logging of TLS session keys via defacto standard environment variable
-    # 'SSLKEYLOGFILE', if the feature is available (Python 3.8+).
+    # 'SSLKEYLOGFILE', if the feature is available (Python 3.8+). Skip empty values.
     if hasattr(context, "keylog_filename"):
-        context.keylog_filename = os.environ.get("SSLKEYLOGFILE")
+        sslkeylogfile = os.environ.get("SSLKEYLOGFILE")
+        if sslkeylogfile:
+            context.keylog_filename = sslkeylogfile
 
     return context
 
