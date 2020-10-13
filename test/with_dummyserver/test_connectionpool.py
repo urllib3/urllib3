@@ -707,7 +707,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                 self.host, self.port, source_address=addr, retries=False
             ) as pool:
                 with pytest.raises(NewConnectionError):
-                    pool.request("GET", "/source_address?{0}".format(addr))
+                    pool.request("GET", "/source_address")
 
     def test_stream_keepalive(self):
         x = 2
