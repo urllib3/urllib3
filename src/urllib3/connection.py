@@ -43,7 +43,6 @@ except NameError:  # Python 2:
         pass
 
 
-from ._collections import HTTPHeaderDict
 from ._version import __version__
 from .exceptions import (
     ConnectTimeoutError,
@@ -52,7 +51,7 @@ from .exceptions import (
     SystemTimeWarning,
 )
 from .packages.ssl_match_hostname import CertificateError, match_hostname
-from .util import SKIP_USER_AGENT, connection
+from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection
 from .util.ssl_ import (
     assert_fingerprint,
     create_urllib3_context,
@@ -213,12 +212,20 @@ class HTTPConnection(_HTTPConnection, object):
 
         return _HTTPConnection.putrequest(self, method, url, *args, **kwargs)
 
+    def putheader(self, header, *values):
+        """"""
+        if SKIP_HEADER not in values:
+            _HTTPConnection.putheader(self, header, *values)
+        elif six.ensure_str(header.lower()) not in SKIPPABLE_HEADERS:
+            raise ValueError(
+                "urllib3.util.SKIP_HEADER only supports 'Accept-Encoding', 'Host', and 'User-Agent'"
+            )
+
     def request(self, method, url, body=None, headers=None):
-        headers = HTTPHeaderDict(headers if headers is not None else {})
-        if "user-agent" not in headers:
+        if headers is None:
+            headers = {"User-Agent": _get_default_user_agent()}
+        elif "user-agent" not in (k.lower() for k in headers):
             headers["User-Agent"] = _get_default_user_agent()
-        elif SKIP_USER_AGENT in headers.get_all("user-agent"):
-            del headers["user-agent"]
         super(HTTPConnection, self).request(method, url, body=body, headers=headers)
 
     def request_chunked(self, method, url, body=None, headers=None):
@@ -226,16 +233,14 @@ class HTTPConnection(_HTTPConnection, object):
         Alternative to the common request method, which sends the
         body with chunked encoding and not as one block
         """
-        headers = HTTPHeaderDict(headers if headers is not None else {})
-        skip_accept_encoding = "accept-encoding" in headers
-        skip_host = "host" in headers
+        header_keys = set([k.lower() for k in headers or ()])
+        skip_accept_encoding = "accept-encoding" in header_keys
+        skip_host = "host" in header_keys
         self.putrequest(
             method, url, skip_accept_encoding=skip_accept_encoding, skip_host=skip_host
         )
-        if "user-agent" not in headers:
-            headers["User-Agent"] = _get_default_user_agent()
-        elif SKIP_USER_AGENT in headers.get_all("user-agent"):
-            del headers["user-agent"]
+        if "user-agent" not in header_keys:
+            self.putheader("User-Agent", _get_default_user_agent())
         for header, value in headers.items():
             self.putheader(header, value)
         if "transfer-encoding" not in headers:

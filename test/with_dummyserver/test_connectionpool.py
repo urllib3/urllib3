@@ -17,7 +17,6 @@ import six
 from dummyserver.server import HAS_IPV6_AND_DNS, NoIPv6Warning
 from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
 from urllib3 import HTTPConnectionPool, encode_multipart_formdata
-from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import _get_default_user_agent
 from urllib3.exceptions import (
     ConnectTimeoutError,
@@ -30,7 +29,7 @@ from urllib3.exceptions import (
 )
 from urllib3.packages.six import b, u
 from urllib3.packages.six.moves.urllib.parse import urlencode
-from urllib3.util import SKIP_USER_AGENT
+from urllib3.util import SKIP_HEADER, SKIPPABLE_HEADERS
 from urllib3.util.retry import RequestHistory, Retry
 from urllib3.util.timeout import Timeout
 
@@ -834,18 +833,18 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         custom_ua = "I'm not a web scraper, what are you talking about?"
         with HTTPConnectionPool(self.host, self.port) as pool:
             # Suppress user agent in the request headers.
-            no_ua_headers = {"User-Agent": SKIP_USER_AGENT}
+            no_ua_headers = {"User-Agent": SKIP_HEADER}
             r = pool.request("GET", "/headers", headers=no_ua_headers)
             request_headers = json.loads(r.data.decode("utf8"))
             assert "User-Agent" not in request_headers
-            assert no_ua_headers["User-Agent"] == SKIP_USER_AGENT
+            assert no_ua_headers["User-Agent"] == SKIP_HEADER
 
             # Suppress user agent in the pool headers.
             pool.headers = no_ua_headers
             r = pool.request("GET", "/headers")
             request_headers = json.loads(r.data.decode("utf8"))
             assert "User-Agent" not in request_headers
-            assert no_ua_headers["User-Agent"] == SKIP_USER_AGENT
+            assert no_ua_headers["User-Agent"] == SKIP_HEADER
 
             # Request headers override pool headers.
             pool_headers = {"User-Agent": custom_ua}
@@ -853,22 +852,60 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             r = pool.request("GET", "/headers", headers=no_ua_headers)
             request_headers = json.loads(r.data.decode("utf8"))
             assert "User-Agent" not in request_headers
-            assert no_ua_headers["User-Agent"] == SKIP_USER_AGENT
+            assert no_ua_headers["User-Agent"] == SKIP_HEADER
             assert pool_headers.get("User-Agent") == custom_ua
 
-            # Suppress user agent when multiple user agents are sent
-            # if 'SKIP_USER_AGENT' is one of the values.
-            multi_ua_headers = HTTPHeaderDict()
-            multi_ua_headers.add("User-Agent", custom_ua)
-            multi_ua_headers.extend(no_ua_headers)
-            pool.headers = multi_ua_headers
-            r = pool.request("GET", "/headers")
-            request_headers = json.loads(r.data.decode("utf8"))
-            assert "User-Agent" not in request_headers
-            assert multi_ua_headers.get_all("User-Agent") == [
-                custom_ua,
-                SKIP_USER_AGENT,
-            ]
+    @pytest.mark.parametrize(
+        "accept_encoding", ["Accept-Encoding", "accept-encoding", None]
+    )
+    @pytest.mark.parametrize("host", ["Host", "host", None])
+    @pytest.mark.parametrize("user_agent", ["User-Agent", "user-agent", None])
+    @pytest.mark.parametrize("chunked", [True, False])
+    def test_skip_header(self, accept_encoding, host, user_agent, chunked):
+        headers = {}
+
+        if accept_encoding is not None:
+            headers[accept_encoding] = SKIP_HEADER
+        if host is not None:
+            headers[host] = SKIP_HEADER
+        if user_agent is not None:
+            headers[user_agent] = SKIP_HEADER
+
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("GET", "/headers", headers=headers, chunked=chunked)
+        request_headers = json.loads(r.data.decode("utf8"))
+
+        if accept_encoding is None:
+            assert "Accept-Encoding" in request_headers
+        else:
+            assert accept_encoding not in request_headers
+        if host is None:
+            assert "Host" in request_headers
+        else:
+            assert host not in request_headers
+        if user_agent is None:
+            assert "User-Agent" in request_headers
+        else:
+            assert user_agent not in request_headers
+
+    @pytest.mark.parametrize("header", ["Content-Length", "content-length"])
+    @pytest.mark.parametrize("chunked", [True, False])
+    def test_skip_header_non_supported(self, header, chunked):
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            with pytest.raises(ValueError) as e:
+                pool.request(
+                    "GET", "/headers", headers={header: SKIP_HEADER}, chunked=chunked
+                )
+            assert (
+                str(e.value)
+                == "urllib3.util.SKIP_HEADER only supports 'Accept-Encoding', 'Host', and 'User-Agent'"
+            )
+
+            # Ensure that the error message stays up to date with 'SKIP_HEADER_SUPPORTED_HEADERS'
+            assert all(
+                ("'" + header.title() + "'") in str(e.value)
+                for header in SKIPPABLE_HEADERS
+            )
 
     def test_bytes_header(self):
         with HTTPConnectionPool(self.host, self.port) as pool:
