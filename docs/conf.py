@@ -8,7 +8,8 @@ from datetime import date
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
-root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+docs_path = os.path.abspath(os.path.dirname(__file__))
+root_path = os.path.join(docs_path, "..")
 sys.path.insert(0, root_path)
 
 # Mock some expensive/platform-specific modules so build will work.
@@ -77,11 +78,13 @@ html_logo = "images/banner.svg"
 
 html_theme_options = {
     "announcement": """
-        <a style=\"text-decoration: none; color: white;\" 
+        <a style=\"text-decoration: none; color: white;\"
            href=\"https://opencollective.com/urllib3\">
-           <img src=\"_static/favicon.png\"/> Sponsor urllib3 v2.0 on Open Collective
+           <img src=\"{docs_root}/{image_path}\"/> Sponsor urllib3 v2.0 on Open Collective
         </a>
-    """,
+    """.format(
+        docs_root=docs_path, image_path=html_favicon
+    ),
     "sidebar_hide_name": True,
 }
 
