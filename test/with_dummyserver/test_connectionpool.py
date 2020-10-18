@@ -17,6 +17,7 @@ import six
 from dummyserver.server import HAS_IPV6_AND_DNS, NoIPv6Warning
 from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
 from urllib3 import HTTPConnectionPool, encode_multipart_formdata
+from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import _get_default_user_agent
 from urllib3.exceptions import (
     ConnectTimeoutError,
@@ -856,10 +857,19 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             assert pool_headers.get("User-Agent") == custom_ua
 
     @pytest.mark.parametrize(
-        "accept_encoding", ["Accept-Encoding", "accept-encoding", None]
+        "accept_encoding",
+        [
+            "Accept-Encoding",
+            "accept-encoding",
+            b"Accept-Encoding",
+            b"accept-encoding",
+            None,
+        ],
     )
-    @pytest.mark.parametrize("host", ["Host", "host", None])
-    @pytest.mark.parametrize("user_agent", ["User-Agent", "user-agent", None])
+    @pytest.mark.parametrize("host", ["Host", "host", b"Host", b"host", None])
+    @pytest.mark.parametrize(
+        "user_agent", ["User-Agent", "user-agent", b"User-Agent", b"user-agent", None]
+    )
     @pytest.mark.parametrize("chunked", [True, False])
     def test_skip_header(self, accept_encoding, host, user_agent, chunked):
         headers = {}
@@ -898,7 +908,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                 )
             assert (
                 str(e.value)
-                == "urllib3.util.SKIP_HEADER only supports 'Accept-Encoding', 'Host', and 'User-Agent'"
+                == "urllib3.util.SKIP_HEADER only supports 'Accept-Encoding', 'Host', 'User-Agent'"
             )
 
             # Ensure that the error message stays up to date with 'SKIP_HEADER_SUPPORTED_HEADERS'
@@ -906,6 +916,42 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                 ("'" + header.title() + "'") in str(e.value)
                 for header in SKIPPABLE_HEADERS
             )
+
+    @pytest.mark.parametrize("chunked", [True, False])
+    @pytest.mark.parametrize("pool_request", [True, False])
+    @pytest.mark.parametrize("header_type", [dict, HTTPHeaderDict])
+    def test_headers_not_modified_by_request(self, chunked, pool_request, header_type):
+        # Test that the .request*() methods of ConnectionPool and HTTPConnection
+        # don't modify the given 'headers' structure, instead they should
+        # make their own internal copies at request time.
+        headers = header_type()
+        headers["key"] = "val"
+
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            pool.headers = headers
+            if pool_request:
+                pool.request("GET", "/headers", chunked=chunked)
+            else:
+                conn = pool._get_conn()
+                if chunked:
+                    conn.request_chunked("GET", "/headers")
+                else:
+                    conn.request("GET", "/headers")
+
+            assert pool.headers == {"key": "val"}
+            assert isinstance(pool.headers, header_type)
+
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            if pool_request:
+                pool.request("GET", "/headers", headers=headers, chunked=chunked)
+            else:
+                conn = pool._get_conn()
+                if chunked:
+                    conn.request_chunked("GET", "/headers", headers=headers)
+                else:
+                    conn.request("GET", "/headers", headers=headers)
+
+            assert headers == {"key": "val"}
 
     def test_bytes_header(self):
         with HTTPConnectionPool(self.host, self.port) as pool:

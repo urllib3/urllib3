@@ -218,13 +218,17 @@ class HTTPConnection(_HTTPConnection, object):
             _HTTPConnection.putheader(self, header, *values)
         elif six.ensure_str(header.lower()) not in SKIPPABLE_HEADERS:
             raise ValueError(
-                "urllib3.util.SKIP_HEADER only supports 'Accept-Encoding', 'Host', and 'User-Agent'"
+                "urllib3.util.SKIP_HEADER only supports '%s'"
+                % ("', '".join(map(str.title, sorted(SKIPPABLE_HEADERS))),)
             )
 
     def request(self, method, url, body=None, headers=None):
         if headers is None:
-            headers = {"User-Agent": _get_default_user_agent()}
-        elif "user-agent" not in (k.lower() for k in headers):
+            headers = {}
+        else:
+            # Avoid modifying the headers passed into .request()
+            headers = headers.copy()
+        if "user-agent" not in (k.lower() for k in headers):
             headers["User-Agent"] = _get_default_user_agent()
         super(HTTPConnection, self).request(method, url, body=body, headers=headers)
 
@@ -233,7 +237,8 @@ class HTTPConnection(_HTTPConnection, object):
         Alternative to the common request method, which sends the
         body with chunked encoding and not as one block
         """
-        header_keys = set([k.lower() for k in headers or ()])
+        headers = headers or {}
+        header_keys = set([six.ensure_str(k.lower()) for k in headers])
         skip_accept_encoding = "accept-encoding" in header_keys
         skip_host = "host" in header_keys
         self.putrequest(
