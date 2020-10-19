@@ -555,8 +555,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             The URL to perform the request on.
 
         :param body:
-            Data to send in the request body, either `str` or `bytes` (useful
-            for creating POST requests).
+            Data to send in the request body, either :class:`str`, :class:`bytes`,
+            an iterable of :class:`str`/:class:`bytes`, or a file-like object.
 
         :param headers:
             Dictionary of custom headers to send, such as User-Agent,
