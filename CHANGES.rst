@@ -1,6 +1,19 @@
 Changes
 =======
 
+1.25.11 (2020-10-19)
+--------------------
+
+* Fix retry backoff time parsed from ``Retry-After`` header when given
+  in the HTTP date format. The HTTP date was parsed as the local timezone
+  rather than accounting for the timezone in the HTTP date (typically
+  UTC) (Pull #1932, Pull #1935, Pull #1938, Pull #1949)
+
+* Fix issue where an error would be raised when the ``SSLKEYLOGFILE``
+  environment variable was set to the empty string. Now ``SSLContext.keylog_file``
+  is not set in this situation (Pull #2016)
+
+
 1.25.10 (2020-07-22)
 --------------------
 
