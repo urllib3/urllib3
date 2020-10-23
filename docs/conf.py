@@ -79,7 +79,7 @@ html_theme_options = {
     "announcement": """
         <a style=\"text-decoration: none; color: white;\" 
            href=\"https://opencollective.com/urllib3\">
-           <img src=\"_static/favicon.png\"/> Sponsor urllib3 v2.0 on Open Collective
+           <img src=\"/en/latest/_static/favicon.png\"/> Sponsor urllib3 v2.0 on Open Collective
         </a>
     """,
     "sidebar_hide_name": True,
