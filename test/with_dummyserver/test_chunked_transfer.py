@@ -8,7 +8,7 @@ from dummyserver.testcase import (
     consume_socket,
 )
 from urllib3 import HTTPConnectionPool
-from urllib3.util import SUPPRESS_USER_AGENT
+from urllib3.util import SKIP_HEADER
 from urllib3.util.retry import Retry
 
 # Retry failed tests
@@ -123,7 +123,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
                 "GET",
                 "/",
                 chunks,
-                headers={"User-Agent": SUPPRESS_USER_AGENT},
+                headers={"User-Agent": SKIP_HEADER},
                 chunked=True,
             )
 

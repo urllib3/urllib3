@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import io
 import json
 import logging
@@ -5,15 +7,17 @@ import socket
 import sys
 import time
 import warnings
-from test import LONG_TIMEOUT, SHORT_TIMEOUT
+from test import LONG_TIMEOUT, SHORT_TIMEOUT, onlyPy2
 from threading import Event
 
 import mock
 import pytest
+import six
 
 from dummyserver.server import HAS_IPV6_AND_DNS, NoIPv6Warning
 from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
 from urllib3 import HTTPConnectionPool, encode_multipart_formdata
+from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import _get_default_user_agent
 from urllib3.exceptions import (
     ConnectTimeoutError,
@@ -26,7 +30,7 @@ from urllib3.exceptions import (
 )
 from urllib3.packages.six import b, u
 from urllib3.packages.six.moves.urllib.parse import urlencode
-from urllib3.util import SUPPRESS_USER_AGENT
+from urllib3.util import SKIP_HEADER, SKIPPABLE_HEADERS
 from urllib3.util.retry import RequestHistory, Retry
 from urllib3.util.timeout import Timeout
 
@@ -830,18 +834,18 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         custom_ua = "I'm not a web scraper, what are you talking about?"
         with HTTPConnectionPool(self.host, self.port) as pool:
             # Suppress user agent in the request headers.
-            no_ua_headers = {"User-Agent": SUPPRESS_USER_AGENT}
+            no_ua_headers = {"User-Agent": SKIP_HEADER}
             r = pool.request("GET", "/headers", headers=no_ua_headers)
             request_headers = json.loads(r.data.decode("utf8"))
             assert "User-Agent" not in request_headers
-            assert no_ua_headers["User-Agent"] == SUPPRESS_USER_AGENT
+            assert no_ua_headers["User-Agent"] == SKIP_HEADER
 
             # Suppress user agent in the pool headers.
             pool.headers = no_ua_headers
             r = pool.request("GET", "/headers")
             request_headers = json.loads(r.data.decode("utf8"))
             assert "User-Agent" not in request_headers
-            assert no_ua_headers["User-Agent"] == SUPPRESS_USER_AGENT
+            assert no_ua_headers["User-Agent"] == SKIP_HEADER
 
             # Request headers override pool headers.
             pool_headers = {"User-Agent": custom_ua}
@@ -849,8 +853,105 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             r = pool.request("GET", "/headers", headers=no_ua_headers)
             request_headers = json.loads(r.data.decode("utf8"))
             assert "User-Agent" not in request_headers
-            assert no_ua_headers["User-Agent"] == SUPPRESS_USER_AGENT
+            assert no_ua_headers["User-Agent"] == SKIP_HEADER
             assert pool_headers.get("User-Agent") == custom_ua
+
+    @pytest.mark.parametrize(
+        "accept_encoding",
+        [
+            "Accept-Encoding",
+            "accept-encoding",
+            b"Accept-Encoding",
+            b"accept-encoding",
+            None,
+        ],
+    )
+    @pytest.mark.parametrize("host", ["Host", "host", b"Host", b"host", None])
+    @pytest.mark.parametrize(
+        "user_agent", ["User-Agent", "user-agent", b"User-Agent", b"user-agent", None]
+    )
+    @pytest.mark.parametrize("chunked", [True, False])
+    def test_skip_header(self, accept_encoding, host, user_agent, chunked):
+        headers = {}
+
+        if accept_encoding is not None:
+            headers[accept_encoding] = SKIP_HEADER
+        if host is not None:
+            headers[host] = SKIP_HEADER
+        if user_agent is not None:
+            headers[user_agent] = SKIP_HEADER
+
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("GET", "/headers", headers=headers, chunked=chunked)
+        request_headers = json.loads(r.data.decode("utf8"))
+
+        if accept_encoding is None:
+            assert "Accept-Encoding" in request_headers
+        else:
+            assert accept_encoding not in request_headers
+        if host is None:
+            assert "Host" in request_headers
+        else:
+            assert host not in request_headers
+        if user_agent is None:
+            assert "User-Agent" in request_headers
+        else:
+            assert user_agent not in request_headers
+
+    @pytest.mark.parametrize("header", ["Content-Length", "content-length"])
+    @pytest.mark.parametrize("chunked", [True, False])
+    def test_skip_header_non_supported(self, header, chunked):
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            with pytest.raises(ValueError) as e:
+                pool.request(
+                    "GET", "/headers", headers={header: SKIP_HEADER}, chunked=chunked
+                )
+            assert (
+                str(e.value)
+                == "urllib3.util.SKIP_HEADER only supports 'Accept-Encoding', 'Host', 'User-Agent'"
+            )
+
+            # Ensure that the error message stays up to date with 'SKIP_HEADER_SUPPORTED_HEADERS'
+            assert all(
+                ("'" + header.title() + "'") in str(e.value)
+                for header in SKIPPABLE_HEADERS
+            )
+
+    @pytest.mark.parametrize("chunked", [True, False])
+    @pytest.mark.parametrize("pool_request", [True, False])
+    @pytest.mark.parametrize("header_type", [dict, HTTPHeaderDict])
+    def test_headers_not_modified_by_request(self, chunked, pool_request, header_type):
+        # Test that the .request*() methods of ConnectionPool and HTTPConnection
+        # don't modify the given 'headers' structure, instead they should
+        # make their own internal copies at request time.
+        headers = header_type()
+        headers["key"] = "val"
+
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            pool.headers = headers
+            if pool_request:
+                pool.request("GET", "/headers", chunked=chunked)
+            else:
+                conn = pool._get_conn()
+                if chunked:
+                    conn.request_chunked("GET", "/headers")
+                else:
+                    conn.request("GET", "/headers")
+
+            assert pool.headers == {"key": "val"}
+            assert isinstance(pool.headers, header_type)
+
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            if pool_request:
+                pool.request("GET", "/headers", headers=headers, chunked=chunked)
+            else:
+                conn = pool._get_conn()
+                if chunked:
+                    conn.request_chunked("GET", "/headers", headers=headers)
+                else:
+                    conn.request("GET", "/headers", headers=headers)
+
+            assert headers == {"key": "val"}
 
     def test_bytes_header(self):
         with HTTPConnectionPool(self.host, self.port) as pool:
@@ -859,6 +960,39 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             request_headers = json.loads(r.data.decode("utf8"))
             assert "User-Agent" in request_headers
             assert request_headers["User-Agent"] == "test header"
+
+    @pytest.mark.parametrize(
+        "user_agent", [u"Schönefeld/1.18.0", u"Schönefeld/1.18.0".encode("iso-8859-1")]
+    )
+    def test_user_agent_non_ascii_user_agent(self, user_agent):
+        if six.PY2 and not isinstance(user_agent, str):
+            pytest.skip(
+                "Python 2 raises UnicodeEncodeError when passed a unicode header"
+            )
+
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            r = pool.urlopen(
+                "GET",
+                "/headers",
+                headers={"User-Agent": user_agent},
+            )
+            request_headers = json.loads(r.data.decode("utf8"))
+            assert "User-Agent" in request_headers
+            assert request_headers["User-Agent"] == u"Schönefeld/1.18.0"
+
+    @onlyPy2
+    def test_user_agent_non_ascii_fails_on_python_2(self):
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            with pytest.raises(UnicodeEncodeError) as e:
+                pool.urlopen(
+                    "GET",
+                    "/headers",
+                    headers={"User-Agent": u"Schönefeld/1.18.0"},
+                )
+            assert str(e.value) == (
+                "'ascii' codec can't encode character u'\\xf6' in "
+                "position 3: ordinal not in range(128)"
+            )
 
 
 class TestRetry(HTTPDummyServerTestCase):

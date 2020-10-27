@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 # For backwards compatibility, provide imports that used to be here.
 from .connection import is_connection_dropped
-from .request import SUPPRESS_USER_AGENT, make_headers
+from .request import SKIP_HEADER, SKIPPABLE_HEADERS, make_headers
 from .response import is_fp_closed
 from .retry import Retry
 from .ssl_ import (
@@ -44,5 +44,6 @@ __all__ = (
     "ssl_wrap_socket",
     "wait_for_read",
     "wait_for_write",
-    "SUPPRESS_USER_AGENT",
+    "SKIP_HEADER",
+    "SKIPPABLE_HEADERS",
 )
