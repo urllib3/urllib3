@@ -60,6 +60,7 @@ import os.path
 import shutil
 import socket
 import ssl
+import struct
 import threading
 import weakref
 
@@ -69,6 +70,7 @@ from .. import util
 from ._securetransport.bindings import CoreFoundation, Security, SecurityConst
 from ._securetransport.low_level import (
     _assert_no_error,
+    _build_tls_unknown_ca_alert,
     _cert_array_from_pem,
     _create_cfstring_array,
     _load_client_cert_chain,
@@ -397,11 +399,37 @@ class WrappedSocket(object):
         Called when we have set custom validation. We do this in two cases:
         first, when cert validation is entirely disabled; and second, when
         using a custom trust DB.
+        Raises an SSLError if the connection is not trusted.
         """
         # If we disabled cert validation, just say: cool.
         if not verify:
             return
 
+        successes = (
+            SecurityConst.kSecTrustResultUnspecified,
+            SecurityConst.kSecTrustResultProceed,
+        )
+        try:
+            trust_result = self._evaluate_trust(trust_bundle)
+            if trust_result in successes:
+                return
+            reason = "error code: %d" % (trust_result,)
+        except Exception as e:
+            # Do not trust on error
+            reason = "exception: %r" % (e,)
+
+        # SecureTransport does not send an alert nor shuts down the connection.
+        rec = _build_tls_unknown_ca_alert(self.version())
+        self.socket.sendall(rec)
+        # close the connection immediately
+        # l_onoff = 1, activate linger
+        # l_linger = 0, linger for 0 seoncds
+        opts = struct.pack("ii", 1, 0)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, opts)
+        self.close()
+        raise ssl.SSLError("certificate verify failed, %s" % reason)
+
+    def _evaluate_trust(self, trust_bundle):
         # We want data in memory, so load it up.
         if os.path.isfile(trust_bundle):
             with open(trust_bundle, "rb") as f:
@@ -439,15 +467,7 @@ class WrappedSocket(object):
             if cert_array is not None:
                 CoreFoundation.CFRelease(cert_array)
 
-        # Ok, now we can look at what the result was.
-        successes = (
-            SecurityConst.kSecTrustResultUnspecified,
-            SecurityConst.kSecTrustResultProceed,
-        )
-        if trust_result.value not in successes:
-            raise ssl.SSLError(
-                "certificate verify failed, error code: %d" % trust_result.value
-            )
+        return trust_result.value
 
     def handshake(
         self,
