@@ -351,7 +351,7 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         proxy_url = "socks5h://%s:%s" % (self.host, self.port)
         with socks.SOCKSProxyManager(proxy_url) as pm:
             with pytest.raises(NewConnectionError):
-                pm.request("GET", "http://example.com", retries=False)
+                pm.request("GET", "http://example.com", retries=False, timeout=1)
             evt.set()
 
     def test_socks_with_password(self):
@@ -609,7 +609,7 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         proxy_url = "socks4a://%s:%s" % (self.host, self.port)
         with socks.SOCKSProxyManager(proxy_url) as pm:
             with pytest.raises(NewConnectionError):
-                pm.request("GET", "http://example.com", retries=False)
+                pm.request("GET", "http://example.com", retries=False, timeout=1)
             evt.set()
 
     def test_socks4_with_username(self):
