@@ -1,8 +1,11 @@
+from __future__ import absolute_import
+
 import socket
 import threading
 from test import SHORT_TIMEOUT
 
 import pytest
+import socks as py_socks
 
 from dummyserver.server import DEFAULT_CA, DEFAULT_CERTS
 from dummyserver.testcase import IPV4SocketDummyServerTestCase
@@ -85,6 +88,25 @@ def _address_from_socket(sock):
         return _read_exactly(sock, addr_len)
     else:
         raise RuntimeError("Unexpected addr type: %r" % addr_type)
+
+
+def _set_up_fake_getaddrinfo(monkeypatch):
+    # Work around https://github.com/urllib3/urllib3/pull/2034
+    # Nothing prevents localhost to point to two different IPs. For example, in the
+    # Ubuntu set up by GitHub Actions, localhost points both to 127.0.0.1 and ::1.
+    #
+    # In case of failure, PySocks will try the same request on both IPs, but our
+    # handle_socks[45]_negotiation functions don't handle retries, which leads either to
+    # a deadlock or a timeout in case of a failure on the first address.
+    #
+    # However, some tests need to exercise failure. We don't want retries there, but
+    # can't affect PySocks retries via its API. Instead, we monkeypatch PySocks so that
+    # it only sees a single address, which effectively disables retries.
+    def fake_getaddrinfo(addr, port, family, socket_type):
+        return [(socket.AF_INET, socket_type, family, "", (addr, port))]
+
+    monkeypatch.setattr(py_socks.socket, "getaddrinfo", fake_getaddrinfo)
+
 
 
 def handle_socks5_negotiation(sock, negotiate, username=None, password=None):
@@ -334,7 +356,8 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             with pytest.raises(NewConnectionError):
                 pm.request("GET", "http://example.com", retries=False)
 
-    def test_proxy_rejection(self):
+    def test_proxy_rejection(self, monkeypatch):
+        _set_up_fake_getaddrinfo(monkeypatch)
         evt = threading.Event()
 
         def request_handler(listener):
@@ -429,7 +452,9 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
             assert response.data == b""
             assert response.headers["Server"] == "SocksTestServer"
 
-    def test_socks_with_invalid_password(self):
+    def test_socks_with_invalid_password(self, monkeypatch):
+        _set_up_fake_getaddrinfo(monkeypatch)
+
         def request_handler(listener):
             sock = listener.accept()[0]
 
@@ -592,7 +617,8 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
             response = pm.request("GET", "http://example.com")
             assert response.status == 200
 
-    def test_proxy_rejection(self):
+    def test_proxy_rejection(self, monkeypatch):
+        _set_up_fake_getaddrinfo(monkeypatch)
         evt = threading.Event()
 
         def request_handler(listener):
