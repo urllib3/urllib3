@@ -108,7 +108,6 @@ def _set_up_fake_getaddrinfo(monkeypatch):
     monkeypatch.setattr(py_socks.socket, "getaddrinfo", fake_getaddrinfo)
 
 
-
 def handle_socks5_negotiation(sock, negotiate, username=None, password=None):
     """
     Handle the SOCKS5 handshake.

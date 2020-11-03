@@ -1,6 +1,6 @@
 language: python
 os: linux
-dist: xenial
+dist: bionic
 
 before_install:
   - env
@@ -43,13 +43,13 @@ jobs:
       env: NOX_SESSION=test-3.7
     - python: 3.8
       env: NOX_SESSION=test-3.8
-    - python: 3.9-dev
+    - python: 3.9
       env: NOX_SESSION=test-3.9
     - python: nightly
       env: NOX_SESSION=test-3.10
-    - python: pypy2.7-6.0
+    - python: pypy2.7-7.3.1
       env: NOX_SESSION=test-pypy
-    - python: pypy3.5-6.0
+    - python: pypy3.6-7.3.1
       env: NOX_SESSION=test-pypy
 
     # Extras
