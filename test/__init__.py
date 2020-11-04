@@ -14,6 +14,7 @@ try:
 except ImportError:
     brotli = None
 
+from dummyserver.testcase import HTTPSDummyServerTestCase
 from urllib3 import util
 from urllib3.exceptions import HTTPWarning
 from urllib3.packages import six
@@ -51,6 +52,31 @@ SHORT_TIMEOUT = 0.001
 LONG_TIMEOUT = 0.01
 if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS") == "true":
     LONG_TIMEOUT = 0.5
+
+
+# We have to create an actual TLS connection
+# to test if the TLS version is not disabled by
+# OpenSSL config. Ubuntu 20.04 specifically
+# disables TLSv1 and TLSv1.1.
+SUPPORTED_TLS_PROTOCOLS = set()
+
+_server = HTTPSDummyServerTestCase()
+_server._start_server()
+for _ssl_version_name in ("PROTOCOL_TLSv1", "PROTOCOL_TLSv1_1", "PROTOCOL_TLSv1_2"):
+    _ssl_version = getattr(ssl, _ssl_version_name, 0)
+    if _ssl_version == 0:
+        continue
+    _sock = socket.create_connection((_server.host, _server.port))
+    try:
+        _sock = ssl_.ssl_wrap_socket(
+            _sock, cert_reqs=ssl.CERT_NONE, ssl_version=_ssl_version
+        )
+    except ssl.SSLError:
+        pass
+    else:
+        SUPPORTED_TLS_PROTOCOLS.add(_ssl_version)
+    _sock.close()
+_server._stop_server()
 
 
 def _can_resolve(host):
@@ -271,21 +297,27 @@ def requires_ssl_context_keyfile_password(test):
 def requiresTLSv1():
     """Test requires TLSv1 available"""
     return pytest.mark.skipif(
-        not hasattr(ssl, "PROTOCOL_TLSv1"), reason="Test requires TLSv1"
+        not hasattr(ssl, "PROTOCOL_TLSv1")
+        or ssl.PROTOCOL_TLSv1 not in SUPPORTED_TLS_PROTOCOLS,
+        reason="Test requires TLSv1",
     )
 
 
 def requiresTLSv1_1():
     """Test requires TLSv1.1 available"""
     return pytest.mark.skipif(
-        not hasattr(ssl, "PROTOCOL_TLSv1_1"), reason="Test requires TLSv1.1"
+        not hasattr(ssl, "PROTOCOL_TLSv1_1")
+        or ssl.PROTOCOL_TLSv1_1 not in SUPPORTED_TLS_PROTOCOLS,
+        reason="Test requires TLSv1.1",
     )
 
 
 def requiresTLSv1_2():
     """Test requires TLSv1.2 available"""
     return pytest.mark.skipif(
-        not hasattr(ssl, "PROTOCOL_TLSv1_2"), reason="Test requires TLSv1.2"
+        not hasattr(ssl, "PROTOCOL_TLSv1_2")
+        or ssl.PROTOCOL_TLSv1_2 not in SUPPORTED_TLS_PROTOCOLS,
+        reason="Test requires TLSv1.2",
     )
 
 
