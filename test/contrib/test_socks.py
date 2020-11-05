@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import socket
 import threading
+from socket import getaddrinfo as real_getaddrinfo
 from test import SHORT_TIMEOUT
 
 import pytest
@@ -103,7 +104,9 @@ def _set_up_fake_getaddrinfo(monkeypatch):
     # can't affect PySocks retries via its API. Instead, we monkeypatch PySocks so that
     # it only sees a single address, which effectively disables retries.
     def fake_getaddrinfo(addr, port, family, socket_type):
-        return [(socket.AF_INET, socket_type, family, "", (addr, port))]
+        gai_list = real_getaddrinfo(addr, port, family, socket_type)
+        gai_list = [gai for gai in gai_list if gai[0] == socket.AF_INET]
+        return gai_list[:1]
 
     monkeypatch.setattr(py_socks.socket, "getaddrinfo", fake_getaddrinfo)
 
