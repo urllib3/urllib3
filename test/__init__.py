@@ -268,34 +268,6 @@ def requires_ssl_context_keyfile_password(test):
     return wrapper
 
 
-def requiresTLSv1():
-    """Test requires TLSv1 available"""
-    return pytest.mark.skipif(
-        not hasattr(ssl, "PROTOCOL_TLSv1"), reason="Test requires TLSv1"
-    )
-
-
-def requiresTLSv1_1():
-    """Test requires TLSv1.1 available"""
-    return pytest.mark.skipif(
-        not hasattr(ssl, "PROTOCOL_TLSv1_1"), reason="Test requires TLSv1.1"
-    )
-
-
-def requiresTLSv1_2():
-    """Test requires TLSv1.2 available"""
-    return pytest.mark.skipif(
-        not hasattr(ssl, "PROTOCOL_TLSv1_2"), reason="Test requires TLSv1.2"
-    )
-
-
-def requiresTLSv1_3():
-    """Test requires TLSv1.3 available"""
-    return pytest.mark.skipif(
-        not getattr(ssl, "HAS_TLSv1_3", False), reason="Test requires TLSv1.3"
-    )
-
-
 def resolvesLocalhostFQDN(test):
     """Test requires successful resolving of 'localhost.'"""
 

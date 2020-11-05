@@ -1,6 +1,8 @@
 import collections
 import contextlib
 import platform
+import socket
+import ssl
 import sys
 import threading
 
@@ -10,6 +12,8 @@ from tornado import ioloop, web
 
 from dummyserver.handlers import TestingApp
 from dummyserver.server import HAS_IPV6, run_tornado_app
+from dummyserver.testcase import HTTPSDummyServerTestCase
+from urllib3.util import ssl_
 
 from .tz_stub import stub_timezone_ctx
 
@@ -106,3 +110,67 @@ def stub_timezone(request):
     """
     with stub_timezone_ctx(request.param):
         yield
+
+
+@pytest.fixture(scope="session")
+def supported_tls_versions():
+    # We have to create an actual TLS connection
+    # to test if the TLS version is not disabled by
+    # OpenSSL config. Ubuntu 20.04 specifically
+    # disables TLSv1 and TLSv1.1.
+    tls_versions = set()
+
+    _server = HTTPSDummyServerTestCase()
+    _server._start_server()
+    for _ssl_version_name in (
+        "PROTOCOL_TLSv1",
+        "PROTOCOL_TLSv1_1",
+        "PROTOCOL_TLSv1_2",
+        "PROTOCOL_TLS",
+    ):
+        _ssl_version = getattr(ssl, _ssl_version_name, 0)
+        if _ssl_version == 0:
+            continue
+        _sock = socket.create_connection((_server.host, _server.port))
+        try:
+            _sock = ssl_.ssl_wrap_socket(
+                _sock, cert_reqs=ssl.CERT_NONE, ssl_version=_ssl_version
+            )
+        except ssl.SSLError:
+            pass
+        else:
+            tls_versions.add(_sock.version())
+        _sock.close()
+    _server._stop_server()
+    return tls_versions
+
+
+@pytest.fixture(scope="function")
+def requires_tlsv1(supported_tls_versions):
+    """Test requires TLSv1 available"""
+    if not hasattr(ssl, "PROTOCOL_TLSv1") or "TLSv1" not in supported_tls_versions:
+        pytest.skip("Test requires TLSv1")
+
+
+@pytest.fixture(scope="function")
+def requires_tlsv1_1(supported_tls_versions):
+    """Test requires TLSv1.1 available"""
+    if not hasattr(ssl, "PROTOCOL_TLSv1_1") or "TLSv1.1" not in supported_tls_versions:
+        pytest.skip("Test requires TLSv1.1")
+
+
+@pytest.fixture(scope="function")
+def requires_tlsv1_2(supported_tls_versions):
+    """Test requires TLSv1.2 available"""
+    if not hasattr(ssl, "PROTOCOL_TLSv1_2") or "TLSv1.2" not in supported_tls_versions:
+        pytest.skip("Test requires TLSv1.2")
+
+
+@pytest.fixture(scope="function")
+def requires_tlsv1_3(supported_tls_versions):
+    """Test requires TLSv1.3 available"""
+    if (
+        not getattr(ssl, "HAS_TLSv1_3", False)
+        or "TLSv1.3" not in supported_tls_versions
+    ):
+        pytest.skip("Test requires TLSv1.3")
