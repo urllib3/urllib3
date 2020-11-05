@@ -43,15 +43,25 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.6, 3.7, 3.8]
-        os: [macos-latest, windows-latest]
+        os: [macos-latest, windows-latest, ubuntu-latest]
         experimental: [false]
         include:
           - python-version: 3.9
             os: macos-latest
             experimental: true
+          - python-version: pypy3
+            os: ubuntu-latest
+            experimental: false
+            env:
+              NOX_SESSION: test-pypy
+          - python-version: 3.7
+            os: ubuntu-latest
+            experimental: false
+            env:
+              NOX_SESSION: google_brotli
 
     runs-on: ${{ matrix.os }}
-    name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows"}')[matrix.os] }} (${{ matrix.python-version }})
+    name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu"}')[matrix.os] }} (${{ matrix.python-version }})
     continue-on-error: ${{ matrix.experimental }}
     steps:
       - name: Checkout Repository
