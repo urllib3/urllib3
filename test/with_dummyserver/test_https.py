@@ -16,10 +16,6 @@ from test import (
     onlyPy279OrNewer,
     requires_network,
     requires_ssl_context_keyfile_password,
-    requiresTLSv1,
-    requiresTLSv1_1,
-    requiresTLSv1_2,
-    requiresTLSv1_3,
     resolvesLocalhostFQDN,
 )
 
@@ -729,25 +725,25 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             assert r.data.decode("utf-8") == util.ALPN_PROTOCOLS[0]
 
 
-@requiresTLSv1()
+@pytest.mark.usefixtures("requires_tlsv1")
 class TestHTTPS_TLSv1(TestHTTPS):
     tls_protocol_name = "TLSv1"
     certs = TLSv1_CERTS
 
 
-@requiresTLSv1_1()
+@pytest.mark.usefixtures("requires_tlsv1_1")
 class TestHTTPS_TLSv1_1(TestHTTPS):
     tls_protocol_name = "TLSv1.1"
     certs = TLSv1_1_CERTS
 
 
-@requiresTLSv1_2()
+@pytest.mark.usefixtures("requires_tlsv1_2")
 class TestHTTPS_TLSv1_2(TestHTTPS):
     tls_protocol_name = "TLSv1.2"
     certs = TLSv1_2_CERTS
 
 
-@requiresTLSv1_3()
+@pytest.mark.usefixtures("requires_tlsv1_3")
 class TestHTTPS_TLSv1_3(TestHTTPS):
     tls_protocol_name = "TLSv1.3"
     certs = TLSv1_3_CERTS
