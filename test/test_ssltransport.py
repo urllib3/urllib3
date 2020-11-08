@@ -4,10 +4,12 @@ import socket
 import ssl
 import sys
 
+import mock
 import pytest
 
 from dummyserver.server import DEFAULT_CA, DEFAULT_CERTS
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
+from urllib3.util import ssl_
 from urllib3.util.ssltransport import SSLTransport
 
 # consume_socket can iterate forever, we add timeouts to prevent halting.
@@ -494,3 +496,18 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 destination_sock.send(sample_request())
                 response = destination_sock.recv_into(None)
                 validate_response(response)
+
+
+@pytest.mark.skipif(sys.version_info < (3, 5), reason="requires python3.5 or higher")
+class TestSSLTransportWithMock(object):
+    def test_constructor_params(self):
+        server_hostname = "example-domain.com"
+        sock = mock.Mock()
+        context = mock.create_autospec(ssl_.SSLContext)
+        ssl_transport = SSLTransport(
+            sock, context, server_hostname=server_hostname, suppress_ragged_eofs=False
+        )
+        context.wrap_bio.assert_called_with(
+            mock.ANY, mock.ANY, server_hostname=server_hostname
+        )
+        assert not ssl_transport.suppress_ragged_eofs
