@@ -1,24 +1,8 @@
 import os
 import shutil
-import subprocess
 
 import nox
 
-# Whenever type-hints are completed on a file it should be added here so that
-# this file will continue to be checked by mypy. Errors from other files are
-# ignored.
-TYPED_FILES = {
-    "src/urllib3/contrib/__init__.py",
-    "src/urllib3/exceptions.py",
-    "src/urllib3/fields.py",
-    "src/urllib3/filepost.py",
-    "src/urllib3/packages/__init__.py",
-    "src/urllib3/packages/six.py",
-    "src/urllib3/packages/ssl_match_hostname/__init__.py",
-    "src/urllib3/packages/ssl_match_hostname/_implementation.py",
-    "src/urllib3/util/queue.py",
-    "src/urllib3/util/url.py",
-}
 SOURCE_FILES = [
     "docs/",
     "dummyserver/",
@@ -111,35 +95,13 @@ def format(session):
 
 @nox.session
 def lint(session):
-    session.install("flake8", "flake8-2020", "black", "isort", "mypy")
+    session.install("flake8", "flake8-2020", "black", "isort")
     session.run("flake8", "--version")
     session.run("black", "--version")
     session.run("isort", "--version")
-    session.run("mypy", "--version")
     session.run("black", "--check", *SOURCE_FILES)
     session.run("isort", "--check", *SOURCE_FILES)
     session.run("flake8", *SOURCE_FILES)
-
-    session.log("mypy --strict src/urllib3")
-    all_errors, errors = [], []
-    process = subprocess.run(
-        ["mypy", "--strict", "src/urllib3"],
-        env=session.env,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
-    # Ensure that mypy itself ran successfully
-    assert process.returncode in (0, 1)
-
-    for line in process.stdout.split("\n"):
-        all_errors.append(line)
-        filepath = line.partition(":")[0]
-        if filepath.replace(".pyi", ".py") in TYPED_FILES:
-            errors.append(line)
-    session.log("all errors count: {}".format(len(all_errors)))
-    if errors:
-        session.error("\n" + "\n".join(sorted(set(errors))))
 
 
 @nox.session
