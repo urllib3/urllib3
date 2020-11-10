@@ -1,7 +1,7 @@
 Changes
 =======
 
-1.26.0 (2020-11-??)
+1.26.0 (2020-11-10)
 -------------------
 
 * **NOTE: urllib3 v2.0 will drop support for Python 2**.
