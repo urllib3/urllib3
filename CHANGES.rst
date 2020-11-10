@@ -1,6 +1,48 @@
 Changes
 =======
 
+1.26.0 (2020-11-10)
+-------------------
+
+* **NOTE: urllib3 v2.0 will drop support for Python 2**.
+  `Read more in the v2.0 Roadmap <https://urllib3.readthedocs.io/en/latest/v2-roadmap.html>`_.
+
+* Added support for HTTPS proxies contacting HTTPS servers (Pull #1923, Pull #1806)
+
+* Deprecated negotiating TLSv1 and TLSv1.1 by default. Users that
+  still wish to use TLS earlier than 1.2 without a deprecation warning
+  should opt-in explicitly by setting ``ssl_version=ssl.PROTOCOL_TLSv1_1`` (Pull #2002)
+  **Starting in urllib3 v2.0: Connections that receive a ``DeprecationWarning`` will fail**
+
+* Deprecated ``Retry`` options ``Retry.DEFAULT_METHOD_WHITELIST``, ``Retry.DEFAULT_REDIRECT_HEADERS_BLACKLIST``
+  and ``Retry(method_whitelist=...)`` in favor of ``Retry.DEFAULT_ALLOWED_METHODS``,
+  ``Retry.DEFAULT_REMOVE_HEADERS_ON_REDIRECT``, and ``Retry(allowed_methods=...)``
+  (Pull #2000) **Starting in urllib3 v2.0: Deprecated options will be removed**
+
+* Added default ``User-Agent`` header to every request (Pull #1750)
+
+* Added ``urllib3.util.SKIP_HEADER`` for skipping ``User-Agent``, ``Accept-Encoding``, 
+  and ``Host`` headers from being automatically emitted with requests (Pull #2018)
+
+* Collapse ``transfer-encoding: chunked`` request data and framing into
+  the same ``socket.send()`` call (Pull #1906)
+
+* Send ``http/1.1`` ALPN identifier with every TLS handshake by default (Pull #1894)
+
+* Properly terminate SecureTransport connections when CA verification fails (Pull #1977)
+
+* Don't emit an ``SNIMissingWarning`` when passing ``server_hostname=None``
+  to SecureTransport (Pull #1903)
+
+* Disabled requesting TLSv1.2 session tickets as they weren't being used by urllib3 (Pull #1970)
+
+* Suppress ``BrokenPipeError`` when writing request body after the server
+  has closed the socket (Pull #1524)
+
+* Wrap ``ssl.SSLError`` that can be raised from reading a socket (e.g. "bad MAC")
+  into an ``urllib3.exceptions.SSLError`` (Pull #1939)
+
+
 1.25.11 (2020-10-19)
 --------------------
 
