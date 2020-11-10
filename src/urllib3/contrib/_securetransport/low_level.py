@@ -97,7 +97,7 @@ def _create_cfstring_array(lst):
     except BaseException as e:
         if cf_arr:
             CoreFoundation.CFRelease(cf_arr)
-        raise ssl.SSLError("Unable to allocate array: %s" % (e,))
+        raise ssl.SSLError(f"Unable to allocate array: {e}")
     return cf_arr
 
 
@@ -138,8 +138,8 @@ def _assert_no_error(error, exception_class=None):
     output = _cf_string_to_unicode(cf_error_string)
     CoreFoundation.CFRelease(cf_error_string)
 
-    if output is None or output == u"":
-        output = u"OSStatus %s" % error
+    if output is None or output == "":
+        output = f"OSStatus {error}"
 
     if exception_class is None:
         exception_class = ssl.SSLError

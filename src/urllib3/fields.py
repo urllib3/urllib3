@@ -1,10 +1,6 @@
-from __future__ import absolute_import
-
 import email.utils
 import mimetypes
 import re
-
-from .packages import six
 
 
 def guess_content_type(filename, default="application/octet-stream"):
@@ -37,11 +33,11 @@ def format_header_param_rfc2231(name, value):
     :ret:
         An RFC-2231-formatted unicode string.
     """
-    if isinstance(value, six.binary_type):
+    if isinstance(value, bytes):
         value = value.decode("utf-8")
 
     if not any(ch in value for ch in '"\\\r\n'):
-        result = u'%s="%s"' % (name, value)
+        result = f'{name}="{value}"'
         try:
             result.encode("ascii")
         except (UnicodeEncodeError, UnicodeDecodeError):
@@ -49,33 +45,23 @@ def format_header_param_rfc2231(name, value):
         else:
             return result
 
-    if six.PY2:  # Python 2:
-        value = value.encode("utf-8")
-
     # encode_rfc2231 accepts an encoded string and returns an ascii-encoded
     # string in Python 2 but accepts and returns unicode strings in Python 3
     value = email.utils.encode_rfc2231(value, "utf-8")
-    value = "%s*=%s" % (name, value)
-
-    if six.PY2:  # Python 2:
-        value = value.decode("utf-8")
+    value = f"{name}*={value}"
 
     return value
 
 
 _HTML5_REPLACEMENTS = {
-    u"\u0022": u"%22",
+    "\u0022": "%22",
     # Replace "\" with "\\".
-    u"\u005C": u"\u005C\u005C",
+    "\u005C": "\u005C\u005C",
 }
 
 # All control characters from 0x00 to 0x1F *except* 0x1B.
 _HTML5_REPLACEMENTS.update(
-    {
-        six.unichr(cc): u"%{:02X}".format(cc)
-        for cc in range(0x00, 0x1F + 1)
-        if cc not in (0x1B,)
-    }
+    {chr(cc): f"%{cc:02X}" for cc in range(0x00, 0x1F + 1) if cc not in (0x1B,)}
 )
 
 
@@ -111,19 +97,19 @@ def format_header_param_html5(name, value):
     :ret:
         A unicode string, stripped of troublesome characters.
     """
-    if isinstance(value, six.binary_type):
+    if isinstance(value, bytes):
         value = value.decode("utf-8")
 
     value = _replace_multiple(value, _HTML5_REPLACEMENTS)
 
-    return u'%s="%s"' % (name, value)
+    return f'{name}="{value}"'
 
 
 # For backwards-compatibility.
 format_header_param = format_header_param_html5
 
 
-class RequestField(object):
+class RequestField:
     """
     A data container for request body parameters.
 
@@ -225,7 +211,7 @@ class RequestField(object):
             if value is not None:
                 parts.append(self._render_part(name, value))
 
-        return u"; ".join(parts)
+        return "; ".join(parts)
 
     def render_headers(self):
         """
@@ -236,15 +222,15 @@ class RequestField(object):
         sort_keys = ["Content-Disposition", "Content-Type", "Content-Location"]
         for sort_key in sort_keys:
             if self.headers.get(sort_key, False):
-                lines.append(u"%s: %s" % (sort_key, self.headers[sort_key]))
+                lines.append(f"{sort_key}: {self.headers[sort_key]}")
 
         for header_name, header_value in self.headers.items():
             if header_name not in sort_keys:
                 if header_value:
-                    lines.append(u"%s: %s" % (header_name, header_value))
+                    lines.append(f"{header_name}: {header_value}")
 
-        lines.append(u"\r\n")
-        return u"\r\n".join(lines)
+        lines.append("\r\n")
+        return "\r\n".join(lines)
 
     def make_multipart(
         self, content_disposition=None, content_type=None, content_location=None
@@ -261,12 +247,12 @@ class RequestField(object):
             The 'Content-Location' of the request body.
 
         """
-        self.headers["Content-Disposition"] = content_disposition or u"form-data"
-        self.headers["Content-Disposition"] += u"; ".join(
+        self.headers["Content-Disposition"] = content_disposition or "form-data"
+        self.headers["Content-Disposition"] += "; ".join(
             [
-                u"",
+                "",
                 self._render_parts(
-                    ((u"name", self._name), (u"filename", self._filename))
+                    (("name", self._name), ("filename", self._filename))
                 ),
             ]
         )

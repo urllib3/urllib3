@@ -45,7 +45,6 @@ compression in Python 2 (see `CRIME attack`_).
 .. _cryptography: https://cryptography.io
 .. _idna: https://github.com/kjd/idna
 """
-from __future__ import absolute_import
 
 import OpenSSL.SSL
 from cryptography import x509
@@ -72,7 +71,6 @@ except ImportError:  # Platform-specific: Python 3
 
 import logging
 import ssl
-import sys
 
 from .. import util
 from ..packages import six
@@ -104,7 +102,7 @@ _stdlib_to_openssl_verify = {
     ssl.CERT_REQUIRED: OpenSSL.SSL.VERIFY_PEER
     + OpenSSL.SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
 }
-_openssl_to_stdlib_verify = dict((v, k) for k, v in _stdlib_to_openssl_verify.items())
+_openssl_to_stdlib_verify = {v: k for k, v in _stdlib_to_openssl_verify.items()}
 
 # OpenSSL will only write 16K at a time
 SSL_WRITE_BLOCKSIZE = 16384
@@ -189,7 +187,7 @@ def _dnsname_to_stdlib(name):
         import idna
 
         try:
-            for prefix in [u"*.", u"."]:
+            for prefix in ["*.", "."]:
                 if name.startswith(prefix):
                     name = name[len(prefix) :]
                     return prefix.encode("ascii") + idna.encode(name)
@@ -204,9 +202,7 @@ def _dnsname_to_stdlib(name):
     name = idna_encode(name)
     if name is None:
         return None
-    elif sys.version_info >= (3, 0):
-        name = name.decode("utf-8")
-    return name
+    return name.decode("utf-8")
 
 
 def get_subj_alt_name(peer_cert):
@@ -263,7 +259,7 @@ def get_subj_alt_name(peer_cert):
     return names
 
 
-class WrappedSocket(object):
+class WrappedSocket:
     """API-compatibility wrapper for Python OpenSSL's Connection-class.
 
     Note: _makefile_refs, _drop() and _reuse() are needed for the garbage
@@ -308,7 +304,7 @@ class WrappedSocket(object):
 
         # TLS 1.3 post-handshake authentication
         except OpenSSL.SSL.Error as e:
-            raise ssl.SSLError("read error: %r" % e)
+            raise ssl.SSLError(f"read error: {e!r}")
         else:
             return data
 
@@ -333,7 +329,7 @@ class WrappedSocket(object):
 
         # TLS 1.3 post-handshake authentication
         except OpenSSL.SSL.Error as e:
-            raise ssl.SSLError("read error: %r" % e)
+            raise ssl.SSLError(f"read error: {e!r}")
 
     def settimeout(self, timeout):
         return self.socket.settimeout(timeout)
@@ -411,7 +407,7 @@ else:  # Platform-specific: Python 3
 WrappedSocket.makefile = makefile
 
 
-class PyOpenSSLContext(object):
+class PyOpenSSLContext:
     """
     I am a wrapper class for the PyOpenSSL ``Context`` object. I am responsible
     for translating the interface of the standard library ``SSLContext`` object
@@ -445,7 +441,7 @@ class PyOpenSSLContext(object):
         self._ctx.set_default_verify_paths()
 
     def set_ciphers(self, ciphers):
-        if isinstance(ciphers, six.text_type):
+        if isinstance(ciphers, str):
             ciphers = ciphers.encode("utf-8")
         self._ctx.set_cipher_list(ciphers)
 
@@ -459,12 +455,12 @@ class PyOpenSSLContext(object):
             if cadata is not None:
                 self._ctx.load_verify_locations(BytesIO(cadata))
         except OpenSSL.SSL.Error as e:
-            raise ssl.SSLError("unable to load trusted certificates: %r" % e)
+            raise ssl.SSLError(f"unable to load trusted certificates: {e!r}")
 
     def load_cert_chain(self, certfile, keyfile=None, password=None):
         self._ctx.use_certificate_chain_file(certfile)
         if password is not None:
-            if not isinstance(password, six.binary_type):
+            if not isinstance(password, bytes):
                 password = password.encode("utf-8")
             self._ctx.set_passwd_cb(lambda *_: password)
         self._ctx.use_privatekey_file(keyfile or certfile)
@@ -483,7 +479,7 @@ class PyOpenSSLContext(object):
     ):
         cnx = OpenSSL.SSL.Connection(self._ctx, sock)
 
-        if isinstance(server_hostname, six.text_type):  # Platform-specific: Python 3
+        if isinstance(server_hostname, str):  # Platform-specific: Python 3
             server_hostname = server_hostname.encode("utf-8")
 
         if server_hostname is not None:
@@ -499,7 +495,7 @@ class PyOpenSSLContext(object):
                     raise timeout("select timed out")
                 continue
             except OpenSSL.SSL.Error as e:
-                raise ssl.SSLError("bad handshake: %r" % e)
+                raise ssl.SSLError(f"bad handshake: {e!r}")
             break
 
         return WrappedSocket(cnx, sock)

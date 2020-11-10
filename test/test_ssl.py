@@ -1,6 +1,5 @@
-from test import notPyPy2
+from unittest import mock
 
-import mock
 import pytest
 
 from urllib3.exceptions import SNIMissingWarning
@@ -127,7 +126,6 @@ def test_wrap_socket_given_context_no_load_default_certs():
     context.load_default_certs.assert_not_called()
 
 
-@notPyPy2
 def test_wrap_socket_given_ca_certs_no_load_default_certs(monkeypatch):
     context = mock.create_autospec(ssl_.SSLContext)
     context.load_default_certs = mock.Mock()

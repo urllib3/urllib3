@@ -143,5 +143,5 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         port = int(sys.argv[1])
 
-    print("Starting HTTP proxy on port %d" % port)
+    print(f"Starting HTTP proxy on port {port}")
     run_proxy(port)

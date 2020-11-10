@@ -25,12 +25,12 @@ def stub_timezone_ctx(tzname):
     # Make sure the new timezone exists, at least in dateutil
     new_tz = tz.gettz(tzname)
     if new_tz is None:
-        raise ValueError("Invalid timezone specified: %r" % (tzname,))
+        raise ValueError(f"Invalid timezone specified: {tzname!r}")
 
     # Get the current timezone
     local_tz = tz.tzlocal()
     if local_tz is None:
-        raise EnvironmentError("Cannot determine current timezone")
+        raise OSError("Cannot determine current timezone")
     old_tzname = datetime.datetime.now(local_tz).tzname()
 
     os.environ["TZ"] = tzname

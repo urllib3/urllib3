@@ -1,7 +1,7 @@
 # This is a copy-paste of test_retry.py with extra asserts about deprecated options. It will be removed for v2.
 import warnings
+from unittest import mock
 
-import mock
 import pytest
 
 from urllib3.exceptions import (
@@ -12,8 +12,6 @@ from urllib3.exceptions import (
     ResponseError,
     SSLError,
 )
-from urllib3.packages import six
-from urllib3.packages.six.moves import xrange
 from urllib3.response import HTTPResponse
 from urllib3.util.retry import RequestHistory, Retry
 
@@ -26,7 +24,7 @@ def expect_retry_deprecation():
     assert len([str(x.message) for x in w if "Retry" in str(x.message)]) > 0
 
 
-class TestRetry(object):
+class TestRetry:
     def test_string(self):
         """ Retry string representation looks the way we expect """
         retry = Retry()
@@ -162,7 +160,7 @@ class TestRetry(object):
         retry = retry.increment(method="GET")
         assert retry.get_backoff_time() == 1.6
 
-        for _ in xrange(10):
+        for _ in range(10):
             retry = retry.increment(method="GET")
 
         assert retry.get_backoff_time() == max_backoff
@@ -194,7 +192,7 @@ class TestRetry(object):
         retry.sleep()
 
     def test_status_forcelist(self):
-        retry = Retry(status_forcelist=xrange(500, 600))
+        retry = Retry(status_forcelist=range(500, 600))
         assert not retry.is_retry("GET", status_code=200)
         assert not retry.is_retry("GET", status_code=400)
         assert retry.is_retry("GET", status_code=500)
@@ -302,7 +300,7 @@ class TestRetry(object):
 
         assert list(retry.remove_headers_on_redirect) == ["x-api-secret"]
 
-    @pytest.mark.parametrize("value", ["-1", "+1", "1.0", six.u("\xb2")])  # \xb2 = ^2
+    @pytest.mark.parametrize("value", ["-1", "+1", "1.0", "\xb2"])  # \xb2 = ^2
     def test_parse_retry_after_invalid(self, value):
         retry = Retry()
         with pytest.raises(InvalidHeader):
@@ -374,7 +372,7 @@ class TestRetry(object):
                 sleep_mock.assert_not_called()
 
 
-class TestRetryDeprecations(object):
+class TestRetryDeprecations:
     def test_cls_get_default_method_whitelist(self, expect_retry_deprecation):
         assert Retry.DEFAULT_ALLOWED_METHODS == Retry.DEFAULT_METHOD_WHITELIST
 
@@ -448,7 +446,7 @@ class TestRetryDeprecations(object):
                         "This subclass likely doesn't use 'allowed_methods'"
                     )
 
-                super(SubclassRetry, self).__init__(**kwargs)
+                super().__init__(**kwargs)
 
                 # Since we're setting 'method_whiteist' we get fallbacks
                 # within Retry.new() and Retry._is_method_retryable()

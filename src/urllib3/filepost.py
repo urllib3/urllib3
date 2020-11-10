@@ -1,12 +1,9 @@
-from __future__ import absolute_import
-
 import binascii
 import codecs
 import os
 from io import BytesIO
 
 from .fields import RequestField
-from .packages import six
 from .packages.six import b
 
 writer = codecs.lookup("utf-8")[3]
@@ -16,10 +13,7 @@ def choose_boundary():
     """
     Our embarrassingly-simple replacement for mimetools.choose_boundary.
     """
-    boundary = binascii.hexlify(os.urandom(16))
-    if not six.PY2:
-        boundary = boundary.decode("ascii")
-    return boundary
+    return binascii.hexlify(os.urandom(16)).decode()
 
 
 def iter_field_objects(fields):
@@ -31,7 +25,7 @@ def iter_field_objects(fields):
 
     """
     if isinstance(fields, dict):
-        i = six.iteritems(fields)
+        i = fields.items()
     else:
         i = iter(fields)
 
@@ -55,7 +49,7 @@ def iter_fields(fields):
     Supports list of (k, v) tuples and dicts.
     """
     if isinstance(fields, dict):
-        return ((k, v) for k, v in six.iteritems(fields))
+        return ((k, v) for k, v in fields.items())
 
     return ((k, v) for k, v in fields)
 
@@ -76,7 +70,7 @@ def encode_multipart_formdata(fields, boundary=None):
         boundary = choose_boundary()
 
     for field in iter_field_objects(fields):
-        body.write(b("--%s\r\n" % (boundary)))
+        body.write(b(f"--{boundary}\r\n"))
 
         writer(body).write(field.render_headers())
         data = field.data
@@ -84,15 +78,15 @@ def encode_multipart_formdata(fields, boundary=None):
         if isinstance(data, int):
             data = str(data)  # Backwards compatibility
 
-        if isinstance(data, six.text_type):
+        if isinstance(data, str):
             writer(body).write(data)
         else:
             body.write(data)
 
         body.write(b"\r\n")
 
-    body.write(b("--%s--\r\n" % (boundary)))
+    body.write(b(f"--{boundary}--\r\n"))
 
-    content_type = str("multipart/form-data; boundary=%s" % boundary)
+    content_type = str(f"multipart/form-data; boundary={boundary}")
 
     return body.getvalue(), content_type

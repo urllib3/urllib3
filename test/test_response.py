@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-
 import contextlib
+import http.client as httplib
 import re
 import socket
 import ssl
@@ -8,8 +7,8 @@ import zlib
 from base64 import b64decode
 from io import BufferedReader, BytesIO, TextIOWrapper
 from test import onlyBrotlipy
+from unittest import mock
 
-import mock
 import pytest
 import six
 
@@ -23,13 +22,12 @@ from urllib3.exceptions import (
     SSLError,
     httplib_IncompleteRead,
 )
-from urllib3.packages.six.moves import http_client as httplib
 from urllib3.response import HTTPResponse, brotli
 from urllib3.util.response import is_fp_closed
 from urllib3.util.retry import RequestHistory, Retry
 
 # A known random (i.e, not-too-compressible) payload generated with:
-#    "".join(random.choice(string.printable) for i in xrange(512))
+#    "".join(random.choice(string.printable) for i in range(512))
 #    .encode("zlib").encode("base64")
 # Randomness in tests == bad, and fixing a seed may not be sufficient.
 ZLIB_PAYLOAD = b64decode(
@@ -53,7 +51,7 @@ def sock():
     s.close()
 
 
-class TestLegacyResponse(object):
+class TestLegacyResponse:
     def test_getheaders(self):
         headers = {"host": "example.com"}
         r = HTTPResponse(headers=headers)
@@ -65,7 +63,7 @@ class TestLegacyResponse(object):
         assert r.getheader("host") == "example.com"
 
 
-class TestResponse(object):
+class TestResponse:
     def test_cache_content(self):
         r = HTTPResponse("foo")
         assert r.data == "foo"
@@ -400,7 +398,7 @@ class TestResponse(object):
         resp = HTTPResponse(fp, preload_content=False)
         br = TextIOWrapper(resp, encoding="utf8")
 
-        assert br.read() == u"äöüß"
+        assert br.read() == "äöüß"
 
         br.close()
         assert resp.closed
@@ -412,10 +410,6 @@ class TestResponse(object):
         )
         resp = HTTPResponse(fp, preload_content=False)
         with pytest.raises(ValueError) as ctx:
-            if six.PY2:
-                # py2's implementation of TextIOWrapper requires `read1`
-                # method which is provided by `BufferedReader` wrapper
-                resp = BufferedReader(resp)
             list(TextIOWrapper(resp))
         assert re.match("I/O operation on closed file.?", str(ctx.value))
 
@@ -424,12 +418,8 @@ class TestResponse(object):
             b"\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f\n\xce\xb1\xce\xb2\xce\xb3\xce\xb4"
         )
         resp = HTTPResponse(fp, preload_content=False, auto_close=False)
-        if six.PY2:
-            # py2's implementation of TextIOWrapper requires `read1`
-            # method which is provided by `BufferedReader` wrapper
-            resp = BufferedReader(resp)
         reader = TextIOWrapper(resp, encoding="utf8")
-        assert list(reader) == [u"äöüß\n", u"αβγδ"]
+        assert list(reader) == ["äöüß\n", "αβγδ"]
 
         assert not reader.closed
         assert not resp.closed
@@ -669,7 +659,7 @@ class TestResponse(object):
         # Mock out a HTTP Request that does enough to make it through urllib3's
         # read() and close() calls, and also exhausts and underlying file
         # object.
-        class MockHTTPRequest(object):
+        class MockHTTPRequest:
             self.fp = None
 
             def read(self, amt):
@@ -961,7 +951,7 @@ class TestResponse(object):
             assert e.value.args[0] == mac_error
 
 
-class MockChunkedEncodingResponse(object):
+class MockChunkedEncodingResponse:
     def __init__(self, content):
         """
         content: collection of str, each str is a chunk in response
@@ -975,7 +965,7 @@ class MockChunkedEncodingResponse(object):
     @staticmethod
     def _encode_chunk(chunk):
         # In the general case, we can't decode the chunk to unicode
-        length = "%X\r\n" % len(chunk)
+        length = f"{len(chunk):X}\r\n"
         return length.encode() + chunk + b"\r\n"
 
     def _pop_new_chunk(self):
@@ -1039,19 +1029,19 @@ class MockChunkedEncodingResponse(object):
 
 class MockChunkedIncompleteRead(MockChunkedEncodingResponse):
     def _encode_chunk(self, chunk):
-        return "9999\r\n%s\r\n" % chunk.decode()
+        return f"9999\r\n{chunk.decode()}\r\n"
 
 
 class MockChunkedInvalidChunkLength(MockChunkedEncodingResponse):
     BAD_LENGTH_LINE = "ZZZ\r\n"
 
     def _encode_chunk(self, chunk):
-        return "%s%s\r\n" % (self.BAD_LENGTH_LINE, chunk.decode())
+        return f"{self.BAD_LENGTH_LINE}{chunk.decode()}\r\n"
 
 
 class MockChunkedEncodingWithoutCRLFOnEnd(MockChunkedEncodingResponse):
     def _encode_chunk(self, chunk):
-        return "%X\r\n%s%s" % (
+        return "{:X}\r\n{}{}".format(
             len(chunk),
             chunk.decode(),
             "\r\n" if len(chunk) > 0 else "",
@@ -1060,10 +1050,10 @@ class MockChunkedEncodingWithoutCRLFOnEnd(MockChunkedEncodingResponse):
 
 class MockChunkedEncodingWithExtensions(MockChunkedEncodingResponse):
     def _encode_chunk(self, chunk):
-        return "%X;asd=qwe\r\n%s\r\n" % (len(chunk), chunk.decode())
+        return f"{len(chunk):X};asd=qwe\r\n{chunk.decode()}\r\n"
 
 
-class MockSock(object):
+class MockSock:
     @classmethod
     def makefile(cls, *args, **kwargs):
         return

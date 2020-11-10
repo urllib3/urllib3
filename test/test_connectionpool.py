@@ -1,12 +1,13 @@
-from __future__ import absolute_import
-
+import http.client as httplib
 import ssl
+from http.client import HTTPException
+from queue import Empty
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 from test import SHORT_TIMEOUT
+from unittest.mock import Mock
 
 import pytest
-from mock import Mock
 
 from dummyserver.server import DEFAULT_CA
 from urllib3._collections import HTTPHeaderDict
@@ -26,9 +27,6 @@ from urllib3.exceptions import (
     SSLError,
     TimeoutError,
 )
-from urllib3.packages.six.moves import http_client as httplib
-from urllib3.packages.six.moves.http_client import HTTPException
-from urllib3.packages.six.moves.queue import Empty
 from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.response import HTTPResponse
 from urllib3.util.timeout import Timeout
@@ -38,7 +36,7 @@ from .test_response import MockChunkedEncodingResponse, MockSock
 
 class HTTPUnixConnection(HTTPConnection):
     def __init__(self, host, timeout=60, **kwargs):
-        super(HTTPUnixConnection, self).__init__("localhost")
+        super().__init__("localhost")
         self.unix_socket = host
         self.timeout = timeout
         self.sock = None
@@ -49,7 +47,7 @@ class HTTPUnixConnectionPool(HTTPConnectionPool):
     ConnectionCls = HTTPUnixConnection
 
 
-class TestConnectionPool(object):
+class TestConnectionPool:
     """
     Tests in this suite should exercise the ConnectionPool functionality
     without actually making any network requests or connections.
@@ -439,7 +437,7 @@ class TestConnectionPool(object):
         [1] <https://github.com/urllib3/urllib3/issues/651>
         """
 
-        class _raise_once_make_request_function(object):
+        class _raise_once_make_request_function:
             """Callable that can mimic `_make_request()`.
 
             Raises the given exception on its first call, but returns a
@@ -447,7 +445,7 @@ class TestConnectionPool(object):
             """
 
             def __init__(self, ex):
-                super(_raise_once_make_request_function, self).__init__()
+                super().__init__()
                 self._ex = ex
 
             def __call__(self, *args, **kwargs):

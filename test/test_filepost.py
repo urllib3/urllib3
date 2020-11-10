@@ -2,12 +2,12 @@ import pytest
 
 from urllib3.fields import RequestField
 from urllib3.filepost import encode_multipart_formdata, iter_fields
-from urllib3.packages.six import b, u
+from urllib3.packages.six import b
 
 BOUNDARY = "!! test boundary !!"
 
 
-class TestIterfields(object):
+class TestIterfields:
     def test_dict(self):
         for fieldname, value in iter_fields(dict(a="b")):
             assert (fieldname, value) == ("a", "b")
@@ -21,7 +21,7 @@ class TestIterfields(object):
         assert list(iter_fields([("a", "b"), ("c", "d")])) == [("a", "b"), ("c", "d")]
 
 
-class TestMultipartEncoding(object):
+class TestMultipartEncoding:
     @pytest.mark.parametrize(
         "fields", [dict(k="v", k2="v2"), [("k", "v"), ("k2", "v2")]]
     )
@@ -33,8 +33,8 @@ class TestMultipartEncoding(object):
         "fields",
         [
             [("k", "v"), ("k2", "v2")],
-            [("k", b"v"), (u("k2"), b"v2")],
-            [("k", b"v"), (u("k2"), "v2")],
+            [("k", b"v"), ("k2", b"v2")],
+            [("k", b"v"), ("k2", "v2")],
         ],
     )
     def test_field_encoding(self, fields):

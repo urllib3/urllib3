@@ -1,9 +1,7 @@
-from __future__ import absolute_import
-
 from base64 import b64encode
 
 from ..exceptions import UnrewindableBodyError
-from ..packages.six import b, integer_types
+from ..packages.six import b
 
 # Pass as a value within ``headers`` to skip
 # emitting some HTTP headers that are added automatically.
@@ -105,7 +103,7 @@ def set_file_position(body, pos):
     elif getattr(body, "tell", None) is not None:
         try:
             pos = body.tell()
-        except (IOError, OSError):
+        except OSError:
             # This differentiates from None, allowing us to catch
             # a failed `tell()` later when trying to rewind the body.
             pos = _FAILEDTELL
@@ -125,10 +123,10 @@ def rewind_body(body, body_pos):
         Position to seek to in file.
     """
     body_seek = getattr(body, "seek", None)
-    if body_seek is not None and isinstance(body_pos, integer_types):
+    if body_seek is not None and isinstance(body_pos, int):
         try:
             body_seek(body_pos)
-        except (IOError, OSError):
+        except OSError:
             raise UnrewindableBodyError(
                 "An error occurred when rewinding request body for redirect/retry."
             )
@@ -139,5 +137,5 @@ def rewind_body(body, body_pos):
         )
     else:
         raise ValueError(
-            "body_pos must be of type integer, instead it was %s." % type(body_pos)
+            f"body_pos must be of type integer, instead it was {type(body_pos)}."
         )

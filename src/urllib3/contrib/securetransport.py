@@ -51,7 +51,6 @@ license and by oscrypto's:
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 """
-from __future__ import absolute_import
 
 import contextlib
 import ctypes
@@ -230,7 +229,7 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
             while read_count < requested_length:
                 if timeout is None or timeout >= 0:
                     if not util.wait_for_read(base_socket, timeout):
-                        raise socket.error(errno.EAGAIN, "timed out")
+                        raise OSError(errno.EAGAIN, "timed out")
 
                 remaining = requested_length - read_count
                 buffer = (ctypes.c_char * remaining).from_address(
@@ -242,7 +241,7 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
                     if not read_count:
                         return SecurityConst.errSSLClosedGraceful
                     break
-        except (socket.error) as e:
+        except (OSError) as e:
             error = e.errno
 
             if error is not None and error != errno.EAGAIN:
@@ -286,14 +285,14 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
             while sent < bytes_to_write:
                 if timeout is None or timeout >= 0:
                     if not util.wait_for_write(base_socket, timeout):
-                        raise socket.error(errno.EAGAIN, "timed out")
+                        raise OSError(errno.EAGAIN, "timed out")
                 chunk_sent = base_socket.send(data)
                 sent += chunk_sent
 
                 # This has some needless copying here, but I'm not sure there's
                 # much value in optimising this data path.
                 data = data[chunk_sent:]
-        except (socket.error) as e:
+        except (OSError) as e:
             error = e.errno
 
             if error is not None and error != errno.EAGAIN:
@@ -321,7 +320,7 @@ _read_callback_pointer = Security.SSLReadFunc(_read_callback)
 _write_callback_pointer = Security.SSLWriteFunc(_write_callback)
 
 
-class WrappedSocket(object):
+class WrappedSocket:
     """
     API-compatibility wrapper for Python's OpenSSL wrapped socket object.
 
@@ -413,10 +412,10 @@ class WrappedSocket(object):
             trust_result = self._evaluate_trust(trust_bundle)
             if trust_result in successes:
                 return
-            reason = "error code: %d" % (trust_result,)
+            reason = f"error code: {int(trust_result)}"
         except Exception as e:
             # Do not trust on error
-            reason = "exception: %r" % (e,)
+            reason = f"exception: {e!r}"
 
         # SecureTransport does not send an alert nor shuts down the connection.
         rec = _build_tls_unknown_ca_alert(self.version())
@@ -427,7 +426,7 @@ class WrappedSocket(object):
         opts = struct.pack("ii", 1, 0)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, opts)
         self.close()
-        raise ssl.SSLError("certificate verify failed, %s" % reason)
+        raise ssl.SSLError(f"certificate verify failed, {reason}")
 
     def _evaluate_trust(self, trust_bundle):
         # We want data in memory, so load it up.
@@ -750,7 +749,7 @@ class WrappedSocket(object):
         elif protocol.value == SecurityConst.kSSLProtocol2:
             return "SSLv2"
         else:
-            raise ssl.SSLError("Unknown TLS version: %r" % protocol)
+            raise ssl.SSLError(f"Unknown TLS version: {protocol!r}")
 
     def _reuse(self):
         self._makefile_refs += 1
@@ -781,7 +780,7 @@ else:  # Platform-specific: Python 3
 WrappedSocket.makefile = makefile
 
 
-class SecureTransportContext(object):
+class SecureTransportContext:
     """
     I am a wrapper class for the SecureTransport library, to translate the
     interface of the standard library ``SSLContext`` object to calls into

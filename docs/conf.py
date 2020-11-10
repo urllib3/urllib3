@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import os
 import sys
 from datetime import date
@@ -14,7 +12,7 @@ sys.path.insert(0, root_path)
 # Mock some expensive/platform-specific modules so build will work.
 # (https://read-the-docs.readthedocs.io/en/latest/faq.html#\
 #  i-get-import-errors-on-libraries-that-depend-on-c-modules)
-import mock
+from unittest import mock
 
 
 class MockModule(mock.Mock):
@@ -55,7 +53,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "urllib3"
-copyright = "{year}, Andrey Petrov".format(year=date.today().year)
+copyright = f"{date.today().year}, Andrey Petrov"
 
 # The short X.Y version.
 version = urllib3.__version__

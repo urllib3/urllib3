@@ -1,11 +1,10 @@
-from __future__ import absolute_import
+import queue
+from unittest import mock
 
-import mock
 import pytest
 
 from urllib3 import HTTPConnectionPool
 from urllib3.exceptions import EmptyPoolError
-from urllib3.packages.six.moves import queue
 
 
 class BadError(Exception):
@@ -16,7 +15,7 @@ class BadError(Exception):
     pass
 
 
-class TestMonkeypatchResistance(object):
+class TestMonkeypatchResistance:
     """
     Test that connection pool works even with a monkey patched Queue module,
     see obspy/obspy#1599, psf/requests#3742, urllib3/urllib3#1061.

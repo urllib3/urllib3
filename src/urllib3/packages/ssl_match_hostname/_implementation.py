@@ -76,12 +76,6 @@ def _dnsname_match(dn, hostname, max_wildcards=1):
     return pat.match(hostname)
 
 
-def _to_unicode(obj):
-    if isinstance(obj, str) and sys.version_info < (3,):
-        obj = unicode(obj, encoding="ascii", errors="strict")
-    return obj
-
-
 def _ipaddress_match(ipname, host_ip):
     """Exact matching of IP addresses.
 
@@ -90,7 +84,7 @@ def _ipaddress_match(ipname, host_ip):
     """
     # OpenSSL may add a trailing newline to a subjectAltName's IP address
     # Divergence from upstream: ipaddress can't handle byte str
-    ip = ipaddress.ip_address(_to_unicode(ipname).rstrip())
+    ip = ipaddress.ip_address(ipname.rstrip())
     return ip == host_ip
 
 
@@ -110,14 +104,9 @@ def match_hostname(cert, hostname):
         )
     try:
         # Divergence from upstream: ipaddress can't handle byte str
-        host_ip = ipaddress.ip_address(_to_unicode(hostname))
+        host_ip = ipaddress.ip_address(hostname)
     except ValueError:
         # Not an IP address (common case)
-        host_ip = None
-    except UnicodeError:
-        # Divergence from upstream: Have to deal with ipaddress not taking
-        # byte strings.  addresses should be all ascii, so we consider it not
-        # an ipaddress in this case
         host_ip = None
     except AttributeError:
         # Divergence from upstream: Make ipaddress library optional
@@ -153,7 +142,7 @@ def match_hostname(cert, hostname):
             "doesn't match either of %s" % (hostname, ", ".join(map(repr, dnsnames)))
         )
     elif len(dnsnames) == 1:
-        raise CertificateError("hostname %r doesn't match %r" % (hostname, dnsnames[0]))
+        raise CertificateError(f"hostname {hostname!r} doesn't match {dnsnames[0]!r}")
     else:
         raise CertificateError(
             "no appropriate commonName or subjectAltName fields were found"

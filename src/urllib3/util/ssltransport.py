@@ -3,7 +3,6 @@ import socket
 import ssl
 
 from urllib3.exceptions import ProxySchemeUnsupported
-from urllib3.packages import six
 
 SSL_BLOCKSIZE = 16384
 
@@ -30,16 +29,10 @@ class SSLTransport:
         """
 
         if not hasattr(ssl_context, "wrap_bio"):
-            if six.PY2:
-                raise ProxySchemeUnsupported(
-                    "TLS in TLS requires SSLContext.wrap_bio() which isn't "
-                    "supported on Python 2"
-                )
-            else:
-                raise ProxySchemeUnsupported(
-                    "TLS in TLS requires SSLContext.wrap_bio() which isn't "
-                    "available on non-native SSLContext"
-                )
+            raise ProxySchemeUnsupported(
+                "TLS in TLS requires SSLContext.wrap_bio() which isn't "
+                "available on non-native SSLContext"
+            )
 
     def __init__(
         self, socket, ssl_context, server_hostname=None, suppress_ragged_eofs=True
@@ -113,7 +106,7 @@ class SSLTransport:
         changes to point to the socket directly.
         """
         if not set(mode) <= {"r", "w", "b"}:
-            raise ValueError("invalid mode %r (only r, w, b allowed)" % (mode,))
+            raise ValueError(f"invalid mode {mode!r} (only r, w, b allowed)")
 
         writing = "w" in mode
         reading = "r" in mode or not writing

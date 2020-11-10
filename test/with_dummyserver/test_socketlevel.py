@@ -1,5 +1,7 @@
 # TODO: Break this module up into pieces. Maybe group by functionality tested
 # rather than the socket level-ness of it.
+import http.client as httplib
+
 from dummyserver.server import (
     DEFAULT_CA,
     DEFAULT_CERTS,
@@ -17,19 +19,18 @@ from urllib3.exceptions import (
     ReadTimeoutError,
     SSLError,
 )
-from urllib3.packages.six.moves import http_client as httplib
 from urllib3.poolmanager import proxy_from_url
 from urllib3.util import ssl_, ssl_wrap_socket
 from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
 
-from .. import LogRecorder, has_alpn, onlyPy3
+from .. import LogRecorder, has_alpn
 
 try:
     from mimetools import Message as MimeToolMessage
 except ImportError:
 
-    class MimeToolMessage(object):
+    class MimeToolMessage:
         pass
 
 
@@ -44,15 +45,14 @@ from collections import OrderedDict
 from test import (
     LONG_TIMEOUT,
     SHORT_TIMEOUT,
-    notPyPy2,
     notSecureTransport,
     notWindows,
     requires_ssl_context_keyfile_password,
     resolvesLocalhostFQDN,
 )
 from threading import Event
+from unittest import mock
 
-import mock
 import pytest
 import trustme
 
@@ -149,7 +149,7 @@ class TestClientCerts(SocketDummyServerTestCase):
     def setup_class(cls):
         cls.tmpdir = tempfile.mkdtemp()
         ca = trustme.CA()
-        cert = ca.issue_cert(u"localhost")
+        cert = ca.issue_cert("localhost")
         encrypted_key = encrypt_key_pem(cert.private_key_pem, b"letmein")
 
         cls.ca_path = os.path.join(cls.tmpdir, "ca.pem")
@@ -296,7 +296,7 @@ class TestClientCerts(SocketDummyServerTestCase):
 
     @requires_ssl_context_keyfile_password
     def test_client_cert_with_string_password(self):
-        self.run_client_cert_with_password_test(u"letmein")
+        self.run_client_cert_with_password_test("letmein")
 
     @requires_ssl_context_keyfile_password
     def test_client_cert_with_bytes_password(self):
@@ -385,7 +385,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 while not buf.endswith(b"\r\n\r\n"):
                     buf = sock.recv(65536)
 
-                body = "Response %d" % i
+                body = f"Response {int(i)}"
                 sock.send(
                     (
                         "HTTP/1.1 200 OK\r\n"
@@ -759,14 +759,12 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
             # Send partial chunked response and then hang.
             sock.send(
-                (
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Type: text/plain\r\n"
-                    "Transfer-Encoding: chunked\r\n"
-                    "\r\n"
-                    "8\r\n"
-                    "12345678\r\n"
-                ).encode("utf-8")
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: text/plain\r\n"
+                b"Transfer-Encoding: chunked\r\n"
+                b"\r\n"
+                b"8\r\n"
+                b"12345678\r\n"
             )
             timed_out.wait(5)
 
@@ -785,15 +783,13 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
             # Send complete chunked response.
             new_sock.send(
-                (
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Type: text/plain\r\n"
-                    "Transfer-Encoding: chunked\r\n"
-                    "\r\n"
-                    "8\r\n"
-                    "12345678\r\n"
-                    "0\r\n\r\n"
-                ).encode("utf-8")
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: text/plain\r\n"
+                b"Transfer-Encoding: chunked\r\n"
+                b"\r\n"
+                b"8\r\n"
+                b"12345678\r\n"
+                b"0\r\n\r\n"
             )
 
             new_sock.close()
@@ -829,12 +825,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 buf = sock.recv(65536)
 
             sock.send(
-                (
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Type: text/plain\r\n"
-                    "Content-Length: 0\r\n"
-                    "\r\n"
-                ).encode("utf-8")
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: text/plain\r\n"
+                b"Content-Length: 0\r\n"
+                b"\r\n"
             )
 
             # Wait for the socket to close.
@@ -890,15 +884,13 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
             # Send complete chunked response.
             sock.send(
-                (
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Type: text/plain\r\n"
-                    "Transfer-Encoding: chunked\r\n"
-                    "\r\n"
-                    "8\r\n"
-                    "12345678\r\n"
-                    "0\r\n\r\n"
-                ).encode("utf-8")
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: text/plain\r\n"
+                b"Transfer-Encoding: chunked\r\n"
+                b"\r\n"
+                b"8\r\n"
+                b"12345678\r\n"
+                b"0\r\n\r\n"
             )
 
             sock.close()
@@ -949,7 +941,7 @@ class TestProxyManager(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(echo_socket_handler)
-        base_url = "http://%s:%d" % (self.host, self.port)
+        base_url = f"http://{self.host}:{self.port}"
         with proxy_from_url(base_url) as proxy:
             r = proxy.request("GET", "http://google.com/")
 
@@ -989,7 +981,7 @@ class TestProxyManager(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(echo_socket_handler)
-        base_url = "http://%s:%d" % (self.host, self.port)
+        base_url = f"http://{self.host}:{self.port}"
 
         # Define some proxy headers.
         proxy_headers = HTTPHeaderDict({"For The Proxy": "YEAH!"})
@@ -1032,7 +1024,7 @@ class TestProxyManager(SocketDummyServerTestCase):
             close_event.set()
 
         self._start_server(echo_socket_handler)
-        base_url = "http://%s:%d" % (self.host, self.port)
+        base_url = f"http://{self.host}:{self.port}"
 
         with proxy_from_url(base_url) as proxy:
             conn = proxy.connection_from_url("http://www.google.com")
@@ -1060,20 +1052,16 @@ class TestProxyManager(SocketDummyServerTestCase):
                 buf += sock.recv(65536)
             s = buf.decode("utf-8")
             if not s.startswith("CONNECT "):
-                sock.send(
-                    (
-                        "HTTP/1.1 405 Method not allowed\r\nAllow: CONNECT\r\n\r\n"
-                    ).encode("utf-8")
-                )
+                sock.send(b"HTTP/1.1 405 Method not allowed\r\nAllow: CONNECT\r\n\r\n")
                 sock.close()
                 return
 
-            if not s.startswith("CONNECT %s:443" % (self.host,)):
-                sock.send(("HTTP/1.1 403 Forbidden\r\n\r\n").encode("utf-8"))
+            if not s.startswith(f"CONNECT {self.host}:443"):
+                sock.send(b"HTTP/1.1 403 Forbidden\r\n\r\n")
                 sock.close()
                 return
 
-            sock.send(("HTTP/1.1 200 Connection Established\r\n\r\n").encode("utf-8"))
+            sock.send(b"HTTP/1.1 200 Connection Established\r\n\r\n")
             ssl_sock = ssl.wrap_socket(
                 sock,
                 server_side=True,
@@ -1087,14 +1075,12 @@ class TestProxyManager(SocketDummyServerTestCase):
                 buf += ssl_sock.recv(65536)
 
             ssl_sock.send(
-                (
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Type: text/plain\r\n"
-                    "Content-Length: 2\r\n"
-                    "Connection: close\r\n"
-                    "\r\n"
-                    "Hi"
-                ).encode("utf-8")
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: text/plain\r\n"
+                b"Content-Length: 2\r\n"
+                b"Connection: close\r\n"
+                b"\r\n"
+                b"Hi"
             )
             ssl_sock.close()
 
@@ -1103,10 +1089,10 @@ class TestProxyManager(SocketDummyServerTestCase):
             proxy_ssl_one(listener)
 
         self._start_server(echo_socket_handler)
-        base_url = "http://%s:%d" % (self.host, self.port)
+        base_url = f"http://{self.host}:{self.port}"
 
         with proxy_from_url(base_url, ca_certs=DEFAULT_CA) as proxy:
-            url = "https://{0}".format(self.host)
+            url = f"https://{self.host}"
             conn = proxy.connection_from_url(url)
             r = conn.urlopen("GET", url, retries=0)
             assert r.status == 200
@@ -1124,7 +1110,7 @@ class TestProxyManager(SocketDummyServerTestCase):
                 buf += sock.recv(65536)
             s = buf.decode("utf-8")
 
-            if s.startswith("CONNECT [%s]:443" % (ipv6_addr,)):
+            if s.startswith(f"CONNECT [{ipv6_addr}]:443"):
                 sock.send(b"HTTP/1.1 200 Connection Established\r\n\r\n")
                 ssl_sock = ssl.wrap_socket(
                     sock,
@@ -1149,10 +1135,10 @@ class TestProxyManager(SocketDummyServerTestCase):
                 sock.close()
 
         self._start_server(echo_socket_handler)
-        base_url = "http://%s:%d" % (self.host, self.port)
+        base_url = f"http://{self.host}:{self.port}"
 
         with proxy_from_url(base_url, cert_reqs="NONE") as proxy:
-            url = "https://[{0}]".format(ipv6_addr)
+            url = f"https://[{ipv6_addr}]"
             conn = proxy.connection_from_url(url)
             try:
                 r = conn.urlopen("GET", url, retries=0)
@@ -1180,13 +1166,11 @@ class TestSSL(SocketDummyServerTestCase):
 
             # Deliberately send from the non-SSL socket.
             sock2.send(
-                (
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Type: text/plain\r\n"
-                    "Content-Length: 2\r\n"
-                    "\r\n"
-                    "Hi"
-                ).encode("utf-8")
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: text/plain\r\n"
+                b"Content-Length: 2\r\n"
+                b"\r\n"
+                b"Hi"
             )
             sock2.close()
             ssl_sock.close()
@@ -1216,13 +1200,11 @@ class TestSSL(SocketDummyServerTestCase):
 
             # Send incomplete message (note Content-Length)
             ssl_sock.send(
-                (
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Type: text/plain\r\n"
-                    "Content-Length: 10\r\n"
-                    "\r\n"
-                    "Hi-"
-                ).encode("utf-8")
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: text/plain\r\n"
+                b"Content-Length: 10\r\n"
+                b"\r\n"
+                b"Hi-"
             )
             timed_out.wait()
 
@@ -1303,13 +1285,11 @@ class TestSSL(SocketDummyServerTestCase):
 
             # Deliberately send from the non-SSL socket to trigger an SSLError
             sock2.send(
-                (
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Type: text/plain\r\n"
-                    "Content-Length: 4\r\n"
-                    "\r\n"
-                    "Fail"
-                ).encode("utf-8")
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: text/plain\r\n"
+                b"Content-Length: 4\r\n"
+                b"\r\n"
+                b"Fail"
             )
             sock2.close()
             ssl_sock.close()
@@ -1375,7 +1355,6 @@ class TestSSL(SocketDummyServerTestCase):
                     pool.request("GET", "/", timeout=SHORT_TIMEOUT)
                 context.load_default_certs.assert_called_with()
 
-    @notPyPy2
     def test_ssl_dont_load_default_certs_when_given(self):
         def socket_handler(listener):
             sock = listener.accept()[0]
@@ -1437,7 +1416,7 @@ class TestSSL(SocketDummyServerTestCase):
             try:
                 sock.settimeout(SHORT_TIMEOUT)  # Python 3
                 sock.recv(1)  # Python 2
-            except (OSError, socket.error):
+            except OSError:
                 return True
             return False
 
@@ -1490,7 +1469,6 @@ class TestErrorWrapping(SocketDummyServerTestCase):
 
 
 class TestHeaders(SocketDummyServerTestCase):
-    @onlyPy3
     def test_httplib_headers_case_insensitive(self):
         self.start_response_handler(
             b"HTTP/1.1 200 OK\r\n"
@@ -1522,9 +1500,7 @@ class TestHeaders(SocketDummyServerTestCase):
                 (key, value) = header.split(b": ")
                 self.parsed_headers[key.decode("ascii")] = value.decode("ascii")
 
-            sock.send(
-                ("HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n").encode("utf-8")
-            )
+            sock.send(b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n")
 
             sock.close()
 
@@ -1536,7 +1512,7 @@ class TestHeaders(SocketDummyServerTestCase):
         self.start_parsing_handler()
         expected_headers = {
             "Accept-Encoding": "identity",
-            "Host": "{0}:{1}".format(self.host, self.port),
+            "Host": f"{self.host}:{self.port}",
             "User-Agent": _get_default_user_agent(),
         }
         expected_headers.update(headers)
@@ -1551,7 +1527,7 @@ class TestHeaders(SocketDummyServerTestCase):
         self.start_parsing_handler()
         expected_headers = {
             "Accept-Encoding": "identity",
-            "Host": "{0}:{1}".format(self.host, self.port),
+            "Host": f"{self.host}:{self.port}",
         }
         expected_headers.update(headers)
 
@@ -1566,7 +1542,7 @@ class TestHeaders(SocketDummyServerTestCase):
         #       so that if the internal implementation tries to sort them,
         #       a change will be detected.
         expected_request_headers = [
-            (u"X-Header-%d" % i, str(i)) for i in reversed(range(K))
+            (f"X-Header-{int(i)}", str(i)) for i in reversed(range(K))
         ]
 
         def filter_non_x_headers(d):
@@ -1588,7 +1564,7 @@ class TestHeaders(SocketDummyServerTestCase):
         with HTTPConnectionPool(self.host + ".", self.port, retries=False) as pool:
             pool.request("GET", "/")
             self.assert_header_received(
-                self.received_headers, "Host", "%s:%s" % (self.host, self.port)
+                self.received_headers, "Host", f"{self.host}:{self.port}"
             )
 
     def test_response_headers_are_returned_in_the_original_order(self):
@@ -1598,7 +1574,7 @@ class TestHeaders(SocketDummyServerTestCase):
         #       so that if the internal implementation tries to sort them,
         #       a change will be detected.
         expected_response_headers = [
-            ("X-Header-%d" % i, str(i)) for i in reversed(range(K))
+            (f"X-Header-{int(i)}", str(i)) for i in reversed(range(K))
         ]
 
         def socket_handler(listener):

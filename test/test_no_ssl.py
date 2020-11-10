@@ -10,7 +10,7 @@ import sys
 import pytest
 
 
-class ImportBlocker(object):
+class ImportBlocker:
     """
     Block Imports
 
@@ -27,10 +27,10 @@ class ImportBlocker(object):
         return None
 
     def load_module(self, fullname):
-        raise ImportError("import of {0} is blocked".format(fullname))
+        raise ImportError(f"import of {fullname} is blocked")
 
 
-class ModuleStash(object):
+class ModuleStash:
     """
     Stashes away previously imported modules
 
@@ -64,7 +64,7 @@ ssl_blocker = ImportBlocker("ssl", "_ssl")
 module_stash = ModuleStash("urllib3")
 
 
-class TestWithoutSSL(object):
+class TestWithoutSSL:
     @classmethod
     def setup_class(cls):
         sys.modules.pop("ssl", None)

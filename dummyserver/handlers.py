@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import collections
 import contextlib
 import gzip
@@ -9,19 +7,19 @@ import sys
 import time
 import zlib
 from datetime import datetime, timedelta
+from http.client import responses
 from io import BytesIO
+from urllib.parse import urlsplit
 
 from tornado import httputil
 from tornado.web import RequestHandler
 
-from urllib3.packages.six import binary_type, ensure_str
-from urllib3.packages.six.moves.http_client import responses
-from urllib3.packages.six.moves.urllib.parse import urlsplit
+from urllib3.packages.six import ensure_str
 
 log = logging.getLogger(__name__)
 
 
-class Response(object):
+class Response:
     def __init__(self, body="", status="200 OK", headers=None):
         self.body = body
         self.status = status
@@ -112,13 +110,13 @@ class TestingApp(RequestHandler):
         cert = request.get_ssl_certificate()
         subject = dict()
         if cert is not None:
-            subject = dict((k, v) for (k, v) in [y for z in cert["subject"] for y in z])
+            subject = {k: v for (k, v) in [y for z in cert["subject"] for y in z]}
         return Response(json.dumps(subject))
 
     def alpn_protocol(self, request):
         """Return the selected ALPN protocol."""
         proto = request.connection.stream.socket.selected_alpn_protocol()
-        return Response(proto.encode("utf8") if proto is not None else u"")
+        return Response(proto.encode("utf8") if proto is not None else "")
 
     def source_address(self, request):
         """Return the requester's IP address."""
@@ -128,9 +126,9 @@ class TestingApp(RequestHandler):
         test_type = request.params.get("test_type")
         test_id = request.params.get("test_id")
         if test_id:
-            print("\nNew test %s: %s" % (test_type, test_id))
+            print(f"\nNew test {test_type}: {test_id}")
         else:
-            print("\nNew test %s" % test_type)
+            print(f"\nNew test {test_type}")
         return Response("Dummy server is ready!")
 
     def specific_method(self, request):
@@ -141,7 +139,7 @@ class TestingApp(RequestHandler):
 
         if request.method != method:
             return Response(
-                "Wrong method: %s != %s" % (method, request.method),
+                f"Wrong method: {method} != {request.method}",
                 status="400 Bad Request",
             )
         return Response()
@@ -156,7 +154,7 @@ class TestingApp(RequestHandler):
 
         if len(files_) != 1:
             return Response(
-                "Expected 1 file for '%s', not %d" % (param, len(files_)),
+                f"Expected 1 file for '{param}', not {len(files_)}",
                 status="400 Bad Request",
             )
         file_ = files_[0]
@@ -164,17 +162,17 @@ class TestingApp(RequestHandler):
         data = file_["body"]
         if int(size) != len(data):
             return Response(
-                "Wrong size: %d != %d" % (size, len(data)), status="400 Bad Request"
+                f"Wrong size: {int(size)} != {len(data)}", status="400 Bad Request"
             )
 
         got_filename = file_["filename"]
-        if isinstance(got_filename, binary_type):
+        if isinstance(got_filename, bytes):
             got_filename = got_filename.decode("utf-8")
 
         # Tornado can leave the trailing \n in place on the filename.
         if filename != got_filename:
             return Response(
-                u"Wrong filename: %s != %s" % (filename, file_.filename),
+                f"Wrong filename: {filename} != {file_.filename}",
                 status="400 Bad Request",
             )
 
@@ -185,7 +183,7 @@ class TestingApp(RequestHandler):
         target = request.params.get("target", "/")
         status = request.params.get("status", "303 See Other")
         if len(status) == 3:
-            status = "%s Redirect" % status.decode("latin-1")
+            status = f"{status.decode('latin-1')} Redirect"
 
         headers = [("Location", target)]
         return Response(status=status, headers=headers)
@@ -197,11 +195,11 @@ class TestingApp(RequestHandler):
         "Performs a redirect chain based on ``redirect_codes``"
         codes = request.params.get("redirect_codes", b"200").decode("utf-8")
         head, tail = codes.split(",", 1) if "," in codes else (codes, None)
-        status = "{0} {1}".format(head, responses[int(head)])
+        status = f"{head} {responses[int(head)]}"
         if not tail:
             return Response("Done redirecting", status=status)
 
-        headers = [("Location", "/multi_redirect?redirect_codes=%s" % tail)]
+        headers = [("Location", f"/multi_redirect?redirect_codes={tail}")]
         return Response(status=status, headers=headers)
 
     def keepalive(self, request):

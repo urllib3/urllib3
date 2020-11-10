@@ -1,4 +1,3 @@
-# coding: utf-8
 import hashlib
 import io
 import logging
@@ -6,10 +5,10 @@ import socket
 import ssl
 import warnings
 from itertools import chain
-from test import notBrotlipy, onlyBrotlipy, onlyPy2, onlyPy3
+from test import notBrotlipy, onlyBrotlipy
+from unittest.mock import Mock, patch
 
 import pytest
-from mock import Mock, patch
 
 from urllib3 import add_stderr_logger, disable_warnings, util
 from urllib3.exceptions import (
@@ -19,7 +18,6 @@ from urllib3.exceptions import (
     TimeoutStateError,
     UnrewindableBodyError,
 )
-from urllib3.packages import six
 from urllib3.poolmanager import ProxyConfig
 from urllib3.util import is_fp_closed
 from urllib3.util.connection import _has_ipv6, allowed_gai_family, create_connection
@@ -43,7 +41,7 @@ from . import clear_warnings
 TIMEOUT_EPOCH = 1000
 
 
-class TestUtil(object):
+class TestUtil:
 
     url_host_map = [
         # Hosts
@@ -145,7 +143,7 @@ class TestUtil(object):
             "http://::1/",
             "http://::1:80/",
             "http://google.com:-80",
-            six.u("http://google.com:\xb2\xb2"),  # \xb2 = ^2
+            "http://google.com:\xb2\xb2",  # \xb2 = ^2
         ],
     )
     def test_invalid_host(self, location):
@@ -156,11 +154,11 @@ class TestUtil(object):
         "url",
         [
             # Invalid IDNA labels
-            u"http://\uD7FF.com",
-            u"http://❤️",
+            "http://\uD7FF.com",
+            "http://❤️",
             # Unicode surrogates
-            u"http://\uD800.com",
-            u"http://\uDC00.com",
+            "http://\uD800.com",
+            "http://\uDC00.com",
         ],
     )
     def test_invalid_url(self, url):
@@ -259,8 +257,8 @@ class TestUtil(object):
         ),
         # Unicode type (Python 2.x)
         (
-            u"http://foo:bar@localhost/",
-            Url(u"http", auth=u"foo:bar", host=u"localhost", path=u"/"),
+            "http://foo:bar@localhost/",
+            Url("http", auth="foo:bar", host="localhost", path="/"),
         ),
         (
             "http://foo:bar@localhost/",
@@ -279,26 +277,26 @@ class TestUtil(object):
         ("http://google.com:/", Url("http", host="google.com", path="/")),
         # Uppercase IRI
         (
-            u"http://Königsgäßchen.de/straße",
+            "http://Königsgäßchen.de/straße",
             Url("http", host="xn--knigsgchen-b4a3dun.de", path="/stra%C3%9Fe"),
         ),
         # Percent-encode in userinfo
         (
-            u"http://user@email.com:password@example.com/",
+            "http://user@email.com:password@example.com/",
             Url("http", auth="user%40email.com:password", host="example.com", path="/"),
         ),
         (
-            u'http://user":quoted@example.com/',
+            'http://user":quoted@example.com/',
             Url("http", auth="user%22:quoted", host="example.com", path="/"),
         ),
         # Unicode Surrogates
-        (u"http://google.com/\uD800", Url("http", host="google.com", path="%ED%A0%80")),
+        ("http://google.com/\uD800", Url("http", host="google.com", path="%ED%A0%80")),
         (
-            u"http://google.com?q=\uDC00",
+            "http://google.com?q=\uDC00",
             Url("http", host="google.com", path="", query="q=%ED%B0%80"),
         ),
         (
-            u"http://google.com#\uDC00",
+            "http://google.com#\uDC00",
             Url("http", host="google.com", path="", fragment="%ED%B0%80"),
         ),
     ]
@@ -385,7 +383,7 @@ class TestUtil(object):
         ),
         # NodeJS unicode -> double dot
         (
-            u"http://google.com/\uff2e\uff2e/abc",
+            "http://google.com/\uff2e\uff2e/abc",
             Url("http", host="google.com", path="/%EF%BC%AE%EF%BC%AE/abc"),
         ),
         # Scheme without ://
@@ -396,14 +394,14 @@ class TestUtil(object):
         ("//google.com/a/b/c", Url(host="google.com", path="/a/b/c")),
         # International URLs
         (
-            u"http://ヒ:キ@ヒ.abc.ニ/ヒ?キ#ワ",
+            "http://ヒ:キ@ヒ.abc.ニ/ヒ?キ#ワ",
             Url(
-                u"http",
-                host=u"xn--pdk.abc.xn--idk",
-                auth=u"%E3%83%92:%E3%82%AD",
-                path=u"/%E3%83%92",
-                query=u"%E3%82%AD",
-                fragment=u"%E3%83%AF",
+                "http",
+                host="xn--pdk.abc.xn--idk",
+                auth="%E3%83%92:%E3%82%AD",
+                path="/%E3%83%92",
+                query="%E3%82%AD",
+                fragment="%E3%83%AF",
             ),
         ),
         # Injected headers (CVE-2016-5699, CVE-2019-9740, CVE-2019-9947)
@@ -448,26 +446,7 @@ class TestUtil(object):
         else:
             assert parse_url(url) == expected_url
 
-    @onlyPy2
-    def test_parse_url_bytes_to_str_python_2(self):
-        url = parse_url(b"https://www.google.com/")
-        assert url == Url("https", host="www.google.com", path="/")
-
-        assert isinstance(url.scheme, str)
-        assert isinstance(url.host, str)
-        assert isinstance(url.path, str)
-
-    @onlyPy2
-    def test_parse_url_unicode_python_2(self):
-        url = parse_url(u"https://www.google.com/")
-        assert url == Url(u"https", host=u"www.google.com", path=u"/")
-
-        assert isinstance(url.scheme, six.text_type)
-        assert isinstance(url.host, six.text_type)
-        assert isinstance(url.path, six.text_type)
-
-    @onlyPy3
-    def test_parse_url_bytes_type_error_python_3(self):
+    def test_parse_url_bytes_type_error(self):
         with pytest.raises(TypeError):
             parse_url(b"https://www.google.com/")
 
@@ -542,7 +521,7 @@ class TestUtil(object):
     def test_rewind_body_failed_seek(self):
         class BadSeek:
             def seek(self, pos, offset=0):
-                raise IOError
+                raise OSError
 
         with pytest.raises(UnrewindableBodyError):
             rewind_body(BadSeek(), body_pos=2)
@@ -668,7 +647,7 @@ class TestUtil(object):
         assert timeout.get_connect_duration() == 37
 
     def test_is_fp_closed_object_supports_closed(self):
-        class ClosedFile(object):
+        class ClosedFile:
             @property
             def closed(self):
                 return True
@@ -676,7 +655,7 @@ class TestUtil(object):
         assert is_fp_closed(ClosedFile())
 
     def test_is_fp_closed_object_has_none_fp(self):
-        class NoneFpFile(object):
+        class NoneFpFile:
             @property
             def fp(self):
                 return None
@@ -684,7 +663,7 @@ class TestUtil(object):
         assert is_fp_closed(NoneFpFile())
 
     def test_is_fp_closed_object_has_fp(self):
-        class FpFile(object):
+        class FpFile:
             @property
             def fp(self):
                 return True
@@ -692,7 +671,7 @@ class TestUtil(object):
         assert not is_fp_closed(FpFile())
 
     def test_is_fp_closed_object_has_neither_fp_nor_closed(self):
-        class NotReallyAFile(object):
+        class NotReallyAFile:
             pass
 
         with pytest.raises(ValueError):
@@ -777,7 +756,6 @@ class TestUtil(object):
         ssl_context = create_proxy_ssl_context(ssl_version=None, cert_reqs=None)
         ssl_context.verify_mode = ssl.CERT_REQUIRED
 
-    @onlyPy3
     def test_assert_header_parsing_no_error_on_multipart(self):
         from http import client
 
@@ -795,7 +773,7 @@ class TestUtil(object):
     def test_create_connection_with_invalid_idna_labels(self, host):
         with pytest.raises(LocationParseError) as ctx:
             create_connection((host, 80))
-        assert str(ctx.value) == "Failed to parse: '%s', label empty or too long" % host
+        assert str(ctx.value) == f"Failed to parse: '{host}', label empty or too long"
 
     @pytest.mark.parametrize(
         "host",
@@ -815,7 +793,7 @@ class TestUtil(object):
         create_connection((host, 80))
 
 
-class TestUtilSSL(object):
+class TestUtilSSL:
     """Test utils that use an SSL backend."""
 
     @pytest.mark.parametrize(

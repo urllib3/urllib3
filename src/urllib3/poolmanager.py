@@ -1,8 +1,7 @@
-from __future__ import absolute_import
-
 import collections
 import functools
 import logging
+from urllib.parse import urljoin
 
 from ._collections import RecentlyUsedContainer
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
@@ -10,11 +9,8 @@ from .exceptions import (
     LocationValueError,
     MaxRetryError,
     ProxySchemeUnknown,
-    ProxySchemeUnsupported,
     URLSchemeUnknown,
 )
-from .packages import six
-from .packages.six.moves.urllib.parse import urljoin
 from .request import RequestMethods
 from .util.proxy import connection_requires_http_tunnel
 from .util.retry import Retry
@@ -343,12 +339,6 @@ class PoolManager(RequestMethods):
         if self.proxy.scheme != "https":
             return
 
-        if six.PY2 and not self.proxy_config.use_forwarding_for_https:
-            raise ProxySchemeUnsupported(
-                "Contacting HTTPS destinations through HTTPS proxies "
-                "'via CONNECT tunnels' is not supported in Python 2"
-            )
-
     def urlopen(self, method, url, redirect=True, **kw):
         """
         Same as :meth:`urllib3.HTTPConnectionPool.urlopen`
@@ -395,7 +385,7 @@ class PoolManager(RequestMethods):
         if retries.remove_headers_on_redirect and not conn.is_same_host(
             redirect_location
         ):
-            headers = list(six.iterkeys(kw["headers"]))
+            headers = list(kw["headers"].keys())
             for header in headers:
                 if header.lower() in retries.remove_headers_on_redirect:
                     kw["headers"].pop(header, None)
@@ -465,15 +455,11 @@ class ProxyManager(PoolManager):
         proxy_headers=None,
         proxy_ssl_context=None,
         use_forwarding_for_https=False,
-        **connection_pool_kw
+        **connection_pool_kw,
     ):
 
         if isinstance(proxy_url, HTTPConnectionPool):
-            proxy_url = "%s://%s:%i" % (
-                proxy_url.scheme,
-                proxy_url.host,
-                proxy_url.port,
-            )
+            proxy_url = f"{proxy_url.scheme}://{proxy_url.host}:{proxy_url.port}"
         proxy = parse_url(proxy_url)
 
         if proxy.scheme not in ("http", "https"):
@@ -492,15 +478,15 @@ class ProxyManager(PoolManager):
         connection_pool_kw["_proxy_headers"] = self.proxy_headers
         connection_pool_kw["_proxy_config"] = self.proxy_config
 
-        super(ProxyManager, self).__init__(num_pools, headers, **connection_pool_kw)
+        super().__init__(num_pools, headers, **connection_pool_kw)
 
     def connection_from_host(self, host, port=None, scheme="http", pool_kwargs=None):
         if scheme == "https":
-            return super(ProxyManager, self).connection_from_host(
+            return super().connection_from_host(
                 host, port, scheme, pool_kwargs=pool_kwargs
             )
 
-        return super(ProxyManager, self).connection_from_host(
+        return super().connection_from_host(
             self.proxy.host, self.proxy.port, self.proxy.scheme, pool_kwargs=pool_kwargs
         )
 
@@ -529,7 +515,7 @@ class ProxyManager(PoolManager):
             headers = kw.get("headers", self.headers)
             kw["headers"] = self._set_proxy_headers(url, headers)
 
-        return super(ProxyManager, self).urlopen(method, url, redirect=redirect, **kw)
+        return super().urlopen(method, url, redirect=redirect, **kw)
 
 
 def proxy_from_url(url, **kw):

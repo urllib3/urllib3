@@ -1,17 +1,15 @@
-from __future__ import absolute_import
-
 import datetime
 import logging
 import os
 import re
 import socket
 import warnings
+from http.client import HTTPConnection as _HTTPConnection
+from http.client import HTTPException  # noqa: F401
 from socket import error as SocketError
 from socket import timeout as SocketTimeout
 
 from .packages import six
-from .packages.six.moves.http_client import HTTPConnection as _HTTPConnection
-from .packages.six.moves.http_client import HTTPException  # noqa: F401
 from .util.proxy import create_proxy_ssl_context
 
 try:  # Compiled with SSL?
@@ -22,24 +20,6 @@ except (ImportError, AttributeError):  # Platform-specific: No SSL.
     ssl = None
 
     class BaseSSLError(BaseException):
-        pass
-
-
-try:
-    # Python 3: not a no-op, we're adding this to the namespace so it can be imported.
-    ConnectionError = ConnectionError
-except NameError:
-    # Python 2
-    class ConnectionError(Exception):
-        pass
-
-
-try:  # Python 3:
-    # Not a no-op, we're adding this to the namespace so it can be imported.
-    BrokenPipeError = BrokenPipeError
-except NameError:  # Python 2:
-
-    class BrokenPipeError(Exception):
         pass
 
 
@@ -60,6 +40,11 @@ from .util.ssl_ import (
     ssl_wrap_socket,
 )
 
+# Not a no-op, we're adding this to the namespace so it can be imported.
+ConnectionError = ConnectionError
+BrokenPipeError = BrokenPipeError
+
+
 log = logging.getLogger(__name__)
 
 port_by_scheme = {"http": 80, "https": 443}
@@ -71,7 +56,7 @@ RECENT_DATE = datetime.date(2019, 1, 1)
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
-class HTTPConnection(_HTTPConnection, object):
+class HTTPConnection(_HTTPConnection):
     """
     Based on :class:`http.client.HTTPConnection` but provides an extra constructor
     backwards-compatibility layer between older and newer Pythons.
@@ -107,8 +92,7 @@ class HTTPConnection(_HTTPConnection, object):
     is_verified = False
 
     def __init__(self, *args, **kw):
-        if not six.PY2:
-            kw.pop("strict", None)
+        kw.pop("strict", None)
 
         # Pre-set source_address.
         self.source_address = kw.get("source_address")
@@ -172,14 +156,11 @@ class HTTPConnection(_HTTPConnection, object):
         except SocketTimeout:
             raise ConnectTimeoutError(
                 self,
-                "Connection to %s timed out. (connect timeout=%s)"
-                % (self.host, self.timeout),
+                f"Connection to {self.host} timed out. (connect timeout={self.timeout})",
             )
 
         except SocketError as e:
-            raise NewConnectionError(
-                self, "Failed to establish a new connection: %s" % e
-            )
+            raise NewConnectionError(self, f"Failed to establish a new connection: {e}")
 
         return conn
 
@@ -206,8 +187,7 @@ class HTTPConnection(_HTTPConnection, object):
         match = _CONTAINS_CONTROL_CHAR_RE.search(method)
         if match:
             raise ValueError(
-                "Method cannot contain non-token characters %r (found at least %r)"
-                % (method, match.group())
+                f"Method cannot contain non-token characters {method!r} (found at least {match.group()!r})"
             )
 
         return _HTTPConnection.putrequest(self, method, url, *args, **kwargs)
@@ -218,8 +198,9 @@ class HTTPConnection(_HTTPConnection, object):
             _HTTPConnection.putheader(self, header, *values)
         elif six.ensure_str(header.lower()) not in SKIPPABLE_HEADERS:
             raise ValueError(
-                "urllib3.util.SKIP_HEADER only supports '%s'"
-                % ("', '".join(map(str.title, sorted(SKIPPABLE_HEADERS))),)
+                "urllib3.util.SKIP_HEADER only supports '{}'".format(
+                    "', '".join(map(str.title, sorted(SKIPPABLE_HEADERS)))
+                )
             )
 
     def request(self, method, url, body=None, headers=None):
@@ -230,7 +211,7 @@ class HTTPConnection(_HTTPConnection, object):
             headers = headers.copy()
         if "user-agent" not in (six.ensure_str(k.lower()) for k in headers):
             headers["User-Agent"] = _get_default_user_agent()
-        super(HTTPConnection, self).request(method, url, body=body, headers=headers)
+        super().request(method, url, body=body, headers=headers)
 
     def request_chunked(self, method, url, body=None, headers=None):
         """
@@ -238,7 +219,7 @@ class HTTPConnection(_HTTPConnection, object):
         body with chunked encoding and not as one block
         """
         headers = headers or {}
-        header_keys = set([six.ensure_str(k.lower()) for k in headers])
+        header_keys = {six.ensure_str(k.lower()) for k in headers}
         skip_accept_encoding = "accept-encoding" in header_keys
         skip_host = "host" in header_keys
         self.putrequest(
@@ -253,8 +234,7 @@ class HTTPConnection(_HTTPConnection, object):
         self.endheaders()
 
         if body is not None:
-            stringish_types = six.string_types + (bytes,)
-            if isinstance(body, stringish_types):
+            if isinstance(body, (str, bytes)):
                 body = (body,)
             for chunk in body:
                 if not chunk:
@@ -299,7 +279,7 @@ class HTTPSConnection(HTTPConnection):
         timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
         ssl_context=None,
         server_hostname=None,
-        **kw
+        **kw,
     ):
 
         HTTPConnection.__init__(self, host, port, strict=strict, timeout=timeout, **kw)
@@ -377,9 +357,9 @@ class HTTPSConnection(HTTPConnection):
         if is_time_off:
             warnings.warn(
                 (
-                    "System time is way off (before {0}). This will probably "
+                    f"System time is way off (before {RECENT_DATE}). This will probably "
                     "lead to SSL verification errors"
-                ).format(RECENT_DATE),
+                ),
                 SystemTimeWarning,
             )
 
@@ -432,8 +412,8 @@ class HTTPSConnection(HTTPConnection):
             warnings.warn(
                 "Negotiating TLSv1/TLSv1.1 by default is deprecated "
                 "and will be disabled in urllib3 v2.0.0. Connecting to "
-                "'%s' with '%s' can be enabled by explicitly opting-in "
-                "with 'ssl_version'" % (self.host, self.sock.version()),
+                f"'{self.host}' with '{self.sock.version()}' can be "
+                "enabled by explicitly opting-in with 'ssl_version'",
                 DeprecationWarning,
             )
 
@@ -453,10 +433,10 @@ class HTTPSConnection(HTTPConnection):
             if not cert.get("subjectAltName", ()):
                 warnings.warn(
                     (
-                        "Certificate for {0} has no `subjectAltName`, falling back to check for a "
+                        f"Certificate for {hostname} has no `subjectAltName`, falling back to check for a "
                         "`commonName` for now. This feature is being removed by major browsers and "
                         "deprecated by RFC 2818. (See https://github.com/urllib3/urllib3/issues/497 "
-                        "for details.)".format(hostname)
+                        "for details.)"
                     ),
                     SubjectAltNameWarning,
                 )
@@ -518,10 +498,10 @@ def _match_hostname(cert, asserted_hostname):
 
 
 def _get_default_user_agent():
-    return "python-urllib3/%s" % __version__
+    return f"python-urllib3/{__version__}"
 
 
-class DummyConnection(object):
+class DummyConnection:
     """Used to detect a failed ConnectionCls import."""
 
     pass

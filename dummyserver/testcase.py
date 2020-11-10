@@ -26,7 +26,7 @@ def consume_socket(sock, chunks=65536):
     return consumed
 
 
-class SocketDummyServerTestCase(object):
+class SocketDummyServerTestCase:
     """
     A simple socket-based server is created for this class that is good for
     exactly one request.
@@ -107,7 +107,7 @@ class IPV4SocketDummyServerTestCase(SocketDummyServerTestCase):
         cls.port = cls.server_thread.port
 
 
-class HTTPDummyServerTestCase(object):
+class HTTPDummyServerTestCase:
     """A simple HTTP server that runs when your test class runs
 
     Have your test class inherit from this one, and then a simple server
@@ -151,7 +151,7 @@ class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
     certs = DEFAULT_CERTS
 
 
-class HTTPDummyProxyTestCase(object):
+class HTTPDummyProxyTestCase:
 
     http_host = "localhost"
     http_host_alt = "127.0.0.1"
@@ -221,7 +221,7 @@ class IPv6HTTPDummyProxyTestCase(HTTPDummyProxyTestCase):
     proxy_host_alt = "127.0.0.1"
 
 
-class ConnectionMarker(object):
+class ConnectionMarker:
     """
     Marks an HTTP(S)Connection's socket after a request was made.
 

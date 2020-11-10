@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import re
 from collections import namedtuple
 
@@ -63,7 +61,7 @@ IPV6_ADDRZ_RE = re.compile("^" + IPV6_ADDRZ_PAT + "$")
 BRACELESS_IPV6_ADDRZ_RE = re.compile("^" + IPV6_ADDRZ_PAT[2:-2] + "$")
 ZONE_ID_RE = re.compile("(" + ZONE_ID_PAT + r")\]$")
 
-SUBAUTHORITY_PAT = (u"^(?:(.*)@)?(%s|%s|%s)(?::([0-9]{0,5}))?$") % (
+SUBAUTHORITY_PAT = ("^(?:(.*)@)?(%s|%s|%s)(?::([0-9]{0,5}))?$") % (
     REG_NAME_PAT,
     IPV4_PAT,
     IPV6_ADDRZ_PAT,
@@ -102,9 +100,7 @@ class Url(namedtuple("Url", url_attrs)):
             path = "/" + path
         if scheme is not None:
             scheme = scheme.lower()
-        return super(Url, cls).__new__(
-            cls, scheme, auth, host, port, path, query, fragment
-        )
+        return super().__new__(cls, scheme, auth, host, port, path, query, fragment)
 
     @property
     def hostname(self):
@@ -125,7 +121,7 @@ class Url(namedtuple("Url", url_attrs)):
     def netloc(self):
         """Network location including host and port"""
         if self.port:
-            return "%s:%d" % (self.host, self.port)
+            return f"{self.host}:{self.port}"
         return self.host
 
     @property
@@ -148,23 +144,23 @@ class Url(namedtuple("Url", url_attrs)):
             'http://username:password@host.com:80/path?query#fragment'
         """
         scheme, auth, host, port, path, query, fragment = self
-        url = u""
+        url = ""
 
         # We use "is not None" we want things to happen with empty strings (or 0 port)
         if scheme is not None:
-            url += scheme + u"://"
+            url += scheme + "://"
         if auth is not None:
-            url += auth + u"@"
+            url += auth + "@"
         if host is not None:
             url += host
         if port is not None:
-            url += u":" + str(port)
+            url += ":" + str(port)
         if path is not None:
             url += path
         if query is not None:
-            url += u"?" + query
+            url += "?" + query
         if fragment is not None:
-            url += u"#" + fragment
+            url += "#" + fragment
 
         return url
 
@@ -273,9 +269,6 @@ def _remove_path_dot_segments(path):
 
 def _normalize_host(host, scheme):
     if host:
-        if isinstance(host, six.binary_type):
-            host = six.ensure_str(host)
-
         if scheme in NORMALIZABLE_SCHEMES:
             is_ipv6 = IPV6_ADDRZ_RE.match(host)
             if is_ipv6:
@@ -304,16 +297,17 @@ def _idna_encode(name):
         try:
             import idna
         except ImportError:
-            six.raise_from(
-                LocationParseError("Unable to parse URL without the 'idna' module"),
-                None,
-            )
+            raise LocationParseError(
+                "Unable to parse URL without the 'idna' module"
+            ) from None
+
         try:
             return idna.encode(name.lower(), strict=True, std3_rules=True)
         except idna.IDNAError:
-            six.raise_from(
-                LocationParseError(u"Name '%s' is not a valid IDNA label" % name), None
-            )
+            raise LocationParseError(
+                f"Name '{name}' is not a valid IDNA label"
+            ) from None
+
     return name.lower().encode("ascii")
 
 
@@ -389,7 +383,7 @@ def parse_url(url):
             fragment = _encode_invalid_chars(fragment, FRAGMENT_CHARS)
 
     except (ValueError, AttributeError):
-        return six.raise_from(LocationParseError(source_url), None)
+        raise LocationParseError(source_url) from None
 
     # For the sake of backwards compatibility we put empty
     # string values for path if there are any defined values
@@ -401,15 +395,8 @@ def parse_url(url):
         else:
             path = None
 
-    # Ensure that each part of the URL is a `str` for
-    # backwards compatibility.
-    if isinstance(url, six.text_type):
-        ensure_func = six.ensure_text
-    else:
-        ensure_func = six.ensure_str
-
     def ensure_type(x):
-        return x if x is None else ensure_func(x)
+        return x if x is None else six.ensure_text(x)
 
     return Url(
         scheme=ensure_type(scheme),

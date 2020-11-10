@@ -13,13 +13,12 @@ from test import (
     TARPIT_HOST,
     notOpenSSL098,
     notSecureTransport,
-    onlyPy279OrNewer,
     requires_network,
     requires_ssl_context_keyfile_password,
     resolvesLocalhostFQDN,
 )
+from unittest import mock
 
-import mock
 import pytest
 import trustme
 
@@ -35,7 +34,6 @@ from urllib3 import HTTPSConnectionPool
 from urllib3.connection import RECENT_DATE, VerifiedHTTPSConnection
 from urllib3.exceptions import (
     ConnectTimeoutError,
-    InsecurePlatformWarning,
     InsecureRequestWarning,
     MaxRetryError,
     ProtocolError,
@@ -88,7 +86,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @classmethod
     def setup_class(cls):
-        super(TestHTTPS, cls).setup_class()
+        super().setup_class()
 
         cls.certs_dir = tempfile.mkdtemp()
         # Start from existing root CA as we don't want to change the server certificate yet
@@ -102,7 +100,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
         # client cert chain
         intermediate_ca = root_ca.create_child_ca()
-        cert = intermediate_ca.issue_cert(u"example.com")
+        cert = intermediate_ca.issue_cert("example.com")
         encrypted_key = encrypt_key_pem(cert.private_key_pem, b"letmein")
 
         cert.private_key_pem.write_to_path(
@@ -122,7 +120,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @classmethod
     def teardown_class(cls):
-        super(TestHTTPS, cls).teardown_class()
+        super().teardown_class()
 
         shutil.rmtree(cls.certs_dir)
 
@@ -220,17 +218,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             if self.tls_protocol_deprecated():
                 w = [x for x in w if x.category != DeprecationWarning]
 
-            # Modern versions of Python, or systems using PyOpenSSL, don't
-            # emit warnings.
-            if (
-                sys.version_info >= (2, 7, 9)
-                or util.IS_PYOPENSSL
-                or util.IS_SECURETRANSPORT
-            ):
-                assert w == []
-            else:
-                assert len(w) > 1
-                assert any(x.category == InsecureRequestWarning for x in w)
+            assert w == []
 
     def test_verified_with_context(self):
         ctx = util.ssl_.create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
@@ -242,23 +230,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             with mock.patch("warnings.warn") as warn:
                 r = https_pool.request("GET", "/")
                 assert r.status == 200
-
-                # Modern versions of Python, or systems using PyOpenSSL, don't
-                # emit warnings.
-                if (
-                    sys.version_info >= (2, 7, 9)
-                    or util.IS_PYOPENSSL
-                    or util.IS_SECURETRANSPORT
-                ):
-                    assert not warn.called, warn.call_args_list
-                else:
-                    assert warn.called
-                    if util.HAS_SNI:
-                        call = warn.call_args_list[0]
-                    else:
-                        call = warn.call_args_list[1]
-                    error = call[0][1]
-                    assert error == InsecurePlatformWarning
+                assert not warn.called, warn.call_args_list
 
     def test_context_combines_with_ca_certs(self):
         ctx = util.ssl_.create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)
@@ -271,25 +243,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             with mock.patch("warnings.warn") as warn:
                 r = https_pool.request("GET", "/")
                 assert r.status == 200
+                assert not warn.called, warn.call_args_list
 
-                # Modern versions of Python, or systems using PyOpenSSL, don't
-                # emit warnings.
-                if (
-                    sys.version_info >= (2, 7, 9)
-                    or util.IS_PYOPENSSL
-                    or util.IS_SECURETRANSPORT
-                ):
-                    assert not warn.called, warn.call_args_list
-                else:
-                    assert warn.called
-                    if util.HAS_SNI:
-                        call = warn.call_args_list[0]
-                    else:
-                        call = warn.call_args_list[1]
-                    error = call[0][1]
-                    assert error == InsecurePlatformWarning
-
-    @onlyPy279OrNewer
     @notSecureTransport  # SecureTransport does not support cert directories
     @notOpenSSL098  # OpenSSL 0.9.8 does not support cert directories
     def test_ca_dir_verified(self, tmpdir):
@@ -332,9 +287,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             with pytest.raises(MaxRetryError) as e:
                 https_pool.request("GET", "/")
             assert isinstance(e.value.reason, SSLError)
-            assert "certificate verify failed" in str(e.value.reason), (
-                "Expected 'certificate verify failed', instead got: %r" % e.value.reason
-            )
+            assert "certificate verify failed" in str(
+                e.value.reason
+            ), f"Expected 'certificate verify failed', instead got: {e.value.reason!r}"
 
     def test_verified_without_ca_certs(self):
         # default is cert_reqs=None which is ssl.CERT_NONE
@@ -399,16 +354,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 if self.tls_protocol_deprecated():
                     calls = [call for call in calls if call[0][1] != DeprecationWarning]
 
-                if (
-                    sys.version_info >= (2, 7, 9)
-                    or util.IS_PYOPENSSL
-                    or util.IS_SECURETRANSPORT
-                ):
-                    category = calls[0][0][1]
-                elif util.HAS_SNI:
-                    category = calls[1][0][1]
-                else:
-                    category = calls[2][0][1]
+                category = calls[0][0][1]
                 assert category == InsecureRequestWarning
 
     def test_assert_hostname_false(self):
@@ -638,7 +584,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             r = https_pool.request("GET", "/")
             assert r.status == 200
 
-    @onlyPy279OrNewer
     def test_ssl_correct_system_time(self):
         with HTTPSConnectionPool(
             self.host, self.port, ca_certs=DEFAULT_CA
@@ -649,7 +594,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             w = self._request_without_resource_warnings("GET", "/")
             assert [] == w
 
-    @onlyPy279OrNewer
     def test_ssl_wrong_system_time(self):
         with HTTPSConnectionPool(
             self.host, self.port, ca_certs=DEFAULT_CA

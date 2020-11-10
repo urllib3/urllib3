@@ -1,12 +1,12 @@
 import datetime
+from unittest import mock
 
-import mock
 import pytest
 
 from urllib3.connection import RECENT_DATE, CertificateError, _match_hostname
 
 
-class TestConnection(object):
+class TestConnection:
     """
     Tests in this suite should not make any network requests or connections.
     """

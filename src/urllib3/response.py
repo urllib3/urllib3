@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import io
 import logging
 import zlib
@@ -26,13 +24,12 @@ from .exceptions import (
     ResponseNotChunked,
     SSLError,
 )
-from .packages import six
 from .util.response import is_fp_closed, is_response_to_head
 
 log = logging.getLogger(__name__)
 
 
-class DeflateDecoder(object):
+class DeflateDecoder:
     def __init__(self):
         self._first_try = True
         self._data = b""
@@ -64,14 +61,14 @@ class DeflateDecoder(object):
                 self._data = None
 
 
-class GzipDecoderState(object):
+class GzipDecoderState:
 
     FIRST_MEMBER = 0
     OTHER_MEMBERS = 1
     SWALLOW_DATA = 2
 
 
-class GzipDecoder(object):
+class GzipDecoder:
     def __init__(self):
         self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
         self._state = GzipDecoderState.FIRST_MEMBER
@@ -103,7 +100,7 @@ class GzipDecoder(object):
 
 if brotli is not None:
 
-    class BrotliDecoder(object):
+    class BrotliDecoder:
         # Supports both 'brotlipy' and 'Brotli' packages
         # since they share an import name. The top branches
         # are for 'brotlipy' and bottom branches for 'Brotli'
@@ -120,7 +117,7 @@ if brotli is not None:
             return b""
 
 
-class MultiDecoder(object):
+class MultiDecoder:
     """
     From RFC7231:
         If one or more encodings have been applied to a representation, the
@@ -234,7 +231,7 @@ class HTTPResponse(io.IOBase):
         self.msg = msg
         self._request_url = request_url
 
-        if body and isinstance(body, (six.string_types, bytes)):
+        if body and isinstance(body, (str, bytes)):
             self._body = body
 
         self._pool = pool
@@ -340,7 +337,7 @@ class HTTPResponse(io.IOBase):
                 # (e.g. Content-Length: 42, 42). This line ensures the values
                 # are all valid ints and that as long as the `set` length is 1,
                 # all values are the same. Otherwise, the header is invalid.
-                lengths = set([int(val) for val in length.split(",")])
+                lengths = {int(val) for val in length.split(",")}
                 if len(lengths) > 1:
                     raise InvalidHeader(
                         "Content-Length contained multiple "
@@ -452,7 +449,7 @@ class HTTPResponse(io.IOBase):
 
             except (HTTPException, SocketError) as e:
                 # This includes IncompleteRead.
-                raise ProtocolError("Connection broken: %r" % e, e)
+                raise ProtocolError(f"Connection broken: {e!r}", e)
 
             # If no exception is thrown, we should avoid cleaning up
             # unnecessarily.
@@ -569,8 +566,7 @@ class HTTPResponse(io.IOBase):
             'content-encoding' header.
         """
         if self.chunked and self.supports_chunked_reads():
-            for line in self.read_chunked(amt, decode_content=decode_content):
-                yield line
+            yield from self.read_chunked(amt, decode_content=decode_content)
         else:
             while not is_fp_closed(self._fp):
                 data = self.read(amt=amt, decode_content=decode_content)
@@ -590,11 +586,7 @@ class HTTPResponse(io.IOBase):
         headers = r.msg
 
         if not isinstance(headers, HTTPHeaderDict):
-            if six.PY2:
-                # Python 2.7
-                headers = HTTPHeaderDict.from_httplib(headers)
-            else:
-                headers = HTTPHeaderDict(headers.items())
+            headers = HTTPHeaderDict(headers.items())
 
         # HTTPResponse objects in Python 3 don't have a .strict attribute
         strict = getattr(r, "strict", 0)
@@ -606,7 +598,7 @@ class HTTPResponse(io.IOBase):
             reason=r.reason,
             strict=strict,
             original_response=r,
-            **response_kw
+            **response_kw,
         )
         return resp
 
@@ -647,11 +639,11 @@ class HTTPResponse(io.IOBase):
 
     def fileno(self):
         if self._fp is None:
-            raise IOError("HTTPResponse has no file to get a fileno from")
+            raise OSError("HTTPResponse has no file to get a fileno from")
         elif hasattr(self._fp, "fileno"):
             return self._fp.fileno()
         else:
-            raise IOError(
+            raise OSError(
                 "The file-like object this HTTPResponse is wrapped "
                 "around has no file descriptor"
             )

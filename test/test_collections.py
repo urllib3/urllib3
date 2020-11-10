@@ -2,22 +2,18 @@ import pytest
 
 from urllib3._collections import HTTPHeaderDict
 from urllib3._collections import RecentlyUsedContainer as Container
-from urllib3.exceptions import InvalidHeader
-from urllib3.packages import six
-
-xrange = six.moves.xrange
 
 
-class TestLRUContainer(object):
+class TestLRUContainer:
     def test_maxsize(self):
         d = Container(5)
 
-        for i in xrange(5):
+        for i in range(5):
             d[i] = str(i)
 
         assert len(d) == 5
 
-        for i in xrange(5):
+        for i in range(5):
             assert d[i] == str(i)
 
         d[i + 1] = str(i + 1)
@@ -29,10 +25,10 @@ class TestLRUContainer(object):
     def test_expire(self):
         d = Container(5)
 
-        for i in xrange(5):
+        for i in range(5):
             d[i] = str(i)
 
-        for i in xrange(5):
+        for i in range(5):
             d.get(0)
 
         # Add one more entry
@@ -44,7 +40,7 @@ class TestLRUContainer(object):
     def test_same_key(self):
         d = Container(5)
 
-        for i in xrange(10):
+        for i in range(10):
             d["foo"] = i
 
         assert list(d.keys()) == ["foo"]
@@ -53,7 +49,7 @@ class TestLRUContainer(object):
     def test_access_ordering(self):
         d = Container(5)
 
-        for i in xrange(10):
+        for i in range(10):
             d[i] = True
 
         # Keys should be ordered by access time
@@ -68,7 +64,7 @@ class TestLRUContainer(object):
     def test_delete(self):
         d = Container(5)
 
-        for i in xrange(5):
+        for i in range(5):
             d[i] = True
 
         del d[0]
@@ -82,7 +78,7 @@ class TestLRUContainer(object):
     def test_get(self):
         d = Container(5)
 
-        for i in xrange(5):
+        for i in range(5):
             d[i] = True
 
         r = d.get(4)
@@ -105,13 +101,13 @@ class TestLRUContainer(object):
             evicted_items.append(arg)
 
         d = Container(5, dispose_func=dispose_func)
-        for i in xrange(5):
+        for i in range(5):
             d[i] = i
-        assert list(d.keys()) == list(xrange(5))
+        assert list(d.keys()) == list(range(5))
         assert evicted_items == []  # Nothing disposed
 
         d[5] = 5
-        assert list(d.keys()) == list(xrange(1, 6))
+        assert list(d.keys()) == list(range(1, 6))
         assert evicted_items == [0]
 
         del d[1]
@@ -127,7 +123,7 @@ class TestLRUContainer(object):
             d.__iter__()
 
 
-class NonMappingHeaderContainer(object):
+class NonMappingHeaderContainer:
     def __init__(self, **kwargs):
         self._data = {}
         self._data.update(kwargs)
@@ -146,7 +142,7 @@ def d():
     return header_dict
 
 
-class TestHTTPHeaderDict(object):
+class TestHTTPHeaderDict:
     def test_create_from_kwargs(self):
         h = HTTPHeaderDict(ab=1, cd=2, ef=3, gh=4)
         assert len(h) == 4
@@ -343,40 +339,3 @@ class TestHTTPHeaderDict(object):
             del d[3]
         with pytest.raises(Exception):
             HTTPHeaderDict({3: 3})
-
-    @pytest.mark.skipif(
-        not six.PY2, reason="python3 has a different internal header implementation"
-    )
-    def test_from_httplib_py2(self):
-        msg = """
-Server: nginx
-Content-Type: text/html; charset=windows-1251
-Connection: keep-alive
-X-Some-Multiline: asdf
- asdf\t
-\t asdf
-Set-Cookie: bb_lastvisit=1348253375; expires=Sat, 21-Sep-2013 18:49:35 GMT; path=/
-Set-Cookie: bb_lastactivity=0; expires=Sat, 21-Sep-2013 18:49:35 GMT; path=/
-www-authenticate: asdf
-www-authenticate: bla
-
-"""
-        buffer = six.moves.StringIO(msg.lstrip().replace("\n", "\r\n"))
-        msg = six.moves.http_client.HTTPMessage(buffer)
-        d = HTTPHeaderDict.from_httplib(msg)
-        assert d["server"] == "nginx"
-        cookies = d.getlist("set-cookie")
-        assert len(cookies) == 2
-        assert cookies[0].startswith("bb_lastvisit")
-        assert cookies[1].startswith("bb_lastactivity")
-        assert d["x-some-multiline"] == "asdf asdf asdf"
-        assert d["www-authenticate"] == "asdf, bla"
-        assert d.getlist("www-authenticate") == ["asdf", "bla"]
-        with_invalid_multiline = """\tthis-is-not-a-header: but it has a pretend value
-Authorization: Bearer 123
-
-"""
-        buffer = six.moves.StringIO(with_invalid_multiline.replace("\n", "\r\n"))
-        msg = six.moves.http_client.HTTPMessage(buffer)
-        with pytest.raises(InvalidHeader):
-            HTTPHeaderDict.from_httplib(msg)

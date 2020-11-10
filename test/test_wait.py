@@ -1,5 +1,4 @@
 import signal
-import socket
 import threading
 
 try:
@@ -8,6 +7,7 @@ except ImportError:
     from time import time as monotonic
 
 import time
+from socket import socketpair
 
 import pytest
 
@@ -19,8 +19,6 @@ from urllib3.util.wait import (
     wait_for_socket,
     wait_for_write,
 )
-
-from .socketpair_helper import socketpair
 
 
 @pytest.fixture
@@ -56,7 +54,7 @@ def test_wait_for_socket(wfs, spair):
     try:
         while True:
             a.send(b"x" * 999999)
-    except (OSError, socket.error):
+    except OSError:
         pass
 
     # Now it's not writable anymore
@@ -96,7 +94,7 @@ def test_wait_for_read_write(spair):
     try:
         while True:
             a.send(b"x" * 999999)
-    except (OSError, socket.error):
+    except OSError:
         pass
 
     # Now it's not writable anymore

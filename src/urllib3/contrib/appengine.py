@@ -38,11 +38,11 @@ urllib3 on Google App Engine:
 :class:`PoolManager` without any configuration or special environment variables.
 """
 
-from __future__ import absolute_import
 
 import io
 import logging
 import warnings
+from urllib.parse import urljoin
 
 from ..exceptions import (
     HTTPError,
@@ -52,7 +52,6 @@ from ..exceptions import (
     SSLError,
     TimeoutError,
 )
-from ..packages.six.moves.urllib.parse import urljoin
 from ..request import RequestMethods
 from ..response import HTTPResponse
 from ..util.retry import Retry
@@ -137,7 +136,7 @@ class AppEngineManager(RequestMethods):
         retries=None,
         redirect=True,
         timeout=Timeout.DEFAULT_TIMEOUT,
-        **response_kw
+        **response_kw,
     ):
 
         retries = self._get_retries(retries, redirect)
@@ -183,7 +182,7 @@ class AppEngineManager(RequestMethods):
 
         except urlfetch.InvalidMethodError as e:
             raise AppEnginePlatformError(
-                "URLFetch does not support method: %s" % method, e
+                f"URLFetch does not support method: {method}", e
             )
 
         http_response = self._urlfetch_response_to_http_response(
@@ -220,7 +219,7 @@ class AppEngineManager(RequestMethods):
                     retries=retries,
                     redirect=redirect,
                     timeout=timeout,
-                    **response_kw
+                    **response_kw,
                 )
 
         # Check if we should retry the HTTP response.
@@ -237,7 +236,7 @@ class AppEngineManager(RequestMethods):
                 retries=retries,
                 redirect=redirect,
                 timeout=timeout,
-                **response_kw
+                **response_kw,
             )
 
         return http_response
@@ -267,7 +266,7 @@ class AppEngineManager(RequestMethods):
             msg=urlfetch_resp.header_msg,
             headers=urlfetch_resp.headers,
             status=urlfetch_resp.status_code,
-            **response_kw
+            **response_kw,
         )
 
         return HTTPResponse(
@@ -275,7 +274,7 @@ class AppEngineManager(RequestMethods):
             headers=urlfetch_resp.headers,
             status=urlfetch_resp.status_code,
             original_response=original_response,
-            **response_kw
+            **response_kw,
         )
 
     def _get_absolute_timeout(self, timeout):

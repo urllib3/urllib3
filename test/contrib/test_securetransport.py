@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import contextlib
 import socket
 import ssl
@@ -17,7 +16,7 @@ def setup_module():
 
         inject_into_urllib3()
     except ImportError as e:
-        pytest.skip("Could not import SecureTransport: %r" % e)
+        pytest.skip(f"Could not import SecureTransport: {repr(e)}")
 
 
 def teardown_module():

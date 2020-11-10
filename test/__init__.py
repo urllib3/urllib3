@@ -4,7 +4,6 @@ import os
 import platform
 import socket
 import ssl
-import sys
 import warnings
 
 import pytest
@@ -14,9 +13,10 @@ try:
 except ImportError:
     brotli = None
 
+import functools
+
 from urllib3 import util
 from urllib3.exceptions import HTTPWarning
-from urllib3.packages import six
 from urllib3.util import ssl_
 
 try:
@@ -95,65 +95,12 @@ def setUp():
     warnings.simplefilter("ignore", HTTPWarning)
 
 
-def onlyPy279OrNewer(test):
-    """Skips this test unless you are on Python 2.7.9 or later."""
-
-    @six.wraps(test)
-    def wrapper(*args, **kwargs):
-        msg = "{name} requires Python 2.7.9+ to run".format(name=test.__name__)
-        if sys.version_info < (2, 7, 9):
-            pytest.skip(msg)
-        return test(*args, **kwargs)
-
-    return wrapper
-
-
-def onlyPy2(test):
-    """Skips this test unless you are on Python 2.x"""
-
-    @six.wraps(test)
-    def wrapper(*args, **kwargs):
-        msg = "{name} requires Python 2.x to run".format(name=test.__name__)
-        if not six.PY2:
-            pytest.skip(msg)
-        return test(*args, **kwargs)
-
-    return wrapper
-
-
-def onlyPy3(test):
-    """Skips this test unless you are on Python3.x"""
-
-    @six.wraps(test)
-    def wrapper(*args, **kwargs):
-        msg = "{name} requires Python3.x to run".format(name=test.__name__)
-        if six.PY2:
-            pytest.skip(msg)
-        return test(*args, **kwargs)
-
-    return wrapper
-
-
-def notPyPy2(test):
-    """Skips this test on PyPy2"""
-
-    @six.wraps(test)
-    def wrapper(*args, **kwargs):
-        # https://github.com/testing-cabal/mock/issues/438
-        msg = "{} fails with PyPy 2 dues to funcsigs bugs".format(test.__name__)
-        if platform.python_implementation() == "PyPy" and sys.version_info[0] == 2:
-            pytest.xfail(msg)
-        return test(*args, **kwargs)
-
-    return wrapper
-
-
 def notWindows(test):
     """Skips this test on Windows"""
 
-    @six.wraps(test)
+    @functools.wraps(test)
     def wrapper(*args, **kwargs):
-        msg = "{name} does not run on Windows".format(name=test.__name__)
+        msg = f"{test.__name__} does not run on Windows"
         if platform.system() == "Windows":
             pytest.skip(msg)
         return test(*args, **kwargs)
@@ -174,9 +121,9 @@ def notBrotlipy():
 def onlySecureTransport(test):
     """Runs this test when SecureTransport is in use."""
 
-    @six.wraps(test)
+    @functools.wraps(test)
     def wrapper(*args, **kwargs):
-        msg = "{name} only runs with SecureTransport".format(name=test.__name__)
+        msg = f"{test.__name__} only runs with SecureTransport"
         if not ssl_.IS_SECURETRANSPORT:
             pytest.skip(msg)
         return test(*args, **kwargs)
@@ -187,9 +134,9 @@ def onlySecureTransport(test):
 def notSecureTransport(test):
     """Skips this test when SecureTransport is in use."""
 
-    @six.wraps(test)
+    @functools.wraps(test)
     def wrapper(*args, **kwargs):
-        msg = "{name} does not run with SecureTransport".format(name=test.__name__)
+        msg = f"{test.__name__} does not run with SecureTransport"
         if ssl_.IS_SECURETRANSPORT:
             pytest.skip(msg)
         return test(*args, **kwargs)
@@ -200,11 +147,11 @@ def notSecureTransport(test):
 def notOpenSSL098(test):
     """Skips this test for Python 3.5 macOS python.org distribution"""
 
-    @six.wraps(test)
+    @functools.wraps(test)
     def wrapper(*args, **kwargs):
         is_stdlib_ssl = not ssl_.IS_SECURETRANSPORT and not ssl_.IS_PYOPENSSL
         if is_stdlib_ssl and ssl.OPENSSL_VERSION == "OpenSSL 0.9.8zh 14 Jan 2016":
-            pytest.xfail("{name} fails with OpenSSL 0.9.8zh".format(name=test.__name__))
+            pytest.xfail(f"{test.__name__} fails with OpenSSL 0.9.8zh")
         return test(*args, **kwargs)
 
     return wrapper
@@ -229,13 +176,13 @@ def requires_network(test):
             return True
         except socket.timeout:
             return True
-        except socket.error as e:
+        except OSError as e:
             if _is_unreachable_err(e):
                 return False
             else:
                 raise
 
-    @six.wraps(test)
+    @functools.wraps(test)
     def wrapper(*args, **kwargs):
         global _requires_network_has_route
 
@@ -245,20 +192,16 @@ def requires_network(test):
         if _requires_network_has_route:
             return test(*args, **kwargs)
         else:
-            msg = "Can't run {name} because the network is unreachable".format(
-                name=test.__name__
-            )
+            msg = f"Can't run {test.__name__} because the network is unreachable"
             pytest.skip(msg)
 
     return wrapper
 
 
 def requires_ssl_context_keyfile_password(test):
-    @six.wraps(test)
+    @functools.wraps(test)
     def wrapper(*args, **kwargs):
-        if (
-            not ssl_.IS_PYOPENSSL and sys.version_info < (2, 7, 9)
-        ) or ssl_.IS_SECURETRANSPORT:
+        if ssl_.IS_SECURETRANSPORT:
             pytest.skip(
                 "%s requires password parameter for "
                 "SSLContext.load_cert_chain()" % test.__name__
@@ -271,7 +214,7 @@ def requires_ssl_context_keyfile_password(test):
 def resolvesLocalhostFQDN(test):
     """Test requires successful resolving of 'localhost.'"""
 
-    @six.wraps(test)
+    @functools.wraps(test)
     def wrapper(*args, **kwargs):
         if not RESOLVES_LOCALHOST_FQDN:
             pytest.skip("Can't resolve localhost.")
@@ -281,7 +224,7 @@ def resolvesLocalhostFQDN(test):
 
 
 def withPyOpenSSL(test):
-    @six.wraps(test)
+    @functools.wraps(test)
     def wrapper(*args, **kwargs):
         if not pyopenssl:
             pytest.skip("pyopenssl not available, skipping test.")
@@ -297,16 +240,16 @@ def withPyOpenSSL(test):
 
 class _ListHandler(logging.Handler):
     def __init__(self):
-        super(_ListHandler, self).__init__()
+        super().__init__()
         self.records = []
 
     def emit(self, record):
         self.records.append(record)
 
 
-class LogRecorder(object):
+class LogRecorder:
     def __init__(self, target=logging.root):
-        super(LogRecorder, self).__init__()
+        super().__init__()
         self._target = target
         self._handler = _ListHandler()
 

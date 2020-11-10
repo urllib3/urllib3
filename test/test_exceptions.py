@@ -16,7 +16,7 @@ from urllib3.exceptions import (
 )
 
 
-class TestPickle(object):
+class TestPickle:
     @pytest.mark.parametrize(
         "exception",
         [
@@ -39,7 +39,7 @@ class TestPickle(object):
         assert isinstance(result, type(exception))
 
 
-class TestFormat(object):
+class TestFormat:
     def test_header_parsing_errors(self):
         hpe = HeaderParsingError("defects", "unparsed_data")
 

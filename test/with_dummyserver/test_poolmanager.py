@@ -17,16 +17,16 @@ pytestmark = pytest.mark.flaky
 class TestPoolManager(HTTPDummyServerTestCase):
     @classmethod
     def setup_class(cls):
-        super(TestPoolManager, cls).setup_class()
-        cls.base_url = "http://%s:%d" % (cls.host, cls.port)
-        cls.base_url_alt = "http://%s:%d" % (cls.host_alt, cls.port)
+        super().setup_class()
+        cls.base_url = f"http://{cls.host}:{cls.port}"
+        cls.base_url_alt = f"http://{cls.host_alt}:{cls.port}"
 
     def test_redirect(self):
         with PoolManager() as http:
             r = http.request(
                 "GET",
-                "%s/redirect" % self.base_url,
-                fields={"target": "%s/" % self.base_url},
+                f"{self.base_url}/redirect",
+                fields={"target": f"{self.base_url}/"},
                 redirect=False,
             )
 
@@ -34,8 +34,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             r = http.request(
                 "GET",
-                "%s/redirect" % self.base_url,
-                fields={"target": "%s/" % self.base_url},
+                f"{self.base_url}/redirect",
+                fields={"target": f"{self.base_url}/"},
             )
 
             assert r.status == 200
@@ -45,8 +45,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
         with PoolManager() as http:
             r = http.request(
                 "GET",
-                "%s/redirect" % self.base_url,
-                fields={"target": "%s/redirect" % self.base_url},
+                f"{self.base_url}/redirect",
+                fields={"target": f"{self.base_url}/redirect"},
                 redirect=False,
             )
 
@@ -54,10 +54,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             r = http.request(
                 "GET",
-                "%s/redirect" % self.base_url,
-                fields={
-                    "target": "%s/redirect?target=%s/" % (self.base_url, self.base_url)
-                },
+                f"{self.base_url}/redirect",
+                fields={"target": f"{self.base_url}/redirect?target={self.base_url}/"},
             )
 
             assert r.status == 200
@@ -67,7 +65,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
         with PoolManager() as http:
             r = http.request(
                 "GET",
-                "%s/redirect" % self.base_url,
+                f"{self.base_url}/redirect",
                 fields={"target": "/redirect"},
                 redirect=False,
             )
@@ -75,7 +73,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert r.status == 303
 
             r = http.request(
-                "GET", "%s/redirect" % self.base_url, fields={"target": "/redirect"}
+                "GET", f"{self.base_url}/redirect", fields={"target": "/redirect"}
             )
 
             assert r.status == 200
@@ -83,11 +81,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_cross_host_redirect(self):
         with PoolManager() as http:
-            cross_host_location = "%s/echo?a=b" % self.base_url_alt
+            cross_host_location = f"{self.base_url_alt}/echo?a=b"
             with pytest.raises(MaxRetryError):
                 http.request(
                     "GET",
-                    "%s/redirect" % self.base_url,
+                    f"{self.base_url}/redirect",
                     fields={"target": cross_host_location},
                     timeout=LONG_TIMEOUT,
                     retries=0,
@@ -95,8 +93,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             r = http.request(
                 "GET",
-                "%s/redirect" % self.base_url,
-                fields={"target": "%s/echo?a=b" % self.base_url_alt},
+                f"{self.base_url}/redirect",
+                fields={"target": f"{self.base_url_alt}/echo?a=b"},
                 timeout=LONG_TIMEOUT,
                 retries=1,
             )
@@ -108,10 +106,9 @@ class TestPoolManager(HTTPDummyServerTestCase):
             with pytest.raises(MaxRetryError):
                 http.request(
                     "GET",
-                    "%s/redirect" % self.base_url,
+                    f"{self.base_url}/redirect",
                     fields={
-                        "target": "%s/redirect?target=%s/"
-                        % (self.base_url, self.base_url)
+                        "target": f"{self.base_url}/redirect?target={self.base_url}/"
                     },
                     retries=1,
                     preload_content=False,
@@ -120,10 +117,9 @@ class TestPoolManager(HTTPDummyServerTestCase):
             with pytest.raises(MaxRetryError):
                 http.request(
                     "GET",
-                    "%s/redirect" % self.base_url,
+                    f"{self.base_url}/redirect",
                     fields={
-                        "target": "%s/redirect?target=%s/"
-                        % (self.base_url, self.base_url)
+                        "target": f"{self.base_url}/redirect?target={self.base_url}/"
                     },
                     retries=Retry(total=None, redirect=1),
                     preload_content=False,
@@ -139,8 +135,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
         with PoolManager() as http:
             r = http.request(
                 "GET",
-                "%s/redirect" % self.base_url,
-                fields={"target": "%s/headers" % self.base_url_alt},
+                f"{self.base_url}/redirect",
+                fields={"target": f"{self.base_url_alt}/headers"},
                 headers={"Authorization": "foo"},
             )
 
@@ -152,8 +148,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             r = http.request(
                 "GET",
-                "%s/redirect" % self.base_url,
-                fields={"target": "%s/headers" % self.base_url_alt},
+                f"{self.base_url}/redirect",
+                fields={"target": f"{self.base_url_alt}/headers"},
                 headers={"authorization": "foo"},
             )
 
@@ -168,8 +164,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
         with PoolManager() as http:
             r = http.request(
                 "GET",
-                "%s/redirect" % self.base_url,
-                fields={"target": "%s/headers" % self.base_url_alt},
+                f"{self.base_url}/redirect",
+                fields={"target": f"{self.base_url_alt}/headers"},
                 headers={"Authorization": "foo"},
                 retries=Retry(remove_headers_on_redirect=[]),
             )
@@ -184,8 +180,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
         with PoolManager() as http:
             r = http.request(
                 "GET",
-                "%s/redirect" % self.base_url,
-                fields={"target": "%s/headers" % self.base_url_alt},
+                f"{self.base_url}/redirect",
+                fields={"target": f"{self.base_url_alt}/headers"},
                 headers={"X-API-Secret": "foo", "Authorization": "bar"},
                 retries=Retry(remove_headers_on_redirect=["X-API-Secret"]),
             )
@@ -199,8 +195,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             r = http.request(
                 "GET",
-                "%s/redirect" % self.base_url,
-                fields={"target": "%s/headers" % self.base_url_alt},
+                f"{self.base_url}/redirect",
+                fields={"target": f"{self.base_url_alt}/headers"},
                 headers={"x-api-secret": "foo", "authorization": "bar"},
                 retries=Retry(remove_headers_on_redirect=["X-API-Secret"]),
             )
@@ -215,9 +211,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_redirect_without_preload_releases_connection(self):
         with PoolManager(block=True, maxsize=2) as http:
-            r = http.request(
-                "GET", "%s/redirect" % self.base_url, preload_content=False
-            )
+            r = http.request("GET", f"{self.base_url}/redirect", preload_content=False)
             assert r._pool.num_requests == 2
             assert r._pool.num_connections == 1
             assert len(http.pools) == 1
@@ -225,13 +219,13 @@ class TestPoolManager(HTTPDummyServerTestCase):
     def test_unknown_scheme(self):
         with PoolManager() as http:
             unknown_scheme = "unknown"
-            unknown_scheme_url = "%s://host" % unknown_scheme
+            unknown_scheme_url = f"{unknown_scheme}://host"
             with pytest.raises(URLSchemeUnknown) as e:
                 r = http.request("GET", unknown_scheme_url)
             assert e.value.scheme == unknown_scheme
             r = http.request(
                 "GET",
-                "%s/redirect" % self.base_url,
+                f"{self.base_url}/redirect",
                 fields={"target": unknown_scheme_url},
                 redirect=False,
             )
@@ -240,7 +234,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             with pytest.raises(URLSchemeUnknown) as e:
                 r = http.request(
                     "GET",
-                    "%s/redirect" % self.base_url,
+                    f"{self.base_url}/redirect",
                     fields={"target": unknown_scheme_url},
                 )
             assert e.value.scheme == unknown_scheme
@@ -249,10 +243,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
         with PoolManager() as http:
             r = http.request(
                 "GET",
-                "%s/redirect" % self.base_url,
-                fields={
-                    "target": "%s/redirect?target=%s/" % (self.base_url, self.base_url)
-                },
+                f"{self.base_url}/redirect",
+                fields={"target": f"{self.base_url}/redirect?target={self.base_url}/"},
                 retries=Retry(total=None, redirect=1, raise_on_redirect=False),
             )
 
@@ -264,7 +256,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 # the default is to raise
                 r = http.request(
                     "GET",
-                    "%s/status" % self.base_url,
+                    f"{self.base_url}/status",
                     fields={"status": "500 Internal Server Error"},
                     retries=Retry(total=1, status_forcelist=range(500, 600)),
                 )
@@ -273,7 +265,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 # raise explicitly
                 r = http.request(
                     "GET",
-                    "%s/status" % self.base_url,
+                    f"{self.base_url}/status",
                     fields={"status": "500 Internal Server Error"},
                     retries=Retry(
                         total=1, status_forcelist=range(500, 600), raise_on_status=True
@@ -283,7 +275,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             # don't raise
             r = http.request(
                 "GET",
-                "%s/status" % self.base_url,
+                f"{self.base_url}/status",
                 fields={"status": "500 Internal Server Error"},
                 retries=Retry(
                     total=1, status_forcelist=range(500, 600), raise_on_status=False
@@ -302,7 +294,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             # our test server happens to be listening.
             port_by_scheme["http"] = self.port
             try:
-                r = http.request("GET", "http://%s/" % self.host, retries=0)
+                r = http.request("GET", f"http://{self.host}/", retries=0)
             finally:
                 port_by_scheme["http"] = 80
 
@@ -311,31 +303,31 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_headers(self):
         with PoolManager(headers={"Foo": "bar"}) as http:
-            r = http.request("GET", "%s/headers" % self.base_url)
+            r = http.request("GET", f"{self.base_url}/headers")
             returned_headers = json.loads(r.data.decode())
             assert returned_headers.get("Foo") == "bar"
 
-            r = http.request("POST", "%s/headers" % self.base_url)
+            r = http.request("POST", f"{self.base_url}/headers")
             returned_headers = json.loads(r.data.decode())
             assert returned_headers.get("Foo") == "bar"
 
-            r = http.request_encode_url("GET", "%s/headers" % self.base_url)
+            r = http.request_encode_url("GET", f"{self.base_url}/headers")
             returned_headers = json.loads(r.data.decode())
             assert returned_headers.get("Foo") == "bar"
 
-            r = http.request_encode_body("POST", "%s/headers" % self.base_url)
+            r = http.request_encode_body("POST", f"{self.base_url}/headers")
             returned_headers = json.loads(r.data.decode())
             assert returned_headers.get("Foo") == "bar"
 
             r = http.request_encode_url(
-                "GET", "%s/headers" % self.base_url, headers={"Baz": "quux"}
+                "GET", f"{self.base_url}/headers", headers={"Baz": "quux"}
             )
             returned_headers = json.loads(r.data.decode())
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
 
             r = http.request_encode_body(
-                "GET", "%s/headers" % self.base_url, headers={"Baz": "quux"}
+                "GET", f"{self.base_url}/headers", headers={"Baz": "quux"}
             )
             returned_headers = json.loads(r.data.decode())
             assert returned_headers.get("Foo") is None
@@ -343,12 +335,12 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_http_with_ssl_keywords(self):
         with PoolManager(ca_certs="REQUIRED") as http:
-            r = http.request("GET", "http://%s:%s/" % (self.host, self.port))
+            r = http.request("GET", f"http://{self.host}:{self.port}/")
             assert r.status == 200
 
     def test_http_with_ca_cert_dir(self):
         with PoolManager(ca_certs="REQUIRED", ca_cert_dir="/nosuchdir") as http:
-            r = http.request("GET", "http://%s:%s/" % (self.host, self.port))
+            r = http.request("GET", f"http://{self.host}:{self.port}/")
             assert r.status == 200
 
     @pytest.mark.parametrize(
@@ -366,7 +358,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
     )
     def test_encode_http_target(self, target, expected_target):
         with PoolManager() as http:
-            url = "http://%s:%d%s" % (self.host, self.port, target)
+            url = f"http://{self.host}:{self.port}{target}"
             r = http.request("GET", url)
             assert r.data == expected_target
 
@@ -375,8 +367,8 @@ class TestPoolManager(HTTPDummyServerTestCase):
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
     @classmethod
     def setup_class(cls):
-        super(TestIPv6PoolManager, cls).setup_class()
-        cls.base_url = "http://[%s]:%d" % (cls.host, cls.port)
+        super().setup_class()
+        cls.base_url = f"http://[{cls.host}]:{cls.port}"
 
     def test_ipv6(self):
         with PoolManager() as http:
