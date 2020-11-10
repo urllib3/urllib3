@@ -1,9 +1,5 @@
-from __future__ import absolute_import
+from collections.abc import Mapping, MutableMapping
 
-try:
-    from collections.abc import Mapping, MutableMapping
-except ImportError:
-    from collections import Mapping, MutableMapping
 try:
     from threading import RLock
 except ImportError:  # Platform-specific: No threads available
@@ -19,8 +15,6 @@ except ImportError:  # Platform-specific: No threads available
 from collections import OrderedDict
 
 from .exceptions import InvalidHeader
-from .packages import six
-from .packages.six import iterkeys, itervalues
 
 __all__ = ["RecentlyUsedContainer", "HTTPHeaderDict"]
 
@@ -92,7 +86,7 @@ class RecentlyUsedContainer(MutableMapping):
     def clear(self):
         with self.lock:
             # Copy pointers to all values, then wipe the mapping
-            values = list(itervalues(self._container))
+            values = list(self._container.values())
             self._container.clear()
 
         if self.dispose_func:
@@ -101,7 +95,7 @@ class RecentlyUsedContainer(MutableMapping):
 
     def keys(self):
         with self.lock:
-            return list(iterkeys(self._container))
+            return list(self._container.keys())
 
 
 class HTTPHeaderDict(MutableMapping):
@@ -139,7 +133,7 @@ class HTTPHeaderDict(MutableMapping):
     """
 
     def __init__(self, headers=None, **kwargs):
-        super(HTTPHeaderDict, self).__init__()
+        super().__init__()
         self._container = OrderedDict()
         if headers is not None:
             if isinstance(headers, HTTPHeaderDict):
@@ -168,16 +162,12 @@ class HTTPHeaderDict(MutableMapping):
             return False
         if not isinstance(other, type(self)):
             other = type(self)(other)
-        return dict((k.lower(), v) for k, v in self.itermerged()) == dict(
-            (k.lower(), v) for k, v in other.itermerged()
-        )
+        return {k.lower(): v for k, v in self.itermerged()} == {
+            k.lower(): v for k, v in other.itermerged()
+        }
 
     def __ne__(self, other):
         return not self.__eq__(other)
-
-    if six.PY2:  # Python 2
-        iterkeys = MutableMapping.iterkeys
-        itervalues = MutableMapping.itervalues
 
     __marker = object()
 
@@ -235,8 +225,7 @@ class HTTPHeaderDict(MutableMapping):
         """
         if len(args) > 1:
             raise TypeError(
-                "extend() takes at most 1 positional "
-                "arguments ({0} given)".format(len(args))
+                f"extend() takes at most 1 positional arguments ({len(args)} given)"
             )
         other = args[0] if len(args) >= 1 else ()
 
@@ -277,7 +266,7 @@ class HTTPHeaderDict(MutableMapping):
     get_all = getlist
 
     def __repr__(self):
-        return "%s(%s)" % (type(self).__name__, dict(self.itermerged()))
+        return f"{type(self).__name__}({dict(self.itermerged())})"
 
     def _copy_from(self, other):
         for key in other:
@@ -324,7 +313,7 @@ class HTTPHeaderDict(MutableMapping):
                     # in RFC-7230 S3.2.4. This indicates a multiline header, but
                     # there exists no previous header to which we can attach it.
                     raise InvalidHeader(
-                        "Header continuation with no previous header: %s" % line
+                        f"Header continuation with no previous header: {line}"
                     )
                 else:
                     key, value = headers[-1]

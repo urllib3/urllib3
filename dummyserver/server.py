@@ -3,7 +3,6 @@
 """
 Dummy server used for unit testing.
 """
-from __future__ import print_function
 
 import logging
 import os
@@ -175,10 +174,7 @@ def run_tornado_app(app, io_loop, certs, scheme, host):
     app.last_req = datetime(1970, 1, 1)
 
     if scheme == "https":
-        if sys.version_info < (2, 7, 9):
-            ssl_opts = certs
-        else:
-            ssl_opts = ssl_options_to_context(**certs)
+        ssl_opts = ssl_options_to_context(**certs)
         http_server = tornado.httpserver.HTTPServer(app, ssl_options=ssl_opts)
     else:
         http_server = tornado.httpserver.HTTPServer(app)
@@ -211,7 +207,7 @@ if __name__ == "__main__":
     server, port = run_tornado_app(app, io_loop, None, "http", host)
     server_thread = run_loop_in_thread(io_loop)
 
-    print("Listening on http://{host}:{port}".format(host=host, port=port))
+    print(f"Listening on http://{host}:{port}")
 
 
 def encrypt_key_pem(private_key_pem, password):

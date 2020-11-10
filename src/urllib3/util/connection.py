@@ -1,11 +1,8 @@
-from __future__ import absolute_import
-
 import socket
 
 from urllib3.exceptions import LocationParseError
 
 from ..contrib import _appengine_environ
-from ..packages import six
 from .wait import NoWayToWaitForSocketError, wait_for_read
 
 
@@ -66,9 +63,7 @@ def create_connection(
     try:
         host.encode("idna")
     except UnicodeError:
-        return six.raise_from(
-            LocationParseError(u"'%s', label empty or too long" % host), None
-        )
+        raise LocationParseError(f"'{host}', label empty or too long") from None
 
     for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
         af, socktype, proto, canonname, sa = res
@@ -86,7 +81,7 @@ def create_connection(
             sock.connect(sa)
             return sock
 
-        except socket.error as e:
+        except OSError as e:
             err = e
             if sock is not None:
                 sock.close()
@@ -95,7 +90,7 @@ def create_connection(
     if err is not None:
         raise err
 
-    raise socket.error("getaddrinfo returns an empty list")
+    raise OSError("getaddrinfo returns an empty list")
 
 
 def _set_socket_options(sock, options):

@@ -32,7 +32,7 @@ SOURCE_FILES = [
 def tests_impl(session, extras="socks,secure,brotli"):
     # Install deps and the package itself.
     session.install("-r", "dev-requirements.txt")
-    session.install(".[{extras}]".format(extras=extras))
+    session.install(f".[{extras}]")
 
     # Show the pip version.
     session.run("pip", "--version")
@@ -65,12 +65,12 @@ def tests_impl(session, extras="socks,secure,brotli"):
     session.run("coverage", "xml")
 
 
-@nox.session(python=["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "3.10", "pypy"])
+@nox.session(python=["3.6", "3.7", "3.8", "3.9", "3.10", "pypy"])
 def test(session):
     tests_impl(session)
 
 
-@nox.session(python=["2", "3"])
+@nox.session(python=["3"])
 def google_brotli(session):
     # https://pypi.org/project/Brotli/ is the Google version of brotli, so
     # install it separately and don't install our brotli extra (which installs
@@ -79,7 +79,7 @@ def google_brotli(session):
     tests_impl(session, extras="socks,secure")
 
 
-@nox.session(python="2.7")
+@nox.session(python="3.7")
 def app_engine(session):
     session.install("-r", "dev-requirements.txt")
     session.install(".")
@@ -137,7 +137,7 @@ def lint(session):
         filepath = line.partition(":")[0]
         if filepath.replace(".pyi", ".py") in TYPED_FILES:
             errors.append(line)
-    session.log("all errors count: {}".format(len(all_errors)))
+    session.log(f"all errors count: {len(all_errors)}")
     if errors:
         session.error("\n" + "\n".join(sorted(set(errors))))
 

@@ -9,7 +9,7 @@ from urllib3.poolmanager import PoolKey, PoolManager, key_fn_by_scheme
 from urllib3.util import retry, timeout
 
 
-class TestPoolManager(object):
+class TestPoolManager:
     @resolvesLocalhostFQDN
     def test_same_url(self):
         # Convince ourselves that normally we don't get the same object

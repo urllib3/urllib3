@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
+from unittest.mock import Mock, patch
+
 import pytest
-from mock import Mock, patch
 
 try:
     from urllib3.contrib.pyopenssl import extract_from_urllib3, inject_into_urllib3
@@ -14,7 +14,7 @@ def setup_module():
 
         inject_into_urllib3()
     except ImportError as e:
-        pytest.skip("Could not import PyOpenSSL: %r" % e)
+        pytest.skip(f"Could not import PyOpenSSL: {e!r}")
 
 
 def teardown_module():
@@ -26,7 +26,7 @@ def teardown_module():
         pass
 
 
-class TestPyOpenSSLInjection(object):
+class TestPyOpenSSLInjection:
     """
     Tests for error handling in pyopenssl's 'inject_into urllib3'
     """

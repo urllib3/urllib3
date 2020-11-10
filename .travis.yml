@@ -8,7 +8,7 @@ before_install:
   - python -c "import ssl; print(ssl.OPENSSL_VERSION)"
 
 install:
-  - ./ci/install.sh
+  - python3 -m pip install nox
 
 script:
   - ./ci/run.sh
@@ -33,10 +33,6 @@ jobs:
     - python: nightly
   include:
     # Unit tests
-    - python: 2.7
-      env: NOX_SESSION=test-2.7
-    - python: 3.5
-      env: NOX_SESSION=test-3.5
     - python: 3.6
       env: NOX_SESSION=test-3.6
     - python: 3.7
@@ -47,30 +43,18 @@ jobs:
       env: NOX_SESSION=test-3.9
     - python: nightly
       env: NOX_SESSION=test-3.10
-    - python: pypy2.7-7.3.1
-      env: NOX_SESSION=test-pypy
     - python: pypy3.6-7.3.1
       env: NOX_SESSION=test-pypy
 
     # Extras
-    - python: 2.7
-      env: NOX_SESSION=app_engine GAE_SDK_PATH=${HOME}/.cache/google_appengine
-    - python: 2.7
-      env: NOX_SESSION=google_brotli-2
     - python: 3.7
-      env: NOX_SESSION=google_brotli-3
+      env: NOX_SESSION=app_engine GAE_SDK_PATH=${HOME}/.cache/google_appengine
+    - python: 3.7
+      env: NOX_SESSION=google_brotli
 
     # Downstream integration tests.
-    - python: 2.7
-      env: DOWNSTREAM=requests
-      stage: integration
-
     - python: 3.7
       env: DOWNSTREAM=requests
-      stage: integration
-
-    - python: 2.7
-      env: DOWNSTREAM=botocore
       stage: integration
 
     - python: 3.7

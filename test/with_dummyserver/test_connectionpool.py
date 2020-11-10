@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import io
 import json
 import logging
@@ -7,12 +5,12 @@ import socket
 import sys
 import time
 import warnings
-from test import LONG_TIMEOUT, SHORT_TIMEOUT, onlyPy2
+from test import LONG_TIMEOUT, SHORT_TIMEOUT
 from threading import Event
+from unittest import mock
+from urllib.parse import urlencode
 
-import mock
 import pytest
-import six
 
 from dummyserver.server import HAS_IPV6_AND_DNS, NoIPv6Warning
 from dummyserver.testcase import HTTPDummyServerTestCase, SocketDummyServerTestCase
@@ -28,8 +26,7 @@ from urllib3.exceptions import (
     ReadTimeoutError,
     UnrewindableBodyError,
 )
-from urllib3.packages.six import b, u
-from urllib3.packages.six.moves.urllib.parse import urlencode
+from urllib3.packages.six import b
 from urllib3.util import SKIP_HEADER, SKIPPABLE_HEADERS
 from urllib3.util.retry import RequestHistory, Retry
 from urllib3.util.timeout import Timeout
@@ -268,15 +265,15 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                 pool.request("POST", "/echo", body=body, fields=fields)
 
     def test_unicode_upload(self):
-        fieldname = u("myfile")
-        filename = u("\xe2\x99\xa5.txt")
-        data = u("\xe2\x99\xa5").encode("utf8")
+        fieldname = "myfile"
+        filename = "\xe2\x99\xa5.txt"
+        data = "\xe2\x99\xa5".encode()
         size = len(data)
 
         fields = {
-            u("upload_param"): fieldname,
-            u("upload_filename"): filename,
-            u("upload_size"): size,
+            "upload_param": fieldname,
+            "upload_filename": filename,
+            "upload_size": size,
             fieldname: (filename, data),
         }
         with HTTPConnectionPool(self.host, self.port) as pool:
@@ -711,7 +708,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                 self.host, self.port, source_address=addr, retries=False
             ) as pool:
                 with pytest.raises(NewConnectionError):
-                    pool.request("GET", "/source_address?{0}".format(addr))
+                    pool.request("GET", f"/source_address?{addr}")
 
     def test_stream_keepalive(self):
         x = 2
@@ -790,7 +787,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_mixed_case_hostname(self):
         with HTTPConnectionPool("LoCaLhOsT", self.port) as pool:
-            response = pool.request("GET", "http://LoCaLhOsT:%d/" % self.port)
+            response = pool.request("GET", f"http://LoCaLhOsT:{self.port}/")
             assert response.status == 200
 
     def test_preserves_path_dot_segments(self):
@@ -985,14 +982,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             assert request_headers["User-Agent"] == "test header"
 
     @pytest.mark.parametrize(
-        "user_agent", [u"Schönefeld/1.18.0", u"Schönefeld/1.18.0".encode("iso-8859-1")]
+        "user_agent", ["Schönefeld/1.18.0", "Schönefeld/1.18.0".encode("iso-8859-1")]
     )
     def test_user_agent_non_ascii_user_agent(self, user_agent):
-        if six.PY2 and not isinstance(user_agent, str):
-            pytest.skip(
-                "Python 2 raises UnicodeEncodeError when passed a unicode header"
-            )
-
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             r = pool.urlopen(
                 "GET",
@@ -1001,21 +993,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             )
             request_headers = json.loads(r.data.decode("utf8"))
             assert "User-Agent" in request_headers
-            assert request_headers["User-Agent"] == u"Schönefeld/1.18.0"
-
-    @onlyPy2
-    def test_user_agent_non_ascii_fails_on_python_2(self):
-        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
-            with pytest.raises(UnicodeEncodeError) as e:
-                pool.urlopen(
-                    "GET",
-                    "/headers",
-                    headers={"User-Agent": u"Schönefeld/1.18.0"},
-                )
-            assert str(e.value) == (
-                "'ascii' codec can't encode character u'\\xf6' in "
-                "position 3: ordinal not in range(128)"
-            )
+            assert request_headers["User-Agent"] == "Schönefeld/1.18.0"
 
 
 class TestRetry(HTTPDummyServerTestCase):
@@ -1318,7 +1296,7 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
 
         class BadTellObject(io.BytesIO):
             def tell(self):
-                raise IOError
+                raise OSError
 
         body = BadTellObject(b"the data")
         url = "/redirect?target=/successful_retry"

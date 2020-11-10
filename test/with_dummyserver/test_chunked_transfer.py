@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import pytest
 
 from dummyserver.testcase import (
@@ -72,7 +70,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         self._test_body(b"thisshouldbeonechunk\r\nasdf")
 
     def test_unicode_body(self):
-        self._test_body(u"thisshouldbeonechunk\r\näöüß")
+        self._test_body("thisshouldbeonechunk\r\näöüß")
 
     def test_empty_body(self):
         self._test_body(None)

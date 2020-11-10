@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import hmac
 import os
 import sys
@@ -13,7 +11,6 @@ from ..exceptions import (
     SNIMissingWarning,
     SSLError,
 )
-from ..packages import six
 from .url import BRACELESS_IPV6_ADDRZ_RE, IPV4_RE
 
 SSLContext = None
@@ -125,7 +122,7 @@ try:
     from ssl import SSLContext  # Modern SSL?
 except ImportError:
 
-    class SSLContext(object):  # Platform-specific: Python 2
+    class SSLContext:  # Platform-specific: Python 2
         def __init__(self, protocol_version):
             self.protocol = protocol_version
             # Use default values from a real SSLContext
@@ -188,7 +185,7 @@ def assert_fingerprint(cert, fingerprint):
     digest_length = len(fingerprint)
     hashfunc = HASHFUNC_MAP.get(digest_length)
     if not hashfunc:
-        raise SSLError("Fingerprint of invalid length: {0}".format(fingerprint))
+        raise SSLError(f"Fingerprint of invalid length: {fingerprint}")
 
     # We need encode() here for py32; works on py2 and p33.
     fingerprint_bytes = unhexlify(fingerprint.encode())
@@ -197,9 +194,7 @@ def assert_fingerprint(cert, fingerprint):
 
     if not _const_compare_digest(cert_digest, fingerprint_bytes):
         raise SSLError(
-            'Fingerprints did not match. Expected "{0}", got "{1}".'.format(
-                fingerprint, hexlify(cert_digest)
-            )
+            f'Fingerprints did not match. Expected "{fingerprint}", got "{hexlify(cert_digest)}".'
         )
 
 
@@ -379,7 +374,7 @@ def ssl_wrap_socket(
     if ca_certs or ca_cert_dir or ca_cert_data:
         try:
             context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
-        except (IOError, OSError) as e:
+        except OSError as e:
             raise SSLError(e)
 
     elif ssl_context is None and hasattr(context, "load_default_certs"):
@@ -440,7 +435,7 @@ def is_ipaddress(hostname):
     :param str hostname: Hostname to examine.
     :return: True if the hostname is an IP address, False otherwise.
     """
-    if not six.PY2 and isinstance(hostname, bytes):
+    if isinstance(hostname, bytes):
         # IDN A-label bytes are ASCII compatible.
         hostname = hostname.decode("ascii")
     return bool(IPV4_RE.match(hostname) or BRACELESS_IPV6_ADDRZ_RE.match(hostname))
@@ -448,7 +443,7 @@ def is_ipaddress(hostname):
 
 def _is_key_file_encrypted(key_file):
     """Detects if a key file is encrypted or not."""
-    with open(key_file, "r") as f:
+    with open(key_file) as f:
         for line in f:
             # Look for Proc-Type: 4,ENCRYPTED
             if "ENCRYPTED" in line:

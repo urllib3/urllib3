@@ -58,7 +58,7 @@ def no_san_server(tmp_path_factory):
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # only common name, no subject alternative names
-    server_cert = ca.issue_cert(common_name=u"localhost")
+    server_cert = ca.issue_cert(common_name="localhost")
 
     with run_server_in_thread("https", "localhost", tmpdir, ca, server_cert) as cfg:
         yield cfg
@@ -69,7 +69,7 @@ def ip_san_server(tmp_path_factory):
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # IP address in Subject Alternative Name
-    server_cert = ca.issue_cert(u"127.0.0.1")
+    server_cert = ca.issue_cert("127.0.0.1")
 
     with run_server_in_thread("https", "127.0.0.1", tmpdir, ca, server_cert) as cfg:
         yield cfg
@@ -83,7 +83,7 @@ def ipv6_addr_server(tmp_path_factory):
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # IP address in Common Name
-    server_cert = ca.issue_cert(common_name=u"::1")
+    server_cert = ca.issue_cert(common_name="::1")
 
     with run_server_in_thread("https", "::1", tmpdir, ca, server_cert) as cfg:
         yield cfg
@@ -97,7 +97,7 @@ def ipv6_san_server(tmp_path_factory):
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # IP address in Subject Alternative Name
-    server_cert = ca.issue_cert(u"::1")
+    server_cert = ca.issue_cert("::1")
 
     with run_server_in_thread("https", "::1", tmpdir, ca, server_cert) as cfg:
         yield cfg

@@ -1,12 +1,5 @@
-import errno
 import select
-import sys
 from functools import partial
-
-try:
-    from time import monotonic
-except ImportError:
-    from time import time as monotonic
 
 __all__ = ["NoWayToWaitForSocketError", "wait_for_read", "wait_for_write"]
 
@@ -37,36 +30,6 @@ class NoWayToWaitForSocketError(Exception):
 # So: on Windows we use select(), and everywhere else we use poll(). We also
 # fall back to select() in case poll() is somehow broken or missing.
 
-if sys.version_info >= (3, 5):
-    # Modern Python, that retries syscalls by default
-    def _retry_on_intr(fn, timeout):
-        return fn(timeout)
-
-
-else:
-    # Old and broken Pythons.
-    def _retry_on_intr(fn, timeout):
-        if timeout is None:
-            deadline = float("inf")
-        else:
-            deadline = monotonic() + timeout
-
-        while True:
-            try:
-                return fn(timeout)
-            # OSError for 3 <= pyver < 3.5, select.error for pyver <= 2.7
-            except (OSError, select.error) as e:
-                # 'e.args[0]' incantation works for both OSError and select.error
-                if e.args[0] != errno.EINTR:
-                    raise
-                else:
-                    timeout = deadline - monotonic()
-                    if timeout < 0:
-                        timeout = 0
-                    if timeout == float("inf"):
-                        timeout = None
-                    continue
-
 
 def select_wait_for_socket(sock, read=False, write=False, timeout=None):
     if not read and not write:
@@ -83,7 +46,7 @@ def select_wait_for_socket(sock, read=False, write=False, timeout=None):
     # sockets for both conditions. (The stdlib selectors module does the same
     # thing.)
     fn = partial(select.select, rcheck, wcheck, wcheck)
-    rready, wready, xready = _retry_on_intr(fn, timeout)
+    rready, wready, xready = fn(timeout)
     return bool(rready or wready or xready)
 
 
@@ -104,7 +67,7 @@ def poll_wait_for_socket(sock, read=False, write=False, timeout=None):
             t *= 1000
         return poll_obj.poll(t)
 
-    return bool(_retry_on_intr(do_poll, timeout))
+    return bool(do_poll(timeout))
 
 
 def null_wait_for_socket(*args, **kwargs):
@@ -117,7 +80,7 @@ def _have_working_poll():
     # from libraries like eventlet/greenlet.
     try:
         poll_obj = select.poll()
-        _retry_on_intr(poll_obj.poll, 0)
+        poll_obj.poll(0)
     except (AttributeError, OSError):
         return False
     else:

@@ -2,9 +2,8 @@ import platform
 import select
 import socket
 import ssl
-import sys
+from unittest import mock
 
-import mock
 import pytest
 
 from dummyserver.server import DEFAULT_CA, DEFAULT_CERTS
@@ -20,7 +19,7 @@ def server_client_ssl_contexts():
     if hasattr(ssl, "PROTOCOL_TLS_SERVER"):
         server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     else:
-        # python 2.7 and 3.5 workaround.
+        # python 3.5 workaround.
         # PROTOCOL_TLS_SERVER was added in 3.6
         server_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
     server_context.load_cert_chain(DEFAULT_CERTS["certfile"], DEFAULT_CERTS["keyfile"])
@@ -28,7 +27,7 @@ def server_client_ssl_contexts():
     if hasattr(ssl, "PROTOCOL_TLS_CLIENT"):
         client_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     else:
-        # python 2.7 and 3.5 workaround.
+        # python 3.5 workaround.
         # PROTOCOL_TLS_SERVER was added in 3.6
         client_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
         client_context.verify_mode = ssl.CERT_REQUIRED
@@ -77,7 +76,6 @@ def validate_peercert(ssl_socket):
     assert cert["serialNumber"] != ""
 
 
-@pytest.mark.skipif(sys.version_info < (3, 5), reason="requires python3.5 or higher")
 class SingleTLSLayerTestCase(SocketDummyServerTestCase):
     """
     Uses the SocketDummyServer to validate a single TLS layer can be
@@ -294,7 +292,6 @@ class SocketProxyDummyServer(SocketDummyServerTestCase):
                         return
 
 
-@pytest.mark.skipif(sys.version_info < (3, 5), reason="requires python3.5 or higher")
 class TlsInTlsTestCase(SocketDummyServerTestCase):
     """
     Creates a TLS in TLS tunnel by chaining a 'SocketProxyDummyServer' and a
@@ -320,7 +317,7 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
     def teardown_class(cls):
         if hasattr(cls, "proxy_server"):
             cls.proxy_server.teardown_class()
-        super(TlsInTlsTestCase, cls).teardown_class()
+        super().teardown_class()
 
     @classmethod
     def start_destination_server(cls):
@@ -498,8 +495,7 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 validate_response(response)
 
 
-@pytest.mark.skipif(sys.version_info < (3, 5), reason="requires python3.5 or higher")
-class TestSSLTransportWithMock(object):
+class TestSSLTransportWithMock:
     def test_constructor_params(self):
         server_hostname = "example-domain.com"
         sock = mock.Mock()

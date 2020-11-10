@@ -1,6 +1,4 @@
-from __future__ import absolute_import
-
-from .packages.six.moves.http_client import IncompleteRead as httplib_IncompleteRead
+from http.client import IncompleteRead as httplib_IncompleteRead
 
 # Base Exceptions
 
@@ -22,7 +20,7 @@ class PoolError(HTTPError):
 
     def __init__(self, pool, message):
         self.pool = pool
-        HTTPError.__init__(self, "%s: %s" % (pool, message))
+        HTTPError.__init__(self, f"{pool}: {message}")
 
     def __reduce__(self):
         # For pickling purposes.
@@ -51,7 +49,7 @@ class ProxyError(HTTPError):
     """Raised when the connection to a proxy fails."""
 
     def __init__(self, message, error, *args):
-        super(ProxyError, self).__init__(message, error, *args)
+        super().__init__(message, error, *args)
         self.original_error = error
 
 
@@ -87,7 +85,7 @@ class MaxRetryError(RequestError):
     def __init__(self, pool, url, reason=None):
         self.reason = reason
 
-        message = "Max retries exceeded with url: %s (Caused by %r)" % (url, reason)
+        message = f"Max retries exceeded with url: {url} (Caused by {reason!r})"
 
         RequestError.__init__(self, pool, url, message)
 
@@ -96,7 +94,7 @@ class HostChangedError(RequestError):
     """Raised when an existing pool gets a request for a foreign host."""
 
     def __init__(self, pool, url, retries=3):
-        message = "Tried to open a foreign host with url: %s" % url
+        message = f"Tried to open a foreign host with url: {url}"
         RequestError.__init__(self, pool, url, message)
         self.retries = retries
 
@@ -159,7 +157,7 @@ class LocationParseError(LocationValueError):
     """Raised when get_host or similar fails to parse the URL input."""
 
     def __init__(self, location):
-        message = "Failed to parse: %s" % location
+        message = f"Failed to parse: {location}"
         HTTPError.__init__(self, message)
 
         self.location = location
@@ -169,8 +167,8 @@ class URLSchemeUnknown(LocationValueError):
     """Raised when a URL input has an unsupported scheme."""
 
     def __init__(self, scheme):
-        message = "Not supported URL scheme %s" % scheme
-        super(URLSchemeUnknown, self).__init__(message)
+        message = f"Not supported URL scheme {scheme}"
+        super().__init__(message)
 
         self.scheme = scheme
 
@@ -251,7 +249,7 @@ class IncompleteRead(HTTPError, httplib_IncompleteRead):
     """
 
     def __init__(self, partial, expected):
-        super(IncompleteRead, self).__init__(partial, expected)
+        super().__init__(partial, expected)
 
     def __repr__(self):
         return "IncompleteRead(%i bytes read, %i more expected)" % (
@@ -264,9 +262,7 @@ class InvalidChunkLength(HTTPError, httplib_IncompleteRead):
     """Invalid chunk length in a chunked response."""
 
     def __init__(self, response, length):
-        super(InvalidChunkLength, self).__init__(
-            response.tell(), response.length_remaining
-        )
+        super().__init__(response.tell(), response.length_remaining)
         self.response = response
         self.length = length
 
@@ -289,8 +285,8 @@ class ProxySchemeUnknown(AssertionError, URLSchemeUnknown):
     # TODO(t-8ch): Stop inheriting from AssertionError in v2.0.
 
     def __init__(self, scheme):
-        message = "Not supported proxy scheme %s" % scheme
-        super(ProxySchemeUnknown, self).__init__(message)
+        message = f"Not supported proxy scheme {scheme}"
+        super().__init__(message)
 
 
 class ProxySchemeUnsupported(ValueError):
@@ -303,8 +299,8 @@ class HeaderParsingError(HTTPError):
     """Raised by assert_header_parsing, but we convert it to a log.warning statement."""
 
     def __init__(self, defects, unparsed_data):
-        message = "%s, unparsed data: %r" % (defects or "Unknown", unparsed_data)
-        super(HeaderParsingError, self).__init__(message)
+        message = f"{defects or 'Unknown'}, unparsed data: {unparsed_data!r}"
+        super().__init__(message)
 
 
 class UnrewindableBodyError(HTTPError):

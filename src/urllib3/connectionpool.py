@@ -1,7 +1,6 @@
-from __future__ import absolute_import
-
 import errno
 import logging
+import queue
 import socket
 import sys
 import warnings
@@ -34,7 +33,6 @@ from .exceptions import (
     TimeoutError,
 )
 from .packages import six
-from .packages.six.moves import queue
 from .packages.ssl_match_hostname import CertificateError
 from .request import RequestMethods
 from .response import HTTPResponse
@@ -49,15 +47,13 @@ from .util.url import Url, _encode_target
 from .util.url import _normalize_host as normalize_host
 from .util.url import get_host, parse_url
 
-xrange = six.moves.xrange
-
 log = logging.getLogger(__name__)
 
 _Default = object()
 
 
 # Pool objects
-class ConnectionPool(object):
+class ConnectionPool:
     """
     Base class for all connection pools, such as
     :class:`.HTTPConnectionPool` and :class:`.HTTPSConnectionPool`.
@@ -80,7 +76,7 @@ class ConnectionPool(object):
         self.port = port
 
     def __str__(self):
-        return "%s(host=%r, port=%r)" % (type(self).__name__, self.host, self.port)
+        return f"{type(self).__name__}(host={self.host!r}, port={self.port!r})"
 
     def __enter__(self):
         return self
@@ -178,7 +174,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         _proxy=None,
         _proxy_headers=None,
         _proxy_config=None,
-        **conn_kw
+        **conn_kw,
     ):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
@@ -202,7 +198,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self.proxy_config = _proxy_config
 
         # Fill the queue up so that doing get() on it will block properly
-        for _ in xrange(maxsize):
+        for _ in range(maxsize):
             self.pool.put(None)
 
         # These are mostly for testing and debugging purposes.
@@ -236,7 +232,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             port=self.port,
             timeout=self.timeout.connect_timeout,
             strict=self.strict,
-            **self.conn_kw
+            **self.conn_kw,
         )
         return conn
 
@@ -334,14 +330,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         if isinstance(err, SocketTimeout):
             raise ReadTimeoutError(
-                self, url, "Read timed out. (read timeout=%s)" % timeout_value
+                self, url, f"Read timed out. (read timeout={timeout_value})"
             )
 
         # See the above comment about EAGAIN in Python 3. In Python 2 we have
         # to specifically catch it and throw the timeout error
         if hasattr(err, "errno") and err.errno in _blocking_errnos:
             raise ReadTimeoutError(
-                self, url, "Read timed out. (read timeout=%s)" % timeout_value
+                self, url, f"Read timed out. (read timeout={timeout_value})"
             )
 
         # Catch possible read timeouts thrown as SSL errors. If not the
@@ -351,7 +347,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             err
         ):  # Python < 2.7.4
             raise ReadTimeoutError(
-                self, url, "Read timed out. (read timeout=%s)" % timeout_value
+                self, url, f"Read timed out. (read timeout={timeout_value})"
             )
 
     def _make_request(
@@ -399,7 +395,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         except BrokenPipeError:
             # Python 3
             pass
-        except IOError as e:
+        except OSError as e:
             # Python 2 and macOS/Linux
             # EPIPE and ESHUTDOWN are BrokenPipeError on Python 2, and EPROTOTYPE is needed on macOS
             # https://erickt.github.io/blog/2014/11/19/adventures-in-debugging-a-potential-osx-kernel-bug/
@@ -422,7 +418,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # timeouts, check for a zero timeout before making the request.
             if read_timeout == 0:
                 raise ReadTimeoutError(
-                    self, url, "Read timed out. (read timeout=%s)" % read_timeout
+                    self, url, f"Read timed out. (read timeout={read_timeout})"
                 )
             if read_timeout is Timeout.DEFAULT_TIMEOUT:
                 conn.sock.settimeout(socket.getdefaulttimeout())
@@ -442,7 +438,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     # Remove the TypeError from the exception chain in
                     # Python 3 (including for exceptions like SystemExit).
                     # Otherwise it looks like a bug in the code.
-                    six.raise_from(e, None)
+                    raise e from None
         except (SocketTimeout, BaseSSLError, SocketError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
@@ -529,7 +525,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         release_conn=None,
         chunked=False,
         body_pos=None,
-        **response_kw
+        **response_kw,
     ):
         """
         Get a connection from the pool and perform an HTTP request. This is the
@@ -721,7 +717,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 pool=self,
                 connection=response_conn,
                 retries=retries,
-                **response_kw
+                **response_kw,
             )
 
             # Everything went great!
@@ -793,7 +789,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 release_conn=release_conn,
                 chunked=chunked,
                 body_pos=body_pos,
-                **response_kw
+                **response_kw,
             )
 
         # Handle redirect?
@@ -826,7 +822,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 release_conn=release_conn,
                 chunked=chunked,
                 body_pos=body_pos,
-                **response_kw
+                **response_kw,
             )
 
         # Check if we should retry the HTTP response.
@@ -856,7 +852,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 release_conn=release_conn,
                 chunked=chunked,
                 body_pos=body_pos,
-                **response_kw
+                **response_kw,
             )
 
         return response
@@ -900,7 +896,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         assert_hostname=None,
         assert_fingerprint=None,
         ca_cert_dir=None,
-        **conn_kw
+        **conn_kw,
     ):
 
         HTTPConnectionPool.__init__(
@@ -915,7 +911,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             retries,
             _proxy,
             _proxy_headers,
-            **conn_kw
+            **conn_kw,
         )
 
         self.key_file = key_file
@@ -994,7 +990,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             cert_file=self.cert_file,
             key_file=self.key_file,
             key_password=self.key_password,
-            **self.conn_kw
+            **self.conn_kw,
         )
 
         return self._prepare_conn(conn)
@@ -1003,7 +999,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         """
         Called right before a request is made, after the socket is created.
         """
-        super(HTTPSConnectionPool, self)._validate_conn(conn)
+        super()._validate_conn(conn)
 
         # Force connect early to allow us to validate the connection.
         if not getattr(conn, "sock", None):  # AppEngine might not have  `.sock`
@@ -1012,10 +1008,10 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         if not conn.is_verified:
             warnings.warn(
                 (
-                    "Unverified HTTPS request is being made to host '%s'. "
+                    f"Unverified HTTPS request is being made to host '{conn.host}'. "
                     "Adding certificate verification is strongly advised. See: "
                     "https://urllib3.readthedocs.io/en/latest/advanced-usage.html"
-                    "#ssl-warnings" % conn.host
+                    "#ssl-warnings"
                 ),
                 InsecureRequestWarning,
             )

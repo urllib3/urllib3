@@ -2,15 +2,16 @@
 App Engine sandbox enabled that urllib3 appropriately uses the App
 Engine-patched version of httplib to make requests."""
 
+from unittest.mock import patch
+
 import httplib
 import pytest
 import StringIO
-from mock import patch
 
 from ..test_no_ssl import TestWithoutSSL
 
 
-class MockResponse(object):
+class MockResponse:
     def __init__(self, content, status_code, content_was_truncated, final_url, headers):
 
         self.content = content
@@ -19,7 +20,7 @@ class MockResponse(object):
         self.final_url = final_url
         self.header_msg = httplib.HTTPMessage(
             StringIO.StringIO(
-                "".join(["%s: %s\n" % (k, v) for k, v in headers.iteritems()] + ["\n"])
+                "".join([f"{k}: {v}\n" for k, v in headers.iteritems()] + ["\n"])
             )
         )
         self.headers = headers
@@ -43,7 +44,7 @@ class TestHTTP(TestWithoutSSL):
 
 
 @pytest.mark.usefixtures("sandbox")
-class TestHTTPS(object):
+class TestHTTPS:
     @pytest.mark.xfail(
         reason="This is not yet supported by urlfetch, presence of the ssl "
         "module will bypass urlfetch."

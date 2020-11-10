@@ -8,11 +8,11 @@ from urllib3.util.url import parse_url
 from .port_helpers import find_unused_port
 
 
-class TestProxyManager(object):
+class TestProxyManager:
     @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
     def test_proxy_headers(self, proxy_scheme):
         url = "http://pypi.org/project/urllib3/"
-        proxy_url = "{}://something:1234".format(proxy_scheme)
+        proxy_url = f"{proxy_scheme}://something:1234"
         with ProxyManager(proxy_url) as p:
             # Verify default headers
             default_headers = {"Accept": "*/*", "Host": "pypi.org"}
@@ -69,13 +69,13 @@ class TestProxyManager(object):
     def test_proxy_connect_retry(self):
         retry = Retry(total=None, connect=False)
         port = find_unused_port()
-        with ProxyManager("http://localhost:{}".format(port)) as p:
+        with ProxyManager(f"http://localhost:{port}") as p:
             with pytest.raises(ProxyError) as ei:
                 p.urlopen("HEAD", url="http://localhost/", retries=retry)
             assert isinstance(ei.value.original_error, NewConnectionError)
 
         retry = Retry(total=None, connect=2)
-        with ProxyManager("http://localhost:{}".format(port)) as p:
+        with ProxyManager(f"http://localhost:{port}") as p:
             with pytest.raises(MaxRetryError) as ei:
                 p.urlopen("HEAD", url="http://localhost/", retries=retry)
             assert isinstance(ei.value.reason.original_error, NewConnectionError)

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import email
 import logging
 import re
@@ -70,8 +68,7 @@ class _RetryMeta(type):
         cls.DEFAULT_REMOVE_HEADERS_ON_REDIRECT = value
 
 
-@six.add_metaclass(_RetryMeta)
-class Retry(object):
+class Retry(metaclass=_RetryMeta):
     """Retry configuration.
 
     Each retry attempt will create a new Retry object with updated values, so
@@ -356,7 +353,7 @@ class Retry(object):
         else:
             retry_date_tuple = email.utils.parsedate_tz(retry_after)
             if retry_date_tuple is None:
-                raise InvalidHeader("Invalid Retry-After header: %s" % retry_after)
+                raise InvalidHeader(f"Invalid Retry-After header: {retry_after}")
             if retry_date_tuple[9] is None:  # Python 2
                 # Assume UTC if no timezone was specified
                 # On Python2.7, parsedate_tz returns None for a timezone offset
@@ -578,9 +575,9 @@ class Retry(object):
 
     def __repr__(self):
         return (
-            "{cls.__name__}(total={self.total}, connect={self.connect}, "
-            "read={self.read}, redirect={self.redirect}, status={self.status})"
-        ).format(cls=type(self), self=self)
+            f"{type(self).__name__}(total={self.total}, connect={self.connect}, "
+            f"read={self.read}, redirect={self.redirect}, status={self.status})"
+        )
 
     def __getattr__(self, item):
         if item == "method_whitelist":
@@ -592,7 +589,7 @@ class Retry(object):
             )
             return self.allowed_methods
         try:
-            return getattr(super(Retry, self), item)
+            return getattr(super(), item)
         except AttributeError:
             return getattr(Retry, item)
 

@@ -42,11 +42,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [2.7, 3.5, 3.6, 3.7, 3.8]
+        python-version: [3.6, 3.7, 3.8]
         os: [macos-latest, windows-latest]
         experimental: [false]
         include:
-          - python-version: 3.9-dev
+          - python-version: 3.9
             os: macos-latest
             experimental: true
 

@@ -12,7 +12,7 @@ from urllib3.contrib import appengine
 
 # This class is used so we can re-use the tests from the connection pool.
 # It proxies all requests to the manager.
-class MockPool(object):
+class MockPool:
     def __init__(self, host, port, manager, scheme="http"):
         self.host = host
         self.port = port
@@ -49,7 +49,7 @@ class TestGAEConnectionManager(test_connectionpool.TestConnectionPool):
         with pytest.raises(urllib3.exceptions.TimeoutError):
             self.pool.request(
                 "GET",
-                "/sleep?seconds={}".format(5 * SHORT_TIMEOUT),
+                f"/sleep?seconds={5 * SHORT_TIMEOUT}",
                 timeout=SHORT_TIMEOUT,
             )
 

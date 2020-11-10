@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import time
 
 # The default socket timeout, used by httplib to indicate that no timeout was
@@ -17,7 +15,7 @@ _Default = object()
 current_time = getattr(time, "monotonic", time.time)
 
 
-class Timeout(object):
+class Timeout:
     """Timeout configuration.
 
     Timeouts can be defined as a default for a pool:
@@ -106,12 +104,7 @@ class Timeout(object):
         self._start_connect = None
 
     def __repr__(self):
-        return "%s(connect=%r, read=%r, total=%r)" % (
-            type(self).__name__,
-            self._connect,
-            self._read,
-            self.total,
-        )
+        return f"{type(self).__name__}(connect={self._connect!r}, read={self._read!r}, total={self.total!r})"
 
     # __str__ provided for backwards compatibility
     __str__ = __repr__
