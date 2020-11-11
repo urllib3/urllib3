@@ -1,6 +1,13 @@
 Changes
 =======
 
+1.26.1 (2020-11-11)
+-------------------
+
+* Fixed an issue where two ``User-Agent`` headers would be sent if a
+  ``User-Agent`` header key is passed as ``bytes`` (Pull #2047)
+
+
 1.26.0 (2020-11-10)
 -------------------
 
