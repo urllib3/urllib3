@@ -228,7 +228,7 @@ class HTTPConnection(_HTTPConnection, object):
         else:
             # Avoid modifying the headers passed into .request()
             headers = headers.copy()
-        if "user-agent" not in (k.lower() for k in headers):
+        if "user-agent" not in (six.ensure_str(k.lower()) for k in headers):
             headers["User-Agent"] = _get_default_user_agent()
         super(HTTPConnection, self).request(method, url, body=body, headers=headers)
 
