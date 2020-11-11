@@ -829,6 +829,29 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             request_headers = json.loads(r.data.decode("utf8"))
             assert request_headers.get("User-Agent") == custom_ua2
 
+    @pytest.mark.parametrize(
+        "headers",
+        [
+            None,
+            {},
+            {"User-Agent": "key"},
+            {"user-agent": "key"},
+            {b"uSeR-AgEnT": b"key"},
+            {b"user-agent": "key"},
+        ],
+    )
+    @pytest.mark.parametrize("chunked", [True, False])
+    def test_user_agent_header_not_sent_twice(self, headers, chunked):
+        with HTTPConnectionPool(self.host, self.port) as pool:
+            r = pool.request("GET", "/headers", headers=headers, chunked=chunked)
+            request_headers = json.loads(r.data.decode("utf8"))
+
+            if not headers:
+                assert request_headers["User-Agent"].startswith("python-urllib3/")
+                assert "key" not in request_headers["User-Agent"]
+            else:
+                assert request_headers["User-Agent"] == "key"
+
     def test_no_user_agent_header(self):
         """ ConnectionPool can suppress sending a user agent header """
         custom_ua = "I'm not a web scraper, what are you talking about?"
