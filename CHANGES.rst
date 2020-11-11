@@ -1,6 +1,13 @@
 Changes
 =======
 
+1.26.1 (2020-11-11)
+-------------------
+
+* Fixed an issue where two ``User-Agent`` headers would be sent if a
+  ``User-Agent`` header key is passed as ``bytes`` (Pull #2047)
+
+
 1.26.0 (2020-11-10)
 -------------------
 
@@ -195,7 +202,7 @@ Changes
 * Add TLSv1.3 support to CPython, pyOpenSSL, and SecureTransport ``SSLContext``
   implementations. (Pull #1496)
 
-* Switched the default multipart header encoder from RFC 2231 to HTML 5 working draft. (Issue #303, PR #1492)
+* Switched the default multipart header encoder from RFC 2231 to HTML 5 working draft. (Issue #303, Pull #1492)
 
 * Fixed issue where OpenSSL would block if an encrypted client private key was
   given and no password was given. Instead an ``SSLError`` is raised. (Pull #1489)
@@ -426,13 +433,13 @@ Changes
   interprets the presence of any flag as requesting certificate validation.
 
   There is no PR for this patch, as it was prepared for simultaneous disclosure
-  and release. The master branch received the same fix in PR #1010.
+  and release. The master branch received the same fix in Pull #1010.
 
 
 1.18 (2016-09-26)
 -----------------
 
-* Fixed incorrect message for IncompleteRead exception. (PR #973)
+* Fixed incorrect message for IncompleteRead exception. (Pull #973)
 
 * Accept ``iPAddress`` subject alternative name fields in TLS certificates.
   (Issue #258)
@@ -461,32 +468,32 @@ Changes
   contains retries history. (Issue #848)
 
 * Timeout can no longer be set as boolean, and must be greater than zero.
-  (PR #924)
+  (Pull #924)
 
 * Removed pyasn1 and ndg-httpsclient from dependencies used for PyOpenSSL. We
   now use cryptography and idna, both of which are already dependencies of
-  PyOpenSSL. (PR #930)
+  PyOpenSSL. (Pull #930)
 
 * Fixed infinite loop in ``stream`` when amt=None. (Issue #928)
 
 * Try to use the operating system's certificates when we are using an
-  ``SSLContext``. (PR #941)
+  ``SSLContext``. (Pull #941)
 
 * Updated cipher suite list to allow ChaCha20+Poly1305. AES-GCM is preferred to
-  ChaCha20, but ChaCha20 is then preferred to everything else. (PR #947)
+  ChaCha20, but ChaCha20 is then preferred to everything else. (Pull #947)
 
-* Updated cipher suite list to remove 3DES-based cipher suites. (PR #958)
+* Updated cipher suite list to remove 3DES-based cipher suites. (Pull #958)
 
-* Removed the cipher suite fallback to allow HIGH ciphers. (PR #958)
+* Removed the cipher suite fallback to allow HIGH ciphers. (Pull #958)
 
 * Implemented ``length_remaining`` to determine remaining content
-  to be read. (PR #949)
+  to be read. (Pull #949)
 
 * Implemented ``enforce_content_length`` to enable exceptions when
-  incomplete data chunks are received. (PR #949)
+  incomplete data chunks are received. (Pull #949)
 
 * Dropped connection start, dropped connection reset, redirect, forced retry,
-  and new HTTPS connection log levels to DEBUG, from INFO. (PR #967)
+  and new HTTPS connection log levels to DEBUG, from INFO. (Pull #967)
 
 
 1.16 (2016-06-11)
