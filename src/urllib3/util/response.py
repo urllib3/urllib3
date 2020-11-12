@@ -99,7 +99,4 @@ def is_response_to_head(response):
         used 'HEAD' as a method.
     """
     # FIXME: Can we do this somehow without accessing private httplib _method?
-    method = response._method
-    if isinstance(method, int):  # Platform-specific: Appengine
-        return method == 3
-    return method.upper() == "HEAD"
+    return response._method.upper() == "HEAD"

@@ -1,11 +1,7 @@
 import select
 from functools import partial
 
-__all__ = ["NoWayToWaitForSocketError", "wait_for_read", "wait_for_write"]
-
-
-class NoWayToWaitForSocketError(Exception):
-    pass
+__all__ = ["wait_for_read", "wait_for_write"]
 
 
 # How should we wait on sockets?
@@ -70,10 +66,6 @@ def poll_wait_for_socket(sock, read=False, write=False, timeout=None):
     return bool(do_poll(timeout))
 
 
-def null_wait_for_socket(*args, **kwargs):
-    raise NoWayToWaitForSocketError("no select-equivalent available")
-
-
 def _have_working_poll():
     # Apparently some systems have a select.poll that fails as soon as you try
     # to use it, either due to strange configuration or broken monkeypatching
@@ -97,8 +89,6 @@ def wait_for_socket(*args, **kwargs):
         wait_for_socket = poll_wait_for_socket
     elif hasattr(select, "select"):
         wait_for_socket = select_wait_for_socket
-    else:  # Platform-specific: Appengine.
-        wait_for_socket = null_wait_for_socket
     return wait_for_socket(*args, **kwargs)
 
 

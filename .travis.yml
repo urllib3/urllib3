@@ -48,8 +48,6 @@ jobs:
 
     # Extras
     - python: 3.7
-      env: NOX_SESSION=app_engine GAE_SDK_PATH=${HOME}/.cache/google_appengine
-    - python: 3.7
       env: NOX_SESSION=google_brotli
 
     # Downstream integration tests.
