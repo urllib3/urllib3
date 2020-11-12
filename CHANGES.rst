@@ -1,6 +1,13 @@
 Changes
 =======
 
+1.26.2 (2020-11-12)
+-------------------
+
+* Fixed an issue where ``wrap_socket`` and ``CERT_REQUIRED`` wouldn't
+  be imported properly on Python 2.7.8 and earlier (Pull #2052)
+
+
 1.26.1 (2020-11-11)
 -------------------
 
