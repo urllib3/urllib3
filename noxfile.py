@@ -79,26 +79,6 @@ def google_brotli(session):
     tests_impl(session, extras="socks,secure")
 
 
-@nox.session(python="3.7")
-def app_engine(session):
-    session.install("-r", "dev-requirements.txt")
-    session.install(".")
-    session.run(
-        "coverage",
-        "run",
-        "--parallel-mode",
-        "-m",
-        "pytest",
-        "-r",
-        "sx",
-        "test/appengine",
-        *session.posargs,
-    )
-    session.run("coverage", "combine")
-    session.run("coverage", "report", "-m")
-    session.run("coverage", "xml")
-
-
 @nox.session()
 def format(session):
     """Run code formatters."""
