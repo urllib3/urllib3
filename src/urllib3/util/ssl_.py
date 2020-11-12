@@ -44,12 +44,20 @@ _const_compare_digest = getattr(hmac, "compare_digest", _const_compare_digest_ba
 
 try:  # Test for SSL features
     import ssl
-    from ssl import HAS_SNI  # Has SNI?
     from ssl import CERT_REQUIRED, wrap_socket
+except ImportError:
+    pass
 
+try:
+    from ssl import HAS_SNI  # Has SNI?
+except ImportError:
+    pass
+
+try:
     from .ssltransport import SSLTransport
 except ImportError:
     pass
+
 
 try:  # Platform-specific: Python 3.6
     from ssl import PROTOCOL_TLS
