@@ -34,47 +34,27 @@ def _const_compare_digest_backport(a, b):
 
 _const_compare_digest = getattr(hmac, "compare_digest", _const_compare_digest_backport)
 
-try:  # Test for SSL features
+try:  # Do we have ssl at all?
     import ssl
-    from ssl import CERT_REQUIRED, wrap_socket
-except ImportError:
-    pass
-
-try:
-    from ssl import HAS_SNI  # Has SNI?
-except ImportError:
-    pass
-
-try:
-    from .ssltransport import SSLTransport
-except ImportError:
-    pass
-
-
-try:  # Platform-specific: Python 3.6
-    from ssl import PROTOCOL_TLS
+    from ssl import (
+        CERT_REQUIRED,
+        HAS_SNI,
+        OP_NO_COMPRESSION,
+        OP_NO_TICKET,
+        PROTOCOL_TLS,
+        OP_NO_SSLv2,
+        OP_NO_SSLv3,
+        SSLContext,
+    )
 
     PROTOCOL_SSLv23 = PROTOCOL_TLS
+    from .ssltransport import SSLTransport
 except ImportError:
-    try:
-        from ssl import PROTOCOL_SSLv23 as PROTOCOL_TLS
-
-        PROTOCOL_SSLv23 = PROTOCOL_TLS
-    except ImportError:
-        PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
-
-
-try:
-    from ssl import OP_NO_COMPRESSION, OP_NO_SSLv2, OP_NO_SSLv3
-except ImportError:
-    OP_NO_SSLv2, OP_NO_SSLv3 = 0x1000000, 0x2000000
     OP_NO_COMPRESSION = 0x20000
-
-
-try:  # OP_NO_TICKET was added in Python 3.6
-    from ssl import OP_NO_TICKET
-except ImportError:
     OP_NO_TICKET = 0x4000
+    OP_NO_SSLv2 = 0x1000000
+    OP_NO_SSLv3 = 0x2000000
+    PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
 
 
 # A secure default.
