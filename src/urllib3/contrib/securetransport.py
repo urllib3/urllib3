@@ -66,6 +66,7 @@ import weakref
 import six
 
 from .. import util
+from ..packages.backports.makefile import backport_makefile
 from ._securetransport.bindings import CoreFoundation, Security, SecurityConst
 from ._securetransport.low_level import (
     _assert_no_error,
@@ -75,12 +76,6 @@ from ._securetransport.low_level import (
     _load_client_cert_chain,
     _temporary_keychain,
 )
-
-try:  # Platform-specific: Python 2
-    from socket import _fileobject
-except ImportError:  # Platform-specific: Python 3
-    _fileobject = None
-    from ..packages.backports.makefile import backport_makefile
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 
@@ -761,20 +756,11 @@ class WrappedSocket:
             self._makefile_refs -= 1
 
 
-if _fileobject:  # Platform-specific: Python 2
-
-    def makefile(self, mode, bufsize=-1):
-        self._makefile_refs += 1
-        return _fileobject(self, mode, bufsize, close=True)
-
-
-else:  # Platform-specific: Python 3
-
-    def makefile(self, mode="r", buffering=None, *args, **kwargs):
-        # We disable buffering with SecureTransport because it conflicts with
-        # the buffering that ST does internally (see issue #1153 for more).
-        buffering = 0
-        return backport_makefile(self, mode, buffering, *args, **kwargs)
+def makefile(self, mode="r", buffering=None, *args, **kwargs):
+    # We disable buffering with SecureTransport because it conflicts with
+    # the buffering that ST does internally (see issue #1153 for more).
+    buffering = 0
+    return backport_makefile(self, mode, buffering, *args, **kwargs)
 
 
 WrappedSocket.makefile = makefile
