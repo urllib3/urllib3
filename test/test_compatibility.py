@@ -1,6 +1,5 @@
 import http.cookiejar
 import urllib
-import warnings
 
 import pytest
 
@@ -9,18 +8,6 @@ from urllib3.response import HTTPResponse
 
 
 class TestVersionCompatibility:
-    def test_connection_strict(self):
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-
-            # strict=True is deprecated in Py33+
-            HTTPConnection("localhost", 12345, strict=True)
-
-            if w:
-                pytest.fail(
-                    f"HTTPConnection raised warning on strict=True: {w[0].message!r}"
-                )
-
     def test_connection_source_address(self):
         try:
             # source_address does not exist in Py26-
