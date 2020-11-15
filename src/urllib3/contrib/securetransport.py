@@ -241,7 +241,7 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
                     if not read_count:
                         return SecurityConst.errSSLClosedGraceful
                     break
-        except (OSError) as e:
+        except OSError as e:
             error = e.errno
 
             if error is not None and error != errno.EAGAIN:
@@ -292,7 +292,7 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
                 # This has some needless copying here, but I'm not sure there's
                 # much value in optimising this data path.
                 data = data[chunk_sent:]
-        except (OSError) as e:
+        except OSError as e:
             error = e.errno
 
             if error is not None and error != errno.EAGAIN:
