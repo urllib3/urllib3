@@ -1,19 +1,7 @@
 import http.cookiejar
 import urllib
 
-import pytest
-
-from urllib3.connection import HTTPConnection
 from urllib3.response import HTTPResponse
-
-
-class TestVersionCompatibility:
-    def test_connection_source_address(self):
-        try:
-            # source_address does not exist in Py26-
-            HTTPConnection("localhost", 12345, source_address="127.0.0.1")
-        except TypeError as e:
-            pytest.fail(f"HTTPConnection raised TypeError on source_address: {e!r}")
 
 
 class TestCookiejar:
