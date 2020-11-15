@@ -409,8 +409,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
 
-        # App Engine doesn't have a sock attr
-        if getattr(conn, "sock", None):
+        if conn.sock:
             # In Python 3 socket.py will catch EAGAIN and return None when you
             # try and read into the file pointer created by http.client, which
             # instead raises a BadStatusLine exception. Instead of catching
@@ -443,8 +442,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
 
-        # AppEngine doesn't have a version attr.
-        http_version = getattr(conn, "_http_vsn_str", "HTTP/?")
         log.debug(
             '%s://%s:%s "%s %s %s" %s %s',
             self.scheme,
@@ -452,7 +449,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             self.port,
             method,
             url,
-            http_version,
+            # HTTP version
+            conn._http_vsn_str,
             httplib_response.status,
             httplib_response.length,
         )
@@ -1002,7 +1000,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         super()._validate_conn(conn)
 
         # Force connect early to allow us to validate the connection.
-        if not getattr(conn, "sock", None):  # AppEngine might not have  `.sock`
+        if not conn.sock:
             conn.connect()
 
         if not conn.is_verified:

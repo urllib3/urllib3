@@ -11,9 +11,6 @@ def is_connection_dropped(conn):  # Platform-specific
 
     :param conn:
         :class:`http.client.HTTPConnection` object.
-
-    Note: For platforms like AppEngine, this will always return ``False`` to
-    let the platform handle connection recycling transparently for us.
     """
     sock = getattr(conn, "sock", False)
     if sock is None:  # Connection already closed (such as by httplib).

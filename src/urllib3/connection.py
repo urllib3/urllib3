@@ -165,8 +165,7 @@ class HTTPConnection(_HTTPConnection):
         return conn
 
     def _is_using_tunnel(self):
-        # Google App Engine's httplib does not define _tunnel_host
-        return getattr(self, "_tunnel_host", None)
+        return self._tunnel_host
 
     def _prepare_conn(self, conn):
         self.sock = conn
@@ -289,10 +288,6 @@ class HTTPSConnection(HTTPConnection):
         self.key_password = key_password
         self.ssl_context = ssl_context
         self.server_hostname = server_hostname
-
-        # Required property for Google AppEngine 1.9.0 which otherwise causes
-        # HTTPS requests to go out as HTTP. (See Issue #356)
-        self._protocol = "https"
 
     def set_cert(
         self,
