@@ -73,8 +73,8 @@ pygments_style = "friendly"
 # a list of builtin themes.
 html_theme = "furo"
 html_favicon = "images/favicon.png"
-html_logo = "images/banner.svg"
 
+html_static_path = ["_static"]
 html_theme_options = {
     "announcement": """
         <a style=\"text-decoration: none; color: white;\" 
@@ -83,6 +83,8 @@ html_theme_options = {
         </a>
     """,
     "sidebar_hide_name": True,
+    "light_logo": "banner.svg",
+    "dark_logo": "dark-logo.svg",
 }
 
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
