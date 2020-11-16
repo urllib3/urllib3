@@ -196,7 +196,6 @@ class HTTPResponse(io.IOBase):
         status=0,
         version=0,
         reason=None,
-        strict=0,
         preload_content=True,
         decode_content=True,
         original_response=None,
@@ -217,7 +216,6 @@ class HTTPResponse(io.IOBase):
         self.status = status
         self.version = version
         self.reason = reason
-        self.strict = strict
         self.decode_content = decode_content
         self.retries = retries
         self.enforce_content_length = enforce_content_length
@@ -588,15 +586,12 @@ class HTTPResponse(io.IOBase):
         if not isinstance(headers, HTTPHeaderDict):
             headers = HTTPHeaderDict(headers.items())
 
-        # HTTPResponse objects in Python 3 don't have a .strict attribute
-        strict = getattr(r, "strict", 0)
         resp = ResponseCls(
             body=r,
             headers=headers,
             status=r.status,
             version=r.version,
             reason=r.reason,
-            strict=strict,
             original_response=r,
             **response_kw,
         )

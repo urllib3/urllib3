@@ -40,7 +40,6 @@ _key_fields = (
     "key_port",  # int
     "key_timeout",  # int or float or Timeout
     "key_retries",  # int or Retry
-    "key_strict",  # bool
     "key_block",  # bool
     "key_source_address",  # str
     "key_key_file",  # str

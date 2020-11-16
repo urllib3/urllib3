@@ -64,7 +64,6 @@ class HTTPConnection(_HTTPConnection):
     Additional keyword parameters are used to configure attributes of the connection.
     Accepted parameters include:
 
-    - ``strict``: See the documentation on :class:`urllib3.connectionpool.HTTPConnectionPool`
     - ``source_address``: Set the source address for the current connection.
     - ``socket_options``: Set specific options on the underlying socket. If not specified, then
       defaults are loaded from ``HTTPConnection.default_socket_options`` which includes disabling
@@ -92,8 +91,6 @@ class HTTPConnection(_HTTPConnection):
     is_verified = False
 
     def __init__(self, *args, **kw):
-        kw.pop("strict", None)
-
         # Pre-set source_address.
         self.source_address = kw.get("source_address")
 
@@ -274,14 +271,13 @@ class HTTPSConnection(HTTPConnection):
         key_file=None,
         cert_file=None,
         key_password=None,
-        strict=None,
         timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
         ssl_context=None,
         server_hostname=None,
         **kw,
     ):
 
-        HTTPConnection.__init__(self, host, port, strict=strict, timeout=timeout, **kw)
+        HTTPConnection.__init__(self, host, port, timeout=timeout, **kw)
 
         self.key_file = key_file
         self.cert_file = cert_file

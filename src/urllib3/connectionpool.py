@@ -109,14 +109,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         Port used for this HTTP Connection (None is equivalent to 80), passed
         into :class:`http.client.HTTPConnection`.
 
-    :param strict:
-        Causes BadStatusLine to be raised if the status line can't be parsed
-        as a valid HTTP/1.0 or 1.1 status line, passed into
-        :class:`http.client.HTTPConnection`.
-
-        .. note::
-           Only works in Python 2. This parameter is ignored in Python 3.
-
     :param timeout:
         Socket timeout in seconds for each individual connection. This can
         be a float or integer, which sets the timeout for the HTTP request,
@@ -165,7 +157,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self,
         host,
         port=None,
-        strict=False,
         timeout=Timeout.DEFAULT_TIMEOUT,
         maxsize=1,
         block=False,
@@ -178,8 +169,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     ):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
-
-        self.strict = strict
 
         if not isinstance(timeout, Timeout):
             timeout = Timeout.from_float(timeout)
@@ -231,7 +220,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             host=self.host,
             port=self.port,
             timeout=self.timeout.connect_timeout,
-            strict=self.strict,
             **self.conn_kw,
         )
         return conn
@@ -877,7 +865,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self,
         host,
         port=None,
-        strict=False,
         timeout=Timeout.DEFAULT_TIMEOUT,
         maxsize=1,
         block=False,
@@ -901,7 +888,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             self,
             host,
             port,
-            strict,
             timeout,
             maxsize,
             block,
@@ -984,7 +970,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             host=actual_host,
             port=actual_port,
             timeout=self.timeout.connect_timeout,
-            strict=self.strict,
             cert_file=self.cert_file,
             key_file=self.key_file,
             key_password=self.key_password,
