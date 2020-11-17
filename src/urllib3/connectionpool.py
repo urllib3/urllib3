@@ -321,19 +321,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 self, url, f"Read timed out. (read timeout={timeout_value})"
             )
 
-        # See the above comment about EAGAIN in Python 3. In Python 2 we have
-        # to specifically catch it and throw the timeout error
+        # See the above comment about EAGAIN in Python 3.
         if hasattr(err, "errno") and err.errno in _blocking_errnos:
-            raise ReadTimeoutError(
-                self, url, f"Read timed out. (read timeout={timeout_value})"
-            )
-
-        # Catch possible read timeouts thrown as SSL errors. If not the
-        # case, rethrow the original. We need to do this because of:
-        # http://bugs.python.org/issue10272
-        if "timed out" in str(err) or "did not complete (read)" in str(
-            err
-        ):  # Python < 2.7.4
             raise ReadTimeoutError(
                 self, url, f"Read timed out. (read timeout={timeout_value})"
             )
@@ -365,7 +354,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         try:
             self._validate_conn(conn)
         except (SocketTimeout, BaseSSLError) as e:
-            # Py2 raises this as a BaseSSLError, Py3 raises it as socket timeout.
             self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
             raise
 
@@ -381,17 +369,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # legitimately able to close the connection after sending a valid response.
         # With this behaviour, the received response is still readable.
         except BrokenPipeError:
-            # Python 3
             pass
         except OSError as e:
-            # Python 2 and macOS/Linux
-            # EPIPE and ESHUTDOWN are BrokenPipeError on Python 2, and EPROTOTYPE is needed on macOS
+            # MacOS/Linux
+            # EPROTOTYPE is needed on macOS
             # https://erickt.github.io/blog/2014/11/19/adventures-in-debugging-a-potential-osx-kernel-bug/
-            if e.errno not in {
-                errno.EPIPE,
-                errno.ESHUTDOWN,
-                errno.EPROTOTYPE,
-            }:
+            if e.errno != errno.EPROTOTYPE:
                 raise
 
         # Reset the timeout for the recv() on the socket
@@ -414,18 +397,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Receive the response from the server
         try:
-            try:
-                # Python 2.7, use buffering of HTTP responses
-                httplib_response = conn.getresponse(buffering=True)
-            except TypeError:
-                # Python 3
-                try:
-                    httplib_response = conn.getresponse()
-                except BaseException as e:
-                    # Remove the TypeError from the exception chain in
-                    # Python 3 (including for exceptions like SystemExit).
-                    # Otherwise it looks like a bug in the code.
-                    raise e from None
+            httplib_response = conn.getresponse()
         except (SocketTimeout, BaseSSLError, SocketError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
