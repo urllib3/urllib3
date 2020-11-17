@@ -163,7 +163,7 @@ class PoolManager(RequestMethods):
     proxy_config = None
 
     def __init__(self, num_pools=10, headers=None, **connection_pool_kw):
-        RequestMethods.__init__(self, headers)
+        super().__init__(headers)
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools, dispose_func=lambda p: p.close())
 

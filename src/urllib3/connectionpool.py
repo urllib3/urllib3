@@ -856,8 +856,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         **conn_kw,
     ):
 
-        HTTPConnectionPool.__init__(
-            self,
+        super().__init__(
             host,
             port,
             timeout,

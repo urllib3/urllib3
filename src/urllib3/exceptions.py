@@ -20,7 +20,7 @@ class PoolError(HTTPError):
 
     def __init__(self, pool, message):
         self.pool = pool
-        HTTPError.__init__(self, f"{pool}: {message}")
+        super().__init__(f"{pool}: {message}")
 
     def __reduce__(self):
         # For pickling purposes.
@@ -32,7 +32,7 @@ class RequestError(PoolError):
 
     def __init__(self, pool, url, message):
         self.url = url
-        PoolError.__init__(self, pool, message)
+        super().__init__(pool, message)
 
     def __reduce__(self):
         # For pickling purposes.
@@ -87,7 +87,7 @@ class MaxRetryError(RequestError):
 
         message = f"Max retries exceeded with url: {url} (Caused by {reason!r})"
 
-        RequestError.__init__(self, pool, url, message)
+        super().__init__(pool, url, message)
 
 
 class HostChangedError(RequestError):
@@ -95,7 +95,7 @@ class HostChangedError(RequestError):
 
     def __init__(self, pool, url, retries=3):
         message = f"Tried to open a foreign host with url: {url}"
-        RequestError.__init__(self, pool, url, message)
+        super().__init__(pool, url, message)
         self.retries = retries
 
 
@@ -158,7 +158,7 @@ class LocationParseError(LocationValueError):
 
     def __init__(self, location):
         message = f"Failed to parse: {location}"
-        HTTPError.__init__(self, message)
+        super().__init__(message)
 
         self.location = location
 
