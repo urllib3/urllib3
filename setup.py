@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # This file is protected via CODEOWNERS
 
-import codecs
 import os
 import re
 
@@ -16,7 +15,7 @@ with open(os.path.join(base_path, "src", "urllib3", "_version.py")) as fp:
     )
 
 
-with codecs.open("README.rst", encoding="utf-8") as fp:
+with open("README.rst", encoding="utf-8") as fp:
     # Remove reST raw directive from README as they're not allowed on PyPI
     # Those blocks start with a newline and continue until the next newline
     mode = None
@@ -31,7 +30,7 @@ with codecs.open("README.rst", encoding="utf-8") as fp:
             lines.append(line)
     readme = "".join(lines)
 
-with codecs.open("CHANGES.rst", encoding="utf-8") as fp:
+with open("CHANGES.rst", encoding="utf-8") as fp:
     changes = fp.read()
 
 version = VERSION
