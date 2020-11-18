@@ -1414,8 +1414,7 @@ class TestSSL(SocketDummyServerTestCase):
 
         def is_closed_socket(sock):
             try:
-                sock.settimeout(SHORT_TIMEOUT)  # Python 3
-                sock.recv(1)  # Python 2
+                sock.settimeout(SHORT_TIMEOUT)
             except OSError:
                 return True
             return False

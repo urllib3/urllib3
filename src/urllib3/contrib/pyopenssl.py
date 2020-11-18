@@ -59,21 +59,15 @@ except ImportError:
         pass
 
 
+import logging
+import ssl
 from io import BytesIO
 from socket import error as SocketError
 from socket import timeout
 
-try:  # Platform-specific: Python 2
-    from socket import _fileobject
-except ImportError:  # Platform-specific: Python 3
-    _fileobject = None
-    from ..packages.backports.makefile import backport_makefile
-
-import logging
-import ssl
-
 from .. import util
 from ..packages import six
+from ..packages.backports.makefile import backport_makefile
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 
@@ -394,17 +388,7 @@ class WrappedSocket:
             self._makefile_refs -= 1
 
 
-if _fileobject:  # Platform-specific: Python 2
-
-    def makefile(self, mode, bufsize=-1):
-        self._makefile_refs += 1
-        return _fileobject(self, mode, bufsize, close=True)
-
-
-else:  # Platform-specific: Python 3
-    makefile = backport_makefile
-
-WrappedSocket.makefile = makefile
+WrappedSocket.makefile = backport_makefile
 
 
 class PyOpenSSLContext:
@@ -479,7 +463,7 @@ class PyOpenSSLContext:
     ):
         cnx = OpenSSL.SSL.Connection(self._ctx, sock)
 
-        if isinstance(server_hostname, str):  # Platform-specific: Python 3
+        if isinstance(server_hostname, str):
             server_hostname = server_hostname.encode("utf-8")
 
         if server_hostname is not None:
