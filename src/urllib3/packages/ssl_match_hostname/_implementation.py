@@ -3,17 +3,8 @@
 # Note: This file is under the PSF license as the code comes from the python
 # stdlib.   http://docs.python.org/3/license.html
 
+import ipaddress
 import re
-import sys
-
-# ipaddress has been backported to 2.6+ in pypi.  If it is installed on the
-# system, use it to handle IPAddress ServerAltnames (this was added in
-# python-3.5) otherwise only do DNS matching.  This allows
-# backports.ssl_match_hostname to continue to be used in Python 2.7.
-try:
-    import ipaddress
-except ImportError:
-    ipaddress = None
 
 __version__ = "3.5.0.1"
 
@@ -109,11 +100,8 @@ def match_hostname(cert, hostname):
         # Not an IP address (common case)
         host_ip = None
     except AttributeError:
-        # Divergence from upstream: Make ipaddress library optional
-        if ipaddress is None:
-            host_ip = None
-        else:
-            raise
+        raise
+
     dnsnames = []
     san = cert.get("subjectAltName", ())
     for key, value in san:
