@@ -102,7 +102,7 @@ class HTTPConnection(_HTTPConnection):
         self.proxy = kw.pop("proxy", None)
         self.proxy_config = kw.pop("proxy_config", None)
 
-        _HTTPConnection.__init__(self, *args, **kw)
+        super().__init__(*args, **kw)
 
     @property
     def host(self):
@@ -186,12 +186,12 @@ class HTTPConnection(_HTTPConnection):
                 f"Method cannot contain non-token characters {method!r} (found at least {match.group()!r})"
             )
 
-        return _HTTPConnection.putrequest(self, method, url, *args, **kwargs)
+        return super().putrequest(method, url, *args, **kwargs)
 
     def putheader(self, header, *values):
         """"""
         if SKIP_HEADER not in values:
-            _HTTPConnection.putheader(self, header, *values)
+            super().putheader(header, *values)
         elif six.ensure_str(header.lower()) not in SKIPPABLE_HEADERS:
             raise ValueError(
                 "urllib3.util.SKIP_HEADER only supports '{}'".format(
@@ -277,7 +277,7 @@ class HTTPSConnection(HTTPConnection):
         **kw,
     ):
 
-        HTTPConnection.__init__(self, host, port, timeout=timeout, **kw)
+        super().__init__(host, port, timeout=timeout, **kw)
 
         self.key_file = key_file
         self.cert_file = cert_file
