@@ -255,15 +255,6 @@ class TestUtil:
             "http://foo:bar@localhost/",
             Url("http", auth="foo:bar", host="localhost", path="/"),
         ),
-        # Unicode type (Python 2.x)
-        (
-            "http://foo:bar@localhost/",
-            Url("http", auth="foo:bar", host="localhost", path="/"),
-        ),
-        (
-            "http://foo:bar@localhost/",
-            Url("http", auth="foo:bar", host="localhost", path="/"),
-        ),
     ]
 
     non_round_tripping_parse_url_host_map = [

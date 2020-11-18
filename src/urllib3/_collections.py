@@ -14,8 +14,6 @@ except ImportError:  # Platform-specific: No threads available
 
 from collections import OrderedDict
 
-from .exceptions import InvalidHeader
-
 __all__ = ["RecentlyUsedContainer", "HTTPHeaderDict"]
 
 
@@ -296,31 +294,3 @@ class HTTPHeaderDict(MutableMapping):
 
     def items(self):
         return list(self.iteritems())
-
-    @classmethod
-    def from_httplib(cls, message):  # Python 2
-        """Read headers from a Python 2 httplib message object."""
-        # python2.7 does not expose a proper API for exporting multiheaders
-        # efficiently. This function re-reads raw lines from the message
-        # object and extracts the multiheaders properly.
-        obs_fold_continued_leaders = (" ", "\t")
-        headers = []
-
-        for line in message.headers:
-            if line.startswith(obs_fold_continued_leaders):
-                if not headers:
-                    # We received a header line that starts with OWS as described
-                    # in RFC-7230 S3.2.4. This indicates a multiline header, but
-                    # there exists no previous header to which we can attach it.
-                    raise InvalidHeader(
-                        f"Header continuation with no previous header: {line}"
-                    )
-                else:
-                    key, value = headers[-1]
-                    headers[-1] = (key, value + " " + line.strip())
-                    continue
-
-            key, value = line.split(":", 1)
-            headers.append((key, value.strip()))
-
-        return cls(headers)
