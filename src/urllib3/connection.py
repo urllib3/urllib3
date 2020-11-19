@@ -14,6 +14,7 @@ from .util.proxy import create_proxy_ssl_context
 
 try:  # Compiled with SSL?
     import ssl
+    from ssl import CertificateError, match_hostname
 
     BaseSSLError = ssl.SSLError
 except (ImportError, AttributeError):  # Platform-specific: No SSL.
@@ -32,10 +33,8 @@ from .exceptions import (
 )
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection
 from .util.ssl_ import (
-    CertificateError,
     assert_fingerprint,
     create_urllib3_context,
-    match_hostname,
     resolve_cert_reqs,
     resolve_ssl_version,
     ssl_wrap_socket,
