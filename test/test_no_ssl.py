@@ -1,5 +1,6 @@
 """
-Test what happens if Python was built without SSL
+Since SSL module is an optional Python module, these tests are for
+the case if user's Python was built without the SSL module
 
 * Everything that does not involve HTTPS should still work
 * HTTPS requests must fail with an error that points at the ssl module

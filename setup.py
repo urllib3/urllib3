@@ -72,7 +72,6 @@ setup(
     packages=[
         "urllib3",
         "urllib3.packages",
-        "urllib3.packages.ssl_match_hostname",
         "urllib3.packages.backports",
         "urllib3.contrib",
         "urllib3.contrib._securetransport",

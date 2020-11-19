@@ -27,8 +27,8 @@ from urllib3.exceptions import (
     SSLError,
     TimeoutError,
 )
-from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.response import HTTPResponse
+from urllib3.util.ssl_ import CertificateError
 from urllib3.util.timeout import Timeout
 
 from .test_response import MockChunkedEncodingResponse, MockSock

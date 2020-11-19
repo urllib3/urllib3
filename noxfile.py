@@ -14,8 +14,6 @@ TYPED_FILES = {
     "src/urllib3/filepost.py",
     "src/urllib3/packages/__init__.py",
     "src/urllib3/packages/six.py",
-    "src/urllib3/packages/ssl_match_hostname/__init__.py",
-    "src/urllib3/packages/ssl_match_hostname/_implementation.py",
     "src/urllib3/util/queue.py",
     "src/urllib3/util/url.py",
 }

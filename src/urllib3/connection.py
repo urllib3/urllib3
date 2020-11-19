@@ -30,11 +30,12 @@ from .exceptions import (
     SubjectAltNameWarning,
     SystemTimeWarning,
 )
-from .packages.ssl_match_hostname import CertificateError, match_hostname
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection
 from .util.ssl_ import (
+    CertificateError,
     assert_fingerprint,
     create_urllib3_context,
+    match_hostname,
     resolve_cert_reqs,
     resolve_ssl_version,
     ssl_wrap_socket,
