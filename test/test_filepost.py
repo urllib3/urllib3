@@ -2,9 +2,9 @@ import pytest
 
 from urllib3.fields import RequestField
 from urllib3.filepost import encode_multipart_formdata, iter_fields
-from urllib3.packages.six import b
 
 BOUNDARY = "!! test boundary !!"
+BOUNDARY_BYTES = BOUNDARY.encode()
 
 
 class TestIterfields:
@@ -27,7 +27,7 @@ class TestMultipartEncoding:
     )
     def test_input_datastructures(self, fields):
         encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
-        assert encoded.count(b(BOUNDARY)) == 3
+        assert encoded.count(BOUNDARY_BYTES) == 3
 
     @pytest.mark.parametrize(
         "fields",
@@ -40,15 +40,15 @@ class TestMultipartEncoding:
     def test_field_encoding(self, fields):
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
         expected = (
-            b"--" + b(BOUNDARY) + b"\r\n"
+            b"--" + BOUNDARY_BYTES + b"\r\n"
             b'Content-Disposition: form-data; name="k"\r\n'
             b"\r\n"
             b"v\r\n"
-            b"--" + b(BOUNDARY) + b"\r\n"
+            b"--" + BOUNDARY_BYTES + b"\r\n"
             b'Content-Disposition: form-data; name="k2"\r\n'
             b"\r\n"
             b"v2\r\n"
-            b"--" + b(BOUNDARY) + b"--\r\n"
+            b"--" + BOUNDARY_BYTES + b"--\r\n"
         )
 
         assert encoded == expected
@@ -60,12 +60,12 @@ class TestMultipartEncoding:
 
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
         expected = (
-            b"--" + b(BOUNDARY) + b"\r\n"
+            b"--" + BOUNDARY_BYTES + b"\r\n"
             b'Content-Disposition: form-data; name="k"; filename="somename"\r\n'
             b"Content-Type: application/octet-stream\r\n"
             b"\r\n"
             b"v\r\n"
-            b"--" + b(BOUNDARY) + b"--\r\n"
+            b"--" + BOUNDARY_BYTES + b"--\r\n"
         )
 
         assert encoded == expected
@@ -77,12 +77,12 @@ class TestMultipartEncoding:
 
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
         expected = (
-            b"--" + b(BOUNDARY) + b"\r\n"
+            b"--" + BOUNDARY_BYTES + b"\r\n"
             b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
             b"Content-Type: text/plain\r\n"
             b"\r\n"
             b"v\r\n"
-            b"--" + b(BOUNDARY) + b"--\r\n"
+            b"--" + BOUNDARY_BYTES + b"--\r\n"
         )
 
         assert encoded == expected
@@ -94,12 +94,12 @@ class TestMultipartEncoding:
 
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
         expected = (
-            b"--" + b(BOUNDARY) + b"\r\n"
+            b"--" + BOUNDARY_BYTES + b"\r\n"
             b'Content-Disposition: form-data; name="k"; filename="somefile.txt"\r\n'
             b"Content-Type: image/jpeg\r\n"
             b"\r\n"
             b"v\r\n"
-            b"--" + b(BOUNDARY) + b"--\r\n"
+            b"--" + BOUNDARY_BYTES + b"--\r\n"
         )
 
         assert encoded == expected
@@ -118,11 +118,11 @@ class TestMultipartEncoding:
 
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
         expected = (
-            b"--" + b(BOUNDARY) + b"\r\n"
+            b"--" + BOUNDARY_BYTES + b"\r\n"
             b"Content-Type: image/jpeg\r\n"
             b"\r\n"
             b"v\r\n"
-            b"--" + b(BOUNDARY) + b"--\r\n"
+            b"--" + BOUNDARY_BYTES + b"--\r\n"
         )
 
         assert encoded == expected

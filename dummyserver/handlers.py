@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 from tornado import httputil
 from tornado.web import RequestHandler
 
-from urllib3.packages.six import ensure_str
+from urllib3.util.util import to_str
 
 log = logging.getLogger(__name__)
 
@@ -210,9 +210,7 @@ class TestingApp(RequestHandler):
         return Response("Keeping alive", headers=headers)
 
     def echo_params(self, request):
-        params = sorted(
-            [(ensure_str(k), ensure_str(v)) for k, v in request.params.items()]
-        )
+        params = sorted([(to_str(k), to_str(v)) for k, v in request.params.items()])
         return Response(repr(params))
 
     def echo(self, request):

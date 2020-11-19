@@ -9,8 +9,8 @@ from http.client import HTTPException  # noqa: F401
 from socket import error as SocketError
 from socket import timeout as SocketTimeout
 
-from .packages import six
 from .util.proxy import create_proxy_ssl_context
+from .util.util import to_str
 
 try:  # Compiled with SSL?
     import ssl
@@ -192,7 +192,7 @@ class HTTPConnection(_HTTPConnection):
         """"""
         if SKIP_HEADER not in values:
             super().putheader(header, *values)
-        elif six.ensure_str(header.lower()) not in SKIPPABLE_HEADERS:
+        elif to_str(header.lower()) not in SKIPPABLE_HEADERS:
             raise ValueError(
                 "urllib3.util.SKIP_HEADER only supports '{}'".format(
                     "', '".join(map(str.title, sorted(SKIPPABLE_HEADERS)))
@@ -205,7 +205,7 @@ class HTTPConnection(_HTTPConnection):
         else:
             # Avoid modifying the headers passed into .request()
             headers = headers.copy()
-        if "user-agent" not in (six.ensure_str(k.lower()) for k in headers):
+        if "user-agent" not in (to_str(k.lower()) for k in headers):
             headers["User-Agent"] = _get_default_user_agent()
         super().request(method, url, body=body, headers=headers)
 
@@ -215,7 +215,7 @@ class HTTPConnection(_HTTPConnection):
         body with chunked encoding and not as one block
         """
         headers = headers or {}
-        header_keys = {six.ensure_str(k.lower()) for k in headers}
+        header_keys = {to_str(k.lower()) for k in headers}
         skip_accept_encoding = "accept-encoding" in header_keys
         skip_host = "host" in header_keys
         self.putrequest(

@@ -66,7 +66,6 @@ from socket import error as SocketError
 from socket import timeout
 
 from .. import util
-from ..packages import six
 from ..packages.backports.makefile import backport_makefile
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
@@ -450,7 +449,7 @@ class PyOpenSSLContext:
         self._ctx.use_privatekey_file(keyfile or certfile)
 
     def set_alpn_protocols(self, protocols):
-        protocols = [six.ensure_binary(p) for p in protocols]
+        protocols = [util.util.to_bytes(p, "ascii") for p in protocols]
         return self._ctx.set_alpn_protos(protocols)
 
     def wrap_socket(

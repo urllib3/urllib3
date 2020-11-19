@@ -22,6 +22,7 @@ exclude_lines =
     pass
     import
     raise
+    def reraise
     .* # Platform-specific.*
     .*:.* # Python \d.*
     .* # Abstract

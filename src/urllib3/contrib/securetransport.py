@@ -63,8 +63,6 @@ import struct
 import threading
 import weakref
 
-import six
-
 from .. import util
 from ..packages.backports.makefile import backport_makefile
 from ._securetransport.bindings import CoreFoundation, Security, SecurityConst
@@ -869,7 +867,7 @@ class SecureTransportContext:
             raise NotImplementedError(
                 "SecureTransport supports ALPN only in macOS 10.12+"
             )
-        self._alpn_protocols = [six.ensure_binary(p) for p in protocols]
+        self._alpn_protocols = [util.util.to_bytes(p, "ascii") for p in protocols]
 
     def wrap_socket(
         self,
