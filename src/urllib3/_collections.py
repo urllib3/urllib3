@@ -1,3 +1,5 @@
+import sys
+from collections import OrderedDict
 from collections.abc import Mapping, MutableMapping
 
 try:
@@ -12,7 +14,16 @@ except ImportError:  # Platform-specific: No threads available
             pass
 
 
-from collections import OrderedDict
+# Starting in Python 3.7 the 'dict' class is guaranteed to be
+# ordered by insertion. This behavior was an implementation
+# detail in Python 3.6. OrderedDict is implemented in C in
+# later Python versions but still requires a lot more memory
+# due to being implemented as a linked list.
+if sys.version_info >= (3, 7):
+    _ordered_dict = dict
+else:
+    _ordered_dict = OrderedDict
+
 
 __all__ = ["RecentlyUsedContainer", "HTTPHeaderDict"]
 
@@ -132,7 +143,7 @@ class HTTPHeaderDict(MutableMapping):
 
     def __init__(self, headers=None, **kwargs):
         super().__init__()
-        self._container = OrderedDict()
+        self._container = _ordered_dict()
         if headers is not None:
             if isinstance(headers, HTTPHeaderDict):
                 self._copy_from(headers)
