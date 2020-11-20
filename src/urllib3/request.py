@@ -47,7 +47,7 @@ class RequestMethods:
         headers=None,
         encode_multipart=True,
         multipart_boundary=None,
-        **kw
+        **kw,
     ):  # Abstract
         raise NotImplementedError(
             "Classes extending RequestMethods must implement "
@@ -102,7 +102,7 @@ class RequestMethods:
         headers=None,
         encode_multipart=True,
         multipart_boundary=None,
-        **urlopen_kw
+        **urlopen_kw,
     ):
         """
         Make a request using :meth:`urlopen` with the ``fields`` encoded in
