@@ -84,8 +84,6 @@ DEFAULT_CIPHERS = ":".join(
         "DH+AESGCM",
         "ECDH+AES",
         "DH+AES",
-        "RSA+AESGCM",
-        "RSA+AES",
         "!aNULL",
         "!eNULL",
         "!MD5",
