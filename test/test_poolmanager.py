@@ -1,4 +1,5 @@
 import socket
+import sys
 from test import resolvesLocalhostFQDN
 
 import pytest
@@ -109,6 +110,9 @@ class TestPoolManager:
             "block": True,
             "source_address": "127.0.0.1",
         }
+        if sys.version_info >= (3, 7):
+            connection_pool_kw["blocksize"] = 16384
+
         p = PoolManager()
         conn_pools = [
             p.connection_from_url("http://example.com/"),
@@ -141,6 +145,9 @@ class TestPoolManager:
             "ca_certs": "/root/path_to_pem",
             "ssl_version": "SSLv23_METHOD",
         }
+        if sys.version_info >= (3, 7):
+            connection_pool_kw["blocksize"] = 16384
+
         p = PoolManager()
         conn_pools = [
             p.connection_from_url("https://example.com/"),

@@ -1,6 +1,7 @@
 import collections
 import functools
 import logging
+import sys
 from urllib.parse import urljoin
 
 from ._collections import RecentlyUsedContainer
@@ -61,6 +62,11 @@ _key_fields = (
     "key_assert_fingerprint",  # str
     "key_server_hostname",  # str
 )
+
+# Python 3.7 introduces the parameter "blocksize" to
+# http.client.HTTPConnection's and http.client.HTTPSConnection's initializers
+if sys.version_info >= (3, 7):
+    _key_fields += ("key_blocksize",)  # int
 
 #: The namedtuple class used to construct keys for the connection pool.
 #: All custom key schemes should include the fields in this key at a minimum.

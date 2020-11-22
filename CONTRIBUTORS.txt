@@ -306,5 +306,8 @@ In chronological order:
 * [Ezzeri Esa] <https://github.com/savarin>
   * Ports and extends on types from typeshed
 
+* [Geancarlo Rocha] <https://github.com/geancarlo>
+  * Support passing blocksize to PoolManager in python 3.7+
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
