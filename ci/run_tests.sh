@@ -1,4 +1,6 @@
 #!/bin/bash
 
-NOX_SESSION=test-${PYTHON_VERSION%-dev}
+if [[ -z "$NOX_SESSION" ]]; then
+  NOX_SESSION=test-${PYTHON_VERSION%-dev}
+fi
 nox -s $NOX_SESSION --error-on-missing-interpreters
