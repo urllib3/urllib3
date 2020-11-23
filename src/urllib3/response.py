@@ -317,8 +317,8 @@ class BaseHTTPResponse(io.IOBase):
             return len(temp)
 
     # Compatibility methods for http.client.HTTPResponse
-    def getheaders(self) -> typing.MutableMapping[str, str]:
-        return self.headers
+    def getheaders(self) -> typing.List[typing.Tuple[str, str]]:
+        return list(self.headers.items())
 
     def getheader(
         self, name: str, default: typing.Optional[str] = None
