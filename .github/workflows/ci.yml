@@ -55,6 +55,10 @@ jobs:
             os: ubuntu-latest
             experimental: false
             nox-session: google_brotli
+          - python-version: 2.7
+            os: ubuntu-latest
+            experimental: false
+            nox-session: unsupported_python2
 
     runs-on: ${{ matrix.os }}
     name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
