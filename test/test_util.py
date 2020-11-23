@@ -783,16 +783,15 @@ class TestUtil:
             ("test", {}, "test"),  # str input
             (b"test", {}, "test"),  # bytes input
             (b"test", {"encoding": "utf-8"}, "test"),  # bytes input with utf-8
-            (b"test", {"encoding": "ascii"}, "test"),  # bytes input with asscii
+            (b"test", {"encoding": "ascii"}, "test"),  # bytes input with ascii
         ),
     )
     def test_to_str(self, input, params, expected):
         assert to_str(input, **params) == expected
 
     def test_to_str_error(self):
-        with pytest.raises(TypeError) as e:
+        with pytest.raises(TypeError, match="not expecting type int"):
             to_str(1)
-        assert "not expecting type int" in str(e.value)
 
     @pytest.mark.parametrize(
         "input,params,expected",
@@ -801,16 +800,15 @@ class TestUtil:
             ("test", {}, b"test"),  # bytes input
             ("é", {}, b"\xc3\xa9"),  # bytes input
             ("test", {"encoding": "utf-8"}, b"test"),  # bytes input with utf-8
-            ("test", {"encoding": "ascii"}, b"test"),  # bytes input with asscii
+            ("test", {"encoding": "ascii"}, b"test"),  # bytes input with ascii
         ),
     )
     def test_to_bytes(self, input, params, expected):
         assert to_bytes(input, **params) == expected
 
     def test_to_bytes_error(self):
-        with pytest.raises(TypeError) as e:
+        with pytest.raises(TypeError, match="not expecting type int"):
             to_bytes(1)
-        assert "not expecting type int" in str(e.value)
 
 
 class TestUtilSSL:
