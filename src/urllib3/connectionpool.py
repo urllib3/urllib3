@@ -32,7 +32,6 @@ from .exceptions import (
     SSLError,
     TimeoutError,
 )
-from .packages import six
 from .packages.ssl_match_hostname import CertificateError
 from .request import RequestMethods
 from .response import HTTPResponse
@@ -46,6 +45,7 @@ from .util.timeout import Timeout
 from .util.url import Url, _encode_target
 from .util.url import _normalize_host as normalize_host
 from .util.url import get_host, parse_url
+from .util.util import to_str
 
 log = logging.getLogger(__name__)
 
@@ -596,9 +596,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Ensure that the URL we're connecting to is properly encoded
         if url.startswith("/"):
-            url = six.ensure_str(_encode_target(url))
+            url = to_str(_encode_target(url))
         else:
-            url = six.ensure_str(parsed_url.url)
+            url = to_str(parsed_url.url)
 
         conn = None
 

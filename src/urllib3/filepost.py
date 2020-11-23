@@ -4,7 +4,6 @@ import os
 from io import BytesIO
 
 from .fields import RequestField
-from .packages.six import b
 
 writer = codecs.lookup("utf-8")[3]
 
@@ -70,7 +69,7 @@ def encode_multipart_formdata(fields, boundary=None):
         boundary = choose_boundary()
 
     for field in iter_field_objects(fields):
-        body.write(b(f"--{boundary}\r\n"))
+        body.write(f"--{boundary}\r\n".encode("latin-1"))
 
         writer(body).write(field.render_headers())
         data = field.data
@@ -85,7 +84,7 @@ def encode_multipart_formdata(fields, boundary=None):
 
         body.write(b"\r\n")
 
-    body.write(b(f"--{boundary}--\r\n"))
+    body.write(f"--{boundary}--\r\n".encode("latin-1"))
 
     content_type = str(f"multipart/form-data; boundary={boundary}")
 

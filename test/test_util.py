@@ -32,6 +32,7 @@ from urllib3.util.ssl_ import (
 )
 from urllib3.util.timeout import Timeout
 from urllib3.util.url import Url, get_host, parse_url, split_first
+from urllib3.util.util import to_bytes, to_str
 
 from . import clear_warnings
 
@@ -775,6 +776,39 @@ class TestUtil:
         getaddrinfo.return_value = [(None, None, None, None, None)]
         socket.return_value = Mock()
         create_connection((host, 80))
+
+    @pytest.mark.parametrize(
+        "input,params,expected",
+        (
+            ("test", {}, "test"),  # str input
+            (b"test", {}, "test"),  # bytes input
+            (b"test", {"encoding": "utf-8"}, "test"),  # bytes input with utf-8
+            (b"test", {"encoding": "ascii"}, "test"),  # bytes input with ascii
+        ),
+    )
+    def test_to_str(self, input, params, expected):
+        assert to_str(input, **params) == expected
+
+    def test_to_str_error(self):
+        with pytest.raises(TypeError, match="not expecting type int"):
+            to_str(1)
+
+    @pytest.mark.parametrize(
+        "input,params,expected",
+        (
+            (b"test", {}, b"test"),  # str input
+            ("test", {}, b"test"),  # bytes input
+            ("é", {}, b"\xc3\xa9"),  # bytes input
+            ("test", {"encoding": "utf-8"}, b"test"),  # bytes input with utf-8
+            ("test", {"encoding": "ascii"}, b"test"),  # bytes input with ascii
+        ),
+    )
+    def test_to_bytes(self, input, params, expected):
+        assert to_bytes(input, **params) == expected
+
+    def test_to_bytes_error(self):
+        with pytest.raises(TypeError, match="not expecting type int"):
+            to_bytes(1)
 
 
 class TestUtilSSL:

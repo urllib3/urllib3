@@ -1,7 +1,6 @@
 from base64 import b64encode
 
 from ..exceptions import UnrewindableBodyError
-from ..packages.six import b
 
 # Pass as a value within ``headers`` to skip
 # emitting some HTTP headers that are added automatically.
@@ -80,12 +79,14 @@ def make_headers(
         headers["connection"] = "keep-alive"
 
     if basic_auth:
-        headers["authorization"] = "Basic " + b64encode(b(basic_auth)).decode("utf-8")
+        headers[
+            "authorization"
+        ] = f"Basic {b64encode(basic_auth.encode('latin-1')).decode()}"
 
     if proxy_basic_auth:
-        headers["proxy-authorization"] = "Basic " + b64encode(
-            b(proxy_basic_auth)
-        ).decode("utf-8")
+        headers[
+            "proxy-authorization"
+        ] = f"Basic {b64encode(proxy_basic_auth.encode('latin-1')).decode()}"
 
     if disable_cache:
         headers["cache-control"] = "no-cache"

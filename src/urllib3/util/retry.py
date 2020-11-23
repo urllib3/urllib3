@@ -15,7 +15,7 @@ from ..exceptions import (
     ReadTimeoutError,
     ResponseError,
 )
-from ..packages import six
+from .util import reraise
 
 log = logging.getLogger(__name__)
 
@@ -494,7 +494,7 @@ class Retry(metaclass=_RetryMeta):
         """
         if self.total is False and error:
             # Disabled, indicate to re-raise the error.
-            raise six.reraise(type(error), error, _stacktrace)
+            raise reraise(type(error), error, _stacktrace)
 
         total = self.total
         if total is not None:
@@ -512,14 +512,14 @@ class Retry(metaclass=_RetryMeta):
         if error and self._is_connection_error(error):
             # Connect retry?
             if connect is False:
-                raise six.reraise(type(error), error, _stacktrace)
+                raise reraise(type(error), error, _stacktrace)
             elif connect is not None:
                 connect -= 1
 
         elif error and self._is_read_error(error):
             # Read retry?
             if read is False or not self._is_method_retryable(method):
-                raise six.reraise(type(error), error, _stacktrace)
+                raise reraise(type(error), error, _stacktrace)
             elif read is not None:
                 read -= 1
 

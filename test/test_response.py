@@ -10,7 +10,6 @@ from test import onlyBrotlipy
 from unittest import mock
 
 import pytest
-import six
 
 from urllib3.exceptions import (
     DecodeError,
@@ -801,7 +800,7 @@ class TestResponse:
 
         orig_ex = ctx.value.args[1]
         assert isinstance(orig_ex, InvalidChunkLength)
-        assert orig_ex.length == six.b(fp.BAD_LENGTH_LINE)
+        assert orig_ex.length == fp.BAD_LENGTH_LINE.encode()
 
     def test_chunked_response_without_crlf_on_end(self):
         stream = [b"foo", b"bar", b"baz"]

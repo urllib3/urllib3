@@ -26,7 +26,6 @@ from urllib3.exceptions import (
     ReadTimeoutError,
     UnrewindableBodyError,
 )
-from urllib3.packages.six import b
 from urllib3.util import SKIP_HEADER, SKIPPABLE_HEADERS
 from urllib3.util.retry import RequestHistory, Retry
 from urllib3.util.timeout import Timeout
@@ -700,7 +699,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                 self.host, self.port, source_address=addr, retries=False
             ) as pool:
                 r = pool.request("GET", "/source_address")
-                assert r.data == b(addr[0])
+                assert r.data == addr[0].encode()
 
     def test_source_address_error(self):
         for addr in INVALID_SOURCE_ADDRESSES:
