@@ -34,7 +34,7 @@ from .exceptions import (
 )
 from .packages.ssl_match_hostname import CertificateError
 from .request import RequestMethods
-from .response import HTTPResponse
+from .response import BaseHTTPResponse, HTTPResponse
 from .util.connection import is_connection_dropped
 from .util.proxy import connection_requires_http_tunnel
 from .util.queue import LifoQueue
@@ -484,7 +484,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         chunked=False,
         body_pos=None,
         **response_kw,
-    ):
+    ) -> BaseHTTPResponse:
         """
         Get a connection from the pool and perform an HTTP request. This is the
         lowest level call for making a request, so you'll need to specify all
