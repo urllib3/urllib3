@@ -307,7 +307,7 @@ In chronological order:
   * Ports and extends on types from typeshed
 
 * [Geancarlo Rocha] <https://github.com/geancarlo>
-  * Support passing blocksize to PoolManager in python 3.7+
+  * Support passing blocksize to PoolManager in Python 3.7+
 
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

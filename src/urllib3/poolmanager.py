@@ -65,7 +65,8 @@ _key_fields = (
 
 # Python 3.7 introduces the parameter "blocksize" to
 # http.client.HTTPConnection's and http.client.HTTPSConnection's initializers
-if sys.version_info >= (3, 7):
+CONN_CLS_ACCEPTS_BLOCKSIZE = sys.version_info >= (3, 7)
+if CONN_CLS_ACCEPTS_BLOCKSIZE:
     _key_fields += ("key_blocksize",)  # int
 
 #: The namedtuple class used to construct keys for the connection pool.
@@ -121,6 +122,10 @@ def _default_key_normalizer(key_class, request_context):
     for field in key_class._fields:
         if field not in context:
             context[field] = None
+
+    # Default key blocksize to 16384 if missing from the context
+    if CONN_CLS_ACCEPTS_BLOCKSIZE and context.get("key_blocksize") is None:
+        context["key_blocksize"] = 16384
 
     return key_class(**context)
 
@@ -199,6 +204,12 @@ class PoolManager(RequestMethods):
         pool_cls = self.pool_classes_by_scheme[scheme]
         if request_context is None:
             request_context = self.connection_pool_kw.copy()
+        elif CONN_CLS_ACCEPTS_BLOCKSIZE:
+            request_context = request_context.copy()
+
+        # Default blocksize to 16384 if missing from the context
+        if CONN_CLS_ACCEPTS_BLOCKSIZE and request_context.get("blocksize") is None:
+            request_context["blocksize"] = 16384
 
         # Although the context has everything necessary to create the pool,
         # this function has historically only used the scheme, host, and port

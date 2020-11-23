@@ -111,7 +111,7 @@ class TestPoolManager:
             "source_address": "127.0.0.1",
         }
         if sys.version_info >= (3, 7):
-            connection_pool_kw["blocksize"] = 16384
+            connection_pool_kw["blocksize"] = 16384 + 1
 
         p = PoolManager()
         conn_pools = [
@@ -146,7 +146,7 @@ class TestPoolManager:
             "ssl_version": "SSLv23_METHOD",
         }
         if sys.version_info >= (3, 7):
-            connection_pool_kw["blocksize"] = 16384
+            connection_pool_kw["blocksize"] = 16384 + 1
 
         p = PoolManager()
         conn_pools = [
@@ -373,3 +373,42 @@ class TestPoolManager:
         p = PoolManager()
         assert p._proxy_requires_url_absolute_form("http://example.com") is False
         assert p._proxy_requires_url_absolute_form("https://example.com") is False
+
+    @pytest.mark.skipif(sys.version_info < (3, 7), reason="requires Python 3.7+")
+    def test_normalizer_defaults_blocksize_to_16384(self):
+        """Assert normalizer defaults to blocksize 16384"""
+        p = PoolManager()
+
+        pool_blocksize_16384 = p.connection_from_url(
+            "http://example.com", {"blocksize": 16384}
+        )
+        assert pool_blocksize_16384.conn_kw["blocksize"] == 16384
+
+        pool_blocksize_not_set = p.connection_from_url("http://example.com")
+        assert pool_blocksize_not_set == pool_blocksize_16384
+
+        pool_blocksize_set_as_none = p.connection_from_url(
+            "http://example.com", {"blocksize": None}
+        )
+        assert pool_blocksize_set_as_none == pool_blocksize_16384
+
+    @pytest.mark.skipif(sys.version_info < (3, 7), reason="requires Python 3.7+")
+    def test_poolmanager_sets_blocksize_properly(self):
+        """Assert PoolManager sets blocksize properly"""
+        p = PoolManager()
+
+        pool_blocksize_not_set = p.connection_from_url("http://example.com")
+        pool_blocksize_8192 = p.connection_from_url(
+            "http://example.com", {"blocksize": 8192}
+        )
+        pool_blocksize_16384 = p.connection_from_url(
+            "http://example.com", {"blocksize": 16384}
+        )
+
+        assert pool_blocksize_not_set == pool_blocksize_16384
+
+        assert pool_blocksize_8192.conn_kw["blocksize"] == 8192
+        assert pool_blocksize_8192._get_conn().blocksize == 8192
+
+        assert pool_blocksize_16384.conn_kw["blocksize"] == 16384
+        assert pool_blocksize_16384._get_conn().blocksize == 16384
