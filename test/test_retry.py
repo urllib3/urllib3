@@ -282,7 +282,7 @@ class TestRetry:
         )
         assert retry.history == history
 
-    def test_retry_method_not_in_whitelist(self):
+    def test_retry_method_not_allowed(self):
         error = ReadTimeoutError(None, "/", "read timed out")
         retry = Retry()
         with pytest.raises(ReadTimeoutError):
