@@ -69,6 +69,20 @@ def test(session):
     tests_impl(session)
 
 
+@nox.session(python=["2.7"])
+def unsupported_python2(session):
+    # Can't check both returncode and output with session.run
+    process = subprocess.run(
+        ["python", "setup.py", "install"],
+        env={**session.env},
+        text=True,
+        capture_output=True,
+    )
+    assert process.returncode == 1
+    print(process.stderr)
+    assert "Unsupported Python version" in process.stderr
+
+
 @nox.session(python=["3"])
 def google_brotli(session):
     # https://pypi.org/project/Brotli/ is the Google version of brotli, so
