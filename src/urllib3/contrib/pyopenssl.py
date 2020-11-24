@@ -66,7 +66,6 @@ from socket import error as SocketError
 from socket import timeout
 
 from .. import util
-from ..packages.backports.makefile import backport_makefile
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 
@@ -386,8 +385,9 @@ class WrappedSocket:
         else:
             self._makefile_refs -= 1
 
-
-WrappedSocket.makefile = backport_makefile
+    def makefile(self, mode="r", buffering=None, *args, **kwargs):
+        self._makefile_refs += 1
+        return self.socket.makefile(mode, buffering, *args, **kwargs)
 
 
 class PyOpenSSLContext:

@@ -64,7 +64,6 @@ import threading
 import weakref
 
 from .. import util
-from ..packages.backports.makefile import backport_makefile
 from ._securetransport.bindings import CoreFoundation, Security, SecurityConst
 from ._securetransport.low_level import (
     _assert_no_error,
@@ -753,15 +752,11 @@ class WrappedSocket:
         else:
             self._makefile_refs -= 1
 
-
-def makefile(self, mode="r", buffering=None, *args, **kwargs):
-    # We disable buffering with SecureTransport because it conflicts with
-    # the buffering that ST does internally (see issue #1153 for more).
-    buffering = 0
-    return backport_makefile(self, mode, buffering, *args, **kwargs)
-
-
-WrappedSocket.makefile = makefile
+    def makefile(self, mode="r", buffering=None, *args, **kwargs):
+        # We disable buffering with SecureTransport because it conflicts with
+        # the buffering that ST does internally (see issue #1153 for more).
+        buffering = 0
+        return self.socket.makefile(self, mode, buffering, *args, **kwargs)
 
 
 class SecureTransportContext:
