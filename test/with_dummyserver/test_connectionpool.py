@@ -1022,7 +1022,7 @@ class TestRetry(HTTPDummyServerTestCase):
                 pool.request("GET", "/test", retries=False)
 
     def test_read_retries(self):
-        """ Should retry for status codes in the whitelist """
+        """ Should retry for status codes in the forcelist"""
         with HTTPConnectionPool(self.host, self.port) as pool:
             retry = Retry(read=1, status_forcelist=[418])
             resp = pool.request(
@@ -1034,7 +1034,7 @@ class TestRetry(HTTPDummyServerTestCase):
             assert resp.status == 200
 
     def test_read_total_retries(self):
-        """ HTTP response w/ status code in the whitelist should be retried """
+        """ HTTP response w/ status code in the forcelist should be retried """
         with HTTPConnectionPool(self.host, self.port) as pool:
             headers = {"test-name": "test_read_total_retries"}
             retry = Retry(total=1, status_forcelist=[418])
@@ -1043,35 +1043,35 @@ class TestRetry(HTTPDummyServerTestCase):
             )
             assert resp.status == 200
 
-    def test_retries_wrong_whitelist(self):
-        """HTTP response w/ status code not in whitelist shouldn't be retried"""
+    def test_retries_wrong_forcelist(self):
+        """HTTP response w/ status code not in forcelist shouldn't be retried"""
         with HTTPConnectionPool(self.host, self.port) as pool:
             retry = Retry(total=1, status_forcelist=[202])
             resp = pool.request(
                 "GET",
                 "/successful_retry",
-                headers={"test-name": "test_wrong_whitelist"},
+                headers={"test-name": "test_wrong_forcelist"},
                 retries=retry,
             )
             assert resp.status == 418
 
-    def test_default_method_whitelist_retried(self):
-        """ urllib3 should retry methods in the default method whitelist """
+    def test_default_method_forcelist_retried(self):
+        """ urllib3 should retry methods in the default method forcelist"""
         with HTTPConnectionPool(self.host, self.port) as pool:
             retry = Retry(total=1, status_forcelist=[418])
             resp = pool.request(
                 "OPTIONS",
                 "/successful_retry",
-                headers={"test-name": "test_default_whitelist"},
+                headers={"test-name": "test_default_forcelist"},
                 retries=retry,
             )
             assert resp.status == 200
 
     def test_retries_wrong_method_list(self):
-        """Method not in our whitelist should not be retried, even if code matches"""
+        """Method not in our allowed list should not be retried, even if code matches"""
         with HTTPConnectionPool(self.host, self.port) as pool:
-            headers = {"test-name": "test_wrong_method_whitelist"}
-            retry = Retry(total=1, status_forcelist=[418], method_whitelist=["POST"])
+            headers = {"test-name": "test_wrong_allowed_method"}
+            retry = Retry(total=1, status_forcelist=[418], allowed_methods=["POST"])
             resp = pool.request(
                 "GET", "/successful_retry", headers=headers, retries=retry
             )

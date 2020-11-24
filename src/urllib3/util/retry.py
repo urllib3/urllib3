@@ -2,7 +2,6 @@ import email
 import logging
 import re
 import time
-import warnings
 from collections import namedtuple
 from itertools import takewhile
 
@@ -26,49 +25,7 @@ RequestHistory = namedtuple(
 )
 
 
-# TODO: In v2 we can remove this sentinel and metaclass with deprecated options.
-_Default = object()
-
-
-class _RetryMeta(type):
-    @property
-    def DEFAULT_METHOD_WHITELIST(cls):
-        warnings.warn(
-            "Using 'Retry.DEFAULT_METHOD_WHITELIST' is deprecated and "
-            "will be removed in v2.0. Use 'Retry.DEFAULT_METHODS_ALLOWED' instead",
-            DeprecationWarning,
-        )
-        return cls.DEFAULT_ALLOWED_METHODS
-
-    @DEFAULT_METHOD_WHITELIST.setter
-    def DEFAULT_METHOD_WHITELIST(cls, value):
-        warnings.warn(
-            "Using 'Retry.DEFAULT_METHOD_WHITELIST' is deprecated and "
-            "will be removed in v2.0. Use 'Retry.DEFAULT_ALLOWED_METHODS' instead",
-            DeprecationWarning,
-        )
-        cls.DEFAULT_ALLOWED_METHODS = value
-
-    @property
-    def DEFAULT_REDIRECT_HEADERS_BLACKLIST(cls):
-        warnings.warn(
-            "Using 'Retry.DEFAULT_REDIRECT_HEADERS_BLACKLIST' is deprecated and "
-            "will be removed in v2.0. Use 'Retry.DEFAULT_REMOVE_HEADERS_ON_REDIRECT' instead",
-            DeprecationWarning,
-        )
-        return cls.DEFAULT_REMOVE_HEADERS_ON_REDIRECT
-
-    @DEFAULT_REDIRECT_HEADERS_BLACKLIST.setter
-    def DEFAULT_REDIRECT_HEADERS_BLACKLIST(cls, value):
-        warnings.warn(
-            "Using 'Retry.DEFAULT_REDIRECT_HEADERS_BLACKLIST' is deprecated and "
-            "will be removed in v2.0. Use 'Retry.DEFAULT_REMOVE_HEADERS_ON_REDIRECT' instead",
-            DeprecationWarning,
-        )
-        cls.DEFAULT_REMOVE_HEADERS_ON_REDIRECT = value
-
-
-class Retry(metaclass=_RetryMeta):
+class Retry:
     """Retry configuration.
 
     Each retry attempt will create a new Retry object with updated values, so
@@ -157,11 +114,6 @@ class Retry(metaclass=_RetryMeta):
 
         Set to a ``False`` value to retry on any verb.
 
-        .. warning::
-
-            Previously this parameter was named ``method_whitelist``, that
-            usage is deprecated in v1.26.0 and will be removed in v2.0.
-
     :param iterable status_forcelist:
         A set of integer HTTP status codes that we should force a retry on.
         A retry is initiated if the request method is in ``allowed_methods``
@@ -227,36 +179,15 @@ class Retry(metaclass=_RetryMeta):
         redirect=None,
         status=None,
         other=None,
-        allowed_methods=_Default,
+        allowed_methods=DEFAULT_ALLOWED_METHODS,
         status_forcelist=None,
         backoff_factor=0,
         raise_on_redirect=True,
         raise_on_status=True,
         history=None,
         respect_retry_after_header=True,
-        remove_headers_on_redirect=_Default,
-        # TODO: Deprecated, remove in v2.0
-        method_whitelist=_Default,
+        remove_headers_on_redirect=DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
     ):
-
-        if method_whitelist is not _Default:
-            if allowed_methods is not _Default:
-                raise ValueError(
-                    "Using both 'allowed_methods' and "
-                    "'method_whitelist' together is not allowed. "
-                    "Instead only use 'allowed_methods'"
-                )
-            warnings.warn(
-                "Using 'method_whitelist' with Retry is deprecated and "
-                "will be removed in v2.0. Use 'allowed_methods' instead",
-                DeprecationWarning,
-            )
-            allowed_methods = method_whitelist
-        if allowed_methods is _Default:
-            allowed_methods = self.DEFAULT_ALLOWED_METHODS
-        if remove_headers_on_redirect is _Default:
-            remove_headers_on_redirect = self.DEFAULT_REMOVE_HEADERS_ON_REDIRECT
-
         self.total = total
         self.connect = connect
         self.read = read
@@ -287,6 +218,7 @@ class Retry(metaclass=_RetryMeta):
             redirect=self.redirect,
             status=self.status,
             other=self.other,
+            allowed_methods=self.allowed_methods,
             status_forcelist=self.status_forcelist,
             backoff_factor=self.backoff_factor,
             raise_on_redirect=self.raise_on_redirect,
@@ -295,22 +227,6 @@ class Retry(metaclass=_RetryMeta):
             remove_headers_on_redirect=self.remove_headers_on_redirect,
             respect_retry_after_header=self.respect_retry_after_header,
         )
-
-        # TODO: If already given in **kw we use what's given to us
-        # If not given we need to figure out what to pass. We decide
-        # based on whether our class has the 'method_whitelist' property
-        # and if so we pass the deprecated 'method_whitelist' otherwise
-        # we use 'allowed_methods'. Remove in v2.0
-        if "method_whitelist" not in kw and "allowed_methods" not in kw:
-            if "method_whitelist" in self.__dict__:
-                warnings.warn(
-                    "Using 'method_whitelist' with Retry is deprecated and "
-                    "will be removed in v2.0. Use 'allowed_methods' instead",
-                    DeprecationWarning,
-                )
-                params["method_whitelist"] = self.allowed_methods
-            else:
-                params["allowed_methods"] = self.allowed_methods
 
         params.update(kw)
         return type(self)(**params)
@@ -421,19 +337,7 @@ class Retry(metaclass=_RetryMeta):
         """Checks if a given HTTP method should be retried upon, depending if
         it is included in the allowed_methods
         """
-        # TODO: For now favor if the Retry implementation sets its own method_whitelist
-        # property outside of our constructor to avoid breaking custom implementations.
-        if "method_whitelist" in self.__dict__:
-            warnings.warn(
-                "Using 'method_whitelist' with Retry is deprecated and "
-                "will be removed in v2.0. Use 'allowed_methods' instead",
-                DeprecationWarning,
-            )
-            allowed_methods = self.method_whitelist
-        else:
-            allowed_methods = self.allowed_methods
-
-        if allowed_methods and method.upper() not in allowed_methods:
+        if self.allowed_methods and method.upper() not in self.allowed_methods:
             return False
         return True
 
@@ -572,20 +476,6 @@ class Retry(metaclass=_RetryMeta):
             f"{type(self).__name__}(total={self.total}, connect={self.connect}, "
             f"read={self.read}, redirect={self.redirect}, status={self.status})"
         )
-
-    def __getattr__(self, item):
-        if item == "method_whitelist":
-            # TODO: Remove this deprecated alias in v2.0
-            warnings.warn(
-                "Using 'method_whitelist' with Retry is deprecated and "
-                "will be removed in v2.0. Use 'allowed_methods' instead",
-                DeprecationWarning,
-            )
-            return self.allowed_methods
-        try:
-            return getattr(super(), item)
-        except AttributeError:
-            return getattr(Retry, item)
 
 
 # For backwards compatibility (equivalent to pre-v1.9):
