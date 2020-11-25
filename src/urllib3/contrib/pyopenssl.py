@@ -387,8 +387,9 @@ class WrappedSocket:
             self._makefile_refs -= 1
 
     def makefile(self, mode="r", buffering=None, *args, **kwargs):
+        text = socket_makefile(mode, buffering, *args, **kwargs)
         self._makefile_refs += 1
-        return socket_makefile(mode, buffering, *args, **kwargs)
+        return text
 
 
 class PyOpenSSLContext:
