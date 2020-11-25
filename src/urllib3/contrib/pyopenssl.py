@@ -64,6 +64,7 @@ import ssl
 from io import BytesIO
 from socket import error as SocketError
 from socket import timeout
+from socket.socket import makefile as socket_makefile
 
 from .. import util
 
@@ -387,7 +388,7 @@ class WrappedSocket:
 
     def makefile(self, mode="r", buffering=None, *args, **kwargs):
         self._makefile_refs += 1
-        return self.socket.makefile(mode, buffering, *args, **kwargs)
+        return socket_makefile(mode, buffering, *args, **kwargs)
 
 
 class PyOpenSSLContext:

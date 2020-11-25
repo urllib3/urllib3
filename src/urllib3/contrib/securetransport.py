@@ -62,6 +62,7 @@ import ssl
 import struct
 import threading
 import weakref
+from socket.socket import makefile as socket_makefile
 
 from .. import util
 from ._securetransport.bindings import CoreFoundation, Security, SecurityConst
@@ -756,7 +757,7 @@ class WrappedSocket:
         # We disable buffering with SecureTransport because it conflicts with
         # the buffering that ST does internally (see issue #1153 for more).
         buffering = 0
-        return self.socket.makefile(self, mode, buffering, *args, **kwargs)
+        return socket_makefile(self, mode, buffering, *args, **kwargs)
 
 
 class SecureTransportContext:
