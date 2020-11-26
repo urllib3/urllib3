@@ -7,17 +7,7 @@ import nox
 # Whenever type-hints are completed on a file it should be added here so that
 # this file will continue to be checked by mypy. Errors from other files are
 # ignored.
-TYPED_FILES = {
-    "src/urllib3/contrib/__init__.py",
-    "src/urllib3/exceptions.py",
-    "src/urllib3/fields.py",
-    "src/urllib3/filepost.py",
-    "src/urllib3/packages/__init__.py",
-    "src/urllib3/packages/ssl_match_hostname/__init__.py",
-    "src/urllib3/packages/ssl_match_hostname/_implementation.py",
-    "src/urllib3/util/queue.py",
-    "src/urllib3/util/url.py",
-}
+TYPED_FILES = {}
 SOURCE_FILES = [
     "docs/",
     "dummyserver/",
