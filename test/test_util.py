@@ -1,4 +1,3 @@
-import hashlib
 import io
 import logging
 import socket
@@ -24,12 +23,7 @@ from urllib3.util.connection import _has_ipv6, allowed_gai_family, create_connec
 from urllib3.util.proxy import connection_requires_http_tunnel, create_proxy_ssl_context
 from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
-from urllib3.util.ssl_ import (
-    _const_compare_digest_backport,
-    resolve_cert_reqs,
-    resolve_ssl_version,
-    ssl_wrap_socket,
-)
+from urllib3.util.ssl_ import resolve_cert_reqs, resolve_ssl_version, ssl_wrap_socket
 from urllib3.util.timeout import Timeout
 from urllib3.util.url import Url, get_host, parse_url, split_first
 from urllib3.util.util import to_bytes, to_str
@@ -668,19 +662,6 @@ class TestUtil:
 
         with pytest.raises(ValueError):
             is_fp_closed(NotReallyAFile())
-
-    def test_const_compare_digest_fallback(self):
-        target = hashlib.sha256(b"abcdef").digest()
-        assert _const_compare_digest_backport(target, target)
-
-        prefix = target[:-1]
-        assert not _const_compare_digest_backport(target, prefix)
-
-        suffix = target + b"0"
-        assert not _const_compare_digest_backport(target, suffix)
-
-        incorrect = hashlib.sha256(b"xyz").digest()
-        assert not _const_compare_digest_backport(target, incorrect)
 
     def test_has_ipv6_disabled_on_compile(self):
         with patch("socket.has_ipv6", False):
