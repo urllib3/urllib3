@@ -62,9 +62,9 @@ import ssl
 import struct
 import threading
 import weakref
+from socket import socket as socket_cls
 
 from .. import util
-from ..packages.backports.makefile import backport_makefile
 from ._securetransport.bindings import CoreFoundation, Security, SecurityConst
 from ._securetransport.low_level import (
     _assert_no_error,
@@ -316,15 +316,12 @@ _write_callback_pointer = Security.SSLWriteFunc(_write_callback)
 class WrappedSocket:
     """
     API-compatibility wrapper for Python's OpenSSL wrapped socket object.
-
-    Note: _makefile_refs, _drop(), and _reuse() are needed for the garbage
-    collector of PyPy.
     """
 
     def __init__(self, socket):
         self.socket = socket
         self.context = None
-        self._makefile_refs = 0
+        self._io_refs = 0
         self._closed = False
         self._exception = None
         self._keychain = None
@@ -559,8 +556,8 @@ class WrappedSocket:
 
     # Copy-pasted from Python 3.5 source code
     def _decref_socketios(self):
-        if self._makefile_refs > 0:
-            self._makefile_refs -= 1
+        if self._io_refs > 0:
+            self._io_refs -= 1
         if self._closed:
             self.close()
 
@@ -648,7 +645,7 @@ class WrappedSocket:
 
     def close(self):
         # TODO: should I do clean shutdown here? Do I have to?
-        if self._makefile_refs < 1:
+        if self._io_refs < 1:
             self._closed = True
             if self.context:
                 CoreFoundation.CFRelease(self.context)
@@ -663,7 +660,7 @@ class WrappedSocket:
                 self._keychain = self._keychain_dir = None
             return self.socket.close()
         else:
-            self._makefile_refs -= 1
+            self._io_refs -= 1
 
     def getpeercert(self, binary_form=False):
         # Urgh, annoying.
@@ -744,21 +741,12 @@ class WrappedSocket:
         else:
             raise ssl.SSLError(f"Unknown TLS version: {protocol!r}")
 
-    def _reuse(self):
-        self._makefile_refs += 1
-
-    def _drop(self):
-        if self._makefile_refs < 1:
-            self.close()
-        else:
-            self._makefile_refs -= 1
-
 
 def makefile(self, mode="r", buffering=None, *args, **kwargs):
     # We disable buffering with SecureTransport because it conflicts with
     # the buffering that ST does internally (see issue #1153 for more).
     buffering = 0
-    return backport_makefile(self, mode, buffering, *args, **kwargs)
+    return socket_cls.makefile(self, mode, buffering, *args, **kwargs)
 
 
 WrappedSocket.makefile = makefile
