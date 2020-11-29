@@ -5,6 +5,12 @@
 
 import re
 import sys
+from typing import Dict, Tuple, Union
+
+_PCTRTT = Tuple[Tuple[str, str], ...]
+_PCTRTTT = Tuple[_PCTRTT, ...]
+_PeerCertRetDictType = Dict[str, Union[str, _PCTRTTT, _PCTRTT]]
+_PeerCertRetType = Union[_PeerCertRetDictType, bytes, None]
 
 # ipaddress has been backported to 2.6+ in pypi.  If it is installed on the
 # system, use it to handle IPAddress ServerAltnames (this was added in
@@ -88,7 +94,7 @@ def _ipaddress_match(ipname, host_ip):
     return ip == host_ip
 
 
-def match_hostname(cert, hostname):
+def match_hostname(cert: _PeerCertRetType, hostname: str) -> None:
     """Verify that *cert* (in decoded format as returned by
     SSLSocket.getpeercert()) matches the *hostname*.  RFC 2818 and RFC 6125
     rules are followed, but IP addresses are not accepted for *hostname*.

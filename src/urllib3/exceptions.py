@@ -1,4 +1,5 @@
 from http.client import IncompleteRead as httplib_IncompleteRead
+from typing import Any, Optional, Tuple, Union
 
 # Base Exceptions
 
@@ -18,11 +19,11 @@ class HTTPWarning(Warning):
 class PoolError(HTTPError):
     """Base exception for errors caused within a pool."""
 
-    def __init__(self, pool, message):
+    def __init__(self, pool, message: str) -> None:
         self.pool = pool
         super().__init__(f"{pool}: {message}")
 
-    def __reduce__(self):
+    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
         # For pickling purposes.
         return self.__class__, (None, None)
 
@@ -30,11 +31,11 @@ class PoolError(HTTPError):
 class RequestError(PoolError):
     """Base exception for PoolErrors that have associated URLs."""
 
-    def __init__(self, pool, url, message):
+    def __init__(self, pool, url: str, message: str) -> None:
         self.url = url
         super().__init__(pool, message)
 
-    def __reduce__(self):
+    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
         # For pickling purposes.
         return self.__class__, (None, self.url, None)
 
@@ -82,7 +83,7 @@ class MaxRetryError(RequestError):
 
     """
 
-    def __init__(self, pool, url, reason=None):
+    def __init__(self, pool, url: str, reason: Optional[str] = None) -> None:
         self.reason = reason
 
         message = f"Max retries exceeded with url: {url} (Caused by {reason!r})"
@@ -93,7 +94,7 @@ class MaxRetryError(RequestError):
 class HostChangedError(RequestError):
     """Raised when an existing pool gets a request for a foreign host."""
 
-    def __init__(self, pool, url, retries=3):
+    def __init__(self, pool, url: str, retries: int = 3) -> None:
         message = f"Tried to open a foreign host with url: {url}"
         super().__init__(pool, url, message)
         self.retries = retries
@@ -156,7 +157,7 @@ class LocationValueError(ValueError, HTTPError):
 class LocationParseError(LocationValueError):
     """Raised when get_host or similar fails to parse the URL input."""
 
-    def __init__(self, location):
+    def __init__(self, location: str) -> None:
         message = f"Failed to parse: {location}"
         super().__init__(message)
 

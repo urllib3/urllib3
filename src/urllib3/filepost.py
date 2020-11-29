@@ -2,20 +2,25 @@ import binascii
 import codecs
 import os
 from io import BytesIO
+from typing import Generator, List, Mapping, Optional, Tuple, Union
 
 from .fields import RequestField
+
+RequestField = RequestField
+Fields = Union[Mapping[str, str], List[Tuple[str]], List[RequestField]]
+Iterator = Generator[Tuple[str], None, None]
 
 writer = codecs.lookup("utf-8")[3]
 
 
-def choose_boundary():
+def choose_boundary() -> str:
     """
     Our embarrassingly-simple replacement for mimetools.choose_boundary.
     """
     return binascii.hexlify(os.urandom(16)).decode()
 
 
-def iter_field_objects(fields):
+def iter_field_objects(fields: Fields) -> Iterator:
     """
     Iterate over fields.
 
@@ -35,7 +40,7 @@ def iter_field_objects(fields):
             yield RequestField.from_tuples(*field)
 
 
-def iter_fields(fields):
+def iter_fields(fields: Fields) -> Iterator:
     """
     .. deprecated:: 1.6
 
@@ -53,7 +58,9 @@ def iter_fields(fields):
     return ((k, v) for k, v in fields)
 
 
-def encode_multipart_formdata(fields, boundary=None):
+def encode_multipart_formdata(
+    fields: Fields, boundary: Optional[str] = None
+) -> Tuple[str]:
     """
     Encode a dictionary of ``fields`` using the multipart/form-data MIME format.
 

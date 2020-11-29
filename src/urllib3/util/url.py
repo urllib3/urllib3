@@ -1,10 +1,11 @@
 import re
 from collections import namedtuple
+from typing import List, Optional, Tuple, Union
 
 from ..exceptions import LocationParseError
 from .util import to_str
 
-url_attrs = ["scheme", "auth", "host", "port", "path", "query", "fragment"]
+url_attrs: List[str] = ["scheme", "auth", "host", "port", "path", "query", "fragment"]
 
 # We only want to normalize urls with an HTTP(S) scheme.
 # urllib3 infers URLs without a scheme (None) to be http.
@@ -88,14 +89,14 @@ class Url(namedtuple("Url", url_attrs)):
 
     def __new__(
         cls,
-        scheme=None,
-        auth=None,
-        host=None,
-        port=None,
-        path=None,
-        query=None,
-        fragment=None,
-    ):
+        scheme: Optional[str] = None,
+        auth: Optional[str] = None,
+        host: Optional[str] = None,
+        port: Optional[str] = None,
+        path: Optional[str] = None,
+        query: Optional[str] = None,
+        fragment: Optional[str] = None,
+    ) -> "Url":
         if path and not path.startswith("/"):
             path = "/" + path
         if scheme is not None:
@@ -103,12 +104,12 @@ class Url(namedtuple("Url", url_attrs)):
         return super().__new__(cls, scheme, auth, host, port, path, query, fragment)
 
     @property
-    def hostname(self):
+    def hostname(self) -> str:
         """For backwards-compatibility with urlparse. We're nice like that."""
         return self.host
 
     @property
-    def request_uri(self):
+    def request_uri(self) -> str:
         """Absolute path including the query string."""
         uri = self.path or "/"
 
@@ -118,14 +119,14 @@ class Url(namedtuple("Url", url_attrs)):
         return uri
 
     @property
-    def netloc(self):
+    def netloc(self) -> str:
         """Network location including host and port"""
         if self.port:
             return f"{self.host}:{self.port}"
         return self.host
 
     @property
-    def url(self):
+    def url(self) -> str:
         """
         Convert self into a url
 
@@ -168,7 +169,7 @@ class Url(namedtuple("Url", url_attrs)):
         return self.url
 
 
-def split_first(s, delims):
+def split_first(s: str, delims: str) -> Tuple[str, str, Optional[str]]:
     """
     .. deprecated:: 1.25
 
@@ -322,7 +323,7 @@ def _encode_target(target):
     return target
 
 
-def parse_url(url):
+def parse_url(url: str) -> Url:
     """
     Given a url, return a parsed :class:`.Url` namedtuple. Best-effort is
     performed to parse incomplete urls. Fields not provided will be None.
@@ -407,7 +408,7 @@ def parse_url(url):
     )
 
 
-def get_host(url):
+def get_host(url: str) -> Union[str, Tuple[str]]:
     """
     Deprecated. Use :func:`parse_url` instead.
     """

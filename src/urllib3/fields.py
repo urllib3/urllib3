@@ -1,9 +1,10 @@
 import email.utils
 import mimetypes
 import re
+from typing import Any, Callable, Mapping, Optional
 
 
-def guess_content_type(filename, default="application/octet-stream"):
+def guess_content_type(filename: str, default: str = "application/octet-stream") -> str:
     """
     Guess the "Content-Type" of a file.
 
@@ -17,7 +18,7 @@ def guess_content_type(filename, default="application/octet-stream"):
     return default
 
 
-def format_header_param_rfc2231(name, value):
+def format_header_param_rfc2231(name: str, value: str) -> str:
     """
     Helper function to format and quote a single header parameter using the
     strategy defined in RFC 2231.
@@ -76,7 +77,7 @@ def _replace_multiple(value, needles_and_replacements):
     return result
 
 
-def format_header_param_html5(name, value):
+def format_header_param_html5(name: str, value: str) -> str:
     """
     Helper function to format and quote a single header parameter using the
     HTML5 strategy.
@@ -126,12 +127,12 @@ class RequestField:
 
     def __init__(
         self,
-        name,
-        data,
-        filename=None,
-        headers=None,
-        header_formatter=format_header_param_html5,
-    ):
+        name: str,
+        data: Any,
+        filename: Optional[str] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        header_formatter: Callable[[str, str], str] = format_header_param_html5,
+    ) -> None:
         self._name = name
         self._filename = filename
         self.data = data
@@ -141,7 +142,12 @@ class RequestField:
         self.header_formatter = header_formatter
 
     @classmethod
-    def from_tuples(cls, fieldname, value, header_formatter=format_header_param_html5):
+    def from_tuples(
+        cls,
+        fieldname: str,
+        value: str,
+        header_formatter: Callable[[str, str], str] = format_header_param_html5,
+    ) -> "RequestField":
         """
         A :class:`~urllib3.fields.RequestField` factory from old-style tuple parameters.
 
@@ -211,7 +217,7 @@ class RequestField:
 
         return "; ".join(parts)
 
-    def render_headers(self):
+    def render_headers(self) -> str:
         """
         Renders the headers for this request field.
         """
@@ -231,8 +237,11 @@ class RequestField:
         return "\r\n".join(lines)
 
     def make_multipart(
-        self, content_disposition=None, content_type=None, content_location=None
-    ):
+        self,
+        content_disposition: str = None,
+        content_type: str = None,
+        content_location: str = None,
+    ) -> None:
         """
         Makes this request field into a multipart request field.
 
