@@ -224,7 +224,7 @@ def _encode_invalid_chars(component, allowed_chars):
     encoded_component = bytearray()
 
     for i in range(0, len(uri_bytes)):
-        # Will return a single character bytestring on both Python 2 & 3
+        # Will return a single character bytestring
         byte = uri_bytes[i : i + 1]
         byte_ord = ord(byte)
         if (is_percent_encoded and byte == b"%") or (

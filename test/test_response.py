@@ -54,7 +54,7 @@ class TestLegacyResponse:
     def test_getheaders(self):
         headers = {"host": "example.com"}
         r = HTTPResponse(headers=headers)
-        assert r.getheaders() == headers
+        assert r.getheaders() == [("host", "example.com")]
 
     def test_getheader(self):
         headers = {"host": "example.com"}

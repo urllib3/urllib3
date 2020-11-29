@@ -63,10 +63,10 @@ import logging
 import ssl
 from io import BytesIO
 from socket import error as SocketError
+from socket import socket as socket_cls
 from socket import timeout
 
 from .. import util
-from ..packages.backports.makefile import backport_makefile
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 
@@ -253,17 +253,13 @@ def get_subj_alt_name(peer_cert):
 
 
 class WrappedSocket:
-    """API-compatibility wrapper for Python OpenSSL's Connection-class.
-
-    Note: _makefile_refs, _drop() and _reuse() are needed for the garbage
-    collector of pypy.
-    """
+    """API-compatibility wrapper for Python OpenSSL's Connection-class."""
 
     def __init__(self, connection, socket, suppress_ragged_eofs=True):
         self.connection = connection
         self.socket = socket
         self.suppress_ragged_eofs = suppress_ragged_eofs
-        self._makefile_refs = 0
+        self._io_refs = 0
         self._closed = False
 
     def fileno(self):
@@ -271,8 +267,8 @@ class WrappedSocket:
 
     # Copy-pasted from Python 3.5 source code
     def _decref_socketios(self):
-        if self._makefile_refs > 0:
-            self._makefile_refs -= 1
+        if self._io_refs > 0:
+            self._io_refs -= 1
         if self._closed:
             self.close()
 
@@ -351,14 +347,14 @@ class WrappedSocket:
         self.connection.shutdown()
 
     def close(self):
-        if self._makefile_refs < 1:
+        if self._io_refs < 1:
             try:
                 self._closed = True
                 return self.connection.close()
             except OpenSSL.SSL.Error:
                 return
         else:
-            self._makefile_refs -= 1
+            self._io_refs -= 1
 
     def getpeercert(self, binary_form=False):
         x509 = self.connection.get_peer_certificate()
@@ -377,17 +373,8 @@ class WrappedSocket:
     def version(self):
         return self.connection.get_protocol_version_name()
 
-    def _reuse(self):
-        self._makefile_refs += 1
 
-    def _drop(self):
-        if self._makefile_refs < 1:
-            self.close()
-        else:
-            self._makefile_refs -= 1
-
-
-WrappedSocket.makefile = backport_makefile
+WrappedSocket.makefile = socket_cls.makefile
 
 
 class PyOpenSSLContext:

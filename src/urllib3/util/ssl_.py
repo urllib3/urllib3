@@ -19,21 +19,6 @@ ALPN_PROTOCOLS = ["http/1.1"]
 HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
 
 
-def _const_compare_digest_backport(a, b):
-    """
-    Compare two digests of equal length in constant time.
-
-    The digests must be of type str/bytes.
-    Returns True if the digests match, and False otherwise.
-    """
-    result = abs(len(a) - len(b))
-    for left, right in zip(bytearray(a), bytearray(b)):
-        result |= left ^ right
-    return result == 0
-
-
-_const_compare_digest = getattr(hmac, "compare_digest", _const_compare_digest_backport)
-
 try:  # Do we have ssl at all?
     import ssl
     from ssl import (
@@ -115,7 +100,7 @@ def assert_fingerprint(cert, fingerprint):
 
     cert_digest = hashfunc(cert).digest()
 
-    if not _const_compare_digest(cert_digest, fingerprint_bytes):
+    if not hmac.compare_digest(cert_digest, fingerprint_bytes):
         raise SSLError(
             f'Fingerprints did not match. Expected "{fingerprint}", got "{hexlify(cert_digest)}".'
         )
