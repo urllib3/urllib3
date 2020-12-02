@@ -83,15 +83,6 @@ def unsupported_python2(session):
     assert "Unsupported Python version" in process.stderr
 
 
-@nox.session(python=["3"])
-def google_brotli(session):
-    # https://pypi.org/project/Brotli/ is the Google version of brotli, so
-    # install it separately and don't install our brotli extra (which installs
-    # brotlipy).
-    session.install("brotli")
-    tests_impl(session, extras="socks,secure")
-
-
 @nox.session()
 def format(session):
     """Run code formatters."""

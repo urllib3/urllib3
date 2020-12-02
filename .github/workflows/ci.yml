@@ -51,10 +51,6 @@ jobs:
             os: ubuntu-latest
             experimental: false
             nox-session: test-pypy
-          - python-version: 3.7
-            os: ubuntu-latest
-            experimental: false
-            nox-session: google_brotli
           - python-version: 2.7
             os: ubuntu-latest
             experimental: false
