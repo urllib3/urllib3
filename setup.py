@@ -109,7 +109,10 @@ setup(
     requires=[],
     python_requires=">=3.6, <4",
     extras_require={
-        "brotli": ["brotlipy>=0.6.0"],
+        "brotli": [
+            "brotli>=1.0.9; platform_python_implementation == 'CPython'",
+            "brotlicffi>=0.8.0; platform_python_implementation != 'CPython'",
+        ],
         "secure": [
             "pyOpenSSL>=0.14",
             "cryptography>=1.3.4",
