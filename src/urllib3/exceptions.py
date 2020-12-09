@@ -285,7 +285,14 @@ class ProxySchemeUnknown(AssertionError, URLSchemeUnknown):
     # TODO(t-8ch): Stop inheriting from AssertionError in v2.0.
 
     def __init__(self, scheme):
-        message = f"Not supported proxy scheme {scheme}"
+        # 'localhost' is here because our URL parser parses
+        # localhost:8080 -> scheme=localhost, remove if we fix this.
+        if scheme == "localhost":
+            scheme = None
+        if scheme is None:
+            message = "Proxy had no scheme, should start with http:// or https://"
+        else:
+            message = f"Proxy URL had unsupported scheme {scheme}, should use http:// or https://"
         super().__init__(message)
 
 
