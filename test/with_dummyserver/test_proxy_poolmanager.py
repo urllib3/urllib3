@@ -454,10 +454,10 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     @pytest.mark.parametrize(
         "url, error_msg",
         [
-            ("127.0.0.1", "Proxy had no scheme, should start with http:// or https://"),
+            ("127.0.0.1", "Proxy URL had no scheme, should start with http:// or https://"),
             (
                 "localhost:8080",
-                "Proxy had no scheme, should start with http:// or https://",
+                "Proxy URL had no scheme, should start with http:// or https://",
             ),
             (
                 "ftp://google.com",
