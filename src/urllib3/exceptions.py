@@ -290,7 +290,7 @@ class ProxySchemeUnknown(AssertionError, URLSchemeUnknown):
         if scheme == "localhost":
             scheme = None
         if scheme is None:
-            message = "Proxy had no scheme, should start with http:// or https://"
+            message = "Proxy URL had no scheme, should start with http:// or https://"
         else:
             message = f"Proxy URL had unsupported scheme {scheme}, should use http:// or https://"
         super().__init__(message)
