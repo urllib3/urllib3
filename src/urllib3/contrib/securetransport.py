@@ -186,7 +186,7 @@ def inject_into_urllib3():
     util.ssl_.HAS_SNI = HAS_SNI
     util.IS_SECURETRANSPORT = True
     util.ssl_.IS_SECURETRANSPORT = True
-    util.ssl_.USE_SYSTEM_SSL_CIPHERS = False
+    util.ssl_.USE_SYSTEM_SSL_CIPHERS = True
 
 
 def extract_from_urllib3():
@@ -362,19 +362,6 @@ class WrappedSocket:
             self.close()
             raise exception
 
-    def _set_ciphers(self):
-        """
-        Sets up the allowed ciphers. By default this matches the set in
-        util.ssl_.DEFAULT_CIPHERS, at least as supported by macOS. This is done
-        custom and doesn't allow changing at this time, mostly because parsing
-        OpenSSL cipher strings is going to be a freaking nightmare.
-        """
-        ciphers = (Security.SSLCipherSuite * len(CIPHER_SUITES))(*CIPHER_SUITES)
-        result = Security.SSLSetEnabledCiphers(
-            self.context, ciphers, len(CIPHER_SUITES)
-        )
-        _assert_no_error(result)
-
     def _set_alpn_protocols(self, protocols):
         """
         Sets up the ALPN protocols on the context.
@@ -510,9 +497,6 @@ class WrappedSocket:
                 self.context, server_hostname, len(server_hostname)
             )
             _assert_no_error(result)
-
-        # Setup the ciphers.
-        self._set_ciphers()
 
         # Setup the ALPN protocols.
         self._set_alpn_protocols(alpn_protocols)
@@ -838,9 +822,7 @@ class SecureTransportContext:
         return self.set_default_verify_paths()
 
     def set_ciphers(self, ciphers):
-        # For now, we just require the default cipher string.
-        if ciphers != util.ssl_.DEFAULT_CIPHERS:
-            raise ValueError("SecureTransport doesn't support custom cipher strings")
+        raise ValueError("SecureTransport doesn't support custom cipher strings")
 
     def load_verify_locations(self, cafile=None, capath=None, cadata=None):
         # OK, we only really support cadata and cafile.
