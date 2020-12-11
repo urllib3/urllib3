@@ -16,6 +16,7 @@ from urllib3.exceptions import (
     ConnectTimeoutError,
     MaxRetryError,
     ProxyError,
+    ProxySchemeUnknown,
     ProxySchemeUnsupported,
     SSLError,
 )
@@ -449,6 +450,27 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
             r = http.request("GET", f"{self.https_url.upper()}/")
             assert r.status == 200
+
+    @pytest.mark.parametrize(
+        "url, error_msg",
+        [
+            (
+                "127.0.0.1",
+                "Proxy URL had no scheme, should start with http:// or https://",
+            ),
+            (
+                "localhost:8080",
+                "Proxy URL had no scheme, should start with http:// or https://",
+            ),
+            (
+                "ftp://google.com",
+                "Proxy URL had unsupported scheme ftp, should use http:// or https://",
+            ),
+        ],
+    )
+    def test_invalid_schema(self, url, error_msg):
+        with pytest.raises(ProxySchemeUnknown, match=error_msg):
+            proxy_from_url(url)
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="Only runs on IPv6 systems")

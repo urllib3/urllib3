@@ -32,10 +32,9 @@ from .exceptions import (
     SSLError,
     TimeoutError,
 )
-from .packages import six
 from .packages.ssl_match_hostname import CertificateError
 from .request import RequestMethods
-from .response import HTTPResponse
+from .response import BaseHTTPResponse, HTTPResponse
 from .util.connection import is_connection_dropped
 from .util.proxy import connection_requires_http_tunnel
 from .util.queue import LifoQueue
@@ -46,6 +45,7 @@ from .util.timeout import Timeout
 from .util.url import Url, _encode_target
 from .util.url import _normalize_host as normalize_host
 from .util.url import get_host, parse_url
+from .util.util import to_str
 
 log = logging.getLogger(__name__)
 
@@ -484,7 +484,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         chunked=False,
         body_pos=None,
         **response_kw,
-    ):
+    ) -> BaseHTTPResponse:
         """
         Get a connection from the pool and perform an HTTP request. This is the
         lowest level call for making a request, so you'll need to specify all
@@ -596,9 +596,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Ensure that the URL we're connecting to is properly encoded
         if url.startswith("/"):
-            url = six.ensure_str(_encode_target(url))
+            url = to_str(_encode_target(url))
         else:
-            url = six.ensure_str(parsed_url.url)
+            url = to_str(parsed_url.url)
 
         conn = None
 
@@ -856,8 +856,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         **conn_kw,
     ):
 
-        HTTPConnectionPool.__init__(
-            self,
+        super().__init__(
             host,
             port,
             timeout,

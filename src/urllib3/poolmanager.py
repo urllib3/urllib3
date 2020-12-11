@@ -163,7 +163,7 @@ class PoolManager(RequestMethods):
     proxy_config = None
 
     def __init__(self, num_pools=10, headers=None, **connection_pool_kw):
-        RequestMethods.__init__(self, headers)
+        super().__init__(headers)
         self.connection_pool_kw = connection_pool_kw
         self.pools = RecentlyUsedContainer(num_pools, dispose_func=lambda p: p.close())
 
@@ -327,17 +327,6 @@ class PoolManager(RequestMethods):
             self.proxy, self.proxy_config, parsed_url.scheme
         )
 
-    def _validate_proxy_scheme_url_selection(self, url_scheme):
-        """
-        Validates that were not attempting to do TLS in TLS connections on
-        Python2 or with unsupported SSL implementations.
-        """
-        if self.proxy is None or url_scheme != "https":
-            return
-
-        if self.proxy.scheme != "https":
-            return
-
     def urlopen(self, method, url, redirect=True, **kw):
         """
         Same as :meth:`urllib3.HTTPConnectionPool.urlopen`
@@ -348,7 +337,6 @@ class PoolManager(RequestMethods):
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
         u = parse_url(url)
-        self._validate_proxy_scheme_url_selection(u.scheme)
 
         conn = self.connection_from_host(u.host, port=u.port, scheme=u.scheme)
 

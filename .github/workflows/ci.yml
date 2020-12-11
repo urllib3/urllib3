@@ -42,16 +42,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.6, 3.7, 3.8]
-        os: [macos-latest, windows-latest]
+        python-version: [3.6, 3.7, 3.8, 3.9]
+        os: [macos-latest, windows-latest, ubuntu-latest]
         experimental: [false]
+        nox-session: ['']
         include:
-          - python-version: 3.9
-            os: macos-latest
-            experimental: true
+          - python-version: pypy3
+            os: ubuntu-latest
+            experimental: false
+            nox-session: test-pypy
+          - python-version: 2.7
+            os: ubuntu-latest
+            experimental: false
+            nox-session: unsupported_python2
 
     runs-on: ${{ matrix.os }}
-    name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows"}')[matrix.os] }} (${{ matrix.python-version }})
+    name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
     continue-on-error: ${{ matrix.experimental }}
     steps:
       - name: Checkout Repository
@@ -75,6 +81,7 @@ jobs:
         run: ./ci/run_tests.sh
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
+          NOX_SESSION: ${{ matrix.nox-session }}
 
       - name: Upload Coverage
         run: ./ci/upload_coverage.sh

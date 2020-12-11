@@ -40,17 +40,12 @@ from urllib3.exceptions import (
     SSLError,
     SystemTimeWarning,
 )
-from urllib3.packages import six
 from urllib3.util.timeout import Timeout
 
 from .. import has_alpn
 
 # Retry failed tests
 pytestmark = pytest.mark.flaky
-
-ResourceWarning = getattr(
-    six.moves.builtins, "ResourceWarning", type("ResourceWarning", (), {})
-)
 
 
 log = logging.getLogger("urllib3.connectionpool")

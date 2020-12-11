@@ -1,3 +1,5 @@
+import sys
+from collections import OrderedDict
 from collections.abc import Mapping, MutableMapping
 
 try:
@@ -12,9 +14,16 @@ except ImportError:  # Platform-specific: No threads available
             pass
 
 
-from collections import OrderedDict
+# Starting in Python 3.7 the 'dict' class is guaranteed to be
+# ordered by insertion. This behavior was an implementation
+# detail in Python 3.6. OrderedDict is implemented in C in
+# later Python versions but still requires a lot more memory
+# due to being implemented as a linked list.
+if sys.version_info >= (3, 7):
+    _ordered_dict = dict
+else:
+    _ordered_dict = OrderedDict
 
-from .exceptions import InvalidHeader
 
 __all__ = ["RecentlyUsedContainer", "HTTPHeaderDict"]
 
@@ -134,7 +143,7 @@ class HTTPHeaderDict(MutableMapping):
 
     def __init__(self, headers=None, **kwargs):
         super().__init__()
-        self._container = OrderedDict()
+        self._container = _ordered_dict()
         if headers is not None:
             if isinstance(headers, HTTPHeaderDict):
                 self._copy_from(headers)
@@ -296,31 +305,3 @@ class HTTPHeaderDict(MutableMapping):
 
     def items(self):
         return list(self.iteritems())
-
-    @classmethod
-    def from_httplib(cls, message):  # Python 2
-        """Read headers from a Python 2 httplib message object."""
-        # python2.7 does not expose a proper API for exporting multiheaders
-        # efficiently. This function re-reads raw lines from the message
-        # object and extracts the multiheaders properly.
-        obs_fold_continued_leaders = (" ", "\t")
-        headers = []
-
-        for line in message.headers:
-            if line.startswith(obs_fold_continued_leaders):
-                if not headers:
-                    # We received a header line that starts with OWS as described
-                    # in RFC-7230 S3.2.4. This indicates a multiline header, but
-                    # there exists no previous header to which we can attach it.
-                    raise InvalidHeader(
-                        f"Header continuation with no previous header: {line}"
-                    )
-                else:
-                    key, value = headers[-1]
-                    headers[-1] = (key, value + " " + line.strip())
-                    continue
-
-            key, value = line.split(":", 1)
-            headers.append((key, value.strip()))
-
-        return cls(headers)
