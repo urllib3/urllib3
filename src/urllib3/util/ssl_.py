@@ -20,6 +20,19 @@ USE_SYSTEM_SSL_CIPHERS = False
 HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
 
 
+def _is_ge_openssl_v1_1_1(
+    openssl_version_text: str, openssl_version_number: int
+) -> bool:
+    """Returns True for OpenSSL 1.1.1+ (>=0x10101000)
+    LibreSSL reports a version number of 0x20000000 for
+    OpenSSL version number so we need to filter out LibreSSL.
+    """
+    return (
+        not openssl_version_text.startswith("LibreSSL")
+        and openssl_version_number >= 0x10101000
+    )
+
+
 try:  # Do we have ssl at all?
     import ssl
     from ssl import (
