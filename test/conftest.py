@@ -76,20 +76,6 @@ def ip_san_server(tmp_path_factory):
 
 
 @pytest.fixture
-def ipv6_addr_server(tmp_path_factory):
-    if not HAS_IPV6:
-        pytest.skip("Only runs on IPv6 systems")
-
-    tmpdir = tmp_path_factory.mktemp("certs")
-    ca = trustme.CA()
-    # IP address in Common Name
-    server_cert = ca.issue_cert(common_name="::1")
-
-    with run_server_in_thread("https", "::1", tmpdir, ca, server_cert) as cfg:
-        yield cfg
-
-
-@pytest.fixture
 def ipv6_san_server(tmp_path_factory):
     if not HAS_IPV6:
         pytest.skip("Only runs on IPv6 systems")

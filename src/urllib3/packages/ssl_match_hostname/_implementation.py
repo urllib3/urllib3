@@ -125,17 +125,6 @@ def match_hostname(cert, hostname):
             if host_ip is not None and _ipaddress_match(value, host_ip):
                 return
             dnsnames.append(value)
-    if not dnsnames:
-        # The subject is only checked when there is no dNSName entry
-        # in subjectAltName
-        for sub in cert.get("subject", ()):
-            for key, value in sub:
-                # XXX according to RFC 2818, the most specific Common Name
-                # must be used.
-                if key == "commonName":
-                    if _dnsname_match(value, hostname):
-                        return
-                    dnsnames.append(value)
     if len(dnsnames) > 1:
         raise CertificateError(
             "hostname %r "
@@ -144,6 +133,4 @@ def match_hostname(cert, hostname):
     elif len(dnsnames) == 1:
         raise CertificateError(f"hostname {hostname!r} doesn't match {dnsnames[0]!r}")
     else:
-        raise CertificateError(
-            "no appropriate commonName or subjectAltName fields were found"
-        )
+        raise CertificateError("no appropriate subjectAltName fields were found")
