@@ -55,6 +55,10 @@ jobs:
             os: ubuntu-latest
             experimental: false
             nox-session: unsupported_python2
+          - python-version: 3.10-dev
+            os: ubuntu-latest
+            experimental: false
+            nox-session: test-3.10
 
     runs-on: ${{ matrix.os }}
     name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
@@ -68,11 +72,23 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Set Up Python 3.7 to run nox
-        if: matrix.python-version != '3.7'
+      - name: Set Up Python - ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        if: "!endsWith(matrix.python-version, '-dev')"
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set Up Python - ${{ matrix.python-version }}
+        uses: deadsnakes/action@v2.0.2
+        if: endsWith(matrix.python-version, '-dev')
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set Up Python 3 to run nox on Python 2
+        if: matrix.python-version == '2.7'
         uses: actions/setup-python@v2
         with:
-          python-version: 3.7
+          python-version: 3
 
       - name: Install Dependencies
         run: python -m pip install --upgrade nox
