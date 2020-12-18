@@ -173,9 +173,6 @@ class RecentlyUsedContainer(Generic[_KT, _VT], MutableMapping[_KT, _VT]):
             return list(self._container.keys())
 
 
-T = TypeVar("T")
-
-
 class HTTPHeaderDictItemView(Set[Tuple[str, str]]):
     """
     HTTPHeaderDict is unusual for a Mapping[str, str] in that it has two modes of
