@@ -35,7 +35,7 @@ class TestLRUContainer:
         d[5] = "5"
 
         # Check state
-        assert list(d.keys()) == [2, 3, 4, 0, 5]
+        assert d.ordered_keys() == [2, 3, 4, 0, 5]
 
     def test_same_key(self):
         d = Container(5)
@@ -43,7 +43,7 @@ class TestLRUContainer:
         for i in range(10):
             d["foo"] = i
 
-        assert list(d.keys()) == ["foo"]
+        assert d.ordered_keys() == ["foo"]
         assert len(d) == 1
 
     def test_access_ordering(self):
@@ -53,13 +53,13 @@ class TestLRUContainer:
             d[i] = True
 
         # Keys should be ordered by access time
-        assert list(d.keys()) == [5, 6, 7, 8, 9]
+        assert d.ordered_keys() == [5, 6, 7, 8, 9]
 
         new_order = [7, 8, 6, 9, 5]
         for k in new_order:
             d[k]
 
-        assert list(d.keys()) == new_order
+        assert d.ordered_keys() == new_order
 
     def test_delete(self):
         d = Container(5)
@@ -103,11 +103,11 @@ class TestLRUContainer:
         d = Container(5, dispose_func=dispose_func)
         for i in range(5):
             d[i] = i
-        assert list(d.keys()) == list(range(5))
+        assert d.ordered_keys() == list(range(5))
         assert evicted_items == []  # Nothing disposed
 
         d[5] = 5
-        assert list(d.keys()) == list(range(1, 6))
+        assert d.ordered_keys() == list(range(1, 6))
         assert evicted_items == [0]
 
         del d[1]
@@ -313,10 +313,10 @@ class TestHTTPHeaderDict:
     def test_items(self, d):
         items = d.items()
         assert len(items) == 2
-        assert items[0][0] == "Cookie"
-        assert items[0][1] == "foo"
-        assert items[1][0] == "Cookie"
-        assert items[1][1] == "bar"
+        assert list(items) == [
+            ("Cookie", "foo"),
+            ("Cookie", "bar"),
+        ]
 
     def test_dict_conversion(self, d):
         # Also tested in connectionpool, needs to preserve case
