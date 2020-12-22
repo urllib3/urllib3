@@ -24,12 +24,7 @@ except (ImportError, AttributeError):  # Platform-specific: No SSL.
 
 
 from ._version import __version__
-from .exceptions import (
-    ConnectTimeoutError,
-    NewConnectionError,
-    SubjectAltNameWarning,
-    SystemTimeWarning,
-)
+from .exceptions import ConnectTimeoutError, NewConnectionError, SystemTimeWarning
 from .packages.ssl_match_hostname import CertificateError, match_hostname
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection
 from .util.ssl_ import (
@@ -421,16 +416,6 @@ class HTTPSConnection(HTTPConnection):
             # the TLS library, this cannot always be done. So we check whether
             # the TLS Library still thinks it's matching hostnames.
             cert = self.sock.getpeercert()
-            if not cert.get("subjectAltName", ()):
-                warnings.warn(
-                    (
-                        f"Certificate for {hostname} has no `subjectAltName`, falling back to check for a "
-                        "`commonName` for now. This feature is being removed by major browsers and "
-                        "deprecated by RFC 2818. (See https://github.com/urllib3/urllib3/issues/497 "
-                        "for details.)"
-                    ),
-                    SubjectAltNameWarning,
-                )
             _match_hostname(cert, self.assert_hostname or server_hostname)
 
         self.is_verified = (

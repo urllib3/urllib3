@@ -35,7 +35,6 @@ from ..with_dummyserver.test_https import (  # noqa: E402, F401
     TestHTTPS,
     TestHTTPS_IPSAN,
     TestHTTPS_IPV6SAN,
-    TestHTTPS_NoSAN,
     TestHTTPS_TLSv1,
     TestHTTPS_TLSv1_1,
     TestHTTPS_TLSv1_2,

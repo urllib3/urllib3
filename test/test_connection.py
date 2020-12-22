@@ -4,6 +4,10 @@ from unittest import mock
 import pytest
 
 from urllib3.connection import RECENT_DATE, CertificateError, _match_hostname
+from urllib3.packages.ssl_match_hostname._implementation import (
+    CertificateError as ImplementationCertificateError,
+)
+from urllib3.packages.ssl_match_hostname._implementation import match_hostname
 
 
 class TestConnection:
@@ -42,6 +46,15 @@ class TestConnection:
                 {"subjectAltName": [("DNS", "foo")]},
             )
             assert e._peer_cert == cert
+
+    def test_match_hostname_ignore_common_name(self):
+        cert = {"subject": [("commonName", "foo")]}
+        asserted_hostname = "foo"
+        with pytest.raises(
+            ImplementationCertificateError,
+            match="no appropriate subjectAltName fields were found",
+        ):
+            match_hostname(cert, asserted_hostname)
 
     def test_recent_date(self):
         # This test is to make sure that the RECENT_DATE value
