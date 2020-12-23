@@ -4,7 +4,6 @@ import queue
 import socket
 import sys
 import warnings
-from socket import error as SocketError
 from socket import timeout as SocketTimeout
 
 from .connection import (
@@ -398,7 +397,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # Receive the response from the server
         try:
             httplib_response = conn.getresponse()
-        except (SocketTimeout, BaseSSLError, SocketError) as e:
+        except (BaseSSLError, OSError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
 
@@ -690,7 +689,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         except (
             TimeoutError,
             HTTPException,
-            SocketError,
+            OSError,
             ProtocolError,
             BaseSSLError,
             SSLError,
@@ -701,9 +700,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             clean_exit = False
             if isinstance(e, (BaseSSLError, CertificateError)):
                 e = SSLError(e)
-            elif isinstance(e, (SocketError, NewConnectionError)) and self.proxy:
+            elif isinstance(e, (OSError, NewConnectionError)) and self.proxy:
                 e = ProxyError("Cannot connect to proxy.", e)
-            elif isinstance(e, (SocketError, HTTPException)):
+            elif isinstance(e, (OSError, HTTPException)):
                 e = ProtocolError("Connection aborted.", e)
 
             retries = retries.increment(

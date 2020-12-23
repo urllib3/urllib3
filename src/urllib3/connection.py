@@ -6,7 +6,6 @@ import socket
 import warnings
 from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException  # noqa: F401
-from socket import error as SocketError
 from socket import timeout as SocketTimeout
 
 from .util.proxy import create_proxy_ssl_context
@@ -156,7 +155,7 @@ class HTTPConnection(_HTTPConnection):
                 f"Connection to {self.host} timed out. (connect timeout={self.timeout})",
             )
 
-        except SocketError as e:
+        except OSError as e:
             raise NewConnectionError(self, f"Failed to establish a new connection: {e}")
 
         return conn
