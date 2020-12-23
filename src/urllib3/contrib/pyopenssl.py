@@ -279,7 +279,7 @@ class WrappedSocket:
             if self.suppress_ragged_eofs and e.args == (-1, "Unexpected EOF"):
                 return b""
             else:
-                raise SocketError(str(e))
+                raise SocketError(e.args[0], str(e))
         except OpenSSL.SSL.ZeroReturnError:
             if self.connection.get_shutdown() == OpenSSL.SSL.RECEIVED_SHUTDOWN:
                 return b""
@@ -304,7 +304,7 @@ class WrappedSocket:
             if self.suppress_ragged_eofs and e.args == (-1, "Unexpected EOF"):
                 return 0
             else:
-                raise SocketError(str(e))
+                raise SocketError(e.args[0], str(e))
         except OpenSSL.SSL.ZeroReturnError:
             if self.connection.get_shutdown() == OpenSSL.SSL.RECEIVED_SHUTDOWN:
                 return 0
@@ -332,7 +332,7 @@ class WrappedSocket:
                     raise timeout()
                 continue
             except OpenSSL.SSL.SysCallError as e:
-                raise SocketError(str(e))
+                raise SocketError(e.args[0], str(e))
 
     def sendall(self, data):
         total_sent = 0
