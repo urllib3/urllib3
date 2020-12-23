@@ -55,7 +55,6 @@ except ImportError:
     )
     raise
 
-from socket import error as SocketError
 from socket import timeout as SocketTimeout
 
 from ..connection import HTTPConnection, HTTPSConnection
@@ -128,7 +127,7 @@ class SOCKSConnection(HTTPConnection):
                     self, f"Failed to establish a new connection: {e}"
                 )
 
-        except SocketError as e:  # Defensive: PySocks should catch all these.
+        except OSError as e:  # Defensive: PySocks should catch all these.
             raise NewConnectionError(self, f"Failed to establish a new connection: {e}")
 
         return conn

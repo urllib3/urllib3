@@ -62,7 +62,6 @@ except ImportError:
 import logging
 import ssl
 from io import BytesIO
-from socket import error as SocketError
 from socket import socket as socket_cls
 from socket import timeout
 
@@ -279,7 +278,7 @@ class WrappedSocket:
             if self.suppress_ragged_eofs and e.args == (-1, "Unexpected EOF"):
                 return b""
             else:
-                raise SocketError(e.args[0], str(e))
+                raise OSError(e.args[0], str(e))
         except OpenSSL.SSL.ZeroReturnError:
             if self.connection.get_shutdown() == OpenSSL.SSL.RECEIVED_SHUTDOWN:
                 return b""
@@ -304,7 +303,7 @@ class WrappedSocket:
             if self.suppress_ragged_eofs and e.args == (-1, "Unexpected EOF"):
                 return 0
             else:
-                raise SocketError(e.args[0], str(e))
+                raise OSError(e.args[0], str(e))
         except OpenSSL.SSL.ZeroReturnError:
             if self.connection.get_shutdown() == OpenSSL.SSL.RECEIVED_SHUTDOWN:
                 return 0
@@ -332,7 +331,7 @@ class WrappedSocket:
                     raise timeout()
                 continue
             except OpenSSL.SSL.SysCallError as e:
-                raise SocketError(e.args[0], str(e))
+                raise OSError(e.args[0], str(e))
 
     def sendall(self, data):
         total_sent = 0

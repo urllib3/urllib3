@@ -3,7 +3,6 @@ import logging
 import typing
 import zlib
 from contextlib import contextmanager
-from socket import error as SocketError
 from socket import timeout as SocketTimeout
 
 try:
@@ -441,7 +440,7 @@ class HTTPResponse(BaseHTTPResponse):
         """
         try:
             self.read()
-        except (HTTPError, SocketError, BaseSSLError, HTTPException):
+        except (HTTPError, OSError, BaseSSLError, HTTPException):
             pass
 
     @property
@@ -548,7 +547,7 @@ class HTTPResponse(BaseHTTPResponse):
 
                 raise ReadTimeoutError(self._pool, None, "Read timed out.")
 
-            except (HTTPException, SocketError) as e:
+            except (HTTPException, OSError) as e:
                 # This includes IncompleteRead.
                 raise ProtocolError(f"Connection broken: {e!r}", e)
 
