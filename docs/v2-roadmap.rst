@@ -3,7 +3,7 @@ v2.0 Roadmap
 
 .. important::
 
-   We're seeking `sponsors and supporters for urllib3 v2.0 on Open Collective <https://opencollective.com/urllib3>`_.
+   We're seeking `sponsors and supporters for urllib3 v2.0 on Open Collective <https://github.com/sponsors/urllib3>`_.
    There's a lot of work to be done for our small team and we want to make sure
    development can get completed on-time while also fairly compensating contributors
    for the additional effort required for a large release like ``v2.0``.

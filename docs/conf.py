@@ -76,8 +76,8 @@ html_static_path = ["_static"]
 html_theme_options = {
     "announcement": """
         <a style=\"text-decoration: none; color: white;\" 
-           href=\"https://opencollective.com/urllib3\">
-           <img src=\"/en/latest/_static/favicon.png\"/> Sponsor urllib3 v2.0 on Open Collective
+           href=\"https://github.com/sponsors/urllib3\">
+           <img src=\"/en/latest/_static/favicon.png\"/> Support urllib3 on GitHub Sponsors
         </a>
     """,
     "sidebar_hide_name": True,
