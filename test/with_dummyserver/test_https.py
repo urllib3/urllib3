@@ -782,22 +782,6 @@ class TestHTTPS_TLSv1_3(TestHTTPS):
     certs = TLSv1_3_CERTS
 
 
-class TestHTTPS_NoSAN:
-    def test_warning_for_certs_without_a_san(self, no_san_server):
-        """Ensure that a warning is raised when the cert from the server has
-        no Subject Alternative Name."""
-        with mock.patch("warnings.warn") as warn:
-            with HTTPSConnectionPool(
-                no_san_server.host,
-                no_san_server.port,
-                cert_reqs="CERT_REQUIRED",
-                ca_certs=no_san_server.ca_certs,
-            ) as https_pool:
-                r = https_pool.request("GET", "/")
-                assert r.status == 200
-                assert warn.called
-
-
 class TestHTTPS_IPSAN:
     def test_can_validate_ip_san(self, ip_san_server):
         """Ensure that urllib3 can validate SANs with IP addresses in them."""
@@ -816,19 +800,6 @@ class TestHTTPS_IPSAN:
             assert r.status == 200
 
 
-class TestHTTPS_IPv6Addr:
-    def test_strip_square_brackets_before_validating(self, ipv6_addr_server):
-        """Test that the fix for #760 works."""
-        with HTTPSConnectionPool(
-            "[::1]",
-            ipv6_addr_server.port,
-            cert_reqs="CERT_REQUIRED",
-            ca_certs=ipv6_addr_server.ca_certs,
-        ) as https_pool:
-            r = https_pool.request("GET", "/")
-            assert r.status == 200
-
-
 class TestHTTPS_IPV6SAN:
     def test_can_validate_ipv6_san(self, ipv6_san_server):
         """Ensure that urllib3 can validate SANs with IPv6 addresses in them."""
@@ -837,6 +808,17 @@ class TestHTTPS_IPV6SAN:
         except ImportError:
             pytest.skip("Only runs on systems with an ipaddress module")
 
+        with HTTPSConnectionPool(
+            "[::1]",
+            ipv6_san_server.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=ipv6_san_server.ca_certs,
+        ) as https_pool:
+            r = https_pool.request("GET", "/")
+            assert r.status == 200
+
+    def test_strip_square_brackets_before_validating(self, ipv6_san_server):
+        """Test that the fix for #760 works."""
         with HTTPSConnectionPool(
             "[::1]",
             ipv6_san_server.port,
