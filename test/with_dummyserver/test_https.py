@@ -785,11 +785,6 @@ class TestHTTPS_TLSv1_3(TestHTTPS):
 class TestHTTPS_IPSAN:
     def test_can_validate_ip_san(self, ip_san_server):
         """Ensure that urllib3 can validate SANs with IP addresses in them."""
-        try:
-            import ipaddress  # noqa: F401
-        except ImportError:
-            pytest.skip("Only runs on systems with an ipaddress module")
-
         with HTTPSConnectionPool(
             ip_san_server.host,
             ip_san_server.port,
@@ -803,11 +798,6 @@ class TestHTTPS_IPSAN:
 class TestHTTPS_IPV6SAN:
     def test_can_validate_ipv6_san(self, ipv6_san_server):
         """Ensure that urllib3 can validate SANs with IPv6 addresses in them."""
-        try:
-            import ipaddress  # noqa: F401
-        except ImportError:
-            pytest.skip("Only runs on systems with an ipaddress module")
-
         with HTTPSConnectionPool(
             "[::1]",
             ipv6_san_server.port,
