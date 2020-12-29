@@ -6,11 +6,10 @@ import socket
 import warnings
 from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException  # noqa: F401
-from socket import error as SocketError
 from socket import timeout as SocketTimeout
 
-from .packages import six
 from .util.proxy import create_proxy_ssl_context
+from .util.util import to_str
 
 try:  # Compiled with SSL?
     import ssl
@@ -24,12 +23,7 @@ except (ImportError, AttributeError):  # Platform-specific: No SSL.
 
 
 from ._version import __version__
-from .exceptions import (
-    ConnectTimeoutError,
-    NewConnectionError,
-    SubjectAltNameWarning,
-    SystemTimeWarning,
-)
+from .exceptions import ConnectTimeoutError, NewConnectionError, SystemTimeWarning
 from .packages.ssl_match_hostname import CertificateError, match_hostname
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection
 from .util.ssl_ import (
@@ -64,7 +58,6 @@ class HTTPConnection(_HTTPConnection):
     Additional keyword parameters are used to configure attributes of the connection.
     Accepted parameters include:
 
-    - ``strict``: See the documentation on :class:`urllib3.connectionpool.HTTPConnectionPool`
     - ``source_address``: Set the source address for the current connection.
     - ``socket_options``: Set specific options on the underlying socket. If not specified, then
       defaults are loaded from ``HTTPConnection.default_socket_options`` which includes disabling
@@ -92,8 +85,6 @@ class HTTPConnection(_HTTPConnection):
     is_verified = False
 
     def __init__(self, *args, **kw):
-        kw.pop("strict", None)
-
         # Pre-set source_address.
         self.source_address = kw.get("source_address")
 
@@ -105,7 +96,7 @@ class HTTPConnection(_HTTPConnection):
         self.proxy = kw.pop("proxy", None)
         self.proxy_config = kw.pop("proxy_config", None)
 
-        _HTTPConnection.__init__(self, *args, **kw)
+        super().__init__(*args, **kw)
 
     @property
     def host(self):
@@ -159,14 +150,13 @@ class HTTPConnection(_HTTPConnection):
                 f"Connection to {self.host} timed out. (connect timeout={self.timeout})",
             )
 
-        except SocketError as e:
+        except OSError as e:
             raise NewConnectionError(self, f"Failed to establish a new connection: {e}")
 
         return conn
 
     def _is_using_tunnel(self):
-        # Google App Engine's httplib does not define _tunnel_host
-        return getattr(self, "_tunnel_host", None)
+        return self._tunnel_host
 
     def _prepare_conn(self, conn):
         self.sock = conn
@@ -190,13 +180,13 @@ class HTTPConnection(_HTTPConnection):
                 f"Method cannot contain non-token characters {method!r} (found at least {match.group()!r})"
             )
 
-        return _HTTPConnection.putrequest(self, method, url, *args, **kwargs)
+        return super().putrequest(method, url, *args, **kwargs)
 
     def putheader(self, header, *values):
         """"""
         if SKIP_HEADER not in values:
-            _HTTPConnection.putheader(self, header, *values)
-        elif six.ensure_str(header.lower()) not in SKIPPABLE_HEADERS:
+            super().putheader(header, *values)
+        elif to_str(header.lower()) not in SKIPPABLE_HEADERS:
             raise ValueError(
                 "urllib3.util.SKIP_HEADER only supports '{}'".format(
                     "', '".join(map(str.title, sorted(SKIPPABLE_HEADERS)))
@@ -209,7 +199,7 @@ class HTTPConnection(_HTTPConnection):
         else:
             # Avoid modifying the headers passed into .request()
             headers = headers.copy()
-        if "user-agent" not in (six.ensure_str(k.lower()) for k in headers):
+        if "user-agent" not in (to_str(k.lower()) for k in headers):
             headers["User-Agent"] = _get_default_user_agent()
         super().request(method, url, body=body, headers=headers)
 
@@ -219,7 +209,7 @@ class HTTPConnection(_HTTPConnection):
         body with chunked encoding and not as one block
         """
         headers = headers or {}
-        header_keys = {six.ensure_str(k.lower()) for k in headers}
+        header_keys = {to_str(k.lower()) for k in headers}
         skip_accept_encoding = "accept-encoding" in header_keys
         skip_host = "host" in header_keys
         self.putrequest(
@@ -275,24 +265,19 @@ class HTTPSConnection(HTTPConnection):
         key_file=None,
         cert_file=None,
         key_password=None,
-        strict=None,
         timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
         ssl_context=None,
         server_hostname=None,
         **kw,
     ):
 
-        HTTPConnection.__init__(self, host, port, strict=strict, timeout=timeout, **kw)
+        super().__init__(host, port, timeout=timeout, **kw)
 
         self.key_file = key_file
         self.cert_file = cert_file
         self.key_password = key_password
         self.ssl_context = ssl_context
         self.server_hostname = server_hostname
-
-        # Required property for Google AppEngine 1.9.0 which otherwise causes
-        # HTTPS requests to go out as HTTP. (See Issue #356)
-        self._protocol = "https"
 
     def set_cert(
         self,
@@ -430,16 +415,6 @@ class HTTPSConnection(HTTPConnection):
             # the TLS library, this cannot always be done. So we check whether
             # the TLS Library still thinks it's matching hostnames.
             cert = self.sock.getpeercert()
-            if not cert.get("subjectAltName", ()):
-                warnings.warn(
-                    (
-                        f"Certificate for {hostname} has no `subjectAltName`, falling back to check for a "
-                        "`commonName` for now. This feature is being removed by major browsers and "
-                        "deprecated by RFC 2818. (See https://github.com/urllib3/urllib3/issues/497 "
-                        "for details.)"
-                    ),
-                    SubjectAltNameWarning,
-                )
             _match_hostname(cert, self.assert_hostname or server_hostname)
 
         self.is_verified = (

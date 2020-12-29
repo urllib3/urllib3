@@ -414,7 +414,7 @@ try:
     CoreFoundation.CFStringRef = CFStringRef
     CoreFoundation.CFDictionaryRef = CFDictionaryRef
 
-except (AttributeError):
+except AttributeError:
     raise ImportError("Error initializing ctypes")
 
 

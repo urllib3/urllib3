@@ -62,8 +62,7 @@ import ssl
 import struct
 import threading
 import weakref
-
-import six
+from socket import socket as socket_cls
 
 from .. import util
 from ._securetransport.bindings import CoreFoundation, Security, SecurityConst
@@ -75,12 +74,6 @@ from ._securetransport.low_level import (
     _load_client_cert_chain,
     _temporary_keychain,
 )
-
-try:  # Platform-specific: Python 2
-    from socket import _fileobject
-except ImportError:  # Platform-specific: Python 3
-    _fileobject = None
-    from ..packages.backports.makefile import backport_makefile
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 
@@ -241,7 +234,7 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
                     if not read_count:
                         return SecurityConst.errSSLClosedGraceful
                     break
-        except (OSError) as e:
+        except OSError as e:
             error = e.errno
 
             if error is not None and error != errno.EAGAIN:
@@ -292,7 +285,7 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
                 # This has some needless copying here, but I'm not sure there's
                 # much value in optimising this data path.
                 data = data[chunk_sent:]
-        except (OSError) as e:
+        except OSError as e:
             error = e.errno
 
             if error is not None and error != errno.EAGAIN:
@@ -323,15 +316,12 @@ _write_callback_pointer = Security.SSLWriteFunc(_write_callback)
 class WrappedSocket:
     """
     API-compatibility wrapper for Python's OpenSSL wrapped socket object.
-
-    Note: _makefile_refs, _drop(), and _reuse() are needed for the garbage
-    collector of PyPy.
     """
 
     def __init__(self, socket):
         self.socket = socket
         self.context = None
-        self._makefile_refs = 0
+        self._io_refs = 0
         self._closed = False
         self._exception = None
         self._keychain = None
@@ -566,8 +556,8 @@ class WrappedSocket:
 
     # Copy-pasted from Python 3.5 source code
     def _decref_socketios(self):
-        if self._makefile_refs > 0:
-            self._makefile_refs -= 1
+        if self._io_refs > 0:
+            self._io_refs -= 1
         if self._closed:
             self.close()
 
@@ -655,7 +645,7 @@ class WrappedSocket:
 
     def close(self):
         # TODO: should I do clean shutdown here? Do I have to?
-        if self._makefile_refs < 1:
+        if self._io_refs < 1:
             self._closed = True
             if self.context:
                 CoreFoundation.CFRelease(self.context)
@@ -670,7 +660,7 @@ class WrappedSocket:
                 self._keychain = self._keychain_dir = None
             return self.socket.close()
         else:
-            self._makefile_refs -= 1
+            self._io_refs -= 1
 
     def getpeercert(self, binary_form=False):
         # Urgh, annoying.
@@ -751,30 +741,12 @@ class WrappedSocket:
         else:
             raise ssl.SSLError(f"Unknown TLS version: {protocol!r}")
 
-    def _reuse(self):
-        self._makefile_refs += 1
 
-    def _drop(self):
-        if self._makefile_refs < 1:
-            self.close()
-        else:
-            self._makefile_refs -= 1
-
-
-if _fileobject:  # Platform-specific: Python 2
-
-    def makefile(self, mode, bufsize=-1):
-        self._makefile_refs += 1
-        return _fileobject(self, mode, bufsize, close=True)
-
-
-else:  # Platform-specific: Python 3
-
-    def makefile(self, mode="r", buffering=None, *args, **kwargs):
-        # We disable buffering with SecureTransport because it conflicts with
-        # the buffering that ST does internally (see issue #1153 for more).
-        buffering = 0
-        return backport_makefile(self, mode, buffering, *args, **kwargs)
+def makefile(self, mode="r", buffering=None, *args, **kwargs):
+    # We disable buffering with SecureTransport because it conflicts with
+    # the buffering that ST does internally (see issue #1153 for more).
+    buffering = 0
+    return socket_cls.makefile(self, mode, buffering, *args, **kwargs)
 
 
 WrappedSocket.makefile = makefile
@@ -883,7 +855,7 @@ class SecureTransportContext:
             raise NotImplementedError(
                 "SecureTransport supports ALPN only in macOS 10.12+"
             )
-        self._alpn_protocols = [six.ensure_binary(p) for p in protocols]
+        self._alpn_protocols = [util.util.to_bytes(p, "ascii") for p in protocols]
 
     def wrap_socket(
         self,

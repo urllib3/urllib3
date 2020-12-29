@@ -107,7 +107,6 @@ class TestPoolManager:
             "timeout": timeout.Timeout(3.14),
             "retries": retry.Retry(total=6, connect=2),
             "block": True,
-            "strict": True,
             "source_address": "127.0.0.1",
         }
         p = PoolManager()
@@ -135,7 +134,6 @@ class TestPoolManager:
             "timeout": timeout.Timeout(3.14),
             "retries": retry.Retry(total=6, connect=2),
             "block": True,
-            "strict": True,
             "source_address": "127.0.0.1",
             "key_file": "/root/totally_legit.key",
             "cert_file": "/root/totally_legit.crt",
@@ -290,37 +288,33 @@ class TestPoolManager:
 
     def test_override_pool_kwargs_url(self):
         """Assert overriding pool kwargs works with connection_from_url."""
-        p = PoolManager(strict=True)
-        pool_kwargs = {"strict": False, "retries": 100, "block": True}
+        p = PoolManager()
+        pool_kwargs = {"retries": 100, "block": True}
 
         default_pool = p.connection_from_url("http://example.com/")
         override_pool = p.connection_from_url(
             "http://example.com/", pool_kwargs=pool_kwargs
         )
 
-        assert default_pool.strict
         assert retry.Retry.DEFAULT == default_pool.retries
         assert not default_pool.block
 
-        assert not override_pool.strict
         assert 100 == override_pool.retries
         assert override_pool.block
 
     def test_override_pool_kwargs_host(self):
         """Assert overriding pool kwargs works with connection_from_host"""
-        p = PoolManager(strict=True)
-        pool_kwargs = {"strict": False, "retries": 100, "block": True}
+        p = PoolManager()
+        pool_kwargs = {"retries": 100, "block": True}
 
         default_pool = p.connection_from_host("example.com", scheme="http")
         override_pool = p.connection_from_host(
             "example.com", scheme="http", pool_kwargs=pool_kwargs
         )
 
-        assert default_pool.strict
         assert retry.Retry.DEFAULT == default_pool.retries
         assert not default_pool.block
 
-        assert not override_pool.strict
         assert 100 == override_pool.retries
         assert override_pool.block
 
@@ -343,13 +337,13 @@ class TestPoolManager:
 
     def test_merge_pool_kwargs(self):
         """Assert _merge_pool_kwargs works in the happy case"""
-        p = PoolManager(strict=True)
+        p = PoolManager(retries=100)
         merged = p._merge_pool_kwargs({"new_key": "value"})
-        assert {"strict": True, "new_key": "value"} == merged
+        assert {"retries": 100, "new_key": "value"} == merged
 
     def test_merge_pool_kwargs_none(self):
         """Assert false-y values to _merge_pool_kwargs result in defaults"""
-        p = PoolManager(strict=True)
+        p = PoolManager(retries=100)
         merged = p._merge_pool_kwargs({})
         assert p.connection_pool_kw == merged
         merged = p._merge_pool_kwargs(None)
@@ -357,18 +351,18 @@ class TestPoolManager:
 
     def test_merge_pool_kwargs_remove_key(self):
         """Assert keys can be removed with _merge_pool_kwargs"""
-        p = PoolManager(strict=True)
-        merged = p._merge_pool_kwargs({"strict": None})
-        assert "strict" not in merged
+        p = PoolManager(retries=100)
+        merged = p._merge_pool_kwargs({"retries": None})
+        assert "retries" not in merged
 
     def test_merge_pool_kwargs_invalid_key(self):
         """Assert removing invalid keys with _merge_pool_kwargs doesn't break"""
-        p = PoolManager(strict=True)
+        p = PoolManager(retries=100)
         merged = p._merge_pool_kwargs({"invalid_key": None})
         assert p.connection_pool_kw == merged
 
     def test_pool_manager_no_url_absolute_form(self):
         """Valides we won't send a request with absolute form without a proxy"""
-        p = PoolManager(strict=True)
+        p = PoolManager()
         assert p._proxy_requires_url_absolute_form("http://example.com") is False
         assert p._proxy_requires_url_absolute_form("https://example.com") is False

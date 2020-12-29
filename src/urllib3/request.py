@@ -1,6 +1,7 @@
 from urllib.parse import urlencode
 
 from .filepost import encode_multipart_formdata
+from .response import BaseHTTPResponse
 
 __all__ = ["RequestMethods"]
 
@@ -48,13 +49,15 @@ class RequestMethods:
         encode_multipart=True,
         multipart_boundary=None,
         **kw,
-    ):  # Abstract
+    ) -> BaseHTTPResponse:  # Abstract
         raise NotImplementedError(
             "Classes extending RequestMethods must implement "
             "their own ``urlopen`` method."
         )
 
-    def request(self, method, url, fields=None, headers=None, **urlopen_kw):
+    def request(
+        self, method, url, fields=None, headers=None, **urlopen_kw
+    ) -> BaseHTTPResponse:
         """
         Make a request using :meth:`urlopen` with the appropriate encoding of
         ``fields`` based on the ``method`` used.
@@ -78,7 +81,9 @@ class RequestMethods:
                 method, url, fields=fields, headers=headers, **urlopen_kw
             )
 
-    def request_encode_url(self, method, url, fields=None, headers=None, **urlopen_kw):
+    def request_encode_url(
+        self, method, url, fields=None, headers=None, **urlopen_kw
+    ) -> BaseHTTPResponse:
         """
         Make a request using :meth:`urlopen` with the ``fields`` encoded in
         the url. This is useful for request methods like GET, HEAD, DELETE, etc.
@@ -103,7 +108,7 @@ class RequestMethods:
         encode_multipart=True,
         multipart_boundary=None,
         **urlopen_kw,
-    ):
+    ) -> BaseHTTPResponse:
         """
         Make a request using :meth:`urlopen` with the ``fields`` encoded in
         the body. This is useful for request methods like POST, PUT, PATCH, etc.

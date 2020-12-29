@@ -1,4 +1,3 @@
-import hashlib
 import io
 import logging
 import socket
@@ -24,14 +23,10 @@ from urllib3.util.connection import _has_ipv6, allowed_gai_family, create_connec
 from urllib3.util.proxy import connection_requires_http_tunnel, create_proxy_ssl_context
 from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
-from urllib3.util.ssl_ import (
-    _const_compare_digest_backport,
-    resolve_cert_reqs,
-    resolve_ssl_version,
-    ssl_wrap_socket,
-)
+from urllib3.util.ssl_ import resolve_cert_reqs, resolve_ssl_version, ssl_wrap_socket
 from urllib3.util.timeout import Timeout
 from urllib3.util.url import Url, get_host, parse_url, split_first
+from urllib3.util.util import to_bytes, to_str
 
 from . import clear_warnings
 
@@ -251,15 +246,6 @@ class TestUtil:
             Url("http", auth="foo:bar", host="localhost", path="/"),
         ),
         ("http://foo@localhost/", Url("http", auth="foo", host="localhost", path="/")),
-        (
-            "http://foo:bar@localhost/",
-            Url("http", auth="foo:bar", host="localhost", path="/"),
-        ),
-        # Unicode type (Python 2.x)
-        (
-            "http://foo:bar@localhost/",
-            Url("http", auth="foo:bar", host="localhost", path="/"),
-        ),
         (
             "http://foo:bar@localhost/",
             Url("http", auth="foo:bar", host="localhost", path="/"),
@@ -677,19 +663,6 @@ class TestUtil:
         with pytest.raises(ValueError):
             is_fp_closed(NotReallyAFile())
 
-    def test_const_compare_digest_fallback(self):
-        target = hashlib.sha256(b"abcdef").digest()
-        assert _const_compare_digest_backport(target, target)
-
-        prefix = target[:-1]
-        assert not _const_compare_digest_backport(target, prefix)
-
-        suffix = target + b"0"
-        assert not _const_compare_digest_backport(target, suffix)
-
-        incorrect = hashlib.sha256(b"xyz").digest()
-        assert not _const_compare_digest_backport(target, incorrect)
-
     def test_has_ipv6_disabled_on_compile(self):
         with patch("socket.has_ipv6", False):
             assert not _has_ipv6("::1")
@@ -784,6 +757,39 @@ class TestUtil:
         getaddrinfo.return_value = [(None, None, None, None, None)]
         socket.return_value = Mock()
         create_connection((host, 80))
+
+    @pytest.mark.parametrize(
+        "input,params,expected",
+        (
+            ("test", {}, "test"),  # str input
+            (b"test", {}, "test"),  # bytes input
+            (b"test", {"encoding": "utf-8"}, "test"),  # bytes input with utf-8
+            (b"test", {"encoding": "ascii"}, "test"),  # bytes input with ascii
+        ),
+    )
+    def test_to_str(self, input, params, expected):
+        assert to_str(input, **params) == expected
+
+    def test_to_str_error(self):
+        with pytest.raises(TypeError, match="not expecting type int"):
+            to_str(1)
+
+    @pytest.mark.parametrize(
+        "input,params,expected",
+        (
+            (b"test", {}, b"test"),  # str input
+            ("test", {}, b"test"),  # bytes input
+            ("é", {}, b"\xc3\xa9"),  # bytes input
+            ("test", {"encoding": "utf-8"}, b"test"),  # bytes input with utf-8
+            ("test", {"encoding": "ascii"}, b"test"),  # bytes input with ascii
+        ),
+    )
+    def test_to_bytes(self, input, params, expected):
+        assert to_bytes(input, **params) == expected
+
+    def test_to_bytes_error(self):
+        with pytest.raises(TypeError, match="not expecting type int"):
+            to_bytes(1)
 
 
 class TestUtilSSL:

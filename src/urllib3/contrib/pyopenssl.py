@@ -59,21 +59,13 @@ except ImportError:
         pass
 
 
-from io import BytesIO
-from socket import error as SocketError
-from socket import timeout
-
-try:  # Platform-specific: Python 2
-    from socket import _fileobject
-except ImportError:  # Platform-specific: Python 3
-    _fileobject = None
-    from ..packages.backports.makefile import backport_makefile
-
 import logging
 import ssl
+from io import BytesIO
+from socket import socket as socket_cls
+from socket import timeout
 
 from .. import util
-from ..packages import six
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 
@@ -260,17 +252,13 @@ def get_subj_alt_name(peer_cert):
 
 
 class WrappedSocket:
-    """API-compatibility wrapper for Python OpenSSL's Connection-class.
-
-    Note: _makefile_refs, _drop() and _reuse() are needed for the garbage
-    collector of pypy.
-    """
+    """API-compatibility wrapper for Python OpenSSL's Connection-class."""
 
     def __init__(self, connection, socket, suppress_ragged_eofs=True):
         self.connection = connection
         self.socket = socket
         self.suppress_ragged_eofs = suppress_ragged_eofs
-        self._makefile_refs = 0
+        self._io_refs = 0
         self._closed = False
 
     def fileno(self):
@@ -278,8 +266,8 @@ class WrappedSocket:
 
     # Copy-pasted from Python 3.5 source code
     def _decref_socketios(self):
-        if self._makefile_refs > 0:
-            self._makefile_refs -= 1
+        if self._io_refs > 0:
+            self._io_refs -= 1
         if self._closed:
             self.close()
 
@@ -290,7 +278,7 @@ class WrappedSocket:
             if self.suppress_ragged_eofs and e.args == (-1, "Unexpected EOF"):
                 return b""
             else:
-                raise SocketError(str(e))
+                raise OSError(e.args[0], str(e))
         except OpenSSL.SSL.ZeroReturnError:
             if self.connection.get_shutdown() == OpenSSL.SSL.RECEIVED_SHUTDOWN:
                 return b""
@@ -315,7 +303,7 @@ class WrappedSocket:
             if self.suppress_ragged_eofs and e.args == (-1, "Unexpected EOF"):
                 return 0
             else:
-                raise SocketError(str(e))
+                raise OSError(e.args[0], str(e))
         except OpenSSL.SSL.ZeroReturnError:
             if self.connection.get_shutdown() == OpenSSL.SSL.RECEIVED_SHUTDOWN:
                 return 0
@@ -343,7 +331,7 @@ class WrappedSocket:
                     raise timeout()
                 continue
             except OpenSSL.SSL.SysCallError as e:
-                raise SocketError(str(e))
+                raise OSError(e.args[0], str(e))
 
     def sendall(self, data):
         total_sent = 0
@@ -358,14 +346,14 @@ class WrappedSocket:
         self.connection.shutdown()
 
     def close(self):
-        if self._makefile_refs < 1:
+        if self._io_refs < 1:
             try:
                 self._closed = True
                 return self.connection.close()
             except OpenSSL.SSL.Error:
                 return
         else:
-            self._makefile_refs -= 1
+            self._io_refs -= 1
 
     def getpeercert(self, binary_form=False):
         x509 = self.connection.get_peer_certificate()
@@ -384,27 +372,8 @@ class WrappedSocket:
     def version(self):
         return self.connection.get_protocol_version_name()
 
-    def _reuse(self):
-        self._makefile_refs += 1
 
-    def _drop(self):
-        if self._makefile_refs < 1:
-            self.close()
-        else:
-            self._makefile_refs -= 1
-
-
-if _fileobject:  # Platform-specific: Python 2
-
-    def makefile(self, mode, bufsize=-1):
-        self._makefile_refs += 1
-        return _fileobject(self, mode, bufsize, close=True)
-
-
-else:  # Platform-specific: Python 3
-    makefile = backport_makefile
-
-WrappedSocket.makefile = makefile
+WrappedSocket.makefile = socket_cls.makefile
 
 
 class PyOpenSSLContext:
@@ -466,7 +435,7 @@ class PyOpenSSLContext:
         self._ctx.use_privatekey_file(keyfile or certfile)
 
     def set_alpn_protocols(self, protocols):
-        protocols = [six.ensure_binary(p) for p in protocols]
+        protocols = [util.util.to_bytes(p, "ascii") for p in protocols]
         return self._ctx.set_alpn_protos(protocols)
 
     def wrap_socket(
@@ -479,7 +448,7 @@ class PyOpenSSLContext:
     ):
         cnx = OpenSSL.SSL.Connection(self._ctx, sock)
 
-        if isinstance(server_hostname, str):  # Platform-specific: Python 3
+        if isinstance(server_hostname, str):
             server_hostname = server_hostname.encode("utf-8")
 
         if server_hostname is not None:

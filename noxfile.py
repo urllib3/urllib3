@@ -13,7 +13,6 @@ TYPED_FILES = {
     "src/urllib3/fields.py",
     "src/urllib3/filepost.py",
     "src/urllib3/packages/__init__.py",
-    "src/urllib3/packages/six.py",
     "src/urllib3/packages/ssl_match_hostname/__init__.py",
     "src/urllib3/packages/ssl_match_hostname/_implementation.py",
     "src/urllib3/util/queue.py",
@@ -70,13 +69,18 @@ def test(session):
     tests_impl(session)
 
 
-@nox.session(python=["3"])
-def google_brotli(session):
-    # https://pypi.org/project/Brotli/ is the Google version of brotli, so
-    # install it separately and don't install our brotli extra (which installs
-    # brotlipy).
-    session.install("brotli")
-    tests_impl(session, extras="socks,secure")
+@nox.session(python=["2.7"])
+def unsupported_python2(session):
+    # Can't check both returncode and output with session.run
+    process = subprocess.run(
+        ["python", "setup.py", "install"],
+        env={**session.env},
+        text=True,
+        capture_output=True,
+    )
+    assert process.returncode == 1
+    print(process.stderr)
+    assert "Unsupported Python version" in process.stderr
 
 
 @nox.session()

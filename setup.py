@@ -1,11 +1,39 @@
 #!/usr/bin/env python
 # This file is protected via CODEOWNERS
 
-import codecs
 import os
 import re
+import sys
 
 from setuptools import setup
+
+CURRENT_PYTHON = sys.version_info[:2]
+REQUIRED_PYTHON = (3, 6)
+
+# This check and everything above must remain compatible with Python 2.7.
+if CURRENT_PYTHON < REQUIRED_PYTHON:
+    sys.stderr.write(
+        """
+==========================
+Unsupported Python version
+==========================
+This version of urllib3 requires Python {}.{}, but you're trying to
+install it on Python {}.{}.
+This may be because you are using a version of pip that doesn't
+understand the python_requires classifier. Make sure you
+have pip >= 9.0 and setuptools >= 24.2, then try again:
+    $ python -m pip install --upgrade pip setuptools
+    $ python -m pip install urllib3
+This will install the latest version of urllib3 which works on your
+version of Python. If you can't upgrade your pip (or Python), request
+an older version of urllib3:
+    $ python -m pip install "urllib3<2"
+""".format(
+            *(REQUIRED_PYTHON + CURRENT_PYTHON)
+        )
+    )
+    sys.exit(1)
+
 
 base_path = os.path.dirname(__file__)
 
@@ -16,7 +44,7 @@ with open(os.path.join(base_path, "src", "urllib3", "_version.py")) as fp:
     )
 
 
-with codecs.open("README.rst", encoding="utf-8") as fp:
+with open("README.rst", encoding="utf-8") as fp:
     # Remove reST raw directive from README as they're not allowed on PyPI
     # Those blocks start with a newline and continue until the next newline
     mode = None
@@ -31,7 +59,7 @@ with codecs.open("README.rst", encoding="utf-8") as fp:
             lines.append(line)
     readme = "".join(lines)
 
-with codecs.open("CHANGES.rst", encoding="utf-8") as fp:
+with open("CHANGES.rst", encoding="utf-8") as fp:
     changes = fp.read()
 
 version = VERSION
@@ -73,7 +101,6 @@ setup(
         "urllib3",
         "urllib3.packages",
         "urllib3.packages.ssl_match_hostname",
-        "urllib3.packages.backports",
         "urllib3.contrib",
         "urllib3.contrib._securetransport",
         "urllib3.util",
@@ -82,7 +109,10 @@ setup(
     requires=[],
     python_requires=">=3.6, <4",
     extras_require={
-        "brotli": ["brotlipy>=0.6.0"],
+        "brotli": [
+            "brotli>=1.0.9; platform_python_implementation == 'CPython'",
+            "brotlicffi>=0.8.0; platform_python_implementation != 'CPython'",
+        ],
         "secure": [
             "pyOpenSSL>=0.14",
             "cryptography>=1.3.4",

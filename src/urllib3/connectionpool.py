@@ -4,7 +4,6 @@ import queue
 import socket
 import sys
 import warnings
-from socket import error as SocketError
 from socket import timeout as SocketTimeout
 
 from .connection import (
@@ -32,10 +31,9 @@ from .exceptions import (
     SSLError,
     TimeoutError,
 )
-from .packages import six
 from .packages.ssl_match_hostname import CertificateError
 from .request import RequestMethods
-from .response import HTTPResponse
+from .response import BaseHTTPResponse, HTTPResponse
 from .util.connection import is_connection_dropped
 from .util.proxy import connection_requires_http_tunnel
 from .util.queue import LifoQueue
@@ -46,6 +44,7 @@ from .util.timeout import Timeout
 from .util.url import Url, _encode_target
 from .util.url import _normalize_host as normalize_host
 from .util.url import get_host, parse_url
+from .util.util import to_str
 
 log = logging.getLogger(__name__)
 
@@ -109,14 +108,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         Port used for this HTTP Connection (None is equivalent to 80), passed
         into :class:`http.client.HTTPConnection`.
 
-    :param strict:
-        Causes BadStatusLine to be raised if the status line can't be parsed
-        as a valid HTTP/1.0 or 1.1 status line, passed into
-        :class:`http.client.HTTPConnection`.
-
-        .. note::
-           Only works in Python 2. This parameter is ignored in Python 3.
-
     :param timeout:
         Socket timeout in seconds for each individual connection. This can
         be a float or integer, which sets the timeout for the HTTP request,
@@ -165,7 +156,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self,
         host,
         port=None,
-        strict=False,
         timeout=Timeout.DEFAULT_TIMEOUT,
         maxsize=1,
         block=False,
@@ -178,8 +168,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
     ):
         ConnectionPool.__init__(self, host, port)
         RequestMethods.__init__(self, headers)
-
-        self.strict = strict
 
         if not isinstance(timeout, Timeout):
             timeout = Timeout.from_float(timeout)
@@ -231,7 +219,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             host=self.host,
             port=self.port,
             timeout=self.timeout.connect_timeout,
-            strict=self.strict,
             **self.conn_kw,
         )
         return conn
@@ -333,19 +320,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 self, url, f"Read timed out. (read timeout={timeout_value})"
             )
 
-        # See the above comment about EAGAIN in Python 3. In Python 2 we have
-        # to specifically catch it and throw the timeout error
+        # See the above comment about EAGAIN in Python 3.
         if hasattr(err, "errno") and err.errno in _blocking_errnos:
-            raise ReadTimeoutError(
-                self, url, f"Read timed out. (read timeout={timeout_value})"
-            )
-
-        # Catch possible read timeouts thrown as SSL errors. If not the
-        # case, rethrow the original. We need to do this because of:
-        # http://bugs.python.org/issue10272
-        if "timed out" in str(err) or "did not complete (read)" in str(
-            err
-        ):  # Python < 2.7.4
             raise ReadTimeoutError(
                 self, url, f"Read timed out. (read timeout={timeout_value})"
             )
@@ -377,7 +353,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         try:
             self._validate_conn(conn)
         except (SocketTimeout, BaseSSLError) as e:
-            # Py2 raises this as a BaseSSLError, Py3 raises it as socket timeout.
             self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
             raise
 
@@ -393,24 +368,18 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # legitimately able to close the connection after sending a valid response.
         # With this behaviour, the received response is still readable.
         except BrokenPipeError:
-            # Python 3
             pass
         except OSError as e:
-            # Python 2 and macOS/Linux
-            # EPIPE and ESHUTDOWN are BrokenPipeError on Python 2, and EPROTOTYPE is needed on macOS
+            # MacOS/Linux
+            # EPROTOTYPE is needed on macOS
             # https://erickt.github.io/blog/2014/11/19/adventures-in-debugging-a-potential-osx-kernel-bug/
-            if e.errno not in {
-                errno.EPIPE,
-                errno.ESHUTDOWN,
-                errno.EPROTOTYPE,
-            }:
+            if e.errno != errno.EPROTOTYPE:
                 raise
 
         # Reset the timeout for the recv() on the socket
         read_timeout = timeout_obj.read_timeout
 
-        # App Engine doesn't have a sock attr
-        if getattr(conn, "sock", None):
+        if conn.sock:
             # In Python 3 socket.py will catch EAGAIN and return None when you
             # try and read into the file pointer created by http.client, which
             # instead raises a BadStatusLine exception. Instead of catching
@@ -427,24 +396,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Receive the response from the server
         try:
-            try:
-                # Python 2.7, use buffering of HTTP responses
-                httplib_response = conn.getresponse(buffering=True)
-            except TypeError:
-                # Python 3
-                try:
-                    httplib_response = conn.getresponse()
-                except BaseException as e:
-                    # Remove the TypeError from the exception chain in
-                    # Python 3 (including for exceptions like SystemExit).
-                    # Otherwise it looks like a bug in the code.
-                    raise e from None
-        except (SocketTimeout, BaseSSLError, SocketError) as e:
+            httplib_response = conn.getresponse()
+        except (BaseSSLError, OSError) as e:
             self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
             raise
 
-        # AppEngine doesn't have a version attr.
-        http_version = getattr(conn, "_http_vsn_str", "HTTP/?")
         log.debug(
             '%s://%s:%s "%s %s %s" %s %s',
             self.scheme,
@@ -452,7 +408,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             self.port,
             method,
             url,
-            http_version,
+            # HTTP version
+            conn._http_vsn_str,
             httplib_response.status,
             httplib_response.length,
         )
@@ -526,7 +483,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         chunked=False,
         body_pos=None,
         **response_kw,
-    ):
+    ) -> BaseHTTPResponse:
         """
         Get a connection from the pool and perform an HTTP request. This is the
         lowest level call for making a request, so you'll need to specify all
@@ -638,9 +595,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         # Ensure that the URL we're connecting to is properly encoded
         if url.startswith("/"):
-            url = six.ensure_str(_encode_target(url))
+            url = to_str(_encode_target(url))
         else:
-            url = six.ensure_str(parsed_url.url)
+            url = to_str(parsed_url.url)
 
         conn = None
 
@@ -732,7 +689,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         except (
             TimeoutError,
             HTTPException,
-            SocketError,
+            OSError,
             ProtocolError,
             BaseSSLError,
             SSLError,
@@ -743,9 +700,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             clean_exit = False
             if isinstance(e, (BaseSSLError, CertificateError)):
                 e = SSLError(e)
-            elif isinstance(e, (SocketError, NewConnectionError)) and self.proxy:
+            elif isinstance(e, (OSError, NewConnectionError)) and self.proxy:
                 e = ProxyError("Cannot connect to proxy.", e)
-            elif isinstance(e, (SocketError, HTTPException)):
+            elif isinstance(e, (OSError, HTTPException)):
                 e = ProtocolError("Connection aborted.", e)
 
             retries = retries.increment(
@@ -879,7 +836,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self,
         host,
         port=None,
-        strict=False,
         timeout=Timeout.DEFAULT_TIMEOUT,
         maxsize=1,
         block=False,
@@ -899,11 +855,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         **conn_kw,
     ):
 
-        HTTPConnectionPool.__init__(
-            self,
+        super().__init__(
             host,
             port,
-            strict,
             timeout,
             maxsize,
             block,
@@ -986,7 +940,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             host=actual_host,
             port=actual_port,
             timeout=self.timeout.connect_timeout,
-            strict=self.strict,
             cert_file=self.cert_file,
             key_file=self.key_file,
             key_password=self.key_password,
@@ -1002,7 +955,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         super()._validate_conn(conn)
 
         # Force connect early to allow us to validate the connection.
-        if not getattr(conn, "sock", None):  # AppEngine might not have  `.sock`
+        if not conn.sock:
             conn.connect()
 
         if not conn.is_verified:

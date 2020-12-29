@@ -5,12 +5,7 @@ import warnings
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
-from ..exceptions import (
-    InsecurePlatformWarning,
-    ProxySchemeUnsupported,
-    SNIMissingWarning,
-    SSLError,
-)
+from ..exceptions import ProxySchemeUnsupported, SNIMissingWarning, SSLError
 from .url import BRACELESS_IPV6_ADDRZ_RE, IPV4_RE
 
 SSLContext = None
@@ -24,62 +19,27 @@ ALPN_PROTOCOLS = ["http/1.1"]
 HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
 
 
-def _const_compare_digest_backport(a, b):
-    """
-    Compare two digests of equal length in constant time.
-
-    The digests must be of type str/bytes.
-    Returns True if the digests match, and False otherwise.
-    """
-    result = abs(len(a) - len(b))
-    for left, right in zip(bytearray(a), bytearray(b)):
-        result |= left ^ right
-    return result == 0
-
-
-_const_compare_digest = getattr(hmac, "compare_digest", _const_compare_digest_backport)
-
-try:  # Test for SSL features
+try:  # Do we have ssl at all?
     import ssl
-    from ssl import CERT_REQUIRED, wrap_socket
-except ImportError:
-    pass
-
-try:
-    from ssl import HAS_SNI  # Has SNI?
-except ImportError:
-    pass
-
-try:
-    from .ssltransport import SSLTransport
-except ImportError:
-    pass
-
-
-try:  # Platform-specific: Python 3.6
-    from ssl import PROTOCOL_TLS
+    from ssl import (
+        CERT_REQUIRED,
+        HAS_SNI,
+        OP_NO_COMPRESSION,
+        OP_NO_TICKET,
+        PROTOCOL_TLS,
+        OP_NO_SSLv2,
+        OP_NO_SSLv3,
+        SSLContext,
+    )
 
     PROTOCOL_SSLv23 = PROTOCOL_TLS
+    from .ssltransport import SSLTransport
 except ImportError:
-    try:
-        from ssl import PROTOCOL_SSLv23 as PROTOCOL_TLS
-
-        PROTOCOL_SSLv23 = PROTOCOL_TLS
-    except ImportError:
-        PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
-
-
-try:
-    from ssl import OP_NO_COMPRESSION, OP_NO_SSLv2, OP_NO_SSLv3
-except ImportError:
-    OP_NO_SSLv2, OP_NO_SSLv3 = 0x1000000, 0x2000000
     OP_NO_COMPRESSION = 0x20000
-
-
-try:  # OP_NO_TICKET was added in Python 3.6
-    from ssl import OP_NO_TICKET
-except ImportError:
     OP_NO_TICKET = 0x4000
+    OP_NO_SSLv2 = 0x1000000
+    OP_NO_SSLv3 = 0x2000000
+    PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
 
 
 # A secure default.
@@ -118,58 +78,6 @@ DEFAULT_CIPHERS = ":".join(
     ]
 )
 
-try:
-    from ssl import SSLContext  # Modern SSL?
-except ImportError:
-
-    class SSLContext:  # Platform-specific: Python 2
-        def __init__(self, protocol_version):
-            self.protocol = protocol_version
-            # Use default values from a real SSLContext
-            self.check_hostname = False
-            self.verify_mode = ssl.CERT_NONE
-            self.ca_certs = None
-            self.options = 0
-            self.certfile = None
-            self.keyfile = None
-            self.ciphers = None
-
-        def load_cert_chain(self, certfile, keyfile):
-            self.certfile = certfile
-            self.keyfile = keyfile
-
-        def load_verify_locations(self, cafile=None, capath=None, cadata=None):
-            self.ca_certs = cafile
-
-            if capath is not None:
-                raise SSLError("CA directories not supported in older Pythons")
-
-            if cadata is not None:
-                raise SSLError("CA data not supported in older Pythons")
-
-        def set_ciphers(self, cipher_suite):
-            self.ciphers = cipher_suite
-
-        def wrap_socket(self, socket, server_hostname=None, server_side=False):
-            warnings.warn(
-                "A true SSLContext object is not available. This prevents "
-                "urllib3 from configuring SSL appropriately and may cause "
-                "certain SSL connections to fail. You can upgrade to a newer "
-                "version of Python to solve this. For more information, see "
-                "https://urllib3.readthedocs.io/en/latest/advanced-usage.html"
-                "#ssl-warnings",
-                InsecurePlatformWarning,
-            )
-            kwargs = {
-                "keyfile": self.keyfile,
-                "certfile": self.certfile,
-                "ca_certs": self.ca_certs,
-                "cert_reqs": self.verify_mode,
-                "ssl_version": self.protocol,
-                "server_side": server_side,
-            }
-            return wrap_socket(socket, ciphers=self.ciphers, **kwargs)
-
 
 def assert_fingerprint(cert, fingerprint):
     """
@@ -192,7 +100,7 @@ def assert_fingerprint(cert, fingerprint):
 
     cert_digest = hashfunc(cert).digest()
 
-    if not _const_compare_digest(cert_digest, fingerprint_bytes):
+    if not hmac.compare_digest(cert_digest, fingerprint_bytes):
         raise SSLError(
             f'Fingerprints did not match. Expected "{fingerprint}", got "{hexlify(cert_digest)}".'
         )

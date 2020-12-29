@@ -2,7 +2,7 @@ import re
 from collections import namedtuple
 
 from ..exceptions import LocationParseError
-from ..packages import six
+from .util import to_str
 
 url_attrs = ["scheme", "auth", "host", "port", "path", "query", "fragment"]
 
@@ -203,14 +203,14 @@ def split_first(s, delims):
     return s[:min_idx], s[min_idx + 1 :], min_delim
 
 
-def _encode_invalid_chars(component, allowed_chars, encoding="utf-8"):
+def _encode_invalid_chars(component, allowed_chars):
     """Percent-encodes a URI component without reapplying
     onto an already percent-encoded component.
     """
     if component is None:
         return component
 
-    component = six.ensure_text(component)
+    component = to_str(component)
 
     # Normalize existing percent-encoded bytes.
     # Try to see if the component we're encoding is already percent-encoded
@@ -224,7 +224,7 @@ def _encode_invalid_chars(component, allowed_chars, encoding="utf-8"):
     encoded_component = bytearray()
 
     for i in range(0, len(uri_bytes)):
-        # Will return a single character bytestring on both Python 2 & 3
+        # Will return a single character bytestring
         byte = uri_bytes[i : i + 1]
         byte_ord = ord(byte)
         if (is_percent_encoded and byte == b"%") or (
@@ -234,7 +234,7 @@ def _encode_invalid_chars(component, allowed_chars, encoding="utf-8"):
             continue
         encoded_component.extend(b"%" + (hex(byte_ord)[2:].encode().zfill(2).upper()))
 
-    return encoded_component.decode(encoding)
+    return encoded_component.decode()
 
 
 def _remove_path_dot_segments(path):
@@ -286,8 +286,9 @@ def _normalize_host(host, scheme):
                 else:
                     return host.lower()
             elif not IPV4_RE.match(host):
-                return six.ensure_str(
-                    b".".join([_idna_encode(label) for label in host.split(".")])
+                return to_str(
+                    b".".join([_idna_encode(label) for label in host.split(".")]),
+                    "ascii",
                 )
     return host
 
@@ -395,17 +396,14 @@ def parse_url(url):
         else:
             path = None
 
-    def ensure_type(x):
-        return x if x is None else six.ensure_text(x)
-
     return Url(
-        scheme=ensure_type(scheme),
-        auth=ensure_type(auth),
-        host=ensure_type(host),
+        scheme=scheme,
+        auth=auth,
+        host=host,
         port=port,
-        path=ensure_type(path),
-        query=ensure_type(query),
-        fragment=ensure_type(fragment),
+        path=path,
+        query=query,
+        fragment=fragment,
     )
 
 

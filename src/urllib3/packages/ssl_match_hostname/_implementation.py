@@ -3,17 +3,9 @@
 # Note: This file is under the PSF license as the code comes from the python
 # stdlib.   http://docs.python.org/3/license.html
 
+import ipaddress
 import re
 import sys
-
-# ipaddress has been backported to 2.6+ in pypi.  If it is installed on the
-# system, use it to handle IPAddress ServerAltnames (this was added in
-# python-3.5) otherwise only do DNS matching.  This allows
-# backports.ssl_match_hostname to continue to be used in Python 2.7.
-try:
-    import ipaddress
-except ImportError:
-    ipaddress = None
 
 __version__ = "3.5.0.1"
 
@@ -108,12 +100,6 @@ def match_hostname(cert, hostname):
     except ValueError:
         # Not an IP address (common case)
         host_ip = None
-    except AttributeError:
-        # Divergence from upstream: Make ipaddress library optional
-        if ipaddress is None:
-            host_ip = None
-        else:
-            raise
     dnsnames = []
     san = cert.get("subjectAltName", ())
     for key, value in san:
@@ -125,17 +111,6 @@ def match_hostname(cert, hostname):
             if host_ip is not None and _ipaddress_match(value, host_ip):
                 return
             dnsnames.append(value)
-    if not dnsnames:
-        # The subject is only checked when there is no dNSName entry
-        # in subjectAltName
-        for sub in cert.get("subject", ()):
-            for key, value in sub:
-                # XXX according to RFC 2818, the most specific Common Name
-                # must be used.
-                if key == "commonName":
-                    if _dnsname_match(value, hostname):
-                        return
-                    dnsnames.append(value)
     if len(dnsnames) > 1:
         raise CertificateError(
             "hostname %r "
@@ -144,6 +119,4 @@ def match_hostname(cert, hostname):
     elif len(dnsnames) == 1:
         raise CertificateError(f"hostname {hostname!r} doesn't match {dnsnames[0]!r}")
     else:
-        raise CertificateError(
-            "no appropriate commonName or subjectAltName fields were found"
-        )
+        raise CertificateError("no appropriate subjectAltName fields were found")

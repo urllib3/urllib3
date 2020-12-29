@@ -1,12 +1,15 @@
 import io
 import logging
+import typing
 import zlib
 from contextlib import contextmanager
-from socket import error as SocketError
 from socket import timeout as SocketTimeout
 
 try:
-    import brotli
+    try:
+        import brotlicffi as brotli
+    except ImportError:
+        import brotli
 except ImportError:
     brotli = None
 
@@ -29,14 +32,19 @@ from .util.response import is_fp_closed, is_response_to_head
 log = logging.getLogger(__name__)
 
 
-class DeflateDecoder:
+class ContentDecoder:
+    def decompress(self, data: bytes) -> bytes:
+        raise NotImplementedError()
+
+    def flush(self) -> bytes:
+        raise NotImplementedError()
+
+
+class DeflateDecoder(ContentDecoder):
     def __init__(self):
         self._first_try = True
         self._data = b""
         self._obj = zlib.decompressobj()
-
-    def __getattr__(self, name):
-        return getattr(self._obj, name)
 
     def decompress(self, data):
         if not data:
@@ -60,6 +68,9 @@ class DeflateDecoder:
             finally:
                 self._data = None
 
+    def flush(self) -> bytes:
+        return self._obj.flush()
+
 
 class GzipDecoderState:
 
@@ -68,13 +79,10 @@ class GzipDecoderState:
     SWALLOW_DATA = 2
 
 
-class GzipDecoder:
+class GzipDecoder(ContentDecoder):
     def __init__(self):
         self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
         self._state = GzipDecoderState.FIRST_MEMBER
-
-    def __getattr__(self, name):
-        return getattr(self._obj, name)
 
     def decompress(self, data):
         ret = bytearray()
@@ -97,10 +105,13 @@ class GzipDecoder:
             self._state = GzipDecoderState.OTHER_MEMBERS
             self._obj = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
+    def flush(self) -> bytes:
+        return self._obj.flush()
+
 
 if brotli is not None:
 
-    class BrotliDecoder:
+    class BrotliDecoder(ContentDecoder):
         # Supports both 'brotlipy' and 'Brotli' packages
         # since they share an import name. The top branches
         # are for 'brotlipy' and bottom branches for 'Brotli'
@@ -117,7 +128,7 @@ if brotli is not None:
             return b""
 
 
-class MultiDecoder:
+class MultiDecoder(ContentDecoder):
     """
     From RFC7231:
         If one or more encodings have been applied to a representation, the
@@ -138,7 +149,7 @@ class MultiDecoder:
         return data
 
 
-def _get_decoder(mode):
+def _get_decoder(mode: str) -> ContentDecoder:
     if "," in mode:
         return MultiDecoder(mode)
 
@@ -151,7 +162,180 @@ def _get_decoder(mode):
     return DeflateDecoder()
 
 
-class HTTPResponse(io.IOBase):
+class BaseHTTPResponse(io.IOBase):
+    CONTENT_DECODERS = ["gzip", "deflate"]
+    if brotli is not None:
+        CONTENT_DECODERS += ["br"]
+    REDIRECT_STATUSES = [301, 302, 303, 307, 308]
+
+    DECODER_ERROR_CLASSES = (IOError, zlib.error)
+    if brotli is not None:
+        DECODER_ERROR_CLASSES += (brotli.error,)
+
+    def __init__(
+        self,
+        *,
+        headers: typing.Optional[typing.Mapping[typing.AnyStr, typing.AnyStr]] = None,
+        status: int,
+        version: int,
+        reason: str,
+        decode_content: bool,
+    ) -> None:
+        if isinstance(headers, HTTPHeaderDict):
+            self.headers = headers
+        else:
+            self.headers = HTTPHeaderDict(headers)
+        self.status = status
+        self.version = version
+        self.reason = reason
+        self.decode_content = decode_content
+
+        self.chunked = False
+        tr_enc = self.headers.get("transfer-encoding", "").lower()
+        # Don't incur the penalty of creating a list and then discarding it
+        encodings = (enc.strip() for enc in tr_enc.split(","))
+        if "chunked" in encodings:
+            self.chunked = True
+
+        self._decoder: typing.Optional[ContentDecoder] = None
+
+    def get_redirect_location(self) -> typing.Optional[typing.Union[bool, str]]:
+        """
+        Should we redirect and where to?
+
+        :returns: Truthy redirect location string if we got a redirect status
+            code and valid location. ``None`` if redirect status and no
+            location. ``False`` if not a redirect status code.
+        """
+        if self.status in self.REDIRECT_STATUSES:
+            return self.headers.get("location")
+        return False
+
+    @property
+    def data(self) -> bytes:
+        raise NotImplementedError()
+
+    @property
+    def url(self) -> str:
+        raise NotImplementedError()
+
+    @property
+    def closed(self) -> bool:
+        raise NotImplementedError()
+
+    @property
+    def connection(self):
+        raise NotImplementedError()
+
+    def stream(
+        self, amt: int = 2 ** 16, decode_content: typing.Optional[bool] = None
+    ) -> typing.Generator[bytes, None, None]:
+        raise NotImplementedError()
+
+    def read(
+        self,
+        amt: typing.Optional[int] = None,
+        decode_content: typing.Optional[bool] = None,
+        cache_content: bool = False,
+    ) -> bytes:
+        raise NotImplementedError()
+
+    def read_chunked(
+        self,
+        amt: typing.Optional[int] = None,
+        decode_content: typing.Optional[bool] = None,
+    ) -> bytes:
+        raise NotImplementedError()
+
+    def release_conn(self) -> None:
+        raise NotImplementedError()
+
+    def drain_conn(self) -> None:
+        raise NotImplementedError()
+
+    def close(self) -> None:
+        raise NotImplementedError()
+
+    def _init_decoder(self) -> None:
+        """
+        Set-up the _decoder attribute if necessary.
+        """
+        # Note: content-encoding value should be case-insensitive, per RFC 7230
+        # Section 3.2
+        content_encoding = self.headers.get("content-encoding", "").lower()
+        if self._decoder is None:
+            if content_encoding in self.CONTENT_DECODERS:
+                self._decoder = _get_decoder(content_encoding)
+            elif "," in content_encoding:
+                encodings = [
+                    e.strip()
+                    for e in content_encoding.split(",")
+                    if e.strip() in self.CONTENT_DECODERS
+                ]
+                if len(encodings):
+                    self._decoder = _get_decoder(content_encoding)
+
+    def _decode(self, data: bytes, decode_content: bool, flush_decoder: bool) -> bytes:
+        """
+        Decode the data passed in and potentially flush the decoder.
+        """
+        if not decode_content:
+            return data
+
+        try:
+            if self._decoder:
+                data = self._decoder.decompress(data)
+        except self.DECODER_ERROR_CLASSES as e:
+            content_encoding = self.headers.get("content-encoding", "").lower()
+            raise DecodeError(
+                "Received response with content-encoding: %s, but "
+                "failed to decode it." % content_encoding,
+                e,
+            )
+        if flush_decoder:
+            data += self._flush_decoder()
+
+        return data
+
+    def _flush_decoder(self) -> bytes:
+        """
+        Flushes the decoder. Should only be called if the decoder is actually
+        being used.
+        """
+        if self._decoder:
+            return self._decoder.decompress(b"") + self._decoder.flush()
+        return b""
+
+    # Compatibility methods for `io` module
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, b: bytearray) -> int:
+        temp = self.read(len(b))
+        if len(temp) == 0:
+            return 0
+        else:
+            b[: len(temp)] = temp
+            return len(temp)
+
+    # Compatibility methods for http.client.HTTPResponse
+    def getheaders(self) -> typing.List[typing.Tuple[str, str]]:
+        return list(self.headers.items())
+
+    def getheader(
+        self, name: str, default: typing.Optional[str] = None
+    ) -> typing.Optional[str]:
+        return self.headers.get(name, default)
+
+    # Compatibility method for http.cookiejar
+    def info(self):
+        return self.headers
+
+    def geturl(self):
+        return self.url
+
+
+class HTTPResponse(BaseHTTPResponse):
     """
     HTTP Response container.
 
@@ -184,11 +368,6 @@ class HTTPResponse(io.IOBase):
         value of Content-Length header, if present. Otherwise, raise error.
     """
 
-    CONTENT_DECODERS = ["gzip", "deflate"]
-    if brotli is not None:
-        CONTENT_DECODERS += ["br"]
-    REDIRECT_STATUSES = [301, 302, 303, 307, 308]
-
     def __init__(
         self,
         body="",
@@ -196,7 +375,6 @@ class HTTPResponse(io.IOBase):
         status=0,
         version=0,
         reason=None,
-        strict=0,
         preload_content=True,
         decode_content=True,
         original_response=None,
@@ -209,21 +387,18 @@ class HTTPResponse(io.IOBase):
         request_url=None,
         auto_close=True,
     ):
+        super().__init__(
+            headers=headers,
+            status=status,
+            version=version,
+            reason=reason,
+            decode_content=decode_content,
+        )
 
-        if isinstance(headers, HTTPHeaderDict):
-            self.headers = headers
-        else:
-            self.headers = HTTPHeaderDict(headers)
-        self.status = status
-        self.version = version
-        self.reason = reason
-        self.strict = strict
-        self.decode_content = decode_content
         self.retries = retries
         self.enforce_content_length = enforce_content_length
         self.auto_close = auto_close
 
-        self._decoder = None
         self._body = None
         self._fp = None
         self._original_response = original_response
@@ -241,13 +416,7 @@ class HTTPResponse(io.IOBase):
             self._fp = body
 
         # Are we using the chunked-style of transfer encoding?
-        self.chunked = False
         self.chunk_left = None
-        tr_enc = self.headers.get("transfer-encoding", "").lower()
-        # Don't incur the penalty of creating a list and then discarding it
-        encodings = (enc.strip() for enc in tr_enc.split(","))
-        if "chunked" in encodings:
-            self.chunked = True
 
         # Determine length of response
         self.length_remaining = self._init_length(request_method)
@@ -255,19 +424,6 @@ class HTTPResponse(io.IOBase):
         # If requested, preload the body.
         if preload_content and not self._body:
             self._body = self.read(decode_content=decode_content)
-
-    def get_redirect_location(self):
-        """
-        Should we redirect and where to?
-
-        :returns: Truthy redirect location string if we got a redirect status
-            code and valid location. ``None`` if redirect status and no
-            location. ``False`` if not a redirect status code.
-        """
-        if self.status in self.REDIRECT_STATUSES:
-            return self.headers.get("location")
-
-        return False
 
     def release_conn(self):
         if not self._pool or not self._connection:
@@ -284,7 +440,7 @@ class HTTPResponse(io.IOBase):
         """
         try:
             self.read()
-        except (HTTPError, SocketError, BaseSSLError, HTTPException):
+        except (HTTPError, OSError, BaseSSLError, HTTPException):
             pass
 
     @property
@@ -363,62 +519,6 @@ class HTTPResponse(io.IOBase):
 
         return length
 
-    def _init_decoder(self):
-        """
-        Set-up the _decoder attribute if necessary.
-        """
-        # Note: content-encoding value should be case-insensitive, per RFC 7230
-        # Section 3.2
-        content_encoding = self.headers.get("content-encoding", "").lower()
-        if self._decoder is None:
-            if content_encoding in self.CONTENT_DECODERS:
-                self._decoder = _get_decoder(content_encoding)
-            elif "," in content_encoding:
-                encodings = [
-                    e.strip()
-                    for e in content_encoding.split(",")
-                    if e.strip() in self.CONTENT_DECODERS
-                ]
-                if len(encodings):
-                    self._decoder = _get_decoder(content_encoding)
-
-    DECODER_ERROR_CLASSES = (IOError, zlib.error)
-    if brotli is not None:
-        DECODER_ERROR_CLASSES += (brotli.error,)
-
-    def _decode(self, data, decode_content, flush_decoder):
-        """
-        Decode the data passed in and potentially flush the decoder.
-        """
-        if not decode_content:
-            return data
-
-        try:
-            if self._decoder:
-                data = self._decoder.decompress(data)
-        except self.DECODER_ERROR_CLASSES as e:
-            content_encoding = self.headers.get("content-encoding", "").lower()
-            raise DecodeError(
-                "Received response with content-encoding: %s, but "
-                "failed to decode it." % content_encoding,
-                e,
-            )
-        if flush_decoder:
-            data += self._flush_decoder()
-
-        return data
-
-    def _flush_decoder(self):
-        """
-        Flushes the decoder. Should only be called if the decoder is actually
-        being used.
-        """
-        if self._decoder:
-            buf = self._decoder.decompress(b"")
-            return buf + self._decoder.flush()
-
-        return b""
-
     @contextmanager
     def _error_catcher(self):
         """
@@ -447,7 +547,7 @@ class HTTPResponse(io.IOBase):
 
                 raise ReadTimeoutError(self._pool, None, "Read timed out.")
 
-            except (HTTPException, SocketError) as e:
+            except (HTTPException, OSError) as e:
                 # This includes IncompleteRead.
                 raise ProtocolError(f"Connection broken: {e!r}", e)
 
@@ -588,30 +688,16 @@ class HTTPResponse(io.IOBase):
         if not isinstance(headers, HTTPHeaderDict):
             headers = HTTPHeaderDict(headers.items())
 
-        # HTTPResponse objects in Python 3 don't have a .strict attribute
-        strict = getattr(r, "strict", 0)
         resp = ResponseCls(
             body=r,
             headers=headers,
             status=r.status,
             version=r.version,
             reason=r.reason,
-            strict=strict,
             original_response=r,
             **response_kw,
         )
         return resp
-
-    # Backwards-compatibility methods for http.client.HTTPResponse
-    def getheaders(self):
-        return self.headers
-
-    def getheader(self, name, default=None):
-        return self.headers.get(name, default)
-
-    # Backwards compatibility for http.cookiejar
-    def info(self):
-        return self.headers
 
     # Overrides from io.IOBase
     def close(self):
@@ -655,19 +741,6 @@ class HTTPResponse(io.IOBase):
             and not getattr(self._fp, "closed", False)
         ):
             return self._fp.flush()
-
-    def readable(self):
-        # This method is required for `io` module compatibility.
-        return True
-
-    def readinto(self, b):
-        # This method is required for `io` module compatibility.
-        temp = self.read(len(b))
-        if len(temp) == 0:
-            return 0
-        else:
-            b[: len(temp)] = temp
-            return len(temp)
 
     def supports_chunked_reads(self):
         """
@@ -784,7 +857,8 @@ class HTTPResponse(io.IOBase):
             if self._original_response:
                 self._original_response.close()
 
-    def geturl(self):
+    @property
+    def url(self) -> str:
         """
         Returns the URL that was the source of this response.
         If the request that generated this response redirected, this method

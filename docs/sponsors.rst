@@ -15,7 +15,7 @@ v2.0 Sponsor Perks
 
    `Get in contact <mailto:sethmichaellarson@gmail.com>`_ for additional
    details on sponsorship and perks before making a contribution
-   through `Open Collective <https://opencollective.com/urllib3>`_ if you have questions.
+   through `GitHub Sponsors <https://github.com/sponsors/urllib3>`_ if you have questions.
 
 
 Silver v2.0 Sponsor Perks
@@ -76,12 +76,3 @@ Let us know and we'll be glad to add you to our sponsors list.
   `@Lukasa <https://github.com/Lukasa>`_
 
 * `Stripe <https://stripe.com>`_ (June 23, 2014)
-
-
-Open Collective Supporters
---------------------------
-
-All donations are currently going towards the development of new features for urllib3 v2.0.
-Donate $5 or more as an individual or $50 or more as an organization to be added to the list of supporters below (coming soon).
-
-`Thanks to all our supporters on Open Collective <https://opencollective.com/urllib3#section-contributors>`_!

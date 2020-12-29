@@ -45,8 +45,6 @@ def format_header_param_rfc2231(name, value):
         else:
             return result
 
-    # encode_rfc2231 accepts an encoded string and returns an ascii-encoded
-    # string in Python 2 but accepts and returns unicode strings in Python 3
     value = email.utils.encode_rfc2231(value, "utf-8")
     value = f"{name}*={value}"
 
