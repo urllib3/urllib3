@@ -232,8 +232,8 @@ class TestRetry:
         retry = Retry(total=1)
         response = HTTPResponse(status=500)
         msg = ResponseError.SPECIFIC_ERROR.format(status_code=500)
+        retry = retry.increment("POST", "/", response=response)
         with pytest.raises(MaxRetryError, match=msg) as e:
-            retry = retry.increment("POST", "/", response=response)
             retry = retry.increment("POST", "/", response=response)
         assert "Caused by redirect" not in str(e.value)
 
