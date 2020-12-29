@@ -123,11 +123,9 @@ class TestRetry:
         retry = Retry(status=2)
         retry = retry.increment(response=resp)
         retry = retry.increment(response=resp)
-        with pytest.raises(MaxRetryError) as e:
+        msg = ResponseError.SPECIFIC_ERROR.format(status_code=400)
+        with pytest.raises(MaxRetryError, match=msg):
             retry.increment(response=resp)
-        assert str(e.value.reason) == ResponseError.SPECIFIC_ERROR.format(
-            status_code=400
-        )
 
     def test_backoff(self):
         """ Backoff is computed correctly """
@@ -218,36 +216,32 @@ class TestRetry:
 
     def test_error_message(self):
         retry = Retry(total=0)
-        with pytest.raises(MaxRetryError) as e:
+        with pytest.raises(MaxRetryError, match="None: read timed out") as e:
             retry = retry.increment(
                 method="GET", error=ReadTimeoutError(None, "/", "read timed out")
             )
         assert "Caused by redirect" not in str(e.value)
-        assert str(e.value.reason) == "None: read timed out"
 
         retry = Retry(total=1)
-        with pytest.raises(MaxRetryError) as e:
-            retry = retry.increment("POST", "/")
+        retry = retry.increment("POST", "/")
+        with pytest.raises(MaxRetryError, match=ResponseError.GENERIC_ERROR) as e:
             retry = retry.increment("POST", "/")
         assert "Caused by redirect" not in str(e.value)
         assert isinstance(e.value.reason, ResponseError)
-        assert str(e.value.reason) == ResponseError.GENERIC_ERROR
 
         retry = Retry(total=1)
         response = HTTPResponse(status=500)
-        with pytest.raises(MaxRetryError) as e:
-            retry = retry.increment("POST", "/", response=response)
+        msg = ResponseError.SPECIFIC_ERROR.format(status_code=500)
+        retry = retry.increment("POST", "/", response=response)
+        with pytest.raises(MaxRetryError, match=msg) as e:
             retry = retry.increment("POST", "/", response=response)
         assert "Caused by redirect" not in str(e.value)
-        msg = ResponseError.SPECIFIC_ERROR.format(status_code=500)
-        assert str(e.value.reason) == msg
 
         retry = Retry(connect=1)
-        with pytest.raises(MaxRetryError) as e:
-            retry = retry.increment(error=ConnectTimeoutError("conntimeout"))
+        retry = retry.increment(error=ConnectTimeoutError("conntimeout"))
+        with pytest.raises(MaxRetryError, match="conntimeout") as e:
             retry = retry.increment(error=ConnectTimeoutError("conntimeout"))
         assert "Caused by redirect" not in str(e.value)
-        assert str(e.value.reason) == "conntimeout"
 
     def test_history(self):
         retry = Retry(total=10, allowed_methods=frozenset(["GET", "POST"]))

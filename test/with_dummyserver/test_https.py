@@ -192,10 +192,9 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             cert_file=os.path.join(self.certs_dir, CLIENT_CERT),
             key_password=None,
         ) as https_pool:
-            with pytest.raises(MaxRetryError) as e:
+            with pytest.raises(MaxRetryError, match="password is required") as e:
                 https_pool.request("GET", "/certificate")
 
-            assert "password is required" in str(e.value)
             assert isinstance(e.value.reason, SSLError)
 
     def test_verified(self):
