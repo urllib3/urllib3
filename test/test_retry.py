@@ -223,8 +223,8 @@ class TestRetry:
         assert "Caused by redirect" not in str(e.value)
 
         retry = Retry(total=1)
+        retry = retry.increment("POST", "/")
         with pytest.raises(MaxRetryError, match=ResponseError.GENERIC_ERROR) as e:
-            retry = retry.increment("POST", "/")
             retry = retry.increment("POST", "/")
         assert "Caused by redirect" not in str(e.value)
         assert isinstance(e.value.reason, ResponseError)
@@ -238,8 +238,8 @@ class TestRetry:
         assert "Caused by redirect" not in str(e.value)
 
         retry = Retry(connect=1)
+        retry = retry.increment(error=ConnectTimeoutError("conntimeout"))
         with pytest.raises(MaxRetryError, match="conntimeout") as e:
-            retry = retry.increment(error=ConnectTimeoutError("conntimeout"))
             retry = retry.increment(error=ConnectTimeoutError("conntimeout"))
         assert "Caused by redirect" not in str(e.value)
 
