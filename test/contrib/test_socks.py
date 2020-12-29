@@ -219,9 +219,8 @@ def handle_socks4_negotiation(sock, username=None):
 
 class TestSOCKSProxyManager:
     def test_invalid_socks_version_is_valueerror(self):
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(ValueError, match="Unable to determine SOCKS version"):
             socks.SOCKSProxyManager(proxy_url="http://example.org")
-        assert "Unable to determine SOCKS version" in e.value.args[0]
 
 
 class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
@@ -470,9 +469,10 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
         with socks.SOCKSProxyManager(
             proxy_url, username="user", password="badpass"
         ) as pm:
-            with pytest.raises(NewConnectionError) as e:
+            with pytest.raises(
+                NewConnectionError, match="SOCKS5 authentication failed"
+            ):
                 pm.request("GET", "http://example.com", retries=False)
-            assert "SOCKS5 authentication failed" in str(e.value)
 
     def test_source_address_works(self):
         expected_port = _get_free_port(self.host)
@@ -683,9 +683,8 @@ class TestSOCKS4Proxy(IPV4SocketDummyServerTestCase):
         self._start_server(request_handler)
         proxy_url = f"socks4a://{self.host}:{self.port}"
         with socks.SOCKSProxyManager(proxy_url, username="baduser") as pm:
-            with pytest.raises(NewConnectionError) as e:
+            with pytest.raises(NewConnectionError, match="different user-ids"):
                 pm.request("GET", "http://example.com", retries=False)
-                assert "different user-ids" in str(e.value)
 
 
 class TestSOCKSWithTLS(IPV4SocketDummyServerTestCase):

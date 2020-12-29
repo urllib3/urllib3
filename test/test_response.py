@@ -1,6 +1,5 @@
 import contextlib
 import http.client as httplib
-import re
 import socket
 import ssl
 import zlib
@@ -357,9 +356,8 @@ class TestResponse:
         # https://github.com/urllib3/urllib3/issues/1305
         fp = BytesIO(b"hello\nworld")
         resp = HTTPResponse(fp, preload_content=False)
-        with pytest.raises(ValueError) as ctx:
+        with pytest.raises(ValueError, match="readline of closed file"):
             list(BufferedReader(resp))
-        assert str(ctx.value) == "readline of closed file"
 
         b = b"fooandahalf"
         fp = BytesIO(b)
@@ -388,9 +386,8 @@ class TestResponse:
         reader.close()
         assert reader.closed
         assert resp.closed
-        with pytest.raises(ValueError) as ctx:
+        with pytest.raises(ValueError, match="readline of closed file"):
             next(reader)
-        assert str(ctx.value) == "readline of closed file"
 
     def test_io_textiowrapper(self):
         fp = BytesIO(b"\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f")
@@ -408,9 +405,8 @@ class TestResponse:
             b"\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f\n\xce\xb1\xce\xb2\xce\xb3\xce\xb4"
         )
         resp = HTTPResponse(fp, preload_content=False)
-        with pytest.raises(ValueError) as ctx:
+        with pytest.raises(ValueError, match="I/O operation on closed file.?"):
             list(TextIOWrapper(resp))
-        assert re.match("I/O operation on closed file.?", str(ctx.value))
 
     def test_io_not_autoclose_textiowrapper(self):
         fp = BytesIO(
@@ -428,9 +424,8 @@ class TestResponse:
         reader.close()
         assert reader.closed
         assert resp.closed
-        with pytest.raises(ValueError) as ctx:
+        with pytest.raises(ValueError, match="I/O operation on closed file.?"):
             next(reader)
-        assert re.match("I/O operation on closed file.?", str(ctx.value))
 
     def test_streaming(self):
         fp = BytesIO(b"foo")

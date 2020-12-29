@@ -564,9 +564,8 @@ class TestUtil:
         ],
     )
     def test_invalid_timeouts(self, kwargs, message):
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(ValueError, match=message):
             Timeout(**kwargs)
-        assert message in str(e.value)
 
     @patch("urllib3.util.timeout.current_time")
     def test_timeout(self, current_time):
@@ -737,9 +736,11 @@ class TestUtil:
 
     @pytest.mark.parametrize("host", [".localhost", "...", "t" * 64])
     def test_create_connection_with_invalid_idna_labels(self, host):
-        with pytest.raises(LocationParseError) as ctx:
+        with pytest.raises(
+            LocationParseError,
+            match=f"Failed to parse: '{host}', label empty or too long",
+        ):
             create_connection((host, 80))
-        assert str(ctx.value) == f"Failed to parse: '{host}', label empty or too long"
 
     @pytest.mark.parametrize(
         "host",

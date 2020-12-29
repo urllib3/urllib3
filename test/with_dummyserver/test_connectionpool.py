@@ -921,15 +921,13 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     @pytest.mark.parametrize("chunked", [True, False])
     def test_skip_header_non_supported(self, header, chunked):
         with HTTPConnectionPool(self.host, self.port) as pool:
-            with pytest.raises(ValueError) as e:
+            with pytest.raises(
+                ValueError,
+                match="urllib3.util.SKIP_HEADER only supports 'Accept-Encoding', 'Host', 'User-Agent'",
+            ) as e:
                 pool.request(
                     "GET", "/headers", headers={header: SKIP_HEADER}, chunked=chunked
                 )
-            assert (
-                str(e.value)
-                == "urllib3.util.SKIP_HEADER only supports 'Accept-Encoding', 'Host', 'User-Agent'"
-            )
-
             # Ensure that the error message stays up to date with 'SKIP_HEADER_SUPPORTED_HEADERS'
             assert all(
                 ("'" + header.title() + "'") in str(e.value)
@@ -1303,9 +1301,10 @@ class TestFileBodiesOnRetryOrRedirect(HTTPDummyServerTestCase):
         # which is unsupported by BytesIO.
         headers = {"Content-Length": "8"}
         with HTTPConnectionPool(self.host, self.port, timeout=0.1) as pool:
-            with pytest.raises(UnrewindableBodyError) as e:
+            with pytest.raises(
+                UnrewindableBodyError, match="Unable to record file position for"
+            ):
                 pool.urlopen("PUT", url, headers=headers, body=body)
-            assert "Unable to record file position for" in str(e.value)
 
 
 class TestRetryPoolSize(HTTPDummyServerTestCase):

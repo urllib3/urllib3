@@ -88,10 +88,10 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             r = https.request("GET", f"{self.http_url}/")
             assert r.status == 200
 
-            with pytest.raises(ProxySchemeUnsupported) as excinfo:
+            with pytest.raises(
+                ProxySchemeUnsupported, match="isn't available on non-native SSLContext"
+            ):
                 https.request("GET", f"{self.https_url}/")
-
-            assert "isn't available on non-native SSLContext" in str(excinfo.value)
 
     @onlySecureTransport
     def test_https_proxy_securetransport_not_supported(self):
@@ -99,10 +99,10 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             r = https.request("GET", f"{self.http_url}/")
             assert r.status == 200
 
-            with pytest.raises(ProxySchemeUnsupported) as excinfo:
+            with pytest.raises(
+                ProxySchemeUnsupported, match="isn't available on non-native SSLContext"
+            ):
                 https.request("GET", f"{self.https_url}/")
-
-            assert "isn't available on non-native SSLContext" in str(excinfo.value)
 
     def test_https_proxy_forwarding_for_https(self):
         with proxy_from_url(
@@ -183,10 +183,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             )
             https_fail_pool = http._new_pool("https", "127.0.0.1", self.https_port)
 
-            with pytest.raises(MaxRetryError) as e:
+            with pytest.raises(MaxRetryError, match="doesn't match") as e:
                 https_fail_pool.request("GET", "/", retries=0)
             assert isinstance(e.value.reason, SSLError)
-            assert "doesn't match" in str(e.value.reason)
 
     def test_redirect(self):
         with proxy_from_url(self.proxy_url) as http:
