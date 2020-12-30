@@ -437,6 +437,31 @@ class TestResponse:
         with pytest.raises(StopIteration):
             next(stream)
 
+    def test_streaming_on_arrival(self):
+        socket_r, socket_w = socket.socketpair()
+
+        raw = httplib.HTTPResponse(socket_r)
+        raw.chunked = False
+        raw.length = 3
+
+        resp = HTTPResponse(raw, preload_content=False)
+        stream = resp.stream(amt=-1, decode_content=False)
+
+        w = socket_w.makefile("wb")
+
+        w.write(b"fo")
+        w.flush()
+        assert next(stream) == b"fo"
+
+        w.write(b"o")
+        w.flush()
+        assert next(stream) == b"o"
+
+        w.close()
+
+        with pytest.raises(StopIteration):
+            next(stream)
+
     def test_streaming_tell(self):
         fp = BytesIO(b"foo")
         resp = HTTPResponse(fp, preload_content=False)

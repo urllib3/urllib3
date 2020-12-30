@@ -583,7 +583,7 @@ class HTTPResponse(BaseHTTPResponse):
         :param amt:
             How much of the content to read. If specified, caching is skipped
             because it doesn't make sense to cache partial content as the full
-            response.
+            response. If -1, return bytes as soon as any become available.
 
         :param decode_content:
             If True, will attempt to decode the body based on the
@@ -613,7 +613,14 @@ class HTTPResponse(BaseHTTPResponse):
                 flush_decoder = True
             else:
                 cache_content = False
-                data = self._fp.read(amt) if not fp_closed else b""
+
+                read1 = amt < 0
+
+                if read1:
+                    data = self._fp.read1() if not fp_closed else b""
+                else:
+                    data = self._fp.read(amt) if not fp_closed else b""
+
                 if (
                     amt != 0 and not data
                 ):  # Platform-specific: Buggy versions of Python.
