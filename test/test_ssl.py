@@ -117,7 +117,7 @@ class TestSSL:
 
         assert ssl_.create_urllib3_context(ciphers=ciphers) is context
 
-        if ciphers is None and ssl_.USE_SYSTEM_SSL_CIPHERS:
+        if ciphers is None and ssl_.USE_DEFAULT_SSLCONTEXT_CIPHERS:
             assert context.set_ciphers.call_count == 0
         else:
             assert context.set_ciphers.call_count == 1
@@ -171,19 +171,21 @@ class TestSSL:
 
         assert context.post_handshake_auth == expected_pha
 
-    @pytest.mark.parametrize("use_system_ssl_ciphers", [True, False])
+    @pytest.mark.parametrize("use_default_sslcontext_ciphers", [True, False])
     def test_create_urllib3_context_default_ciphers(
-        self, monkeypatch, use_system_ssl_ciphers
+        self, monkeypatch, use_default_sslcontext_ciphers
     ):
         context = mock.create_autospec(ssl_.SSLContext)
         context.set_ciphers = mock.Mock()
         context.options = 0
         monkeypatch.setattr(ssl_, "SSLContext", lambda *_, **__: context)
-        monkeypatch.setattr(ssl_, "USE_SYSTEM_SSL_CIPHERS", use_system_ssl_ciphers)
+        monkeypatch.setattr(
+            ssl_, "USE_DEFAULT_SSLCONTEXT_CIPHERS", use_default_sslcontext_ciphers
+        )
 
         ssl_.create_urllib3_context()
 
-        if use_system_ssl_ciphers:
+        if use_default_sslcontext_ciphers:
             context.set_ciphers.assert_not_called()
         else:
             context.set_ciphers.assert_called_with(ssl_.DEFAULT_CIPHERS)

@@ -14,7 +14,7 @@ HAS_SNI = False
 IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
 ALPN_PROTOCOLS = ["http/1.1"]
-USE_SYSTEM_SSL_CIPHERS = False
+USE_DEFAULT_SSLCONTEXT_CIPHERS = False
 
 # Maps the length of a digest to a possible hash function producing this digest
 HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
@@ -48,7 +48,7 @@ try:  # Do we have ssl at all?
         SSLContext,
     )
 
-    USE_SYSTEM_SSL_CIPHERS = _is_ge_openssl_v1_1_1(
+    USE_DEFAULT_SSLCONTEXT_CIPHERS = _is_ge_openssl_v1_1_1(
         OPENSSL_VERSION, OPENSSL_VERSION_NUMBER
     )
     PROTOCOL_SSLv23 = PROTOCOL_TLS
@@ -88,10 +88,13 @@ DEFAULT_CIPHERS = ":".join(
         "DH+AESGCM",
         "ECDH+AES",
         "DH+AES",
+        "RSA+AESGCM",
+        "RSA+AES",
         "!aNULL",
         "!eNULL",
         "!MD5",
         "!DSS",
+        "!AESCCM",
     ]
 )
 
@@ -203,7 +206,7 @@ def create_urllib3_context(
 
     # Unless we're given ciphers defer to either system ciphers in
     # the case of OpenSSL 1.1.1+ or use our own secure default ciphers.
-    if ciphers is not None or not USE_SYSTEM_SSL_CIPHERS:
+    if ciphers is not None or not USE_DEFAULT_SSLCONTEXT_CIPHERS:
         context.set_ciphers(ciphers or DEFAULT_CIPHERS)
 
     # Setting the default here, as we may have no ssl module on import
