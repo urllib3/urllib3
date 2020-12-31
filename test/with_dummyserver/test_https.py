@@ -358,6 +358,13 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             https_pool.assert_hostname = False
             https_pool.request("GET", "/")
 
+    def test_assert_hostname_true(self):
+        with HTTPSConnectionPool(
+            "localhost", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
+        ) as https_pool:
+            https_pool.assert_hostname = True
+            https_pool.request("GET", "/")
+
     def test_assert_specific_hostname(self):
         with HTTPSConnectionPool(
             "localhost", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
