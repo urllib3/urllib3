@@ -415,7 +415,7 @@ class HTTPSConnection(HTTPConnection):
             # the TLS library, this cannot always be done. So we check whether
             # the TLS Library still thinks it's matching hostnames.
             cert = self.sock.getpeercert()
-            _match_hostname(cert, self.assert_hostname or server_hostname)
+            _match_hostname(cert, server_hostname)
 
         self.is_verified = (
             context.verify_mode == ssl.CERT_REQUIRED
