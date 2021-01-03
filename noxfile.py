@@ -86,23 +86,18 @@ def unsupported_python2(session):
 @nox.session()
 def format(session):
     """Run code formatters."""
-    session.install("black", "isort")
-    session.run("black", *SOURCE_FILES)
-    session.run("isort", *SOURCE_FILES)
+    session.install("pre-commit")
+    session.run("pre-commit", "run", "--all-files")
 
     lint(session)
 
 
 @nox.session
 def lint(session):
-    session.install("flake8", "flake8-2020", "black", "isort", "mypy")
-    session.run("flake8", "--version")
-    session.run("black", "--version")
-    session.run("isort", "--version")
+    session.install("pre-commit", "mypy")
+    session.run("pre-commit", "--version")
     session.run("mypy", "--version")
-    session.run("black", "--check", *SOURCE_FILES)
-    session.run("isort", "--check", *SOURCE_FILES)
-    session.run("flake8", *SOURCE_FILES)
+    session.run("pre-commit", "run", "--all-files")
 
     session.log("mypy --strict src/urllib3")
     all_errors, errors = [], []
