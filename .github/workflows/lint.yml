@@ -1,12 +1,21 @@
-name: Lint
+name: lint
 
 on: [push, pull_request]
 
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-20.04
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-      - uses: pre-commit/action@v2.0.0
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Lint the code
+        uses: pre-commit/action@v2.0.0
+      - name: Install dependencies
+        run: python3.8 -m pip install nox
+      - name: Run mypy
+        run: nox -s mypy
