@@ -87,17 +87,32 @@ def unsupported_python2(session):
 def format(session):
     """Run code formatters."""
     session.install("pre-commit")
-    session.run("pre-commit", "run", "--all-files")
+    session.run("pre-commit", "--version")
 
-    lint(session)
+    process = subprocess.run(
+        ["pre-commit", "run", "--all-files"],
+        env=session.env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    # Ensure that pre-commit itself ran successfully
+    assert process.returncode in (0, 1)
 
 
 @nox.session
 def lint(session):
-    session.install("pre-commit", "mypy")
-    session.run("pre-commit", "--version")
-    session.run("mypy", "--version")
+    session.install("pre-commit")
     session.run("pre-commit", "run", "--all-files")
+
+    mypy(session)
+
+
+@nox.session()
+def mypy(session):
+    """Run mypy."""
+    session.install("mypy")
+    session.run("mypy", "--version")
 
     session.log("mypy --strict src/urllib3")
     all_errors, errors = [], []
