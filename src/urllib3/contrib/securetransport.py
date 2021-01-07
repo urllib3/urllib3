@@ -82,6 +82,7 @@ HAS_SNI = True
 
 orig_util_HAS_SNI = util.HAS_SNI
 orig_util_SSLContext = util.ssl_.SSLContext
+orig_util_USE_SYSTEM_SSL_CIPHERS = util.ssl_.USE_DEFAULT_SSLCONTEXT_CIPHERS
 
 # This dictionary is used by the read callback to obtain a handle to the
 # calling wrapped socket. This is a pretty silly approach, but for now it'll
@@ -105,42 +106,6 @@ _connection_ref_lock = threading.Lock()
 # Limit writes to 16kB. This is OpenSSL's limit, but we'll cargo-cult it over
 # for no better reason than we need *a* limit, and this one is right there.
 SSL_WRITE_BLOCKSIZE = 16384
-
-# This is our equivalent of util.ssl_.DEFAULT_CIPHERS, but expanded out to
-# individual cipher suites. We need to do this because this is how
-# SecureTransport wants them.
-CIPHER_SUITES = [
-    SecurityConst.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-    SecurityConst.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-    SecurityConst.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-    SecurityConst.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-    SecurityConst.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
-    SecurityConst.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
-    SecurityConst.TLS_DHE_RSA_WITH_AES_256_GCM_SHA384,
-    SecurityConst.TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
-    SecurityConst.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384,
-    SecurityConst.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
-    SecurityConst.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
-    SecurityConst.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
-    SecurityConst.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,
-    SecurityConst.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-    SecurityConst.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
-    SecurityConst.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-    SecurityConst.TLS_DHE_RSA_WITH_AES_256_CBC_SHA256,
-    SecurityConst.TLS_DHE_RSA_WITH_AES_256_CBC_SHA,
-    SecurityConst.TLS_DHE_RSA_WITH_AES_128_CBC_SHA256,
-    SecurityConst.TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
-    SecurityConst.TLS_AES_256_GCM_SHA384,
-    SecurityConst.TLS_AES_128_GCM_SHA256,
-    SecurityConst.TLS_RSA_WITH_AES_256_GCM_SHA384,
-    SecurityConst.TLS_RSA_WITH_AES_128_GCM_SHA256,
-    SecurityConst.TLS_AES_128_CCM_8_SHA256,
-    SecurityConst.TLS_AES_128_CCM_SHA256,
-    SecurityConst.TLS_RSA_WITH_AES_256_CBC_SHA256,
-    SecurityConst.TLS_RSA_WITH_AES_128_CBC_SHA256,
-    SecurityConst.TLS_RSA_WITH_AES_256_CBC_SHA,
-    SecurityConst.TLS_RSA_WITH_AES_128_CBC_SHA,
-]
 
 # Basically this is simple: for PROTOCOL_SSLv23 we turn it into a low of
 # TLSv1 and a high of TLSv1.2. For everything else, we pin to that version.
@@ -186,6 +151,7 @@ def inject_into_urllib3():
     util.ssl_.HAS_SNI = HAS_SNI
     util.IS_SECURETRANSPORT = True
     util.ssl_.IS_SECURETRANSPORT = True
+    util.ssl_.USE_DEFAULT_SSLCONTEXT_CIPHERS = True
 
 
 def extract_from_urllib3():
@@ -198,6 +164,7 @@ def extract_from_urllib3():
     util.ssl_.HAS_SNI = orig_util_HAS_SNI
     util.IS_SECURETRANSPORT = False
     util.ssl_.IS_SECURETRANSPORT = False
+    util.ssl_.USE_DEFAULT_SSLCONTEXT_CIPHERS = orig_util_USE_SYSTEM_SSL_CIPHERS
 
 
 def _read_callback(connection_id, data_buffer, data_length_pointer):
@@ -357,19 +324,6 @@ class WrappedSocket:
             self.close()
             raise exception
 
-    def _set_ciphers(self):
-        """
-        Sets up the allowed ciphers. By default this matches the set in
-        util.ssl_.DEFAULT_CIPHERS, at least as supported by macOS. This is done
-        custom and doesn't allow changing at this time, mostly because parsing
-        OpenSSL cipher strings is going to be a freaking nightmare.
-        """
-        ciphers = (Security.SSLCipherSuite * len(CIPHER_SUITES))(*CIPHER_SUITES)
-        result = Security.SSLSetEnabledCiphers(
-            self.context, ciphers, len(CIPHER_SUITES)
-        )
-        _assert_no_error(result)
-
     def _set_alpn_protocols(self, protocols):
         """
         Sets up the ALPN protocols on the context.
@@ -505,9 +459,6 @@ class WrappedSocket:
                 self.context, server_hostname, len(server_hostname)
             )
             _assert_no_error(result)
-
-        # Setup the ciphers.
-        self._set_ciphers()
 
         # Setup the ALPN protocols.
         self._set_alpn_protocols(alpn_protocols)
@@ -824,9 +775,7 @@ class SecureTransportContext:
         return self.set_default_verify_paths()
 
     def set_ciphers(self, ciphers):
-        # For now, we just require the default cipher string.
-        if ciphers != util.ssl_.DEFAULT_CIPHERS:
-            raise ValueError("SecureTransport doesn't support custom cipher strings")
+        raise ValueError("SecureTransport doesn't support custom cipher strings")
 
     def load_verify_locations(self, cafile=None, capath=None, cadata=None):
         # OK, we only really support cadata and cafile.
