@@ -53,7 +53,7 @@ _IPV6_PAT = "(?:" + "|".join([x % _subs for x in _variations]) + ")"
 _ZONE_ID_PAT = "(?:%25|%)(?:[" + _UNRESERVED_PAT + "]|%[a-fA-F0-9]{2})+"
 _IPV6_ADDRZ_PAT = r"\[" + _IPV6_PAT + r"(?:" + _ZONE_ID_PAT + r")?\]"
 _REG_NAME_PAT = r"(?:[^\[\]%:/?#]|%[a-fA-F0-9]{2})*"
-_TARGET_RE = re.compile(r"^([^?#]+)(?:\?([^#]*))?(?:#.*)?$")
+_TARGET_RE = re.compile(r"^(/[^?#]*)(?:\?([^#]*))?(?:#.*)?$")
 
 _IPV4_RE = re.compile("^" + _IPV4_PAT + "$")
 _IPV6_RE = re.compile("^" + _IPV6_PAT + "$")
@@ -309,9 +309,16 @@ def _idna_encode(name: str) -> bytes:
 
 
 def _encode_target(target: str) -> str:
-    """Percent-encodes a request target so that there are no invalid characters"""
-    match = typing.cast(re.Match[str], _TARGET_RE.match(target))
-    path, query = typing.cast(typing.Tuple[str, str], match.groups())
+    """Percent-encodes a request target so that there are no invalid characters
+
+    Pre-condition for this function is that 'target' must start with '/'.
+    If that is the case then _TARGET_RE will always produce a match.
+    """
+    match = _TARGET_RE.match(target)
+    if not match:  # Defensive
+        raise LocationParseError(f"{target!r} is not a valid request URI")
+
+    path, query = match.groups()
     encoded_target = _encode_invalid_chars(path, _PATH_CHARS)
     if query is not None:
         query = _encode_invalid_chars(query, _QUERY_CHARS)
