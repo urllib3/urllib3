@@ -330,6 +330,7 @@ class TestUtil:
         ("http://google.com:80/mail", "google.com:80"),
         ("google.com/foobar", "google.com"),
         ("google.com:12345", "google.com:12345"),
+        ("/", None),
     ]
 
     @pytest.mark.parametrize("url, expected_netloc", url_netloc_map)

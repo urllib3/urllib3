@@ -182,14 +182,16 @@ class Url(
 
 
 @typing.overload
-def _encode_invalid_chars(component: str, allowed_chars: typing.Container[str]) -> str:
+def _encode_invalid_chars(
+    component: str, allowed_chars: typing.Container[str]
+) -> str:  # Abstract
     ...
 
 
 @typing.overload
 def _encode_invalid_chars(
     component: None, allowed_chars: typing.Container[str]
-) -> None:
+) -> None:  # Abstract
     ...
 
 
@@ -315,7 +317,7 @@ def _encode_target(target: str) -> str:
     If that is the case then _TARGET_RE will always produce a match.
     """
     match = _TARGET_RE.match(target)
-    if not match:  # Defensive
+    if not match:  # Defensive:
         raise LocationParseError(f"{target!r} is not a valid request URI")
 
     path, query = match.groups()
@@ -367,18 +369,14 @@ def parse_url(url: str) -> Url:
     fragment: typing.Optional[str]
 
     try:
-        scheme, authority, path, query, fragment = typing.cast(
-            re.Match[str], _URI_RE.match(url)
-        ).groups()
+        scheme, authority, path, query, fragment = _URI_RE.match(url).groups()  # type: ignore
         normalize_uri = scheme is None or scheme.lower() in _NORMALIZABLE_SCHEMES
 
         if scheme:
             scheme = scheme.lower()
 
         if authority:
-            auth, host, port = typing.cast(
-                re.Match[str], _SUBAUTHORITY_RE.match(authority)
-            ).groups()
+            auth, host, port = _SUBAUTHORITY_RE.match(authority).groups()  # type: ignore
             if auth and normalize_uri:
                 auth = _encode_invalid_chars(auth, _USERINFO_CHARS)
             if port == "":
