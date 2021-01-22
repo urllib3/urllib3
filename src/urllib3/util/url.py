@@ -22,9 +22,9 @@ _URI_RE = re.compile(
 )
 
 _IPV4_PAT = r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}"
-HEX_PAT = "[0-9A-Fa-f]{1,4}"
-LS32_PAT = "(?:{hex}:{hex}|{ipv4})".format(hex=HEX_PAT, ipv4=_IPV4_PAT)
-_subs = {"hex": HEX_PAT, "ls32": LS32_PAT}
+_HEX_PAT = "[0-9A-Fa-f]{1,4}"
+_LS32_PAT = "(?:{hex}:{hex}|{ipv4})".format(hex=_HEX_PAT, ipv4=_IPV4_PAT)
+_subs = {"hex": _HEX_PAT, "ls32": _LS32_PAT}
 _variations = [
     #                            6( h16 ":" ) ls32
     "(?:%(hex)s:){6}%(ls32)s",
@@ -77,20 +77,25 @@ _PATH_CHARS = _USERINFO_CHARS | {"@", "/"}
 _QUERY_CHARS = _FRAGMENT_CHARS = _PATH_CHARS | {"?"}
 
 
-class Url(typing.NamedTuple):
+class Url(
+    typing.NamedTuple(
+        "Url",
+        [
+            ("scheme", typing.Optional[str]),
+            ("auth", typing.Optional[str]),
+            ("host", typing.Optional[str]),
+            ("port", typing.Optional[int]),
+            ("path", typing.Optional[str]),
+            ("query", typing.Optional[str]),
+            ("fragment", typing.Optional[str]),
+        ],
+    )
+):
     """
     Data structure for representing an HTTP URL. Used as a return value for
     :func:`parse_url`. Both the scheme and host are normalized as they are
     both case-insensitive according to RFC 3986.
     """
-
-    scheme: typing.Optional[str]
-    auth: typing.Optional[str]
-    host: typing.Optional[str]
-    port: typing.Optional[int]
-    path: typing.Optional[str]
-    query: typing.Optional[str]
-    fragment: typing.Optional[str]
 
     def __new__(  # type: ignore
         cls,
@@ -106,7 +111,7 @@ class Url(typing.NamedTuple):
             path = "/" + path
         if scheme is not None:
             scheme = scheme.lower()
-        return super().__new__(cls, scheme, auth, host, port, path, query, fragment)  # type: ignore
+        return super().__new__(cls, scheme, auth, host, port, path, query, fragment)
 
     @property
     def hostname(self) -> typing.Optional[str]:
