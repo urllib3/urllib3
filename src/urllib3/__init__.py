@@ -16,7 +16,6 @@ from .response import HTTPResponse
 from .util.request import make_headers
 from .util.retry import Retry
 from .util.timeout import Timeout
-from .util.url import get_host
 
 __author__ = "Andrey Petrov (andrey.petrov@shazow.net)"
 __license__ = "MIT"
@@ -34,7 +33,6 @@ __all__ = (
     "connection_from_url",
     "disable_warnings",
     "encode_multipart_formdata",
-    "get_host",
     "make_headers",
     "proxy_from_url",
 )

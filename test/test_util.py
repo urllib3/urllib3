@@ -25,7 +25,7 @@ from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
 from urllib3.util.ssl_ import resolve_cert_reqs, resolve_ssl_version, ssl_wrap_socket
 from urllib3.util.timeout import Timeout
-from urllib3.util.url import Url, get_host, parse_url, split_first
+from urllib3.util.url import Url, parse_url
 from urllib3.util.util import to_bytes, to_str
 
 from . import clear_warnings
@@ -124,26 +124,6 @@ class TestUtil:
             ("http+unix", "%2fvar%2frun%2fSOCKET", None),
         ),
     ]
-
-    @pytest.mark.parametrize("url, expected_host", url_host_map)
-    def test_get_host(self, url, expected_host):
-        returned_host = get_host(url)
-        assert returned_host == expected_host
-
-    # TODO: Add more tests
-    @pytest.mark.parametrize(
-        "location",
-        [
-            "http://google.com:foo",
-            "http://::1/",
-            "http://::1:80/",
-            "http://google.com:-80",
-            "http://google.com:\xb2\xb2",  # \xb2 = ^2
-        ],
-    )
-    def test_invalid_host(self, location):
-        with pytest.raises(LocationParseError):
-            get_host(location)
 
     @pytest.mark.parametrize(
         "url",
@@ -511,21 +491,6 @@ class TestUtil:
 
         with pytest.raises(UnrewindableBodyError):
             rewind_body(BadSeek(), body_pos=2)
-
-    @pytest.mark.parametrize(
-        "input, expected",
-        [
-            (("abcd", "b"), ("a", "cd", "b")),
-            (("abcd", "cb"), ("a", "cd", "b")),
-            (("abcd", ""), ("abcd", "", None)),
-            (("abcd", "a"), ("", "bcd", "a")),
-            (("abcd", "ab"), ("", "bcd", "a")),
-            (("abcd", "eb"), ("a", "cd", "b")),
-        ],
-    )
-    def test_split_first(self, input, expected):
-        output = split_first(*input)
-        assert output == expected
 
     def test_add_stderr_logger(self):
         handler = add_stderr_logger(level=logging.INFO)  # Don't actually print debug

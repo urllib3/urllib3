@@ -6,7 +6,7 @@ from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
 from ..exceptions import ProxySchemeUnsupported, SNIMissingWarning, SSLError
-from .url import BRACELESS_IPV6_ADDRZ_RE, IPV4_RE
+from .url import _BRACELESS_IPV6_ADDRZ_RE, _IPV4_RE
 
 SSLContext = None
 SSLTransport = None
@@ -370,7 +370,7 @@ def is_ipaddress(hostname):
     if isinstance(hostname, bytes):
         # IDN A-label bytes are ASCII compatible.
         hostname = hostname.decode("ascii")
-    return bool(IPV4_RE.match(hostname) or BRACELESS_IPV6_ADDRZ_RE.match(hostname))
+    return bool(_IPV4_RE.match(hostname) or _BRACELESS_IPV6_ADDRZ_RE.match(hostname))
 
 
 def _is_key_file_encrypted(key_file):
