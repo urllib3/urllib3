@@ -1,6 +1,6 @@
 # For backwards compatibility, provide imports that used to be here.
 from .connection import is_connection_dropped
-from .request import SKIP_HEADER, SKIPPABLE_HEADERS, make_headers
+from .request import BYTES_SKIP_HEADER, SKIP_HEADER, SKIPPABLE_HEADERS, make_headers
 from .response import is_fp_closed
 from .retry import Retry
 from .ssl_ import (
@@ -42,6 +42,7 @@ __all__ = (
     "ssl_wrap_socket",
     "wait_for_read",
     "wait_for_write",
+    "BYTES_SKIP_HEADER",
     "SKIP_HEADER",
     "SKIPPABLE_HEADERS",
 )
