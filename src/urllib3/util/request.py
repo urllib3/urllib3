@@ -7,7 +7,6 @@ from ..exceptions import UnrewindableBodyError
 # The only headers that are supported are ``Accept-Encoding``,
 # ``Host``, and ``User-Agent``.
 SKIP_HEADER = "@@@SKIP_HEADER@@@"
-BYTES_SKIP_HEADER = SKIP_HEADER.encode("ascii")
 SKIPPABLE_HEADERS = frozenset(["accept-encoding", "host", "user-agent"])
 
 ACCEPT_ENCODING = "gzip,deflate"

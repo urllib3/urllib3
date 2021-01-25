@@ -25,7 +25,7 @@ except (ImportError, AttributeError):  # Platform-specific: No SSL.
 from ._version import __version__
 from .exceptions import ConnectTimeoutError, NewConnectionError, SystemTimeWarning
 from .packages.ssl_match_hostname import CertificateError, match_hostname
-from .util import BYTES_SKIP_HEADER, SKIP_HEADER, SKIPPABLE_HEADERS, connection
+from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection
 from .util.ssl_ import (
     assert_fingerprint,
     create_urllib3_context,
@@ -182,17 +182,9 @@ class HTTPConnection(_HTTPConnection):
 
         return super().putrequest(method, url, *args, **kwargs)
 
-    def _skipheader_in_values(self, values):
-        for v in values:
-            if isinstance(v, str) and v == SKIP_HEADER:
-                return True
-            elif isinstance(v, bytes) and v == BYTES_SKIP_HEADER:
-                return True
-        return False
-
     def putheader(self, header, *values):
         """"""
-        if not self._skipheader_in_values(values):
+        if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
             super().putheader(header, *values)
         elif to_str(header.lower()) not in SKIPPABLE_HEADERS:
             raise ValueError(
