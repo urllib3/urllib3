@@ -24,6 +24,7 @@ notifications:
 env:
   global:
     - PYTHONWARNINGS=always::DeprecationWarning
+    - CRYPTOGRAPHY_ALLOW_OPENSSL_102=1
 
     - PYPI_USERNAME=urllib3
     # PYPI_PASSWORD is set in Travis control panel.
