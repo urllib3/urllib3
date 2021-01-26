@@ -1,6 +1,16 @@
 Changes
 =======
 
+1.26.3 (2021-01-26)
+-------------------
+
+* Fixed bytes and string comparison issue with headers (Pull #2141)
+
+* Changed ``ProxySchemeUnknown`` error message to be
+  more actionable if the user supplies a proxy URL without
+  a scheme. (Pull #2107)
+
+
 1.26.2 (2020-11-12)
 -------------------
 
