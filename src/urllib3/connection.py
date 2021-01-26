@@ -215,7 +215,7 @@ class HTTPConnection(_HTTPConnection, object):
 
     def putheader(self, header, *values):
         """"""
-        if SKIP_HEADER not in values:
+        if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
             _HTTPConnection.putheader(self, header, *values)
         elif six.ensure_str(header.lower()) not in SKIPPABLE_HEADERS:
             raise ValueError(
