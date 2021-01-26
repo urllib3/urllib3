@@ -8,7 +8,7 @@ set -exo pipefail
 # we're in one of the Travis Python 2 sessions and sets up the Python 3 install
 # for Nox.
 if ! python3 -m pip --version; then
-    curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+    curl https://bootstrap.pypa.io/3.5/get-pip.py -o get-pip.py
     sudo python3 get-pip.py
     # https://github.com/theacodes/nox/issues/328
     sudo python3 -m pip install nox==2019.11.9
