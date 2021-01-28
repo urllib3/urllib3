@@ -201,7 +201,7 @@ def _encode_invalid_chars(
     """Percent-encodes a URI component without reapplying
     onto an already percent-encoded component.
     """
-    if component is None:  # pragma: nocover
+    if component is None:
         return component
 
     component = to_str(component)
