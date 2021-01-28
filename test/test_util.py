@@ -25,7 +25,7 @@ from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
 from urllib3.util.ssl_ import resolve_cert_reqs, resolve_ssl_version, ssl_wrap_socket
 from urllib3.util.timeout import Timeout
-from urllib3.util.url import Url, parse_url
+from urllib3.util.url import Url, parse_url, _encode_
 from urllib3.util.util import to_bytes, to_str
 
 from . import clear_warnings
@@ -133,6 +133,9 @@ class TestUtil:
         assert (url.scheme or "http") == scheme
         assert url.hostname == url.host == host
         assert url.port == port
+
+    def test_encode_invalid_chars_none(self):
+        assert _encode_invalid_chars(None, set()) is None
 
     @pytest.mark.parametrize(
         "url",
