@@ -137,6 +137,11 @@ class TestUtil:
     @pytest.mark.parametrize(
         "url",
         [
+            "http://google.com:foo",
+            "http://::1/",
+            "http://::1:80/",
+            "http://google.com:-80",
+            "http://google.com:\xb2\xb2",  # \xb2 = ^2
             # Invalid IDNA labels
             "http://\uD7FF.com",
             "http://❤️",
