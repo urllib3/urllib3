@@ -125,6 +125,15 @@ class TestUtil:
         ),
     ]
 
+    @pytest.mark.parametrize(["url", "scheme_host_port"], url_host_map)
+    def test_scheme_host_port(self, url, scheme_host_port):
+        url = parse_url(url)
+        scheme, host, port = scheme_host_port
+
+        assert (url.scheme or "http") == scheme
+        assert url.hostname == url.host == host
+        assert url.port == port
+
     @pytest.mark.parametrize(
         "url",
         [
@@ -274,6 +283,7 @@ class TestUtil:
     def test_parse_url(self, url, expected_url):
         returned_url = parse_url(url)
         assert returned_url == expected_url
+        assert returned_url.hostname == returned_url.host == expected_url.host
 
     @pytest.mark.parametrize("url, expected_url", parse_url_host_map)
     def test_unparse_url(self, url, expected_url):
