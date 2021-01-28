@@ -199,6 +199,12 @@ class HTTPConnection(_HTTPConnection):
         else:
             # Avoid modifying the headers passed into .request()
             headers = headers.copy()
+            # Don't send bytes keys to httplib to avoid bytes/str comparison
+            for key, value in list(headers.items()):
+                if isinstance(key, bytes):
+                    headers.pop(key)
+                    headers[key.decode()] = value
+
         if "user-agent" not in (to_str(k.lower()) for k in headers):
             headers["User-Agent"] = _get_default_user_agent()
         super().request(method, url, body=body, headers=headers)

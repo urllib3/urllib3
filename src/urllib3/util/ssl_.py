@@ -121,8 +121,9 @@ def assert_fingerprint(cert, fingerprint):
     cert_digest = hashfunc(cert).digest()
 
     if not hmac.compare_digest(cert_digest, fingerprint_bytes):
+        got_fingerprint = hexlify(cert_digest).decode()
         raise SSLError(
-            f'Fingerprints did not match. Expected "{fingerprint}", got "{hexlify(cert_digest)}".'
+            f'Fingerprints did not match. Expected "{fingerprint}", got "{got_fingerprint}"'
         )
 
 

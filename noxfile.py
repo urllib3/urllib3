@@ -47,6 +47,9 @@ def tests_impl(session, extras="socks,secure,brotli"):
     # and collapse them into src/urllib3/__init__.py.
 
     session.run(
+        "python",
+        "-bb",  # Fail on bytes/string comparison
+        "-m",
         "coverage",
         "run",
         "--parallel-mode",
