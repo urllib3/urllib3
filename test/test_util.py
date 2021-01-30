@@ -4,7 +4,7 @@ import socket
 import ssl
 import warnings
 from itertools import chain
-from test import notBrotlipy, onlyBrotlipy
+from test import notBrotli, onlyBrotli
 from unittest.mock import Mock, patch
 
 import pytest
@@ -442,24 +442,24 @@ class TestUtil:
             pytest.param(
                 {"accept_encoding": True},
                 {"accept-encoding": "gzip,deflate,br"},
-                marks=onlyBrotlipy(),
+                marks=onlyBrotli(),
             ),
             pytest.param(
                 {"accept_encoding": True},
                 {"accept-encoding": "gzip,deflate"},
-                marks=notBrotlipy(),
+                marks=notBrotli(),
             ),
             ({"accept_encoding": "foo,bar"}, {"accept-encoding": "foo,bar"}),
             ({"accept_encoding": ["foo", "bar"]}, {"accept-encoding": "foo,bar"}),
             pytest.param(
                 {"accept_encoding": True, "user_agent": "banana"},
                 {"accept-encoding": "gzip,deflate,br", "user-agent": "banana"},
-                marks=onlyBrotlipy(),
+                marks=onlyBrotli(),
             ),
             pytest.param(
                 {"accept_encoding": True, "user_agent": "banana"},
                 {"accept-encoding": "gzip,deflate", "user-agent": "banana"},
-                marks=notBrotlipy(),
+                marks=notBrotli(),
             ),
             ({"user_agent": "banana"}, {"user-agent": "banana"}),
             ({"keep_alive": True}, {"connection": "keep-alive"}),

@@ -5,7 +5,7 @@ import ssl
 import zlib
 from base64 import b64decode
 from io import BufferedReader, BytesIO, TextIOWrapper
-from test import onlyBrotlipy
+from test import onlyBrotli
 from unittest import mock
 
 import pytest
@@ -222,7 +222,7 @@ class TestResponse:
 
         assert r.data == b"foofoofoo"
 
-    @onlyBrotlipy()
+    @onlyBrotli()
     def test_decode_brotli(self):
         data = brotli.compress(b"foo")
 
@@ -230,7 +230,7 @@ class TestResponse:
         r = HTTPResponse(fp, headers={"content-encoding": "br"})
         assert r.data == b"foo"
 
-    @onlyBrotlipy()
+    @onlyBrotli()
     def test_chunked_decoding_brotli(self):
         data = brotli.compress(b"foobarbaz")
 
@@ -244,7 +244,7 @@ class TestResponse:
                 break
         assert ret == b"foobarbaz"
 
-    @onlyBrotlipy()
+    @onlyBrotli()
     def test_decode_brotli_error(self):
         fp = BytesIO(b"foo")
         with pytest.raises(DecodeError):

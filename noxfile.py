@@ -83,6 +83,15 @@ def unsupported_python2(session):
     assert "Unsupported Python version" in process.stderr
 
 
+@nox.session(python=["3"])
+def test_brotlipy(session):
+    """Check that if 'brotlipy' is installed instead of 'brotli' or
+    'brotlicffi' that we still don't blow up.
+    """
+    session.install("brotlipy")
+    tests_impl(session, extras="socks,secure")
+
+
 @nox.session()
 def format(session):
     """Run code formatters."""
@@ -98,6 +107,8 @@ def format(session):
     )
     # Ensure that pre-commit itself ran successfully
     assert process.returncode in (0, 1)
+
+    lint(session)
 
 
 @nox.session
