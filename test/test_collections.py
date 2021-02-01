@@ -35,7 +35,7 @@ class TestLRUContainer:
         d[5] = "5"
 
         # Check state
-        assert d.ordered_keys() == [2, 3, 4, 0, 5]
+        assert list(d._container.keys()) == [2, 3, 4, 0, 5]
 
     def test_same_key(self):
         d = Container(5)
@@ -43,7 +43,7 @@ class TestLRUContainer:
         for i in range(10):
             d["foo"] = i
 
-        assert d.ordered_keys() == ["foo"]
+        assert list(d._container.keys()) == ["foo"]
         assert len(d) == 1
 
     def test_access_ordering(self):
@@ -53,13 +53,13 @@ class TestLRUContainer:
             d[i] = True
 
         # Keys should be ordered by access time
-        assert d.ordered_keys() == [5, 6, 7, 8, 9]
+        assert list(d._container.keys()) == [5, 6, 7, 8, 9]
 
         new_order = [7, 8, 6, 9, 5]
         for k in new_order:
             d[k]
 
-        assert d.ordered_keys() == new_order
+        assert list(d._container.keys()) == new_order
 
     def test_delete(self):
         d = Container(5)
@@ -103,11 +103,11 @@ class TestLRUContainer:
         d = Container(5, dispose_func=dispose_func)
         for i in range(5):
             d[i] = i
-        assert d.ordered_keys() == list(range(5))
+        assert list(d._container.keys()) == list(range(5))
         assert evicted_items == []  # Nothing disposed
 
         d[5] = 5
-        assert d.ordered_keys() == list(range(1, 6))
+        assert list(d._container.keys()) == list(range(1, 6))
         assert evicted_items == [0]
 
         del d[1]
@@ -272,15 +272,19 @@ class TestHTTPHeaderDict:
     def test_equal(self, d):
         b = HTTPHeaderDict(cookie="foo, bar")
         c = NonMappingHeaderContainer(cookie="foo, bar")
+        e = [("cookie", "foo, bar")]
         assert d == b
         assert d == c
+        assert d == e
         assert d != 2
 
     def test_not_equal(self, d):
         b = HTTPHeaderDict(cookie="foo, bar")
         c = NonMappingHeaderContainer(cookie="foo, bar")
+        e = [("cookie", "foo, bar")]
         assert not (d != b)
         assert not (d != c)
+        assert not (d != e)
         assert d != 2
 
     def test_pop(self, d):
@@ -317,6 +321,8 @@ class TestHTTPHeaderDict:
             ("Cookie", "foo"),
             ("Cookie", "bar"),
         ]
+        assert "Cookie" in items
+        assert "X-Some-Header" not in items
 
     def test_dict_conversion(self, d):
         # Also tested in connectionpool, needs to preserve case
@@ -340,3 +346,24 @@ class TestHTTPHeaderDict:
             del d[3]
         with pytest.raises(Exception):
             HTTPHeaderDict({3: 3})
+
+    def test_dunder_contains(self, d):
+        """
+        Test:
+
+        HTTPHeaderDict.__contains__ returns True
+          - for matched string objects
+          - for case-similar string objects
+        HTTPHeaderDict.__contains__ returns False
+          - for non-similar strings
+          - for non-strings, even if they are keys
+            in the underlying datastructure
+        """
+        assert "cookie" in d
+        assert "CoOkIe" in d
+        assert "Not a cookie" not in d
+
+        marker = object()
+        d._container[marker] = ["some", "strings"]
+        assert marker not in d
+        assert marker in d._container

@@ -19,7 +19,7 @@ from typing import (
     overload,
 )
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: nocover
     from threading import RLock
 
     # We can only import Protocol if TYPE_CHECKING because it's a development
@@ -120,16 +120,17 @@ class RecentlyUsedContainer(Generic[_KT, _VT], MutableMapping[_KT, _VT]):
         evicted_value = None
         with self.lock:
             # Possibly evict the existing value of 'key'
-            if key in self._container:
+            try:
                 # If the key exists, we'll overwrite it, which won't change the
                 # size of the pool. Because accessing a key should move it to
                 # the end of the eviction line, we pop it out first.
                 evicted_value = self._container.pop(key)
-            elif len(self._container) >= self._maxsize:
-                # If we didn't evict an existing value, and we've hit our maximum
-                # size, then we have to evict the least recently used item from
-                # the beginning of the container.
-                _, evicted_value = self._container.popitem(last=False)
+            except KeyError:
+                if len(self._container) >= self._maxsize:
+                    # If we didn't evict an existing value, and we've hit our maximum
+                    # size, then we have to evict the least recently used item from
+                    # the beginning of the container.
+                    _, evicted_value = self._container.popitem(last=False)
 
             # Finally, insert the new value.
             self._container[key] = value
@@ -167,10 +168,6 @@ class RecentlyUsedContainer(Generic[_KT, _VT], MutableMapping[_KT, _VT]):
     def keys(self) -> Set[_KT]:
         with self.lock:
             return set(self._container.keys())
-
-    def ordered_keys(self) -> List[_KT]:
-        with self.lock:
-            return list(self._container.keys())
 
 
 class HTTPHeaderDictItemView(Set[Tuple[str, str]]):
@@ -354,11 +351,11 @@ class HTTPHeaderDict(MutableMapping[str, str]):
             self.add(key, value)
 
     @overload
-    def getlist(self, key: str) -> List[str]:
+    def getlist(self, key: str) -> List[str]:  # pragma: no cover
         ...
 
     @overload
-    def getlist(self, key: str, default: List[str]) -> List[str]:
+    def getlist(self, key: str, default: List[str]) -> List[str]:  # pragma: no cover
         ...
 
     def getlist(self, key: str, default: Optional[List[str]] = None) -> List[str]:
