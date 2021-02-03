@@ -37,6 +37,7 @@ __all__ = (
     "get_host",
     "make_headers",
     "proxy_from_url",
+    "request",
 )
 
 logging.getLogger(__name__).addHandler(NullHandler())
@@ -80,3 +81,15 @@ def disable_warnings(category=exceptions.HTTPWarning):
     Helper for quickly disabling all urllib3 warnings.
     """
     warnings.simplefilter("ignore", category)
+
+
+# A top-level request() method. Not recommended for production use!
+# Recommended for experimenting and quick scripts.
+try:
+    import certifi
+
+    _manager = PoolManager(cert_reqs="CERT_REQUIRED", ca_certs=certifi.where())
+except ImportError:
+    _manager = PoolManager()
+
+request = _manager.request

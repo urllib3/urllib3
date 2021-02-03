@@ -55,6 +55,9 @@ HTTP verb:
 The :ref:`request_data` section covers sending other kinds of requests data,
 including JSON, files, and binary data.
 
+.. note:: For quick scripts and experiments you can also use a top-level ``urllib3.request()``.
+    However, it is not recommended for production use!
+
 .. _response_content:
 
 Response Content
