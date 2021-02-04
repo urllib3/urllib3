@@ -56,7 +56,10 @@ The :ref:`request_data` section covers sending other kinds of requests data,
 including JSON, files, and binary data.
 
 .. note:: For quick scripts and experiments you can also use a top-level ``urllib3.request()``.
-    However, it is not recommended for production use!
+    It uses a module-global ``DEFAULT_POOL`` ``PoolManager`` instance.
+    Because of that, its side effects could be shared across dependencies relying on it.
+    To avoid side effects, create a new ``PoolManager`` instance and use it instead.
+    In addition, the method skips the low level ``**urlopen_kw`` keyword arguments. It is not recommended for use in production.
 
 .. _response_content:
 
