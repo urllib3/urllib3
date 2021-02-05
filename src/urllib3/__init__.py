@@ -37,7 +37,6 @@ __all__ = (
     "get_host",
     "make_headers",
     "proxy_from_url",
-    "DEFAULT_POOL",
     "request",
 )
 
@@ -85,25 +84,20 @@ def disable_warnings(category=exceptions.HTTPWarning):
 
 
 # PoolManager for a top-level request method.
-# DEFAULT_POOL is a module global PoolManager instance,
+# _DEFAULT_POOL is a module global PoolManager instance,
 # therefore its side effects could be shared across dependencies relying on it.
 # To avoid side effects create a new PoolManager instance and use it instead.
-try:
-    import certifi
-
-    DEFAULT_POOL = PoolManager(cert_reqs="CERT_REQUIRED", ca_certs=certifi.where())
-except ImportError:
-    DEFAULT_POOL = PoolManager()
+_DEFAULT_POOL = PoolManager()
 
 
-def request(method, url, fields=None, headers=None, **urlopen_kw):
+def request(method, url, fields=None, headers=None):
     """
-    Make a request using ``DEFAULT_POOL`` PoolManager instance
-    skipping the ``**urlopen_kw`` keyword arguments.
+    Make a request using ``_DEFAULT_POOL`` PoolManager instance.
 
     A convenience, top-level request method. It uses a module-global ``DEFAULT_POOL`` instance.
     Therefore, its side effects could be shared across dependencies relying on it.
     To avoid side effects create a new PoolManager instance and use it instead.
+    The method does not accept low-level ``**urlopen_kw`` keyword arguments.
     """
 
-    return DEFAULT_POOL.request(method, url, fields, headers)
+    return _DEFAULT_POOL.request(method, url, fields, headers)
