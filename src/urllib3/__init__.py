@@ -83,20 +83,14 @@ def disable_warnings(category=exceptions.HTTPWarning):
     warnings.simplefilter("ignore", category)
 
 
-# PoolManager for a top-level request method.
-# _DEFAULT_POOL is a module global PoolManager instance,
-# therefore its side effects could be shared across dependencies relying on it.
-# To avoid side effects create a new PoolManager instance and use it instead.
 _DEFAULT_POOL = PoolManager()
 
 
 def request(method, url, fields=None, headers=None):
     """
-    Make a request using ``_DEFAULT_POOL`` PoolManager instance.
-
-    A convenience, top-level request method. It uses a module-global ``DEFAULT_POOL`` instance.
+    A convenience, top-level request method. It uses a module-global ``PoolManager`` instance.
     Therefore, its side effects could be shared across dependencies relying on it.
-    To avoid side effects create a new PoolManager instance and use it instead.
+    To avoid side effects create a new ``PoolManager`` instance and use it instead.
     The method does not accept low-level ``**urlopen_kw`` keyword arguments.
     """
 
