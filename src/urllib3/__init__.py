@@ -37,6 +37,7 @@ __all__ = (
     "get_host",
     "make_headers",
     "proxy_from_url",
+    "request",
 )
 
 logging.getLogger(__name__).addHandler(NullHandler())
@@ -80,3 +81,17 @@ def disable_warnings(category=exceptions.HTTPWarning):
     Helper for quickly disabling all urllib3 warnings.
     """
     warnings.simplefilter("ignore", category)
+
+
+_DEFAULT_POOL = PoolManager()
+
+
+def request(method, url, fields=None, headers=None):
+    """
+    A convenience, top-level request method. It uses a module-global ``PoolManager`` instance.
+    Therefore, its side effects could be shared across dependencies relying on it.
+    To avoid side effects create a new ``PoolManager`` instance and use it instead.
+    The method does not accept low-level ``**urlopen_kw`` keyword arguments.
+    """
+
+    return _DEFAULT_POOL.request(method, url, fields=fields, headers=headers)
