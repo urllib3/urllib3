@@ -94,4 +94,4 @@ def request(method, url, fields=None, headers=None):
     The method does not accept low-level ``**urlopen_kw`` keyword arguments.
     """
 
-    return _DEFAULT_POOL.request(method, url, fields, headers)
+    return _DEFAULT_POOL.request(method, url, fields=fields, headers=headers)
