@@ -30,6 +30,7 @@ def teardown_module():
         pass
 
 
+from ..test_ssl import TestSSL  # noqa: E402, F401
 from ..test_util import TestUtilSSL  # noqa: E402, F401
 from ..with_dummyserver.test_https import (  # noqa: E402, F401
     TestHTTPS,
@@ -44,7 +45,9 @@ from ..with_dummyserver.test_socketlevel import (  # noqa: E402, F401
     TestClientCerts,
     TestSNI,
     TestSocketClosing,
-    TestSSL,
+)
+from ..with_dummyserver.test_socketlevel import (  # noqa: E402, F401
+    TestSSL as TestSocketSSL,
 )
 
 

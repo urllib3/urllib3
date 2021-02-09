@@ -83,26 +83,47 @@ def unsupported_python2(session):
     assert "Unsupported Python version" in process.stderr
 
 
+@nox.session(python=["3"])
+def test_brotlipy(session):
+    """Check that if 'brotlipy' is installed instead of 'brotli' or
+    'brotlicffi' that we still don't blow up.
+    """
+    session.install("brotlipy")
+    tests_impl(session, extras="socks,secure")
+
+
 @nox.session()
 def format(session):
     """Run code formatters."""
-    session.install("black", "isort")
-    session.run("black", *SOURCE_FILES)
-    session.run("isort", *SOURCE_FILES)
+    session.install("pre-commit")
+    session.run("pre-commit", "--version")
+
+    process = subprocess.run(
+        ["pre-commit", "run", "--all-files"],
+        env=session.env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    # Ensure that pre-commit itself ran successfully
+    assert process.returncode in (0, 1)
 
     lint(session)
 
 
 @nox.session
 def lint(session):
-    session.install("flake8", "flake8-2020", "black", "isort", "mypy")
-    session.run("flake8", "--version")
-    session.run("black", "--version")
-    session.run("isort", "--version")
+    session.install("pre-commit")
+    session.run("pre-commit", "run", "--all-files")
+
+    mypy(session)
+
+
+@nox.session()
+def mypy(session):
+    """Run mypy."""
+    session.install("mypy")
     session.run("mypy", "--version")
-    session.run("black", "--check", *SOURCE_FILES)
-    session.run("isort", "--check", *SOURCE_FILES)
-    session.run("flake8", *SOURCE_FILES)
 
     session.log("mypy --strict src/urllib3")
     all_errors, errors = [], []

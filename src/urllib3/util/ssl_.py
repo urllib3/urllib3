@@ -6,7 +6,7 @@ from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
 
 from ..exceptions import ProxySchemeUnsupported, SNIMissingWarning, SSLError
-from .url import BRACELESS_IPV6_ADDRZ_RE, IPV4_RE
+from .url import _BRACELESS_IPV6_ADDRZ_RE, _IPV4_RE
 
 SSLContext = None
 SSLTransport = None
@@ -14,9 +14,23 @@ HAS_SNI = False
 IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
 ALPN_PROTOCOLS = ["http/1.1"]
+USE_DEFAULT_SSLCONTEXT_CIPHERS = False
 
 # Maps the length of a digest to a possible hash function producing this digest
 HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
+
+
+def _is_ge_openssl_v1_1_1(
+    openssl_version_text: str, openssl_version_number: int
+) -> bool:
+    """Returns True for OpenSSL 1.1.1+ (>=0x10101000)
+    LibreSSL reports a version number of 0x20000000 for
+    OpenSSL version number so we need to filter out LibreSSL.
+    """
+    return (
+        not openssl_version_text.startswith("LibreSSL")
+        and openssl_version_number >= 0x10101000
+    )
 
 
 try:  # Do we have ssl at all?
@@ -26,12 +40,17 @@ try:  # Do we have ssl at all?
         HAS_SNI,
         OP_NO_COMPRESSION,
         OP_NO_TICKET,
+        OPENSSL_VERSION,
+        OPENSSL_VERSION_NUMBER,
         PROTOCOL_TLS,
         OP_NO_SSLv2,
         OP_NO_SSLv3,
         SSLContext,
     )
 
+    USE_DEFAULT_SSLCONTEXT_CIPHERS = _is_ge_openssl_v1_1_1(
+        OPENSSL_VERSION, OPENSSL_VERSION_NUMBER
+    )
     PROTOCOL_SSLv23 = PROTOCOL_TLS
     from .ssltransport import SSLTransport
 except ImportError:
@@ -75,6 +94,7 @@ DEFAULT_CIPHERS = ":".join(
         "!eNULL",
         "!MD5",
         "!DSS",
+        "!AESCCM",
     ]
 )
 
@@ -176,14 +196,18 @@ def create_urllib3_context(
         Specific OpenSSL options. These default to ``ssl.OP_NO_SSLv2``,
         ``ssl.OP_NO_SSLv3``, ``ssl.OP_NO_COMPRESSION``, and ``ssl.OP_NO_TICKET``.
     :param ciphers:
-        Which cipher suites to allow the server to select.
+        Which cipher suites to allow the server to select. Defaults to either system configured
+        ciphers if OpenSSL 1.1.1+, otherwise uses a secure default set of ciphers.
     :returns:
         Constructed SSLContext object with specified options
     :rtype: SSLContext
     """
     context = SSLContext(ssl_version or PROTOCOL_TLS)
 
-    context.set_ciphers(ciphers or DEFAULT_CIPHERS)
+    # Unless we're given ciphers defer to either system ciphers in
+    # the case of OpenSSL 1.1.1+ or use our own secure default ciphers.
+    if ciphers is not None or not USE_DEFAULT_SSLCONTEXT_CIPHERS:
+        context.set_ciphers(ciphers or DEFAULT_CIPHERS)
 
     # Setting the default here, as we may have no ssl module on import
     cert_reqs = ssl.CERT_REQUIRED if cert_reqs is None else cert_reqs
@@ -346,7 +370,7 @@ def is_ipaddress(hostname):
     if isinstance(hostname, bytes):
         # IDN A-label bytes are ASCII compatible.
         hostname = hostname.decode("ascii")
-    return bool(IPV4_RE.match(hostname) or BRACELESS_IPV6_ADDRZ_RE.match(hostname))
+    return bool(_IPV4_RE.match(hostname) or _BRACELESS_IPV6_ADDRZ_RE.match(hostname))
 
 
 def _is_key_file_encrypted(key_file):

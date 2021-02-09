@@ -4,7 +4,7 @@ import socket
 import ssl
 import warnings
 from itertools import chain
-from test import notBrotlipy, onlyBrotlipy
+from test import notBrotli, onlyBrotli
 from unittest.mock import Mock, patch
 
 import pytest
@@ -25,7 +25,7 @@ from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
 from urllib3.util.ssl_ import resolve_cert_reqs, resolve_ssl_version, ssl_wrap_socket
 from urllib3.util.timeout import Timeout
-from urllib3.util.url import Url, get_host, parse_url, split_first
+from urllib3.util.url import Url, _encode_invalid_chars, parse_url
 from urllib3.util.util import to_bytes, to_str
 
 from . import clear_warnings
@@ -125,29 +125,26 @@ class TestUtil:
         ),
     ]
 
-    @pytest.mark.parametrize("url, expected_host", url_host_map)
-    def test_get_host(self, url, expected_host):
-        returned_host = get_host(url)
-        assert returned_host == expected_host
+    @pytest.mark.parametrize(["url", "scheme_host_port"], url_host_map)
+    def test_scheme_host_port(self, url, scheme_host_port):
+        url = parse_url(url)
+        scheme, host, port = scheme_host_port
 
-    # TODO: Add more tests
+        assert (url.scheme or "http") == scheme
+        assert url.hostname == url.host == host
+        assert url.port == port
+
+    def test_encode_invalid_chars_none(self):
+        assert _encode_invalid_chars(None, set()) is None
+
     @pytest.mark.parametrize(
-        "location",
+        "url",
         [
             "http://google.com:foo",
             "http://::1/",
             "http://::1:80/",
             "http://google.com:-80",
             "http://google.com:\xb2\xb2",  # \xb2 = ^2
-        ],
-    )
-    def test_invalid_host(self, location):
-        with pytest.raises(LocationParseError):
-            get_host(location)
-
-    @pytest.mark.parametrize(
-        "url",
-        [
             # Invalid IDNA labels
             "http://\uD7FF.com",
             "http://❤️",
@@ -294,6 +291,7 @@ class TestUtil:
     def test_parse_url(self, url, expected_url):
         returned_url = parse_url(url)
         assert returned_url == expected_url
+        assert returned_url.hostname == returned_url.host == expected_url.host
 
     @pytest.mark.parametrize("url, expected_url", parse_url_host_map)
     def test_unparse_url(self, url, expected_url):
@@ -350,6 +348,7 @@ class TestUtil:
         ("http://google.com:80/mail", "google.com:80"),
         ("google.com/foobar", "google.com"),
         ("google.com:12345", "google.com:12345"),
+        ("/", None),
     ]
 
     @pytest.mark.parametrize("url, expected_netloc", url_netloc_map)
@@ -442,24 +441,24 @@ class TestUtil:
             pytest.param(
                 {"accept_encoding": True},
                 {"accept-encoding": "gzip,deflate,br"},
-                marks=onlyBrotlipy(),
+                marks=onlyBrotli(),
             ),
             pytest.param(
                 {"accept_encoding": True},
                 {"accept-encoding": "gzip,deflate"},
-                marks=notBrotlipy(),
+                marks=notBrotli(),
             ),
             ({"accept_encoding": "foo,bar"}, {"accept-encoding": "foo,bar"}),
             ({"accept_encoding": ["foo", "bar"]}, {"accept-encoding": "foo,bar"}),
             pytest.param(
                 {"accept_encoding": True, "user_agent": "banana"},
                 {"accept-encoding": "gzip,deflate,br", "user-agent": "banana"},
-                marks=onlyBrotlipy(),
+                marks=onlyBrotli(),
             ),
             pytest.param(
                 {"accept_encoding": True, "user_agent": "banana"},
                 {"accept-encoding": "gzip,deflate", "user-agent": "banana"},
-                marks=notBrotlipy(),
+                marks=notBrotli(),
             ),
             ({"user_agent": "banana"}, {"user-agent": "banana"}),
             ({"keep_alive": True}, {"connection": "keep-alive"}),
@@ -511,21 +510,6 @@ class TestUtil:
 
         with pytest.raises(UnrewindableBodyError):
             rewind_body(BadSeek(), body_pos=2)
-
-    @pytest.mark.parametrize(
-        "input, expected",
-        [
-            (("abcd", "b"), ("a", "cd", "b")),
-            (("abcd", "cb"), ("a", "cd", "b")),
-            (("abcd", ""), ("abcd", "", None)),
-            (("abcd", "a"), ("", "bcd", "a")),
-            (("abcd", "ab"), ("", "bcd", "a")),
-            (("abcd", "eb"), ("a", "cd", "b")),
-        ],
-    )
-    def test_split_first(self, input, expected):
-        output = split_first(*input)
-        assert output == expected
 
     def test_add_stderr_logger(self):
         handler = add_stderr_logger(level=logging.INFO)  # Don't actually print debug
