@@ -203,7 +203,8 @@ class HTTPConnection(_HTTPConnection):
             for key, value in list(headers.items()):
                 if isinstance(key, bytes):
                     headers.pop(key)
-                    headers[key.decode()] = value
+                    # httplib would have decoded to latin-1 anyway
+                    headers[key.decode("latin-1")] = value
 
         if "user-agent" not in (to_str(k.lower()) for k in headers):
             headers["User-Agent"] = _get_default_user_agent()
