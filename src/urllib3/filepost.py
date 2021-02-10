@@ -2,20 +2,29 @@ import binascii
 import codecs
 import os
 from io import BytesIO
+from typing import Dict, Iterable, Optional, Sequence, Tuple, Union
 
-from .fields import RequestField
+from .fields import _TYPE_FIELD_VALUE_TUPLE, RequestField
 
 writer = codecs.lookup("utf-8")[3]
 
+_TYPE_FIELDS_SEQUENCE = Sequence[
+    Union[Tuple[str, _TYPE_FIELD_VALUE_TUPLE], RequestField]
+]
+_TYPE_FIELDS = Union[
+    _TYPE_FIELDS_SEQUENCE,
+    Dict[str, _TYPE_FIELD_VALUE_TUPLE],
+]
 
-def choose_boundary():
+
+def choose_boundary() -> str:
     """
     Our embarrassingly-simple replacement for mimetools.choose_boundary.
     """
     return binascii.hexlify(os.urandom(16)).decode()
 
 
-def iter_field_objects(fields):
+def iter_field_objects(fields: _TYPE_FIELDS) -> Iterable[RequestField]:
     """
     Iterate over fields.
 
@@ -23,37 +32,23 @@ def iter_field_objects(fields):
     :class:`~urllib3.fields.RequestField`.
 
     """
-    if isinstance(fields, dict):
-        i = fields.items()
-    else:
-        i = iter(fields)
+    iterable: Iterable[Union[RequestField, Tuple[str, _TYPE_FIELD_VALUE_TUPLE]]]
 
-    for field in i:
+    if isinstance(fields, dict):
+        iterable = fields.items()
+    else:
+        iterable = fields
+
+    for field in iterable:
         if isinstance(field, RequestField):
             yield field
         else:
             yield RequestField.from_tuples(*field)
 
 
-def iter_fields(fields):
-    """
-    .. deprecated:: 1.6
-
-    Iterate over fields.
-
-    The addition of :class:`~urllib3.fields.RequestField` makes this function
-    obsolete. Instead, use :func:`iter_field_objects`, which returns
-    :class:`~urllib3.fields.RequestField` objects.
-
-    Supports list of (k, v) tuples and dicts.
-    """
-    if isinstance(fields, dict):
-        return ((k, v) for k, v in fields.items())
-
-    return ((k, v) for k, v in fields)
-
-
-def encode_multipart_formdata(fields, boundary=None):
+def encode_multipart_formdata(
+    fields: _TYPE_FIELDS, boundary: Optional[str] = None
+) -> Tuple[bytes, str]:
     """
     Encode a dictionary of ``fields`` using the multipart/form-data MIME format.
 
@@ -86,6 +81,6 @@ def encode_multipart_formdata(fields, boundary=None):
 
     body.write(f"--{boundary}--\r\n".encode("latin-1"))
 
-    content_type = str(f"multipart/form-data; boundary={boundary}")
+    content_type = f"multipart/form-data; boundary={boundary}"
 
     return body.getvalue(), content_type
