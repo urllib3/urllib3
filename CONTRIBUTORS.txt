@@ -309,5 +309,8 @@ In chronological order:
 * [Franciszek Magiera] <https://github.com/franekmagiera>
   * Add top-level request method.
 
+* [Tanya] <https://github.com/TanyaEleventhGoddess>
+  * Add check for pool arguments in order to avoid errors with versions change
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

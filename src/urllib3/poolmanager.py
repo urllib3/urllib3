@@ -164,7 +164,12 @@ class PoolManager(RequestMethods):
 
     def __init__(self, num_pools=10, headers=None, **connection_pool_kw):
         super().__init__(headers)
-        self.connection_pool_kw = connection_pool_kw
+        # Discards unknown pool kwargs
+        self.connection_pool_kw = {
+            k: connection_pool_kw[k]
+            for k in connection_pool_kw
+            if "key_" + k in _key_fields
+        }
         self.pools = RecentlyUsedContainer(num_pools, dispose_func=lambda p: p.close())
 
         # Locally set the pool classes and keys so other PoolManagers can
@@ -310,7 +315,7 @@ class PoolManager(RequestMethods):
                         del base_pool_kwargs[key]
                     except KeyError:
                         pass
-                else:
+                elif "key_" + key in _key_fields:
                     base_pool_kwargs[key] = value
         return base_pool_kwargs
 
