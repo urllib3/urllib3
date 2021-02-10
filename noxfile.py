@@ -9,6 +9,7 @@ import nox
 # ignored.
 TYPED_FILES = {
     "src/urllib3/contrib/__init__.py",
+    "src/urllib3/_collections.py",
     "src/urllib3/exceptions.py",
     "src/urllib3/fields.py",
     "src/urllib3/filepost.py",

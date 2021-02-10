@@ -1,16 +1,36 @@
 import sys
 from collections import OrderedDict
-from collections.abc import Mapping, MutableMapping
+from types import TracebackType
+from typing import (
+    Any,
+    Callable,
+    Iterator,
+    List,
+    Mapping,
+    MutableMapping,
+    NoReturn,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
 try:
     from threading import RLock
 except ImportError:  # Platform-specific: No threads available
 
-    class RLock:
-        def __enter__(self):
+    class RLock:  # type: ignore
+        def __enter__(self) -> None:
             pass
 
-        def __exit__(self, exc_type, exc_value, traceback):
+        def __exit__(
+            self,
+            exc_type: Optional[Type[BaseException]],
+            exc_value: Optional[BaseException],
+            traceback: Optional[TracebackType],
+        ) -> None:
             pass
 
 
@@ -30,8 +50,11 @@ __all__ = ["RecentlyUsedContainer", "HTTPHeaderDict"]
 
 _Null = object()
 
+_KT = TypeVar("_KT")
+_VT = TypeVar("_VT")
 
-class RecentlyUsedContainer(MutableMapping):
+
+class RecentlyUsedContainer(MutableMapping[_KT, _VT]):
     """
     Provides a thread-safe dict-like container which maintains up to
     ``maxsize`` keys while throwing away the least-recently-used keys beyond
@@ -47,21 +70,23 @@ class RecentlyUsedContainer(MutableMapping):
 
     ContainerCls = OrderedDict
 
-    def __init__(self, maxsize=10, dispose_func=None):
+    def __init__(
+        self, maxsize: int = 10, dispose_func: Optional[Callable[[_VT], None]] = None
+    ) -> None:
         self._maxsize = maxsize
         self.dispose_func = dispose_func
 
-        self._container = self.ContainerCls()
+        self._container: OrderedDict[_KT, _VT] = self.ContainerCls()
         self.lock = RLock()
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: _KT) -> _VT:
         # Re-insert the item, moving it to the end of the eviction line.
         with self.lock:
             item = self._container.pop(key)
             self._container[key] = item
             return item
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: _KT, value: _VT) -> None:
         evicted_value = _Null
         with self.lock:
             # Possibly evict the existing value of 'key'
@@ -74,25 +99,25 @@ class RecentlyUsedContainer(MutableMapping):
                 _key, evicted_value = self._container.popitem(last=False)
 
         if self.dispose_func and evicted_value is not _Null:
-            self.dispose_func(evicted_value)
+            self.dispose_func(cast(_VT, evicted_value))
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: _KT) -> None:
         with self.lock:
             value = self._container.pop(key)
 
         if self.dispose_func:
             self.dispose_func(value)
 
-    def __len__(self):
+    def __len__(self) -> int:
         with self.lock:
             return len(self._container)
 
-    def __iter__(self):
+    def __iter__(self) -> NoReturn:
         raise NotImplementedError(
             "Iteration over this class is unlikely to be threadsafe."
         )
 
-    def clear(self):
+    def clear(self) -> None:
         with self.lock:
             # Copy pointers to all values, then wipe the mapping
             values = list(self._container.values())
@@ -102,12 +127,12 @@ class RecentlyUsedContainer(MutableMapping):
             for value in values:
                 self.dispose_func(value)
 
-    def keys(self):
+    def keys(self) -> List[_KT]:  # type: ignore
         with self.lock:
             return list(self._container.keys())
 
 
-class HTTPHeaderDict(MutableMapping):
+class HTTPHeaderDict(MutableMapping[str, str]):
     """
     :param headers:
         An iterable of field-value pairs. Must not contain multiple field names
@@ -141,9 +166,19 @@ class HTTPHeaderDict(MutableMapping):
     '7'
     """
 
-    def __init__(self, headers=None, **kwargs):
+    def __init__(
+        self,
+        headers: Optional[
+            Union[
+                "HTTPHeaderDict",
+                Mapping[str, str],
+                Iterator[Tuple[str, str]],
+            ]
+        ] = None,
+        **kwargs: str,
+    ) -> None:
         super().__init__()
-        self._container = _ordered_dict()
+        self._container: MutableMapping[str, List[str]] = _ordered_dict()
         if headers is not None:
             if isinstance(headers, HTTPHeaderDict):
                 self._copy_from(headers)
@@ -152,21 +187,23 @@ class HTTPHeaderDict(MutableMapping):
         if kwargs:
             self.extend(kwargs)
 
-    def __setitem__(self, key, val):
+    def __setitem__(self, key: str, val: str) -> None:
         self._container[key.lower()] = [key, val]
-        return self._container[key.lower()]
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> str:
         val = self._container[key.lower()]
         return ", ".join(val[1:])
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> None:
         del self._container[key.lower()]
 
-    def __contains__(self, key):
-        return key.lower() in self._container
+    def __contains__(self, key: object) -> bool:
+        if hasattr(key, "lower"):
+            return cast(str, key).lower() in self._container
+        else:
+            return False
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Mapping) and not hasattr(other, "keys"):
             return False
         if not isinstance(other, type(self)):
@@ -175,20 +212,20 @@ class HTTPHeaderDict(MutableMapping):
             k.lower(): v for k, v in other.itermerged()
         }
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self.__eq__(other)
 
     __marker = object()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._container)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         # Only provide the originally cased names
         for vals in self._container.values():
             yield vals[0]
 
-    def pop(self, key, default=__marker):
+    def pop(self, key: str, default: Union[str, object] = __marker) -> str:
         """D.pop(k[,d]) -> v, remove specified key and return the corresponding value.
         If key is not found, d is returned if given, otherwise KeyError is raised.
         """
@@ -200,18 +237,18 @@ class HTTPHeaderDict(MutableMapping):
         except KeyError:
             if default is self.__marker:
                 raise
-            return default
+            return cast(str, default)
         else:
             del self[key]
             return value
 
-    def discard(self, key):
+    def discard(self, key: str) -> None:
         try:
             del self[key]
         except KeyError:
             pass
 
-    def add(self, key, val):
+    def add(self, key: str, val: str) -> None:
         """Adds a (name, value) pair, doesn't overwrite the value if it already
         exists.
 
@@ -227,7 +264,15 @@ class HTTPHeaderDict(MutableMapping):
         if new_vals is not vals:
             vals.append(val)
 
-    def extend(self, *args, **kwargs):
+    def extend(
+        self,
+        *args: Union[
+            "HTTPHeaderDict",
+            Mapping[str, str],
+            Iterator[Tuple[str, str]],
+        ],
+        **kwargs: str,
+    ) -> None:
         """Generic import function for any type of header-like object.
         Adapted version of MutableMapping.update in order to insert items
         with self.add instead of self.__setitem__
@@ -245,8 +290,8 @@ class HTTPHeaderDict(MutableMapping):
             for key in other:
                 self.add(key, other[key])
         elif hasattr(other, "keys"):
-            for key in other.keys():
-                self.add(key, other[key])
+            for key in other.keys():  # type: ignore
+                self.add(key, other[key])  # type: ignore
         else:
             for key, value in other:
                 self.add(key, value)
@@ -254,7 +299,9 @@ class HTTPHeaderDict(MutableMapping):
         for key, value in kwargs.items():
             self.add(key, value)
 
-    def getlist(self, key, default=__marker):
+    def getlist(
+        self, key: str, default: Union[List[str], object] = __marker
+    ) -> List[str]:
         """Returns a list of all the values for the named field. Returns an
         empty list if the key doesn't exist."""
         try:
@@ -262,7 +309,7 @@ class HTTPHeaderDict(MutableMapping):
         except KeyError:
             if default is self.__marker:
                 return []
-            return default
+            return cast(List[str], default)
         else:
             return vals[1:]
 
@@ -274,10 +321,10 @@ class HTTPHeaderDict(MutableMapping):
     # Backwards compatibility for http.cookiejar
     get_all = getlist
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__name__}({dict(self.itermerged())})"
 
-    def _copy_from(self, other):
+    def _copy_from(self, other: "HTTPHeaderDict") -> None:
         for key in other:
             val = other.getlist(key)
             if isinstance(val, list):
@@ -285,23 +332,23 @@ class HTTPHeaderDict(MutableMapping):
                 val = list(val)
             self._container[key.lower()] = [key] + val
 
-    def copy(self):
+    def copy(self) -> "HTTPHeaderDict":
         clone = type(self)()
         clone._copy_from(self)
         return clone
 
-    def iteritems(self):
+    def iteritems(self) -> Iterator[Tuple[str, str]]:
         """Iterate over all header lines, including duplicate ones."""
         for key in self:
             vals = self._container[key.lower()]
             for val in vals[1:]:
                 yield vals[0], val
 
-    def itermerged(self):
+    def itermerged(self) -> Iterator[Tuple[str, str]]:
         """Iterate over all headers, merging duplicate ones together."""
         for key in self:
             val = self._container[key.lower()]
             yield val[0], ", ".join(val[1:])
 
-    def items(self):
+    def items(self) -> List[Tuple[str, str]]:  # type: ignore
         return list(self.iteritems())
