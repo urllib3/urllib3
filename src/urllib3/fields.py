@@ -93,7 +93,7 @@ def _replace_multiple(value: str, needles_and_replacements: Mapping[str, str]) -
     return result
 
 
-def format_header_param_html5(name: str, value: Union[str, bytes]) -> str:
+def format_header_param_html5(name: str, value: _TYPE_FIELD_VALUE) -> str:
     """
     Helper function to format and quote a single header parameter using the
     HTML5 strategy.
