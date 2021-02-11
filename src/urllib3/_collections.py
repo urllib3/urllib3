@@ -207,8 +207,12 @@ class HTTPHeaderDictItemView(Set[Tuple[str, str]]):
     def __iter__(self) -> Iterator[Tuple[str, str]]:
         return self.headers.iteritems()
 
-    def __contains__(self, key: object) -> bool:
-        return key in self.headers
+    def __contains__(self, item: object) -> bool:
+        if isinstance(item, tuple) and len(item) == 2:
+            passed_key, passed_val = item
+            if isinstance(passed_key, str) and isinstance(passed_val, str):
+                return self.headers.has_value_for_header(passed_key, passed_val)
+        return False
 
 
 class HTTPHeaderDict(MutableMapping[str, str]):
@@ -406,3 +410,8 @@ class HTTPHeaderDict(MutableMapping[str, str]):
 
     def items(self) -> HTTPHeaderDictItemView:
         return HTTPHeaderDictItemView(self)
+
+    def has_value_for_header(self, header_name: str, potential_value: str) -> bool:
+        if header_name in self:
+            return potential_value in self._container[header_name.lower()][1:]
+        return False 

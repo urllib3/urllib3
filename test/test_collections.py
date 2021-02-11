@@ -321,8 +321,10 @@ class TestHTTPHeaderDict:
             ("Cookie", "foo"),
             ("Cookie", "bar"),
         ]
-        assert "Cookie" in items
-        assert "X-Some-Header" not in items
+        assert ("Cookie", "foo") in items
+        assert ("Cookie", "bar") in items
+        assert ("X-Some-Header", "foo") not in items
+        assert ("Cookie", "not_present") not in items
 
     def test_dict_conversion(self, d):
         # Also tested in connectionpool, needs to preserve case
