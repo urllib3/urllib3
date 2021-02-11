@@ -19,7 +19,7 @@ from typing import (
     overload,
 )
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from threading import RLock
 
     # We can only import Protocol if TYPE_CHECKING because it's a development
@@ -351,12 +351,12 @@ class HTTPHeaderDict(MutableMapping[str, str]):
             self.add(key, value)
 
     @overload
-    def getlist(self, key: str) -> List[str]:  # pragma: no cover
-        ...  # pragma: no cover
+    def getlist(self, key: str) -> List[str]:
+        ...
 
     @overload
-    def getlist(self, key: str, default: List[str]) -> List[str]:  # pragma: no cover
-        ...  # pragma: no cover
+    def getlist(self, key: str, default: List[str]) -> List[str]:
+        ...
 
     def getlist(self, key: str, default: Optional[List[str]] = None) -> List[str]:
         """Returns a list of all the values for the named field. Returns an
