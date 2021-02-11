@@ -19,19 +19,19 @@ from typing import (
     overload,
 )
 
-if TYPE_CHECKING:  # pragma: nocover
+if TYPE_CHECKING:  # pragma: no cover
     from threading import RLock
 
     # We can only import Protocol if TYPE_CHECKING because it's a development
     # dependency, and is not available at runtime.
     from typing_extensions import Protocol
 
-    class HasGettableStringKeys(Protocol):  # pragma: nocover
-        def keys(self) -> Iterator[str]:  # pragma: nocover
-            ...  # pragma: nocover
+    class HasGettableStringKeys(Protocol):
+        def keys(self) -> Iterator[str]:
+            ...
 
-        def __getitem__(self, key: str) -> str:  # pragma: nocover
-            ...  # pragma: nocover
+        def __getitem__(self, key: str) -> str:
+            ...
 
 
 else:
@@ -352,11 +352,11 @@ class HTTPHeaderDict(MutableMapping[str, str]):
 
     @overload
     def getlist(self, key: str) -> List[str]:  # pragma: no cover
-        ...  # pragma: nocover
+        ...  # pragma: no cover
 
     @overload
     def getlist(self, key: str, default: List[str]) -> List[str]:  # pragma: no cover
-        ...  # pragma: nocover
+        ...  # pragma: no cover
 
     def getlist(self, key: str, default: Optional[List[str]] = None) -> List[str]:
         """Returns a list of all the values for the named field. Returns an
