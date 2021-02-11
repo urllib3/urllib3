@@ -72,8 +72,7 @@ class ProxyError(HTTPError):
 class HTTPSProxyError(ProxyError):
     """Used only when establishing a TLS connection to a proxy"""
 
-    def __init__(self, message, error, *args):
-        super().__init__(message, error, *args)
+    pass
 
 
 class DecodeError(HTTPError):

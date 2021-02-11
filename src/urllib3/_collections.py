@@ -26,12 +26,12 @@ if TYPE_CHECKING:  # pragma: nocover
     # dependency, and is not available at runtime.
     from typing_extensions import Protocol
 
-    class HasGettableStringKeys(Protocol):
-        def keys(self) -> Iterator[str]:
-            ...
+    class HasGettableStringKeys(Protocol):  # pragma: nocover
+        def keys(self) -> Iterator[str]:  # pragma: nocover
+            ...  # pragma: nocover
 
-        def __getitem__(self, key: str) -> str:
-            ...
+        def __getitem__(self, key: str) -> str:  # pragma: nocover
+            ...  # pragma: nocover
 
 
 else:
@@ -352,11 +352,11 @@ class HTTPHeaderDict(MutableMapping[str, str]):
 
     @overload
     def getlist(self, key: str) -> List[str]:  # pragma: no cover
-        ...
+        ...  # pragma: nocover
 
     @overload
     def getlist(self, key: str, default: List[str]) -> List[str]:  # pragma: no cover
-        ...
+        ...  # pragma: nocover
 
     def getlist(self, key: str, default: Optional[List[str]] = None) -> List[str]:
         """Returns a list of all the values for the named field. Returns an
