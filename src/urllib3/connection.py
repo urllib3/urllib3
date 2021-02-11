@@ -7,6 +7,7 @@ import warnings
 from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException  # noqa: F401
 from socket import timeout as SocketTimeout
+from typing import Any, List, Mapping, Optional, Tuple
 
 from .util.proxy import create_proxy_ssl_context
 from .util.util import to_str
@@ -49,6 +50,8 @@ RECENT_DATE = datetime.date(2020, 7, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
+SocketOptions = List[Tuple[int, int, int]]
+
 
 class HTTPConnection(_HTTPConnection):
     """
@@ -75,31 +78,53 @@ class HTTPConnection(_HTTPConnection):
       Or you may want to disable the defaults by passing an empty list (e.g., ``[]``).
     """
 
-    default_port = port_by_scheme["http"]
+    default_port: int = port_by_scheme["http"]
 
+    # TODO: Move this:
     #: Disable Nagle's algorithm by default.
     #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
-    default_socket_options = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
+    default_socket_options: SocketOptions = [
+        (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+    ]  # More specific, list of tuples of ints doesnt say much.
 
     #: Whether this connection verifies the host's certificate.
-    is_verified = False
+    is_verified: bool = False
 
-    def __init__(self, *args, **kw):
+    source_address: Optional[Tuple[str, int]]
+    socket_options: SocketOptions
+
+    def __init__(
+        self,
+        host: str,
+        port: Optional[int] = None,
+        timeout: Optional[float] = socket._GLOBAL_DEFAULT_TIMEOUT,
+        source_address: Optional[Tuple[str, int]] = None,
+        blocksize: int = 8192,
+        socket_options: SocketOptions = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)],
+        proxy: Optional[Any] = None,
+        proxy_config: Optional[Any] = None,
+    ) -> None:
         # Pre-set source_address.
-        self.source_address = kw.get("source_address")
+        self.source_address = source_address
 
         #: The socket options provided by the user. If no options are
         #: provided, we use the default options.
-        self.socket_options = kw.pop("socket_options", self.default_socket_options)
+        self.socket_options = socket_options
 
         # Proxy options provided by the user.
-        self.proxy = kw.pop("proxy", None)
-        self.proxy_config = kw.pop("proxy_config", None)
+        self.proxy = proxy
+        self.proxy_config = proxy_config
 
-        super().__init__(*args, **kw)
+        super().__init__(
+            host=host,
+            port=port,
+            timeout=timeout,
+            source_address=source_address,
+            blocksize=blocksize,
+        )
 
     @property
-    def host(self):
+    def host(self) -> str:
         """
         Getter method to remove any trailing dots that indicate the hostname is an FQDN.
 
@@ -118,7 +143,7 @@ class HTTPConnection(_HTTPConnection):
         return self._dns_host.rstrip(".")
 
     @host.setter
-    def host(self, value):
+    def host(self, value: str) -> None:
         """
         Setter for the `host` property.
 
@@ -127,21 +152,18 @@ class HTTPConnection(_HTTPConnection):
         """
         self._dns_host = value
 
-    def _new_conn(self):
+    def _new_conn(self) -> socket.socket:
         """Establish a socket connection and set nodelay settings on it.
 
         :return: New socket connection.
         """
-        extra_kw = {}
-        if self.source_address:
-            extra_kw["source_address"] = self.source_address
-
-        if self.socket_options:
-            extra_kw["socket_options"] = self.socket_options
 
         try:
             conn = connection.create_connection(
-                (self._dns_host, self.port), self.timeout, **extra_kw
+                (self._dns_host, self.port),
+                self.timeout,
+                source_address=self.source_address,
+                socket_options=self.socket_options,
             )
 
         except SocketTimeout:
@@ -155,10 +177,10 @@ class HTTPConnection(_HTTPConnection):
 
         return conn
 
-    def _is_using_tunnel(self):
+    def _is_using_tunnel(self) -> Optional[str]:
         return self._tunnel_host
 
-    def _prepare_conn(self, conn):
+    def _prepare_conn(self, conn: socket.socket) -> None:
         self.sock = conn
         if self._is_using_tunnel():
             # TODO: Fix tunnel so it doesn't depend on self.sock state.
@@ -166,11 +188,17 @@ class HTTPConnection(_HTTPConnection):
             # Mark this connection as not reusable
             self.auto_open = 0
 
-    def connect(self):
+    def connect(self) -> None:
         conn = self._new_conn()
         self._prepare_conn(conn)
 
-    def putrequest(self, method, url, *args, **kwargs):
+    def putrequest(
+        self,
+        method: str,
+        url: str,
+        skip_host: bool = False,
+        skip_accept_encoding: bool = False,
+    ) -> None:
         """"""
         # Empty docstring because the indentation of CPython's implementation
         # is broken but we don't want this method in our documentation.
@@ -180,9 +208,11 @@ class HTTPConnection(_HTTPConnection):
                 f"Method cannot contain non-token characters {method!r} (found at least {match.group()!r})"
             )
 
-        return super().putrequest(method, url, *args, **kwargs)
+        return super().putrequest(
+            method, url, skip_host=skip_host, skip_accept_encoding=skip_accept_encoding
+        )
 
-    def putheader(self, header, *values):
+    def putheader(self, header: str, *values: str) -> None:
         """"""
         if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
             super().putheader(header, *values)
@@ -193,22 +223,37 @@ class HTTPConnection(_HTTPConnection):
                 )
             )
 
-    def request(self, method, url, body=None, headers=None):
-        if headers is None:
-            headers = {}
-        else:
-            # Avoid modifying the headers passed into .request()
-            headers = headers.copy()
+    def request(
+        self,
+        method: str,
+        url: str,
+        body: Optional[Any] = None,
+        headers: Mapping[str, str] = {},
+        *,
+        encode_chunked: bool = False,
+    ) -> None:
+        # Avoid modifying the headers passed into .request()
+        headers = headers.copy()
         if "user-agent" not in (to_str(k.lower()) for k in headers):
             headers["User-Agent"] = _get_default_user_agent()
         super().request(method, url, body=body, headers=headers)
 
-    def request_chunked(self, method, url, body=None, headers=None):
+    # TODO: think about this:
+    # request accepts encode_chunked so why need request_chunked? which python versions support encode_chunked in request?
+    # types for proxy, proxy config, body (http.client uses _DataType = Union[bytes, IO[Any], Iterable[bytes], str])
+    # how is chunked encoding implemented - how large paylaods does it send?
+
+    def request_chunked(
+        self,
+        method: str,
+        url: str,
+        body: Optional[Any] = None,
+        headers: Mapping[str, str] = {},
+    ) -> None:
         """
         Alternative to the common request method, which sends the
         body with chunked encoding and not as one block
         """
-        headers = headers or {}
         header_keys = {to_str(k.lower()) for k in headers}
         skip_accept_encoding = "accept-encoding" in header_keys
         skip_host = "host" in header_keys
