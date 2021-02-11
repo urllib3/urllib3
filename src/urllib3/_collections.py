@@ -14,7 +14,6 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    cast,
 )
 
 try:
@@ -69,14 +68,17 @@ class RecentlyUsedContainer(MutableMapping[_KT, _VT]):
     """
 
     ContainerCls = OrderedDict
+    _container: "OrderedDict[_KT, _VT]"
+    dispose_func: Optional[Callable[[_VT], None]]
+    _maxsize: int
+    lock: RLock
 
     def __init__(
         self, maxsize: int = 10, dispose_func: Optional[Callable[[_VT], None]] = None
     ) -> None:
         self._maxsize = maxsize
         self.dispose_func = dispose_func
-
-        self._container: OrderedDict[_KT, _VT] = self.ContainerCls()
+        self._container = self.ContainerCls()
         self.lock = RLock()
 
     def __getitem__(self, key: _KT) -> _VT:
@@ -87,10 +89,10 @@ class RecentlyUsedContainer(MutableMapping[_KT, _VT]):
             return item
 
     def __setitem__(self, key: _KT, value: _VT) -> None:
-        evicted_value = _Null
+        evicted_value: Optional[_VT] = None
         with self.lock:
             # Possibly evict the existing value of 'key'
-            evicted_value = self._container.get(key, _Null)
+            evicted_value = self._container.get(key, None)
             self._container[key] = value
 
             # If we didn't evict an existing value, we might have to evict the
@@ -98,8 +100,8 @@ class RecentlyUsedContainer(MutableMapping[_KT, _VT]):
             if len(self._container) > self._maxsize:
                 _key, evicted_value = self._container.popitem(last=False)
 
-        if self.dispose_func and evicted_value is not _Null:
-            self.dispose_func(cast(_VT, evicted_value))
+        if self.dispose_func and evicted_value is not None:
+            self.dispose_func(evicted_value)
 
     def __delitem__(self, key: _KT) -> None:
         with self.lock:
@@ -166,6 +168,8 @@ class HTTPHeaderDict(MutableMapping[str, str]):
     '7'
     """
 
+    _container: MutableMapping[str, List[str]]
+
     def __init__(
         self,
         headers: Optional[
@@ -178,7 +182,7 @@ class HTTPHeaderDict(MutableMapping[str, str]):
         **kwargs: str,
     ) -> None:
         super().__init__()
-        self._container: MutableMapping[str, List[str]] = _ordered_dict()
+        self._container = _ordered_dict()
         if headers is not None:
             if isinstance(headers, HTTPHeaderDict):
                 self._copy_from(headers)
@@ -198,8 +202,8 @@ class HTTPHeaderDict(MutableMapping[str, str]):
         del self._container[key.lower()]
 
     def __contains__(self, key: object) -> bool:
-        if hasattr(key, "lower"):
-            return cast(str, key).lower() in self._container
+        if isinstance(key, str):
+            return key.lower() in self._container
         else:
             return False
 
@@ -215,8 +219,6 @@ class HTTPHeaderDict(MutableMapping[str, str]):
     def __ne__(self, other: Any) -> bool:
         return not self.__eq__(other)
 
-    __marker = object()
-
     def __len__(self) -> int:
         return len(self._container)
 
@@ -224,23 +226,6 @@ class HTTPHeaderDict(MutableMapping[str, str]):
         # Only provide the originally cased names
         for vals in self._container.values():
             yield vals[0]
-
-    def pop(self, key: str, default: Union[str, object] = __marker) -> str:
-        """D.pop(k[,d]) -> v, remove specified key and return the corresponding value.
-        If key is not found, d is returned if given, otherwise KeyError is raised.
-        """
-        # Using the MutableMapping function directly fails due to the private marker.
-        # Using ordinary dict.pop would expose the internal structures.
-        # So let's reinvent the wheel.
-        try:
-            value = self[key]
-        except KeyError:
-            if default is self.__marker:
-                raise
-            return cast(str, default)
-        else:
-            del self[key]
-            return value
 
     def discard(self, key: str) -> None:
         try:
@@ -299,17 +284,15 @@ class HTTPHeaderDict(MutableMapping[str, str]):
         for key, value in kwargs.items():
             self.add(key, value)
 
-    def getlist(
-        self, key: str, default: Union[List[str], object] = __marker
-    ) -> List[str]:
+    def getlist(self, key: str, default: Optional[List[str]] = None) -> List[str]:
         """Returns a list of all the values for the named field. Returns an
         empty list if the key doesn't exist."""
         try:
             vals = self._container[key.lower()]
         except KeyError:
-            if default is self.__marker:
+            if default is None:
                 return []
-            return cast(List[str], default)
+            return default
         else:
             return vals[1:]
 
