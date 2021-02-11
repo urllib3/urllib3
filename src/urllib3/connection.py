@@ -4,10 +4,12 @@ import os
 import re
 import socket
 import warnings
+from copy import copy
 from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException  # noqa: F401
 from socket import timeout as SocketTimeout
-from typing import Any, List, Mapping, Optional, Tuple
+from sys import version_info
+from typing import IO, Any, Iterable, List, Mapping, Optional, Tuple, Union
 
 from .util.proxy import create_proxy_ssl_context
 from .util.util import to_str
@@ -52,6 +54,8 @@ _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 SocketOptions = List[Tuple[int, int, int]]
 
+_DefaultType = Union[bytes, IO[Any], Iterable[bytes], str]
+
 
 class HTTPConnection(_HTTPConnection):
     """
@@ -80,19 +84,14 @@ class HTTPConnection(_HTTPConnection):
 
     default_port: int = port_by_scheme["http"]
 
-    # TODO: Move this:
-    #: Disable Nagle's algorithm by default.
-    #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
-    default_socket_options: SocketOptions = [
-        (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-    ]  # More specific, list of tuples of ints doesnt say much.
-
     #: Whether this connection verifies the host's certificate.
     is_verified: bool = False
 
     source_address: Optional[Tuple[str, int]]
     socket_options: SocketOptions
+    _tunnel_host: Optional[str]
 
+    # TODO: what's up with blocksize?
     def __init__(
         self,
         host: str,
@@ -100,6 +99,7 @@ class HTTPConnection(_HTTPConnection):
         timeout: Optional[float] = socket._GLOBAL_DEFAULT_TIMEOUT,
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
+        # Disable Nagle's algorithm by default.
         socket_options: SocketOptions = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)],
         proxy: Optional[Any] = None,
         proxy_config: Optional[Any] = None,
@@ -107,24 +107,28 @@ class HTTPConnection(_HTTPConnection):
         # Pre-set source_address.
         self.source_address = source_address
 
-        #: The socket options provided by the user. If no options are
-        #: provided, we use the default options.
         self.socket_options = socket_options
 
         # Proxy options provided by the user.
         self.proxy = proxy
         self.proxy_config = proxy_config
 
-        super().__init__(
-            host=host,
-            port=port,
-            timeout=timeout,
-            source_address=source_address,
-            blocksize=blocksize,
-        )
+        if version_info >= (3, 7):
+            super().__init__(
+                host=host,
+                port=port,
+                timeout=timeout,
+                source_address=source_address,
+                blocksize=blocksize,
+            )
+        else:
+            super().__init__(
+                host=host, port=port, timeout=timeout, source_address=source_address
+            )
 
-    @property
-    def host(self) -> str:
+    # https://github.com/python/mypy/issues/4125
+    @property  # type: ignore
+    def host(self) -> str:  # type: ignore
         """
         Getter method to remove any trailing dots that indicate the hostname is an FQDN.
 
@@ -227,27 +231,27 @@ class HTTPConnection(_HTTPConnection):
         self,
         method: str,
         url: str,
-        body: Optional[Any] = None,
+        body: Optional[_DefaultType] = None,
         headers: Mapping[str, str] = {},
         *,
         encode_chunked: bool = False,
     ) -> None:
         # Avoid modifying the headers passed into .request()
-        headers = headers.copy()
+        headers = copy(headers)
         if "user-agent" not in (to_str(k.lower()) for k in headers):
             headers["User-Agent"] = _get_default_user_agent()
         super().request(method, url, body=body, headers=headers)
 
     # TODO: think about this:
     # request accepts encode_chunked so why need request_chunked? which python versions support encode_chunked in request?
-    # types for proxy, proxy config, body (http.client uses _DataType = Union[bytes, IO[Any], Iterable[bytes], str])
+    # types for proxy, proxy config
     # how is chunked encoding implemented - how large paylaods does it send?
 
     def request_chunked(
         self,
         method: str,
         url: str,
-        body: Optional[Any] = None,
+        body: Optional[_DefaultType] = None,
         headers: Mapping[str, str] = {},
     ) -> None:
         """
@@ -517,7 +521,7 @@ def _match_hostname(cert, asserted_hostname):
         raise
 
 
-def _get_default_user_agent():
+def _get_default_user_agent() -> str:
     return f"python-urllib3/{__version__}"
 
 

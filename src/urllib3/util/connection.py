@@ -1,11 +1,12 @@
 import socket
+from typing import Optional, Tuple
 
 from urllib3.exceptions import LocationParseError
 
 from .wait import wait_for_read
 
 
-def is_connection_dropped(conn):  # Platform-specific
+def is_connection_dropped(conn: socket.socket) -> bool:  # Platform-specific
     """
     Returns True if the connection is dropped and should be closed.
 
@@ -24,11 +25,11 @@ def is_connection_dropped(conn):  # Platform-specific
 # One additional modification is that we avoid binding to IPv6 servers
 # discovered in DNS if the system doesn't have IPv6 functionality.
 def create_connection(
-    address,
-    timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-    source_address=None,
+    address: Tuple[Optional[str], int],
+    timeout: Optional[float] = socket._GLOBAL_DEFAULT_TIMEOUT,
+    source_address: Optional[Tuple[str, int]] = None,
     socket_options=None,
-):
+) -> socket.socket:
     """Connect to *address* and return the socket object.
 
     Convenience function.  Connect to *address* (a 2-tuple ``(host,
