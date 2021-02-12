@@ -3,13 +3,13 @@ import logging
 import os
 import re
 import socket
+import sys
 import warnings
 from copy import copy
 from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException  # noqa: F401
 from socket import timeout as SocketTimeout
-from sys import version_info
-from typing import IO, Any, Iterable, List, Mapping, Optional, Tuple, Union
+from typing import IO, Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union
 
 from .util.proxy import create_proxy_ssl_context
 from .util.util import to_str
@@ -91,18 +91,21 @@ class HTTPConnection(_HTTPConnection):
     socket_options: SocketOptions
     _tunnel_host: Optional[str]
 
-    # TODO: what's up with blocksize?
     def __init__(
         self,
         host: str,
         port: Optional[int] = None,
-        timeout: Optional[float] = socket._GLOBAL_DEFAULT_TIMEOUT,
+        timeout: Optional[
+            float
+        ] = socket._GLOBAL_DEFAULT_TIMEOUT,  # TODO: mypy doesn't know about that. How about defining own DEFAULT_TIMEOUT?
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
         # Disable Nagle's algorithm by default.
         socket_options: SocketOptions = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)],
-        proxy: Optional[Any] = None,
-        proxy_config: Optional[Any] = None,
+        proxy: Optional[Any] = None,  # TODO: Any to str? or urllib3.util.url.Url?
+        proxy_config: Optional[
+            Any
+        ] = None,  # TODO: Any to urllib3.poolmanager.ProxyConfig?
     ) -> None:
         # Pre-set source_address.
         self.source_address = source_address
@@ -113,7 +116,7 @@ class HTTPConnection(_HTTPConnection):
         self.proxy = proxy
         self.proxy_config = proxy_config
 
-        if version_info >= (3, 7):
+        if sys.version_info >= (3, 7):
             super().__init__(
                 host=host,
                 port=port,
@@ -126,7 +129,12 @@ class HTTPConnection(_HTTPConnection):
                 host=host, port=port, timeout=timeout, source_address=source_address
             )
 
+    # TODO:
     # https://github.com/python/mypy/issues/4125
+    # Mypy treats this as LSP violation, which is considered a bug.
+    # If `host` is made a property it indeed violates LSP, because a writeable attribute is overriden with a read-only one.
+    # However, there is also a `host` setter so LSP is not violated.
+    # Potentailly, a `@host.deleter` might be needed depending on how this issue will be fixed.
     @property  # type: ignore
     def host(self) -> str:  # type: ignore
         """
@@ -177,7 +185,9 @@ class HTTPConnection(_HTTPConnection):
             )
 
         except OSError as e:
-            raise NewConnectionError(self, f"Failed to establish a new connection: {e}")
+            raise NewConnectionError(
+                self, f"Failed to establish a new connection: {e}"
+            )  # TODO: expects a ConnectionPool as NewConnectionError inherits from PoolError. Should it be changed? I think connection is used in connectionpool, will need to see how this works.
 
         return conn
 
@@ -188,7 +198,7 @@ class HTTPConnection(_HTTPConnection):
         self.sock = conn
         if self._is_using_tunnel():
             # TODO: Fix tunnel so it doesn't depend on self.sock state.
-            self._tunnel()
+            self._tunnel()  # TODO: what to do about it? mypy doesn't know about HTTPConnections _tunnel() method.
             # Mark this connection as not reusable
             self.auto_open = 0
 
@@ -238,57 +248,67 @@ class HTTPConnection(_HTTPConnection):
     ) -> None:
         # Avoid modifying the headers passed into .request()
         headers = copy(headers)
+        # to_str should not be needed as headers is Mapping[str, str], probably will require changing calls to `request` and how HTTPHeaderDict is used (TODO: check this).
         if "user-agent" not in (to_str(k.lower()) for k in headers):
-            headers["User-Agent"] = _get_default_user_agent()
-        super().request(method, url, body=body, headers=headers)
-
-    # TODO: think about this:
-    # request accepts encode_chunked so why need request_chunked? which python versions support encode_chunked in request?
-    # types for proxy, proxy config
-    # how is chunked encoding implemented - how large paylaods does it send?
-
-    def request_chunked(
-        self,
-        method: str,
-        url: str,
-        body: Optional[_DefaultType] = None,
-        headers: Mapping[str, str] = {},
-    ) -> None:
-        """
-        Alternative to the common request method, which sends the
-        body with chunked encoding and not as one block
-        """
-        header_keys = {to_str(k.lower()) for k in headers}
-        skip_accept_encoding = "accept-encoding" in header_keys
-        skip_host = "host" in header_keys
-        self.putrequest(
-            method, url, skip_accept_encoding=skip_accept_encoding, skip_host=skip_host
+            updated_headers = {"User-Agent": _get_default_user_agent()}
+            updated_headers.update(headers)
+            headers = updated_headers
+        super().request(
+            method, url, body=body, headers=headers, encode_chunked=encode_chunked
         )
-        if "user-agent" not in header_keys:
-            self.putheader("User-Agent", _get_default_user_agent())
-        for header, value in headers.items():
-            self.putheader(header, value)
-        if "transfer-encoding" not in headers:
-            self.putheader("Transfer-Encoding", "chunked")
-        self.endheaders()
 
-        if body is not None:
-            if isinstance(body, (str, bytes)):
-                body = (body,)
-            for chunk in body:
-                if not chunk:
-                    continue
-                if not isinstance(chunk, bytes):
-                    chunk = chunk.encode("utf8")
-                len_str = hex(len(chunk))[2:]
-                to_send = bytearray(len_str.encode())
-                to_send += b"\r\n"
-                to_send += chunk
-                to_send += b"\r\n"
-                self.send(to_send)
+    # TODO:
+    # request accepts encode_chunked so why need request_chunked? which python versions support encode_chunked in request? A: it was added in 3.6
+    # probably some tests will fail because of that
 
-        # After the if clause, to always have a closed body
-        self.send(b"0\r\n\r\n")
+    # def request_chunked(
+    #     self,
+    #     method: str,
+    #     url: str,
+    #     body: Optional[_DefaultType] = None,
+    #     headers: Mapping[str, str] = {},
+    # ) -> None:
+    #     """
+    #     Alternative to the common request method, which sends the
+    #     body with chunked encoding and not as one block
+    #     """
+    #     header_keys = {to_str(k.lower()) for k in headers}
+    #     skip_accept_encoding = "accept-encoding" in header_keys
+    #     skip_host = "host" in header_keys
+    #     self.putrequest(
+    #         method, url, skip_accept_encoding=skip_accept_encoding, skip_host=skip_host
+    #     )
+    #     if "user-agent" not in header_keys:
+    #         self.putheader("User-Agent", _get_default_user_agent())
+    #     for header, value in headers.items():
+    #         self.putheader(header, value)
+    #     if "transfer-encoding" not in headers:
+    #         self.putheader("Transfer-Encoding", "chunked")
+    #     self.endheaders()
+
+    #     if body is not None:
+    #         if isinstance(body, (str, bytes)):
+    #             body = (body,)
+    #         for chunk in body:
+    #             if not chunk:
+    #                 continue
+    #             if not isinstance(chunk, bytes):
+    #                 chunk = chunk.encode("utf8")
+    #             len_str = hex(len(chunk))[2:]
+    #             to_send = bytearray(len_str.encode())
+    #             to_send += b"\r\n"
+    #             to_send += chunk
+    #             to_send += b"\r\n"
+    #             self.send(to_send)
+
+    #     # After the if clause, to always have a closed body
+    #     self.send(b"0\r\n\r\n")
+
+
+_PCTRTT = Tuple[Tuple[str, str], ...]
+_PCTRTTT = Tuple[_PCTRTT, ...]
+_PeerCertRetDictType = Dict[str, Union[str, _PCTRTTT, _PCTRTT]]
+_PeerCertRetType = Union[_PeerCertRetDictType, bytes, None]
 
 
 class HTTPSConnection(HTTPConnection):
@@ -299,28 +319,29 @@ class HTTPSConnection(HTTPConnection):
 
     default_port = port_by_scheme["https"]
 
-    cert_reqs = None
-    ca_certs = None
-    ca_cert_dir = None
-    ca_cert_data = None
-    ssl_version = None
-    assert_fingerprint = None
-    tls_in_tls_required = False
+    # TODO: change Anys
+    cert_reqs: Optional[int] = None
+    ca_certs: Optional[str] = None
+    ca_cert_dir: Optional[Any] = None
+    ca_cert_data: Optional[Any] = None
+    ssl_version: Optional[int] = None  # TODO: Optional?
+    assert_fingerprint: Optional[Any] = None
+    tls_in_tls_required: bool = False
 
     def __init__(
         self,
-        host,
-        port=None,
-        key_file=None,
-        cert_file=None,
-        key_password=None,
-        timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-        ssl_context=None,
-        server_hostname=None,
-        **kw,
-    ):
+        host: str,
+        port: Optional[int] = None,
+        key_file: Optional[str] = None,
+        cert_file: Optional[str] = None,
+        key_password: Optional[str] = None,
+        timeout: Optional[float] = socket._GLOBAL_DEFAULT_TIMEOUT,
+        ssl_context: Optional[ssl.SSLContext] = None,
+        server_hostname: Optional[str] = None,
+        **kw, # TODO: get rid of this.
+    ) -> None:
 
-        super().__init__(host, port, timeout=timeout, **kw)
+        super().__init__(host, port=port, timeout=timeout, **kw)
 
         self.key_file = key_file
         self.cert_file = cert_file
@@ -330,16 +351,16 @@ class HTTPSConnection(HTTPConnection):
 
     def set_cert(
         self,
-        key_file=None,
-        cert_file=None,
-        cert_reqs=None,
-        key_password=None,
-        ca_certs=None,
-        assert_hostname=None,
-        assert_fingerprint=None,
-        ca_cert_dir=None,
-        ca_cert_data=None,
-    ):
+        key_file: Optional[str] = None,
+        cert_file: Optional[str] = None,
+        cert_reqs: Optional[int] = None,
+        key_password: Optional[str] = None,
+        ca_certs: Optional[str] = None,
+        assert_hostname: Optional[Any] = None,
+        assert_fingerprint: Optional[Any] = None,
+        ca_cert_dir: Optional[Any] = None,
+        ca_cert_data: Optional[Any] = None,
+    ) -> None:
         """
         This method should only be called once, before the connection is used.
         """
@@ -361,7 +382,7 @@ class HTTPSConnection(HTTPConnection):
         self.ca_cert_dir = ca_cert_dir and os.path.expanduser(ca_cert_dir)
         self.ca_cert_data = ca_cert_data
 
-    def connect(self):
+    def connect(self) -> None:
         # Add certificate verification
         conn = self._new_conn()
         hostname = self.host
@@ -471,7 +492,9 @@ class HTTPSConnection(HTTPConnection):
             or self.assert_fingerprint is not None
         )
 
-    def _connect_tls_proxy(self, hostname, conn):
+    def _connect_tls_proxy(
+        self, hostname: Optional[str], conn: socket.socket
+    ) -> ssl.SSLSocket:
         """
         Establish a TLS connection to the proxy using the provided SSL context.
         """
@@ -506,7 +529,7 @@ class HTTPSConnection(HTTPConnection):
         )
 
 
-def _match_hostname(cert, asserted_hostname):
+def _match_hostname(cert: _PeerCertRetType, asserted_hostname: str) -> None:
     try:
         match_hostname(cert, asserted_hostname)
     except CertificateError as e:

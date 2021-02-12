@@ -1,5 +1,5 @@
 import socket
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 from urllib3.exceptions import LocationParseError
 
@@ -25,10 +25,12 @@ def is_connection_dropped(conn: socket.socket) -> bool:  # Platform-specific
 # One additional modification is that we avoid binding to IPv6 servers
 # discovered in DNS if the system doesn't have IPv6 functionality.
 def create_connection(
-    address: Tuple[Optional[str], int],
+    address: Tuple[
+        str, int
+    ],  # TODO: typeshed uses Tuple[Optional[str], int], getaddrinfo also has Optional[...], this passes NULL to underlying C api. Is this wanted?
     timeout: Optional[float] = socket._GLOBAL_DEFAULT_TIMEOUT,
     source_address: Optional[Tuple[str, int]] = None,
-    socket_options=None,
+    socket_options: List[Tuple[int, int, int]] = None,
 ) -> socket.socket:
     """Connect to *address* and return the socket object.
 
@@ -66,7 +68,9 @@ def create_connection(
             # If provided, set socket level options before connecting.
             _set_socket_options(sock, socket_options)
 
-            if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
+            if (
+                timeout is not socket._GLOBAL_DEFAULT_TIMEOUT
+            ):  # TODO: what to do about this?
                 sock.settimeout(timeout)
             if source_address:
                 sock.bind(source_address)
