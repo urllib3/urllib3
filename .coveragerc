@@ -27,4 +27,4 @@ exclude_lines =
     .* # Abstract
     .* # Defensive:
     if TYPE_CHECKING:
-    \.\.\.
+    ^\s*?\.\.\.\s*$
