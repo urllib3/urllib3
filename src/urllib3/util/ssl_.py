@@ -241,12 +241,9 @@ def create_urllib3_context(
         context.post_handshake_auth = True
 
     context.verify_mode = cert_reqs
-    if (
-        getattr(context, "check_hostname", None) is not None
-    ):  # Platform-specific: Python 3.2
-        # We do our own verification, including fingerprints and alternative
-        # hostnames. So disable it here
-        context.check_hostname = False
+    # We do our own verification, including fingerprints and alternative
+    # hostnames. So disable it here
+    context.check_hostname = False
 
     # Enable logging of TLS session keys via defacto standard environment variable
     # 'SSLKEYLOGFILE', if the feature is available (Python 3.8+). Skip empty values.
