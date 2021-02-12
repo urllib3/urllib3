@@ -9,20 +9,36 @@ from copy import copy
 from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException  # noqa: F401
 from socket import timeout as SocketTimeout
-from typing import IO, Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union
+from typing import (
+    IO,
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+)
 
+from .poolmanager import ProxyConfig
 from .util.proxy import create_proxy_ssl_context
+from .util.url import Url
 from .util.util import to_str
 
-try:  # Compiled with SSL?
+if TYPE_CHECKING:
     import ssl
+else:
+    try:  # Compiled with SSL?
+        import ssl
 
-    BaseSSLError = ssl.SSLError
-except (ImportError, AttributeError):  # Platform-specific: No SSL.
-    ssl = None
+        BaseSSLError = ssl.SSLError
+    except (ImportError, AttributeError):  # Platform-specific: No SSL.
+        ssl = None  # TODO: think about this.
 
-    class BaseSSLError(BaseException):
-        pass
+        class BaseSSLError(BaseException):
+            pass
 
 
 from ._version import __version__
@@ -53,6 +69,7 @@ RECENT_DATE = datetime.date(2020, 7, 1)
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 SocketOptions = List[Tuple[int, int, int]]
+default_socket_options = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
 
 _DefaultType = Union[bytes, IO[Any], Iterable[bytes], str]
 
@@ -101,11 +118,9 @@ class HTTPConnection(_HTTPConnection):
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
         # Disable Nagle's algorithm by default.
-        socket_options: SocketOptions = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)],
-        proxy: Optional[Any] = None,  # TODO: Any to str? or urllib3.util.url.Url?
-        proxy_config: Optional[
-            Any
-        ] = None,  # TODO: Any to urllib3.poolmanager.ProxyConfig?
+        socket_options: SocketOptions = default_socket_options,
+        proxy: Optional[Url] = None,  # TODO: or Optional[Union[Url, str]]
+        proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
         # Pre-set source_address.
         self.source_address = source_address
@@ -187,7 +202,7 @@ class HTTPConnection(_HTTPConnection):
         except OSError as e:
             raise NewConnectionError(
                 self, f"Failed to establish a new connection: {e}"
-            )  # TODO: expects a ConnectionPool as NewConnectionError inherits from PoolError. Should it be changed? I think connection is used in connectionpool, will need to see how this works.
+            )  # TODO: expects a ConnectionPool as NewConnectionError inherits from PoolError. Should it be raised by ConnectionPool then?
 
         return conn
 
@@ -319,12 +334,11 @@ class HTTPSConnection(HTTPConnection):
 
     default_port = port_by_scheme["https"]
 
-    # TODO: change Anys
     cert_reqs: Optional[int] = None
     ca_certs: Optional[str] = None
-    ca_cert_dir: Optional[Any] = None
-    ca_cert_data: Optional[Any] = None
-    ssl_version: Optional[int] = None  # TODO: Optional?
+    ca_cert_dir: Optional[str] = None  # TODO: or Union[pathlib.Path, str]
+    ca_cert_data: Optional[str] = None
+    ssl_version: Optional[int] = None
     assert_fingerprint: Optional[Any] = None
     tls_in_tls_required: bool = False
 
@@ -338,10 +352,23 @@ class HTTPSConnection(HTTPConnection):
         timeout: Optional[float] = socket._GLOBAL_DEFAULT_TIMEOUT,
         ssl_context: Optional[ssl.SSLContext] = None,
         server_hostname: Optional[str] = None,
-        **kw, # TODO: get rid of this.
+        source_address: Optional[Tuple[str, int]] = None,
+        blocksize: int = 8192,
+        socket_options: SocketOptions = default_socket_options,
+        proxy: Optional[Url] = None,  # TODO: as in HTTPConnection.
+        proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
 
-        super().__init__(host, port=port, timeout=timeout, **kw)
+        super().__init__(
+            host,
+            port=port,
+            timeout=timeout,
+            source_address=source_address,
+            blocksize=blocksize,
+            socket_options=socket_options,
+            proxy=proxy,
+            proxy_config=proxy_config,
+        )
 
         self.key_file = key_file
         self.cert_file = cert_file
@@ -385,7 +412,7 @@ class HTTPSConnection(HTTPConnection):
     def connect(self) -> None:
         # Add certificate verification
         conn = self._new_conn()
-        hostname = self.host
+        hostname: Optional[str] = self.host
         tls_in_tls = False
 
         if self._is_using_tunnel():
@@ -499,7 +526,7 @@ class HTTPSConnection(HTTPConnection):
         Establish a TLS connection to the proxy using the provided SSL context.
         """
         proxy_config = self.proxy_config
-        ssl_context = proxy_config.ssl_context
+        ssl_context = proxy_config.ssl_context if proxy_config is not None else None
         if ssl_context:
             # If the user provided a proxy context, we assume CA and client
             # certificates have already been set

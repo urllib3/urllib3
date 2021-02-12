@@ -4,6 +4,7 @@ import sys
 import warnings
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
+from typing import Optional, Union
 
 from ..exceptions import ProxySchemeUnsupported, SNIMissingWarning, SSLError
 from .url import BRACELESS_IPV6_ADDRZ_RE, IPV4_RE
@@ -126,7 +127,7 @@ def assert_fingerprint(cert, fingerprint):
         )
 
 
-def resolve_cert_reqs(candidate):
+def resolve_cert_reqs(candidate: Optional[Union[int, str]]) -> int:
     """
     Resolves the argument to a numeric constant, which can be passed to
     the wrap_socket function/method from the ssl module.
@@ -149,7 +150,7 @@ def resolve_cert_reqs(candidate):
     return candidate
 
 
-def resolve_ssl_version(candidate):
+def resolve_ssl_version(candidate: Optional[Union[int, str]]) -> int:
     """
     like resolve_cert_reqs
     """
@@ -165,9 +166,13 @@ def resolve_ssl_version(candidate):
     return candidate
 
 
+# TODO: add type hints for options and ciphers.
 def create_urllib3_context(
-    ssl_version=None, cert_reqs=None, options=None, ciphers=None
-):
+    ssl_version: Optional[int] = None,
+    cert_reqs: Optional[int] = None,
+    options=None,
+    ciphers=None,
+) -> SSLContext:
     """All arguments have the same meaning as ``ssl_wrap_socket``.
 
     By default, this function does a lot of the same work that
