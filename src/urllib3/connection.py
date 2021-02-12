@@ -200,6 +200,7 @@ class HTTPConnection(_HTTPConnection):
             # Avoid modifying the headers passed into .request()
             headers = headers.copy()
             # Don't send bytes keys to httplib to avoid bytes/str comparison
+            # HTTPHeaderDict is already safe, but other types are not
             for key, value in list(headers.items()):
                 if isinstance(key, bytes):
                     headers.pop(key)

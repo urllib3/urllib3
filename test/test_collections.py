@@ -217,7 +217,7 @@ class TestHTTPHeaderDict:
 
     def test_add_comma_separated_multiheader(self, d):
         d.add("bar", "foo")
-        d.add("BAR", "bar")
+        d.add(b"BAR", "bar")  # bytes get converted to str
         d.add("Bar", "asdf")
         assert d.getlist("bar") == ["foo", "bar", "asdf"]
         assert d["bar"] == "foo, bar, asdf"
