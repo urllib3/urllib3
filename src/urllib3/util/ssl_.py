@@ -1,5 +1,6 @@
 import hmac
 import os
+import socket
 import sys
 import warnings
 from binascii import hexlify, unhexlify
@@ -100,7 +101,7 @@ DEFAULT_CIPHERS = ":".join(
 )
 
 
-def assert_fingerprint(cert, fingerprint):
+def assert_fingerprint(cert: bytes, fingerprint: str) -> None:
     """
     Checks if given fingerprint matches the supplied certificate.
 
@@ -127,7 +128,9 @@ def assert_fingerprint(cert, fingerprint):
         )
 
 
-def resolve_cert_reqs(candidate: Optional[Union[int, str]]) -> int:
+def resolve_cert_reqs(
+    candidate: Optional[Union[int, str]]
+) -> int:  # TODO: or return str?
     """
     Resolves the argument to a numeric constant, which can be passed to
     the wrap_socket function/method from the ssl module.
@@ -150,7 +153,9 @@ def resolve_cert_reqs(candidate: Optional[Union[int, str]]) -> int:
     return candidate
 
 
-def resolve_ssl_version(candidate: Optional[Union[int, str]]) -> int:
+def resolve_ssl_version(
+    candidate: Optional[Union[int, str]]
+) -> int:  # TODO: or return str?
     """
     like resolve_cert_reqs
     """
@@ -166,12 +171,12 @@ def resolve_ssl_version(candidate: Optional[Union[int, str]]) -> int:
     return candidate
 
 
-# TODO: add type hints for options and ciphers.
+# TODO: add type hints for options.
 def create_urllib3_context(
     ssl_version: Optional[int] = None,
-    cert_reqs: Optional[int] = None,
+    cert_reqs: Optional[int] = None,  # TODO: or str?
     options=None,
-    ciphers=None,
+    ciphers: Optional[str] = None,
 ) -> SSLContext:
     """All arguments have the same meaning as ``ssl_wrap_socket``.
 
@@ -264,20 +269,22 @@ def create_urllib3_context(
 
 
 def ssl_wrap_socket(
-    sock,
-    keyfile=None,
-    certfile=None,
-    cert_reqs=None,
-    ca_certs=None,
-    server_hostname=None,
-    ssl_version=None,
-    ciphers=None,
-    ssl_context=None,
-    ca_cert_dir=None,
-    key_password=None,
-    ca_cert_data=None,
-    tls_in_tls=False,
-):
+    sock: socket.socket,
+    keyfile: Optional[str] = None,
+    certfile: Optional[str] = None,
+    cert_reqs: Optional[int] = None,  # TODO: or str?
+    ca_certs: Optional[str] = None,
+    server_hostname: Optional[str] = None,
+    ssl_version: Optional[int] = None,
+    ciphers: Optional[str] = None,
+    ssl_context: Optional[
+        ssl.SSLContext
+    ] = None,  # TODO: or urllib3.util.ssl_.SSLContext
+    ca_cert_dir: Optional[str] = None,
+    key_password: Optional[str] = None,
+    ca_cert_data: Optional[str] = None,
+    tls_in_tls: bool = False,
+) -> ssl.SSLSocket:
     """
     All arguments except for server_hostname, ssl_context, and ca_cert_dir have
     the same meaning as they do when using :func:`ssl.wrap_socket`.

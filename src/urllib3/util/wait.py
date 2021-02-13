@@ -1,5 +1,7 @@
 import select
+import socket
 from functools import partial
+from typing import Optional
 
 __all__ = ["wait_for_read", "wait_for_write"]
 
@@ -92,7 +94,7 @@ def wait_for_socket(*args, **kwargs):
     return wait_for_socket(*args, **kwargs)
 
 
-def wait_for_read(sock, timeout=None):
+def wait_for_read(sock: socket.socket, timeout: Optional[float] = None) -> bool:
     """Waits for reading to be available on a given socket.
     Returns True if the socket is readable, or False if the timeout expired.
     """

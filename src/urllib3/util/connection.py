@@ -5,6 +5,10 @@ from urllib3.exceptions import LocationParseError
 
 from .wait import wait_for_read
 
+SocketOptions = List[
+    Tuple[int, int, int]
+]  # TODO: level: int, optname: int, value: int/str - check if value can be str. Or as socket.setsockopt value can be int/bytes.
+
 
 def is_connection_dropped(conn: socket.socket) -> bool:  # Platform-specific
     """
@@ -30,7 +34,7 @@ def create_connection(
     ],  # TODO: typeshed uses Tuple[Optional[str], int], getaddrinfo also has Optional[...], this passes NULL to underlying C api. Is this wanted?
     timeout: Optional[float] = socket._GLOBAL_DEFAULT_TIMEOUT,
     source_address: Optional[Tuple[str, int]] = None,
-    socket_options: List[Tuple[int, int, int]] = None,
+    socket_options: Optional[SocketOptions] = None,
 ) -> socket.socket:
     """Connect to *address* and return the socket object.
 
@@ -89,7 +93,7 @@ def create_connection(
     raise OSError("getaddrinfo returns an empty list")
 
 
-def _set_socket_options(sock, options):
+def _set_socket_options(sock: socket.socket, options: SocketOptions) -> None:
     if options is None:
         return
 
@@ -97,7 +101,7 @@ def _set_socket_options(sock, options):
         sock.setsockopt(*opt)
 
 
-def allowed_gai_family():
+def allowed_gai_family() -> socket.AddressFamily:
     """This function is designed to work in the context of
     getaddrinfo, where family=socket.AF_UNSPEC is the default and
     will perform a DNS search for both IPv6 and IPv4 records."""
@@ -108,7 +112,7 @@ def allowed_gai_family():
     return family
 
 
-def _has_ipv6(host):
+def _has_ipv6(host: str) -> bool:  # TODO: can host be bytes?
     """ Returns True if the system can bind an IPv6 address. """
     sock = None
     has_ipv6 = False

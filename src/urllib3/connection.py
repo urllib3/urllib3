@@ -5,6 +5,7 @@ import re
 import socket
 import sys
 import warnings
+from collections import namedtuple
 from copy import copy
 from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException  # noqa: F401
@@ -13,16 +14,15 @@ from typing import (
     IO,
     TYPE_CHECKING,
     Any,
+    Callable,
     Dict,
     Iterable,
-    List,
     Mapping,
     Optional,
     Tuple,
     Union,
 )
 
-from .poolmanager import ProxyConfig
 from .util.proxy import create_proxy_ssl_context
 from .util.url import Url
 from .util.util import to_str
@@ -68,10 +68,14 @@ RECENT_DATE = datetime.date(2020, 7, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
-SocketOptions = List[Tuple[int, int, int]]
 default_socket_options = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
 
 _DefaultType = Union[bytes, IO[Any], Iterable[bytes], str]
+
+_proxy_config_fields = ("ssl_context", "use_forwarding_for_https")
+ProxyConfig = namedtuple(
+    "ProxyConfig", _proxy_config_fields
+)  # TODO: tuple literal mypy.
 
 
 class HTTPConnection(_HTTPConnection):
@@ -105,8 +109,9 @@ class HTTPConnection(_HTTPConnection):
     is_verified: bool = False
 
     source_address: Optional[Tuple[str, int]]
-    socket_options: SocketOptions
+    socket_options: connection.SocketOptions
     _tunnel_host: Optional[str]
+    _tunnel: Callable[["HTTPConnection"], None]
 
     def __init__(
         self,
@@ -118,8 +123,10 @@ class HTTPConnection(_HTTPConnection):
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
         # Disable Nagle's algorithm by default.
-        socket_options: SocketOptions = default_socket_options,
-        proxy: Optional[Url] = None,  # TODO: or Optional[Union[Url, str]]
+        socket_options: connection.SocketOptions = default_socket_options,
+        proxy: Optional[
+            Url
+        ] = None,  # TODO: or Optional[Union[Url, str]] - parsed proxy url
         proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
         # Pre-set source_address.
@@ -203,6 +210,7 @@ class HTTPConnection(_HTTPConnection):
             raise NewConnectionError(
                 self, f"Failed to establish a new connection: {e}"
             )  # TODO: expects a ConnectionPool as NewConnectionError inherits from PoolError. Should it be raised by ConnectionPool then?
+            # __new_conn is called only in connect method so reraise this in ConnectionPool whenever connect is called.
 
         return conn
 
@@ -213,7 +221,7 @@ class HTTPConnection(_HTTPConnection):
         self.sock = conn
         if self._is_using_tunnel():
             # TODO: Fix tunnel so it doesn't depend on self.sock state.
-            self._tunnel()  # TODO: what to do about it? mypy doesn't know about HTTPConnections _tunnel() method.
+            self._tunnel()
             # Mark this connection as not reusable
             self.auto_open = 0
 
@@ -272,52 +280,52 @@ class HTTPConnection(_HTTPConnection):
             method, url, body=body, headers=headers, encode_chunked=encode_chunked
         )
 
-    # TODO:
-    # request accepts encode_chunked so why need request_chunked? which python versions support encode_chunked in request? A: it was added in 3.6
-    # probably some tests will fail because of that
+    def request_chunked(
+        self,
+        method: str,
+        url: str,
+        body: Optional[_DefaultType] = None,
+        headers: Mapping[str, str] = {},
+    ) -> None:
+        """
+        Alternative to the common request method, which sends the
+        body with chunked encoding and not as one block
+        """
+        header_keys = {to_str(k.lower()) for k in headers}
+        skip_accept_encoding = "accept-encoding" in header_keys
+        skip_host = "host" in header_keys
+        self.putrequest(
+            method, url, skip_accept_encoding=skip_accept_encoding, skip_host=skip_host
+        )
+        if "user-agent" not in header_keys:
+            self.putheader("User-Agent", _get_default_user_agent())
+        for header, value in headers.items():
+            self.putheader(header, value)
+        if "transfer-encoding" not in headers:
+            self.putheader("Transfer-Encoding", "chunked")
+        self.endheaders()
 
-    # def request_chunked(
-    #     self,
-    #     method: str,
-    #     url: str,
-    #     body: Optional[_DefaultType] = None,
-    #     headers: Mapping[str, str] = {},
-    # ) -> None:
-    #     """
-    #     Alternative to the common request method, which sends the
-    #     body with chunked encoding and not as one block
-    #     """
-    #     header_keys = {to_str(k.lower()) for k in headers}
-    #     skip_accept_encoding = "accept-encoding" in header_keys
-    #     skip_host = "host" in header_keys
-    #     self.putrequest(
-    #         method, url, skip_accept_encoding=skip_accept_encoding, skip_host=skip_host
-    #     )
-    #     if "user-agent" not in header_keys:
-    #         self.putheader("User-Agent", _get_default_user_agent())
-    #     for header, value in headers.items():
-    #         self.putheader(header, value)
-    #     if "transfer-encoding" not in headers:
-    #         self.putheader("Transfer-Encoding", "chunked")
-    #     self.endheaders()
+        if body is not None:
+            if isinstance(body, (str, bytes)):
+                self.send_chunk(body)
+            else:
+                for chunk in body:
+                    self.send_chunk(chunk)
 
-    #     if body is not None:
-    #         if isinstance(body, (str, bytes)):
-    #             body = (body,)
-    #         for chunk in body:
-    #             if not chunk:
-    #                 continue
-    #             if not isinstance(chunk, bytes):
-    #                 chunk = chunk.encode("utf8")
-    #             len_str = hex(len(chunk))[2:]
-    #             to_send = bytearray(len_str.encode())
-    #             to_send += b"\r\n"
-    #             to_send += chunk
-    #             to_send += b"\r\n"
-    #             self.send(to_send)
+        # After the if clause, to always have a closed body
+        self.send(b"0\r\n\r\n")
 
-    #     # After the if clause, to always have a closed body
-    #     self.send(b"0\r\n\r\n")
+    def send_chunk(self, chunk: Optional[Union[bytes, str]]) -> None:
+        if not chunk:
+            return
+        if not isinstance(chunk, bytes):
+            chunk = chunk.encode("utf8")
+        len_str = hex(len(chunk))[2:]
+        to_send = bytearray(len_str.encode())
+        to_send += b"\r\n"
+        to_send += chunk
+        to_send += b"\r\n"
+        self.send(to_send)
 
 
 _PCTRTT = Tuple[Tuple[str, str], ...]
@@ -334,9 +342,9 @@ class HTTPSConnection(HTTPConnection):
 
     default_port = port_by_scheme["https"]
 
-    cert_reqs: Optional[int] = None
+    cert_reqs: Optional[int] = None  # TODO: or str?
     ca_certs: Optional[str] = None
-    ca_cert_dir: Optional[str] = None  # TODO: or Union[pathlib.Path, str]
+    ca_cert_dir: Optional[str] = None
     ca_cert_data: Optional[str] = None
     ssl_version: Optional[int] = None
     assert_fingerprint: Optional[Any] = None
@@ -350,11 +358,13 @@ class HTTPSConnection(HTTPConnection):
         cert_file: Optional[str] = None,
         key_password: Optional[str] = None,
         timeout: Optional[float] = socket._GLOBAL_DEFAULT_TIMEOUT,
-        ssl_context: Optional[ssl.SSLContext] = None,
+        ssl_context: Optional[
+            ssl.SSLContext
+        ] = None,  # TODO: or urllib3.util.ssl_.SSLContext
         server_hostname: Optional[str] = None,
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
-        socket_options: SocketOptions = default_socket_options,
+        socket_options: connection.SocketOptions = default_socket_options,
         proxy: Optional[Url] = None,  # TODO: as in HTTPConnection.
         proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
