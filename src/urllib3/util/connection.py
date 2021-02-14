@@ -8,7 +8,7 @@ from .wait import wait_for_read
 SOCKET_GLOBAL_DEFAULT_TIMEOUT = socket._GLOBAL_DEFAULT_TIMEOUT  # type: ignore
 SocketOptions = List[
     Tuple[int, int, int]
-]  # TODO: level: int, optname: int, value: int/str - check if value can be str. Or as socket.setsockopt value can be int/bytes.
+]
 
 
 def is_connection_dropped(conn: socket.socket) -> bool:  # Platform-specific
@@ -30,9 +30,7 @@ def is_connection_dropped(conn: socket.socket) -> bool:  # Platform-specific
 # One additional modification is that we avoid binding to IPv6 servers
 # discovered in DNS if the system doesn't have IPv6 functionality.
 def create_connection(
-    address: Tuple[
-        str, int
-    ],  # TODO: typeshed uses Tuple[Optional[str], int], getaddrinfo also has Optional[...], this passes NULL to underlying C api. Is this wanted?
+    address: Tuple[str, int],
     timeout: Optional[float] = SOCKET_GLOBAL_DEFAULT_TIMEOUT,
     source_address: Optional[Tuple[str, int]] = None,
     socket_options: Optional[SocketOptions] = None,

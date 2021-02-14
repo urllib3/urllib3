@@ -117,7 +117,7 @@ def assert_fingerprint(cert: Optional[bytes], fingerprint: str) -> None:
     if cert is None:
         raise SSLError(
             "No certificate for the peer."
-        )  # TODO: check this. getpeercert can return None.
+        )
 
     fingerprint = fingerprint.replace(":", "").lower()
     digest_length = len(fingerprint)

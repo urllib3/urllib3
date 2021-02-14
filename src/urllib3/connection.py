@@ -21,6 +21,7 @@ from typing import (
     Optional,
     Tuple,
     Union,
+    cast,
 )
 
 from .util.proxy import create_proxy_ssl_context
@@ -201,10 +202,7 @@ class HTTPConnection(_HTTPConnection):
             )
 
         except OSError as e:
-            raise NewConnectionError(
-                self, f"Failed to establish a new connection: {e}"
-            )  # TODO: expects a ConnectionPool as NewConnectionError inherits from PoolError. Should it be raised by ConnectionPool then?
-            # __new_conn is called only in connect method so reraise this in ConnectionPool whenever connect is called.
+            raise NewConnectionError(self, f"Failed to establish a new connection: {e}")
 
         return conn
 
@@ -378,7 +376,6 @@ class HTTPSConnection(HTTPConnection):
         self.ssl_context = ssl_context
         self.server_hostname = server_hostname
 
-    # TODO: this can overwrite key_file etc. set in __init__ - check this.
     def set_cert(
         self,
         key_file: Optional[str] = None,
@@ -415,7 +412,7 @@ class HTTPSConnection(HTTPConnection):
     def connect(self) -> None:
         # Add certificate verification
         conn = self._new_conn()
-        hostname: Optional[str] = self.host
+        hostname: str = self.host
         tls_in_tls = False
 
         if self._is_using_tunnel():
@@ -432,7 +429,9 @@ class HTTPSConnection(HTTPConnection):
             self.auto_open = 0
 
             # Override the host with the one we're requesting data from.
-            hostname = self._tunnel_host
+            hostname = cast(
+                str, self._tunnel_host
+            )  # self._tunnel_host is not None, because self._is_using_tunnel() returned a truthy value.
 
         server_hostname = hostname
         if self.server_hostname is not None:
@@ -515,9 +514,7 @@ class HTTPSConnection(HTTPConnection):
             # the TLS library, this cannot always be done. So we check whether
             # the TLS Library still thinks it's matching hostnames.
             cert = self.sock.getpeercert()
-            _match_hostname(
-                cert, self.assert_hostname or server_hostname
-            )  # TODO: assert_hostname can be str, None or False...
+            _match_hostname(cert, self.assert_hostname or server_hostname)
 
         self.is_verified = context.verify_mode == ssl.CERT_REQUIRED or bool(
             self.assert_fingerprint
