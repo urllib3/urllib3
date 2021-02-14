@@ -1,7 +1,9 @@
-import ssl
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from .ssl_ import create_urllib3_context, resolve_cert_reqs, resolve_ssl_version
+
+if TYPE_CHECKING:
+    import ssl
 
 
 def connection_requires_http_tunnel(
@@ -38,12 +40,12 @@ def connection_requires_http_tunnel(
 
 
 def create_proxy_ssl_context(
-    ssl_version: int,
-    cert_reqs: str,
+    ssl_version: Optional[int] = None,
+    cert_reqs: Optional[int] = None,
     ca_certs: Optional[str] = None,
     ca_cert_dir: Optional[str] = None,
     ca_cert_data: Optional[str] = None,
-) -> ssl.SSLContext:  # TODO: or urllib3.util.ssl_.SSLContext?
+) -> "ssl.SSLContext":
     """
     Generates a default proxy ssl context if one hasn't been provided by the
     user.

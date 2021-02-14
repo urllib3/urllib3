@@ -5,7 +5,7 @@ import sys
 import warnings
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from ..exceptions import ProxySchemeUnsupported, SNIMissingWarning, SSLError
 from .url import BRACELESS_IPV6_ADDRZ_RE, IPV4_RE
@@ -35,32 +35,35 @@ def _is_ge_openssl_v1_1_1(
     )
 
 
-try:  # Do we have ssl at all?
+if TYPE_CHECKING:
     import ssl
-    from ssl import (
-        CERT_REQUIRED,
-        HAS_SNI,
-        OP_NO_COMPRESSION,
-        OP_NO_TICKET,
-        OPENSSL_VERSION,
-        OPENSSL_VERSION_NUMBER,
-        PROTOCOL_TLS,
-        OP_NO_SSLv2,
-        OP_NO_SSLv3,
-        SSLContext,
-    )
+else:
+    try:  # Do we have ssl at all?
+        import ssl
+        from ssl import (
+            CERT_REQUIRED,
+            HAS_SNI,
+            OP_NO_COMPRESSION,
+            OP_NO_TICKET,
+            OPENSSL_VERSION,
+            OPENSSL_VERSION_NUMBER,
+            PROTOCOL_TLS,
+            OP_NO_SSLv2,
+            OP_NO_SSLv3,
+            SSLContext,
+        )
 
-    USE_DEFAULT_SSLCONTEXT_CIPHERS = _is_ge_openssl_v1_1_1(
-        OPENSSL_VERSION, OPENSSL_VERSION_NUMBER
-    )
-    PROTOCOL_SSLv23 = PROTOCOL_TLS
-    from .ssltransport import SSLTransport
-except ImportError:
-    OP_NO_COMPRESSION = 0x20000
-    OP_NO_TICKET = 0x4000
-    OP_NO_SSLv2 = 0x1000000
-    OP_NO_SSLv3 = 0x2000000
-    PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
+        USE_DEFAULT_SSLCONTEXT_CIPHERS = _is_ge_openssl_v1_1_1(
+            OPENSSL_VERSION, OPENSSL_VERSION_NUMBER
+        )
+        PROTOCOL_SSLv23 = PROTOCOL_TLS
+        from .ssltransport import SSLTransport
+    except ImportError:
+        OP_NO_COMPRESSION = 0x20000
+        OP_NO_TICKET = 0x4000
+        OP_NO_SSLv2 = 0x1000000
+        OP_NO_SSLv3 = 0x2000000
+        PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
 
 
 # A secure default.
@@ -101,7 +104,7 @@ DEFAULT_CIPHERS = ":".join(
 )
 
 
-def assert_fingerprint(cert: bytes, fingerprint: str) -> None:
+def assert_fingerprint(cert: Optional[bytes], fingerprint: str) -> None:
     """
     Checks if given fingerprint matches the supplied certificate.
 
@@ -110,6 +113,11 @@ def assert_fingerprint(cert: bytes, fingerprint: str) -> None:
     :param fingerprint:
         Fingerprint as string of hexdigits, can be interspersed by colons.
     """
+
+    if cert is None:
+        raise SSLError(
+            "No certificate for the peer."
+        )  # TODO: check this. getpeercert can return None.
 
     fingerprint = fingerprint.replace(":", "").lower()
     digest_length = len(fingerprint)
@@ -128,9 +136,7 @@ def assert_fingerprint(cert: bytes, fingerprint: str) -> None:
         )
 
 
-def resolve_cert_reqs(
-    candidate: Optional[Union[int, str]]
-) -> int:  # TODO: or return str?
+def resolve_cert_reqs(candidate: Optional[Union[int, str]]) -> int:
     """
     Resolves the argument to a numeric constant, which can be passed to
     the wrap_socket function/method from the ssl module.
@@ -153,9 +159,7 @@ def resolve_cert_reqs(
     return candidate
 
 
-def resolve_ssl_version(
-    candidate: Optional[Union[int, str]]
-) -> int:  # TODO: or return str?
+def resolve_ssl_version(candidate: Optional[Union[int, str]]) -> int:
     """
     like resolve_cert_reqs
     """
@@ -171,13 +175,12 @@ def resolve_ssl_version(
     return candidate
 
 
-# TODO: add type hints for options.
 def create_urllib3_context(
     ssl_version: Optional[int] = None,
-    cert_reqs: Optional[int] = None,  # TODO: or str?
-    options=None,
+    cert_reqs: Optional[int] = None,
+    options: Optional[int] = None,
     ciphers: Optional[str] = None,
-) -> SSLContext:
+) -> "ssl.SSLContext":
     """All arguments have the same meaning as ``ssl_wrap_socket``.
 
     By default, this function does a lot of the same work that
@@ -272,19 +275,17 @@ def ssl_wrap_socket(
     sock: socket.socket,
     keyfile: Optional[str] = None,
     certfile: Optional[str] = None,
-    cert_reqs: Optional[int] = None,  # TODO: or str?
+    cert_reqs: Optional[int] = None,
     ca_certs: Optional[str] = None,
     server_hostname: Optional[str] = None,
     ssl_version: Optional[int] = None,
     ciphers: Optional[str] = None,
-    ssl_context: Optional[
-        ssl.SSLContext
-    ] = None,  # TODO: or urllib3.util.ssl_.SSLContext
+    ssl_context: Optional["ssl.SSLContext"] = None,
     ca_cert_dir: Optional[str] = None,
     key_password: Optional[str] = None,
     ca_cert_data: Optional[str] = None,
     tls_in_tls: bool = False,
-) -> ssl.SSLSocket:
+) -> "ssl.SSLSocket":
     """
     All arguments except for server_hostname, ssl_context, and ca_cert_dir have
     the same meaning as they do when using :func:`ssl.wrap_socket`.

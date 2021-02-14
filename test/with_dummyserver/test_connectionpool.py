@@ -333,9 +333,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             conn = pool._new_conn()
             try:
                 # Update the default socket options
-                conn.default_socket_options += [
-                    (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-                ]
+                conn.socket_options += [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
                 s = conn._new_conn()
                 nagle_disabled = (
                     s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) > 0

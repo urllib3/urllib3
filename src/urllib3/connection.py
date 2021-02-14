@@ -5,7 +5,6 @@ import re
 import socket
 import sys
 import warnings
-from collections import namedtuple
 from copy import copy
 from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException  # noqa: F401
@@ -18,13 +17,13 @@ from typing import (
     Dict,
     Iterable,
     Mapping,
+    NamedTuple,
     Optional,
     Tuple,
     Union,
 )
 
 from .util.proxy import create_proxy_ssl_context
-from .util.url import Url
 from .util.util import to_str
 
 if TYPE_CHECKING:
@@ -35,7 +34,7 @@ else:
 
         BaseSSLError = ssl.SSLError
     except (ImportError, AttributeError):  # Platform-specific: No SSL.
-        ssl = None  # TODO: think about this.
+        ssl = None
 
         class BaseSSLError(BaseException):
             pass
@@ -70,12 +69,12 @@ _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 default_socket_options = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
 
-_DefaultType = Union[bytes, IO[Any], Iterable[bytes], str]
+_DefaultType = Union[bytes, IO[Any], Iterable[bytes], str]  # Type for HTTP body.
 
-_proxy_config_fields = ("ssl_context", "use_forwarding_for_https")
-ProxyConfig = namedtuple(
-    "ProxyConfig", _proxy_config_fields
-)  # TODO: tuple literal mypy.
+
+class ProxyConfig(NamedTuple):
+    ssl_context: "ssl.SSLContext"
+    use_forwarding_for_https: bool
 
 
 class HTTPConnection(_HTTPConnection):
@@ -117,16 +116,12 @@ class HTTPConnection(_HTTPConnection):
         self,
         host: str,
         port: Optional[int] = None,
-        timeout: Optional[
-            float
-        ] = socket._GLOBAL_DEFAULT_TIMEOUT,  # TODO: mypy doesn't know about that. How about defining own DEFAULT_TIMEOUT?
+        timeout: Optional[float] = connection.SOCKET_GLOBAL_DEFAULT_TIMEOUT,
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
         # Disable Nagle's algorithm by default.
         socket_options: connection.SocketOptions = default_socket_options,
-        proxy: Optional[
-            Url
-        ] = None,  # TODO: or Optional[Union[Url, str]] - parsed proxy url
+        proxy: Optional[str] = None,
         proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
         # Pre-set source_address.
@@ -151,10 +146,9 @@ class HTTPConnection(_HTTPConnection):
                 host=host, port=port, timeout=timeout, source_address=source_address
             )
 
-    # TODO:
     # https://github.com/python/mypy/issues/4125
     # Mypy treats this as LSP violation, which is considered a bug.
-    # If `host` is made a property it indeed violates LSP, because a writeable attribute is overriden with a read-only one.
+    # If `host` is made a property it violates LSP, because a writeable attribute is overriden with a read-only one.
     # However, there is also a `host` setter so LSP is not violated.
     # Potentailly, a `@host.deleter` might be needed depending on how this issue will be fixed.
     @property  # type: ignore
@@ -271,7 +265,7 @@ class HTTPConnection(_HTTPConnection):
     ) -> None:
         # Avoid modifying the headers passed into .request()
         headers = copy(headers)
-        # to_str should not be needed as headers is Mapping[str, str], probably will require changing calls to `request` and how HTTPHeaderDict is used (TODO: check this).
+        # What about HTTPHeaderDict?
         if "user-agent" not in (to_str(k.lower()) for k in headers):
             updated_headers = {"User-Agent": _get_default_user_agent()}
             updated_headers.update(headers)
@@ -342,12 +336,12 @@ class HTTPSConnection(HTTPConnection):
 
     default_port = port_by_scheme["https"]
 
-    cert_reqs: Optional[int] = None  # TODO: or str?
+    cert_reqs: Optional[int] = None
     ca_certs: Optional[str] = None
     ca_cert_dir: Optional[str] = None
     ca_cert_data: Optional[str] = None
     ssl_version: Optional[int] = None
-    assert_fingerprint: Optional[Any] = None
+    assert_fingerprint: Optional[str] = None
     tls_in_tls_required: bool = False
 
     def __init__(
@@ -357,15 +351,13 @@ class HTTPSConnection(HTTPConnection):
         key_file: Optional[str] = None,
         cert_file: Optional[str] = None,
         key_password: Optional[str] = None,
-        timeout: Optional[float] = socket._GLOBAL_DEFAULT_TIMEOUT,
-        ssl_context: Optional[
-            ssl.SSLContext
-        ] = None,  # TODO: or urllib3.util.ssl_.SSLContext
+        timeout: Optional[float] = connection.SOCKET_GLOBAL_DEFAULT_TIMEOUT,
+        ssl_context: Optional["ssl.SSLContext"] = None,
         server_hostname: Optional[str] = None,
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
         socket_options: connection.SocketOptions = default_socket_options,
-        proxy: Optional[Url] = None,  # TODO: as in HTTPConnection.
+        proxy: Optional[str] = None,
         proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
 
@@ -386,6 +378,7 @@ class HTTPSConnection(HTTPConnection):
         self.ssl_context = ssl_context
         self.server_hostname = server_hostname
 
+    # TODO: this can overwrite key_file etc. set in __init__ - check this.
     def set_cert(
         self,
         key_file: Optional[str] = None,
@@ -393,8 +386,8 @@ class HTTPSConnection(HTTPConnection):
         cert_reqs: Optional[int] = None,
         key_password: Optional[str] = None,
         ca_certs: Optional[str] = None,
-        assert_hostname: Optional[Any] = None,
-        assert_fingerprint: Optional[Any] = None,
+        assert_hostname: Optional[Union[str, bool]] = None,
+        assert_fingerprint: Optional[str] = None,
         ca_cert_dir: Optional[Any] = None,
         ca_cert_data: Optional[Any] = None,
     ) -> None:
@@ -522,16 +515,17 @@ class HTTPSConnection(HTTPConnection):
             # the TLS library, this cannot always be done. So we check whether
             # the TLS Library still thinks it's matching hostnames.
             cert = self.sock.getpeercert()
-            _match_hostname(cert, self.assert_hostname or server_hostname)
+            _match_hostname(
+                cert, self.assert_hostname or server_hostname
+            )  # TODO: assert_hostname can be str, None or False...
 
-        self.is_verified = (
-            context.verify_mode == ssl.CERT_REQUIRED
-            or self.assert_fingerprint is not None
+        self.is_verified = context.verify_mode == ssl.CERT_REQUIRED or bool(
+            self.assert_fingerprint
         )
 
     def _connect_tls_proxy(
         self, hostname: Optional[str], conn: socket.socket
-    ) -> ssl.SSLSocket:
+    ) -> "ssl.SSLSocket":
         """
         Establish a TLS connection to the proxy using the provided SSL context.
         """
@@ -577,7 +571,7 @@ def _match_hostname(cert: _PeerCertRetType, asserted_hostname: str) -> None:
         )
         # Add cert to exception and reraise so client code can inspect
         # the cert when catching the exception, if they want to
-        e._peer_cert = cert
+        e._peer_cert = cert  # type: ignore
         raise
 
 
@@ -592,7 +586,7 @@ class DummyConnection:
 
 
 if not ssl:
-    HTTPSConnection = DummyConnection  # noqa: F811
+    HTTPSConnection = DummyConnection  # type: ignore # noqa: F811
 
 
 VerifiedHTTPSConnection = HTTPSConnection

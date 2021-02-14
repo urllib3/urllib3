@@ -5,6 +5,7 @@ from urllib3.exceptions import LocationParseError
 
 from .wait import wait_for_read
 
+SOCKET_GLOBAL_DEFAULT_TIMEOUT = socket._GLOBAL_DEFAULT_TIMEOUT  # type: ignore
 SocketOptions = List[
     Tuple[int, int, int]
 ]  # TODO: level: int, optname: int, value: int/str - check if value can be str. Or as socket.setsockopt value can be int/bytes.
@@ -32,7 +33,7 @@ def create_connection(
     address: Tuple[
         str, int
     ],  # TODO: typeshed uses Tuple[Optional[str], int], getaddrinfo also has Optional[...], this passes NULL to underlying C api. Is this wanted?
-    timeout: Optional[float] = socket._GLOBAL_DEFAULT_TIMEOUT,
+    timeout: Optional[float] = SOCKET_GLOBAL_DEFAULT_TIMEOUT,
     source_address: Optional[Tuple[str, int]] = None,
     socket_options: Optional[SocketOptions] = None,
 ) -> socket.socket:
@@ -72,9 +73,7 @@ def create_connection(
             # If provided, set socket level options before connecting.
             _set_socket_options(sock, socket_options)
 
-            if (
-                timeout is not socket._GLOBAL_DEFAULT_TIMEOUT
-            ):  # TODO: what to do about this?
+            if timeout is not SOCKET_GLOBAL_DEFAULT_TIMEOUT:
                 sock.settimeout(timeout)
             if source_address:
                 sock.bind(source_address)
@@ -93,7 +92,7 @@ def create_connection(
     raise OSError("getaddrinfo returns an empty list")
 
 
-def _set_socket_options(sock: socket.socket, options: SocketOptions) -> None:
+def _set_socket_options(sock: socket.socket, options: Optional[SocketOptions]) -> None:
     if options is None:
         return
 
@@ -112,7 +111,7 @@ def allowed_gai_family() -> socket.AddressFamily:
     return family
 
 
-def _has_ipv6(host: str) -> bool:  # TODO: can host be bytes?
+def _has_ipv6(host: str) -> bool:
     """ Returns True if the system can bind an IPv6 address. """
     sock = None
     has_ipv6 = False
