@@ -6,9 +6,7 @@ from urllib3.exceptions import LocationParseError
 from .wait import wait_for_read
 
 SOCKET_GLOBAL_DEFAULT_TIMEOUT = socket._GLOBAL_DEFAULT_TIMEOUT  # type: ignore
-SocketOptions = List[
-    Tuple[int, int, int]
-]
+SocketOptions = List[Tuple[int, int, int]]
 
 
 def is_connection_dropped(conn: socket.socket) -> bool:  # Platform-specific

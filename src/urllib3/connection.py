@@ -532,7 +532,9 @@ class HTTPSConnection(HTTPConnection):
         Establish a TLS connection to the proxy using the provided SSL context.
         """
 
-        proxy_config = self.proxy_config
+        proxy_config = cast(
+            ProxyConfig, self.proxy_config
+        )  # `_connect_tls_proxy` is called when self._is_using_tunnel() is truthy.
         ssl_context = proxy_config.ssl_context
 
         try:
