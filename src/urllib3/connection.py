@@ -42,7 +42,12 @@ else:
 
 
 from ._version import __version__
-from .exceptions import ConnectTimeoutError, NewConnectionError, SystemTimeWarning
+from .exceptions import (
+    ConnectTimeoutError,
+    HTTPSProxyError,
+    NewConnectionError,
+    SystemTimeWarning,
+)
 from .packages.ssl_match_hostname import CertificateError, match_hostname
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection
 from .util.ssl_ import (
@@ -526,35 +531,44 @@ class HTTPSConnection(HTTPConnection):
         """
         Establish a TLS connection to the proxy using the provided SSL context.
         """
+
         proxy_config = self.proxy_config
-        ssl_context = proxy_config.ssl_context if proxy_config is not None else None
-        if ssl_context:
-            # If the user provided a proxy context, we assume CA and client
-            # certificates have already been set
+        ssl_context = proxy_config.ssl_context
+
+        try:
+            if ssl_context:
+                # If the user provided a proxy context, we assume CA and client
+                # certificates have already been set
+                return ssl_wrap_socket(
+                    sock=conn,
+                    server_hostname=hostname,
+                    ssl_context=ssl_context,
+                )
+
+            ssl_context = create_proxy_ssl_context(
+                self.ssl_version,
+                self.cert_reqs,
+                self.ca_certs,
+                self.ca_cert_dir,
+                self.ca_cert_data,
+            )
+
+            # If no cert was provided, use only the default options for server
+            # certificate validation
             return ssl_wrap_socket(
                 sock=conn,
+                ca_certs=self.ca_certs,
+                ca_cert_dir=self.ca_cert_dir,
+                ca_cert_data=self.ca_cert_data,
                 server_hostname=hostname,
                 ssl_context=ssl_context,
             )
-
-        ssl_context = create_proxy_ssl_context(
-            self.ssl_version,
-            self.cert_reqs,
-            self.ca_certs,
-            self.ca_cert_dir,
-            self.ca_cert_data,
-        )
-
-        # If no cert was provided, use only the default options for server
-        # certificate validation
-        return ssl_wrap_socket(
-            sock=conn,
-            ca_certs=self.ca_certs,
-            ca_cert_dir=self.ca_cert_dir,
-            ca_cert_data=self.ca_cert_data,
-            server_hostname=hostname,
-            ssl_context=ssl_context,
-        )
+        except Exception as e:
+            # Wrap into an HTTPSProxyError for easier diagnosis.
+            # Original exception is available on original_error
+            raise HTTPSProxyError(
+                f"Unable to establish a TLS connection to {hostname}", e
+            )
 
 
 def _match_hostname(cert: _PeerCertRetType, asserted_hostname: str) -> None:

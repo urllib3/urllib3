@@ -16,7 +16,7 @@ from .ssl_ import (
     ssl_wrap_socket,
 )
 from .timeout import Timeout, current_time
-from .url import Url, get_host, parse_url, split_first
+from .url import Url, parse_url
 from .wait import wait_for_read, wait_for_write
 
 __all__ = (
@@ -33,12 +33,10 @@ __all__ = (
     "current_time",
     "is_connection_dropped",
     "is_fp_closed",
-    "get_host",
     "parse_url",
     "make_headers",
     "resolve_cert_reqs",
     "resolve_ssl_version",
-    "split_first",
     "ssl_wrap_socket",
     "wait_for_read",
     "wait_for_write",

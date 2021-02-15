@@ -21,6 +21,7 @@ from .exceptions import (
     EmptyPoolError,
     HeaderParsingError,
     HostChangedError,
+    HTTPSProxyError,
     InsecureRequestWarning,
     LocationValueError,
     MaxRetryError,
@@ -43,7 +44,7 @@ from .util.retry import Retry
 from .util.timeout import Timeout
 from .util.url import Url, _encode_target
 from .util.url import _normalize_host as normalize_host
-from .util.url import get_host, parse_url
+from .util.url import parse_url
 from .util.util import to_str
 
 log = logging.getLogger(__name__)
@@ -456,7 +457,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             return True
 
         # TODO: Add optional support for socket.gethostbyname checking.
-        scheme, host, port = get_host(url)
+        scheme, _, host, port, *_ = parse_url(url)
+        scheme = scheme or "http"
         if host is not None:
             host = _normalize_host(host, scheme=scheme)
 
@@ -694,6 +696,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             BaseSSLError,
             SSLError,
             CertificateError,
+            HTTPSProxyError,
         ) as e:
             # Discard the connection for these exceptions. It will be
             # replaced during the next _get_conn() call.
@@ -990,7 +993,8 @@ def connection_from_url(url, **kw):
         >>> conn = connection_from_url('http://google.com/')
         >>> r = conn.request('GET', '/')
     """
-    scheme, host, port = get_host(url)
+    scheme, _, host, port, *_ = parse_url(url)
+    scheme = scheme or "http"
     port = port or port_by_scheme.get(scheme, 80)
     if scheme == "https":
         return HTTPSConnectionPool(host, port=port, **kw)
