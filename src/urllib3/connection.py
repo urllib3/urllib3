@@ -207,7 +207,7 @@ class HTTPConnection(_HTTPConnection):
             )
 
         except OSError as e:
-            raise NewConnectionError(self, f"Failed to establish a new connection: {e}")
+            raise NewConnectionError(self, f"Failed to establish a new connection: {e}")  # type: ignore
 
         return conn
 
@@ -268,7 +268,6 @@ class HTTPConnection(_HTTPConnection):
     ) -> None:
         # Avoid modifying the headers passed into .request()
         headers = copy(headers)
-        # What about HTTPHeaderDict?
         if "user-agent" not in (to_str(k.lower()) for k in headers):
             updated_headers = {"User-Agent": _get_default_user_agent()}
             updated_headers.update(headers)
@@ -519,7 +518,7 @@ class HTTPSConnection(HTTPConnection):
             # the TLS library, this cannot always be done. So we check whether
             # the TLS Library still thinks it's matching hostnames.
             cert = self.sock.getpeercert()
-            _match_hostname(cert, self.assert_hostname or server_hostname)
+            _match_hostname(cert, self.assert_hostname or server_hostname)  # type: ignore
 
         self.is_verified = context.verify_mode == ssl.CERT_REQUIRED or bool(
             self.assert_fingerprint
