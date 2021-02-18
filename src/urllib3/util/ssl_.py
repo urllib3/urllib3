@@ -134,7 +134,7 @@ def assert_fingerprint(cert: Optional[bytes], fingerprint: str) -> None:
         )
 
 
-def resolve_cert_reqs(candidate: Optional[Union[int, str]]) -> int:
+def resolve_cert_reqs(candidate: Union[None, int, str]) -> int:
     """
     Resolves the argument to a numeric constant, which can be passed to
     the wrap_socket function/method from the ssl module.
@@ -157,7 +157,7 @@ def resolve_cert_reqs(candidate: Optional[Union[int, str]]) -> int:
     return candidate
 
 
-def resolve_ssl_version(candidate: Optional[Union[int, str]]) -> int:
+def resolve_ssl_version(candidate: Union[None, int, str]) -> int:
     """
     like resolve_cert_reqs
     """

@@ -73,7 +73,6 @@ RECENT_DATE = datetime.date(2020, 7, 1)
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
-default_socket_options = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
 
 _DefaultType = Union[bytes, IO[Any], Iterable[bytes], str]  # Type for HTTP body.
 
@@ -125,11 +124,13 @@ class HTTPConnection(_HTTPConnection):
         timeout: Optional[float] = connection.SOCKET_GLOBAL_DEFAULT_TIMEOUT,
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
-        # Disable Nagle's algorithm by default.
-        socket_options: connection.SocketOptions = default_socket_options,
+        socket_options: Optional[connection.SocketOptions] = None,
         proxy: Optional[str] = None,
         proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
+        if socket_options is None:
+            # Disable Nagle's algorithm by default.
+            socket_options = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
         # Pre-set source_address.
         self.source_address = source_address
 
@@ -262,12 +263,15 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: Optional[_DefaultType] = None,
-        headers: Mapping[str, str] = {},
+        headers: Optional[Mapping[str, str]] = None,
         *,
         encode_chunked: bool = False,
     ) -> None:
-        # Avoid modifying the headers passed into .request()
-        headers = copy(headers)
+        if headers is None:
+            headers = {}
+        else:
+            # Avoid modifying the headers passed into .request()
+            headers = copy(headers)
         if "user-agent" not in (to_str(k.lower()) for k in headers):
             updated_headers = {"User-Agent": _get_default_user_agent()}
             updated_headers.update(headers)
@@ -281,12 +285,14 @@ class HTTPConnection(_HTTPConnection):
         method: str,
         url: str,
         body: Optional[_DefaultType] = None,
-        headers: Mapping[str, str] = {},
+        headers: Optional[Mapping[str, str]] = None,
     ) -> None:
         """
         Alternative to the common request method, which sends the
         body with chunked encoding and not as one block
         """
+        if headers is None:
+            headers = {}
         header_keys = {to_str(k.lower()) for k in headers}
         skip_accept_encoding = "accept-encoding" in header_keys
         skip_host = "host" in header_keys
@@ -311,7 +317,7 @@ class HTTPConnection(_HTTPConnection):
         # After the if clause, to always have a closed body
         self.send(b"0\r\n\r\n")
 
-    def send_chunk(self, chunk: Optional[Union[bytes, str]]) -> None:
+    def send_chunk(self, chunk: Union[None, bytes, str]) -> None:
         if not chunk:
             return
         if not isinstance(chunk, bytes):
@@ -358,7 +364,7 @@ class HTTPSConnection(HTTPConnection):
         server_hostname: Optional[str] = None,
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
-        socket_options: connection.SocketOptions = default_socket_options,
+        socket_options: Optional[connection.SocketOptions] = None,
         proxy: Optional[str] = None,
         proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
@@ -387,7 +393,7 @@ class HTTPSConnection(HTTPConnection):
         cert_reqs: Optional[int] = None,
         key_password: Optional[str] = None,
         ca_certs: Optional[str] = None,
-        assert_hostname: Optional[Union[str, bool]] = None,
+        assert_hostname: Union[None, str, bool] = None,
         assert_fingerprint: Optional[str] = None,
         ca_cert_dir: Optional[Any] = None,
         ca_cert_data: Optional[Any] = None,
