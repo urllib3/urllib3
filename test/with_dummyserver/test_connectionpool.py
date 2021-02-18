@@ -313,10 +313,10 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                 s.close()
 
     def test_disable_default_socket_options(self):
-        """Test that passing None disables all socket options."""
+        """Test that passing empty list disables all socket options."""
         # This test needs to be here in order to be run. socket.create_connection actually tries
         # to connect to the host provided so we need a dummyserver to be running.
-        with HTTPConnectionPool(self.host, self.port, socket_options=None) as pool:
+        with HTTPConnectionPool(self.host, self.port, socket_options=[]) as pool:
             s = pool._new_conn()._new_conn()
             try:
                 using_nagle = s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) == 0
