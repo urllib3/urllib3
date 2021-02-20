@@ -6,6 +6,7 @@ urllib3
    :maxdepth: 3
 
    For Enterprise <https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=docs>
+   Community Discord <https://discord.gg/urllib3>
    v2-roadmap
    sponsors
    user-guide
