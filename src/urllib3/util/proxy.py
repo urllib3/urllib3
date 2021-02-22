@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 from .ssl_ import create_urllib3_context, resolve_cert_reqs, resolve_ssl_version
 
@@ -44,7 +44,7 @@ def create_proxy_ssl_context(
     cert_reqs: Optional[int] = None,
     ca_certs: Optional[str] = None,
     ca_cert_dir: Optional[str] = None,
-    ca_cert_data: Optional[str] = None,
+    ca_cert_data: Union[None, str, bytes] = None,
 ) -> "ssl.SSLContext":
     """
     Generates a default proxy ssl context if one hasn't been provided by the

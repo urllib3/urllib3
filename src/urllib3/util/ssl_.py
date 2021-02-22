@@ -5,7 +5,7 @@ import sys
 import warnings
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
-from typing import TYPE_CHECKING, Optional, Union
+from typing import Optional, Union
 
 from ..exceptions import ProxySchemeUnsupported, SNIMissingWarning, SSLError
 from .url import _BRACELESS_IPV6_ADDRZ_RE, _IPV4_RE
@@ -35,35 +35,32 @@ def _is_ge_openssl_v1_1_1(
     )
 
 
-if TYPE_CHECKING:
+try:  # Do we have ssl at all?
     import ssl
-else:
-    try:  # Do we have ssl at all?
-        import ssl
-        from ssl import (
-            CERT_REQUIRED,
-            HAS_SNI,
-            OP_NO_COMPRESSION,
-            OP_NO_TICKET,
-            OPENSSL_VERSION,
-            OPENSSL_VERSION_NUMBER,
-            PROTOCOL_TLS,
-            OP_NO_SSLv2,
-            OP_NO_SSLv3,
-            SSLContext,
-        )
+    from ssl import (
+        CERT_REQUIRED,
+        HAS_SNI,
+        OP_NO_COMPRESSION,
+        OP_NO_TICKET,
+        OPENSSL_VERSION,
+        OPENSSL_VERSION_NUMBER,
+        PROTOCOL_TLS,
+        OP_NO_SSLv2,
+        OP_NO_SSLv3,
+        SSLContext,
+    )
 
-        USE_DEFAULT_SSLCONTEXT_CIPHERS = _is_ge_openssl_v1_1_1(
-            OPENSSL_VERSION, OPENSSL_VERSION_NUMBER
-        )
-        PROTOCOL_SSLv23 = PROTOCOL_TLS
-        from .ssltransport import SSLTransport
-    except ImportError:
-        OP_NO_COMPRESSION = 0x20000
-        OP_NO_TICKET = 0x4000
-        OP_NO_SSLv2 = 0x1000000
-        OP_NO_SSLv3 = 0x2000000
-        PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
+    USE_DEFAULT_SSLCONTEXT_CIPHERS = _is_ge_openssl_v1_1_1(
+        OPENSSL_VERSION, OPENSSL_VERSION_NUMBER
+    )
+    PROTOCOL_SSLv23 = PROTOCOL_TLS
+    from .ssltransport import SSLTransport
+except ImportError:
+    OP_NO_COMPRESSION = 0x20000
+    OP_NO_TICKET = 0x4000
+    OP_NO_SSLv2 = 0x1000000
+    OP_NO_SSLv3 = 0x2000000
+    PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
 
 
 # A secure default.
@@ -278,7 +275,7 @@ def ssl_wrap_socket(
     ssl_context: Optional["ssl.SSLContext"] = None,
     ca_cert_dir: Optional[str] = None,
     key_password: Optional[str] = None,
-    ca_cert_data: Optional[str] = None,
+    ca_cert_data: Union[None, str, bytes] = None,
     tls_in_tls: bool = False,
 ) -> "ssl.SSLSocket":
     """

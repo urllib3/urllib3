@@ -11,7 +11,6 @@ from http.client import HTTPException  # noqa: F401
 from socket import timeout as SocketTimeout
 from typing import (
     IO,
-    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
@@ -27,18 +26,15 @@ from typing import (
 from .util.proxy import create_proxy_ssl_context
 from .util.util import to_str
 
-if TYPE_CHECKING:
+try:  # Compiled with SSL?
     import ssl
-else:
-    try:  # Compiled with SSL?
-        import ssl
 
-        BaseSSLError = ssl.SSLError
-    except (ImportError, AttributeError):  # Platform-specific: No SSL.
-        ssl = None
+    BaseSSLError = ssl.SSLError
+except (ImportError, AttributeError):  # Platform-specific: No SSL.
+    ssl = None  # type: ignore
 
-        class BaseSSLError(BaseException):
-            pass
+    class BaseSSLError(BaseException):  # type: ignore
+        pass
 
 
 from ._version import __version__
@@ -74,7 +70,7 @@ RECENT_DATE = datetime.date(2020, 7, 1)
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
-_DefaultType = Union[bytes, IO[Any], Iterable[bytes], str]  # Type for HTTP body.
+HTTPBody = Union[bytes, IO[Any], Iterable[bytes], str]
 
 
 class ProxyConfig(NamedTuple):
@@ -109,11 +105,17 @@ class HTTPConnection(_HTTPConnection):
 
     default_port: int = port_by_scheme["http"]
 
+    #: Disable Nagle's algorithm by default.
+    #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
+    default_socket_options: connection.SocketOptions = [
+        (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+    ]
+
     #: Whether this connection verifies the host's certificate.
     is_verified: bool = False
 
     source_address: Optional[Tuple[str, int]]
-    socket_options: connection.SocketOptions
+    socket_options: Optional[connection.SocketOptions]
     _tunnel_host: Optional[str]
     _tunnel: Callable[["HTTPConnection"], None]
 
@@ -124,13 +126,10 @@ class HTTPConnection(_HTTPConnection):
         timeout: Optional[float] = connection.SOCKET_GLOBAL_DEFAULT_TIMEOUT,
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
-        socket_options: Optional[connection.SocketOptions] = None,
+        socket_options: Optional[connection.SocketOptions] = default_socket_options,
         proxy: Optional[str] = None,
         proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
-        if socket_options is None:
-            # Disable Nagle's algorithm by default.
-            socket_options = [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
         # Pre-set source_address.
         self.source_address = source_address
 
@@ -258,14 +257,14 @@ class HTTPConnection(_HTTPConnection):
                 )
             )
 
-    def request(
+    # `request` method's signature intentionally violates LSP.
+    # urllib3's API is different from `http.client.HTTPConnection` and subclassing for now is incidental.
+    def request(  # type: ignore
         self,
         method: str,
         url: str,
-        body: Optional[_DefaultType] = None,
+        body: Optional[HTTPBody] = None,
         headers: Optional[Mapping[str, str]] = None,
-        *,
-        encode_chunked: bool = False,
     ) -> None:
         if headers is None:
             headers = {}
@@ -276,15 +275,13 @@ class HTTPConnection(_HTTPConnection):
             updated_headers = {"User-Agent": _get_default_user_agent()}
             updated_headers.update(headers)
             headers = updated_headers
-        super().request(
-            method, url, body=body, headers=headers, encode_chunked=encode_chunked
-        )
+        super().request(method, url, body=body, headers=headers)
 
     def request_chunked(
         self,
         method: str,
         url: str,
-        body: Optional[_DefaultType] = None,
+        body: Union[None, HTTPBody, Tuple[Union[bytes, str]]] = None,
         headers: Optional[Mapping[str, str]] = None,
     ) -> None:
         """
@@ -309,25 +306,21 @@ class HTTPConnection(_HTTPConnection):
 
         if body is not None:
             if isinstance(body, (str, bytes)):
-                self.send_chunk(body)
-            else:
-                for chunk in body:
-                    self.send_chunk(chunk)
+                body = (body,)
+            for chunk in body:
+                if not chunk:
+                    continue
+                if not isinstance(chunk, bytes):
+                    chunk = chunk.encode("utf8")
+                len_str = hex(len(chunk))[2:]
+                to_send = bytearray(len_str.encode())
+                to_send += b"\r\n"
+                to_send += chunk
+                to_send += b"\r\n"
+                self.send(to_send)
 
         # After the if clause, to always have a closed body
         self.send(b"0\r\n\r\n")
-
-    def send_chunk(self, chunk: Union[None, bytes, str]) -> None:
-        if not chunk:
-            return
-        if not isinstance(chunk, bytes):
-            chunk = chunk.encode("utf8")
-        len_str = hex(len(chunk))[2:]
-        to_send = bytearray(len_str.encode())
-        to_send += b"\r\n"
-        to_send += chunk
-        to_send += b"\r\n"
-        self.send(to_send)
 
 
 _PCTRTT = Tuple[Tuple[str, str], ...]
@@ -347,7 +340,7 @@ class HTTPSConnection(HTTPConnection):
     cert_reqs: Optional[int] = None
     ca_certs: Optional[str] = None
     ca_cert_dir: Optional[str] = None
-    ca_cert_data: Optional[str] = None
+    ca_cert_data: Union[None, str, bytes] = None
     ssl_version: Optional[int] = None
     assert_fingerprint: Optional[str] = None
     tls_in_tls_required: bool = False
@@ -395,8 +388,8 @@ class HTTPSConnection(HTTPConnection):
         ca_certs: Optional[str] = None,
         assert_hostname: Union[None, str, bool] = None,
         assert_fingerprint: Optional[str] = None,
-        ca_cert_dir: Optional[Any] = None,
-        ca_cert_data: Optional[Any] = None,
+        ca_cert_dir: Optional[str] = None,
+        ca_cert_data: Union[None, str, bytes] = None,
     ) -> None:
         """
         This method should only be called once, before the connection is used.
