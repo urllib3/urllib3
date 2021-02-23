@@ -2,7 +2,7 @@ from unittest import mock
 
 import pytest
 
-from urllib3.exceptions import SNIMissingWarning
+from urllib3.exceptions import SNIMissingWarning, SSLError
 from urllib3.util import ssl_
 
 
@@ -189,3 +189,9 @@ class TestSSL:
             context.set_ciphers.assert_not_called()
         else:
             context.set_ciphers.assert_called_with(ssl_.DEFAULT_CIPHERS)
+
+    def test_assert_fingerprint_raises_exception_on_none_cert(self):
+        with pytest.raises(SSLError):
+            ssl_.assert_fingerprint(
+                cert=None, fingerprint="55:39:BF:70:05:12:43:FA:1F:D1:BF:4E:E8:1B:07:1D"
+            )

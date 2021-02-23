@@ -23,6 +23,8 @@ from typing import (
     cast,
 )
 
+from typing_extensions import Literal
+
 from .util.proxy import create_proxy_ssl_context
 from .util.util import to_str
 
@@ -258,7 +260,7 @@ class HTTPConnection(_HTTPConnection):
             )
 
     # `request` method's signature intentionally violates LSP.
-    # urllib3's API is different from `http.client.HTTPConnection` and subclassing for now is incidental.
+    # urllib3's API is different from `http.client.HTTPConnection` and the subclassing is only incidental.
     def request(  # type: ignore
         self,
         method: str,
@@ -386,7 +388,7 @@ class HTTPSConnection(HTTPConnection):
         cert_reqs: Optional[int] = None,
         key_password: Optional[str] = None,
         ca_certs: Optional[str] = None,
-        assert_hostname: Union[None, str, bool] = None,
+        assert_hostname: Union[None, str, Literal[False]] = None,
         assert_fingerprint: Optional[str] = None,
         ca_cert_dir: Optional[str] = None,
         ca_cert_data: Union[None, str, bytes] = None,
@@ -517,7 +519,7 @@ class HTTPSConnection(HTTPConnection):
             # the TLS library, this cannot always be done. So we check whether
             # the TLS Library still thinks it's matching hostnames.
             cert = self.sock.getpeercert()
-            _match_hostname(cert, self.assert_hostname or server_hostname)  # type: ignore
+            _match_hostname(cert, self.assert_hostname or server_hostname)
 
         self.is_verified = context.verify_mode == ssl.CERT_REQUIRED or bool(
             self.assert_fingerprint
