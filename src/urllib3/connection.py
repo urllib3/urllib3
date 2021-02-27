@@ -11,6 +11,7 @@ from http.client import HTTPException  # noqa: F401
 from socket import timeout as SocketTimeout
 from typing import (
     IO,
+    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
@@ -23,7 +24,8 @@ from typing import (
     cast,
 )
 
-from typing_extensions import Literal
+if TYPE_CHECKING:
+    from typing_extensions import Literal
 
 from .util.proxy import create_proxy_ssl_context
 from .util.util import to_str
@@ -388,7 +390,7 @@ class HTTPSConnection(HTTPConnection):
         cert_reqs: Optional[int] = None,
         key_password: Optional[str] = None,
         ca_certs: Optional[str] = None,
-        assert_hostname: Union[None, str, Literal[False]] = None,
+        assert_hostname: Union[None, str, "Literal[False]"] = None,
         assert_fingerprint: Optional[str] = None,
         ca_cert_dir: Optional[str] = None,
         ca_cert_data: Union[None, str, bytes] = None,
