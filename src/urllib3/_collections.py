@@ -1,5 +1,6 @@
 import sys
 from collections import OrderedDict
+from enum import Enum, auto
 from typing import (
     TYPE_CHECKING,
     Callable,
@@ -55,10 +56,14 @@ else:
 __all__ = ["RecentlyUsedContainer", "HTTPHeaderDict"]
 
 
+# Key type
 _KT = TypeVar("_KT")
+# Value type
 _VT = TypeVar("_VT")
+# Default type
+_DT = TypeVar("_DT")
 
-ValidHttpHeaderSource = Union[
+ValidHTTPHeaderSource = Union[
     "HTTPHeaderDict",
     Mapping[str, str],
     Iterable[Tuple[str, str]],
@@ -66,9 +71,13 @@ ValidHttpHeaderSource = Union[
 ]
 
 
+class _Sentinel(Enum):
+    not_passed = auto()
+
+
 def ensure_can_construct_http_header_dict(
     potential: object,
-) -> Optional[ValidHttpHeaderSource]:
+) -> Optional[ValidHTTPHeaderSource]:
     if isinstance(potential, HTTPHeaderDict):
         return potential
     elif isinstance(potential, Mapping):
@@ -122,26 +131,27 @@ class RecentlyUsedContainer(Generic[_KT, _VT], MutableMapping[_KT, _VT]):
             return item
 
     def __setitem__(self, key: _KT, value: _VT) -> None:
-        evicted_value = None
+        evicted_item = None
         with self.lock:
             # Possibly evict the existing value of 'key'
             try:
                 # If the key exists, we'll overwrite it, which won't change the
                 # size of the pool. Because accessing a key should move it to
                 # the end of the eviction line, we pop it out first.
-                evicted_value = self._container.pop(key)
+                evicted_item = key, self._container.pop(key)
             except KeyError:
                 if len(self._container) >= self._maxsize:
                     # If we didn't evict an existing value, and we've hit our maximum
                     # size, then we have to evict the least recently used item from
                     # the beginning of the container.
-                    _, evicted_value = self._container.popitem(last=False)
+                    evicted_item = self._container.popitem(last=False)
 
             # Finally, insert the new value.
             self._container[key] = value
 
-        # Release the lock on the pool, and dispose of the evicted value.
-        if evicted_value is not None and self.dispose_func:
+        # After releasing the lock on the pool, dispose of any evicted value.
+        if evicted_item is not None and self.dispose_func:
+            _, evicted_value = evicted_item
             self.dispose_func(evicted_value)
 
     def __delitem__(self, key: _KT) -> None:
@@ -201,22 +211,22 @@ class HTTPHeaderDictItemView(Set[Tuple[str, str]]):
     keys, ordered by time of first insertion.
     """
 
-    headers: "HTTPHeaderDict"
+    _headers: "HTTPHeaderDict"
 
     def __init__(self, headers: "HTTPHeaderDict") -> None:
         self.headers = headers
 
     def __len__(self) -> int:
-        return len(list(self.headers.iteritems()))
+        return len(list(self._headers.iteritems()))
 
     def __iter__(self) -> Iterator[Tuple[str, str]]:
-        return self.headers.iteritems()
+        return self._headers.iteritems()
 
     def __contains__(self, item: object) -> bool:
         if isinstance(item, tuple) and len(item) == 2:
             passed_key, passed_val = item
             if isinstance(passed_key, str) and isinstance(passed_val, str):
-                return self.headers.has_value_for_header(passed_key, passed_val)
+                return self._headers._has_value_for_header(passed_key, passed_val)
         return False
 
 
@@ -256,7 +266,7 @@ class HTTPHeaderDict(MutableMapping[str, str]):
 
     _container: MutableMapping[str, List[str]]
 
-    def __init__(self, headers: Optional[ValidHttpHeaderSource] = None, **kwargs: str):
+    def __init__(self, headers: Optional[ValidHTTPHeaderSource] = None, **kwargs: str):
         super().__init__()
         self._container = _ordered_dict()
         if headers is not None:
@@ -326,7 +336,7 @@ class HTTPHeaderDict(MutableMapping[str, str]):
         if new_vals is not vals:
             vals.append(val)
 
-    def extend(self, *args: ValidHttpHeaderSource, **kwargs: str) -> None:
+    def extend(self, *args: ValidHTTPHeaderSource, **kwargs: str) -> None:
         """Generic import function for any type of header-like object.
         Adapted version of MutableMapping.update in order to insert items
         with self.add instead of self.__setitem__
@@ -364,19 +374,25 @@ class HTTPHeaderDict(MutableMapping[str, str]):
         ...
 
     @overload
-    def getlist(self, key: str, default: List[str]) -> List[str]:
+    def getlist(self, key: str, default: _DT) -> Union[List[str], _DT]:
         ...
 
-    def getlist(self, key: str, default: Optional[List[str]] = None) -> List[str]:
+    def getlist(
+        self, key: str, default: Union[_Sentinel, _DT] = _Sentinel.not_passed
+    ) -> Union[List[str], _DT]:
         """Returns a list of all the values for the named field. Returns an
         empty list if the key doesn't exist."""
         try:
             vals = self._container[key.lower()]
         except KeyError:
-            if default is None:
+            if default is _Sentinel.not_passed:
+                # _DT is unbound; empty list is instance of List[str]
                 return []
+            # _DT is bound; default is instance of _DT
             return default
         else:
+            # _DT may or may not be bound; vals[1:] is instance of List[str], which
+            # meets our external interface requirement of `Union[List[str], _DT]`.
             return vals[1:]
 
     # Backwards compatibility for httplib
@@ -416,7 +432,7 @@ class HTTPHeaderDict(MutableMapping[str, str]):
     def items(self) -> HTTPHeaderDictItemView:
         return HTTPHeaderDictItemView(self)
 
-    def has_value_for_header(self, header_name: str, potential_value: str) -> bool:
+    def _has_value_for_header(self, header_name: str, potential_value: str) -> bool:
         if header_name in self:
             return potential_value in self._container[header_name.lower()][1:]
         return False
