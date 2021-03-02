@@ -39,7 +39,7 @@ else:
     try:
         from threading import RLock
     except ImportError:  # Platform-specific: No threads available
-        from urllib3.compat.rlock import RLock
+        from urllib3._private_compat.rlock import RLock
 
 
 # Starting in Python 3.7 the 'dict' class is guaranteed to be
@@ -214,7 +214,7 @@ class HTTPHeaderDictItemView(Set[Tuple[str, str]]):
     _headers: "HTTPHeaderDict"
 
     def __init__(self, headers: "HTTPHeaderDict") -> None:
-        self.headers = headers
+        self._headers = headers
 
     def __len__(self) -> int:
         return len(list(self._headers.iteritems()))
