@@ -232,14 +232,13 @@ you could connect to a server by IP using HTTPS like so::
 
     >>> import urllib3
     >>> pool = urllib3.HTTPSConnectionPool(
-    ...     "10.0.0.10",
-    ...     assert_hostname="example.org",
-    ...     server_hostname="example.org"
+    ...     "104.154.89.105",
+    ...     server_hostname="badssl.com"
     ... )
     >>> pool.urlopen(
     ...     "GET",
     ...     "/",
-    ...     headers={"Host": "example.org"},
+    ...     headers={"Host": "badssl.com"},
     ...     assert_same_host=False
     ... )
 
