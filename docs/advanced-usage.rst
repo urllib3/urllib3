@@ -232,14 +232,13 @@ you could connect to a server by IP using HTTPS like so::
 
     >>> import urllib3
     >>> pool = urllib3.HTTPSConnectionPool(
-    ...     "10.0.0.10",
-    ...     assert_hostname="example.org",
-    ...     server_hostname="example.org"
+    ...     "104.154.89.105",
+    ...     server_hostname="badssl.com"
     ... )
     >>> pool.urlopen(
     ...     "GET",
     ...     "/",
-    ...     headers={"Host": "example.org"},
+    ...     headers={"Host": "badssl.com"},
     ...     assert_same_host=False
     ... )
 
@@ -250,6 +249,22 @@ Note that when you use a connection in this way, you must specify
 This is useful when DNS resolution for ``example.org`` does not match the
 address that you would like to use. The IP may be for a private interface, or
 you may want to use a specific host under round-robin DNS.
+
+
+.. _assert_hostname:
+
+Verifying TLS against a different host
+--------------------------------------
+
+If the server you're connecting to presents a different certificate than the
+hostname or the SNI hostname, you can use ``assert_hostname``::
+
+    >>> import urllib3
+    >>> pool = urllib3.HTTPSConnectionPool(
+    ...     "wrong.host.badssl.com",
+    ...     assert_hostname="badssl.com",
+    ... )
+    >>> pool.urlopen("GET", "/")
 
 
 .. _ssl_client:
