@@ -1,4 +1,5 @@
-from typing import Optional, Union
+from types import TracebackType
+from typing import NoReturn, Optional, Type, Union
 
 
 def to_bytes(
@@ -25,10 +26,12 @@ def to_str(
     return x.decode()
 
 
-def reraise(tp, value, tb=None):
+def reraise(
+    tp: Optional[Type[BaseException]],
+    value: Optional[BaseException],
+    tb: Optional[TracebackType] = None,
+) -> NoReturn:
     try:
-        if value is None:
-            value = tp()
         if value.__traceback__ is not tb:
             raise value.with_traceback(tb)
         raise value

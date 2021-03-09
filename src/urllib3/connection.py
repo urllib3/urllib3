@@ -514,7 +514,7 @@ class HTTPSConnection(HTTPConnection):
             )
         elif (
             context.verify_mode != ssl.CERT_NONE
-            and not getattr(context, "check_hostname", False)
+            and not context.check_hostname
             and self.assert_hostname is not False
         ):
             # While urllib3 attempts to always turn off hostname matching from
