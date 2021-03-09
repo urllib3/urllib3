@@ -306,5 +306,8 @@ In chronological order:
 * [Ezzeri Esa] <https://github.com/savarin>
   * Ports and extends on types from typeshed
 
+* [Franciszek Magiera] <https://github.com/franekmagiera>
+  * Add top-level request method.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

@@ -5,6 +5,7 @@ import pytest
 
 from dummyserver.server import HAS_IPV6
 from dummyserver.testcase import HTTPDummyServerTestCase, IPv6HTTPDummyServerTestCase
+from urllib3 import request
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
@@ -361,6 +362,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
             url = f"http://{self.host}:{self.port}{target}"
             r = http.request("GET", url)
             assert r.data == expected_target
+
+    def test_top_level_request(self):
+        r = request("GET", f"{self.base_url}/")
+        assert r.status == 200
+        assert r.data == b"Dummy server!"
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")

@@ -1,4 +1,11 @@
 from http.client import IncompleteRead as httplib_IncompleteRead
+from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
+
+if TYPE_CHECKING:
+    from email.errors import MessageDefect
+
+    from urllib3.connectionpool import ConnectionPool
+    from urllib3.response import HTTPResponse
 
 # Base Exceptions
 
@@ -15,14 +22,19 @@ class HTTPWarning(Warning):
     pass
 
 
+ReduceResult = Tuple[Callable[..., object], Tuple[object, ...]]
+
+
 class PoolError(HTTPError):
     """Base exception for errors caused within a pool."""
 
-    def __init__(self, pool, message):
+    pool: "ConnectionPool"
+
+    def __init__(self, pool: "ConnectionPool", message: str) -> None:
         self.pool = pool
         super().__init__(f"{pool}: {message}")
 
-    def __reduce__(self):
+    def __reduce__(self) -> ReduceResult:
         # For pickling purposes.
         return self.__class__, (None, None)
 
@@ -30,11 +42,13 @@ class PoolError(HTTPError):
 class RequestError(PoolError):
     """Base exception for PoolErrors that have associated URLs."""
 
-    def __init__(self, pool, url, message):
+    url: str
+
+    def __init__(self, pool: "ConnectionPool", url: str, message: str) -> None:
         self.url = url
         super().__init__(pool, message)
 
-    def __reduce__(self):
+    def __reduce__(self) -> ReduceResult:
         # For pickling purposes.
         return self.__class__, (None, self.url, None)
 
@@ -48,9 +62,17 @@ class SSLError(HTTPError):
 class ProxyError(HTTPError):
     """Raised when the connection to a proxy fails."""
 
-    def __init__(self, message, error, *args):
-        super().__init__(message, error, *args)
+    original_error: Exception
+
+    def __init__(self, message: str, error: Exception) -> None:
+        super().__init__(message, error)
         self.original_error = error
+
+
+class HTTPSProxyError(ProxyError):
+    """Used only when establishing a TLS connection to a proxy"""
+
+    pass
 
 
 class DecodeError(HTTPError):
@@ -82,7 +104,11 @@ class MaxRetryError(RequestError):
 
     """
 
-    def __init__(self, pool, url, reason=None):
+    reason: Optional[Exception]
+
+    def __init__(
+        self, pool: "ConnectionPool", url: str, reason: Optional[Exception] = None
+    ) -> None:
         self.reason = reason
 
         message = f"Max retries exceeded with url: {url} (Caused by {reason!r})"
@@ -93,7 +119,9 @@ class MaxRetryError(RequestError):
 class HostChangedError(RequestError):
     """Raised when an existing pool gets a request for a foreign host."""
 
-    def __init__(self, pool, url, retries=3):
+    retries: int
+
+    def __init__(self, pool: "ConnectionPool", url: str, retries: int = 3) -> None:
         message = f"Tried to open a foreign host with url: {url}"
         super().__init__(pool, url, message)
         self.retries = retries
@@ -156,7 +184,9 @@ class LocationValueError(ValueError, HTTPError):
 class LocationParseError(LocationValueError):
     """Raised when get_host or similar fails to parse the URL input."""
 
-    def __init__(self, location):
+    location: str
+
+    def __init__(self, location: str) -> None:
         message = f"Failed to parse: {location}"
         super().__init__(message)
 
@@ -166,7 +196,9 @@ class LocationParseError(LocationValueError):
 class URLSchemeUnknown(LocationValueError):
     """Raised when a URL input has an unsupported scheme."""
 
-    def __init__(self, scheme):
+    scheme: str
+
+    def __init__(self, scheme: str):
         message = f"Not supported URL scheme {scheme}"
         super().__init__(message)
 
@@ -242,10 +274,13 @@ class IncompleteRead(HTTPError, httplib_IncompleteRead):
     for ``partial`` to avoid creating large objects on streamed reads.
     """
 
-    def __init__(self, partial, expected):
+    partial: int
+    expected: int
+
+    def __init__(self, partial: int, expected: int) -> None:
         super().__init__(partial, expected)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "IncompleteRead(%i bytes read, %i more expected)" % (
             self.partial,
             self.expected,
@@ -255,12 +290,17 @@ class IncompleteRead(HTTPError, httplib_IncompleteRead):
 class InvalidChunkLength(HTTPError, httplib_IncompleteRead):
     """Invalid chunk length in a chunked response."""
 
-    def __init__(self, response, length):
+    partial: int
+    expected: int
+    response: "HTTPResponse"
+    length: int
+
+    def __init__(self, response: "HTTPResponse", length: int) -> None:
         super().__init__(response.tell(), response.length_remaining)
         self.response = response
         self.length = length
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "InvalidChunkLength(got length %r, %i bytes read)" % (
             self.length,
             self.partial,
@@ -278,7 +318,7 @@ class ProxySchemeUnknown(AssertionError, URLSchemeUnknown):
 
     # TODO(t-8ch): Stop inheriting from AssertionError in v2.0.
 
-    def __init__(self, scheme):
+    def __init__(self, scheme: Optional[str]) -> None:
         # 'localhost' is here because our URL parser parses
         # localhost:8080 -> scheme=localhost, remove if we fix this.
         if scheme == "localhost":
@@ -299,7 +339,9 @@ class ProxySchemeUnsupported(ValueError):
 class HeaderParsingError(HTTPError):
     """Raised by assert_header_parsing, but we convert it to a log.warning statement."""
 
-    def __init__(self, defects, unparsed_data):
+    def __init__(
+        self, defects: List["MessageDefect"], unparsed_data: Optional[Union[bytes, str]]
+    ) -> None:
         message = f"{defects or 'Unknown'}, unparsed data: {unparsed_data!r}"
         super().__init__(message)
 

@@ -111,13 +111,15 @@ def notWindows(test):
     return wrapper
 
 
-def onlyBrotlipy():
-    return pytest.mark.skipif(brotli is None, reason="only run if brotlipy is present")
-
-
-def notBrotlipy():
+def onlyBrotli():
     return pytest.mark.skipif(
-        brotli is not None, reason="only run if brotlipy is absent"
+        brotli is None, reason="only run if brotli library is present"
+    )
+
+
+def notBrotli():
+    return pytest.mark.skipif(
+        brotli is not None, reason="only run if a brotli library is absent"
     )
 
 

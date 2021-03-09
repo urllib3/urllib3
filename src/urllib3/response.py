@@ -459,7 +459,7 @@ class HTTPResponse(BaseHTTPResponse):
     def isclosed(self):
         return is_fp_closed(self._fp)
 
-    def tell(self):
+    def tell(self) -> int:
         """
         Obtain the number of bytes pulled over the wire so far. May differ from
         the amount of content returned by :meth:``urllib3.response.HTTPResponse.read``

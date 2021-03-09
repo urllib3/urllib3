@@ -1,9 +1,26 @@
 import email.utils
 import mimetypes
 import re
+from typing import (
+    Callable,
+    Dict,
+    Iterable,
+    Mapping,
+    Match,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+)
+
+_TYPE_FIELD_VALUE = Union[str, bytes]
+_TYPE_FIELD_VALUE_TUPLE = Union[
+    _TYPE_FIELD_VALUE, Tuple[str, _TYPE_FIELD_VALUE], Tuple[str, _TYPE_FIELD_VALUE, str]
+]
 
 
-def guess_content_type(filename, default="application/octet-stream"):
+def guess_content_type(filename: str, default: str = "application/octet-stream") -> str:
     """
     Guess the "Content-Type" of a file.
 
@@ -17,7 +34,7 @@ def guess_content_type(filename, default="application/octet-stream"):
     return default
 
 
-def format_header_param_rfc2231(name, value):
+def format_header_param_rfc2231(name: str, value: Union[str, bytes]) -> str:
     """
     Helper function to format and quote a single header parameter using the
     strategy defined in RFC 2231.
@@ -63,8 +80,8 @@ _HTML5_REPLACEMENTS.update(
 )
 
 
-def _replace_multiple(value, needles_and_replacements):
-    def replacer(match):
+def _replace_multiple(value: str, needles_and_replacements: Mapping[str, str]) -> str:
+    def replacer(match: Match[str]) -> str:
         return needles_and_replacements[match.group(0)]
 
     pattern = re.compile(
@@ -76,7 +93,7 @@ def _replace_multiple(value, needles_and_replacements):
     return result
 
 
-def format_header_param_html5(name, value):
+def format_header_param_html5(name: str, value: _TYPE_FIELD_VALUE) -> str:
     """
     Helper function to format and quote a single header parameter using the
     HTML5 strategy.
@@ -126,22 +143,31 @@ class RequestField:
 
     def __init__(
         self,
-        name,
-        data,
-        filename=None,
-        headers=None,
-        header_formatter=format_header_param_html5,
+        name: str,
+        data: _TYPE_FIELD_VALUE,
+        filename: Optional[str] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        header_formatter: Callable[
+            [str, _TYPE_FIELD_VALUE], str
+        ] = format_header_param_html5,
     ):
         self._name = name
         self._filename = filename
         self.data = data
-        self.headers = {}
+        self.headers: Dict[str, Optional[str]] = {}
         if headers:
             self.headers = dict(headers)
         self.header_formatter = header_formatter
 
     @classmethod
-    def from_tuples(cls, fieldname, value, header_formatter=format_header_param_html5):
+    def from_tuples(
+        cls,
+        fieldname: str,
+        value: _TYPE_FIELD_VALUE_TUPLE,
+        header_formatter: Callable[
+            [str, _TYPE_FIELD_VALUE], str
+        ] = format_header_param_html5,
+    ) -> "RequestField":
         """
         A :class:`~urllib3.fields.RequestField` factory from old-style tuple parameters.
 
@@ -158,11 +184,17 @@ class RequestField:
 
         Field names and filenames must be unicode.
         """
+        filename: Optional[str]
+        content_type: Optional[str]
+        data: _TYPE_FIELD_VALUE
+
         if isinstance(value, tuple):
             if len(value) == 3:
-                filename, data, content_type = value
+                filename, data, content_type = cast(
+                    Tuple[str, _TYPE_FIELD_VALUE, str], value
+                )
             else:
-                filename, data = value
+                filename, data = cast(Tuple[str, _TYPE_FIELD_VALUE], value)
                 content_type = guess_content_type(filename)
         else:
             filename = None
@@ -176,7 +208,7 @@ class RequestField:
 
         return request_param
 
-    def _render_part(self, name, value):
+    def _render_part(self, name: str, value: _TYPE_FIELD_VALUE) -> str:
         """
         Overridable helper function to format a single header parameter. By
         default, this calls ``self.header_formatter``.
@@ -189,7 +221,13 @@ class RequestField:
 
         return self.header_formatter(name, value)
 
-    def _render_parts(self, header_parts):
+    def _render_parts(
+        self,
+        header_parts: Union[
+            Dict[str, Optional[_TYPE_FIELD_VALUE]],
+            Sequence[Tuple[str, Optional[_TYPE_FIELD_VALUE]]],
+        ],
+    ) -> str:
         """
         Helper function to format and quote a single header.
 
@@ -200,10 +238,13 @@ class RequestField:
             A sequence of (k, v) tuples or a :class:`dict` of (k, v) to format
             as `k1="v1"; k2="v2"; ...`.
         """
+        iterable: Iterable[Tuple[str, Optional[_TYPE_FIELD_VALUE]]]
+
         parts = []
-        iterable = header_parts
         if isinstance(header_parts, dict):
             iterable = header_parts.items()
+        else:
+            iterable = header_parts
 
         for name, value in iterable:
             if value is not None:
@@ -211,7 +252,7 @@ class RequestField:
 
         return "; ".join(parts)
 
-    def render_headers(self):
+    def render_headers(self) -> str:
         """
         Renders the headers for this request field.
         """
@@ -231,22 +272,26 @@ class RequestField:
         return "\r\n".join(lines)
 
     def make_multipart(
-        self, content_disposition=None, content_type=None, content_location=None
-    ):
+        self,
+        content_disposition: Optional[str] = None,
+        content_type: Optional[str] = None,
+        content_location: Optional[str] = None,
+    ) -> None:
         """
         Makes this request field into a multipart request field.
 
         This method overrides "Content-Disposition", "Content-Type" and
         "Content-Location" headers to the request parameter.
 
+        :param content_disposition:
+            The 'Content-Disposition' of the request body. Defaults to 'form-data'
         :param content_type:
             The 'Content-Type' of the request body.
         :param content_location:
             The 'Content-Location' of the request body.
 
         """
-        self.headers["Content-Disposition"] = content_disposition or "form-data"
-        self.headers["Content-Disposition"] += "; ".join(
+        content_disposition = (content_disposition or "form-data") + "; ".join(
             [
                 "",
                 self._render_parts(
@@ -254,5 +299,7 @@ class RequestField:
                 ),
             ]
         )
+
+        self.headers["Content-Disposition"] = content_disposition
         self.headers["Content-Type"] = content_type
         self.headers["Content-Location"] = content_location

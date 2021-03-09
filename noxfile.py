@@ -10,12 +10,14 @@ import nox
 TYPED_FILES = {
     "src/urllib3/contrib/__init__.py",
     "src/urllib3/exceptions.py",
+    "src/urllib3/_collections.py",
     "src/urllib3/fields.py",
     "src/urllib3/filepost.py",
     "src/urllib3/packages/__init__.py",
     "src/urllib3/packages/ssl_match_hostname/__init__.py",
     "src/urllib3/packages/ssl_match_hostname/_implementation.py",
     "src/urllib3/util/queue.py",
+    "src/urllib3/util/response.py",
     "src/urllib3/util/url.py",
 }
 SOURCE_FILES = [
@@ -86,6 +88,15 @@ def unsupported_python2(session):
     assert "Unsupported Python version" in process.stderr
 
 
+@nox.session(python=["3"])
+def test_brotlipy(session):
+    """Check that if 'brotlipy' is installed instead of 'brotli' or
+    'brotlicffi' that we still don't blow up.
+    """
+    session.install("brotlipy")
+    tests_impl(session, extras="socks,secure")
+
+
 @nox.session()
 def format(session):
     """Run code formatters."""
@@ -101,6 +112,8 @@ def format(session):
     )
     # Ensure that pre-commit itself ran successfully
     assert process.returncode in (0, 1)
+
+    lint(session)
 
 
 @nox.session
