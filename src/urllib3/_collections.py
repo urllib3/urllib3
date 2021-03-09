@@ -39,7 +39,7 @@ else:
     try:
         from threading import RLock
     except ImportError:  # Platform-specific: No threads available
-        from urllib3._private_compat.rlock import RLock
+        from ._compat import RLock
 
 
 # Starting in Python 3.7 the 'dict' class is guaranteed to be
