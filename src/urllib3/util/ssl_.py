@@ -344,16 +344,12 @@ def ssl_wrap_socket(
             "certificate, which can cause validation failures. You can upgrade to "
             "a newer version of Python to solve this. For more information, see "
             "https://urllib3.readthedocs.io/en/latest/advanced-usage.html"
-            "#ssl-warnings",
+            "#tls-warnings",
             SNIMissingWarning,
         )
 
-    if send_sni:
-        ssl_sock = _ssl_wrap_socket_impl(
-            sock, context, tls_in_tls, server_hostname=server_hostname
-        )
-    else:
-        ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls)
+    server_hostname = server_hostname if send_sni else None
+    ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
     return ssl_sock
 
 
@@ -392,7 +388,4 @@ def _ssl_wrap_socket_impl(sock, ssl_context, tls_in_tls, server_hostname=None):
         SSLTransport._validate_ssl_context_for_tls_in_tls(ssl_context)
         return SSLTransport(sock, ssl_context, server_hostname)
 
-    if server_hostname:
-        return ssl_context.wrap_socket(sock, server_hostname=server_hostname)
-    else:
-        return ssl_context.wrap_socket(sock)
+    return ssl_context.wrap_socket(sock, server_hostname=server_hostname)
