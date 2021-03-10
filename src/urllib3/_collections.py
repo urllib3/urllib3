@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 else:
     try:
         from threading import RLock
-    except ImportError:  # Platform-specific: No threads available
+    except ImportError:  # Python 3.6
         from ._compat import RLock
 
 
