@@ -61,12 +61,8 @@ class TestSSL:
 
         ssl_.ssl_wrap_socket(sock, server_hostname=server_hostname, ssl_context=context)
 
-        if uses_sni:
-            context.wrap_socket.assert_called_with(
-                sock, server_hostname=server_hostname
-            )
-        else:
-            context.wrap_socket.assert_called_with(sock)
+        expected_hostname = server_hostname if uses_sni else None
+        context.wrap_socket.assert_called_with(sock, server_hostname=expected_hostname)
 
     @pytest.mark.parametrize(
         ["has_sni", "server_hostname", "should_warn"],

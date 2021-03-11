@@ -880,15 +880,15 @@ class TestUtilSSL:
         """Test that a warning is not made if server_hostname is an IP address."""
         sock = object()
         context, warn = self._wrap_socket_and_mock_warn(sock, "8.8.8.8")
-        if util.IS_SECURETRANSPORT:
-            context.wrap_socket.assert_called_once_with(sock, server_hostname="8.8.8.8")
-        else:
-            context.wrap_socket.assert_called_once_with(sock)
+        expected_hostname = "8.8.8.8" if util.IS_SECURETRANSPORT else None
+        context.wrap_socket.assert_called_once_with(
+            sock, server_hostname=expected_hostname
+        )
         warn.assert_not_called()
 
     def test_ssl_wrap_socket_sni_none_no_warn(self):
         """Test that a warning is not made if server_hostname is not given."""
         sock = object()
         context, warn = self._wrap_socket_and_mock_warn(sock, None)
-        context.wrap_socket.assert_called_once_with(sock)
+        context.wrap_socket.assert_called_once_with(sock, server_hostname=None)
         warn.assert_not_called()
