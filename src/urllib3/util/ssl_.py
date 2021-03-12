@@ -328,15 +328,7 @@ def ssl_wrap_socket(
     except NotImplementedError:  # Defensive: in CI, we always have set_alpn_protocols
         pass
 
-    # If we detect server_hostname is an IP address then the SNI
-    # extension should not be used according to RFC3546 Section 3.1
-    use_sni_hostname = server_hostname and not is_ipaddress(server_hostname)
-    # SecureTransport uses server_hostname in certificate verification.
-    send_sni = (use_sni_hostname and HAS_SNI) or (
-        IS_SECURETRANSPORT and server_hostname
-    )
-    # Do not warn the user if server_hostname is an invalid SNI hostname.
-    if not HAS_SNI and use_sni_hostname:
+    if not HAS_SNI and server_hostname and not is_ipaddress(server_hostname):
         warnings.warn(
             "An HTTPS request has been made, but the SNI (Server Name "
             "Indication) extension to TLS is not available on this platform. "
@@ -348,7 +340,6 @@ def ssl_wrap_socket(
             SNIMissingWarning,
         )
 
-    server_hostname = server_hostname if send_sni else None
     ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
     return ssl_sock
 

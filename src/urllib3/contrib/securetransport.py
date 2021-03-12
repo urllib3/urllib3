@@ -451,6 +451,8 @@ class WrappedSocket:
         _assert_no_error(result)
 
         # If we have a server hostname, we should set that too.
+        # RFC6066 Section 3 tells us not to use SNI when the host is an IP, but we have
+        # to do it anyway to match server_hostname against the server certificate
         if server_hostname:
             if not isinstance(server_hostname, bytes):
                 server_hostname = server_hostname.encode("utf-8")
