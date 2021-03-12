@@ -30,7 +30,7 @@ from .exceptions import (
     SystemTimeWarning,
 )
 from .packages.ssl_match_hostname import CertificateError, match_hostname
-from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
+from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection
 from .util.ssl_ import (
     assert_fingerprint,
     create_urllib3_context,
@@ -367,9 +367,6 @@ class HTTPSConnection(HTTPConnection):
                 # `ssl` can't verify fingerprints or alternate hostnames
                 self.assert_fingerprint
                 or self.assert_hostname
-                # We still support OpenSSL 1.0.2, which prevents us from verifying
-                # hostnames easily: https://github.com/pyca/pyopenssl/pull/933
-                or ssl_.IS_PYOPENSSL
                 # Python 3.6 can't disable commonName checks
                 or not hasattr(self.ssl_context, "hostname_checks_common_name")
             ):

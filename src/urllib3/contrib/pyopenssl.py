@@ -47,6 +47,7 @@ compression in Python 2 (see `CRIME attack`_).
 """
 
 import OpenSSL.SSL
+import service_identity.pyopenssl
 from cryptography import x509
 from cryptography.hazmat.backends.openssl import backend as openssl_backend
 from cryptography.hazmat.backends.openssl.x509 import _Certificate
@@ -395,7 +396,7 @@ class PyOpenSSLContext:
         self.protocol = _openssl_versions[protocol]
         self._ctx = OpenSSL.SSL.Context(self.protocol)
         self._options = 0
-        self.check_hostname = False
+        self.check_hostname = True
 
     @property
     def options(self):
@@ -458,19 +459,31 @@ class PyOpenSSLContext:
 
         # If server_hostname is an IP, don't use it for SNI, per RFC6066 Section 3
         if server_hostname and not util.is_ipaddress(server_hostname):
+            server_hostname_bytes = server_hostname
             if isinstance(server_hostname, str):
-                server_hostname = server_hostname.encode("utf-8")
-            cnx.set_tlsext_host_name(server_hostname)
+                server_hostname_bytes = server_hostname_bytes.encode("utf-8")
+            cnx.set_tlsext_host_name(server_hostname_bytes)
 
         cnx.set_connect_state()
 
         while True:
             try:
                 cnx.do_handshake()
+                if self.check_hostname:
+                    if util.is_ipaddress(server_hostname):
+                        service_identity.pyopenssl.verify_ip_address(
+                            cnx, server_hostname
+                        )
+                    else:
+                        if isinstance(server_hostname, bytes):
+                            server_hostname_bytes = server_hostname_bytes.decode()
+                        service_identity.pyopenssl.verify_hostname(cnx, server_hostname)
             except OpenSSL.SSL.WantReadError:
                 if not util.wait_for_read(sock, sock.gettimeout()):
                     raise timeout("select timed out")
                 continue
+            except service_identity.VerificationError as e:
+                raise ssl.SSLError(f"certificate verify failed: {e!r}")
             except OpenSSL.SSL.Error as e:
                 raise ssl.SSLError(f"bad handshake: {e!r}")
             break
