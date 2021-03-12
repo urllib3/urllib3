@@ -197,7 +197,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             )
             https_fail_pool = http._new_pool("https", "127.0.0.1", self.https_port)
 
-            with pytest.raises(MaxRetryError, match="doesn't match") as e:
+            with pytest.raises(
+                MaxRetryError, match="doesn't match|IP address mismatch"
+            ) as e:
                 https_fail_pool.request("GET", "/", retries=0)
             assert isinstance(e.value.reason, SSLError)
 
