@@ -456,10 +456,9 @@ class PyOpenSSLContext:
     ):
         cnx = OpenSSL.SSL.Connection(self._ctx, sock)
 
-        if isinstance(server_hostname, str):
-            server_hostname = server_hostname.encode("utf-8")
-
-        if server_hostname is not None:
+        if server_hostname:
+            if isinstance(server_hostname, str):
+                server_hostname = server_hostname.encode("utf-8")
             cnx.set_tlsext_host_name(server_hostname)
 
         cnx.set_connect_state()
