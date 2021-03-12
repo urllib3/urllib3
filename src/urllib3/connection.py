@@ -30,7 +30,7 @@ from .exceptions import (
     SystemTimeWarning,
 )
 from .packages.ssl_match_hostname import CertificateError, match_hostname
-from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection
+from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
 from .util.ssl_ import (
     assert_fingerprint,
     create_urllib3_context,
@@ -362,6 +362,18 @@ class HTTPSConnection(HTTPConnection):
                 ssl_version=resolve_ssl_version(self.ssl_version),
                 cert_reqs=resolve_cert_reqs(self.cert_reqs),
             )
+            # In some cases, we want to verify hostnames ourselves
+            if (
+                # `ssl` can't verify fingerprints or alternate hostnames
+                self.assert_fingerprint
+                or self.assert_hostname
+                # We still support OpenSSL 1.0.2, which prevents us from verifying
+                # hostnames easily: https://github.com/pyca/pyopenssl/pull/933
+                or ssl_.IS_PYOPENSSL
+                # Python 3.6 can't disable commonName checks
+                or not hasattr(self.ssl_context, "hostname_checks_common_name")
+            ):
+                self.ssl_context.check_hostname = False
 
         context = self.ssl_context
         context.verify_mode = resolve_cert_reqs(self.cert_reqs)
@@ -416,9 +428,6 @@ class HTTPSConnection(HTTPConnection):
             and not context.check_hostname
             and self.assert_hostname is not False
         ):
-            # While urllib3 attempts to always turn off hostname matching from
-            # the TLS library, this cannot always be done. So we check whether
-            # the TLS Library still thinks it's matching hostnames.
             cert = self.sock.getpeercert()
             _match_hostname(cert, self.assert_hostname or server_hostname)
 

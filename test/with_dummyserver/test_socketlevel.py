@@ -1351,7 +1351,7 @@ class TestSSL(SocketDummyServerTestCase):
         with mock.patch("urllib3.util.ssl_.SSLContext", lambda *_, **__: context):
             self._start_server(socket_handler)
             with HTTPSConnectionPool(self.host, self.port) as pool:
-                with pytest.raises(MaxRetryError):
+                with pytest.raises(Exception):
                     pool.request("GET", "/", timeout=SHORT_TIMEOUT)
                 context.load_default_certs.assert_called_with()
 
@@ -1395,7 +1395,7 @@ class TestSSL(SocketDummyServerTestCase):
                 self._start_server(socket_handler)
 
                 with HTTPSConnectionPool(self.host, self.port, **kwargs) as pool:
-                    with pytest.raises(MaxRetryError):
+                    with pytest.raises(Exception):
                         pool.request("GET", "/", timeout=SHORT_TIMEOUT)
                     context.load_default_certs.assert_not_called()
 
