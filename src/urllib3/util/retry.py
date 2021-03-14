@@ -274,8 +274,7 @@ class Retry:
             retry_date = email.utils.mktime_tz(retry_date_tuple)
             seconds = retry_date - time.time()
 
-        if seconds < 0:
-            seconds = 0
+        seconds = max(seconds, 0)
 
         return seconds
 
