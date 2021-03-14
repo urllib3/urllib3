@@ -757,7 +757,7 @@ class SecureTransportContext:
 
     @verify_mode.setter
     def verify_mode(self, value):
-        self._verify = True if value == ssl.CERT_REQUIRED else False
+        self._verify = value == ssl.CERT_REQUIRED
 
     def set_default_verify_paths(self):
         # So, this has to do something a bit weird. Specifically, what it does
