@@ -65,6 +65,17 @@ def no_san_server(tmp_path_factory):
 
 
 @pytest.fixture
+def no_localhost_san_server(tmp_path_factory):
+    tmpdir = tmp_path_factory.mktemp("certs")
+    ca = trustme.CA()
+    # non localhost common name
+    server_cert = ca.issue_cert(u"example.com")
+
+    with run_server_in_thread("https", "localhost", tmpdir, ca, server_cert) as cfg:
+        yield cfg
+
+
+@pytest.fixture
 def ip_san_server(tmp_path_factory):
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()

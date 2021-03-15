@@ -490,6 +490,10 @@ class HTTPSConnection(HTTPConnection):
             self.ca_cert_dir,
             self.ca_cert_data,
         )
+        # By default urllib3's SSLContext disables `check_hostname` and uses
+        # a custom check. For proxies we're good with relying on the default
+        # verification.
+        ssl_context.check_hostname = True
 
         # If no cert was provided, use only the default options for server
         # certificate validation
