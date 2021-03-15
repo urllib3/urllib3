@@ -244,7 +244,7 @@ def create_urllib3_context(
     # We ask for verification here but it may be disabled in HTTPSConnection.connect
     context.check_hostname = cert_reqs == ssl.CERT_REQUIRED
     if hasattr(context, "hostname_checks_common_name"):
-        context.hostname_checks_common_name = False  # Python 3.7
+        context.hostname_checks_common_name = False
 
     # Enable logging of TLS session keys via defacto standard environment variable
     # 'SSLKEYLOGFILE', if the feature is available (Python 3.8+). Skip empty values.

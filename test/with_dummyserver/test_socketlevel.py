@@ -1351,6 +1351,9 @@ class TestSSL(SocketDummyServerTestCase):
         with mock.patch("urllib3.util.ssl_.SSLContext", lambda *_, **__: context):
             self._start_server(socket_handler)
             with HTTPSConnectionPool(self.host, self.port) as pool:
+                # Without a proper `SSLContext`, this request will fail in some
+                # arbitrary way, but we only want to know if load_default_certs() was
+                # called, which is why we accept any `Exception` here.
                 with pytest.raises(Exception):
                     pool.request("GET", "/", timeout=SHORT_TIMEOUT)
                 context.load_default_certs.assert_called_with()
