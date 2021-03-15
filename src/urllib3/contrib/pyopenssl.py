@@ -66,6 +66,7 @@ from socket import socket as socket_cls
 from socket import timeout
 
 from .. import util
+from ..util.ssl_ import is_ipaddress
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 
@@ -457,7 +458,7 @@ class PyOpenSSLContext:
         cnx = OpenSSL.SSL.Connection(self._ctx, sock)
 
         # If server_hostname is an IP, don't use it for SNI, per RFC6066 Section 3
-        if server_hostname and not util.is_ipaddress(server_hostname):
+        if server_hostname and not is_ipaddress(server_hostname):
             if isinstance(server_hostname, str):
                 server_hostname = server_hostname.encode("utf-8")
             cnx.set_tlsext_host_name(server_hostname)
