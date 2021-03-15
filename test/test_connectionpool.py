@@ -3,6 +3,7 @@ import ssl
 from http.client import HTTPException
 from queue import Empty
 from socket import error as SocketError
+from ssl import CertificateError
 from ssl import SSLError as BaseSSLError
 from test import SHORT_TIMEOUT
 from unittest.mock import Mock
@@ -27,7 +28,6 @@ from urllib3.exceptions import (
     SSLError,
     TimeoutError,
 )
-from urllib3.packages.ssl_match_hostname import CertificateError
 from urllib3.response import HTTPResponse
 from urllib3.util.timeout import Timeout
 

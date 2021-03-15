@@ -5,6 +5,7 @@ import socket
 import sys
 import warnings
 from socket import timeout as SocketTimeout
+from ssl import CertificateError
 
 from .connection import (
     BaseSSLError,
@@ -32,7 +33,6 @@ from .exceptions import (
     SSLError,
     TimeoutError,
 )
-from .packages.ssl_match_hostname import CertificateError
 from .request import RequestMethods
 from .response import BaseHTTPResponse, HTTPResponse
 from .util.connection import is_connection_dropped

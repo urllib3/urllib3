@@ -3,11 +3,7 @@ from unittest import mock
 
 import pytest
 
-from urllib3.connection import RECENT_DATE, CertificateError, _match_hostname
-from urllib3.packages.ssl_match_hostname._implementation import (
-    CertificateError as ImplementationCertificateError,
-)
-from urllib3.packages.ssl_match_hostname._implementation import match_hostname
+from urllib3.connection import RECENT_DATE, CertificateError, match_hostname, _match_hostname
 
 
 class TestConnection:
@@ -51,7 +47,7 @@ class TestConnection:
         cert = {"subject": [("commonName", "foo")]}
         asserted_hostname = "foo"
         with pytest.raises(
-            ImplementationCertificateError,
+            CertificateError,
             match="no appropriate subjectAltName fields were found",
         ):
             match_hostname(cert, asserted_hostname)

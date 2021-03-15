@@ -7,6 +7,7 @@ import warnings
 from http.client import HTTPConnection as _HTTPConnection
 from http.client import HTTPException  # noqa: F401
 from socket import timeout as SocketTimeout
+from ssl import CertificateError, match_hostname
 
 from .util.proxy import create_proxy_ssl_context
 from .util.util import to_str
@@ -29,7 +30,6 @@ from .exceptions import (
     NewConnectionError,
     SystemTimeWarning,
 )
-from .packages.ssl_match_hostname import CertificateError, match_hostname
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection
 from .util.ssl_ import (
     assert_fingerprint,
