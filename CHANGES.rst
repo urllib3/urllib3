@@ -1,6 +1,13 @@
 Changes
 =======
 
+1.26.4 (2021-03-15)
+-------------------
+
+* Changed behavior of the default ``SSLContext`` when connecting to HTTPS proxy
+  during HTTPS requests. The default ``SSLContext`` now sets ``check_hostname=True``.
+
+
 1.26.3 (2021-01-26)
 -------------------
 
