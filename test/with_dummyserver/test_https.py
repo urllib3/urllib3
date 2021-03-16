@@ -781,8 +781,6 @@ class TestHTTPS_TLSv1_3(TestHTTPS):
 
 class TestHTTPS_NoSAN:
     def test_common_name_without_san_fails(self, no_san_server):
-        """Ensure that a warning is raised when the cert from the server has
-        no Subject Alternative Name."""
         with HTTPSConnectionPool(
             no_san_server.host,
             no_san_server.port,
