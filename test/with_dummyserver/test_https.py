@@ -266,7 +266,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             "127.0.0.1", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
             with pytest.raises(MaxRetryError) as e:
-                https_pool.request("GET", "/")
+                https_pool.request("GET", "/", retries=0)
             assert isinstance(e.value.reason, SSLError)
             assert "doesn't match" in str(
                 e.value.reason

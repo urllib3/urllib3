@@ -241,9 +241,10 @@ def create_urllib3_context(
         context.post_handshake_auth = True
 
     context.verify_mode = cert_reqs
-    # We do our own verification, including fingerprints and alternative
-    # hostnames. So disable it here
-    context.check_hostname = False
+    # We ask for verification here but it may be disabled in HTTPSConnection.connect
+    context.check_hostname = cert_reqs == ssl.CERT_REQUIRED
+    if hasattr(context, "hostname_checks_common_name"):
+        context.hostname_checks_common_name = False
 
     # Enable logging of TLS session keys via defacto standard environment variable
     # 'SSLKEYLOGFILE', if the feature is available (Python 3.8+). Skip empty values.
@@ -295,9 +296,8 @@ def ssl_wrap_socket(
     """
     context = ssl_context
     if context is None:
-        # Note: This branch of code and all the variables in it are no longer
-        # used by urllib3 itself. We should consider deprecating and removing
-        # this code.
+        # Note: This branch of code and all the variables in it are only used in tests.
+        # We should consider deprecating and removing this code.
         context = create_urllib3_context(ssl_version, cert_reqs, ciphers=ciphers)
 
     if ca_certs or ca_cert_dir or ca_cert_data:
@@ -328,15 +328,7 @@ def ssl_wrap_socket(
     except NotImplementedError:  # Defensive: in CI, we always have set_alpn_protocols
         pass
 
-    # If we detect server_hostname is an IP address then the SNI
-    # extension should not be used according to RFC3546 Section 3.1
-    use_sni_hostname = server_hostname and not is_ipaddress(server_hostname)
-    # SecureTransport uses server_hostname in certificate verification.
-    send_sni = (use_sni_hostname and HAS_SNI) or (
-        IS_SECURETRANSPORT and server_hostname
-    )
-    # Do not warn the user if server_hostname is an invalid SNI hostname.
-    if not HAS_SNI and use_sni_hostname:
+    if not HAS_SNI and server_hostname and not is_ipaddress(server_hostname):
         warnings.warn(
             "An HTTPS request has been made, but the SNI (Server Name "
             "Indication) extension to TLS is not available on this platform. "
@@ -348,7 +340,6 @@ def ssl_wrap_socket(
             SNIMissingWarning,
         )
 
-    server_hostname = server_hostname if send_sni else None
     ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
     return ssl_sock
 
