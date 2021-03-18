@@ -1,7 +1,3 @@
-import collections
-import queue
+from queue import LifoQueue as LifoQueue
 
-
-class LifoQueue(queue.LifoQueue):
-    def _init(self, _):
-        self.queue = collections.deque()
+__all__ = ["LifoQueue"]
