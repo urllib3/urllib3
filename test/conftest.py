@@ -89,7 +89,7 @@ def ipv6_san_server(tmp_path_factory):
         yield cfg
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def stub_timezone(request):
     """
     A pytest fixture that runs the test with a stub timezone.
