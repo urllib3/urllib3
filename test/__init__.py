@@ -3,6 +3,7 @@ import logging
 import os
 import platform
 import socket
+import sys
 import warnings
 
 import pytest
@@ -261,3 +262,53 @@ class LogRecorder:
     def __exit__(self, exc_type, exc_value, traceback):
         self.uninstall()
         return False
+
+
+class ImportBlocker:
+    """
+    Block Imports
+
+    To be placed on ``sys.meta_path``. This ensures that the modules
+    specified cannot be imported, even if they are a builtin.
+    """
+
+    def __init__(self, *namestoblock):
+        self.namestoblock = namestoblock
+
+    def find_module(self, fullname, path=None):
+        if fullname in self.namestoblock:
+            return self
+        return None
+
+    def load_module(self, fullname):
+        raise ImportError(f"import of {fullname} is blocked")
+
+
+class ModuleStash:
+    """
+    Stashes away previously imported modules
+
+    If we reimport a module the data from coverage is lost, so we reuse the old
+    modules
+    """
+
+    def __init__(self, namespace, modules=sys.modules):
+        self.namespace = namespace
+        self.modules = modules
+        self._data = {}
+
+    def stash(self):
+        self._data[self.namespace] = self.modules.pop(self.namespace, None)
+
+        for module in list(self.modules.keys()):
+            if module.startswith(self.namespace + "."):
+                self._data[module] = self.modules.pop(module)
+
+    def pop(self):
+        self.modules.pop(self.namespace, None)
+
+        for module in list(self.modules.keys()):
+            if module.startswith(self.namespace + "."):
+                self.modules.pop(module)
+
+        self.modules.update(self._data)

@@ -6,59 +6,9 @@ Test what happens if Python was built without SSL
 """
 
 import sys
+from test import ImportBlocker, ModuleStash
 
 import pytest
-
-
-class ImportBlocker:
-    """
-    Block Imports
-
-    To be placed on ``sys.meta_path``. This ensures that the modules
-    specified cannot be imported, even if they are a builtin.
-    """
-
-    def __init__(self, *namestoblock):
-        self.namestoblock = namestoblock
-
-    def find_module(self, fullname, path=None):
-        if fullname in self.namestoblock:
-            return self
-        return None
-
-    def load_module(self, fullname):
-        raise ImportError(f"import of {fullname} is blocked")
-
-
-class ModuleStash:
-    """
-    Stashes away previously imported modules
-
-    If we reimport a module the data from coverage is lost, so we reuse the old
-    modules
-    """
-
-    def __init__(self, namespace, modules=sys.modules):
-        self.namespace = namespace
-        self.modules = modules
-        self._data = {}
-
-    def stash(self):
-        self._data[self.namespace] = self.modules.pop(self.namespace, None)
-
-        for module in list(self.modules.keys()):
-            if module.startswith(self.namespace + "."):
-                self._data[module] = self.modules.pop(module)
-
-    def pop(self):
-        self.modules.pop(self.namespace, None)
-
-        for module in list(self.modules.keys()):
-            if module.startswith(self.namespace + "."):
-                self.modules.pop(module)
-
-        self.modules.update(self._data)
-
 
 ssl_blocker = ImportBlocker("ssl", "_ssl")
 module_stash = ModuleStash("urllib3")
