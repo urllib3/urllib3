@@ -204,7 +204,7 @@ class Retry:
         self.backoff_factor = backoff_factor
         self.raise_on_redirect = raise_on_redirect
         self.raise_on_status = raise_on_status
-        self.history = history or tuple()
+        self.history = history or ()
         self.respect_retry_after_header = respect_retry_after_header
         self.remove_headers_on_redirect = frozenset(
             [h.lower() for h in remove_headers_on_redirect]
@@ -274,8 +274,7 @@ class Retry:
             retry_date = email.utils.mktime_tz(retry_date_tuple)
             seconds = retry_date - time.time()
 
-        if seconds < 0:
-            seconds = 0
+        seconds = max(seconds, 0)
 
         return seconds
 

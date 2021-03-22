@@ -272,7 +272,7 @@ class BaseHTTPResponse(io.IOBase):
                     for e in content_encoding.split(",")
                     if e.strip() in self.CONTENT_DECODERS
                 ]
-                if len(encodings):
+                if encodings:
                     self._decoder = _get_decoder(content_encoding)
 
     def _decode(self, data: bytes, decode_content: bool, flush_decoder: bool) -> bytes:
@@ -864,7 +864,7 @@ class HTTPResponse(BaseHTTPResponse):
         If the request that generated this response redirected, this method
         will return the final redirect location.
         """
-        if self.retries is not None and len(self.retries.history):
+        if self.retries is not None and self.retries.history:
             return self.retries.history[-1].redirect_location
         else:
             return self._request_url

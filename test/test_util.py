@@ -2,9 +2,10 @@ import io
 import logging
 import socket
 import ssl
+import sys
 import warnings
 from itertools import chain
-from test import notBrotli, onlyBrotli
+from test import ImportBlocker, ModuleStash, notBrotli, onlyBrotli
 from unittest.mock import Mock, patch
 
 import pytest
@@ -880,15 +881,34 @@ class TestUtilSSL:
         """Test that a warning is not made if server_hostname is an IP address."""
         sock = object()
         context, warn = self._wrap_socket_and_mock_warn(sock, "8.8.8.8")
-        if util.IS_SECURETRANSPORT:
-            context.wrap_socket.assert_called_once_with(sock, server_hostname="8.8.8.8")
-        else:
-            context.wrap_socket.assert_called_once_with(sock)
+        context.wrap_socket.assert_called_once_with(sock, server_hostname="8.8.8.8")
         warn.assert_not_called()
 
     def test_ssl_wrap_socket_sni_none_no_warn(self):
         """Test that a warning is not made if server_hostname is not given."""
         sock = object()
         context, warn = self._wrap_socket_and_mock_warn(sock, None)
-        context.wrap_socket.assert_called_once_with(sock)
+        context.wrap_socket.assert_called_once_with(sock, server_hostname=None)
         warn.assert_not_called()
+
+
+idna_blocker = ImportBlocker("idna")
+module_stash = ModuleStash("urllib3")
+
+
+class TestUtilWithoutIdna:
+    @classmethod
+    def setup_class(cls):
+        sys.modules.pop("idna", None)
+
+        module_stash.stash()
+        sys.meta_path.insert(0, idna_blocker)
+
+    def teardown_class(cls):
+        sys.meta_path.remove(idna_blocker)
+        module_stash.pop()
+
+    def test_parse_url_without_idna(self):
+        url = "http://\uD7FF.com"
+        with pytest.raises(LocationParseError, match=f"Failed to parse: {url}"):
+            parse_url(url)

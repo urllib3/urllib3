@@ -37,7 +37,6 @@ from .request import RequestMethods
 from .response import BaseHTTPResponse, HTTPResponse
 from .util.connection import is_connection_dropped
 from .util.proxy import connection_requires_http_tunnel
-from .util.queue import LifoQueue
 from .util.request import set_file_position
 from .util.response import assert_header_parsing
 from .util.retry import Retry
@@ -65,7 +64,7 @@ class ConnectionPool:
     """
 
     scheme = None
-    QueueCls = LifoQueue
+    QueueCls = queue.LifoQueue
 
     def __init__(self, host, port=None):
         if not host:
@@ -967,7 +966,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                     f"Unverified HTTPS request is being made to host '{conn.host}'. "
                     "Adding certificate verification is strongly advised. See: "
                     "https://urllib3.readthedocs.io/en/latest/advanced-usage.html"
-                    "#ssl-warnings"
+                    "#tls-warnings"
                 ),
                 InsecureRequestWarning,
             )

@@ -3,7 +3,7 @@ import logging
 import os
 import platform
 import socket
-import ssl
+import sys
 import warnings
 
 import pytest
@@ -149,19 +149,6 @@ def notSecureTransport(test):
     return wrapper
 
 
-def notOpenSSL098(test):
-    """Skips this test for Python 3.5 macOS python.org distribution"""
-
-    @functools.wraps(test)
-    def wrapper(*args, **kwargs):
-        is_stdlib_ssl = not ssl_.IS_SECURETRANSPORT and not ssl_.IS_PYOPENSSL
-        if is_stdlib_ssl and ssl.OPENSSL_VERSION == "OpenSSL 0.9.8zh 14 Jan 2016":
-            pytest.xfail(f"{test.__name__} fails with OpenSSL 0.9.8zh")
-        return test(*args, **kwargs)
-
-    return wrapper
-
-
 _requires_network_has_route = None
 
 
@@ -275,3 +262,53 @@ class LogRecorder:
     def __exit__(self, exc_type, exc_value, traceback):
         self.uninstall()
         return False
+
+
+class ImportBlocker:
+    """
+    Block Imports
+
+    To be placed on ``sys.meta_path``. This ensures that the modules
+    specified cannot be imported, even if they are a builtin.
+    """
+
+    def __init__(self, *namestoblock):
+        self.namestoblock = namestoblock
+
+    def find_module(self, fullname, path=None):
+        if fullname in self.namestoblock:
+            return self
+        return None
+
+    def load_module(self, fullname):
+        raise ImportError(f"import of {fullname} is blocked")
+
+
+class ModuleStash:
+    """
+    Stashes away previously imported modules
+
+    If we reimport a module the data from coverage is lost, so we reuse the old
+    modules
+    """
+
+    def __init__(self, namespace, modules=sys.modules):
+        self.namespace = namespace
+        self.modules = modules
+        self._data = {}
+
+    def stash(self):
+        self._data[self.namespace] = self.modules.pop(self.namespace, None)
+
+        for module in list(self.modules.keys()):
+            if module.startswith(self.namespace + "."):
+                self._data[module] = self.modules.pop(module)
+
+    def pop(self):
+        self.modules.pop(self.namespace, None)
+
+        for module in list(self.modules.keys()):
+            if module.startswith(self.namespace + "."):
+                self.modules.pop(module)
+
+        self.modules.update(self._data)

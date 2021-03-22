@@ -182,7 +182,7 @@ class HTTPDummyProxyTestCase:
             app, cls.io_loop, None, "http", cls.proxy_host
         )
 
-        upstream_ca_certs = cls.https_certs.get("ca_certs", None)
+        upstream_ca_certs = cls.https_certs.get("ca_certs")
         app = web.Application(
             [(r".*", ProxyHandler)], upstream_ca_certs=upstream_ca_certs
         )
