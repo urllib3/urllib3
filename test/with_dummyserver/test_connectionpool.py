@@ -312,11 +312,14 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             finally:
                 s.close()
 
-    def test_disable_default_socket_options(self):
-        """Test that passing None disables all socket options."""
+    @pytest.mark.parametrize("socket_options", [None, []])
+    def test_disable_default_socket_options(self, socket_options):
+        """Test that passing None or empty list disables all socket options."""
         # This test needs to be here in order to be run. socket.create_connection actually tries
         # to connect to the host provided so we need a dummyserver to be running.
-        with HTTPConnectionPool(self.host, self.port, socket_options=None) as pool:
+        with HTTPConnectionPool(
+            self.host, self.port, socket_options=socket_options
+        ) as pool:
             s = pool._new_conn()._new_conn()
             try:
                 using_nagle = s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) == 0
@@ -333,9 +336,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             conn = pool._new_conn()
             try:
                 # Update the default socket options
-                conn.default_socket_options += [
-                    (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-                ]
+                conn.socket_options += [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
                 s = conn._new_conn()
                 nagle_disabled = (
                     s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY) > 0

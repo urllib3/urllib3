@@ -4,6 +4,7 @@ import logging
 from urllib.parse import urljoin
 
 from ._collections import RecentlyUsedContainer
+from .connection import ProxyConfig
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
 from .exceptions import (
     LocationValueError,
@@ -65,9 +66,6 @@ _key_fields = (
 #: The namedtuple class used to construct keys for the connection pool.
 #: All custom key schemes should include the fields in this key at a minimum.
 PoolKey = collections.namedtuple("PoolKey", _key_fields)
-
-_proxy_config_fields = ("ssl_context", "use_forwarding_for_https")
-ProxyConfig = collections.namedtuple("ProxyConfig", _proxy_config_fields)
 
 
 def _default_key_normalizer(key_class, request_context):
