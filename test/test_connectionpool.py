@@ -223,13 +223,25 @@ class TestConnectionPool:
 
             assert pool.num_connections == 1
 
-    def test_pool_edgecases(self):
+    def test_put_conn_when_pool_is_full(self):
+        """
+        If maxsize = n and we _put_conn n + 1 conns, the n + 1th conn will
+        get closed and will not get added to the pool.
+        """
         with HTTPConnectionPool(host="localhost", maxsize=1, block=False) as pool:
             conn1 = pool._get_conn()
-            conn2 = pool._get_conn()  # New because block=False
+            # pool.pool is empty because we popped the one None that pool.pool was initialized with
+            # but this pool._get_conn call will not raise EmptyPoolError because block is False
+            conn2 = pool._get_conn()
+
+            conn1.close = Mock()
+            conn2.close = Mock()
 
             pool._put_conn(conn1)
-            pool._put_conn(conn2)  # Should be discarded
+            pool._put_conn(conn2)
+
+            assert conn1.close.called is False
+            assert conn2.close.called is True
 
             assert conn1 == pool._get_conn()
             assert conn2 != pool._get_conn()
