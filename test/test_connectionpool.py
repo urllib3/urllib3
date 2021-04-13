@@ -270,6 +270,20 @@ class TestConnectionPool:
 
             assert conn1 == pool._get_conn()
 
+    def test_put_conn_closed_pool(self):
+        with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
+            conn1 = pool._get_conn()
+            conn1.close = Mock()
+
+            pool.close()
+            assert pool.pool is None
+
+            # Accessing pool.pool will raise AttributeError, which will get
+            # caught and will close conn1
+            pool._put_conn(conn1)
+
+            assert conn1.close.called is True
+
     def test_exception_str(self):
         assert (
             str(EmptyPoolError(HTTPConnectionPool(host="localhost"), "Test."))
