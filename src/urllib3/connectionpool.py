@@ -247,7 +247,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if self.block:
                 raise EmptyPoolError(
                     self,
-                    "Pool reached maximum size and no more connections are allowed.",
+                    "No connection is available, and new connection cannot be created due to blocking mode.",
                 )
             pass  # Oh well, we'll create a new connection then
 
