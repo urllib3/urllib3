@@ -284,15 +284,17 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Connection never got put back into the pool, close it.
             conn and conn.close()
         except queue.Full:
+            # This should never happen if self.block == True and you got the conn from self._get_conn
+
             # Connection never got put back into the pool, close it.
             conn and conn.close()
 
-            # This should never happen if self.block == True and you got the conn from self._get_conn
             if self.block:
                 raise FullPoolError(
                     self,
                     "Pool reached maximum size and no more connections are allowed.",
                 )
+
             log.warning("Connection pool is full, discarding connection: %s", self.host)
 
     def _validate_conn(self, conn):
