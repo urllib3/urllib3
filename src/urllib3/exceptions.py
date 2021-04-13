@@ -169,6 +169,12 @@ class EmptyPoolError(PoolError):
     pass
 
 
+class FullPoolError(PoolError):
+    """Raised when we try to add a connection to a full pool in blocking mode."""
+
+    pass
+
+
 class ClosedPoolError(PoolError):
     """Raised when a request enters a pool after the pool has been closed."""
 

@@ -19,6 +19,7 @@ from .connection import (
 from .exceptions import (
     ClosedPoolError,
     EmptyPoolError,
+    FullPoolError,
     HeaderParsingError,
     HostChangedError,
     HTTPSProxyError,
@@ -278,17 +279,21 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         try:
             self.pool.put(conn, block=False)
-            return  # Everything is dandy, done.
         except AttributeError:
             # self.pool is None.
-            pass
+            # Connection never got put back into the pool, close it.
+            conn and conn.close()
         except queue.Full:
-            # This should never happen if self.block == True
-            log.warning("Connection pool is full, discarding connection: %s", self.host)
+            # Connection never got put back into the pool, close it.
+            conn and conn.close()
 
-        # Connection never got put back into the pool, close it.
-        if conn:
-            conn.close()
+            # This should never happen if self.block == True and you got the conn from self._get_conn
+            if self.block:
+                raise FullPoolError(
+                    self,
+                    "Pool reached maximum size and no more connections are allowed.",
+                )
+            log.warning("Connection pool is full, discarding connection: %s", self.host)
 
     def _validate_conn(self, conn):
         """

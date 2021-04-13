@@ -20,6 +20,7 @@ from urllib3.connectionpool import (
 from urllib3.exceptions import (
     ClosedPoolError,
     EmptyPoolError,
+    FullPoolError,
     HostChangedError,
     LocationValueError,
     MaxRetryError,
@@ -247,6 +248,27 @@ class TestConnectionPool:
             assert conn2 != pool._get_conn()
 
             assert pool.num_connections == 3
+
+    def test_put_conn_when_pool_is_full_blocking(self):
+        """
+        If maxsize = n and we _put_conn n + 1 conns, the n + 1th conn will
+        cause a FullPoolError.
+        """
+        with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
+            conn1 = pool._get_conn()
+            conn2 = pool._new_conn()
+
+            conn1.close = Mock()
+            conn2.close = Mock()
+
+            pool._put_conn(conn1)
+            with pytest.raises(FullPoolError):
+                pool._put_conn(conn2)
+
+            assert conn1.close.called is False
+            assert conn2.close.called is True
+
+            assert conn1 == pool._get_conn()
 
     def test_exception_str(self):
         assert (
