@@ -1,14 +1,19 @@
 from typing import TYPE_CHECKING, Optional, Union
 
 from .ssl_ import create_urllib3_context, resolve_cert_reqs, resolve_ssl_version
+from .url import Url
 
 if TYPE_CHECKING:
     import ssl
 
+    from urllib3.connection import ProxyConfig
+
 
 def connection_requires_http_tunnel(
-    proxy_url=None, proxy_config=None, destination_scheme=None
-):
+    proxy_url: Optional[Url] = None,
+    proxy_config: "Optional[ProxyConfig]" = None,
+    destination_scheme: Optional[str] = None,
+) -> bool:
     """
     Returns True if the connection requires an HTTP CONNECT through the proxy.
 

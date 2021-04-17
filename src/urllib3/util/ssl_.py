@@ -5,13 +5,11 @@ import sys
 import warnings
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union, cast, overload
 
 from ..exceptions import ProxySchemeUnsupported, SNIMissingWarning, SSLError
 from .url import _BRACELESS_IPV6_ADDRZ_RE, _IPV4_RE
 
-SSLContext = None
-SSLTransport = None
 HAS_SNI = False
 IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
@@ -35,7 +33,7 @@ def _is_ge_openssl_v1_1_1(
     )
 
 
-try:  # Do we have ssl at all?
+if TYPE_CHECKING:  # Assume ssl module is there.
     import ssl
     from ssl import (
         CERT_REQUIRED,
@@ -50,17 +48,49 @@ try:  # Do we have ssl at all?
         SSLContext,
     )
 
+    from typing_extensions import Literal
+
     USE_DEFAULT_SSLCONTEXT_CIPHERS = _is_ge_openssl_v1_1_1(
         OPENSSL_VERSION, OPENSSL_VERSION_NUMBER
     )
     PROTOCOL_SSLv23 = PROTOCOL_TLS
+
     from .ssltransport import SSLTransport
-except ImportError:
-    OP_NO_COMPRESSION = 0x20000
-    OP_NO_TICKET = 0x4000
-    OP_NO_SSLv2 = 0x1000000
-    OP_NO_SSLv3 = 0x2000000
-    PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
+else:
+    SSLContext = None
+    SSLTransport = None
+    try:  # Do we have ssl at all?
+        import ssl
+        from ssl import (
+            CERT_REQUIRED,
+            HAS_SNI,
+            OP_NO_COMPRESSION,
+            OP_NO_TICKET,
+            OPENSSL_VERSION,
+            OPENSSL_VERSION_NUMBER,
+            PROTOCOL_TLS,
+            OP_NO_SSLv2,
+            OP_NO_SSLv3,
+            SSLContext,
+        )
+
+        USE_DEFAULT_SSLCONTEXT_CIPHERS = _is_ge_openssl_v1_1_1(
+            OPENSSL_VERSION, OPENSSL_VERSION_NUMBER
+        )
+        PROTOCOL_SSLv23 = PROTOCOL_TLS
+        from .ssltransport import SSLTransport
+    except ImportError:
+        OP_NO_COMPRESSION = 0x20000
+        OP_NO_TICKET = 0x4000
+        OP_NO_SSLv2 = 0x1000000
+        OP_NO_SSLv3 = 0x2000000
+        PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
+
+
+_PCTRTT = Tuple[Tuple[str, str], ...]
+_PCTRTTT = Tuple[_PCTRTT, ...]
+PeerCertRetDictType = Dict[str, Union[str, _PCTRTTT, _PCTRTT]]
+PeerCertRetType = Union[PeerCertRetDictType, bytes, None]
 
 
 # A secure default.
@@ -127,7 +157,7 @@ def assert_fingerprint(cert: Optional[bytes], fingerprint: str) -> None:
 
     if not hmac.compare_digest(cert_digest, fingerprint_bytes):
         raise SSLError(
-            f'Fingerprints did not match. Expected "{fingerprint}", got "{hexlify(cert_digest)}".'
+            f'Fingerprints did not match. Expected "{fingerprint}", got "{hexlify(cert_digest)!r}".'
         )
 
 
@@ -149,7 +179,7 @@ def resolve_cert_reqs(candidate: Union[None, int, str]) -> int:
         res = getattr(ssl, candidate, None)
         if res is None:
             res = getattr(ssl, "CERT_" + candidate)
-        return res
+        return cast(int, res)
 
     return candidate
 
@@ -165,7 +195,7 @@ def resolve_ssl_version(candidate: Union[None, int, str]) -> int:
         res = getattr(ssl, candidate, None)
         if res is None:
             res = getattr(ssl, "PROTOCOL_" + candidate)
-        return res
+        return cast(int, res)
 
     return candidate
 
@@ -246,12 +276,12 @@ def create_urllib3_context(
     if (cert_reqs == ssl.CERT_REQUIRED or sys.version_info >= (3, 7, 4)) and getattr(
         context, "post_handshake_auth", None
     ) is not None:
-        context.post_handshake_auth = True
+        context.post_handshake_auth = True  # type: ignore
 
     context.verify_mode = cert_reqs
     # We ask for verification here but it may be disabled in HTTPSConnection.connect
     context.check_hostname = cert_reqs == ssl.CERT_REQUIRED
-    if hasattr(context, "hostname_checks_common_name"):
+    if sys.version_info >= (3, 7):
         context.hostname_checks_common_name = False
 
     # Enable logging of TLS session keys via defacto standard environment variable
@@ -259,9 +289,47 @@ def create_urllib3_context(
     if hasattr(context, "keylog_filename"):
         sslkeylogfile = os.environ.get("SSLKEYLOGFILE")
         if sslkeylogfile:
-            context.keylog_filename = sslkeylogfile
+            context.keylog_filename = sslkeylogfile  # type: ignore
 
     return context
+
+
+@overload
+def ssl_wrap_socket(
+    sock: socket.socket,
+    keyfile: Optional[str] = ...,
+    certfile: Optional[str] = ...,
+    cert_reqs: Optional[int] = ...,
+    ca_certs: Optional[str] = ...,
+    server_hostname: Optional[str] = ...,
+    ssl_version: Optional[int] = ...,
+    ciphers: Optional[str] = ...,
+    ssl_context: Optional["ssl.SSLContext"] = ...,
+    ca_cert_dir: Optional[str] = ...,
+    key_password: Optional[str] = ...,
+    ca_cert_data: Union[None, str, bytes] = ...,
+    tls_in_tls: "Literal[False]" = ...,
+) -> "ssl.SSLSocket":
+    ...
+
+
+@overload
+def ssl_wrap_socket(
+    sock: socket.socket,
+    keyfile: Optional[str] = ...,
+    certfile: Optional[str] = ...,
+    cert_reqs: Optional[int] = ...,
+    ca_certs: Optional[str] = ...,
+    server_hostname: Optional[str] = ...,
+    ssl_version: Optional[int] = ...,
+    ciphers: Optional[str] = ...,
+    ssl_context: Optional["ssl.SSLContext"] = ...,
+    ca_cert_dir: Optional[str] = ...,
+    key_password: Optional[str] = ...,
+    ca_cert_data: Union[None, str, bytes] = ...,
+    tls_in_tls: bool = ...,
+) -> Union["ssl.SSLSocket", "SSLTransport"]:
+    ...
 
 
 def ssl_wrap_socket(
@@ -278,7 +346,7 @@ def ssl_wrap_socket(
     key_password: Optional[str] = None,
     ca_cert_data: Union[None, str, bytes] = None,
     tls_in_tls: bool = False,
-) -> "ssl.SSLSocket":
+) -> Union["ssl.SSLSocket", "SSLTransport"]:
     """
     All arguments except for server_hostname, ssl_context, and ca_cert_dir have
     the same meaning as they do when using :func:`ssl.wrap_socket`.
@@ -352,7 +420,7 @@ def ssl_wrap_socket(
     return ssl_sock
 
 
-def is_ipaddress(hostname):
+def is_ipaddress(hostname: Union[str, bytes]) -> bool:
     """Detects whether the hostname given is an IPv4 or IPv6 address.
     Also detects IPv6 addresses with Zone IDs.
 
@@ -365,7 +433,7 @@ def is_ipaddress(hostname):
     return bool(_IPV4_RE.match(hostname) or _BRACELESS_IPV6_ADDRZ_RE.match(hostname))
 
 
-def _is_key_file_encrypted(key_file):
+def _is_key_file_encrypted(key_file: str) -> bool:
     """Detects if a key file is encrypted or not."""
     with open(key_file) as f:
         for line in f:
@@ -376,7 +444,12 @@ def _is_key_file_encrypted(key_file):
     return False
 
 
-def _ssl_wrap_socket_impl(sock, ssl_context, tls_in_tls, server_hostname=None):
+def _ssl_wrap_socket_impl(
+    sock: socket.socket,
+    ssl_context: "ssl.SSLContext",
+    tls_in_tls: bool,
+    server_hostname: Optional[str] = None,
+) -> Union["ssl.SSLSocket", "SSLTransport"]:
     if tls_in_tls:
         if not SSLTransport:
             # Import error, ssl is not available.

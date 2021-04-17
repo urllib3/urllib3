@@ -18,20 +18,10 @@ PER_TEST_TIMEOUT = 60
 def server_client_ssl_contexts():
     if hasattr(ssl, "PROTOCOL_TLS_SERVER"):
         server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    else:
-        # python 3.5 workaround.
-        # PROTOCOL_TLS_SERVER was added in 3.6
-        server_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
     server_context.load_cert_chain(DEFAULT_CERTS["certfile"], DEFAULT_CERTS["keyfile"])
 
     if hasattr(ssl, "PROTOCOL_TLS_CLIENT"):
         client_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    else:
-        # python 3.5 workaround.
-        # PROTOCOL_TLS_SERVER was added in 3.6
-        client_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
-        client_context.verify_mode = ssl.CERT_REQUIRED
-        client_context.check_hostname = True
 
     client_context.load_verify_locations(DEFAULT_CA)
     return server_context, client_context
