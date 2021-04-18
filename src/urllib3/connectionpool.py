@@ -279,23 +279,28 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         """
         try:
             self.pool.put(conn, block=False)
+            return  # Everything is dandy, done.
         except AttributeError:
             # self.pool is None.
-            # Connection never got put back into the pool, close it.
-            conn and conn.close()
+            pass
         except queue.Full:
-            # This should never happen if self.block == True and you got the conn from self._get_conn
 
             # Connection never got put back into the pool, close it.
-            conn and conn.close()
+            if conn:
+                conn.close()
 
             if self.block:
+                # This should never happen if you got the conn from self._get_conn
                 raise FullPoolError(
                     self,
                     "Pool reached maximum size and no more connections are allowed.",
                 )
 
             log.warning("Connection pool is full, discarding connection: %s", self.host)
+
+        # Connection never got put back into the pool, close it.
+        if conn:
+            conn.close()
 
     def _validate_conn(self, conn):
         """
