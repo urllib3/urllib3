@@ -3,13 +3,15 @@ import os
 import socket
 import sys
 import warnings
-from binascii import hexlify, unhexlify
+from binascii import unhexlify
 from hashlib import md5, sha1, sha256
 from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union, cast, overload
 
 from ..exceptions import ProxySchemeUnsupported, SNIMissingWarning, SSLError
 from .url import _BRACELESS_IPV6_ADDRZ_RE, _IPV4_RE
 
+SSLContext = None
+SSLTransport = None
 HAS_SNI = False
 IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
@@ -33,9 +35,14 @@ def _is_ge_openssl_v1_1_1(
     )
 
 
-if TYPE_CHECKING:  # Assume ssl module is there.
+if TYPE_CHECKING:
+    from typing_extensions import Literal
+
+    from .ssltransport import SSLTransport as SSLTransportType
+
+try:  # Do we have ssl at all?
     import ssl
-    from ssl import (
+    from ssl import (  # type: ignore
         CERT_REQUIRED,
         HAS_SNI,
         OP_NO_COMPRESSION,
@@ -48,43 +55,17 @@ if TYPE_CHECKING:  # Assume ssl module is there.
         SSLContext,
     )
 
-    from typing_extensions import Literal
-
     USE_DEFAULT_SSLCONTEXT_CIPHERS = _is_ge_openssl_v1_1_1(
         OPENSSL_VERSION, OPENSSL_VERSION_NUMBER
     )
     PROTOCOL_SSLv23 = PROTOCOL_TLS
-
-    from .ssltransport import SSLTransport
-else:
-    SSLContext = None
-    SSLTransport = None
-    try:  # Do we have ssl at all?
-        import ssl
-        from ssl import (
-            CERT_REQUIRED,
-            HAS_SNI,
-            OP_NO_COMPRESSION,
-            OP_NO_TICKET,
-            OPENSSL_VERSION,
-            OPENSSL_VERSION_NUMBER,
-            PROTOCOL_TLS,
-            OP_NO_SSLv2,
-            OP_NO_SSLv3,
-            SSLContext,
-        )
-
-        USE_DEFAULT_SSLCONTEXT_CIPHERS = _is_ge_openssl_v1_1_1(
-            OPENSSL_VERSION, OPENSSL_VERSION_NUMBER
-        )
-        PROTOCOL_SSLv23 = PROTOCOL_TLS
-        from .ssltransport import SSLTransport
-    except ImportError:
-        OP_NO_COMPRESSION = 0x20000
-        OP_NO_TICKET = 0x4000
-        OP_NO_SSLv2 = 0x1000000
-        OP_NO_SSLv3 = 0x2000000
-        PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
+    from .ssltransport import SSLTransport  # type: ignore
+except ImportError:
+    OP_NO_COMPRESSION = 0x20000  # type: ignore
+    OP_NO_TICKET = 0x4000  # type: ignore
+    OP_NO_SSLv2 = 0x1000000  # type: ignore
+    OP_NO_SSLv3 = 0x2000000  # type: ignore
+    PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
 
 
 _PCTRTT = Tuple[Tuple[str, str], ...]
@@ -157,7 +138,7 @@ def assert_fingerprint(cert: Optional[bytes], fingerprint: str) -> None:
 
     if not hmac.compare_digest(cert_digest, fingerprint_bytes):
         raise SSLError(
-            f'Fingerprints did not match. Expected "{fingerprint}", got "{hexlify(cert_digest)!r}".'
+            f'Fingerprints did not match. Expected "{fingerprint}", got "{cert_digest.hex()}".'
         )
 
 
@@ -240,7 +221,10 @@ def create_urllib3_context(
         Constructed SSLContext object with specified options
     :rtype: SSLContext
     """
-    context = SSLContext(ssl_version or PROTOCOL_TLS)
+    if SSLContext is not None:
+        context = SSLContext(ssl_version or PROTOCOL_TLS)
+    else:
+        raise TypeError("SSLContext is None - cannot create SSLContext (no ssl module)")
 
     # Unless we're given ciphers defer to either system ciphers in
     # the case of OpenSSL 1.1.1+ or use our own secure default ciphers.
@@ -281,7 +265,7 @@ def create_urllib3_context(
     context.verify_mode = cert_reqs
     # We ask for verification here but it may be disabled in HTTPSConnection.connect
     context.check_hostname = cert_reqs == ssl.CERT_REQUIRED
-    if sys.version_info >= (3, 7):
+    if hasattr(context, "hostname_checks_common_name"):
         context.hostname_checks_common_name = False
 
     # Enable logging of TLS session keys via defacto standard environment variable
@@ -289,7 +273,7 @@ def create_urllib3_context(
     if hasattr(context, "keylog_filename"):
         sslkeylogfile = os.environ.get("SSLKEYLOGFILE")
         if sslkeylogfile:
-            context.keylog_filename = sslkeylogfile  # type: ignore
+            context.keylog_filename = sslkeylogfile
 
     return context
 
@@ -328,7 +312,7 @@ def ssl_wrap_socket(
     key_password: Optional[str] = ...,
     ca_cert_data: Union[None, str, bytes] = ...,
     tls_in_tls: bool = ...,
-) -> Union["ssl.SSLSocket", "SSLTransport"]:
+) -> Union["ssl.SSLSocket", "SSLTransportType"]:
     ...
 
 
@@ -346,7 +330,7 @@ def ssl_wrap_socket(
     key_password: Optional[str] = None,
     ca_cert_data: Union[None, str, bytes] = None,
     tls_in_tls: bool = False,
-) -> Union["ssl.SSLSocket", "SSLTransport"]:
+) -> Union["ssl.SSLSocket", "SSLTransportType"]:
     """
     All arguments except for server_hostname, ssl_context, and ca_cert_dir have
     the same meaning as they do when using :func:`ssl.wrap_socket`.
@@ -449,7 +433,7 @@ def _ssl_wrap_socket_impl(
     ssl_context: "ssl.SSLContext",
     tls_in_tls: bool,
     server_hostname: Optional[str] = None,
-) -> Union["ssl.SSLSocket", "SSLTransport"]:
+) -> Union["ssl.SSLSocket", "SSLTransportType"]:
     if tls_in_tls:
         if not SSLTransport:
             # Import error, ssl is not available.

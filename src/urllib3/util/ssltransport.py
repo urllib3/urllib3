@@ -24,10 +24,6 @@ if TYPE_CHECKING:
 
     from .ssl_ import PeerCertRetDictType, PeerCertRetType
 
-    _BinaryMode = Literal[
-        "b", "rb", "br", "wb", "bw", "rwb", "rbw", "wrb", "wbr", "brw", "bwr"
-    ]
-    _TextMode = Literal["r", "w", "rw", "wr", ""]
 
 _SelfT = TypeVar("_SelfT", bound="SSLTransport")
 _WriteBuffer = Union[bytearray, memoryview]
@@ -131,7 +127,7 @@ class SSLTransport:
 
     def makefile(
         self,
-        mode: Union["_TextMode", "_BinaryMode"],
+        mode: str,
         buffering: Optional[int] = None,
         *,
         encoding: Optional[str] = None,
