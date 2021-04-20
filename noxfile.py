@@ -19,6 +19,7 @@ TYPED_FILES = {
     "src/urllib3/util/queue.py",
     "src/urllib3/util/response.py",
     "src/urllib3/util/ssl_.py",
+    "src/urllib3/util/ssl_match_hostname.py",
     "src/urllib3/util/ssltransport.py",
     "src/urllib3/util/url.py",
     "src/urllib3/util/wait.py",
