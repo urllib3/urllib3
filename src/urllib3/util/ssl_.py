@@ -221,11 +221,9 @@ def create_urllib3_context(
         Constructed SSLContext object with specified options
     :rtype: SSLContext
     """
-    if SSLContext is not None:
-        context = SSLContext(ssl_version or PROTOCOL_TLS)
-    else:
-        raise TypeError("SSLContext is None - cannot create SSLContext (no ssl module)")
-
+    if SSLContext is None:
+        raise TypeError("Can't create an SSLContext object without an ssl module")
+    context = SSLContext(ssl_version or PROTOCOL_TLS)
     # Unless we're given ciphers defer to either system ciphers in
     # the case of OpenSSL 1.1.1+ or use our own secure default ciphers.
     if ciphers is not None or not USE_DEFAULT_SSLCONTEXT_CIPHERS:
