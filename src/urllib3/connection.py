@@ -14,7 +14,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
     Iterable,
     Mapping,
     NamedTuple,
@@ -51,6 +50,7 @@ from .exceptions import (
 from .packages.ssl_match_hostname import CertificateError, match_hostname
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
 from .util.ssl_ import (
+    PeerCertRetType,
     assert_fingerprint,
     create_urllib3_context,
     resolve_cert_reqs,
@@ -327,12 +327,6 @@ class HTTPConnection(_HTTPConnection):
         self.send(b"0\r\n\r\n")
 
 
-_PCTRTT = Tuple[Tuple[str, str], ...]
-_PCTRTTT = Tuple[_PCTRTT, ...]
-_PeerCertRetDictType = Dict[str, Union[str, _PCTRTTT, _PCTRTT]]
-_PeerCertRetType = Union[_PeerCertRetDictType, bytes, None]
-
-
 class HTTPSConnection(HTTPConnection):
     """
     Many of the parameters to this constructor are passed to the underlying SSL
@@ -586,7 +580,7 @@ class HTTPSConnection(HTTPConnection):
             )
 
 
-def _match_hostname(cert: _PeerCertRetType, asserted_hostname: str) -> None:
+def _match_hostname(cert: PeerCertRetType, asserted_hostname: str) -> None:
     try:
         match_hostname(cert, asserted_hostname)
     except CertificateError as e:

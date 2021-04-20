@@ -1,8 +1,33 @@
 import io
 import socket
 import ssl
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    BinaryIO,
+    Callable,
+    List,
+    Optional,
+    TextIO,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 from urllib3.exceptions import ProxySchemeUnsupported
+
+if TYPE_CHECKING:
+
+    from typing_extensions import Literal
+
+    from .ssl_ import PeerCertRetDictType, PeerCertRetType
+
+
+_SelfT = TypeVar("_SelfT", bound="SSLTransport")
+_WriteBuffer = Union[bytearray, memoryview]
+_ReturnValue = TypeVar("_ReturnValue")
 
 SSL_BLOCKSIZE = 16384
 
@@ -19,7 +44,7 @@ class SSLTransport:
     """
 
     @staticmethod
-    def _validate_ssl_context_for_tls_in_tls(ssl_context):
+    def _validate_ssl_context_for_tls_in_tls(ssl_context: "ssl.SSLContext") -> None:
         """
         Raises a ProxySchemeUnsupported if the provided ssl_context can't be used
         for TLS in TLS.
@@ -35,8 +60,12 @@ class SSLTransport:
             )
 
     def __init__(
-        self, socket, ssl_context, server_hostname=None, suppress_ragged_eofs=True
-    ):
+        self,
+        socket: socket.socket,
+        ssl_context: "ssl.SSLContext",
+        server_hostname: Optional[str] = None,
+        suppress_ragged_eofs: bool = True,
+    ) -> None:
         """
         Create an SSLTransport around socket using the provided ssl_context.
         """
@@ -53,24 +82,26 @@ class SSLTransport:
         # Perform initial handshake.
         self._ssl_io_loop(self.sslobj.do_handshake)
 
-    def __enter__(self):
+    def __enter__(self: _SelfT) -> _SelfT:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: Any) -> None:
         self.close()
 
-    def fileno(self):
+    def fileno(self) -> int:
         return self.socket.fileno()
 
-    def read(self, len=1024, buffer=None):
+    def read(self, len: int = 1024, buffer: Optional[Any] = None) -> Union[int, bytes]:
         return self._wrap_ssl_read(len, buffer)
 
-    def recv(self, len=1024, flags=0):
+    def recv(self, buflen: int = 1024, flags: int = 0) -> Union[int, bytes]:
         if flags != 0:
             raise ValueError("non-zero flags not allowed in calls to recv")
-        return self._wrap_ssl_read(len)
+        return self._wrap_ssl_read(buflen)
 
-    def recv_into(self, buffer, nbytes=None, flags=0):
+    def recv_into(
+        self, buffer: _WriteBuffer, nbytes: Optional[int] = None, flags: int = 0
+    ) -> Union[None, int, bytes]:
         if flags != 0:
             raise ValueError("non-zero flags not allowed in calls to recv_into")
         if buffer and (nbytes is None):
@@ -79,7 +110,7 @@ class SSLTransport:
             nbytes = 1024
         return self.read(nbytes, buffer)
 
-    def sendall(self, data, flags=0):
+    def sendall(self, data: bytes, flags: int = 0) -> None:
         if flags != 0:
             raise ValueError("non-zero flags not allowed in calls to sendall")
         count = 0
@@ -89,15 +120,20 @@ class SSLTransport:
                 v = self.send(byte_view[count:])
                 count += v
 
-    def send(self, data, flags=0):
+    def send(self, data: bytes, flags: int = 0) -> int:
         if flags != 0:
             raise ValueError("non-zero flags not allowed in calls to send")
-        response = self._ssl_io_loop(self.sslobj.write, data)
-        return response
+        return self._ssl_io_loop(self.sslobj.write, data)
 
     def makefile(
-        self, mode="r", buffering=None, encoding=None, errors=None, newline=None
-    ):
+        self,
+        mode: str,
+        buffering: Optional[int] = None,
+        *,
+        encoding: Optional[str] = None,
+        errors: Optional[str] = None,
+        newline: Optional[str] = None,
+    ) -> Union[BinaryIO, TextIO]:
         """
         Python's httpclient uses makefile and buffered io when reading HTTP
         messages and we need to support it.
@@ -118,7 +154,7 @@ class SSLTransport:
         if writing:
             rawmode += "w"
         raw = socket.SocketIO(self, rawmode)
-        self.socket._io_refs += 1
+        self.socket._io_refs += 1  # type: ignore
         if buffering is None:
             buffering = -1
         if buffering < 0:
@@ -126,9 +162,10 @@ class SSLTransport:
         if buffering == 0:
             if not binary:
                 raise ValueError("unbuffered streams must be binary")
-            return raw
+            return raw  # type: ignore
+        buffer: BinaryIO
         if reading and writing:
-            buffer = io.BufferedRWPair(raw, raw, buffering)
+            buffer = io.BufferedRWPair(raw, raw, buffering)  # type: ignore
         elif reading:
             buffer = io.BufferedReader(raw, buffering)
         else:
@@ -137,46 +174,64 @@ class SSLTransport:
         if binary:
             return buffer
         text = io.TextIOWrapper(buffer, encoding, errors, newline)
-        text.mode = mode
+        text.mode = mode  # type: ignore
         return text
 
-    def unwrap(self):
+    def unwrap(self) -> None:
         self._ssl_io_loop(self.sslobj.unwrap)
 
-    def close(self):
+    def close(self) -> None:
         self.socket.close()
 
-    def getpeercert(self, binary_form=False):
+    @overload
+    def getpeercert(
+        self, binary_form: "Literal[False]" = ...
+    ) -> Optional["PeerCertRetDictType"]:
+        ...
+
+    @overload
+    def getpeercert(self, binary_form: "Literal[True]") -> Optional[bytes]:
+        ...
+
+    @overload
+    def getpeercert(self, binary_form: bool) -> "PeerCertRetType":
+        ...
+
+    def getpeercert(
+        self, binary_form: bool = False
+    ) -> Union[None, bytes, "PeerCertRetDictType", "PeerCertRetType"]:
         return self.sslobj.getpeercert(binary_form)
 
-    def version(self):
+    def version(self) -> Optional[str]:
         return self.sslobj.version()
 
-    def cipher(self):
+    def cipher(self) -> Optional[Tuple[str, str, int]]:
         return self.sslobj.cipher()
 
-    def selected_alpn_protocol(self):
+    def selected_alpn_protocol(self) -> Optional[str]:
         return self.sslobj.selected_alpn_protocol()
 
-    def selected_npn_protocol(self):
+    def selected_npn_protocol(self) -> Optional[str]:
         return self.sslobj.selected_npn_protocol()
 
-    def shared_ciphers(self):
+    def shared_ciphers(self) -> Optional[List[Tuple[str, str, int]]]:
         return self.sslobj.shared_ciphers()
 
-    def compression(self):
+    def compression(self) -> Optional[str]:
         return self.sslobj.compression()
 
-    def settimeout(self, value):
+    def settimeout(self, value: Optional[float]) -> None:
         self.socket.settimeout(value)
 
-    def gettimeout(self):
+    def gettimeout(self) -> Optional[float]:
         return self.socket.gettimeout()
 
-    def _decref_socketios(self):
-        self.socket._decref_socketios()
+    def _decref_socketios(self) -> None:
+        self.socket._decref_socketios()  # type: ignore
 
-    def _wrap_ssl_read(self, len, buffer=None):
+    def _wrap_ssl_read(
+        self, len: int, buffer: Optional[bytearray] = None
+    ) -> Union[int, bytes]:
         try:
             return self._ssl_io_loop(self.sslobj.read, len, buffer)
         except ssl.SSLError as e:
@@ -185,7 +240,32 @@ class SSLTransport:
             else:
                 raise
 
-    def _ssl_io_loop(self, func, *args):
+    # func is sslobj.do_handshake or sslobj.unwrap
+    @overload
+    def _ssl_io_loop(self, func: Callable[[], None]) -> None:
+        ...
+
+    # func is sslobj.write, arg1 is data
+    @overload
+    def _ssl_io_loop(self, func: Callable[[bytes], int], arg1: bytes) -> int:
+        ...
+
+    # func is sslobj.read, arg1 is len, arg2 is buffer
+    @overload
+    def _ssl_io_loop(
+        self,
+        func: Callable[[int, Optional[bytearray]], bytes],
+        arg1: int,
+        arg2: Optional[bytearray],
+    ) -> bytes:
+        ...
+
+    def _ssl_io_loop(
+        self,
+        func: Callable[..., _ReturnValue],
+        arg1: Union[None, bytes, int] = None,
+        arg2: Optional[bytearray] = None,
+    ) -> _ReturnValue:
         """ Performs an I/O loop between incoming/outgoing and the socket."""
         should_loop = True
         ret = None
@@ -193,7 +273,12 @@ class SSLTransport:
         while should_loop:
             errno = None
             try:
-                ret = func(*args)
+                if arg1 is None and arg2 is None:
+                    ret = func()
+                elif arg2 is None:
+                    ret = func(arg1)
+                else:
+                    ret = func(arg1, arg2)
             except ssl.SSLError as e:
                 if e.errno not in (ssl.SSL_ERROR_WANT_READ, ssl.SSL_ERROR_WANT_WRITE):
                     # WANT_READ, and WANT_WRITE are expected, others are not.
@@ -211,4 +296,4 @@ class SSLTransport:
                     self.incoming.write(buf)
                 else:
                     self.incoming.write_eof()
-        return ret
+        return cast(_ReturnValue, ret)
