@@ -47,7 +47,6 @@ from .exceptions import (
     NewConnectionError,
     SystemTimeWarning,
 )
-from .packages.ssl_match_hostname import CertificateError, match_hostname
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
 from .util.ssl_ import (
     PeerCertRetType,
@@ -57,6 +56,7 @@ from .util.ssl_ import (
     resolve_ssl_version,
     ssl_wrap_socket,
 )
+from .util.ssl_match_hostname import CertificateError, match_hostname
 
 # Not a no-op, we're adding this to the namespace so it can be imported.
 ConnectionError = ConnectionError
