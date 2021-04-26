@@ -16,7 +16,7 @@ def is_connection_dropped(conn: socket.socket) -> bool:  # Platform-specific
     :param conn:
         :class:`http.client.HTTPConnection` object.
     """
-    sock = getattr(conn, "sock", False)
+    sock = getattr(conn, "sock", None)
     if sock is None:  # Connection already closed (such as by httplib).
         return True
     # Returns True if readable, which here means it's been dropped
