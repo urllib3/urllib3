@@ -241,7 +241,7 @@ def _remove_path_dot_segments(path: str) -> str:
         if segment == ".":
             continue
         # Anything other than '..', should be appended to the output
-        elif segment != "..":
+        if segment != "..":
             output.append(segment)
         # In this case segment == '..', if we can, we should pop the last
         # element

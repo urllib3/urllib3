@@ -39,7 +39,8 @@ def make_headers(
 
     :param accept_encoding:
         Can be a boolean, list, or string.
-        ``True`` translates to 'gzip,deflate'.
+        ``True`` translates to 'gzip,deflate'.  If either the ``brotli`` or
+        ``brotlicffi`` package is installed 'gzip,deflate,br' is used instead.
         List will get joined by comma.
         String will be used as provided.
 

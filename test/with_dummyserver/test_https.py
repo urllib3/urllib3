@@ -11,7 +11,6 @@ from test import (
     LONG_TIMEOUT,
     SHORT_TIMEOUT,
     TARPIT_HOST,
-    notOpenSSL098,
     notSecureTransport,
     requires_network,
     requires_ssl_context_keyfile_password,
@@ -240,7 +239,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 assert not warn.called, warn.call_args_list
 
     @notSecureTransport  # SecureTransport does not support cert directories
-    @notOpenSSL098  # OpenSSL 0.9.8 does not support cert directories
     def test_ca_dir_verified(self, tmpdir):
         # OpenSSL looks up certificates by the hash for their name, see c_rehash
         # TODO infer the bytes using `cryptography.x509.Name.public_bytes`.
@@ -268,7 +266,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             "127.0.0.1", self.port, cert_reqs="CERT_REQUIRED", ca_certs=DEFAULT_CA
         ) as https_pool:
             with pytest.raises(MaxRetryError) as e:
-                https_pool.request("GET", "/")
+                https_pool.request("GET", "/", retries=0)
             assert isinstance(e.value.reason, SSLError)
             assert "doesn't match" in str(
                 e.value.reason
@@ -784,6 +782,18 @@ class TestHTTPS_TLSv1_2(TestHTTPS):
 class TestHTTPS_TLSv1_3(TestHTTPS):
     tls_protocol_name = "TLSv1.3"
     certs = TLSv1_3_CERTS
+
+
+class TestHTTPS_NoSAN:
+    def test_common_name_without_san_fails(self, no_san_server):
+        with HTTPSConnectionPool(
+            no_san_server.host,
+            no_san_server.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=no_san_server.ca_certs,
+        ) as https_pool:
+            with pytest.raises(MaxRetryError, match="no appropriate subjectAltName"):
+                https_pool.request("GET", "/")
 
 
 class TestHTTPS_IPSAN:

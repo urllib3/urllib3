@@ -9,16 +9,20 @@ import nox
 # ignored.
 TYPED_FILES = {
     "src/urllib3/contrib/__init__.py",
+    "src/urllib3/connection.py",
     "src/urllib3/exceptions.py",
     "src/urllib3/_collections.py",
     "src/urllib3/fields.py",
     "src/urllib3/filepost.py",
-    "src/urllib3/packages/__init__.py",
-    "src/urllib3/packages/ssl_match_hostname/__init__.py",
-    "src/urllib3/packages/ssl_match_hostname/_implementation.py",
+    "src/urllib3/util/connection.py",
+    "src/urllib3/util/proxy.py",
     "src/urllib3/util/queue.py",
     "src/urllib3/util/response.py",
+    "src/urllib3/util/ssl_.py",
+    "src/urllib3/util/ssl_match_hostname.py",
+    "src/urllib3/util/ssltransport.py",
     "src/urllib3/util/url.py",
+    "src/urllib3/util/wait.py",
 }
 SOURCE_FILES = [
     "docs/",

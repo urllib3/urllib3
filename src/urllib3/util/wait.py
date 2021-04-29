@@ -1,5 +1,7 @@
 import select
+import socket
 from functools import partial
+from typing import List, Optional, Tuple
 
 __all__ = ["wait_for_read", "wait_for_write"]
 
@@ -27,7 +29,12 @@ __all__ = ["wait_for_read", "wait_for_write"]
 # fall back to select() in case poll() is somehow broken or missing.
 
 
-def select_wait_for_socket(sock, read=False, write=False, timeout=None):
+def select_wait_for_socket(
+    sock: socket.socket,
+    read: bool = False,
+    write: bool = False,
+    timeout: Optional[float] = None,
+) -> bool:
     if not read and not write:
         raise RuntimeError("must specify at least one of read=True, write=True")
     rcheck = []
@@ -46,7 +53,12 @@ def select_wait_for_socket(sock, read=False, write=False, timeout=None):
     return bool(rready or wready or xready)
 
 
-def poll_wait_for_socket(sock, read=False, write=False, timeout=None):
+def poll_wait_for_socket(
+    sock: socket.socket,
+    read: bool = False,
+    write: bool = False,
+    timeout: Optional[float] = None,
+) -> bool:
     if not read and not write:
         raise RuntimeError("must specify at least one of read=True, write=True")
     mask = 0
@@ -58,7 +70,7 @@ def poll_wait_for_socket(sock, read=False, write=False, timeout=None):
     poll_obj.register(sock, mask)
 
     # For some reason, poll() takes timeout in milliseconds
-    def do_poll(t):
+    def do_poll(t: Optional[float]) -> List[Tuple[int, int]]:
         if t is not None:
             t *= 1000
         return poll_obj.poll(t)
@@ -66,7 +78,7 @@ def poll_wait_for_socket(sock, read=False, write=False, timeout=None):
     return bool(do_poll(timeout))
 
 
-def _have_working_poll():
+def _have_working_poll() -> bool:
     # Apparently some systems have a select.poll that fails as soon as you try
     # to use it, either due to strange configuration or broken monkeypatching
     # from libraries like eventlet/greenlet.
@@ -79,7 +91,12 @@ def _have_working_poll():
         return True
 
 
-def wait_for_socket(*args, **kwargs):
+def wait_for_socket(
+    sock: socket.socket,
+    read: bool = False,
+    write: bool = False,
+    timeout: Optional[float] = None,
+) -> bool:
     # We delay choosing which implementation to use until the first time we're
     # called. We could do it at import time, but then we might make the wrong
     # decision if someone goes wild with monkeypatching select.poll after
@@ -89,17 +106,17 @@ def wait_for_socket(*args, **kwargs):
         wait_for_socket = poll_wait_for_socket
     elif hasattr(select, "select"):
         wait_for_socket = select_wait_for_socket
-    return wait_for_socket(*args, **kwargs)
+    return wait_for_socket(sock, read, write, timeout)
 
 
-def wait_for_read(sock, timeout=None):
+def wait_for_read(sock: socket.socket, timeout: Optional[float] = None) -> bool:
     """Waits for reading to be available on a given socket.
     Returns True if the socket is readable, or False if the timeout expired.
     """
     return wait_for_socket(sock, read=True, timeout=timeout)
 
 
-def wait_for_write(sock, timeout=None):
+def wait_for_write(sock: socket.socket, timeout: Optional[float] = None) -> bool:
     """Waits for writing to be available on a given socket.
     Returns True if the socket is readable, or False if the timeout expired.
     """

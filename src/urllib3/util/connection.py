@@ -1,18 +1,22 @@
 import socket
+from typing import List, Optional, Tuple, Union
 
 from urllib3.exceptions import LocationParseError
 
 from .wait import wait_for_read
 
+SOCKET_GLOBAL_DEFAULT_TIMEOUT = socket._GLOBAL_DEFAULT_TIMEOUT  # type: ignore
+SocketOptions = List[Tuple[int, int, Union[int, bytes]]]
 
-def is_connection_dropped(conn):  # Platform-specific
+
+def is_connection_dropped(conn: socket.socket) -> bool:  # Platform-specific
     """
     Returns True if the connection is dropped and should be closed.
 
     :param conn:
         :class:`http.client.HTTPConnection` object.
     """
-    sock = getattr(conn, "sock", False)
+    sock = getattr(conn, "sock", None)
     if sock is None:  # Connection already closed (such as by httplib).
         return True
     # Returns True if readable, which here means it's been dropped
@@ -24,11 +28,11 @@ def is_connection_dropped(conn):  # Platform-specific
 # One additional modification is that we avoid binding to IPv6 servers
 # discovered in DNS if the system doesn't have IPv6 functionality.
 def create_connection(
-    address,
-    timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
-    source_address=None,
-    socket_options=None,
-):
+    address: Tuple[str, int],
+    timeout: Optional[float] = SOCKET_GLOBAL_DEFAULT_TIMEOUT,
+    source_address: Optional[Tuple[str, int]] = None,
+    socket_options: Optional[SocketOptions] = None,
+) -> socket.socket:
     """Connect to *address* and return the socket object.
 
     Convenience function.  Connect to *address* (a 2-tuple ``(host,
@@ -65,7 +69,7 @@ def create_connection(
             # If provided, set socket level options before connecting.
             _set_socket_options(sock, socket_options)
 
-            if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
+            if timeout is not SOCKET_GLOBAL_DEFAULT_TIMEOUT:
                 sock.settimeout(timeout)
             if source_address:
                 sock.bind(source_address)
@@ -84,7 +88,7 @@ def create_connection(
     raise OSError("getaddrinfo returns an empty list")
 
 
-def _set_socket_options(sock, options):
+def _set_socket_options(sock: socket.socket, options: Optional[SocketOptions]) -> None:
     if options is None:
         return
 
@@ -92,7 +96,7 @@ def _set_socket_options(sock, options):
         sock.setsockopt(*opt)
 
 
-def allowed_gai_family():
+def allowed_gai_family() -> socket.AddressFamily:
     """This function is designed to work in the context of
     getaddrinfo, where family=socket.AF_UNSPEC is the default and
     will perform a DNS search for both IPv6 and IPv4 records."""
@@ -103,7 +107,7 @@ def allowed_gai_family():
     return family
 
 
-def _has_ipv6(host):
+def _has_ipv6(host: str) -> bool:
     """ Returns True if the system can bind an IPv6 address. """
     sock = None
     has_ipv6 = False

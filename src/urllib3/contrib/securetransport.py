@@ -451,6 +451,8 @@ class WrappedSocket:
         _assert_no_error(result)
 
         # If we have a server hostname, we should set that too.
+        # RFC6066 Section 3 tells us not to use SNI when the host is an IP, but we have
+        # to do it anyway to match server_hostname against the server certificate
         if server_hostname:
             if not isinstance(server_hostname, bytes):
                 server_hostname = server_hostname.encode("utf-8")
@@ -757,7 +759,7 @@ class SecureTransportContext:
 
     @verify_mode.setter
     def verify_mode(self, value):
-        self._verify = True if value == ssl.CERT_REQUIRED else False
+        self._verify = value == ssl.CERT_REQUIRED
 
     def set_default_verify_paths(self):
         # So, this has to do something a bit weird. Specifically, what it does
