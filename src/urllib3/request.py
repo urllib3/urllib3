@@ -1,4 +1,4 @@
-from typing import Any, Dict, Mapping, Optional, Union
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 from urllib.parse import urlencode
 
 from .connection import HTTPBody
@@ -6,6 +6,10 @@ from .filepost import _TYPE_FIELDS, encode_multipart_formdata
 from .response import BaseHTTPResponse
 
 __all__ = ["RequestMethods"]
+
+_TYPE_ENCODE_URL_FIELDS = Union[
+    Sequence[Tuple[str, Union[str, bytes]]], Mapping[str, Union[str, bytes]]
+]
 
 
 class RequestMethods:
@@ -61,7 +65,7 @@ class RequestMethods:
         self,
         method: str,
         url: str,
-        fields: Optional[_TYPE_FIELDS] = None,
+        fields: Optional[_TYPE_ENCODE_URL_FIELDS] = None,
         headers: Optional[Mapping[str, str]] = None,
         **urlopen_kw: str,
     ) -> BaseHTTPResponse:
@@ -92,7 +96,7 @@ class RequestMethods:
         self,
         method: str,
         url: str,
-        fields: Optional[_TYPE_FIELDS] = None,
+        fields: Optional[_TYPE_ENCODE_URL_FIELDS] = None,
         headers: Optional[Mapping[str, str]] = None,
         **urlopen_kw: str,
     ) -> BaseHTTPResponse:
@@ -107,7 +111,7 @@ class RequestMethods:
         extra_kw.update(urlopen_kw)
 
         if fields:
-            url += "?" + urlencode(fields)  # type: ignore
+            url += "?" + urlencode(fields)
 
         return self.urlopen(method, url, **extra_kw)
 
