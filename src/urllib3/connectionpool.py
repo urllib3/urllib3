@@ -247,7 +247,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if self.block:
                 raise EmptyPoolError(
                     self,
-                    "No connection is available, and new connection cannot be created due to blocking mode.",
+                    "Pool is empty and a new connection can't be opened due to blocking mode.",
                 )
             pass  # Oh well, we'll create a new connection then
 
