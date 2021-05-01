@@ -54,9 +54,7 @@ version = platform.mac_ver()[0]
 version_info = tuple(map(int, version.split(".")))
 if version_info < (10, 8):
     raise OSError(
-        "Only OS X 10.8 and newer are supported, not {}.{}".format(
-            version_info[0], version_info[1]
-        )
+        f"Only OS X 10.8 and newer are supported, not {version_info[0]}.{version_info[1]}"
     )
 
 

@@ -200,7 +200,7 @@ class TestUtil:
     def test_control_characters_are_percent_encoded(self, char):
         percent_char = "%" + (hex(ord(char))[2:].zfill(2).upper())
         url = parse_url(
-            "http://user{0}@example.com/path{0}?query{0}#fragment{0}".format(char)
+            f"http://user{char}@example.com/path{char}?query{char}#fragment{char}"
         )
 
         assert url == Url(
