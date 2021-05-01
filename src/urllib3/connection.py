@@ -255,10 +255,11 @@ class HTTPConnection(_HTTPConnection):
         if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
             super().putheader(header, *values)
         elif to_str(header.lower()) not in SKIPPABLE_HEADERS:
+            skippable_headers = "', '".join(
+                [str.title(header) for header in sorted(SKIPPABLE_HEADERS)]
+            )
             raise ValueError(
-                "urllib3.util.SKIP_HEADER only supports '{}'".format(
-                    "', '".join(map(str.title, sorted(SKIPPABLE_HEADERS)))
-                )
+                f"urllib3.util.SKIP_HEADER only supports '{skippable_headers}'"
             )
 
     # `request` method's signature intentionally violates LSP.
