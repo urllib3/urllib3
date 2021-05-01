@@ -23,7 +23,7 @@ _URI_RE = re.compile(
 
 _IPV4_PAT = r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}"
 _HEX_PAT = "[0-9A-Fa-f]{1,4}"
-_LS32_PAT = f"(?:{_HEX_PAT}:{_HEX_PAT}|{_IPV4_PAT})"
+_LS32_PAT = "(?:{hex}:{hex}|{ipv4})".format(hex=_HEX_PAT, ipv4=_IPV4_PAT)
 _subs = {"hex": _HEX_PAT, "ls32": _LS32_PAT}
 _variations = [
     #                            6( h16 ":" ) ls32

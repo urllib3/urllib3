@@ -1035,8 +1035,11 @@ class MockChunkedInvalidChunkLength(MockChunkedEncodingResponse):
 
 class MockChunkedEncodingWithoutCRLFOnEnd(MockChunkedEncodingResponse):
     def _encode_chunk(self, chunk):
-        crlf = "\r\n"
-        return f"{len(chunk):X}\r\n{chunk.decode()}{crlf if len(chunk) > 0 else ''}"
+        return "{:X}\r\n{}{}".format(
+            len(chunk),
+            chunk.decode(),
+            "\r\n" if len(chunk) > 0 else "",
+        )
 
 
 class MockChunkedEncodingWithExtensions(MockChunkedEncodingResponse):
