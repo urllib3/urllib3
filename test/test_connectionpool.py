@@ -20,6 +20,7 @@ from urllib3.connectionpool import (
 from urllib3.exceptions import (
     ClosedPoolError,
     EmptyPoolError,
+    FullPoolError,
     HostChangedError,
     LocationValueError,
     MaxRetryError,
@@ -223,18 +224,65 @@ class TestConnectionPool:
 
             assert pool.num_connections == 1
 
-    def test_pool_edgecases(self):
+    def test_put_conn_when_pool_is_full_nonblocking(self):
+        """
+        If maxsize = n and we _put_conn n + 1 conns, the n + 1th conn will
+        get closed and will not get added to the pool.
+        """
         with HTTPConnectionPool(host="localhost", maxsize=1, block=False) as pool:
             conn1 = pool._get_conn()
-            conn2 = pool._get_conn()  # New because block=False
+            # pool.pool is empty because we popped the one None that pool.pool was initialized with
+            # but this pool._get_conn call will not raise EmptyPoolError because block is False
+            conn2 = pool._get_conn()
+
+            conn1.close = Mock()
+            conn2.close = Mock()
 
             pool._put_conn(conn1)
-            pool._put_conn(conn2)  # Should be discarded
+            pool._put_conn(conn2)
+
+            assert conn1.close.called is False
+            assert conn2.close.called is True
 
             assert conn1 == pool._get_conn()
             assert conn2 != pool._get_conn()
 
             assert pool.num_connections == 3
+
+    def test_put_conn_when_pool_is_full_blocking(self):
+        """
+        If maxsize = n and we _put_conn n + 1 conns, the n + 1th conn will
+        cause a FullPoolError.
+        """
+        with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
+            conn1 = pool._get_conn()
+            conn2 = pool._new_conn()
+
+            conn1.close = Mock()
+            conn2.close = Mock()
+
+            pool._put_conn(conn1)
+            with pytest.raises(FullPoolError):
+                pool._put_conn(conn2)
+
+            assert conn1.close.called is False
+            assert conn2.close.called is True
+
+            assert conn1 == pool._get_conn()
+
+    def test_put_conn_closed_pool(self):
+        with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
+            conn1 = pool._get_conn()
+            conn1.close = Mock()
+
+            pool.close()
+            assert pool.pool is None
+
+            # Accessing pool.pool will raise AttributeError, which will get
+            # caught and will close conn1
+            pool._put_conn(conn1)
+
+            assert conn1.close.called is True
 
     def test_exception_str(self):
         assert (

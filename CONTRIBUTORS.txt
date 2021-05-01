@@ -309,5 +309,8 @@ In chronological order:
 * [Franciszek Magiera] <https://github.com/franekmagiera>
   * Add top-level request method.
 
+* Dmitry Mazin <https://archvile.net>
+  * _put_conn changes and unit tests
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

@@ -19,6 +19,7 @@ from .connection import (
 from .exceptions import (
     ClosedPoolError,
     EmptyPoolError,
+    FullPoolError,
     HeaderParsingError,
     HostChangedError,
     HTTPSProxyError,
@@ -246,7 +247,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             if self.block:
                 raise EmptyPoolError(
                     self,
-                    "Pool reached maximum size and no more connections are allowed.",
+                    "Pool is empty and a new connection can't be opened due to blocking mode.",
                 )
             pass  # Oh well, we'll create a new connection then
 
@@ -283,7 +284,18 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # self.pool is None.
             pass
         except queue.Full:
-            # This should never happen if self.block == True
+
+            # Connection never got put back into the pool, close it.
+            if conn:
+                conn.close()
+
+            if self.block:
+                # This should never happen if you got the conn from self._get_conn
+                raise FullPoolError(
+                    self,
+                    "Pool reached maximum size and no more connections are allowed.",
+                )
+
             log.warning("Connection pool is full, discarding connection: %s", self.host)
 
         # Connection never got put back into the pool, close it.
