@@ -54,7 +54,7 @@ class RequestMethods:
         headers: Optional[Mapping[str, str]] = None,
         encode_multipart: bool = True,
         multipart_boundary: Optional[str] = None,
-        **kw: str,
+        **kw: Any,
     ) -> BaseHTTPResponse:  # Abstract
         raise NotImplementedError(
             "Classes extending RequestMethods must implement "
@@ -67,7 +67,7 @@ class RequestMethods:
         url: str,
         fields: Optional[_TYPE_ENCODE_URL_FIELDS] = None,
         headers: Optional[Mapping[str, str]] = None,
-        **urlopen_kw: str,
+        **urlopen_kw: Any,
     ) -> BaseHTTPResponse:
         """
         Make a request using :meth:`urlopen` with the appropriate encoding of
