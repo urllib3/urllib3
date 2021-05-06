@@ -28,7 +28,7 @@ def to_str(
 
 def reraise(
     tp: Optional[Type[BaseException]],
-    value: Optional[BaseException],
+    value: BaseException,
     tb: Optional[TracebackType] = None,
 ) -> NoReturn:
     try:
@@ -36,5 +36,5 @@ def reraise(
             raise value.with_traceback(tb)
         raise value
     finally:
-        value = None
+        value = None  # type: ignore
         tb = None
