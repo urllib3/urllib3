@@ -22,6 +22,7 @@ TYPED_FILES = {
     "src/urllib3/util/ssl_match_hostname.py",
     "src/urllib3/util/ssltransport.py",
     "src/urllib3/util/url.py",
+    "src/urllib3/util/request.py",
     "src/urllib3/util/util.py",
     "src/urllib3/util/wait.py",
 }
