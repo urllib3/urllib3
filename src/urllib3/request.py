@@ -65,7 +65,7 @@ class RequestMethods:
         self,
         method: str,
         url: str,
-        fields: Optional[_TYPE_ENCODE_URL_FIELDS] = None,
+        fields: Optional[_TYPE_FIELDS] = None,
         headers: Optional[Mapping[str, str]] = None,
         **urlopen_kw: Any,
     ) -> BaseHTTPResponse:
@@ -85,11 +85,15 @@ class RequestMethods:
 
         if method in self._encode_url_methods:
             return self.request_encode_url(
-                method, url, fields=fields, headers=headers, **urlopen_kw
+                method,
+                url,
+                fields=fields,  # type: ignore
+                headers=headers,
+                **urlopen_kw,
             )
         else:
             return self.request_encode_body(
-                method, url, fields=fields, headers=headers, **urlopen_kw  # type: ignore
+                method, url, fields=fields, headers=headers, **urlopen_kw
             )
 
     def request_encode_url(
