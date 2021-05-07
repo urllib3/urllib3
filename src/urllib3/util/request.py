@@ -31,7 +31,7 @@ def make_headers(
     basic_auth: Optional[str] = None,
     proxy_basic_auth: Optional[str] = None,
     disable_cache: Optional[bool] = None,
-) -> Dict[str, Any]:
+) -> Dict[str, str]:
     """
     Shortcuts for generating request headers.
 
