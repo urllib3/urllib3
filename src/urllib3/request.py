@@ -1,9 +1,15 @@
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 from urllib.parse import urlencode
 
-from .filepost import encode_multipart_formdata
+from .connection import HTTPBody
+from .filepost import _TYPE_FIELDS, encode_multipart_formdata
 from .response import BaseHTTPResponse
 
 __all__ = ["RequestMethods"]
+
+_TYPE_ENCODE_URL_FIELDS = Union[
+    Sequence[Tuple[str, Union[str, bytes]]], Mapping[str, Union[str, bytes]]
+]
 
 
 class RequestMethods:
@@ -37,18 +43,18 @@ class RequestMethods:
 
     _encode_url_methods = {"DELETE", "GET", "HEAD", "OPTIONS"}
 
-    def __init__(self, headers=None):
+    def __init__(self, headers: Optional[Mapping[str, str]] = None) -> None:
         self.headers = headers or {}
 
     def urlopen(
         self,
-        method,
-        url,
-        body=None,
-        headers=None,
-        encode_multipart=True,
-        multipart_boundary=None,
-        **kw,
+        method: str,
+        url: str,
+        body: Optional[HTTPBody] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        encode_multipart: bool = True,
+        multipart_boundary: Optional[str] = None,
+        **kw: Any,
     ) -> BaseHTTPResponse:  # Abstract
         raise NotImplementedError(
             "Classes extending RequestMethods must implement "
@@ -56,7 +62,12 @@ class RequestMethods:
         )
 
     def request(
-        self, method, url, fields=None, headers=None, **urlopen_kw
+        self,
+        method: str,
+        url: str,
+        fields: Optional[_TYPE_FIELDS] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        **urlopen_kw: Any,
     ) -> BaseHTTPResponse:
         """
         Make a request using :meth:`urlopen` with the appropriate encoding of
@@ -74,7 +85,11 @@ class RequestMethods:
 
         if method in self._encode_url_methods:
             return self.request_encode_url(
-                method, url, fields=fields, headers=headers, **urlopen_kw
+                method,
+                url,
+                fields=fields,  # type: ignore
+                headers=headers,
+                **urlopen_kw,
             )
         else:
             return self.request_encode_body(
@@ -82,7 +97,12 @@ class RequestMethods:
             )
 
     def request_encode_url(
-        self, method, url, fields=None, headers=None, **urlopen_kw
+        self,
+        method: str,
+        url: str,
+        fields: Optional[_TYPE_ENCODE_URL_FIELDS] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        **urlopen_kw: str,
     ) -> BaseHTTPResponse:
         """
         Make a request using :meth:`urlopen` with the ``fields`` encoded in
@@ -91,7 +111,7 @@ class RequestMethods:
         if headers is None:
             headers = self.headers
 
-        extra_kw = {"headers": headers}
+        extra_kw: Dict[str, Any] = {"headers": headers}
         extra_kw.update(urlopen_kw)
 
         if fields:
@@ -101,13 +121,13 @@ class RequestMethods:
 
     def request_encode_body(
         self,
-        method,
-        url,
-        fields=None,
-        headers=None,
-        encode_multipart=True,
-        multipart_boundary=None,
-        **urlopen_kw,
+        method: str,
+        url: str,
+        fields: Optional[_TYPE_FIELDS] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        encode_multipart: bool = True,
+        multipart_boundary: Optional[str] = None,
+        **urlopen_kw: str,
     ) -> BaseHTTPResponse:
         """
         Make a request using :meth:`urlopen` with the ``fields`` encoded in
@@ -147,7 +167,8 @@ class RequestMethods:
         if headers is None:
             headers = self.headers
 
-        extra_kw = {"headers": {}}
+        extra_kw: Dict[str, Any] = {"headers": {}}
+        body: Union[bytes, str]
 
         if fields:
             if "body" in urlopen_kw:
@@ -161,7 +182,7 @@ class RequestMethods:
                 )
             else:
                 body, content_type = (
-                    urlencode(fields),
+                    urlencode(fields),  # type: ignore
                     "application/x-www-form-urlencoded",
                 )
 
