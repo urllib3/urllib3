@@ -1,5 +1,5 @@
 from base64 import b64encode
-from typing import IO, Any, AnyStr, Dict, List, Optional, Union
+from typing import IO, AnyStr, Dict, List, Optional, Union
 
 from ..exceptions import UnrewindableBodyError
 
