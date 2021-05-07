@@ -1,4 +1,5 @@
 from base64 import b64encode
+from typing import IO, Any, AnyStr, Dict, List, Optional, Union
 
 from ..exceptions import UnrewindableBodyError
 
@@ -12,9 +13,9 @@ SKIPPABLE_HEADERS = frozenset(["accept-encoding", "host", "user-agent"])
 ACCEPT_ENCODING = "gzip,deflate"
 try:
     try:
-        import brotlicffi as _unused_module_brotli  # noqa: F401
+        import brotlicffi as _unused_module_brotli  # type: ignore # noqa: F401
     except ImportError:
-        import brotli as _unused_module_brotli  # noqa: F401
+        import brotli as _unused_module_brotli  # type: ignore # noqa: F401
 except ImportError:
     pass
 else:
@@ -24,13 +25,13 @@ _FAILEDTELL = object()
 
 
 def make_headers(
-    keep_alive=None,
-    accept_encoding=None,
-    user_agent=None,
-    basic_auth=None,
-    proxy_basic_auth=None,
-    disable_cache=None,
-):
+    keep_alive: Optional[bool] = None,
+    accept_encoding: Optional[Union[bool, List[str], str]] = None,
+    user_agent: Optional[str] = None,
+    basic_auth: Optional[str] = None,
+    proxy_basic_auth: Optional[str] = None,
+    disable_cache: Optional[bool] = None,
+) -> Dict[str, Any]:
     """
     Shortcuts for generating request headers.
 
@@ -66,7 +67,7 @@ def make_headers(
         >>> make_headers(accept_encoding=True)
         {'accept-encoding': 'gzip,deflate'}
     """
-    headers = {}
+    headers: Dict[str, str] = {}
     if accept_encoding:
         if isinstance(accept_encoding, str):
             pass
@@ -98,7 +99,9 @@ def make_headers(
     return headers
 
 
-def set_file_position(body, pos):
+def set_file_position(
+    body: IO[AnyStr], pos: Optional[Union[int, object]]
+) -> Optional[Union[int, object]]:
     """
     If a position is provided, move file to that point.
     Otherwise, we'll attempt to record a position for future use.
@@ -116,7 +119,7 @@ def set_file_position(body, pos):
     return pos
 
 
-def rewind_body(body, body_pos):
+def rewind_body(body: IO[AnyStr], body_pos: Optional[Union[int, object]]) -> None:
     """
     Attempt to rewind body to a certain position.
     Primarily used for request redirects and retries.
