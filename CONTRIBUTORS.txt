@@ -110,6 +110,9 @@ In chronological order:
 * Josh Schneier <https://github.com/jschneier>
   * HTTPHeaderDict and associated tests and docs
   * Bugfixes, docs, test coverage
+  
+* Saiprasad Kale <https://github.com/Saiprasad16>
+  * UPDATE LICENSE
 
 * Tahia Khan <http://tahia.tk/>
   * Added Timeout examples in docs
