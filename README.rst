@@ -86,6 +86,7 @@ Tidelift will coordinate the fix and disclosure with maintainers.
 Maintainers
 -----------
 
+- `@Saiprasad16 <https://github.com/Saiprasad16>`__ (Saiprasad Kale)
 - `@sethmlarson <https://github.com/sethmlarson>`__ (Seth M. Larson)
 - `@pquentin <https://github.com/pquentin>`__ (Quentin Pradet)
 - `@theacodes <https://github.com/theacodes>`__ (Thea Flowers)
@@ -93,6 +94,7 @@ Maintainers
 - `@lukasa <https://github.com/lukasa>`__ (Cory Benfield)
 - `@sigmavirus24 <https://github.com/sigmavirus24>`__ (Ian Stapleton Cordasco)
 - `@shazow <https://github.com/shazow>`__ (Andrey Petrov)
+
 
 👋
 
