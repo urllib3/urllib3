@@ -1,9 +1,15 @@
 import datetime
+import socket
 from unittest import mock
 
 import pytest
 
-from urllib3.connection import RECENT_DATE, CertificateError, _match_hostname
+from urllib3.connection import (
+    RECENT_DATE,
+    CertificateError,
+    HTTPSConnection,
+    _match_hostname,
+)
 from urllib3.util.ssl_match_hostname import (
     CertificateError as ImplementationCertificateError,
 )
@@ -108,3 +114,7 @@ class TestConnection:
         # according to the rules defined in that file.
         two_years = datetime.timedelta(days=365 * 2)
         assert RECENT_DATE > (datetime.datetime.today() - two_years).date()
+
+    def test_HTTPSConnection_default_socket_options(self):
+        conn = HTTPSConnection("https://example.com", port=443)
+        assert conn.socket_options == [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
