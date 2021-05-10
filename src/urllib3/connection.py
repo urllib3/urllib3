@@ -356,7 +356,9 @@ class HTTPSConnection(HTTPConnection):
         server_hostname: Optional[str] = None,
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
-        socket_options: Optional[connection.SocketOptions] = None,
+        socket_options: Optional[
+            connection.SocketOptions
+        ] = HTTPConnection.default_socket_options,
         proxy: Optional[str] = None,
         proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
