@@ -116,5 +116,5 @@ class TestConnection:
         assert RECENT_DATE > (datetime.datetime.today() - two_years).date()
 
     def test_HTTPSConnection_default_socket_options(self):
-        conn = HTTPSConnection("https://example.com", port=443)
+        conn = HTTPSConnection("not.a.real.host", port=443)
         assert conn.socket_options == [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]
