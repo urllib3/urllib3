@@ -15,7 +15,7 @@ from .ssl_ import (
     resolve_ssl_version,
     ssl_wrap_socket,
 )
-from .timeout import Timeout, current_time
+from .timeout import Timeout
 from .url import Url, parse_url
 from .wait import wait_for_read, wait_for_write
 
@@ -30,7 +30,6 @@ __all__ = (
     "Timeout",
     "Url",
     "assert_fingerprint",
-    "current_time",
     "is_connection_dropped",
     "is_fp_closed",
     "parse_url",

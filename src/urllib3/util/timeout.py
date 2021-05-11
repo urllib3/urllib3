@@ -11,10 +11,6 @@ from ..exceptions import TimeoutStateError
 _Default = object()
 
 
-# Use time.monotonic if available.
-current_time = getattr(time, "monotonic", time.time)
-
-
 class Timeout:
     """Timeout configuration.
 
@@ -193,7 +189,7 @@ class Timeout:
         """
         if self._start_connect is not None:
             raise TimeoutStateError("Timeout timer has already been started.")
-        self._start_connect = current_time()
+        self._start_connect = time.monotonic()
         return self._start_connect
 
     def get_connect_duration(self):
@@ -208,7 +204,7 @@ class Timeout:
             raise TimeoutStateError(
                 "Can't get connect duration for timer that has not started."
             )
-        return current_time() - self._start_connect
+        return time.monotonic() - self._start_connect
 
     @property
     def connect_timeout(self):
