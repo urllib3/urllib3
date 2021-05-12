@@ -158,14 +158,14 @@ Or you can use the ``HTTPHeaderDict`` class to create a proper variable for stor
     >>> print(Headers['X-Something'])
     value
     >>> for i in Headers.iteritems():
-            print( "%s: %s" % i)
+    ...     print( "%s: %s" % i)
     X-Something: value
     Y-Something: value
     >>> r = http.request(
-	    'GET',
-	    'http://httpbin.org/headers',
-	    headers = Headers
-	    )
+	...     'GET',
+    ...     'http://httpbin.org/headers',
+    ...     headers = Headers
+    ...     )
     >>> json.loads(r.data.decode('utf-8'))['headers']
     {'X-Something': 'value', 'Y-Something': 'value', ...}
    
