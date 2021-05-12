@@ -67,6 +67,13 @@ except ImportError:
     OP_NO_SSLv3 = 0x2000000  # type: ignore
     PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
 
+# PROTOCOL_TLS_CLIENT is essentially PROTOCOL_TLS with additional
+# configuration so if it's not available we fallback on PROTOCOL_TLS.
+try:
+    from ssl import PROTOCOL_TLS_CLIENT
+except ImportError:
+    PROTOCOL_TLS_CLIENT = PROTOCOL_TLS
+
 
 _PCTRTT = Tuple[Tuple[str, str], ...]
 _PCTRTTT = Tuple[_PCTRTT, ...]
@@ -223,7 +230,13 @@ def create_urllib3_context(
     """
     if SSLContext is None:
         raise TypeError("Can't create an SSLContext object without an ssl module")
-    context = SSLContext(ssl_version or PROTOCOL_TLS)
+
+    # PROTOCOL_TLS is deprecated in Python 3.10 so we pass PROTOCOL_TLS_CLIENT instead.
+    # If it's not available in 'ssl' the value is aliased to PROTOCOL_TLS anyways.
+    if ssl_version == PROTOCOL_TLS:
+        ssl_version = PROTOCOL_TLS_CLIENT
+    context = SSLContext(ssl_version or PROTOCOL_TLS_CLIENT)
+
     # Unless we're given ciphers defer to either system ciphers in
     # the case of OpenSSL 1.1.1+ or use our own secure default ciphers.
     if ciphers is not None or not USE_DEFAULT_SSLCONTEXT_CIPHERS:
@@ -260,11 +273,14 @@ def create_urllib3_context(
     ) is not None:
         context.post_handshake_auth = True
 
-    context.verify_mode = cert_reqs
     # We ask for verification here but it may be disabled in HTTPSConnection.connect
     context.check_hostname = cert_reqs == ssl.CERT_REQUIRED
     if hasattr(context, "hostname_checks_common_name"):
         context.hostname_checks_common_name = False
+
+    # Set verify mode after check_hostname to avoid errors that arise from
+    # having verify_mode=False and check_hostname=True on an SSLContext.
+    context.verify_mode = cert_reqs
 
     # Enable logging of TLS session keys via defacto standard environment variable
     # 'SSLKEYLOGFILE', if the feature is available (Python 3.8+). Skip empty values.

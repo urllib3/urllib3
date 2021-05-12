@@ -65,6 +65,7 @@ import weakref
 from socket import socket as socket_cls
 
 from .. import util
+from ..util.ssl_ import PROTOCOL_TLS_CLIENT
 from ._securetransport.bindings import CoreFoundation, Security, SecurityConst
 from ._securetransport.low_level import (
     _assert_no_error,
@@ -111,7 +112,8 @@ SSL_WRITE_BLOCKSIZE = 16384
 # TLSv1 and a high of TLSv1.2. For everything else, we pin to that version.
 # TLSv1 to 1.2 are supported on macOS 10.8+
 _protocol_to_min_max = {
-    util.PROTOCOL_TLS: (SecurityConst.kTLSProtocol1, SecurityConst.kTLSProtocol12)
+    util.PROTOCOL_TLS: (SecurityConst.kTLSProtocol1, SecurityConst.kTLSProtocol12),
+    PROTOCOL_TLS_CLIENT: (SecurityConst.kTLSProtocol1, SecurityConst.kTLSProtocol12),
 }
 
 if hasattr(ssl, "PROTOCOL_SSLv2"):
@@ -712,7 +714,7 @@ class SecureTransportContext:
     SecureTransport.
     """
 
-    def __init__(self, protocol):
+    def __init__(self, protocol=util.PROTOCOL_TLS):
         self._min_version, self._max_version = _protocol_to_min_max[protocol]
         self._options = 0
         self._verify = False

@@ -66,7 +66,7 @@ from socket import socket as socket_cls
 from socket import timeout
 
 from .. import util
-from ..util.ssl_ import is_ipaddress
+from ..util.ssl_ import PROTOCOL_TLS_CLIENT, is_ipaddress
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 
@@ -81,6 +81,7 @@ USE_DEFAULT_SSLCONTEXT_CIPHERS = util.ssl_._is_ge_openssl_v1_1_1(
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
 _openssl_versions = {
     util.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,
+    PROTOCOL_TLS_CLIENT: OpenSSL.SSL.SSLv23_METHOD,
     ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
 }
 
