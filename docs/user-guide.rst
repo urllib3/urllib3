@@ -147,7 +147,7 @@ You can specify headers as a dictionary in the ``headers`` argument in :meth:`~p
     >>> json.loads(r.data.decode('utf-8'))['headers']
     {'X-Something': 'value', ...}
 
-Or you can use the ``HTTPHeaderDict`` class to create a proper variable for storing header information.
+Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers.
 
 .. code-block:: pycon
 
