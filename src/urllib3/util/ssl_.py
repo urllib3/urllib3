@@ -279,13 +279,13 @@ def create_urllib3_context(
     # complex because we don't know whether PROTOCOL_TLS_CLIENT will be used
     # or not so we don't know the initial state of the freshly created SSLContext.
     if cert_reqs == ssl.CERT_REQUIRED:
+        # We ask for verification here but it may be disabled in HTTPSConnection.connect
         context.verify_mode = cert_reqs
         context.check_hostname = True
     else:
         context.check_hostname = False
         context.verify_mode = cert_reqs
 
-    # We ask for verification here but it may be disabled in HTTPSConnection.connect
     if hasattr(context, "hostname_checks_common_name"):
         context.hostname_checks_common_name = False
 
