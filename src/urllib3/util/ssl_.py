@@ -273,14 +273,20 @@ def create_urllib3_context(
     ) is not None:
         context.post_handshake_auth = True
 
-    # We ask for verification here but it may be disabled in HTTPSConnection.connect
-    context.check_hostname = cert_reqs == ssl.CERT_REQUIRED
-    if hasattr(context, "hostname_checks_common_name"):
-        context.hostname_checks_common_name = False
+    # Nullify all previous state for the context before setting the proper values
+    # to avoid tripping any of the safe-guards against having an SSLContext configured
+    # with (verify_mode=NONE with check_hostname=True) or (verify_mode=REQUIRED with check_hostname=False)
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
 
     # Set verify mode after check_hostname to avoid errors that arise from
     # having verify_mode=False and check_hostname=True on an SSLContext.
     context.verify_mode = cert_reqs
+
+    # We ask for verification here but it may be disabled in HTTPSConnection.connect
+    context.check_hostname = cert_reqs == ssl.CERT_REQUIRED
+    if hasattr(context, "hostname_checks_common_name"):
+        context.hostname_checks_common_name = False
 
     # Enable logging of TLS session keys via defacto standard environment variable
     # 'SSLKEYLOGFILE', if the feature is available (Python 3.8+). Skip empty values.
