@@ -162,7 +162,7 @@ Or you can use the ``HTTPHeaderDict`` class to create a proper variable for stor
     X-Something: value
     Y-Something: value
     >>> r = http.request(
-	...     'GET',
+    ...     'GET',
     ...     'http://httpbin.org/headers',
     ...     headers = Headers
     ...     )
