@@ -16,6 +16,7 @@ from .response import HTTPResponse
 from .util.request import make_headers
 from .util.retry import Retry
 from .util.timeout import Timeout
+from ._collections import HTTPHeaderDict
 
 __author__ = "Andrey Petrov (andrey.petrov@shazow.net)"
 __license__ = "MIT"
@@ -36,6 +37,7 @@ __all__ = (
     "make_headers",
     "proxy_from_url",
     "request",
+    "HTTPHeaderDict",
 )
 
 logging.getLogger(__name__).addHandler(NullHandler())

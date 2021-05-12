@@ -147,6 +147,29 @@ You can specify headers as a dictionary in the ``headers`` argument in :meth:`~p
     >>> json.loads(r.data.decode('utf-8'))['headers']
     {'X-Something': 'value', ...}
 
+Or you can use the ``HTTPHeaderDict`` class to create a proper variable for storing header information.
+
+.. code-block:: pycon
+
+    >>> from urllib3 import HTTPHeaderDict
+    >>> Headers = HTTPHeaderDict()
+    >>> Headers.add('X-Something', 'value')
+    >>> Headers.add('Y-Something', 'value')
+    >>> print(Headers['X-Something'])
+    value
+    >>> for i in Headers.iteritems():
+            print( "%s: %s" % i)
+    X-Something: value
+    Y-Something: value
+    >>> r = http.request(
+	    'GET',
+	    'http://httpbin.org/headers',
+	    headers = Headers
+	    )
+    >>> json.loads(r.data.decode('utf-8'))['headers']
+    {'X-Something': 'value', 'Y-Something': 'value', ...}
+   
+
 Query Parameters
 ~~~~~~~~~~~~~~~~
 
@@ -475,3 +498,4 @@ standard logger interface to change the log level for urllib3's logger:
 .. code-block:: pycon
 
     >>> logging.getLogger("urllib3").setLevel(logging.WARNING)
+    
