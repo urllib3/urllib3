@@ -211,7 +211,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             if self.tls_protocol_deprecated():
                 w = [x for x in w if x.category != DeprecationWarning]
 
-            assert [str(x) for x in w] == []
+            assert w == []
 
     def test_verified_with_context(self):
         ctx = util.ssl_.create_urllib3_context(cert_reqs=ssl.CERT_REQUIRED)

@@ -273,16 +273,15 @@ def create_urllib3_context(
     ) is not None:
         context.post_handshake_auth = True
 
-    # Nullify all previous state for the context before setting the proper values
+    # Nullify all of the state potentially set by using 'PROTOCOL_TLS_CLIENT'
     # to avoid tripping any of the safe-guards against having an SSLContext configured
-    # with (verify_mode=NONE with check_hostname=True) or (verify_mode=REQUIRED with check_hostname=False)
+    # with (verify_mode=NONE + check_hostname=True) or (verify_mode=REQUIRED + check_hostname=False)
+    # This matters most on Python 3.6 where a ValueError is raised if these two settings
+    # are set to conflicting values.
     context.check_hostname = False
     context.verify_mode = ssl.CERT_NONE
 
-    # Set verify mode after check_hostname to avoid errors that arise from
-    # having verify_mode=False and check_hostname=True on an SSLContext.
     context.verify_mode = cert_reqs
-
     # We ask for verification here but it may be disabled in HTTPSConnection.connect
     context.check_hostname = cert_reqs == ssl.CERT_REQUIRED
     if hasattr(context, "hostname_checks_common_name"):
