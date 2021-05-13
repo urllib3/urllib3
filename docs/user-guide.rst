@@ -153,21 +153,15 @@ Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers.
 
     >>> from urllib3 import HTTPHeaderDict
     >>> Headers = HTTPHeaderDict()
-    >>> Headers.add('X-Something', 'value')
-    >>> Headers.add('Y-Something', 'value')
-    >>> print(Headers['X-Something'])
-    value
-    >>> for i in Headers.iteritems():
-    ...     print( "%s: %s" % i)
-    X-Something: value
-    Y-Something: value
+    >>> Headers.add('Accept', 'application/json')
+    >>> Headers.add('Accept', 'text/plain')
     >>> r = http.request(
     ...     'GET',
     ...     'http://httpbin.org/headers',
     ...     headers = Headers
     ...     )
     >>> json.loads(r.data.decode('utf-8'))['headers']
-    {'X-Something': 'value', 'Y-Something': 'value', ...}
+    {'Accept': 'application/json,text/plain', ...}
    
 
 Query Parameters
@@ -498,4 +492,3 @@ standard logger interface to change the log level for urllib3's logger:
 .. code-block:: pycon
 
     >>> logging.getLogger("urllib3").setLevel(logging.WARNING)
-    
