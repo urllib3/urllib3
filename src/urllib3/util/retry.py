@@ -185,7 +185,7 @@ class Retry:
         redirect: Optional[Union[bool, int]] = None,
         status: Optional[int] = None,
         other: Optional[int] = None,
-        allowed_methods: Collection[str] = DEFAULT_ALLOWED_METHODS,
+        allowed_methods: Optional[Collection[str]] = DEFAULT_ALLOWED_METHODS,
         status_forcelist: Optional[Collection[int]] = None,
         backoff_factor: float = 0,
         raise_on_redirect: bool = True,
@@ -276,9 +276,10 @@ class Retry:
         return float(min(self.BACKOFF_MAX, backoff_value))
 
     def parse_retry_after(self, retry_after: str) -> float:
+        seconds: float
         # Whitespace: https://tools.ietf.org/html/rfc7230#section-3.2.4
         if re.match(r"^\s*[0-9]+\s*$", retry_after):
-            seconds = float(retry_after)
+            seconds = int(retry_after)
         else:
             retry_date_tuple = email.utils.parsedate_tz(retry_after)
             if retry_date_tuple is None:
