@@ -5,7 +5,7 @@ import time
 from collections import namedtuple
 from itertools import takewhile
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Collection, Optional, Tuple, Union
 
 from ..exceptions import (
     ConnectTimeoutError,
@@ -118,7 +118,7 @@ class Retry:
         idempotent (multiple requests with the same parameters end with the
         same state). See :attr:`Retry.DEFAULT_ALLOWED_METHODS`.
 
-        Set to a ``False`` value to retry on any verb.
+        Set to a ``None`` value to retry on any verb.
 
     :param iterable status_forcelist:
         A set of integer HTTP status codes that we should force a retry on.
@@ -185,14 +185,16 @@ class Retry:
         redirect: Optional[Union[bool, int]] = None,
         status: Optional[int] = None,
         other: Optional[int] = None,
-        allowed_methods: Union[Iterable[str], bool] = DEFAULT_ALLOWED_METHODS,
-        status_forcelist: Optional[Iterable[int]] = None,
+        allowed_methods: Collection[str] = DEFAULT_ALLOWED_METHODS,
+        status_forcelist: Optional[Collection[int]] = None,
         backoff_factor: float = 0,
         raise_on_redirect: bool = True,
         raise_on_status: bool = True,
-        history: Optional[Tuple[RequestHistory]] = None,
+        history: Optional[Tuple[RequestHistory, ...]] = None,
         respect_retry_after_header: bool = True,
-        remove_headers_on_redirect: Iterable[str] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
+        remove_headers_on_redirect: Collection[
+            str
+        ] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
     ) -> None:
         self.total = total
         self.connect = connect
@@ -347,7 +349,7 @@ class Retry:
         """Checks if a given HTTP method should be retried upon, depending if
         it is included in the allowed_methods
         """
-        if self.allowed_methods and method.upper() not in self.allowed_methods:  # type: ignore
+        if self.allowed_methods and method.upper() not in self.allowed_methods:
             return False
         return True
 
@@ -366,8 +368,8 @@ class Retry:
         if self.status_forcelist and status_code in self.status_forcelist:
             return True
 
-        return (
-            self.total  # type: ignore
+        return bool(
+            self.total
             and self.respect_retry_after_header
             and has_retry_after
             and (status_code in self.RETRY_AFTER_STATUS_CODES)
@@ -375,19 +377,22 @@ class Retry:
 
     def is_exhausted(self) -> bool:
         """ Are we out of retries? """
-        retry_counts = (
-            self.total,
-            self.connect,
-            self.read,
-            self.redirect,
-            self.status,
-            self.other,
-        )
-        retry_counts = list(filter(None, retry_counts))  # type: ignore
+        retry_counts = [
+            x
+            for x in (
+                self.total,
+                self.connect,
+                self.read,
+                self.redirect,
+                self.status,
+                self.other,
+            )
+            if x
+        ]
         if not retry_counts:
             return False
 
-        return min(retry_counts) < 0  # type: ignore
+        return min(retry_counts) < 0
 
     def increment(
         self,
