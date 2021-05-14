@@ -4,6 +4,8 @@ import re
 import time
 from collections import namedtuple
 from itertools import takewhile
+from types import TracebackType
+from typing import TYPE_CHECKING, Any, Collection, Optional, Tuple, Union
 
 from ..exceptions import (
     ConnectTimeoutError,
@@ -15,6 +17,10 @@ from ..exceptions import (
     ResponseError,
 )
 from .util import reraise
+
+if TYPE_CHECKING:
+    from urllib3.connectionpool import ConnectionPool
+    from urllib3.response import HTTPResponse
 
 log = logging.getLogger(__name__)
 
@@ -112,7 +118,7 @@ class Retry:
         idempotent (multiple requests with the same parameters end with the
         same state). See :attr:`Retry.DEFAULT_ALLOWED_METHODS`.
 
-        Set to a ``False`` value to retry on any verb.
+        Set to a ``None`` value to retry on any verb.
 
     :param iterable status_forcelist:
         A set of integer HTTP status codes that we should force a retry on.
@@ -173,21 +179,23 @@ class Retry:
 
     def __init__(
         self,
-        total=10,
-        connect=None,
-        read=None,
-        redirect=None,
-        status=None,
-        other=None,
-        allowed_methods=DEFAULT_ALLOWED_METHODS,
-        status_forcelist=None,
-        backoff_factor=0,
-        raise_on_redirect=True,
-        raise_on_status=True,
-        history=None,
-        respect_retry_after_header=True,
-        remove_headers_on_redirect=DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
-    ):
+        total: Optional[Union[bool, int]] = 10,
+        connect: Optional[int] = None,
+        read: Optional[int] = None,
+        redirect: Optional[Union[bool, int]] = None,
+        status: Optional[int] = None,
+        other: Optional[int] = None,
+        allowed_methods: Optional[Collection[str]] = DEFAULT_ALLOWED_METHODS,
+        status_forcelist: Optional[Collection[int]] = None,
+        backoff_factor: float = 0,
+        raise_on_redirect: bool = True,
+        raise_on_status: bool = True,
+        history: Optional[Tuple[RequestHistory, ...]] = None,
+        respect_retry_after_header: bool = True,
+        remove_headers_on_redirect: Collection[
+            str
+        ] = DEFAULT_REMOVE_HEADERS_ON_REDIRECT,
+    ) -> None:
         self.total = total
         self.connect = connect
         self.read = read
@@ -210,7 +218,7 @@ class Retry:
             [h.lower() for h in remove_headers_on_redirect]
         )
 
-    def new(self, **kw):
+    def new(self, **kw: Any) -> "Retry":
         params = dict(
             total=self.total,
             connect=self.connect,
@@ -229,13 +237,18 @@ class Retry:
         )
 
         params.update(kw)
-        return type(self)(**params)
+        return type(self)(**params)  # type: ignore
 
     @classmethod
-    def from_int(cls, retries, redirect=True, default=None):
+    def from_int(
+        cls,
+        retries: Optional[Union["Retry", bool, int]],
+        redirect: Optional[Union[bool, int]] = True,
+        default: Optional[Union["Retry", bool, int]] = None,
+    ) -> "Retry":
         """ Backwards-compatibility for the old retries format."""
         if retries is None:
-            retries = default if default is not None else cls.DEFAULT
+            retries = default if default is not None else cls.DEFAULT  # type: ignore
 
         if isinstance(retries, Retry):
             return retries
@@ -245,7 +258,7 @@ class Retry:
         log.debug("Converted retries value: %r -> %r", retries, new_retries)
         return new_retries
 
-    def get_backoff_time(self):
+    def get_backoff_time(self) -> float:
         """Formula for computing the current backoff
 
         :rtype: float
@@ -260,9 +273,10 @@ class Retry:
             return 0
 
         backoff_value = self.backoff_factor * (2 ** (consecutive_errors_len - 1))
-        return min(self.BACKOFF_MAX, backoff_value)
+        return float(min(self.BACKOFF_MAX, backoff_value))
 
-    def parse_retry_after(self, retry_after):
+    def parse_retry_after(self, retry_after: str) -> float:
+        seconds: float
         # Whitespace: https://tools.ietf.org/html/rfc7230#section-3.2.4
         if re.match(r"^\s*[0-9]+\s*$", retry_after):
             seconds = int(retry_after)
@@ -278,7 +292,7 @@ class Retry:
 
         return seconds
 
-    def get_retry_after(self, response):
+    def get_retry_after(self, response: "HTTPResponse") -> Optional[float]:
         """ Get the value of Retry-After in seconds. """
 
         retry_after = response.getheader("Retry-After")
@@ -288,7 +302,7 @@ class Retry:
 
         return self.parse_retry_after(retry_after)
 
-    def sleep_for_retry(self, response=None):
+    def sleep_for_retry(self, response: "HTTPResponse") -> bool:
         retry_after = self.get_retry_after(response)
         if retry_after:
             time.sleep(retry_after)
@@ -296,13 +310,13 @@ class Retry:
 
         return False
 
-    def _sleep_backoff(self):
+    def _sleep_backoff(self) -> None:
         backoff = self.get_backoff_time()
         if backoff <= 0:
             return
         time.sleep(backoff)
 
-    def sleep(self, response=None):
+    def sleep(self, response: Optional["HTTPResponse"] = None) -> None:
         """Sleep between retry attempts.
 
         This method will respect a server's ``Retry-After`` response header
@@ -318,7 +332,7 @@ class Retry:
 
         self._sleep_backoff()
 
-    def _is_connection_error(self, err):
+    def _is_connection_error(self, err: Exception) -> bool:
         """Errors when we're fairly sure that the server did not receive the
         request, so it should be safe to retry.
         """
@@ -326,13 +340,13 @@ class Retry:
             err = err.original_error
         return isinstance(err, ConnectTimeoutError)
 
-    def _is_read_error(self, err):
+    def _is_read_error(self, err: Exception) -> bool:
         """Errors that occur after the request has been started, so we should
         assume that the server began processing it.
         """
         return isinstance(err, (ReadTimeoutError, ProtocolError))
 
-    def _is_method_retryable(self, method):
+    def _is_method_retryable(self, method: str) -> bool:
         """Checks if a given HTTP method should be retried upon, depending if
         it is included in the allowed_methods
         """
@@ -340,7 +354,9 @@ class Retry:
             return False
         return True
 
-    def is_retry(self, method, status_code, has_retry_after=False):
+    def is_retry(
+        self, method: str, status_code: int, has_retry_after: bool = False
+    ) -> bool:
         """Is this method/status code retryable? (Based on allowlists and control
         variables such as the number of total retries to allow, whether to
         respect the Retry-After header, whether this header is present, and
@@ -353,24 +369,27 @@ class Retry:
         if self.status_forcelist and status_code in self.status_forcelist:
             return True
 
-        return (
+        return bool(
             self.total
             and self.respect_retry_after_header
             and has_retry_after
             and (status_code in self.RETRY_AFTER_STATUS_CODES)
         )
 
-    def is_exhausted(self):
+    def is_exhausted(self) -> bool:
         """ Are we out of retries? """
-        retry_counts = (
-            self.total,
-            self.connect,
-            self.read,
-            self.redirect,
-            self.status,
-            self.other,
-        )
-        retry_counts = list(filter(None, retry_counts))
+        retry_counts = [
+            x
+            for x in (
+                self.total,
+                self.connect,
+                self.read,
+                self.redirect,
+                self.status,
+                self.other,
+            )
+            if x
+        ]
         if not retry_counts:
             return False
 
@@ -378,13 +397,13 @@ class Retry:
 
     def increment(
         self,
-        method=None,
-        url=None,
-        response=None,
-        error=None,
-        _pool=None,
-        _stacktrace=None,
-    ):
+        method: Optional[str] = None,
+        url: Optional[str] = None,
+        response: Optional["HTTPResponse"] = None,
+        error: Optional[Exception] = None,
+        _pool: Optional["ConnectionPool"] = None,
+        _stacktrace: Optional[TracebackType] = None,
+    ) -> "Retry":
         """Return a new Retry object with incremented retry counters.
 
         :param response: A response object, or None, if the server did not
@@ -421,7 +440,7 @@ class Retry:
 
         elif error and self._is_read_error(error):
             # Read retry?
-            if read is False or not self._is_method_retryable(method):
+            if read is False or method is None or not self._is_method_retryable(method):
                 raise reraise(type(error), error, _stacktrace)
             elif read is not None:
                 read -= 1
@@ -464,13 +483,13 @@ class Retry:
         )
 
         if new_retry.is_exhausted():
-            raise MaxRetryError(_pool, url, error or ResponseError(cause))
+            raise MaxRetryError(_pool, url, error or ResponseError(cause))  # type: ignore
 
         log.debug("Incremented Retry for (url='%s'): %r", url, new_retry)
 
         return new_retry
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"{type(self).__name__}(total={self.total}, connect={self.connect}, "
             f"read={self.read}, redirect={self.redirect}, status={self.status})"
@@ -478,4 +497,4 @@ class Retry:
 
 
 # For backwards compatibility (equivalent to pre-v1.9):
-Retry.DEFAULT = Retry(3)
+Retry.DEFAULT = Retry(3)  # type: ignore
