@@ -258,6 +258,7 @@ class SocketProxyDummyServer(SocketDummyServerTestCase):
                 )
                 self._read_write_loop(client_sock, upstream_sock)
                 upstream_sock.close()
+                client_sock.close()
 
         self._start_server(proxy_handler)
 
@@ -286,6 +287,10 @@ class SocketProxyDummyServer(SocketDummyServerTestCase):
                 if write_socket in writable:
                     try:
                         b = read_socket.recv(chunks)
+                        if len(b) == 0:
+                            # One of the sockets has EOFed, we return to close
+                            # both.
+                            return
                         write_socket.send(b)
                     except ssl.SSLEOFError:
                         # It's possible, depending on shutdown order, that we'll
@@ -335,6 +340,7 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 request = consume_socket(ssock)
                 validate_request(request)
                 ssock.send(sample_response())
+            sock.close()
 
         cls._start_server(socket_handler)
 
