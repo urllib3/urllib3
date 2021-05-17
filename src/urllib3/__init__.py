@@ -18,7 +18,6 @@ from .util.request import make_headers
 from .util.retry import Retry
 from .util.timeout import Timeout
 
-
 __author__ = "Andrey Petrov (andrey.petrov@shazow.net)"
 __license__ = "MIT"
 __version__ = __version__
