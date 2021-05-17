@@ -35,6 +35,7 @@ import urllib3
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx_copybutton",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
 ]
