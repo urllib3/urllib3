@@ -8,6 +8,7 @@ import warnings
 from logging import NullHandler
 
 from . import exceptions
+from ._collections import HTTPHeaderDict
 from ._version import __version__
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, connection_from_url
 from .filepost import encode_multipart_formdata
@@ -23,6 +24,7 @@ __version__ = __version__
 
 __all__ = (
     "HTTPConnectionPool",
+    "HTTPHeaderDict",
     "HTTPSConnectionPool",
     "PoolManager",
     "ProxyManager",

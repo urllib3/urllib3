@@ -312,5 +312,8 @@ In chronological order:
 * Dmitry Mazin <https://archvile.net>
   * _put_conn changes and unit tests
 
+* Ubdussamad <ubdussamad@gmail.com>
+  * Added HTTPHeaderDict to top level objects and added relevant usage documentation for the same.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

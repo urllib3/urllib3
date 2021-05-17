@@ -147,6 +147,23 @@ You can specify headers as a dictionary in the ``headers`` argument in :meth:`~p
     >>> json.loads(r.data.decode('utf-8'))['headers']
     {'X-Something': 'value', ...}
 
+Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers:
+
+.. code-block:: pycon
+
+    >>> from urllib3 import HTTPHeaderDict
+    >>> headers = HTTPHeaderDict()
+    >>> headers.add('Accept', 'application/json')
+    >>> headers.add('Accept', 'text/plain')
+    >>> r = http.request(
+    ...     'GET',
+    ...     'http://httpbin.org/headers',
+    ...     headers=headers
+    ... )
+    >>> json.loads(r.data.decode('utf-8'))['headers']
+    {'Accept': 'application/json, text/plain', ...}
+   
+
 Query Parameters
 ~~~~~~~~~~~~~~~~
 
