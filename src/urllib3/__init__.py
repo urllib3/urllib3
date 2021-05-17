@@ -24,6 +24,7 @@ __version__ = __version__
 
 __all__ = (
     "HTTPConnectionPool",
+    "HTTPHeaderDict",
     "HTTPSConnectionPool",
     "PoolManager",
     "ProxyManager",
@@ -37,7 +38,6 @@ __all__ = (
     "make_headers",
     "proxy_from_url",
     "request",
-    "HTTPHeaderDict",
 )
 
 logging.getLogger(__name__).addHandler(NullHandler())
