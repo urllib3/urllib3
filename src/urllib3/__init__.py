@@ -17,7 +17,6 @@ from .response import HTTPResponse
 from .util.request import make_headers
 from .util.retry import Retry
 from .util.timeout import Timeout
-from ._collections import HTTPHeaderDict
 
 
 __author__ = "Andrey Petrov (andrey.petrov@shazow.net)"
