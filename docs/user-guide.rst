@@ -83,7 +83,7 @@ The :class:`~response.HTTPResponse` object provides
 
     import urllib3
 
-    r = urllib3.request('GET', 'http://httpbin.org/ip')
+    r = urllib3.request('GET', 'https://httpbin.org/ip')
 
     print(r.status)
     #200
