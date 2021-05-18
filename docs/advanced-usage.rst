@@ -117,8 +117,8 @@ You can use :class:`~poolmanager.ProxyManager` to tunnel requests through an
 HTTP proxy::
 
     >>> import urllib3
-    >>> http = urllib3.ProxyManager('http://localhost:3128/')
-    >>> http.request('GET', 'http://google.com/')
+    >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
+    >>> proxy.request('GET', 'http://google.com/')
 
 The usage of :class:`~poolmanager.ProxyManager` is the same as
 :class:`~poolmanager.PoolManager`.
