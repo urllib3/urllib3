@@ -33,13 +33,13 @@ urllib3 is powerful and easy to use:
 
 .. code-block:: python
 
-    >>> import urllib3
-    >>> http = urllib3.PoolManager()
-    >>> r = http.request('GET', 'http://httpbin.org/robots.txt')
-    >>> r.status
-    200
-    >>> r.data
-    'User-agent: *\nDisallow: /deny\n'
+    import urllib3
+    http = urllib3.PoolManager()
+    r = http.request('GET', 'http://httpbin.org/robots.txt')
+    r.status
+    # 200
+    r.data
+    # 'User-agent: *\nDisallow: /deny\n'
 
 For Enterprise
 --------------

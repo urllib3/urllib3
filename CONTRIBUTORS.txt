@@ -315,5 +315,8 @@ In chronological order:
 * Ubdussamad <ubdussamad@gmail.com>
   * Added HTTPHeaderDict to top level objects and added relevant usage documentation for the same.
 
+* Bastian Venthur <https://venthur.de>
+  * Various improvements on documentation
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

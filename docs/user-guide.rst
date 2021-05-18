@@ -20,7 +20,7 @@ First things first, import the urllib3 module:
 
 .. code-block:: pycon
 
-    >>> import urllib3
+    import urllib3
 
 You'll need a :class:`~poolmanager.PoolManager` instance to make requests.
 This object handles all of the details of connection pooling and thread safety
@@ -28,15 +28,15 @@ so that you don't have to:
 
 .. code-block:: pycon
 
-    >>> http = urllib3.PoolManager()
+    http = urllib3.PoolManager()
 
 To make a request use :meth:`~poolmanager.PoolManager.request`:
 
 .. code-block:: pycon
 
-    >>> r = http.request('GET', 'http://httpbin.org/robots.txt')
-    >>> r.data
-    b'User-agent: *\nDisallow: /deny\n'
+    r = http.request('GET', 'http://httpbin.org/robots.txt')
+    r.data
+    # b'User-agent: *\nDisallow: /deny\n'
 
 ``request()`` returns a :class:`~response.HTTPResponse` object, the
 :ref:`response_content` section explains how to handle various responses.
@@ -46,11 +46,11 @@ HTTP verb:
 
 .. code-block:: pycon
 
-    >>> r = http.request(
-    ...     'POST',
-    ...     'http://httpbin.org/post',
-    ...     fields={'hello': 'world'}
-    ... )
+    r = http.request(
+        'POST',
+        'http://httpbin.org/post',
+        fields={'hello': 'world'}
+    )
 
 The :ref:`request_data` section covers sending other kinds of requests data,
 including JSON, files, and binary data.
@@ -73,13 +73,13 @@ The :class:`~response.HTTPResponse` object provides
 
 .. code-block:: pycon
 
-    >>> r = http.request('GET', 'http://httpbin.org/ip')
-    >>> r.status
-    200
-    >>> r.data
-    b'{\n  "origin": "104.232.115.37"\n}\n'
-    >>> r.headers
-    HTTPHeaderDict({'Content-Length': '33', ...})
+    r = http.request('GET', 'http://httpbin.org/ip')
+    r.status
+    # 200
+    r.data
+    # b'{\n  "origin": "104.232.115.37"\n}\n'
+    r.headers
+    # HTTPHeaderDict({'Content-Length': '33', ...})
 
 JSON Content
 ~~~~~~~~~~~~
@@ -89,10 +89,10 @@ JSON content can be loaded by decoding and deserializing the
 
 .. code-block:: pycon
 
-    >>> import json
-    >>> r = http.request('GET', 'http://httpbin.org/ip')
-    >>> json.loads(r.data.decode('utf-8'))
-    {'origin': '127.0.0.1'}
+    import json
+    r = http.request('GET', 'http://httpbin.org/ip')
+    json.loads(r.data.decode('utf-8'))
+    # {'origin': '127.0.0.1'}
 
 Binary Content
 ~~~~~~~~~~~~~~
@@ -102,9 +102,9 @@ to a byte string representing the response content:
 
 .. code-block:: pycon
 
-    >>> r = http.request('GET', 'http://httpbin.org/bytes/8')
-    >>> r.data
-    b'\xaa\xa5H?\x95\xe9\x9b\x11'
+    r = http.request('GET', 'http://httpbin.org/bytes/8')
+    r.data
+    # b'\xaa\xa5H?\x95\xe9\x9b\x11'
 
 .. note:: For larger responses, it's sometimes better to :ref:`stream <stream>`
     the response.
@@ -119,11 +119,11 @@ to ``False``. By default HTTP responses are closed after reading all bytes, this
 
 .. code-block:: pycon
 
-    >>> import io
-    >>> r = http.request('GET', 'https://example.com', preload_content=False)
-    >>> r.auto_close = False
-    >>> for line in io.TextIOWrapper(r):
-    >>>     print(line)
+    import io
+    r = http.request('GET', 'https://example.com', preload_content=False)
+    r.auto_close = False
+    for line in io.TextIOWrapper(r):
+        print(line)
 
 .. _request_data:
 
@@ -137,31 +137,31 @@ You can specify headers as a dictionary in the ``headers`` argument in :meth:`~p
 
 .. code-block:: pycon
 
-    >>> r = http.request(
-    ...     'GET',
-    ...     'http://httpbin.org/headers',
-    ...     headers={
-    ...         'X-Something': 'value'
-    ...     }
-    ... )
-    >>> json.loads(r.data.decode('utf-8'))['headers']
-    {'X-Something': 'value', ...}
+    r = http.request(
+        'GET',
+        'http://httpbin.org/headers',
+        headers={
+            'X-Something': 'value'
+        }
+    )
+    json.loads(r.data.decode('utf-8'))['headers']
+    # {'X-Something': 'value', ...}
 
 Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers:
 
 .. code-block:: pycon
 
-    >>> from urllib3 import HTTPHeaderDict
-    >>> headers = HTTPHeaderDict()
-    >>> headers.add('Accept', 'application/json')
-    >>> headers.add('Accept', 'text/plain')
-    >>> r = http.request(
-    ...     'GET',
-    ...     'http://httpbin.org/headers',
-    ...     headers=headers
-    ... )
-    >>> json.loads(r.data.decode('utf-8'))['headers']
-    {'Accept': 'application/json, text/plain', ...}
+    from urllib3 import HTTPHeaderDict
+    headers = HTTPHeaderDict()
+    headers.add('Accept', 'application/json')
+    headers.add('Accept', 'text/plain')
+    r = http.request(
+        'GET',
+        'http://httpbin.org/headers',
+        headers=headers
+    )
+    json.loads(r.data.decode('utf-8'))['headers']
+    # {'Accept': 'application/json, text/plain', ...}
    
 
 Query Parameters
@@ -173,25 +173,25 @@ arguments as a dictionary in the ``fields`` argument to
 
 .. code-block:: pycon
 
-    >>> r = http.request(
-    ...     'GET',
-    ...     'http://httpbin.org/get',
-    ...     fields={'arg': 'value'}
-    ... )
-    >>> json.loads(r.data.decode('utf-8'))['args']
-    {'arg': 'value'}
+    r = http.request(
+        'GET',
+        'http://httpbin.org/get',
+        fields={'arg': 'value'}
+    )
+    json.loads(r.data.decode('utf-8'))['args']
+    # {'arg': 'value'}
 
 For ``POST`` and ``PUT`` requests, you need to manually encode query parameters
 in the URL:
 
 .. code-block:: pycon
 
-    >>> from urllib.parse import urlencode
-    >>> encoded_args = urlencode({'arg': 'value'})
-    >>> url = 'http://httpbin.org/post?' + encoded_args
-    >>> r = http.request('POST', url)
-    >>> json.loads(r.data.decode('utf-8'))['args']
-    {'arg': 'value'}
+    from urllib.parse import urlencode
+    encoded_args = urlencode({'arg': 'value'})
+    url = 'http://httpbin.org/post?' + encoded_args
+    r = http.request('POST', url)
+    json.loads(r.data.decode('utf-8'))['args']
+    # {'arg': 'value'}
 
 
 .. _form_data:
@@ -205,13 +205,13 @@ dictionary in the ``fields`` argument provided to
 
 .. code-block:: pycon
 
-    >>> r = http.request(
-    ...     'POST',
-    ...     'http://httpbin.org/post',
-    ...     fields={'field': 'value'}
-    ... )
-    >>> json.loads(r.data.decode('utf-8'))['form']
-    {'field': 'value'}
+    r = http.request(
+        'POST',
+        'http://httpbin.org/post',
+        fields={'field': 'value'}
+    )
+    json.loads(r.data.decode('utf-8'))['form']
+    # {'field': 'value'}
 
 JSON
 ~~~~
@@ -222,17 +222,17 @@ argument and setting the ``Content-Type`` header when calling
 
 .. code-block:: pycon
 
-    >>> import json
-    >>> data = {'attribute': 'value'}
-    >>> encoded_data = json.dumps(data).encode('utf-8')
-    >>> r = http.request(
-    ...     'POST',
-    ...     'http://httpbin.org/post',
-    ...     body=encoded_data,
-    ...     headers={'Content-Type': 'application/json'}
-    ... )
-    >>> json.loads(r.data.decode('utf-8'))['json']
-    {'attribute': 'value'}
+    import json
+    data = {'attribute': 'value'}
+    encoded_data = json.dumps(data).encode('utf-8')
+    r = http.request(
+        'POST',
+        'http://httpbin.org/post',
+        body=encoded_data,
+        headers={'Content-Type': 'application/json'}
+    )
+    json.loads(r.data.decode('utf-8'))['json']
+    # {'attribute': 'value'}
 
 Files & Binary Data
 ~~~~~~~~~~~~~~~~~~~
@@ -243,17 +243,17 @@ approach as :ref:`form_data` and specify the file field as a tuple of
 
 .. code-block:: pycon
 
-    >>> with open('example.txt') as fp:
-    ...     file_data = fp.read()
-    >>> r = http.request(
-    ...     'POST',
-    ...     'http://httpbin.org/post',
-    ...     fields={
-    ...         'filefield': ('example.txt', file_data),
-    ...     }
-    ... )
-    >>> json.loads(r.data.decode('utf-8'))['files']
-    {'filefield': '...'}
+    with open('example.txt') as fp:
+        file_data = fp.read()
+    r = http.request(
+        'POST',
+        'http://httpbin.org/post',
+        fields={
+            'filefield': ('example.txt', file_data),
+        }
+    )
+    json.loads(r.data.decode('utf-8'))['files']
+    # {'filefield': '...'}
 
 While specifying the filename is not strictly required, it's recommended in
 order to match browser behavior. You can also pass a third item in the tuple
@@ -261,29 +261,29 @@ to specify the file's MIME type explicitly:
 
 .. code-block:: pycon
 
-    >>> r = http.request(
-    ...     'POST',
-    ...     'http://httpbin.org/post',
-    ...     fields={
-    ...         'filefield': ('example.txt', file_data, 'text/plain'),
-    ...     }
-    ... )
+    r = http.request(
+        'POST',
+        'http://httpbin.org/post',
+        fields={
+            'filefield': ('example.txt', file_data, 'text/plain'),
+        }
+    )
 
 For sending raw binary data simply specify the ``body`` argument. It's also
 recommended to set the ``Content-Type`` header:
 
 .. code-block:: pycon
 
-    >>> with open('example.jpg', 'rb') as fp:
-    ...     binary_data = fp.read()
-    >>> r = http.request(
-    ...     'POST',
-    ...     'http://httpbin.org/post',
-    ...     body=binary_data,
-    ...     headers={'Content-Type': 'image/jpeg'}
-    ... )
-    >>> json.loads(r.data.decode('utf-8'))['data']
-    b'...'
+    with open('example.jpg', 'rb') as fp:
+        binary_data = fp.read()
+    r = http.request(
+        'POST',
+        'http://httpbin.org/post',
+        body=binary_data,
+        headers={'Content-Type': 'image/jpeg'}
+    )
+    json.loads(r.data.decode('utf-8'))['data']
+    # b'...'
 
 .. _ssl:
 
@@ -316,22 +316,22 @@ that verifies certificates when making requests:
 
 .. code-block:: pycon
 
-    >>> import certifi
-    >>> import urllib3
-    >>> http = urllib3.PoolManager(
-    ...     cert_reqs='CERT_REQUIRED',
-    ...     ca_certs=certifi.where()
-    ... )
+    import certifi
+    import urllib3
+    http = urllib3.PoolManager(
+        cert_reqs='CERT_REQUIRED',
+        ca_certs=certifi.where()
+    )
 
 The :class:`~poolmanager.PoolManager` will automatically handle certificate
 verification and will raise :class:`~exceptions.SSLError` if verification fails:
 
 .. code-block:: pycon
 
-    >>> http.request('GET', 'https://google.com')
-    (No exception)
-    >>> http.request('GET', 'https://expired.badssl.com')
-    urllib3.exceptions.SSLError ...
+    http.request('GET', 'https://google.com')
+    # (No exception)
+    http.request('GET', 'https://expired.badssl.com')
+    # urllib3.exceptions.SSLError ...
 
 .. note:: You can use OS-provided certificates if desired. Just specify the full
     path to the certificate bundle as the ``ca_certs`` argument instead of
@@ -348,13 +348,13 @@ to :meth:`~poolmanager.PoolManager.request`:
 
 .. code-block:: pycon
 
-    >>> http.request(
-    ...     'GET', 'http://httpbin.org/delay/3', timeout=4.0
-    ... )
-    <urllib3.response.HTTPResponse>
-    >>> http.request(
-    ...     'GET', 'http://httpbin.org/delay/3', timeout=2.5
-    ... )
+    http.request(
+        'GET', 'http://httpbin.org/delay/3', timeout=4.0
+    )
+    # <urllib3.response.HTTPResponse>
+    http.request(
+        'GET', 'http://httpbin.org/delay/3', timeout=2.5
+    )
     MaxRetryError caused by ReadTimeoutError
 
 For more granular control you can use a :class:`~util.timeout.Timeout`
@@ -362,18 +362,18 @@ instance which lets you specify separate connect and read timeouts:
 
 .. code-block:: pycon
 
-    >>> http.request(
-    ...     'GET',
-    ...     'http://httpbin.org/delay/3',
-    ...     timeout=urllib3.Timeout(connect=1.0)
-    ... )
-    <urllib3.response.HTTPResponse>
-    >>> http.request(
-    ...     'GET',
-    ...     'http://httpbin.org/delay/3',
-    ...     timeout=urllib3.Timeout(connect=1.0, read=2.0)
-    ... )
-    MaxRetryError caused by ReadTimeoutError
+    http.request(
+        'GET',
+        'http://httpbin.org/delay/3',
+        timeout=urllib3.Timeout(connect=1.0)
+    )
+    # <urllib3.response.HTTPResponse>
+    http.request(
+        'GET',
+        'http://httpbin.org/delay/3',
+        timeout=urllib3.Timeout(connect=1.0, read=2.0)
+    )
+    # MaxRetryError caused by ReadTimeoutError
 
 
 If you want all requests to be subject to the same timeout, you can specify
@@ -381,10 +381,10 @@ the timeout at the :class:`~urllib3.poolmanager.PoolManager` level:
 
 .. code-block:: pycon
 
-    >>> http = urllib3.PoolManager(timeout=3.0)
-    >>> http = urllib3.PoolManager(
-    ...     timeout=urllib3.Timeout(connect=1.0, read=2.0)
-    ... )
+    http = urllib3.PoolManager(timeout=3.0)
+    http = urllib3.PoolManager(
+        timeout=urllib3.Timeout(connect=1.0, read=2.0)
+    )
 
 You still override this pool-level timeout by specifying ``timeout`` to
 :meth:`~poolmanager.PoolManager.request`.
@@ -401,31 +401,31 @@ To change the number of retries just specify an integer:
 
 .. code-block:: pycon
 
-    >>> http.requests('GET', 'http://httpbin.org/ip', retries=10)
+    http.requests('GET', 'http://httpbin.org/ip', retries=10)
 
 To disable all retry and redirect logic specify ``retries=False``:
 
 .. code-block:: pycon
 
-    >>> http.request(
-    ...     'GET', 'http://nxdomain.example.com', retries=False
-    ... )
-    NewConnectionError
-    >>> r = http.request(
-    ...     'GET', 'http://httpbin.org/redirect/1', retries=False
-    ... )
-    >>> r.status
-    302
+    http.request(
+        'GET', 'http://nxdomain.example.com', retries=False
+    )
+    # NewConnectionError
+    r = http.request(
+        'GET', 'http://httpbin.org/redirect/1', retries=False
+    )
+    r.status
+    # 302
 
 To disable redirects but keep the retrying logic, specify ``redirect=False``:
 
 .. code-block:: pycon
 
-    >>> r = http.request(
-    ...     'GET', 'http://httpbin.org/redirect/1', redirect=False
-    ... )
-    >>> r.status
-    302
+    r = http.request(
+        'GET', 'http://httpbin.org/redirect/1', redirect=False
+    )
+    r.status
+    # 302
 
 For more granular control you can use a :class:`~util.retry.Retry` instance.
 This class allows you far greater control of how requests are retried.
@@ -434,36 +434,36 @@ For example, to do a total of 3 retries, but limit to only 2 redirects:
 
 .. code-block:: pycon
 
-    >>> http.request(
-    ...     'GET',
-    ...     'http://httpbin.org/redirect/3',
-    ...     retries=urllib3.Retry(3, redirect=2)
-    ... )
-    MaxRetryError
+    http.request(
+        'GET',
+        'http://httpbin.org/redirect/3',
+        retries=urllib3.Retry(3, redirect=2)
+    )
+    # MaxRetryError
 
 You can also disable exceptions for too many redirects and just return the
 ``302`` response:
 
 .. code-block:: pycon
 
-    >>> r = http.request(
-    ...     'GET',
-    ...     'http://httpbin.org/redirect/3',
-    ...     retries=urllib3.Retry(
-    ...         redirect=2, raise_on_redirect=False)
-    ... )
-    >>> r.status
-    302
+    r = http.request(
+        'GET',
+        'http://httpbin.org/redirect/3',
+        retries=urllib3.Retry(
+            redirect=2, raise_on_redirect=False)
+    )
+    r.status
+    # 302
 
 If you want all requests to be subject to the same retry policy, you can
 specify the retry at the :class:`~urllib3.poolmanager.PoolManager` level:
 
 .. code-block:: pycon
 
-    >>> http = urllib3.PoolManager(retries=False)
-    >>> http = urllib3.PoolManager(
-    ...     retries=urllib3.Retry(5, redirect=2)
-    ... )
+    http = urllib3.PoolManager(retries=False)
+    http = urllib3.PoolManager(
+        retries=urllib3.Retry(5, redirect=2)
+    )
 
 You still override this pool-level retry policy by specifying ``retries`` to
 :meth:`~poolmanager.PoolManager.request`.
@@ -475,10 +475,10 @@ urllib3 wraps lower-level exceptions, for example:
 
 .. code-block:: pycon
 
-    >>> try:
-    ...     http.request('GET', 'nx.example.com', retries=False)
-    ... except urllib3.exceptions.NewConnectionError:
-    ...     print('Connection failed.')
+    try:
+        http.request('GET', 'nx.example.com', retries=False)
+    except urllib3.exceptions.NewConnectionError:
+        print('Connection failed.')
 
 See :mod:`~urllib3.exceptions` for the full list of all exceptions.
 
@@ -491,4 +491,4 @@ standard logger interface to change the log level for urllib3's logger:
 
 .. code-block:: pycon
 
-    >>> logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
