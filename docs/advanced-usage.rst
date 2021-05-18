@@ -28,7 +28,7 @@ performance to increase this number::
     import urllib3
     http = urllib3.PoolManager(maxsize=10)
     # Alternatively
-    http = urllib3.HTTPConnectionPool('google.com', maxsize=10)
+    pool = urllib3.HTTPConnectionPool('google.com', maxsize=10)
 
 The behavior of the pooling for :class:`~connectionpool.ConnectionPool` is
 different from :class:`~poolmanager.PoolManager`. By default, if a new
@@ -41,7 +41,7 @@ open to a particular host::
 
     http = urllib3.PoolManager(maxsize=10, block=True)
     # Alternatively
-    http = urllib3.HTTPConnectionPool('google.com', maxsize=10, block=True)
+    pool = urllib3.HTTPConnectionPool('google.com', maxsize=10, block=True)
 
 Any new requests will block until a connection is available from the pool.
 This is a great way to prevent flooding a host with too many connections in
@@ -329,14 +329,14 @@ be resolved in different ways.
 Making unverified HTTPS requests is **strongly** discouraged, however, if you
 understand the risks and wish to disable these warnings, you can use :func:`~urllib3.disable_warnings`:
 
-.. code-block:: pycon
+.. code-block:: python
 
     import urllib3
     urllib3.disable_warnings()
 
 Alternatively you can capture the warnings with the standard :mod:`logging` module:
 
-.. code-block:: pycon
+.. code-block:: python
 
     logging.captureWarnings(True)
 
@@ -359,7 +359,7 @@ You may also request the package be installed via the ``urllib3[brotli]`` extra:
 
 Here's an example using brotli encoding via the ``Accept-Encoding`` header:
 
-.. code-block:: pycon
+.. code-block:: python
 
     from urllib3 import PoolManager
     http = PoolManager()

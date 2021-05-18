@@ -18,7 +18,7 @@ Making Requests
 
 First things first, import the urllib3 module:
 
-.. code-block:: pycon
+.. code-block:: python
 
     import urllib3
 
@@ -26,13 +26,13 @@ You'll need a :class:`~poolmanager.PoolManager` instance to make requests.
 This object handles all of the details of connection pooling and thread safety
 so that you don't have to:
 
-.. code-block:: pycon
+.. code-block:: python
 
     http = urllib3.PoolManager()
 
 To make a request use :meth:`~poolmanager.PoolManager.request`:
 
-.. code-block:: pycon
+.. code-block:: python
 
     r = http.request('GET', 'http://httpbin.org/robots.txt')
     print(r.data)
@@ -44,7 +44,7 @@ To make a request use :meth:`~poolmanager.PoolManager.request`:
 You can use :meth:`~poolmanager.PoolManager.request` to make requests using any
 HTTP verb:
 
-.. code-block:: pycon
+.. code-block:: python
 
     r = http.request(
         'POST',
@@ -71,7 +71,7 @@ The :class:`~response.HTTPResponse` object provides
 :attr:`~response.HTTPResponse.status`, :attr:`~response.HTTPResponse.data`, and
 :attr:`~response.HTTPResponse.headers` attributes:
 
-.. code-block:: pycon
+.. code-block:: python
 
     r = http.request('GET', 'http://httpbin.org/ip')
     print(r.status)
@@ -87,7 +87,7 @@ JSON Content
 JSON content can be loaded by decoding and deserializing the
 :attr:`~response.HTTPResponse.data` attribute of the request:
 
-.. code-block:: pycon
+.. code-block:: python
 
     import json
     r = http.request('GET', 'http://httpbin.org/ip')
@@ -100,7 +100,7 @@ Binary Content
 The :attr:`~response.HTTPResponse.data` attribute of the response is always set
 to a byte string representing the response content:
 
-.. code-block:: pycon
+.. code-block:: python
 
     r = http.request('GET', 'http://httpbin.org/bytes/8')
     print(r.data)
@@ -117,7 +117,7 @@ directly with :class:`~response.HTTPResponse` data. Making these two interfaces 
 together requires using the :attr:`~response.HTTPResponse.auto_close` attribute by setting it
 to ``False``. By default HTTP responses are closed after reading all bytes, this disables that behavior:
 
-.. code-block:: pycon
+.. code-block:: python
 
     import io
     r = http.request('GET', 'https://example.com', preload_content=False)
@@ -135,7 +135,7 @@ Headers
 
 You can specify headers as a dictionary in the ``headers`` argument in :meth:`~poolmanager.PoolManager.request`:
 
-.. code-block:: pycon
+.. code-block:: python
 
     r = http.request(
         'GET',
@@ -149,7 +149,7 @@ You can specify headers as a dictionary in the ``headers`` argument in :meth:`~p
 
 Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers:
 
-.. code-block:: pycon
+.. code-block:: python
 
     from urllib3 import HTTPHeaderDict
     headers = HTTPHeaderDict()
@@ -171,7 +171,7 @@ For ``GET``, ``HEAD``, and ``DELETE`` requests, you can simply pass the
 arguments as a dictionary in the ``fields`` argument to
 :meth:`~poolmanager.PoolManager.request`:
 
-.. code-block:: pycon
+.. code-block:: python
 
     r = http.request(
         'GET',
@@ -184,7 +184,7 @@ arguments as a dictionary in the ``fields`` argument to
 For ``POST`` and ``PUT`` requests, you need to manually encode query parameters
 in the URL:
 
-.. code-block:: pycon
+.. code-block:: python
 
     from urllib.parse import urlencode
     encoded_args = urlencode({'arg': 'value'})
@@ -203,7 +203,7 @@ For ``PUT`` and ``POST`` requests, urllib3 will automatically form-encode the
 dictionary in the ``fields`` argument provided to
 :meth:`~poolmanager.PoolManager.request`:
 
-.. code-block:: pycon
+.. code-block:: python
 
     r = http.request(
         'POST',
@@ -220,7 +220,7 @@ You can send a JSON request by specifying the encoded data as the ``body``
 argument and setting the ``Content-Type`` header when calling
 :meth:`~poolmanager.PoolManager.request`:
 
-.. code-block:: pycon
+.. code-block:: python
 
     import json
     data = {'attribute': 'value'}
@@ -241,7 +241,7 @@ For uploading files using ``multipart/form-data`` encoding you can use the same
 approach as :ref:`form_data` and specify the file field as a tuple of
 ``(file_name, file_data)``:
 
-.. code-block:: pycon
+.. code-block:: python
 
     with open('example.txt') as fp:
         file_data = fp.read()
@@ -259,7 +259,7 @@ While specifying the filename is not strictly required, it's recommended in
 order to match browser behavior. You can also pass a third item in the tuple
 to specify the file's MIME type explicitly:
 
-.. code-block:: pycon
+.. code-block:: python
 
     r = http.request(
         'POST',
@@ -272,7 +272,7 @@ to specify the file's MIME type explicitly:
 For sending raw binary data simply specify the ``body`` argument. It's also
 recommended to set the ``Content-Type`` header:
 
-.. code-block:: pycon
+.. code-block:: python
 
     with open('example.jpg', 'rb') as fp:
         binary_data = fp.read()
@@ -314,7 +314,7 @@ extra:
 Once you have certificates, you can create a :class:`~poolmanager.PoolManager`
 that verifies certificates when making requests:
 
-.. code-block:: pycon
+.. code-block:: python
 
     import certifi
     import urllib3
@@ -326,7 +326,7 @@ that verifies certificates when making requests:
 The :class:`~poolmanager.PoolManager` will automatically handle certificate
 verification and will raise :class:`~exceptions.SSLError` if verification fails:
 
-.. code-block:: pycon
+.. code-block:: python
 
     http.request('GET', 'https://google.com')
     # (No exception)
@@ -346,7 +346,7 @@ Timeouts allow you to control how long (in seconds) requests are allowed to run
 before being aborted. In simple cases, you can specify a timeout as a ``float``
 to :meth:`~poolmanager.PoolManager.request`:
 
-.. code-block:: pycon
+.. code-block:: python
 
     http.request(
         'GET', 'http://httpbin.org/delay/3', timeout=4.0
@@ -360,7 +360,7 @@ to :meth:`~poolmanager.PoolManager.request`:
 For more granular control you can use a :class:`~util.timeout.Timeout`
 instance which lets you specify separate connect and read timeouts:
 
-.. code-block:: pycon
+.. code-block:: python
 
     http.request(
         'GET',
@@ -379,7 +379,7 @@ instance which lets you specify separate connect and read timeouts:
 If you want all requests to be subject to the same timeout, you can specify
 the timeout at the :class:`~urllib3.poolmanager.PoolManager` level:
 
-.. code-block:: pycon
+.. code-block:: python
 
     http = urllib3.PoolManager(timeout=3.0)
     http = urllib3.PoolManager(
@@ -399,13 +399,13 @@ requests 3 times and follow up to 3 redirects.
 
 To change the number of retries just specify an integer:
 
-.. code-block:: pycon
+.. code-block:: python
 
     http.requests('GET', 'http://httpbin.org/ip', retries=10)
 
 To disable all retry and redirect logic specify ``retries=False``:
 
-.. code-block:: pycon
+.. code-block:: python
 
     http.request(
         'GET', 'http://nxdomain.example.com', retries=False
@@ -419,7 +419,7 @@ To disable all retry and redirect logic specify ``retries=False``:
 
 To disable redirects but keep the retrying logic, specify ``redirect=False``:
 
-.. code-block:: pycon
+.. code-block:: python
 
     r = http.request(
         'GET', 'http://httpbin.org/redirect/1', redirect=False
@@ -432,7 +432,7 @@ This class allows you far greater control of how requests are retried.
 
 For example, to do a total of 3 retries, but limit to only 2 redirects:
 
-.. code-block:: pycon
+.. code-block:: python
 
     http.request(
         'GET',
@@ -444,7 +444,7 @@ For example, to do a total of 3 retries, but limit to only 2 redirects:
 You can also disable exceptions for too many redirects and just return the
 ``302`` response:
 
-.. code-block:: pycon
+.. code-block:: python
 
     r = http.request(
         'GET',
@@ -458,7 +458,7 @@ You can also disable exceptions for too many redirects and just return the
 If you want all requests to be subject to the same retry policy, you can
 specify the retry at the :class:`~urllib3.poolmanager.PoolManager` level:
 
-.. code-block:: pycon
+.. code-block:: python
 
     http = urllib3.PoolManager(retries=False)
     http = urllib3.PoolManager(
@@ -473,7 +473,7 @@ Errors & Exceptions
 
 urllib3 wraps lower-level exceptions, for example:
 
-.. code-block:: pycon
+.. code-block:: python
 
     try:
         http.request('GET', 'nx.example.com', retries=False)
@@ -489,6 +489,6 @@ If you are using the standard library :mod:`logging` module urllib3 will
 emit several logs. In some cases this can be undesirable. You can use the
 standard logger interface to change the log level for urllib3's logger:
 
-.. code-block:: pycon
+.. code-block:: python
 
     logging.getLogger("urllib3").setLevel(logging.WARNING)
