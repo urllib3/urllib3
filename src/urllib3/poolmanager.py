@@ -1,9 +1,20 @@
 import collections
 import functools
 import logging
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Mapping,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 from urllib.parse import urljoin
 
-from ._collections import RecentlyUsedContainer
+from ._collections import _VT, RecentlyUsedContainer
 from .connection import ProxyConfig
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
 from .exceptions import (
@@ -13,9 +24,13 @@ from .exceptions import (
     URLSchemeUnknown,
 )
 from .request import RequestMethods
+from .response import BaseHTTPResponse
 from .util.proxy import connection_requires_http_tunnel
 from .util.retry import Retry
-from .util.url import parse_url
+from .util.url import Url, parse_url
+
+if TYPE_CHECKING:
+    from typing_extensions import Literal
 
 __all__ = ["PoolManager", "ProxyManager", "proxy_from_url"]
 
@@ -68,7 +83,9 @@ _key_fields = (
 PoolKey = collections.namedtuple("PoolKey", _key_fields)
 
 
-def _default_key_normalizer(key_class, request_context):
+def _default_key_normalizer(
+    key_class: PoolKey, request_context: Dict[str, Any]
+) -> PoolKey:
     """
     Create a pool key out of a request context dictionary.
 
@@ -110,6 +127,7 @@ def _default_key_normalizer(key_class, request_context):
         context["key_" + key] = context.pop(key)
 
     # Default to ``None`` for keys missing from the context
+    field: Tuple[str, ...]
     for field in key_class._fields:
         if field not in context:
             context[field] = None
@@ -166,25 +184,40 @@ class PoolManager(RequestMethods):
     proxy = None
     proxy_config = None
 
-    def __init__(self, num_pools=10, headers=None, **connection_pool_kw):
+    def __init__(
+        self,
+        num_pools: int = 10,
+        headers: Optional[Mapping[str, str]] = None,
+        **connection_pool_kw: Any,
+    ) -> None:
         super().__init__(headers)
         self.connection_pool_kw = connection_pool_kw
-        self.pools = RecentlyUsedContainer(num_pools, dispose_func=lambda p: p.close())
+        func: Callable[[Any], Any] = lambda p: p.close()
+        self.pools: RecentlyUsedContainer[int, Optional[Callable[[_VT], None]]]
+        self.pools = RecentlyUsedContainer(num_pools, dispose_func=func)
 
         # Locally set the pool classes and keys so other PoolManagers can
         # override them.
         self.pool_classes_by_scheme = pool_classes_by_scheme
         self.key_fn_by_scheme = key_fn_by_scheme.copy()
 
-    def __enter__(self):
+    def __enter__(self) -> "PoolManager":
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self, exc_type: object, exc_val: object, exc_tb: object
+    ) -> "Literal[False]":
         self.clear()
         # Return False to re-raise any potential exceptions
         return False
 
-    def _new_pool(self, scheme, host, port, request_context=None):
+    def _new_pool(
+        self,
+        scheme: str,
+        host: str,
+        port: int,
+        request_context: Optional[Dict[str, Any]] = None,
+    ) -> Union[HTTPConnectionPool, HTTPSConnectionPool]:
         """
         Create a new :class:`urllib3.connectionpool.ConnectionPool` based on host, port, scheme, and
         any additional pool keyword arguments.
@@ -194,7 +227,7 @@ class PoolManager(RequestMethods):
         connection pools handed out by :meth:`connection_from_url` and
         companion methods. It is intended to be overridden for customization.
         """
-        pool_cls = self.pool_classes_by_scheme[scheme]
+        pool_cls: Type[HTTPConnectionPool] = self.pool_classes_by_scheme[scheme]
         if request_context is None:
             request_context = self.connection_pool_kw.copy()
 
@@ -211,7 +244,7 @@ class PoolManager(RequestMethods):
 
         return pool_cls(host, port, **request_context)
 
-    def clear(self):
+    def clear(self) -> None:
         """
         Empty our store of pools and direct them all to close.
 
@@ -220,7 +253,13 @@ class PoolManager(RequestMethods):
         """
         self.pools.clear()
 
-    def connection_from_host(self, host, port=None, scheme="http", pool_kwargs=None):
+    def connection_from_host(
+        self,
+        host: Optional[str],
+        port: Optional[int] = None,
+        scheme: Optional[str] = "http",
+        pool_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> Union[HTTPConnectionPool, HTTPSConnectionPool]:
         """
         Get a :class:`urllib3.connectionpool.ConnectionPool` based on the host, port, and scheme.
 
@@ -243,14 +282,16 @@ class PoolManager(RequestMethods):
 
         return self.connection_from_context(request_context)
 
-    def connection_from_context(self, request_context):
+    def connection_from_context(
+        self, request_context: Dict[str, Any]
+    ) -> Union[HTTPConnectionPool, HTTPSConnectionPool]:
         """
         Get a :class:`urllib3.connectionpool.ConnectionPool` based on the request context.
 
         ``request_context`` must at least contain the ``scheme`` key and its
         value must be a key in ``key_fn_by_scheme`` instance variable.
         """
-        scheme = request_context["scheme"].lower()
+        scheme = str(request_context["scheme"]).lower()
         pool_key_constructor = self.key_fn_by_scheme.get(scheme)
         if not pool_key_constructor:
             raise URLSchemeUnknown(scheme)
@@ -258,7 +299,9 @@ class PoolManager(RequestMethods):
 
         return self.connection_from_pool_key(pool_key, request_context=request_context)
 
-    def connection_from_pool_key(self, pool_key, request_context=None):
+    def connection_from_pool_key(
+        self, pool_key: PoolKey, request_context: Optional[Dict[str, Any]] = None
+    ) -> Union[HTTPConnectionPool, HTTPSConnectionPool]:
         """
         Get a :class:`urllib3.connectionpool.ConnectionPool` based on the provided pool key.
 
@@ -282,7 +325,9 @@ class PoolManager(RequestMethods):
 
         return pool
 
-    def connection_from_url(self, url, pool_kwargs=None):
+    def connection_from_url(
+        self, url: str, pool_kwargs: Optional[Dict[str, Any]] = None
+    ) -> Union[HTTPConnectionPool, HTTPSConnectionPool]:
         """
         Similar to :func:`urllib3.connectionpool.connection_from_url`.
 
@@ -298,7 +343,7 @@ class PoolManager(RequestMethods):
             u.host, port=u.port, scheme=u.scheme, pool_kwargs=pool_kwargs
         )
 
-    def _merge_pool_kwargs(self, override):
+    def _merge_pool_kwargs(self, override: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Merge a dictionary of override values for self.connection_pool_kw.
 
@@ -318,7 +363,7 @@ class PoolManager(RequestMethods):
                     base_pool_kwargs[key] = value
         return base_pool_kwargs
 
-    def _proxy_requires_url_absolute_form(self, parsed_url):
+    def _proxy_requires_url_absolute_form(self, parsed_url: Url) -> bool:
         """
         Indicates if the proxy requires the complete destination URL in the
         request.  Normally this is only needed when not using an HTTP CONNECT
@@ -331,7 +376,9 @@ class PoolManager(RequestMethods):
             self.proxy, self.proxy_config, parsed_url.scheme
         )
 
-    def urlopen(self, method, url, redirect=True, **kw):
+    def urlopen(
+        self, method: str, url: str, redirect: bool = True, **kw: Any
+    ) -> BaseHTTPResponse:
         """
         Same as :meth:`urllib3.HTTPConnectionPool.urlopen`
         with custom cross-host redirect logic and only sends the request-uri
@@ -360,7 +407,7 @@ class PoolManager(RequestMethods):
             return response
 
         # Support relative URLs for redirecting.
-        redirect_location = urljoin(url, redirect_location)
+        redirect_location = str(urljoin(url, redirect_location))
 
         # RFC 7231, Section 6.4.4
         if response.status == 303:
@@ -449,14 +496,14 @@ class ProxyManager(PoolManager):
 
     def __init__(
         self,
-        proxy_url,
-        num_pools=10,
-        headers=None,
-        proxy_headers=None,
+        proxy_url: str,
+        num_pools: int = 10,
+        headers: Optional[Mapping[str, str]] = None,
+        proxy_headers: Optional[Mapping[str, str]] = None,
         proxy_ssl_context=None,
-        use_forwarding_for_https=False,
-        **connection_pool_kw,
-    ):
+        use_forwarding_for_https: bool = False,
+        **connection_pool_kw: Any,
+    ) -> None:
 
         if isinstance(proxy_url, HTTPConnectionPool):
             proxy_url = f"{proxy_url.scheme}://{proxy_url.host}:{proxy_url.port}"
@@ -480,7 +527,13 @@ class ProxyManager(PoolManager):
 
         super().__init__(num_pools, headers, **connection_pool_kw)
 
-    def connection_from_host(self, host, port=None, scheme="http", pool_kwargs=None):
+    def connection_from_host(
+        self,
+        host: Optional[str],
+        port: Optional[int] = None,
+        scheme: Optional[str] = "http",
+        pool_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> Union[HTTPConnectionPool, HTTPSConnectionPool]:
         if scheme == "https":
             return super().connection_from_host(
                 host, port, scheme, pool_kwargs=pool_kwargs
@@ -490,7 +543,9 @@ class ProxyManager(PoolManager):
             self.proxy.host, self.proxy.port, self.proxy.scheme, pool_kwargs=pool_kwargs
         )
 
-    def _set_proxy_headers(self, url, headers=None):
+    def _set_proxy_headers(
+        self, url: str, headers: Optional[Mapping[str, str]] = None
+    ) -> Mapping[str, str]:
         """
         Sets headers needed by proxies: specifically, the Accept and Host
         headers. Only sets headers not provided by the user.
@@ -505,7 +560,9 @@ class ProxyManager(PoolManager):
             headers_.update(headers)
         return headers_
 
-    def urlopen(self, method, url, redirect=True, **kw):
+    def urlopen(
+        self, method: str, url: str, redirect: bool = True, **kw: Any
+    ) -> BaseHTTPResponse:
         "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
         u = parse_url(url)
         if not connection_requires_http_tunnel(self.proxy, self.proxy_config, u.scheme):
@@ -518,5 +575,5 @@ class ProxyManager(PoolManager):
         return super().urlopen(method, url, redirect=redirect, **kw)
 
 
-def proxy_from_url(url, **kw):
+def proxy_from_url(url: str, **kw: Any) -> ProxyManager:
     return ProxyManager(proxy_url=url, **kw)
