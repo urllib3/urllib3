@@ -47,7 +47,7 @@ def format_header_param_rfc2231(name: str, value: Union[str, bytes]) -> str:
         The name of the parameter, a string expected to be ASCII only.
     :param value:
         The value of the parameter, provided as ``bytes`` or `str``.
-    :ret:
+    :returns:
         An RFC-2231-formatted unicode string.
     """
     if isinstance(value, bytes):
@@ -109,7 +109,7 @@ def format_header_param_html5(name: str, value: _TYPE_FIELD_VALUE) -> str:
         The name of the parameter, a string expected to be ASCII only.
     :param value:
         The value of the parameter, provided as ``bytes`` or `str``.
-    :ret:
+    :returns:
         A unicode string, stripped of troublesome characters.
     """
     if isinstance(value, bytes):
