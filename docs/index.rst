@@ -36,9 +36,9 @@ urllib3 is powerful and easy to use:
     import urllib3
     http = urllib3.PoolManager()
     r = http.request('GET', 'http://httpbin.org/robots.txt')
-    r.status
+    print(r.status)
     # 200
-    r.data
+    print(r.data)
     # 'User-agent: *\nDisallow: /deny\n'
 
 For Enterprise

@@ -35,7 +35,7 @@ To make a request use :meth:`~poolmanager.PoolManager.request`:
 .. code-block:: pycon
 
     r = http.request('GET', 'http://httpbin.org/robots.txt')
-    r.data
+    print(r.data)
     # b'User-agent: *\nDisallow: /deny\n'
 
 ``request()`` returns a :class:`~response.HTTPResponse` object, the
@@ -74,11 +74,11 @@ The :class:`~response.HTTPResponse` object provides
 .. code-block:: pycon
 
     r = http.request('GET', 'http://httpbin.org/ip')
-    r.status
+    print(r.status)
     # 200
-    r.data
+    print(r.data)
     # b'{\n  "origin": "104.232.115.37"\n}\n'
-    r.headers
+    print(r.headers)
     # HTTPHeaderDict({'Content-Length': '33', ...})
 
 JSON Content
@@ -91,7 +91,7 @@ JSON content can be loaded by decoding and deserializing the
 
     import json
     r = http.request('GET', 'http://httpbin.org/ip')
-    json.loads(r.data.decode('utf-8'))
+    print(json.loads(r.data.decode('utf-8')))
     # {'origin': '127.0.0.1'}
 
 Binary Content
@@ -103,7 +103,7 @@ to a byte string representing the response content:
 .. code-block:: pycon
 
     r = http.request('GET', 'http://httpbin.org/bytes/8')
-    r.data
+    print(r.data)
     # b'\xaa\xa5H?\x95\xe9\x9b\x11'
 
 .. note:: For larger responses, it's sometimes better to :ref:`stream <stream>`
@@ -144,7 +144,7 @@ You can specify headers as a dictionary in the ``headers`` argument in :meth:`~p
             'X-Something': 'value'
         }
     )
-    json.loads(r.data.decode('utf-8'))['headers']
+    print(json.loads(r.data.decode('utf-8'))['headers'])
     # {'X-Something': 'value', ...}
 
 Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers:
@@ -160,7 +160,7 @@ Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers:
         'http://httpbin.org/headers',
         headers=headers
     )
-    json.loads(r.data.decode('utf-8'))['headers']
+    print(json.loads(r.data.decode('utf-8'))['headers'])
     # {'Accept': 'application/json, text/plain', ...}
    
 
@@ -178,7 +178,7 @@ arguments as a dictionary in the ``fields`` argument to
         'http://httpbin.org/get',
         fields={'arg': 'value'}
     )
-    json.loads(r.data.decode('utf-8'))['args']
+    print(json.loads(r.data.decode('utf-8'))['args'])
     # {'arg': 'value'}
 
 For ``POST`` and ``PUT`` requests, you need to manually encode query parameters
@@ -190,7 +190,7 @@ in the URL:
     encoded_args = urlencode({'arg': 'value'})
     url = 'http://httpbin.org/post?' + encoded_args
     r = http.request('POST', url)
-    json.loads(r.data.decode('utf-8'))['args']
+    print(json.loads(r.data.decode('utf-8'))['args'])
     # {'arg': 'value'}
 
 
@@ -210,7 +210,7 @@ dictionary in the ``fields`` argument provided to
         'http://httpbin.org/post',
         fields={'field': 'value'}
     )
-    json.loads(r.data.decode('utf-8'))['form']
+    print(json.loads(r.data.decode('utf-8'))['form'])
     # {'field': 'value'}
 
 JSON
@@ -231,7 +231,7 @@ argument and setting the ``Content-Type`` header when calling
         body=encoded_data,
         headers={'Content-Type': 'application/json'}
     )
-    json.loads(r.data.decode('utf-8'))['json']
+    print(json.loads(r.data.decode('utf-8'))['json'])
     # {'attribute': 'value'}
 
 Files & Binary Data
@@ -252,7 +252,7 @@ approach as :ref:`form_data` and specify the file field as a tuple of
             'filefield': ('example.txt', file_data),
         }
     )
-    json.loads(r.data.decode('utf-8'))['files']
+    print(json.loads(r.data.decode('utf-8'))['files'])
     # {'filefield': '...'}
 
 While specifying the filename is not strictly required, it's recommended in
@@ -282,7 +282,7 @@ recommended to set the ``Content-Type`` header:
         body=binary_data,
         headers={'Content-Type': 'image/jpeg'}
     )
-    json.loads(r.data.decode('utf-8'))['data']
+    print(json.loads(r.data.decode('utf-8'))['data'])
     # b'...'
 
 .. _ssl:
@@ -414,7 +414,7 @@ To disable all retry and redirect logic specify ``retries=False``:
     r = http.request(
         'GET', 'http://httpbin.org/redirect/1', retries=False
     )
-    r.status
+    print(r.status)
     # 302
 
 To disable redirects but keep the retrying logic, specify ``redirect=False``:
@@ -424,7 +424,7 @@ To disable redirects but keep the retrying logic, specify ``redirect=False``:
     r = http.request(
         'GET', 'http://httpbin.org/redirect/1', redirect=False
     )
-    r.status
+    print(r.status)
     # 302
 
 For more granular control you can use a :class:`~util.retry.Retry` instance.
@@ -452,7 +452,7 @@ You can also disable exceptions for too many redirects and just return the
         retries=urllib3.Retry(
             redirect=2, raise_on_redirect=False)
     )
-    r.status
+    print(r.status)
     # 302
 
 If you want all requests to be subject to the same retry policy, you can

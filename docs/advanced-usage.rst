@@ -84,7 +84,7 @@ a file-like object. This allows you to do buffering::
         'GET',
         'http://httpbin.org/bytes/1024',
         preload_content=False)
-    r.read(4)
+    print(r.read(4))
     # b'\x88\x1f\x8b\xe5'
 
 Calls to :meth:`~response.HTTPResponse.read()` will block until more response
@@ -104,7 +104,7 @@ You can use this file-like object to do things like decode the content using
         'GET',
         'http://httpbin.org/ip',
         preload_content=False)
-    json.load(reader(r))
+    print(json.load(reader(r)))
     # {'origin': '127.0.0.1'}
     r.release_conn()
 
