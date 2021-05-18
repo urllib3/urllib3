@@ -28,7 +28,7 @@ performance to increase this number::
     >>> import urllib3
     >>> http = urllib3.PoolManager(maxsize=10)
     # Alternatively
-    >>> http = urllib3.HTTPConnectionPool('google.com', maxsize=10)
+    >>> pool = urllib3.HTTPConnectionPool('google.com', maxsize=10)
 
 The behavior of the pooling for :class:`~connectionpool.ConnectionPool` is
 different from :class:`~poolmanager.PoolManager`. By default, if a new
@@ -41,7 +41,7 @@ open to a particular host::
 
     >>> http = urllib3.PoolManager(maxsize=10, block=True)
     # Alternatively
-    >>> http = urllib3.HTTPConnectionPool('google.com', maxsize=10, block=True)
+    >>> pool = urllib3.HTTPConnectionPool('google.com', maxsize=10, block=True)
 
 Any new requests will block until a connection is available from the pool.
 This is a great way to prevent flooding a host with too many connections in
@@ -117,8 +117,8 @@ You can use :class:`~poolmanager.ProxyManager` to tunnel requests through an
 HTTP proxy::
 
     >>> import urllib3
-    >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
-    >>> proxy.request('GET', 'http://google.com/')
+    >>> http = urllib3.ProxyManager('http://localhost:3128/')
+    >>> http.request('GET', 'http://google.com/')
 
 The usage of :class:`~poolmanager.ProxyManager` is the same as
 :class:`~poolmanager.PoolManager`.
