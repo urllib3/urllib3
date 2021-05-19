@@ -21,7 +21,7 @@ from urllib3.exceptions import (
     SSLError,
     httplib_IncompleteRead,
 )
-from urllib3.response import HTTPResponse, brotli, ContentDecoder, BaseHTTPResponse
+from urllib3.response import BaseHTTPResponse, ContentDecoder, HTTPResponse, brotli
 from urllib3.util.response import is_fp_closed
 from urllib3.util.retry import RequestHistory, Retry
 
@@ -766,7 +766,9 @@ class TestResponse:
         resp = HTTPResponse(
             r, preload_content=False, headers={"transfer-encoding": "chunked"}
         )
-        with mock.patch.object(HTTPResponse, "supports_chunked_reads") as supports_chunked_reads:
+        with mock.patch.object(
+            HTTPResponse, "supports_chunked_reads"
+        ) as supports_chunked_reads:
             supports_chunked_reads.return_value = False
             r = resp.read_chunked()
             with pytest.raises(BodyNotHttplibCompatible):

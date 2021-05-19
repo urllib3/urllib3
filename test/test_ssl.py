@@ -2,7 +2,7 @@ from unittest import mock
 
 import pytest
 
-from urllib3.exceptions import SNIMissingWarning, SSLError, ProxySchemeUnsupported
+from urllib3.exceptions import ProxySchemeUnsupported, SNIMissingWarning, SSLError
 from urllib3.util import ssl_
 
 
