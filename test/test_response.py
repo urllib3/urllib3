@@ -20,7 +20,7 @@ from urllib3.exceptions import (
     SSLError,
     httplib_IncompleteRead,
 )
-from urllib3.response import HTTPResponse, brotli
+from urllib3.response import HTTPResponse, brotli, ContentDecoder
 from urllib3.util.response import is_fp_closed
 from urllib3.util.retry import RequestHistory, Retry
 
@@ -47,6 +47,18 @@ def sock():
     s = socket.socket()
     yield s
     s.close()
+
+
+class TestContentDecoder:
+    decoder = ContentDecoder()
+
+    def test_decompress_error(self):
+        with pytest.raises(NotImplementedError):
+            self.decoder.decompress(None)
+
+    def test_flush_error(self):
+        with pytest.raises(NotImplementedError):
+            self.decoder.flush()
 
 
 class TestLegacyResponse:
