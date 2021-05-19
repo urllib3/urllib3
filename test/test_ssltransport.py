@@ -553,3 +553,15 @@ class TestSSLTransportWithMock:
         )
         with pytest.raises(ValueError):
             ssl_transport.makefile(mode="x")
+
+    def test_wrap_ssl_read_error(self):
+        server_hostname = "example-domain.com"
+        sock = mock.Mock()
+        context = mock.create_autospec(ssl_.SSLContext)
+        ssl_transport = SSLTransport(
+            sock, context, server_hostname=server_hostname, suppress_ragged_eofs=False
+        )
+        with mock.patch.object(ssl_transport, "_ssl_io_loop") as _ssl_io_loop:
+            _ssl_io_loop.side_effect = ssl.SSLError()
+            with pytest.raises(ssl.SSLError):
+                ssl_transport._wrap_ssl_read(1)
