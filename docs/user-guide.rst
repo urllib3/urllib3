@@ -90,6 +90,7 @@ JSON content can be loaded by decoding and deserializing the
 .. code-block:: python
 
     import json
+
     r = http.request('GET', 'http://httpbin.org/ip')
     print(json.loads(r.data.decode('utf-8')))
     # {'origin': '127.0.0.1'}
@@ -120,6 +121,7 @@ to ``False``. By default HTTP responses are closed after reading all bytes, this
 .. code-block:: python
 
     import io
+
     r = http.request('GET', 'https://example.com', preload_content=False)
     r.auto_close = False
     for line in io.TextIOWrapper(r):
@@ -152,6 +154,7 @@ Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers:
 .. code-block:: python
 
     from urllib3 import HTTPHeaderDict
+
     headers = HTTPHeaderDict()
     headers.add('Accept', 'application/json')
     headers.add('Accept', 'text/plain')
@@ -187,6 +190,7 @@ in the URL:
 .. code-block:: python
 
     from urllib.parse import urlencode
+
     encoded_args = urlencode({'arg': 'value'})
     url = 'http://httpbin.org/post?' + encoded_args
     r = http.request('POST', url)
@@ -223,6 +227,7 @@ argument and setting the ``Content-Type`` header when calling
 .. code-block:: python
 
     import json
+
     data = {'attribute': 'value'}
     encoded_data = json.dumps(data).encode('utf-8')
     r = http.request(
@@ -318,6 +323,7 @@ that verifies certificates when making requests:
 
     import certifi
     import urllib3
+
     http = urllib3.PoolManager(
         cert_reqs='CERT_REQUIRED',
         ca_certs=certifi.where()

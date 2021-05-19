@@ -14,6 +14,7 @@ instances. If you're making requests to many different hosts it might improve
 performance to increase this number::
 
     import urllib3
+
     http = urllib3.PoolManager(num_pools=50)
 
 However, keep in mind that this does increase memory and socket consumption.
@@ -26,6 +27,7 @@ are making many requests to the same host simultaneously it might improve
 performance to increase this number::
 
     import urllib3
+
     http = urllib3.PoolManager(maxsize=10)
     # Alternatively
     pool = urllib3.HTTPConnectionPool('google.com', maxsize=10)
@@ -57,6 +59,7 @@ When dealing with large responses it's often better to stream the response
 content::
 
     import urllib3
+
     http = urllib3.PoolManager()
     r = http.request(
         'GET',
@@ -91,6 +94,7 @@ Calls to :meth:`~response.HTTPResponse.read()` will block until more response
 data is available.
 
     import io
+
     reader = io.BufferedReader(r, 8)
     reader.read(4)
     r.release_conn()
@@ -99,6 +103,7 @@ You can use this file-like object to do things like decode the content using
 :mod:`codecs`::
 
     import codecs
+
     reader = codecs.getreader('utf-8')
     r = http.request(
         'GET',
@@ -117,6 +122,7 @@ You can use :class:`~poolmanager.ProxyManager` to tunnel requests through an
 HTTP proxy::
 
     import urllib3
+
     proxy = urllib3.ProxyManager('http://localhost:3128/')
     proxy.request('GET', 'http://google.com/')
 
@@ -183,6 +189,7 @@ Once PySocks is installed, you can use
 :class:`~contrib.socks.SOCKSProxyManager`::
 
     from urllib3.contrib.socks import SOCKSProxyManager
+
     proxy = SOCKSProxyManager('socks5h://localhost:8889/')
     proxy.request('GET', 'http://google.com/')
 
@@ -204,6 +211,7 @@ authority. Just provide the full path to the certificate bundle when creating a
 :class:`~poolmanager.PoolManager`::
 
     import urllib3
+
     http = urllib3.PoolManager(
         cert_reqs='CERT_REQUIRED',
         ca_certs='/path/to/your/certificate_bundle')
@@ -231,6 +239,7 @@ especially when you are connecting without using name resolution. For example,
 you could connect to a server by IP using HTTPS like so::
 
     import urllib3
+
     pool = urllib3.HTTPSConnectionPool(
         "104.154.89.105",
         server_hostname="badssl.com"
@@ -260,6 +269,7 @@ If the server you're connecting to presents a different certificate than the
 hostname or the SNI hostname, you can use ``assert_hostname``::
 
     import urllib3
+
     pool = urllib3.HTTPSConnectionPool(
         "wrong.host.badssl.com",
         assert_hostname="badssl.com",
@@ -332,6 +342,7 @@ understand the risks and wish to disable these warnings, you can use :func:`~url
 .. code-block:: python
 
     import urllib3
+
     urllib3.disable_warnings()
 
 Alternatively you can capture the warnings with the standard :mod:`logging` module:
@@ -362,6 +373,7 @@ Here's an example using brotli encoding via the ``Accept-Encoding`` header:
 .. code-block:: python
 
     from urllib3 import PoolManager
+
     http = PoolManager()
     http.request('GET', 'https://www.google.com/', headers={'Accept-Encoding': 'br'})
 
