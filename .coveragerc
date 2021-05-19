@@ -21,7 +21,6 @@ exclude_lines =
     except ImportError:
     pass
     import
-    raise
     .* # Platform-specific.*
     .*:.* # Python \d.*
     .* # Abstract
