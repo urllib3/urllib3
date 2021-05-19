@@ -145,6 +145,7 @@ class TestUtil:
             "http://::1/",
             "http://::1:80/",
             "http://google.com:-80",
+            "http://google.com:65536",
             "http://google.com:\xb2\xb2",  # \xb2 = ^2
             # Invalid IDNA labels
             "http://\uD7FF.com",
