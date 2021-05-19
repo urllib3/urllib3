@@ -744,6 +744,12 @@ class TestUtil:
         socket.return_value = Mock()
         create_connection((host, 80))
 
+    @patch("socket.getaddrinfo")
+    def test_create_connection_error(self, getaddrinfo):
+        getaddrinfo.return_value = []
+        with pytest.raises(OSError, match="getaddrinfo returns an empty list"):
+            create_connection(("example.com", 80))
+
     @pytest.mark.parametrize(
         "input,params,expected",
         (
