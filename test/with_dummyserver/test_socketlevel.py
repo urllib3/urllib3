@@ -34,6 +34,7 @@ except ImportError:
         pass
 
 
+import errno
 import os
 import os.path
 import select
@@ -478,6 +479,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             timed_out.wait()
             sock.close()
 
+        # first ReadTimeoutError due to SocketTimeout
         self._start_server(socket_handler)
         with HTTPSConnectionPool(
             self.host, self.port, timeout=LONG_TIMEOUT, retries=False
@@ -487,6 +489,12 @@ class TestSocketClosing(SocketDummyServerTestCase):
                     pool.request("GET", "/")
             finally:
                 timed_out.set()
+
+        # second ReadTimeoutError due to errno
+        err = mock.Mock()
+        err.errno = errno.EAGAIN
+        with pytest.raises(ReadTimeoutError):
+            pool._raise_timeout(err, "", 0)
 
     def test_timeout_errors_cause_retries(self):
         def socket_handler(listener):

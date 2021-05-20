@@ -1,4 +1,3 @@
-import errno
 import http.client as httplib
 import ssl
 from http.client import HTTPException
@@ -534,13 +533,6 @@ class TestConnectionPool:
         _test(HTTPException)
         _test(SocketError)
         _test(ProtocolError)
-
-    def test_raise_timeout_error(self):
-        with HTTPConnectionPool(host="localhost") as pool:
-            err = Mock()
-            err.errno = errno.EAGAIN
-            with pytest.raises(ReadTimeoutError):
-                pool._raise_timeout(err, "", 0)
 
     def test_make_request_error(self):
         with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
