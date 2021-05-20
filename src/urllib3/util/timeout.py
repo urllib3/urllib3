@@ -146,11 +146,18 @@ class Timeout:
                 "int, float or None." % (name, value)
             )
 
-        if value <= 0:  # type: ignore
+        try:
+            if value <= 0:  # type: ignore
+                raise ValueError(
+                    "Attempted to set %s timeout to %s, but the "
+                    "timeout cannot be set to a value less "
+                    "than or equal to 0." % (name, value)
+                )
+        except TypeError:
+            # Python 3
             raise ValueError(
-                "Attempted to set %s timeout to %s, but the "
-                "timeout cannot be set to a value less "
-                "than or equal to 0." % (name, value)
+                "Timeout value %s was %s, but it must be an "
+                "int, float or None." % (name, value)
             )
 
         return value
