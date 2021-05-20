@@ -21,7 +21,7 @@ from urllib3.exceptions import (
     SSLError,
     httplib_IncompleteRead,
 )
-from urllib3.response import BaseHTTPResponse, ContentDecoder, HTTPResponse, brotli
+from urllib3.response import HTTPResponse, brotli
 from urllib3.util.response import is_fp_closed
 from urllib3.util.retry import RequestHistory, Retry
 
@@ -48,18 +48,6 @@ def sock():
     s = socket.socket()
     yield s
     s.close()
-
-
-class TestContentDecoder:
-    decoder = ContentDecoder()
-
-    def test_decompress_error(self):
-        with pytest.raises(NotImplementedError):
-            self.decoder.decompress(None)
-
-    def test_flush_error(self):
-        with pytest.raises(NotImplementedError):
-            self.decoder.flush()
 
 
 class TestLegacyResponse:
@@ -972,60 +960,6 @@ class TestResponse:
             with pytest.raises(SSLError) as e:
                 resp.read()
             assert e.value.args[0] == mac_error
-
-
-class TestBaseHTTPResponse:
-
-    # test a bunch of NotImplementedErrors
-    def test_data_not_implemented_error(self):
-        r = BaseHTTPResponse(status=0, version=0, reason="foo", decode_content=False)
-        with pytest.raises(NotImplementedError):
-            r.data
-
-    def test_url_not_implemented_error(self):
-        r = BaseHTTPResponse(status=0, version=0, reason="foo", decode_content=False)
-        with pytest.raises(NotImplementedError):
-            r.url
-
-    def test_closed_not_implemented_error(self):
-        r = BaseHTTPResponse(status=0, version=0, reason="foo", decode_content=False)
-        with pytest.raises(NotImplementedError):
-            r.closed
-
-    def test_connection_not_implemented_error(self):
-        r = BaseHTTPResponse(status=0, version=0, reason="foo", decode_content=False)
-        with pytest.raises(NotImplementedError):
-            r.connection
-
-    def test_stream_not_implemented_error(self):
-        r = BaseHTTPResponse(status=0, version=0, reason="foo", decode_content=False)
-        with pytest.raises(NotImplementedError):
-            r.stream()
-
-    def test_read_not_implemented_error(self):
-        r = BaseHTTPResponse(status=0, version=0, reason="foo", decode_content=False)
-        with pytest.raises(NotImplementedError):
-            r.read()
-
-    def test_read_chunked_not_implemented_error(self):
-        r = BaseHTTPResponse(status=0, version=0, reason="foo", decode_content=False)
-        with pytest.raises(NotImplementedError):
-            r.read_chunked()
-
-    def test_release_conn_chunked_not_implemented_error(self):
-        r = BaseHTTPResponse(status=0, version=0, reason="foo", decode_content=False)
-        with pytest.raises(NotImplementedError):
-            r.release_conn()
-
-    def test_drain_conn_chunked_not_implemented_error(self):
-        r = BaseHTTPResponse(status=0, version=0, reason="foo", decode_content=False)
-        with pytest.raises(NotImplementedError):
-            r.drain_conn()
-
-    def test_close_chunked_not_implemented_error(self):
-        r = BaseHTTPResponse(status=0, version=0, reason="foo", decode_content=False)
-        with pytest.raises(NotImplementedError):
-            r.close()
 
 
 class MockChunkedEncodingResponse:
