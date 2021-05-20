@@ -504,7 +504,7 @@ class TestSSLTransportWithMock:
         )
         assert not ssl_transport.suppress_ragged_eofs
 
-    def test_recv_no_flags_error(self):
+    def test_various_flags_errors(self):
         server_hostname = "example-domain.com"
         sock = mock.Mock()
         context = mock.create_autospec(ssl_.SSLContext)
@@ -514,33 +514,12 @@ class TestSSLTransportWithMock:
         with pytest.raises(ValueError):
             ssl_transport.recv(flags=1)
 
-    def test_recv_into_no_flags_error(self):
-        server_hostname = "example-domain.com"
-        sock = mock.Mock()
-        context = mock.create_autospec(ssl_.SSLContext)
-        ssl_transport = SSLTransport(
-            sock, context, server_hostname=server_hostname, suppress_ragged_eofs=False
-        )
         with pytest.raises(ValueError):
             ssl_transport.recv_into(None, flags=1)
 
-    def test_sendall_no_flags_error(self):
-        server_hostname = "example-domain.com"
-        sock = mock.Mock()
-        context = mock.create_autospec(ssl_.SSLContext)
-        ssl_transport = SSLTransport(
-            sock, context, server_hostname=server_hostname, suppress_ragged_eofs=False
-        )
         with pytest.raises(ValueError):
             ssl_transport.sendall(None, flags=1)
 
-    def test_send_no_flags_error(self):
-        server_hostname = "example-domain.com"
-        sock = mock.Mock()
-        context = mock.create_autospec(ssl_.SSLContext)
-        ssl_transport = SSLTransport(
-            sock, context, server_hostname=server_hostname, suppress_ragged_eofs=False
-        )
         with pytest.raises(ValueError):
             ssl_transport.send(None, flags=1)
 
