@@ -195,7 +195,8 @@ Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers:
 
     # Make the request using the headers
     resp = urllib3.request(
-        "GET", "https://httpbin.org/headers",
+        "GET",
+        "https://httpbin.org/headers",
         headers=headers
     )
 
@@ -285,14 +286,13 @@ argument and setting the ``Content-Type`` header when calling
     # Encoding the data in JSON format.
     encoded_data = json.dumps(data).encode("utf-8")
 
-    http = urllib3.PoolManager()
-    resp = http.request(
+    resp = urllib3.request(
         "POST",
         "https://httpbin.org/post",
         body=encoded_data, # Embedding JSON data into request body.
         headers={"Content-Type": "application/json"}
     )
-    
+
     print(json.loads(resp.data.decode("utf-8"))["json"])
     # {"attribute": "value"}
 
@@ -346,18 +346,16 @@ recommended to set the ``Content-Type`` header:
     import json
     import urllib3
 
-    with open("example.jpg", "rb") as fp:
+    with open("/home/samad/example.jpg", "rb") as fp:
         binary_data = fp.read()
 
-    http = urllib3.PoolManager() # Creating a seprate PoolManager instance.
-
-    resp = http.request(
+    resp = urllib3.request(
         "POST",
         "https://httpbin.org/post",
         body=binary_data,
         headers={"Content-Type": "image/jpeg"}
     )
-    
+
     print(json.loads(resp.data.decode("utf-8"))["data"])
     # b"..."
 
@@ -519,12 +517,16 @@ To disable all retry and redirect logic specify ``retries=False``:
     http = urllib3.PoolManager()
 
     http.request(
-        "GET", "https://nxdomain.example.com", retries=False
+        "GET",
+        "https://nxdomain.example.com",
+        retries=False
     )
     # NewConnectionError
 
     resp = http.request(
-        "GET", "https://httpbin.org/redirect/1", retries=False
+        "GET",
+        "https://httpbin.org/redirect/1",
+        retries=False
     )
 
     print(resp.status)
@@ -535,7 +537,9 @@ To disable redirects but keep the retrying logic, specify ``redirect=False``:
 .. code-block:: python
 
     resp = http.request(
-        "GET", "https://httpbin.org/redirect/1", redirect=False
+        "GET",
+        "https://httpbin.org/redirect/1",
+        redirect=False
     )
     
     print(resp.status)
@@ -579,7 +583,10 @@ specify the retry at the :class:`~urllib3.poolmanager.PoolManager` level:
 
     http = urllib3.PoolManager(retries=False)
     http = urllib3.PoolManager(
-        retries=urllib3.Retry(5, redirect=2)
+        retries=urllib3.Retry(
+            5,
+            redirect=2
+        )
     )
 
 You still override this pool-level retry policy by specifying ``retries`` to
@@ -597,7 +604,7 @@ urllib3 wraps lower-level exceptions, for example:
     http = urllib3.PoolManager()
 
     try:
-        http.request("GET", "https://nx.example.com", retries=False)
+        http.request("GET","https://nx.example.com", retries=False)
 
     except urllib3.exceptions.NewConnectionError:
         print("Connection failed.")

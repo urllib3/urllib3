@@ -148,12 +148,16 @@ class PoolManager(RequestMethods):
 
     Example::
 
-        >>> manager = PoolManager(num_pools=2)
-        >>> r = manager.request('GET', 'http://google.com/')
-        >>> r = manager.request('GET', 'http://google.com/mail')
-        >>> r = manager.request('GET', 'http://yahoo.com/')
-        >>> len(manager.pools)
-        2
+        import urllib3
+
+        http = urllib3.PoolManager(num_pools=2)
+
+        resp1 = http.request("GET", "https://google.com/")
+        resp2 = http.request("GET", "https://google.com/mail")
+        resp3 = http.request("GET", "https://yahoo.com/")
+
+        print(len(http.pools))
+        # 2
 
     """
 
@@ -419,16 +423,23 @@ class ProxyManager(PoolManager):
         private.  IP address, target hostname, SNI, and port are always visible
         to an HTTPS proxy even when this flag is disabled.
 
-    Example:
-        >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
-        >>> r1 = proxy.request('GET', 'http://google.com/')
-        >>> r2 = proxy.request('GET', 'http://httpbin.org/')
-        >>> len(proxy.pools)
-        1
-        >>> r3 = proxy.request('GET', 'https://httpbin.org/')
-        >>> r4 = proxy.request('GET', 'https://twitter.com/')
-        >>> len(proxy.pools)
-        3
+    Example::
+
+        import urllib3
+
+        proxy = urllib3.ProxyManager("https://localhost:3128/")
+
+        resp1 = proxy.request("GET", "https://google.com/")
+        resp2 = proxy.request("GET", "https://httpbin.org/")
+
+        print(len(proxy.pools))
+        # 1
+
+        resp3 = proxy.request("GET", "https://httpbin.org/")
+        resp4 = proxy.request("GET", "https://twitter.com/")
+
+        print(len(proxy.pools))
+        # 3
 
     """
 

@@ -62,10 +62,12 @@ def make_headers(
 
     Example::
 
-        >>> make_headers(keep_alive=True, user_agent="Batman/1.0")
-        {'connection': 'keep-alive', 'user-agent': 'Batman/1.0'}
-        >>> make_headers(accept_encoding=True)
-        {'accept-encoding': 'gzip,deflate'}
+        import urllib3
+
+        print(urllib3.util.make_headers(keep_alive=True, user_agent="Batman/1.0"))
+        # {'connection': 'keep-alive', 'user-agent': 'Batman/1.0'}
+        print(urllib3.util.make_headers(accept_encoding=True))
+        # {'accept-encoding': 'gzip,deflate'}
     """
     headers: Dict[str, str] = {}
     if accept_encoding:
