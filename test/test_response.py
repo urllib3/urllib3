@@ -747,20 +747,13 @@ class TestResponse:
             next(r)
 
     def test_read_chunked_not_supported(self):
-        stream = [b"fo", b"o", b"bar"]
-        fp = MockChunkedEncodingResponse(stream)
-        r = httplib.HTTPResponse(MockSock)
-        r.fp = fp
+        fp = BytesIO(b"foo")
         resp = HTTPResponse(
-            r, preload_content=False, headers={"transfer-encoding": "chunked"}
+            fp, preload_content=False, headers={"transfer-encoding": "chunked"}
         )
-        with mock.patch.object(
-            HTTPResponse, "supports_chunked_reads"
-        ) as supports_chunked_reads:
-            supports_chunked_reads.return_value = False
-            r = resp.read_chunked()
-            with pytest.raises(BodyNotHttplibCompatible):
-                next(r)
+        r = resp.read_chunked()
+        with pytest.raises(BodyNotHttplibCompatible):
+            next(r)
 
     def test_buggy_incomplete_read(self):
         # Simulate buggy versions of Python (<2.7.4)
