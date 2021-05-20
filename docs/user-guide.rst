@@ -59,9 +59,9 @@ HTTP verb:
     http = urllib3.PoolManager()
 
     resp = http.request(
-            "POST",
-            "https://httpbin.org/post",
-            fields={"hello": "world"} #  Add custom form fields
+        "POST",
+        "https://httpbin.org/post",
+        fields={"hello": "world"} #  Add custom form fields
     )
 
     print(resp.data)
@@ -113,7 +113,7 @@ JSON content can be loaded by decoding and deserializing the
 
     resp = urllib3.request("GET", "https://httpbin.org/ip")
 
-    print( json.loads( resp.data.decode("utf-8") ) )
+    print(json.loads(resp.data.decode("utf-8")))
     # {"origin": "127.0.0.1"}
 
 Binary Content
@@ -171,11 +171,11 @@ You can specify headers as a dictionary in the ``headers`` argument in :meth:`~p
     import urllib3
 
     resp = urllib3.request(
-            "GET",
-            "https://httpbin.org/headers",
-            headers={
-                "X-Something": "value"
-            }
+        "GET",
+        "https://httpbin.org/headers",
+        headers={
+            "X-Something": "value"
+        }
     )
 
     print(json.loads(resp.data.decode("utf-8"))["headers"])
@@ -216,9 +216,9 @@ arguments as a dictionary in the ``fields`` argument to
     import urllib3
 
     resp = urllib3.request(
-                "GET",
-                "https://httpbin.org/get",
-                fields={"arg": "value"}
+        "GET",
+        "https://httpbin.org/get",
+        fields={"arg": "value"}
     )
 
     print(json.loads(resp.data.decode("utf-8"))["args"])
@@ -238,7 +238,6 @@ in the URL:
 
     # Create a URL with args encoded.
     url = "https://httpbin.org/post?" + encoded_args
-
     resp = urllib3.request("POST", url)
 
     print(json.loads(resp.data.decode("utf-8"))["args"])
@@ -261,9 +260,9 @@ dictionary in the ``fields`` argument provided to
     import urllib3
 
     resp = urllib3.request(
-                "POST",
-                "https://httpbin.org/post",
-                fields={"field": "value"}
+        "POST",
+        "https://httpbin.org/post",
+        fields={"field": "value"}
     )
     
     print(json.loads(resp.data.decode("utf-8"))["form"])
@@ -286,13 +285,12 @@ argument and setting the ``Content-Type`` header when calling
     # Encoding the data in JSON format.
     encoded_data = json.dumps(data).encode("utf-8")
 
-    http = urllib3.PoolManager() # Creating a seprate PoolManager instance.
-
+    http = urllib3.PoolManager()
     resp = http.request(
-                "POST",
-                "https://httpbin.org/post",
-                body=encoded_data, # Embedding JSON data into request body.
-                headers={"Content-Type": "application/json"}
+        "POST",
+        "https://httpbin.org/post",
+        body=encoded_data, # Embedding JSON data into request body.
+        headers={"Content-Type": "application/json"}
     )
     
     print(json.loads(resp.data.decode("utf-8"))["json"])
@@ -312,15 +310,15 @@ approach as :ref:`form_data` and specify the file field as a tuple of
 
     # Reading the text file from local storage.
     with open("example.txt") as fp:
-                file_data = fp.read()
+        file_data = fp.read()
     
     # Sending the request.
     resp = urllib3.request(
-                "POST",
-                "https://httpbin.org/post",
-                fields={
-                    "filefield": ("example.txt", file_data),
-                }
+        "POST",
+        "https://httpbin.org/post",
+        fields={
+           "filefield": ("example.txt", file_data),
+        }
     )
     
     print(json.loads(resp.data.decode("utf-8"))["files"])
@@ -333,11 +331,11 @@ to specify the file's MIME type explicitly:
 .. code-block:: python
 
     resp = urllib3.request(
-             "POST",
-             "https://httpbin.org/post",
-             fields={
-                 "filefield": ("example.txt", file_data, "text/plain"),
-             }
+        "POST",
+        "https://httpbin.org/post",
+        fields={
+            "filefield": ("example.txt", file_data, "text/plain"),
+        }
     )
 
 For sending raw binary data simply specify the ``body`` argument. It's also
@@ -349,15 +347,15 @@ recommended to set the ``Content-Type`` header:
     import urllib3
 
     with open("example.jpg", "rb") as fp:
-                binary_data = fp.read()
+        binary_data = fp.read()
 
     http = urllib3.PoolManager() # Creating a seprate PoolManager instance.
 
     resp = http.request(
-                "POST",
-                "https://httpbin.org/post",
-                body=binary_data,
-                headers={"Content-Type": "image/jpeg"}
+        "POST",
+        "https://httpbin.org/post",
+        body=binary_data,
+        headers={"Content-Type": "image/jpeg"}
     )
     
     print(json.loads(resp.data.decode("utf-8"))["data"])
@@ -398,8 +396,8 @@ that verifies certificates when making requests:
     import urllib3
 
     http = urllib3.PoolManager(
-             cert_reqs="CERT_REQUIRED",
-             ca_certs=certifi.where()
+        cert_reqs="CERT_REQUIRED",
+        ca_certs=certifi.where()
     )
 
 The :class:`~poolmanager.PoolManager` will automatically handle certificate
@@ -411,8 +409,8 @@ verification and will raise :class:`~exceptions.SSLError` if verification fails:
     import urllib3
 
     http = urllib3.PoolManager(
-            cert_reqs="CERT_REQUIRED",
-            ca_certs=certifi.where()
+        cert_reqs="CERT_REQUIRED",
+        ca_certs=certifi.where()
     )
 
     http.request("GET", "https://httpbin.org/")
@@ -441,9 +439,9 @@ to :meth:`~poolmanager.PoolManager.request`:
     http = urllib3.PoolManager()
 
     resp = http.request(
-                "GET",
-                "https://httpbin.org/delay/3",
-                timeout=4.0
+        "GET",
+        "https://httpbin.org/delay/3",
+        timeout=4.0
     )
 
     print(type(resp))
@@ -451,9 +449,9 @@ to :meth:`~poolmanager.PoolManager.request`:
 
     # This request will take more time to process than timeout.
     http.request(
-                "GET",
-                "https://httpbin.org/delay/3",
-                timeout=2.5
+        "GET",
+        "https://httpbin.org/delay/3",
+        timeout=2.5
     )
     # MaxRetryError caused by ReadTimeoutError
 
@@ -466,18 +464,18 @@ instance which lets you specify separate connect and read timeouts:
     http = urllib3.PoolManager()
 
     resp = http.request(
-                "GET",
-                "https://httpbin.org/delay/3",
-                timeout=urllib3.Timeout(connect=1.0)
+        "GET",
+        "https://httpbin.org/delay/3",
+        timeout=urllib3.Timeout(connect=1.0)
     )
     
-    print( type(resp) )
+    print(type(resp))
     # <urllib3.response.HTTPResponse>
 
     http.request(
-                "GET",
-                "https://httpbin.org/delay/3",
-                timeout=urllib3.Timeout(connect=1.0, read=2.0)
+        "GET",
+        "https://httpbin.org/delay/3",
+        timeout=urllib3.Timeout(connect=1.0, read=2.0)
     )
     # MaxRetryError caused by ReadTimeoutError
 
@@ -489,7 +487,7 @@ the timeout at the :class:`~urllib3.poolmanager.PoolManager` level:
 
     http = urllib3.PoolManager(timeout=3.0)
     http = urllib3.PoolManager(
-             timeout=urllib3.Timeout(connect=1.0, read=2.0)
+        timeout=urllib3.Timeout(connect=1.0, read=2.0)
     )
 
 You still override this pool-level timeout by specifying ``timeout`` to
@@ -508,6 +506,7 @@ To change the number of retries just specify an integer:
 .. code-block:: python
 
     import urllib3
+
     http = urllib3.PoolManager()
     http.request("GET", "https://httpbin.org/ip", retries=10)
 
@@ -520,12 +519,12 @@ To disable all retry and redirect logic specify ``retries=False``:
     http = urllib3.PoolManager()
 
     http.request(
-             "GET", "https://nxdomain.example.com", retries=False
+        "GET", "https://nxdomain.example.com", retries=False
     )
     # NewConnectionError
 
     resp = http.request(
-             "GET", "https://httpbin.org/redirect/1", retries=False
+        "GET", "https://httpbin.org/redirect/1", retries=False
     )
 
     print(resp.status)
@@ -536,7 +535,7 @@ To disable redirects but keep the retrying logic, specify ``redirect=False``:
 .. code-block:: python
 
     resp = http.request(
-             "GET", "https://httpbin.org/redirect/1", redirect=False
+        "GET", "https://httpbin.org/redirect/1", redirect=False
     )
     
     print(resp.status)
@@ -550,9 +549,9 @@ For example, to do a total of 3 retries, but limit to only 2 redirects:
 .. code-block:: python
 
     http.request(
-             "GET",
-             "https://httpbin.org/redirect/3",
-             retries=urllib3.Retry(3, redirect=2)
+        "GET",
+        "https://httpbin.org/redirect/3",
+        retries=urllib3.Retry(3, redirect=2)
     )
     # MaxRetryError
 
@@ -562,10 +561,12 @@ You can also disable exceptions for too many redirects and just return the
 .. code-block:: python
 
     resp = http.request(
-             "GET",
-             "https://httpbin.org/redirect/3",
-             retries=urllib3.Retry(
-                 redirect=2, raise_on_redirect=False)
+        "GET",
+        "https://httpbin.org/redirect/3",
+        retries=urllib3.Retry(
+            redirect=2,
+            raise_on_redirect=False
+        )
     )
     
     print(resp.status)
@@ -578,7 +579,7 @@ specify the retry at the :class:`~urllib3.poolmanager.PoolManager` level:
 
     http = urllib3.PoolManager(retries=False)
     http = urllib3.PoolManager(
-             retries=urllib3.Retry(5, redirect=2)
+        retries=urllib3.Retry(5, redirect=2)
     )
 
 You still override this pool-level retry policy by specifying ``retries`` to
@@ -597,7 +598,7 @@ urllib3 wraps lower-level exceptions, for example:
 
     try:
         http.request("GET", "https://nx.example.com", retries=False)
-        
+
     except urllib3.exceptions.NewConnectionError:
         print("Connection failed.")
 
