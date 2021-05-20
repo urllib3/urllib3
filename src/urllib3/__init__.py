@@ -86,7 +86,7 @@ def disable_warnings(category=exceptions.HTTPWarning):
 _DEFAULT_POOL = PoolManager()
 
 
-def request(method, url, fields=None, headers=None):
+def request(method, url, body=None, fields=None, headers=None):
     """
     A convenience, top-level request method. It uses a module-global ``PoolManager`` instance.
     Therefore, its side effects could be shared across dependencies relying on it.
@@ -94,4 +94,4 @@ def request(method, url, fields=None, headers=None):
     The method does not accept low-level ``**urlopen_kw`` keyword arguments.
     """
 
-    return _DEFAULT_POOL.request(method, url, fields=fields, headers=headers)
+    return _DEFAULT_POOL.request(method, url, body=body, fields=fields, headers=headers)

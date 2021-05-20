@@ -65,6 +65,7 @@ class RequestMethods:
         self,
         method: str,
         url: str,
+        body: Optional[HTTPBody] = None,
         fields: Optional[_TYPE_FIELDS] = None,
         headers: Optional[Mapping[str, str]] = None,
         **urlopen_kw: Any,
@@ -82,6 +83,9 @@ class RequestMethods:
         method = method.upper()
 
         urlopen_kw["request_url"] = url
+
+        if body is not None:
+            urlopen_kw["body"] = body
 
         if method in self._encode_url_methods:
             return self.request_encode_url(
