@@ -352,7 +352,7 @@ def parse_url(url: str) -> Url:
     Example:
 
     .. code-block:: python
-    
+
         import urllib3
 
         print( urllib3.util.parse_url('http://google.com/mail/'))
