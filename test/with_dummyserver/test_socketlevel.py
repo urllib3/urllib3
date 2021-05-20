@@ -491,10 +491,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 timed_out.set()
 
         # second ReadTimeoutError due to errno
-        err = mock.Mock()
-        err.errno = errno.EAGAIN
-        with pytest.raises(ReadTimeoutError):
-            pool._raise_timeout(err, "", 0)
+        with HTTPSConnectionPool(host=self.host):
+            err = mock.Mock()
+            err.errno = errno.EAGAIN
+            with pytest.raises(ReadTimeoutError):
+                pool._raise_timeout(err, "", 0)
 
     def test_timeout_errors_cause_retries(self):
         def socket_handler(listener):
