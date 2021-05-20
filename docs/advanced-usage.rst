@@ -11,7 +11,9 @@ The :class:`~poolmanager.PoolManager` class automatically handles creating
 :class:`~connectionpool.ConnectionPool` instances for each host as needed. By
 default, it will keep a maximum of 10 :class:`~connectionpool.ConnectionPool`
 instances. If you're making requests to many different hosts it might improve
-performance to increase this number::
+performance to increase this number.
+
+.. code-block:: python
 
     import urllib3
 
@@ -24,7 +26,9 @@ of individual :class:`~connection.HTTPConnection` instances. These connections
 are used during an individual request and returned to the pool when the request
 is complete. By default only one connection will be saved for re-use. If you
 are making many requests to the same host simultaneously it might improve
-performance to increase this number::
+performance to increase this number.
+
+.. code-block:: python
 
     import urllib3
 
@@ -39,7 +43,9 @@ connection will be created. However, this connection will not be saved if more
 than ``maxsize`` connections exist. This means that ``maxsize`` does not
 determine the maximum number of connections that can be open to a particular
 host, just the maximum number of connections to keep in the pool. However, if you specify ``block=True`` then there can be at most ``maxsize`` connections
-open to a particular host::
+open to a particular host.
+
+.. code-block:: python
 
     http = urllib3.PoolManager(maxsize=10, block=True)
 
@@ -57,7 +63,9 @@ Streaming and I/O
 -----------------
 
 When dealing with large responses it's often better to stream the response
-content::
+content.
+
+.. code-block:: python
 
     import urllib3
 
@@ -83,7 +91,9 @@ chunks of the response content.
     back to the connection pool so that it can be re-used.
 
 However, you can also treat the :class:`~response.HTTPResponse` instance as
-a file-like object. This allows you to do buffering::
+a file-like object. This allows you to do buffering:
+
+.. code-block:: python
 
     import urllib3
 
@@ -122,7 +132,9 @@ data is available.
     resp.release_conn()
 
 You can use this file-like object to do things like decode the content using
-:mod:`codecs`::
+:mod:`codecs`:
+
+.. code-block:: python
 
     import codecs
     import json
@@ -149,7 +161,9 @@ Proxies
 -------
 
 You can use :class:`~poolmanager.ProxyManager` to tunnel requests through an
-HTTP proxy::
+HTTP proxy:
+
+.. code-block:: python
 
     import urllib3
 
@@ -212,12 +226,16 @@ SOCKS Proxies
 For SOCKS, you can use :class:`~contrib.socks.SOCKSProxyManager` to connect to
 SOCKS4 or SOCKS5 proxies. In order to use SOCKS proxies you will need to
 install `PySocks <https://pypi.org/project/PySocks/>`_ or install urllib3 with
-the ``socks`` extra::
+the ``socks`` extra:
+
+.. code-block:: bash
 
      python -m pip install urllib3[socks]
 
 Once PySocks is installed, you can use
-:class:`~contrib.socks.SOCKSProxyManager`::
+:class:`~contrib.socks.SOCKSProxyManager`:
+
+.. code-block:: python
 
     from urllib3.contrib.socks import SOCKSProxyManager
 
@@ -240,7 +258,9 @@ Instead of using `certifi <https://certifi.io/>`_ you can provide your
 own certificate authority bundle. This is useful for cases where you've
 generated your own certificates or when you're using a private certificate
 authority. Just provide the full path to the certificate bundle when creating a
-:class:`~poolmanager.PoolManager`::
+:class:`~poolmanager.PoolManager`:
+
+.. code-block:: python
 
     import urllib3
 
@@ -271,7 +291,9 @@ Normally, urllib3 takes care of setting and checking these values for you when
 you connect to a host by name. However, it's sometimes useful to set a
 connection's expected Host header and certificate hostname (subject),
 especially when you are connecting without using name resolution. For example,
-you could connect to a server by IP using HTTPS like so::
+you could connect to a server by IP using HTTPS like so:
+
+.. code-block:: python
 
     import urllib3
 
@@ -302,7 +324,9 @@ Verifying TLS against a different host
 --------------------------------------
 
 If the server you're connecting to presents a different certificate than the
-hostname or the SNI hostname, you can use ``assert_hostname``::
+hostname or the SNI hostname, you can use ``assert_hostname``:
+
+.. code-block:: python
 
     import urllib3
 
@@ -322,7 +346,9 @@ Client Certificates
 You can also specify a client certificate. This is useful when both the server
 and the client need to verify each other's identity. Typically these
 certificates are issued from the same authority. To use a client certificate,
-provide the full path when creating a :class:`~poolmanager.PoolManager`::
+provide the full path when creating a :class:`~poolmanager.PoolManager`:
+
+.. code-block:: python
 
     http = urllib3.PoolManager(
         cert_file="/path/to/your/client_cert.pem",
@@ -331,7 +357,9 @@ provide the full path when creating a :class:`~poolmanager.PoolManager`::
     )
 
 If you have an encrypted client certificate private key you can use
-the ``key_password`` parameter to specify a password to decrypt the key. ::
+the ``key_password`` parameter to specify a password to decrypt the key.
+
+.. code-block:: python
 
     http = urllib3.PoolManager(
         cert_file="/path/to/your/client_cert.pem",

@@ -147,20 +147,22 @@ class Url(
         :func:`.parse_url`, but it should be equivalent by the RFC (e.g., urls
         with a blank port will have : removed).
 
-        Example: ::
+        Example:
+
+        .. code-block:: python
 
             import urllib3
 
             U = urllib3.util.parse_url("https://google.com/mail/")
 
             print(U.url)
-            # "http://google.com/mail/"
+            # "https://google.com/mail/"
 
-            print( urllib3.util.Url("http", "username:password",
+            print( urllib3.util.Url("https", "username:password",
                                     "host.com", 80, "/path", "query", "fragment"
                                     ).url
                 )
-            # "http://username:password@host.com:80/path?query#fragment"
+            # "https://username:password@host.com:80/path?query#fragment"
         """
         scheme, auth, host, port, path, query, fragment = self
         url = ""
@@ -347,7 +349,10 @@ def parse_url(url: str) -> Url:
 
     Partly backwards-compatible with :mod:`urlparse`.
 
-    Example::
+    Example:
+
+    .. code-block:: python
+    
         import urllib3
 
         print( urllib3.util.parse_url('http://google.com/mail/'))

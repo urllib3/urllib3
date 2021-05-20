@@ -28,7 +28,7 @@ class Timeout:
 
         http = urllib3.PoolManager(timeout=timeout)
 
-        resp = http.request('GET', 'http://example.com/')
+        resp = http.request("GET", "https://example.com/")
 
         print(resp.status)
 
@@ -36,14 +36,14 @@ class Timeout:
 
     .. code-block:: python
 
-       response = http.request('GET', 'http://example.com/', timeout=Timeout(10))
+       response = http.request("GET", "https://example.com/", timeout=Timeout(10))
 
     Timeouts can be disabled by setting all the parameters to ``None``:
 
     .. code-block:: python
 
        no_timeout = Timeout(connect=None, read=None)
-       response = http.request('GET', 'http://example.com/, timeout=no_timeout)
+       response = http.request("GET", "https://example.com/", timeout=no_timeout)
 
 
     :param total:

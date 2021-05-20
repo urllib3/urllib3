@@ -146,7 +146,9 @@ class PoolManager(RequestMethods):
         Additional parameters are used to create fresh
         :class:`urllib3.connectionpool.ConnectionPool` instances.
 
-    Example::
+    Example:
+
+    .. code-block:: python
 
         import urllib3
 
@@ -423,7 +425,9 @@ class ProxyManager(PoolManager):
         private.  IP address, target hostname, SNI, and port are always visible
         to an HTTPS proxy even when this flag is disabled.
 
-    Example::
+    Example:
+
+    .. code-block:: python
 
         import urllib3
 

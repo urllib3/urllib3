@@ -60,7 +60,9 @@ def make_headers(
     :param disable_cache:
         If ``True``, adds 'cache-control: no-cache' header.
 
-    Example::
+    Example:
+
+    .. code-block:: python
 
         import urllib3
 
