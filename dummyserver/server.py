@@ -40,7 +40,7 @@ DEFAULT_CA_KEY = os.path.join(CERTS_PATH, "cacert.key")
 
 
 def _resolves_to_ipv6(host):
-    """ Returns True if the system resolves host to an IPv6 address by default. """
+    """Returns True if the system resolves host to an IPv6 address by default."""
     resolves_to_ipv6 = False
     try:
         for res in socket.getaddrinfo(host, None, socket.AF_UNSPEC):
@@ -54,7 +54,7 @@ def _resolves_to_ipv6(host):
 
 
 def _has_ipv6(host):
-    """ Returns True if the system can bind an IPv6 address. """
+    """Returns True if the system can bind an IPv6 address."""
     sock = None
     has_ipv6 = False
 

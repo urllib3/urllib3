@@ -26,7 +26,7 @@ def no_retry_deprecations():
 
 class TestRetry(object):
     def test_string(self):
-        """ Retry string representation looks the way we expect """
+        """Retry string representation looks the way we expect"""
         retry = Retry()
         assert (
             str(retry)
@@ -50,7 +50,7 @@ class TestRetry(object):
         assert e.value.reason == error
 
     def test_retry_higher_total_loses(self):
-        """ A lower connect timeout than the total is honored """
+        """A lower connect timeout than the total is honored"""
         error = ConnectTimeoutError()
         retry = Retry(connect=2, total=3)
         retry = retry.increment(error=error)
@@ -59,7 +59,7 @@ class TestRetry(object):
             retry.increment(error=error)
 
     def test_retry_higher_total_loses_vs_read(self):
-        """ A lower read timeout than the total is honored """
+        """A lower read timeout than the total is honored"""
         error = ReadTimeoutError(None, "/", "read timed out")
         retry = Retry(read=2, total=3)
         retry = retry.increment(method="GET", error=error)
@@ -68,7 +68,7 @@ class TestRetry(object):
             retry.increment(method="GET", error=error)
 
     def test_retry_total_none(self):
-        """ if Total is none, connect error should take precedence """
+        """if Total is none, connect error should take precedence"""
         error = ConnectTimeoutError()
         retry = Retry(connect=2, total=None)
         retry = retry.increment(error=error)
@@ -85,7 +85,7 @@ class TestRetry(object):
         assert not retry.is_exhausted()
 
     def test_retry_default(self):
-        """ If no value is specified, should retry connects 3 times """
+        """If no value is specified, should retry connects 3 times"""
         retry = Retry()
         assert retry.total == 10
         assert retry.connect is None
@@ -107,7 +107,7 @@ class TestRetry(object):
         assert not Retry(False).raise_on_redirect
 
     def test_retry_other(self):
-        """ If an unexpected error is raised, should retry other times """
+        """If an unexpected error is raised, should retry other times"""
         other_error = SSLError()
         retry = Retry(connect=1)
         retry = retry.increment(error=other_error)
@@ -121,7 +121,7 @@ class TestRetry(object):
         assert e.value.reason == other_error
 
     def test_retry_read_zero(self):
-        """ No second chances on read timeouts, by default """
+        """No second chances on read timeouts, by default"""
         error = ReadTimeoutError(None, "/", "read timed out")
         retry = Retry(read=0)
         with pytest.raises(MaxRetryError) as e:
@@ -140,7 +140,7 @@ class TestRetry(object):
         )
 
     def test_backoff(self):
-        """ Backoff is computed correctly """
+        """Backoff is computed correctly"""
         max_backoff = Retry.BACKOFF_MAX
 
         retry = Retry(total=100, backoff_factor=0.2)

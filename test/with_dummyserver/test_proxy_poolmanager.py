@@ -142,7 +142,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert r.status == 200
 
     def test_nagle_proxy(self):
-        """ Test that proxy connections do not have TCP_NODELAY turned on """
+        """Test that proxy connections do not have TCP_NODELAY turned on"""
         with ProxyManager(self.proxy_url) as http:
             hc2 = http.connection_from_host(self.http_host, self.http_port)
             conn = hc2._get_conn()
