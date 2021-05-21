@@ -534,7 +534,7 @@ class TestConnectionPool:
         _test(SocketError)
         _test(ProtocolError)
 
-    def test_make_request_error(self):
+    def test_read_timeout_0_does_not_raise_bad_status_line_error(self):
         with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
             conn = Mock()
             with patch.object(Timeout, "read_timeout", 0):
