@@ -31,16 +31,14 @@ standard libraries:
 
 urllib3 is powerful and easy to use:
 
-.. code-block:: python
+.. code-block:: pycon
 
-   import urllib3
-
-   resp = urllib3.request("GET", "https://httpbin.org/robots.txt")
-
-   print(resp.status)
-   # 200
-   print(resp.data)
-   # 'User-agent: *\nDisallow: /deny\n'
+   >>> import urllib3
+   >>> resp = urllib3.request("GET", "https://httpbin.org/robots.txt")
+   >>> resp.status
+   200
+   >>> resp.data
+   "User-agent: *\nDisallow: /deny\n"
 
 For Enterprise
 --------------
