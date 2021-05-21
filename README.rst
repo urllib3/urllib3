@@ -45,11 +45,15 @@ urllib3 is powerful and easy to use:
 Installing
 ----------
 
-urllib3 can be installed with `pip <https://pip.pypa.io>`_::
+urllib3 can be installed with `pip <https://pip.pypa.io>`_:
+
+.. code-block:: bash
 
     $ python -m pip install urllib3
 
-Alternatively, you can grab the latest source code from `GitHub <https://github.com/urllib3/urllib3>`_::
+Alternatively, you can grab the latest source code from `GitHub <https://github.com/urllib3/urllib3>`_:
+
+.. code-block:: bash
 
     $ git clone git://github.com/urllib3/urllib3.git
     $ python setup.py install
