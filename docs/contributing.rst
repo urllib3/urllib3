@@ -93,8 +93,14 @@ further parameterize pytest for local testing.
 For all valid arguments, check `the pytest documentation
 <https://docs.pytest.org/en/stable/usage.html#stopping-after-the-first-or-n-failures>`_.
 
-Documentation Guidelines
-------------------------
+Contributing to documentation
+-----------------------------
+
+You can build the docs locally using ``nox``:
+
+.. code-block:: bash
+
+  $ nox -rs docs
 
 While writing documentation you should follow these guidelines:
 
@@ -102,14 +108,14 @@ While writing documentation you should follow these guidelines:
 - Use double quotes for all strings. (Output, Declaration etc.)
 - Use keyword arguments everywhere except for method and url. (ie ``http.request("GET", "https://example.com", headers={...})`` )
 - Use HTTPS in URLs everywhere unless HTTP is needed.
-- Rules for naming variables:
+- Rules for code examples and naming variables:
 
-  - PoolManager should be http. (ie ``http = urllib3.PoolManager(...)``)
-  - ProxyManager should be proxy.
-  - ConnectionPool should be pool.
-  - Connection should be conn.
-  -  HTTPResponse should be resp.
-  -  Only use example.com or httpbin.org for example URLs
+  - ``PoolManager`` instances should be named ``http``. (ie ``http = urllib3.PoolManager(...)``)
+  - ``ProxyManager`` instances should be named ``proxy``.
+  - ``ConnectionPool`` instances should be named ``pool``.
+  - ``Connection`` instances should be named ``conn``.
+  - ``HTTPResponse`` instances should be named ``resp``.
+  -  Only use ``example.com`` or ``httpbin.org`` for example URLs
 
 - Comments within snippets should be useful, if what's being done is apparent
   (such as parsing JSON, making a request) then it can be skipped for that section.
@@ -121,21 +127,6 @@ While writing documentation you should follow these guidelines:
 - No whitespace is required between the sections as normally would be in case of isort.
 - Add print statements along with a comment below them showing the output, potentially compressed.
 - This helps users using the copy-paste button immediately see the results from a script.
-
-For testing, you can build the docs locally using:
-
-
-.. code-block:: bash
-
-  $ nox -rs docs
-
-Incase you're modifying a python file for documentation, please run the linter and see if it catches any errors.
-
-To run the linter locally run:
-
-.. code-block:: bash
-
-  $ nox -rs lint
 
 Releases
 --------
