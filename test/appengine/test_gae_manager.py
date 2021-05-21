@@ -129,7 +129,7 @@ class TestGAERetry(test_connectionpool.TestRetry):
         self.pool = MockPool(self.host, self.port, self.manager)
 
     def test_default_method_whitelist_retried(self):
-        """ urllib3 should retry methods in the default method whitelist """
+        """urllib3 should retry methods in the default method whitelist"""
         retry = urllib3.util.retry.Retry(total=1, status_forcelist=[418])
         # Use HEAD instead of OPTIONS, as URLFetch doesn't support OPTIONS
         resp = self.pool.request(

@@ -62,27 +62,27 @@ class TestingApp(RequestHandler):
     """
 
     def get(self):
-        """ Handle GET requests """
+        """Handle GET requests"""
         self._call_method()
 
     def post(self):
-        """ Handle POST requests """
+        """Handle POST requests"""
         self._call_method()
 
     def put(self):
-        """ Handle PUT requests """
+        """Handle PUT requests"""
         self._call_method()
 
     def options(self):
-        """ Handle OPTIONS requests """
+        """Handle OPTIONS requests"""
         self._call_method()
 
     def head(self):
-        """ Handle HEAD requests """
+        """Handle HEAD requests"""
         self._call_method()
 
     def _call_method(self):
-        """ Call the correct method in this class based on the incoming URI """
+        """Call the correct method in this class based on the incoming URI"""
         req = self.request
         req.params = {}
         for k, v in req.arguments.items():
