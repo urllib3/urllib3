@@ -70,7 +70,6 @@ content.
     import urllib3
 
     http = urllib3.PoolManager()
-
     resp = http.request(
         "GET",
         "https://httpbin.org/bytes/1024",
@@ -98,7 +97,6 @@ a file-like object. This allows you to do buffering:
     import urllib3
 
     http = urllib3.PoolManager()
-
     resp = http.request(
         "GET",
         "https://httpbin.org/bytes/1024",
@@ -117,7 +115,6 @@ data is available.
     import urllib3
 
     http = urllib3.PoolManager()
-
     resp = http.request(
         "GET",
         "https://httpbin.org/bytes/1024",
@@ -125,7 +122,6 @@ data is available.
     )
 
     reader = io.BufferedReader(resp, 8)
-
     print(reader.read(4))
     # b"\xbf\x9c\xd6"
 
@@ -141,9 +137,7 @@ You can use this file-like object to do things like decode the content using
     import urllib3
 
     reader = codecs.getreader("utf-8")
-
     http = urllib3.PoolManager()
-
     resp = http.request(
         "GET",
         "https://httpbin.org/ip",
@@ -168,7 +162,6 @@ HTTP proxy:
     import urllib3
 
     proxy = urllib3.ProxyManager("https://localhost:3128/")
-
     proxy.request("GET", "https://google.com/")
 
 The usage of :class:`~poolmanager.ProxyManager` is the same as
@@ -240,7 +233,6 @@ Once PySocks is installed, you can use
     from urllib3.contrib.socks import SOCKSProxyManager
 
     proxy = SOCKSProxyManager("socks5h://localhost:8889/")
-
     proxy.request("GET", "https://google.com/")
 
 .. note::
@@ -268,7 +260,6 @@ authority. Just provide the full path to the certificate bundle when creating a
         cert_reqs="CERT_REQUIRED",
         ca_certs="/path/to/your/certificate_bundle"
     )
-
     resp = http.request("GET", "https://example.com")
 
 When you specify your own certificate bundle only requests that can be
@@ -301,8 +292,7 @@ you could connect to a server by IP using HTTPS like so:
         "104.154.89.105",
         server_hostname="badssl.com"
     )
-
-    pool.urlopen(
+    pool.request(
         "GET",
         "/",
         headers={"Host": "badssl.com"},
@@ -334,8 +324,7 @@ hostname or the SNI hostname, you can use ``assert_hostname``:
         "wrong.host.badssl.com",
         assert_hostname="badssl.com",
     )
-
-    pool.urlopen("GET", "/")
+    pool.request("GET", "/")
 
 
 .. _ssl_client:
@@ -442,7 +431,6 @@ Here's an example using brotli encoding via the ``Accept-Encoding`` header:
     import urllib3
 
     http = urllib3.PoolManager()
-
     http.request(
         "GET",
         "https://www.google.com/",
