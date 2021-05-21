@@ -37,19 +37,25 @@ class Retry:
     Each retry attempt will create a new Retry object with updated values, so
     they can be safely reused.
 
-    Retries can be defined as a default for a pool::
+    Retries can be defined as a default for a pool:
+
+    .. code-block:: python
 
         retries = Retry(connect=5, read=2, redirect=5)
         http = PoolManager(retries=retries)
-        response = http.request('GET', 'http://example.com/')
+        response = http.request("GET", "https://example.com/")
 
-    Or per-request (which overrides the default for the pool)::
+    Or per-request (which overrides the default for the pool):
 
-        response = http.request('GET', 'http://example.com/', retries=Retry(10))
+    .. code-block:: python
 
-    Retries can be disabled by passing ``False``::
+        response = http.request("GET", "https://example.com/", retries=Retry(10))
 
-        response = http.request('GET', 'http://example.com/', retries=False)
+    Retries can be disabled by passing ``False``:
+
+    .. code-block:: python
+
+        response = http.request("GET", "https://example.com/", retries=False)
 
     Errors will be wrapped in :class:`~urllib3.exceptions.MaxRetryError` unless
     retries are disabled, in which case the causing exception will be raised.

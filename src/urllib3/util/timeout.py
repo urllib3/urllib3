@@ -22,22 +22,28 @@ class Timeout:
 
     .. code-block:: python
 
-       timeout = Timeout(connect=2.0, read=7.0)
-       http = PoolManager(timeout=timeout)
-       response = http.request('GET', 'http://example.com/')
+        import urllib3
+
+        timeout = urllib3.util.Timeout(connect=2.0, read=7.0)
+
+        http = urllib3.PoolManager(timeout=timeout)
+
+        resp = http.request("GET", "https://example.com/")
+
+        print(resp.status)
 
     Or per-request (which overrides the default for the pool):
 
     .. code-block:: python
 
-       response = http.request('GET', 'http://example.com/', timeout=Timeout(10))
+       response = http.request("GET", "https://example.com/", timeout=Timeout(10))
 
     Timeouts can be disabled by setting all the parameters to ``None``:
 
     .. code-block:: python
 
        no_timeout = Timeout(connect=None, read=None)
-       response = http.request('GET', 'http://example.com/, timeout=no_timeout)
+       response = http.request("GET", "https://example.com/", timeout=no_timeout)
 
 
     :param total:

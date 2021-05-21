@@ -147,14 +147,22 @@ class Url(
         :func:`.parse_url`, but it should be equivalent by the RFC (e.g., urls
         with a blank port will have : removed).
 
-        Example: ::
+        Example:
 
-            >>> U = parse_url('http://google.com/mail/')
-            >>> U.url
-            'http://google.com/mail/'
-            >>> Url('http', 'username:password', 'host.com', 80,
-            ... '/path', 'query', 'fragment').url
-            'http://username:password@host.com:80/path?query#fragment'
+        .. code-block:: python
+
+            import urllib3
+
+            U = urllib3.util.parse_url("https://google.com/mail/")
+
+            print(U.url)
+            # "https://google.com/mail/"
+
+            print( urllib3.util.Url("https", "username:password",
+                                    "host.com", 80, "/path", "query", "fragment"
+                                    ).url
+                )
+            # "https://username:password@host.com:80/path?query#fragment"
         """
         scheme, auth, host, port, path, query, fragment = self
         url = ""
@@ -341,14 +349,20 @@ def parse_url(url: str) -> Url:
 
     Partly backwards-compatible with :mod:`urlparse`.
 
-    Example::
+    Example:
 
-        >>> parse_url('http://google.com/mail/')
-        Url(scheme='http', host='google.com', port=None, path='/mail/', ...)
-        >>> parse_url('google.com:80')
-        Url(scheme=None, host='google.com', port=80, path=None, ...)
-        >>> parse_url('/foo?bar')
-        Url(scheme=None, host=None, port=None, path='/foo', query='bar', ...)
+    .. code-block:: python
+
+        import urllib3
+
+        print( urllib3.util.parse_url('http://google.com/mail/'))
+        # Url(scheme='http', host='google.com', port=None, path='/mail/', ...)
+
+        print( urllib3.util.parse_url('google.com:80'))
+        # Url(scheme=None, host='google.com', port=80, path=None, ...)
+
+        print( urllib3.util.parse_url('/foo?bar'))
+        # Url(scheme=None, host=None, port=None, path='/foo', query='bar', ...)
     """
     if not url:
         # Empty

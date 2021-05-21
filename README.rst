@@ -30,25 +30,28 @@ standard libraries:
 
 urllib3 is powerful and easy to use:
 
-.. code-block:: python
+.. code-block:: pycon
 
-    >>> import urllib3
-    >>> http = urllib3.PoolManager()
-    >>> r = http.request('GET', 'http://httpbin.org/robots.txt')
-    >>> r.status
-    200
-    >>> r.data
-    'User-agent: *\nDisallow: /deny\n'
+   >>> import urllib3
+   >>> resp = urllib3.request("GET", "https://httpbin.org/robots.txt")
+   >>> resp.status
+   200
+   >>> resp.data
+   "User-agent: *\nDisallow: /deny\n"
 
 
 Installing
 ----------
 
-urllib3 can be installed with `pip <https://pip.pypa.io>`_::
+urllib3 can be installed with `pip <https://pip.pypa.io>`_:
+
+.. code-block:: bash
 
     $ python -m pip install urllib3
 
-Alternatively, you can grab the latest source code from `GitHub <https://github.com/urllib3/urllib3>`_::
+Alternatively, you can grab the latest source code from `GitHub <https://github.com/urllib3/urllib3>`_:
+
+.. code-block:: bash
 
     $ git clone git://github.com/urllib3/urllib3.git
     $ python setup.py install
