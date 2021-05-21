@@ -334,6 +334,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
 
+    def test_body(self):
+        with PoolManager() as http:
+            r = http.request("POST", f"{self.base_url}/echo", body=b"test")
+            assert r.data == b"test"
+
     def test_http_with_ssl_keywords(self):
         with PoolManager(ca_certs="REQUIRED") as http:
             r = http.request("GET", f"http://{self.host}:{self.port}/")
@@ -367,6 +372,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
         r = request("GET", f"{self.base_url}/")
         assert r.status == 200
         assert r.data == b"Dummy server!"
+
+    def test_top_level_request_with_body(self):
+        r = request("POST", f"{self.base_url}/echo", body=b"test")
+        assert r.status == 200
+        assert r.data == b"test"
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")
