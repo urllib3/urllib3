@@ -57,7 +57,6 @@ HTTP verb:
     import urllib3
 
     http = urllib3.PoolManager()
-
     resp = http.request(
         "POST",
         "https://httpbin.org/post",
@@ -90,7 +89,7 @@ The :class:`~response.HTTPResponse` object provides
 
     import urllib3
 
-    # Making the request. (The request function returns HTTPResponse object.)
+    # Making the request (The request function returns HTTPResponse object)
     resp = urllib3.request("GET", "https://httpbin.org/ip")
 
     print(resp.status)
@@ -583,10 +582,7 @@ specify the retry at the :class:`~urllib3.poolmanager.PoolManager` level:
 
     http = urllib3.PoolManager(retries=False)
     http = urllib3.PoolManager(
-        retries=urllib3.Retry(
-            5,
-            redirect=2
-        )
+        retries=urllib3.Retry(5, redirect=2)
     )
 
 You still override this pool-level retry policy by specifying ``retries`` to
