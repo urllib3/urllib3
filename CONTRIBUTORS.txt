@@ -318,5 +318,8 @@ In chronological order:
 * Bastian Venthur <https://venthur.de>
   * Added body-parameter to top-level request() and RequestMethods.request
 
+* Bastian Venthur <https://venthur.de>
+  * fixed all remaining coverage checks for raise statements
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]

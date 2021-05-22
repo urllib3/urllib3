@@ -5,7 +5,7 @@ from queue import Empty
 from socket import error as SocketError
 from ssl import SSLError as BaseSSLError
 from test import SHORT_TIMEOUT
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -25,6 +25,7 @@ from urllib3.exceptions import (
     LocationValueError,
     MaxRetryError,
     ProtocolError,
+    ReadTimeoutError,
     SSLError,
     TimeoutError,
 )
@@ -532,6 +533,14 @@ class TestConnectionPool:
         _test(HTTPException)
         _test(SocketError)
         _test(ProtocolError)
+
+    def test_read_timeout_0_does_not_raise_bad_status_line_error(self):
+        with HTTPConnectionPool(host="localhost", maxsize=1) as pool:
+            conn = Mock()
+            with patch.object(Timeout, "read_timeout", 0):
+                timeout = Timeout(1, 1, 1)
+                with pytest.raises(ReadTimeoutError):
+                    pool._make_request(conn, "", "", timeout)
 
     def test_custom_http_response_class(self):
         class CustomHTTPResponse(HTTPResponse):

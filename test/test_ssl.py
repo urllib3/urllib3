@@ -2,7 +2,7 @@ from unittest import mock
 
 import pytest
 
-from urllib3.exceptions import SNIMissingWarning, SSLError
+from urllib3.exceptions import ProxySchemeUnsupported, SNIMissingWarning, SSLError
 from urllib3.util import ssl_
 
 
@@ -95,6 +95,11 @@ class TestSSL:
             assert context.set_ciphers.call_count == 1
             assert context.set_ciphers.call_args == mock.call(expected_ciphers)
 
+    def test_create_urllib3_no_context(self):
+        with mock.patch("urllib3.util.ssl_.SSLContext", None):
+            with pytest.raises(TypeError):
+                ssl_.create_urllib3_context()
+
     def test_wrap_socket_given_context_no_load_default_certs(self):
         context = mock.create_autospec(ssl_.SSLContext)
         context.load_default_certs = mock.Mock()
@@ -128,6 +133,12 @@ class TestSSL:
         ssl_.ssl_wrap_socket(sock)
 
         context.load_default_certs.assert_called_with()
+
+    def test_wrap_socket_no_ssltransport(self):
+        with mock.patch("urllib3.util.ssl_.SSLTransport", None):
+            with pytest.raises(ProxySchemeUnsupported):
+                sock = mock.Mock()
+                ssl_.ssl_wrap_socket(sock, tls_in_tls=True)
 
     @pytest.mark.parametrize(
         ["pha", "expected_pha"], [(None, None), (False, True), (True, True)]

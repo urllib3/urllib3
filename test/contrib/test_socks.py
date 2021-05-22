@@ -1,7 +1,9 @@
 import socket
 import threading
 from socket import getaddrinfo as real_getaddrinfo
+from socket import timeout as SocketTimeout
 from test import SHORT_TIMEOUT
+from unittest.mock import patch
 
 import pytest
 import socks as py_socks
@@ -340,6 +342,14 @@ class TestSocks5Proxy(IPV4SocketDummyServerTestCase):
                     "GET", "http://example.com", timeout=SHORT_TIMEOUT, retries=False
                 )
             event.set()
+
+    @patch("socks.create_connection")
+    def test_socket_timeout(self, create_connection):
+        create_connection.side_effect = SocketTimeout()
+        proxy_url = f"socks5h://{self.host}:{self.port}"
+        with socks.SOCKSProxyManager(proxy_url) as pm:
+            with pytest.raises(ConnectTimeoutError, match="timed out"):
+                pm.request("GET", "http://example.com", retries=False)
 
     def test_connection_failure(self):
         event = threading.Event()

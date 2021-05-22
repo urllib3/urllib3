@@ -145,6 +145,7 @@ class TestUtil:
             "http://::1/",
             "http://::1:80/",
             "http://google.com:-80",
+            "http://google.com:65536",
             "http://google.com:\xb2\xb2",  # \xb2 = ^2
             # Invalid IDNA labels
             "http://\uD7FF.com",
@@ -546,6 +547,7 @@ class TestUtil:
             ({"read": True}, "cannot be a boolean"),
             ({"connect": 0}, "less than or equal"),
             ({"read": "foo"}, "int, float or None"),
+            ({"read": "1.0"}, "int, float or None"),
         ],
     )
     def test_invalid_timeouts(self, kwargs, message):
@@ -743,6 +745,12 @@ class TestUtil:
         getaddrinfo.return_value = [(None, None, None, None, None)]
         socket.return_value = Mock()
         create_connection((host, 80))
+
+    @patch("socket.getaddrinfo")
+    def test_create_connection_error(self, getaddrinfo):
+        getaddrinfo.return_value = []
+        with pytest.raises(OSError, match="getaddrinfo returns an empty list"):
+            create_connection(("example.com", 80))
 
     @pytest.mark.parametrize(
         "input,params,expected",

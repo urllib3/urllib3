@@ -11,6 +11,7 @@ from unittest import mock
 import pytest
 
 from urllib3.exceptions import (
+    BodyNotHttplibCompatible,
     DecodeError,
     IncompleteRead,
     InvalidChunkLength,
@@ -743,6 +744,15 @@ class TestResponse:
         resp = HTTPResponse(fp, preload_content=False)
         r = resp.read_chunked()
         with pytest.raises(ResponseNotChunked):
+            next(r)
+
+    def test_read_chunked_not_supported(self):
+        fp = BytesIO(b"foo")
+        resp = HTTPResponse(
+            fp, preload_content=False, headers={"transfer-encoding": "chunked"}
+        )
+        r = resp.read_chunked()
+        with pytest.raises(BodyNotHttplibCompatible):
             next(r)
 
     def test_buggy_incomplete_read(self):

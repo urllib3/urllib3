@@ -13,7 +13,7 @@ from urllib3.connection import (
 from urllib3.util.ssl_match_hostname import (
     CertificateError as ImplementationCertificateError,
 )
-from urllib3.util.ssl_match_hostname import match_hostname
+from urllib3.util.ssl_match_hostname import _dnsname_match, match_hostname
 
 
 class TestConnection:
@@ -82,6 +82,16 @@ class TestConnection:
         cert = {"subjectAltName": [("DNS", "foo*")]}
         asserted_hostname = "foobar"
         _match_hostname(cert, asserted_hostname)
+
+    def test_match_hostname_more_than_one_dnsname_error(self):
+        cert = {"subjectAltName": [("DNS", "foo*"), ("DNS", "fo*")]}
+        asserted_hostname = "bar"
+        with pytest.raises(CertificateError, match="doesn't match either of"):
+            _match_hostname(cert, asserted_hostname)
+
+    def test_dnsname_match_include_more_than_one_wildcard_error(self):
+        with pytest.raises(CertificateError, match="too many wildcards in certificate"):
+            _dnsname_match("foo**", "foobar")
 
     def test_match_hostname_ignore_common_name(self):
         cert = {"subject": [("commonName", "foo")]}
