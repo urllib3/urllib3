@@ -714,7 +714,7 @@ class SecureTransportContext:
     SecureTransport.
     """
 
-    def __init__(self, protocol=util.PROTOCOL_TLS):
+    def __init__(self, protocol):
         self._min_version, self._max_version = _protocol_to_min_max[protocol]
         self._options = 0
         self._verify = False
