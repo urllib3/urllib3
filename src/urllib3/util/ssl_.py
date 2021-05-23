@@ -50,6 +50,7 @@ try:  # Do we have ssl at all?
         OPENSSL_VERSION,
         OPENSSL_VERSION_NUMBER,
         PROTOCOL_TLS,
+        PROTOCOL_TLS_CLIENT,
         OP_NO_SSLv2,
         OP_NO_SSLv3,
         SSLContext,
@@ -66,13 +67,7 @@ except ImportError:
     OP_NO_SSLv2 = 0x1000000  # type: ignore
     OP_NO_SSLv3 = 0x2000000  # type: ignore
     PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
-
-# PROTOCOL_TLS_CLIENT is essentially PROTOCOL_TLS with additional
-# configuration so if it's not available we fallback on PROTOCOL_TLS.
-try:
-    from ssl import PROTOCOL_TLS_CLIENT
-except ImportError:
-    PROTOCOL_TLS_CLIENT = PROTOCOL_TLS
+    PROTOCOL_TLS_CLIENT = 16
 
 
 _PCTRTT = Tuple[Tuple[str, str], ...]
@@ -233,9 +228,10 @@ def create_urllib3_context(
 
     # PROTOCOL_TLS is deprecated in Python 3.10 so we pass PROTOCOL_TLS_CLIENT instead.
     # If it's not available in 'ssl' the value is aliased to PROTOCOL_TLS anyways.
-    if ssl_version == PROTOCOL_TLS:
+    if ssl_version in (None, PROTOCOL_TLS):
         ssl_version = PROTOCOL_TLS_CLIENT
-    context = SSLContext(ssl_version or PROTOCOL_TLS_CLIENT)
+
+    context = SSLContext(ssl_version)
 
     # Unless we're given ciphers defer to either system ciphers in
     # the case of OpenSSL 1.1.1+ or use our own secure default ciphers.
@@ -279,8 +275,8 @@ def create_urllib3_context(
     # complex because we don't know whether PROTOCOL_TLS_CLIENT will be used
     # or not so we don't know the initial state of the freshly created SSLContext.
     if cert_reqs == ssl.CERT_REQUIRED:
-        # We ask for verification here but it may be disabled in HTTPSConnection.connect
         context.verify_mode = cert_reqs
+        # We ask for verification here but it may be disabled in HTTPSConnection.connect
         context.check_hostname = True
     else:
         context.check_hostname = False
