@@ -61,12 +61,12 @@ _IPV6_ADDRZ_RE = re.compile("^" + _IPV6_ADDRZ_PAT + "$")
 _BRACELESS_IPV6_ADDRZ_RE = re.compile("^" + _IPV6_ADDRZ_PAT[2:-2] + "$")
 _ZONE_ID_RE = re.compile("(" + _ZONE_ID_PAT + r")\]$")
 
-_SUBAUTHORITY_PAT = ("^(?:(.*)@)?(%s|%s|%s)(?::([0-9]{0,5}))?$") % (
+_HOST_PORT_PAT = ("^(%s|%s|%s)(?::([0-9]{0,5}))?$") % (
     _REG_NAME_PAT,
     _IPV4_PAT,
     _IPV6_ADDRZ_PAT,
 )
-_SUBAUTHORITY_RE = re.compile(_SUBAUTHORITY_PAT, re.UNICODE | re.DOTALL)
+_HOST_PORT_RE = re.compile(_HOST_PORT_PAT, re.UNICODE | re.DOTALL)
 
 _UNRESERVED_CHARS = set(
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-~"
@@ -390,7 +390,9 @@ def parse_url(url: str) -> Url:
             scheme = scheme.lower()
 
         if authority:
-            auth, host, port = _SUBAUTHORITY_RE.match(authority).groups()  # type: ignore
+            auth, _, host_port = authority.rpartition("@")
+            auth = auth or None
+            host, port = _HOST_PORT_RE.match(host_port).groups()  # type: ignore
             if auth and normalize_uri:
                 auth = _encode_invalid_chars(auth, _USERINFO_CHARS)
             if port == "":
