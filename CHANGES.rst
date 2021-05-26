@@ -1,6 +1,15 @@
 Changes
 =======
 
+1.26.5 (2021-05-26)
+-------------------
+
+* Fixed deprecation warnings emitted in Python 3.10.
+* Updated vendored ``six`` library to 1.16.0.
+* Improved performance of URL parser when splitting
+  the authority component.
+
+
 1.26.4 (2021-03-15)
 -------------------
 
