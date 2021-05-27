@@ -16,8 +16,3 @@ else
     # We're not in "dual Python" mode, so we can just install Nox normally.
     python3 -m pip install nox
 fi
-
-if [[ "${NOX_SESSION}" == "app_engine" ]]; then
-    python -m pip install gcp-devrel-py-tools
-    gcp-devrel-py-tools download-appengine-sdk "$(dirname ${GAE_SDK_PATH})"
-fi
