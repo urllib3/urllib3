@@ -1,5 +1,6 @@
 import os
 import shutil
+import subprocess
 
 import nox
 
@@ -86,22 +87,26 @@ def app_engine(session):
 @nox.session()
 def format(session):
     """Run code formatters."""
-    session.install("black", "isort")
-    session.run("black", *SOURCE_FILES)
-    session.run("isort", *SOURCE_FILES)
+    session.install("pre-commit")
+    session.run("pre-commit", "--version")
+
+    process = subprocess.run(
+        ["pre-commit", "run", "--all-files"],
+        env=session.env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    # Ensure that pre-commit itself ran successfully
+    assert process.returncode in (0, 1)
 
     lint(session)
 
 
 @nox.session
 def lint(session):
-    session.install("flake8", "flake8-2020", "black", "isort")
-    session.run("flake8", "--version")
-    session.run("black", "--version")
-    session.run("isort", "--version")
-    session.run("black", "--check", *SOURCE_FILES)
-    session.run("isort", "--check", *SOURCE_FILES)
-    session.run("flake8", *SOURCE_FILES)
+    session.install("pre-commit")
+    session.run("pre-commit", "run", "--all-files")
 
 
 @nox.session
