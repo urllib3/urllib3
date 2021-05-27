@@ -422,7 +422,7 @@ def ssl_wrap_socket(
     try:
         if hasattr(context, "set_alpn_protocols"):
             context.set_alpn_protocols(ALPN_PROTOCOLS)
-    except NotImplementedError:
+    except NotImplementedError:  # Defensive: in CI, we always have set_alpn_protocols
         pass
 
     # If we detect server_hostname is an IP address then the SNI
