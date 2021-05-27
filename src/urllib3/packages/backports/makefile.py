@@ -17,7 +17,7 @@ def backport_makefile(
     Backport of ``socket.makefile`` from Python 3.5.
     """
     if not set(mode) <= {"r", "w", "b"}:
-        raise ValueError("invalid mode %r (only r, w, b allowed)" % (mode,))
+        raise ValueError("invalid mode {!r} (only r, w, b allowed)".format(mode))
     writing = "w" in mode
     reading = "r" in mode or not writing
     assert reading or writing

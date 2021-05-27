@@ -340,7 +340,7 @@ class HTTPResponse(io.IOBase):
                 # (e.g. Content-Length: 42, 42). This line ensures the values
                 # are all valid ints and that as long as the `set` length is 1,
                 # all values are the same. Otherwise, the header is invalid.
-                lengths = set([int(val) for val in length.split(",")])
+                lengths = {int(val) for val in length.split(",")}
                 if len(lengths) > 1:
                     raise InvalidHeader(
                         "Content-Length contained multiple "

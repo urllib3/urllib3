@@ -554,7 +554,7 @@ def remove_move(name):
         try:
             del moves.__dict__[name]
         except KeyError:
-            raise AttributeError("no such move, %r" % (name,))
+            raise AttributeError("no such move, {!r}".format(name))
 
 
 if PY3:
@@ -785,7 +785,7 @@ else:
             del frame
         elif _locs_ is None:
             _locs_ = _globs_
-        exec("""exec _code_ in _globs_, _locs_""")
+        exec ("""exec _code_ in _globs_, _locs_""")
 
     exec_(
         """def reraise(tp, value, tb=None):

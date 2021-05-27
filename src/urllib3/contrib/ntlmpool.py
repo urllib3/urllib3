@@ -77,7 +77,9 @@ class NTLMConnectionPool(HTTPSConnectionPool):
                 auth_header_value = s[5:]
         if auth_header_value is None:
             raise Exception(
-                "Unexpected %s response header: %s" % (resp_header, reshdr[resp_header])
+                "Unexpected {} response header: {}".format(
+                    resp_header, reshdr[resp_header]
+                )
             )
 
         # Send authentication message
@@ -97,7 +99,9 @@ class NTLMConnectionPool(HTTPSConnectionPool):
         if res.status != 200:
             if res.status == 401:
                 raise Exception("Server rejected request: wrong username or password")
-            raise Exception("Wrong server response: %s %s" % (res.status, res.reason))
+            raise Exception(
+                "Wrong server response: {} {}".format(res.status, res.reason)
+            )
 
         res.fp = None
         log.debug("Connection established")

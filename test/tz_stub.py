@@ -25,7 +25,7 @@ def stub_timezone_ctx(tzname):
     # Make sure the new timezone exists, at least in dateutil
     new_tz = tz.gettz(tzname)
     if new_tz is None:
-        raise ValueError("Invalid timezone specified: %r" % (tzname,))
+        raise ValueError("Invalid timezone specified: {!r}".format(tzname))
 
     # Get the current timezone
     local_tz = tz.tzlocal()

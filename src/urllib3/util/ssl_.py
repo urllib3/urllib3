@@ -193,7 +193,7 @@ def assert_fingerprint(cert, fingerprint):
     digest_length = len(fingerprint)
     hashfunc = HASHFUNC_MAP.get(digest_length)
     if not hashfunc:
-        raise SSLError("Fingerprint of invalid length: {0}".format(fingerprint))
+        raise SSLError("Fingerprint of invalid length: {}".format(fingerprint))
 
     # We need encode() here for py32; works on py2 and p33.
     fingerprint_bytes = unhexlify(fingerprint.encode())
@@ -202,7 +202,7 @@ def assert_fingerprint(cert, fingerprint):
 
     if not _const_compare_digest(cert_digest, fingerprint_bytes):
         raise SSLError(
-            'Fingerprints did not match. Expected "{0}", got "{1}".'.format(
+            'Fingerprints did not match. Expected "{}", got "{}".'.format(
                 fingerprint, hexlify(cert_digest)
             )
         )

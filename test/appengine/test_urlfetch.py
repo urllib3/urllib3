@@ -19,7 +19,9 @@ class MockResponse(object):
         self.final_url = final_url
         self.header_msg = httplib.HTTPMessage(
             StringIO.StringIO(
-                "".join(["%s: %s\n" % (k, v) for k, v in headers.iteritems()] + ["\n"])
+                "".join(
+                    ["{}: {}\n".format(k, v) for k, v in headers.iteritems()] + ["\n"]
+                )
             )
         )
         self.headers = headers

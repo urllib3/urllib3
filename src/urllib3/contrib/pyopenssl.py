@@ -106,7 +106,7 @@ _stdlib_to_openssl_verify = {
     ssl.CERT_REQUIRED: OpenSSL.SSL.VERIFY_PEER
     + OpenSSL.SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
 }
-_openssl_to_stdlib_verify = dict((v, k) for k, v in _stdlib_to_openssl_verify.items())
+_openssl_to_stdlib_verify = {v: k for k, v in _stdlib_to_openssl_verify.items()}
 
 # OpenSSL will only write 16K at a time
 SSL_WRITE_BLOCKSIZE = 16384

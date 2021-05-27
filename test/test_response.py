@@ -1046,12 +1046,12 @@ class MockChunkedInvalidChunkLength(MockChunkedEncodingResponse):
     BAD_LENGTH_LINE = "ZZZ\r\n"
 
     def _encode_chunk(self, chunk):
-        return "%s%s\r\n" % (self.BAD_LENGTH_LINE, chunk.decode())
+        return "{}{}\r\n".format(self.BAD_LENGTH_LINE, chunk.decode())
 
 
 class MockChunkedEncodingWithoutCRLFOnEnd(MockChunkedEncodingResponse):
     def _encode_chunk(self, chunk):
-        return "%X\r\n%s%s" % (
+        return "{:X}\r\n{}{}".format(
             len(chunk),
             chunk.decode(),
             "\r\n" if len(chunk) > 0 else "",
@@ -1060,7 +1060,7 @@ class MockChunkedEncodingWithoutCRLFOnEnd(MockChunkedEncodingResponse):
 
 class MockChunkedEncodingWithExtensions(MockChunkedEncodingResponse):
     def _encode_chunk(self, chunk):
-        return "%X;asd=qwe\r\n%s\r\n" % (len(chunk), chunk.decode())
+        return "{:X};asd=qwe\r\n{}\r\n".format(len(chunk), chunk.decode())
 
 
 class MockSock(object):

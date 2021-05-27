@@ -280,7 +280,7 @@ class Retry(object):
         self.history = history or tuple()
         self.respect_retry_after_header = respect_retry_after_header
         self.remove_headers_on_redirect = frozenset(
-            [h.lower() for h in remove_headers_on_redirect]
+            h.lower() for h in remove_headers_on_redirect
         )
 
     def new(self, **kw):

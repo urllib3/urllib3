@@ -112,7 +112,7 @@ class TestingApp(RequestHandler):
         cert = request.get_ssl_certificate()
         subject = dict()
         if cert is not None:
-            subject = dict((k, v) for (k, v) in [y for z in cert["subject"] for y in z])
+            subject = {k: v for (k, v) in [y for z in cert["subject"] for y in z]}
         return Response(json.dumps(subject))
 
     def alpn_protocol(self, request):
@@ -128,7 +128,7 @@ class TestingApp(RequestHandler):
         test_type = request.params.get("test_type")
         test_id = request.params.get("test_id")
         if test_id:
-            print("\nNew test %s: %s" % (test_type, test_id))
+            print("\nNew test {}: {}".format(test_type, test_id))
         else:
             print("\nNew test %s" % test_type)
         return Response("Dummy server is ready!")
@@ -141,7 +141,7 @@ class TestingApp(RequestHandler):
 
         if request.method != method:
             return Response(
-                "Wrong method: %s != %s" % (method, request.method),
+                "Wrong method: {} != {}".format(method, request.method),
                 status="400 Bad Request",
             )
         return Response()
@@ -174,7 +174,7 @@ class TestingApp(RequestHandler):
         # Tornado can leave the trailing \n in place on the filename.
         if filename != got_filename:
             return Response(
-                u"Wrong filename: %s != %s" % (filename, file_.filename),
+                u"Wrong filename: {} != {}".format(filename, file_.filename),
                 status="400 Bad Request",
             )
 
@@ -197,7 +197,7 @@ class TestingApp(RequestHandler):
         "Performs a redirect chain based on ``redirect_codes``"
         codes = request.params.get("redirect_codes", b"200").decode("utf-8")
         head, tail = codes.split(",", 1) if "," in codes else (codes, None)
-        status = "{0} {1}".format(head, responses[int(head)])
+        status = "{} {}".format(head, responses[int(head)])
         if not tail:
             return Response("Done redirecting", status=status)
 
@@ -214,7 +214,7 @@ class TestingApp(RequestHandler):
 
     def echo_params(self, request):
         params = sorted(
-            [(ensure_str(k), ensure_str(v)) for k, v in request.params.items()]
+            (ensure_str(k), ensure_str(v)) for k, v in request.params.items()
         )
         return Response(repr(params))
 

@@ -40,7 +40,7 @@ def urllib_get(url_list):
         now = time.time()
         urllib.urlopen(url)
         elapsed = time.time() - now
-        print("Got in %0.3f: %s" % (elapsed, url))
+        print("Got in {:0.3f}: {}".format(elapsed, url))
 
 
 def pool_get(url_list):
@@ -50,7 +50,7 @@ def pool_get(url_list):
         now = time.time()
         pool.request("GET", url, assert_same_host=False)
         elapsed = time.time() - now
-        print("Got in %0.3fs: %s" % (elapsed, url))
+        print("Got in {:0.3f}s: {}".format(elapsed, url))
 
 
 if __name__ == "__main__":

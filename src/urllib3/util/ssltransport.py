@@ -113,7 +113,7 @@ class SSLTransport:
         changes to point to the socket directly.
         """
         if not set(mode) <= {"r", "w", "b"}:
-            raise ValueError("invalid mode %r (only r, w, b allowed)" % (mode,))
+            raise ValueError("invalid mode {!r} (only r, w, b allowed)".format(mode))
 
         writing = "w" in mode
         reading = "r" in mode or not writing

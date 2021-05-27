@@ -418,7 +418,7 @@ class WrappedSocket(object):
             reason = "error code: %d" % (trust_result,)
         except Exception as e:
             # Do not trust on error
-            reason = "exception: %r" % (e,)
+            reason = "exception: {!r}".format(e)
 
         # SecureTransport does not send an alert nor shuts down the connection.
         rec = _build_tls_unknown_ca_alert(self.version())

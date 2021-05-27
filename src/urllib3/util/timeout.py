@@ -106,7 +106,7 @@ class Timeout(object):
         self._start_connect = None
 
     def __repr__(self):
-        return "%s(connect=%r, read=%r, total=%r)" % (
+        return "{}(connect={!r}, read={!r}, total={!r})".format(
             type(self).__name__,
             self._connect,
             self._read,

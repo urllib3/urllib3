@@ -22,7 +22,7 @@ class PoolError(HTTPError):
 
     def __init__(self, pool, message):
         self.pool = pool
-        HTTPError.__init__(self, "%s: %s" % (pool, message))
+        HTTPError.__init__(self, "{}: {}".format(pool, message))
 
     def __reduce__(self):
         # For pickling purposes.
@@ -87,7 +87,9 @@ class MaxRetryError(RequestError):
     def __init__(self, pool, url, reason=None):
         self.reason = reason
 
-        message = "Max retries exceeded with url: %s (Caused by %r)" % (url, reason)
+        message = "Max retries exceeded with url: {} (Caused by {!r})".format(
+            url, reason
+        )
 
         RequestError.__init__(self, pool, url, message)
 
@@ -313,7 +315,7 @@ class HeaderParsingError(HTTPError):
     """Raised by assert_header_parsing, but we convert it to a log.warning statement."""
 
     def __init__(self, defects, unparsed_data):
-        message = "%s, unparsed data: %r" % (defects or "Unknown", unparsed_data)
+        message = "{}, unparsed data: {!r}".format(defects or "Unknown", unparsed_data)
         super(HeaderParsingError, self).__init__(message)
 
 

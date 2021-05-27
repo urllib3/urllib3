@@ -27,7 +27,7 @@ class ImportBlocker(object):
         return None
 
     def load_module(self, fullname):
-        raise ImportError("import of {0} is blocked".format(fullname))
+        raise ImportError("import of {} is blocked".format(fullname))
 
 
 class ModuleStash(object):

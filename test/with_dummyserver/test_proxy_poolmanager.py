@@ -161,7 +161,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     def test_proxy_conn_fail(self):
         host, port = get_unreachable_address()
         with proxy_from_url(
-            "http://%s:%s/" % (host, port), retries=1, timeout=LONG_TIMEOUT
+            "http://{}:{}/".format(host, port), retries=1, timeout=LONG_TIMEOUT
         ) as http:
             with pytest.raises(MaxRetryError):
                 http.request("GET", "%s/" % self.https_url)
@@ -283,7 +283,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             returned_headers = json.loads(r.data.decode())
             assert returned_headers.get("Foo") == "bar"
             assert returned_headers.get("Hickory") == "dickory"
-            assert returned_headers.get("Host") == "%s:%s" % (
+            assert returned_headers.get("Host") == "{}:{}".format(
                 self.http_host,
                 self.http_port,
             )
@@ -292,7 +292,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             returned_headers = json.loads(r.data.decode())
             assert returned_headers.get("Foo") == "bar"
             assert returned_headers.get("Hickory") == "dickory"
-            assert returned_headers.get("Host") == "%s:%s" % (
+            assert returned_headers.get("Host") == "{}:{}".format(
                 self.http_host_alt,
                 self.http_port,
             )
@@ -301,7 +301,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             returned_headers = json.loads(r.data.decode())
             assert returned_headers.get("Foo") == "bar"
             assert returned_headers.get("Hickory") is None
-            assert returned_headers.get("Host") == "%s:%s" % (
+            assert returned_headers.get("Host") == "{}:{}".format(
                 self.https_host,
                 self.https_port,
             )
@@ -310,7 +310,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             returned_headers = json.loads(r.data.decode())
             assert returned_headers.get("Foo") == "bar"
             assert returned_headers.get("Hickory") == "dickory"
-            assert returned_headers.get("Host") == "%s:%s" % (
+            assert returned_headers.get("Host") == "{}:{}".format(
                 self.http_host,
                 self.http_port,
             )
@@ -322,7 +322,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
             assert returned_headers.get("Hickory") == "dickory"
-            assert returned_headers.get("Host") == "%s:%s" % (
+            assert returned_headers.get("Host") == "{}:{}".format(
                 self.http_host,
                 self.http_port,
             )
@@ -334,7 +334,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
             assert returned_headers.get("Hickory") is None
-            assert returned_headers.get("Host") == "%s:%s" % (
+            assert returned_headers.get("Host") == "{}:{}".format(
                 self.https_host,
                 self.https_port,
             )
@@ -346,7 +346,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
             assert returned_headers.get("Hickory") == "dickory"
-            assert returned_headers.get("Host") == "%s:%s" % (
+            assert returned_headers.get("Host") == "{}:{}".format(
                 self.http_host,
                 self.http_port,
             )
@@ -358,7 +358,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
             assert returned_headers.get("Hickory") is None
-            assert returned_headers.get("Host") == "%s:%s" % (
+            assert returned_headers.get("Host") == "{}:{}".format(
                 self.https_host,
                 self.https_port,
             )
@@ -376,7 +376,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             returned_headers = json.loads(r.data.decode())
             assert returned_headers.get("Foo") == "bar"
             assert returned_headers.get("Hickory") == "dickory"
-            assert returned_headers.get("Host") == "%s:%s" % (
+            assert returned_headers.get("Host") == "{}:{}".format(
                 self.http_host,
                 self.http_port,
             )
@@ -385,7 +385,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             returned_headers = json.loads(r.data.decode())
             assert returned_headers.get("Foo") == "bar"
             assert returned_headers.get("Hickory") == "dickory"
-            assert returned_headers.get("Host") == "%s:%s" % (
+            assert returned_headers.get("Host") == "{}:{}".format(
                 self.http_host_alt,
                 self.http_port,
             )
@@ -397,7 +397,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
             assert returned_headers.get("Hickory") is None
-            assert returned_headers.get("Host") == "%s:%s" % (
+            assert returned_headers.get("Host") == "{}:{}".format(
                 self.https_host,
                 self.https_port,
             )
@@ -415,7 +415,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             returned_headers = json.loads(r.data.decode())
             assert returned_headers.get("Foo") == "bar"
             assert returned_headers.get("Hickory") == "dickory"
-            assert returned_headers.get("Host") == "%s:%s" % (
+            assert returned_headers.get("Host") == "{}:{}".format(
                 self.https_host,
                 self.https_port,
             )
@@ -549,7 +549,7 @@ class TestHTTPSProxyVerification:
     @onlyPy3
     def test_https_proxy_hostname_verification(self, no_localhost_san_server):
         bad_server = no_localhost_san_server
-        bad_proxy_url = "https://%s:%s" % (bad_server.host, bad_server.port)
+        bad_proxy_url = "https://{}:{}".format(bad_server.host, bad_server.port)
 
         # An exception will be raised before we contact the destination domain.
         test_url = "testing.com"

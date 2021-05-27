@@ -239,7 +239,7 @@ class HTTPConnection(_HTTPConnection, object):
         body with chunked encoding and not as one block
         """
         headers = headers or {}
-        header_keys = set([six.ensure_str(k.lower()) for k in headers])
+        header_keys = {six.ensure_str(k.lower()) for k in headers}
         skip_accept_encoding = "accept-encoding" in header_keys
         skip_host = "host" in header_keys
         self.putrequest(
@@ -378,7 +378,7 @@ class HTTPSConnection(HTTPConnection):
         if is_time_off:
             warnings.warn(
                 (
-                    "System time is way off (before {0}). This will probably "
+                    "System time is way off (before {}). This will probably "
                     "lead to SSL verification errors"
                 ).format(RECENT_DATE),
                 SystemTimeWarning,
@@ -454,7 +454,7 @@ class HTTPSConnection(HTTPConnection):
             if not cert.get("subjectAltName", ()):
                 warnings.warn(
                     (
-                        "Certificate for {0} has no `subjectAltName`, falling back to check for a "
+                        "Certificate for {} has no `subjectAltName`, falling back to check for a "
                         "`commonName` for now. This feature is being removed by major browsers and "
                         "deprecated by RFC 2818. (See https://github.com/urllib3/urllib3/issues/497 "
                         "for details.)".format(hostname)

@@ -80,7 +80,9 @@ class ConnectionPool(object):
         self.port = port
 
     def __str__(self):
-        return "%s(host=%r, port=%r)" % (type(self).__name__, self.host, self.port)
+        return "{}(host={!r}, port={!r})".format(
+            type(self).__name__, self.host, self.port
+        )
 
     def __enter__(self):
         return self

@@ -56,7 +56,9 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 "GET",
                 "%s/redirect" % self.base_url,
                 fields={
-                    "target": "%s/redirect?target=%s/" % (self.base_url, self.base_url)
+                    "target": "{}/redirect?target={}/".format(
+                        self.base_url, self.base_url
+                    )
                 },
             )
 
@@ -251,7 +253,9 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 "GET",
                 "%s/redirect" % self.base_url,
                 fields={
-                    "target": "%s/redirect?target=%s/" % (self.base_url, self.base_url)
+                    "target": "{}/redirect?target={}/".format(
+                        self.base_url, self.base_url
+                    )
                 },
                 retries=Retry(total=None, redirect=1, raise_on_redirect=False),
             )
@@ -343,12 +347,12 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
     def test_http_with_ssl_keywords(self):
         with PoolManager(ca_certs="REQUIRED") as http:
-            r = http.request("GET", "http://%s:%s/" % (self.host, self.port))
+            r = http.request("GET", "http://{}:{}/".format(self.host, self.port))
             assert r.status == 200
 
     def test_http_with_ca_cert_dir(self):
         with PoolManager(ca_certs="REQUIRED", ca_cert_dir="/nosuchdir") as http:
-            r = http.request("GET", "http://%s:%s/" % (self.host, self.port))
+            r = http.request("GET", "http://{}:{}/".format(self.host, self.port))
             assert r.status == 200
 
     @pytest.mark.parametrize(
