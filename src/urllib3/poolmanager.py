@@ -5,7 +5,7 @@ from typing import (
     Any,
     Callable,
     Dict,
-    List,
+    FrozenSet,
     Mapping,
     NamedTuple,
     Optional,
@@ -30,6 +30,7 @@ from .exceptions import (
 )
 from .request import RequestMethods
 from .response import BaseHTTPResponse
+from .util.connection import SocketOptions
 from .util.proxy import connection_requires_http_tunnel
 from .util.retry import Retry
 from .util.timeout import Timeout
@@ -64,29 +65,29 @@ SSL_KEYWORDS = (
 class PoolKey(NamedTuple):
     key_scheme: str
     key_host: str
-    key_port: int
-    key_timeout: Union[Timeout, float, int]
-    key_retries: Union[Retry, int]
-    key_block: bool
-    key_source_address: str
-    key_key_file: str
-    key_key_password: str
-    key_cert_file: str
-    key_cert_reqs: str
-    key_ca_certs: str
-    key_ssl_version: str
-    key_ca_cert_dir: str
+    key_port: Optional[int]
+    key_timeout: Optional[Union[Timeout, float, int]]
+    key_retries: Optional[Union[Retry, int]]
+    key_block: Optional[bool]
+    key_source_address: Optional[Tuple[str, int]]
+    key_key_file: Optional[str]
+    key_key_password: Optional[str]
+    key_cert_file: Optional[str]
+    key_cert_reqs: Optional[str]
+    key_ca_certs: Optional[str]
+    key_ssl_version: Optional[str]
+    key_ca_cert_dir: Optional[str]
     key_ssl_context: Optional["ssl.SSLContext"]
-    key_maxsize: int
-    key_headers: Mapping[str, str]
-    key__proxy: Url
-    key__proxy_headers: Mapping[str, str]
-    key__proxy_config: Type[ProxyConfig]
-    key_socket_options: List[Tuple[int, int, Union[int, str]]]
-    key__socks_options: Dict[str, Any]
-    key_assert_hostname: Union[bool, str]
-    key_assert_fingerprint: str
-    key_server_hostname: str
+    key_maxsize: Optional[int]
+    key_headers: Optional[FrozenSet[Tuple[str, str]]]
+    key__proxy: Optional[Url]
+    key__proxy_headers: Optional[FrozenSet[Tuple[str, str]]]
+    key__proxy_config: Optional[ProxyConfig]
+    key_socket_options: Optional[SocketOptions]
+    key__socks_options: Optional[FrozenSet[Tuple[str, str]]]
+    key_assert_hostname: Optional[Union[bool, str]]
+    key_assert_fingerprint: Optional[str]
+    key_server_hostname: Optional[str]
 
 
 def _default_key_normalizer(
