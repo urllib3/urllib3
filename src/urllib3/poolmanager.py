@@ -3,7 +3,6 @@ import logging
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Dict,
     FrozenSet,
     Mapping,
@@ -15,7 +14,7 @@ from typing import (
 )
 from urllib.parse import urljoin
 
-from ._collections import _VT, RecentlyUsedContainer
+from ._collections import RecentlyUsedContainer
 from .connection import ProxyConfig
 from .connectionpool import (  # type: ignore
     HTTPConnectionPool,
@@ -75,7 +74,7 @@ class PoolKey(NamedTuple):
     key_cert_file: Optional[str]
     key_cert_reqs: Optional[str]
     key_ca_certs: Optional[str]
-    key_ssl_version: Optional[str]
+    key_ssl_version: Optional[Union[int, str]]
     key_ca_cert_dir: Optional[str]
     key_ssl_context: Optional["ssl.SSLContext"]
     key_maxsize: Optional[int]
@@ -202,7 +201,7 @@ class PoolManager(RequestMethods):
         def dispose_func(p: Any) -> None:
             p.close()
 
-        self.pools: RecentlyUsedContainer[int, Optional[Callable[[_VT], None]]]
+        self.pools: RecentlyUsedContainer[PoolKey, HTTPConnectionPool]
         self.pools = RecentlyUsedContainer(num_pools, dispose_func=dispose_func)
 
         # Locally set the pool classes and keys so other PoolManagers can
@@ -321,18 +320,18 @@ class PoolManager(RequestMethods):
         with self.pools.lock:
             # If the scheme, host, or port doesn't match existing open
             # connections, open a new ConnectionPool.
-            pool = self.pools.get(pool_key)  # type: ignore
+            pool = self.pools.get(pool_key)
             if pool:
-                return pool  # type: ignore
+                return pool
 
             # Make a fresh ConnectionPool of the desired type
             scheme = request_context["scheme"]
             host = request_context["host"]
             port = request_context["port"]
             pool = self._new_pool(scheme, host, port, request_context=request_context)
-            self.pools[pool_key] = pool  # type: ignore
+            self.pools[pool_key] = pool
 
-        return pool  # type: ignore
+        return pool
 
     def connection_from_url(
         self, url: str, pool_kwargs: Optional[Dict[str, Any]] = None
