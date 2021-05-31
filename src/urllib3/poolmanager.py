@@ -57,11 +57,14 @@ SSL_KEYWORDS = (
 )
 
 
-# All known keyword arguments that could be provided to the pool manager, its
-# pools, or the underlying connections. This is used to construct a pool key.
-#: The namedtuple class used to construct keys for the connection pool.
-#: All custom key schemes should include the fields in this key at a minimum.
 class PoolKey(NamedTuple):
+    """
+    All known keyword arguments that could be provided to the pool manager, its
+    pools, or the underlying connections.
+
+    All custom key schemes should include the fields in this key at a minimum.
+    """
+
     key_scheme: str
     key_host: str
     key_port: Optional[int]
@@ -299,7 +302,7 @@ class PoolManager(RequestMethods):
         ``request_context`` must at least contain the ``scheme`` key and its
         value must be a key in ``key_fn_by_scheme`` instance variable.
         """
-        scheme = str(request_context["scheme"]).lower()
+        scheme = request_context["scheme"].lower()
         pool_key_constructor = self.key_fn_by_scheme.get(scheme)
         if not pool_key_constructor:
             raise URLSchemeUnknown(scheme)
@@ -403,7 +406,7 @@ class PoolManager(RequestMethods):
         kw["redirect"] = False
 
         if "headers" not in kw:
-            kw["headers"] = dict(self.headers).copy()
+            kw["headers"] = self.headers.copy()  # type: ignore
 
         if self._proxy_requires_url_absolute_form(u):
             response = conn.urlopen(method, url, **kw)
@@ -415,7 +418,7 @@ class PoolManager(RequestMethods):
             return response
 
         # Support relative URLs for redirecting.
-        redirect_location = urljoin(url, str(redirect_location))
+        redirect_location = urljoin(url, redirect_location)
 
         # RFC 7231, Section 6.4.4
         if response.status == 303:
@@ -428,7 +431,7 @@ class PoolManager(RequestMethods):
         # Strip headers marked as unsafe to forward to the redirected location.
         # Check remove_headers_on_redirect to avoid a potential network call within
         # conn.is_same_host() which may use socket.gethostbyname() in the future.
-        if retries.remove_headers_on_redirect and not conn.is_same_host(  # type: ignore
+        if retries.remove_headers_on_redirect and not conn.is_same_host(
             redirect_location
         ):
             headers = list(kw["headers"].keys())

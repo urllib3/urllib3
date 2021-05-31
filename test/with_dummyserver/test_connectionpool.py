@@ -294,14 +294,21 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             finally:
                 conn.close()
 
-    def test_socket_options(self):
+    @pytest.mark.parametrize(
+        "socket_options",
+        [
+            [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)],
+            ((socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),),
+        ],
+    )
+    def test_socket_options(self, socket_options):
         """Test that connections accept socket options."""
         # This test needs to be here in order to be run. socket.create_connection actually tries to
         # connect to the host provided so we need a dummyserver to be running.
         with HTTPConnectionPool(
             self.host,
             self.port,
-            socket_options=[(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)],
+            socket_options=socket_options,
         ) as pool:
             s = pool._new_conn()._new_conn()  # Get the socket
             try:
