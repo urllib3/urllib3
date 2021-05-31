@@ -29,6 +29,9 @@ from .exceptions import (
 )
 from .util.response import is_fp_closed, is_response_to_head
 
+if typing.TYPE_CHECKING:
+    from typing_extensions import Literal
+
 log = logging.getLogger(__name__)
 
 
@@ -199,7 +202,7 @@ class BaseHTTPResponse(io.IOBase):
 
         self._decoder: typing.Optional[ContentDecoder] = None
 
-    def get_redirect_location(self) -> typing.Optional[typing.Union[bool, str]]:
+    def get_redirect_location(self) -> typing.Union[str, "Literal[False]"]:
         """
         Should we redirect and where to?
 

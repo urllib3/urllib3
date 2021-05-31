@@ -459,7 +459,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         except queue.Empty:
             pass  # Done.
 
-    def is_same_host(self, url):
+    def is_same_host(self, url: str) -> bool:
         """
         Check if the given ``url`` is a member of the same host as this
         connection pool.

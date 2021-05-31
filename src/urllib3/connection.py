@@ -78,7 +78,7 @@ HTTPBody = Union[bytes, IO[Any], Iterable[bytes], str]
 
 
 class ProxyConfig(NamedTuple):
-    ssl_context: "ssl.SSLContext"
+    ssl_context: Optional["ssl.SSLContext"]
     use_forwarding_for_https: bool
 
 
