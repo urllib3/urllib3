@@ -336,11 +336,11 @@ class HTTPSConnection(HTTPConnection):
 
     default_port = port_by_scheme["https"]
 
-    cert_reqs: Optional[int] = None
+    cert_reqs: Optional[Union[int, str]] = None
     ca_certs: Optional[str] = None
     ca_cert_dir: Optional[str] = None
     ca_cert_data: Union[None, str, bytes] = None
-    ssl_version: Optional[int] = None
+    ssl_version: Optional[Union[int, str]] = None
     assert_fingerprint: Optional[str] = None
     tls_in_tls_required: bool = False
 
@@ -384,7 +384,7 @@ class HTTPSConnection(HTTPConnection):
         self,
         key_file: Optional[str] = None,
         cert_file: Optional[str] = None,
-        cert_reqs: Optional[int] = None,
+        cert_reqs: Optional[Union[int, str]] = None,
         key_password: Optional[str] = None,
         ca_certs: Optional[str] = None,
         assert_hostname: Union[None, str, "Literal[False]"] = None,

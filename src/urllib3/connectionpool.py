@@ -9,7 +9,7 @@ from http.client import HTTPSConnection as _HttplibHTTPSConnection
 from socket import timeout as SocketTimeout
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, Union, overload
 
-from .connection import (
+from .connection import (  # type: ignore
     BaseSSLError,
     BrokenPipeError,
     DummyConnection,
@@ -445,9 +445,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             method,
             url,
             # HTTP version
-            conn._http_vsn_str,
+            conn._http_vsn_str,  # type: ignore
             httplib_response.status,
-            httplib_response.length,
+            httplib_response.length,  # type: ignore
         )
 
         try:
@@ -1034,9 +1034,9 @@ def connection_from_url(url: str, **kw: Any) -> ConnectionPool:
     scheme = scheme or "http"
     port = port or port_by_scheme.get(scheme, 80)
     if scheme == "https":
-        return HTTPSConnectionPool(host, port=port, **kw)
+        return HTTPSConnectionPool(host, port=port, **kw)  # type: ignore
     else:
-        return HTTPConnectionPool(host, port=port, **kw)
+        return HTTPConnectionPool(host, port=port, **kw)  # type: ignore
 
 
 @overload
