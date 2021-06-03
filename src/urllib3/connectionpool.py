@@ -7,7 +7,7 @@ import warnings
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from http.client import HTTPSConnection as _HttplibHTTPSConnection
 from socket import timeout as SocketTimeout
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, Union, overload
 
 from .connection import (
     BaseSSLError,
@@ -874,7 +874,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
     def __init__(
         self,
-        host: Optional[str],
+        host: str,
         port: Optional[int] = None,
         timeout: _TYPE_TIMEOUT = Timeout.DEFAULT_TIMEOUT,
         maxsize: int = 1,
@@ -970,9 +970,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                 "Can't connect to HTTPS URL because the SSL module is not available."
             )
 
-        actual_host: Optional[str] = self.host
+        actual_host: str = self.host
         actual_port = self.port
-        if self.proxy is not None:
+        if self.proxy is not None and self.proxy.host is not None:
             actual_host = self.proxy.host
             actual_port = self.proxy.port
 
@@ -1037,6 +1037,16 @@ def connection_from_url(url: str, **kw: Any) -> ConnectionPool:
         return HTTPSConnectionPool(host, port=port, **kw)
     else:
         return HTTPConnectionPool(host, port=port, **kw)
+
+
+@overload
+def _normalize_host(host: None, scheme: Optional[str]) -> None:
+    ...
+
+
+@overload
+def _normalize_host(host: str, scheme: Optional[str]) -> str:
+    ...
 
 
 def _normalize_host(host: Optional[str], scheme: Optional[str]) -> Optional[str]:
