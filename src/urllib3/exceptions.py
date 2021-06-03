@@ -6,6 +6,7 @@ if TYPE_CHECKING:
 
     from urllib3.connectionpool import ConnectionPool
     from urllib3.response import HTTPResponse
+    from urllib3.util.retry import Retry
 
 # Base Exceptions
 
@@ -119,9 +120,11 @@ class MaxRetryError(RequestError):
 class HostChangedError(RequestError):
     """Raised when an existing pool gets a request for a foreign host."""
 
-    retries: int
+    retries: Union["Retry", int]
 
-    def __init__(self, pool: "ConnectionPool", url: str, retries: int = 3) -> None:
+    def __init__(
+        self, pool: "ConnectionPool", url: str, retries: Union["Retry", int] = 3
+    ) -> None:
         message = f"Tried to open a foreign host with url: {url}"
         super().__init__(pool, url, message)
         self.retries = retries

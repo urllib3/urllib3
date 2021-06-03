@@ -3,7 +3,9 @@ import logging
 import typing
 import zlib
 from contextlib import contextmanager
+from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
+from typing import Any, Type
 
 try:
     try:
@@ -435,7 +437,7 @@ class HTTPResponse(BaseHTTPResponse):
         self._pool._put_conn(self._connection)
         self._connection = None
 
-    def drain_conn(self):
+    def drain_conn(self) -> None:
         """
         Read and discard any remaining HTTP response data in the response connection.
 
@@ -678,7 +680,9 @@ class HTTPResponse(BaseHTTPResponse):
                     yield data
 
     @classmethod
-    def from_httplib(ResponseCls, r, **response_kw):
+    def from_httplib(
+        ResponseCls: Type["HTTPResponse"], r: _HttplibHTTPResponse, **response_kw: Any
+    ) -> "HTTPResponse":
         """
         Given an :class:`http.client.HTTPResponse` instance ``r``, return a
         corresponding :class:`urllib3.response.HTTPResponse` object.

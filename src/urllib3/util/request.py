@@ -1,5 +1,5 @@
 from base64 import b64encode
-from typing import IO, AnyStr, Dict, List, Optional, Union
+from typing import IO, Any, AnyStr, Dict, List, Optional, Union
 
 from ..exceptions import UnrewindableBodyError
 
@@ -104,7 +104,7 @@ def make_headers(
 
 
 def set_file_position(
-    body: IO[AnyStr], pos: Optional[Union[int, object]]
+    body: Any, pos: Optional[Union[int, object]]
 ) -> Optional[Union[int, object]]:
     """
     If a position is provided, move file to that point.

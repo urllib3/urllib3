@@ -169,7 +169,7 @@ class Timeout:
         return value
 
     @classmethod
-    def from_float(cls, timeout: float) -> "Timeout":
+    def from_float(cls, timeout: Optional[Union[int, float, object]]) -> "Timeout":
         """Create a new Timeout from a legacy timeout value.
 
         The timeout value used by httplib.py sets the same timeout on the
