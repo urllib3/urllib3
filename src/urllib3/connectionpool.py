@@ -257,7 +257,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             conn = self.pool.get(block=self.block, timeout=timeout)
 
         except AttributeError:  # self.pool is None
-            raise ClosedPoolError(self, "Pool is closed.")
+            raise ClosedPoolError(self, "Pool is closed.")  # Defensive:
 
         except queue.Empty:
             if self.block:
