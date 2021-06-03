@@ -5,7 +5,6 @@ import socket
 import sys
 import warnings
 from http.client import HTTPResponse as _HttplibHTTPResponse
-from http.client import HTTPSConnection as _HttplibHTTPSConnection
 from socket import timeout as SocketTimeout
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, Union, overload
 
@@ -232,7 +231,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn = self.ConnectionCls(
             host=self.host,
             port=self.port,
-            timeout=self.timeout.connect_timeout,
+            timeout=self.timeout.connect_timeout,  # type: ignore
             **self.conn_kw,
         )
         return conn
@@ -256,6 +255,10 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         try:
             conn = self.pool.get(block=self.block, timeout=timeout)
+
+        except AttributeError:  # self.pool is None
+            raise ClosedPoolError(self, "Pool is closed.")
+
         except queue.Empty:
             if self.block:
                 raise EmptyPoolError(
@@ -294,6 +297,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             try:
                 self.pool.put(conn, block=False)
                 return  # Everything is dandy, done.
+            except AttributeError:
+                # self.pool is None.
+                pass
             except queue.Full:
 
                 # Connection never got put back into the pool, close it.
@@ -383,7 +389,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         timeout_obj = self._get_timeout(timeout)
         timeout_obj.start_connect()
-        conn.timeout = timeout_obj.connect_timeout
+        conn.timeout = timeout_obj.connect_timeout  # type: ignore
 
         # Trigger any extra validation we need to do.
         try:
@@ -677,7 +683,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             timeout_obj = self._get_timeout(timeout)
             conn = self._get_conn(timeout=pool_timeout)
 
-            conn.timeout = timeout_obj.connect_timeout
+            conn.timeout = timeout_obj.connect_timeout  # type: ignore
 
             is_new_proxy_conn = self.proxy is not None and not getattr(
                 conn, "sock", None
@@ -918,7 +924,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
 
-    def _prepare_conn(self, conn: HTTPSConnection) -> _HttplibHTTPSConnection:
+    def _prepare_conn(self, conn: HTTPSConnection) -> HTTPConnection:
         """
         Prepare the ``connection`` for :meth:`urllib3.util.ssl_wrap_socket`
         and establish the tunnel if proxy is used.
@@ -953,9 +959,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
 
         conn.connect()
 
-    def _new_conn(self) -> _HttplibHTTPSConnection:  # type: ignore
+    def _new_conn(self) -> HTTPConnection:
         """
-        Return a fresh :class:`http.client.HTTPSConnection`.
+        Return a fresh :class:`urllib3.connection.HTTPConnection`.
         """
         self.num_connections += 1
         log.debug(
@@ -965,7 +971,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             self.port or "443",
         )
 
-        if not self.ConnectionCls or self.ConnectionCls is DummyConnection:
+        if not self.ConnectionCls or self.ConnectionCls is DummyConnection:  # type: ignore
             raise SSLError(
                 "Can't connect to HTTPS URL because the SSL module is not available."
             )
@@ -979,7 +985,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         conn = self.ConnectionCls(
             host=actual_host,
             port=actual_port,
-            timeout=self.timeout.connect_timeout,
+            timeout=self.timeout.connect_timeout,  # type: ignore
             cert_file=self.cert_file,
             key_file=self.key_file,
             key_password=self.key_password,
