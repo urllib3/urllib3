@@ -678,12 +678,13 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         else:
             assert w == []
 
-    def test_no_tls_version_deprecation_with_ssl_version(self):
+    @pytest.mark.parametrize("ssl_version", [ssl.PROTOCOL_TLS, ssl.PROTOCOL_TLS_CLIENT])
+    def test_no_tls_version_deprecation_with_ssl_version(self, ssl_version):
         if self.tls_protocol_name is None:
             pytest.skip("Skipping base test class")
 
         with HTTPSConnectionPool(
-            self.host, self.port, ca_certs=DEFAULT_CA, ssl_version=util.PROTOCOL_TLS
+            self.host, self.port, ca_certs=DEFAULT_CA, ssl_version=ssl_version
         ) as https_pool:
             conn = https_pool._get_conn()
             try:

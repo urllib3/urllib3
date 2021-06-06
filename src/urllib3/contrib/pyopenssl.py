@@ -66,7 +66,6 @@ from socket import socket as socket_cls
 from socket import timeout
 
 from .. import util
-from ..util.ssl_ import PROTOCOL_TLS_CLIENT, is_ipaddress
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 
@@ -80,8 +79,8 @@ USE_DEFAULT_SSLCONTEXT_CIPHERS = util.ssl_._is_ge_openssl_v1_1_1(
 
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
 _openssl_versions = {
-    util.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,
-    PROTOCOL_TLS_CLIENT: OpenSSL.SSL.SSLv23_METHOD,
+    util.ssl_.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,
+    util.ssl_.PROTOCOL_TLS_CLIENT: OpenSSL.SSL.SSLv23_METHOD,
     ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
 }
 
@@ -459,7 +458,7 @@ class PyOpenSSLContext:
         cnx = OpenSSL.SSL.Connection(self._ctx, sock)
 
         # If server_hostname is an IP, don't use it for SNI, per RFC6066 Section 3
-        if server_hostname and not is_ipaddress(server_hostname):
+        if server_hostname and not util.ssl_.is_ipaddress(server_hostname):
             if isinstance(server_hostname, str):
                 server_hostname = server_hostname.encode("utf-8")
             cnx.set_tlsext_host_name(server_hostname)

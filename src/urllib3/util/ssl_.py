@@ -227,7 +227,6 @@ def create_urllib3_context(
         raise TypeError("Can't create an SSLContext object without an ssl module")
 
     # PROTOCOL_TLS is deprecated in Python 3.10 so we pass PROTOCOL_TLS_CLIENT instead.
-    # If it's not available in 'ssl' the value is aliased to PROTOCOL_TLS anyways.
     if ssl_version in (None, PROTOCOL_TLS):
         ssl_version = PROTOCOL_TLS_CLIENT
 
@@ -269,18 +268,12 @@ def create_urllib3_context(
     ) is not None:
         context.post_handshake_auth = True
 
-    # The order of the below lines setting verify_mode and check_hostname
-    # matter due to safe-guards SSLContext has to prevent an SSLContext with
-    # check_hostname=True, verify_mode=NONE/OPTIONAL. This is made even more
-    # complex because we don't know whether PROTOCOL_TLS_CLIENT will be used
-    # or not so we don't know the initial state of the freshly created SSLContext.
-    if cert_reqs == ssl.CERT_REQUIRED:
-        context.verify_mode = cert_reqs
-        # We ask for verification here but it may be disabled in HTTPSConnection.connect
-        context.check_hostname = True
-    else:
-        context.check_hostname = False
-        context.verify_mode = cert_reqs
+    # This option may be disabled in HTTPSConnection.connect
+    context.check_hostname = cert_reqs == ssl.CERT_REQUIRED
+
+    # PROTOCOL_TLS_CLIENT guarantees we have cert+hostname verification on
+    # so we turn these two options off in a specific order.
+    context.verify_mode = cert_reqs
 
     if hasattr(context, "hostname_checks_common_name"):
         context.hostname_checks_common_name = False
