@@ -10,10 +10,12 @@ import nox
 TYPED_FILES = {
     "src/urllib3/contrib/__init__.py",
     "src/urllib3/connection.py",
+    "src/urllib3/connectionpool.py",
     "src/urllib3/exceptions.py",
     "src/urllib3/_collections.py",
     "src/urllib3/fields.py",
     "src/urllib3/filepost.py",
+    "src/urllib3/poolmanager.py",
     "src/urllib3/request.py",
     "src/urllib3/util/connection.py",
     "src/urllib3/util/proxy.py",
