@@ -378,6 +378,42 @@ class TestPoolManager(HTTPDummyServerTestCase):
         assert r.status == 200
         assert r.data == b"test"
 
+    def test_top_level_request_with_preload_content(self):
+        r = request("GET", f"{self.base_url}/echo", preload_content=False)
+        assert r.status == 200
+        assert r.connection is not None
+        r.data
+        assert r.connection is None
+
+    def test_top_level_request_with_redirect(self):
+        r = request(
+            "GET",
+            f"{self.base_url}/redirect",
+            fields={"target": f"{self.base_url}/"},
+            redirect=False,
+        )
+
+        assert r.status == 303
+
+        r = request(
+            "GET",
+            f"{self.base_url}/redirect",
+            fields={"target": f"{self.base_url}/"},
+        )
+
+        assert r.status == 200
+        assert r.data == b"Dummy server!"
+
+    def test_top_level_request_with_retries(self):
+        r = request("GET", f"{self.base_url}/redirect", retries=False)
+        assert r.status == 303
+
+        r = request("GET", f"{self.base_url}/redirect", retries=3)
+        assert r.status == 200
+
+    def test_top_level_request_with_timeout(self):
+        pass
+
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
