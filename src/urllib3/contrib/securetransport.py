@@ -111,7 +111,11 @@ SSL_WRITE_BLOCKSIZE = 16384
 # TLSv1 and a high of TLSv1.2. For everything else, we pin to that version.
 # TLSv1 to 1.2 are supported on macOS 10.8+
 _protocol_to_min_max = {
-    util.PROTOCOL_TLS: (SecurityConst.kTLSProtocol1, SecurityConst.kTLSProtocol12)
+    util.ssl_.PROTOCOL_TLS: (SecurityConst.kTLSProtocol1, SecurityConst.kTLSProtocol12),
+    util.ssl_.PROTOCOL_TLS_CLIENT: (
+        SecurityConst.kTLSProtocol1,
+        SecurityConst.kTLSProtocol12,
+    ),
 }
 
 if hasattr(ssl, "PROTOCOL_SSLv2"):
