@@ -268,12 +268,15 @@ def create_urllib3_context(
     ) is not None:
         context.post_handshake_auth = True
 
-    # This option may be disabled in HTTPSConnection.connect
-    context.check_hostname = cert_reqs == ssl.CERT_REQUIRED
-
-    # PROTOCOL_TLS_CLIENT guarantees we have cert+hostname verification on
-    # so we turn these two options off in a specific order.
-    context.verify_mode = cert_reqs
+    # The order of the below lines setting verify_mode and check_hostname
+    # matter due to safe-guards SSLContext has to prevent an SSLContext with
+    # check_hostname=True, verify_mode=NONE/OPTIONAL.
+    if cert_reqs == ssl.CERT_REQUIRED:
+        context.verify_mode = cert_reqs
+        context.check_hostname = True
+    else:
+        context.check_hostname = False
+        context.verify_mode = cert_reqs
 
     if hasattr(context, "hostname_checks_common_name"):
         context.hostname_checks_common_name = False
