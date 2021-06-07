@@ -32,9 +32,13 @@ _TYPE_REDUCE_RESULT = Tuple[Callable[..., object], Tuple[object, ...]]
 class PoolError(HTTPError):
     """Base exception for errors caused within a pool."""
 
-    pool: "ConnectionPool"
+    pool: Optional[Union["ConnectionPool", "HTTPConnectionPool"]]
 
-    def __init__(self, pool: "ConnectionPool", message: str) -> None:
+    def __init__(
+        self,
+        pool: Optional[Union["ConnectionPool", "HTTPConnectionPool"]],
+        message: str,
+    ) -> None:
         self.pool = pool
         super().__init__(f"{pool}: {message}")
 
@@ -46,9 +50,14 @@ class PoolError(HTTPError):
 class RequestError(PoolError):
     """Base exception for PoolErrors that have associated URLs."""
 
-    url: str
+    url: Optional[str]
 
-    def __init__(self, pool: "ConnectionPool", url: str, message: str) -> None:
+    def __init__(
+        self,
+        pool: Optional[Union["ConnectionPool", "HTTPConnectionPool"]],
+        url: Optional[str],
+        message: str,
+    ) -> None:
         self.url = url
         super().__init__(pool, message)
 
@@ -304,7 +313,7 @@ class IncompleteRead(HTTPError, httplib_IncompleteRead):
     partial: int
     expected: int
 
-    def __init__(self, partial: int, expected: int) -> None:
+    def __init__(self, partial: int, expected: Optional[int]) -> None:
         super().__init__(partial, expected)
 
     def __repr__(self) -> str:
