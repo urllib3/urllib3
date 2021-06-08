@@ -18,8 +18,6 @@ from ..exceptions import (
 from .util import reraise
 
 if TYPE_CHECKING:
-    from typing_extensions import Literal
-
     from urllib3.connectionpool import ConnectionPool
     from urllib3.response import HTTPResponse
 
@@ -32,7 +30,7 @@ class RequestHistory(NamedTuple):
     url: Optional[str]
     error: Optional[Exception]
     status: Optional[int]
-    redirect_location: Optional[Union[str, "Literal[False]"]]
+    redirect_location: Optional[str]
 
 
 class Retry:
@@ -465,7 +463,9 @@ class Retry:
             if redirect is not None:
                 redirect -= 1
             cause = "too many redirects"
-            redirect_location = response.get_redirect_location()
+            response_redirect_location = response.get_redirect_location()
+            if response_redirect_location:
+                redirect_location = response_redirect_location
             status = response.status
 
         else:

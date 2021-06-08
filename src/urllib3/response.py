@@ -241,7 +241,7 @@ class BaseHTTPResponse(io.IOBase):
         raise NotImplementedError()
 
     @property
-    def url(self) -> Optional[Union[str, "Literal[False]"]]:
+    def url(self) -> Optional[str]:
         raise NotImplementedError()
 
     @property
@@ -658,9 +658,10 @@ class HTTPResponse(BaseHTTPResponse):
                     # no harm in redundantly calling close.
                     self._fp.close()
                     flush_decoder = True
-                    if self.enforce_content_length and self.length_remaining not in (
-                        0,
-                        None,
+                    if (
+                        self.enforce_content_length
+                        and self.length_remaining is not None
+                        and self.length_remaining != 0
                     ):
                         # This is an edge case that httplib failed to cover due
                         # to concerns of backward compatibility. We're
@@ -896,7 +897,7 @@ class HTTPResponse(BaseHTTPResponse):
                 self._original_response.close()
 
     @property
-    def url(self) -> Optional[Union[str, "Literal[False]"]]:
+    def url(self) -> Optional[str]:
         """
         Returns the URL that was the source of this response.
         If the request that generated this response redirected, this method

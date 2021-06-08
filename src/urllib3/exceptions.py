@@ -313,7 +313,7 @@ class IncompleteRead(HTTPError, httplib_IncompleteRead):
     partial: int
     expected: int
 
-    def __init__(self, partial: int, expected: Optional[int]) -> None:
+    def __init__(self, partial: int, expected: int) -> None:
         super().__init__(partial, expected)
 
     def __repr__(self) -> str:
