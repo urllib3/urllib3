@@ -6,14 +6,16 @@ Python HTTP library with thread-safe connection pooling, file post support, user
 import logging
 import warnings
 from logging import NullHandler
+from typing import Mapping, Optional, Type
 
 from . import exceptions
 from ._collections import HTTPHeaderDict
 from ._version import __version__
+from .connection import HTTPBody
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, connection_from_url
-from .filepost import encode_multipart_formdata
+from .filepost import _TYPE_FIELDS, encode_multipart_formdata
 from .poolmanager import PoolManager, ProxyManager, proxy_from_url
-from .response import HTTPResponse
+from .response import BaseHTTPResponse, HTTPResponse
 from .util.request import make_headers
 from .util.retry import Retry
 from .util.timeout import Timeout
@@ -43,7 +45,7 @@ __all__ = (
 logging.getLogger(__name__).addHandler(NullHandler())
 
 
-def add_stderr_logger(level=logging.DEBUG):
+def add_stderr_logger(level: int = logging.DEBUG) -> logging.StreamHandler:
     """
     Helper for quickly adding a StreamHandler to the logger. Useful for
     debugging.
@@ -76,7 +78,7 @@ warnings.simplefilter("default", exceptions.InsecurePlatformWarning, append=True
 warnings.simplefilter("default", exceptions.SNIMissingWarning, append=True)
 
 
-def disable_warnings(category=exceptions.HTTPWarning):
+def disable_warnings(category: Type[Warning] = exceptions.HTTPWarning) -> None:
     """
     Helper for quickly disabling all urllib3 warnings.
     """
@@ -86,7 +88,13 @@ def disable_warnings(category=exceptions.HTTPWarning):
 _DEFAULT_POOL = PoolManager()
 
 
-def request(method, url, body=None, fields=None, headers=None):
+def request(
+    method: str,
+    url: str,
+    body: Optional[HTTPBody] = None,
+    fields: Optional[_TYPE_FIELDS] = None,
+    headers: Optional[Mapping[str, str]] = None,
+) -> BaseHTTPResponse:
     """
     A convenience, top-level request method. It uses a module-global ``PoolManager`` instance.
     Therefore, its side effects could be shared across dependencies relying on it.
