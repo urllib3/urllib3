@@ -1,6 +1,19 @@
 Changes
 =======
 
+
+2.0.0 (unreleased)
+------------------
+
+* ``multipart/form-data`` header parameter formatting matches the WHATWG
+  HTML Standard as of 2021-06-10. Control characters in filenames are no
+  longer percent encoded. #2257
+* ``format_header_param_html5`` and ``format_header_param`` are
+  deprecated names for ``format_multipart_header_param``. #2257
+* The ``RequestField`` ``header_formatter`` parameter is deprecated in
+  favor of overriding the ``_render_part`` method. #2257
+
+
 1.26.5 (2021-05-26)
 -------------------
 
@@ -61,7 +74,7 @@ Changes
 
 * Added default ``User-Agent`` header to every request (Pull #1750)
 
-* Added ``urllib3.util.SKIP_HEADER`` for skipping ``User-Agent``, ``Accept-Encoding``, 
+* Added ``urllib3.util.SKIP_HEADER`` for skipping ``User-Agent``, ``Accept-Encoding``,
   and ``Host`` headers from being automatically emitted with requests (Pull #2018)
 
 * Collapse ``transfer-encoding: chunked`` request data and framing into

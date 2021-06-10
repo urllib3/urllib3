@@ -1,12 +1,10 @@
 import email.utils
 import mimetypes
-import re
 from typing import (
     Callable,
     Dict,
     Iterable,
     Mapping,
-    Match,
     Optional,
     Sequence,
     Tuple,
@@ -49,7 +47,21 @@ def format_header_param_rfc2231(name: str, value: Union[str, bytes]) -> str:
         The value of the parameter, provided as ``bytes`` or `str``.
     :returns:
         An RFC-2231-formatted unicode string.
+
+    .. deprecated:: 2.0.0
+        Will be removed in urllib3 v3.0.0. This is not valid for
+        ``multipart/form-data`` header parameters.
     """
+    import warnings
+
+    warnings.warn(
+        "'format_header_param_rfc2231' is deprecated and will be "
+        "removed in urllib3 v3.0.0. This is not valid for "
+        "multipart/form-data header parameters.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     if isinstance(value, bytes):
         value = value.decode("utf-8")
 
@@ -68,60 +80,78 @@ def format_header_param_rfc2231(name: str, value: Union[str, bytes]) -> str:
     return value
 
 
-_HTML5_REPLACEMENTS = {
-    "\u0022": "%22",
-    # Replace "\" with "\\".
-    "\u005C": "\u005C\u005C",
-}
-
-# All control characters from 0x00 to 0x1F *except* 0x1B.
-_HTML5_REPLACEMENTS.update(
-    {chr(cc): f"%{cc:02X}" for cc in range(0x00, 0x1F + 1) if cc not in (0x1B,)}
-)
-
-
-def _replace_multiple(value: str, needles_and_replacements: Mapping[str, str]) -> str:
-    def replacer(match: Match[str]) -> str:
-        return needles_and_replacements[match.group(0)]
-
-    pattern = re.compile(
-        r"|".join([re.escape(needle) for needle in needles_and_replacements.keys()])
-    )
-
-    result = pattern.sub(replacer, value)
-
-    return result
-
-
-def format_header_param_html5(name: str, value: _TYPE_FIELD_VALUE) -> str:
+def format_multipart_header_param(name: str, value: _TYPE_FIELD_VALUE) -> str:
     """
-    Helper function to format and quote a single header parameter using the
-    HTML5 strategy.
+    Format and quote a single multipart header parameter.
 
-    Particularly useful for header parameters which might contain
-    non-ASCII values, like file names. This follows the `HTML5 Working Draft
-    Section 4.10.22.7`_ and matches the behavior of curl and modern browsers.
+    This follows the `WHATWG HTML Standard`_ as of 2021/06/10, matching
+    the behavior of current browser and curl versions. Values are
+    assumed to be UTF-8. The ``\\n``, ``\\r``, and ``"`` characters are
+    percent encoded.
 
-    .. _HTML5 Working Draft Section 4.10.22.7:
-        https://w3c.github.io/html/sec-forms.html#multipart-form-data
+    .. _WHATWG HTML Standard:
+        https://html.spec.whatwg.org/multipage/
+        form-control-infrastructure.html#multipart-form-data
 
     :param name:
-        The name of the parameter, a string expected to be ASCII only.
+        The name of the parameter, an ASCII-only ``str``.
     :param value:
-        The value of the parameter, provided as ``bytes`` or `str``.
+        The value of the parameter, a ``str`` or UTF-8 encoded
+        ``bytes``.
     :returns:
-        A unicode string, stripped of troublesome characters.
+        A string ``name="value"`` with the escaped value.
+
+    .. versionchanged:: 2.0.0
+        Matches the WHATWG HTML Standard as of 2021/06/10. Control
+        characters are no longer percent encoded.
+
+    .. versionchanged:: 2.0.0
+        Renamed from ``format_header_param_html5`` and
+        ``format_header_param``. The old names will be removed in
+        urllib3 v3.0.0.
     """
     if isinstance(value, bytes):
         value = value.decode("utf-8")
 
-    value = _replace_multiple(value, _HTML5_REPLACEMENTS)
-
+    # percent encode \n \r "
+    value = value.translate({10: "%0A", 13: "%0D", 34: "%22"})
     return f'{name}="{value}"'
 
 
-# For backwards-compatibility.
-format_header_param = format_header_param_html5
+def format_header_param_html5(name: str, value: _TYPE_FIELD_VALUE) -> str:
+    """
+    .. deprecated:: 2.0.0
+        Renamed to :func:`format_multipart_header_param`. Will be
+        removed in urllib3 v3.0.0.
+    """
+    import warnings
+
+    warnings.warn(
+        "'format_header_param_html5' has been renamed to "
+        "'format_multipart_header_param'. The old name will be "
+        "removed in urllib3 v3.0.0.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return format_multipart_header_param(name, value)
+
+
+def format_header_param(name: str, value: _TYPE_FIELD_VALUE) -> str:
+    """
+    .. deprecated:: 2.0.0
+        Renamed to :func:`format_multipart_header_param`. Will be
+        removed in urllib3 v3.0.0.
+    """
+    import warnings
+
+    warnings.warn(
+        "'format_header_param' has been renamed to "
+        "'format_multipart_header_param'. The old name will be "
+        "removed in urllib3 v3.0.0.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return format_multipart_header_param(name, value)
 
 
 class RequestField:
@@ -136,9 +166,11 @@ class RequestField:
         An optional filename of the request field. Must be unicode.
     :param headers:
         An optional dict-like object of headers to initially use for the field.
-    :param header_formatter:
-        An optional callable that is used to encode and format the headers. By
-        default, this is :func:`format_header_param_html5`.
+
+    .. versionchanged:: 2.0.0
+        The ``header_formatter`` parameter is deprecated and will
+        be removed in urllib3 v3.0.0. Override :meth:`_render_part`
+        instead.
     """
 
     def __init__(
@@ -147,9 +179,7 @@ class RequestField:
         data: _TYPE_FIELD_VALUE,
         filename: Optional[str] = None,
         headers: Optional[Mapping[str, str]] = None,
-        header_formatter: Callable[
-            [str, _TYPE_FIELD_VALUE], str
-        ] = format_header_param_html5,
+        header_formatter: Optional[Callable[[str, _TYPE_FIELD_VALUE], str]] = None,
     ):
         self._name = name
         self._filename = filename
@@ -157,16 +187,27 @@ class RequestField:
         self.headers: Dict[str, Optional[str]] = {}
         if headers:
             self.headers = dict(headers)
-        self.header_formatter = header_formatter
+
+        if header_formatter is not None:
+            import warnings
+
+            warnings.warn(
+                "The 'header_formatter' parameter is deprecated and "
+                "will be removed in urllib3 v3.0.0. Override the "
+                "'_render_part' method instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self.header_formatter = header_formatter
+        else:
+            self.header_formatter = format_multipart_header_param
 
     @classmethod
     def from_tuples(
         cls,
         fieldname: str,
         value: _TYPE_FIELD_VALUE_TUPLE,
-        header_formatter: Callable[
-            [str, _TYPE_FIELD_VALUE], str
-        ] = format_header_param_html5,
+        header_formatter: Optional[Callable[[str, _TYPE_FIELD_VALUE], str]] = None,
     ) -> "RequestField":
         """
         A :class:`~urllib3.fields.RequestField` factory from old-style tuple parameters.
@@ -210,15 +251,18 @@ class RequestField:
 
     def _render_part(self, name: str, value: _TYPE_FIELD_VALUE) -> str:
         """
-        Overridable helper function to format a single header parameter. By
-        default, this calls ``self.header_formatter``.
+        Override this method to change how each multipart header
+        parameter is formatted. By default, this calls
+        :func:`format_multipart_header_param`.
 
         :param name:
-            The name of the parameter, a string expected to be ASCII only.
+            The name of the parameter, an ASCII-only ``str``.
         :param value:
-            The value of the parameter, provided as a unicode string.
-        """
+            The value of the parameter, a ``str`` or UTF-8 encoded
+            ``bytes``.
 
+        :meta public:
+        """
         return self.header_formatter(name, value)
 
     def _render_parts(
