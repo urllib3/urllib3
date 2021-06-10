@@ -135,7 +135,7 @@ def lint(session):
 @nox.session()
 def mypy(session):
     """Run mypy."""
-    session.install("mypy")
+    session.install("mypy==0.812")
     session.run("mypy", "--version")
 
     session.log("mypy --strict src/urllib3")
