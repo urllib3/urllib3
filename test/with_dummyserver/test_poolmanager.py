@@ -1,8 +1,10 @@
 import json
 from test import LONG_TIMEOUT
+from unittest import mock
 
 import pytest
 
+import urllib3
 from dummyserver.server import HAS_IPV6
 from dummyserver.testcase import HTTPDummyServerTestCase, IPv6HTTPDummyServerTestCase
 from urllib3 import request
@@ -412,7 +414,24 @@ class TestPoolManager(HTTPDummyServerTestCase):
         assert r.status == 200
 
     def test_top_level_request_with_timeout(self):
-        pass
+        urllib3.poolmanager.RequestMethods.request = mock.Mock(
+            return_value=urllib3.HTTPResponse(status=200)
+        )
+        r = request("GET", f"{self.base_url}/redirect", timeout=2.5)
+
+        # assert r.status == 200
+
+        urllib3.poolmanager.RequestMethods.request.assert_called_with(
+            "GET",
+            f"{self.base_url}/redirect",
+            body=None,
+            fields=None,
+            headers=None,
+            preload_content=True,
+            redirect=True,
+            retries=None,
+            timeout=2.5,
+        )
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")
