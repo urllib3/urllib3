@@ -9,6 +9,7 @@ import nox
 # ignored.
 TYPED_FILES = {
     "src/urllib3/contrib/__init__.py",
+    "src/urllib3/__init__.py",
     "src/urllib3/connection.py",
     "src/urllib3/connectionpool.py",
     "src/urllib3/exceptions.py",
@@ -135,7 +136,7 @@ def lint(session):
 @nox.session()
 def mypy(session):
     """Run mypy."""
-    session.install("mypy")
+    session.install("mypy==0.812")
     session.run("mypy", "--version")
 
     session.log("mypy --strict src/urllib3")
