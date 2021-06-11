@@ -6,7 +6,7 @@ Python HTTP library with thread-safe connection pooling, file post support, user
 import logging
 import warnings
 from logging import NullHandler
-from typing import Mapping, Optional, Type
+from typing import Mapping, Optional, Type, Union
 
 from . import exceptions
 from ._collections import HTTPHeaderDict
@@ -94,9 +94,9 @@ def request(
     body: Optional[HTTPBody] = None,
     fields: Optional[_TYPE_FIELDS] = None,
     headers: Optional[Mapping[str, str]] = None,
-    preload_content: Optional[bool] =True,
-    redirect: Optional[bool] =True,
-    retries: Optional[Union[Retry, bool, int]] =None,
+    preload_content: Optional[bool] = True,
+    redirect: Optional[bool] = True,
+    retries: Optional[Union[Retry, bool, int]] = None,
     timeout: Optional[Union[Timeout, float, int]] = 3,
 ) -> BaseHTTPResponse:
     """

@@ -4,10 +4,9 @@ from unittest import mock
 
 import pytest
 
-import urllib3
 from dummyserver.server import HAS_IPV6
 from dummyserver.testcase import HTTPDummyServerTestCase, IPv6HTTPDummyServerTestCase
-from urllib3 import request
+from urllib3 import HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
@@ -401,6 +400,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             "GET",
             f"{self.base_url}/redirect",
             fields={"target": f"{self.base_url}/"},
+            redirect=True
         )
 
         assert r.status == 200
@@ -414,24 +414,24 @@ class TestPoolManager(HTTPDummyServerTestCase):
         assert r.status == 200
 
     def test_top_level_request_with_timeout(self):
-        urllib3.poolmanager.RequestMethods.request = mock.Mock(
-            return_value=urllib3.HTTPResponse(status=200)
-        )
-        r = request("GET", f"{self.base_url}/redirect", timeout=2.5)
+        with mock.patch("urllib3.poolmanager.RequestMethods.request") as mockRequest:
+            mockRequest.return_value = HTTPResponse(status=200)
 
-        # assert r.status == 200
+            r = request("GET", f"{self.base_url}/redirect", timeout=2.5)
 
-        urllib3.poolmanager.RequestMethods.request.assert_called_with(
-            "GET",
-            f"{self.base_url}/redirect",
-            body=None,
-            fields=None,
-            headers=None,
-            preload_content=True,
-            redirect=True,
-            retries=None,
-            timeout=2.5,
-        )
+            assert r.status == 200
+
+            mockRequest.assert_called_with(
+                "GET",
+                f"{self.base_url}/redirect",
+                body=None,
+                fields=None,
+                headers=None,
+                preload_content=True,
+                redirect=True,
+                retries=None,
+                timeout=2.5,
+            )
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")
