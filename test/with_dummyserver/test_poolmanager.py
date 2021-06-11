@@ -400,7 +400,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             "GET",
             f"{self.base_url}/redirect",
             fields={"target": f"{self.base_url}/"},
-            redirect=True
+            redirect=True,
         )
 
         assert r.status == 200
