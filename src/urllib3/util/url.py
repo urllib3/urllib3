@@ -300,7 +300,7 @@ def _normalize_host(
 def _idna_encode(name: str) -> bytes:
     if name and any([ord(x) > 128 for x in name]):
         try:
-            import idna  # type: ignore
+            import idna
         except ImportError:
             raise LocationParseError(
                 "Unable to parse URL without the 'idna' module"

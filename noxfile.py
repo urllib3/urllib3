@@ -139,10 +139,10 @@ def mypy(session):
     session.install("mypy==0.812")
     session.run("mypy", "--version")
 
-    session.log("mypy --strict src/urllib3")
+    session.log("mypy --strict --ignore-missing-imports src/urllib3")
     all_errors, errors = [], []
     process = subprocess.run(
-        ["mypy", "--strict", "src/urllib3"],
+        ["mypy", "--strict", "--ignore-missing-imports", "src/urllib3"],
         env=session.env,
         text=True,
         stdout=subprocess.PIPE,
