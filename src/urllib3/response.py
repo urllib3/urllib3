@@ -1,4 +1,5 @@
 import io
+import json as _json
 import logging
 import zlib
 from contextlib import contextmanager
@@ -235,6 +236,13 @@ class BaseHTTPResponse(io.IOBase):
     @property
     def data(self) -> bytes:
         raise NotImplementedError()
+
+    def json(self) -> Any:
+        """
+        Returns Deserialized json.
+        Throws JSONDecodeError
+        """
+        return _json.loads(self.data)
 
     @property
     def url(self) -> Optional[str]:

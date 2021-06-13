@@ -102,7 +102,8 @@ The :class:`~response.HTTPResponse` object provides
 JSON Content
 ~~~~~~~~~~~~
 
-JSON content can be loaded by decoding and deserializing the
+JSON content can be loaded by using :attr:`~response.HTTPResponse.json`
+attribute of the request or by decoding and deserializing the 
 :attr:`~response.HTTPResponse.data` attribute of the request:
 
 .. code-block:: python
@@ -111,6 +112,9 @@ JSON content can be loaded by decoding and deserializing the
     import urllib3
 
     resp = urllib3.request("GET", "https://httpbin.org/ip")
+
+    resp.json()
+    # {"origin": "127.0.0.1"}
 
     print(json.loads(resp.data.decode("utf-8")))
     # {"origin": "127.0.0.1"}
@@ -275,8 +279,30 @@ dictionary in the ``fields`` argument provided to
 JSON
 ~~~~
 
-You can send a JSON request by specifying the encoded data as the ``body``
-argument and setting the ``Content-Type`` header when calling
+You can send a JSON request by specifying the data as ``json`` argument,
+urllib3 automatically encodes data using ``json`` module with ``utf-8`` 
+encoding. Also by default ``"Content-Type"`` in headers is set to 
+"application/json"`` if not specified when calling
+:meth:`~poolmanager.PoolManager.request`:
+
+.. code-block:: python
+
+    import urllib3
+
+    data = {"attribute": "value"}
+
+    resp = urllib3.request(
+        "POST",
+        "https://httpbin.org/post",
+        json=data, # Passing data without encoding
+    )
+
+    print(resp.json())
+    # {"attribute": "value"}
+
+
+Alternatively, you can send a JSON request by specifying the encoded data 
+as the ``body``argument and setting the ``Content-Type`` header when calling
 :meth:`~poolmanager.PoolManager.request`:
 
 .. code-block:: python

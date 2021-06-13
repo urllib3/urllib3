@@ -491,6 +491,43 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 retries=None,
                 timeout=2.5,
             )
+    @pytest.mark.parametrize(
+        "headers",
+        [
+            None,
+            {"content-Type": "application/json"},
+            {"content-Type": "text/plain"},
+            {"attribute": "value", "CONTENT-TYPE": "application/json"},
+            HTTPHeaderDict(cookie="foo, bar"),
+        ],
+    )
+    def test_request_with_json(self, headers):
+        body = {"attribute": "value"}
+        r = request(
+            method="POST", url=f"{self.base_url}/echo_json", headers=headers, json=body
+        )
+        assert r.status == 200
+        assert r.json() == body
+        if headers is not None and "application/json" not in headers.values():
+            assert "text/plain" in r.headers["Content-Type"].replace(" ", "").split(",")
+        else:
+            assert "application/json" in r.headers["Content-Type"].replace(
+                " ", ""
+            ).split(",")
+
+    def test_top_level_request_with_json_with_httpheaderdict(self):
+        body = {"attribute": "value"}
+        header = HTTPHeaderDict(cookie="foo, bar")
+        with PoolManager(headers=header) as http:
+            r = http.request(method="POST", url=f"{self.base_url}/echo", json=body)
+            assert r.status == 200
+            assert r.json() == body
+
+    def test_top_level_request_with_body_and_json(self):
+        match = "request got values for both 'json' and 'body', can only specify one"
+        with pytest.raises(TypeError, match=match):
+            body = {"attribute": "value"}
+            request(method="POST", url=f"{self.base_url}/echo", body=body, json=body)
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")
