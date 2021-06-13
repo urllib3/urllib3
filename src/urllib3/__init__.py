@@ -6,7 +6,7 @@ Python HTTP library with thread-safe connection pooling, file post support, user
 import logging
 import warnings
 from logging import NullHandler
-from typing import Mapping, Optional, Type, Any, Union
+from typing import Any, Mapping, Optional, Type, Union
 
 from . import exceptions
 from ._collections import HTTPHeaderDict

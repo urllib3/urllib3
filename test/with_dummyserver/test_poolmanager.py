@@ -519,9 +519,12 @@ class TestPoolManager(HTTPDummyServerTestCase):
         body = {"attribute": "value"}
         header = HTTPHeaderDict(cookie="foo, bar")
         with PoolManager(headers=header) as http:
-            r = http.request(method="POST", url=f"{self.base_url}/echo", json=body)
+            r = http.request(method="POST", url=f"{self.base_url}/echo_json", json=body)
             assert r.status == 200
             assert r.json() == body
+            assert "application/json" in r.headers["Content-Type"].replace(
+                " ", ""
+            ).split(",")
 
     def test_top_level_request_with_body_and_json(self):
         match = "request got values for both 'json' and 'body', can only specify one"
