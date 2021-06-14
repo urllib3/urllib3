@@ -137,6 +137,7 @@ def lint(session):
 def mypy(session):
     """Run mypy."""
     session.install("mypy==0.812")
+    session.install("idna>=2.0.0")
     session.run("mypy", "--version")
 
     session.log("mypy --strict src/urllib3")
