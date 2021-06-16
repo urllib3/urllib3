@@ -1,11 +1,12 @@
 import json
 from test import LONG_TIMEOUT
+from unittest import mock
 
 import pytest
 
 from dummyserver.server import HAS_IPV6
 from dummyserver.testcase import HTTPDummyServerTestCase, IPv6HTTPDummyServerTestCase
-from urllib3 import request
+from urllib3 import HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
@@ -377,6 +378,60 @@ class TestPoolManager(HTTPDummyServerTestCase):
         r = request("POST", f"{self.base_url}/echo", body=b"test")
         assert r.status == 200
         assert r.data == b"test"
+
+    def test_top_level_request_with_preload_content(self):
+        r = request("GET", f"{self.base_url}/echo", preload_content=False)
+        assert r.status == 200
+        assert r.connection is not None
+        r.data
+        assert r.connection is None
+
+    def test_top_level_request_with_redirect(self):
+        r = request(
+            "GET",
+            f"{self.base_url}/redirect",
+            fields={"target": f"{self.base_url}/"},
+            redirect=False,
+        )
+
+        assert r.status == 303
+
+        r = request(
+            "GET",
+            f"{self.base_url}/redirect",
+            fields={"target": f"{self.base_url}/"},
+            redirect=True,
+        )
+
+        assert r.status == 200
+        assert r.data == b"Dummy server!"
+
+    def test_top_level_request_with_retries(self):
+        r = request("GET", f"{self.base_url}/redirect", retries=False)
+        assert r.status == 303
+
+        r = request("GET", f"{self.base_url}/redirect", retries=3)
+        assert r.status == 200
+
+    def test_top_level_request_with_timeout(self):
+        with mock.patch("urllib3.poolmanager.RequestMethods.request") as mockRequest:
+            mockRequest.return_value = HTTPResponse(status=200)
+
+            r = request("GET", f"{self.base_url}/redirect", timeout=2.5)
+
+            assert r.status == 200
+
+            mockRequest.assert_called_with(
+                "GET",
+                f"{self.base_url}/redirect",
+                body=None,
+                fields=None,
+                headers=None,
+                preload_content=True,
+                redirect=True,
+                retries=None,
+                timeout=2.5,
+            )
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")

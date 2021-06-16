@@ -6,7 +6,7 @@ Python HTTP library with thread-safe connection pooling, file post support, user
 import logging
 import warnings
 from logging import NullHandler
-from typing import Mapping, Optional, Type
+from typing import Mapping, Optional, Type, Union
 
 from . import exceptions
 from ._collections import HTTPHeaderDict
@@ -94,6 +94,10 @@ def request(
     body: Optional[HTTPBody] = None,
     fields: Optional[_TYPE_FIELDS] = None,
     headers: Optional[Mapping[str, str]] = None,
+    preload_content: Optional[bool] = True,
+    redirect: Optional[bool] = True,
+    retries: Optional[Union[Retry, bool, int]] = None,
+    timeout: Optional[Union[Timeout, float, int]] = 3,
 ) -> BaseHTTPResponse:
     """
     A convenience, top-level request method. It uses a module-global ``PoolManager`` instance.
@@ -102,4 +106,14 @@ def request(
     The method does not accept low-level ``**urlopen_kw`` keyword arguments.
     """
 
-    return _DEFAULT_POOL.request(method, url, body=body, fields=fields, headers=headers)
+    return _DEFAULT_POOL.request(
+        method,
+        url,
+        body=body,
+        fields=fields,
+        headers=headers,
+        preload_content=preload_content,
+        redirect=redirect,
+        retries=retries,
+        timeout=timeout,
+    )

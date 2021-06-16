@@ -321,5 +321,8 @@ In chronological order:
 * Bastian Venthur <https://venthur.de>
   * fixed all remaining coverage checks for raise statements
 
+* Ubdussamad <ubdussamad@gmail.com>
+  * Added multiple parameters to the top-level request method.
+
 * [Your name or handle] <[email or website]>
   * [Brief summary of your changes]
