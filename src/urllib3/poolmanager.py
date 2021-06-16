@@ -1,5 +1,6 @@
 import functools
 import logging
+import warnings
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -302,6 +303,14 @@ class PoolManager(RequestMethods):
         ``request_context`` must at least contain the ``scheme`` key and its
         value must be a key in ``key_fn_by_scheme`` instance variable.
         """
+        if "strict" in request_context:
+            warnings.warn(
+                "The 'strict' parameter is no longer needed on Python 3+. "
+                "This will raise an error in urllib3 v3.0.0.",
+                DeprecationWarning,
+            )
+            request_context.pop("strict")
+
         scheme = request_context["scheme"].lower()
         pool_key_constructor = self.key_fn_by_scheme.get(scheme)
         if not pool_key_constructor:

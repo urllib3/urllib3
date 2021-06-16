@@ -1,5 +1,6 @@
 import socket
 from test import resolvesLocalhostFQDN
+from unittest.mock import patch
 
 import pytest
 
@@ -266,6 +267,32 @@ class TestPoolManager:
         assert 1 == len(p.pools)
         assert pool is other_pool
         assert all(isinstance(key, PoolKey) for key in p.pools.keys())
+
+    @patch("urllib3.poolmanager.PoolManager.connection_from_pool_key")
+    def test_connection_from_context_strict_param(self, connection_from_pool_key):
+        p = PoolManager()
+        context = {
+            "scheme": "http",
+            "host": "example.com",
+            "port": 8080,
+            "strict": True,
+        }
+        with pytest.warns(DeprecationWarning) as record:
+            p.connection_from_context(context)
+
+        assert 1 == len(record)
+        msg = (
+            "The 'strict' parameter is no longer needed on Python 3+. "
+            "This will raise an error in urllib3 v3.0.0."
+        )
+        assert record[0].message.args[0] == msg
+
+        _, kwargs = connection_from_pool_key.call_args
+        assert kwargs["request_context"] == {
+            "scheme": "http",
+            "host": "example.com",
+            "port": 8080,
+        }
 
     def test_custom_pool_key(self):
         """Assert it is possible to define a custom key function."""
