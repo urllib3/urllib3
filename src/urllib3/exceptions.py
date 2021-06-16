@@ -5,6 +5,7 @@ if TYPE_CHECKING:
     from email.errors import MessageDefect
 
     from urllib3.connectionpool import ConnectionPool
+    from urllib3.contrib.socks import SOCKSConnection
     from urllib3.response import HTTPResponse
     from urllib3.util.retry import Retry
 
@@ -29,9 +30,11 @@ ReduceResult = Tuple[Callable[..., object], Tuple[object, ...]]
 class PoolError(HTTPError):
     """Base exception for errors caused within a pool."""
 
-    pool: "ConnectionPool"
+    pool: Union["ConnectionPool", "SOCKSConnection"]
 
-    def __init__(self, pool: "ConnectionPool", message: str) -> None:
+    def __init__(
+        self, pool: Union["ConnectionPool", "SOCKSConnection"], message: str
+    ) -> None:
         self.pool = pool
         super().__init__(f"{pool}: {message}")
 
