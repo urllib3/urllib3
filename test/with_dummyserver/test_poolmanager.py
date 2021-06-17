@@ -6,7 +6,7 @@ import pytest
 
 from dummyserver.server import HAS_IPV6
 from dummyserver.testcase import HTTPDummyServerTestCase, IPv6HTTPDummyServerTestCase
-from urllib3 import HTTPResponse, request
+from urllib3 import HTTPHeaderDict, HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
@@ -334,6 +334,35 @@ class TestPoolManager(HTTPDummyServerTestCase):
             returned_headers = json.loads(r.data.decode())
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
+
+    def test_headers_http_header_dict(self):
+        headers = HTTPHeaderDict()
+        headers.add("Foo", "bar")
+        headers.add("Multi", "1")
+        headers.add("Baz", "quux")
+        headers.add("Multi", "2")
+
+        with PoolManager(headers=headers) as http:
+            r = http.request("GET", f"{self.base_url}/headers")
+            returned_headers = json.loads(r.data.decode())
+            assert returned_headers["Foo"] == "bar"
+            assert returned_headers["Multi"] == "1, 2"
+            assert returned_headers["Baz"] == "quux"
+
+            r = http.request(
+                "GET",
+                f"{self.base_url}/headers",
+                headers={
+                    **headers,
+                    "Extra": "extra",
+                    "Foo": "new",
+                },
+            )
+            returned_headers = json.loads(r.data.decode())
+            assert returned_headers["Foo"] == "new"
+            assert returned_headers["Multi"] == "1, 2"
+            assert returned_headers["Baz"] == "quux"
+            assert returned_headers["Extra"] == "extra"
 
     def test_body(self):
         with PoolManager() as http:
