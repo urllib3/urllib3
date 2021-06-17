@@ -90,6 +90,7 @@ The :class:`~response.HTTPResponse` object provides
     import urllib3
 
     # Making the request (The request function returns HTTPResponse object)
+    # Here we're using module's request method. See the note in above section for details.
     resp = urllib3.request("GET", "https://httpbin.org/ip")
 
     print(resp.status)
