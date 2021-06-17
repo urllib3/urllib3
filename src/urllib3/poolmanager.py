@@ -415,7 +415,7 @@ class PoolManager(RequestMethods):
         kw["redirect"] = False
 
         if "headers" not in kw:
-            kw["headers"] = self.headers.copy()  # type: ignore
+            kw["headers"] = self.headers
 
         if self._proxy_requires_url_absolute_form(u):
             response = conn.urlopen(method, url, **kw)
@@ -443,10 +443,11 @@ class PoolManager(RequestMethods):
         if retries.remove_headers_on_redirect and not conn.is_same_host(
             redirect_location
         ):
-            headers = list(kw["headers"].keys())
-            for header in headers:
+            new_headers = kw["headers"].copy()
+            for header in kw["headers"]:
                 if header.lower() in retries.remove_headers_on_redirect:
-                    kw["headers"].pop(header, None)
+                    new_headers.pop(header, None)
+            kw["headers"] = new_headers
 
         try:
             retries = retries.increment(method, url, response=response, _pool=conn)  # type: ignore
