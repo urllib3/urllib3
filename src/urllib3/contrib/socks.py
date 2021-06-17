@@ -69,14 +69,28 @@ try:
 except ImportError:
     ssl = None  # type: ignore
 
+try:
+    from typing import TypedDict  # >=3.8
+except ImportError:
+    from typing_extensions import TypedDict  # <=3.7
+
+
+class SocksOptions(TypedDict):
+    socks_version: int
+    proxy_host: Optional[str]
+    proxy_port: Optional[str]
+    username: Optional[str]
+    password: Optional[str]
+    rdns: bool
+
 
 class SOCKSConnection(HTTPConnection):
     """
     A plain-text HTTP connection that connects via a SOCKS proxy.
     """
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self._socks_options = kwargs.pop("_socks_options")
+    def __init__(self, _socks_options: SocksOptions, *args: Any, **kwargs: Any) -> None:
+        self._socks_options = _socks_options
         super().__init__(*args, **kwargs)
 
     def _new_conn(self) -> "socks.socksocket":

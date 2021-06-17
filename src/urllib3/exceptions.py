@@ -30,11 +30,9 @@ ReduceResult = Tuple[Callable[..., object], Tuple[object, ...]]
 class PoolError(HTTPError):
     """Base exception for errors caused within a pool."""
 
-    pool: Union["ConnectionPool", "SOCKSConnection"]
+    pool: "ConnectionPool"
 
-    def __init__(
-        self, pool: Union["ConnectionPool", "SOCKSConnection"], message: str
-    ) -> None:
+    def __init__(self, pool: "ConnectionPool", message: str) -> None:
         self.pool = pool
         super().__init__(f"{pool}: {message}")
 
@@ -163,10 +161,14 @@ class ConnectTimeoutError(TimeoutError):
     pass
 
 
-class NewConnectionError(ConnectTimeoutError, PoolError):
+class NewConnectionError(ConnectTimeoutError, HTTPError):
     """Raised when we fail to establish a new connection. Usually ECONNREFUSED."""
 
-    pass
+    pool: "SOCKSConnection"
+
+    def __init__(self, pool: "SOCKSConnection", message: str) -> None:
+        self.pool = pool
+        super().__init__(f"{pool}: {message}")
 
 
 class EmptyPoolError(PoolError):
