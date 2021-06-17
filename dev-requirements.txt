@@ -8,5 +8,4 @@ flaky==3.7.0
 trustme==0.7.0
 cryptography==3.4.7
 python-dateutil==2.8.1
-typing-extensions==3.7.4.3
 requests
