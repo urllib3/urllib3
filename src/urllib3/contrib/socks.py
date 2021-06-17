@@ -71,17 +71,18 @@ except ImportError:
 
 try:
     from typing import TypedDict
-except ImportError:
-    from typing_extensions import TypedDict  # Python 3.7
-
-
-class SocksOptions(TypedDict):
-    socks_version: int
-    proxy_host: Optional[str]
-    proxy_port: Optional[str]
-    username: Optional[str]
-    password: Optional[str]
-    rdns: bool
+except ImportError:  # Python 3.7
+    _TYPE_SOCKS_OPTIONS = Dict[str, Any]
+else:
+    _TYPE_SOCKS_OPTIONS = TypedDict(  # type: ignore
+        "SocksOptions",
+        socks_version=int,
+        proxy_host=Optional[str],
+        proxy_port=Optional[str],
+        username=Optional[str],
+        password=Optional[str],
+        rdns=bool,
+    )
 
 
 class SOCKSConnection(HTTPConnection):
@@ -89,7 +90,9 @@ class SOCKSConnection(HTTPConnection):
     A plain-text HTTP connection that connects via a SOCKS proxy.
     """
 
-    def __init__(self, _socks_options: SocksOptions, *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, _socks_options: _TYPE_SOCKS_OPTIONS, *args: Any, **kwargs: Any
+    ) -> None:
         self._socks_options = _socks_options
         super().__init__(*args, **kwargs)
 
