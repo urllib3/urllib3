@@ -70,9 +70,9 @@ except ImportError:
     ssl = None  # type: ignore
 
 try:
-    from typing import TypedDict  # >=3.8
+    from typing import TypedDict
 except ImportError:
-    from typing_extensions import TypedDict  # <=3.7
+    from typing_extensions import TypedDict  # Python 3.7
 
 
 class SocksOptions(TypedDict):

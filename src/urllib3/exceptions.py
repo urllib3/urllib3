@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 if TYPE_CHECKING:
     from email.errors import MessageDefect
 
+    from urllib3.connection import HTTPConnection
     from urllib3.connectionpool import ConnectionPool
-    from urllib3.contrib.socks import SOCKSConnection
     from urllib3.response import HTTPResponse
     from urllib3.util.retry import Retry
 
@@ -164,9 +164,9 @@ class ConnectTimeoutError(TimeoutError):
 class NewConnectionError(ConnectTimeoutError, HTTPError):
     """Raised when we fail to establish a new connection. Usually ECONNREFUSED."""
 
-    pool: "SOCKSConnection"
+    pool: "HTTPConnection"
 
-    def __init__(self, pool: "SOCKSConnection", message: str) -> None:
+    def __init__(self, pool: "HTTPConnection", message: str) -> None:
         self.pool = pool
         super().__init__(f"{pool}: {message}")
 
