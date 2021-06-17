@@ -101,7 +101,7 @@ class SocketServerThread(threading.Thread):
 
     USE_IPV6 = HAS_IPV6_AND_DNS
 
-    def __init__(self, socket_handler, host="localhost", port=8081, ready_event=None):
+    def __init__(self, socket_handler, host="localhost", ready_event=None):
         super().__init__()
         self.daemon = True
 
