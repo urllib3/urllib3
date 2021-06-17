@@ -12,6 +12,7 @@ from urllib3.exceptions import (
     HTTPError,
     LocationParseError,
     MaxRetryError,
+    NewConnectionError,
     ReadTimeoutError,
 )
 
@@ -45,3 +46,16 @@ class TestFormat:
 
         assert "defects" in str(hpe)
         assert "unparsed_data" in str(hpe)
+
+
+class TestNewConnectionError:
+    def test_pool_property_deprication_warning(self):
+        err = NewConnectionError(HTTPConnectionPool("localhost"), "test")
+        with pytest.warns(DeprecationWarning) as record:
+            err.pool
+
+        msg = (
+            "The 'pool' property is deprecated and will be removed "
+            "in urllib3 v3.0.0. use 'conn' instead."
+        )
+        assert record[0].message.args[0] == msg
