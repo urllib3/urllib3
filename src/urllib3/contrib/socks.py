@@ -39,7 +39,7 @@ with the proxy:
 """
 
 try:
-    import socks
+    import socks  # type: ignore
 except ImportError:
     import warnings
 
@@ -56,6 +56,7 @@ except ImportError:
     raise
 
 from socket import timeout as SocketTimeout
+from typing import Any, Dict, Mapping, Optional
 
 from ..connection import HTTPConnection, HTTPSConnection
 from ..connectionpool import HTTPConnectionPool, HTTPSConnectionPool
@@ -66,7 +67,22 @@ from ..util.url import parse_url
 try:
     import ssl
 except ImportError:
-    ssl = None
+    ssl = None  # type: ignore
+
+try:
+    from typing import TypedDict
+
+    class _TYPE_SOCKS_OPTIONS(TypedDict):
+        socks_version: int
+        proxy_host: Optional[str]
+        proxy_port: Optional[str]
+        username: Optional[str]
+        password: Optional[str]
+        rdns: bool
+
+
+except ImportError:  # Python 3.7
+    _TYPE_SOCKS_OPTIONS = Dict[str, Any]  # type: ignore
 
 
 class SOCKSConnection(HTTPConnection):
@@ -74,15 +90,17 @@ class SOCKSConnection(HTTPConnection):
     A plain-text HTTP connection that connects via a SOCKS proxy.
     """
 
-    def __init__(self, *args, **kwargs):
-        self._socks_options = kwargs.pop("_socks_options")
+    def __init__(
+        self, _socks_options: _TYPE_SOCKS_OPTIONS, *args: Any, **kwargs: Any
+    ) -> None:
+        self._socks_options = _socks_options
         super().__init__(*args, **kwargs)
 
-    def _new_conn(self):
+    def _new_conn(self) -> "socks.socksocket":
         """
         Establish a new connection via the SOCKS proxy.
         """
-        extra_kw = {}
+        extra_kw: Dict[str, Any] = {}
         if self.source_address:
             extra_kw["source_address"] = self.source_address
 
@@ -162,12 +180,12 @@ class SOCKSProxyManager(PoolManager):
 
     def __init__(
         self,
-        proxy_url,
-        username=None,
-        password=None,
-        num_pools=10,
-        headers=None,
-        **connection_pool_kw,
+        proxy_url: str,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        num_pools: int = 10,
+        headers: Optional[Mapping[str, str]] = None,
+        **connection_pool_kw: Any,
     ):
         parsed = parse_url(proxy_url)
 

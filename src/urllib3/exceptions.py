@@ -1,9 +1,11 @@
+import warnings
 from http.client import IncompleteRead as httplib_IncompleteRead
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
 if TYPE_CHECKING:
     from email.errors import MessageDefect
 
+    from urllib3.connection import HTTPConnection
     from urllib3.connectionpool import ConnectionPool
     from urllib3.response import HTTPResponse
     from urllib3.util.retry import Retry
@@ -160,10 +162,25 @@ class ConnectTimeoutError(TimeoutError):
     pass
 
 
-class NewConnectionError(ConnectTimeoutError, PoolError):
+class NewConnectionError(ConnectTimeoutError, HTTPError):
     """Raised when we fail to establish a new connection. Usually ECONNREFUSED."""
 
-    pass
+    conn: "HTTPConnection"
+
+    def __init__(self, conn: "HTTPConnection", message: str) -> None:
+        self.conn = conn
+        super().__init__(f"{conn}: {message}")
+
+    @property
+    def pool(self) -> "HTTPConnection":
+        warnings.warn(
+            "The 'pool' property is deprecated and will be removed "
+            "in a later urllib3 v2.x release. use 'conn' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        return self.conn
 
 
 class EmptyPoolError(PoolError):

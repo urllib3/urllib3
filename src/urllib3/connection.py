@@ -211,7 +211,7 @@ class HTTPConnection(_HTTPConnection):
             )
 
         except OSError as e:
-            raise NewConnectionError(self, f"Failed to establish a new connection: {e}")  # type: ignore
+            raise NewConnectionError(self, f"Failed to establish a new connection: {e}")
 
         return conn
 
