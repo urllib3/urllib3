@@ -10,10 +10,9 @@ from typing import Any, Dict, Optional, Union
 
 from ntlm import ntlm  # type:ignore
 
-from urllib3.response import BaseHTTPResponse
-
 from .. import HTTPSConnectionPool
 from ..connection import HTTPBody
+from ..response import BaseHTTPResponse
 from ..util.retry import Retry
 
 log = getLogger(__name__)
