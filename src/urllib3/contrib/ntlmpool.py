@@ -49,7 +49,11 @@ class NTLMConnectionPool(HTTPSConnectionPool):
         req_header = "Authorization"
         resp_header = "www-authenticate"
 
-        conn = HTTPSConnection(host=self.host, port=self.port)
+        conn = HTTPSConnection(
+            host=self.host,
+            port=self.port,
+            timeout=self.timeout.connect_timeout,  # type: ignore
+        )
 
         # Send negotiation message
         headers[req_header] = f"NTLM {ntlm.create_NTLM_NEGOTIATE_MESSAGE(self.rawuser)}"
