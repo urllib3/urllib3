@@ -3,13 +3,12 @@ NTLM authenticating pool, contributed by erikcederstran
 
 Issue #10, see: http://code.google.com/p/urllib3/issues/detail?id=10
 """
-
-from http.client import HTTPSConnection
 from logging import getLogger
 
 from ntlm import ntlm
 
 from .. import HTTPSConnectionPool
+from ..connection import HTTPSConnection
 
 log = getLogger(__name__)
 
