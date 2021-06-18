@@ -1,7 +1,6 @@
 # TODO: Break this module up into pieces. Maybe group by functionality tested
 # rather than the socket level-ness of it.
 import errno
-import http.client as httplib
 import os
 import os.path
 import select
@@ -47,14 +46,6 @@ from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
 
 from .. import LogRecorder, has_alpn
-
-try:
-    from mimetools import Message as MimeToolMessage
-except ImportError:
-
-    class MimeToolMessage:
-        pass
-
 
 # Retry failed tests
 pytestmark = pytest.mark.flaky
@@ -1615,10 +1606,6 @@ class TestHeaders(SocketDummyServerTestCase):
             assert expected_response_headers == actual_response_headers
 
 
-@pytest.mark.skipif(
-    issubclass(httplib.HTTPMessage, MimeToolMessage),
-    reason="Header parsing errors not available",
-)
 class TestBrokenHeaders(SocketDummyServerTestCase):
     def _test_broken_header_parsing(self, headers, unparsed_data_check=None):
         self.start_response_handler(
