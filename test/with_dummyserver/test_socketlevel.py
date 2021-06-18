@@ -1,6 +1,28 @@
 # TODO: Break this module up into pieces. Maybe group by functionality tested
 # rather than the socket level-ness of it.
+import errno
 import http.client as httplib
+import os
+import os.path
+import select
+import shutil
+import socket
+import ssl
+import tempfile
+from collections import OrderedDict
+from test import (
+    LONG_TIMEOUT,
+    SHORT_TIMEOUT,
+    notSecureTransport,
+    notWindows,
+    requires_ssl_context_keyfile_password,
+    resolvesLocalhostFQDN,
+)
+from threading import Event
+from unittest import mock
+
+import pytest
+import trustme
 
 from dummyserver.server import (
     DEFAULT_CA,
@@ -33,29 +55,6 @@ except ImportError:
     class MimeToolMessage:
         pass
 
-
-import errno
-import os
-import os.path
-import select
-import shutil
-import socket
-import ssl
-import tempfile
-from collections import OrderedDict
-from test import (
-    LONG_TIMEOUT,
-    SHORT_TIMEOUT,
-    notSecureTransport,
-    notWindows,
-    requires_ssl_context_keyfile_password,
-    resolvesLocalhostFQDN,
-)
-from threading import Event
-from unittest import mock
-
-import pytest
-import trustme
 
 # Retry failed tests
 pytestmark = pytest.mark.flaky
