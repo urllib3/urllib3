@@ -6,7 +6,7 @@ Issue #10, see: http://code.google.com/p/urllib3/issues/detail?id=10
 
 from http.client import HTTPSConnection
 from logging import getLogger
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 from ntlm import ntlm  # type:ignore
 
@@ -14,6 +14,7 @@ from urllib3.response import BaseHTTPResponse
 
 from .. import HTTPSConnectionPool
 from ..connection import HTTPBody
+from ..util.retry import Retry
 
 log = getLogger(__name__)
 
@@ -110,7 +111,7 @@ class NTLMConnectionPool(HTTPSConnectionPool):
         url: str,
         body: Optional[HTTPBody] = None,
         headers: Optional[Dict[str, str]] = None,
-        retries: int = 3,
+        retries: Union[Retry, bool, int] = 3,
         redirect: bool = True,
         assert_same_host: bool = True,
     ) -> BaseHTTPResponse:
