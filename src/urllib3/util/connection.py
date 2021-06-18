@@ -74,18 +74,23 @@ def create_connection(
             if source_address:
                 sock.bind(source_address)
             sock.connect(sa)
+            # Break explicitly a reference cycle
+            err = None
             return sock
 
-        except OSError as e:
-            err = e
+        except OSError as _:
+            err = _
             if sock is not None:
                 sock.close()
-                sock = None
 
     if err is not None:
-        raise err
-
-    raise OSError("getaddrinfo returns an empty list")
+        try:
+            raise err
+        finally:
+            # Break explicitly a reference cycle
+            err = None
+    else:
+        raise OSError("getaddrinfo returns an empty list")
 
 
 def _set_socket_options(sock: socket.socket, options: Optional[SocketOptions]) -> None:
