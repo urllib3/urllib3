@@ -2,6 +2,7 @@ import pickle
 
 import pytest
 
+from urllib3.connection import HTTPConnection
 from urllib3.connectionpool import HTTPConnectionPool
 from urllib3.exceptions import (
     ClosedPoolError,
@@ -49,13 +50,14 @@ class TestFormat:
 
 
 class TestNewConnectionError:
-    def test_pool_property_deprication_warning(self):
-        err = NewConnectionError(HTTPConnectionPool("localhost"), "test")
+    def test_pool_property_deprecation_warning(self):
+        err = NewConnectionError(HTTPConnection("localhost"), "test")
         with pytest.warns(DeprecationWarning) as record:
             err.pool
 
+        assert err.pool is err.conn
         msg = (
             "The 'pool' property is deprecated and will be removed "
-            "in urllib3 v3.0.0. use 'conn' instead."
+            "in a later urllib3 v2.x release. use 'conn' instead."
         )
         assert record[0].message.args[0] == msg

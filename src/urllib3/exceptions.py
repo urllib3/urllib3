@@ -175,7 +175,7 @@ class NewConnectionError(ConnectTimeoutError, HTTPError):
     def pool(self) -> "HTTPConnection":
         warnings.warn(
             "The 'pool' property is deprecated and will be removed "
-            "in urllib3 v3.0.0. use 'conn' instead.",
+            "in a later urllib3 v2.x release. use 'conn' instead.",
             DeprecationWarning,
             stacklevel=2,
         )
