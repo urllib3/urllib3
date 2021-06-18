@@ -146,9 +146,7 @@ to ``False``. By default HTTP responses are closed after reading all bytes, this
     import io
     import urllib3
 
-    http = urllib3.PoolManager() # Creating a seprate PoolManager instance.
-
-    resp = http.request("GET", "https://example.com", preload_content=False)
+    resp = urllib3.request("GET", "https://example.com", preload_content=False)
     resp.auto_close = False
 
     for line in io.TextIOWrapper(resp):
@@ -433,9 +431,7 @@ to :meth:`~poolmanager.PoolManager.request`:
 
     import urllib3
 
-    http = urllib3.PoolManager()
-
-    resp = http.request(
+    resp = urllib3.request(
         "GET",
         "https://httpbin.org/delay/3",
         timeout=4.0
@@ -445,7 +441,7 @@ to :meth:`~poolmanager.PoolManager.request`:
     # <class "urllib3.response.HTTPResponse">
 
     # This request will take more time to process than timeout.
-    http.request(
+    urllib3.request(
         "GET",
         "https://httpbin.org/delay/3",
         timeout=2.5
@@ -458,18 +454,17 @@ instance which lets you specify separate connect and read timeouts:
 .. code-block:: python
 
     import urllib3
-    http = urllib3.PoolManager()
 
-    resp = http.request(
+    resp = urllib3.request(
         "GET",
         "https://httpbin.org/delay/3",
         timeout=urllib3.Timeout(connect=1.0)
     )
-    
+
     print(type(resp))
     # <urllib3.response.HTTPResponse>
 
-    http.request(
+    urllib3.request(
         "GET",
         "https://httpbin.org/delay/3",
         timeout=urllib3.Timeout(connect=1.0, read=2.0)
@@ -482,7 +477,10 @@ the timeout at the :class:`~urllib3.poolmanager.PoolManager` level:
 
 .. code-block:: python
 
+    import urllib3
+
     http = urllib3.PoolManager(timeout=3.0)
+    
     http = urllib3.PoolManager(
         timeout=urllib3.Timeout(connect=1.0, read=2.0)
     )
@@ -504,8 +502,7 @@ To change the number of retries just specify an integer:
 
     import urllib3
 
-    http = urllib3.PoolManager()
-    http.request("GET", "https://httpbin.org/ip", retries=10)
+    urllib3.request("GET", "https://httpbin.org/ip", retries=10)
 
 To disable all retry and redirect logic specify ``retries=False``:
 
@@ -513,16 +510,14 @@ To disable all retry and redirect logic specify ``retries=False``:
 
     import urllib3
 
-    http = urllib3.PoolManager()
-
-    http.request(
+    urllib3.request(
         "GET",
         "https://nxdomain.example.com",
         retries=False
     )
     # NewConnectionError
 
-    resp = http.request(
+    resp = urllib3.request(
         "GET",
         "https://httpbin.org/redirect/1",
         retries=False
@@ -535,7 +530,7 @@ To disable redirects but keep the retrying logic, specify ``redirect=False``:
 
 .. code-block:: python
 
-    resp = http.request(
+    resp = urllib3.request(
         "GET",
         "https://httpbin.org/redirect/1",
         redirect=False
@@ -551,7 +546,7 @@ For example, to do a total of 3 retries, but limit to only 2 redirects:
 
 .. code-block:: python
 
-    http.request(
+    urllib3.request(
         "GET",
         "https://httpbin.org/redirect/3",
         retries=urllib3.Retry(3, redirect=2)
@@ -563,7 +558,7 @@ You can also disable exceptions for too many redirects and just return the
 
 .. code-block:: python
 
-    resp = http.request(
+    resp = urllib3.request(
         "GET",
         "https://httpbin.org/redirect/3",
         retries=urllib3.Retry(
@@ -580,7 +575,10 @@ specify the retry at the :class:`~urllib3.poolmanager.PoolManager` level:
 
 .. code-block:: python
 
+    import urllib3
+
     http = urllib3.PoolManager(retries=False)
+
     http = urllib3.PoolManager(
         retries=urllib3.Retry(5, redirect=2)
     )
@@ -597,10 +595,8 @@ urllib3 wraps lower-level exceptions, for example:
 
     import urllib3
 
-    http = urllib3.PoolManager()
-
     try:
-        http.request("GET","https://nx.example.com", retries=False)
+        urllib3.request("GET","https://nx.example.com", retries=False)
 
     except urllib3.exceptions.NewConnectionError:
         print("Connection failed.")

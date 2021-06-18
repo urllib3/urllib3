@@ -69,8 +69,7 @@ content.
 
     import urllib3
 
-    http = urllib3.PoolManager()
-    resp = http.request(
+    resp = urllib3.request(
         "GET",
         "https://httpbin.org/bytes/1024",
         preload_content=False
@@ -96,8 +95,7 @@ a file-like object. This allows you to do buffering:
 
     import urllib3
 
-    http = urllib3.PoolManager()
-    resp = http.request(
+    resp = urllib3.request(
         "GET",
         "https://httpbin.org/bytes/1024",
         preload_content=False
@@ -114,8 +112,7 @@ data is available.
     import io
     import urllib3
 
-    http = urllib3.PoolManager()
-    resp = http.request(
+    resp = urllib3.request(
         "GET",
         "https://httpbin.org/bytes/1024",
         preload_content=False
@@ -137,8 +134,8 @@ You can use this file-like object to do things like decode the content using
     import urllib3
 
     reader = codecs.getreader("utf-8")
-    http = urllib3.PoolManager()
-    resp = http.request(
+
+    resp = urllib3.request(
         "GET",
         "https://httpbin.org/ip",
         preload_content=False
@@ -430,8 +427,7 @@ Here's an example using brotli encoding via the ``Accept-Encoding`` header:
 
     import urllib3
 
-    http = urllib3.PoolManager()
-    http.request(
+    urllib3.request(
         "GET",
         "https://www.google.com/",
         headers={"Accept-Encoding": "br"}
