@@ -195,11 +195,12 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert "X-API-Secret" not in data
             assert data["Authorization"] == "bar"
 
+            headers = {"x-api-secret": "foo", "authorization": "bar"}
             r = http.request(
                 "GET",
                 f"{self.base_url}/redirect",
                 fields={"target": f"{self.base_url_alt}/headers"},
-                headers={"x-api-secret": "foo", "authorization": "bar"},
+                headers=headers,
                 retries=Retry(remove_headers_on_redirect=["X-API-Secret"]),
             )
 
@@ -210,6 +211,9 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert "x-api-secret" not in data
             assert "X-API-Secret" not in data
             assert data["Authorization"] == "bar"
+
+            # Ensure the header argument itself is not modified in-place.
+            assert headers == {"x-api-secret": "foo", "authorization": "bar"}
 
     def test_redirect_without_preload_releases_connection(self):
         with PoolManager(block=True, maxsize=2) as http:
