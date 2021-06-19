@@ -277,15 +277,14 @@ class TestPoolManager:
             "port": 8080,
             "strict": True,
         }
-        with pytest.warns(DeprecationWarning) as record:
+        with pytest.warns(DeprecationWarning) as records:
             p.connection_from_context(context)
 
-        assert 1 == len(record)
         msg = (
             "The 'strict' parameter is no longer needed on Python 3+. "
             "This will raise an error in urllib3 v3.0.0."
         )
-        assert record[0].message.args[0] == msg
+        assert any(record.message.args[0] == msg for record in records)
 
         _, kwargs = connection_from_pool_key.call_args
         assert kwargs["request_context"] == {

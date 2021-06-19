@@ -52,7 +52,7 @@ class TestFormat:
 class TestNewConnectionError:
     def test_pool_property_deprecation_warning(self):
         err = NewConnectionError(HTTPConnection("localhost"), "test")
-        with pytest.warns(DeprecationWarning) as record:
+        with pytest.warns(DeprecationWarning) as records:
             err.pool
 
         assert err.pool is err.conn
@@ -60,4 +60,4 @@ class TestNewConnectionError:
             "The 'pool' property is deprecated and will be removed "
             "in a later urllib3 v2.x release. use 'conn' instead."
         )
-        assert record[0].message.args[0] == msg
+        assert any(record.message.args[0] == msg for record in records)
