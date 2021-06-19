@@ -6,10 +6,14 @@ Issue #10, see: http://code.google.com/p/urllib3/issues/detail?id=10
 
 from http.client import HTTPSConnection
 from logging import getLogger
+from typing import Any, Dict, Optional, Union
 
-from ntlm import ntlm
+from ntlm import ntlm  # type:ignore
 
 from .. import HTTPSConnectionPool
+from ..connection import HTTPBody
+from ..response import BaseHTTPResponse
+from ..util.retry import Retry
 
 log = getLogger(__name__)
 
@@ -21,7 +25,7 @@ class NTLMConnectionPool(HTTPSConnectionPool):
 
     scheme = "https"
 
-    def __init__(self, user, pw, authurl, *args, **kwargs):
+    def __init__(self, user: str, pw: str, authurl: str, *args: Any, **kwargs: Any):
         """
         authurl is a random URL on the server that is protected by NTLM.
         user is the Windows user, probably in the DOMAIN\\username format.
@@ -35,7 +39,7 @@ class NTLMConnectionPool(HTTPSConnectionPool):
         self.user = user_parts[1]
         self.pw = pw
 
-    def _new_conn(self):
+    def _new_conn(self) -> HTTPSConnection:  # type: ignore
         # Performs the NTLM handshake that secures the connection. The socket
         # must be kept open while requests are performed.
         self.num_connections += 1
@@ -64,7 +68,7 @@ class NTLMConnectionPool(HTTPSConnectionPool):
 
         # Remove the reference to the socket, so that it can not be closed by
         # the response object (we want to keep the socket open)
-        res.fp = None
+        res.fp = None  # type: ignore
 
         # Server should respond with a challenge message
         auth_header_values = reshdr[resp_header].split(", ")
@@ -96,20 +100,20 @@ class NTLMConnectionPool(HTTPSConnectionPool):
                 raise Exception("Server rejected request: wrong username or password")
             raise Exception(f"Wrong server response: {res.status} {res.reason}")
 
-        res.fp = None
+        res.fp = None  # type: ignore
         log.debug("Connection established")
         return conn
 
-    def urlopen(
+    def urlopen(  # type: ignore
         self,
-        method,
-        url,
-        body=None,
-        headers=None,
-        retries=3,
-        redirect=True,
-        assert_same_host=True,
-    ):
+        method: str,
+        url: str,
+        body: Optional[HTTPBody] = None,
+        headers: Optional[Dict[str, str]] = None,
+        retries: Union[Retry, bool, int] = 3,
+        redirect: bool = True,
+        assert_same_host: bool = True,
+    ) -> BaseHTTPResponse:
         if headers is None:
             headers = {}
         headers["Connection"] = "Keep-Alive"
