@@ -91,6 +91,7 @@ _DEFAULT_POOL = PoolManager()
 def request(
     method: str,
     url: str,
+    *,
     body: Optional[HTTPBody] = None,
     fields: Optional[_TYPE_FIELDS] = None,
     headers: Optional[Mapping[str, str]] = None,
