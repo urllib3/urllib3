@@ -16,7 +16,6 @@ If you wish to add a new feature or fix a bug:
 #. Format your changes with black using command `$ nox -rs format` and lint your
    changes using command `nox -rs lint`.
 #. Send a pull request and bug the maintainer until it gets merged and published.
-   :) Make sure to add yourself to ``CONTRIBUTORS.txt``.
 
 
 Setting up your development environment
