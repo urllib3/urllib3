@@ -14,7 +14,7 @@ from .. import HTTPSConnectionPool
 from ..packages.six.moves.http_client import HTTPSConnection
 
 warnings.warn(
-    "The 'urllib3.contrib.nltmpool' module is deprecated and will be removed "
+    "The 'urllib3.contrib.ntlmpool' module is deprecated and will be removed "
     "in urllib3 v2.0 release, urllib3 is not able to support it properly due "
     "to reasons listed in issue: https://github.com/urllib3/urllib3/issues/2282. "
     "If you are a user of this module please comment in the mentioned issue.",
