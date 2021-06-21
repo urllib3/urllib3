@@ -14,6 +14,8 @@ Changes
   favor of overriding the ``_render_part`` method. #2257
 * Make all parameters after `method` and `url` for `urllib3.request()` 
   keyword only. #2283
+* The ``NewConnectionError.pool`` deprecated and will be removed
+  in a later urllib3 v2.x release. #2271
 
 
 1.26.5 (2021-05-26)
