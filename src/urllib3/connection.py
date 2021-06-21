@@ -74,7 +74,7 @@ RECENT_DATE = datetime.date(2020, 7, 1)
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
-HTTPBody = Union[bytes, IO[Any], Iterable[bytes], str]
+_TYPE_HTTP_BODY = Union[bytes, IO[Any], Iterable[bytes], str]
 
 
 class ProxyConfig(NamedTuple):
@@ -268,7 +268,7 @@ class HTTPConnection(_HTTPConnection):
         self,
         method: str,
         url: str,
-        body: Optional[HTTPBody] = None,
+        body: Optional[_TYPE_HTTP_BODY] = None,
         headers: Optional[Mapping[str, str]] = None,
     ) -> None:
         if headers is None:
@@ -286,7 +286,7 @@ class HTTPConnection(_HTTPConnection):
         self,
         method: str,
         url: str,
-        body: Union[None, HTTPBody, Tuple[Union[bytes, str]]] = None,
+        body: Union[None, _TYPE_HTTP_BODY, Tuple[Union[bytes, str]]] = None,
         headers: Optional[Mapping[str, str]] = None,
     ) -> None:
         """

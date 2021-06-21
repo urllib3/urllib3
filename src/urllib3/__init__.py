@@ -11,7 +11,7 @@ from typing import Mapping, Optional, Type, Union
 from . import exceptions
 from ._collections import HTTPHeaderDict
 from ._version import __version__
-from .connection import HTTPBody
+from .connection import _TYPE_HTTP_BODY
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, connection_from_url
 from .filepost import _TYPE_FIELDS, encode_multipart_formdata
 from .poolmanager import PoolManager, ProxyManager, proxy_from_url
@@ -92,7 +92,7 @@ def request(
     method: str,
     url: str,
     *,
-    body: Optional[HTTPBody] = None,
+    body: Optional[_TYPE_HTTP_BODY] = None,
     fields: Optional[_TYPE_FIELDS] = None,
     headers: Optional[Mapping[str, str]] = None,
     preload_content: Optional[bool] = True,

@@ -1,7 +1,7 @@
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 from urllib.parse import urlencode
 
-from .connection import HTTPBody
+from .connection import _TYPE_HTTP_BODY
 from .filepost import _TYPE_FIELDS, encode_multipart_formdata
 from .response import BaseHTTPResponse
 
@@ -50,7 +50,7 @@ class RequestMethods:
         self,
         method: str,
         url: str,
-        body: Optional[HTTPBody] = None,
+        body: Optional[_TYPE_HTTP_BODY] = None,
         headers: Optional[Mapping[str, str]] = None,
         encode_multipart: bool = True,
         multipart_boundary: Optional[str] = None,
@@ -65,7 +65,7 @@ class RequestMethods:
         self,
         method: str,
         url: str,
-        body: Optional[HTTPBody] = None,
+        body: Optional[_TYPE_HTTP_BODY] = None,
         fields: Optional[_TYPE_FIELDS] = None,
         headers: Optional[Mapping[str, str]] = None,
         **urlopen_kw: Any,
