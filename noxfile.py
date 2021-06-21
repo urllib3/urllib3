@@ -9,6 +9,7 @@ import nox
 # ignored.
 TYPED_FILES = {
     "src/urllib3/contrib/__init__.py",
+    "src/urllib3/contrib/_securetransport/bindings.py",
     "src/urllib3/contrib/_securetransport/low_level.py",
     "src/urllib3/contrib/ntlmpool.py",
     "src/urllib3/contrib/socks.py",
