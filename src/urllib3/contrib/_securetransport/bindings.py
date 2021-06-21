@@ -1,3 +1,5 @@
+# type: ignore
+
 """
 This module uses ctypes to bind a whole bunch of functions and constants from
 SecureTransport. The goal here is to provide the low-level API to
@@ -46,6 +48,7 @@ from ctypes import (
     c_void_p,
 )
 from ctypes.util import find_library
+from typing import Optional
 
 if platform.system() != "Darwin":
     raise ImportError("Only macOS is supported")
@@ -58,11 +61,12 @@ if version_info < (10, 8):
     )
 
 
-def load_cdll(name, macos10_16_path):
+def load_cdll(name: str, macos10_16_path: str) -> CDLL:
     """Loads a CDLL by name, falling back to known path on 10.16+"""
     try:
         # Big Sur is technically 11 but we use 10.16 due to the Big Sur
         # beta being labeled as 10.16.
+        path: Optional[str]
         if version_info >= (10, 16):
             path = macos10_16_path
         else:
