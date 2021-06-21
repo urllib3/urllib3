@@ -228,11 +228,11 @@ in the URL:
 .. code-block:: python
 
     import json
+    import urllib
     import urllib3
-    from urllib.parse import urlencode
 
     # Encode the args into url grammer.
-    encoded_args = urlencode({"arg": "value"})
+    encoded_args = urllib.parse.urlencode({"arg": "value"})
 
     # Create a URL with args encoded.
     url = "https://httpbin.org/post?" + encoded_args
