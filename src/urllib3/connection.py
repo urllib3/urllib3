@@ -49,7 +49,7 @@ from .exceptions import (
 )
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
 from .util.ssl_ import (
-    PeerCertRetType,
+    _TYPE_PEER_CERT_RET,
     assert_fingerprint,
     create_urllib3_context,
     resolve_cert_reqs,
@@ -585,7 +585,7 @@ class HTTPSConnection(HTTPConnection):
             )
 
 
-def _match_hostname(cert: PeerCertRetType, asserted_hostname: str) -> None:
+def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
     try:
         match_hostname(cert, asserted_hostname)
     except CertificateError as e:
