@@ -111,7 +111,7 @@ class HTTPConnection(_HTTPConnection):
 
     #: Disable Nagle's algorithm by default.
     #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
-    default_socket_options: connection.SocketOptions = [
+    default_socket_options: connection._TYPE_SOCKET_OPTIONS = [
         (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     ]
 
@@ -119,7 +119,7 @@ class HTTPConnection(_HTTPConnection):
     is_verified: bool = False
 
     source_address: Optional[Tuple[str, int]]
-    socket_options: Optional[connection.SocketOptions]
+    socket_options: Optional[connection._TYPE_SOCKET_OPTIONS]
     _tunnel_host: Optional[str]
     _tunnel: Callable[["HTTPConnection"], None]
 
@@ -130,7 +130,9 @@ class HTTPConnection(_HTTPConnection):
         timeout: Optional[float] = connection.SOCKET_GLOBAL_DEFAULT_TIMEOUT,
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
-        socket_options: Optional[connection.SocketOptions] = default_socket_options,
+        socket_options: Optional[
+            connection._TYPE_SOCKET_OPTIONS
+        ] = default_socket_options,
         proxy: Optional[str] = None,
         proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
@@ -357,7 +359,7 @@ class HTTPSConnection(HTTPConnection):
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
         socket_options: Optional[
-            connection.SocketOptions
+            connection._TYPE_SOCKET_OPTIONS
         ] = HTTPConnection.default_socket_options,
         proxy: Optional[str] = None,
         proxy_config: Optional[ProxyConfig] = None,

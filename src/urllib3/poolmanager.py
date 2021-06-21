@@ -30,7 +30,7 @@ from .exceptions import (
 )
 from .request import RequestMethods
 from .response import BaseHTTPResponse
-from .util.connection import SocketOptions
+from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
 from .util.retry import Retry
 from .util.timeout import Timeout
@@ -86,7 +86,7 @@ class PoolKey(NamedTuple):
     key__proxy: Optional[Url]
     key__proxy_headers: Optional[FrozenSet[Tuple[str, str]]]
     key__proxy_config: Optional[ProxyConfig]
-    key_socket_options: Optional[SocketOptions]
+    key_socket_options: Optional[_TYPE_SOCKET_OPTIONS]
     key__socks_options: Optional[FrozenSet[Tuple[str, str]]]
     key_assert_hostname: Optional[Union[bool, str]]
     key_assert_fingerprint: Optional[str]
