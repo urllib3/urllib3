@@ -231,7 +231,7 @@ in the URL:
     import urllib
     import urllib3
 
-    # Encode the args into url grammer.
+    # Encode the args into url grammar.
     encoded_args = urllib.parse.urlencode({"arg": "value"})
 
     # Create a URL with args encoded.

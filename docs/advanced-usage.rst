@@ -227,9 +227,9 @@ Once PySocks is installed, you can use
 
 .. code-block:: python
 
-    import urllib3
+    from urllib3.contrib.socks import SOCKSProxyManager
 
-    proxy = urllib3.contrib.socks.SOCKSProxyManager("socks5h://localhost:8889/")
+    proxy = SOCKSProxyManager("socks5h://localhost:8889/")
     proxy.request("GET", "https://google.com/")
 
 .. note::
