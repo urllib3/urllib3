@@ -15,8 +15,20 @@ import re
 import ssl
 import struct
 import tempfile
+from typing import Any, List, Optional, Tuple, Type
 
-from .bindings import CFConst, CoreFoundation, Security
+from .bindings import (  # type: ignore
+    CFArray,
+    CFConst,
+    CFData,
+    CFDictionary,
+    CFMutableArray,
+    CFString,
+    CFTypeRef,
+    CoreFoundation,
+    SecKeychainRef,
+    Security,
+)
 
 # This regular expression is used to grab PEM data out of a PEM bundle.
 _PEM_CERTS_RE = re.compile(
@@ -24,7 +36,7 @@ _PEM_CERTS_RE = re.compile(
 )
 
 
-def _cf_data_from_bytes(bytestring):
+def _cf_data_from_bytes(bytestring: bytes) -> CFData:
     """
     Given a bytestring, create a CFData object from it. This CFData object must
     be CFReleased by the caller.
@@ -34,7 +46,7 @@ def _cf_data_from_bytes(bytestring):
     )
 
 
-def _cf_dictionary_from_tuples(tuples):
+def _cf_dictionary_from_tuples(tuples: List[Tuple[Any, Any]]) -> CFDictionary:
     """
     Given a list of Python tuples, create an associated CFDictionary.
     """
@@ -56,7 +68,7 @@ def _cf_dictionary_from_tuples(tuples):
     )
 
 
-def _cfstr(py_bstr):
+def _cfstr(py_bstr: bytes) -> CFString:
     """
     Given a Python binary data, create a CFString.
     The string must be CFReleased by the caller.
@@ -70,7 +82,7 @@ def _cfstr(py_bstr):
     return cf_str
 
 
-def _create_cfstring_array(lst):
+def _create_cfstring_array(lst: List[bytes]) -> CFMutableArray:
     """
     Given a list of Python binary data, create an associated CFMutableArray.
     The array must be CFReleased by the caller.
@@ -101,7 +113,7 @@ def _create_cfstring_array(lst):
     return cf_arr
 
 
-def _cf_string_to_unicode(value):
+def _cf_string_to_unicode(value: CFString) -> Optional[str]:
     """
     Creates a Unicode string from a CFString object. Used entirely for error
     reporting.
@@ -123,10 +135,12 @@ def _cf_string_to_unicode(value):
         string = buffer.value
     if string is not None:
         string = string.decode("utf-8")
-    return string
+    return string  # type: ignore
 
 
-def _assert_no_error(error, exception_class=None):
+def _assert_no_error(
+    error: int, exception_class: Optional[Type[BaseException]] = None
+) -> None:
     """
     Checks the return code and throws an exception if there is an error to
     report
@@ -147,7 +161,7 @@ def _assert_no_error(error, exception_class=None):
     raise exception_class(output)
 
 
-def _cert_array_from_pem(pem_bundle):
+def _cert_array_from_pem(pem_bundle: bytes) -> CFArray:
     """
     Given a bundle of certs in PEM format, turns them into a CFArray of certs
     that can be used to validate a cert chain.
@@ -192,23 +206,23 @@ def _cert_array_from_pem(pem_bundle):
     return cert_array
 
 
-def _is_cert(item):
+def _is_cert(item: CFTypeRef) -> bool:
     """
     Returns True if a given CFTypeRef is a certificate.
     """
     expected = Security.SecCertificateGetTypeID()
-    return CoreFoundation.CFGetTypeID(item) == expected
+    return CoreFoundation.CFGetTypeID(item) == expected  # type: ignore
 
 
-def _is_identity(item):
+def _is_identity(item: CFTypeRef) -> bool:
     """
     Returns True if a given CFTypeRef is an identity.
     """
     expected = Security.SecIdentityGetTypeID()
-    return CoreFoundation.CFGetTypeID(item) == expected
+    return CoreFoundation.CFGetTypeID(item) == expected  # type: ignore
 
 
-def _temporary_keychain():
+def _temporary_keychain() -> Tuple[SecKeychainRef, str]:
     """
     This function creates a temporary Mac keychain that we can use to work with
     credentials. This keychain uses a one-time password and a temporary file to
@@ -243,7 +257,9 @@ def _temporary_keychain():
     return keychain, tempdirectory
 
 
-def _load_items_from_file(keychain, path):
+def _load_items_from_file(
+    keychain: SecKeychainRef, path: str
+) -> Tuple[List[CFTypeRef], List[CFTypeRef]]:
     """
     Given a single file, loads all the trust objects from it into arrays and
     the keychain.
@@ -298,7 +314,7 @@ def _load_items_from_file(keychain, path):
     return (identities, certificates)
 
 
-def _load_client_cert_chain(keychain, *paths):
+def _load_client_cert_chain(keychain: SecKeychainRef, *paths: str) -> CFArray:
     """
     Load certificates and maybe keys from a number of files. Has the end goal
     of returning a CFArray containing one SecIdentityRef, and then zero or more
@@ -334,10 +350,10 @@ def _load_client_cert_chain(keychain, *paths):
     identities = []
 
     # Filter out bad paths.
-    paths = (path for path in paths if path)
+    filtered_paths = (path for path in paths if path)
 
     try:
-        for file_path in paths:
+        for file_path in filtered_paths:
             new_identities, new_certs = _load_items_from_file(keychain, file_path)
             identities.extend(new_identities)
             certificates.extend(new_certs)
@@ -382,7 +398,7 @@ TLS_PROTOCOL_VERSIONS = {
 }
 
 
-def _build_tls_unknown_ca_alert(version):
+def _build_tls_unknown_ca_alert(version: str) -> bytes:
     """
     Builds a TLS alert record for an unknown CA.
     """
