@@ -6,7 +6,7 @@ from urllib3.exceptions import LocationParseError
 from .wait import wait_for_read
 
 SOCKET_GLOBAL_DEFAULT_TIMEOUT = socket._GLOBAL_DEFAULT_TIMEOUT  # type: ignore
-SocketOptions = Sequence[Tuple[int, int, Union[int, bytes]]]
+_TYPE_SOCKET_OPTIONS = Sequence[Tuple[int, int, Union[int, bytes]]]
 
 
 def is_connection_dropped(conn: socket.socket) -> bool:  # Platform-specific
@@ -31,7 +31,7 @@ def create_connection(
     address: Tuple[str, int],
     timeout: Optional[float] = SOCKET_GLOBAL_DEFAULT_TIMEOUT,
     source_address: Optional[Tuple[str, int]] = None,
-    socket_options: Optional[SocketOptions] = None,
+    socket_options: Optional[_TYPE_SOCKET_OPTIONS] = None,
 ) -> socket.socket:
     """Connect to *address* and return the socket object.
 
@@ -93,7 +93,9 @@ def create_connection(
         raise OSError("getaddrinfo returns an empty list")
 
 
-def _set_socket_options(sock: socket.socket, options: Optional[SocketOptions]) -> None:
+def _set_socket_options(
+    sock: socket.socket, options: Optional[_TYPE_SOCKET_OPTIONS]
+) -> None:
     if options is None:
         return
 

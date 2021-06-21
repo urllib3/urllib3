@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from typing_extensions import Literal
 
-    from .ssl_ import PeerCertRetDictType, PeerCertRetType
+    from .ssl_ import _TYPE_PEER_CERT_RET, _TYPE_PEER_CERT_RET_DICT
 
 
 _SelfT = TypeVar("_SelfT", bound="SSLTransport")
@@ -186,7 +186,7 @@ class SSLTransport:
     @overload
     def getpeercert(
         self, binary_form: "Literal[False]" = ...
-    ) -> Optional["PeerCertRetDictType"]:
+    ) -> Optional["_TYPE_PEER_CERT_RET_DICT"]:
         ...
 
     @overload
@@ -194,12 +194,12 @@ class SSLTransport:
         ...
 
     @overload
-    def getpeercert(self, binary_form: bool) -> "PeerCertRetType":
+    def getpeercert(self, binary_form: bool) -> "_TYPE_PEER_CERT_RET":
         ...
 
     def getpeercert(
         self, binary_form: bool = False
-    ) -> Union[None, bytes, "PeerCertRetDictType", "PeerCertRetType"]:
+    ) -> Union[None, bytes, "_TYPE_PEER_CERT_RET_DICT", "_TYPE_PEER_CERT_RET"]:
         return self.sslobj.getpeercert(binary_form)
 
     def version(self) -> Optional[str]:

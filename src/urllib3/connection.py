@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from typing_extensions import Literal
 
 from .util.proxy import create_proxy_ssl_context
-from .util.util import to_str
+from .util.util import to_bytes, to_str
 
 try:  # Compiled with SSL?
     import ssl
@@ -49,7 +49,7 @@ from .exceptions import (
 )
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
 from .util.ssl_ import (
-    PeerCertRetType,
+    _TYPE_PEER_CERT_RET,
     assert_fingerprint,
     create_urllib3_context,
     resolve_cert_reqs,
@@ -74,7 +74,7 @@ RECENT_DATE = datetime.date(2020, 7, 1)
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
-HTTPBody = Union[bytes, IO[Any], Iterable[bytes], str]
+_TYPE_BODY = Union[bytes, IO[Any], Iterable[bytes], str]
 
 
 class ProxyConfig(NamedTuple):
@@ -111,7 +111,7 @@ class HTTPConnection(_HTTPConnection):
 
     #: Disable Nagle's algorithm by default.
     #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
-    default_socket_options: connection.SocketOptions = [
+    default_socket_options: connection._TYPE_SOCKET_OPTIONS = [
         (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     ]
 
@@ -119,7 +119,7 @@ class HTTPConnection(_HTTPConnection):
     is_verified: bool = False
 
     source_address: Optional[Tuple[str, int]]
-    socket_options: Optional[connection.SocketOptions]
+    socket_options: Optional[connection._TYPE_SOCKET_OPTIONS]
     _tunnel_host: Optional[str]
     _tunnel: Callable[["HTTPConnection"], None]
 
@@ -130,7 +130,9 @@ class HTTPConnection(_HTTPConnection):
         timeout: Optional[float] = connection.SOCKET_GLOBAL_DEFAULT_TIMEOUT,
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
-        socket_options: Optional[connection.SocketOptions] = default_socket_options,
+        socket_options: Optional[
+            connection._TYPE_SOCKET_OPTIONS
+        ] = default_socket_options,
         proxy: Optional[str] = None,
         proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
@@ -268,7 +270,7 @@ class HTTPConnection(_HTTPConnection):
         self,
         method: str,
         url: str,
-        body: Optional[HTTPBody] = None,
+        body: Optional[_TYPE_BODY] = None,
         headers: Optional[Mapping[str, str]] = None,
     ) -> None:
         if headers is None:
@@ -286,7 +288,7 @@ class HTTPConnection(_HTTPConnection):
         self,
         method: str,
         url: str,
-        body: Union[None, HTTPBody, Tuple[Union[bytes, str]]] = None,
+        body: Optional[_TYPE_BODY] = None,
         headers: Optional[Mapping[str, str]] = None,
     ) -> None:
         """
@@ -311,7 +313,7 @@ class HTTPConnection(_HTTPConnection):
 
         if body is not None:
             if isinstance(body, (str, bytes)):
-                body = (body,)
+                body = (to_bytes(body),)
             for chunk in body:
                 if not chunk:
                     continue
@@ -357,7 +359,7 @@ class HTTPSConnection(HTTPConnection):
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
         socket_options: Optional[
-            connection.SocketOptions
+            connection._TYPE_SOCKET_OPTIONS
         ] = HTTPConnection.default_socket_options,
         proxy: Optional[str] = None,
         proxy_config: Optional[ProxyConfig] = None,
@@ -583,7 +585,7 @@ class HTTPSConnection(HTTPConnection):
             )
 
 
-def _match_hostname(cert: PeerCertRetType, asserted_hostname: str) -> None:
+def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
     try:
         match_hostname(cert, asserted_hostname)
     except CertificateError as e:

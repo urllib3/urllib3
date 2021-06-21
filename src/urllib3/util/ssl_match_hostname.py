@@ -7,7 +7,7 @@ import ipaddress
 import re
 from typing import Any, Match, Optional, Union
 
-from .ssl_ import PeerCertRetType
+from .ssl_ import _TYPE_PEER_CERT_RET
 
 __version__ = "3.5.0.1"
 
@@ -84,7 +84,7 @@ def _ipaddress_match(ipname: Any, host_ip: str) -> bool:
     return bool(ip == host_ip)
 
 
-def match_hostname(cert: PeerCertRetType, hostname: str) -> None:
+def match_hostname(cert: _TYPE_PEER_CERT_RET, hostname: str) -> None:
     """Verify that *cert* (in decoded format as returned by
     SSLSocket.getpeercert()) matches the *hostname*.  RFC 2818 and RFC 6125
     rules are followed, but IP addresses are not accepted for *hostname*.

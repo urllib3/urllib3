@@ -25,7 +25,7 @@ class HTTPWarning(Warning):
     pass
 
 
-ReduceResult = Tuple[Callable[..., object], Tuple[object, ...]]
+_TYPE_REDUCE_RESULT = Tuple[Callable[..., object], Tuple[object, ...]]
 
 
 class PoolError(HTTPError):
@@ -37,7 +37,7 @@ class PoolError(HTTPError):
         self.pool = pool
         super().__init__(f"{pool}: {message}")
 
-    def __reduce__(self) -> ReduceResult:
+    def __reduce__(self) -> _TYPE_REDUCE_RESULT:
         # For pickling purposes.
         return self.__class__, (None, None)
 
@@ -51,7 +51,7 @@ class RequestError(PoolError):
         self.url = url
         super().__init__(pool, message)
 
-    def __reduce__(self) -> ReduceResult:
+    def __reduce__(self) -> _TYPE_REDUCE_RESULT:
         # For pickling purposes.
         return self.__class__, (None, self.url, None)
 

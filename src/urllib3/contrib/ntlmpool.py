@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional, Union
 from ntlm import ntlm  # type:ignore
 
 from .. import HTTPSConnectionPool
-from ..connection import HTTPBody
+from ..connection import _TYPE_BODY
 from ..response import BaseHTTPResponse
 from ..util.retry import Retry
 
@@ -108,7 +108,7 @@ class NTLMConnectionPool(HTTPSConnectionPool):
         self,
         method: str,
         url: str,
-        body: Optional[HTTPBody] = None,
+        body: Optional[_TYPE_BODY] = None,
         headers: Optional[Dict[str, str]] = None,
         retries: Union[Retry, bool, int] = 3,
         redirect: bool = True,
