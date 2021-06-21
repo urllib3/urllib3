@@ -5,12 +5,24 @@ Issue #10, see: http://code.google.com/p/urllib3/issues/detail?id=10
 """
 from __future__ import absolute_import
 
+import warnings
 from logging import getLogger
 
 from ntlm import ntlm
 
 from .. import HTTPSConnectionPool
 from ..packages.six.moves.http_client import HTTPSConnection
+
+
+warnings.warn(
+    "The 'urllib3.contrib.nltmpool' module is deprecated and will be removed "
+    "in a later urllib3 v2.0 release for a possible third-party library as "
+    "urllib3 is not able to support it properly due to reasons listed in the "
+    "issue: https://github.com/urllib3/urllib3/issues/2282, If you are a user "
+    "of this module please have your say in the same issue above.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 log = getLogger(__name__)
 
@@ -20,6 +32,15 @@ class NTLMConnectionPool(HTTPSConnectionPool):
     Implements an NTLM authentication version of an urllib3 connection pool
     """
 
+    warnings.warn(
+        "The 'urllib3.contrib.nltmpool.NTLMConnectionPool' class is deprecated "
+        "and will be removed in a later urllib3 v2.0 release for a possible third-party "
+        "library as urllib3 is not able to support it properly due to reasons listed "
+        "in the issue: https://github.com/urllib3/urllib3/issues/2282, If you are "
+        "a user of this module please have your say in the same issue above.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     scheme = "https"
 
     def __init__(self, user, pw, authurl, *args, **kwargs):
