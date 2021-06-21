@@ -72,8 +72,8 @@ except ImportError:
 
 _PCTRTT = Tuple[Tuple[str, str], ...]
 _PCTRTTT = Tuple[_PCTRTT, ...]
-PeerCertRetDictType = Dict[str, Union[str, _PCTRTTT, _PCTRTT]]
-PeerCertRetType = Union[PeerCertRetDictType, bytes, None]
+_TYPE_PEER_CERT_RET_DICT = Dict[str, Union[str, _PCTRTTT, _PCTRTT]]
+PeerCertRetType = Union[_TYPE_PEER_CERT_RET_DICT, bytes, None]
 
 
 # A secure default.
