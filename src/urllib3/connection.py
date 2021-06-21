@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from typing_extensions import Literal
 
 from .util.proxy import create_proxy_ssl_context
-from .util.util import to_str
+from .util.util import to_bytes, to_str
 
 try:  # Compiled with SSL?
     import ssl
@@ -74,7 +74,7 @@ RECENT_DATE = datetime.date(2020, 7, 1)
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
-_TYPE_HTTP_BODY = Union[bytes, IO[Any], Iterable[bytes], str]
+_TYPE_BODY = Union[bytes, IO[Any], Iterable[bytes], str]
 
 
 class ProxyConfig(NamedTuple):
@@ -270,7 +270,7 @@ class HTTPConnection(_HTTPConnection):
         self,
         method: str,
         url: str,
-        body: Optional[_TYPE_HTTP_BODY] = None,
+        body: Optional[_TYPE_BODY] = None,
         headers: Optional[Mapping[str, str]] = None,
     ) -> None:
         if headers is None:
@@ -288,7 +288,7 @@ class HTTPConnection(_HTTPConnection):
         self,
         method: str,
         url: str,
-        body: Union[None, _TYPE_HTTP_BODY, Tuple[Union[bytes, str]]] = None,
+        body: Optional[_TYPE_BODY] = None,
         headers: Optional[Mapping[str, str]] = None,
     ) -> None:
         """
@@ -313,7 +313,7 @@ class HTTPConnection(_HTTPConnection):
 
         if body is not None:
             if isinstance(body, (str, bytes)):
-                body = (body,)
+                body = (to_bytes(body),)
             for chunk in body:
                 if not chunk:
                     continue

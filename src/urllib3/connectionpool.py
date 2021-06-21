@@ -9,7 +9,7 @@ from socket import timeout as SocketTimeout
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, Union, overload
 
 from .connection import (  # type: ignore
-    _TYPE_HTTP_BODY,
+    _TYPE_BODY,
     BaseSSLError,
     BrokenPipeError,
     DummyConnection,
@@ -515,7 +515,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self,
         method: str,
         url: str,
-        body: Optional[_TYPE_HTTP_BODY] = None,
+        body: Optional[_TYPE_BODY] = None,
         headers: Optional[Mapping[str, str]] = None,
         retries: Optional[Union[Retry, bool, int]] = None,
         redirect: bool = True,
