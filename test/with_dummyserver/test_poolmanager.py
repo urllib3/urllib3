@@ -407,6 +407,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
         assert r.status == 200
         assert r.data == b"Dummy server!"
 
+    def test_top_level_request_without_keyword_args(self):
+        body = ""
+        with pytest.raises(TypeError):
+            request("GET", f"{self.base_url}/", body)
+
     def test_top_level_request_with_body(self):
         r = request("POST", f"{self.base_url}/echo", body=b"test")
         assert r.status == 200

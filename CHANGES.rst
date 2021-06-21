@@ -12,6 +12,8 @@ Changes
   deprecated names for ``format_multipart_header_param``. #2257
 * The ``RequestField`` ``header_formatter`` parameter is deprecated in
   favor of overriding the ``_render_part`` method. #2257
+* Make all parameters after `method` and `url` for `urllib3.request()` 
+  keyword only. #2283
 
 
 1.26.5 (2021-05-26)
