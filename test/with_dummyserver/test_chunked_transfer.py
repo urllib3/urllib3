@@ -39,7 +39,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         self.start_chunked_handler()
         chunks = ["foo", "bar", "", "bazzzzzzzzzzzzzzzzzzzzzz"]
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
-            pool.urlopen("GET", "/", chunks, headers=dict(DNT="1"), chunked=True)
+            pool.urlopen("GET", "/", body=chunks, headers=dict(DNT="1"), chunked=True)
 
             assert b"Transfer-Encoding" in self.buffer
             body = self.buffer.split(b"\r\n\r\n", 1)[1]
@@ -92,7 +92,9 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         self.start_chunked_handler()
         chunks = ["foo", "bar", "", "bazzzzzzzzzzzzzzzzzzzzzz"]
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
-            pool.urlopen("GET", "/", chunks, headers={"Host": "test.org"}, chunked=True)
+            pool.urlopen(
+                "GET", "/", body=chunks, headers={"Host": "test.org"}, chunked=True
+            )
 
             host_headers = self._get_header_lines(b"host")
             assert len(host_headers) == 1
@@ -101,7 +103,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         self.start_chunked_handler()
         chunks = ["foo", "bar", "", "bazzzzzzzzzzzzzzzzzzzzzz"]
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
-            pool.urlopen("GET", "/", chunks, chunked=True)
+            pool.urlopen("GET", "/", body=chunks, chunked=True)
 
             host_headers = self._get_header_lines(b"host")
             assert len(host_headers) == 1
@@ -110,10 +112,29 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
         self.start_chunked_handler()
         chunks = ["foo", "bar", "", "bazzzzzzzzzzzzzzzzzzzzzz"]
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
-            pool.urlopen("GET", "/", chunks, chunked=True)
+            pool.urlopen("GET", "/", body=chunks, chunked=True)
 
             ua_headers = self._get_header_lines(b"user-agent")
             assert len(ua_headers) == 1
+
+    def test_preserve_user_agent_header(self):
+        self.start_chunked_handler()
+        chunks = ["foo", "bar", "", "bazzzzzzzzzzzzzzzzzzzzzz"]
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            pool.urlopen(
+                "GET",
+                "/",
+                body=chunks,
+                headers={"user-Agent": "test-agent"},
+                chunked=True,
+            )
+
+            ua_headers = self._get_header_lines(b"user-agent")
+            # Validate that there is only one User-Agent header.
+            assert len(ua_headers) == 1
+            # Validate that the existing User-Agent header is the one that was
+            # provided.
+            assert ua_headers[0] == b"user-agent: test-agent"
 
     def test_remove_user_agent_header(self):
         self.start_chunked_handler()
@@ -122,13 +143,41 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
             pool.urlopen(
                 "GET",
                 "/",
-                chunks,
+                body=chunks,
                 headers={"User-Agent": SKIP_HEADER},
                 chunked=True,
             )
 
             ua_headers = self._get_header_lines(b"user-agent")
             assert len(ua_headers) == 0
+
+    def test_provides_default_transfer_encoding_header(self):
+        self.start_chunked_handler()
+        chunks = ["foo", "bar", "", "bazzzzzzzzzzzzzzzzzzzzzz"]
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            pool.urlopen("GET", "/", body=chunks, chunked=True)
+
+            te_headers = self._get_header_lines(b"transfer-encoding")
+            assert len(te_headers) == 1
+
+    def test_preserve_transfer_encoding_header(self):
+        self.start_chunked_handler()
+        chunks = ["foo", "bar", "", "bazzzzzzzzzzzzzzzzzzzzzz"]
+        with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
+            pool.urlopen(
+                "GET",
+                "/",
+                body=chunks,
+                headers={"transfer-Encoding": "test-transfer-encoding"},
+                chunked=True,
+            )
+
+            te_headers = self._get_header_lines(b"transfer-encoding")
+            # Validate that there is only one Transfer-Encoding header.
+            assert len(te_headers) == 1
+            # Validate that the existing Transfer-Encoding header is the one that
+            # was provided.
+            assert te_headers[0] == b"transfer-encoding: test-transfer-encoding"
 
     def test_preserve_chunked_on_retry_after(self):
         self.chunked_requests = 0
