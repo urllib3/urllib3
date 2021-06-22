@@ -491,6 +491,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 retries=None,
                 timeout=2.5,
             )
+
     @pytest.mark.parametrize(
         "headers",
         [

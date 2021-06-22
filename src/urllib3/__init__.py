@@ -100,7 +100,7 @@ def request(
     redirect: Optional[bool] = True,
     retries: Optional[Union[Retry, bool, int]] = None,
     timeout: Optional[Union[Timeout, float, int]] = 3,
-    json: Optional[Any] = None
+    json: Optional[Any] = None,
 ) -> BaseHTTPResponse:
     """
     A convenience, top-level request method. It uses a module-global ``PoolManager`` instance.
@@ -120,5 +120,5 @@ def request(
         redirect=redirect,
         retries=retries,
         timeout=timeout,
-        json=json
+        json=json,
     )
