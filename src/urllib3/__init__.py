@@ -99,6 +99,9 @@ def request(
     redirect: Optional[bool] = True,
     retries: Optional[Union[Retry, bool, int]] = None,
     timeout: Optional[Union[Timeout, float, int]] = 3,
+    chunked: bool = False,
+    body_pos: Optional[Union[int, object]] = None,
+    assert_same_host: bool = True,
 ) -> BaseHTTPResponse:
     """
     A convenience, top-level request method. It uses a module-global ``PoolManager`` instance.
@@ -117,4 +120,7 @@ def request(
         redirect=redirect,
         retries=retries,
         timeout=timeout,
+        chunked=chunked,
+        body_pos=body_pos,
+        assert_same_host=assert_same_host,
     )

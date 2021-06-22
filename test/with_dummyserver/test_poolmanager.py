@@ -469,7 +469,19 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 redirect=True,
                 retries=None,
                 timeout=2.5,
+                chunked=False,
+                body_pos=None,
+                assert_same_host=True,
             )
+
+    def test_top_level_request_with_chunked(self):
+        res = request(
+            "GET", f"{self.base_url}/chunked", chunked=True, preload_content=False
+        )
+        assert res.status == 200
+        assert res.chunked
+        for chunk in res.stream():
+            assert chunk == b"123"
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")
