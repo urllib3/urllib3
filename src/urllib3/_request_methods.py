@@ -88,7 +88,7 @@ class RequestMethods:
 
         if json is not None and body is not None:
             raise TypeError(
-                "request got values for both 'json' and 'body', can only specify one."
+                "request got values for both 'body' and 'json' parameters are mutually exclusive"
             )
 
         if json is not None:

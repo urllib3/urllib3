@@ -239,8 +239,11 @@ class BaseHTTPResponse(io.IOBase):
 
     def json(self) -> Any:
         """
-        Returns Deserialized json.
-        Throws JSONDecodeError
+        Parses the body of the HTTP response as UTF-8, UTF-16, or UTF-32 encoded JSON using the standard library :func:`json.loads` function.
+
+        To use a custom JSON decoder pass the result of :attr:`HTTPResponse.data` to the decoder.
+
+        Read more here: (https://urllib3.readthedocs.io/en/stable/user-guide.html#json)
         """
         return _json.loads(self.data)
 

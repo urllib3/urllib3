@@ -102,8 +102,8 @@ The :class:`~response.HTTPResponse` object provides
 JSON Content
 ~~~~~~~~~~~~
 
-JSON content can be loaded by using :attr:`~response.HTTPResponse.json`
-attribute of the request or by decoding and deserializing the 
+JSON content can be loaded by using :meth:`~response.HTTPResponse.json`
+method of the request or by decoding and deserializing the 
 :attr:`~response.HTTPResponse.data` attribute of the request:
 
 .. code-block:: python
@@ -280,9 +280,9 @@ JSON
 ~~~~
 
 You can send a JSON request by specifying the data as ``json`` argument,
-urllib3 automatically encodes data using ``json`` module with ``utf-8`` 
+urllib3 automatically encodes data using ``json`` module with ``UTF-8`` 
 encoding. Also by default ``"Content-Type"`` in headers is set to 
-"application/json"`` if not specified when calling
+``"application/json"`` if not specified when calling
 :meth:`~poolmanager.PoolManager.request`:
 
 .. code-block:: python
