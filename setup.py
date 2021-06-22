@@ -104,6 +104,9 @@ setup(
         "urllib3.contrib._securetransport",
         "urllib3.util",
     ],
+    package_data={
+        "urllib3": ["py.typed"],
+    },
     package_dir={"": "src"},
     requires=[],
     python_requires=">=3.6, <4",
