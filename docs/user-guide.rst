@@ -360,7 +360,7 @@ recommended to set the ``Content-Type`` header:
     )
 
     print(json.loads(resp.data.decode("utf-8"))["data"])
-    # b"..."
+    # data:application/octet-stream;base64,...
 
 .. _ssl:
 
