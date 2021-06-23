@@ -606,6 +606,7 @@ urllib3 wraps lower-level exceptions, for example:
 
     except urllib3.exceptions.NewConnectionError:
         print("Connection failed.")
+    # Connection failed.
 
 See :mod:`~urllib3.exceptions` for the full list of all exceptions.
 
