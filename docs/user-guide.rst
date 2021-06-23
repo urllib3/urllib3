@@ -151,6 +151,12 @@ to ``False``. By default HTTP responses are closed after reading all bytes, this
 
     for line in io.TextIOWrapper(resp):
         print(line)
+    # <!doctype html>
+    # <html>
+    # <head>
+    # ....
+    # </body>
+    # </html>
 
 .. _request_data:
 
