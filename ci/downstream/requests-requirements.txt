@@ -1,9 +1,0 @@
-pytest-mock
-pysocks
-httpbin
-
-# psf/requests#5049
-pytest<4.1
-
-# psf/requests#5004
-pytest-httpbin==0.3.0
