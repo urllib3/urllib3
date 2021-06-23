@@ -77,6 +77,7 @@ content.
 
     for chunk in resp.stream(32):
         print(chunk)
+        # b"\x9e\xa97'\x8e\x1eT ....
 
     resp.release_conn()
 
