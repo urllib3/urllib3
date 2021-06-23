@@ -54,7 +54,7 @@ versions.::
 
 Note that code coverage less than 100% is regarded as a failing run. Some
 platform-specific tests are skipped unless run in that platform.  To make sure
-the code works in all of urllib3's supported platforms, you can run our ``tox``
+the code works in all of urllib3's supported platforms, you can run our ``nox``
 suite::
 
   $ nox --reuse-existing-virtualenvs --sessions test
