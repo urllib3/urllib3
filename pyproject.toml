@@ -1,0 +1,6 @@
+[build-system]
+requires = ["setuptools", "wheel", "read_version[toml] >= 0.3"]
+build-backend = "setuptools.build_meta" 
+
+[tool.read_version]
+version = "src.urllib3._version:__version__"
