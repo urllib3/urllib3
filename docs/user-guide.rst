@@ -151,6 +151,12 @@ to ``False``. By default HTTP responses are closed after reading all bytes, this
 
     for line in io.TextIOWrapper(resp):
         print(line)
+    # <!doctype html>
+    # <html>
+    # <head>
+    # ....
+    # </body>
+    # </html>
 
 .. _request_data:
 
@@ -354,7 +360,7 @@ recommended to set the ``Content-Type`` header:
     )
 
     print(json.loads(resp.data.decode("utf-8"))["data"])
-    # b"..."
+    # data:application/octet-stream;base64,...
 
 .. _ssl:
 
@@ -600,6 +606,7 @@ urllib3 wraps lower-level exceptions, for example:
 
     except urllib3.exceptions.NewConnectionError:
         print("Connection failed.")
+    # Connection failed.
 
 See :mod:`~urllib3.exceptions` for the full list of all exceptions.
 
