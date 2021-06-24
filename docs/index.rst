@@ -33,12 +33,12 @@ urllib3 is powerful and easy to use:
 
 .. code-block:: pycon
 
-   import urllib3
-   resp = urllib3.request("GET", "https://httpbin.org/robots.txt")
-   print(resp.status)
-   # 200
-   print(resp.data)
-   # b"User-agent: *\nDisallow: /deny\n"
+   >>> import urllib3
+   >>> resp = urllib3.request("GET", "https://httpbin.org/robots.txt")
+   >>> resp.status
+   200
+   >>> resp.data
+   b"User-agent: *\nDisallow: /deny\n"
 
 For Enterprise
 --------------
