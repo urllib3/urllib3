@@ -314,7 +314,7 @@ def _load_items_from_file(
     return (identities, certificates)
 
 
-def _load_client_cert_chain(keychain: SecKeychainRef, *paths: str) -> CFArray:
+def _load_client_cert_chain(keychain: SecKeychainRef, *paths: Optional[str]) -> CFArray:
     """
     Load certificates and maybe keys from a number of files. Has the end goal
     of returning a CFArray containing one SecIdentityRef, and then zero or more
