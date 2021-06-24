@@ -234,10 +234,10 @@ in the URL:
 .. code-block:: python
 
     import json
-    import urllib3
     from urllib.parse import urlencode
+    import urllib3
 
-    # Encode the args into url grammer.
+    # Encode the args into url grammar.
     encoded_args = urlencode({"arg": "value"})
 
     # Create a URL with args encoded.

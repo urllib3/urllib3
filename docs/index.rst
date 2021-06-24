@@ -38,7 +38,7 @@ urllib3 is powerful and easy to use:
    >>> resp.status
    200
    >>> resp.data
-   "User-agent: *\nDisallow: /deny\n"
+   b"User-agent: *\nDisallow: /deny\n"
 
 For Enterprise
 --------------
