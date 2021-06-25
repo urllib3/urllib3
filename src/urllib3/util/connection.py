@@ -62,8 +62,8 @@ def create_connection(
 
     try:
         res = socket.getaddrinfo(host, port, family, socket.SOCK_STREAM)
-    except socket.gaierror:
-        raise
+    except socket.gaierror as e:
+        raise e
     for af, socktype, proto, canonname, sa in res:
         sock = None
         try:
