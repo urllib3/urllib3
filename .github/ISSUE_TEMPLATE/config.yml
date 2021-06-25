@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: 📚 Documentation
-    url: https://urllib3.readthedocs.io/en/latest/
+    url: https://urllib3.readthedocs.io
     about: Make sure you read the relevant docs
   - name: ❓ Ask on StackOverflow
     url: https://stackoverflow.com/questions/tagged/urllib3
