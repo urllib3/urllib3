@@ -60,8 +60,11 @@ def create_connection(
     except UnicodeError:
         raise LocationParseError(f"'{host}', label empty or too long") from None
 
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
-        af, socktype, proto, canonname, sa = res
+    try:
+        res = socket.getaddrinfo(host, port, family, socket.SOCK_STREAM)
+    except socket.gaierror:
+        raise
+    for af, socktype, proto, canonname, sa in res:
         sock = None
         try:
             sock = socket.socket(af, socktype, proto)
