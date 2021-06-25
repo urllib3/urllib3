@@ -1,4 +1,4 @@
-name: Downstream Integration
+name: Downstream
 
 on:
   pull_request:
