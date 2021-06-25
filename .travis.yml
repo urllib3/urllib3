@@ -2,17 +2,6 @@ language: python
 os: linux
 dist: xenial
 
-before_install:
-  - env
-  - openssl version
-  - python -c "import ssl; print(ssl.OPENSSL_VERSION)"
-
-install:
-  - ./ci/install.sh
-
-script:
-  - ./ci/run.sh
-
 cache:
   directories:
   - ${HOME}/.cache
@@ -22,9 +11,6 @@ notifications:
 
 env:
   global:
-    - PYTHONWARNINGS=always::DeprecationWarning
-    - CRYPTOGRAPHY_ALLOW_OPENSSL_102=1
-
     - PYPI_USERNAME=urllib3
     # PYPI_PASSWORD is set in Travis control panel.
 
@@ -32,33 +18,12 @@ jobs:
   allow_failures:
     - python: nightly
   include:
-    # Downstream integration tests.
-    - python: 2.7
-      env: DOWNSTREAM=requests
-      stage: integration
-
-    - python: 3.7
-      env: DOWNSTREAM=requests
-      stage: integration
-
-    - python: 2.7
-      env: DOWNSTREAM=botocore
-      stage: integration
-
-    - python: 3.7
-      env: DOWNSTREAM=botocore
-      stage: integration
-
     - python: 3.7
       stage: deploy
       script:
         - ./ci/deploy.sh
 
 stages:
-  # Run integration tests for release candidates
-  - name: integration
-    if: type = pull_request AND head_branch =~ ^release-[\d.]+$ AND tag IS blank
-
   # Deploy on any tags
   - name: deploy
     if: tag IS present AND tag =~ /^(\d+\.\d+(?:.\d+)?)$/ AND repo = urllib3/urllib3
