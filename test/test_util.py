@@ -762,9 +762,12 @@ class TestUtil:
         with pytest.raises(OSError, match="getaddrinfo returns an empty list"):
             create_connection(("example.com", 80))
 
-    def test_dnsresolver_error(self):
+    @patch("socket.getaddrinfo")
+    def test_dnsresolver_error(self, getaddrinfo):
+        getaddrinfo.side_effect = socket.gaierror()
         with pytest.raises(socket.gaierror):
-            create_connection(("invalid", 80))
+            # dns is valid but we force the error just for the sake of the test
+            create_connection(("example.com", 80))
 
     @pytest.mark.parametrize(
         "input,params,expected",
