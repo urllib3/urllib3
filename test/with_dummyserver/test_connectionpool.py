@@ -710,13 +710,19 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                 r = pool.request("GET", "/source_address")
                 assert r.data == addr[0].encode()
 
-    @pytest.mark.parametrize("invalid_source_address", INVALID_SOURCE_ADDRESSES)
-    def test_source_address_error(self, invalid_source_address):
+    @pytest.mark.parametrize(
+        "invalid_source_address, is_ipv6", INVALID_SOURCE_ADDRESSES
+    )
+    def test_source_address_error(self, invalid_source_address, is_ipv6):
         with HTTPConnectionPool(
             self.host, self.port, source_address=invalid_source_address, retries=False
         ) as pool:
-            with pytest.raises(NewConnectionError):
-                pool.request("GET", f"/source_address?{invalid_source_address}")
+            if is_ipv6:
+                with pytest.raises(NameResolutionError):
+                    pool.request("GET", f"/source_address?{invalid_source_address}")
+            else:
+                with pytest.raises(NewConnectionError):
+                    pool.request("GET", f"/source_address?{invalid_source_address}")
 
     def test_stream_keepalive(self):
         x = 2
