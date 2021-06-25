@@ -14,6 +14,7 @@ from urllib3 import add_stderr_logger, disable_warnings, util
 from urllib3.exceptions import (
     InsecureRequestWarning,
     LocationParseError,
+    NameResolutionError,
     SNIMissingWarning,
     TimeoutStateError,
     UnrewindableBodyError,
@@ -761,6 +762,17 @@ class TestUtil:
         getaddrinfo.return_value = []
         with pytest.raises(OSError, match="getaddrinfo returns an empty list"):
             create_connection(("example.com", 80))
+
+    @pytest.mark.parametrize(
+        "host, reason",
+        [("a.example.com", "Name or service not known")],
+    )
+    @patch(
+        "socket.socket", **{"return_value.getaddrinfo.side_effect": socket.gaierror()}
+    )
+    def test_dnsresolver_error(self, _getaddrinfo, host, reason):
+        with pytest.raises(NameResolutionError):
+            create_connection((host, 80))
 
     @pytest.mark.parametrize(
         "input,params,expected",

@@ -22,6 +22,7 @@ from urllib3.exceptions import (
     DecodeError,
     EmptyPoolError,
     MaxRetryError,
+    NameResolutionError,
     NewConnectionError,
     ReadTimeoutError,
     UnrewindableBodyError,
@@ -417,7 +418,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         with HTTPConnectionPool("badhost.invalid", self.port) as pool:
             with pytest.raises(MaxRetryError) as e:
                 pool.request("GET", "/", retries=5)
-            assert type(e.value.reason) == NewConnectionError
+            assert type(e.value.reason) == NameResolutionError
 
     def test_keepalive(self):
         with HTTPConnectionPool(self.host, self.port, block=True, maxsize=1) as pool:
@@ -709,13 +710,13 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                 r = pool.request("GET", "/source_address")
                 assert r.data == addr[0].encode()
 
-    def test_source_address_error(self):
-        for addr in INVALID_SOURCE_ADDRESSES:
-            with HTTPConnectionPool(
-                self.host, self.port, source_address=addr, retries=False
-            ) as pool:
-                with pytest.raises(NewConnectionError):
-                    pool.request("GET", f"/source_address?{addr}")
+    @pytest.mark.parametrize("invalid_source_address", INVALID_SOURCE_ADDRESSES)
+    def test_source_address_error(self, invalid_source_address):
+        with HTTPConnectionPool(
+            self.host, self.port, source_address=invalid_source_address, retries=False
+        ) as pool:
+            with pytest.raises(NewConnectionError):
+                pool.request("GET", f"/source_address?{invalid_source_address}")
 
     def test_stream_keepalive(self):
         x = 2
@@ -1024,7 +1025,7 @@ class TestRetry(HTTPDummyServerTestCase):
         with HTTPConnectionPool(
             "thishostdoesnotexist.invalid", self.port, timeout=0.001
         ) as pool:
-            with pytest.raises(NewConnectionError):
+            with pytest.raises(NameResolutionError):
                 pool.request("GET", "/test", retries=False)
 
     def test_read_retries(self):
