@@ -14,7 +14,6 @@ from urllib3 import add_stderr_logger, disable_warnings, util
 from urllib3.exceptions import (
     InsecureRequestWarning,
     LocationParseError,
-    NameResolutionError,
     SNIMissingWarning,
     TimeoutStateError,
     UnrewindableBodyError,
