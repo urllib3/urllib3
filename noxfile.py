@@ -78,6 +78,50 @@ def test_brotlipy(session):
     tests_impl(session, extras="socks,secure")
 
 
+def git_clone(session, git_url):
+    session.run("git", "clone", "--depth", "1", git_url, external=True)
+
+
+@nox.session()
+def downstream_botocore(session):
+    root = os.getcwd()
+    tmp_dir = session.create_tmp()
+
+    session.cd(tmp_dir)
+    git_clone(session, "https://github.com/boto/botocore")
+    session.chdir("botocore")
+    session.run("git", "rev-parse", "HEAD", external=True)
+    session.run("python", "scripts/ci/install")
+
+    session.cd(root)
+    session.install(".", silent=False)
+    session.cd(f"{tmp_dir}/botocore")
+
+    session.run("python", "-c", "import urllib3; print(urllib3.__version__)")
+    session.run("python", "scripts/ci/run-tests")
+
+
+@nox.session()
+def downstream_requests(session):
+    root = os.getcwd()
+    tmp_dir = session.create_tmp()
+
+    session.cd(tmp_dir)
+    git_clone(session, "https://github.com/psf/requests")
+    session.chdir("requests")
+    session.run("git", "apply", f"{root}/ci/requests.patch", external=True)
+    session.run("git", "rev-parse", "HEAD", external=True)
+    session.install(".[socks]", silent=False)
+    session.install("-r", "requirements-dev.txt", silent=False)
+
+    session.cd(root)
+    session.install(".", silent=False)
+    session.cd(f"{tmp_dir}/requests")
+
+    session.run("python", "-c", "import urllib3; print(urllib3.__version__)")
+    session.run("pytest", "tests")
+
+
 @nox.session()
 def format(session):
     """Run code formatters."""
