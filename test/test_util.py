@@ -770,7 +770,10 @@ class TestUtil:
             create_connection(("example.com", 80))
 
     def test_dnsresolver_expected_error(self):
-        with pytest.raises(socket.gaierror, match="Name or service not known"):
+        with pytest.raises(socket.gaierror):
+            # windows: [Errno 11001] getaddrinfo failed in windows
+            # linux: [Errno -2] Name or service not known
+            # macos: [Errno 8] nodename nor servname provided, or not known
             create_connection(("invalid", 80))
 
     @pytest.mark.parametrize(
