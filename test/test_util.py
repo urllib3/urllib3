@@ -771,7 +771,7 @@ class TestUtil:
         "socket.socket", **{"return_value.getaddrinfo.side_effect": socket.gaierror()}
     )
     def test_dnsresolver_error(self, _getaddrinfo, host, reason):
-        with pytest.raises(NameResolutionError):
+        with pytest.raises(socket.gaierror, match=reason):
             create_connection((host, 80))
 
     @pytest.mark.parametrize(
