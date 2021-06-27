@@ -746,6 +746,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             clean_exit = False
             if isinstance(e, (BaseSSLError, CertificateError)):
                 e = SSLError(e)
+            elif isinstance(e, NameResolutionError):
+                pass
             elif isinstance(e, (OSError, NewConnectionError)) and self.proxy:
                 e = ProxyError("Cannot connect to proxy.", e)
             elif isinstance(e, (OSError, HTTPException)):

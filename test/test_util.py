@@ -774,7 +774,7 @@ class TestUtil:
             # windows: [Errno 11001] getaddrinfo failed in windows
             # linux: [Errno -2] Name or service not known
             # macos: [Errno 8] nodename nor servname provided, or not known
-            create_connection(("invalid", 80))
+            create_connection(("badhost.invalid", 80))
 
     @pytest.mark.parametrize(
         "input,params,expected",

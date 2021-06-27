@@ -379,7 +379,7 @@ class UnrewindableBodyError(HTTPError):
     pass
 
 
-class NameResolutionError(HTTPError):
+class NameResolutionError(HTTPError, socket.gaierror):
     """Raised when host name resolution fails."""
 
     def __init__(self, host: str, reason: socket.gaierror):
