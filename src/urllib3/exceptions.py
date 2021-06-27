@@ -32,13 +32,9 @@ _TYPE_REDUCE_RESULT = Tuple[Callable[..., object], Tuple[object, ...]]
 class PoolError(HTTPError):
     """Base exception for errors caused within a pool."""
 
-    pool: Optional[Union["ConnectionPool", "HTTPConnectionPool"]]
+    pool: "ConnectionPool"
 
-    def __init__(
-        self,
-        pool: Optional[Union["ConnectionPool", "HTTPConnectionPool"]],
-        message: str,
-    ) -> None:
+    def __init__(self, pool: "ConnectionPool", message: str) -> None:
         self.pool = pool
         super().__init__(f"{pool}: {message}")
 
@@ -50,14 +46,9 @@ class PoolError(HTTPError):
 class RequestError(PoolError):
     """Base exception for PoolErrors that have associated URLs."""
 
-    url: Optional[str]
+    url: str
 
-    def __init__(
-        self,
-        pool: Optional[Union["ConnectionPool", "HTTPConnectionPool"]],
-        url: Optional[str],
-        message: str,
-    ) -> None:
+    def __init__(self, pool: "ConnectionPool", url: str, message: str) -> None:
         self.url = url
         super().__init__(pool, message)
 

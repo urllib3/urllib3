@@ -8,7 +8,6 @@ from socket import timeout as SocketTimeout
 from typing import (
     TYPE_CHECKING,
     Any,
-    AnyStr,
     Generator,
     Iterator,
     List,
@@ -29,8 +28,8 @@ except ImportError:
 
 from ._collections import HTTPHeaderDict
 from .connection import (  # type: ignore
+    _TYPE_BODY,
     BaseSSLError,
-    HTTPBody,
     HTTPConnection,
     HTTPException,
 )
@@ -193,14 +192,14 @@ class BaseHTTPResponse(io.IOBase):
         CONTENT_DECODERS += ["br"]
     REDIRECT_STATUSES = [301, 302, 303, 307, 308]
 
-    DECODER_ERROR_CLASSES: Tuple[Any, ...] = (IOError, zlib.error)
+    DECODER_ERROR_CLASSES: Tuple[Type[Exception], ...] = (IOError, zlib.error)
     if brotli is not None:
         DECODER_ERROR_CLASSES += (brotli.error,)
 
     def __init__(
         self,
         *,
-        headers: Optional[Mapping[AnyStr, AnyStr]] = None,
+        headers: Optional[Union[Mapping[str, str], Mapping[bytes, bytes]]] = None,
         status: int,
         version: int,
         reason: Optional[str],
@@ -237,7 +236,7 @@ class BaseHTTPResponse(io.IOBase):
         return False
 
     @property
-    def data(self) -> Optional[Union[bytes, str]]:
+    def data(self) -> bytes:
         raise NotImplementedError()
 
     @property
@@ -254,7 +253,7 @@ class BaseHTTPResponse(io.IOBase):
 
     def stream(
         self, amt: int = 2 ** 16, decode_content: Optional[bool] = None
-    ) -> Generator[bytes, None, None]:
+    ) -> Iterator[bytes]:
         raise NotImplementedError()
 
     def read(
@@ -395,8 +394,8 @@ class HTTPResponse(BaseHTTPResponse):
 
     def __init__(
         self,
-        body: HTTPBody = "",
-        headers: Optional[Mapping[AnyStr, AnyStr]] = None,
+        body: _TYPE_BODY = "",
+        headers: Optional[Union[Mapping[str, str], Mapping[bytes, bytes]]] = None,
         status: int = 0,
         version: int = 0,
         reason: Optional[str] = None,
@@ -469,15 +468,15 @@ class HTTPResponse(BaseHTTPResponse):
             pass
 
     @property
-    def data(self) -> Optional[Union[bytes, str]]:
+    def data(self) -> bytes:
         # For backwards-compat with earlier urllib3 0.4 and earlier.
         if self._body:
-            return self._body
+            return self._body  # type: ignore
 
         if self._fp:
             return self.read(cache_content=True)
 
-        return None
+        return None  # type: ignore
 
     @property
     def connection(self) -> Optional[HTTPConnection]:
@@ -498,9 +497,10 @@ class HTTPResponse(BaseHTTPResponse):
         """
         Set initial length value for Response content if available.
         """
-        length: Optional[Union[int, str]] = self.headers.get("content-length")
+        length: Optional[int]
+        content_length: Optional[str] = self.headers.get("content-length")
 
-        if length is not None:
+        if content_length is not None:
             if self.chunked:
                 # This Response will fail with an IncompleteRead if it can't be
                 # received as chunked. This method falls back to attempt reading
@@ -520,11 +520,11 @@ class HTTPResponse(BaseHTTPResponse):
                 # (e.g. Content-Length: 42, 42). This line ensures the values
                 # are all valid ints and that as long as the `set` length is 1,
                 # all values are the same. Otherwise, the header is invalid.
-                lengths = {int(val) for val in str(length).split(",")}
+                lengths = {int(val) for val in content_length.split(",")}
                 if len(lengths) > 1:
                     raise InvalidHeader(
                         "Content-Length contained multiple "
-                        "unmatching values (%s)" % length
+                        "unmatching values (%s)" % content_length
                     )
                 length = lengths.pop()
             except ValueError:
@@ -532,6 +532,9 @@ class HTTPResponse(BaseHTTPResponse):
             else:
                 if length < 0:
                     length = None
+
+        else:  # if content_length is None
+            length = None
 
         # Convert status to int for comparison
         # In some cases, httplib returns a status of "_UNKNOWN"
@@ -607,7 +610,7 @@ class HTTPResponse(BaseHTTPResponse):
         amt: Optional[int] = None,
         decode_content: Optional[bool] = None,
         cache_content: bool = False,
-    ) -> Optional[bytes]:
+    ) -> bytes:
         """
         Similar to :meth:`http.client.HTTPResponse.read`, but with two additional
         parameters: ``decode_content`` and ``cache_content``.
@@ -633,7 +636,7 @@ class HTTPResponse(BaseHTTPResponse):
             decode_content = self.decode_content
 
         if self._fp is None:
-            return None
+            return None  # type: ignore
 
         flush_decoder = False
         fp_closed = getattr(self._fp, "closed", False)
