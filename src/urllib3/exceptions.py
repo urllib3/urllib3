@@ -1,3 +1,4 @@
+import socket
 import warnings
 from http.client import IncompleteRead as httplib_IncompleteRead
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
@@ -376,3 +377,11 @@ class UnrewindableBodyError(HTTPError):
     """urllib3 encountered an error when trying to rewind a body"""
 
     pass
+
+
+class NameResolutionError(HTTPError, socket.gaierror):
+    """Raised when host name resolution fails."""
+
+    def __init__(self, host: str, reason: socket.gaierror):
+        message = f"Failed to resolve '{host}' ({reason})"
+        HTTPError.__init__(self, message)

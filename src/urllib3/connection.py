@@ -44,6 +44,7 @@ from ._version import __version__
 from .exceptions import (
     ConnectTimeoutError,
     HTTPSProxyError,
+    NameResolutionError,
     NewConnectionError,
     SystemTimeWarning,
 )
@@ -205,7 +206,8 @@ class HTTPConnection(_HTTPConnection):
                 source_address=self.source_address,
                 socket_options=self.socket_options,
             )
-
+        except socket.gaierror as e:
+            raise NameResolutionError(self.host, e)
         except SocketTimeout:
             raise ConnectTimeoutError(
                 self,

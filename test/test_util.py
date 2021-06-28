@@ -762,6 +762,20 @@ class TestUtil:
         with pytest.raises(OSError, match="getaddrinfo returns an empty list"):
             create_connection(("example.com", 80))
 
+    @patch("socket.getaddrinfo")
+    def test_dnsresolver_forced_error(self, getaddrinfo):
+        getaddrinfo.side_effect = socket.gaierror()
+        with pytest.raises(socket.gaierror):
+            # dns is valid but we force the error just for the sake of the test
+            create_connection(("example.com", 80))
+
+    def test_dnsresolver_expected_error(self):
+        with pytest.raises(socket.gaierror):
+            # windows: [Errno 11001] getaddrinfo failed in windows
+            # linux: [Errno -2] Name or service not known
+            # macos: [Errno 8] nodename nor servname provided, or not known
+            create_connection(("badhost.invalid", 80))
+
     @pytest.mark.parametrize(
         "input,params,expected",
         (

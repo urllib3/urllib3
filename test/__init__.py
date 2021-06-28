@@ -41,7 +41,7 @@ else:
 VALID_SOURCE_ADDRESSES = [(("::1", 0), True), (("127.0.0.1", 0), False)]
 # RFC 5737: 192.0.2.0/24 is for testing only.
 # RFC 3849: 2001:db8::/32 is for documentation only.
-INVALID_SOURCE_ADDRESSES = [("192.0.2.255", 0), ("2001:db8::1", 0)]
+INVALID_SOURCE_ADDRESSES = [(("192.0.2.255", 0), False), (("2001:db8::1", 0), True)]
 
 # We use timeouts in three different ways in our tests
 #
