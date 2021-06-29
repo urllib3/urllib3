@@ -11,6 +11,7 @@ from ..exceptions import (
     ConnectTimeoutError,
     InvalidHeader,
     MaxRetryError,
+    NameResolutionError,
     ProtocolError,
     ProxyError,
     ReadTimeoutError,
@@ -344,6 +345,8 @@ class Retry:
         """
         if isinstance(err, ProxyError):
             err = err.original_error
+        elif isinstance(err, NameResolutionError):
+            return True
         return isinstance(err, ConnectTimeoutError)
 
     def _is_read_error(self, err: Exception) -> bool:

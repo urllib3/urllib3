@@ -1,6 +1,14 @@
+import socket
+from unittest.mock import patch
+
 import pytest
 
-from urllib3.exceptions import MaxRetryError, NewConnectionError, ProxyError
+from urllib3.exceptions import (
+    MaxRetryError,
+    NameResolutionError,
+    NewConnectionError,
+    ProxyError,
+)
 from urllib3.poolmanager import ProxyManager
 from urllib3.util.retry import Retry
 from urllib3.util.url import parse_url
@@ -79,3 +87,19 @@ class TestProxyManager:
             with pytest.raises(MaxRetryError) as ei:
                 p.urlopen("HEAD", url="http://localhost/", retries=retry)
             assert isinstance(ei.value.reason.original_error, NewConnectionError)
+
+    @patch("socket.getaddrinfo")
+    def test_retry_on_nameresolutionerror(self, getaddrinfo):
+        getaddrinfo.side_effect = socket.gaierror()
+        retry = Retry(total=None, connect=False)
+        port = find_unused_port()
+        with ProxyManager(f"http://localhost:{port}") as p:
+            with pytest.raises(NameResolutionError) as ei:
+                p.urlopen("HEAD", url="http://localhost/", retries=retry)
+            assert isinstance(ei.value.original_error, socket.gaierror)
+
+        retry = Retry(total=None, connect=2)
+        with ProxyManager(f"http://localhost:{port}") as p:
+            with pytest.raises(MaxRetryError) as ei:
+                p.urlopen("HEAD", url="http://localhost/", retries=retry)
+            assert isinstance(ei.value.reason, NameResolutionError)
