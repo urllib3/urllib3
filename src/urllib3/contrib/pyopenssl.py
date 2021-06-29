@@ -46,7 +46,7 @@ compression in Python 2 (see `CRIME attack`_).
 .. _idna: https://github.com/kjd/idna
 """
 
-import OpenSSL.SSL
+import OpenSSL.SSL  # type: ignore
 from cryptography import x509
 from cryptography.hazmat.backends.openssl import backend as openssl_backend
 from cryptography.hazmat.backends.openssl.x509 import _Certificate
@@ -55,7 +55,7 @@ try:
     from cryptography.x509 import UnsupportedExtension
 except ImportError:
     # UnsupportedExtension is gone in cryptography >= 2.1.0
-    class UnsupportedExtension(Exception):
+    class UnsupportedExtension(Exception):  # type: ignore
         pass
 
 
@@ -64,8 +64,13 @@ import ssl
 from io import BytesIO
 from socket import socket as socket_cls
 from socket import timeout
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from .. import util
+
+if TYPE_CHECKING:
+    from OpenSSL.crypto import CRL, X509  # type: ignore
+
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
 
@@ -79,8 +84,8 @@ USE_DEFAULT_SSLCONTEXT_CIPHERS = util.ssl_._is_ge_openssl_v1_1_1(
 
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
 _openssl_versions = {
-    util.ssl_.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,
-    util.ssl_.PROTOCOL_TLS_CLIENT: OpenSSL.SSL.SSLv23_METHOD,
+    util.ssl_.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore
+    util.ssl_.PROTOCOL_TLS_CLIENT: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore
     ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
 }
 
@@ -113,7 +118,7 @@ orig_util_USE_SYSTEM_SSL_CIPHERS = util.ssl_.USE_DEFAULT_SSLCONTEXT_CIPHERS
 log = logging.getLogger(__name__)
 
 
-def inject_into_urllib3():
+def inject_into_urllib3() -> None:
     "Monkey-patch urllib3 with PyOpenSSL-backed SSL-support."
 
     _validate_dependencies_met()
@@ -127,7 +132,7 @@ def inject_into_urllib3():
     util.ssl_.USE_DEFAULT_SSLCONTEXT_CIPHERS = USE_DEFAULT_SSLCONTEXT_CIPHERS
 
 
-def extract_from_urllib3():
+def extract_from_urllib3() -> None:
     "Undo monkey-patching by :func:`inject_into_urllib3`."
 
     util.SSLContext = orig_util_SSLContext
@@ -139,13 +144,13 @@ def extract_from_urllib3():
     util.ssl_.USE_DEFAULT_SSLCONTEXT_CIPHERS = orig_util_USE_SYSTEM_SSL_CIPHERS
 
 
-def _validate_dependencies_met():
+def _validate_dependencies_met() -> None:
     """
     Verifies that PyOpenSSL's package-level dependencies have been met.
     Throws `ImportError` if they are not met.
     """
     # Method added in `cryptography==1.1`; not available in older versions
-    from cryptography.x509.extensions import Extensions
+    from cryptography.x509.extensions import Extensions  # type: ignore
 
     if getattr(Extensions, "get_extension_for_class", None) is None:
         raise ImportError(
@@ -165,7 +170,7 @@ def _validate_dependencies_met():
         )
 
 
-def _dnsname_to_stdlib(name):
+def _dnsname_to_stdlib(name: str) -> Optional[str]:
     """
     Converts a dNSName SubjectAlternativeName field to the form used by the
     standard library on the given Python version.
@@ -179,7 +184,7 @@ def _dnsname_to_stdlib(name):
     the name given should be skipped.
     """
 
-    def idna_encode(name):
+    def idna_encode(name: str) -> Optional[bytes]:
         """
         Borrowed wholesale from the Python Cryptography Project. It turns out
         that we can't just safely call `idna.encode`: it can explode for
@@ -200,13 +205,13 @@ def _dnsname_to_stdlib(name):
     if ":" in name:
         return name
 
-    name = idna_encode(name)
-    if name is None:
+    encoded_name = idna_encode(name)
+    if encoded_name is None:
         return None
-    return name.decode("utf-8")
+    return encoded_name.decode("utf-8")
 
 
-def get_subj_alt_name(peer_cert):
+def get_subj_alt_name(peer_cert: "CRL") -> List[Tuple[str, str]]:
     """
     Given an PyOpenSSL certificate, provides all the subject alternative names.
     """
@@ -263,24 +268,29 @@ def get_subj_alt_name(peer_cert):
 class WrappedSocket:
     """API-compatibility wrapper for Python OpenSSL's Connection-class."""
 
-    def __init__(self, connection, socket, suppress_ragged_eofs=True):
+    def __init__(
+        self,
+        connection: OpenSSL.SSL.Connection,
+        socket: socket_cls,
+        suppress_ragged_eofs: bool = True,
+    ) -> None:
         self.connection = connection
         self.socket = socket
         self.suppress_ragged_eofs = suppress_ragged_eofs
         self._io_refs = 0
         self._closed = False
 
-    def fileno(self):
+    def fileno(self) -> int:
         return self.socket.fileno()
 
     # Copy-pasted from Python 3.5 source code
-    def _decref_socketios(self):
+    def _decref_socketios(self) -> None:
         if self._io_refs > 0:
             self._io_refs -= 1
         if self._closed:
             self.close()
 
-    def recv(self, *args, **kwargs):
+    def recv(self, *args: Any, **kwargs: Any) -> bytes:
         try:
             data = self.connection.recv(*args, **kwargs)
         except OpenSSL.SSL.SysCallError as e:
@@ -295,7 +305,7 @@ class WrappedSocket:
                 raise
         except OpenSSL.SSL.WantReadError:
             if not util.wait_for_read(self.socket, self.socket.gettimeout()):
-                raise timeout("The read operation timed out")
+                raise timeout("The read operation timed out")  # type: ignore
             else:
                 return self.recv(*args, **kwargs)
 
@@ -305,7 +315,7 @@ class WrappedSocket:
         else:
             return data
 
-    def recv_into(self, *args, **kwargs):
+    def recv_into(self, *args: Any, **kwargs: Any) -> int:
         try:
             return self.connection.recv_into(*args, **kwargs)
         except OpenSSL.SSL.SysCallError as e:
@@ -320,7 +330,7 @@ class WrappedSocket:
                 raise
         except OpenSSL.SSL.WantReadError:
             if not util.wait_for_read(self.socket, self.socket.gettimeout()):
-                raise timeout("The read operation timed out")
+                raise timeout("The read operation timed out")  # type: ignore
             else:
                 return self.recv_into(*args, **kwargs)
 
@@ -328,10 +338,10 @@ class WrappedSocket:
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError(f"read error: {e!r}")
 
-    def settimeout(self, timeout):
+    def settimeout(self, timeout: float) -> None:
         return self.socket.settimeout(timeout)
 
-    def _send_until_done(self, data):
+    def _send_until_done(self, data: bytes) -> int:
         while True:
             try:
                 return self.connection.send(data)
@@ -342,7 +352,7 @@ class WrappedSocket:
             except OpenSSL.SSL.SysCallError as e:
                 raise OSError(e.args[0], str(e))
 
-    def sendall(self, data):
+    def sendall(self, data: bytes) -> None:
         total_sent = 0
         while total_sent < len(data):
             sent = self._send_until_done(
@@ -350,11 +360,11 @@ class WrappedSocket:
             )
             total_sent += sent
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         # FIXME rethrow compatible exceptions should we ever use this
         self.connection.shutdown()
 
-    def close(self):
+    def close(self) -> None:
         if self._io_refs < 1:
             try:
                 self._closed = True
@@ -364,7 +374,7 @@ class WrappedSocket:
         else:
             self._io_refs -= 1
 
-    def getpeercert(self, binary_form=False):
+    def getpeercert(self, binary_form: bool = False) -> Dict[str, List[Any]]:
         x509 = self.connection.get_peer_certificate()
 
         if not x509:
@@ -378,7 +388,7 @@ class WrappedSocket:
             "subjectAltName": get_subj_alt_name(x509),
         }
 
-    def version(self):
+    def version(self) -> str:
         return self.connection.get_protocol_version_name()
 
 
@@ -392,38 +402,43 @@ class PyOpenSSLContext:
     to calls into PyOpenSSL.
     """
 
-    def __init__(self, protocol):
+    def __init__(self, protocol: int) -> None:
         self.protocol = _openssl_versions[protocol]
         self._ctx = OpenSSL.SSL.Context(self.protocol)
         self._options = 0
         self.check_hostname = False
 
     @property
-    def options(self):
+    def options(self) -> int:
         return self._options
 
     @options.setter
-    def options(self, value):
+    def options(self, value: int) -> None:
         self._options = value
         self._ctx.set_options(value)
 
     @property
-    def verify_mode(self):
+    def verify_mode(self) -> int:
         return _openssl_to_stdlib_verify[self._ctx.get_verify_mode()]
 
     @verify_mode.setter
-    def verify_mode(self, value):
+    def verify_mode(self, value: int) -> None:
         self._ctx.set_verify(_stdlib_to_openssl_verify[value], _verify_callback)
 
-    def set_default_verify_paths(self):
+    def set_default_verify_paths(self) -> None:
         self._ctx.set_default_verify_paths()
 
-    def set_ciphers(self, ciphers):
+    def set_ciphers(self, ciphers: Union[bytes, str]) -> None:
         if isinstance(ciphers, str):
             ciphers = ciphers.encode("utf-8")
         self._ctx.set_cipher_list(ciphers)
 
-    def load_verify_locations(self, cafile=None, capath=None, cadata=None):
+    def load_verify_locations(
+        self,
+        cafile: Optional[str] = None,
+        capath: Optional[str] = None,
+        cadata: Optional[bytes] = None,
+    ) -> None:
         if cafile is not None:
             cafile = cafile.encode("utf-8")
         if capath is not None:
@@ -435,7 +450,12 @@ class PyOpenSSLContext:
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError(f"unable to load trusted certificates: {e!r}")
 
-    def load_cert_chain(self, certfile, keyfile=None, password=None):
+    def load_cert_chain(
+        self,
+        certfile: str,
+        keyfile: Optional[str] = None,
+        password: Optional[str] = None,
+    ) -> None:
         self._ctx.use_certificate_chain_file(certfile)
         if password is not None:
             if not isinstance(password, bytes):
@@ -443,18 +463,18 @@ class PyOpenSSLContext:
             self._ctx.set_passwd_cb(lambda *_: password)
         self._ctx.use_privatekey_file(keyfile or certfile)
 
-    def set_alpn_protocols(self, protocols):
+    def set_alpn_protocols(self, protocols: List[Union[bytes, str]]) -> None:
         protocols = [util.util.to_bytes(p, "ascii") for p in protocols]
         return self._ctx.set_alpn_protos(protocols)
 
     def wrap_socket(
         self,
-        sock,
-        server_side=False,
-        do_handshake_on_connect=True,
-        suppress_ragged_eofs=True,
-        server_hostname=None,
-    ):
+        sock: socket_cls,
+        server_side: bool = False,
+        do_handshake_on_connect: bool = True,
+        suppress_ragged_eofs: bool = True,
+        server_hostname: Optional[Union[bytes, str]] = None,
+    ) -> WrappedSocket:
         cnx = OpenSSL.SSL.Connection(self._ctx, sock)
 
         # If server_hostname is an IP, don't use it for SNI, per RFC6066 Section 3
@@ -470,7 +490,7 @@ class PyOpenSSLContext:
                 cnx.do_handshake()
             except OpenSSL.SSL.WantReadError:
                 if not util.wait_for_read(sock, sock.gettimeout()):
-                    raise timeout("select timed out")
+                    raise timeout("select timed out")  # type: ignore
                 continue
             except OpenSSL.SSL.Error as e:
                 raise ssl.SSLError(f"bad handshake: {e!r}")
@@ -479,5 +499,11 @@ class PyOpenSSLContext:
         return WrappedSocket(cnx, sock)
 
 
-def _verify_callback(cnx, x509, err_no, err_depth, return_code):
+def _verify_callback(
+    cnx: OpenSSL.SSL.Connection,
+    x509: "X509",
+    err_no: int,
+    err_depth: int,
+    return_code: int,
+) -> bool:
     return err_no == 0
