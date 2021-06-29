@@ -12,6 +12,7 @@ TYPED_FILES = {
     "src/urllib3/contrib/_securetransport/bindings.py",
     "src/urllib3/contrib/_securetransport/low_level.py",
     "src/urllib3/contrib/ntlmpool.py",
+    "src/urllib3/contrib/securetransport.py",
     "src/urllib3/contrib/socks.py",
     "src/urllib3/__init__.py",
     "src/urllib3/connection.py",

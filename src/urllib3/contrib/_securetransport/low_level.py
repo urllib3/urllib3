@@ -314,7 +314,7 @@ def _load_items_from_file(
     return (identities, certificates)
 
 
-def _load_client_cert_chain(keychain: SecKeychainRef, *paths: str) -> CFArray:
+def _load_client_cert_chain(keychain: SecKeychainRef, *paths: Optional[str]) -> CFArray:
     """
     Load certificates and maybe keys from a number of files. Has the end goal
     of returning a CFArray containing one SecIdentityRef, and then zero or more
@@ -410,3 +410,60 @@ def _build_tls_unknown_ca_alert(version: str) -> bytes:
     record_type_alert = 0x15
     record = struct.pack(">BBBH", record_type_alert, ver_maj, ver_min, msg_len) + msg
     return record
+
+
+class SecurityConst:
+    """
+    A class object that acts as essentially a namespace for Security constants.
+    """
+
+    kSSLSessionOptionBreakOnServerAuth = 0
+
+    kSSLProtocol2 = 1
+    kSSLProtocol3 = 2
+    kTLSProtocol1 = 4
+    kTLSProtocol11 = 7
+    kTLSProtocol12 = 8
+    # SecureTransport does not support TLS 1.3 even if there's a constant for it
+    kTLSProtocol13 = 10
+    kTLSProtocolMaxSupported = 999
+
+    kSSLClientSide = 1
+    kSSLStreamType = 0
+
+    kSecFormatPEMSequence = 10
+
+    kSecTrustResultInvalid = 0
+    kSecTrustResultProceed = 1
+    # This gap is present on purpose: this was kSecTrustResultConfirm, which
+    # is deprecated.
+    kSecTrustResultDeny = 3
+    kSecTrustResultUnspecified = 4
+    kSecTrustResultRecoverableTrustFailure = 5
+    kSecTrustResultFatalTrustFailure = 6
+    kSecTrustResultOtherError = 7
+
+    errSSLProtocol = -9800
+    errSSLWouldBlock = -9803
+    errSSLClosedGraceful = -9805
+    errSSLClosedNoNotify = -9816
+    errSSLClosedAbort = -9806
+
+    errSSLXCertChainInvalid = -9807
+    errSSLCrypto = -9809
+    errSSLInternal = -9810
+    errSSLCertExpired = -9814
+    errSSLCertNotYetValid = -9815
+    errSSLUnknownRootCert = -9812
+    errSSLNoRootCert = -9813
+    errSSLHostNameMismatch = -9843
+    errSSLPeerHandshakeFail = -9824
+    errSSLPeerUserCancelled = -9839
+    errSSLWeakPeerEphemeralDHKey = -9850
+    errSSLServerAuthCompleted = -9841
+    errSSLRecordOverflow = -9847
+
+    errSecVerifyFailed = -67808
+    errSecNoTrustSettings = -25263
+    errSecItemNotFound = -25300
+    errSecInvalidTrustSettings = -25262
