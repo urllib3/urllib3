@@ -123,8 +123,8 @@ def inject_into_urllib3() -> None:
 
     _validate_dependencies_met()
 
-    util.SSLContext = PyOpenSSLContext
-    util.ssl_.SSLContext = PyOpenSSLContext
+    util.SSLContext = PyOpenSSLContext  # type: ignore
+    util.ssl_.SSLContext = PyOpenSSLContext  # type: ignore
     util.HAS_SNI = HAS_SNI
     util.ssl_.HAS_SNI = HAS_SNI
     util.IS_PYOPENSSL = True
@@ -313,11 +313,11 @@ class WrappedSocket:
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError(f"read error: {e!r}")
         else:
-            return data
+            return data  # type: ignore
 
     def recv_into(self, *args: Any, **kwargs: Any) -> int:
         try:
-            return self.connection.recv_into(*args, **kwargs)
+            return self.connection.recv_into(*args, **kwargs)  # type: ignore
         except OpenSSL.SSL.SysCallError as e:
             if self.suppress_ragged_eofs and e.args == (-1, "Unexpected EOF"):
                 return 0
@@ -344,7 +344,7 @@ class WrappedSocket:
     def _send_until_done(self, data: bytes) -> int:
         while True:
             try:
-                return self.connection.send(data)
+                return self.connection.send(data)  # type: ignore
             except OpenSSL.SSL.WantWriteError:
                 if not util.wait_for_write(self.socket, self.socket.gettimeout()):
                     raise timeout()
@@ -368,7 +368,7 @@ class WrappedSocket:
         if self._io_refs < 1:
             try:
                 self._closed = True
-                return self.connection.close()
+                return self.connection.close()  # type: ignore
             except OpenSSL.SSL.Error:
                 return
         else:
@@ -378,21 +378,21 @@ class WrappedSocket:
         x509 = self.connection.get_peer_certificate()
 
         if not x509:
-            return x509
+            return x509  # type: ignore
 
         if binary_form:
-            return OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_ASN1, x509)
+            return OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_ASN1, x509)  # type: ignore
 
         return {
-            "subject": ((("commonName", x509.get_subject().CN),),),
+            "subject": ((("commonName", x509.get_subject().CN),),),  # type: ignore
             "subjectAltName": get_subj_alt_name(x509),
         }
 
     def version(self) -> str:
-        return self.connection.get_protocol_version_name()
+        return self.connection.get_protocol_version_name()  # type: ignore
 
 
-WrappedSocket.makefile = socket_cls.makefile
+WrappedSocket.makefile = socket_cls.makefile  # type: ignore
 
 
 class PyOpenSSLContext:
@@ -440,9 +440,9 @@ class PyOpenSSLContext:
         cadata: Optional[bytes] = None,
     ) -> None:
         if cafile is not None:
-            cafile = cafile.encode("utf-8")
+            cafile = cafile.encode("utf-8")  # type: ignore
         if capath is not None:
-            capath = capath.encode("utf-8")
+            capath = capath.encode("utf-8")  # type: ignore
         try:
             self._ctx.load_verify_locations(cafile, capath)
             if cadata is not None:
@@ -459,13 +459,13 @@ class PyOpenSSLContext:
         self._ctx.use_certificate_chain_file(certfile)
         if password is not None:
             if not isinstance(password, bytes):
-                password = password.encode("utf-8")
+                password = password.encode("utf-8")  # type: ignore
             self._ctx.set_passwd_cb(lambda *_: password)
         self._ctx.use_privatekey_file(keyfile or certfile)
 
     def set_alpn_protocols(self, protocols: List[Union[bytes, str]]) -> None:
         protocols = [util.util.to_bytes(p, "ascii") for p in protocols]
-        return self._ctx.set_alpn_protos(protocols)
+        return self._ctx.set_alpn_protos(protocols)  # type: ignore
 
     def wrap_socket(
         self,
