@@ -94,9 +94,8 @@ class TestProxyManager:
         retry = Retry(total=None, connect=False)
         port = find_unused_port()
         with ProxyManager(f"http://localhost:{port}") as p:
-            with pytest.raises(NameResolutionError) as ei:
+            with pytest.raises(NameResolutionError):
                 p.urlopen("HEAD", url="http://localhost/", retries=retry)
-            assert isinstance(ei.value.original_error, socket.gaierror)
 
         retry = Retry(total=None, connect=2)
         with ProxyManager(f"http://localhost:{port}") as p:
