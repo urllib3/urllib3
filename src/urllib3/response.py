@@ -261,14 +261,14 @@ class BaseHTTPResponse(io.IOBase):
         amt: Optional[int] = None,
         decode_content: Optional[bool] = None,
         cache_content: bool = False,
-    ) -> Optional[bytes]:
+    ) -> bytes:
         raise NotImplementedError()
 
     def read_chunked(
         self,
         amt: Optional[int] = None,
         decode_content: Optional[bool] = None,
-    ) -> Generator[bytes, None, None]:
+    ) -> Iterator[bytes]:
         raise NotImplementedError()
 
     def release_conn(self) -> None:
@@ -338,7 +338,7 @@ class BaseHTTPResponse(io.IOBase):
 
     def readinto(self, b: bytearray) -> int:
         temp = self.read(len(b))
-        if temp is None or len(temp) == 0:
+        if len(temp) == 0:
             return 0
         else:
             b[: len(temp)] = temp
@@ -887,7 +887,7 @@ class HTTPResponse(BaseHTTPResponse):
                     yield decoded
 
             # Chunk content ends with \r\n: discard it.
-            while True and self._fp is not None:
+            while self._fp is not None:
                 line = self._fp.fp.readline()
                 if not line:
                     # Some sites may not end with '\r\n'.
