@@ -382,6 +382,6 @@ class UnrewindableBodyError(HTTPError):
 class NameResolutionError(HTTPError, socket.gaierror):
     """Raised when host name resolution fails."""
 
-    def __init__(self, host: str, reason: socket.gaierror) -> None:
+    def __init__(self, host: str, reason: socket.gaierror):
         message = f"Failed to resolve '{host}' ({reason})"
         HTTPError.__init__(self, message)
