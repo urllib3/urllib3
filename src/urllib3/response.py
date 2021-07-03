@@ -82,7 +82,7 @@ class DeflateDecoder(ContentDecoder):
             decompressed = self._obj.decompress(data)
             if decompressed:
                 self._first_try = False
-                self._data = None
+                self._data = None  # type: ignore
             return decompressed
         except zlib.error:
             self._first_try = False
@@ -90,7 +90,7 @@ class DeflateDecoder(ContentDecoder):
             try:
                 return self.decompress(self._data)
             finally:
-                self._data = None
+                self._data = None  # type: ignore
 
     def flush(self) -> bytes:
         return self._obj.flush()
@@ -148,7 +148,7 @@ if brotli is not None:
 
         def flush(self) -> bytes:
             if hasattr(self._obj, "flush"):
-                return self._obj.flush()
+                return self._obj.flush()  # type: ignore
             return b""
 
 
@@ -208,7 +208,7 @@ class BaseHTTPResponse(io.IOBase):
         if isinstance(headers, HTTPHeaderDict):
             self.headers = headers
         else:
-            self.headers = HTTPHeaderDict(headers)
+            self.headers = HTTPHeaderDict(headers)  # type: ignore
         self.status = status
         self.version = version
         self.reason = reason
@@ -437,7 +437,7 @@ class HTTPResponse(BaseHTTPResponse):
         self._connection = connection
 
         if hasattr(body, "read"):
-            self._fp = body
+            self._fp = body  # type: ignore
 
         # Are we using the chunked-style of transfer encoding?
         self.chunk_left: Optional[int] = None
@@ -567,7 +567,7 @@ class HTTPResponse(BaseHTTPResponse):
             except SocketTimeout:
                 # FIXME: Ideally we'd like to include the url in the ReadTimeoutError but
                 # there is yet no clean way to get at it from this context.
-                raise ReadTimeoutError(self._pool, None, "Read timed out.")
+                raise ReadTimeoutError(self._pool, None, "Read timed out.")  # type: ignore
 
             except BaseSSLError as e:
                 # FIXME: Is there a better way to differentiate between SSLErrors?
@@ -575,7 +575,7 @@ class HTTPResponse(BaseHTTPResponse):
                     # SSL errors related to framing/MAC get wrapped and reraised here
                     raise SSLError(e)
 
-                raise ReadTimeoutError(self._pool, None, "Read timed out.")
+                raise ReadTimeoutError(self._pool, None, "Read timed out.")  # type: ignore
 
             except (HTTPException, OSError) as e:
                 # This includes IncompleteRead.
@@ -726,11 +726,11 @@ class HTTPResponse(BaseHTTPResponse):
         headers = r.msg
 
         if not isinstance(headers, HTTPHeaderDict):
-            headers = HTTPHeaderDict(headers.items())
+            headers = HTTPHeaderDict(headers.items())  # type: ignore
 
         resp = ResponseCls(
             body=r,
-            headers=headers,
+            headers=headers,  # type: ignore
             status=r.status,
             version=r.version,
             reason=r.reason,
@@ -753,7 +753,7 @@ class HTTPResponse(BaseHTTPResponse):
     @property
     def closed(self) -> bool:
         if not self.auto_close:
-            return io.IOBase.closed.__get__(self)
+            return io.IOBase.closed.__get__(self)  # type: ignore
         elif self._fp is None:
             return True
         elif hasattr(self._fp, "isclosed"):
@@ -796,7 +796,7 @@ class HTTPResponse(BaseHTTPResponse):
         # we'll try to read it from socket.
         if self.chunk_left is not None:
             return None
-        line = self._fp.fp.readline()
+        line = self._fp.fp.readline()  # type: ignore
         line = line.split(b";", 1)[0]
         try:
             self.chunk_left = int(line, 16)
@@ -808,24 +808,24 @@ class HTTPResponse(BaseHTTPResponse):
     def _handle_chunk(self, amt: Optional[int]) -> bytes:
         returned_chunk = None
         if amt is None:
-            chunk = self._fp._safe_read(self.chunk_left)
+            chunk = self._fp._safe_read(self.chunk_left)  # type: ignore
             returned_chunk = chunk
-            self._fp._safe_read(2)  # Toss the CRLF at the end of the chunk.
+            self._fp._safe_read(2)  # type: ignore # Toss the CRLF at the end of the chunk.
             self.chunk_left = None
         elif self.chunk_left is not None and amt < self.chunk_left:
-            value = self._fp._safe_read(amt)
+            value = self._fp._safe_read(amt)  # type: ignore
             self.chunk_left = self.chunk_left - amt
             returned_chunk = value
         elif amt == self.chunk_left:
-            value = self._fp._safe_read(amt)
-            self._fp._safe_read(2)  # Toss the CRLF at the end of the chunk.
+            value = self._fp._safe_read(amt)  # type: ignore
+            self._fp._safe_read(2)  # type: ignore # Toss the CRLF at the end of the chunk.
             self.chunk_left = None
             returned_chunk = value
         else:  # amt > self.chunk_left
-            returned_chunk = self._fp._safe_read(self.chunk_left)
-            self._fp._safe_read(2)  # Toss the CRLF at the end of the chunk.
+            returned_chunk = self._fp._safe_read(self.chunk_left)  # type: ignore
+            self._fp._safe_read(2)  # type: ignore # Toss the CRLF at the end of the chunk.
             self.chunk_left = None
-        return returned_chunk
+        return returned_chunk  # type: ignore
 
     def read_chunked(
         self, amt: Optional[int] = None, decode_content: Optional[bool] = None
@@ -864,7 +864,7 @@ class HTTPResponse(BaseHTTPResponse):
 
             # If a response is already read and closed
             # then return immediately.
-            if self._fp.fp is None:
+            if self._fp.fp is None:  # type: ignore
                 return None
 
             while True:
@@ -888,7 +888,7 @@ class HTTPResponse(BaseHTTPResponse):
 
             # Chunk content ends with \r\n: discard it.
             while self._fp is not None:
-                line = self._fp.fp.readline()
+                line = self._fp.fp.readline()  # type: ignore
                 if not line:
                     # Some sites may not end with '\r\n'.
                     break
