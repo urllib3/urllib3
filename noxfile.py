@@ -24,6 +24,7 @@ TYPED_FILES = {
     "src/urllib3/filepost.py",
     "src/urllib3/poolmanager.py",
     "src/urllib3/request.py",
+    "src/urllib3/response.py",
     "src/urllib3/util/connection.py",
     "src/urllib3/util/proxy.py",
     "src/urllib3/util/queue.py",

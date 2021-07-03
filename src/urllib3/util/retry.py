@@ -2,10 +2,9 @@ import email
 import logging
 import re
 import time
-from collections import namedtuple
 from itertools import takewhile
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Collection, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Collection, NamedTuple, Optional, Tuple, Union
 
 from ..exceptions import (
     ConnectTimeoutError,
@@ -26,9 +25,12 @@ log = logging.getLogger(__name__)
 
 
 # Data structure for representing the metadata of requests that result in a retry.
-RequestHistory = namedtuple(
-    "RequestHistory", ["method", "url", "error", "status", "redirect_location"]
-)
+class RequestHistory(NamedTuple):
+    method: Optional[str]
+    url: Optional[str]
+    error: Optional[Exception]
+    status: Optional[int]
+    redirect_location: Optional[str]
 
 
 class Retry:
@@ -461,7 +463,9 @@ class Retry:
             if redirect is not None:
                 redirect -= 1
             cause = "too many redirects"
-            redirect_location = response.get_redirect_location()
+            response_redirect_location = response.get_redirect_location()
+            if response_redirect_location:
+                redirect_location = response_redirect_location
             status = response.status
 
         else:
