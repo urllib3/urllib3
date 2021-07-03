@@ -4,41 +4,6 @@ import subprocess
 
 import nox
 
-# Whenever type-hints are completed on a file it should be added here so that
-# this file will continue to be checked by mypy. Errors from other files are
-# ignored.
-TYPED_FILES = {
-    "src/urllib3/contrib/__init__.py",
-    "src/urllib3/contrib/_securetransport/bindings.py",
-    "src/urllib3/contrib/_securetransport/low_level.py",
-    "src/urllib3/contrib/ntlmpool.py",
-    "src/urllib3/contrib/pyopenssl.py",
-    "src/urllib3/contrib/securetransport.py",
-    "src/urllib3/contrib/socks.py",
-    "src/urllib3/__init__.py",
-    "src/urllib3/connection.py",
-    "src/urllib3/connectionpool.py",
-    "src/urllib3/exceptions.py",
-    "src/urllib3/_collections.py",
-    "src/urllib3/fields.py",
-    "src/urllib3/filepost.py",
-    "src/urllib3/poolmanager.py",
-    "src/urllib3/request.py",
-    "src/urllib3/response.py",
-    "src/urllib3/util/connection.py",
-    "src/urllib3/util/proxy.py",
-    "src/urllib3/util/queue.py",
-    "src/urllib3/util/response.py",
-    "src/urllib3/util/ssl_.py",
-    "src/urllib3/util/ssl_match_hostname.py",
-    "src/urllib3/util/ssltransport.py",
-    "src/urllib3/util/url.py",
-    "src/urllib3/util/request.py",
-    "src/urllib3/util/retry.py",
-    "src/urllib3/util/timeout.py",
-    "src/urllib3/util/util.py",
-    "src/urllib3/util/wait.py",
-}
 SOURCE_FILES = [
     "docs/",
     "dummyserver/",
@@ -146,27 +111,7 @@ def mypy(session):
     session.install("mypy==0.812")
     session.install("idna>=2.0.0")
     session.run("mypy", "--version")
-
-    session.log("mypy --strict src/urllib3")
-    all_errors, errors = [], []
-    process = subprocess.run(
-        ["mypy", "--strict", "src/urllib3"],
-        env=session.env,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
-    # Ensure that mypy itself ran successfully
-    assert process.returncode in (0, 1)
-
-    for line in process.stdout.split("\n"):
-        all_errors.append(line)
-        filepath = line.partition(":")[0]
-        if filepath.replace(".pyi", ".py") in TYPED_FILES:
-            errors.append(line)
-    session.log(f"all errors count: {len(all_errors)}")
-    if errors:
-        session.error("\n" + "\n".join(sorted(set(errors))))
+    session.run("mypy", "--strict", "src/urllib3")
 
 
 @nox.session
