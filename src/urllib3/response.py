@@ -239,7 +239,7 @@ class BaseHTTPResponse(io.IOBase):
 
     def json(self) -> Any:
         """
-        Parses the body of the HTTP response as UTF-8, UTF-16, or UTF-32 encoded JSON using the standard library :func:`json.loads` function.
+        Parses the body of the HTTP response as JSON.
 
         To use a custom JSON decoder pass the result of :attr:`HTTPResponse.data` to the decoder.
 
