@@ -7,7 +7,7 @@ import sys
 import warnings
 from copy import copy
 from http.client import HTTPConnection as _HTTPConnection
-from http.client import HTTPException  # noqa: F401
+from http.client import HTTPException as HTTPException  # noqa: F401
 from socket import timeout as SocketTimeout
 from typing import (
     IO,

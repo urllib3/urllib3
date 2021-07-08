@@ -8,7 +8,7 @@ from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, Union, overload
 
-from .connection import (  # type: ignore
+from .connection import (
     _TYPE_BODY,
     BaseSSLError,
     BrokenPipeError,
@@ -18,8 +18,8 @@ from .connection import (  # type: ignore
     HTTPSConnection,
     ProxyConfig,
     VerifiedHTTPSConnection,
-    port_by_scheme,
 )
+from .connection import port_by_scheme as port_by_scheme
 from .exceptions import (
     ClosedPoolError,
     EmptyPoolError,
@@ -742,15 +742,16 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Discard the connection for these exceptions. It will be
             # replaced during the next _get_conn() call.
             clean_exit = False
+            new_e: Exception = e
             if isinstance(e, (BaseSSLError, CertificateError)):
-                e = SSLError(e)
+                new_e = SSLError(e)
             elif isinstance(e, (OSError, NewConnectionError)) and self.proxy:
-                e = ProxyError("Cannot connect to proxy.", e)
+                new_e = ProxyError("Cannot connect to proxy.", e)
             elif isinstance(e, (OSError, HTTPException)):
-                e = ProtocolError("Connection aborted.", e)
+                new_e = ProtocolError("Connection aborted.", e)
 
             retries = retries.increment(
-                method, url, error=e, _pool=self, _stacktrace=sys.exc_info()[2]
+                method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
             )
             retries.sleep()
 
