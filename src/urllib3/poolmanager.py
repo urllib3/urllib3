@@ -17,11 +17,7 @@ from urllib.parse import urljoin
 
 from ._collections import RecentlyUsedContainer
 from .connection import ProxyConfig
-from .connectionpool import (  # type: ignore
-    HTTPConnectionPool,
-    HTTPSConnectionPool,
-    port_by_scheme,
-)
+from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
 from .exceptions import (
     LocationValueError,
     MaxRetryError,

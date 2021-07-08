@@ -27,12 +27,7 @@ except ImportError:
     brotli = None
 
 from ._collections import HTTPHeaderDict
-from .connection import (  # type: ignore
-    _TYPE_BODY,
-    BaseSSLError,
-    HTTPConnection,
-    HTTPException,
-)
+from .connection import _TYPE_BODY, BaseSSLError, HTTPConnection, HTTPException
 from .exceptions import (
     BodyNotHttplibCompatible,
     DecodeError,
