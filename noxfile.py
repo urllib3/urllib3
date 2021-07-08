@@ -105,11 +105,12 @@ def lint(session):
     mypy(session)
 
 
-@nox.session()
+@nox.session(python="3.8")
 def mypy(session):
     """Run mypy."""
-    session.install("mypy==0.812")
+    session.install("mypy==0.910")
     session.install("idna>=2.0.0")
+    session.install("cryptography>=1.3.4")
     session.run("mypy", "--version")
     session.run("mypy", "--strict", "src/urllib3")
 
