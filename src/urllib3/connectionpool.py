@@ -30,7 +30,6 @@ from .exceptions import (
     InsecureRequestWarning,
     LocationValueError,
     MaxRetryError,
-    NameResolutionError,
     NewConnectionError,
     ProtocolError,
     ProxyError,
@@ -739,7 +738,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             SSLError,
             CertificateError,
             HTTPSProxyError,
-            NameResolutionError,
         ) as e:
             # Discard the connection for these exceptions. It will be
             # replaced during the next _get_conn() call.
@@ -747,8 +745,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             new_e: Exception = e
             if isinstance(e, (BaseSSLError, CertificateError)):
                 new_e = SSLError(e)
-            elif isinstance(e, NameResolutionError):
-                pass
             elif isinstance(e, (OSError, NewConnectionError)) and self.proxy:
                 new_e = ProxyError("Cannot connect to proxy.", e)
             elif isinstance(e, (OSError, HTTPException)):

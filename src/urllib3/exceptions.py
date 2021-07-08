@@ -184,6 +184,14 @@ class NewConnectionError(ConnectTimeoutError, HTTPError):
         return self.conn
 
 
+class NameResolutionError(NewConnectionError):
+    """Raised when host name resolution fails."""
+
+    def __init__(self, host: str, conn: "HTTPConnection", reason: socket.gaierror):
+        message = f"Failed to resolve '{host}' ({reason})"
+        super().__init__(conn, message)
+
+
 class EmptyPoolError(PoolError):
     """Raised when a pool runs out of connections and no more are allowed."""
 
@@ -379,11 +387,3 @@ class UnrewindableBodyError(HTTPError):
     """urllib3 encountered an error when trying to rewind a body"""
 
     pass
-
-
-class NameResolutionError(HTTPError, socket.gaierror):
-    """Raised when host name resolution fails."""
-
-    def __init__(self, host: str, reason: socket.gaierror):
-        message = f"Failed to resolve '{host}' ({reason})"
-        HTTPError.__init__(self, message)
