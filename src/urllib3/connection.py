@@ -207,7 +207,7 @@ class HTTPConnection(_HTTPConnection):
                 socket_options=self.socket_options,
             )
         except socket.gaierror as e:
-            raise NameResolutionError(self.host, e)
+            raise NameResolutionError(self.host, self, e)
         except SocketTimeout:
             raise ConnectTimeoutError(
                 self,

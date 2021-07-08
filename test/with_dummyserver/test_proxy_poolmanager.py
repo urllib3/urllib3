@@ -16,7 +16,7 @@ from urllib3.exceptions import (
     ConnectTimeoutError,
     HTTPSProxyError,
     MaxRetryError,
-    NameResolutionError,
+    ProxyError,
     ProxySchemeUnknown,
     ProxySchemeUnsupported,
     SSLError,
@@ -146,7 +146,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
             with pytest.raises(MaxRetryError) as e:
                 http.request("GET", f"{self.http_url}/")
-            assert type(e.value.reason) == NameResolutionError
+            assert type(e.value.reason) == ProxyError
 
     def test_https_conn_failed(self):
         """
