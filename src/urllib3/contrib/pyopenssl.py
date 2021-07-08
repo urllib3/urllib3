@@ -52,7 +52,7 @@ from cryptography.hazmat.backends.openssl import backend as openssl_backend
 from cryptography.hazmat.backends.openssl.x509 import _Certificate
 
 try:
-    from cryptography.x509 import UnsupportedExtension
+    from cryptography.x509 import UnsupportedExtension  # type: ignore
 except ImportError:
     # UnsupportedExtension is gone in cryptography >= 2.1.0
     class UnsupportedExtension(Exception):  # type: ignore
@@ -79,7 +79,7 @@ HAS_SNI = True
 
 # Use system TLS ciphers on OpenSSL 1.1.1+
 USE_DEFAULT_SSLCONTEXT_CIPHERS = util.ssl_._is_ge_openssl_v1_1_1(
-    openssl_backend.openssl_version_text(), openssl_backend.openssl_version_number()
+    openssl_backend.openssl_version_text(), openssl_backend.openssl_version_number()  # type: ignore
 )
 
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
@@ -150,7 +150,7 @@ def _validate_dependencies_met() -> None:
     Throws `ImportError` if they are not met.
     """
     # Method added in `cryptography==1.1`; not available in older versions
-    from cryptography.x509.extensions import Extensions  # type: ignore
+    from cryptography.x509.extensions import Extensions
 
     if getattr(Extensions, "get_extension_for_class", None) is None:
         raise ImportError(
@@ -221,7 +221,7 @@ def get_subj_alt_name(peer_cert: "CRL") -> List[Tuple[str, str]]:
     else:
         # This is technically using private APIs, but should work across all
         # relevant versions before PyOpenSSL got a proper API for this.
-        cert = _Certificate(openssl_backend, peer_cert._x509)
+        cert = _Certificate(openssl_backend, peer_cert._x509)  # type: ignore
 
     # We want to find the SAN extension. Ask Cryptography to locate it (it's
     # faster than looping in Python)
