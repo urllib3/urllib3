@@ -365,6 +365,7 @@ def parse_url(url: str) -> Url:
     if not url:
         # Empty
         return Url()
+    url = url.lstrip()
 
     source_url = url
     if not _SCHEME_RE.search(url):

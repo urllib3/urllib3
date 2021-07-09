@@ -190,6 +190,7 @@ class TestUtil:
                 "http://google.com/p%5B%5d?parameter%5b%5D=%22hello%22#fragment%23",
                 "http://google.com/p%5B%5D?parameter%5B%5D=%22hello%22#fragment%23",
             ),
+            ("  https://google.com", "https://google.com"),
         ],
     )
     def test_parse_url_normalization(self, url, expected_normalized_url):
