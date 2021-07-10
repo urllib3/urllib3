@@ -1,5 +1,4 @@
 import gzip
-import json
 from test import LONG_TIMEOUT
 from unittest import mock
 
@@ -311,32 +310,32 @@ class TestPoolManager(HTTPDummyServerTestCase):
     def test_headers(self):
         with PoolManager(headers={"Foo": "bar"}) as http:
             r = http.request("GET", f"{self.base_url}/headers")
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
 
             r = http.request("POST", f"{self.base_url}/headers")
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
 
             r = http.request_encode_url("GET", f"{self.base_url}/headers")
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
 
             r = http.request_encode_body("POST", f"{self.base_url}/headers")
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
 
             r = http.request_encode_url(
                 "GET", f"{self.base_url}/headers", headers={"Baz": "quux"}
             )
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
 
             r = http.request_encode_body(
                 "GET", f"{self.base_url}/headers", headers={"Baz": "quux"}
             )
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
 
@@ -349,7 +348,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         with PoolManager(headers=headers) as http:
             r = http.request("GET", f"{self.base_url}/headers")
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers["Foo"] == "bar"
             assert returned_headers["Multi"] == "1, 2"
             assert returned_headers["Baz"] == "quux"
@@ -363,7 +362,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                     "Foo": "new",
                 },
             )
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers["Foo"] == "new"
             assert returned_headers["Multi"] == "1, 2"
             assert returned_headers["Baz"] == "quux"
