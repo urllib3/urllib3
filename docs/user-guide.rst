@@ -102,9 +102,11 @@ The :class:`~response.HTTPResponse` object provides
 JSON Content
 ~~~~~~~~~~~~
 
-JSON content can be loaded by using :meth:`~response.HTTPResponse.json`
-method of the request or by decoding and deserializing the 
-:attr:`~response.HTTPResponse.data` attribute of the request:
+You can send a JSON request by specifying the data as ``json`` argument,
+urllib3 automatically encodes data using ``json`` module with ``UTF-8`` 
+encoding. Also by default ``"Content-Type"`` in headers is set to 
+``"application/json"`` if not specified when calling
+:meth:`~poolmanager.PoolManager.request`:
 
 .. code-block:: python
 
@@ -113,11 +115,23 @@ method of the request or by decoding and deserializing the
 
     resp = urllib3.request("GET", "https://httpbin.org/ip")
 
-    resp.json()
+    print(resp.json())
     # {"origin": "127.0.0.1"}
+
+Alternatively, you can send a JSON request by specifying the encoded data 
+as the ``body``argument and setting the ``Content-Type`` header when calling
+:meth:`~poolmanager.PoolManager.request`:
+
+.. code-block:: python
+
+    import json
+    import urllib3
+
+    resp = urllib3.request("GET", "https://httpbin.org/ip")
 
     print(json.loads(resp.data.decode("utf-8")))
     # {"origin": "127.0.0.1"}
+
 
 Binary Content
 ~~~~~~~~~~~~~~
@@ -185,7 +199,7 @@ You can specify headers as a dictionary in the ``headers`` argument in :meth:`~p
         }
     )
 
-    print(json.loads(resp.data.decode("utf-8"))["headers"])
+    print(resp.json()["headers"])
     # {"X-Something": "value", ...}
 
 Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers:
@@ -207,7 +221,7 @@ Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers:
         headers=headers
     )
 
-    print(json.loads(resp.data.decode("utf-8"))["headers"])
+    print(resp.json()["headers"])
     # {"Accept": "application/json, text/plain", ...}
    
 
@@ -229,7 +243,7 @@ arguments as a dictionary in the ``fields`` argument to
         fields={"arg": "value"}
     )
 
-    print(json.loads(resp.data.decode("utf-8"))["args"])
+    print(resp.json()["args"])
     # {"arg": "value"}
 
 For ``POST`` and ``PUT`` requests, you need to manually encode query parameters
@@ -248,9 +262,8 @@ in the URL:
     url = "https://httpbin.org/post?" + encoded_args
     resp = urllib3.request("POST", url)
 
-    print(json.loads(resp.data.decode("utf-8"))["args"])
+    print(resp.json()["args"])
     # {"arg": "value"}
-
 
 
 .. _form_data:
@@ -273,8 +286,10 @@ dictionary in the ``fields`` argument provided to
         fields={"field": "value"}
     )
     
-    print(json.loads(resp.data.decode("utf-8"))["form"])
+    print(resp.json()["form"])
     # {"field": "value"}
+
+.. _json:
 
 JSON
 ~~~~
@@ -283,26 +298,6 @@ You can send a JSON request by specifying the data as ``json`` argument,
 urllib3 automatically encodes data using ``json`` module with ``UTF-8`` 
 encoding. Also by default ``"Content-Type"`` in headers is set to 
 ``"application/json"`` if not specified when calling
-:meth:`~poolmanager.PoolManager.request`:
-
-.. code-block:: python
-
-    import urllib3
-
-    data = {"attribute": "value"}
-
-    resp = urllib3.request(
-        "POST",
-        "https://httpbin.org/post",
-        json=data, # Passing data without encoding
-    )
-
-    print(resp.json())
-    # {"attribute": "value"}
-
-
-Alternatively, you can send a JSON request by specifying the encoded data 
-as the ``body``argument and setting the ``Content-Type`` header when calling
 :meth:`~poolmanager.PoolManager.request`:
 
 .. code-block:: python
@@ -322,7 +317,7 @@ as the ``body``argument and setting the ``Content-Type`` header when calling
         headers={"Content-Type": "application/json"}
     )
 
-    print(json.loads(resp.data.decode("utf-8"))["json"])
+    print(resp.json())
     # {"attribute": "value"}
 
 Files & Binary Data
@@ -350,7 +345,7 @@ approach as :ref:`form_data` and specify the file field as a tuple of
         }
     )
     
-    print(json.loads(resp.data.decode("utf-8"))["files"])
+    print(resp.json()["files"])
     # {"filefield": "..."}
 
 While specifying the filename is not strictly required, it's recommended in
@@ -385,7 +380,7 @@ recommended to set the ``Content-Type`` header:
         headers={"Content-Type": "image/jpeg"}
     )
 
-    print(json.loads(resp.data.decode("utf-8"))["data"])
+    print(resp.json()["data"])
     # data:application/octet-stream;base64,...
 
 .. _ssl:

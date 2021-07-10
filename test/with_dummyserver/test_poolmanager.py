@@ -145,7 +145,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             assert r.status == 200
 
-            data = json.loads(r.data.decode("utf-8"))
+            data = r.json()
 
             assert "Authorization" not in data
 
@@ -158,7 +158,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             assert r.status == 200
 
-            data = json.loads(r.data.decode("utf-8"))
+            data = r.json()
 
             assert "authorization" not in data
             assert "Authorization" not in data
@@ -175,7 +175,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             assert r.status == 200
 
-            data = json.loads(r.data.decode("utf-8"))
+            data = r.json()
 
             assert data["Authorization"] == "foo"
 
@@ -191,7 +191,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             assert r.status == 200
 
-            data = json.loads(r.data.decode("utf-8"))
+            data = r.json()
 
             assert "X-API-Secret" not in data
             assert data["Authorization"] == "bar"
@@ -207,7 +207,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             assert r.status == 200
 
-            data = json.loads(r.data.decode("utf-8"))
+            data = r.json()
 
             assert "x-api-secret" not in data
             assert "X-API-Secret" not in data
@@ -528,7 +528,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             ).split(",")
 
     def test_top_level_request_with_body_and_json(self):
-        match = "request got values for both 'json' and 'body', can only specify one"
+        match = "request got values for both 'body' and 'json' parameters are mutually exclusive"
         with pytest.raises(TypeError, match=match):
             body = {"attribute": "value"}
             request(method="POST", url=f"{self.base_url}/echo", body=body, json=body)

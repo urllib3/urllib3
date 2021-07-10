@@ -1,5 +1,4 @@
 import datetime
-import json
 import logging
 import os.path
 import shutil
@@ -178,7 +177,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
             r = https_pool.request("GET", "/certificate")
-            subject = json.loads(r.data.decode("utf-8"))
+            subject = r.json()
             assert subject["organizationalUnitName"].startswith("Testing cert")
 
     def test_client_no_intermediate(self) -> None:
@@ -210,7 +209,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
             r = https_pool.request("GET", "/certificate")
-            subject = json.loads(r.data.decode("utf-8"))
+            subject = r.json()
             assert subject["organizationalUnitName"].startswith("Testing cert")
 
     @requires_ssl_context_keyfile_password()

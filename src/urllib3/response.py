@@ -243,7 +243,7 @@ class BaseHTTPResponse(io.IOBase):
 
         To use a custom JSON decoder pass the result of :attr:`HTTPResponse.data` to the decoder.
 
-        Read more here: (https://urllib3.readthedocs.io/en/stable/user-guide.html#json)
+        Read more :ref:`here <json>`.
         """
         return _json.loads(self.data)
 
