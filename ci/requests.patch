@@ -1,12 +1,12 @@
 diff --git a/tests/test_requests.py b/tests/test_requests.py
-index 8f3914ee..aa47f2eb 100644
+index b77cba00..5a18d72c 100644
 --- a/tests/test_requests.py
 +++ b/tests/test_requests.py
-@@ -851,6 +851,7 @@ class TestRequests:
-             headers={str('Content-Type'): 'application/octet-stream'},
-             data='\xff')  # compat.str is unicode.
+@@ -874,6 +874,7 @@ class TestRequests:
+         r = requests.get(httpbin(), cert='.')
+         assert r.status_code == 200
  
-+    @pytest.mark.skip(reason="fails upstream")
-     def test_pyopenssl_redirect(self, httpbin_secure, httpbin_ca_bundle):
-         requests.get(httpbin_secure('status', '301'), verify=httpbin_ca_bundle)
- 
++    @pytest.mark.xfail
+     def test_https_warnings(self, nosan_server):
+         """warnings are emitted with requests.get"""
+         host, port, ca_bundle = nosan_server
