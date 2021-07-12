@@ -130,22 +130,12 @@ While writing documentation you should follow these guidelines:
 Releases
 --------
 
-A release candidate can be created by any contributor by creating a branch
-named ``release-x.x`` where ``x.x`` is the version of the proposed release.
+A release candidate can be created by any contributor.
 
+- Announce intent to release on Discord, see if anyone wants to include last minute
+  changes.
 - Update ``CHANGES.rst`` and ``urllib3/__init__.py`` with the proper version number
-  and commit the changes to ``release-x.x``.
-- Open a pull request to merge the ``release-x.x`` branch into the ``master`` branch.
-- Integration tests are run against the release candidate on Travis. From here on all
-  the steps below will be handled by a maintainer so unless you receive review comments
-  you are done here.
-- Once the pull request is squash merged into master the merging maintainer
-  will tag the merge commit with the version number:
-
-  - ``git tag -a 1.24.1 [commit sha]``
-  - ``git push origin master --tags``
-
-- After the commit is tagged Travis will build the tagged commit and upload the sdist and wheel
-  to PyPI and create a draft release on GitHub for the tag. The merging maintainer will
-  ensure that the PyPI sdist and wheel are properly uploaded.
-- The merging maintainer will mark the draft release on GitHub as an approved release.
+  and commit the changes to a ``release-X.Y.Z`` branch.
+- Create a pull request and append ``&expand=1&template=release.md`` to the URL before
+  submitting in order to include our release checklist in the pull request description.
+- Follow the checklist!
