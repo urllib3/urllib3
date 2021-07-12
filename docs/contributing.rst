@@ -132,9 +132,10 @@ Releases
 
 A release candidate can be created by any contributor.
 
-- Announce intent to release on Discord, see if anyone wants to include last minute changes
+- Announce intent to release on Discord, see if anyone wants to include last minute
+  changes.
 - Update ``CHANGES.rst`` and ``urllib3/__init__.py`` with the proper version number
   and commit the changes to a ``release-X.Y.Z`` branch.
-- Create a pull request and append ``&template=release.md`` to the URL before submitting
-  in order to include our release checklist in the pull request description.
-- Follow the checklist.
+- Create a pull request and append ``&expand=1&template=release.md`` to the URL before
+  submitting in order to include our release checklist in the pull request description.
+- Follow the checklist!
