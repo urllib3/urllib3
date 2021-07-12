@@ -1,9 +1,4 @@
-### Before creating a release PR
-* [ ]  Announce intent to release on Discord, see if anyone wants to include last minute changes
-* [ ]  Create a `release-X.Y.Z` branch that bumps the version number and updates the changelog
-* [ ]  Create a pull request, see if all tests, including integration, pass
-
-### After creating a release PR
+* [ ]  See if all tests, including integration, pass
 * [ ]  Get the release pull request approved by a [CODEOWNER](https://github.com/urllib3/urllib3/blob/main/.github/CODEOWNERS)
 * [ ]  Squash merge the release pull request with message "`Release <VERSION>`"
 * [ ]  Tag with X.Y.Z, push tag on urllib3/urllib3 (not on your fork, update `<REMOTE>` accordingly)
