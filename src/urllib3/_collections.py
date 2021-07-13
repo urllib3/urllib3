@@ -139,15 +139,16 @@ class RecentlyUsedContainer(Generic[_KT, _VT], MutableMapping[_KT, _VT]):
                 # size of the pool. Because accessing a key should move it to
                 # the end of the eviction line, we pop it out first.
                 evicted_item = key, self._container.pop(key)
+                self._container[key] = value
             except KeyError:
-                if len(self._container) >= self._maxsize:
+                # When the key does not exist, we insert the value first so that
+                # evicting works in all cases, including when self._maxsize is 0
+                self._container[key] = value
+                if len(self._container) > self._maxsize:
                     # If we didn't evict an existing value, and we've hit our maximum
                     # size, then we have to evict the least recently used item from
                     # the beginning of the container.
                     evicted_item = self._container.popitem(last=False)
-
-            # Finally, insert the new value.
-            self._container[key] = value
 
         # After releasing the lock on the pool, dispose of any evicted value.
         if evicted_item is not None and self.dispose_func:
