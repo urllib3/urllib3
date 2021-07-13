@@ -1,9 +1,6 @@
 name: Downstream
 
-on:
-  pull_request:
-    paths:
-      - "src/urllib3/_version.py"
+on: [push, pull_request]
 
 jobs:
   integration:
