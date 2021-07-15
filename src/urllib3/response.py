@@ -199,6 +199,7 @@ class BaseHTTPResponse(io.IOBase):
         version: int,
         reason: Optional[str],
         decode_content: bool,
+        request_url: Optional[str],
     ) -> None:
         if isinstance(headers, HTTPHeaderDict):
             self.headers = headers
@@ -208,6 +209,7 @@ class BaseHTTPResponse(io.IOBase):
         self.version = version
         self.reason = reason
         self.decode_content = decode_content
+        self.request_url: Optional[str]
 
         self.chunked = False
         tr_enc = self.headers.get("transfer-encoding", "").lower()
@@ -412,6 +414,7 @@ class HTTPResponse(BaseHTTPResponse):
             version=version,
             reason=reason,
             decode_content=decode_content,
+            request_url=request_url,
         )
 
         self.retries = retries
@@ -423,7 +426,10 @@ class HTTPResponse(BaseHTTPResponse):
         self._original_response = original_response
         self._fp_bytes_read = 0
         self.msg = msg
-        self._request_url = request_url
+        if self.retries is not None and self.retries.history:
+            self._request_url = self.retries.history[-1].redirect_location
+        else:
+            self._request_url = request_url
 
         if body and isinstance(body, (str, bytes)):
             self._body = body
@@ -901,10 +907,11 @@ class HTTPResponse(BaseHTTPResponse):
         If the request that generated this response redirected, this method
         will return the final redirect location.
         """
-        if self.retries is not None and self.retries.history:
-            return self.retries.history[-1].redirect_location
-        else:
-            return self._request_url
+        return self._request_url
+
+    @url.setter
+    def url(self, url: str) -> None:
+        self._request_url = url
 
     def __iter__(self) -> Iterator[bytes]:
         buffer: List[bytes] = []

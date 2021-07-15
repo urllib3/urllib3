@@ -869,6 +869,14 @@ class TestResponse:
         resp = HTTPResponse(fp, request_url=request_url)
         assert resp.geturl() == request_url
 
+    def test_url(self):
+        fp = BytesIO(b"")
+        request_url = "https://example.com"
+        resp = HTTPResponse(fp, request_url=request_url)
+        assert resp.url == request_url
+        resp.url = "https://anotherurl.com"
+        assert resp.url == "https://anotherurl.com"
+
     def test_geturl_retries(self):
         fp = BytesIO(b"")
         resp = HTTPResponse(fp, request_url="http://example.com")
