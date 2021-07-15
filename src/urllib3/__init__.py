@@ -6,7 +6,7 @@ Python HTTP library with thread-safe connection pooling, file post support, user
 import logging
 import warnings
 from logging import NullHandler
-from typing import Mapping, Optional, Type, Union
+from typing import Mapping, Optional, TextIO, Type, Union
 
 from . import exceptions
 from ._collections import HTTPHeaderDict
@@ -45,7 +45,7 @@ __all__ = (
 logging.getLogger(__name__).addHandler(NullHandler())
 
 
-def add_stderr_logger(level: int = logging.DEBUG) -> logging.StreamHandler:
+def add_stderr_logger(level: int = logging.DEBUG) -> logging.StreamHandler[TextIO]:
     """
     Helper for quickly adding a StreamHandler to the logger. Useful for
     debugging.
