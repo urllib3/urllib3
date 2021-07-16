@@ -101,6 +101,7 @@ setup(
         "urllib3",
         "urllib3.contrib",
         "urllib3.contrib._securetransport",
+        "urllib3.multipart",
         "urllib3.util",
     ],
     package_data={

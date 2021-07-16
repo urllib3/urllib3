@@ -6,4 +6,5 @@ pytest>=6.2
 trustme==0.9.0
 types-backports
 types-requests
+types-mock
 nox
