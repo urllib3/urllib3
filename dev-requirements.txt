@@ -9,3 +9,5 @@ trustme==0.7.0
 cryptography==3.4.7
 python-dateutil==2.8.1
 requests
+# https://github.com/twisted/towncrier/pull/356
+git+https://github.com/pquentin/towncrier.git@stop-writing-title-twice
