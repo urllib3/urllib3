@@ -132,7 +132,6 @@ as the ``body``argument and setting the ``Content-Type`` header when calling
     print(json.loads(resp.data.decode("utf-8")))
     # {"origin": "127.0.0.1"}
 
-
 Binary Content
 ~~~~~~~~~~~~~~
 

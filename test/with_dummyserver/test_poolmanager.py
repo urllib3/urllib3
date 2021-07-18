@@ -489,6 +489,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 redirect=True,
                 retries=None,
                 timeout=2.5,
+                json=None,
             )
 
     @pytest.mark.parametrize(
