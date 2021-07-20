@@ -1,6 +1,6 @@
-import sys
 from collections import OrderedDict
 from enum import Enum, auto
+from threading import RLock
 from typing import (
     TYPE_CHECKING,
     Callable,
@@ -21,7 +21,6 @@ from typing import (
 )
 
 if TYPE_CHECKING:
-    from threading import RLock
 
     # We can only import Protocol if TYPE_CHECKING because it's a development
     # dependency, and is not available at runtime.
@@ -33,24 +32,6 @@ if TYPE_CHECKING:
 
         def __getitem__(self, key: str) -> str:
             ...
-
-
-else:
-    try:
-        from threading import RLock
-    except ImportError:  # Python 3.6
-        from ._compat import RLock
-
-
-# Starting in Python 3.7 the 'dict' class is guaranteed to be
-# ordered by insertion. This behavior was an implementation
-# detail in Python 3.6. OrderedDict is implemented in C in
-# later Python versions but still requires a lot more memory
-# due to being implemented as a linked list.
-if sys.version_info >= (3, 7):
-    _ordered_dict = dict
-else:
-    _ordered_dict = OrderedDict
 
 
 __all__ = ["RecentlyUsedContainer", "HTTPHeaderDict"]
@@ -268,7 +249,7 @@ class HTTPHeaderDict(MutableMapping[str, str]):
 
     def __init__(self, headers: Optional[ValidHTTPHeaderSource] = None, **kwargs: str):
         super().__init__()
-        self._container = _ordered_dict()
+        self._container = dict()  # 'dict' is insert-ordered in Python 3.7+
         if headers is not None:
             if isinstance(headers, HTTPHeaderDict):
                 self._copy_from(headers)
