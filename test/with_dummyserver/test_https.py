@@ -279,8 +279,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             with pytest.raises(MaxRetryError) as e:
                 https_pool.request("GET", "/")
             assert isinstance(e.value.reason, SSLError)
-            assert "certificate verify failed" in str(
-                e.value.reason
+            assert (
+                "certificate verify failed" in str(e.value.reason)
+                # PyPy is more specific
+                or "self signed certificate in certificate chain" in str(e.value.reason)
             ), f"Expected 'certificate verify failed', instead got: {e.value.reason!r}"
 
     def test_verified_without_ca_certs(self):
