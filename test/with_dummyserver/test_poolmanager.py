@@ -424,6 +424,16 @@ class TestPoolManager(HTTPDummyServerTestCase):
         r.data
         assert r.connection is None
 
+    def test_top_level_request_with_decode_content(self):
+        r = request(
+            "GET",
+            f"{self.base_url}/encodingrequest",
+            headers={"accept-encoding": "garbage-deflate"},
+            decode_content=False,
+        )
+        assert r.status == 200
+        assert r.data == b"garbage"
+
     def test_top_level_request_with_redirect(self):
         r = request(
             "GET",
