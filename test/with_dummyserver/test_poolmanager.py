@@ -476,6 +476,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 fields=None,
                 headers=None,
                 preload_content=True,
+                decode_content=True,
                 redirect=True,
                 retries=None,
                 timeout=2.5,
