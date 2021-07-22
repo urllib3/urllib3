@@ -12,13 +12,9 @@ from typing import (
     MutableMapping,
     NoReturn,
     Optional,
-    Set,
-    Tuple,
-    TypeVar,
-    Union,
-    cast,
-    overload,
 )
+from typing import OrderedDict as OrderedDictType
+from typing import Set, Tuple, TypeVar, Union, cast, overload
 
 if TYPE_CHECKING:
 
@@ -90,7 +86,7 @@ class RecentlyUsedContainer(Generic[_KT, _VT], MutableMapping[_KT, _VT]):
         ``dispose_func(value)`` is called.  Callback which will get called
     """
 
-    _container: "OrderedDict[_KT, _VT]"
+    _container: OrderedDictType[_KT, _VT]
     _maxsize: int
     dispose_func: Optional[Callable[[_VT], None]]
     lock: RLock

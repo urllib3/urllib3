@@ -367,13 +367,10 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
         with self.client_context.wrap_socket(
             sock, server_hostname="localhost"
         ) as proxy_sock:
-            with pytest.raises(Exception) as e:
+            with pytest.raises(ssl.SSLError):
                 SSLTransport(
                     proxy_sock, self.client_context, server_hostname="veryverywrong"
                 )
-            # ssl.CertificateError is a child of ValueError in python3.6 or
-            # before. After python3.7 it's a child of SSLError
-            assert e.type in [ssl.SSLError, ssl.CertificateError]
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     @pytest.mark.parametrize("buffering", [None, 0])
