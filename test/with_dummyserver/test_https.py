@@ -297,6 +297,8 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             # not pyopenssl is injected
             assert (
                 "No root certificates specified" in str(e.value.reason)
+                # PyPy is more specific
+                or "self signed certificate in certificate chain" in str(e.value.reason)
                 # PyPy sometimes uses all-caps here
                 or "certificate verify failed" in str(e.value.reason).lower()
                 or "invalid certificate chain" in str(e.value.reason)
