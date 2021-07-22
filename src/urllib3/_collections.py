@@ -245,7 +245,7 @@ class HTTPHeaderDict(MutableMapping[str, str]):
 
     def __init__(self, headers: Optional[ValidHTTPHeaderSource] = None, **kwargs: str):
         super().__init__()
-        self._container = dict()  # 'dict' is insert-ordered in Python 3.7+
+        self._container = {}  # 'dict' is insert-ordered in Python 3.7+
         if headers is not None:
             if isinstance(headers, HTTPHeaderDict):
                 self._copy_from(headers)
