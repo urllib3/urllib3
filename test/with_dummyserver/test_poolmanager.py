@@ -528,7 +528,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             ).split(",")
 
     def test_top_level_request_with_body_and_json(self):
-        match = "request got values for both 'body' and 'json' parameters are mutually exclusive"
+        match = "request got values for both 'body' and 'json' parameters which are mutually exclusive"
         with pytest.raises(TypeError, match=match):
             body = {"attribute": "value"}
             request(method="POST", url=f"{self.base_url}/echo", body=body, json=body)

@@ -101,16 +101,11 @@ The :class:`~response.HTTPResponse` object provides
 
 JSON Content
 ~~~~~~~~~~~~
-
-You can send a JSON request by specifying the data as ``json`` argument,
-urllib3 automatically encodes data using ``json`` module with ``UTF-8`` 
-encoding. Also by default ``"Content-Type"`` in headers is set to 
-``"application/json"`` if not specified when calling
-:meth:`~poolmanager.PoolManager.request`:
+JSON content can be loaded by :meth:`~response.HTTPResponse.json` 
+method of the request:
 
 .. code-block:: python
 
-    import json
     import urllib3
 
     resp = urllib3.request("GET", "https://httpbin.org/ip")
@@ -118,9 +113,8 @@ encoding. Also by default ``"Content-Type"`` in headers is set to
     print(resp.json())
     # {"origin": "127.0.0.1"}
 
-Alternatively, you can send a JSON request by specifying the encoded data 
-as the ``body``argument and setting the ``Content-Type`` header when calling
-:meth:`~poolmanager.PoolManager.request`:
+Alternatively, JSON content can be loaded by decoding and deserializing the
+:attr:`~response.HTTPResponse.data` attribute of the request:
 
 .. code-block:: python
 
@@ -187,7 +181,6 @@ You can specify headers as a dictionary in the ``headers`` argument in :meth:`~p
 
 .. code-block:: python
 
-    import json
     import urllib3
 
     resp = urllib3.request(
@@ -205,7 +198,6 @@ Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers:
 
 .. code-block:: python
 
-    import json
     import urllib3
 
     # Create an HTTPHeaderDict and add headers
@@ -233,7 +225,6 @@ arguments as a dictionary in the ``fields`` argument to
 
 .. code-block:: python
 
-    import json
     import urllib3
 
     resp = urllib3.request(
@@ -250,7 +241,6 @@ in the URL:
 
 .. code-block:: python
 
-    import json
     from urllib.parse import urlencode
     import urllib3
 
@@ -276,7 +266,6 @@ dictionary in the ``fields`` argument provided to
 
 .. code-block:: python
 
-    import json
     import urllib3
 
     resp = urllib3.request(
@@ -301,18 +290,14 @@ encoding. Also by default ``"Content-Type"`` in headers is set to
 
 .. code-block:: python
 
-    import json
     import urllib3
 
     data = {"attribute": "value"}
 
-    # Encoding the data in JSON format.
-    encoded_data = json.dumps(data).encode("utf-8")
-
     resp = urllib3.request(
         "POST",
         "https://httpbin.org/post",
-        body=encoded_data, # Embedding JSON data into request body.
+        body=data,
         headers={"Content-Type": "application/json"}
     )
 
@@ -328,7 +313,6 @@ approach as :ref:`form_data` and specify the file field as a tuple of
 
 .. code-block:: python
 
-    import json
     import urllib3
 
     # Reading the text file from local storage.
@@ -366,7 +350,6 @@ recommended to set the ``Content-Type`` header:
 
 .. code-block:: python
 
-    import json
     import urllib3
 
     with open("/home/samad/example.jpg", "rb") as fp:
