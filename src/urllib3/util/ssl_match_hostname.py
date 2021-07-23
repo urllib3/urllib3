@@ -1,7 +1,8 @@
-"""The match_hostname() function from Python 3.3.3, essential when using SSL."""
+"""The match_hostname() function from Python 3.5, essential when using SSL."""
 
 # Note: This file is under the PSF license as the code comes from the python
 # stdlib.   http://docs.python.org/3/license.html
+# It is modified to remove commonName support.
 
 import ipaddress
 import re

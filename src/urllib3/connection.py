@@ -475,7 +475,7 @@ class HTTPSConnection(HTTPConnection):
         context.verify_mode = resolve_cert_reqs(self.cert_reqs)
 
         # Try to load OS default certs if none are given.
-        # Works well on Windows (requires Python3.4+)
+        # Works well on Windows.
         if (
             not self.ca_certs
             and not self.ca_cert_dir

@@ -382,7 +382,7 @@ def ssl_wrap_socket(
             raise SSLError(e)
 
     elif ssl_context is None and hasattr(context, "load_default_certs"):
-        # try to load OS default certs; works well on Windows (require Python3.4+)
+        # try to load OS default certs; works well on Windows.
         context.load_default_certs()
 
     # Attempt to detect if we get the goofy behavior of the
