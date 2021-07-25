@@ -9,6 +9,7 @@ defaults:
 jobs:
   package:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout Repository
@@ -52,6 +53,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
     continue-on-error: ${{ matrix.experimental }}
+    timeout-minutes: 20
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
