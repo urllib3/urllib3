@@ -382,9 +382,11 @@ class WrappedSocket:
             if trust_result in successes:
                 return
             reason = f"error code: {int(trust_result)}"
+            exc = None
         except Exception as e:
             # Do not trust on error
             reason = f"exception: {e!r}"
+            exc = e
 
         # SecureTransport does not send an alert nor shuts down the connection.
         rec = _build_tls_unknown_ca_alert(self.version())
@@ -395,7 +397,7 @@ class WrappedSocket:
         opts = struct.pack("ii", 1, 0)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, opts)
         self.close()
-        raise ssl.SSLError(f"certificate verify failed, {reason}")
+        raise ssl.SSLError(f"certificate verify failed, {reason}") from exc
 
     def _evaluate_trust(self, trust_bundle: bytes) -> int:
         # We want data in memory, so load it up.

@@ -138,10 +138,10 @@ def rewind_body(body: IO[AnyStr], body_pos: Optional[Union[int, object]]) -> Non
     if body_seek is not None and isinstance(body_pos, int):
         try:
             body_seek(body_pos)
-        except OSError:
+        except OSError as e:
             raise UnrewindableBodyError(
                 "An error occurred when rewinding request body for redirect/retry."
-            )
+            ) from e
     elif body_pos is _FAILEDTELL:
         raise UnrewindableBodyError(
             "Unable to record file position for rewinding "

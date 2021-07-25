@@ -109,7 +109,7 @@ def _create_cfstring_array(lst: List[bytes]) -> CFMutableArray:
     except BaseException as e:
         if cf_arr:
             CoreFoundation.CFRelease(cf_arr)
-        raise ssl.SSLError(f"Unable to allocate array: {e}")
+        raise ssl.SSLError(f"Unable to allocate array: {e}") from None
     return cf_arr
 
 

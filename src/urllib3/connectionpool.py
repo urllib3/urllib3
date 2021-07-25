@@ -257,14 +257,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             conn = self.pool.get(block=self.block, timeout=timeout)
 
         except AttributeError:  # self.pool is None
-            raise ClosedPoolError(self, "Pool is closed.")  # Defensive:
+            raise ClosedPoolError(self, "Pool is closed.") from None  # Defensive:
 
         except queue.Empty:
             if self.block:
                 raise EmptyPoolError(
                     self,
                     "Pool is empty and a new connection can't be opened due to blocking mode.",
-                )
+                ) from None
             pass  # Oh well, we'll create a new connection then
 
         # If this is a persistent connection, check if it got disconnected
@@ -311,7 +311,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     raise FullPoolError(
                         self,
                         "Pool reached maximum size and no more connections are allowed.",
-                    )
+                    ) from None
 
                 log.warning(
                     "Connection pool is full, discarding connection: %s", self.host
@@ -354,13 +354,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if isinstance(err, SocketTimeout):
             raise ReadTimeoutError(
                 self, url, f"Read timed out. (read timeout={timeout_value})"
-            )
+            ) from err
 
         # See the above comment about EAGAIN in Python 3.
         if hasattr(err, "errno") and err.errno in _blocking_errnos:
             raise ReadTimeoutError(
                 self, url, f"Read timed out. (read timeout={timeout_value})"
-            )
+            ) from err
 
     def _make_request(
         self,

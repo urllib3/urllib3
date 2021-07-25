@@ -377,7 +377,7 @@ def ssl_wrap_socket(
         try:
             context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
         except OSError as e:
-            raise SSLError(e)
+            raise SSLError(e) from e
 
     elif ssl_context is None and hasattr(context, "load_default_certs"):
         # try to load OS default certs; works well on Windows (require Python3.4+)
