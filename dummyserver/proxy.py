@@ -40,10 +40,10 @@ __all__ = ["ProxyHandler", "run_proxy"]
 
 
 class ProxyHandler(tornado.web.RequestHandler):
-    SUPPORTED_METHODS = ["GET", "POST", "CONNECT"]
+    SUPPORTED_METHODS = ["GET", "POST", "CONNECT"]  # type: ignore[assignment]
 
-    async def get(self):
-        async def handle_response(response):
+    async def get(self) -> None:
+        async def handle_response(response: tornado.httpclient.HTTPResponse) -> None:
             if response.error and not isinstance(
                 response.error, tornado.httpclient.HTTPError
             ):
@@ -72,6 +72,8 @@ class ProxyHandler(tornado.web.RequestHandler):
         if upstream_ca_certs:
             ssl_options = ssl.create_default_context(cafile=upstream_ca_certs)
 
+        assert self.request.uri is not None
+        assert self.request.method is not None
         req = tornado.httpclient.HTTPRequest(
             url=self.request.uri,
             method=self.request.method,
@@ -94,14 +96,18 @@ class ProxyHandler(tornado.web.RequestHandler):
                 self.write("Internal server error:\n" + str(e))
                 self.finish()
 
-    async def post(self):
+    async def post(self) -> None:
         await self.get()
 
-    async def connect(self):
+    async def connect(self) -> None:
+        assert self.request.uri is not None
         host, port = self.request.uri.split(":")
-        client = self.request.connection.stream
+        assert self.request.connection is not None
+        client: tornado.iostream.IOStream = self.request.connection.stream  # type: ignore[attr-defined]
 
-        async def start_forward(reader, writer):
+        async def start_forward(
+            reader: tornado.iostream.IOStream, writer: tornado.iostream.IOStream
+        ) -> None:
             while True:
                 try:
                     data = await reader.read_bytes(4096, partial=True)
@@ -122,7 +128,7 @@ class ProxyHandler(tornado.web.RequestHandler):
         await tornado.gen.multi([fu1, fu2])
 
 
-def run_proxy(port, start_ioloop=True):
+def run_proxy(port: int, start_ioloop: bool = True) -> None:
     """
     Run proxy on the specified port. If start_ioloop is True (default),
     the tornado IOLoop will be started immediately.

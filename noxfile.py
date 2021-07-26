@@ -155,8 +155,10 @@ def mypy(session):
     session.install("mypy==0.910")
     session.install("idna>=2.0.0")
     session.install("cryptography>=1.3.4")
+    session.install("tornado>=6.1")
+    session.install("pytest>=6.2")
     session.run("mypy", "--version")
-    session.run("mypy", "src/urllib3")
+    session.run("mypy", "src/urllib3", "dummyserver")
 
 
 @nox.session
