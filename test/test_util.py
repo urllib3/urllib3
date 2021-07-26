@@ -936,6 +936,7 @@ class TestUtilWithoutIdna:
         module_stash.stash()
         sys.meta_path.insert(0, idna_blocker)
 
+    @classmethod
     def teardown_class(cls):
         sys.meta_path.remove(idna_blocker)
         module_stash.pop()
