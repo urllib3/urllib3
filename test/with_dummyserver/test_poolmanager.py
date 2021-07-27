@@ -1,3 +1,4 @@
+import gzip
 import json
 from test import LONG_TIMEOUT
 from unittest import mock
@@ -428,11 +429,20 @@ class TestPoolManager(HTTPDummyServerTestCase):
         r = request(
             "GET",
             f"{self.base_url}/encodingrequest",
-            headers={"accept-encoding": "garbage-deflate"},
+            headers={"accept-encoding": "gzip"},
             decode_content=False,
         )
         assert r.status == 200
-        assert r.data == b"garbage"
+        assert gzip.decompress(r.data) == b"hello, world!"
+
+        r = request(
+            "GET",
+            f"{self.base_url}/encodingrequest",
+            headers={"accept-encoding": "gzip"},
+            decode_content=True,
+        )
+        assert r.status == 200
+        assert r.data == b"hello, world!"
 
     def test_top_level_request_with_redirect(self):
         r = request(
