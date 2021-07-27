@@ -3,7 +3,6 @@ import logging
 import os
 import re
 import socket
-import sys
 import warnings
 from copy import copy
 from http.client import HTTPConnection as _HTTPConnection
@@ -146,18 +145,13 @@ class HTTPConnection(_HTTPConnection):
         self.proxy = proxy
         self.proxy_config = proxy_config
 
-        if sys.version_info >= (3, 7):
-            super().__init__(
-                host=host,
-                port=port,
-                timeout=timeout,
-                source_address=source_address,
-                blocksize=blocksize,
-            )
-        else:
-            super().__init__(
-                host=host, port=port, timeout=timeout, source_address=source_address
-            )
+        super().__init__(
+            host=host,
+            port=port,
+            timeout=timeout,
+            source_address=source_address,
+            blocksize=blocksize,
+        )
 
     # https://github.com/python/mypy/issues/4125
     # Mypy treats this as LSP violation, which is considered a bug.
@@ -483,7 +477,7 @@ class HTTPSConnection(HTTPConnection):
         context.verify_mode = resolve_cert_reqs(self.cert_reqs)
 
         # Try to load OS default certs if none are given.
-        # Works well on Windows (requires Python3.4+)
+        # Works well on Windows.
         if (
             not self.ca_certs
             and not self.ca_cert_dir

@@ -13,6 +13,7 @@ from .url import _BRACELESS_IPV6_ADDRZ_RE, _IPV4_RE
 SSLContext = None
 SSLTransport = None
 HAS_SNI = False
+HAS_NEVER_CHECK_COMMON_NAME = False
 IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
 ALPN_PROTOCOLS = ["http/1.1"]
@@ -44,6 +45,7 @@ try:  # Do we have ssl at all?
     import ssl
     from ssl import (  # type: ignore
         CERT_REQUIRED,
+        HAS_NEVER_CHECK_COMMON_NAME,
         HAS_SNI,
         OP_NO_COMPRESSION,
         OP_NO_TICKET,
@@ -278,7 +280,7 @@ def create_urllib3_context(
         context.check_hostname = False
         context.verify_mode = cert_reqs
 
-    if hasattr(context, "hostname_checks_common_name"):
+    if HAS_NEVER_CHECK_COMMON_NAME:
         context.hostname_checks_common_name = False
 
     # Enable logging of TLS session keys via defacto standard environment variable
@@ -380,7 +382,7 @@ def ssl_wrap_socket(
             raise SSLError(e)
 
     elif ssl_context is None and hasattr(context, "load_default_certs"):
-        # try to load OS default certs; works well on Windows (require Python3.4+)
+        # try to load OS default certs; works well on Windows.
         context.load_default_certs()
 
     # Attempt to detect if we get the goofy behavior of the
