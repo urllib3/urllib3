@@ -52,6 +52,9 @@ SSL_KEYWORDS = (
     "ssl_context",
     "key_password",
 )
+# Default value for `blocksize` - a new parameter introduced to
+# http.client.HTTPConnection & http.client.HTTPSConnection in Python 3.7
+DEFAULT_BLOCKSIZE = 16384
 
 
 class PoolKey(NamedTuple):
@@ -87,6 +90,7 @@ class PoolKey(NamedTuple):
     key_assert_hostname: Optional[Union[bool, str]]
     key_assert_fingerprint: Optional[str]
     key_server_hostname: Optional[str]
+    key_blocksize: Optional[int]
 
 
 def _default_key_normalizer(
@@ -136,6 +140,10 @@ def _default_key_normalizer(
     for field in key_class._fields:
         if field not in context:
             context[field] = None
+
+    # Default key_blocksize to DEFAULT_BLOCKSIZE if missing from the context
+    if context.get("key_blocksize") is None:
+        context["key_blocksize"] = DEFAULT_BLOCKSIZE
 
     return key_class(**context)
 
@@ -238,6 +246,10 @@ class PoolManager(RequestMethods):
         pool_cls: Type[HTTPConnectionPool] = self.pool_classes_by_scheme[scheme]
         if request_context is None:
             request_context = self.connection_pool_kw.copy()
+
+        # Default blocksize to DEFAULT_BLOCKSIZE if missing from the context
+        if request_context.get("blocksize") is None:
+            request_context["blocksize"] = DEFAULT_BLOCKSIZE
 
         # Although the context has everything necessary to create the pool,
         # this function has historically only used the scheme, host, and port

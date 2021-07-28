@@ -6,7 +6,12 @@ import pytest
 
 from urllib3 import connection_from_url
 from urllib3.exceptions import ClosedPoolError, LocationValueError
-from urllib3.poolmanager import PoolKey, PoolManager, key_fn_by_scheme
+from urllib3.poolmanager import (
+    DEFAULT_BLOCKSIZE,
+    PoolKey,
+    PoolManager,
+    key_fn_by_scheme,
+)
 from urllib3.util import retry, timeout
 
 
@@ -109,6 +114,7 @@ class TestPoolManager:
             "retries": retry.Retry(total=6, connect=2),
             "block": True,
             "source_address": "127.0.0.1",
+            "blocksize": DEFAULT_BLOCKSIZE + 1,
         }
         p = PoolManager()
         conn_pools = [
@@ -141,6 +147,7 @@ class TestPoolManager:
             "cert_reqs": "CERT_REQUIRED",
             "ca_certs": "/root/path_to_pem",
             "ssl_version": "SSLv23_METHOD",
+            "blocksize": DEFAULT_BLOCKSIZE + 1,
         }
         p = PoolManager()
         conn_pools = [
@@ -392,3 +399,30 @@ class TestPoolManager:
         p = PoolManager()
         assert p._proxy_requires_url_absolute_form("http://example.com") is False
         assert p._proxy_requires_url_absolute_form("https://example.com") is False
+
+    def test_poolmanager_normalizer_default_blocksize(self):
+        """Assert normalizer defaults to blocksize DEFAULT_BLOCKSIZE(16384)"""
+        p = PoolManager()
+
+        pool_blocksize_default = p.connection_from_url(
+            "http://example.com", {"blocksize": DEFAULT_BLOCKSIZE}
+        )
+        assert pool_blocksize_default.conn_kw["blocksize"] == DEFAULT_BLOCKSIZE
+
+        pool_blocksize_not_set = p.connection_from_url("http://example.com")
+        assert pool_blocksize_not_set == pool_blocksize_default
+
+        pool_blocksize_set_as_none = p.connection_from_url(
+            "http://example.com", {"blocksize": None}
+        )
+        assert pool_blocksize_set_as_none == pool_blocksize_default
+
+    def test_poolmanager_sets_blocksize(self):
+        """Assert PoolManager sets blocksize properly"""
+        p = PoolManager()
+
+        pool_blocksize_8192 = p.connection_from_url(
+            "http://example.com", {"blocksize": 8192}
+        )
+        assert pool_blocksize_8192.conn_kw["blocksize"] == 8192
+        assert pool_blocksize_8192._get_conn().blocksize == 8192
