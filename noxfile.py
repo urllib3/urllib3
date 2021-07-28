@@ -156,7 +156,7 @@ def mypy(session):
     session.install("idna>=2.0.0")
     session.install("cryptography>=1.3.4")
     session.run("mypy", "--version")
-    session.run("mypy", "--strict", "src/urllib3")
+    session.run("mypy", "src/urllib3")
 
 
 @nox.session
