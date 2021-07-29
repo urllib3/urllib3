@@ -42,15 +42,14 @@ __all__ = ["ProxyHandler", "run_proxy"]
 class ProxyHandler(tornado.web.RequestHandler):
     SUPPORTED_METHODS = ["GET", "POST", "CONNECT"]
 
-    @tornado.gen.coroutine
-    def get(self):
-        def handle_response(response):
+    async def get(self):
+        async def handle_response(response):
             if response.error and not isinstance(
                 response.error, tornado.httpclient.HTTPError
             ):
                 self.set_status(500)
                 self.write("Internal server error:\n" + str(response.error))
-                self.finish()
+                await self.finish()
             else:
                 self.set_status(response.code)
                 for header in (
@@ -65,7 +64,7 @@ class ProxyHandler(tornado.web.RequestHandler):
                         self.set_header(header, v)
                 if response.body:
                     self.write(response.body)
-                self.finish()
+                await self.finish()
 
         upstream_ca_certs = self.application.settings.get("upstream_ca_certs", None)
         ssl_options = None
@@ -85,30 +84,27 @@ class ProxyHandler(tornado.web.RequestHandler):
 
         client = tornado.httpclient.AsyncHTTPClient()
         try:
-            response = yield client.fetch(req)
-            yield handle_response(response)
+            response = await client.fetch(req)
+            await handle_response(response)
         except tornado.httpclient.HTTPError as e:
             if hasattr(e, "response") and e.response:
-                yield handle_response(e.response)
+                await handle_response(e.response)
             else:
                 self.set_status(500)
                 self.write("Internal server error:\n" + str(e))
                 self.finish()
 
-    @tornado.gen.coroutine
-    def post(self):
-        yield self.get()
+    async def post(self):
+        await self.get()
 
-    @tornado.gen.coroutine
-    def connect(self):
+    async def connect(self):
         host, port = self.request.uri.split(":")
         client = self.request.connection.stream
 
-        @tornado.gen.coroutine
-        def start_forward(reader, writer):
+        async def start_forward(reader, writer):
             while True:
                 try:
-                    data = yield reader.read_bytes(4096, partial=True)
+                    data = await reader.read_bytes(4096, partial=True)
                 except tornado.iostream.StreamClosedError:
                     break
                 if not data:
@@ -118,12 +114,12 @@ class ProxyHandler(tornado.web.RequestHandler):
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         upstream = tornado.iostream.IOStream(s)
-        yield upstream.connect((host, int(port)))
+        await upstream.connect((host, int(port)))
 
         client.write(b"HTTP/1.0 200 Connection established\r\n\r\n")
         fu1 = start_forward(client, upstream)
         fu2 = start_forward(upstream, client)
-        yield [fu1, fu2]
+        await tornado.gen.multi([fu1, fu2])
 
 
 def run_proxy(port, start_ioloop=True):
