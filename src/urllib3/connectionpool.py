@@ -6,7 +6,7 @@ import sys
 import warnings
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, Union, overload
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, Union, cast, overload
 
 from .connection import (
     _TYPE_BODY,
@@ -56,10 +56,10 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-_Default = object()
+_Default: float = cast(float, object())
 
 
-_TYPE_TIMEOUT = Union[Timeout, int, float, object]
+_TYPE_TIMEOUT = Union[Timeout, int, float]
 
 
 # Pool objects
@@ -169,7 +169,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self,
         host: str,
         port: Optional[int] = None,
-        timeout: Optional[Union[Timeout, float, int, object]] = Timeout.DEFAULT_TIMEOUT,
+        timeout: Optional[Union[Timeout, float, int]] = Timeout.DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
         headers: Optional[Mapping[str, str]] = None,
@@ -231,7 +231,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn = self.ConnectionCls(
             host=self.host,
             port=self.port,
-            timeout=self.timeout.connect_timeout,  # type: ignore
+            timeout=self.timeout.connect_timeout,
             **self.conn_kw,
         )
         return conn
@@ -347,7 +347,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self,
         err: Union[BaseSSLError, OSError, SocketTimeout],
         url: str,
-        timeout_value: _TYPE_TIMEOUT,
+        timeout_value: Optional[_TYPE_TIMEOUT],
     ) -> None:
         """Is the error actually a timeout? Will raise a ReadTimeout or pass"""
 
@@ -389,7 +389,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         timeout_obj = self._get_timeout(timeout)
         timeout_obj.start_connect()
-        conn.timeout = timeout_obj.connect_timeout  # type: ignore
+        conn.timeout = timeout_obj.connect_timeout
 
         # Trigger any extra validation we need to do.
         try:
@@ -683,7 +683,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             timeout_obj = self._get_timeout(timeout)
             conn = self._get_conn(timeout=pool_timeout)
 
-            conn.timeout = timeout_obj.connect_timeout  # type: ignore
+            conn.timeout = timeout_obj.connect_timeout
 
             is_new_proxy_conn = self.proxy is not None and not getattr(
                 conn, "sock", None
@@ -986,7 +986,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         conn = self.ConnectionCls(
             host=actual_host,
             port=actual_port,
-            timeout=self.timeout.connect_timeout,  # type: ignore
+            timeout=self.timeout.connect_timeout,
             cert_file=self.cert_file,
             key_file=self.key_file,
             key_password=self.key_password,
