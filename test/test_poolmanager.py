@@ -400,29 +400,20 @@ class TestPoolManager:
         assert p._proxy_requires_url_absolute_form("http://example.com") is False
         assert p._proxy_requires_url_absolute_form("https://example.com") is False
 
-    def test_poolmanager_normalizer_default_blocksize(self):
-        """Assert normalizer defaults to blocksize DEFAULT_BLOCKSIZE(16384)"""
-        p = PoolManager()
-
-        pool_blocksize_default = p.connection_from_url(
-            "http://example.com", {"blocksize": DEFAULT_BLOCKSIZE}
-        )
-        assert pool_blocksize_default.conn_kw["blocksize"] == DEFAULT_BLOCKSIZE
-
-        pool_blocksize_not_set = p.connection_from_url("http://example.com")
-        assert pool_blocksize_not_set == pool_blocksize_default
-
-        pool_blocksize_set_as_none = p.connection_from_url(
-            "http://example.com", {"blocksize": None}
-        )
-        assert pool_blocksize_set_as_none == pool_blocksize_default
-
-    def test_poolmanager_sets_blocksize(self):
+    @pytest.mark.parametrize(
+        "input_blocksize,expected_blocksize",
+        [
+            (DEFAULT_BLOCKSIZE, DEFAULT_BLOCKSIZE),
+            (None, DEFAULT_BLOCKSIZE),
+            (8192, 8192),
+        ],
+    )
+    def test_poolmanager_blocksize(self, input_blocksize, expected_blocksize):
         """Assert PoolManager sets blocksize properly"""
         p = PoolManager()
 
-        pool_blocksize_8192 = p.connection_from_url(
-            "http://example.com", {"blocksize": 8192}
+        pool_blocksize = p.connection_from_url(
+            "http://example.com", {"blocksize": input_blocksize}
         )
-        assert pool_blocksize_8192.conn_kw["blocksize"] == 8192
-        assert pool_blocksize_8192._get_conn().blocksize == 8192
+        assert pool_blocksize.conn_kw["blocksize"] == expected_blocksize
+        assert pool_blocksize._get_conn().blocksize == expected_blocksize
