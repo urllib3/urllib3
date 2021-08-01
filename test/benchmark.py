@@ -7,9 +7,9 @@ urllib to demonstrate the usefulness of connection re-using.
 
 import sys
 import time
-import urllib
+import urllib.request
 
-sys.path.append("../")
+sys.path.append("../src")
 import urllib3  # noqa: E402
 
 # URLs to download. Doesn't matter as long as they're from the same host, so we
@@ -20,7 +20,6 @@ TO_DOWNLOAD = [
     "http://code.google.com/apis/blogger/",
     "http://code.google.com/apis/calendar/",
     "http://code.google.com/apis/codesearch/",
-    "http://code.google.com/apis/contact/",
     "http://code.google.com/apis/books/",
     "http://code.google.com/apis/documents/",
     "http://code.google.com/apis/finance/",
@@ -37,7 +36,7 @@ def urllib_get(url_list):
     assert url_list
     for url in url_list:
         now = time.time()
-        urllib.urlopen(url)
+        urllib.request.urlopen(url)
         elapsed = time.time() - now
         print(f"Got in {elapsed:0.3f}: {url}")
 
