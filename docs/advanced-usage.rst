@@ -448,3 +448,39 @@ To enable this simply define environment variable `SSLKEYLOGFILE`:
 
 Then configure the key logfile in `Wireshark <https://wireshark.org>`_, see
 `Wireshark TLS Decryption <https://wiki.wireshark.org/TLS#TLS_Decryption>`_ for instructions.
+
+Custom SSL Contexts
+-------------------
+
+.. versionadded:: 1.17.0
+
+It is possible to provide a specific `SSL Context objects`_ directly to urllib3
+to exercise fine-grained control over the SSL configuration used in urllib3.
+
+For the purposes of compatibility, if you intend to customise an ``SSLContext``
+object we *strongly* recommend you obtain one from the following factory
+function:
+
+.. autofunction:: urllib3.util.ssl_.create_urllib3_context
+
+Once you have a context object, you can mutate that to achieve whatever affect
+you'd like. For example, the code below loads the default SSL certificates on
+Linux systems, sets the `OP_NO_RENEGOTIATION <https://docs.python.org/3/library/ssl.html#ssl.OP_NO_RENEGOTIATION>`_  flag that isn't set by default,
+and then makes a HTTPS request to Google:
+
+.. code-block:: python
+
+    import ssl
+    from urllib3 import PoolManager
+    from urllib3.util.ssl_ import create_urllib3_context
+
+    ctx = create_urllib3_context()
+    ctx.load_default_certs()
+    ctx.options |= ssl.OP_NO_RENEGOTIATION
+
+    p = PoolManager(ssl_context=ctx)
+    r = p.urlopen('GET', 'https://www.google.com/')
+
+Any customisation that is possible with the ``SSLContext`` object is possible here.
+
+.. _SSL Context objects: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
