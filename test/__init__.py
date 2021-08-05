@@ -5,14 +5,16 @@ import platform
 import socket
 import sys
 import warnings
+from types import ModuleType, TracebackType
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type, TypeVar
 
 import pytest
 
 try:
     try:
-        import brotlicffi as brotli
+        import brotlicffi as brotli  # type: ignore[import]
     except ImportError:
-        import brotli
+        import brotli  # type: ignore[import]
 except ImportError:
     brotli = None
 
@@ -25,7 +27,15 @@ from urllib3.util import ssl_
 try:
     import urllib3.contrib.pyopenssl as pyopenssl
 except ImportError:
-    pyopenssl = None
+    pyopenssl = None  # type: ignore[assignment]
+
+if TYPE_CHECKING:
+    import ssl
+
+    from typing_extensions import Literal
+
+
+_RT = TypeVar("_RT")  # return type
 
 # We need a host that will not immediately close the connection with a TCP
 # Reset.
@@ -56,7 +66,7 @@ if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS") == "true":
     LONG_TIMEOUT = 0.5
 
 
-def _can_resolve(host):
+def _can_resolve(host: str) -> bool:
     """ Returns True if the system can resolve host to an address. """
     try:
         socket.getaddrinfo(host, None, socket.AF_UNSPEC)
@@ -65,10 +75,10 @@ def _can_resolve(host):
         return False
 
 
-def has_alpn(ctx_cls=None):
+def has_alpn(ctx_cls: Optional[Type["ssl.SSLContext"]] = None) -> bool:
     """ Detect if ALPN support is enabled. """
     ctx_cls = ctx_cls or util.SSLContext
-    ctx = ctx_cls(protocol=ssl_.PROTOCOL_TLS)
+    ctx = ctx_cls(protocol=ssl_.PROTOCOL_TLS)  # type: ignore[misc]
     try:
         if hasattr(ctx, "set_alpn_protocols"):
             ctx.set_alpn_protocols(ssl_.ALPN_PROTOCOLS)
@@ -84,25 +94,25 @@ def has_alpn(ctx_cls=None):
 RESOLVES_LOCALHOST_FQDN = _can_resolve("localhost.")
 
 
-def clear_warnings(cls=HTTPWarning):
+def clear_warnings(cls: Type[Warning] = HTTPWarning) -> None:
     new_filters = []
-    for f in warnings.filters:
+    for f in warnings.filters:  # type: ignore[attr-defined]
         if issubclass(f[2], cls):
             continue
         new_filters.append(f)
-    warnings.filters[:] = new_filters
+    warnings.filters[:] = new_filters  # type: ignore[attr-defined]
 
 
-def setUp():
+def setUp() -> None:
     clear_warnings()
     warnings.simplefilter("ignore", HTTPWarning)
 
 
-def notWindows(test):
+def notWindows(test: Callable[..., _RT]) -> Callable[..., _RT]:
     """Skips this test on Windows"""
 
     @functools.wraps(test)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> _RT:
         msg = f"{test.__name__} does not run on Windows"
         if platform.system() == "Windows":
             pytest.skip(msg)
@@ -111,23 +121,23 @@ def notWindows(test):
     return wrapper
 
 
-def onlyBrotli():
+def onlyBrotli() -> Callable[..., Any]:
     return pytest.mark.skipif(
         brotli is None, reason="only run if brotli library is present"
     )
 
 
-def notBrotli():
+def notBrotli() -> Callable[..., Any]:
     return pytest.mark.skipif(
         brotli is not None, reason="only run if a brotli library is absent"
     )
 
 
-def onlySecureTransport(test):
+def onlySecureTransport(test: Callable[..., _RT]) -> Callable[..., _RT]:
     """Runs this test when SecureTransport is in use."""
 
     @functools.wraps(test)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> _RT:
         msg = f"{test.__name__} only runs with SecureTransport"
         if not ssl_.IS_SECURETRANSPORT:
             pytest.skip(msg)
@@ -136,11 +146,11 @@ def onlySecureTransport(test):
     return wrapper
 
 
-def notSecureTransport(test):
+def notSecureTransport(test: Callable[..., _RT]) -> Callable[..., _RT]:
     """Skips this test when SecureTransport is in use."""
 
     @functools.wraps(test)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> _RT:
         msg = f"{test.__name__} does not run with SecureTransport"
         if ssl_.IS_SECURETRANSPORT:
             pytest.skip(msg)
@@ -152,16 +162,16 @@ def notSecureTransport(test):
 _requires_network_has_route = None
 
 
-def requires_network(test):
+def requires_network(test: Callable[..., _RT]) -> Callable[..., _RT]:
     """Helps you skip tests that require the network"""
 
-    def _is_unreachable_err(err):
+    def _is_unreachable_err(err: Exception) -> bool:
         return getattr(err, "errno", None) in (
             errno.ENETUNREACH,
             errno.EHOSTUNREACH,  # For OSX
         )
 
-    def _has_route():
+    def _has_route() -> bool:
         try:
             sock = socket.create_connection((TARPIT_HOST, 80), 0.0001)
             sock.close()
@@ -175,7 +185,7 @@ def requires_network(test):
                 raise
 
     @functools.wraps(test)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> _RT:
         global _requires_network_has_route
 
         if _requires_network_has_route is None:
@@ -190,9 +200,11 @@ def requires_network(test):
     return wrapper
 
 
-def requires_ssl_context_keyfile_password(test):
+def requires_ssl_context_keyfile_password(
+    test: Callable[..., _RT]
+) -> Callable[..., _RT]:
     @functools.wraps(test)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> _RT:
         if ssl_.IS_SECURETRANSPORT:
             pytest.skip(
                 "%s requires password parameter for "
@@ -203,11 +215,11 @@ def requires_ssl_context_keyfile_password(test):
     return wrapper
 
 
-def resolvesLocalhostFQDN(test):
+def resolvesLocalhostFQDN(test: Callable[..., _RT]) -> Callable[..., _RT]:
     """Test requires successful resolving of 'localhost.'"""
 
     @functools.wraps(test)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> _RT:
         if not RESOLVES_LOCALHOST_FQDN:
             pytest.skip("Can't resolve localhost.")
         return test(*args, **kwargs)
@@ -215,9 +227,9 @@ def resolvesLocalhostFQDN(test):
     return wrapper
 
 
-def withPyOpenSSL(test):
+def withPyOpenSSL(test: Callable[..., _RT]) -> Callable[..., _RT]:
     @functools.wraps(test)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> _RT:
         if not pyopenssl:
             pytest.skip("pyopenssl not available, skipping test.")
             return test(*args, **kwargs)
@@ -231,35 +243,40 @@ def withPyOpenSSL(test):
 
 
 class _ListHandler(logging.Handler):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self.records = []
+        self.records: List[logging.LogRecord] = []
 
-    def emit(self, record):
+    def emit(self, record: logging.LogRecord) -> None:
         self.records.append(record)
 
 
 class LogRecorder:
-    def __init__(self, target=logging.root):
+    def __init__(self, target: logging.Logger = logging.root) -> None:
         super().__init__()
         self._target = target
         self._handler = _ListHandler()
 
     @property
-    def records(self):
+    def records(self) -> List[logging.LogRecord]:
         return self._handler.records
 
-    def install(self):
+    def install(self) -> None:
         self._target.addHandler(self._handler)
 
-    def uninstall(self):
+    def uninstall(self) -> None:
         self._target.removeHandler(self._handler)
 
-    def __enter__(self):
+    def __enter__(self) -> List[logging.LogRecord]:
         self.install()
         return self.records
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> "Literal[False]":
         self.uninstall()
         return False
 
@@ -272,15 +289,17 @@ class ImportBlocker:
     specified cannot be imported, even if they are a builtin.
     """
 
-    def __init__(self, *namestoblock):
+    def __init__(self, *namestoblock: str) -> None:
         self.namestoblock = namestoblock
 
-    def find_module(self, fullname, path=None):
+    def find_module(
+        self, fullname: str, path: Optional[str] = None
+    ) -> Optional["ImportBlocker"]:
         if fullname in self.namestoblock:
             return self
         return None
 
-    def load_module(self, fullname):
+    def load_module(self, fullname: str) -> None:
         raise ImportError(f"import of {fullname} is blocked")
 
 
@@ -292,19 +311,22 @@ class ModuleStash:
     modules
     """
 
-    def __init__(self, namespace, modules=sys.modules):
+    def __init__(
+        self, namespace: str, modules: Dict[str, ModuleType] = sys.modules
+    ) -> None:
         self.namespace = namespace
         self.modules = modules
-        self._data = {}
+        self._data: Dict[str, ModuleType] = {}
 
-    def stash(self):
-        self._data[self.namespace] = self.modules.pop(self.namespace, None)
+    def stash(self) -> None:
+        if self.namespace in self.modules:
+            self._data[self.namespace] = self.modules.pop(self.namespace)
 
         for module in list(self.modules.keys()):
             if module.startswith(self.namespace + "."):
                 self._data[module] = self.modules.pop(module)
 
-    def pop(self):
+    def pop(self) -> None:
         self.modules.pop(self.namespace, None)
 
         for module in list(self.modules.keys()):
