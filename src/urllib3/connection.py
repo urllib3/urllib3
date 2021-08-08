@@ -349,6 +349,8 @@ class HTTPSConnection(HTTPConnection):
     ca_cert_dir: Optional[str] = None
     ca_cert_data: Union[None, str, bytes] = None
     ssl_version: Optional[Union[int, str]] = None
+    ssl_minimum_version: Optional[int] = None
+    ssl_maximum_version: Optional[int] = None
     assert_fingerprint: Optional[str] = None
     tls_in_tls_required: bool = False
 
@@ -387,6 +389,9 @@ class HTTPSConnection(HTTPConnection):
         self.key_password = key_password
         self.ssl_context = ssl_context
         self.server_hostname = server_hostname
+        self.ssl_version = None
+        self.ssl_minimum_version = None
+        self.ssl_maximum_version = None
 
     def set_cert(
         self,
@@ -466,6 +471,8 @@ class HTTPSConnection(HTTPConnection):
             default_ssl_context = True
             self.ssl_context = create_urllib3_context(
                 ssl_version=resolve_ssl_version(self.ssl_version),
+                ssl_minimum_version=self.ssl_minimum_version,
+                ssl_maximum_version=self.ssl_maximum_version,
                 cert_reqs=resolve_cert_reqs(self.cert_reqs),
             )
             # In some cases, we want to verify hostnames ourselves
@@ -513,18 +520,26 @@ class HTTPSConnection(HTTPConnection):
         # If we're using all defaults and the connection
         # is TLSv1 or TLSv1.1 we throw a DeprecationWarning
         # for the host.
+        if hasattr(self.sock, "version"):
+            tls_version = self.sock.version()
+        else:
+            tls_version = None
+
         if (
             default_ssl_context
-            and self.ssl_version is None
-            and hasattr(self.sock, "version")
-            and self.sock.version() in {"TLSv1", "TLSv1.1"}
+            and self.ssl_minimum_version is None
+            and self.ssl_maximum_version is None
+            and tls_version is not None
+            and tls_version in {"TLSv1", "TLSv1.1"}
         ):
             warnings.warn(
                 "Negotiating TLSv1/TLSv1.1 by default is deprecated "
                 "and will be disabled in urllib3 v2.0.0. Connecting to "
-                f"'{self.host}' with '{self.sock.version()}' can be "
-                "enabled by explicitly opting-in with 'ssl_version'",
+                f"'{self.host}' with '{tls_version}' can be "
+                f"enabled by explicitly opting-in with "
+                f"'ssl_minimum_version=ssl.TLSVersion.{tls_version.replace('.', '_')}'",
                 DeprecationWarning,
+                stacklevel=2,
             )
 
         if self.assert_fingerprint:
