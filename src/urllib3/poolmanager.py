@@ -50,6 +50,8 @@ SSL_KEYWORDS = (
     "cert_reqs",
     "ca_certs",
     "ssl_version",
+    "ssl_minimum_version",
+    "ssl_maximum_version",
     "ca_cert_dir",
     "ssl_context",
     "key_password",
@@ -79,6 +81,8 @@ class PoolKey(NamedTuple):
     key_cert_reqs: Optional[str]
     key_ca_certs: Optional[str]
     key_ssl_version: Optional[Union[int, str]]
+    key_ssl_minimum_version: Optional["ssl.TLSVersion"]
+    key_ssl_maximum_version: Optional["ssl.TLSVersion"]
     key_ca_cert_dir: Optional[str]
     key_ssl_context: Optional["ssl.SSLContext"]
     key_maxsize: Optional[int]

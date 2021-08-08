@@ -53,6 +53,8 @@ from .util.url import parse_url
 from .util.util import to_str
 
 if TYPE_CHECKING:
+    import ssl
+
     from typing_extensions import Literal
 
 log = logging.getLogger(__name__)
@@ -902,6 +904,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         key_password: Optional[str] = None,
         ca_certs: Optional[str] = None,
         ssl_version: Optional[Union[int, str]] = None,
+        ssl_minimum_version: Optional["ssl.TLSVersion"] = None,
+        ssl_maximum_version: Optional["ssl.TLSVersion"] = None,
         assert_hostname: Optional[Union[str, "Literal[False]"]] = None,
         assert_fingerprint: Optional[str] = None,
         ca_cert_dir: Optional[str] = None,
@@ -928,6 +932,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.ca_certs = ca_certs
         self.ca_cert_dir = ca_cert_dir
         self.ssl_version = ssl_version
+        self.ssl_minimum_version = ssl_minimum_version
+        self.ssl_maximum_version = ssl_maximum_version
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
 
@@ -949,6 +955,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                 assert_fingerprint=self.assert_fingerprint,
             )
             conn.ssl_version = self.ssl_version
+            conn.ssl_minimum_version = self.ssl_minimum_version
+            conn.ssl_maximum_version = self.ssl_maximum_version
+
         return conn
 
     def _prepare_proxy(self, conn: HTTPSConnection) -> None:  # type: ignore[override]
