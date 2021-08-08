@@ -458,7 +458,7 @@ It is possible to provide a specific `SSL Context objects`_ directly to urllib3
 to exercise fine-grained control over the SSL configuration used in urllib3.
 
 For the purposes of compatibility, if you intend to customise an ``SSLContext``
-object we *strongly* recommend you obtain one from the following factory
+object we recommend you obtain one from the following factory
 function:
 
 .. autofunction:: urllib3.util.ssl_.create_urllib3_context
@@ -471,6 +471,7 @@ and then makes a HTTPS request to Google:
 .. code-block:: python
 
     import ssl
+
     from urllib3 import PoolManager
     from urllib3.util.ssl_ import create_urllib3_context
 
@@ -478,8 +479,8 @@ and then makes a HTTPS request to Google:
     ctx.load_default_certs()
     ctx.options |= ssl.OP_NO_RENEGOTIATION
 
-    p = PoolManager(ssl_context=ctx)
-    r = p.urlopen('GET', 'https://www.google.com/')
+    with PoolManager(ssl_context=ctx) as p:
+        r = p.urlopen("GET", "https://www.google.com/")
 
 Any customisation that is possible with the ``SSLContext`` object is possible here.
 
