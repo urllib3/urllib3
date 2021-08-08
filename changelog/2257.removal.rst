@@ -1,4 +1,4 @@
-``multipart/form-data`` header parameter formatting matches the WHATWG
+Changed ``multipart/form-data`` header parameter formatting matches the WHATWG
 HTML Standard as of 2021-06-10. Control characters in filenames are no
 longer percent encoded.
 

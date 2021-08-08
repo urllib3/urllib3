@@ -1,2 +1,1 @@
-The ``NewConnectionError.pool`` attribute was deprecated and will be
-removed in a later urllib3 v2.x release.
+Deprecated the ``NewConnectionError.pool`` attribute which will be removed in a future urllib3 v2.x release.

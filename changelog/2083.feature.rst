@@ -1,0 +1,1 @@
+Added ``urllib3.response.BaseHTTPResponse`` type.

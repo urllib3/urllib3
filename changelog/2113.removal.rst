@@ -1,0 +1,1 @@
+Removed fallback on certificate ``commonName`` in ``match_hostname()`` function.

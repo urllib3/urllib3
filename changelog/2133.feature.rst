@@ -1,0 +1,1 @@
+Added ``HTTPSProxyError`` when the initial TLS handshake to the proxy fails.
