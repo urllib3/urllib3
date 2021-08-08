@@ -6,7 +6,7 @@ import sys
 import warnings
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, Union, overload
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, TypeVar, Union, overload
 
 from .connection import (
     _TYPE_BODY,
@@ -61,6 +61,8 @@ _Default = object()
 
 _TYPE_TIMEOUT = Union[Timeout, int, float, object]
 
+_SelfT = TypeVar("_SelfT")
+
 
 # Pool objects
 class ConnectionPool:
@@ -88,7 +90,7 @@ class ConnectionPool:
     def __str__(self) -> str:
         return f"{type(self).__name__}(host={self.host!r}, port={self.port!r})"
 
-    def __enter__(self) -> "ConnectionPool":
+    def __enter__(self: _SelfT) -> _SelfT:
         return self
 
     def __exit__(
