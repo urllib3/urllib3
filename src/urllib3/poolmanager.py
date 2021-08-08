@@ -11,6 +11,7 @@ from typing import (
     Optional,
     Tuple,
     Type,
+    TypeVar,
     Union,
 )
 from urllib.parse import urljoin
@@ -52,6 +53,8 @@ SSL_KEYWORDS = (
     "ssl_context",
     "key_password",
 )
+
+_SelfT = TypeVar("_SelfT")
 
 
 class PoolKey(NamedTuple):
@@ -209,7 +212,7 @@ class PoolManager(RequestMethods):
         self.pool_classes_by_scheme = pool_classes_by_scheme
         self.key_fn_by_scheme = key_fn_by_scheme.copy()
 
-    def __enter__(self) -> "PoolManager":
+    def __enter__(self: _SelfT) -> _SelfT:
         return self
 
     def __exit__(
