@@ -74,7 +74,7 @@ def find_unused_port(
 
 
 def bind_port(sock: socket.socket, host: str = HOST) -> int:
-    """Bind the socket to a free port and return the port number.  Relies on
+    """Bind the socket to a free port and return the port number. Relies on
     ephemeral ports in order to ensure we are using an unbound port.  This is
     important as many tests may be running simultaneously, especially in a
     buildbot environment.  This method raises an exception if the sock.family
