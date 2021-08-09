@@ -36,6 +36,8 @@ if TYPE_CHECKING:
 
 
 _RT = TypeVar("_RT")  # return type
+_TestFuncT = TypeVar("_TestFuncT", bound=Callable[..., Any])
+
 
 # We need a host that will not immediately close the connection with a TCP
 # Reset.
@@ -108,61 +110,46 @@ def setUp() -> None:
     warnings.simplefilter("ignore", HTTPWarning)
 
 
-def notWindows(test: Callable[..., _RT]) -> Callable[..., _RT]:
+def notWindows() -> Callable[[_TestFuncT], _TestFuncT]:
     """Skips this test on Windows"""
-
-    @functools.wraps(test)
-    def wrapper(*args: Any, **kwargs: Any) -> _RT:
-        msg = f"{test.__name__} does not run on Windows"
-        if platform.system() == "Windows":
-            pytest.skip(msg)
-        return test(*args, **kwargs)
-
-    return wrapper
+    return pytest.mark.skipif(
+        platform.system() == "Windows",
+        reason="Test does not run on Windows",
+    )
 
 
-def onlyBrotli() -> Callable[..., Any]:
+def onlyBrotli() -> Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
         brotli is None, reason="only run if brotli library is present"
     )
 
 
-def notBrotli() -> Callable[..., Any]:
+def notBrotli() -> Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
         brotli is not None, reason="only run if a brotli library is absent"
     )
 
 
-def onlySecureTransport(test: Callable[..., _RT]) -> Callable[..., _RT]:
+def onlySecureTransport() -> Callable[[_TestFuncT], _TestFuncT]:
     """Runs this test when SecureTransport is in use."""
-
-    @functools.wraps(test)
-    def wrapper(*args: Any, **kwargs: Any) -> _RT:
-        msg = f"{test.__name__} only runs with SecureTransport"
-        if not ssl_.IS_SECURETRANSPORT:
-            pytest.skip(msg)
-        return test(*args, **kwargs)
-
-    return wrapper
+    return pytest.mark.skipif(
+        not ssl_.IS_SECURETRANSPORT,
+        reason="Test only runs with SecureTransport",
+    )
 
 
-def notSecureTransport(test: Callable[..., _RT]) -> Callable[..., _RT]:
+def notSecureTransport() -> Callable[[_TestFuncT], _TestFuncT]:
     """Skips this test when SecureTransport is in use."""
-
-    @functools.wraps(test)
-    def wrapper(*args: Any, **kwargs: Any) -> _RT:
-        msg = f"{test.__name__} does not run with SecureTransport"
-        if ssl_.IS_SECURETRANSPORT:
-            pytest.skip(msg)
-        return test(*args, **kwargs)
-
-    return wrapper
+    return pytest.mark.skipif(
+        ssl_.IS_SECURETRANSPORT,
+        reason="Test does not run with SecureTransport",
+    )
 
 
 _requires_network_has_route = None
 
 
-def requires_network(test: Callable[..., _RT]) -> Callable[..., _RT]:
+def requires_network() -> Callable[[_TestFuncT], _TestFuncT]:
     """Helps you skip tests that require the network"""
 
     def _is_unreachable_err(err: Exception) -> bool:
@@ -184,47 +171,30 @@ def requires_network(test: Callable[..., _RT]) -> Callable[..., _RT]:
             else:
                 raise
 
-    @functools.wraps(test)
-    def wrapper(*args: Any, **kwargs: Any) -> _RT:
-        global _requires_network_has_route
+    global _requires_network_has_route
 
-        if _requires_network_has_route is None:
-            _requires_network_has_route = _has_route()
+    if _requires_network_has_route is None:
+        _requires_network_has_route = _has_route()
 
-        if _requires_network_has_route:
-            return test(*args, **kwargs)
-        else:
-            msg = f"Can't run {test.__name__} because the network is unreachable"
-            pytest.skip(msg)
-
-    return wrapper
+    return pytest.mark.skipif(
+        not _requires_network_has_route,
+        reason="Can't run the test because the network is unreachable",
+    )
 
 
-def requires_ssl_context_keyfile_password(
-    test: Callable[..., _RT]
-) -> Callable[..., _RT]:
-    @functools.wraps(test)
-    def wrapper(*args: Any, **kwargs: Any) -> _RT:
-        if ssl_.IS_SECURETRANSPORT:
-            pytest.skip(
-                "%s requires password parameter for "
-                "SSLContext.load_cert_chain()" % test.__name__
-            )
-        return test(*args, **kwargs)
-
-    return wrapper
+def requires_ssl_context_keyfile_password() -> Callable[[_TestFuncT], _TestFuncT]:
+    return pytest.mark.skipif(
+        not ssl_.IS_SECURETRANSPORT,
+        reason="Test requires password parameter for SSLContext.load_cert_chain()",
+    )
 
 
-def resolvesLocalhostFQDN(test: Callable[..., _RT]) -> Callable[..., _RT]:
+def resolvesLocalhostFQDN() -> Callable[[_TestFuncT], _TestFuncT]:
     """Test requires successful resolving of 'localhost.'"""
-
-    @functools.wraps(test)
-    def wrapper(*args: Any, **kwargs: Any) -> _RT:
-        if not RESOLVES_LOCALHOST_FQDN:
-            pytest.skip("Can't resolve localhost.")
-        return test(*args, **kwargs)
-
-    return wrapper
+    return pytest.mark.skipif(
+        not RESOLVES_LOCALHOST_FQDN,
+        reason="Can't resolve localhost.",
+    )
 
 
 def withPyOpenSSL(test: Callable[..., _RT]) -> Callable[..., _RT]:

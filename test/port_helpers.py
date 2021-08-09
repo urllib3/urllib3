@@ -111,6 +111,6 @@ def bind_port(sock: socket.socket, host: str = HOST) -> int:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
 
     sock.bind((host, 0))
-    port: int = sock.getsockname()[1]
+    port = sock.getsockname()[1]
     assert isinstance(port, int)
     return port

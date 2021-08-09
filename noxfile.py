@@ -160,7 +160,12 @@ def mypy(session: nox.Session) -> None:
     session.install("nox")
     session.run("mypy", "--version")
     session.run(
-        "mypy", "src/urllib3", "dummyserver", "noxfile.py", "test/__init__.py", "test/port_helpers.py"
+        "mypy",
+        "src/urllib3",
+        "dummyserver",
+        "noxfile.py",
+        "test/__init__.py",
+        "test/port_helpers.py",
     )
 
 
