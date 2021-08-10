@@ -203,7 +203,7 @@ def requires_network() -> Callable[[_TestFuncT], _TestFuncT]:
 
 def requires_ssl_context_keyfile_password() -> Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
-        lazy_condition(lambda: not ssl_.IS_SECURETRANSPORT),
+        lazy_condition(lambda: ssl_.IS_SECURETRANSPORT),
         reason="Test requires password parameter for SSLContext.load_cert_chain()",
     )
 
