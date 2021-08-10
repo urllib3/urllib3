@@ -6,7 +6,17 @@ import socket
 import sys
 import warnings
 from types import ModuleType, TracebackType
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    cast,
+)
 
 import pytest
 
@@ -130,10 +140,19 @@ def notBrotli() -> Callable[[_TestFuncT], _TestFuncT]:
     )
 
 
+# Hack to make pytest evaluate a condition at test runtime instead of collection time.
+def lazy_condition(condition: Callable[[], bool]) -> bool:
+    class LazyCondition:
+        def __bool__(self) -> bool:
+            return condition()
+
+    return cast(bool, LazyCondition())
+
+
 def onlySecureTransport() -> Callable[[_TestFuncT], _TestFuncT]:
     """Runs this test when SecureTransport is in use."""
     return pytest.mark.skipif(
-        not ssl_.IS_SECURETRANSPORT,
+        lazy_condition(lambda: not ssl_.IS_SECURETRANSPORT),
         reason="Test only runs with SecureTransport",
     )
 
@@ -141,7 +160,7 @@ def onlySecureTransport() -> Callable[[_TestFuncT], _TestFuncT]:
 def notSecureTransport() -> Callable[[_TestFuncT], _TestFuncT]:
     """Skips this test when SecureTransport is in use."""
     return pytest.mark.skipif(
-        ssl_.IS_SECURETRANSPORT,
+        lazy_condition(lambda: ssl_.IS_SECURETRANSPORT),
         reason="Test does not run with SecureTransport",
     )
 
@@ -184,7 +203,7 @@ def requires_network() -> Callable[[_TestFuncT], _TestFuncT]:
 
 def requires_ssl_context_keyfile_password() -> Callable[[_TestFuncT], _TestFuncT]:
     return pytest.mark.skipif(
-        not ssl_.IS_SECURETRANSPORT,
+        lazy_condition(lambda: not ssl_.IS_SECURETRANSPORT),
         reason="Test requires password parameter for SSLContext.load_cert_chain()",
     )
 
