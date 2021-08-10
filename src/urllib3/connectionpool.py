@@ -6,6 +6,7 @@ import sys
 import warnings
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
+from types import TracebackType
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, TypeVar, Union, overload
 
 from .connection import (
@@ -94,7 +95,10 @@ class ConnectionPool:
         return self
 
     def __exit__(
-        self, exc_type: object, exc_val: object, exc_tb: object
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
     ) -> "Literal[False]":
         self.close()
         # Return False to re-raise any potential exceptions

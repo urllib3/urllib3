@@ -1,6 +1,7 @@
 import functools
 import logging
 import warnings
+from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -216,7 +217,10 @@ class PoolManager(RequestMethods):
         return self
 
     def __exit__(
-        self, exc_type: object, exc_val: object, exc_tb: object
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
     ) -> "Literal[False]":
         self.clear()
         # Return False to re-raise any potential exceptions
