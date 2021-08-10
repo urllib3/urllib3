@@ -159,7 +159,14 @@ def mypy(session: nox.Session) -> None:
     session.install("pytest>=6.2")
     session.install("nox")
     session.run("mypy", "--version")
-    session.run("mypy", "src/urllib3", "dummyserver", "noxfile.py")
+    session.run(
+        "mypy",
+        "src/urllib3",
+        "dummyserver",
+        "noxfile.py",
+        "test/__init__.py",
+        "test/port_helpers.py",
+    )
 
 
 @nox.session

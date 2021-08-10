@@ -125,7 +125,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             r = https_pool.request("GET", "/")
             assert r.status == 200, r.data
 
-    @resolvesLocalhostFQDN
+    @resolvesLocalhostFQDN()
     def test_dotted_fqdn(self):
         with HTTPSConnectionPool(
             self.host + ".", self.port, ca_certs=DEFAULT_CA
@@ -168,7 +168,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             with pytest.raises((SSLError, ProtocolError)):
                 https_pool.request("GET", "/certificate", retries=False)
 
-    @requires_ssl_context_keyfile_password
+    @requires_ssl_context_keyfile_password()
     def test_client_key_password(self):
         with HTTPSConnectionPool(
             self.host,
@@ -182,7 +182,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             subject = json.loads(r.data.decode("utf-8"))
             assert subject["organizationalUnitName"].startswith("Testing cert")
 
-    @requires_ssl_context_keyfile_password
+    @requires_ssl_context_keyfile_password()
     def test_client_encrypted_key_requires_password(self):
         with HTTPSConnectionPool(
             self.host,
@@ -238,7 +238,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 assert r.status == 200
                 assert not warn.called, warn.call_args_list
 
-    @notSecureTransport  # SecureTransport does not support cert directories
+    @notSecureTransport()  # SecureTransport does not support cert directories
     def test_ca_dir_verified(self, tmpdir):
         # OpenSSL looks up certificates by the hash for their name, see c_rehash
         # TODO infer the bytes using `cryptography.x509.Name.public_bytes`.
@@ -461,7 +461,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             )
             https_pool.request("GET", "/")
 
-    @notSecureTransport
+    @notSecureTransport()
     def test_good_fingerprint_and_hostname_mismatch(self):
         # This test doesn't run with SecureTransport because we don't turn off
         # hostname validation without turning off all validation, which this
@@ -475,7 +475,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             )
             https_pool.request("GET", "/")
 
-    @requires_network
+    @requires_network()
     def test_https_timeout(self):
 
         timeout = Timeout(total=None, connect=SHORT_TIMEOUT)
@@ -523,7 +523,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             finally:
                 conn.close()
 
-    @requires_network
+    @requires_network()
     def test_enhanced_timeout(self):
         with HTTPSConnectionPool(
             TARPIT_HOST,
