@@ -106,8 +106,8 @@ def match_hostname(cert: _TYPE_PEER_CERT_RET, hostname: str) -> None:
         # Not an IP address (common case)
         host_ip = None
     dnsnames = []
-    san = cert.get("subjectAltName", ())  # type: ignore
-    for key, value in san:  # type: ignore
+    san = cert.get("subjectAltName", ())  # type: ignore[union-attr]
+    for key, value in san:  # type: ignore[misc]
         if key == "DNS":
             if host_ip is None and _dnsname_match(value, hostname):
                 return

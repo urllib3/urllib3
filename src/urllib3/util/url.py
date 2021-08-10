@@ -97,7 +97,7 @@ class Url(
     both case-insensitive according to RFC 3986.
     """
 
-    def __new__(  # type: ignore
+    def __new__(  # type: ignore[no-untyped-def]
         cls,
         scheme: typing.Optional[str] = None,
         auth: typing.Optional[str] = None,
@@ -381,7 +381,7 @@ def parse_url(url: str) -> Url:
     fragment: typing.Optional[str]
 
     try:
-        scheme, authority, path, query, fragment = _URI_RE.match(url).groups()  # type: ignore
+        scheme, authority, path, query, fragment = _URI_RE.match(url).groups()  # type: ignore[union-attr]
         normalize_uri = scheme is None or scheme.lower() in _NORMALIZABLE_SCHEMES
 
         if scheme:
@@ -390,7 +390,7 @@ def parse_url(url: str) -> Url:
         if authority:
             auth, _, host_port = authority.rpartition("@")
             auth = auth or None
-            host, port = _HOST_PORT_RE.match(host_port).groups()  # type: ignore
+            host, port = _HOST_PORT_RE.match(host_port).groups()  # type: ignore[union-attr]
             if auth and normalize_uri:
                 auth = _encode_invalid_chars(auth, _USERINFO_CHARS)
             if port == "":
