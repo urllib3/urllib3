@@ -395,7 +395,7 @@ class PoolManager(RequestMethods):
             self.proxy, self.proxy_config, parsed_url.scheme
         )
 
-    def urlopen(  # type: ignore
+    def urlopen(  # type: ignore[override]
         self, method: str, url: str, redirect: bool = True, **kw: Any
     ) -> BaseHTTPResponse:
         """
@@ -449,7 +449,7 @@ class PoolManager(RequestMethods):
             kw["headers"] = new_headers
 
         try:
-            retries = retries.increment(method, url, response=response, _pool=conn)  # type: ignore
+            retries = retries.increment(method, url, response=response, _pool=conn)  # type: ignore[arg-type]
         except MaxRetryError:
             if retries.raise_on_redirect:
                 response.drain_conn()
@@ -560,7 +560,7 @@ class ProxyManager(PoolManager):
             )
 
         return super().connection_from_host(
-            self.proxy.host, self.proxy.port, self.proxy.scheme, pool_kwargs=pool_kwargs  # type: ignore
+            self.proxy.host, self.proxy.port, self.proxy.scheme, pool_kwargs=pool_kwargs  # type: ignore[union-attr]
         )
 
     def _set_proxy_headers(
@@ -580,7 +580,7 @@ class ProxyManager(PoolManager):
             headers_.update(headers)
         return headers_
 
-    def urlopen(  # type: ignore
+    def urlopen(  # type: ignore[override]
         self, method: str, url: str, redirect: bool = True, **kw: Any
     ) -> BaseHTTPResponse:
         "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."

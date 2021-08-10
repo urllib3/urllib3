@@ -245,7 +245,7 @@ class Retry:
         )
 
         params.update(kw)
-        return type(self)(**params)  # type: ignore
+        return type(self)(**params)  # type: ignore[arg-type]
 
     @classmethod
     def from_int(
@@ -256,7 +256,7 @@ class Retry:
     ) -> "Retry":
         """ Backwards-compatibility for the old retries format."""
         if retries is None:
-            retries = default if default is not None else cls.DEFAULT  # type: ignore
+            retries = default if default is not None else cls.DEFAULT  # type: ignore[attr-defined]
 
         if isinstance(retries, Retry):
             return retries
@@ -493,7 +493,7 @@ class Retry:
         )
 
         if new_retry.is_exhausted():
-            raise MaxRetryError(_pool, url, error or ResponseError(cause))  # type: ignore
+            raise MaxRetryError(_pool, url, error or ResponseError(cause))  # type: ignore[arg-type]
 
         log.debug("Incremented Retry for (url='%s'): %r", url, new_retry)
 
@@ -507,4 +507,4 @@ class Retry:
 
 
 # For backwards compatibility (equivalent to pre-v1.9):
-Retry.DEFAULT = Retry(3)  # type: ignore
+Retry.DEFAULT = Retry(3)  # type: ignore[attr-defined]

@@ -33,9 +33,9 @@ try:  # Compiled with SSL?
 
     BaseSSLError = ssl.SSLError
 except (ImportError, AttributeError):  # Platform-specific: No SSL.
-    ssl = None  # type: ignore
+    ssl = None  # type: ignore[assignment]
 
-    class BaseSSLError(BaseException):  # type: ignore
+    class BaseSSLError(BaseException):  # type: ignore[no-redef]
         pass
 
 
@@ -158,8 +158,8 @@ class HTTPConnection(_HTTPConnection):
     # If `host` is made a property it violates LSP, because a writeable attribute is overriden with a read-only one.
     # However, there is also a `host` setter so LSP is not violated.
     # Potentailly, a `@host.deleter` might be needed depending on how this issue will be fixed.
-    @property  # type: ignore
-    def host(self) -> str:  # type: ignore
+    @property  # type: ignore[override]
+    def host(self) -> str:  # type: ignore[override]
         """
         Getter method to remove any trailing dots that indicate the hostname is an FQDN.
 
@@ -262,7 +262,7 @@ class HTTPConnection(_HTTPConnection):
 
     # `request` method's signature intentionally violates LSP.
     # urllib3's API is different from `http.client.HTTPConnection` and the subclassing is only incidental.
-    def request(  # type: ignore
+    def request(  # type: ignore[override]
         self,
         method: str,
         url: str,
@@ -592,7 +592,7 @@ def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
         )
         # Add cert to exception and reraise so client code can inspect
         # the cert when catching the exception, if they want to
-        e._peer_cert = cert  # type: ignore
+        e._peer_cert = cert  # type: ignore[attr-defined]
         raise
 
 
@@ -607,7 +607,7 @@ class DummyConnection:
 
 
 if not ssl:
-    HTTPSConnection = DummyConnection  # type: ignore # noqa: F811
+    HTTPSConnection = DummyConnection  # type: ignore[misc, assignment] # noqa: F811
 
 
 VerifiedHTTPSConnection = HTTPSConnection

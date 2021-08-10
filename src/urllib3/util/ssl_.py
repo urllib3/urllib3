@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 
 try:  # Do we have ssl at all?
     import ssl
-    from ssl import (  # type: ignore
+    from ssl import (  # type: ignore[misc]
         CERT_REQUIRED,
         HAS_NEVER_CHECK_COMMON_NAME,
         HAS_SNI,
@@ -62,12 +62,12 @@ try:  # Do we have ssl at all?
         OPENSSL_VERSION, OPENSSL_VERSION_NUMBER
     )
     PROTOCOL_SSLv23 = PROTOCOL_TLS
-    from .ssltransport import SSLTransport  # type: ignore
+    from .ssltransport import SSLTransport  # type: ignore[misc]
 except ImportError:
-    OP_NO_COMPRESSION = 0x20000  # type: ignore
-    OP_NO_TICKET = 0x4000  # type: ignore
-    OP_NO_SSLv2 = 0x1000000  # type: ignore
-    OP_NO_SSLv3 = 0x2000000  # type: ignore
+    OP_NO_COMPRESSION = 0x20000  # type: ignore[assignment]
+    OP_NO_TICKET = 0x4000  # type: ignore[assignment]
+    OP_NO_SSLv2 = 0x1000000  # type: ignore[assignment]
+    OP_NO_SSLv3 = 0x2000000  # type: ignore[assignment]
     PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
     PROTOCOL_TLS_CLIENT = 16
 
