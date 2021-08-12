@@ -157,6 +157,7 @@ def mypy(session: nox.Session) -> None:
     session.install("cryptography>=1.3.4")
     session.install("tornado>=6.1")
     session.install("pytest>=6.2")
+    session.install("types-pyOpenSSL")
     session.install("types-python-dateutil")
     session.install("nox")
     session.run("mypy", "--version")

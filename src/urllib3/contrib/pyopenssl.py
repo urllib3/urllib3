@@ -46,13 +46,13 @@ compression in Python 2 (see `CRIME attack`_).
 .. _idna: https://github.com/kjd/idna
 """
 
-import OpenSSL.SSL  # type: ignore[import]
+import OpenSSL.SSL
 from cryptography import x509
 from cryptography.hazmat.backends.openssl import backend as openssl_backend
 from cryptography.hazmat.backends.openssl.x509 import _Certificate
 
 try:
-    from cryptography.x509 import UnsupportedExtension  # type: ignore[attr-defined]
+    from cryptography.x509 import UnsupportedExtension
 except ImportError:
     # UnsupportedExtension is gone in cryptography >= 2.1.0
     class UnsupportedExtension(Exception):  # type: ignore[no-redef]
@@ -69,7 +69,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from .. import util
 
 if TYPE_CHECKING:
-    from OpenSSL.crypto import CRL, X509  # type: ignore[import]
+    from OpenSSL.crypto import CRL, X509
 
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
@@ -150,7 +150,7 @@ def _validate_dependencies_met() -> None:
     Throws `ImportError` if they are not met.
     """
     # Method added in `cryptography==1.1`; not available in older versions
-    from cryptography.x509.extensions import Extensions
+    from cryptography.x509.extensions import Extensions  # type: ignore[attr-defined]
 
     if getattr(Extensions, "get_extension_for_class", None) is None:
         raise ImportError(
@@ -221,7 +221,7 @@ def get_subj_alt_name(peer_cert: "CRL") -> List[Tuple[str, str]]:
     else:
         # This is technically using private APIs, but should work across all
         # relevant versions before PyOpenSSL got a proper API for this.
-        cert = _Certificate(openssl_backend, peer_cert._x509)  # type: ignore[no-untyped-call]
+        cert = _Certificate(openssl_backend, peer_cert._x509)  # type: ignore[assignment, attr-defined, no-untyped-call]
 
     # We want to find the SAN extension. Ask Cryptography to locate it (it's
     # faster than looping in Python)
@@ -313,7 +313,7 @@ class WrappedSocket:
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError(f"read error: {e!r}")
         else:
-            return data  # type: ignore[no-any-return]
+            return data
 
     def recv_into(self, *args: Any, **kwargs: Any) -> int:
         try:
@@ -378,18 +378,18 @@ class WrappedSocket:
         x509 = self.connection.get_peer_certificate()
 
         if not x509:
-            return x509  # type: ignore[no-any-return]
+            return x509  # type: ignore[return-value]
 
         if binary_form:
-            return OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_ASN1, x509)  # type: ignore[no-any-return]
+            return OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_ASN1, x509)  # type: ignore[return-value]
 
         return {
             "subject": ((("commonName", x509.get_subject().CN),),),  # type: ignore[dict-item]
-            "subjectAltName": get_subj_alt_name(x509),
+            "subjectAltName": get_subj_alt_name(x509),  # type: ignore[arg-type]
         }
 
     def version(self) -> str:
-        return self.connection.get_protocol_version_name()  # type: ignore[no-any-return]
+        return self.connection.get_protocol_version_name()  # type: ignore[return-value]
 
 
 WrappedSocket.makefile = socket_cls.makefile  # type: ignore[attr-defined]
@@ -446,7 +446,7 @@ class PyOpenSSLContext:
         try:
             self._ctx.load_verify_locations(cafile, capath)
             if cadata is not None:
-                self._ctx.load_verify_locations(BytesIO(cadata))
+                self._ctx.load_verify_locations(BytesIO(cadata))  # type: ignore[arg-type]
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError(f"unable to load trusted certificates: {e!r}")
 
@@ -465,7 +465,7 @@ class PyOpenSSLContext:
 
     def set_alpn_protocols(self, protocols: List[Union[bytes, str]]) -> None:
         protocols = [util.util.to_bytes(p, "ascii") for p in protocols]
-        return self._ctx.set_alpn_protos(protocols)  # type: ignore[no-any-return]
+        return self._ctx.set_alpn_protos(protocols)  # type: ignore[arg-type]
 
     def wrap_socket(
         self,
