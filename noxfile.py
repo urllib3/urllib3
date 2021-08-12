@@ -166,8 +166,9 @@ def mypy(session: nox.Session) -> None:
         "dummyserver",
         "noxfile.py",
         "test/__init__.py",
-        "test/tz_stub.py",
+        "test/conftest.py",
         "test/port_helpers.py",
+        "test/tz_stub.py",
     )
 
 
