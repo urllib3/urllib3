@@ -452,21 +452,15 @@ Then configure the key logfile in `Wireshark <https://wireshark.org>`_, see
 Custom SSL Contexts
 -------------------
 
-.. versionadded:: 1.17.0
+You can exercise fine-grained control over the urllib3 SSL configuration by
+providing a :class:`ssl.SSLContext <python:ssl.SSLContext>` object. For purposes
+of compatibility, we recommend you obtain one from
+:func:`~urllib3.util.ssl_.create_urllib3_context`.
 
-It is possible to provide a specific `SSL Context objects`_ directly to urllib3
-to exercise fine-grained control over the SSL configuration used in urllib3.
-
-For the purposes of compatibility, if you intend to customise an ``SSLContext``
-object we recommend you obtain one from the following factory
-function:
-
-.. autofunction:: urllib3.util.ssl_.create_urllib3_context
-
-Once you have a context object, you can mutate that to achieve whatever affect
-you'd like. For example, the code below loads the default SSL certificates on
-Linux systems, sets the `OP_NO_RENEGOTIATION <https://docs.python.org/3/library/ssl.html#ssl.OP_NO_RENEGOTIATION>`_  flag that isn't set by default,
-and then makes a HTTPS request to Google:
+Once you have a context object, you can mutate it to achieve whatever effect
+you'd like. For example, the code below loads the default SSL certificates, sets
+the :data:`ssl.OP_NO_TICKET<python:ssl.OP_NO_TICKET>` flag that isn't set by
+default, and then makes a HTTPS request:
 
 .. code-block:: python
 
@@ -477,11 +471,11 @@ and then makes a HTTPS request to Google:
 
     ctx = create_urllib3_context()
     ctx.load_default_certs()
-    ctx.options |= ssl.OP_NO_RENEGOTIATION
+    ctx.options |= ssl.OP_NO_TICKET
 
-    with PoolManager(ssl_context=ctx) as p:
-        r = p.urlopen("GET", "https://www.google.com/")
+    with PoolManager(ssl_context=ctx) as pool:
+        pool.request("GET", "https://www.google.com/")
 
-Any customisation that is possible with the ``SSLContext`` object is possible here.
-
-.. _SSL Context objects: https://docs.python.org/3/library/ssl.html#ssl.SSLContext
+Note that this is different from passing an ``options`` argument to
+:func:`~urllib3.util.ssl_.create_urllib3_context` because we don't overwrite
+the default options: we only add a new one.
