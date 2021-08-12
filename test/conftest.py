@@ -5,7 +5,7 @@ import ssl
 import sys
 import threading
 from pathlib import Path
-from typing import Generator, NamedTuple, Optional, Set
+from typing import AbstractSet, Generator, NamedTuple, Optional
 
 import pytest
 import trustme  # type: ignore[import]
@@ -111,7 +111,7 @@ def stub_timezone(request: pytest.FixtureRequest) -> Generator[None, None, None]
 
 
 @pytest.fixture(scope="session")
-def supported_tls_versions() -> Set[Optional[str]]:
+def supported_tls_versions() -> AbstractSet[Optional[str]]:
     # We have to create an actual TLS connection
     # to test if the TLS version is not disabled by
     # OpenSSL config. Ubuntu 20.04 specifically
@@ -144,28 +144,28 @@ def supported_tls_versions() -> Set[Optional[str]]:
 
 
 @pytest.fixture(scope="function")
-def requires_tlsv1(supported_tls_versions: Set[str]) -> None:
+def requires_tlsv1(supported_tls_versions: AbstractSet[str]) -> None:
     """Test requires TLSv1 available"""
     if not hasattr(ssl, "PROTOCOL_TLSv1") or "TLSv1" not in supported_tls_versions:
         pytest.skip("Test requires TLSv1")
 
 
 @pytest.fixture(scope="function")
-def requires_tlsv1_1(supported_tls_versions: Set[str]) -> None:
+def requires_tlsv1_1(supported_tls_versions: AbstractSet[str]) -> None:
     """Test requires TLSv1.1 available"""
     if not hasattr(ssl, "PROTOCOL_TLSv1_1") or "TLSv1.1" not in supported_tls_versions:
         pytest.skip("Test requires TLSv1.1")
 
 
 @pytest.fixture(scope="function")
-def requires_tlsv1_2(supported_tls_versions: Set[str]) -> None:
+def requires_tlsv1_2(supported_tls_versions: AbstractSet[str]) -> None:
     """Test requires TLSv1.2 available"""
     if not hasattr(ssl, "PROTOCOL_TLSv1_2") or "TLSv1.2" not in supported_tls_versions:
         pytest.skip("Test requires TLSv1.2")
 
 
 @pytest.fixture(scope="function")
-def requires_tlsv1_3(supported_tls_versions: Set[str]) -> None:
+def requires_tlsv1_3(supported_tls_versions: AbstractSet[str]) -> None:
     """Test requires TLSv1.3 available"""
     if (
         not getattr(ssl, "HAS_TLSv1_3", False)
