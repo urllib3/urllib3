@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import AbstractSet, Generator, NamedTuple, Optional
 
 import pytest
-import trustme  # type: ignore[import]
+import trustme
 from tornado import ioloop, web
 
 from dummyserver.handlers import TestingApp

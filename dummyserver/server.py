@@ -18,7 +18,7 @@ import tornado.httpserver
 import tornado.ioloop
 import tornado.netutil
 import tornado.web
-import trustme  # type: ignore[import]
+import trustme
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 
