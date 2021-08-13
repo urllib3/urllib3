@@ -450,12 +450,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             raise
 
         log.debug(
-            '%s://%s:%s "%s %s %s" %s %s',
+            '%s://%s:%s%s "%s %s" status:%s len:%s',
             self.scheme,
             self.host,
             self.port,
-            method,
             url,
+            method,
             # HTTP version
             conn._http_vsn_str,  # type: ignore[attr-defined]
             httplib_response.status,
