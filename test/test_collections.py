@@ -200,7 +200,8 @@ class TestHTTPHeaderDict:
 
     def test_setitem(self, d):
         d["Cookie"] = "foo"
-        assert d["cookie"] == "foo"
+        d[b"Cookie"] = "bar"  # bytes get converted to str
+        assert d["cookie"] == "bar"
         d["cookie"] = "with, comma"
         assert d.getlist("cookie") == ["with, comma"]
 
