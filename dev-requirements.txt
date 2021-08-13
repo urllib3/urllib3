@@ -5,7 +5,7 @@ pytest==6.2.4
 pytest-timeout==1.4.2
 pytest-freezegun==0.4.2
 flaky==3.7.0
-trustme==0.7.0
+trustme==0.9.0
 cryptography==3.4.7
 python-dateutil==2.8.1
 requests
