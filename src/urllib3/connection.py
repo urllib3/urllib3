@@ -274,6 +274,14 @@ class HTTPConnection(_HTTPConnection):
         else:
             # Avoid modifying the headers passed into .request()
             headers = copy(headers)
+            # Don't send bytes keys to httplib to avoid bytes/str comparison
+            # HTTPHeaderDict is already safe, but other types are not
+            for key, value in list(headers.items()):
+                if isinstance(key, bytes):
+                    headers.pop(key)
+                    # httplib would have decoded to latin-1 anyway
+                    headers[key.decode("latin-1")] = value
+
         if "user-agent" not in (to_str(k.lower()) for k in headers):
             updated_headers = {"User-Agent": _get_default_user_agent()}
             updated_headers.update(headers)

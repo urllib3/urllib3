@@ -142,7 +142,7 @@ def assert_fingerprint(cert: Optional[bytes], fingerprint: str) -> None:
 
     if not hmac.compare_digest(cert_digest, fingerprint_bytes):
         raise SSLError(
-            f'Fingerprints did not match. Expected "{fingerprint}", got "{cert_digest.hex()}".'
+            f'Fingerprints did not match. Expected "{fingerprint}", got "{cert_digest.hex()}"'
         )
 
 

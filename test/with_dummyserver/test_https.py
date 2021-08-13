@@ -429,7 +429,12 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 "AA:AA:AA:AA:AA:AAAA:AA:AAAA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA"
             )
             e = _test_request(https_pool)
-            assert "Fingerprints did not match." in str(e)
+            expected = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            got = "728b554c9afc1e88a11cad1bb2e7cc3edbc8f98a"
+            assert (
+                str(e)
+                == f'Fingerprints did not match. Expected "{expected}", got "{got}"'
+            )
 
             # Uneven length
             https_pool.assert_fingerprint = "AA:A"
