@@ -1,11 +1,13 @@
+import gzip
 import json
 from test import LONG_TIMEOUT
+from unittest import mock
 
 import pytest
 
 from dummyserver.server import HAS_IPV6
 from dummyserver.testcase import HTTPDummyServerTestCase, IPv6HTTPDummyServerTestCase
-from urllib3 import request
+from urllib3 import HTTPHeaderDict, HTTPResponse, request
 from urllib3.connectionpool import port_by_scheme
 from urllib3.exceptions import MaxRetryError, URLSchemeUnknown
 from urllib3.poolmanager import PoolManager
@@ -194,11 +196,12 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert "X-API-Secret" not in data
             assert data["Authorization"] == "bar"
 
+            headers = {"x-api-secret": "foo", "authorization": "bar"}
             r = http.request(
                 "GET",
                 f"{self.base_url}/redirect",
                 fields={"target": f"{self.base_url_alt}/headers"},
-                headers={"x-api-secret": "foo", "authorization": "bar"},
+                headers=headers,
                 retries=Retry(remove_headers_on_redirect=["X-API-Secret"]),
             )
 
@@ -209,6 +212,9 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert "x-api-secret" not in data
             assert "X-API-Secret" not in data
             assert data["Authorization"] == "bar"
+
+            # Ensure the header argument itself is not modified in-place.
+            assert headers == {"x-api-secret": "foo", "authorization": "bar"}
 
     def test_redirect_without_preload_releases_connection(self):
         with PoolManager(block=True, maxsize=2) as http:
@@ -334,6 +340,40 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
 
+    def test_headers_http_header_dict(self):
+        headers = HTTPHeaderDict()
+        headers.add("Foo", "bar")
+        headers.add("Multi", "1")
+        headers.add("Baz", "quux")
+        headers.add("Multi", "2")
+
+        with PoolManager(headers=headers) as http:
+            r = http.request("GET", f"{self.base_url}/headers")
+            returned_headers = json.loads(r.data.decode())
+            assert returned_headers["Foo"] == "bar"
+            assert returned_headers["Multi"] == "1, 2"
+            assert returned_headers["Baz"] == "quux"
+
+            r = http.request(
+                "GET",
+                f"{self.base_url}/headers",
+                headers={
+                    **headers,
+                    "Extra": "extra",
+                    "Foo": "new",
+                },
+            )
+            returned_headers = json.loads(r.data.decode())
+            assert returned_headers["Foo"] == "new"
+            assert returned_headers["Multi"] == "1, 2"
+            assert returned_headers["Baz"] == "quux"
+            assert returned_headers["Extra"] == "extra"
+
+    def test_body(self):
+        with PoolManager() as http:
+            r = http.request("POST", f"{self.base_url}/echo", body=b"test")
+            assert r.data == b"test"
+
     def test_http_with_ssl_keywords(self):
         with PoolManager(ca_certs="REQUIRED") as http:
             r = http.request("GET", f"http://{self.host}:{self.port}/")
@@ -367,6 +407,90 @@ class TestPoolManager(HTTPDummyServerTestCase):
         r = request("GET", f"{self.base_url}/")
         assert r.status == 200
         assert r.data == b"Dummy server!"
+
+    def test_top_level_request_without_keyword_args(self):
+        body = ""
+        with pytest.raises(TypeError):
+            request("GET", f"{self.base_url}/", body)
+
+    def test_top_level_request_with_body(self):
+        r = request("POST", f"{self.base_url}/echo", body=b"test")
+        assert r.status == 200
+        assert r.data == b"test"
+
+    def test_top_level_request_with_preload_content(self):
+        r = request("GET", f"{self.base_url}/echo", preload_content=False)
+        assert r.status == 200
+        assert r.connection is not None
+        r.data
+        assert r.connection is None
+
+    def test_top_level_request_with_decode_content(self):
+        r = request(
+            "GET",
+            f"{self.base_url}/encodingrequest",
+            headers={"accept-encoding": "gzip"},
+            decode_content=False,
+        )
+        assert r.status == 200
+        assert gzip.decompress(r.data) == b"hello, world!"
+
+        r = request(
+            "GET",
+            f"{self.base_url}/encodingrequest",
+            headers={"accept-encoding": "gzip"},
+            decode_content=True,
+        )
+        assert r.status == 200
+        assert r.data == b"hello, world!"
+
+    def test_top_level_request_with_redirect(self):
+        r = request(
+            "GET",
+            f"{self.base_url}/redirect",
+            fields={"target": f"{self.base_url}/"},
+            redirect=False,
+        )
+
+        assert r.status == 303
+
+        r = request(
+            "GET",
+            f"{self.base_url}/redirect",
+            fields={"target": f"{self.base_url}/"},
+            redirect=True,
+        )
+
+        assert r.status == 200
+        assert r.data == b"Dummy server!"
+
+    def test_top_level_request_with_retries(self):
+        r = request("GET", f"{self.base_url}/redirect", retries=False)
+        assert r.status == 303
+
+        r = request("GET", f"{self.base_url}/redirect", retries=3)
+        assert r.status == 200
+
+    def test_top_level_request_with_timeout(self):
+        with mock.patch("urllib3.poolmanager.RequestMethods.request") as mockRequest:
+            mockRequest.return_value = HTTPResponse(status=200)
+
+            r = request("GET", f"{self.base_url}/redirect", timeout=2.5)
+
+            assert r.status == 200
+
+            mockRequest.assert_called_with(
+                "GET",
+                f"{self.base_url}/redirect",
+                body=None,
+                fields=None,
+                headers=None,
+                preload_content=True,
+                decode_content=True,
+                redirect=True,
+                retries=None,
+                timeout=2.5,
+            )
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")

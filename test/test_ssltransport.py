@@ -246,6 +246,7 @@ class SocketProxyDummyServer(SocketDummyServerTestCase):
                 )
                 self._read_write_loop(client_sock, upstream_sock)
                 upstream_sock.close()
+                client_sock.close()
 
         self._start_server(proxy_handler)
 
@@ -274,6 +275,10 @@ class SocketProxyDummyServer(SocketDummyServerTestCase):
                 if write_socket in writable:
                     try:
                         b = read_socket.recv(chunks)
+                        if len(b) == 0:
+                            # One of the sockets has EOFed, we return to close
+                            # both.
+                            return
                         write_socket.send(b)
                     except ssl.SSLEOFError:
                         # It's possible, depending on shutdown order, that we'll
@@ -322,6 +327,7 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 request = consume_socket(ssock)
                 validate_request(request)
                 ssock.send(sample_response())
+            sock.close()
 
         cls._start_server(socket_handler)
 
@@ -361,13 +367,10 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
         with self.client_context.wrap_socket(
             sock, server_hostname="localhost"
         ) as proxy_sock:
-            with pytest.raises(Exception) as e:
+            with pytest.raises(ssl.SSLCertVerificationError):
                 SSLTransport(
                     proxy_sock, self.client_context, server_hostname="veryverywrong"
                 )
-            # ssl.CertificateError is a child of ValueError in python3.6 or
-            # before. After python3.7 it's a child of SSLError
-            assert e.type in [ssl.SSLError, ssl.CertificateError]
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     @pytest.mark.parametrize("buffering", [None, 0])
@@ -497,3 +500,44 @@ class TestSSLTransportWithMock:
             mock.ANY, mock.ANY, server_hostname=server_hostname
         )
         assert not ssl_transport.suppress_ragged_eofs
+
+    def test_various_flags_errors(self):
+        server_hostname = "example-domain.com"
+        sock = mock.Mock()
+        context = mock.create_autospec(ssl_.SSLContext)
+        ssl_transport = SSLTransport(
+            sock, context, server_hostname=server_hostname, suppress_ragged_eofs=False
+        )
+        with pytest.raises(ValueError):
+            ssl_transport.recv(flags=1)
+
+        with pytest.raises(ValueError):
+            ssl_transport.recv_into(None, flags=1)
+
+        with pytest.raises(ValueError):
+            ssl_transport.sendall(None, flags=1)
+
+        with pytest.raises(ValueError):
+            ssl_transport.send(None, flags=1)
+
+    def test_makefile_wrong_mode_error(self):
+        server_hostname = "example-domain.com"
+        sock = mock.Mock()
+        context = mock.create_autospec(ssl_.SSLContext)
+        ssl_transport = SSLTransport(
+            sock, context, server_hostname=server_hostname, suppress_ragged_eofs=False
+        )
+        with pytest.raises(ValueError):
+            ssl_transport.makefile(mode="x")
+
+    def test_wrap_ssl_read_error(self):
+        server_hostname = "example-domain.com"
+        sock = mock.Mock()
+        context = mock.create_autospec(ssl_.SSLContext)
+        ssl_transport = SSLTransport(
+            sock, context, server_hostname=server_hostname, suppress_ragged_eofs=False
+        )
+        with mock.patch.object(ssl_transport, "_ssl_io_loop") as _ssl_io_loop:
+            _ssl_io_loop.side_effect = ssl.SSLError()
+            with pytest.raises(ssl.SSLError):
+                ssl_transport._wrap_ssl_read(1)

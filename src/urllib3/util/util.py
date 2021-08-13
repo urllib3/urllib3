@@ -9,7 +9,7 @@ def to_bytes(
         return x
     elif not isinstance(x, str):
         raise TypeError(f"not expecting type {type(x).__name__}")
-    elif encoding or errors:
+    if encoding or errors:
         return x.encode(encoding or "utf-8", errors=errors or "strict")
     return x.encode()
 
@@ -21,14 +21,14 @@ def to_str(
         return x
     elif not isinstance(x, bytes):
         raise TypeError(f"not expecting type {type(x).__name__}")
-    elif encoding or errors:
+    if encoding or errors:
         return x.decode(encoding or "utf-8", errors=errors or "strict")
     return x.decode()
 
 
 def reraise(
     tp: Optional[Type[BaseException]],
-    value: Optional[BaseException],
+    value: BaseException,
     tb: Optional[TracebackType] = None,
 ) -> NoReturn:
     try:
@@ -36,5 +36,5 @@ def reraise(
             raise value.with_traceback(tb)
         raise value
     finally:
-        value = None
+        value = None  # type: ignore[assignment]
         tb = None

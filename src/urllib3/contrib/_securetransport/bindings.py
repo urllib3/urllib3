@@ -1,3 +1,5 @@
+# type: ignore
+
 """
 This module uses ctypes to bind a whole bunch of functions and constants from
 SecureTransport. The goal here is to provide the low-level API to
@@ -46,6 +48,7 @@ from ctypes import (
     c_void_p,
 )
 from ctypes.util import find_library
+from typing import Optional
 
 if platform.system() != "Darwin":
     raise ImportError("Only macOS is supported")
@@ -54,17 +57,16 @@ version = platform.mac_ver()[0]
 version_info = tuple(map(int, version.split(".")))
 if version_info < (10, 8):
     raise OSError(
-        "Only OS X 10.8 and newer are supported, not {}.{}".format(
-            version_info[0], version_info[1]
-        )
+        f"Only OS X 10.8 and newer are supported, not {version_info[0]}.{version_info[1]}"
     )
 
 
-def load_cdll(name, macos10_16_path):
+def load_cdll(name: str, macos10_16_path: str) -> CDLL:
     """Loads a CDLL by name, falling back to known path on 10.16+"""
     try:
         # Big Sur is technically 11 but we use 10.16 due to the Big Sur
         # beta being labeled as 10.16.
+        path: Optional[str]
         if version_info >= (10, 16):
             path = macos10_16_path
         else:
@@ -425,60 +427,3 @@ class CFConst:
     """
 
     kCFStringEncodingUTF8 = CFStringEncoding(0x08000100)
-
-
-class SecurityConst:
-    """
-    A class object that acts as essentially a namespace for Security constants.
-    """
-
-    kSSLSessionOptionBreakOnServerAuth = 0
-
-    kSSLProtocol2 = 1
-    kSSLProtocol3 = 2
-    kTLSProtocol1 = 4
-    kTLSProtocol11 = 7
-    kTLSProtocol12 = 8
-    # SecureTransport does not support TLS 1.3 even if there's a constant for it
-    kTLSProtocol13 = 10
-    kTLSProtocolMaxSupported = 999
-
-    kSSLClientSide = 1
-    kSSLStreamType = 0
-
-    kSecFormatPEMSequence = 10
-
-    kSecTrustResultInvalid = 0
-    kSecTrustResultProceed = 1
-    # This gap is present on purpose: this was kSecTrustResultConfirm, which
-    # is deprecated.
-    kSecTrustResultDeny = 3
-    kSecTrustResultUnspecified = 4
-    kSecTrustResultRecoverableTrustFailure = 5
-    kSecTrustResultFatalTrustFailure = 6
-    kSecTrustResultOtherError = 7
-
-    errSSLProtocol = -9800
-    errSSLWouldBlock = -9803
-    errSSLClosedGraceful = -9805
-    errSSLClosedNoNotify = -9816
-    errSSLClosedAbort = -9806
-
-    errSSLXCertChainInvalid = -9807
-    errSSLCrypto = -9809
-    errSSLInternal = -9810
-    errSSLCertExpired = -9814
-    errSSLCertNotYetValid = -9815
-    errSSLUnknownRootCert = -9812
-    errSSLNoRootCert = -9813
-    errSSLHostNameMismatch = -9843
-    errSSLPeerHandshakeFail = -9824
-    errSSLPeerUserCancelled = -9839
-    errSSLWeakPeerEphemeralDHKey = -9850
-    errSSLServerAuthCompleted = -9841
-    errSSLRecordOverflow = -9847
-
-    errSecVerifyFailed = -67808
-    errSecNoTrustSettings = -25263
-    errSecItemNotFound = -25300
-    errSecInvalidTrustSettings = -25262

@@ -15,8 +15,9 @@ If you wish to add a new feature or fix a bug:
    as expected.
 #. Format your changes with black using command `$ nox -rs format` and lint your
    changes using command `nox -rs lint`.
+#. Add a changelog entry using `towncrier
+   <https://towncrier.readthedocs.io/en/actual-freaking-docs/quickstart.html#creating-news-fragments>`__.
 #. Send a pull request and bug the maintainer until it gets merged and published.
-   :) Make sure to add yourself to ``CONTRIBUTORS.txt``.
 
 
 Setting up your development environment
@@ -55,17 +56,17 @@ versions.::
 
 Note that code coverage less than 100% is regarded as a failing run. Some
 platform-specific tests are skipped unless run in that platform.  To make sure
-the code works in all of urllib3's supported platforms, you can run our ``tox``
+the code works in all of urllib3's supported platforms, you can run our ``nox``
 suite::
 
   $ nox --reuse-existing-virtualenvs --sessions test
   [ Nox will create virtualenv if needed, install the specified dependencies, and run the commands in order.]
   .......
   .......
-  nox > Session test-3.6 was successful.
   nox > Session test-3.7 was successful.
   nox > Session test-3.8 was successful.
   nox > Session test-3.9 was successful.
+  nox > Session test-3.10 was successful.
   nox > Session test-pypy was successful.
 
 Our test suite `runs continuously on Travis CI
@@ -93,25 +94,52 @@ further parameterize pytest for local testing.
 For all valid arguments, check `the pytest documentation
 <https://docs.pytest.org/en/stable/usage.html#stopping-after-the-first-or-n-failures>`_.
 
+Contributing to documentation
+-----------------------------
+
+You can build the docs locally using ``nox``:
+
+.. code-block:: bash
+
+  $ nox -rs docs
+
+While writing documentation you should follow these guidelines:
+
+- Use the top-level ``urllib3.request()`` function for smaller code examples. For more involved examples use PoolManager, etc.
+- Use double quotes for all strings. (Output, Declaration etc.)
+- Use keyword arguments everywhere except for method and url. (ie ``http.request("GET", "https://example.com", headers={...})`` )
+- Use HTTPS in URLs everywhere unless HTTP is needed.
+- Rules for code examples and naming variables:
+
+  - ``PoolManager`` instances should be named ``http``. (ie ``http = urllib3.PoolManager(...)``)
+  - ``ProxyManager`` instances should be named ``proxy``.
+  - ``ConnectionPool`` instances should be named ``pool``.
+  - ``Connection`` instances should be named ``conn``.
+  - ``HTTPResponse`` instances should be named ``resp``.
+  -  Only use ``example.com`` or ``httpbin.org`` for example URLs
+
+- Comments within snippets should be useful, if what's being done is apparent
+  (such as parsing JSON, making a request) then it can be skipped for that section.
+- Comments should always go above a code section rather than below with the exception of print
+  statements where the comment containing the result goes below.
+- Imports should be their own section separated from the rest of the example with a line of whitespace.
+- Imports should minimized if possible. Use import urllib3 instead of from urllib3 import X. 
+- Sort imports similarly to isort, standard library first and third-party (like urllib3) come after.
+- No whitespace is required between the sections as normally would be in case of isort.
+- Add print statements along with a comment below them showing the output, potentially compressed.
+- This helps users using the copy-paste button immediately see the results from a script.
+
 Releases
 --------
 
-A release candidate can be created by any contributor by creating a branch
-named ``release-x.x`` where ``x.x`` is the version of the proposed release.
+A release candidate can be created by any contributor.
 
-- Update ``CHANGES.rst`` and ``urllib3/__init__.py`` with the proper version number
-  and commit the changes to ``release-x.x``.
-- Open a pull request to merge the ``release-x.x`` branch into the ``master`` branch.
-- Integration tests are run against the release candidate on Travis. From here on all
-  the steps below will be handled by a maintainer so unless you receive review comments
-  you are done here.
-- Once the pull request is squash merged into master the merging maintainer
-  will tag the merge commit with the version number:
-
-  - ``git tag -a 1.24.1 [commit sha]``
-  - ``git push origin master --tags``
-
-- After the commit is tagged Travis will build the tagged commit and upload the sdist and wheel
-  to PyPI and create a draft release on GitHub for the tag. The merging maintainer will
-  ensure that the PyPI sdist and wheel are properly uploaded.
-- The merging maintainer will mark the draft release on GitHub as an approved release.
+- Announce intent to release on Discord, see if anyone wants to include last minute
+  changes.
+- Run ``towncrier build`` to update ``CHANGES.rst`` with the release notes, adjust as
+  necessary.
+- Update ``urllib3/__init__.py`` with the proper version number
+- Commit the changes to a ``release-X.Y.Z`` branch.
+- Create a pull request and append ``&expand=1&template=release.md`` to the URL before
+  submitting in order to include our release checklist in the pull request description.
+- Follow the checklist!

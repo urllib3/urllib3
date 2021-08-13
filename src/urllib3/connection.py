@@ -3,11 +3,10 @@ import logging
 import os
 import re
 import socket
-import sys
 import warnings
 from copy import copy
 from http.client import HTTPConnection as _HTTPConnection
-from http.client import HTTPException  # noqa: F401
+from http.client import HTTPException as HTTPException  # noqa: F401
 from socket import timeout as SocketTimeout
 from typing import (
     IO,
@@ -27,16 +26,16 @@ if TYPE_CHECKING:
     from typing_extensions import Literal
 
 from .util.proxy import create_proxy_ssl_context
-from .util.util import to_str
+from .util.util import to_bytes, to_str
 
 try:  # Compiled with SSL?
     import ssl
 
     BaseSSLError = ssl.SSLError
 except (ImportError, AttributeError):  # Platform-specific: No SSL.
-    ssl = None  # type: ignore
+    ssl = None  # type: ignore[assignment]
 
-    class BaseSSLError(BaseException):  # type: ignore
+    class BaseSSLError(BaseException):  # type: ignore[no-redef]
         pass
 
 
@@ -44,12 +43,13 @@ from ._version import __version__
 from .exceptions import (
     ConnectTimeoutError,
     HTTPSProxyError,
+    NameResolutionError,
     NewConnectionError,
     SystemTimeWarning,
 )
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
 from .util.ssl_ import (
-    PeerCertRetType,
+    _TYPE_PEER_CERT_RET,
     assert_fingerprint,
     create_urllib3_context,
     resolve_cert_reqs,
@@ -74,11 +74,11 @@ RECENT_DATE = datetime.date(2020, 7, 1)
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
-HTTPBody = Union[bytes, IO[Any], Iterable[bytes], str]
+_TYPE_BODY = Union[bytes, IO[Any], Iterable[bytes], str]
 
 
 class ProxyConfig(NamedTuple):
-    ssl_context: "ssl.SSLContext"
+    ssl_context: Optional["ssl.SSLContext"]
     use_forwarding_for_https: bool
 
 
@@ -111,7 +111,7 @@ class HTTPConnection(_HTTPConnection):
 
     #: Disable Nagle's algorithm by default.
     #: ``[(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]``
-    default_socket_options: connection.SocketOptions = [
+    default_socket_options: connection._TYPE_SOCKET_OPTIONS = [
         (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     ]
 
@@ -119,7 +119,7 @@ class HTTPConnection(_HTTPConnection):
     is_verified: bool = False
 
     source_address: Optional[Tuple[str, int]]
-    socket_options: Optional[connection.SocketOptions]
+    socket_options: Optional[connection._TYPE_SOCKET_OPTIONS]
     _tunnel_host: Optional[str]
     _tunnel: Callable[["HTTPConnection"], None]
 
@@ -130,7 +130,9 @@ class HTTPConnection(_HTTPConnection):
         timeout: Optional[float] = connection.SOCKET_GLOBAL_DEFAULT_TIMEOUT,
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
-        socket_options: Optional[connection.SocketOptions] = default_socket_options,
+        socket_options: Optional[
+            connection._TYPE_SOCKET_OPTIONS
+        ] = default_socket_options,
         proxy: Optional[str] = None,
         proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
@@ -143,26 +145,21 @@ class HTTPConnection(_HTTPConnection):
         self.proxy = proxy
         self.proxy_config = proxy_config
 
-        if sys.version_info >= (3, 7):
-            super().__init__(
-                host=host,
-                port=port,
-                timeout=timeout,
-                source_address=source_address,
-                blocksize=blocksize,
-            )
-        else:
-            super().__init__(
-                host=host, port=port, timeout=timeout, source_address=source_address
-            )
+        super().__init__(
+            host=host,
+            port=port,
+            timeout=timeout,
+            source_address=source_address,
+            blocksize=blocksize,
+        )
 
     # https://github.com/python/mypy/issues/4125
     # Mypy treats this as LSP violation, which is considered a bug.
     # If `host` is made a property it violates LSP, because a writeable attribute is overriden with a read-only one.
     # However, there is also a `host` setter so LSP is not violated.
     # Potentailly, a `@host.deleter` might be needed depending on how this issue will be fixed.
-    @property  # type: ignore
-    def host(self) -> str:  # type: ignore
+    @property  # type: ignore[override]
+    def host(self) -> str:  # type: ignore[override]
         """
         Getter method to remove any trailing dots that indicate the hostname is an FQDN.
 
@@ -203,7 +200,8 @@ class HTTPConnection(_HTTPConnection):
                 source_address=self.source_address,
                 socket_options=self.socket_options,
             )
-
+        except socket.gaierror as e:
+            raise NameResolutionError(self.host, self, e)
         except SocketTimeout:
             raise ConnectTimeoutError(
                 self,
@@ -211,7 +209,7 @@ class HTTPConnection(_HTTPConnection):
             )
 
         except OSError as e:
-            raise NewConnectionError(self, f"Failed to establish a new connection: {e}")  # type: ignore
+            raise NewConnectionError(self, f"Failed to establish a new connection: {e}")
 
         return conn
 
@@ -255,19 +253,20 @@ class HTTPConnection(_HTTPConnection):
         if not any(isinstance(v, str) and v == SKIP_HEADER for v in values):
             super().putheader(header, *values)
         elif to_str(header.lower()) not in SKIPPABLE_HEADERS:
+            skippable_headers = "', '".join(
+                [str.title(header) for header in sorted(SKIPPABLE_HEADERS)]
+            )
             raise ValueError(
-                "urllib3.util.SKIP_HEADER only supports '{}'".format(
-                    "', '".join(map(str.title, sorted(SKIPPABLE_HEADERS)))
-                )
+                f"urllib3.util.SKIP_HEADER only supports '{skippable_headers}'"
             )
 
     # `request` method's signature intentionally violates LSP.
     # urllib3's API is different from `http.client.HTTPConnection` and the subclassing is only incidental.
-    def request(  # type: ignore
+    def request(  # type: ignore[override]
         self,
         method: str,
         url: str,
-        body: Optional[HTTPBody] = None,
+        body: Optional[_TYPE_BODY] = None,
         headers: Optional[Mapping[str, str]] = None,
     ) -> None:
         if headers is None:
@@ -293,7 +292,7 @@ class HTTPConnection(_HTTPConnection):
         self,
         method: str,
         url: str,
-        body: Union[None, HTTPBody, Tuple[Union[bytes, str]]] = None,
+        body: Optional[_TYPE_BODY] = None,
         headers: Optional[Mapping[str, str]] = None,
     ) -> None:
         """
@@ -312,13 +311,13 @@ class HTTPConnection(_HTTPConnection):
             self.putheader("User-Agent", _get_default_user_agent())
         for header, value in headers.items():
             self.putheader(header, value)
-        if "transfer-encoding" not in headers:
+        if "transfer-encoding" not in header_keys:
             self.putheader("Transfer-Encoding", "chunked")
         self.endheaders()
 
         if body is not None:
             if isinstance(body, (str, bytes)):
-                body = (body,)
+                body = (to_bytes(body),)
             for chunk in body:
                 if not chunk:
                     continue
@@ -343,11 +342,11 @@ class HTTPSConnection(HTTPConnection):
 
     default_port = port_by_scheme["https"]
 
-    cert_reqs: Optional[int] = None
+    cert_reqs: Optional[Union[int, str]] = None
     ca_certs: Optional[str] = None
     ca_cert_dir: Optional[str] = None
     ca_cert_data: Union[None, str, bytes] = None
-    ssl_version: Optional[int] = None
+    ssl_version: Optional[Union[int, str]] = None
     assert_fingerprint: Optional[str] = None
     tls_in_tls_required: bool = False
 
@@ -363,7 +362,9 @@ class HTTPSConnection(HTTPConnection):
         server_hostname: Optional[str] = None,
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
-        socket_options: Optional[connection.SocketOptions] = None,
+        socket_options: Optional[
+            connection._TYPE_SOCKET_OPTIONS
+        ] = HTTPConnection.default_socket_options,
         proxy: Optional[str] = None,
         proxy_config: Optional[ProxyConfig] = None,
     ) -> None:
@@ -389,7 +390,7 @@ class HTTPSConnection(HTTPConnection):
         self,
         key_file: Optional[str] = None,
         cert_file: Optional[str] = None,
-        cert_reqs: Optional[int] = None,
+        cert_reqs: Optional[Union[int, str]] = None,
         key_password: Optional[str] = None,
         ca_certs: Optional[str] = None,
         assert_hostname: Union[None, str, "Literal[False]"] = None,
@@ -484,7 +485,7 @@ class HTTPSConnection(HTTPConnection):
         context.verify_mode = resolve_cert_reqs(self.cert_reqs)
 
         # Try to load OS default certs if none are given.
-        # Works well on Windows (requires Python3.4+)
+        # Works well on Windows.
         if (
             not self.ca_certs
             and not self.ca_cert_dir
@@ -588,7 +589,7 @@ class HTTPSConnection(HTTPConnection):
             )
 
 
-def _match_hostname(cert: PeerCertRetType, asserted_hostname: str) -> None:
+def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
     try:
         match_hostname(cert, asserted_hostname)
     except CertificateError as e:
@@ -599,7 +600,7 @@ def _match_hostname(cert: PeerCertRetType, asserted_hostname: str) -> None:
         )
         # Add cert to exception and reraise so client code can inspect
         # the cert when catching the exception, if they want to
-        e._peer_cert = cert  # type: ignore
+        e._peer_cert = cert  # type: ignore[attr-defined]
         raise
 
 
@@ -614,7 +615,7 @@ class DummyConnection:
 
 
 if not ssl:
-    HTTPSConnection = DummyConnection  # type: ignore # noqa: F811
+    HTTPSConnection = DummyConnection  # type: ignore[misc, assignment] # noqa: F811
 
 
 VerifiedHTTPSConnection = HTTPSConnection

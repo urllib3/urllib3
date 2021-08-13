@@ -1,13 +1,19 @@
 import datetime
+import socket
 from unittest import mock
 
 import pytest
 
-from urllib3.connection import RECENT_DATE, CertificateError, _match_hostname
+from urllib3.connection import (
+    RECENT_DATE,
+    CertificateError,
+    HTTPSConnection,
+    _match_hostname,
+)
 from urllib3.util.ssl_match_hostname import (
     CertificateError as ImplementationCertificateError,
 )
-from urllib3.util.ssl_match_hostname import match_hostname
+from urllib3.util.ssl_match_hostname import _dnsname_match, match_hostname
 
 
 class TestConnection:
@@ -77,6 +83,16 @@ class TestConnection:
         asserted_hostname = "foobar"
         _match_hostname(cert, asserted_hostname)
 
+    def test_match_hostname_more_than_one_dnsname_error(self):
+        cert = {"subjectAltName": [("DNS", "foo*"), ("DNS", "fo*")]}
+        asserted_hostname = "bar"
+        with pytest.raises(CertificateError, match="doesn't match either of"):
+            _match_hostname(cert, asserted_hostname)
+
+    def test_dnsname_match_include_more_than_one_wildcard_error(self):
+        with pytest.raises(CertificateError, match="too many wildcards in certificate"):
+            _dnsname_match("foo**", "foobar")
+
     def test_match_hostname_ignore_common_name(self):
         cert = {"subject": [("commonName", "foo")]}
         asserted_hostname = "foo"
@@ -108,3 +124,7 @@ class TestConnection:
         # according to the rules defined in that file.
         two_years = datetime.timedelta(days=365 * 2)
         assert RECENT_DATE > (datetime.datetime.today() - two_years).date()
+
+    def test_HTTPSConnection_default_socket_options(self):
+        conn = HTTPSConnection("not.a.real.host", port=443)
+        assert conn.socket_options == [(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)]

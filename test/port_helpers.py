@@ -9,7 +9,10 @@ HOST = "127.0.0.1"
 HOSTv6 = "::1"
 
 
-def find_unused_port(family=socket.AF_INET, socktype=socket.SOCK_STREAM):
+def find_unused_port(
+    family: socket.AddressFamily = socket.AF_INET,
+    socktype: socket.SocketKind = socket.SOCK_STREAM,
+) -> int:
     """Returns an unused port that should be suitable for binding.  This is
     achieved by creating a temporary socket with the same family and type as
     the 'sock' parameter (default is AF_INET, SOCK_STREAM), and binding it to
@@ -70,8 +73,8 @@ def find_unused_port(family=socket.AF_INET, socktype=socket.SOCK_STREAM):
     return port
 
 
-def bind_port(sock, host=HOST):
-    """Bind the socket to a free port and return the port number.  Relies on
+def bind_port(sock: socket.socket, host: str = HOST) -> int:
+    """Bind the socket to a free port and return the port number. Relies on
     ephemeral ports in order to ensure we are using an unbound port.  This is
     important as many tests may be running simultaneously, especially in a
     buildbot environment.  This method raises an exception if the sock.family
@@ -109,4 +112,5 @@ def bind_port(sock, host=HOST):
 
     sock.bind((host, 0))
     port = sock.getsockname()[1]
+    assert isinstance(port, int)
     return port

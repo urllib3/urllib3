@@ -11,10 +11,13 @@ The :class:`~poolmanager.PoolManager` class automatically handles creating
 :class:`~connectionpool.ConnectionPool` instances for each host as needed. By
 default, it will keep a maximum of 10 :class:`~connectionpool.ConnectionPool`
 instances. If you're making requests to many different hosts it might improve
-performance to increase this number::
+performance to increase this number.
 
-    >>> import urllib3
-    >>> http = urllib3.PoolManager(num_pools=50)
+.. code-block:: python
+
+    import urllib3
+
+    http = urllib3.PoolManager(num_pools=50)
 
 However, keep in mind that this does increase memory and socket consumption.
 
@@ -23,12 +26,15 @@ of individual :class:`~connection.HTTPConnection` instances. These connections
 are used during an individual request and returned to the pool when the request
 is complete. By default only one connection will be saved for re-use. If you
 are making many requests to the same host simultaneously it might improve
-performance to increase this number::
+performance to increase this number.
 
-    >>> import urllib3
-    >>> http = urllib3.PoolManager(maxsize=10)
+.. code-block:: python
+
+    import urllib3
+
+    http = urllib3.PoolManager(maxsize=10)
     # Alternatively
-    >>> http = urllib3.HTTPConnectionPool('google.com', maxsize=10)
+    pool = urllib3.HTTPConnectionPool("google.com", maxsize=10)
 
 The behavior of the pooling for :class:`~connectionpool.ConnectionPool` is
 different from :class:`~poolmanager.PoolManager`. By default, if a new
@@ -37,11 +43,14 @@ connection will be created. However, this connection will not be saved if more
 than ``maxsize`` connections exist. This means that ``maxsize`` does not
 determine the maximum number of connections that can be open to a particular
 host, just the maximum number of connections to keep in the pool. However, if you specify ``block=True`` then there can be at most ``maxsize`` connections
-open to a particular host::
+open to a particular host.
 
-    >>> http = urllib3.PoolManager(maxsize=10, block=True)
+.. code-block:: python
+
+    http = urllib3.PoolManager(maxsize=10, block=True)
+
     # Alternatively
-    >>> http = urllib3.HTTPConnectionPool('google.com', maxsize=10, block=True)
+    pool = urllib3.HTTPConnectionPool("google.com", maxsize=10, block=True)
 
 Any new requests will block until a connection is available from the pool.
 This is a great way to prevent flooding a host with too many connections in
@@ -54,20 +63,23 @@ Streaming and I/O
 -----------------
 
 When dealing with large responses it's often better to stream the response
-content::
+content.
 
-    >>> import urllib3
-    >>> http = urllib3.PoolManager()
-    >>> r = http.request(
-    ...     'GET',
-    ...     'http://httpbin.org/bytes/1024',
-    ...     preload_content=False)
-    >>> for chunk in r.stream(32):
-    ...     print(chunk)
-    b'...'
-    b'...'
-    ...
-    >>> r.release_conn()
+.. code-block:: python
+
+    import urllib3
+
+    resp = urllib3.request(
+        "GET",
+        "https://httpbin.org/bytes/1024",
+        preload_content=False
+    )
+
+    for chunk in resp.stream(32):
+        print(chunk)
+        # b"\x9e\xa97'\x8e\x1eT ....
+
+    resp.release_conn()
 
 Setting ``preload_content`` to ``False`` means that urllib3 will stream the
 response content. :meth:`~response.HTTPResponse.stream` lets you iterate over
@@ -78,35 +90,62 @@ chunks of the response content.
     back to the connection pool so that it can be re-used.
 
 However, you can also treat the :class:`~response.HTTPResponse` instance as
-a file-like object. This allows you to do buffering::
+a file-like object. This allows you to do buffering:
 
-    >>> r = http.request(
-    ...     'GET',
-    ...     'http://httpbin.org/bytes/1024',
-    ...     preload_content=False)
-    >>> r.read(4)
-    b'\x88\x1f\x8b\xe5'
+.. code-block:: python
+
+    import urllib3
+
+    resp = urllib3.request(
+        "GET",
+        "https://httpbin.org/bytes/1024",
+        preload_content=False
+    )
+
+    print(resp.read(4))
+    # b"\x88\x1f\x8b\xe5"
 
 Calls to :meth:`~response.HTTPResponse.read()` will block until more response
 data is available.
 
-    >>> import io
-    >>> reader = io.BufferedReader(r, 8)
-    >>> reader.read(4)
-    >>> r.release_conn()
+.. code-block:: python
+
+    import io
+    import urllib3
+
+    resp = urllib3.request(
+        "GET",
+        "https://httpbin.org/bytes/1024",
+        preload_content=False
+    )
+
+    reader = io.BufferedReader(resp, 8)
+    print(reader.read(4))
+    # b"\xbf\x9c\xd6"
+
+    resp.release_conn()
 
 You can use this file-like object to do things like decode the content using
-:mod:`codecs`::
+:mod:`codecs`:
 
-    >>> import codecs
-    >>> reader = codecs.getreader('utf-8')
-    >>> r = http.request(
-    ...     'GET',
-    ...     'http://httpbin.org/ip',
-    ...     preload_content=False)
-    >>> json.load(reader(r))
-    {'origin': '127.0.0.1'}
-    >>> r.release_conn()
+.. code-block:: python
+
+    import codecs
+    import json
+    import urllib3
+
+    reader = codecs.getreader("utf-8")
+
+    resp = urllib3.request(
+        "GET",
+        "https://httpbin.org/ip",
+        preload_content=False
+    )
+
+    print(json.load(reader(resp)))
+    # {"origin": "127.0.0.1"}
+
+    resp.release_conn()
 
 .. _proxies:
 
@@ -114,11 +153,14 @@ Proxies
 -------
 
 You can use :class:`~poolmanager.ProxyManager` to tunnel requests through an
-HTTP proxy::
+HTTP proxy:
 
-    >>> import urllib3
-    >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
-    >>> proxy.request('GET', 'http://google.com/')
+.. code-block:: python
+
+    import urllib3
+
+    proxy = urllib3.ProxyManager("https://localhost:3128/")
+    proxy.request("GET", "https://google.com/")
 
 The usage of :class:`~poolmanager.ProxyManager` is the same as
 :class:`~poolmanager.PoolManager`.
@@ -175,16 +217,21 @@ SOCKS Proxies
 For SOCKS, you can use :class:`~contrib.socks.SOCKSProxyManager` to connect to
 SOCKS4 or SOCKS5 proxies. In order to use SOCKS proxies you will need to
 install `PySocks <https://pypi.org/project/PySocks/>`_ or install urllib3 with
-the ``socks`` extra::
+the ``socks`` extra:
+
+.. code-block:: bash
 
      python -m pip install urllib3[socks]
 
 Once PySocks is installed, you can use
-:class:`~contrib.socks.SOCKSProxyManager`::
+:class:`~contrib.socks.SOCKSProxyManager`:
 
-    >>> from urllib3.contrib.socks import SOCKSProxyManager
-    >>> proxy = SOCKSProxyManager('socks5h://localhost:8889/')
-    >>> proxy.request('GET', 'http://google.com/')
+.. code-block:: python
+
+    from urllib3.contrib.socks import SOCKSProxyManager
+
+    proxy = SOCKSProxyManager("socks5h://localhost:8889/")
+    proxy.request("GET", "https://google.com/")
 
 .. note::
       It is recommended to use ``socks5h://`` or ``socks4a://`` schemes in
@@ -201,12 +248,17 @@ Instead of using `certifi <https://certifi.io/>`_ you can provide your
 own certificate authority bundle. This is useful for cases where you've
 generated your own certificates or when you're using a private certificate
 authority. Just provide the full path to the certificate bundle when creating a
-:class:`~poolmanager.PoolManager`::
+:class:`~poolmanager.PoolManager`:
 
-    >>> import urllib3
-    >>> http = urllib3.PoolManager(
-    ...     cert_reqs='CERT_REQUIRED',
-    ...     ca_certs='/path/to/your/certificate_bundle')
+.. code-block:: python
+
+    import urllib3
+
+    http = urllib3.PoolManager(
+        cert_reqs="CERT_REQUIRED",
+        ca_certs="/path/to/your/certificate_bundle"
+    )
+    resp = http.request("GET", "https://example.com")
 
 When you specify your own certificate bundle only requests that can be
 verified with that bundle will succeed. It's recommended to use a separate
@@ -228,19 +280,22 @@ Normally, urllib3 takes care of setting and checking these values for you when
 you connect to a host by name. However, it's sometimes useful to set a
 connection's expected Host header and certificate hostname (subject),
 especially when you are connecting without using name resolution. For example,
-you could connect to a server by IP using HTTPS like so::
+you could connect to a server by IP using HTTPS like so:
 
-    >>> import urllib3
-    >>> pool = urllib3.HTTPSConnectionPool(
-    ...     "104.154.89.105",
-    ...     server_hostname="badssl.com"
-    ... )
-    >>> pool.urlopen(
-    ...     "GET",
-    ...     "/",
-    ...     headers={"Host": "badssl.com"},
-    ...     assert_same_host=False
-    ... )
+.. code-block:: python
+
+    import urllib3
+
+    pool = urllib3.HTTPSConnectionPool(
+        "104.154.89.105",
+        server_hostname="badssl.com"
+    )
+    pool.request(
+        "GET",
+        "/",
+        headers={"Host": "badssl.com"},
+        assert_same_host=False
+    )
 
 
 Note that when you use a connection in this way, you must specify
@@ -257,14 +312,17 @@ Verifying TLS against a different host
 --------------------------------------
 
 If the server you're connecting to presents a different certificate than the
-hostname or the SNI hostname, you can use ``assert_hostname``::
+hostname or the SNI hostname, you can use ``assert_hostname``:
 
-    >>> import urllib3
-    >>> pool = urllib3.HTTPSConnectionPool(
-    ...     "wrong.host.badssl.com",
-    ...     assert_hostname="badssl.com",
-    ... )
-    >>> pool.urlopen("GET", "/")
+.. code-block:: python
+
+    import urllib3
+
+    pool = urllib3.HTTPSConnectionPool(
+        "wrong.host.badssl.com",
+        assert_hostname="badssl.com",
+    )
+    pool.request("GET", "/")
 
 
 .. _ssl_client:
@@ -275,21 +333,27 @@ Client Certificates
 You can also specify a client certificate. This is useful when both the server
 and the client need to verify each other's identity. Typically these
 certificates are issued from the same authority. To use a client certificate,
-provide the full path when creating a :class:`~poolmanager.PoolManager`::
+provide the full path when creating a :class:`~poolmanager.PoolManager`:
 
-    >>> http = urllib3.PoolManager(
-    ...     cert_file='/path/to/your/client_cert.pem',
-    ...     cert_reqs='CERT_REQUIRED',
-    ...     ca_certs='/path/to/your/certificate_bundle')
+.. code-block:: python
+
+    http = urllib3.PoolManager(
+        cert_file="/path/to/your/client_cert.pem",
+        cert_reqs="CERT_REQUIRED",
+        ca_certs="/path/to/your/certificate_bundle"
+    )
 
 If you have an encrypted client certificate private key you can use
-the ``key_password`` parameter to specify a password to decrypt the key. ::
+the ``key_password`` parameter to specify a password to decrypt the key.
 
-    >>> http = urllib3.PoolManager(
-    ...     cert_file='/path/to/your/client_cert.pem',
-    ...     cert_reqs='CERT_REQUIRED',
-    ...     key_file='/path/to/your/client.key',
-    ...     key_password='keyfile_password')
+.. code-block:: python
+
+    http = urllib3.PoolManager(
+        cert_file="/path/to/your/client_cert.pem",
+        cert_reqs="CERT_REQUIRED",
+        key_file="/path/to/your/client.key",
+        key_password="keyfile_password"
+    )
 
 If your key isn't encrypted the ``key_password`` parameter isn't required.
 
@@ -329,16 +393,17 @@ be resolved in different ways.
 Making unverified HTTPS requests is **strongly** discouraged, however, if you
 understand the risks and wish to disable these warnings, you can use :func:`~urllib3.disable_warnings`:
 
-.. code-block:: pycon
+.. code-block:: python
 
-    >>> import urllib3
-    >>> urllib3.disable_warnings()
+    import urllib3
+    
+    urllib3.disable_warnings()
 
 Alternatively you can capture the warnings with the standard :mod:`logging` module:
 
-.. code-block:: pycon
+.. code-block:: python
 
-    >>> logging.captureWarnings(True)
+    logging.captureWarnings(True)
 
 Finally, you can suppress the warnings at the interpreter level by setting the
 ``PYTHONWARNINGS`` environment variable or by using the
@@ -359,11 +424,15 @@ You may also request the package be installed via the ``urllib3[brotli]`` extra:
 
 Here's an example using brotli encoding via the ``Accept-Encoding`` header:
 
-.. code-block:: pycon
+.. code-block:: python
 
-    >>> from urllib3 import PoolManager
-    >>> http = PoolManager()
-    >>> http.request('GET', 'https://www.google.com/', headers={'Accept-Encoding': 'br'})
+    import urllib3
+
+    urllib3.request(
+        "GET",
+        "https://www.google.com/",
+        headers={"Accept-Encoding": "br"}
+    )
 
 Decrypting Captured TLS Sessions with Wireshark
 -----------------------------------------------

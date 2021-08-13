@@ -1,3 +1,4 @@
+import base64
 import contextlib
 import socket
 import ssl
@@ -51,3 +52,15 @@ def test_no_crash_with_empty_trust_bundle():
         ws = WrappedSocket(s)
         with pytest.raises(ssl.SSLError):
             ws._custom_validate(True, b"")
+
+
+def test_no_crash_with_invalid_trust_bundle():
+    invalid_cert = base64.b64encode(b"invalid-cert")
+    cert_bundle = (
+        b"-----BEGIN CERTIFICATE-----\n" + invalid_cert + b"\n-----END CERTIFICATE-----"
+    )
+
+    with contextlib.closing(socket.socket()) as s:
+        ws = WrappedSocket(s)
+        with pytest.raises(ssl.SSLError):
+            ws._custom_validate(True, cert_bundle)

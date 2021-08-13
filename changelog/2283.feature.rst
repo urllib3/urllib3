@@ -1,0 +1,2 @@
+Make all parameters after ``method`` and ``url`` for
+`urllib3.request()` keyword only.

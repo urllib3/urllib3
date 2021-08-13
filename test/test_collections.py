@@ -22,6 +22,11 @@ class TestLRUContainer:
         assert 0 not in d
         assert (i + 1) in d
 
+    def test_maxsize_0(self):
+        d = Container(0)
+        d[1] = 1
+        assert len(d) == 0
+
     def test_expire(self):
         d = Container(5)
 

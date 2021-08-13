@@ -1,11 +1,15 @@
+import socket
+import warnings
 from http.client import IncompleteRead as httplib_IncompleteRead
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
 if TYPE_CHECKING:
     from email.errors import MessageDefect
 
+    from urllib3.connection import HTTPConnection
     from urllib3.connectionpool import ConnectionPool
     from urllib3.response import HTTPResponse
+    from urllib3.util.retry import Retry
 
 # Base Exceptions
 
@@ -22,7 +26,7 @@ class HTTPWarning(Warning):
     pass
 
 
-ReduceResult = Tuple[Callable[..., object], Tuple[object, ...]]
+_TYPE_REDUCE_RESULT = Tuple[Callable[..., object], Tuple[object, ...]]
 
 
 class PoolError(HTTPError):
@@ -34,7 +38,7 @@ class PoolError(HTTPError):
         self.pool = pool
         super().__init__(f"{pool}: {message}")
 
-    def __reduce__(self) -> ReduceResult:
+    def __reduce__(self) -> _TYPE_REDUCE_RESULT:
         # For pickling purposes.
         return self.__class__, (None, None)
 
@@ -48,7 +52,7 @@ class RequestError(PoolError):
         self.url = url
         super().__init__(pool, message)
 
-    def __reduce__(self) -> ReduceResult:
+    def __reduce__(self) -> _TYPE_REDUCE_RESULT:
         # For pickling purposes.
         return self.__class__, (None, self.url, None)
 
@@ -119,9 +123,11 @@ class MaxRetryError(RequestError):
 class HostChangedError(RequestError):
     """Raised when an existing pool gets a request for a foreign host."""
 
-    retries: int
+    retries: Union["Retry", int]
 
-    def __init__(self, pool: "ConnectionPool", url: str, retries: int = 3) -> None:
+    def __init__(
+        self, pool: "ConnectionPool", url: str, retries: Union["Retry", int] = 3
+    ) -> None:
         message = f"Tried to open a foreign host with url: {url}"
         super().__init__(pool, url, message)
         self.retries = retries
@@ -157,14 +163,43 @@ class ConnectTimeoutError(TimeoutError):
     pass
 
 
-class NewConnectionError(ConnectTimeoutError, PoolError):
+class NewConnectionError(ConnectTimeoutError, HTTPError):
     """Raised when we fail to establish a new connection. Usually ECONNREFUSED."""
 
-    pass
+    conn: "HTTPConnection"
+
+    def __init__(self, conn: "HTTPConnection", message: str) -> None:
+        self.conn = conn
+        super().__init__(f"{conn}: {message}")
+
+    @property
+    def pool(self) -> "HTTPConnection":
+        warnings.warn(
+            "The 'pool' property is deprecated and will be removed "
+            "in a later urllib3 v2.x release. use 'conn' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        return self.conn
+
+
+class NameResolutionError(NewConnectionError):
+    """Raised when host name resolution fails."""
+
+    def __init__(self, host: str, conn: "HTTPConnection", reason: socket.gaierror):
+        message = f"Failed to resolve '{host}' ({reason})"
+        super().__init__(conn, message)
 
 
 class EmptyPoolError(PoolError):
     """Raised when a pool runs out of connections and no more are allowed."""
+
+    pass
+
+
+class FullPoolError(PoolError):
+    """Raised when we try to add a connection to a full pool in blocking mode."""
 
     pass
 
@@ -278,7 +313,8 @@ class IncompleteRead(HTTPError, httplib_IncompleteRead):
     expected: int
 
     def __init__(self, partial: int, expected: int) -> None:
-        super().__init__(partial, expected)
+        self.partial = partial
+        self.expected = expected
 
     def __repr__(self) -> str:
         return "IncompleteRead(%i bytes read, %i more expected)" % (
@@ -291,12 +327,13 @@ class InvalidChunkLength(HTTPError, httplib_IncompleteRead):
     """Invalid chunk length in a chunked response."""
 
     partial: int
-    expected: int
+    expected: Optional[int]
     response: "HTTPResponse"
     length: int
 
     def __init__(self, response: "HTTPResponse", length: int) -> None:
-        super().__init__(response.tell(), response.length_remaining)
+        self.partial = response.tell()
+        self.expected = response.length_remaining
         self.response = response
         self.length = length
 

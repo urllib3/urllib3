@@ -1,6 +1,27 @@
 # TODO: Break this module up into pieces. Maybe group by functionality tested
 # rather than the socket level-ness of it.
-import http.client as httplib
+import errno
+import os
+import os.path
+import select
+import shutil
+import socket
+import ssl
+import tempfile
+from collections import OrderedDict
+from test import (
+    LONG_TIMEOUT,
+    SHORT_TIMEOUT,
+    notSecureTransport,
+    notWindows,
+    requires_ssl_context_keyfile_password,
+    resolvesLocalhostFQDN,
+)
+from threading import Event
+from unittest import mock
+
+import pytest
+import trustme
 
 from dummyserver.server import (
     DEFAULT_CA,
@@ -25,36 +46,6 @@ from urllib3.util.retry import Retry
 from urllib3.util.timeout import Timeout
 
 from .. import LogRecorder, has_alpn
-
-try:
-    from mimetools import Message as MimeToolMessage
-except ImportError:
-
-    class MimeToolMessage:
-        pass
-
-
-import os
-import os.path
-import select
-import shutil
-import socket
-import ssl
-import tempfile
-from collections import OrderedDict
-from test import (
-    LONG_TIMEOUT,
-    SHORT_TIMEOUT,
-    notSecureTransport,
-    notWindows,
-    requires_ssl_context_keyfile_password,
-    resolvesLocalhostFQDN,
-)
-from threading import Event
-from unittest import mock
-
-import pytest
-import trustme
 
 # Retry failed tests
 pytestmark = pytest.mark.flaky
@@ -294,11 +285,11 @@ class TestClientCerts(SocketDummyServerTestCase):
                 done_receiving.set()
             done_receiving.set()
 
-    @requires_ssl_context_keyfile_password
+    @requires_ssl_context_keyfile_password()
     def test_client_cert_with_string_password(self):
         self.run_client_cert_with_password_test("letmein")
 
-    @requires_ssl_context_keyfile_password
+    @requires_ssl_context_keyfile_password()
     def test_client_cert_with_bytes_password(self):
         self.run_client_cert_with_password_test(b"letmein")
 
@@ -349,7 +340,7 @@ class TestClientCerts(SocketDummyServerTestCase):
 
             assert len(client_certs) == 1
 
-    @requires_ssl_context_keyfile_password
+    @requires_ssl_context_keyfile_password()
     def test_load_keyfile_with_invalid_password(self):
         context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
 
@@ -478,6 +469,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             timed_out.wait()
             sock.close()
 
+        # first ReadTimeoutError due to SocketTimeout
         self._start_server(socket_handler)
         with HTTPSConnectionPool(
             self.host, self.port, timeout=LONG_TIMEOUT, retries=False
@@ -487,6 +479,13 @@ class TestSocketClosing(SocketDummyServerTestCase):
                     pool.request("GET", "/")
             finally:
                 timed_out.set()
+
+        # second ReadTimeoutError due to errno
+        with HTTPSConnectionPool(host=self.host):
+            err = mock.Mock()
+            err.errno = errno.EAGAIN
+            with pytest.raises(ReadTimeoutError):
+                pool._raise_timeout(err, "", 0)
 
     def test_timeout_errors_cause_retries(self):
         def socket_handler(listener):
@@ -1181,7 +1180,7 @@ class TestSSL(SocketDummyServerTestCase):
                 pool.request("GET", "/", retries=0)
             assert isinstance(cm.value.reason, SSLError)
 
-    @notSecureTransport
+    @notSecureTransport()
     def test_ssl_read_timeout(self):
         timed_out = Event()
 
@@ -1559,7 +1558,7 @@ class TestHeaders(SocketDummyServerTestCase):
             request_headers = filter_non_x_headers(self.parsed_headers)
             assert expected_request_headers == request_headers
 
-    @resolvesLocalhostFQDN
+    @resolvesLocalhostFQDN()
     def test_request_host_header_ignores_fqdn_dot(self):
         self.start_parsing_handler()
 
@@ -1607,10 +1606,6 @@ class TestHeaders(SocketDummyServerTestCase):
             assert expected_response_headers == actual_response_headers
 
 
-@pytest.mark.skipif(
-    issubclass(httplib.HTTPMessage, MimeToolMessage),
-    reason="Header parsing errors not available",
-)
 class TestBrokenHeaders(SocketDummyServerTestCase):
     def _test_broken_header_parsing(self, headers, unparsed_data_check=None):
         self.start_response_handler(
@@ -1828,7 +1823,7 @@ class TestRetryPoolSizeDrainFail(SocketDummyServerTestCase):
 
 
 class TestBrokenPipe(SocketDummyServerTestCase):
-    @notWindows
+    @notWindows()
     def test_ignore_broken_pipe_errors(self, monkeypatch):
         # On Windows an aborted connection raises an error on
         # attempts to read data out of a socket that's been closed.

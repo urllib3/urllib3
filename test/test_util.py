@@ -145,6 +145,7 @@ class TestUtil:
             "http://::1/",
             "http://::1:80/",
             "http://google.com:-80",
+            "http://google.com:65536",
             "http://google.com:\xb2\xb2",  # \xb2 = ^2
             # Invalid IDNA labels
             "http://\uD7FF.com",
@@ -200,7 +201,7 @@ class TestUtil:
     def test_control_characters_are_percent_encoded(self, char):
         percent_char = "%" + (hex(ord(char))[2:].zfill(2).upper())
         url = parse_url(
-            "http://user{0}@example.com/path{0}?query{0}#fragment{0}".format(char)
+            f"http://user{char}@example.com/path{char}?query{char}#fragment{char}"
         )
 
         assert url == Url(
@@ -422,6 +423,16 @@ class TestUtil:
                 fragment="hash",
             ),
         ),
+        # Tons of '@' causing backtracking
+        ("https://" + ("@" * 10000) + "[", False),
+        (
+            "https://user:" + ("@" * 10000) + "example.com",
+            Url(
+                scheme="https",
+                auth="user:" + ("%40" * 9999),
+                host="example.com",
+            ),
+        ),
     ]
 
     @pytest.mark.parametrize("url, expected_url", url_vulnerabilities)
@@ -546,19 +557,20 @@ class TestUtil:
             ({"read": True}, "cannot be a boolean"),
             ({"connect": 0}, "less than or equal"),
             ({"read": "foo"}, "int, float or None"),
+            ({"read": "1.0"}, "int, float or None"),
         ],
     )
     def test_invalid_timeouts(self, kwargs, message):
         with pytest.raises(ValueError, match=message):
             Timeout(**kwargs)
 
-    @patch("urllib3.util.timeout.current_time")
-    def test_timeout(self, current_time):
+    @patch("time.monotonic")
+    def test_timeout(self, time_monotonic):
         timeout = Timeout(total=3)
 
         # make 'no time' elapse
         timeout = self._make_time_pass(
-            seconds=0, timeout=timeout, time_mock=current_time
+            seconds=0, timeout=timeout, time_mock=time_monotonic
         )
         assert timeout.read_timeout == 3
         assert timeout.connect_timeout == 3
@@ -572,14 +584,14 @@ class TestUtil:
         # Connect takes 5 seconds, leaving 5 seconds for read
         timeout = Timeout(total=10, read=7)
         timeout = self._make_time_pass(
-            seconds=5, timeout=timeout, time_mock=current_time
+            seconds=5, timeout=timeout, time_mock=time_monotonic
         )
         assert timeout.read_timeout == 5
 
         # Connect takes 2 seconds, read timeout still 7 seconds
         timeout = Timeout(total=10, read=7)
         timeout = self._make_time_pass(
-            seconds=2, timeout=timeout, time_mock=current_time
+            seconds=2, timeout=timeout, time_mock=time_monotonic
         )
         assert timeout.read_timeout == 7
 
@@ -600,9 +612,9 @@ class TestUtil:
         timeout = Timeout(connect=1, read=None, total=3)
         assert str(timeout) == "Timeout(connect=1, read=None, total=3)"
 
-    @patch("urllib3.util.timeout.current_time")
-    def test_timeout_elapsed(self, current_time):
-        current_time.return_value = TIMEOUT_EPOCH
+    @patch("time.monotonic")
+    def test_timeout_elapsed(self, time_monotonic):
+        time_monotonic.return_value = TIMEOUT_EPOCH
         timeout = Timeout(total=3)
         with pytest.raises(TimeoutStateError):
             timeout.get_connect_duration()
@@ -611,9 +623,9 @@ class TestUtil:
         with pytest.raises(TimeoutStateError):
             timeout.start_connect()
 
-        current_time.return_value = TIMEOUT_EPOCH + 2
+        time_monotonic.return_value = TIMEOUT_EPOCH + 2
         assert timeout.get_connect_duration() == 2
-        current_time.return_value = TIMEOUT_EPOCH + 37
+        time_monotonic.return_value = TIMEOUT_EPOCH + 37
         assert timeout.get_connect_duration() == 37
 
     def test_is_fp_closed_object_supports_closed(self):
@@ -743,6 +755,26 @@ class TestUtil:
         getaddrinfo.return_value = [(None, None, None, None, None)]
         socket.return_value = Mock()
         create_connection((host, 80))
+
+    @patch("socket.getaddrinfo")
+    def test_create_connection_error(self, getaddrinfo):
+        getaddrinfo.return_value = []
+        with pytest.raises(OSError, match="getaddrinfo returns an empty list"):
+            create_connection(("example.com", 80))
+
+    @patch("socket.getaddrinfo")
+    def test_dnsresolver_forced_error(self, getaddrinfo):
+        getaddrinfo.side_effect = socket.gaierror()
+        with pytest.raises(socket.gaierror):
+            # dns is valid but we force the error just for the sake of the test
+            create_connection(("example.com", 80))
+
+    def test_dnsresolver_expected_error(self):
+        with pytest.raises(socket.gaierror):
+            # windows: [Errno 11001] getaddrinfo failed in windows
+            # linux: [Errno -2] Name or service not known
+            # macos: [Errno 8] nodename nor servname provided, or not known
+            create_connection(("badhost.invalid", 80))
 
     @pytest.mark.parametrize(
         "input,params,expected",
@@ -904,6 +936,7 @@ class TestUtilWithoutIdna:
         module_stash.stash()
         sys.meta_path.insert(0, idna_blocker)
 
+    @classmethod
     def teardown_class(cls):
         sys.meta_path.remove(idna_blocker)
         module_stash.pop()

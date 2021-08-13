@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from typing_extensions import Literal
 
-    from .ssl_ import PeerCertRetDictType, PeerCertRetType
+    from .ssl_ import _TYPE_PEER_CERT_RET, _TYPE_PEER_CERT_RET_DICT
 
 
 _SelfT = TypeVar("_SelfT", bound="SSLTransport")
@@ -154,7 +154,7 @@ class SSLTransport:
         if writing:
             rawmode += "w"
         raw = socket.SocketIO(self, rawmode)
-        self.socket._io_refs += 1  # type: ignore
+        self.socket._io_refs += 1  # type: ignore[attr-defined]
         if buffering is None:
             buffering = -1
         if buffering < 0:
@@ -162,10 +162,10 @@ class SSLTransport:
         if buffering == 0:
             if not binary:
                 raise ValueError("unbuffered streams must be binary")
-            return raw  # type: ignore
+            return raw  # type: ignore[no-any-return]
         buffer: BinaryIO
         if reading and writing:
-            buffer = io.BufferedRWPair(raw, raw, buffering)  # type: ignore
+            buffer = io.BufferedRWPair(raw, raw, buffering)  # type: ignore[assignment]
         elif reading:
             buffer = io.BufferedReader(raw, buffering)
         else:
@@ -174,7 +174,7 @@ class SSLTransport:
         if binary:
             return buffer
         text = io.TextIOWrapper(buffer, encoding, errors, newline)
-        text.mode = mode  # type: ignore
+        text.mode = mode  # type: ignore[misc]
         return text
 
     def unwrap(self) -> None:
@@ -186,7 +186,7 @@ class SSLTransport:
     @overload
     def getpeercert(
         self, binary_form: "Literal[False]" = ...
-    ) -> Optional["PeerCertRetDictType"]:
+    ) -> Optional["_TYPE_PEER_CERT_RET_DICT"]:
         ...
 
     @overload
@@ -194,12 +194,12 @@ class SSLTransport:
         ...
 
     @overload
-    def getpeercert(self, binary_form: bool) -> "PeerCertRetType":
+    def getpeercert(self, binary_form: bool) -> "_TYPE_PEER_CERT_RET":
         ...
 
     def getpeercert(
         self, binary_form: bool = False
-    ) -> Union[None, bytes, "PeerCertRetDictType", "PeerCertRetType"]:
+    ) -> Union[None, bytes, "_TYPE_PEER_CERT_RET_DICT", "_TYPE_PEER_CERT_RET"]:
         return self.sslobj.getpeercert(binary_form)
 
     def version(self) -> Optional[str]:
@@ -227,7 +227,7 @@ class SSLTransport:
         return self.socket.gettimeout()
 
     def _decref_socketios(self) -> None:
-        self.socket._decref_socketios()  # type: ignore
+        self.socket._decref_socketios()  # type: ignore[attr-defined]
 
     def _wrap_ssl_read(
         self, len: int, buffer: Optional[bytearray] = None

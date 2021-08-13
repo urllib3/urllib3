@@ -8,14 +8,13 @@ from .ssl_ import (
     HAS_SNI,
     IS_PYOPENSSL,
     IS_SECURETRANSPORT,
-    PROTOCOL_TLS,
     SSLContext,
     assert_fingerprint,
     resolve_cert_reqs,
     resolve_ssl_version,
     ssl_wrap_socket,
 )
-from .timeout import Timeout, current_time
+from .timeout import Timeout
 from .url import Url, parse_url
 from .wait import wait_for_read, wait_for_write
 
@@ -24,13 +23,11 @@ __all__ = (
     "IS_PYOPENSSL",
     "IS_SECURETRANSPORT",
     "SSLContext",
-    "PROTOCOL_TLS",
     "ALPN_PROTOCOLS",
     "Retry",
     "Timeout",
     "Url",
     "assert_fingerprint",
-    "current_time",
     "is_connection_dropped",
     "is_fp_closed",
     "parse_url",

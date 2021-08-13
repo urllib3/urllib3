@@ -4,26 +4,6 @@ import subprocess
 
 import nox
 
-# Whenever type-hints are completed on a file it should be added here so that
-# this file will continue to be checked by mypy. Errors from other files are
-# ignored.
-TYPED_FILES = {
-    "src/urllib3/contrib/__init__.py",
-    "src/urllib3/connection.py",
-    "src/urllib3/exceptions.py",
-    "src/urllib3/_collections.py",
-    "src/urllib3/fields.py",
-    "src/urllib3/filepost.py",
-    "src/urllib3/util/connection.py",
-    "src/urllib3/util/proxy.py",
-    "src/urllib3/util/queue.py",
-    "src/urllib3/util/response.py",
-    "src/urllib3/util/ssl_.py",
-    "src/urllib3/util/ssl_match_hostname.py",
-    "src/urllib3/util/ssltransport.py",
-    "src/urllib3/util/url.py",
-    "src/urllib3/util/wait.py",
-}
 SOURCE_FILES = [
     "docs/",
     "dummyserver/",
@@ -34,7 +14,11 @@ SOURCE_FILES = [
 ]
 
 
-def tests_impl(session, extras="socks,secure,brotli", byte_string_comparisons=True):
+def tests_impl(
+    session: nox.Session,
+    extras: str = "socks,secure,brotli",
+    byte_string_comparisons: bool = True,
+) -> None:
     # Install deps and the package itself.
     session.install("-r", "dev-requirements.txt")
     session.install(f".[{extras}]")
@@ -73,13 +57,13 @@ def tests_impl(session, extras="socks,secure,brotli", byte_string_comparisons=Tr
     session.run("coverage", "xml")
 
 
-@nox.session(python=["3.6", "3.7", "3.8", "3.9", "3.10", "pypy"])
-def test(session):
+@nox.session(python=["3.7", "3.8", "3.9", "3.10", "pypy"])
+def test(session: nox.Session) -> None:
     tests_impl(session)
 
 
 @nox.session(python=["2.7"])
-def unsupported_python2(session):
+def unsupported_python2(session: nox.Session) -> None:
     # Can't check both returncode and output with session.run
     process = subprocess.run(
         ["python", "setup.py", "install"],
@@ -93,7 +77,7 @@ def unsupported_python2(session):
 
 
 @nox.session(python=["3"])
-def test_brotlipy(session):
+def test_brotlipy(session: nox.Session) -> None:
     """Check that if 'brotlipy' is installed instead of 'brotli' or
     'brotlicffi' that we still don't blow up.
     """
@@ -101,8 +85,52 @@ def test_brotlipy(session):
     tests_impl(session, extras="socks,secure", byte_string_comparisons=False)
 
 
+def git_clone(session: nox.Session, git_url: str) -> None:
+    session.run("git", "clone", "--depth", "1", git_url, external=True)
+
+
 @nox.session()
-def format(session):
+def downstream_botocore(session: nox.Session) -> None:
+    root = os.getcwd()
+    tmp_dir = session.create_tmp()
+
+    session.cd(tmp_dir)
+    git_clone(session, "https://github.com/boto/botocore")
+    session.chdir("botocore")
+    session.run("git", "rev-parse", "HEAD", external=True)
+    session.run("python", "scripts/ci/install")
+
+    session.cd(root)
+    session.install(".", silent=False)
+    session.cd(f"{tmp_dir}/botocore")
+
+    session.run("python", "-c", "import urllib3; print(urllib3.__version__)")
+    session.run("python", "scripts/ci/run-tests")
+
+
+@nox.session()
+def downstream_requests(session: nox.Session) -> None:
+    root = os.getcwd()
+    tmp_dir = session.create_tmp()
+
+    session.cd(tmp_dir)
+    git_clone(session, "https://github.com/psf/requests")
+    session.chdir("requests")
+    session.run("git", "apply", f"{root}/ci/requests.patch", external=True)
+    session.run("git", "rev-parse", "HEAD", external=True)
+    session.install(".[socks]", silent=False)
+    session.install("-r", "requirements-dev.txt", silent=False)
+
+    session.cd(root)
+    session.install(".", silent=False)
+    session.cd(f"{tmp_dir}/requests")
+
+    session.run("python", "-c", "import urllib3; print(urllib3.__version__)")
+    session.run("pytest", "tests")
+
+
+@nox.session()
+def format(session: nox.Session) -> None:
     """Run code formatters."""
     session.install("pre-commit")
     session.run("pre-commit", "--version")
@@ -121,43 +149,39 @@ def format(session):
 
 
 @nox.session
-def lint(session):
+def lint(session: nox.Session) -> None:
     session.install("pre-commit")
     session.run("pre-commit", "run", "--all-files")
 
     mypy(session)
 
 
-@nox.session()
-def mypy(session):
+@nox.session(python="3.8")
+def mypy(session: nox.Session) -> None:
     """Run mypy."""
-    session.install("mypy")
+    session.install("mypy==0.910")
+    session.install("idna>=2.0.0")
+    session.install("cryptography>=1.3.4")
+    session.install("tornado>=6.1")
+    session.install("pytest>=6.2")
+    session.install("trustme==0.9.0")
+    session.install("types-python-dateutil")
+    session.install("nox")
     session.run("mypy", "--version")
-
-    session.log("mypy --strict src/urllib3")
-    all_errors, errors = [], []
-    process = subprocess.run(
-        ["mypy", "--strict", "src/urllib3"],
-        env=session.env,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+    session.run(
+        "mypy",
+        "src/urllib3",
+        "dummyserver",
+        "noxfile.py",
+        "test/__init__.py",
+        "test/conftest.py",
+        "test/port_helpers.py",
+        "test/tz_stub.py",
     )
-    # Ensure that mypy itself ran successfully
-    assert process.returncode in (0, 1)
-
-    for line in process.stdout.split("\n"):
-        all_errors.append(line)
-        filepath = line.partition(":")[0]
-        if filepath.replace(".pyi", ".py") in TYPED_FILES:
-            errors.append(line)
-    session.log(f"all errors count: {len(all_errors)}")
-    if errors:
-        session.error("\n" + "\n".join(sorted(set(errors))))
 
 
 @nox.session
-def docs(session):
+def docs(session: nox.Session) -> None:
     session.install("-r", "docs/requirements.txt")
     session.install(".[socks,secure,brotli]")
 

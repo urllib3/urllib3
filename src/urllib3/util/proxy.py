@@ -45,8 +45,8 @@ def connection_requires_http_tunnel(
 
 
 def create_proxy_ssl_context(
-    ssl_version: Optional[int] = None,
-    cert_reqs: Optional[int] = None,
+    ssl_version: Optional[Union[int, str]] = None,
+    cert_reqs: Optional[Union[int, str]] = None,
     ca_certs: Optional[str] = None,
     ca_cert_dir: Optional[str] = None,
     ca_cert_data: Union[None, str, bytes] = None,

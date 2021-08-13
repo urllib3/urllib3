@@ -1,6 +1,6 @@
-import sys
 from collections import OrderedDict
 from enum import Enum, auto
+from threading import RLock
 from typing import (
     TYPE_CHECKING,
     Callable,
@@ -12,16 +12,11 @@ from typing import (
     MutableMapping,
     NoReturn,
     Optional,
-    Set,
-    Tuple,
-    TypeVar,
-    Union,
-    cast,
-    overload,
 )
+from typing import OrderedDict as OrderedDictType
+from typing import Set, Tuple, TypeVar, Union, cast, overload
 
 if TYPE_CHECKING:
-    from threading import RLock
 
     # We can only import Protocol if TYPE_CHECKING because it's a development
     # dependency, and is not available at runtime.
@@ -33,24 +28,6 @@ if TYPE_CHECKING:
 
         def __getitem__(self, key: str) -> str:
             ...
-
-
-else:
-    try:
-        from threading import RLock
-    except ImportError:  # Python 3.6
-        from ._compat import RLock
-
-
-# Starting in Python 3.7 the 'dict' class is guaranteed to be
-# ordered by insertion. This behavior was an implementation
-# detail in Python 3.6. OrderedDict is implemented in C in
-# later Python versions but still requires a lot more memory
-# due to being implemented as a linked list.
-if sys.version_info >= (3, 7):
-    _ordered_dict = dict
-else:
-    _ordered_dict = OrderedDict
 
 
 __all__ = ["RecentlyUsedContainer", "HTTPHeaderDict"]
@@ -109,7 +86,7 @@ class RecentlyUsedContainer(Generic[_KT, _VT], MutableMapping[_KT, _VT]):
         ``dispose_func(value)`` is called.  Callback which will get called
     """
 
-    _container: "OrderedDict[_KT, _VT]"
+    _container: OrderedDictType[_KT, _VT]
     _maxsize: int
     dispose_func: Optional[Callable[[_VT], None]]
     lock: RLock
@@ -139,15 +116,16 @@ class RecentlyUsedContainer(Generic[_KT, _VT], MutableMapping[_KT, _VT]):
                 # size of the pool. Because accessing a key should move it to
                 # the end of the eviction line, we pop it out first.
                 evicted_item = key, self._container.pop(key)
+                self._container[key] = value
             except KeyError:
-                if len(self._container) >= self._maxsize:
+                # When the key does not exist, we insert the value first so that
+                # evicting works in all cases, including when self._maxsize is 0
+                self._container[key] = value
+                if len(self._container) > self._maxsize:
                     # If we didn't evict an existing value, and we've hit our maximum
                     # size, then we have to evict the least recently used item from
                     # the beginning of the container.
                     evicted_item = self._container.popitem(last=False)
-
-            # Finally, insert the new value.
-            self._container[key] = value
 
         # After releasing the lock on the pool, dispose of any evicted value.
         if evicted_item is not None and self.dispose_func:
@@ -268,7 +246,7 @@ class HTTPHeaderDict(MutableMapping[str, str]):
 
     def __init__(self, headers: Optional[ValidHTTPHeaderSource] = None, **kwargs: str):
         super().__init__()
-        self._container = _ordered_dict()
+        self._container = {}  # 'dict' is insert-ordered in Python 3.7+
         if headers is not None:
             if isinstance(headers, HTTPHeaderDict):
                 self._copy_from(headers)

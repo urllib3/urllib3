@@ -61,12 +61,12 @@ _IPV6_ADDRZ_RE = re.compile("^" + _IPV6_ADDRZ_PAT + "$")
 _BRACELESS_IPV6_ADDRZ_RE = re.compile("^" + _IPV6_ADDRZ_PAT[2:-2] + "$")
 _ZONE_ID_RE = re.compile("(" + _ZONE_ID_PAT + r")\]$")
 
-_SUBAUTHORITY_PAT = ("^(?:(.*)@)?(%s|%s|%s)(?::([0-9]{0,5}))?$") % (
+_HOST_PORT_PAT = ("^(%s|%s|%s)(?::([0-9]{0,5}))?$") % (
     _REG_NAME_PAT,
     _IPV4_PAT,
     _IPV6_ADDRZ_PAT,
 )
-_SUBAUTHORITY_RE = re.compile(_SUBAUTHORITY_PAT, re.UNICODE | re.DOTALL)
+_HOST_PORT_RE = re.compile(_HOST_PORT_PAT, re.UNICODE | re.DOTALL)
 
 _UNRESERVED_CHARS = set(
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-~"
@@ -97,7 +97,7 @@ class Url(
     both case-insensitive according to RFC 3986.
     """
 
-    def __new__(  # type: ignore
+    def __new__(  # type: ignore[no-untyped-def]
         cls,
         scheme: typing.Optional[str] = None,
         auth: typing.Optional[str] = None,
@@ -147,14 +147,22 @@ class Url(
         :func:`.parse_url`, but it should be equivalent by the RFC (e.g., urls
         with a blank port will have : removed).
 
-        Example: ::
+        Example:
 
-            >>> U = parse_url('http://google.com/mail/')
-            >>> U.url
-            'http://google.com/mail/'
-            >>> Url('http', 'username:password', 'host.com', 80,
-            ... '/path', 'query', 'fragment').url
-            'http://username:password@host.com:80/path?query#fragment'
+        .. code-block:: python
+
+            import urllib3
+
+            U = urllib3.util.parse_url("https://google.com/mail/")
+
+            print(U.url)
+            # "https://google.com/mail/"
+
+            print( urllib3.util.Url("https", "username:password",
+                                    "host.com", 80, "/path", "query", "fragment"
+                                    ).url
+                )
+            # "https://username:password@host.com:80/path?query#fragment"
         """
         scheme, auth, host, port, path, query, fragment = self
         url = ""
@@ -292,16 +300,14 @@ def _normalize_host(
 def _idna_encode(name: str) -> bytes:
     if name and any([ord(x) > 128 for x in name]):
         try:
-            import idna  # type: ignore
+            import idna
         except ImportError:
             raise LocationParseError(
                 "Unable to parse URL without the 'idna' module"
             ) from None
 
         try:
-            return typing.cast(
-                bytes, idna.encode(name.lower(), strict=True, std3_rules=True)
-            )
+            return idna.encode(name.lower(), strict=True, std3_rules=True)
         except idna.IDNAError:
             raise LocationParseError(
                 f"Name '{name}' is not a valid IDNA label"
@@ -341,14 +347,20 @@ def parse_url(url: str) -> Url:
 
     Partly backwards-compatible with :mod:`urlparse`.
 
-    Example::
+    Example:
 
-        >>> parse_url('http://google.com/mail/')
-        Url(scheme='http', host='google.com', port=None, path='/mail/', ...)
-        >>> parse_url('google.com:80')
-        Url(scheme=None, host='google.com', port=80, path=None, ...)
-        >>> parse_url('/foo?bar')
-        Url(scheme=None, host=None, port=None, path='/foo', query='bar', ...)
+    .. code-block:: python
+
+        import urllib3
+
+        print( urllib3.util.parse_url('http://google.com/mail/'))
+        # Url(scheme='http', host='google.com', port=None, path='/mail/', ...)
+
+        print( urllib3.util.parse_url('google.com:80'))
+        # Url(scheme=None, host='google.com', port=80, path=None, ...)
+
+        print( urllib3.util.parse_url('/foo?bar'))
+        # Url(scheme=None, host=None, port=None, path='/foo', query='bar', ...)
     """
     if not url:
         # Empty
@@ -369,14 +381,16 @@ def parse_url(url: str) -> Url:
     fragment: typing.Optional[str]
 
     try:
-        scheme, authority, path, query, fragment = _URI_RE.match(url).groups()  # type: ignore
+        scheme, authority, path, query, fragment = _URI_RE.match(url).groups()  # type: ignore[union-attr]
         normalize_uri = scheme is None or scheme.lower() in _NORMALIZABLE_SCHEMES
 
         if scheme:
             scheme = scheme.lower()
 
         if authority:
-            auth, host, port = _SUBAUTHORITY_RE.match(authority).groups()  # type: ignore
+            auth, _, host_port = authority.rpartition("@")
+            auth = auth or None
+            host, port = _HOST_PORT_RE.match(host_port).groups()  # type: ignore[union-attr]
             if auth and normalize_uri:
                 auth = _encode_invalid_chars(auth, _USERINFO_CHARS)
             if port == "":

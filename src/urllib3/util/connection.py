@@ -1,12 +1,12 @@
 import socket
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Sequence, Tuple, Union
 
 from urllib3.exceptions import LocationParseError
 
 from .wait import wait_for_read
 
-SOCKET_GLOBAL_DEFAULT_TIMEOUT = socket._GLOBAL_DEFAULT_TIMEOUT  # type: ignore
-SocketOptions = List[Tuple[int, int, Union[int, bytes]]]
+SOCKET_GLOBAL_DEFAULT_TIMEOUT = socket._GLOBAL_DEFAULT_TIMEOUT  # type: ignore[attr-defined]
+_TYPE_SOCKET_OPTIONS = Sequence[Tuple[int, int, Union[int, bytes]]]
 
 
 def is_connection_dropped(conn: socket.socket) -> bool:  # Platform-specific
@@ -31,7 +31,7 @@ def create_connection(
     address: Tuple[str, int],
     timeout: Optional[float] = SOCKET_GLOBAL_DEFAULT_TIMEOUT,
     source_address: Optional[Tuple[str, int]] = None,
-    socket_options: Optional[SocketOptions] = None,
+    socket_options: Optional[_TYPE_SOCKET_OPTIONS] = None,
 ) -> socket.socket:
     """Connect to *address* and return the socket object.
 
@@ -74,21 +74,28 @@ def create_connection(
             if source_address:
                 sock.bind(source_address)
             sock.connect(sa)
+            # Break explicitly a reference cycle
+            err = None
             return sock
 
-        except OSError as e:
-            err = e
+        except OSError as _:
+            err = _
             if sock is not None:
                 sock.close()
-                sock = None
 
     if err is not None:
-        raise err
+        try:
+            raise err
+        finally:
+            # Break explicitly a reference cycle
+            err = None
+    else:
+        raise OSError("getaddrinfo returns an empty list")
 
-    raise OSError("getaddrinfo returns an empty list")
 
-
-def _set_socket_options(sock: socket.socket, options: Optional[SocketOptions]) -> None:
+def _set_socket_options(
+    sock: socket.socket, options: Optional[_TYPE_SOCKET_OPTIONS]
+) -> None:
     if options is None:
         return
 

@@ -1,5 +1,6 @@
 import socket
 from test import resolvesLocalhostFQDN
+from unittest.mock import patch
 
 import pytest
 
@@ -10,7 +11,7 @@ from urllib3.util import retry, timeout
 
 
 class TestPoolManager:
-    @resolvesLocalhostFQDN
+    @resolvesLocalhostFQDN()
     def test_same_url(self):
         # Convince ourselves that normally we don't get the same object
         conn1 = connection_from_url("http://localhost:8081/foo")
@@ -266,6 +267,31 @@ class TestPoolManager:
         assert 1 == len(p.pools)
         assert pool is other_pool
         assert all(isinstance(key, PoolKey) for key in p.pools.keys())
+
+    @patch("urllib3.poolmanager.PoolManager.connection_from_pool_key")
+    def test_connection_from_context_strict_param(self, connection_from_pool_key):
+        p = PoolManager()
+        context = {
+            "scheme": "http",
+            "host": "example.com",
+            "port": 8080,
+            "strict": True,
+        }
+        with pytest.warns(DeprecationWarning) as records:
+            p.connection_from_context(context)
+
+        msg = (
+            "The 'strict' parameter is no longer needed on Python 3+. "
+            "This will raise an error in urllib3 v3.0.0."
+        )
+        assert any(record.message.args[0] == msg for record in records)
+
+        _, kwargs = connection_from_pool_key.call_args
+        assert kwargs["request_context"] == {
+            "scheme": "http",
+            "host": "example.com",
+            "port": 8080,
+        }
 
     def test_custom_pool_key(self):
         """Assert it is possible to define a custom key function."""
