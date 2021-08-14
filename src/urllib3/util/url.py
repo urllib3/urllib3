@@ -75,7 +75,7 @@ _SUB_DELIM_CHARS = set("!$&'()*+,;=")
 _USERINFO_CHARS = _UNRESERVED_CHARS | _SUB_DELIM_CHARS | {":"}
 _PATH_CHARS = _USERINFO_CHARS | {"@", "/"}
 _QUERY_CHARS = _FRAGMENT_CHARS = _PATH_CHARS | {"?"}
-
+_NO_SPECIALCHAR = r"^\W+"
 
 class Url(
     typing.NamedTuple(
@@ -383,6 +383,12 @@ def parse_url(url: str) -> Url:
     try:
         scheme, authority, path, query, fragment = _URI_RE.match(url).groups()  # type: ignore[union-attr]
         normalize_uri = scheme is None or scheme.lower() in _NORMALIZABLE_SCHEMES
+
+        # clean path if authority is empty and path is incorrect
+        if authority is None or authority == '':
+            cleaned_path = re.sub(_NO_SPECIALCHAR, "", path)
+            if cleaned_path:
+                authority, path = cleaned_path.split("/", 1)
 
         if scheme:
             scheme = scheme.lower()
