@@ -7,7 +7,7 @@ import pytest
 from urllib3 import connection_from_url
 from urllib3.exceptions import ClosedPoolError, LocationValueError
 from urllib3.poolmanager import (
-    DEFAULT_BLOCKSIZE,
+    _DEFAULT_BLOCKSIZE,
     PoolKey,
     PoolManager,
     key_fn_by_scheme,
@@ -114,7 +114,7 @@ class TestPoolManager:
             "retries": retry.Retry(total=6, connect=2),
             "block": True,
             "source_address": "127.0.0.1",
-            "blocksize": DEFAULT_BLOCKSIZE + 1,
+            "blocksize": _DEFAULT_BLOCKSIZE + 1,
         }
         p = PoolManager()
         conn_pools = [
@@ -147,7 +147,7 @@ class TestPoolManager:
             "cert_reqs": "CERT_REQUIRED",
             "ca_certs": "/root/path_to_pem",
             "ssl_version": "SSLv23_METHOD",
-            "blocksize": DEFAULT_BLOCKSIZE + 1,
+            "blocksize": _DEFAULT_BLOCKSIZE + 1,
         }
         p = PoolManager()
         conn_pools = [
@@ -403,8 +403,8 @@ class TestPoolManager:
     @pytest.mark.parametrize(
         "input_blocksize,expected_blocksize",
         [
-            (DEFAULT_BLOCKSIZE, DEFAULT_BLOCKSIZE),
-            (None, DEFAULT_BLOCKSIZE),
+            (_DEFAULT_BLOCKSIZE, _DEFAULT_BLOCKSIZE),
+            (None, _DEFAULT_BLOCKSIZE),
             (8192, 8192),
         ],
     )
