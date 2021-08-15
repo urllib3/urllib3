@@ -9,22 +9,17 @@ from datetime import date
 root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, root_path)
 
-# Mock some expensive/platform-specific modules so build will work.
-# (https://read-the-docs.readthedocs.io/en/latest/faq.html#\
-#  i-get-import-errors-on-libraries-that-depend-on-c-modules)
-from unittest import mock
+# https://docs.readthedocs.io/en/stable/builds.html#build-environment
+if "READTHEDOCS" in os.environ:
+    import glob
 
+    if glob.glob("../changelog/*.*.rst"):
+        print("-- Found changes; running towncrier --", flush=True)
+        import subprocess
 
-class MockModule(mock.Mock):
-    @classmethod
-    def __getattr__(cls, name):
-        return MockModule()
-
-
-MOCK_MODULES = ("ntlm",)
-
-sys.modules.update((mod_name, MockModule()) for mod_name in MOCK_MODULES)
-
+        subprocess.run(
+            ["towncrier", "--yes", "--date", "not released yet"], cwd="..", check=True
+        )
 
 import urllib3
 

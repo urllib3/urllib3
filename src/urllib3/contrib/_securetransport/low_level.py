@@ -17,7 +17,7 @@ import struct
 import tempfile
 from typing import Any, List, Optional, Tuple, Type
 
-from .bindings import (  # type: ignore
+from .bindings import (  # type: ignore[attr-defined]
     CFArray,
     CFConst,
     CFData,
@@ -135,7 +135,7 @@ def _cf_string_to_unicode(value: CFString) -> Optional[str]:
         string = buffer.value
     if string is not None:
         string = string.decode("utf-8")
-    return string  # type: ignore
+    return string  # type: ignore[no-any-return]
 
 
 def _assert_no_error(
@@ -202,6 +202,7 @@ def _cert_array_from_pem(pem_bundle: bytes) -> CFArray:
         # We only want to do that if an error occurs: otherwise, the caller
         # should free.
         CoreFoundation.CFRelease(cert_array)
+        raise
 
     return cert_array
 
@@ -211,7 +212,7 @@ def _is_cert(item: CFTypeRef) -> bool:
     Returns True if a given CFTypeRef is a certificate.
     """
     expected = Security.SecCertificateGetTypeID()
-    return CoreFoundation.CFGetTypeID(item) == expected  # type: ignore
+    return CoreFoundation.CFGetTypeID(item) == expected  # type: ignore[no-any-return]
 
 
 def _is_identity(item: CFTypeRef) -> bool:
@@ -219,7 +220,7 @@ def _is_identity(item: CFTypeRef) -> bool:
     Returns True if a given CFTypeRef is an identity.
     """
     expected = Security.SecIdentityGetTypeID()
-    return CoreFoundation.CFGetTypeID(item) == expected  # type: ignore
+    return CoreFoundation.CFGetTypeID(item) == expected  # type: ignore[no-any-return]
 
 
 def _temporary_keychain() -> Tuple[SecKeychainRef, str]:

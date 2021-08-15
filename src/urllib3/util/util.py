@@ -36,5 +36,5 @@ def reraise(
             raise value.with_traceback(tb)
         raise value
     finally:
-        value = None  # type: ignore
+        value = None  # type: ignore[assignment]
         tb = None

@@ -3,7 +3,6 @@ import logging
 import os
 import re
 import socket
-import sys
 import warnings
 from copy import copy
 from http.client import HTTPConnection as _HTTPConnection
@@ -34,9 +33,9 @@ try:  # Compiled with SSL?
 
     BaseSSLError = ssl.SSLError
 except (ImportError, AttributeError):  # Platform-specific: No SSL.
-    ssl = None  # type: ignore
+    ssl = None  # type: ignore[assignment]
 
-    class BaseSSLError(BaseException):  # type: ignore
+    class BaseSSLError(BaseException):  # type: ignore[no-redef]
         pass
 
 
@@ -146,26 +145,21 @@ class HTTPConnection(_HTTPConnection):
         self.proxy = proxy
         self.proxy_config = proxy_config
 
-        if sys.version_info >= (3, 7):
-            super().__init__(
-                host=host,
-                port=port,
-                timeout=timeout,
-                source_address=source_address,
-                blocksize=blocksize,
-            )
-        else:
-            super().__init__(
-                host=host, port=port, timeout=timeout, source_address=source_address
-            )
+        super().__init__(
+            host=host,
+            port=port,
+            timeout=timeout,
+            source_address=source_address,
+            blocksize=blocksize,
+        )
 
     # https://github.com/python/mypy/issues/4125
     # Mypy treats this as LSP violation, which is considered a bug.
     # If `host` is made a property it violates LSP, because a writeable attribute is overriden with a read-only one.
     # However, there is also a `host` setter so LSP is not violated.
     # Potentailly, a `@host.deleter` might be needed depending on how this issue will be fixed.
-    @property  # type: ignore
-    def host(self) -> str:  # type: ignore
+    @property  # type: ignore[override]
+    def host(self) -> str:  # type: ignore[override]
         """
         Getter method to remove any trailing dots that indicate the hostname is an FQDN.
 
@@ -270,7 +264,7 @@ class HTTPConnection(_HTTPConnection):
 
     # `request` method's signature intentionally violates LSP.
     # urllib3's API is different from `http.client.HTTPConnection` and the subclassing is only incidental.
-    def request(  # type: ignore
+    def request(  # type: ignore[override]
         self,
         method: str,
         url: str,
@@ -282,6 +276,14 @@ class HTTPConnection(_HTTPConnection):
         else:
             # Avoid modifying the headers passed into .request()
             headers = copy(headers)
+            # Don't send bytes keys to httplib to avoid bytes/str comparison
+            # HTTPHeaderDict is already safe, but other types are not
+            for key, value in list(headers.items()):
+                if isinstance(key, bytes):
+                    headers.pop(key)
+                    # httplib would have decoded to latin-1 anyway
+                    headers[key.decode("latin-1")] = value
+
         if "user-agent" not in (to_str(k.lower()) for k in headers):
             updated_headers = {"User-Agent": _get_default_user_agent()}
             updated_headers.update(headers)
@@ -485,7 +487,7 @@ class HTTPSConnection(HTTPConnection):
         context.verify_mode = resolve_cert_reqs(self.cert_reqs)
 
         # Try to load OS default certs if none are given.
-        # Works well on Windows (requires Python3.4+)
+        # Works well on Windows.
         if (
             not self.ca_certs
             and not self.ca_cert_dir
@@ -601,7 +603,7 @@ def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
         )
         # Add cert to exception and reraise so client code can inspect
         # the cert when catching the exception, if they want to
-        e._peer_cert = cert  # type: ignore
+        e._peer_cert = cert  # type: ignore[attr-defined]
         raise
 
 
@@ -616,7 +618,7 @@ class DummyConnection:
 
 
 if not ssl:
-    HTTPSConnection = DummyConnection  # type: ignore # noqa: F811
+    HTTPSConnection = DummyConnection  # type: ignore[misc, assignment] # noqa: F811
 
 
 VerifiedHTTPSConnection = HTTPSConnection

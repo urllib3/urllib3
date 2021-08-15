@@ -2,13 +2,14 @@ import datetime
 import os
 import time
 from contextlib import contextmanager
+from typing import Generator, Optional
 
 import pytest
 from dateutil import tz
 
 
 @contextmanager
-def stub_timezone_ctx(tzname):
+def stub_timezone_ctx(tzname: Optional[str]) -> Generator[None, None, None]:
     """
     Switch to a locally-known timezone specified by `tzname`.
     On exit, restore the previous timezone.
@@ -32,6 +33,7 @@ def stub_timezone_ctx(tzname):
     if local_tz is None:
         raise OSError("Cannot determine current timezone")
     old_tzname = datetime.datetime.now(local_tz).tzname()
+    assert old_tzname is not None
 
     os.environ["TZ"] = tzname
     time.tzset()

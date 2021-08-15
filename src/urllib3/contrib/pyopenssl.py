@@ -46,16 +46,16 @@ compression in Python 2 (see `CRIME attack`_).
 .. _idna: https://github.com/kjd/idna
 """
 
-import OpenSSL.SSL  # type: ignore
+import OpenSSL.SSL  # type: ignore[import]
 from cryptography import x509
 from cryptography.hazmat.backends.openssl import backend as openssl_backend
 from cryptography.hazmat.backends.openssl.x509 import _Certificate
 
 try:
-    from cryptography.x509 import UnsupportedExtension  # type: ignore
+    from cryptography.x509 import UnsupportedExtension  # type: ignore[attr-defined]
 except ImportError:
     # UnsupportedExtension is gone in cryptography >= 2.1.0
-    class UnsupportedExtension(Exception):  # type: ignore
+    class UnsupportedExtension(Exception):  # type: ignore[no-redef]
         pass
 
 
@@ -69,7 +69,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from .. import util
 
 if TYPE_CHECKING:
-    from OpenSSL.crypto import CRL, X509  # type: ignore
+    from OpenSSL.crypto import CRL, X509  # type: ignore[import]
 
 
 __all__ = ["inject_into_urllib3", "extract_from_urllib3"]
@@ -79,13 +79,13 @@ HAS_SNI = True
 
 # Use system TLS ciphers on OpenSSL 1.1.1+
 USE_DEFAULT_SSLCONTEXT_CIPHERS = util.ssl_._is_ge_openssl_v1_1_1(
-    openssl_backend.openssl_version_text(), openssl_backend.openssl_version_number()  # type: ignore
+    openssl_backend.openssl_version_text(), openssl_backend.openssl_version_number()  # type: ignore[no-untyped-call]
 )
 
 # Map from urllib3 to PyOpenSSL compatible parameter-values.
 _openssl_versions = {
-    util.ssl_.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore
-    util.ssl_.PROTOCOL_TLS_CLIENT: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore
+    util.ssl_.PROTOCOL_TLS: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore[attr-defined]
+    util.ssl_.PROTOCOL_TLS_CLIENT: OpenSSL.SSL.SSLv23_METHOD,  # type: ignore[attr-defined]
     ssl.PROTOCOL_TLSv1: OpenSSL.SSL.TLSv1_METHOD,
 }
 
@@ -123,8 +123,8 @@ def inject_into_urllib3() -> None:
 
     _validate_dependencies_met()
 
-    util.SSLContext = PyOpenSSLContext  # type: ignore
-    util.ssl_.SSLContext = PyOpenSSLContext  # type: ignore
+    util.SSLContext = PyOpenSSLContext  # type: ignore[assignment]
+    util.ssl_.SSLContext = PyOpenSSLContext  # type: ignore[assignment]
     util.HAS_SNI = HAS_SNI
     util.ssl_.HAS_SNI = HAS_SNI
     util.IS_PYOPENSSL = True
@@ -221,7 +221,7 @@ def get_subj_alt_name(peer_cert: "CRL") -> List[Tuple[str, str]]:
     else:
         # This is technically using private APIs, but should work across all
         # relevant versions before PyOpenSSL got a proper API for this.
-        cert = _Certificate(openssl_backend, peer_cert._x509)  # type: ignore
+        cert = _Certificate(openssl_backend, peer_cert._x509)  # type: ignore[no-untyped-call]
 
     # We want to find the SAN extension. Ask Cryptography to locate it (it's
     # faster than looping in Python)
@@ -305,7 +305,7 @@ class WrappedSocket:
                 raise
         except OpenSSL.SSL.WantReadError as e:
             if not util.wait_for_read(self.socket, self.socket.gettimeout()):
-                raise timeout("The read operation timed out") from e  # type: ignore
+                raise timeout("The read operation timed out") from e  # type: ignore[arg-type]
             else:
                 return self.recv(*args, **kwargs)
 
@@ -313,11 +313,11 @@ class WrappedSocket:
         except OpenSSL.SSL.Error as e:
             raise ssl.SSLError(f"read error: {e!r}") from e
         else:
-            return data  # type: ignore
+            return data  # type: ignore[no-any-return]
 
     def recv_into(self, *args: Any, **kwargs: Any) -> int:
         try:
-            return self.connection.recv_into(*args, **kwargs)  # type: ignore
+            return self.connection.recv_into(*args, **kwargs)  # type: ignore[no-any-return]
         except OpenSSL.SSL.SysCallError as e:
             if self.suppress_ragged_eofs and e.args == (-1, "Unexpected EOF"):
                 return 0
@@ -330,7 +330,7 @@ class WrappedSocket:
                 raise
         except OpenSSL.SSL.WantReadError as e:
             if not util.wait_for_read(self.socket, self.socket.gettimeout()):
-                raise timeout("The read operation timed out") from e  # type: ignore
+                raise timeout("The read operation timed out") from e  # type: ignore[arg-type]
             else:
                 return self.recv_into(*args, **kwargs)
 
@@ -344,7 +344,7 @@ class WrappedSocket:
     def _send_until_done(self, data: bytes) -> int:
         while True:
             try:
-                return self.connection.send(data)  # type: ignore
+                return self.connection.send(data)  # type: ignore[no-any-return]
             except OpenSSL.SSL.WantWriteError as e:
                 if not util.wait_for_write(self.socket, self.socket.gettimeout()):
                     raise timeout() from e
@@ -368,7 +368,7 @@ class WrappedSocket:
         if self._io_refs < 1:
             try:
                 self._closed = True
-                return self.connection.close()  # type: ignore
+                return self.connection.close()  # type: ignore[no-any-return]
             except OpenSSL.SSL.Error:
                 return
         else:
@@ -378,21 +378,21 @@ class WrappedSocket:
         x509 = self.connection.get_peer_certificate()
 
         if not x509:
-            return x509  # type: ignore
+            return x509  # type: ignore[no-any-return]
 
         if binary_form:
-            return OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_ASN1, x509)  # type: ignore
+            return OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_ASN1, x509)  # type: ignore[no-any-return]
 
         return {
-            "subject": ((("commonName", x509.get_subject().CN),),),  # type: ignore
+            "subject": ((("commonName", x509.get_subject().CN),),),  # type: ignore[dict-item]
             "subjectAltName": get_subj_alt_name(x509),
         }
 
     def version(self) -> str:
-        return self.connection.get_protocol_version_name()  # type: ignore
+        return self.connection.get_protocol_version_name()  # type: ignore[no-any-return]
 
 
-WrappedSocket.makefile = socket_cls.makefile  # type: ignore
+WrappedSocket.makefile = socket_cls.makefile  # type: ignore[attr-defined]
 
 
 class PyOpenSSLContext:
@@ -440,9 +440,9 @@ class PyOpenSSLContext:
         cadata: Optional[bytes] = None,
     ) -> None:
         if cafile is not None:
-            cafile = cafile.encode("utf-8")  # type: ignore
+            cafile = cafile.encode("utf-8")  # type: ignore[assignment]
         if capath is not None:
-            capath = capath.encode("utf-8")  # type: ignore
+            capath = capath.encode("utf-8")  # type: ignore[assignment]
         try:
             self._ctx.load_verify_locations(cafile, capath)
             if cadata is not None:
@@ -459,13 +459,13 @@ class PyOpenSSLContext:
         self._ctx.use_certificate_chain_file(certfile)
         if password is not None:
             if not isinstance(password, bytes):
-                password = password.encode("utf-8")  # type: ignore
+                password = password.encode("utf-8")  # type: ignore[assignment]
             self._ctx.set_passwd_cb(lambda *_: password)
         self._ctx.use_privatekey_file(keyfile or certfile)
 
     def set_alpn_protocols(self, protocols: List[Union[bytes, str]]) -> None:
         protocols = [util.util.to_bytes(p, "ascii") for p in protocols]
-        return self._ctx.set_alpn_protos(protocols)  # type: ignore
+        return self._ctx.set_alpn_protos(protocols)  # type: ignore[no-any-return]
 
     def wrap_socket(
         self,
@@ -490,7 +490,7 @@ class PyOpenSSLContext:
                 cnx.do_handshake()
             except OpenSSL.SSL.WantReadError as e:
                 if not util.wait_for_read(sock, sock.gettimeout()):
-                    raise timeout("select timed out") from e  # type: ignore
+                    raise timeout("select timed out") from e  # type: ignore[arg-type]
                 continue
             except OpenSSL.SSL.Error as e:
                 raise ssl.SSLError(f"bad handshake: {e!r}") from e

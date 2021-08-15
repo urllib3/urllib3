@@ -9,6 +9,7 @@ jobs:
       matrix:
         downstream: [botocore, requests]
     runs-on: ubuntu-18.04
+    timeout-minutes: 20
 
     steps:
       - name: Checkout Repository

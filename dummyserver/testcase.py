@@ -1,8 +1,10 @@
+import socket
 import threading
 from contextlib import contextmanager
+from typing import Any, Callable, ClassVar, Generator, Iterable, Optional
 
 import pytest
-from tornado import ioloop, web
+from tornado import httpserver, ioloop, web
 
 from dummyserver.handlers import TestingApp
 from dummyserver.proxy import ProxyHandler
@@ -16,7 +18,7 @@ from dummyserver.server import (
 from urllib3.connection import HTTPConnection
 
 
-def consume_socket(sock, chunks=65536):
+def consume_socket(sock: socket.socket, chunks: int = 65536) -> bytearray:
     consumed = bytearray()
     while True:
         b = sock.recv(chunks)
@@ -35,8 +37,11 @@ class SocketDummyServerTestCase:
     scheme = "http"
     host = "localhost"
 
+    server_thread: ClassVar[SocketServerThread]
+    port: ClassVar[int]
+
     @classmethod
-    def _start_server(cls, socket_handler):
+    def _start_server(cls, socket_handler: Callable[[socket.socket], None]) -> None:
         ready_event = threading.Event()
         cls.server_thread = SocketServerThread(
             socket_handler=socket_handler, ready_event=ready_event, host=cls.host
@@ -48,10 +53,12 @@ class SocketDummyServerTestCase:
         cls.port = cls.server_thread.port
 
     @classmethod
-    def start_response_handler(cls, response, num=1, block_send=None):
+    def start_response_handler(
+        cls, response: bytes, num: int = 1, block_send: Optional[threading.Event] = None
+    ) -> threading.Event:
         ready_event = threading.Event()
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             for _ in range(num):
                 ready_event.set()
 
@@ -67,34 +74,43 @@ class SocketDummyServerTestCase:
         return ready_event
 
     @classmethod
-    def start_basic_handler(cls, **kw):
+    def start_basic_handler(
+        cls, num: int = 1, block_send: Optional[threading.Event] = None
+    ) -> threading.Event:
         return cls.start_response_handler(
-            b"HTTP/1.1 200 OK\r\n" b"Content-Length: 0\r\n" b"\r\n", **kw
+            b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n",
+            num,
+            block_send,
         )
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_class(cls) -> None:
         if hasattr(cls, "server_thread"):
             cls.server_thread.join(0.1)
 
     def assert_header_received(
-        self, received_headers, header_name, expected_value=None
-    ):
-        header_name = header_name.encode("ascii")
-        if expected_value is not None:
-            expected_value = expected_value.encode("ascii")
+        self,
+        received_headers: Iterable[bytes],
+        header_name: str,
+        expected_value: Optional[str] = None,
+    ) -> None:
+        header_name_bytes = header_name.encode("ascii")
+        if expected_value is None:
+            expected_value_bytes = None
+        else:
+            expected_value_bytes = expected_value.encode("ascii")
         header_titles = []
         for header in received_headers:
             key, value = header.split(b": ")
             header_titles.append(key)
-            if key == header_name and expected_value is not None:
-                assert value == expected_value
-        assert header_name in header_titles
+            if key == header_name_bytes and expected_value_bytes is not None:
+                assert value == expected_value_bytes
+        assert header_name_bytes in header_titles
 
 
 class IPV4SocketDummyServerTestCase(SocketDummyServerTestCase):
     @classmethod
-    def _start_server(cls, socket_handler):
+    def _start_server(cls, socket_handler: Callable[[socket.socket], None]) -> None:
         ready_event = threading.Event()
         cls.server_thread = SocketServerThread(
             socket_handler=socket_handler, ready_event=ready_event, host=cls.host
@@ -121,8 +137,13 @@ class HTTPDummyServerTestCase:
     host_alt = "127.0.0.1"  # Some tests need two hosts
     certs = DEFAULT_CERTS
 
+    io_loop: ClassVar[ioloop.IOLoop]
+    server: ClassVar[httpserver.HTTPServer]
+    port: ClassVar[int]
+    server_thread: ClassVar[threading.Thread]
+
     @classmethod
-    def _start_server(cls):
+    def _start_server(cls) -> None:
         cls.io_loop = ioloop.IOLoop.current()
         app = web.Application([(r".*", TestingApp)])
         cls.server, cls.port = run_tornado_app(
@@ -131,17 +152,17 @@ class HTTPDummyServerTestCase:
         cls.server_thread = run_loop_in_thread(cls.io_loop)
 
     @classmethod
-    def _stop_server(cls):
+    def _stop_server(cls) -> None:
         cls.io_loop.add_callback(cls.server.stop)
         cls.io_loop.add_callback(cls.io_loop.stop)
         cls.server_thread.join()
 
     @classmethod
-    def setup_class(cls):
+    def setup_class(cls) -> None:
         cls._start_server()
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_class(cls) -> None:
         cls._stop_server()
 
 
@@ -152,19 +173,30 @@ class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
 
 
 class HTTPDummyProxyTestCase:
+    io_loop: ClassVar[ioloop.IOLoop]
 
     http_host = "localhost"
     http_host_alt = "127.0.0.1"
+    http_server: ClassVar[httpserver.HTTPServer]
+    http_port: ClassVar[int]
 
     https_host = "localhost"
     https_host_alt = "127.0.0.1"
     https_certs = DEFAULT_CERTS
+    https_server: ClassVar[httpserver.HTTPServer]
+    https_port: ClassVar[int]
 
     proxy_host = "localhost"
     proxy_host_alt = "127.0.0.1"
+    proxy_server: ClassVar[httpserver.HTTPServer]
+    proxy_port: ClassVar[int]
+    https_proxy_server: ClassVar[httpserver.HTTPServer]
+    https_proxy_port: ClassVar[int]
+
+    server_thread: ClassVar[threading.Thread]
 
     @classmethod
-    def setup_class(cls):
+    def setup_class(cls) -> None:
         cls.io_loop = ioloop.IOLoop.current()
 
         app = web.Application([(r".*", TestingApp)])
@@ -193,7 +225,7 @@ class HTTPDummyProxyTestCase:
         cls.server_thread = run_loop_in_thread(cls.io_loop)
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_class(cls) -> None:
         cls.io_loop.add_callback(cls.http_server.stop)
         cls.io_loop.add_callback(cls.https_server.stop)
         cls.io_loop.add_callback(cls.proxy_server.stop)
@@ -233,7 +265,7 @@ class ConnectionMarker:
 
     @classmethod
     @contextmanager
-    def mark(cls, monkeypatch):
+    def mark(cls, monkeypatch: Any) -> Generator[None, None, None]:
         """
         Mark connections under in that context.
         """
@@ -241,11 +273,10 @@ class ConnectionMarker:
         orig_request = HTTPConnection.request
         orig_request_chunked = HTTPConnection.request_chunked
 
-        def call_and_mark(target):
-            def part(self, *args, **kwargs):
-                result = target(self, *args, **kwargs)
+        def call_and_mark(target: Callable[..., None]) -> Callable[..., None]:
+            def part(self: HTTPConnection, *args: Any, **kwargs: Any) -> None:
+                target(self, *args, **kwargs)
                 self.sock.sendall(cls._get_socket_mark(self.sock, False))
-                return result
 
             return part
 
@@ -257,7 +288,7 @@ class ConnectionMarker:
             yield
 
     @classmethod
-    def consume_request(cls, sock, chunks=65536):
+    def consume_request(cls, sock: socket.socket, chunks: int = 65536) -> bytearray:
         """
         Consume a socket until after the HTTP request is sent.
         """
@@ -273,7 +304,7 @@ class ConnectionMarker:
         return consumed
 
     @classmethod
-    def _get_socket_mark(cls, sock, server):
+    def _get_socket_mark(cls, sock: socket.socket, server: bool) -> bytes:
         if server:
             port = sock.getpeername()[1]
         else:

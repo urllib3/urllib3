@@ -1,11 +1,5 @@
 import signal
 import threading
-
-try:
-    from time import monotonic
-except ImportError:
-    from time import time as monotonic
-
 import time
 from socket import socketpair
 
@@ -114,7 +108,7 @@ def test_eintr(wfs, spair):
     old_handler = signal.signal(signal.SIGALRM, handler)
     try:
         assert not wfs(a, read=True, timeout=0)
-        start = monotonic()
+        start = time.monotonic()
         try:
             # Start delivering SIGALRM 10 times per second
             signal.setitimer(signal.ITIMER_REAL, 0.1, 0.1)
@@ -123,7 +117,7 @@ def test_eintr(wfs, spair):
         finally:
             # Stop delivering SIGALRM
             signal.setitimer(signal.ITIMER_REAL, 0)
-        end = monotonic()
+        end = time.monotonic()
         dur = end - start
         assert 0.9 < dur < 3
     finally:
@@ -180,7 +174,7 @@ def test_eintr_infinite_timeout(wfs, spair):
     old_handler = signal.signal(signal.SIGALRM, handler)
     try:
         assert not wfs(a, read=True, timeout=0)
-        start = monotonic()
+        start = time.monotonic()
         try:
             # Start delivering SIGALRM 10 times per second
             signal.setitimer(signal.ITIMER_REAL, 0.1, 0.1)
@@ -192,7 +186,7 @@ def test_eintr_infinite_timeout(wfs, spair):
             # Stop delivering SIGALRM
             signal.setitimer(signal.ITIMER_REAL, 0)
             thread.join()
-        end = monotonic()
+        end = time.monotonic()
         dur = end - start
         assert 0.9 < dur < 3
     finally:

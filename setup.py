@@ -8,7 +8,7 @@ import sys
 from setuptools import setup
 
 CURRENT_PYTHON = sys.version_info[:2]
-REQUIRED_PYTHON = (3, 6)
+REQUIRED_PYTHON = (3, 7)
 
 # This check and everything above must remain compatible with Python 2.7.
 if CURRENT_PYTHON < REQUIRED_PYTHON:
@@ -77,7 +77,6 @@ setup(
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
@@ -91,9 +90,9 @@ setup(
     keywords="urllib httplib threadsafe filepost http https ssl pooling",
     author="Andrey Petrov",
     author_email="andrey.petrov@shazow.net",
-    url="https://urllib3.readthedocs.io/",
+    url="https://urllib3.readthedocs.io",
     project_urls={
-        "Documentation": "https://urllib3.readthedocs.io/",
+        "Documentation": "https://urllib3.readthedocs.io",
         "Code": "https://github.com/urllib3/urllib3",
         "Issue tracker": "https://github.com/urllib3/urllib3/issues",
     },
@@ -109,7 +108,7 @@ setup(
     },
     package_dir={"": "src"},
     requires=[],
-    python_requires=">=3.6, <4",
+    python_requires=">=3.7, <4",
     extras_require={
         "brotli": [
             "brotli>=1.0.9; platform_python_implementation == 'CPython'",

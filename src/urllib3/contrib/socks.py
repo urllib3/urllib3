@@ -39,7 +39,7 @@ with the proxy:
 """
 
 try:
-    import socks  # type: ignore
+    import socks  # type: ignore[import]
 except ImportError:
     import warnings
 
@@ -67,7 +67,7 @@ from ..util.url import parse_url
 try:
     import ssl
 except ImportError:
-    ssl = None  # type: ignore
+    ssl = None  # type: ignore[assignment]
 
 try:
     from typing import TypedDict
@@ -82,7 +82,7 @@ try:
 
 
 except ImportError:  # Python 3.7
-    _TYPE_SOCKS_OPTIONS = Dict[str, Any]  # type: ignore
+    _TYPE_SOCKS_OPTIONS = Dict[str, Any]  # type: ignore[misc, assignment]
 
 
 class SOCKSConnection(HTTPConnection):

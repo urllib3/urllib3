@@ -91,7 +91,7 @@ class RequestMethods:
             return self.request_encode_url(
                 method,
                 url,
-                fields=fields,  # type: ignore
+                fields=fields,  # type: ignore[arg-type]
                 headers=headers,
                 **urlopen_kw,
             )
@@ -186,7 +186,7 @@ class RequestMethods:
                 )
             else:
                 body, content_type = (
-                    urlencode(fields),  # type: ignore
+                    urlencode(fields),  # type: ignore[arg-type]
                     "application/x-www-form-urlencoded",
                 )
 

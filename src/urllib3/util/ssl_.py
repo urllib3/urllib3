@@ -13,6 +13,7 @@ from .url import _BRACELESS_IPV6_ADDRZ_RE, _IPV4_RE
 SSLContext = None
 SSLTransport = None
 HAS_SNI = False
+HAS_NEVER_CHECK_COMMON_NAME = False
 IS_PYOPENSSL = False
 IS_SECURETRANSPORT = False
 ALPN_PROTOCOLS = ["http/1.1"]
@@ -42,8 +43,9 @@ if TYPE_CHECKING:
 
 try:  # Do we have ssl at all?
     import ssl
-    from ssl import (  # type: ignore
+    from ssl import (  # type: ignore[misc]
         CERT_REQUIRED,
+        HAS_NEVER_CHECK_COMMON_NAME,
         HAS_SNI,
         OP_NO_COMPRESSION,
         OP_NO_TICKET,
@@ -60,12 +62,12 @@ try:  # Do we have ssl at all?
         OPENSSL_VERSION, OPENSSL_VERSION_NUMBER
     )
     PROTOCOL_SSLv23 = PROTOCOL_TLS
-    from .ssltransport import SSLTransport  # type: ignore
+    from .ssltransport import SSLTransport  # type: ignore[misc]
 except ImportError:
-    OP_NO_COMPRESSION = 0x20000  # type: ignore
-    OP_NO_TICKET = 0x4000  # type: ignore
-    OP_NO_SSLv2 = 0x1000000  # type: ignore
-    OP_NO_SSLv3 = 0x2000000  # type: ignore
+    OP_NO_COMPRESSION = 0x20000  # type: ignore[assignment]
+    OP_NO_TICKET = 0x4000  # type: ignore[assignment]
+    OP_NO_SSLv2 = 0x1000000  # type: ignore[assignment]
+    OP_NO_SSLv3 = 0x2000000  # type: ignore[assignment]
     PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
     PROTOCOL_TLS_CLIENT = 16
 
@@ -140,7 +142,7 @@ def assert_fingerprint(cert: Optional[bytes], fingerprint: str) -> None:
 
     if not hmac.compare_digest(cert_digest, fingerprint_bytes):
         raise SSLError(
-            f'Fingerprints did not match. Expected "{fingerprint}", got "{cert_digest.hex()}".'
+            f'Fingerprints did not match. Expected "{fingerprint}", got "{cert_digest.hex()}"'
         )
 
 
@@ -278,7 +280,7 @@ def create_urllib3_context(
         context.check_hostname = False
         context.verify_mode = cert_reqs
 
-    if hasattr(context, "hostname_checks_common_name"):
+    if HAS_NEVER_CHECK_COMMON_NAME:
         context.hostname_checks_common_name = False
 
     # Enable logging of TLS session keys via defacto standard environment variable
@@ -380,7 +382,7 @@ def ssl_wrap_socket(
             raise SSLError(e) from e
 
     elif ssl_context is None and hasattr(context, "load_default_certs"):
-        # try to load OS default certs; works well on Windows (require Python3.4+)
+        # try to load OS default certs; works well on Windows.
         context.load_default_certs()
 
     # Attempt to detect if we get the goofy behavior of the

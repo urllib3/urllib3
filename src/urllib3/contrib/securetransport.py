@@ -76,7 +76,10 @@ from typing import (
 )
 
 from .. import util
-from ._securetransport.bindings import CoreFoundation, Security  # type: ignore
+from ._securetransport.bindings import (  # type: ignore[attr-defined]
+    CoreFoundation,
+    Security,
+)
 from ._securetransport.low_level import (
     SecurityConst,
     _assert_no_error,
@@ -128,8 +131,8 @@ SSL_WRITE_BLOCKSIZE = 16384
 # TLSv1 and a high of TLSv1.2. For everything else, we pin to that version.
 # TLSv1 to 1.2 are supported on macOS 10.8+
 _protocol_to_min_max = {
-    util.ssl_.PROTOCOL_TLS: (SecurityConst.kTLSProtocol1, SecurityConst.kTLSProtocol12),  # type: ignore
-    util.ssl_.PROTOCOL_TLS_CLIENT: (  # type: ignore
+    util.ssl_.PROTOCOL_TLS: (SecurityConst.kTLSProtocol1, SecurityConst.kTLSProtocol12),  # type: ignore[attr-defined]
+    util.ssl_.PROTOCOL_TLS_CLIENT: (  # type: ignore[attr-defined]
         SecurityConst.kTLSProtocol1,
         SecurityConst.kTLSProtocol12,
     ),
@@ -166,8 +169,8 @@ def inject_into_urllib3() -> None:
     """
     Monkey-patch urllib3 with SecureTransport-backed SSL-support.
     """
-    util.SSLContext = SecureTransportContext  # type: ignore
-    util.ssl_.SSLContext = SecureTransportContext  # type: ignore
+    util.SSLContext = SecureTransportContext  # type: ignore[assignment]
+    util.ssl_.SSLContext = SecureTransportContext  # type: ignore[assignment]
     util.HAS_SNI = HAS_SNI
     util.ssl_.HAS_SNI = HAS_SNI
     util.IS_SECURETRANSPORT = True
@@ -218,7 +221,7 @@ def _read_callback(
                 buffer = (ctypes.c_char * remaining).from_address(
                     data_buffer + read_count
                 )
-                chunk_size = base_socket.recv_into(buffer, remaining)  # type: ignore
+                chunk_size = base_socket.recv_into(buffer, remaining)  # type: ignore[arg-type]
                 read_count += chunk_size
                 if not chunk_size:
                     if not read_count:
@@ -437,7 +440,7 @@ class WrappedSocket:
             if cert_array is not None:
                 CoreFoundation.CFRelease(cert_array)
 
-        return trust_result.value  # type: ignore
+        return trust_result.value  # type: ignore[no-any-return]
 
     def handshake(
         self,
@@ -523,7 +526,7 @@ class WrappedSocket:
                 result = Security.SSLHandshake(self.context)
 
                 if result == SecurityConst.errSSLWouldBlock:
-                    raise socket.timeout("handshake timed out")  # type: ignore
+                    raise socket.timeout("handshake timed out")  # type: ignore[arg-type]
                 elif result == SecurityConst.errSSLServerAuthCompleted:
                     self._custom_validate(verify, trust_bundle)
                     continue
@@ -575,7 +578,7 @@ class WrappedSocket:
             # and return.
             if processed_bytes.value == 0:
                 # Timed out, no data read.
-                raise socket.timeout("recv timed out")  # type: ignore
+                raise socket.timeout("recv timed out")  # type: ignore[arg-type]
         elif result in (
             SecurityConst.errSSLClosedGraceful,
             SecurityConst.errSSLClosedNoNotify,
@@ -608,7 +611,7 @@ class WrappedSocket:
 
         if result == SecurityConst.errSSLWouldBlock and processed_bytes.value == 0:
             # Timed out
-            raise socket.timeout("send timed out")  # type: ignore
+            raise socket.timeout("send timed out")  # type: ignore[arg-type]
         else:
             _assert_no_error(result)
 
@@ -739,7 +742,7 @@ def makefile(
     return socket_cls.makefile(self, mode, buffering, *args, **kwargs)
 
 
-WrappedSocket.makefile = makefile  # type: ignore
+WrappedSocket.makefile = makefile  # type: ignore[attr-defined]
 
 
 class SecureTransportContext:
@@ -831,7 +834,7 @@ class SecureTransportContext:
             with open(cafile):
                 pass
 
-        self._trust_bundle = cafile or cadata  # type: ignore
+        self._trust_bundle = cafile or cadata  # type: ignore[assignment]
 
     def load_cert_chain(
         self,

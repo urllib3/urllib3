@@ -1,7 +1,8 @@
-"""The match_hostname() function from Python 3.3.3, essential when using SSL."""
+"""The match_hostname() function from Python 3.5, essential when using SSL."""
 
 # Note: This file is under the PSF license as the code comes from the python
 # stdlib.   http://docs.python.org/3/license.html
+# It is modified to remove commonName support.
 
 import ipaddress
 import re
@@ -105,8 +106,8 @@ def match_hostname(cert: _TYPE_PEER_CERT_RET, hostname: str) -> None:
         # Not an IP address (common case)
         host_ip = None
     dnsnames = []
-    san = cert.get("subjectAltName", ())  # type: ignore
-    for key, value in san:  # type: ignore
+    san = cert.get("subjectAltName", ())  # type: ignore[union-attr]
+    for key, value in san:  # type: ignore[misc]
         if key == "DNS":
             if host_ip is None and _dnsname_match(value, hostname):
                 return

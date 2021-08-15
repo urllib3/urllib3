@@ -1,10 +1,11 @@
-import collections
 import contextlib
 import platform
 import socket
 import ssl
 import sys
 import threading
+from pathlib import Path
+from typing import AbstractSet, Generator, NamedTuple, Optional
 
 import pytest
 import trustme
@@ -20,18 +21,23 @@ from .tz_stub import stub_timezone_ctx
 
 # The Python 3.8+ default loop on Windows breaks Tornado
 @pytest.fixture(scope="session", autouse=True)
-def configure_windows_event_loop():
+def configure_windows_event_loop() -> None:
     if sys.version_info >= (3, 8) and platform.system() == "Windows":
         import asyncio
 
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())  # type: ignore[attr-defined]
 
 
-ServerConfig = collections.namedtuple("ServerConfig", ["host", "port", "ca_certs"])
+class ServerConfig(NamedTuple):
+    host: str
+    port: int
+    ca_certs: str
 
 
 @contextlib.contextmanager
-def run_server_in_thread(scheme, host, tmpdir, ca, server_cert):
+def run_server_in_thread(
+    scheme: str, host: str, tmpdir: Path, ca: trustme.CA, server_cert: trustme.LeafCert
+) -> Generator[ServerConfig, None, None]:
     ca_cert_path = str(tmpdir / "ca.pem")
     server_cert_path = str(tmpdir / "server.pem")
     server_key_path = str(tmpdir / "server.key")
@@ -54,7 +60,9 @@ def run_server_in_thread(scheme, host, tmpdir, ca, server_cert):
 
 
 @pytest.fixture
-def no_san_server(tmp_path_factory):
+def no_san_server(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Generator[ServerConfig, None, None]:
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # only common name, no subject alternative names
@@ -65,7 +73,9 @@ def no_san_server(tmp_path_factory):
 
 
 @pytest.fixture
-def ip_san_server(tmp_path_factory):
+def ip_san_server(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Generator[ServerConfig, None, None]:
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # IP address in Subject Alternative Name
@@ -76,7 +86,9 @@ def ip_san_server(tmp_path_factory):
 
 
 @pytest.fixture
-def ipv6_san_server(tmp_path_factory):
+def ipv6_san_server(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Generator[ServerConfig, None, None]:
     if not HAS_IPV6:
         pytest.skip("Only runs on IPv6 systems")
 
@@ -90,16 +102,16 @@ def ipv6_san_server(tmp_path_factory):
 
 
 @pytest.fixture
-def stub_timezone(request):
+def stub_timezone(request: pytest.FixtureRequest) -> Generator[None, None, None]:
     """
     A pytest fixture that runs the test with a stub timezone.
     """
-    with stub_timezone_ctx(request.param):
+    with stub_timezone_ctx(request.param):  # type: ignore[attr-defined]
         yield
 
 
 @pytest.fixture(scope="session")
-def supported_tls_versions():
+def supported_tls_versions() -> AbstractSet[Optional[str]]:
     # We have to create an actual TLS connection
     # to test if the TLS version is not disabled by
     # OpenSSL config. Ubuntu 20.04 specifically
@@ -132,28 +144,28 @@ def supported_tls_versions():
 
 
 @pytest.fixture(scope="function")
-def requires_tlsv1(supported_tls_versions):
+def requires_tlsv1(supported_tls_versions: AbstractSet[str]) -> None:
     """Test requires TLSv1 available"""
     if not hasattr(ssl, "PROTOCOL_TLSv1") or "TLSv1" not in supported_tls_versions:
         pytest.skip("Test requires TLSv1")
 
 
 @pytest.fixture(scope="function")
-def requires_tlsv1_1(supported_tls_versions):
+def requires_tlsv1_1(supported_tls_versions: AbstractSet[str]) -> None:
     """Test requires TLSv1.1 available"""
     if not hasattr(ssl, "PROTOCOL_TLSv1_1") or "TLSv1.1" not in supported_tls_versions:
         pytest.skip("Test requires TLSv1.1")
 
 
 @pytest.fixture(scope="function")
-def requires_tlsv1_2(supported_tls_versions):
+def requires_tlsv1_2(supported_tls_versions: AbstractSet[str]) -> None:
     """Test requires TLSv1.2 available"""
     if not hasattr(ssl, "PROTOCOL_TLSv1_2") or "TLSv1.2" not in supported_tls_versions:
         pytest.skip("Test requires TLSv1.2")
 
 
 @pytest.fixture(scope="function")
-def requires_tlsv1_3(supported_tls_versions):
+def requires_tlsv1_3(supported_tls_versions: AbstractSet[str]) -> None:
     """Test requires TLSv1.3 available"""
     if (
         not getattr(ssl, "HAS_TLSv1_3", False)

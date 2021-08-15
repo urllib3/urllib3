@@ -5,7 +5,7 @@ from urllib3.exceptions import LocationParseError
 
 from .wait import wait_for_read
 
-SOCKET_GLOBAL_DEFAULT_TIMEOUT = socket._GLOBAL_DEFAULT_TIMEOUT  # type: ignore
+SOCKET_GLOBAL_DEFAULT_TIMEOUT = socket._GLOBAL_DEFAULT_TIMEOUT  # type: ignore[attr-defined]
 _TYPE_SOCKET_OPTIONS = Sequence[Tuple[int, int, Union[int, bytes]]]
 
 

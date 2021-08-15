@@ -11,7 +11,7 @@ from urllib3.util import retry, timeout
 
 
 class TestPoolManager:
-    @resolvesLocalhostFQDN
+    @resolvesLocalhostFQDN()
     def test_same_url(self):
         # Convince ourselves that normally we don't get the same object
         conn1 = connection_from_url("http://localhost:8081/foo")

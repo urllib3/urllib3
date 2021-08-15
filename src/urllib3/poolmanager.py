@@ -1,6 +1,7 @@
 import functools
 import logging
 import warnings
+from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -11,6 +12,7 @@ from typing import (
     Optional,
     Tuple,
     Type,
+    TypeVar,
     Union,
 )
 from urllib.parse import urljoin
@@ -52,6 +54,8 @@ SSL_KEYWORDS = (
     "ssl_context",
     "key_password",
 )
+
+_SelfT = TypeVar("_SelfT")
 
 
 class PoolKey(NamedTuple):
@@ -209,11 +213,14 @@ class PoolManager(RequestMethods):
         self.pool_classes_by_scheme = pool_classes_by_scheme
         self.key_fn_by_scheme = key_fn_by_scheme.copy()
 
-    def __enter__(self) -> "PoolManager":
+    def __enter__(self: _SelfT) -> _SelfT:
         return self
 
     def __exit__(
-        self, exc_type: object, exc_val: object, exc_tb: object
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
     ) -> "Literal[False]":
         self.clear()
         # Return False to re-raise any potential exceptions
@@ -392,7 +399,7 @@ class PoolManager(RequestMethods):
             self.proxy, self.proxy_config, parsed_url.scheme
         )
 
-    def urlopen(  # type: ignore
+    def urlopen(  # type: ignore[override]
         self, method: str, url: str, redirect: bool = True, **kw: Any
     ) -> BaseHTTPResponse:
         """
@@ -446,7 +453,7 @@ class PoolManager(RequestMethods):
             kw["headers"] = new_headers
 
         try:
-            retries = retries.increment(method, url, response=response, _pool=conn)  # type: ignore
+            retries = retries.increment(method, url, response=response, _pool=conn)  # type: ignore[arg-type]
         except MaxRetryError:
             if retries.raise_on_redirect:
                 response.drain_conn()
@@ -557,7 +564,7 @@ class ProxyManager(PoolManager):
             )
 
         return super().connection_from_host(
-            self.proxy.host, self.proxy.port, self.proxy.scheme, pool_kwargs=pool_kwargs  # type: ignore
+            self.proxy.host, self.proxy.port, self.proxy.scheme, pool_kwargs=pool_kwargs  # type: ignore[union-attr]
         )
 
     def _set_proxy_headers(
@@ -577,7 +584,7 @@ class ProxyManager(PoolManager):
             headers_.update(headers)
         return headers_
 
-    def urlopen(  # type: ignore
+    def urlopen(  # type: ignore[override]
         self, method: str, url: str, redirect: bool = True, **kw: Any
     ) -> BaseHTTPResponse:
         "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
