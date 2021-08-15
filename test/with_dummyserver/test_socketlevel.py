@@ -482,7 +482,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         # second ReadTimeoutError due to errno
         with HTTPSConnectionPool(host=self.host):
-            err = mock.Mock()
+            err = OSError()
             err.errno = errno.EAGAIN
             with pytest.raises(ReadTimeoutError):
                 pool._raise_timeout(err, "", 0)

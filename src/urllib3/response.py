@@ -314,7 +314,7 @@ class BaseHTTPResponse(io.IOBase):
                 "Received response with content-encoding: %s, but "
                 "failed to decode it." % content_encoding,
                 e,
-            )
+            ) from e
         if flush_decoder:
             data += self._flush_decoder()
 
@@ -565,22 +565,22 @@ class HTTPResponse(BaseHTTPResponse):
             try:
                 yield
 
-            except SocketTimeout:
+            except SocketTimeout as e:
                 # FIXME: Ideally we'd like to include the url in the ReadTimeoutError but
                 # there is yet no clean way to get at it from this context.
-                raise ReadTimeoutError(self._pool, None, "Read timed out.")  # type: ignore[arg-type]
+                raise ReadTimeoutError(self._pool, None, "Read timed out.") from e  # type: ignore[arg-type]
 
             except BaseSSLError as e:
                 # FIXME: Is there a better way to differentiate between SSLErrors?
                 if "read operation timed out" not in str(e):
                     # SSL errors related to framing/MAC get wrapped and reraised here
-                    raise SSLError(e)
+                    raise SSLError(e) from e
 
-                raise ReadTimeoutError(self._pool, None, "Read timed out.")  # type: ignore[arg-type]
+                raise ReadTimeoutError(self._pool, None, "Read timed out.") from e  # type: ignore[arg-type]
 
             except (HTTPException, OSError) as e:
                 # This includes IncompleteRead.
-                raise ProtocolError(f"Connection broken: {e!r}", e)
+                raise ProtocolError(f"Connection broken: {e!r}", e) from e
 
             # If no exception is thrown, we should avoid cleaning up
             # unnecessarily.
@@ -804,7 +804,7 @@ class HTTPResponse(BaseHTTPResponse):
         except ValueError:
             # Invalid chunked protocol response, abort.
             self.close()
-            raise InvalidChunkLength(self, line)
+            raise InvalidChunkLength(self, line) from None
 
     def _handle_chunk(self, amt: Optional[int]) -> bytes:
         returned_chunk = None

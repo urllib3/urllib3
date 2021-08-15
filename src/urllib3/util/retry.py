@@ -493,7 +493,8 @@ class Retry:
         )
 
         if new_retry.is_exhausted():
-            raise MaxRetryError(_pool, url, error or ResponseError(cause))  # type: ignore[arg-type]
+            reason = error or ResponseError(cause)
+            raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
 
         log.debug("Incremented Retry for (url='%s'): %r", url, new_retry)
 

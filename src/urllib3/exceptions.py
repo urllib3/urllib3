@@ -66,6 +66,7 @@ class SSLError(HTTPError):
 class ProxyError(HTTPError):
     """Raised when the connection to a proxy fails."""
 
+    # The original error is also available as __cause__.
     original_error: Exception
 
     def __init__(self, message: str, error: Exception) -> None:

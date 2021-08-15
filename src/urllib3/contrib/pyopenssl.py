@@ -297,21 +297,21 @@ class WrappedSocket:
             if self.suppress_ragged_eofs and e.args == (-1, "Unexpected EOF"):
                 return b""
             else:
-                raise OSError(e.args[0], str(e))
+                raise OSError(e.args[0], str(e)) from e
         except OpenSSL.SSL.ZeroReturnError:
             if self.connection.get_shutdown() == OpenSSL.SSL.RECEIVED_SHUTDOWN:
                 return b""
             else:
                 raise
-        except OpenSSL.SSL.WantReadError:
+        except OpenSSL.SSL.WantReadError as e:
             if not util.wait_for_read(self.socket, self.socket.gettimeout()):
-                raise timeout("The read operation timed out")  # type: ignore[arg-type]
+                raise timeout("The read operation timed out") from e  # type: ignore[arg-type]
             else:
                 return self.recv(*args, **kwargs)
 
         # TLS 1.3 post-handshake authentication
         except OpenSSL.SSL.Error as e:
-            raise ssl.SSLError(f"read error: {e!r}")
+            raise ssl.SSLError(f"read error: {e!r}") from e
         else:
             return data  # type: ignore[no-any-return]
 
@@ -322,21 +322,21 @@ class WrappedSocket:
             if self.suppress_ragged_eofs and e.args == (-1, "Unexpected EOF"):
                 return 0
             else:
-                raise OSError(e.args[0], str(e))
+                raise OSError(e.args[0], str(e)) from e
         except OpenSSL.SSL.ZeroReturnError:
             if self.connection.get_shutdown() == OpenSSL.SSL.RECEIVED_SHUTDOWN:
                 return 0
             else:
                 raise
-        except OpenSSL.SSL.WantReadError:
+        except OpenSSL.SSL.WantReadError as e:
             if not util.wait_for_read(self.socket, self.socket.gettimeout()):
-                raise timeout("The read operation timed out")  # type: ignore[arg-type]
+                raise timeout("The read operation timed out") from e  # type: ignore[arg-type]
             else:
                 return self.recv_into(*args, **kwargs)
 
         # TLS 1.3 post-handshake authentication
         except OpenSSL.SSL.Error as e:
-            raise ssl.SSLError(f"read error: {e!r}")
+            raise ssl.SSLError(f"read error: {e!r}") from e
 
     def settimeout(self, timeout: float) -> None:
         return self.socket.settimeout(timeout)
@@ -345,12 +345,12 @@ class WrappedSocket:
         while True:
             try:
                 return self.connection.send(data)  # type: ignore[no-any-return]
-            except OpenSSL.SSL.WantWriteError:
+            except OpenSSL.SSL.WantWriteError as e:
                 if not util.wait_for_write(self.socket, self.socket.gettimeout()):
-                    raise timeout()
+                    raise timeout() from e
                 continue
             except OpenSSL.SSL.SysCallError as e:
-                raise OSError(e.args[0], str(e))
+                raise OSError(e.args[0], str(e)) from e
 
     def sendall(self, data: bytes) -> None:
         total_sent = 0
@@ -448,7 +448,7 @@ class PyOpenSSLContext:
             if cadata is not None:
                 self._ctx.load_verify_locations(BytesIO(cadata))
         except OpenSSL.SSL.Error as e:
-            raise ssl.SSLError(f"unable to load trusted certificates: {e!r}")
+            raise ssl.SSLError(f"unable to load trusted certificates: {e!r}") from e
 
     def load_cert_chain(
         self,
@@ -488,12 +488,12 @@ class PyOpenSSLContext:
         while True:
             try:
                 cnx.do_handshake()
-            except OpenSSL.SSL.WantReadError:
+            except OpenSSL.SSL.WantReadError as e:
                 if not util.wait_for_read(sock, sock.gettimeout()):
-                    raise timeout("select timed out")  # type: ignore[arg-type]
+                    raise timeout("select timed out") from e  # type: ignore[arg-type]
                 continue
             except OpenSSL.SSL.Error as e:
-                raise ssl.SSLError(f"bad handshake: {e!r}")
+                raise ssl.SSLError(f"bad handshake: {e!r}") from e
             break
 
         return WrappedSocket(cnx, sock)
