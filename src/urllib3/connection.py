@@ -515,31 +515,6 @@ class HTTPSConnection(HTTPConnection):
             tls_in_tls=tls_in_tls,
         )
 
-        # If we're using all defaults and the connection
-        # is TLSv1 or TLSv1.1 we throw a DeprecationWarning
-        # for the host.
-        if hasattr(self.sock, "version"):
-            tls_version = self.sock.version()
-        else:
-            tls_version = None
-
-        if (
-            default_ssl_context
-            and self.ssl_minimum_version is None
-            and self.ssl_maximum_version is None
-            and tls_version is not None
-            and tls_version in {"TLSv1", "TLSv1.1"}
-        ):
-            warnings.warn(
-                "Negotiating TLSv1/TLSv1.1 by default is deprecated "
-                "and will be disabled in urllib3 v2.0.0. Connecting to "
-                f"'{self.host}' with '{tls_version}' can be "
-                f"enabled by explicitly opting-in with "
-                f"'ssl_minimum_version=ssl.TLSVersion.{tls_version.replace('.', '_')}'",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
         if self.assert_fingerprint:
             assert_fingerprint(
                 self.sock.getpeercert(binary_form=True), self.assert_fingerprint
