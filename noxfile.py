@@ -159,14 +159,7 @@ def lint(session: nox.Session) -> None:
 @nox.session(python="3.8")
 def mypy(session: nox.Session) -> None:
     """Run mypy."""
-    session.install("mypy==0.910")
-    session.install("idna>=2.0.0")
-    session.install("cryptography>=1.3.4")
-    session.install("tornado>=6.1")
-    session.install("pytest>=6.2")
-    session.install("trustme==0.9.0")
-    session.install("types-python-dateutil")
-    session.install("nox")
+    session.install("-r", "mypy-requirements.txt")
     session.run("mypy", "--version")
     session.run(
         "mypy",
