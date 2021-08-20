@@ -124,6 +124,9 @@ class TestUtil:
             "http+UNIX://%2fvar%2frun%2fSOCKET/path",
             ("http+unix", "%2fvar%2frun%2fSOCKET", None),
         ),
+        ("https:///www.attacker.com/a/b", ("https", "www.attacker.com", None)),
+        ("https:/www.attacker.com/a/b", ("https", "www.attacker.com", None)),
+        ("https:\www.attacker.com/a/b", ("https", "www.attacker.com", None)),
     ]
 
     @pytest.mark.parametrize(["url", "scheme_host_port"], url_host_map)
@@ -541,7 +544,7 @@ class TestUtil:
             assert len(w) == 1
 
     def _make_time_pass(self, seconds, timeout, time_mock):
-        """ Make some time pass for the timeout object """
+        """Make some time pass for the timeout object"""
         time_mock.return_value = TIMEOUT_EPOCH
         timeout.start_connect()
         time_mock.return_value = TIMEOUT_EPOCH + seconds
