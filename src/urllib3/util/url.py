@@ -77,6 +77,7 @@ _PATH_CHARS = _USERINFO_CHARS | {"@", "/"}
 _QUERY_CHARS = _FRAGMENT_CHARS = _PATH_CHARS | {"?"}
 _START_WIHTOUT_SPECIALCHAR = r"^\W+"
 
+
 class Url(
     typing.NamedTuple(
         "Url",
@@ -387,22 +388,22 @@ def parse_url(url: str) -> Url:
         # clean path if authority is empty and path is incorrect
         # "not url.startswith("/")" to check for internal paths like /testserver/new"
         # (authority is None or authority == '') to process only if authority is empty
-        if not url.startswith("/") and (authority is None or authority == ''):
+        if not url.startswith("/") and (authority is None or authority == ""):
             # check string contains special characters or not
             # not path.startswith("/") checks if path is not starting with "/"
-            if not path.startswith("/") :
+            if not path.startswith("/"):
                 # replace backslash with forward slash
-                temp = str.maketrans('\\', '/')
+                temp = str.maketrans("\\", "/")
                 path = path.translate(temp)
-            
+
             # check if path starts with forward slash then slice it into authority and path
-            if path.startswith("/") :
+            if path.startswith("/"):
                 cleaned_path = re.sub(_START_WIHTOUT_SPECIALCHAR, "", path)
                 if cleaned_path:
-                    ocp=cleaned_path.split("/", 1)
-                    authority=ocp[0]
+                    ocp = cleaned_path.split("/", 1)
+                    authority = ocp[0]
                     # if only 1 param is available after split, then its authority else assign it to authority and path
-                    path=ocp[1] if len(ocp)>1 else ""
+                    path = ocp[1] if len(ocp) > 1 else ""
 
         if scheme:
             scheme = scheme.lower()
