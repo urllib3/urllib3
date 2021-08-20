@@ -1,9 +1,9 @@
+from test import DUMMY_POOL
 from typing import Optional
 from unittest import mock
 
 import pytest
 
-from urllib3.connectionpool import ConnectionPool
 from urllib3.exceptions import (
     ConnectTimeoutError,
     InvalidHeader,
@@ -14,8 +14,6 @@ from urllib3.exceptions import (
 )
 from urllib3.response import HTTPResponse
 from urllib3.util.retry import RequestHistory, Retry
-
-DUMMY_POOL = ConnectionPool("dummy")
 
 
 class TestRetry:
