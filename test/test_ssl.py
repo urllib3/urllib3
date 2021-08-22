@@ -1,4 +1,3 @@
-import ssl
 from unittest import mock
 
 import pytest
@@ -173,63 +172,6 @@ class TestSSL:
             context.set_ciphers.assert_not_called()
         else:
             context.set_ciphers.assert_called_with(ssl_.DEFAULT_CIPHERS)
-
-    @pytest.mark.parametrize(
-        "kwargs",
-        [
-            {
-                "ssl_version": ssl.PROTOCOL_TLSv1,
-                "ssl_minimum_version": ssl.TLSVersion.MINIMUM_SUPPORTED,
-            },
-            {
-                "ssl_version": ssl.PROTOCOL_TLSv1,
-                "ssl_maximum_version": ssl.TLSVersion.TLSv1,
-            },
-            {
-                "ssl_version": ssl.PROTOCOL_TLSv1,
-                "ssl_minimum_version": ssl.TLSVersion.MINIMUM_SUPPORTED,
-                "ssl_maximum_version": ssl.TLSVersion.MAXIMUM_SUPPORTED,
-            },
-        ],
-    )
-    def test_create_urllib3_context_ssl_version_and_ssl_min_max_version_errors(
-        self, kwargs
-    ):
-        with pytest.raises(ValueError) as e:
-            ssl_.create_urllib3_context(**kwargs)
-
-        assert str(e.value) == (
-            "Can't specify both 'ssl_version' and either 'ssl_minimum_version' or 'ssl_maximum_version'"
-        )
-
-    @pytest.mark.parametrize(
-        "kwargs",
-        [
-            {
-                "ssl_version": ssl.PROTOCOL_TLS,
-                "ssl_minimum_version": ssl.TLSVersion.MINIMUM_SUPPORTED,
-            },
-            {
-                "ssl_version": ssl.PROTOCOL_TLS_CLIENT,
-                "ssl_minimum_version": ssl.TLSVersion.MINIMUM_SUPPORTED,
-            },
-            {
-                "ssl_version": None,
-                "ssl_minimum_version": ssl.TLSVersion.MINIMUM_SUPPORTED,
-            },
-            {"ssl_version": ssl.PROTOCOL_TLSv1, "ssl_minimum_version": None},
-            {"ssl_version": ssl.PROTOCOL_TLSv1, "ssl_maximum_version": None},
-            {
-                "ssl_version": ssl.PROTOCOL_TLSv1,
-                "ssl_minimum_version": None,
-                "ssl_maximum_version": None,
-            },
-        ],
-    )
-    def test_create_urllib3_context_ssl_version_and_ssl_min_max_version_no_error(
-        self, kwargs
-    ):
-        ssl_.create_urllib3_context(**kwargs)
 
     def test_assert_fingerprint_raises_exception_on_none_cert(self):
         with pytest.raises(SSLError):

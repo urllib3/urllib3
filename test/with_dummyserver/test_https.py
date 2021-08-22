@@ -22,7 +22,6 @@ import pytest
 import trustme
 
 import urllib3.util as util
-import urllib3.util.ssl_
 from dummyserver.server import (
     DEFAULT_CA,
     DEFAULT_CA_KEY,
@@ -78,22 +77,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     def tls_protocol_deprecated(self):
         return self.tls_protocol_name in {"TLSv1", "TLSv1.1"}
-
-    def tls_version(self):
-        try:
-            from ssl import TLSVersion
-        except ImportError:
-            return pytest.skip("ssl.TLSVersion isn't available")
-        return getattr(TLSVersion, self.tls_protocol_name.replace(".", "_"))
-
-    def ssl_version(self):
-        if self.tls_protocol_name is None:
-            return pytest.skip("Skipping base test class")
-        attribute = f"PROTOCOL_{self.tls_protocol_name.replace('.', '_')}"
-        ssl_version = getattr(ssl, attribute, None)
-        if ssl_version is None:
-            return pytest.skip(f"ssl.{attribute} isn't available")
-        return ssl_version
 
     @classmethod
     def setup_class(cls):
@@ -696,47 +679,16 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         if self.tls_protocol_deprecated():
             assert len(w) == 1
             assert str(w[0].message) == (
-                "Negotiating TLSv1/TLSv1.1 by default is deprecated and will be disabled in "
-                "urllib3 v2.0.0. Connecting to '%s' with '%s' can be enabled by "
-                "explicitly opting-in with 'ssl_minimum_version=ssl.TLSVersion.%s'"
-                % (
-                    self.host,
-                    self.tls_protocol_name,
-                    self.tls_protocol_name.replace(".", "_"),
-                )
+                "Negotiating TLSv1/TLSv1.1 by default is deprecated "
+                "and will be disabled in urllib3 v2.0.0. Connecting to "
+                "'%s' with '%s' can be enabled by explicitly opting-in "
+                "with 'ssl_version'" % (self.host, self.tls_protocol_name)
             )
         else:
             assert w == []
 
-    def test_ssl_version_is_deprecated(self):
-        if self.tls_protocol_name is None:
-            pytest.skip("Skipping base test class")
-
-        with HTTPSConnectionPool(
-            self.host, self.port, ca_certs=DEFAULT_CA, ssl_version=self.ssl_version()
-        ) as https_pool:
-            conn = https_pool._get_conn()
-            try:
-                with warnings.catch_warnings(record=True) as w:
-                    conn.connect()
-            finally:
-                conn.close()
-
-        assert len(w) >= 1
-        assert any(x.category == DeprecationWarning for x in w)
-        assert any(
-            str(x.message)
-            == (
-                "'ssl_version' option is deprecated and will be removed in "
-                "a future release of urllib3 2.x. Instead use 'ssl_minimum_version'"
-            )
-            for x in w
-        )
-
-    @pytest.mark.parametrize(
-        "ssl_version", [None, ssl.PROTOCOL_TLS, ssl.PROTOCOL_TLS_CLIENT]
-    )
-    def test_ssl_version_with_protocol_tls_or_client_not_deprecated(self, ssl_version):
+    @pytest.mark.parametrize("ssl_version", [ssl.PROTOCOL_TLS, ssl.PROTOCOL_TLS_CLIENT])
+    def test_no_tls_version_deprecation_with_ssl_version(self, ssl_version):
         if self.tls_protocol_name is None:
             pytest.skip("Skipping base test class")
 
@@ -750,20 +702,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             finally:
                 conn.close()
 
-        if self.tls_protocol_deprecated():
-            assert len(w) == 1
-            assert str(w[0].message) == (
-                "Negotiating TLSv1/TLSv1.1 by default is deprecated and will be disabled in "
-                "urllib3 v2.0.0. Connecting to '%s' with '%s' can be enabled by "
-                "explicitly opting-in with 'ssl_minimum_version=ssl.TLSVersion.%s'"
-                % (
-                    self.host,
-                    self.tls_protocol_name,
-                    self.tls_protocol_name.replace(".", "_"),
-                )
-            )
-        else:
-            assert w == []
+        assert w == []
 
     def test_no_tls_version_deprecation_with_ssl_context(self):
         if self.tls_protocol_name is None:
@@ -783,33 +722,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 conn.close()
 
         assert w == []
-
-    def test_tls_version_maximum_and_minimum(self):
-        if self.tls_protocol_name is None:
-            pytest.skip("Skipping base test class")
-
-        from ssl import TLSVersion
-
-        min_max_versions = [
-            (self.tls_version(), self.tls_version()),
-            (TLSVersion.MINIMUM_SUPPORTED, self.tls_version()),
-            (TLSVersion.MINIMUM_SUPPORTED, TLSVersion.MAXIMUM_SUPPORTED),
-        ]
-
-        for minimum_version, maximum_version in min_max_versions:
-            with HTTPSConnectionPool(
-                self.host,
-                self.port,
-                ca_certs=DEFAULT_CA,
-                ssl_minimum_version=minimum_version,
-                ssl_maximum_version=maximum_version,
-            ) as https_pool:
-                conn = https_pool._get_conn()
-                try:
-                    conn.connect()
-                    assert conn.sock.version() == self.tls_protocol_name
-                finally:
-                    conn.close()
 
     @pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8+")
     def test_sslkeylogfile(self, tmpdir, monkeypatch):
@@ -851,16 +763,6 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             r = pool.request("GET", "/alpn_protocol", retries=0)
             assert r.status == 200
             assert r.data.decode("utf-8") == util.ALPN_PROTOCOLS[0]
-
-    def test_default_ssl_context_ssl_min_max_versions(self):
-        ctx = urllib3.util.ssl_.create_urllib3_context()
-        assert ctx.minimum_version == ssl.TLSVersion.MINIMUM_SUPPORTED
-        assert ctx.maximum_version == ssl.TLSVersion.MAXIMUM_SUPPORTED
-
-    def test_ssl_context_ssl_version_uses_ssl_min_max_versions(self):
-        ctx = urllib3.util.ssl_.create_urllib3_context(ssl_version=self.ssl_version())
-        assert ctx.minimum_version == self.tls_version()
-        assert ctx.maximum_version == self.tls_version()
 
 
 @pytest.mark.usefixtures("requires_tlsv1")

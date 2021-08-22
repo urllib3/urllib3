@@ -107,44 +107,6 @@ _stdlib_to_openssl_verify = {
 }
 _openssl_to_stdlib_verify = {v: k for k, v in _stdlib_to_openssl_verify.items()}
 
-# The SSLvX values are the most likely to be missing in the future
-# but we check them all just to be sure.
-_OP_NO_SSLv2: int = getattr(OpenSSL.SSL, "OP_NO_SSLv2", 0)
-_OP_NO_SSLv3: int = getattr(OpenSSL.SSL, "OP_NO_SSLv3", 0)
-_OP_NO_TLSv1: int = getattr(OpenSSL.SSL, "OP_NO_TLSv1", 0)
-_OP_NO_TLSv1_1: int = getattr(OpenSSL.SSL, "OP_NO_TLSv1_1", 0)
-_OP_NO_TLSv1_2: int = getattr(OpenSSL.SSL, "OP_NO_TLSv1_2", 0)
-_OP_NO_TLSv1_3: int = getattr(OpenSSL.SSL, "OP_NO_TLSv1_3", 0)
-
-_openssl_to_ssl_minimum_version: Dict[int, int] = {
-    ssl.TLSVersion.MINIMUM_SUPPORTED: _OP_NO_SSLv2,
-    ssl.TLSVersion.SSLv3: _OP_NO_SSLv2,
-    ssl.TLSVersion.TLSv1: _OP_NO_SSLv2 | _OP_NO_SSLv3,
-    ssl.TLSVersion.TLSv1_1: _OP_NO_SSLv2 | _OP_NO_SSLv3 | _OP_NO_TLSv1,
-    ssl.TLSVersion.TLSv1_2: _OP_NO_SSLv2 | _OP_NO_SSLv3 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1,
-    ssl.TLSVersion.TLSv1_3: (
-        _OP_NO_SSLv2 | _OP_NO_SSLv3 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2
-    ),
-    ssl.TLSVersion.MAXIMUM_SUPPORTED: (
-        _OP_NO_SSLv2 | _OP_NO_SSLv3 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2
-    ),
-}
-_openssl_to_ssl_maximum_version: Dict[int, int] = {
-    ssl.TLSVersion.MINIMUM_SUPPORTED: (
-        _OP_NO_SSLv2 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2 | _OP_NO_TLSv1_3
-    ),
-    ssl.TLSVersion.SSLv3: (
-        _OP_NO_SSLv2 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2 | _OP_NO_TLSv1_3
-    ),
-    ssl.TLSVersion.TLSv1: (
-        _OP_NO_SSLv2 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2 | _OP_NO_TLSv1_3
-    ),
-    ssl.TLSVersion.TLSv1_1: _OP_NO_SSLv2 | _OP_NO_TLSv1_2 | _OP_NO_TLSv1_3,
-    ssl.TLSVersion.TLSv1_2: _OP_NO_SSLv2 | _OP_NO_TLSv1_3,
-    ssl.TLSVersion.TLSv1_3: _OP_NO_SSLv2,
-    ssl.TLSVersion.MAXIMUM_SUPPORTED: _OP_NO_SSLv2,
-}
-
 # OpenSSL will only write 16K at a time
 SSL_WRITE_BLOCKSIZE = 16384
 
@@ -445,8 +407,6 @@ class PyOpenSSLContext:
         self._ctx = OpenSSL.SSL.Context(self.protocol)
         self._options = 0
         self.check_hostname = False
-        self._minimum_version: int = ssl.TLSVersion.MINIMUM_SUPPORTED
-        self._maximum_version: int = ssl.TLSVersion.MAXIMUM_SUPPORTED
 
     @property
     def options(self) -> int:
@@ -455,7 +415,7 @@ class PyOpenSSLContext:
     @options.setter
     def options(self, value: int) -> None:
         self._options = value
-        self._set_ctx_options()
+        self._ctx.set_options(value)
 
     @property
     def verify_mode(self) -> int:
@@ -537,31 +497,6 @@ class PyOpenSSLContext:
             break
 
         return WrappedSocket(cnx, sock)
-
-    def _set_ctx_options(self) -> None:
-        self._ctx.set_options(
-            self._options
-            | _openssl_to_ssl_minimum_version[self._minimum_version]
-            | _openssl_to_ssl_maximum_version[self._maximum_version]
-        )
-
-    @property
-    def minimum_version(self) -> int:
-        return self._minimum_version
-
-    @minimum_version.setter
-    def minimum_version(self, minimum_version: int) -> None:
-        self._minimum_version = minimum_version
-        self._set_ctx_options()
-
-    @property
-    def maximum_version(self) -> int:
-        return self._maximum_version
-
-    @maximum_version.setter
-    def maximum_version(self, maximum_version: int) -> None:
-        self._maximum_version = maximum_version
-        self._set_ctx_options()
 
 
 def _verify_callback(
