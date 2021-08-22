@@ -1,5 +1,5 @@
 import re
-from typing import Container, NamedTuple, Optional, overload
+import typing
 
 from ..exceptions import LocationParseError
 from .util import to_str
@@ -78,16 +78,16 @@ _QUERY_CHARS = _FRAGMENT_CHARS = _PATH_CHARS | {"?"}
 
 
 class Url(
-    NamedTuple(
+    typing.NamedTuple(
         "Url",
         [
-            ("scheme", Optional[str]),
-            ("auth", Optional[str]),
-            ("host", Optional[str]),
-            ("port", Optional[int]),
-            ("path", Optional[str]),
-            ("query", Optional[str]),
-            ("fragment", Optional[str]),
+            ("scheme", typing.Optional[str]),
+            ("auth", typing.Optional[str]),
+            ("host", typing.Optional[str]),
+            ("port", typing.Optional[int]),
+            ("path", typing.Optional[str]),
+            ("query", typing.Optional[str]),
+            ("fragment", typing.Optional[str]),
         ],
     )
 ):
@@ -99,13 +99,13 @@ class Url(
 
     def __new__(  # type: ignore[no-untyped-def]
         cls,
-        scheme: Optional[str] = None,
-        auth: Optional[str] = None,
-        host: Optional[str] = None,
-        port: Optional[int] = None,
-        path: Optional[str] = None,
-        query: Optional[str] = None,
-        fragment: Optional[str] = None,
+        scheme: typing.Optional[str] = None,
+        auth: typing.Optional[str] = None,
+        host: typing.Optional[str] = None,
+        port: typing.Optional[int] = None,
+        path: typing.Optional[str] = None,
+        query: typing.Optional[str] = None,
+        fragment: typing.Optional[str] = None,
     ):
         if path and not path.startswith("/"):
             path = "/" + path
@@ -114,7 +114,7 @@ class Url(
         return super().__new__(cls, scheme, auth, host, port, path, query, fragment)
 
     @property
-    def hostname(self) -> Optional[str]:
+    def hostname(self) -> typing.Optional[str]:
         """For backwards-compatibility with urlparse. We're nice like that."""
         return self.host
 
@@ -129,7 +129,7 @@ class Url(
         return uri
 
     @property
-    def netloc(self) -> Optional[str]:
+    def netloc(self) -> typing.Optional[str]:
         """Network location including host and port"""
         if self.host is None:
             return None
@@ -189,23 +189,23 @@ class Url(
         return self.url
 
 
-@overload
+@typing.overload
 def _encode_invalid_chars(
-    component: str, allowed_chars: Container[str]
+    component: str, allowed_chars: typing.Container[str]
 ) -> str:  # Abstract
     ...
 
 
-@overload
+@typing.overload
 def _encode_invalid_chars(
-    component: None, allowed_chars: Container[str]
+    component: None, allowed_chars: typing.Container[str]
 ) -> None:  # Abstract
     ...
 
 
 def _encode_invalid_chars(
-    component: Optional[str], allowed_chars: Container[str]
-) -> Optional[str]:
+    component: typing.Optional[str], allowed_chars: typing.Container[str]
+) -> typing.Optional[str]:
     """Percent-encodes a URI component without reapplying
     onto an already percent-encoded component.
     """
@@ -269,7 +269,9 @@ def _remove_path_dot_segments(path: str) -> str:
     return "/".join(output)
 
 
-def _normalize_host(host: Optional[str], scheme: Optional[str]) -> Optional[str]:
+def _normalize_host(
+    host: typing.Optional[str], scheme: typing.Optional[str]
+) -> typing.Optional[str]:
     if host:
         if scheme in _NORMALIZABLE_SCHEMES:
             is_ipv6 = _IPV6_ADDRZ_RE.match(host)
@@ -368,15 +370,15 @@ def parse_url(url: str) -> Url:
     if not _SCHEME_RE.search(url):
         url = "//" + url
 
-    scheme: Optional[str]
-    authority: Optional[str]
-    auth: Optional[str]
-    host: Optional[str]
-    port: Optional[str]
-    port_int: Optional[int]
-    path: Optional[str]
-    query: Optional[str]
-    fragment: Optional[str]
+    scheme: typing.Optional[str]
+    authority: typing.Optional[str]
+    auth: typing.Optional[str]
+    host: typing.Optional[str]
+    port: typing.Optional[str]
+    port_int: typing.Optional[int]
+    path: typing.Optional[str]
+    query: typing.Optional[str]
+    fragment: typing.Optional[str]
 
     try:
         scheme, authority, path, query, fragment = _URI_RE.match(url).groups()  # type: ignore[union-attr]
