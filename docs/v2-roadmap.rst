@@ -55,7 +55,7 @@ over the wire.
 
 If you still need to use TLS 1.0 or 1.1 in your application
 you can still upgrade to v2.0, you'll only need to set
-``ssl_minimum_version`` to the proper value to continue using
+``ssl_version`` to the proper values to continue using
 legacy TLS versions.
 
 

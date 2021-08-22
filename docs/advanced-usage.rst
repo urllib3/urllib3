@@ -357,38 +357,6 @@ the ``key_password`` parameter to specify a password to decrypt the key.
 
 If your key isn't encrypted the ``key_password`` parameter isn't required.
 
-TLS minimum and maximum versions
---------------------------------
-
-When the configured TLS versions by urllib3 aren't compatible with the TLS versions that
-the server is willing to use you'll likely see an error like this one:
-
-.. code-block::
-
-    SSLError(1, '[SSL: UNSUPPORTED_PROTOCOL] unsupported protocol (_ssl.c:1124)')
-
-Starting in v2.0 by default urllib3 uses TLS 1.2 and later so servers that only support TLS 1.1
-or earlier will not work by default with urllib3.
-
-To fix the issue you'll need to use the ``ssl_minimum_version`` option along with the `TLSVersion enum`_
-in the standard library ``ssl`` module to configure urllib3 to accept a wider range of TLS versions.
-
-For the best security it's a good idea to set this value to the version of TLS that's being used by the
-server. For example if the server requires TLS 1.0 you'd configure urllib3 like so:
-
-.. code-block:: python
-    
-    import ssl
-    import urllib3
-    
-    http = urllib3.PoolManager(
-        ssl_minimum_version=ssl.TLSVersion.TLSv1
-    )
-    # This request works!
-    resp = http.request("GET", "https://tls-v1-0.badssl.com:1010")
-
-.. _TLSVersion enum: https://docs.python.org/3/library/ssl.html#ssl.TLSVersion
-
 .. _ssl_mac:
 .. _certificate_validation_and_mac_os_x:
 
