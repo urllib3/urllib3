@@ -5,12 +5,7 @@ from contextlib import contextmanager
 from typing import Generator, Optional
 
 import pytest
-
-try:
-    import zoneinfo  # type: ignore[import]
-except ImportError:
-    # Python < 3.9
-    from backports import zoneinfo  # type: ignore[no-redef]
+from dateutil import tz
 
 
 @contextmanager
@@ -28,16 +23,17 @@ def stub_timezone_ctx(tzname: Optional[str]) -> Generator[None, None, None]:
     if not hasattr(time, "tzset"):
         pytest.skip("Timezone patching is not supported")
 
-    # Make sure the new timezone exists
-    try:
-        zoneinfo.ZoneInfo(tzname)
-    except zoneinfo.ZoneInfoNotFoundError:
+    # Make sure the new timezone exists, at least in dateutil
+    new_tz = tz.gettz(tzname)
+    if new_tz is None:
         raise ValueError(f"Invalid timezone specified: {tzname!r}")
 
     # Get the current timezone
-    old_tzname = datetime.datetime.now().astimezone().tzname()
-    if old_tzname is None:
+    local_tz = tz.tzlocal()
+    if local_tz is None:
         raise OSError("Cannot determine current timezone")
+    old_tzname = datetime.datetime.now(local_tz).tzname()
+    assert old_tzname is not None
 
     os.environ["TZ"] = tzname
     time.tzset()
