@@ -1,10 +1,11 @@
 import socket
 import warnings
-from email.errors import MessageDefect
 from http.client import IncompleteRead as httplib_IncompleteRead
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
 if TYPE_CHECKING:
+    from email.errors import MessageDefect
+
     from urllib3.connection import HTTPConnection
     from urllib3.connectionpool import ConnectionPool
     from urllib3.response import HTTPResponse
@@ -355,7 +356,7 @@ class HeaderParsingError(HTTPError):
     """Raised by assert_header_parsing, but we convert it to a log.warning statement."""
 
     def __init__(
-        self, defects: List[MessageDefect], unparsed_data: Optional[Union[bytes, str]]
+        self, defects: List["MessageDefect"], unparsed_data: Optional[Union[bytes, str]]
     ) -> None:
         message = f"{defects or 'Unknown'}, unparsed data: {unparsed_data!r}"
         super().__init__(message)

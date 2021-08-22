@@ -31,7 +31,6 @@ except ImportError:
 import functools
 
 from urllib3 import util
-from urllib3.connectionpool import ConnectionPool
 from urllib3.exceptions import HTTPWarning
 from urllib3.util import ssl_
 
@@ -77,8 +76,6 @@ SHORT_TIMEOUT = 0.001
 LONG_TIMEOUT = 0.01
 if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS") == "true":
     LONG_TIMEOUT = 0.5
-
-DUMMY_POOL = ConnectionPool("dummy")
 
 
 def _can_resolve(host: str) -> bool:
