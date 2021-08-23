@@ -353,7 +353,7 @@ class PoolManager(RequestMethods):
         return pool
 
     def connection_from_url(
-        self, url: str, pool_kwargs: Optional[Dict[str, Any]] = None
+        self, url: Optional[str], pool_kwargs: Optional[Dict[str, Any]] = None
     ) -> HTTPConnectionPool:
         """
         Similar to :func:`urllib3.connectionpool.connection_from_url`.
