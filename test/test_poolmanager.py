@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from urllib3 import connection_from_url
+from urllib3.connectionpool import HTTPSConnectionPool
 from urllib3.exceptions import ClosedPoolError, LocationValueError
 from urllib3.poolmanager import PoolKey, PoolManager, key_fn_by_scheme
 from urllib3.util import retry, timeout
@@ -85,7 +86,7 @@ class TestPoolManager:
     def test_nohost(self, url: Optional[str]) -> None:
         p = PoolManager(5)
         with pytest.raises(LocationValueError):
-            p.connection_from_url(url=url)
+            p.connection_from_url(url=url)  # type: ignore[arg-type]
 
     def test_contextmanager(self) -> None:
         with PoolManager(1) as p:
@@ -256,8 +257,9 @@ class TestPoolManager:
         p = PoolManager(assert_hostname=True, assert_fingerprint=fingerprint)
         pool = p.connection_from_url("https://example.com/")
         assert 1 == len(p.pools)
-        assert pool.assert_hostname  # type: ignore[attr-defined]
-        assert fingerprint == pool.assert_fingerprint  # type: ignore[attr-defined]
+        assert isinstance(pool, HTTPSConnectionPool)
+        assert pool.assert_hostname
+        assert fingerprint == pool.assert_fingerprint
 
     def test_http_connection_from_context_case_insensitive(self) -> None:
         """Assert scheme case is ignored when getting the https key class."""

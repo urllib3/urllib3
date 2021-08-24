@@ -332,7 +332,7 @@ def _encode_target(target: str) -> str:
     return encoded_target
 
 
-def parse_url(url: Optional[str]) -> Url:
+def parse_url(url: str) -> Url:
     """
     Given a url, return a parsed :class:`.Url` namedtuple. Best-effort is
     performed to parse incomplete urls. Fields not provided will be None.
