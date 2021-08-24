@@ -331,7 +331,7 @@ class TestPoolManager:
             "http://example.com/", pool_kwargs=pool_kwargs
         )
 
-        assert retry.Retry.DEFAULT == default_pool.retries  # type: ignore[attr-defined]
+        assert retry.Retry.DEFAULT == default_pool.retries
         assert not default_pool.block
 
         assert 100 == override_pool.retries
@@ -347,7 +347,7 @@ class TestPoolManager:
             "example.com", scheme="http", pool_kwargs=pool_kwargs
         )
 
-        assert retry.Retry.DEFAULT == default_pool.retries  # type: ignore[attr-defined]
+        assert retry.Retry.DEFAULT == default_pool.retries
         assert not default_pool.block
 
         assert 100 == override_pool.retries

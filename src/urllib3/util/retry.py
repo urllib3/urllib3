@@ -185,6 +185,9 @@ class Retry:
     #: Maximum backoff time.
     BACKOFF_MAX = 120
 
+    # Backward compatibility; assigned outside of the class.
+    DEFAULT: "Retry"
+
     def __init__(
         self,
         total: Optional[Union[bool, int]] = 10,
@@ -256,7 +259,7 @@ class Retry:
     ) -> "Retry":
         """ Backwards-compatibility for the old retries format."""
         if retries is None:
-            retries = default if default is not None else cls.DEFAULT  # type: ignore[attr-defined]
+            retries = default if default is not None else cls.DEFAULT
 
         if isinstance(retries, Retry):
             return retries
@@ -508,4 +511,4 @@ class Retry:
 
 
 # For backwards compatibility (equivalent to pre-v1.9):
-Retry.DEFAULT = Retry(3)  # type: ignore[attr-defined]
+Retry.DEFAULT = Retry(3)
