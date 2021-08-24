@@ -194,7 +194,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             timeout = Timeout.from_float(timeout)
 
         if retries is None:
-            retries = Retry.DEFAULT  # type: ignore[attr-defined]
+            retries = Retry.DEFAULT
 
         self.timeout = timeout
         self.retries = retries

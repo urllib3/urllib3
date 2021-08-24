@@ -171,6 +171,7 @@ def mypy(session: nox.Session) -> None:
         "test/port_helpers.py",
         "test/test_exceptions.py",
         "test/test_fields.py",
+        "test/test_poolmanager.py",
         "test/test_proxymanager.py",
         "test/test_retry.py",
         "test/test_wait.py",
