@@ -4,7 +4,16 @@ import re
 import time
 from itertools import takewhile
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Collection, NamedTuple, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Collection,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from ..exceptions import (
     ConnectTimeoutError,
@@ -186,7 +195,7 @@ class Retry:
     BACKOFF_MAX = 120
 
     # Backward compatibility; assigned outside of the class.
-    DEFAULT: "Retry"
+    DEFAULT: ClassVar["Retry"]
 
     def __init__(
         self,
