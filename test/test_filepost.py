@@ -1,7 +1,7 @@
 import pytest
 
 from urllib3.fields import RequestField
-from urllib3.filepost import encode_multipart_formdata
+from urllib3.filepost import _TYPE_FIELDS, encode_multipart_formdata
 
 BOUNDARY = "!! test boundary !!"
 BOUNDARY_BYTES = BOUNDARY.encode()
@@ -11,7 +11,7 @@ class TestMultipartEncoding:
     @pytest.mark.parametrize(
         "fields", [dict(k="v", k2="v2"), [("k", "v"), ("k2", "v2")]]
     )
-    def test_input_datastructures(self, fields):
+    def test_input_datastructures(self, fields: _TYPE_FIELDS) -> None:
         encoded, _ = encode_multipart_formdata(fields, boundary=BOUNDARY)
         assert encoded.count(BOUNDARY_BYTES) == 3
 
@@ -23,7 +23,7 @@ class TestMultipartEncoding:
             [("k", b"v"), ("k2", "v2")],
         ],
     )
-    def test_field_encoding(self, fields):
+    def test_field_encoding(self, fields: _TYPE_FIELDS) -> None:
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
         expected = (
             b"--" + BOUNDARY_BYTES + b"\r\n"
@@ -41,7 +41,7 @@ class TestMultipartEncoding:
 
         assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
 
-    def test_filename(self):
+    def test_filename(self) -> None:
         fields = [("k", ("somename", b"v"))]
 
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
@@ -58,7 +58,7 @@ class TestMultipartEncoding:
 
         assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
 
-    def test_textplain(self):
+    def test_textplain(self) -> None:
         fields = [("k", ("somefile.txt", b"v"))]
 
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
@@ -75,7 +75,7 @@ class TestMultipartEncoding:
 
         assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
 
-    def test_explicit(self):
+    def test_explicit(self) -> None:
         fields = [("k", ("somefile.txt", b"v", "image/jpeg"))]
 
         encoded, content_type = encode_multipart_formdata(fields, boundary=BOUNDARY)
@@ -92,7 +92,7 @@ class TestMultipartEncoding:
 
         assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
 
-    def test_request_fields(self):
+    def test_request_fields(self) -> None:
         fields = [
             RequestField(
                 "k",
