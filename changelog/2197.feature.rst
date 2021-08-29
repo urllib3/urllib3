@@ -1,0 +1,1 @@
+Added ``FullPoolError`` which is raised when ``PoolManager(block=True)`` and a connection is returned to a full pool.
