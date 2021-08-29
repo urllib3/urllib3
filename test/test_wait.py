@@ -1,13 +1,9 @@
 import signal
 import threading
-
-try:
-    from time import monotonic
-except ImportError:
-    from time import time as monotonic
-
 import time
-from socket import socketpair
+from socket import socket, socketpair
+from types import FrameType
+from typing import Callable, Generator, List, Tuple
 
 import pytest
 
@@ -20,22 +16,25 @@ from urllib3.util.wait import (
     wait_for_write,
 )
 
+TYPE_SOCKET_PAIR = Tuple[socket, socket]
+TYPE_WAIT_FOR = Callable[..., bool]
+
 
 @pytest.fixture
-def spair():
+def spair() -> Generator[TYPE_SOCKET_PAIR, None, None]:
     a, b = socketpair()
     yield a, b
     a.close()
     b.close()
 
 
-variants = [wait_for_socket, select_wait_for_socket]
+variants: List[TYPE_WAIT_FOR] = [wait_for_socket, select_wait_for_socket]
 if _have_working_poll():
     variants.append(poll_wait_for_socket)
 
 
 @pytest.mark.parametrize("wfs", variants)
-def test_wait_for_socket(wfs, spair):
+def test_wait_for_socket(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> None:
     a, b = spair
 
     with pytest.raises(RuntimeError):
@@ -78,7 +77,7 @@ def test_wait_for_socket(wfs, spair):
         wfs(b, read=True)
 
 
-def test_wait_for_read_write(spair):
+def test_wait_for_read_write(spair: TYPE_SOCKET_PAIR) -> None:
     a, b = spair
 
     assert not wait_for_read(a, 0)
@@ -103,18 +102,18 @@ def test_wait_for_read_write(spair):
 
 @pytest.mark.skipif(not hasattr(signal, "setitimer"), reason="need setitimer() support")
 @pytest.mark.parametrize("wfs", variants)
-def test_eintr(wfs, spair):
+def test_eintr(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> None:
     a, b = spair
     interrupt_count = [0]
 
-    def handler(sig, frame):
+    def handler(sig: int, frame: FrameType) -> None:
         assert sig == signal.SIGALRM
         interrupt_count[0] += 1
 
     old_handler = signal.signal(signal.SIGALRM, handler)
     try:
         assert not wfs(a, read=True, timeout=0)
-        start = monotonic()
+        start = time.monotonic()
         try:
             # Start delivering SIGALRM 10 times per second
             signal.setitimer(signal.ITIMER_REAL, 0.1, 0.1)
@@ -123,7 +122,7 @@ def test_eintr(wfs, spair):
         finally:
             # Stop delivering SIGALRM
             signal.setitimer(signal.ITIMER_REAL, 0)
-        end = monotonic()
+        end = time.monotonic()
         dur = end - start
         assert 0.9 < dur < 3
     finally:
@@ -134,11 +133,11 @@ def test_eintr(wfs, spair):
 
 @pytest.mark.skipif(not hasattr(signal, "setitimer"), reason="need setitimer() support")
 @pytest.mark.parametrize("wfs", variants)
-def test_eintr_zero_timeout(wfs, spair):
+def test_eintr_zero_timeout(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> None:
     a, b = spair
     interrupt_count = [0]
 
-    def handler(sig, frame):
+    def handler(sig: int, frame: FrameType) -> None:
         assert sig == signal.SIGALRM
         interrupt_count[0] += 1
 
@@ -165,22 +164,22 @@ def test_eintr_zero_timeout(wfs, spair):
 
 @pytest.mark.skipif(not hasattr(signal, "setitimer"), reason="need setitimer() support")
 @pytest.mark.parametrize("wfs", variants)
-def test_eintr_infinite_timeout(wfs, spair):
+def test_eintr_infinite_timeout(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> None:
     a, b = spair
     interrupt_count = [0]
 
-    def handler(sig, frame):
+    def handler(sig: int, frame: FrameType) -> None:
         assert sig == signal.SIGALRM
         interrupt_count[0] += 1
 
-    def make_a_readable_after_one_second():
+    def make_a_readable_after_one_second() -> None:
         time.sleep(1)
         b.send(b"x")
 
     old_handler = signal.signal(signal.SIGALRM, handler)
     try:
         assert not wfs(a, read=True, timeout=0)
-        start = monotonic()
+        start = time.monotonic()
         try:
             # Start delivering SIGALRM 10 times per second
             signal.setitimer(signal.ITIMER_REAL, 0.1, 0.1)
@@ -192,7 +191,7 @@ def test_eintr_infinite_timeout(wfs, spair):
             # Stop delivering SIGALRM
             signal.setitimer(signal.ITIMER_REAL, 0)
             thread.join()
-        end = monotonic()
+        end = time.monotonic()
         dur = end - start
         assert 0.9 < dur < 3
     finally:

@@ -15,6 +15,8 @@ If you wish to add a new feature or fix a bug:
    as expected.
 #. Format your changes with black using command `$ nox -rs format` and lint your
    changes using command `nox -rs lint`.
+#. Add a changelog entry using `towncrier
+   <https://towncrier.readthedocs.io/en/actual-freaking-docs/quickstart.html#creating-news-fragments>`__.
 #. Send a pull request and bug the maintainer until it gets merged and published.
 
 
@@ -134,8 +136,10 @@ A release candidate can be created by any contributor.
 
 - Announce intent to release on Discord, see if anyone wants to include last minute
   changes.
-- Update ``CHANGES.rst`` and ``urllib3/__init__.py`` with the proper version number
-  and commit the changes to a ``release-X.Y.Z`` branch.
+- Run ``towncrier build`` to update ``CHANGES.rst`` with the release notes, adjust as
+  necessary.
+- Update ``urllib3/__init__.py`` with the proper version number
+- Commit the changes to a ``release-X.Y.Z`` branch.
 - Create a pull request and append ``&expand=1&template=release.md`` to the URL before
   submitting in order to include our release checklist in the pull request description.
 - Follow the checklist!

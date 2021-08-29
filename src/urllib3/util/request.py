@@ -13,9 +13,9 @@ SKIPPABLE_HEADERS = frozenset(["accept-encoding", "host", "user-agent"])
 ACCEPT_ENCODING = "gzip,deflate"
 try:
     try:
-        import brotlicffi as _unused_module_brotli  # type: ignore # noqa: F401
+        import brotlicffi as _unused_module_brotli  # type: ignore[import] # noqa: F401
     except ImportError:
-        import brotli as _unused_module_brotli  # type: ignore # noqa: F401
+        import brotli as _unused_module_brotli  # type: ignore[import] # noqa: F401
 except ImportError:
     pass
 else:
@@ -138,10 +138,10 @@ def rewind_body(body: IO[AnyStr], body_pos: Optional[Union[int, object]]) -> Non
     if body_seek is not None and isinstance(body_pos, int):
         try:
             body_seek(body_pos)
-        except OSError:
+        except OSError as e:
             raise UnrewindableBodyError(
                 "An error occurred when rewinding request body for redirect/retry."
-            )
+            ) from e
     elif body_pos is _FAILEDTELL:
         raise UnrewindableBodyError(
             "Unable to record file position for rewinding "

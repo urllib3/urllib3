@@ -67,6 +67,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     BinaryIO,
+    Dict,
     Generator,
     List,
     Optional,
@@ -76,7 +77,10 @@ from typing import (
 )
 
 from .. import util
-from ._securetransport.bindings import CoreFoundation, Security  # type: ignore
+from ._securetransport.bindings import (  # type: ignore[attr-defined]
+    CoreFoundation,
+    Security,
+)
 from ._securetransport.low_level import (
     SecurityConst,
     _assert_no_error,
@@ -128,8 +132,8 @@ SSL_WRITE_BLOCKSIZE = 16384
 # TLSv1 and a high of TLSv1.2. For everything else, we pin to that version.
 # TLSv1 to 1.2 are supported on macOS 10.8+
 _protocol_to_min_max = {
-    util.ssl_.PROTOCOL_TLS: (SecurityConst.kTLSProtocol1, SecurityConst.kTLSProtocol12),  # type: ignore
-    util.ssl_.PROTOCOL_TLS_CLIENT: (  # type: ignore
+    util.ssl_.PROTOCOL_TLS: (SecurityConst.kTLSProtocol1, SecurityConst.kTLSProtocol12),  # type: ignore[attr-defined]
+    util.ssl_.PROTOCOL_TLS_CLIENT: (  # type: ignore[attr-defined]
         SecurityConst.kTLSProtocol1,
         SecurityConst.kTLSProtocol12,
     ),
@@ -162,12 +166,21 @@ if hasattr(ssl, "PROTOCOL_TLSv1_2"):
     )
 
 
+_tls_version_to_st: Dict[int, int] = {
+    ssl.TLSVersion.MINIMUM_SUPPORTED: SecurityConst.kTLSProtocol1,
+    ssl.TLSVersion.TLSv1: SecurityConst.kTLSProtocol1,
+    ssl.TLSVersion.TLSv1_1: SecurityConst.kTLSProtocol11,
+    ssl.TLSVersion.TLSv1_2: SecurityConst.kTLSProtocol12,
+    ssl.TLSVersion.MAXIMUM_SUPPORTED: SecurityConst.kTLSProtocol12,
+}
+
+
 def inject_into_urllib3() -> None:
     """
     Monkey-patch urllib3 with SecureTransport-backed SSL-support.
     """
-    util.SSLContext = SecureTransportContext  # type: ignore
-    util.ssl_.SSLContext = SecureTransportContext  # type: ignore
+    util.SSLContext = SecureTransportContext  # type: ignore[assignment]
+    util.ssl_.SSLContext = SecureTransportContext  # type: ignore[assignment]
     util.HAS_SNI = HAS_SNI
     util.ssl_.HAS_SNI = HAS_SNI
     util.IS_SECURETRANSPORT = True
@@ -218,7 +231,7 @@ def _read_callback(
                 buffer = (ctypes.c_char * remaining).from_address(
                     data_buffer + read_count
                 )
-                chunk_size = base_socket.recv_into(buffer, remaining)  # type: ignore
+                chunk_size = base_socket.recv_into(buffer, remaining)  # type: ignore[arg-type]
                 read_count += chunk_size
                 if not chunk_size:
                     if not read_count:
@@ -382,9 +395,11 @@ class WrappedSocket:
             if trust_result in successes:
                 return
             reason = f"error code: {int(trust_result)}"
+            exc = None
         except Exception as e:
             # Do not trust on error
             reason = f"exception: {e!r}"
+            exc = e
 
         # SecureTransport does not send an alert nor shuts down the connection.
         rec = _build_tls_unknown_ca_alert(self.version())
@@ -395,7 +410,7 @@ class WrappedSocket:
         opts = struct.pack("ii", 1, 0)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, opts)
         self.close()
-        raise ssl.SSLError(f"certificate verify failed, {reason}")
+        raise ssl.SSLError(f"certificate verify failed, {reason}") from exc
 
     def _evaluate_trust(self, trust_bundle: bytes) -> int:
         # We want data in memory, so load it up.
@@ -435,7 +450,7 @@ class WrappedSocket:
             if cert_array is not None:
                 CoreFoundation.CFRelease(cert_array)
 
-        return trust_result.value  # type: ignore
+        return trust_result.value  # type: ignore[no-any-return]
 
     def handshake(
         self,
@@ -521,7 +536,7 @@ class WrappedSocket:
                 result = Security.SSLHandshake(self.context)
 
                 if result == SecurityConst.errSSLWouldBlock:
-                    raise socket.timeout("handshake timed out")  # type: ignore
+                    raise socket.timeout("handshake timed out")  # type: ignore[arg-type]
                 elif result == SecurityConst.errSSLServerAuthCompleted:
                     self._custom_validate(verify, trust_bundle)
                     continue
@@ -573,7 +588,7 @@ class WrappedSocket:
             # and return.
             if processed_bytes.value == 0:
                 # Timed out, no data read.
-                raise socket.timeout("recv timed out")  # type: ignore
+                raise socket.timeout("recv timed out")  # type: ignore[arg-type]
         elif result in (
             SecurityConst.errSSLClosedGraceful,
             SecurityConst.errSSLClosedNoNotify,
@@ -606,7 +621,7 @@ class WrappedSocket:
 
         if result == SecurityConst.errSSLWouldBlock and processed_bytes.value == 0:
             # Timed out
-            raise socket.timeout("send timed out")  # type: ignore
+            raise socket.timeout("send timed out")  # type: ignore[arg-type]
         else:
             _assert_no_error(result)
 
@@ -737,7 +752,7 @@ def makefile(
     return socket_cls.makefile(self, mode, buffering, *args, **kwargs)
 
 
-WrappedSocket.makefile = makefile  # type: ignore
+WrappedSocket.makefile = makefile  # type: ignore[attr-defined]
 
 
 class SecureTransportContext:
@@ -748,7 +763,11 @@ class SecureTransportContext:
     """
 
     def __init__(self, protocol: int) -> None:
-        self._min_version, self._max_version = _protocol_to_min_max[protocol]
+        self._minimum_version: int = ssl.TLSVersion.MINIMUM_SUPPORTED
+        self._maximum_version: int = ssl.TLSVersion.MAXIMUM_SUPPORTED
+        if protocol not in (None, ssl.PROTOCOL_TLS, ssl.PROTOCOL_TLS_CLIENT):
+            self._min_version, self._max_version = _protocol_to_min_max[protocol]
+
         self._options = 0
         self._verify = False
         self._trust_bundle: Optional[bytes] = None
@@ -829,7 +848,7 @@ class SecureTransportContext:
             with open(cafile):
                 pass
 
-        self._trust_bundle = cafile or cadata  # type: ignore
+        self._trust_bundle = cafile or cadata  # type: ignore[assignment]
 
     def load_cert_chain(
         self,
@@ -877,11 +896,27 @@ class SecureTransportContext:
             server_hostname,
             self._verify,
             self._trust_bundle,
-            self._min_version,
-            self._max_version,
+            _tls_version_to_st[self._minimum_version],
+            _tls_version_to_st[self._maximum_version],
             self._client_cert,
             self._client_key,
             self._client_key_passphrase,
             self._alpn_protocols,
         )
         return wrapped_socket
+
+    @property
+    def minimum_version(self) -> int:
+        return self._minimum_version
+
+    @minimum_version.setter
+    def minimum_version(self, minimum_version: int) -> None:
+        self._minimum_version = minimum_version
+
+    @property
+    def maximum_version(self) -> int:
+        return self._maximum_version
+
+    @maximum_version.setter
+    def maximum_version(self, maximum_version: int) -> None:
+        self._maximum_version = maximum_version

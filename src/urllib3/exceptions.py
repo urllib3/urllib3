@@ -1,11 +1,10 @@
 import socket
 import warnings
+from email.errors import MessageDefect
 from http.client import IncompleteRead as httplib_IncompleteRead
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
 if TYPE_CHECKING:
-    from email.errors import MessageDefect
-
     from urllib3.connection import HTTPConnection
     from urllib3.connectionpool import ConnectionPool
     from urllib3.response import HTTPResponse
@@ -32,8 +31,6 @@ _TYPE_REDUCE_RESULT = Tuple[Callable[..., object], Tuple[object, ...]]
 class PoolError(HTTPError):
     """Base exception for errors caused within a pool."""
 
-    pool: "ConnectionPool"
-
     def __init__(self, pool: "ConnectionPool", message: str) -> None:
         self.pool = pool
         super().__init__(f"{pool}: {message}")
@@ -45,8 +42,6 @@ class PoolError(HTTPError):
 
 class RequestError(PoolError):
     """Base exception for PoolErrors that have associated URLs."""
-
-    url: str
 
     def __init__(self, pool: "ConnectionPool", url: str, message: str) -> None:
         self.url = url
@@ -66,6 +61,7 @@ class SSLError(HTTPError):
 class ProxyError(HTTPError):
     """Raised when the connection to a proxy fails."""
 
+    # The original error is also available as __cause__.
     original_error: Exception
 
     def __init__(self, message: str, error: Exception) -> None:
@@ -108,8 +104,6 @@ class MaxRetryError(RequestError):
 
     """
 
-    reason: Optional[Exception]
-
     def __init__(
         self, pool: "ConnectionPool", url: str, reason: Optional[Exception] = None
     ) -> None:
@@ -122,8 +116,6 @@ class MaxRetryError(RequestError):
 
 class HostChangedError(RequestError):
     """Raised when an existing pool gets a request for a foreign host."""
-
-    retries: Union["Retry", int]
 
     def __init__(
         self, pool: "ConnectionPool", url: str, retries: Union["Retry", int] = 3
@@ -165,8 +157,6 @@ class ConnectTimeoutError(TimeoutError):
 
 class NewConnectionError(ConnectTimeoutError, HTTPError):
     """Raised when we fail to establish a new connection. Usually ECONNREFUSED."""
-
-    conn: "HTTPConnection"
 
     def __init__(self, conn: "HTTPConnection", message: str) -> None:
         self.conn = conn
@@ -219,8 +209,6 @@ class LocationValueError(ValueError, HTTPError):
 class LocationParseError(LocationValueError):
     """Raised when get_host or similar fails to parse the URL input."""
 
-    location: str
-
     def __init__(self, location: str) -> None:
         message = f"Failed to parse: {location}"
         super().__init__(message)
@@ -230,8 +218,6 @@ class LocationParseError(LocationValueError):
 
 class URLSchemeUnknown(LocationValueError):
     """Raised when a URL input has an unsupported scheme."""
-
-    scheme: str
 
     def __init__(self, scheme: str):
         message = f"Not supported URL scheme {scheme}"
@@ -309,9 +295,6 @@ class IncompleteRead(HTTPError, httplib_IncompleteRead):
     for ``partial`` to avoid creating large objects on streamed reads.
     """
 
-    partial: int
-    expected: int
-
     def __init__(self, partial: int, expected: int) -> None:
         self.partial = partial
         self.expected = expected
@@ -326,14 +309,9 @@ class IncompleteRead(HTTPError, httplib_IncompleteRead):
 class InvalidChunkLength(HTTPError, httplib_IncompleteRead):
     """Invalid chunk length in a chunked response."""
 
-    partial: int
-    expected: Optional[int]
-    response: "HTTPResponse"
-    length: int
-
     def __init__(self, response: "HTTPResponse", length: int) -> None:
-        self.partial = response.tell()
-        self.expected = response.length_remaining
+        self.partial: int = response.tell()
+        self.expected: Optional[int] = response.length_remaining
         self.response = response
         self.length = length
 
@@ -377,7 +355,7 @@ class HeaderParsingError(HTTPError):
     """Raised by assert_header_parsing, but we convert it to a log.warning statement."""
 
     def __init__(
-        self, defects: List["MessageDefect"], unparsed_data: Optional[Union[bytes, str]]
+        self, defects: List[MessageDefect], unparsed_data: Optional[Union[bytes, str]]
     ) -> None:
         message = f"{defects or 'Unknown'}, unparsed data: {unparsed_data!r}"
         super().__init__(message)

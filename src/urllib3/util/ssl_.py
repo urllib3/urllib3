@@ -41,9 +41,12 @@ if TYPE_CHECKING:
 
     from .ssltransport import SSLTransport as SSLTransportType
 
+# Mapping from 'ssl.PROTOCOL_TLSX' to 'TLSVersion.X'
+_SSL_VERSION_TO_TLS_VERSION: Dict[int, int] = {}
+
 try:  # Do we have ssl at all?
     import ssl
-    from ssl import (  # type: ignore
+    from ssl import (  # type: ignore[misc]
         CERT_REQUIRED,
         HAS_NEVER_CHECK_COMMON_NAME,
         HAS_SNI,
@@ -56,18 +59,30 @@ try:  # Do we have ssl at all?
         OP_NO_SSLv2,
         OP_NO_SSLv3,
         SSLContext,
+        TLSVersion,
     )
 
     USE_DEFAULT_SSLCONTEXT_CIPHERS = _is_ge_openssl_v1_1_1(
         OPENSSL_VERSION, OPENSSL_VERSION_NUMBER
     )
     PROTOCOL_SSLv23 = PROTOCOL_TLS
-    from .ssltransport import SSLTransport  # type: ignore
+
+    # Need to be careful here in case old TLS versions get
+    # removed in future 'ssl' module implementations.
+    for attr in ("TLSv1", "TLSv1_1", "TLSv1_2"):
+        try:
+            _SSL_VERSION_TO_TLS_VERSION[getattr(ssl, f"PROTOCOL_{attr}")] = getattr(
+                TLSVersion, attr
+            )
+        except AttributeError:  # Defensive:
+            continue
+
+    from .ssltransport import SSLTransport  # type: ignore[misc]
 except ImportError:
-    OP_NO_COMPRESSION = 0x20000  # type: ignore
-    OP_NO_TICKET = 0x4000  # type: ignore
-    OP_NO_SSLv2 = 0x1000000  # type: ignore
-    OP_NO_SSLv3 = 0x2000000  # type: ignore
+    OP_NO_COMPRESSION = 0x20000  # type: ignore[assignment]
+    OP_NO_TICKET = 0x4000  # type: ignore[assignment]
+    OP_NO_SSLv2 = 0x1000000  # type: ignore[assignment]
+    OP_NO_SSLv3 = 0x2000000  # type: ignore[assignment]
     PROTOCOL_SSLv23 = PROTOCOL_TLS = 2
     PROTOCOL_TLS_CLIENT = 16
 
@@ -76,7 +91,6 @@ _PCTRTT = Tuple[Tuple[str, str], ...]
 _PCTRTTT = Tuple[_PCTRTT, ...]
 _TYPE_PEER_CERT_RET_DICT = Dict[str, Union[str, _PCTRTTT, _PCTRTT]]
 _TYPE_PEER_CERT_RET = Union[_TYPE_PEER_CERT_RET_DICT, bytes, None]
-
 
 # A secure default.
 # Sources for more information on TLS ciphers:
@@ -142,7 +156,7 @@ def assert_fingerprint(cert: Optional[bytes], fingerprint: str) -> None:
 
     if not hmac.compare_digest(cert_digest, fingerprint_bytes):
         raise SSLError(
-            f'Fingerprints did not match. Expected "{fingerprint}", got "{cert_digest.hex()}".'
+            f'Fingerprints did not match. Expected "{fingerprint}", got "{cert_digest.hex()}"'
         )
 
 
@@ -190,6 +204,8 @@ def create_urllib3_context(
     cert_reqs: Optional[int] = None,
     options: Optional[int] = None,
     ciphers: Optional[str] = None,
+    ssl_minimum_version: Optional[int] = None,
+    ssl_maximum_version: Optional[int] = None,
 ) -> "ssl.SSLContext":
     """All arguments have the same meaning as ``ssl_wrap_socket``.
 
@@ -212,6 +228,14 @@ def create_urllib3_context(
         The desired protocol version to use. This will default to
         PROTOCOL_SSLv23 which will negotiate the highest protocol that both
         the server and your installation of OpenSSL support.
+
+        This parameter is deprecated instead use 'ssl_minimum_version'.
+    :param ssl_minimum_version:
+        The minimum version of TLS to be used. Use the 'ssl.TLSVersion' enum for specifying the value.
+    :param ssl_maximum_version:
+        The maximum version of TLS to be used. Use the 'ssl.TLSVersion' enum for specifying the value.
+        Not recommended to set to anything other than 'ssl.TLSVersion.MAXIMUM_SUPPORTED' which is the
+        default value.
     :param cert_reqs:
         Whether to require the certificate verification. This defaults to
         ``ssl.CERT_REQUIRED``.
@@ -228,11 +252,47 @@ def create_urllib3_context(
     if SSLContext is None:
         raise TypeError("Can't create an SSLContext object without an ssl module")
 
-    # PROTOCOL_TLS is deprecated in Python 3.10 so we pass PROTOCOL_TLS_CLIENT instead.
-    if ssl_version in (None, PROTOCOL_TLS):
-        ssl_version = PROTOCOL_TLS_CLIENT
+    # This means 'ssl_version' was specified as an exact value.
+    if ssl_version not in (None, PROTOCOL_TLS, PROTOCOL_TLS_CLIENT):
+        # Disallow setting 'ssl_version' and 'ssl_minimum|maximum_version'
+        # to avoid conflicts.
+        if ssl_minimum_version is not None or ssl_maximum_version is not None:
+            raise ValueError(
+                "Can't specify both 'ssl_version' and either "
+                "'ssl_minimum_version' or 'ssl_maximum_version'"
+            )
 
-    context = SSLContext(ssl_version)
+        # 'ssl_version' is deprecated and will be removed in the future.
+        else:
+            # Use 'ssl_minimum_version' and 'ssl_maximum_version' instead.
+            ssl_minimum_version = _SSL_VERSION_TO_TLS_VERSION.get(
+                ssl_version, TLSVersion.MINIMUM_SUPPORTED
+            )
+            ssl_maximum_version = _SSL_VERSION_TO_TLS_VERSION.get(
+                ssl_version, TLSVersion.MAXIMUM_SUPPORTED
+            )
+
+            # This warning message is pushing users to use 'ssl_minimum_version'
+            # instead of both min/max. Best practice is to only set the minimum version and
+            # keep the maximum version to be it's default value: 'TLSVersion.MAXIMUM_SUPPORTED'
+            warnings.warn(
+                "'ssl_version' option is deprecated and will be "
+                "removed in a future release of urllib3 2.x. Instead "
+                "use 'ssl_minimum_version'",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+
+    # PROTOCOL_TLS is deprecated in Python 3.10 so we always use PROTOCOL_TLS_CLIENT
+    context = SSLContext(PROTOCOL_TLS_CLIENT)
+
+    if ssl_minimum_version is not None:
+        context.minimum_version = ssl_minimum_version
+    else:  # Python <3.10 defaults to 'MINIMUM_SUPPORTED' so explicitly set TLSv1.2 here
+        context.minimum_version = TLSVersion.TLSv1_2
+
+    if ssl_maximum_version is not None:
+        context.maximum_version = ssl_maximum_version
 
     # Unless we're given ciphers defer to either system ciphers in
     # the case of OpenSSL 1.1.1+ or use our own secure default ciphers.
@@ -379,7 +439,7 @@ def ssl_wrap_socket(
         try:
             context.load_verify_locations(ca_certs, ca_cert_dir, ca_cert_data)
         except OSError as e:
-            raise SSLError(e)
+            raise SSLError(e) from e
 
     elif ssl_context is None and hasattr(context, "load_default_certs"):
         # try to load OS default certs; works well on Windows.

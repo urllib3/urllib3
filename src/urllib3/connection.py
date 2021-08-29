@@ -33,9 +33,9 @@ try:  # Compiled with SSL?
 
     BaseSSLError = ssl.SSLError
 except (ImportError, AttributeError):  # Platform-specific: No SSL.
-    ssl = None  # type: ignore
+    ssl = None  # type: ignore[assignment]
 
-    class BaseSSLError(BaseException):  # type: ignore
+    class BaseSSLError(BaseException):  # type: ignore[no-redef]
         pass
 
 
@@ -158,8 +158,8 @@ class HTTPConnection(_HTTPConnection):
     # If `host` is made a property it violates LSP, because a writeable attribute is overriden with a read-only one.
     # However, there is also a `host` setter so LSP is not violated.
     # Potentailly, a `@host.deleter` might be needed depending on how this issue will be fixed.
-    @property  # type: ignore
-    def host(self) -> str:  # type: ignore
+    @property  # type: ignore[override]
+    def host(self) -> str:  # type: ignore[override]
         """
         Getter method to remove any trailing dots that indicate the hostname is an FQDN.
 
@@ -201,15 +201,17 @@ class HTTPConnection(_HTTPConnection):
                 socket_options=self.socket_options,
             )
         except socket.gaierror as e:
-            raise NameResolutionError(self.host, self, e)
-        except SocketTimeout:
+            raise NameResolutionError(self.host, self, e) from e
+        except SocketTimeout as e:
             raise ConnectTimeoutError(
                 self,
                 f"Connection to {self.host} timed out. (connect timeout={self.timeout})",
-            )
+            ) from e
 
         except OSError as e:
-            raise NewConnectionError(self, f"Failed to establish a new connection: {e}")
+            raise NewConnectionError(
+                self, f"Failed to establish a new connection: {e}"
+            ) from e
 
         return conn
 
@@ -262,7 +264,7 @@ class HTTPConnection(_HTTPConnection):
 
     # `request` method's signature intentionally violates LSP.
     # urllib3's API is different from `http.client.HTTPConnection` and the subclassing is only incidental.
-    def request(  # type: ignore
+    def request(  # type: ignore[override]
         self,
         method: str,
         url: str,
@@ -274,6 +276,14 @@ class HTTPConnection(_HTTPConnection):
         else:
             # Avoid modifying the headers passed into .request()
             headers = copy(headers)
+            # Don't send bytes keys to httplib to avoid bytes/str comparison
+            # HTTPHeaderDict is already safe, but other types are not
+            for key, value in list(headers.items()):
+                if isinstance(key, bytes):
+                    headers.pop(key)
+                    # httplib would have decoded to latin-1 anyway
+                    headers[key.decode("latin-1")] = value
+
         if "user-agent" not in (to_str(k.lower()) for k in headers):
             updated_headers = {"User-Agent": _get_default_user_agent()}
             updated_headers.update(headers)
@@ -339,6 +349,8 @@ class HTTPSConnection(HTTPConnection):
     ca_cert_dir: Optional[str] = None
     ca_cert_data: Union[None, str, bytes] = None
     ssl_version: Optional[Union[int, str]] = None
+    ssl_minimum_version: Optional[int] = None
+    ssl_maximum_version: Optional[int] = None
     assert_fingerprint: Optional[str] = None
     tls_in_tls_required: bool = False
 
@@ -377,6 +389,9 @@ class HTTPSConnection(HTTPConnection):
         self.key_password = key_password
         self.ssl_context = ssl_context
         self.server_hostname = server_hostname
+        self.ssl_version = None
+        self.ssl_minimum_version = None
+        self.ssl_maximum_version = None
 
     def set_cert(
         self,
@@ -456,6 +471,8 @@ class HTTPSConnection(HTTPConnection):
             default_ssl_context = True
             self.ssl_context = create_urllib3_context(
                 ssl_version=resolve_ssl_version(self.ssl_version),
+                ssl_minimum_version=self.ssl_minimum_version,
+                ssl_maximum_version=self.ssl_maximum_version,
                 cert_reqs=resolve_cert_reqs(self.cert_reqs),
             )
             # In some cases, we want to verify hostnames ourselves
@@ -499,23 +516,6 @@ class HTTPSConnection(HTTPConnection):
             ssl_context=context,
             tls_in_tls=tls_in_tls,
         )
-
-        # If we're using all defaults and the connection
-        # is TLSv1 or TLSv1.1 we throw a DeprecationWarning
-        # for the host.
-        if (
-            default_ssl_context
-            and self.ssl_version is None
-            and hasattr(self.sock, "version")
-            and self.sock.version() in {"TLSv1", "TLSv1.1"}
-        ):
-            warnings.warn(
-                "Negotiating TLSv1/TLSv1.1 by default is deprecated "
-                "and will be disabled in urllib3 v2.0.0. Connecting to "
-                f"'{self.host}' with '{self.sock.version()}' can be "
-                "enabled by explicitly opting-in with 'ssl_version'",
-                DeprecationWarning,
-            )
 
         if self.assert_fingerprint:
             assert_fingerprint(
@@ -575,10 +575,11 @@ class HTTPSConnection(HTTPConnection):
             )
         except Exception as e:
             # Wrap into an HTTPSProxyError for easier diagnosis.
-            # Original exception is available on original_error
+            # Original exception is available on original_error and
+            # as __cause__.
             raise HTTPSProxyError(
                 f"Unable to establish a TLS connection to {hostname}", e
-            )
+            ) from e
 
 
 def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
@@ -592,7 +593,7 @@ def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
         )
         # Add cert to exception and reraise so client code can inspect
         # the cert when catching the exception, if they want to
-        e._peer_cert = cert  # type: ignore
+        e._peer_cert = cert  # type: ignore[attr-defined]
         raise
 
 
@@ -607,7 +608,7 @@ class DummyConnection:
 
 
 if not ssl:
-    HTTPSConnection = DummyConnection  # type: ignore # noqa: F811
+    HTTPSConnection = DummyConnection  # type: ignore[misc, assignment] # noqa: F811
 
 
 VerifiedHTTPSConnection = HTTPSConnection

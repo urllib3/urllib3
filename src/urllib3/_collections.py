@@ -256,6 +256,9 @@ class HTTPHeaderDict(MutableMapping[str, str]):
             self.extend(kwargs)
 
     def __setitem__(self, key: str, val: str) -> None:
+        # avoid a bytes/str comparison by decoding before httplib
+        if isinstance(key, bytes):
+            key = key.decode("latin-1")
         self._container[key.lower()] = [key, val]
 
     def __getitem__(self, key: str) -> str:
@@ -307,6 +310,9 @@ class HTTPHeaderDict(MutableMapping[str, str]):
         >>> headers['foo']
         'bar, baz'
         """
+        # avoid a bytes/str comparison by decoding before httplib
+        if isinstance(key, bytes):
+            key = key.decode("latin-1")
         key_lower = key.lower()
         new_vals = [key, val]
         # Keep the common case aka no item present as fast as possible

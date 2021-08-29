@@ -18,7 +18,9 @@ _TYPE_FIELD_VALUE_TUPLE = Union[
 ]
 
 
-def guess_content_type(filename: str, default: str = "application/octet-stream") -> str:
+def guess_content_type(
+    filename: Optional[str], default: str = "application/octet-stream"
+) -> str:
     """
     Guess the "Content-Type" of a file.
 

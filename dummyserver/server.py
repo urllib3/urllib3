@@ -12,6 +12,7 @@ import sys
 import threading
 import warnings
 from datetime import datetime
+from typing import Callable, Optional, Tuple, Union
 
 import tornado.httpserver
 import tornado.ioloop
@@ -38,8 +39,8 @@ DEFAULT_CA = os.path.join(CERTS_PATH, "cacert.pem")
 DEFAULT_CA_KEY = os.path.join(CERTS_PATH, "cacert.key")
 
 
-def _resolves_to_ipv6(host):
-    """ Returns True if the system resolves host to an IPv6 address by default. """
+def _resolves_to_ipv6(host: str) -> bool:
+    """Returns True if the system resolves host to an IPv6 address by default."""
     resolves_to_ipv6 = False
     try:
         for res in socket.getaddrinfo(host, None, socket.AF_UNSPEC):
@@ -52,8 +53,8 @@ def _resolves_to_ipv6(host):
     return resolves_to_ipv6
 
 
-def _has_ipv6(host):
-    """ Returns True if the system can bind an IPv6 address. """
+def _has_ipv6(host: str) -> bool:
+    """Returns True if the system can bind an IPv6 address."""
     sock = None
     has_ipv6 = False
 
@@ -101,7 +102,12 @@ class SocketServerThread(threading.Thread):
 
     USE_IPV6 = HAS_IPV6_AND_DNS
 
-    def __init__(self, socket_handler, host="localhost", ready_event=None):
+    def __init__(
+        self,
+        socket_handler: Callable[[socket.socket], None],
+        host: str = "localhost",
+        ready_event: Optional[threading.Event] = None,
+    ) -> None:
         super().__init__()
         self.daemon = True
 
@@ -109,7 +115,7 @@ class SocketServerThread(threading.Thread):
         self.host = host
         self.ready_event = ready_event
 
-    def _start_server(self):
+    def _start_server(self) -> None:
         if self.USE_IPV6:
             sock = socket.socket(socket.AF_INET6)
         else:
@@ -129,22 +135,22 @@ class SocketServerThread(threading.Thread):
         self.socket_handler(sock)
         sock.close()
 
-    def run(self):
-        self.server = self._start_server()
+    def run(self) -> None:
+        self._start_server()
 
 
-def ssl_options_to_context(
+def ssl_options_to_context(  # type: ignore[no-untyped-def]
     keyfile=None,
     certfile=None,
     server_side=None,
     cert_reqs=None,
-    ssl_version=None,
+    ssl_version: Optional[Union[str, int]] = None,
     ca_certs=None,
     do_handshake_on_connect=None,
     suppress_ragged_eofs=None,
     ciphers=None,
     alpn_protocols=None,
-):
+) -> ssl.SSLContext:
     """Return an equivalent SSLContext based on ssl.wrap_socket args."""
     ssl_version = resolve_ssl_version(ssl_version)
     cert_none = resolve_cert_reqs("CERT_NONE")
@@ -166,12 +172,18 @@ def ssl_options_to_context(
     return ctx
 
 
-def run_tornado_app(app, io_loop, certs, scheme, host):
+def run_tornado_app(  # type: ignore[no-untyped-def]
+    app: tornado.web.Application,
+    io_loop: tornado.ioloop.IOLoop,
+    certs,
+    scheme: str,
+    host: str,
+) -> Tuple[tornado.httpserver.HTTPServer, int]:
     assert io_loop == tornado.ioloop.IOLoop.current()
 
     # We can't use fromtimestamp(0) because of CPython issue 29097, so we'll
     # just construct the datetime object directly.
-    app.last_req = datetime(1970, 1, 1)
+    app.last_req = datetime(1970, 1, 1)  # type: ignore[attr-defined]
 
     if scheme == "https":
         ssl_opts = ssl_options_to_context(**certs)
@@ -179,26 +191,26 @@ def run_tornado_app(app, io_loop, certs, scheme, host):
     else:
         http_server = tornado.httpserver.HTTPServer(app)
 
-    sockets = tornado.netutil.bind_sockets(None, address=host)
+    sockets = tornado.netutil.bind_sockets(None, address=host)  # type: ignore[arg-type]
     port = sockets[0].getsockname()[1]
     http_server.add_sockets(sockets)
     return http_server, port
 
 
-def run_loop_in_thread(io_loop):
+def run_loop_in_thread(io_loop: tornado.ioloop.IOLoop) -> threading.Thread:
     t = threading.Thread(target=io_loop.start)
     t.start()
     return t
 
 
-def get_unreachable_address():
+def get_unreachable_address() -> Tuple[str, int]:
     # reserved as per rfc2606
     return ("something.invalid", 54321)
 
 
 if __name__ == "__main__":
     # For debugging dummyserver itself - python -m dummyserver.server
-    from .testcase import TestingApp
+    from .handlers import TestingApp
 
     host = "127.0.0.1"
 
@@ -210,9 +222,9 @@ if __name__ == "__main__":
     print(f"Listening on http://{host}:{port}")
 
 
-def encrypt_key_pem(private_key_pem, password):
+def encrypt_key_pem(private_key_pem: trustme.Blob, password: bytes) -> trustme.Blob:
     private_key = serialization.load_pem_private_key(
-        private_key_pem.bytes(), password=None, backend=default_backend()
+        private_key_pem.bytes(), password=None, backend=default_backend()  # type: ignore[no-untyped-call]
     )
     encrypted_key = private_key.private_bytes(
         serialization.Encoding.PEM,

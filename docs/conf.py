@@ -9,6 +9,18 @@ from datetime import date
 root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, root_path)
 
+# https://docs.readthedocs.io/en/stable/builds.html#build-environment
+if "READTHEDOCS" in os.environ:
+    import glob
+
+    if glob.glob("../changelog/*.*.rst"):
+        print("-- Found changes; running towncrier --", flush=True)
+        import subprocess
+
+        subprocess.run(
+            ["towncrier", "--yes", "--date", "not released yet"], cwd="..", check=True
+        )
+
 import urllib3
 
 # -- General configuration -----------------------------------------------------
