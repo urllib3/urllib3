@@ -9,6 +9,7 @@ from socket import timeout as SocketTimeout
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, TypeVar, Union, overload
 
+from ._request_methods import RequestMethods
 from .connection import (
     _TYPE_BODY,
     BaseSSLError,
@@ -38,7 +39,6 @@ from .exceptions import (
     SSLError,
     TimeoutError,
 )
-from .request import RequestMethods
 from .response import BaseHTTPResponse, HTTPResponse
 from .util.connection import is_connection_dropped
 from .util.proxy import connection_requires_http_tunnel
