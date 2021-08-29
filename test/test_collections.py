@@ -200,7 +200,7 @@ class TestHTTPHeaderDict:
 
     def test_setitem(self, d):
         d["Cookie"] = "foo"
-        d[b"Cookie"] = "bar"  # bytes get converted to str
+        d["Cookie"] = "bar"
         assert d["cookie"] == "bar"
         d["cookie"] = "with, comma"
         assert d.getlist("cookie") == ["with, comma"]
@@ -223,7 +223,7 @@ class TestHTTPHeaderDict:
 
     def test_add_comma_separated_multiheader(self, d):
         d.add("bar", "foo")
-        d.add(b"BAR", "bar")  # bytes get converted to str
+        d.add("BAR", "bar")
         d.add("Bar", "asdf")
         assert d.getlist("bar") == ["foo", "bar", "asdf"]
         assert d["bar"] == "foo, bar, asdf"

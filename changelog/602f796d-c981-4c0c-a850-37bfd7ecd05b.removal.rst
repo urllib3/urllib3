@@ -1,0 +1,1 @@
+Removed support for passing a bytes key to ``HTTPHeaderDict``.
