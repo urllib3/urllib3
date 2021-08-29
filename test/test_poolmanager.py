@@ -417,7 +417,9 @@ class TestPoolManager:
             (8192, 8192),
         ],
     )
-    def test_poolmanager_blocksize(self, input_blocksize, expected_blocksize):
+    def test_poolmanager_blocksize(
+        self, input_blocksize: int, expected_blocksize: int
+    ) -> None:
         """Assert PoolManager sets blocksize properly"""
         p = PoolManager()
 
@@ -425,4 +427,4 @@ class TestPoolManager:
             "http://example.com", {"blocksize": input_blocksize}
         )
         assert pool_blocksize.conn_kw["blocksize"] == expected_blocksize
-        assert pool_blocksize._get_conn().blocksize == expected_blocksize
+        assert pool_blocksize._get_conn().blocksize == expected_blocksize  # type: ignore[attr-defined]
