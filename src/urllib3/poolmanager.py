@@ -247,6 +247,11 @@ class PoolManager(RequestMethods):
         if request_context is None:
             request_context = self.connection_pool_kw.copy()
 
+        # Default blocksize to _DEFAULT_BLOCKSIZE if missing or explicitly
+        # set to 'None' in the request_context.
+        if request_context.get("blocksize") is None:
+            request_context["blocksize"] = _DEFAULT_BLOCKSIZE
+
         # Although the context has everything necessary to create the pool,
         # this function has historically only used the scheme, host, and port
         # in the positional args. When an API change is acceptable these can
