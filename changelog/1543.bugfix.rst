@@ -1,1 +1,1 @@
-Changed return type of ``HTTPResponse.getheaders()`` method to return a list key-value tuples to match CPython.
+Changed return type of ``HTTPResponse.getheaders()`` method to return a list of key-value tuples to match CPython.
