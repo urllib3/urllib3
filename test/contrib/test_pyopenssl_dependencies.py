@@ -8,7 +8,7 @@ except ImportError:
     pass
 
 
-def setup_module():
+def setup_module() -> None:
     try:
         from urllib3.contrib.pyopenssl import inject_into_urllib3
 
@@ -17,7 +17,7 @@ def setup_module():
         pytest.skip(f"Could not import PyOpenSSL: {e!r}")
 
 
-def teardown_module():
+def teardown_module() -> None:
     try:
         from urllib3.contrib.pyopenssl import extract_from_urllib3
 
@@ -31,7 +31,7 @@ class TestPyOpenSSLInjection:
     Tests for error handling in pyopenssl's 'inject_into urllib3'
     """
 
-    def test_inject_validate_fail_cryptography(self):
+    def test_inject_validate_fail_cryptography(self) -> None:
         """
         Injection should not be supported if cryptography is too old.
         """
@@ -46,7 +46,7 @@ class TestPyOpenSSLInjection:
             # clean up so that subsequent tests are unaffected.
             extract_from_urllib3()
 
-    def test_inject_validate_fail_pyopenssl(self):
+    def test_inject_validate_fail_pyopenssl(self) -> None:
         """
         Injection should not be supported if pyOpenSSL is too old.
         """
