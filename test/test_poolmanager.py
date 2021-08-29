@@ -9,7 +9,12 @@ import pytest
 from urllib3 import connection_from_url
 from urllib3.connectionpool import HTTPSConnectionPool
 from urllib3.exceptions import ClosedPoolError, LocationValueError
-from urllib3.poolmanager import PoolKey, PoolManager, key_fn_by_scheme
+from urllib3.poolmanager import (
+    _DEFAULT_BLOCKSIZE,
+    PoolKey,
+    PoolManager,
+    key_fn_by_scheme,
+)
 from urllib3.util import retry, timeout
 from urllib3.util.url import Url
 
@@ -113,6 +118,7 @@ class TestPoolManager:
             "retries": retry.Retry(total=6, connect=2),
             "block": True,
             "source_address": "127.0.0.1",
+            "blocksize": _DEFAULT_BLOCKSIZE + 1,
         }
         p = PoolManager()
         conn_pools = [
@@ -145,6 +151,7 @@ class TestPoolManager:
             "cert_reqs": "CERT_REQUIRED",
             "ca_certs": "/root/path_to_pem",
             "ssl_version": "SSLv23_METHOD",
+            "blocksize": _DEFAULT_BLOCKSIZE + 1,
         }
         p = PoolManager()
         conn_pools = [
@@ -401,3 +408,23 @@ class TestPoolManager:
         p = PoolManager()
         assert p._proxy_requires_url_absolute_form(Url("http://example.com")) is False
         assert p._proxy_requires_url_absolute_form(Url("https://example.com")) is False
+
+    @pytest.mark.parametrize(
+        "input_blocksize,expected_blocksize",
+        [
+            (_DEFAULT_BLOCKSIZE, _DEFAULT_BLOCKSIZE),
+            (None, _DEFAULT_BLOCKSIZE),
+            (8192, 8192),
+        ],
+    )
+    def test_poolmanager_blocksize(
+        self, input_blocksize: int, expected_blocksize: int
+    ) -> None:
+        """Assert PoolManager sets blocksize properly"""
+        p = PoolManager()
+
+        pool_blocksize = p.connection_from_url(
+            "http://example.com", {"blocksize": input_blocksize}
+        )
+        assert pool_blocksize.conn_kw["blocksize"] == expected_blocksize
+        assert pool_blocksize._get_conn().blocksize == expected_blocksize  # type: ignore[attr-defined]
