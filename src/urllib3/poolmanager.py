@@ -18,6 +18,7 @@ from typing import (
 from urllib.parse import urljoin
 
 from ._collections import RecentlyUsedContainer
+from ._request_methods import RequestMethods
 from .connection import ProxyConfig
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
 from .exceptions import (
@@ -26,7 +27,6 @@ from .exceptions import (
     ProxySchemeUnknown,
     URLSchemeUnknown,
 )
-from .request import RequestMethods
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
