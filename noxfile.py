@@ -167,6 +167,7 @@ def mypy(session: nox.Session) -> None:
         "noxfile.py",
         "src/urllib3",
         "test/__init__.py",
+        "test/with_dummyserver/test_connectionpool.py",
         "test/with_dummyserver/test_https.py",
         "test/with_dummyserver/test_integration.py",
         "test/with_dummyserver/test_no_ssl.py",
