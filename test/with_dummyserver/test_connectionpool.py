@@ -28,6 +28,7 @@ from urllib3.exceptions import (
     ReadTimeoutError,
     UnrewindableBodyError,
 )
+from urllib3.fields import _TYPE_FIELD_VALUE_TUPLE
 from urllib3.util import SKIP_HEADER, SKIPPABLE_HEADERS
 from urllib3.util.retry import RequestHistory, Retry
 from urllib3.util.timeout import Timeout
@@ -232,12 +233,12 @@ class TestConnectionPool(HTTPDummyServerTestCase):
 
     def test_upload(self) -> None:
         data = "I'm in ur multipart form-data, hazing a cheezburgr"
-        fields = (
-            ("upload_param", "filefield"),
-            ("upload_filename", "lolcat.txt"),
-            ("upload_size", str(len(data))),
-            ("filefield", ("lolcat.txt", data)),
-        )
+        fields: Dict[str, _TYPE_FIELD_VALUE_TUPLE] = {
+            "upload_param": "filefield",
+            "upload_filename": "lolcat.txt",
+            "upload_size": str(len(data)),
+            "filefield": ("lolcat.txt", data),
+        }
 
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("POST", "/upload", fields=fields)
@@ -271,12 +272,12 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         data = "\xe2\x99\xa5".encode()
         size = len(data)
 
-        fields = (
-            ("upload_param", fieldname),
-            ("upload_filename", filename),
-            ("upload_size", str(size)),
-            (fieldname, (filename, data)),
-        )
+        fields: Dict[str, _TYPE_FIELD_VALUE_TUPLE] = {
+            "upload_param": fieldname,
+            "upload_filename": filename,
+            "upload_size": str(size),
+            fieldname: (filename, data),
+        }
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("POST", "/upload", fields=fields)
             assert r.status == 200, r.data
