@@ -27,7 +27,7 @@ from .exceptions import (
     ProxySchemeUnknown,
     URLSchemeUnknown,
 )
-from .response import BaseHTTPResponse
+from .response import BaseHTTPResponse, HTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
 from .util.retry import Retry
@@ -168,7 +168,7 @@ key_fn_by_scheme = {
 pool_classes_by_scheme = {"http": HTTPConnectionPool, "https": HTTPSConnectionPool}
 
 
-class PoolManager(RequestMethods):
+class PoolManager(RequestMethods[HTTPResponse]):
     """
     Allows for arbitrary requests while transparently keeping track of
     necessary connection pools for you.

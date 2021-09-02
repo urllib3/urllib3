@@ -1144,8 +1144,9 @@ class TestRetry(HTTPDummyServerTestCase):
                 "GET", "/successful_retry", headers=headers, retries=retry
             )
             assert resp.status == 200
-            assert resp.retries.total == 1  # type: ignore[attr-defined]
-            assert resp.retries.history == (  # type: ignore[attr-defined]
+            assert resp.retries is not None
+            assert resp.retries.total == 1
+            assert resp.retries.history == (
                 RequestHistory("GET", "/successful_retry", None, 418, None),
             )
 
@@ -1153,7 +1154,8 @@ class TestRetry(HTTPDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port) as pool:
             resp = pool.request("GET", "/redirect", fields={"target": "/"})
             assert resp.status == 200
-            assert resp.retries.history == (  # type: ignore[attr-defined]
+            assert resp.retries is not None
+            assert resp.retries.history == (
                 RequestHistory("GET", "/redirect?target=%2F", None, 303, "/"),
             )
 
@@ -1166,7 +1168,8 @@ class TestRetry(HTTPDummyServerTestCase):
                 redirect=False,
             )
             assert r.status == 303
-            assert r.retries.history == tuple()  # type: ignore[attr-defined]
+            assert r.retries is not None
+            assert r.retries.history == tuple()
 
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request(
@@ -1185,9 +1188,10 @@ class TestRetry(HTTPDummyServerTestCase):
                 (307, "/multi_redirect?redirect_codes=302,200"),
                 (302, "/multi_redirect?redirect_codes=200"),
             ]
+            assert r.retries is not None
             actual = [
                 (history.status, history.redirect_location)
-                for history in r.retries.history  # type: ignore[attr-defined]
+                for history in r.retries.history
             ]
             assert actual == expected
 

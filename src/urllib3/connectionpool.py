@@ -117,7 +117,7 @@ class ConnectionPool:
 _blocking_errnos = {errno.EAGAIN, errno.EWOULDBLOCK}
 
 
-class HTTPConnectionPool(ConnectionPool, RequestMethods):
+class HTTPConnectionPool(ConnectionPool, RequestMethods[HTTPResponse]):
     """
     Thread-safe connection pool for one host.
 

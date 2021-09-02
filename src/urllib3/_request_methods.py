@@ -1,4 +1,14 @@
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 from urllib.parse import urlencode
 
 from .connection import _TYPE_BODY
@@ -12,7 +22,10 @@ _TYPE_ENCODE_URL_FIELDS = Union[
 ]
 
 
-class RequestMethods:
+BaseHTTPResponseT = TypeVar("BaseHTTPResponseT", bound=BaseHTTPResponse)
+
+
+class RequestMethods(Generic[BaseHTTPResponseT]):
     """
     Convenience mixin for classes who implement a :meth:`urlopen` method, such
     as :class:`urllib3.HTTPConnectionPool` and
@@ -55,7 +68,7 @@ class RequestMethods:
         encode_multipart: bool = True,
         multipart_boundary: Optional[str] = None,
         **kw: Any,
-    ) -> BaseHTTPResponse:  # Abstract
+    ) -> BaseHTTPResponseT:  # Abstract
         raise NotImplementedError(
             "Classes extending RequestMethods must implement "
             "their own ``urlopen`` method."
@@ -69,7 +82,7 @@ class RequestMethods:
         fields: Optional[_TYPE_FIELDS] = None,
         headers: Optional[Mapping[str, str]] = None,
         **urlopen_kw: Any,
-    ) -> BaseHTTPResponse:
+    ) -> BaseHTTPResponseT:
         """
         Make a request using :meth:`urlopen` with the appropriate encoding of
         ``fields`` based on the ``method`` used.
@@ -107,7 +120,7 @@ class RequestMethods:
         fields: Optional[_TYPE_ENCODE_URL_FIELDS] = None,
         headers: Optional[Mapping[str, str]] = None,
         **urlopen_kw: str,
-    ) -> BaseHTTPResponse:
+    ) -> BaseHTTPResponseT:
         """
         Make a request using :meth:`urlopen` with the ``fields`` encoded in
         the url. This is useful for request methods like GET, HEAD, DELETE, etc.
@@ -132,7 +145,7 @@ class RequestMethods:
         encode_multipart: bool = True,
         multipart_boundary: Optional[str] = None,
         **urlopen_kw: str,
-    ) -> BaseHTTPResponse:
+    ) -> BaseHTTPResponseT:
         """
         Make a request using :meth:`urlopen` with the ``fields`` encoded in
         the body. This is useful for request methods like POST, PUT, PATCH, etc.
