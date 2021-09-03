@@ -170,6 +170,8 @@ class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
     scheme = "https"
     host = "localhost"
     certs = DEFAULT_CERTS
+    certs_dir = ""
+    bad_ca_path = ""
 
 
 class HTTPDummyProxyTestCase:
