@@ -23,7 +23,6 @@ from unittest import mock
 
 import pytest
 import trustme
-from py._path.local import LocalPath
 
 import urllib3.util as util
 import urllib3.util.ssl_
@@ -90,7 +89,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             from ssl import TLSVersion
         except ImportError:
             return pytest.skip("ssl.TLSVersion isn't available")
-        return getattr(TLSVersion, self.tls_protocol_name.replace(".", "_"))  # type: ignore[no-any-return]
+        return TLSVersion[self.tls_protocol_name.replace(".", "_")]
 
     def ssl_version(self) -> int:
         if self.tls_protocol_name is None:
@@ -276,17 +275,17 @@ class TestHTTPS(HTTPSDummyServerTestCase):
                 assert not warn.called, warn.call_args_list
 
     @notSecureTransport()  # SecureTransport does not support cert directories
-    def test_ca_dir_verified(self, tmpdir: Path) -> None:
+    def test_ca_dir_verified(self, tmp_path: Path) -> None:
         # OpenSSL looks up certificates by the hash for their name, see c_rehash
         # TODO infer the bytes using `cryptography.x509.Name.public_bytes`.
         # https://github.com/pyca/cryptography/pull/3236
-        shutil.copyfile(DEFAULT_CA, str(tmpdir / "81deb5f7.0"))
+        shutil.copyfile(DEFAULT_CA, str(tmp_path / "81deb5f7.0"))
 
         with HTTPSConnectionPool(
             self.host,
             self.port,
             cert_reqs="CERT_REQUIRED",
-            ca_cert_dir=str(tmpdir),
+            ca_cert_dir=str(tmp_path),
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
             conn = https_pool._new_conn()
@@ -868,12 +867,12 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8+")
     def test_sslkeylogfile(
-        self, tmpdir: LocalPath, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         if not hasattr(util.SSLContext, "keylog_filename"):
             pytest.skip("requires OpenSSL 1.1.1+")
 
-        keylog_file = tmpdir.join("keylogfile.txt")  # type: ignore[no-untyped-call]
+        keylog_file = tmp_path / "keylogfile.txt"
         monkeypatch.setenv("SSLKEYLOGFILE", str(keylog_file))
 
         with HTTPSConnectionPool(
@@ -884,10 +883,10 @@ class TestHTTPS(HTTPSDummyServerTestCase):
         ) as https_pool:
             r = https_pool.request("GET", "/")
             assert r.status == 200, r.data
-            assert keylog_file.check(file=1), "keylogfile '%s' should exist" % str(
+            assert keylog_file.is_file(), "keylogfile '%s' should exist" % str(
                 keylog_file
             )
-            assert keylog_file.read().startswith(
+            assert keylog_file.read_text().startswith(
                 "# TLS secrets log file"
             ), "keylogfile '%s' should start with '# TLS secrets log file'" % str(
                 keylog_file
