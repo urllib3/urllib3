@@ -152,7 +152,7 @@ class Retry:
             {backoff factor} * (2 ** ({number of total retries} - 1))
 
         seconds. If the backoff_factor is 0.1, then :func:`.sleep` will sleep
-        for [0.0s, 0.2s, 0.4s, ...] between retries. It will never be longer
+        for [0.1s, 0.2s, 0.4s, ...] between retries. It will never be longer
         than :attr:`Retry.BACKOFF_MAX`.
 
         By default, backoff is disabled (set to 0).
