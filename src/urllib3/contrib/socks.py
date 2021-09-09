@@ -137,9 +137,7 @@ class SOCKSConnection(HTTPConnection):
                         f"Connection to {self.host} timed out. (connect timeout={self.timeout})",
                     ) from e
                 else:
-                    raise NewConnectionError(
-                        self, f"Failed to establish a new connection: {error}"
-                    )
+                    raise BaseException("BOOM")
             else:
                 raise NewConnectionError(
                     self, f"Failed to establish a new connection: {e}"
