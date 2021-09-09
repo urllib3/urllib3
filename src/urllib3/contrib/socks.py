@@ -139,7 +139,7 @@ class SOCKSConnection(HTTPConnection):
                 else:
                     raise NewConnectionError(
                         self, f"Failed to establish a new connection: {error}"
-                    )
+                    ) from e
             else:
                 raise NewConnectionError(
                     self, f"Failed to establish a new connection: {e}"
