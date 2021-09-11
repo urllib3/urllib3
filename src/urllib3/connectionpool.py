@@ -1020,7 +1020,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                 InsecureRequestWarning,
             )
 
-        if conn.proxy_is_verified is False:
+        if getattr(conn, "proxy_is_verified", None) is False:
             warnings.warn(
                 (
                     "Unverified HTTPS connection done to an HTTPS proxy. "

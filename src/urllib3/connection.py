@@ -506,8 +506,6 @@ class HTTPSConnection(HTTPConnection):
             ssl_context=ssl_context,
         )
 
-        # TODO(jls) - Discuss during review. Should we support
-        # assert_proxy_fingerprint  and assert_proxy_hostname?
         if ssl_context.verify_mode != ssl.CERT_NONE and not getattr(
             ssl_context, "check_hostname", False
         ):

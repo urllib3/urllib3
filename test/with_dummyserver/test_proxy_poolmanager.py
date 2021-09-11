@@ -223,9 +223,16 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             with proxy_from_url(self.https_proxy_url, cert_reqs="NONE") as https:
                 r = https.request("GET", "%s/" % self.https_url)
                 assert r.status == 200
-        assert len(w) > 1  # We expect two warnings (proxy, destination)
+        assert len(w) == 2  # We expect two warnings (proxy, destination)
         assert w[0].category == InsecureRequestWarning
         assert w[1].category == InsecureRequestWarning
+        messages = set(str(x.message) for x in w)
+        expected = [
+            "Unverified HTTPS request is being made to host 'localhost'",
+            "Unverified HTTPS connection done to an HTTPS proxy.",
+        ]
+        for warn_message in expected:
+            assert [msg for msg in messages if warn_message in expected]
 
     def test_redirect(self):
         with proxy_from_url(self.proxy_url) as http:
@@ -600,5 +607,5 @@ class TestHTTPSProxyVerification:
                 r = https.request("GET", destination_url)
                 assert r.status == 200
 
-        assert len(w) > 0
+        assert len(w) == 1
         assert w[0].category == SubjectAltNameWarning

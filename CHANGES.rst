@@ -1,6 +1,12 @@
 Changes
 =======
 
+1.26.x (dev)
+-------------------
+* Fixed a bug with HTTPS hostname verification involving IP addresses and lack
+  of SNI. (Issue #2400)
+
+
 1.26.6 (2021-06-25)
 -------------------
 
