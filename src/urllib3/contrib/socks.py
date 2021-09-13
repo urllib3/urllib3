@@ -137,9 +137,11 @@ class SOCKSConnection(HTTPConnection):
                         f"Connection to {self.host} timed out. (connect timeout={self.timeout})",
                     ) from e
                 else:
+                    # Adding `from e` messes with coverage somehow, so it's omitted.
+                    # See #2386.
                     raise NewConnectionError(
                         self, f"Failed to establish a new connection: {error}"
-                    ) from e
+                    )
             else:
                 raise NewConnectionError(
                     self, f"Failed to establish a new connection: {e}"
