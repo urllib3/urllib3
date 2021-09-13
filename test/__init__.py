@@ -5,6 +5,7 @@ import platform
 import socket
 import sys
 import warnings
+from importlib.abc import Loader, MetaPathFinder
 from types import ModuleType, TracebackType
 from typing import (
     TYPE_CHECKING,
@@ -13,8 +14,10 @@ from typing import (
     Dict,
     List,
     Optional,
+    Sequence,
     Type,
     TypeVar,
+    Union,
     cast,
 )
 
@@ -273,7 +276,12 @@ class LogRecorder:
         return False
 
 
-class ImportBlocker:
+class ImportBlockerLoader(Loader):
+    def load_module(self, fullname: str) -> ModuleType:
+        raise ImportError(f"import of {fullname} is blocked")
+
+
+class ImportBlocker(MetaPathFinder):
     """
     Block Imports
 
@@ -285,17 +293,14 @@ class ImportBlocker:
         self.namestoblock = namestoblock
 
     def find_module(
-        self, fullname: str, path: Optional[str] = None
-    ) -> Optional["ImportBlocker"]:
+        self, fullname: str, path: Optional[Sequence[Union[bytes, str]]] = None
+    ) -> Optional[Loader]:
         if fullname in self.namestoblock:
-            return self
+            return ImportBlockerLoader()
         return None
 
-    def load_module(self, fullname: str) -> None:
-        raise ImportError(f"import of {fullname} is blocked")
 
-
-class ModuleStash:
+class ModuleStash(MetaPathFinder):
     """
     Stashes away previously imported modules
 

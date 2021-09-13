@@ -16,7 +16,7 @@ module_stash = ModuleStash("urllib3")
 
 class TestWithoutSSL:
     @classmethod
-    def setup_class(cls):
+    def setup_class(cls) -> None:
         sys.modules.pop("ssl", None)
         sys.modules.pop("_ssl", None)
 
@@ -24,15 +24,15 @@ class TestWithoutSSL:
         sys.meta_path.insert(0, ssl_blocker)
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_class(cls) -> None:
         sys.meta_path.remove(ssl_blocker)
         module_stash.pop()
 
 
 class TestImportWithoutSSL(TestWithoutSSL):
-    def test_cannot_import_ssl(self):
+    def test_cannot_import_ssl(self) -> None:
         with pytest.raises(ImportError):
             import ssl  # noqa: F401
 
-    def test_import_urllib3(self):
+    def test_import_urllib3(self) -> None:
         import urllib3  # noqa: F401
