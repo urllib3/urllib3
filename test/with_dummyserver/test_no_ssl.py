@@ -15,14 +15,14 @@ pytestmark = pytest.mark.flaky
 
 
 class TestHTTPWithoutSSL(HTTPDummyServerTestCase, TestWithoutSSL):
-    def test_simple(self):
+    def test_simple(self) -> None:
         with urllib3.HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("GET", "/")
             assert r.status == 200, r.data
 
 
 class TestHTTPSWithoutSSL(HTTPSDummyServerTestCase, TestWithoutSSL):
-    def test_simple(self):
+    def test_simple(self) -> None:
         with urllib3.HTTPSConnectionPool(
             self.host, self.port, cert_reqs="NONE"
         ) as pool:
