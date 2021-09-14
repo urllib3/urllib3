@@ -169,6 +169,7 @@ def mypy(session: nox.Session) -> None:
         "test/__init__.py",
         "test/with_dummyserver/test_https.py",
         "test/with_dummyserver/test_integration.py",
+        "test/with_dummyserver/test_no_ssl.py",
         "test/conftest.py",
         "test/contrib/test_pyopenssl_dependencies.py",
         "test/contrib/test_socks.py",
