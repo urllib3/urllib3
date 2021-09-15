@@ -136,6 +136,8 @@ class HTTPDummyServerTestCase:
     host = "localhost"
     host_alt = "127.0.0.1"  # Some tests need two hosts
     certs = DEFAULT_CERTS
+    base_url: ClassVar[str]
+    base_url_alt: ClassVar[str]
 
     io_loop: ClassVar[ioloop.IOLoop]
     server: ClassVar[httpserver.HTTPServer]

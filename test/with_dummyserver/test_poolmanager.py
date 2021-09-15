@@ -19,12 +19,12 @@ pytestmark = pytest.mark.flaky
 
 class TestPoolManager(HTTPDummyServerTestCase):
     @classmethod
-    def setup_class(cls):
+    def setup_class(cls) -> None:
         super().setup_class()
         cls.base_url = f"http://{cls.host}:{cls.port}"
         cls.base_url_alt = f"http://{cls.host_alt}:{cls.port}"
 
-    def test_redirect(self):
+    def test_redirect(self) -> None:
         with PoolManager() as http:
             r = http.request(
                 "GET",
@@ -44,7 +44,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert r.status == 200
             assert r.data == b"Dummy server!"
 
-    def test_redirect_twice(self):
+    def test_redirect_twice(self) -> None:
         with PoolManager() as http:
             r = http.request(
                 "GET",
@@ -64,7 +64,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert r.status == 200
             assert r.data == b"Dummy server!"
 
-    def test_redirect_to_relative_url(self):
+    def test_redirect_to_relative_url(self) -> None:
         with PoolManager() as http:
             r = http.request(
                 "GET",
@@ -82,7 +82,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert r.status == 200
             assert r.data == b"Dummy server!"
 
-    def test_cross_host_redirect(self):
+    def test_cross_host_redirect(self) -> None:
         with PoolManager() as http:
             cross_host_location = f"{self.base_url_alt}/echo?a=b"
             with pytest.raises(MaxRetryError):
@@ -102,9 +102,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 retries=1,
             )
 
+            assert isinstance(r, HTTPResponse)
+            assert r._pool is not None
             assert r._pool.host == self.host_alt
 
-    def test_too_many_redirects(self):
+    def test_too_many_redirects(self) -> None:
         with PoolManager() as http:
             with pytest.raises(MaxRetryError):
                 http.request(
@@ -134,7 +136,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             pool = http.connection_from_host(self.host, self.port)
             assert pool.num_connections == 1
 
-    def test_redirect_cross_host_remove_headers(self):
+    def test_redirect_cross_host_remove_headers(self) -> None:
         with PoolManager() as http:
             r = http.request(
                 "GET",
@@ -163,7 +165,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert "authorization" not in data
             assert "Authorization" not in data
 
-    def test_redirect_cross_host_no_remove_headers(self):
+    def test_redirect_cross_host_no_remove_headers(self) -> None:
         with PoolManager() as http:
             r = http.request(
                 "GET",
@@ -179,7 +181,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             assert data["Authorization"] == "foo"
 
-    def test_redirect_cross_host_set_removed_headers(self):
+    def test_redirect_cross_host_set_removed_headers(self) -> None:
         with PoolManager() as http:
             r = http.request(
                 "GET",
@@ -216,14 +218,16 @@ class TestPoolManager(HTTPDummyServerTestCase):
             # Ensure the header argument itself is not modified in-place.
             assert headers == {"x-api-secret": "foo", "authorization": "bar"}
 
-    def test_redirect_without_preload_releases_connection(self):
+    def test_redirect_without_preload_releases_connection(self) -> None:
         with PoolManager(block=True, maxsize=2) as http:
             r = http.request("GET", f"{self.base_url}/redirect", preload_content=False)
+            assert isinstance(r, HTTPResponse)
+            assert r._pool is not None
             assert r._pool.num_requests == 2
             assert r._pool.num_connections == 1
             assert len(http.pools) == 1
 
-    def test_unknown_scheme(self):
+    def test_unknown_scheme(self) -> None:
         with PoolManager() as http:
             unknown_scheme = "unknown"
             unknown_scheme_url = f"{unknown_scheme}://host"
@@ -246,7 +250,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 )
             assert e.value.scheme == unknown_scheme
 
-    def test_raise_on_redirect(self):
+    def test_raise_on_redirect(self) -> None:
         with PoolManager() as http:
             r = http.request(
                 "GET",
@@ -257,7 +261,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             assert r.status == 303
 
-    def test_raise_on_status(self):
+    def test_raise_on_status(self) -> None:
         with PoolManager() as http:
             with pytest.raises(MaxRetryError):
                 # the default is to raise
@@ -291,7 +295,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             assert r.status == 500
 
-    def test_missing_port(self):
+    def test_missing_port(self) -> None:
         # Can a URL that lacks an explicit port like ':80' succeed, or
         # will all such URLs fail with an error?
 
@@ -308,7 +312,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert r.status == 200
             assert r.data == b"Dummy server!"
 
-    def test_headers(self):
+    def test_headers(self) -> None:
         with PoolManager(headers={"Foo": "bar"}) as http:
             r = http.request("GET", f"{self.base_url}/headers")
             returned_headers = json.loads(r.data.decode())
@@ -340,7 +344,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
 
-    def test_headers_http_header_dict(self):
+    def test_headers_http_header_dict(self) -> None:
         headers = HTTPHeaderDict()
         headers.add("Foo", "bar")
         headers.add("Multi", "1")
@@ -369,17 +373,17 @@ class TestPoolManager(HTTPDummyServerTestCase):
             assert returned_headers["Baz"] == "quux"
             assert returned_headers["Extra"] == "extra"
 
-    def test_body(self):
+    def test_body(self) -> None:
         with PoolManager() as http:
             r = http.request("POST", f"{self.base_url}/echo", body=b"test")
             assert r.data == b"test"
 
-    def test_http_with_ssl_keywords(self):
+    def test_http_with_ssl_keywords(self) -> None:
         with PoolManager(ca_certs="REQUIRED") as http:
             r = http.request("GET", f"http://{self.host}:{self.port}/")
             assert r.status == 200
 
-    def test_http_with_ca_cert_dir(self):
+    def test_http_with_ca_cert_dir(self) -> None:
         with PoolManager(ca_certs="REQUIRED", ca_cert_dir="/nosuchdir") as http:
             r = http.request("GET", f"http://{self.host}:{self.port}/")
             assert r.status == 200
@@ -397,35 +401,35 @@ class TestPoolManager(HTTPDummyServerTestCase):
             ("/echo_uri?[]", b"/echo_uri?%5B%5D"),
         ],
     )
-    def test_encode_http_target(self, target, expected_target):
+    def test_encode_http_target(self, target: str, expected_target: bytes) -> None:
         with PoolManager() as http:
             url = f"http://{self.host}:{self.port}{target}"
             r = http.request("GET", url)
             assert r.data == expected_target
 
-    def test_top_level_request(self):
+    def test_top_level_request(self) -> None:
         r = request("GET", f"{self.base_url}/")
         assert r.status == 200
         assert r.data == b"Dummy server!"
 
-    def test_top_level_request_without_keyword_args(self):
+    def test_top_level_request_without_keyword_args(self) -> None:
         body = ""
         with pytest.raises(TypeError):
-            request("GET", f"{self.base_url}/", body)
+            request("GET", f"{self.base_url}/", body)  # type: ignore[misc]
 
-    def test_top_level_request_with_body(self):
+    def test_top_level_request_with_body(self) -> None:
         r = request("POST", f"{self.base_url}/echo", body=b"test")
         assert r.status == 200
         assert r.data == b"test"
 
-    def test_top_level_request_with_preload_content(self):
+    def test_top_level_request_with_preload_content(self) -> None:
         r = request("GET", f"{self.base_url}/echo", preload_content=False)
         assert r.status == 200
         assert r.connection is not None
         r.data
         assert r.connection is None
 
-    def test_top_level_request_with_decode_content(self):
+    def test_top_level_request_with_decode_content(self) -> None:
         r = request(
             "GET",
             f"{self.base_url}/encodingrequest",
@@ -444,7 +448,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
         assert r.status == 200
         assert r.data == b"hello, world!"
 
-    def test_top_level_request_with_redirect(self):
+    def test_top_level_request_with_redirect(self) -> None:
         r = request(
             "GET",
             f"{self.base_url}/redirect",
@@ -464,14 +468,14 @@ class TestPoolManager(HTTPDummyServerTestCase):
         assert r.status == 200
         assert r.data == b"Dummy server!"
 
-    def test_top_level_request_with_retries(self):
+    def test_top_level_request_with_retries(self) -> None:
         r = request("GET", f"{self.base_url}/redirect", retries=False)
         assert r.status == 303
 
         r = request("GET", f"{self.base_url}/redirect", retries=3)
         assert r.status == 200
 
-    def test_top_level_request_with_timeout(self):
+    def test_top_level_request_with_timeout(self) -> None:
         with mock.patch("urllib3.poolmanager.RequestMethods.request") as mockRequest:
             mockRequest.return_value = HTTPResponse(status=200)
 
@@ -496,10 +500,10 @@ class TestPoolManager(HTTPDummyServerTestCase):
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")
 class TestIPv6PoolManager(IPv6HTTPDummyServerTestCase):
     @classmethod
-    def setup_class(cls):
+    def setup_class(cls) -> None:
         super().setup_class()
         cls.base_url = f"http://[{cls.host}]:{cls.port}"
 
-    def test_ipv6(self):
+    def test_ipv6(self) -> None:
         with PoolManager() as http:
             http.request("GET", self.base_url)
