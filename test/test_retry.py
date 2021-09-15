@@ -176,6 +176,9 @@ class TestRetry:
         retry = retry.increment(method="GET")
         assert retry.get_backoff_time() == max_backoff
 
+        retry = retry.increment(method="GET")
+        assert retry.get_backoff_time() == max_backoff
+
     def test_zero_backoff(self) -> None:
         retry = Retry()
         assert retry.get_backoff_time() == 0
