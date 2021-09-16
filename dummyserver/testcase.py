@@ -1,7 +1,7 @@
 import socket
 import threading
 from contextlib import contextmanager
-from typing import Any, Callable, ClassVar, Generator, Iterable, Optional
+from typing import Any, Callable, ClassVar, Dict, Generator, Iterable, Optional
 
 import pytest
 from tornado import httpserver, ioloop, web
@@ -179,23 +179,32 @@ class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
 class HTTPDummyProxyTestCase:
     io_loop: ClassVar[ioloop.IOLoop]
 
-    http_host = "localhost"
-    http_host_alt = "127.0.0.1"
+    http_host: ClassVar[str] = "localhost"
+    http_host_alt: ClassVar[str] = "127.0.0.1"
     http_server: ClassVar[httpserver.HTTPServer]
     http_port: ClassVar[int]
+    http_url: ClassVar[str]
+    http_url_alt: ClassVar[str]
 
-    https_host = "localhost"
-    https_host_alt = "127.0.0.1"
-    https_certs = DEFAULT_CERTS
+    https_host: ClassVar[str] = "localhost"
+    https_host_alt: ClassVar[str] = "127.0.0.1"
+    https_certs: ClassVar[Dict[str, Any]] = DEFAULT_CERTS
     https_server: ClassVar[httpserver.HTTPServer]
     https_port: ClassVar[int]
+    https_url: ClassVar[str]
+    https_url_alt: ClassVar[str]
 
-    proxy_host = "localhost"
-    proxy_host_alt = "127.0.0.1"
+    proxy_host: ClassVar[str] = "localhost"
+    proxy_host_alt: ClassVar[str] = "127.0.0.1"
     proxy_server: ClassVar[httpserver.HTTPServer]
     proxy_port: ClassVar[int]
+    proxy_url: ClassVar[str]
     https_proxy_server: ClassVar[httpserver.HTTPServer]
     https_proxy_port: ClassVar[int]
+    https_proxy_url: ClassVar[str]
+
+    certs_dir: ClassVar[str] = ""
+    bad_ca_path: ClassVar[str] = ""
 
     server_thread: ClassVar[threading.Thread]
 
