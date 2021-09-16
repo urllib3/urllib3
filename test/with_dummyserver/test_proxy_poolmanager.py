@@ -3,6 +3,7 @@ import os.path
 import shutil
 import socket
 import tempfile
+import warnings
 from test import (
     LONG_TIMEOUT,
     SHORT_TIMEOUT,
@@ -21,11 +22,13 @@ from urllib3._collections import HTTPHeaderDict
 from urllib3.connectionpool import VerifiedHTTPSConnection, connection_from_url
 from urllib3.exceptions import (
     ConnectTimeoutError,
+    InsecureRequestWarning,
     MaxRetryError,
     ProxyError,
     ProxySchemeUnknown,
     ProxySchemeUnsupported,
     SSLError,
+    SubjectAltNameWarning,
 )
 from urllib3.poolmanager import ProxyManager, proxy_from_url
 from urllib3.util.ssl_ import create_urllib3_context
@@ -212,6 +215,24 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                 https_fail_pool.request("GET", "/", retries=0)
             assert isinstance(e.value.reason, SSLError)
             assert "doesn't match" in str(e.value.reason)
+
+    @onlyPy3
+    def test_proxy_verified_warning(self):
+        """Skip proxy verification to validate warnings are generated"""
+        with warnings.catch_warnings(record=True) as w:
+            with proxy_from_url(self.https_proxy_url, cert_reqs="NONE") as https:
+                r = https.request("GET", "%s/" % self.https_url)
+                assert r.status == 200
+        assert len(w) == 2  # We expect two warnings (proxy, destination)
+        assert w[0].category == InsecureRequestWarning
+        assert w[1].category == InsecureRequestWarning
+        messages = set(str(x.message) for x in w)
+        expected = [
+            "Unverified HTTPS request is being made to host 'localhost'",
+            "Unverified HTTPS connection done to an HTTPS proxy.",
+        ]
+        for warn_message in expected:
+            assert [msg for msg in messages if warn_message in expected]
 
     def test_redirect(self):
         with proxy_from_url(self.proxy_url) as http:
@@ -565,3 +586,26 @@ class TestHTTPSProxyVerification:
             assert "hostname 'localhost' doesn't match" in str(
                 e.value.reason
             ) or "Hostname mismatch" in str(e.value.reason)
+
+    @onlyPy3
+    def test_https_proxy_ip_san(self, ip_san_proxy):
+        proxy, server = ip_san_proxy
+        proxy_url = "https://%s:%s" % (proxy.host, proxy.port)
+        destination_url = "https://%s:%s" % (server.host, server.port)
+        with proxy_from_url(proxy_url, ca_certs=proxy.ca_certs) as https:
+            r = https.request("GET", destination_url)
+            assert r.status == 200
+
+    @onlyPy3
+    def test_https_proxy_common_name_warning(self, no_san_proxy):
+        proxy, server = no_san_proxy
+        proxy_url = "https://%s:%s" % (proxy.host, proxy.port)
+        destination_url = "https://%s:%s" % (server.host, server.port)
+
+        with warnings.catch_warnings(record=True) as w:
+            with proxy_from_url(proxy_url, ca_certs=proxy.ca_certs) as https:
+                r = https.request("GET", destination_url)
+                assert r.status == 200
+
+        assert len(w) == 1
+        assert w[0].category == SubjectAltNameWarning

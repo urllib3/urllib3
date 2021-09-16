@@ -107,6 +107,10 @@ class HTTPConnection(_HTTPConnection, object):
     #: Whether this connection verifies the host's certificate.
     is_verified = False
 
+    #: Whether this proxy connection (if used) verifies the proxy host's
+    #: certificate.
+    proxy_is_verified = None
+
     def __init__(self, *args, **kw):
         if not six.PY2:
             kw.pop("strict", None)
@@ -490,14 +494,10 @@ class HTTPSConnection(HTTPConnection):
             self.ca_cert_dir,
             self.ca_cert_data,
         )
-        # By default urllib3's SSLContext disables `check_hostname` and uses
-        # a custom check. For proxies we're good with relying on the default
-        # verification.
-        ssl_context.check_hostname = True
 
         # If no cert was provided, use only the default options for server
         # certificate validation
-        return ssl_wrap_socket(
+        socket = ssl_wrap_socket(
             sock=conn,
             ca_certs=self.ca_certs,
             ca_cert_dir=self.ca_cert_dir,
@@ -505,6 +505,28 @@ class HTTPSConnection(HTTPConnection):
             server_hostname=hostname,
             ssl_context=ssl_context,
         )
+
+        if ssl_context.verify_mode != ssl.CERT_NONE and not getattr(
+            ssl_context, "check_hostname", False
+        ):
+            # While urllib3 attempts to always turn off hostname matching from
+            # the TLS library, this cannot always be done. So we check whether
+            # the TLS Library still thinks it's matching hostnames.
+            cert = socket.getpeercert()
+            if not cert.get("subjectAltName", ()):
+                warnings.warn(
+                    (
+                        "Certificate for {0} has no `subjectAltName`, falling back to check for a "
+                        "`commonName` for now. This feature is being removed by major browsers and "
+                        "deprecated by RFC 2818. (See https://github.com/urllib3/urllib3/issues/497 "
+                        "for details.)".format(hostname)
+                    ),
+                    SubjectAltNameWarning,
+                )
+            _match_hostname(cert, hostname)
+
+        self.proxy_is_verified = ssl_context.verify_mode == ssl.CERT_REQUIRED
+        return socket
 
 
 def _match_hostname(cert, asserted_hostname):
