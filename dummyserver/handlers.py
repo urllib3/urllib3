@@ -8,7 +8,7 @@ import zlib
 from datetime import datetime, timedelta
 from http.client import responses
 from io import BytesIO
-from typing import Dict, Optional, Sequence, Tuple, Union, Any
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
 from urllib.parse import urlsplit
 
 from tornado import httputil
@@ -242,7 +242,7 @@ class TestingApp(RequestHandler):
             return Response(request.query)
 
         return Response(request.body)
-    
+
     def echo_json(self, request: httputil.HTTPServerRequest) -> Response:
         "Echo back the JSON"
         return Response(json=request.body, headers=list(request.headers.items()))
