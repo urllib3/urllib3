@@ -122,8 +122,8 @@ class TestConnection:
             )
             assert e._peer_cert == cert
 
-    def test_match_hostname_ip_address_ipv6(self):
-        cert = {"subjectAltName": [("IP Address", "1:2::2:1")]}
+    def test_match_hostname_ip_address_ipv6(self) -> None:
+        cert = {"subjectAltName": (("IP Address", "1:2::2:1"),)}
         asserted_hostname = "1:2::2:2"
         try:
             with mock.patch("urllib3.connection.log.warning") as mock_log:
@@ -133,15 +133,15 @@ class TestConnection:
             mock_log.assert_called_once_with(
                 "Certificate did not match expected hostname: %s. Certificate: %s",
                 "1:2::2:2",
-                {"subjectAltName": [("IP Address", "1:2::2:1")]},
+                {"subjectAltName": (("IP Address", "1:2::2:1"),)},
             )
             assert e._peer_cert == cert
 
-    def test_match_hostname_ip_address_ipv6_brackets(self):
-        cert = {"subjectAltName": [("IP Address", "1:2::2:1")]}
+    def test_match_hostname_ip_address_ipv6_brackets(self) -> None:
+        cert = {"subjectAltName": (("IP Address", "1:2::2:1"),)}
         asserted_hostname = "[1:2::2:1]"
-        match = _match_hostname(cert, asserted_hostname)
-        assert match is None
+        # Assert no error is raised
+        _match_hostname(cert, asserted_hostname)
 
     def test_recent_date(self) -> None:
         # This test is to make sure that the RECENT_DATE value
