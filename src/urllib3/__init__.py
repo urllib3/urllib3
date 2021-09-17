@@ -6,7 +6,7 @@ Python HTTP library with thread-safe connection pooling, file post support, user
 import logging
 import warnings
 from logging import NullHandler
-from typing import Mapping, Optional, Type, Union
+from typing import Any, Mapping, Optional, Type, Union
 
 from . import exceptions
 from ._collections import HTTPHeaderDict
@@ -100,6 +100,7 @@ def request(
     redirect: Optional[bool] = True,
     retries: Optional[Union[Retry, bool, int]] = None,
     timeout: Optional[Union[Timeout, float, int]] = 3,
+    json: Optional[Any] = None,
 ) -> BaseHTTPResponse:
     """
     A convenience, top-level request method. It uses a module-global ``PoolManager`` instance.
@@ -119,4 +120,5 @@ def request(
         redirect=redirect,
         retries=retries,
         timeout=timeout,
+        json=json,
     )

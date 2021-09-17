@@ -1,4 +1,3 @@
-import json
 import os.path
 import shutil
 import socket
@@ -272,13 +271,13 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         ) as http:
 
             r = http.request_encode_url("GET", f"{self.http_url}/headers")
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
             assert returned_headers.get("Hickory") == "dickory"
             assert returned_headers.get("Host") == f"{self.http_host}:{self.http_port}"
 
             r = http.request_encode_url("GET", f"{self.http_url_alt}/headers")
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
             assert returned_headers.get("Hickory") == "dickory"
             assert (
@@ -286,7 +285,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             )
 
             r = http.request_encode_url("GET", f"{self.https_url}/headers")
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
             assert returned_headers.get("Hickory") is None
             assert (
@@ -294,7 +293,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             )
 
             r = http.request_encode_body("POST", f"{self.http_url}/headers")
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
             assert returned_headers.get("Hickory") == "dickory"
             assert returned_headers.get("Host") == f"{self.http_host}:{self.http_port}"
@@ -302,7 +301,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             r = http.request_encode_url(
                 "GET", f"{self.http_url}/headers", headers={"Baz": "quux"}
             )
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
             assert returned_headers.get("Hickory") == "dickory"
@@ -311,7 +310,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             r = http.request_encode_url(
                 "GET", f"{self.https_url}/headers", headers={"Baz": "quux"}
             )
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
             assert returned_headers.get("Hickory") is None
@@ -322,7 +321,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             r = http.request_encode_body(
                 "GET", f"{self.http_url}/headers", headers={"Baz": "quux"}
             )
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
             assert returned_headers.get("Hickory") == "dickory"
@@ -331,7 +330,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             r = http.request_encode_body(
                 "GET", f"{self.https_url}/headers", headers={"Baz": "quux"}
             )
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
             assert returned_headers.get("Hickory") is None
@@ -348,13 +347,13 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         ) as http:
 
             r = http.request_encode_url("GET", f"{self.http_url}/headers")
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
             assert returned_headers.get("Hickory") == "dickory"
             assert returned_headers.get("Host") == f"{self.http_host}:{self.http_port}"
 
             r = http.request_encode_url("GET", f"{self.http_url_alt}/headers")
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
             assert returned_headers.get("Hickory") == "dickory"
             assert (
@@ -364,7 +363,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             r = http.request_encode_body(
                 "GET", f"{self.https_url}/headers", headers={"Baz": "quux"}
             )
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
             assert returned_headers.get("Hickory") is None
@@ -382,7 +381,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         ) as http:
 
             r = http.request_encode_url("GET", f"{self.https_url}/headers")
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
             assert returned_headers.get("Hickory") == "dickory"
             assert (
@@ -399,7 +398,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         ) as http:
             request_headers = HTTPHeaderDict(baz="quux")
             r = http.request("GET", f"{self.http_url}/headers", headers=request_headers)
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
             assert returned_headers.get("Baz") == "quux"
 

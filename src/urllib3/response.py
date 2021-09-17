@@ -1,4 +1,5 @@
 import io
+import json as _json
 import logging
 import zlib
 from contextlib import contextmanager
@@ -235,6 +236,19 @@ class BaseHTTPResponse(io.IOBase):
     @property
     def data(self) -> bytes:
         raise NotImplementedError()
+
+    def json(self) -> Any:
+        """
+        Parses the body of the HTTP response as JSON.
+
+        To use a custom JSON decoder pass the result of :attr:`HTTPResponse.data` to the decoder.
+
+        This method can raise either `UnicodeDecodeError` or `json.JSONDecodeError`.
+
+        Read more :ref:`here <json>`.
+        """
+        data = self.data.decode("utf-8")
+        return _json.loads(data)
 
     @property
     def url(self) -> Optional[str]:

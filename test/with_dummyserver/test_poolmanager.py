@@ -1,5 +1,4 @@
 import gzip
-import json
 from test import LONG_TIMEOUT
 from unittest import mock
 
@@ -145,7 +144,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             assert r.status == 200
 
-            data = json.loads(r.data.decode("utf-8"))
+            data = r.json()
 
             assert "Authorization" not in data
 
@@ -158,7 +157,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             assert r.status == 200
 
-            data = json.loads(r.data.decode("utf-8"))
+            data = r.json()
 
             assert "authorization" not in data
             assert "Authorization" not in data
@@ -175,7 +174,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             assert r.status == 200
 
-            data = json.loads(r.data.decode("utf-8"))
+            data = r.json()
 
             assert data["Authorization"] == "foo"
 
@@ -191,7 +190,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             assert r.status == 200
 
-            data = json.loads(r.data.decode("utf-8"))
+            data = r.json()
 
             assert "X-API-Secret" not in data
             assert data["Authorization"] == "bar"
@@ -207,7 +206,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
             assert r.status == 200
 
-            data = json.loads(r.data.decode("utf-8"))
+            data = r.json()
 
             assert "x-api-secret" not in data
             assert "X-API-Secret" not in data
@@ -311,32 +310,32 @@ class TestPoolManager(HTTPDummyServerTestCase):
     def test_headers(self):
         with PoolManager(headers={"Foo": "bar"}) as http:
             r = http.request("GET", f"{self.base_url}/headers")
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
 
             r = http.request("POST", f"{self.base_url}/headers")
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
 
             r = http.request_encode_url("GET", f"{self.base_url}/headers")
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
 
             r = http.request_encode_body("POST", f"{self.base_url}/headers")
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") == "bar"
 
             r = http.request_encode_url(
                 "GET", f"{self.base_url}/headers", headers={"Baz": "quux"}
             )
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
 
             r = http.request_encode_body(
                 "GET", f"{self.base_url}/headers", headers={"Baz": "quux"}
             )
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers.get("Foo") is None
             assert returned_headers.get("Baz") == "quux"
 
@@ -349,7 +348,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
 
         with PoolManager(headers=headers) as http:
             r = http.request("GET", f"{self.base_url}/headers")
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers["Foo"] == "bar"
             assert returned_headers["Multi"] == "1, 2"
             assert returned_headers["Baz"] == "quux"
@@ -363,7 +362,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                     "Foo": "new",
                 },
             )
-            returned_headers = json.loads(r.data.decode())
+            returned_headers = r.json()
             assert returned_headers["Foo"] == "new"
             assert returned_headers["Multi"] == "1, 2"
             assert returned_headers["Baz"] == "quux"
@@ -490,7 +489,49 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 redirect=True,
                 retries=None,
                 timeout=2.5,
+                json=None,
             )
+
+    @pytest.mark.parametrize(
+        "headers",
+        [
+            None,
+            {"content-Type": "application/json"},
+            {"content-Type": "text/plain"},
+            {"attribute": "value", "CONTENT-TYPE": "application/json"},
+            HTTPHeaderDict(cookie="foo, bar"),
+        ],
+    )
+    def test_request_with_json(self, headers):
+        body = {"attribute": "value"}
+        r = request(
+            method="POST", url=f"{self.base_url}/echo_json", headers=headers, json=body
+        )
+        assert r.status == 200
+        assert r.json() == body
+        if headers is not None and "application/json" not in headers.values():
+            assert "text/plain" in r.headers["Content-Type"].replace(" ", "").split(",")
+        else:
+            assert "application/json" in r.headers["Content-Type"].replace(
+                " ", ""
+            ).split(",")
+
+    def test_top_level_request_with_json_with_httpheaderdict(self):
+        body = {"attribute": "value"}
+        header = HTTPHeaderDict(cookie="foo, bar")
+        with PoolManager(headers=header) as http:
+            r = http.request(method="POST", url=f"{self.base_url}/echo_json", json=body)
+            assert r.status == 200
+            assert r.json() == body
+            assert "application/json" in r.headers["Content-Type"].replace(
+                " ", ""
+            ).split(",")
+
+    def test_top_level_request_with_body_and_json(self):
+        match = "request got values for both 'body' and 'json' parameters which are mutually exclusive"
+        with pytest.raises(TypeError, match=match):
+            body = {"attribute": "value"}
+            request(method="POST", url=f"{self.base_url}/echo", body=body, json=body)
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")

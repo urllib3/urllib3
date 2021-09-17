@@ -8,7 +8,7 @@ import zlib
 from datetime import datetime, timedelta
 from http.client import responses
 from io import BytesIO
-from typing import Dict, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
 from urllib.parse import urlsplit
 
 from tornado import httputil
@@ -25,10 +25,15 @@ class Response:
         body: Union[str, bytes, Sequence[Union[str, bytes]]] = "",
         status: str = "200 OK",
         headers: Optional[Sequence[Tuple[str, Union[str, bytes]]]] = None,
+        json: Optional[Any] = None,
     ) -> None:
         self.body = body
         self.status = status
-        self.headers = headers or [("Content-type", "text/plain")]
+        if json is not None:
+            self.headers = headers or [("Content-type", "application/json")]
+            self.body = json
+        else:
+            self.headers = headers or [("Content-type", "text/plain")]
 
     def __call__(self, request_handler: RequestHandler) -> None:
         status, reason = self.status.split(" ", 1)
@@ -237,6 +242,10 @@ class TestingApp(RequestHandler):
             return Response(request.query)
 
         return Response(request.body)
+
+    def echo_json(self, request: httputil.HTTPServerRequest) -> Response:
+        "Echo back the JSON"
+        return Response(json=request.body, headers=list(request.headers.items()))
 
     def echo_uri(self, request: httputil.HTTPServerRequest) -> Response:
         "Echo back the requested URI"
