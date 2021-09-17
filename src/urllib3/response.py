@@ -243,9 +243,12 @@ class BaseHTTPResponse(io.IOBase):
 
         To use a custom JSON decoder pass the result of :attr:`HTTPResponse.data` to the decoder.
 
+        This method can raise either `UnicodeDecodeError` or `json.JSONDecodeError`.
+
         Read more :ref:`here <json>`.
         """
-        return _json.loads(self.data)
+        data = self.data.decode("utf-8")
+        return _json.loads(data)
 
     @property
     def url(self) -> Optional[str]:
