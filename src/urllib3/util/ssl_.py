@@ -5,7 +5,7 @@ import sys
 import warnings
 from binascii import unhexlify
 from hashlib import md5, sha1, sha256
-from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union, cast, overload
+from typing import TYPE_CHECKING, Dict, Mapping, Optional, Tuple, Union, cast, overload
 
 from ..exceptions import ProxySchemeUnsupported, SNIMissingWarning, SSLError
 from .url import _BRACELESS_IPV6_ADDRZ_RE, _IPV4_RE
@@ -89,7 +89,7 @@ except ImportError:
 
 _PCTRTT = Tuple[Tuple[str, str], ...]
 _PCTRTTT = Tuple[_PCTRTT, ...]
-_TYPE_PEER_CERT_RET_DICT = Dict[str, Union[str, _PCTRTTT, _PCTRTT]]
+_TYPE_PEER_CERT_RET_DICT = Mapping[str, Union[str, _PCTRTTT, _PCTRTT]]
 _TYPE_PEER_CERT_RET = Union[_TYPE_PEER_CERT_RET_DICT, bytes, None]
 
 # A secure default.
