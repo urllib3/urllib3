@@ -43,7 +43,7 @@ class TestConnection(object):
             )
             assert e._peer_cert == cert
 
-    def test_match_hostname_ip_address_ipv6(self) -> None:
+    def test_match_hostname_ip_address_ipv6(self):
         cert = {"subjectAltName": (("IP Address", "1:2::2:1"),)}
         asserted_hostname = "1:2::2:2"
         try:
@@ -58,7 +58,7 @@ class TestConnection(object):
             )
             assert e._peer_cert == cert
 
-    def test_match_hostname_ip_address_ipv6_brackets(self) -> None:
+    def test_match_hostname_ip_address_ipv6_brackets(self):
         cert = {"subjectAltName": (("IP Address", "1:2::2:1"),)}
         asserted_hostname = "[1:2::2:1]"
         # Assert no error is raised
