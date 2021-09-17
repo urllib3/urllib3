@@ -588,9 +588,18 @@ class TestHTTPSProxyVerification:
             ) or "Hostname mismatch" in str(e.value.reason)
 
     @onlyPy3
-    def test_https_proxy_ip_san(self, ip_san_proxy):
-        proxy, server = ip_san_proxy
+    def test_https_proxy_ipv4_san(self, ipv4_san_proxy):
+        proxy, server = ipv4_san_proxy
         proxy_url = "https://%s:%s" % (proxy.host, proxy.port)
+        destination_url = "https://%s:%s" % (server.host, server.port)
+        with proxy_from_url(proxy_url, ca_certs=proxy.ca_certs) as https:
+            r = https.request("GET", destination_url)
+            assert r.status == 200
+
+    @onlyPy3
+    def test_https_proxy_ipv6_san(self, ipv6_san_proxy):
+        proxy, server = ipv6_san_proxy
+        proxy_url = "https://[%s]:%s" % (proxy.host, proxy.port)
         destination_url = "https://%s:%s" % (server.host, server.port)
         with proxy_from_url(proxy_url, ca_certs=proxy.ca_certs) as https:
             r = https.request("GET", destination_url)
