@@ -101,7 +101,7 @@ def match_hostname(cert: _TYPE_PEER_CERT_RET, hostname: str) -> None:
         )
     try:
         # Divergence from upstream: ipaddress can't handle byte str
-        host_ip = ipaddress.ip_address(hostname)
+        host_ip = ipaddress.ip_address(hostname.strip("[]"))
     except ValueError:
         # Not an IP address (common case)
         host_ip = None
