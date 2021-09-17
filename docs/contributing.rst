@@ -15,8 +15,8 @@ If you wish to add a new feature or fix a bug:
    as expected.
 #. Format your changes with black using command `$ nox -rs format` and lint your
    changes using command `nox -rs lint`.
-#. Add a changelog entry using `towncrier
-   <https://towncrier.readthedocs.io/en/actual-freaking-docs/quickstart.html#creating-news-fragments>`__.
+#. Add a `changelog entry
+   <https://github.com/urllib3/urllib3/blob/main/changelog/README.rst>`__.
 #. Send a pull request and bug the maintainer until it gets merged and published.
 
 
