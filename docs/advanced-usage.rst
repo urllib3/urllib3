@@ -459,8 +459,8 @@ of compatibility, we recommend you obtain one from
 
 Once you have a context object, you can mutate it to achieve whatever effect
 you'd like. For example, the code below loads the default SSL certificates, sets
-the :data:`ssl.OP_NO_TICKET<python:ssl.OP_NO_TICKET>` flag that isn't set by
-default, and then makes a HTTPS request:
+the :data:`ssl.OP_ENABLE_MIDDLEBOX_COMPAT<python:ssl.OP_ENABLE_MIDDLEBOX_COMPAT>`
+flag that isn't set by default, and then makes a HTTPS request:
 
 .. code-block:: python
 
@@ -471,7 +471,7 @@ default, and then makes a HTTPS request:
 
     ctx = create_urllib3_context()
     ctx.load_default_certs()
-    ctx.options |= ssl.OP_NO_TICKET
+    ctx.options |= ssl.OP_ENABLE_MIDDLEBOX_COMPAT
 
     with PoolManager(ssl_context=ctx) as pool:
         pool.request("GET", "https://www.google.com/")
