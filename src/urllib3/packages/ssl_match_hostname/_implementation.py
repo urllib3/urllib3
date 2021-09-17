@@ -110,7 +110,7 @@ def match_hostname(cert, hostname):
         )
     try:
         # Divergence from upstream: ipaddress can't handle byte str
-        host_ip = ipaddress.ip_address(_to_unicode(hostname))
+        host_ip = ipaddress.ip_address(_to_unicode(hostname).strip(u"[]"))
     except ValueError:
         # Not an IP address (common case)
         host_ip = None
