@@ -285,11 +285,11 @@ class TestClientCerts(SocketDummyServerTestCase):
                 done_receiving.set()
             done_receiving.set()
 
-    @requires_ssl_context_keyfile_password
+    @requires_ssl_context_keyfile_password()
     def test_client_cert_with_string_password(self):
         self.run_client_cert_with_password_test("letmein")
 
-    @requires_ssl_context_keyfile_password
+    @requires_ssl_context_keyfile_password()
     def test_client_cert_with_bytes_password(self):
         self.run_client_cert_with_password_test(b"letmein")
 
@@ -340,7 +340,7 @@ class TestClientCerts(SocketDummyServerTestCase):
 
             assert len(client_certs) == 1
 
-    @requires_ssl_context_keyfile_password
+    @requires_ssl_context_keyfile_password()
     def test_load_keyfile_with_invalid_password(self):
         context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
 
@@ -482,7 +482,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         # second ReadTimeoutError due to errno
         with HTTPSConnectionPool(host=self.host):
-            err = mock.Mock()
+            err = OSError()
             err.errno = errno.EAGAIN
             with pytest.raises(ReadTimeoutError):
                 pool._raise_timeout(err, "", 0)
@@ -1180,7 +1180,7 @@ class TestSSL(SocketDummyServerTestCase):
                 pool.request("GET", "/", retries=0)
             assert isinstance(cm.value.reason, SSLError)
 
-    @notSecureTransport
+    @notSecureTransport()
     def test_ssl_read_timeout(self):
         timed_out = Event()
 
@@ -1558,7 +1558,7 @@ class TestHeaders(SocketDummyServerTestCase):
             request_headers = filter_non_x_headers(self.parsed_headers)
             assert expected_request_headers == request_headers
 
-    @resolvesLocalhostFQDN
+    @resolvesLocalhostFQDN()
     def test_request_host_header_ignores_fqdn_dot(self):
         self.start_parsing_handler()
 
@@ -1823,7 +1823,7 @@ class TestRetryPoolSizeDrainFail(SocketDummyServerTestCase):
 
 
 class TestBrokenPipe(SocketDummyServerTestCase):
-    @notWindows
+    @notWindows()
     def test_ignore_broken_pipe_errors(self, monkeypatch):
         # On Windows an aborted connection raises an error on
         # attempts to read data out of a socket that's been closed.

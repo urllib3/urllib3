@@ -14,7 +14,11 @@ SOURCE_FILES = [
 ]
 
 
-def tests_impl(session, extras="socks,secure,brotli"):
+def tests_impl(
+    session: nox.Session,
+    extras: str = "socks,secure,brotli",
+    byte_string_comparisons: bool = True,
+) -> None:
     # Install deps and the package itself.
     session.install("-r", "dev-requirements.txt")
     session.install(f".[{extras}]")
@@ -33,6 +37,9 @@ def tests_impl(session, extras="socks,secure,brotli"):
     # and collapse them into src/urllib3/__init__.py.
 
     session.run(
+        "python",
+        *(("-bb",) if byte_string_comparisons else ()),
+        "-m",
         "coverage",
         "run",
         "--parallel-mode",
@@ -51,12 +58,12 @@ def tests_impl(session, extras="socks,secure,brotli"):
 
 
 @nox.session(python=["3.7", "3.8", "3.9", "3.10", "pypy"])
-def test(session):
+def test(session: nox.Session) -> None:
     tests_impl(session)
 
 
 @nox.session(python=["2.7"])
-def unsupported_python2(session):
+def unsupported_python2(session: nox.Session) -> None:
     # Can't check both returncode and output with session.run
     process = subprocess.run(
         ["python", "setup.py", "install"],
@@ -70,20 +77,20 @@ def unsupported_python2(session):
 
 
 @nox.session(python=["3"])
-def test_brotlipy(session):
+def test_brotlipy(session: nox.Session) -> None:
     """Check that if 'brotlipy' is installed instead of 'brotli' or
     'brotlicffi' that we still don't blow up.
     """
     session.install("brotlipy")
-    tests_impl(session, extras="socks,secure")
+    tests_impl(session, extras="socks,secure", byte_string_comparisons=False)
 
 
-def git_clone(session, git_url):
+def git_clone(session: nox.Session, git_url: str) -> None:
     session.run("git", "clone", "--depth", "1", git_url, external=True)
 
 
 @nox.session()
-def downstream_botocore(session):
+def downstream_botocore(session: nox.Session) -> None:
     root = os.getcwd()
     tmp_dir = session.create_tmp()
 
@@ -102,7 +109,7 @@ def downstream_botocore(session):
 
 
 @nox.session()
-def downstream_requests(session):
+def downstream_requests(session: nox.Session) -> None:
     root = os.getcwd()
     tmp_dir = session.create_tmp()
 
@@ -123,7 +130,7 @@ def downstream_requests(session):
 
 
 @nox.session()
-def format(session):
+def format(session: nox.Session) -> None:
     """Run code formatters."""
     session.install("pre-commit")
     session.run("pre-commit", "--version")
@@ -142,7 +149,7 @@ def format(session):
 
 
 @nox.session
-def lint(session):
+def lint(session: nox.Session) -> None:
     session.install("pre-commit")
     session.run("pre-commit", "run", "--all-files")
 
@@ -150,19 +157,42 @@ def lint(session):
 
 
 @nox.session(python="3.8")
-def mypy(session):
+def mypy(session: nox.Session) -> None:
     """Run mypy."""
-    session.install("mypy==0.910")
-    session.install("idna>=2.0.0")
-    session.install("cryptography>=1.3.4")
-    session.install("tornado>=6.1")
-    session.install("pytest>=6.2")
+    session.install("-r", "mypy-requirements.txt")
     session.run("mypy", "--version")
-    session.run("mypy", "src/urllib3", "dummyserver")
+    session.run(
+        "mypy",
+        "dummyserver",
+        "noxfile.py",
+        "src/urllib3",
+        "test/__init__.py",
+        "test/with_dummyserver/test_https.py",
+        "test/with_dummyserver/test_integration.py",
+        "test/with_dummyserver/test_no_ssl.py",
+        "test/conftest.py",
+        "test/contrib/test_pyopenssl_dependencies.py",
+        "test/contrib/test_socks.py",
+        "test/port_helpers.py",
+        "test/test_collections.py",
+        "test/test_compatibility.py",
+        "test/test_connection.py",
+        "test/test_exceptions.py",
+        "test/test_fields.py",
+        "test/test_filepost.py",
+        "test/test_no_ssl.py",
+        "test/test_poolmanager.py",
+        "test/test_proxymanager.py",
+        "test/test_queue_monkeypatch.py",
+        "test/test_retry.py",
+        "test/test_ssl.py",
+        "test/test_wait.py",
+        "test/tz_stub.py",
+    )
 
 
 @nox.session
-def docs(session):
+def docs(session: nox.Session) -> None:
     session.install("-r", "docs/requirements.txt")
     session.install(".[socks,secure,brotli]")
 

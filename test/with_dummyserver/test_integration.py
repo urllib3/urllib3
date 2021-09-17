@@ -6,7 +6,7 @@ from dummyserver.testcase import HTTPDummyServerTestCase, HTTPSDummyServerTestCa
 
 
 class TestHTTPIntegration(HTTPDummyServerTestCase):
-    def test_requests_integration(self):
+    def test_requests_integration(self) -> None:
         with pytest.warns(DeprecationWarning) as records:
             response = requests.get(f"{self.scheme}://{self.host}:{self.port}")
 
@@ -15,11 +15,14 @@ class TestHTTPIntegration(HTTPDummyServerTestCase):
             "The 'strict' parameter is no longer needed on Python 3+. "
             "This will raise an error in urllib3 v3.0.0."
         )
-        assert any(record.message.args[0] == msg for record in records)
+        assert any(
+            isinstance(record.message, Warning) and record.message.args[0] == msg
+            for record in records
+        )
 
 
 class TestHTTPSIntegration(HTTPSDummyServerTestCase):
-    def test_requests_integration(self):
+    def test_requests_integration(self) -> None:
         with pytest.warns(DeprecationWarning) as records:
             response = requests.get(
                 f"{self.scheme}://{self.host}:{self.port}", verify=DEFAULT_CA
@@ -30,4 +33,7 @@ class TestHTTPSIntegration(HTTPSDummyServerTestCase):
             "The 'strict' parameter is no longer needed on Python 3+. "
             "This will raise an error in urllib3 v3.0.0."
         )
-        assert any(record.message.args[0] == msg for record in records)
+        assert any(
+            isinstance(record.message, Warning) and record.message.args[0] == msg
+            for record in records
+        )

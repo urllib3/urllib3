@@ -94,7 +94,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             ):
                 https.request("GET", f"{self.https_url}/")
 
-    @onlySecureTransport
+    @onlySecureTransport()
     def test_https_proxy_securetransport_not_supported(self):
         with proxy_from_url(self.https_proxy_url, ca_certs=DEFAULT_CA) as https:
             r = https.request("GET", f"{self.http_url}/")
@@ -444,7 +444,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert sc3 == sc4
 
     @pytest.mark.timeout(0.5)
-    @requires_network
+    @requires_network()
     def test_https_proxy_timeout(self):
         with proxy_from_url(f"https://{TARPIT_HOST}") as https:
             with pytest.raises(MaxRetryError) as e:
@@ -452,7 +452,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert type(e.value.reason) == ConnectTimeoutError
 
     @pytest.mark.timeout(0.5)
-    @requires_network
+    @requires_network()
     def test_https_proxy_pool_timeout(self):
         with proxy_from_url(f"https://{TARPIT_HOST}", timeout=SHORT_TIMEOUT) as https:
             with pytest.raises(MaxRetryError) as e:

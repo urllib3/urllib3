@@ -4,7 +4,16 @@ import re
 import time
 from itertools import takewhile
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Collection, NamedTuple, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Collection,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from ..exceptions import (
     ConnectTimeoutError,
@@ -185,6 +194,9 @@ class Retry:
     #: Maximum backoff time.
     BACKOFF_MAX = 120
 
+    # Backward compatibility; assigned outside of the class.
+    DEFAULT: ClassVar["Retry"]
+
     def __init__(
         self,
         total: Optional[Union[bool, int]] = 10,
@@ -245,7 +257,7 @@ class Retry:
         )
 
         params.update(kw)
-        return type(self)(**params)  # type: ignore
+        return type(self)(**params)  # type: ignore[arg-type]
 
     @classmethod
     def from_int(
@@ -256,7 +268,7 @@ class Retry:
     ) -> "Retry":
         """ Backwards-compatibility for the old retries format."""
         if retries is None:
-            retries = default if default is not None else cls.DEFAULT  # type: ignore
+            retries = default if default is not None else cls.DEFAULT
 
         if isinstance(retries, Retry):
             return retries
@@ -493,7 +505,8 @@ class Retry:
         )
 
         if new_retry.is_exhausted():
-            raise MaxRetryError(_pool, url, error or ResponseError(cause))  # type: ignore
+            reason = error or ResponseError(cause)
+            raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
 
         log.debug("Incremented Retry for (url='%s'): %r", url, new_retry)
 
@@ -507,4 +520,4 @@ class Retry:
 
 
 # For backwards compatibility (equivalent to pre-v1.9):
-Retry.DEFAULT = Retry(3)  # type: ignore
+Retry.DEFAULT = Retry(3)

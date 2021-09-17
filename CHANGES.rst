@@ -1,25 +1,5 @@
-Changes
-=======
-
-
-2.0.0 (unreleased)
-------------------
-
-* ``multipart/form-data`` header parameter formatting matches the WHATWG
-  HTML Standard as of 2021-06-10. Control characters in filenames are no
-  longer percent encoded. #2257
-* ``format_header_param_html5`` and ``format_header_param`` are
-  deprecated names for ``format_multipart_header_param``. #2257
-* The ``RequestField`` ``header_formatter`` parameter is deprecated in
-  favor of overriding the ``_render_part`` method. #2257
-* Make all parameters after `method` and `url` for `urllib3.request()` 
-  keyword only. #2283
-* The ``NewConnectionError.pool`` deprecated and will be removed
-  in a later urllib3 v2.x release. #2271
-
-
 1.26.5 (2021-05-26)
--------------------
+===================
 
 * Fixed deprecation warnings emitted in Python 3.10.
 * Updated vendored ``six`` library to 1.16.0.
@@ -28,14 +8,14 @@ Changes
 
 
 1.26.4 (2021-03-15)
--------------------
+===================
 
 * Changed behavior of the default ``SSLContext`` when connecting to HTTPS proxy
   during HTTPS requests. The default ``SSLContext`` now sets ``check_hostname=True``.
 
 
 1.26.3 (2021-01-26)
--------------------
+===================
 
 * Fixed bytes and string comparison issue with headers (Pull #2141)
 
@@ -45,21 +25,21 @@ Changes
 
 
 1.26.2 (2020-11-12)
--------------------
+===================
 
 * Fixed an issue where ``wrap_socket`` and ``CERT_REQUIRED`` wouldn't
   be imported properly on Python 2.7.8 and earlier (Pull #2052)
 
 
 1.26.1 (2020-11-11)
--------------------
+===================
 
 * Fixed an issue where two ``User-Agent`` headers would be sent if a
   ``User-Agent`` header key is passed as ``bytes`` (Pull #2047)
 
 
 1.26.0 (2020-11-10)
--------------------
+===================
 
 * **NOTE: urllib3 v2.0 will drop support for Python 2**.
   `Read more in the v2.0 Roadmap <https://urllib3.readthedocs.io/en/latest/v2-roadmap.html>`_.
@@ -101,7 +81,7 @@ Changes
 
 
 1.25.11 (2020-10-19)
---------------------
+====================
 
 * Fix retry backoff time parsed from ``Retry-After`` header when given
   in the HTTP date format. The HTTP date was parsed as the local timezone
@@ -114,7 +94,7 @@ Changes
 
 
 1.25.10 (2020-07-22)
---------------------
+====================
 
 * Added support for ``SSLKEYLOGFILE`` environment variable for
   logging TLS session keys with use with programs like
@@ -133,7 +113,7 @@ Changes
 
 
 1.25.9 (2020-04-16)
--------------------
+===================
 
 * Added ``InvalidProxyConfigurationWarning`` which is raised when
   erroneously specifying an HTTPS proxy URL. urllib3 doesn't currently
@@ -157,7 +137,7 @@ Changes
 
 
 1.25.8 (2020-01-20)
--------------------
+===================
 
 * Drop support for EOL Python 3.4 (Pull #1774)
 
@@ -165,7 +145,7 @@ Changes
 
 
 1.25.7 (2019-11-11)
--------------------
+===================
 
 * Preserve ``chunked`` parameter on retries (Pull #1715, Pull #1734)
 
@@ -179,14 +159,14 @@ Changes
 
 
 1.25.6 (2019-09-24)
--------------------
+===================
 
 * Fix issue where tilde (``~``) characters were incorrectly
   percent-encoded in the path. (Pull #1692)
 
 
 1.25.5 (2019-09-19)
--------------------
+===================
 
 * Add mitigation for BPO-37428 affecting Python <3.7.4 and OpenSSL 1.1.1+ which
   caused certificate verification to be enabled when using ``cert_reqs=CERT_NONE``.
@@ -194,7 +174,7 @@ Changes
 
 
 1.25.4 (2019-09-19)
--------------------
+===================
 
 * Propagate Retry-After header settings to subsequent retries. (Pull #1607)
 
@@ -213,7 +193,7 @@ Changes
 
 
 1.25.3 (2019-05-23)
--------------------
+===================
 
 * Change ``HTTPSConnection`` to load system CA certificates
   when ``ca_certs``, ``ca_cert_dir``, and ``ssl_context`` are
@@ -223,7 +203,7 @@ Changes
 
 
 1.25.2 (2019-04-28)
--------------------
+===================
 
 * Change ``is_ipaddress`` to not detect IPvFuture addresses. (Pull #1583)
 
@@ -232,7 +212,7 @@ Changes
 
 
 1.25.1 (2019-04-24)
--------------------
+===================
 
 * Add support for Google's ``Brotli`` package. (Pull #1572, Pull #1579)
 
@@ -240,7 +220,7 @@ Changes
 
 
 1.25 (2019-04-22)
------------------
+=================
 
 * Require and validate certificates by default when using HTTPS (Pull #1507)
 
@@ -267,12 +247,12 @@ Changes
 * Implemented a more efficient ``HTTPResponse.__iter__()`` method. (Issue #1483)
 
 1.24.3 (2019-05-01)
--------------------
+===================
 
 * Apply fix for CVE-2019-9740. (Pull #1591)
 
 1.24.2 (2019-04-17)
--------------------
+===================
 
 * Don't load system certificates by default when any other ``ca_certs``, ``ca_certs_dir`` or
   ``ssl_context`` parameters are specified.
@@ -283,7 +263,7 @@ Changes
 
 
 1.24.1 (2018-11-02)
--------------------
+===================
 
 * Remove quadratic behavior within ``GzipDecoder.decompress()`` (Issue #1467)
 
@@ -291,7 +271,7 @@ Changes
 
 
 1.24 (2018-10-16)
------------------
+=================
 
 * Allow key_server_hostname to be specified when initializing a PoolManager to allow custom SNI to be overridden. (Pull #1449)
 
@@ -317,7 +297,7 @@ Changes
 
 
 1.23 (2018-06-04)
------------------
+=================
 
 * Allow providing a list of headers to strip from requests when redirecting
   to a different host. Defaults to the ``Authorization`` header. Different
@@ -345,7 +325,7 @@ Changes
 
 
 1.22 (2017-07-20)
------------------
+=================
 
 * Fixed missing brackets in ``HTTP CONNECT`` when connecting to IPv6 address via
   IPv6 proxy. (Issue #1222)
@@ -362,7 +342,7 @@ Changes
 
 
 1.21.1 (2017-05-02)
--------------------
+===================
 
 * Fixed SecureTransport issue that would cause long delays in response body
   delivery. (Pull #1154)
@@ -376,7 +356,7 @@ Changes
 
 
 1.21 (2017-04-25)
------------------
+=================
 
 * Improved performance of certain selector system calls on Python 3.5 and
   later. (Pull #1095)
@@ -409,7 +389,7 @@ Changes
 
 
 1.20 (2017-01-19)
------------------
+=================
 
 * Added support for waiting for I/O using selectors other than select,
   improving urllib3's behaviour with large numbers of concurrent connections.
@@ -446,13 +426,13 @@ Changes
 
 
 1.19.1 (2016-11-16)
--------------------
+===================
 
 * Fixed AppEngine import that didn't function on Python 3.5. (Pull #1025)
 
 
 1.19 (2016-11-03)
------------------
+=================
 
 * urllib3 now respects Retry-After headers on 413, 429, and 503 responses when
   using the default retry logic. (Pull #955)
@@ -472,7 +452,7 @@ Changes
 
 
 1.18.1 (2016-10-27)
--------------------
+===================
 
 * CVE-2016-9015. Users who are using urllib3 version 1.17 or 1.18 along with
   PyOpenSSL injection and OpenSSL 1.1.0 *must* upgrade to this version. This
@@ -487,7 +467,7 @@ Changes
 
 
 1.18 (2016-09-26)
------------------
+=================
 
 * Fixed incorrect message for IncompleteRead exception. (Pull #973)
 
@@ -501,7 +481,7 @@ Changes
 
 
 1.17 (2016-09-06)
------------------
+=================
 
 * Accept ``SSLContext`` objects for use in SSL/TLS negotiation. (Issue #835)
 
@@ -547,7 +527,7 @@ Changes
 
 
 1.16 (2016-06-11)
------------------
+=================
 
 * Disable IPv6 DNS when IPv6 connections are not possible. (Issue #840)
 
@@ -572,13 +552,13 @@ Changes
 
 
 1.15.1 (2016-04-11)
--------------------
+===================
 
 * Fix packaging to include backports module. (Issue #841)
 
 
 1.15 (2016-04-06)
------------------
+=================
 
 * Added Retry(raise_on_status=False). (Issue #720)
 
@@ -602,7 +582,7 @@ Changes
 
 
 1.14 (2015-12-29)
------------------
+=================
 
 * contrib: SOCKS proxy support! (Issue #762)
 
@@ -611,13 +591,13 @@ Changes
 
 
 1.13.1 (2015-12-18)
--------------------
+===================
 
 * Fixed regression in IPv6 + SSL for match_hostname. (Issue #761)
 
 
 1.13 (2015-12-14)
------------------
+=================
 
 * Fixed ``pip install urllib3[secure]`` on modern pip. (Issue #706)
 
@@ -634,7 +614,7 @@ Changes
 
 
 1.12 (2015-09-03)
------------------
+=================
 
 * Rely on ``six`` for importing ``httplib`` to work around
   conflicts with other Python 3 shims. (Issue #688)
@@ -647,7 +627,7 @@ Changes
 
 
 1.11 (2015-07-21)
------------------
+=================
 
 * When ``ca_certs`` is given, ``cert_reqs`` defaults to
   ``'CERT_REQUIRED'``. (Issue #650)
@@ -692,7 +672,7 @@ Changes
   (Issue #674)
 
 1.10.4 (2015-05-03)
--------------------
+===================
 
 * Migrate tests to Tornado 4. (Issue #594)
 
@@ -708,7 +688,7 @@ Changes
 
 
 1.10.3 (2015-04-21)
--------------------
+===================
 
 * Emit ``InsecurePlatformWarning`` when SSLContext object is missing.
   (Issue #558)
@@ -729,7 +709,7 @@ Changes
 
 
 1.10.2 (2015-02-25)
--------------------
+===================
 
 * Fix file descriptor leakage on retries. (Issue #548)
 
@@ -741,7 +721,7 @@ Changes
 
 
 1.10.1 (2015-02-10)
--------------------
+===================
 
 * Pools can be used as context managers. (Issue #545)
 
@@ -755,7 +735,7 @@ Changes
 
 
 1.10 (2014-12-14)
------------------
+=================
 
 * Disabled SSLv3. (Issue #473)
 
@@ -787,7 +767,7 @@ Changes
 
 
 1.9.1 (2014-09-13)
-------------------
+==================
 
 * Apply socket arguments before binding. (Issue #427)
 
@@ -808,7 +788,7 @@ Changes
 
 
 1.9 (2014-07-04)
-----------------
+================
 
 * Shuffled around development-related files. If you're maintaining a distro
   package of urllib3, you may need to tweak things. (Issue #415)
@@ -845,7 +825,7 @@ Changes
 
 
 1.8.3 (2014-06-23)
-------------------
+==================
 
 * Fix TLS verification when using a proxy in Python 3.4.1. (Issue #385)
 
@@ -867,13 +847,13 @@ Changes
 
 
 1.8.2 (2014-04-17)
-------------------
+==================
 
 * Fix ``urllib3.util`` not being included in the package.
 
 
 1.8.1 (2014-04-17)
-------------------
+==================
 
 * Fix AppEngine bug of HTTPS requests going out as HTTP. (Issue #356)
 
@@ -884,7 +864,7 @@ Changes
 
 
 1.8 (2014-03-04)
-----------------
+================
 
 * Improved url parsing in ``urllib3.util.parse_url`` (properly parse '@' in
   username, and blank ports like 'hostname:').
@@ -936,7 +916,7 @@ Changes
 
 
 1.7.1 (2013-09-25)
-------------------
+==================
 
 * Added granular timeout support with new ``urllib3.util.Timeout`` class.
   (Issue #231)
@@ -945,7 +925,7 @@ Changes
 
 
 1.7 (2013-08-14)
-----------------
+================
 
 * More exceptions are now pickle-able, with tests. (Issue #174)
 
@@ -984,7 +964,7 @@ Changes
 
 
 1.6 (2013-04-25)
-----------------
+================
 
 * Contrib: Optional SNI support for Py2 using PyOpenSSL. (Issue #156)
 
@@ -1044,7 +1024,7 @@ Changes
 
 
 1.5 (2012-08-02)
-----------------
+================
 
 * Added ``urllib3.add_stderr_logger()`` for quickly enabling STDERR debug
   logging in urllib3.
@@ -1069,7 +1049,7 @@ Changes
 
 
 1.4 (2012-06-16)
-----------------
+================
 
 * Minor AppEngine-related fixes.
 
@@ -1081,7 +1061,7 @@ Changes
 
 
 1.3 (2012-03-25)
-----------------
+================
 
 * Removed pre-1.0 deprecated API.
 
@@ -1100,13 +1080,13 @@ Changes
 
 
 1.2.2 (2012-02-06)
-------------------
+==================
 
 * Fixed packaging bug of not shipping ``test-requirements.txt``. (Issue #47)
 
 
 1.2.1 (2012-02-05)
-------------------
+==================
 
 * Fixed another bug related to when ``ssl`` module is not available. (Issue #41)
 
@@ -1115,7 +1095,7 @@ Changes
 
 
 1.2 (2012-01-29)
-----------------
+================
 
 * Added Python 3 support (tested on 3.2.2)
 
@@ -1141,7 +1121,7 @@ Changes
 
 
 1.1 (2012-01-07)
-----------------
+================
 
 * Refactored ``dummyserver`` to its own root namespace module (used for
   testing).
@@ -1158,7 +1138,7 @@ Changes
 
 
 1.0.2 (2011-11-04)
-------------------
+==================
 
 * Fixed typo in ``VerifiedHTTPSConnection`` which would only present as a bug if
   you're using the object manually. (Thanks pyos)
@@ -1171,14 +1151,14 @@ Changes
 
 
 1.0.1 (2011-10-10)
-------------------
+==================
 
 * Fixed a bug where the same connection would get returned into the pool twice,
   causing extraneous "HttpConnectionPool is full" log warnings.
 
 
 1.0 (2011-10-08)
-----------------
+================
 
 * Added ``PoolManager`` with LRU expiration of connections (tested and
   documented).
@@ -1201,13 +1181,13 @@ Changes
 
 
 0.4.1 (2011-07-17)
-------------------
+==================
 
 * Minor bug fixes, code cleanup.
 
 
 0.4 (2011-03-01)
-----------------
+================
 
 * Better unicode support.
 * Added ``VerifiedHTTPSConnection``.
@@ -1216,13 +1196,13 @@ Changes
 
 
 0.3.1 (2010-07-13)
-------------------
+==================
 
 * Added ``assert_host_name`` optional parameter. Now compatible with proxies.
 
 
 0.3 (2009-12-10)
-----------------
+================
 
 * Added HTTPS support.
 * Minor bug fixes.
@@ -1231,13 +1211,13 @@ Changes
 
 
 0.2 (2008-11-17)
-----------------
+================
 
 * Added unit tests.
 * Bug fixes.
 
 
 0.1 (2008-11-16)
-----------------
+================
 
 * First release.

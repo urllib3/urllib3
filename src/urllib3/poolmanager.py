@@ -1,6 +1,7 @@
 import functools
 import logging
 import warnings
+from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -11,11 +12,13 @@ from typing import (
     Optional,
     Tuple,
     Type,
+    TypeVar,
     Union,
 )
 from urllib.parse import urljoin
 
 from ._collections import RecentlyUsedContainer
+from ._request_methods import RequestMethods
 from .connection import ProxyConfig
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
 from .exceptions import (
@@ -24,7 +27,6 @@ from .exceptions import (
     ProxySchemeUnknown,
     URLSchemeUnknown,
 )
-from .request import RequestMethods
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
@@ -48,10 +50,17 @@ SSL_KEYWORDS = (
     "cert_reqs",
     "ca_certs",
     "ssl_version",
+    "ssl_minimum_version",
+    "ssl_maximum_version",
     "ca_cert_dir",
     "ssl_context",
     "key_password",
 )
+# Default value for `blocksize` - a new parameter introduced to
+# http.client.HTTPConnection & http.client.HTTPSConnection in Python 3.7
+_DEFAULT_BLOCKSIZE = 16384
+
+_SelfT = TypeVar("_SelfT")
 
 
 class PoolKey(NamedTuple):
@@ -75,6 +84,8 @@ class PoolKey(NamedTuple):
     key_cert_reqs: Optional[str]
     key_ca_certs: Optional[str]
     key_ssl_version: Optional[Union[int, str]]
+    key_ssl_minimum_version: Optional["ssl.TLSVersion"]
+    key_ssl_maximum_version: Optional["ssl.TLSVersion"]
     key_ca_cert_dir: Optional[str]
     key_ssl_context: Optional["ssl.SSLContext"]
     key_maxsize: Optional[int]
@@ -87,6 +98,7 @@ class PoolKey(NamedTuple):
     key_assert_hostname: Optional[Union[bool, str]]
     key_assert_fingerprint: Optional[str]
     key_server_hostname: Optional[str]
+    key_blocksize: Optional[int]
 
 
 def _default_key_normalizer(
@@ -136,6 +148,10 @@ def _default_key_normalizer(
     for field in key_class._fields:
         if field not in context:
             context[field] = None
+
+    # Default key_blocksize to _DEFAULT_BLOCKSIZE if missing from the context
+    if context.get("key_blocksize") is None:
+        context["key_blocksize"] = _DEFAULT_BLOCKSIZE
 
     return key_class(**context)
 
@@ -209,11 +225,14 @@ class PoolManager(RequestMethods):
         self.pool_classes_by_scheme = pool_classes_by_scheme
         self.key_fn_by_scheme = key_fn_by_scheme.copy()
 
-    def __enter__(self) -> "PoolManager":
+    def __enter__(self: _SelfT) -> _SelfT:
         return self
 
     def __exit__(
-        self, exc_type: object, exc_val: object, exc_tb: object
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
     ) -> "Literal[False]":
         self.clear()
         # Return False to re-raise any potential exceptions
@@ -238,6 +257,11 @@ class PoolManager(RequestMethods):
         pool_cls: Type[HTTPConnectionPool] = self.pool_classes_by_scheme[scheme]
         if request_context is None:
             request_context = self.connection_pool_kw.copy()
+
+        # Default blocksize to _DEFAULT_BLOCKSIZE if missing or explicitly
+        # set to 'None' in the request_context.
+        if request_context.get("blocksize") is None:
+            request_context["blocksize"] = _DEFAULT_BLOCKSIZE
 
         # Although the context has everything necessary to create the pool,
         # this function has historically only used the scheme, host, and port
@@ -392,7 +416,7 @@ class PoolManager(RequestMethods):
             self.proxy, self.proxy_config, parsed_url.scheme
         )
 
-    def urlopen(  # type: ignore
+    def urlopen(  # type: ignore[override]
         self, method: str, url: str, redirect: bool = True, **kw: Any
     ) -> BaseHTTPResponse:
         """
@@ -446,7 +470,7 @@ class PoolManager(RequestMethods):
             kw["headers"] = new_headers
 
         try:
-            retries = retries.increment(method, url, response=response, _pool=conn)  # type: ignore
+            retries = retries.increment(method, url, response=response, _pool=conn)  # type: ignore[arg-type]
         except MaxRetryError:
             if retries.raise_on_redirect:
                 response.drain_conn()
@@ -557,7 +581,7 @@ class ProxyManager(PoolManager):
             )
 
         return super().connection_from_host(
-            self.proxy.host, self.proxy.port, self.proxy.scheme, pool_kwargs=pool_kwargs  # type: ignore
+            self.proxy.host, self.proxy.port, self.proxy.scheme, pool_kwargs=pool_kwargs  # type: ignore[union-attr]
         )
 
     def _set_proxy_headers(
@@ -577,7 +601,7 @@ class ProxyManager(PoolManager):
             headers_.update(headers)
         return headers_
 
-    def urlopen(  # type: ignore
+    def urlopen(  # type: ignore[override]
         self, method: str, url: str, redirect: bool = True, **kw: Any
     ) -> BaseHTTPResponse:
         "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."

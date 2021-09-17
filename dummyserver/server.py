@@ -12,13 +12,13 @@ import sys
 import threading
 import warnings
 from datetime import datetime
-from typing import Callable, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import tornado.httpserver
 import tornado.ioloop
 import tornado.netutil
 import tornado.web
-import trustme  # type: ignore[import]
+import trustme
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 
@@ -28,7 +28,7 @@ from urllib3.util import ALPN_PROTOCOLS, resolve_cert_reqs, resolve_ssl_version
 log = logging.getLogger(__name__)
 
 CERTS_PATH = os.path.join(os.path.dirname(__file__), "certs")
-DEFAULT_CERTS = {
+DEFAULT_CERTS: Dict[str, Any] = {
     "certfile": os.path.join(CERTS_PATH, "server.crt"),
     "keyfile": os.path.join(CERTS_PATH, "server.key"),
     "cert_reqs": ssl.CERT_OPTIONAL,

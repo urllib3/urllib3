@@ -15,20 +15,20 @@ def is_fp_closed(obj: object) -> bool:
     try:
         # Check `isclosed()` first, in case Python3 doesn't set `closed`.
         # GH Issue #928
-        return obj.isclosed()  # type: ignore
+        return obj.isclosed()  # type: ignore[no-any-return, attr-defined]
     except AttributeError:
         pass
 
     try:
         # Check via the official file-like-object way.
-        return obj.closed  # type: ignore
+        return obj.closed  # type: ignore[no-any-return, attr-defined]
     except AttributeError:
         pass
 
     try:
         # Check if the object is a container for another file-like object that
         # gets released on exhaustion (e.g. HTTPResponse).
-        return obj.fp is None  # type: ignore
+        return obj.fp is None  # type: ignore[attr-defined]
     except AttributeError:
         pass
 
@@ -95,5 +95,5 @@ def is_response_to_head(response: httplib.HTTPResponse) -> bool:
         used 'HEAD' as a method.
     """
     # FIXME: Can we do this somehow without accessing private httplib _method?
-    method_str = response._method  # type: str  # type: ignore
+    method_str = response._method  # type: str  # type: ignore[attr-defined]
     return method_str.upper() == "HEAD"

@@ -170,6 +170,8 @@ class HTTPSDummyServerTestCase(HTTPDummyServerTestCase):
     scheme = "https"
     host = "localhost"
     certs = DEFAULT_CERTS
+    certs_dir = ""
+    bad_ca_path = ""
 
 
 class HTTPDummyProxyTestCase:
@@ -265,7 +267,7 @@ class ConnectionMarker:
 
     @classmethod
     @contextmanager
-    def mark(cls, monkeypatch: Any) -> Generator[None, None, None]:
+    def mark(cls, monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
         """
         Mark connections under in that context.
         """

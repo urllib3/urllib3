@@ -6,8 +6,10 @@ import sys
 import warnings
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, Union, overload
+from types import TracebackType
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, TypeVar, Union, overload
 
+from ._request_methods import RequestMethods
 from .connection import (
     _TYPE_BODY,
     BaseSSLError,
@@ -37,7 +39,6 @@ from .exceptions import (
     SSLError,
     TimeoutError,
 )
-from .request import RequestMethods
 from .response import BaseHTTPResponse, HTTPResponse
 from .util.connection import is_connection_dropped
 from .util.proxy import connection_requires_http_tunnel
@@ -52,6 +53,8 @@ from .util.url import parse_url
 from .util.util import to_str
 
 if TYPE_CHECKING:
+    import ssl
+
     from typing_extensions import Literal
 
 log = logging.getLogger(__name__)
@@ -60,6 +63,8 @@ _Default = object()
 
 
 _TYPE_TIMEOUT = Union[Timeout, int, float, object]
+
+_SelfT = TypeVar("_SelfT")
 
 
 # Pool objects
@@ -88,11 +93,14 @@ class ConnectionPool:
     def __str__(self) -> str:
         return f"{type(self).__name__}(host={self.host!r}, port={self.port!r})"
 
-    def __enter__(self) -> "ConnectionPool":
+    def __enter__(self: _SelfT) -> _SelfT:
         return self
 
     def __exit__(
-        self, exc_type: object, exc_val: object, exc_tb: object
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
     ) -> "Literal[False]":
         self.close()
         # Return False to re-raise any potential exceptions
@@ -186,7 +194,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             timeout = Timeout.from_float(timeout)
 
         if retries is None:
-            retries = Retry.DEFAULT  # type: ignore
+            retries = Retry.DEFAULT
 
         self.timeout = timeout
         self.retries = retries
@@ -231,7 +239,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn = self.ConnectionCls(
             host=self.host,
             port=self.port,
-            timeout=self.timeout.connect_timeout,  # type: ignore
+            timeout=self.timeout.connect_timeout,  # type: ignore[arg-type]
             **self.conn_kw,
         )
         return conn
@@ -257,14 +265,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             conn = self.pool.get(block=self.block, timeout=timeout)
 
         except AttributeError:  # self.pool is None
-            raise ClosedPoolError(self, "Pool is closed.")  # Defensive:
+            raise ClosedPoolError(self, "Pool is closed.") from None  # Defensive:
 
         except queue.Empty:
             if self.block:
                 raise EmptyPoolError(
                     self,
                     "Pool is empty and a new connection can't be opened due to blocking mode.",
-                )
+                ) from None
             pass  # Oh well, we'll create a new connection then
 
         # If this is a persistent connection, check if it got disconnected
@@ -311,7 +319,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     raise FullPoolError(
                         self,
                         "Pool reached maximum size and no more connections are allowed.",
-                    )
+                    ) from None
 
                 log.warning(
                     "Connection pool is full, discarding connection: %s", self.host
@@ -354,13 +362,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if isinstance(err, SocketTimeout):
             raise ReadTimeoutError(
                 self, url, f"Read timed out. (read timeout={timeout_value})"
-            )
+            ) from err
 
         # See the above comment about EAGAIN in Python 3.
         if hasattr(err, "errno") and err.errno in _blocking_errnos:
             raise ReadTimeoutError(
                 self, url, f"Read timed out. (read timeout={timeout_value})"
-            )
+            ) from err
 
     def _make_request(
         self,
@@ -389,7 +397,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         timeout_obj = self._get_timeout(timeout)
         timeout_obj.start_connect()
-        conn.timeout = timeout_obj.connect_timeout  # type: ignore
+        conn.timeout = timeout_obj.connect_timeout  # type: ignore[assignment]
 
         # Trigger any extra validation we need to do.
         try:
@@ -451,9 +459,9 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             method,
             url,
             # HTTP version
-            conn._http_vsn_str,  # type: ignore
+            conn._http_vsn_str,  # type: ignore[attr-defined]
             httplib_response.status,
-            httplib_response.length,  # type: ignore
+            httplib_response.length,  # type: ignore[attr-defined]
         )
 
         try:
@@ -511,7 +519,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         return (scheme, host, port) == (self.scheme, self.host, self.port)
 
-    def urlopen(  # type: ignore
+    def urlopen(  # type: ignore[override]
         self,
         method: str,
         url: str,
@@ -663,8 +671,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         # have to copy the headers dict so we can safely change it without those
         # changes being reflected in anyone else's copy.
         if not http_tunnel_required:
-            headers = headers.copy()  # type: ignore
-            headers.update(self.proxy_headers)  # type: ignore
+            headers = headers.copy()  # type: ignore[attr-defined]
+            headers.update(self.proxy_headers)  # type: ignore[union-attr]
 
         # Must keep the exception bound to a separate variable or else Python 3
         # complains about UnboundLocalError.
@@ -683,7 +691,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             timeout_obj = self._get_timeout(timeout)
             conn = self._get_conn(timeout=pool_timeout)
 
-            conn.timeout = timeout_obj.connect_timeout  # type: ignore
+            conn.timeout = timeout_obj.connect_timeout  # type: ignore[assignment]
 
             is_new_proxy_conn = self.proxy is not None and not getattr(
                 conn, "sock", None
@@ -896,6 +904,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         key_password: Optional[str] = None,
         ca_certs: Optional[str] = None,
         ssl_version: Optional[Union[int, str]] = None,
+        ssl_minimum_version: Optional["ssl.TLSVersion"] = None,
+        ssl_maximum_version: Optional["ssl.TLSVersion"] = None,
         assert_hostname: Optional[Union[str, "Literal[False]"]] = None,
         assert_fingerprint: Optional[str] = None,
         ca_cert_dir: Optional[str] = None,
@@ -922,6 +932,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.ca_certs = ca_certs
         self.ca_cert_dir = ca_cert_dir
         self.ssl_version = ssl_version
+        self.ssl_minimum_version = ssl_minimum_version
+        self.ssl_maximum_version = ssl_maximum_version
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
 
@@ -943,9 +955,12 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                 assert_fingerprint=self.assert_fingerprint,
             )
             conn.ssl_version = self.ssl_version
+            conn.ssl_minimum_version = self.ssl_minimum_version
+            conn.ssl_maximum_version = self.ssl_maximum_version
+
         return conn
 
-    def _prepare_proxy(self, conn: HTTPSConnection) -> None:  # type: ignore
+    def _prepare_proxy(self, conn: HTTPSConnection) -> None:  # type: ignore[override]
         """
         Establishes a tunnel connection through HTTP CONNECT.
 
@@ -972,7 +987,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             self.port or "443",
         )
 
-        if not self.ConnectionCls or self.ConnectionCls is DummyConnection:  # type: ignore
+        if not self.ConnectionCls or self.ConnectionCls is DummyConnection:  # type: ignore[comparison-overlap]
             raise SSLError(
                 "Can't connect to HTTPS URL because the SSL module is not available."
             )
@@ -986,7 +1001,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         conn = self.ConnectionCls(
             host=actual_host,
             port=actual_port,
-            timeout=self.timeout.connect_timeout,  # type: ignore
+            timeout=self.timeout.connect_timeout,  # type: ignore[arg-type]
             cert_file=self.cert_file,
             key_file=self.key_file,
             key_password=self.key_password,
@@ -1041,9 +1056,9 @@ def connection_from_url(url: str, **kw: Any) -> ConnectionPool:
     scheme = scheme or "http"
     port = port or port_by_scheme.get(scheme, 80)
     if scheme == "https":
-        return HTTPSConnectionPool(host, port=port, **kw)  # type: ignore
+        return HTTPSConnectionPool(host, port=port, **kw)  # type: ignore[arg-type]
     else:
-        return HTTPConnectionPool(host, port=port, **kw)  # type: ignore
+        return HTTPConnectionPool(host, port=port, **kw)  # type: ignore[arg-type]
 
 
 @overload
