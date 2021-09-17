@@ -1,0 +1,1 @@
+Removed support for integer field data from ``urllib3.filepost.encode_multipart_formdata``.

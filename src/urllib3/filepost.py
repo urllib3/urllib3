@@ -69,9 +69,6 @@ def encode_multipart_formdata(
         writer(body).write(field.render_headers())
         data = field.data
 
-        if isinstance(data, int):
-            data = str(data)  # Backwards compatibility
-
         if isinstance(data, str):
             writer(body).write(data)
         else:
