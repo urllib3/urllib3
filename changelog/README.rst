@@ -1,5 +1,6 @@
 This directory contains "newsfragments" which are short files that contain a small
-**ReST**-formatted text that will be added to ``CHANGES.rst``.
+**ReST**-formatted text that will be added to ``CHANGES.rst`` by `towncrier
+<https://towncrier.readthedocs.io/en/actual-freaking-docs/>`__.
 
 The ``CHANGELOG`` will be read by **users**, so this description should be aimed to
 urllib3 users instead of describing internal changes which are only relevant to the
