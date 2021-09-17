@@ -159,13 +159,13 @@ def ipv6_san_proxy(tmp_path_factory):
 
 
 @pytest.fixture
-def ip_san_server(tmp_path_factory):
+def ipv4_san_server(tmp_path_factory):
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # IP address in Subject Alternative Name
-    server_cert = ca.issue_cert(u"127.0.0.1", "::1")
+    server_cert = ca.issue_cert(u"127.0.0.1")
 
-    with run_server_in_thread("https", "localhost", tmpdir, ca, server_cert) as cfg:
+    with run_server_in_thread("https", "127.0.0.1", tmpdir, ca, server_cert) as cfg:
         yield cfg
 
 
