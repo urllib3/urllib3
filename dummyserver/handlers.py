@@ -30,7 +30,7 @@ class Response:
         self.body = body
         self.status = status
         if json is not None:
-            self.headers = headers
+            self.headers = headers or [("Content-type", "application/json")]
             self.body = json
         else:
             self.headers = headers or [("Content-type", "text/plain")]
