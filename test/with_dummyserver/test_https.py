@@ -32,7 +32,7 @@ from dummyserver.server import (
     encrypt_key_pem,
 )
 from dummyserver.testcase import HTTPSDummyServerTestCase
-from urllib3 import HTTPSConnectionPool
+from urllib3 import HTTPSConnectionPool, PoolManager
 from urllib3.connection import RECENT_DATE, VerifiedHTTPSConnection
 from urllib3.exceptions import (
     ConnectTimeoutError,
@@ -959,7 +959,18 @@ class TestHTTPS_TLSv1_3(TestHTTPS):
     certs = TLSv1_3_CERTS
 
 
-class TestHTTPS_NoSAN:
+class TestHTTPS_Hostname:
+    def test_can_validate_san(self, san_server: ServerConfig) -> None:
+        """Ensure that urllib3 can validate SANs with IP addresses in them."""
+        with HTTPSConnectionPool(
+            san_server.host,
+            san_server.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=san_server.ca_certs,
+        ) as https_pool:
+            r = https_pool.request("GET", "/")
+            assert r.status == 200
+
     def test_common_name_without_san_fails(self, no_san_server: ServerConfig) -> None:
         with HTTPSConnectionPool(
             no_san_server.host,
@@ -969,32 +980,6 @@ class TestHTTPS_NoSAN:
         ) as https_pool:
             with pytest.raises(MaxRetryError, match="no appropriate subjectAltName"):
                 https_pool.request("GET", "/")
-
-
-class TestHTTPS_IPSAN:
-    def test_can_validate_ip_san(self, ip_san_server: ServerConfig) -> None:
-        """Ensure that urllib3 can validate SANs with IP addresses in them."""
-        with HTTPSConnectionPool(
-            ip_san_server.host,
-            ip_san_server.port,
-            cert_reqs="CERT_REQUIRED",
-            ca_certs=ip_san_server.ca_certs,
-        ) as https_pool:
-            r = https_pool.request("GET", "/")
-            assert r.status == 200
-
-
-class TestHTTPS_IPV6SAN:
-    def test_can_validate_ipv6_san(self, ipv6_san_server: ServerConfig) -> None:
-        """Ensure that urllib3 can validate SANs with IPv6 addresses in them."""
-        with HTTPSConnectionPool(
-            "[::1]",
-            ipv6_san_server.port,
-            cert_reqs="CERT_REQUIRED",
-            ca_certs=ipv6_san_server.ca_certs,
-        ) as https_pool:
-            r = https_pool.request("GET", "/")
-            assert r.status == 200
 
     def test_strip_square_brackets_before_validating(
         self, ipv6_san_server: ServerConfig
@@ -1007,4 +992,12 @@ class TestHTTPS_IPV6SAN:
             ca_certs=ipv6_san_server.ca_certs,
         ) as https_pool:
             r = https_pool.request("GET", "/")
+            assert r.status == 200
+
+    def test_request_from_poolmanager(self, san_server: ServerConfig) -> None:
+        with PoolManager(
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=san_server.ca_certs,
+        ) as pool:
+            r = pool.request("GET", san_server.base_url)
             assert r.status == 200

@@ -5,7 +5,7 @@ import ssl
 import sys
 import threading
 from pathlib import Path
-from typing import AbstractSet, Generator, NamedTuple, Optional
+from typing import AbstractSet, Any, Generator, NamedTuple, Optional
 
 import pytest
 import trustme
@@ -29,9 +29,17 @@ def configure_windows_event_loop() -> None:
 
 
 class ServerConfig(NamedTuple):
+    scheme: str
     host: str
     port: int
     ca_certs: str
+
+    @property
+    def base_url(self) -> str:
+        host = self.host
+        if ":" in host:
+            host = f"[{host}]"
+        return f"{self.scheme}://{host}:{self.port}"
 
 
 @contextlib.contextmanager
@@ -52,23 +60,43 @@ def run_server_in_thread(
     server_thread = threading.Thread(target=io_loop.start)
     server_thread.start()
 
-    yield ServerConfig(host, port, ca_cert_path)
+    yield ServerConfig("https", host, port, ca_cert_path)
 
     io_loop.add_callback(server.stop)
     io_loop.add_callback(io_loop.stop)
     server_thread.join()
 
 
-@pytest.fixture
-def no_san_server(
-    tmp_path_factory: pytest.TempPathFactory,
+@pytest.fixture(params=["localhost", "127.0.0.1", "::1"])
+def loopback_host(request: Any) -> Generator[str, None, None]:
+    host = request.param
+    if host == "::1" and not HAS_IPV6:
+        pytest.skip("Test requires IPv6 on loopback")
+    yield host
+
+
+@pytest.fixture()
+def san_server(
+    loopback_host: str, tmp_path_factory: pytest.TempPathFactory
 ) -> Generator[ServerConfig, None, None]:
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
-    # only common name, no subject alternative names
-    server_cert = ca.issue_cert(common_name="localhost")
 
-    with run_server_in_thread("https", "localhost", tmpdir, ca, server_cert) as cfg:
+    server_cert = ca.issue_cert(loopback_host)
+
+    with run_server_in_thread("https", loopback_host, tmpdir, ca, server_cert) as cfg:
+        yield cfg
+
+
+@pytest.fixture()
+def no_san_server(
+    loopback_host: str, tmp_path_factory: pytest.TempPathFactory
+) -> Generator[ServerConfig, None, None]:
+    tmpdir = tmp_path_factory.mktemp("certs")
+    ca = trustme.CA()
+    server_cert = ca.issue_cert(common_name=loopback_host)
+
+    with run_server_in_thread("https", loopback_host, tmpdir, ca, server_cert) as cfg:
         yield cfg
 
 
