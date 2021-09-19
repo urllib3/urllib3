@@ -506,7 +506,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
             HTTPHeaderDict(cookie="foo, bar"),
         ],
     )
-    def test_request_with_json(self, headers):
+    def test_request_with_json(self, headers: HTTPHeaderDict) -> None:
         body = {"attribute": "value"}
         r = request(
             method="POST", url=f"{self.base_url}/echo_json", headers=headers, json=body
@@ -520,7 +520,7 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 " ", ""
             ).split(",")
 
-    def test_top_level_request_with_json_with_httpheaderdict(self):
+    def test_top_level_request_with_json_with_httpheaderdict(self) -> None:
         body = {"attribute": "value"}
         header = HTTPHeaderDict(cookie="foo, bar")
         with PoolManager(headers=header) as http:
@@ -531,11 +531,11 @@ class TestPoolManager(HTTPDummyServerTestCase):
                 " ", ""
             ).split(",")
 
-    def test_top_level_request_with_body_and_json(self):
+    def test_top_level_request_with_body_and_json(self) -> None:
         match = "request got values for both 'body' and 'json' parameters which are mutually exclusive"
         with pytest.raises(TypeError, match=match):
             body = {"attribute": "value"}
-            request(method="POST", url=f"{self.base_url}/echo", body=body, json=body)
+            request(method="POST", url=f"{self.base_url}/echo", body="", json=body)
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not supported on this system")
