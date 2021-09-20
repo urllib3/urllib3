@@ -201,6 +201,7 @@ class BaseHTTPResponse(io.IOBase):
         reason: Optional[str],
         decode_content: bool,
         request_url: Optional[str],
+        retries: Optional[Retry] = None,
     ) -> None:
         if isinstance(headers, HTTPHeaderDict):
             self.headers = headers
@@ -211,6 +212,7 @@ class BaseHTTPResponse(io.IOBase):
         self.reason = reason
         self.decode_content = decode_content
         self.request_url: Optional[str]
+        self.retries = retries
 
         self.chunked = False
         tr_enc = self.headers.get("transfer-encoding", "").lower()
@@ -429,9 +431,9 @@ class HTTPResponse(BaseHTTPResponse):
             reason=reason,
             decode_content=decode_content,
             request_url=request_url,
+            retries=retries,
         )
 
-        self.retries = retries
         self.enforce_content_length = enforce_content_length
         self.auto_close = auto_close
 
