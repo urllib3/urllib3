@@ -1032,7 +1032,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             )
 
 
-def connection_from_url(url: str, **kw: Any) -> ConnectionPool:
+def connection_from_url(url: str, **kw: Any) -> HTTPConnectionPool:
     """
     Given a url, return an :class:`.ConnectionPool` instance of its host.
 

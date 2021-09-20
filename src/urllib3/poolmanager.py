@@ -547,8 +547,10 @@ class ProxyManager(PoolManager):
     ) -> None:
 
         if isinstance(proxy_url, HTTPConnectionPool):
-            proxy_url = f"{proxy_url.scheme}://{proxy_url.host}:{proxy_url.port}"
-        proxy = parse_url(proxy_url)
+            str_proxy_url = f"{proxy_url.scheme}://{proxy_url.host}:{proxy_url.port}"
+        else:
+            str_proxy_url = proxy_url
+        proxy = parse_url(str_proxy_url)
 
         if proxy.scheme not in ("http", "https"):
             raise ProxySchemeUnknown(proxy.scheme)
