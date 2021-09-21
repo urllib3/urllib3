@@ -1,3 +1,14 @@
+1.26.6 (2021-06-25)
+===================
+
+* Deprecated the ``urllib3.contrib.ntlmpool`` module. urllib3 is not able to support
+  it properly due to `reasons listed in this issue <https://github.com/urllib3/urllib3/issues/2282>`_.
+  If you are a user of this module please leave a comment.
+* Changed ``HTTPConnection.request_chunked()`` to not erroneously emit multiple
+  ``Transfer-Encoding`` headers in the case that one is already specified.
+* Fixed typo in deprecation message to recommend ``Retry.DEFAULT_ALLOWED_METHODS``.
+
+
 1.26.5 (2021-05-26)
 ===================
 
