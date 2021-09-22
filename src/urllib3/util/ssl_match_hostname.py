@@ -106,7 +106,7 @@ def match_hostname(
         )
     try:
         # Divergence from upstream: ipaddress can't handle byte str
-        host_ip = ipaddress.ip_address(hostname.strip("[]"))
+        host_ip = ipaddress.ip_address(hostname)
     except ValueError:
         # Not an IP address (common case)
         host_ip = None

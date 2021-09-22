@@ -32,7 +32,7 @@ from dummyserver.server import (
     encrypt_key_pem,
 )
 from dummyserver.testcase import HTTPSDummyServerTestCase
-from urllib3 import HTTPSConnectionPool, PoolManager
+from urllib3 import HTTPSConnectionPool
 from urllib3.connection import RECENT_DATE, VerifiedHTTPSConnection
 from urllib3.exceptions import (
     ConnectTimeoutError,
@@ -1051,23 +1051,61 @@ class TestHTTPS_Hostname:
                 err.reason.args[0], (ssl.SSLCertVerificationError, CertificateError)
             )
 
+
+class TestHTTPS_IPV4SAN:
+    def test_can_validate_ip_san(self, ipv4_san_server: ServerConfig) -> None:
+        """Ensure that urllib3 can validate SANs with IP addresses in them."""
+        with HTTPSConnectionPool(
+            ipv4_san_server.host,
+            ipv4_san_server.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=ipv4_san_server.ca_certs,
+        ) as https_pool:
+            r = https_pool.request("GET", "/")
+            assert r.status == 200
+
+
+class TestHTTPS_IPv6Addr:
+    @pytest.mark.xfail  # TODO: Remove test in urllib3/urllib3#2532
+    @pytest.mark.parametrize("host", ["::1", "[::1]"])
     def test_strip_square_brackets_before_validating(
-        self, ipv6_san_server: ServerConfig
+        self, ipv6_no_san_server: ServerConfig, host: str
     ) -> None:
         """Test that the fix for #760 works."""
+
+        ctx = urllib3.util.ssl_.create_urllib3_context()
+        try:
+            ctx.hostname_checks_common_name = True
+        except AttributeError:
+            pass
+        if (
+            not getattr(ctx, "hostname_checks_common_name", False)
+            or not urllib3.util.ssl_.HAS_NEVER_CHECK_COMMON_NAME
+        ):
+            pytest.skip("Couldn't set SSLContext.hostname_checks_common_name = True")
+
         with HTTPSConnectionPool(
-            "[::1]",
+            host,
+            ipv6_no_san_server.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=ipv6_no_san_server.ca_certs,
+            ssl_context=ctx,
+        ) as https_pool:
+            r = https_pool.request("GET", "/")
+            assert r.status == 200
+
+
+class TestHTTPS_IPV6SAN:
+    @pytest.mark.parametrize("host", ["::1", "[::1]"])
+    def test_can_validate_ipv6_san(
+        self, ipv6_san_server: ServerConfig, host: str
+    ) -> None:
+        """Ensure that urllib3 can validate SANs with IPv6 addresses in them."""
+        with HTTPSConnectionPool(
+            host,
             ipv6_san_server.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=ipv6_san_server.ca_certs,
         ) as https_pool:
             r = https_pool.request("GET", "/")
-            assert r.status == 200
-
-    def test_request_from_poolmanager(self, san_server: ServerConfig) -> None:
-        with PoolManager(
-            cert_reqs="CERT_REQUIRED",
-            ca_certs=san_server.ca_certs,
-        ) as pool:
-            r = pool.request("GET", san_server.base_url)
             assert r.status == 200

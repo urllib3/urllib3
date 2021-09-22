@@ -34,7 +34,9 @@ from ..test_ssl import TestSSL  # noqa: E402, F401
 from ..test_util import TestUtilSSL  # noqa: E402, F401
 from ..with_dummyserver.test_https import (  # noqa: E402, F401
     TestHTTPS,
-    TestHTTPS_Hostname,
+    TestHTTPS_IPV4SAN,
+    TestHTTPS_IPv6Addr,
+    TestHTTPS_IPV6SAN,
     TestHTTPS_TLSv1,
     TestHTTPS_TLSv1_1,
     TestHTTPS_TLSv1_2,

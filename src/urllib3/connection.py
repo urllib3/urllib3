@@ -54,6 +54,7 @@ from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
 from .util.ssl_ import assert_fingerprint as _assert_fingerprint
 from .util.ssl_ import (
     create_urllib3_context,
+    is_ipaddress,
     resolve_cert_reqs,
     resolve_ssl_version,
     ssl_wrap_socket,
@@ -606,6 +607,14 @@ def _ssl_wrap_socket_and_match_hostname(
     ):
         context.load_default_certs()
 
+    # Our upstream implementation of ssl.match_hostname()
+    # only applies this normalization to IP addresses so it doesn't
+    # match DNS SANs so we do the same thing!
+    if server_hostname is not None:
+        stripped_hostname = server_hostname.strip("[]")
+        if is_ipaddress(stripped_hostname):
+            server_hostname = stripped_hostname
+
     ssl_sock = ssl_wrap_socket(
         sock=sock,
         keyfile=key_file,
@@ -656,6 +665,13 @@ def _match_hostname(
     asserted_hostname: str,
     hostname_checks_common_name: bool = False,
 ) -> None:
+    # Our upstream implementation of ssl.match_hostname()
+    # only applies this normalization to IP addresses so it doesn't
+    # match DNS SANs so we do the same thing!
+    stripped_hostname = asserted_hostname.strip("[]")
+    if is_ipaddress(stripped_hostname):
+        asserted_hostname = stripped_hostname
+
     try:
         match_hostname(cert, asserted_hostname, hostname_checks_common_name)
     except CertificateError as e:
