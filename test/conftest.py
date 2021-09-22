@@ -129,7 +129,7 @@ def no_localhost_san_server(tmp_path_factory):
 
 
 @pytest.fixture
-def ip_san_proxy(tmp_path_factory):
+def ipv4_san_proxy(tmp_path_factory):
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # IP address in Subject Alternative Name
@@ -144,7 +144,22 @@ def ip_san_proxy(tmp_path_factory):
 
 
 @pytest.fixture
-def ip_san_server(tmp_path_factory):
+def ipv6_san_proxy(tmp_path_factory):
+    tmpdir = tmp_path_factory.mktemp("certs")
+    ca = trustme.CA()
+    # IP addresses in Subject Alternative Name
+    proxy_cert = ca.issue_cert(u"::1")
+
+    server_cert = ca.issue_cert(u"localhost")
+
+    with run_server_and_proxy_in_thread(
+        "https", "::1", tmpdir, ca, proxy_cert, server_cert
+    ) as cfg:
+        yield cfg
+
+
+@pytest.fixture
+def ipv4_san_server(tmp_path_factory):
     tmpdir = tmp_path_factory.mktemp("certs")
     ca = trustme.CA()
     # IP address in Subject Alternative Name

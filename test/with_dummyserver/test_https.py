@@ -859,29 +859,25 @@ class TestHTTPS_NoSAN:
                 assert warn.called
 
 
-class TestHTTPS_IPSAN:
-    def test_can_validate_ip_san(self, ip_san_server):
+class TestHTTPS_IPV4SAN:
+    def test_can_validate_ip_san(self, ipv4_san_server):
         """Ensure that urllib3 can validate SANs with IP addresses in them."""
-        try:
-            import ipaddress  # noqa: F401
-        except ImportError:
-            pytest.skip("Only runs on systems with an ipaddress module")
-
         with HTTPSConnectionPool(
-            ip_san_server.host,
-            ip_san_server.port,
+            ipv4_san_server.host,
+            ipv4_san_server.port,
             cert_reqs="CERT_REQUIRED",
-            ca_certs=ip_san_server.ca_certs,
+            ca_certs=ipv4_san_server.ca_certs,
         ) as https_pool:
             r = https_pool.request("GET", "/")
             assert r.status == 200
 
 
 class TestHTTPS_IPv6Addr:
-    def test_strip_square_brackets_before_validating(self, ipv6_addr_server):
+    @pytest.mark.parametrize("host", ["::1", "[::1]"])
+    def test_strip_square_brackets_before_validating(self, ipv6_addr_server, host):
         """Test that the fix for #760 works."""
         with HTTPSConnectionPool(
-            "[::1]",
+            host,
             ipv6_addr_server.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=ipv6_addr_server.ca_certs,
@@ -891,15 +887,11 @@ class TestHTTPS_IPv6Addr:
 
 
 class TestHTTPS_IPV6SAN:
-    def test_can_validate_ipv6_san(self, ipv6_san_server):
+    @pytest.mark.parametrize("host", ["::1", "[::1]"])
+    def test_can_validate_ipv6_san(self, ipv6_san_server, host):
         """Ensure that urllib3 can validate SANs with IPv6 addresses in them."""
-        try:
-            import ipaddress  # noqa: F401
-        except ImportError:
-            pytest.skip("Only runs on systems with an ipaddress module")
-
         with HTTPSConnectionPool(
-            "[::1]",
+            host,
             ipv6_san_server.port,
             cert_reqs="CERT_REQUIRED",
             ca_certs=ipv6_san_server.ca_certs,

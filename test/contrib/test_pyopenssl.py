@@ -34,7 +34,7 @@ def teardown_module():
 from ..test_util import TestUtilSSL  # noqa: E402, F401
 from ..with_dummyserver.test_https import (  # noqa: E402, F401
     TestHTTPS,
-    TestHTTPS_IPSAN,
+    TestHTTPS_IPV4SAN,
     TestHTTPS_IPv6Addr,
     TestHTTPS_IPV6SAN,
     TestHTTPS_NoSAN,

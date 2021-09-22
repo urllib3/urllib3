@@ -56,6 +56,7 @@ from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection
 from .util.ssl_ import (
     assert_fingerprint,
     create_urllib3_context,
+    is_ipaddress,
     resolve_cert_reqs,
     resolve_ssl_version,
     ssl_wrap_socket,
@@ -530,6 +531,13 @@ class HTTPSConnection(HTTPConnection):
 
 
 def _match_hostname(cert, asserted_hostname):
+    # Our upstream implementation of ssl.match_hostname()
+    # only applies this normalization to IP addresses so it doesn't
+    # match DNS SANs so we do the same thing!
+    stripped_hostname = asserted_hostname.strip("u[]")
+    if is_ipaddress(stripped_hostname):
+        asserted_hostname = stripped_hostname
+
     try:
         match_hostname(cert, asserted_hostname)
     except CertificateError as e:
