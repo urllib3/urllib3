@@ -88,7 +88,7 @@ def git_clone(session, git_url):
     session.run("git", "clone", "--depth", "1", git_url, external=True)
 
 
-@nox.session(python=["2.7", "3.9"])
+@nox.session(python=["3.9"])
 def downstream_botocore(session):
     root = os.getcwd()
     tmp_dir = session.create_tmp()
