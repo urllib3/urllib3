@@ -258,7 +258,7 @@ class SocketProxyDummyServer(SocketDummyServerTestCase):
             readable, writable, exception = select.select(inputs, output, inputs)
 
             if exception:
-                # Error ocurred with either of the sockets, time to
+                # Error occurred with either of the sockets, time to
                 # wrap up, parent func will close sockets.
                 break
 
@@ -271,7 +271,7 @@ class SocketProxyDummyServer(SocketDummyServerTestCase):
                     read_socket = server_sock
                     write_socket = client_sock
 
-                # Ensure buffer is not full before writting
+                # Ensure buffer is not full before writing
                 if write_socket in writable:
                     try:
                         b = read_socket.recv(chunks)
