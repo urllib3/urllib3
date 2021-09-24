@@ -85,7 +85,7 @@ DUMMY_POOL = ConnectionPool("dummy")
 
 
 def _can_resolve(host: str) -> bool:
-    """ Returns True if the system can resolve host to an address. """
+    """Returns True if the system can resolve host to an address."""
     try:
         socket.getaddrinfo(host, None, socket.AF_UNSPEC)
         return True
@@ -94,7 +94,7 @@ def _can_resolve(host: str) -> bool:
 
 
 def has_alpn(ctx_cls: Optional[Type["ssl.SSLContext"]] = None) -> bool:
-    """ Detect if ALPN support is enabled. """
+    """Detect if ALPN support is enabled."""
     ctx_cls = ctx_cls or util.SSLContext
     ctx = ctx_cls(protocol=ssl_.PROTOCOL_TLS)  # type: ignore[misc]
     try:

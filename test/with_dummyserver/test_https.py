@@ -365,7 +365,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             assert isinstance(cm.value.reason, SSLError)
 
     def test_unverified_ssl(self) -> None:
-        """ Test that bare HTTPSConnection can connect, make requests """
+        """Test that bare HTTPSConnection can connect, make requests"""
         with HTTPSConnectionPool(
             self.host,
             self.port,
@@ -604,7 +604,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             https_pool.request("GET", "/")
 
     def test_tunnel(self) -> None:
-        """ test the _tunnel behavior """
+        """test the _tunnel behavior"""
         timeout = Timeout(total=None)
         with HTTPSConnectionPool(
             self.host,

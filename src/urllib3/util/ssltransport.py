@@ -266,7 +266,7 @@ class SSLTransport:
         arg1: Union[None, bytes, int] = None,
         arg2: Optional[bytearray] = None,
     ) -> _ReturnValue:
-        """ Performs an I/O loop between incoming/outgoing and the socket."""
+        """Performs an I/O loop between incoming/outgoing and the socket."""
         should_loop = True
         ret = None
 

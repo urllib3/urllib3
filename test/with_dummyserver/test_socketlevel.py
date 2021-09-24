@@ -458,7 +458,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 timed_out.set()
 
     def test_https_connection_read_timeout(self):
-        """ Handshake timeouts should fail with a Timeout"""
+        """Handshake timeouts should fail with a Timeout"""
         timed_out = Event()
 
         def socket_handler(listener):
@@ -629,7 +629,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 response.read()
 
     def test_retry_weird_http_version(self):
-        """ Retry class should handle httplib.BadStatusLine errors properly """
+        """Retry class should handle httplib.BadStatusLine errors properly"""
 
         def socket_handler(listener):
             sock = listener.accept()[0]
