@@ -45,7 +45,7 @@ jobs:
             os: ubuntu-latest
             experimental: false
             nox-session: test_brotlipy
-          - python-version: 3.10.0-beta.4
+          - python-version: 3.10.0-rc.2
             os: ubuntu-latest
             experimental: false
             nox-session: test-3.10
