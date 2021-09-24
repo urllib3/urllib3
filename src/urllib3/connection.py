@@ -155,9 +155,9 @@ class HTTPConnection(_HTTPConnection):
 
     # https://github.com/python/mypy/issues/4125
     # Mypy treats this as LSP violation, which is considered a bug.
-    # If `host` is made a property it violates LSP, because a writeable attribute is overriden with a read-only one.
+    # If `host` is made a property it violates LSP, because a writeable attribute is overridden with a read-only one.
     # However, there is also a `host` setter so LSP is not violated.
-    # Potentailly, a `@host.deleter` might be needed depending on how this issue will be fixed.
+    # Potentially, a `@host.deleter` might be needed depending on how this issue will be fixed.
     @property  # type: ignore[override]
     def host(self) -> str:  # type: ignore[override]
         """
@@ -408,8 +408,7 @@ class HTTPSConnection(HTTPConnection):
         """
         This method should only be called once, before the connection is used.
         """
-        # If cert_reqs is not provided we'll assume CERT_REQUIRED unless we also
-        # have an SSLContext object in which case we'll use its verify_mode.
+        # If cert_reqs is not provided we'll assume CERT_REQUIRED unless we also have an SSLContext object in which case we'll use its verify_mode.
         if cert_reqs is None:
             if self.ssl_context is not None:
                 cert_reqs = self.ssl_context.verify_mode
@@ -480,12 +479,9 @@ class HTTPSConnection(HTTPConnection):
                 # `ssl` can't verify fingerprints or alternate hostnames
                 self.assert_fingerprint
                 or self.assert_hostname
-                # We still support OpenSSL 1.0.2, which prevents us from verifying
-                # hostnames easily: https://github.com/pyca/pyopenssl/pull/933
+                # We still support OpenSSL 1.0.2, which prevents us from verifying hostnames easily: https://github.com/pyca/pyopenssl/pull/933
                 or ssl_.IS_PYOPENSSL
-                # context.hostname_checks_common_name seems ignored, and it's more
-                # important to reject certs without SANs than to rely on the standard
-                # libary. See https://bugs.python.org/issue43522 for details.
+                # context.hostname_checks_common_name seems ignored, and it's more important to reject certs without SANs than to rely on the standard  library. See https://bugs.python.org/issue43522 for details.
                 or True
             ):
                 self.ssl_context.check_hostname = False
