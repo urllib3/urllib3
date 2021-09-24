@@ -155,9 +155,9 @@ class HTTPConnection(_HTTPConnection):
 
     # https://github.com/python/mypy/issues/4125
     # Mypy treats this as LSP violation, which is considered a bug.
-    # If `host` is made a property it violates LSP, because a writeable attribute is overriden with a read-only one.
+    # If `host` is made a property it violates LSP, because a writeable attribute is overridden with a read-only one.
     # However, there is also a `host` setter so LSP is not violated.
-    # Potentailly, a `@host.deleter` might be needed depending on how this issue will be fixed.
+    # Potentially, a `@host.deleter` might be needed depending on how this issue will be fixed.
     @property  # type: ignore[override]
     def host(self) -> str:  # type: ignore[override]
         """
@@ -485,7 +485,7 @@ class HTTPSConnection(HTTPConnection):
                 or ssl_.IS_PYOPENSSL
                 # context.hostname_checks_common_name seems ignored, and it's more
                 # important to reject certs without SANs than to rely on the standard
-                # libary. See https://bugs.python.org/issue43522 for details.
+                # library. See https://bugs.python.org/issue43522 for details.
                 or True
             ):
                 self.ssl_context.check_hostname = False
