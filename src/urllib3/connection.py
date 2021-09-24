@@ -23,7 +23,7 @@ from typing import (
 )
 
 if TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing_extensions import Literal, NoReturn
 
 from .util.proxy import create_proxy_ssl_context
 from .util.util import to_bytes, to_str
@@ -45,6 +45,7 @@ from .exceptions import (
     HTTPSProxyError,
     NameResolutionError,
     NewConnectionError,
+    ProxyError,
     SystemTimeWarning,
 )
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
@@ -533,9 +534,7 @@ class HTTPSConnection(HTTPConnection):
             self.assert_fingerprint
         )
 
-    def _connect_tls_proxy(
-        self, hostname: Optional[str], conn: socket.socket
-    ) -> "ssl.SSLSocket":
+    def _connect_tls_proxy(self, hostname: str, conn: socket.socket) -> "ssl.SSLSocket":
         """
         Establish a TLS connection to the proxy using the provided SSL context.
         """
@@ -574,12 +573,9 @@ class HTTPSConnection(HTTPConnection):
                 ssl_context=ssl_context,
             )
         except Exception as e:
-            # Wrap into an HTTPSProxyError for easier diagnosis.
-            # Original exception is available on original_error and
-            # as __cause__.
-            raise HTTPSProxyError(
-                f"Unable to establish a TLS connection to {hostname}", e
-            ) from e
+            if not _should_wrap_https_proxy_error(e):
+                raise
+            _wrap_https_proxy_error(e, hostname)
 
 
 def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
@@ -595,6 +591,36 @@ def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
         # the cert when catching the exception, if they want to
         e._peer_cert = cert  # type: ignore[attr-defined]
         raise
+
+
+def _should_wrap_https_proxy_error(err: Exception) -> bool:
+    """Detects if the error should be wrapped into :class:`urllib3.exceptions.HTTPSProxyError`"""
+    if isinstance(err, ProxyError):
+        err = err.original_error
+    return isinstance(err, (CertificateError, BaseSSLError, ssl_.SSLError))  # type: ignore[attr-defined]
+
+
+def _wrap_https_proxy_error(err: Exception, hostname: str) -> "NoReturn":
+    # Look for the phrase 'wrong version number', if found
+    # then we should warn the user that we're very sure that
+    # this proxy is HTTP-only and they have a configuration issue.
+    if isinstance(err, ProxyError):
+        err = err.original_error
+    error_normalized = " ".join(re.split("[^a-z]", str(err).lower()))
+    is_likely_http_proxy = "wrong version number" in error_normalized
+    http_proxy_warning = (
+        ". Your proxy appears to only use HTTP and not HTTPS, "
+        "did you intend to set a proxy URL using HTTPS instead of HTTP?"
+    )
+
+    # Wrap into an HTTPSProxyError for easier diagnosis.
+    # Original exception is available on original_error and
+    # as __cause__.
+    raise HTTPSProxyError(
+        f"Unable to establish a TLS connection to {hostname}"
+        f"{http_proxy_warning if is_likely_http_proxy else ''}",
+        err,
+    ) from err
 
 
 def _get_default_user_agent() -> str:
