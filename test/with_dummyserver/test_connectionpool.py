@@ -282,7 +282,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             assert r.status == 200, r.data
 
     def test_nagle(self) -> None:
-        """ Test that connections have TCP_NODELAY turned on """
+        """Test that connections have TCP_NODELAY turned on"""
         # This test needs to be here in order to be run. socket.create_connection actually tries
         # to connect to the host provided so we need a dummyserver to be running.
         with HTTPConnectionPool(self.host, self.port) as pool:
@@ -363,7 +363,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                 s.close()
 
     def test_connection_error_retries(self) -> None:
-        """ ECONNREFUSED error should raise a connection error, with retries """
+        """ECONNREFUSED error should raise a connection error, with retries"""
         port = find_unused_port()
         with HTTPConnectionPool(self.host, port) as pool:
             with pytest.raises(MaxRetryError) as e:
@@ -815,13 +815,13 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             assert response.status == 200
 
     def test_preserves_path_dot_segments(self) -> None:
-        """ ConnectionPool preserves dot segments in the URI """
+        """ConnectionPool preserves dot segments in the URI"""
         with HTTPConnectionPool(self.host, self.port) as pool:
             response = pool.request("GET", "/echo_uri/seg0/../seg2")
             assert response.data == b"/echo_uri/seg0/../seg2"
 
     def test_default_user_agent_header(self) -> None:
-        """ ConnectionPool has a default user agent """
+        """ConnectionPool has a default user agent"""
         default_ua = _get_default_user_agent()
         custom_ua = "I'm not a web scraper, what are you talking about?"
         custom_ua2 = "Yet Another User Agent"
@@ -876,7 +876,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                 assert request_headers["User-Agent"] == "key"
 
     def test_no_user_agent_header(self) -> None:
-        """ ConnectionPool can suppress sending a user agent header """
+        """ConnectionPool can suppress sending a user agent header"""
         custom_ua = "I'm not a web scraper, what are you talking about?"
         with HTTPConnectionPool(self.host, self.port) as pool:
             # Suppress user agent in the request headers.
@@ -1038,7 +1038,7 @@ class TestRetry(HTTPDummyServerTestCase):
                 pool.request("GET", "/redirect", fields={"target": "/"}, retries=0)
 
     def test_disabled_retry(self) -> None:
-        """ Disabled retries should disable redirect handling. """
+        """Disabled retries should disable redirect handling."""
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("GET", "/redirect", fields={"target": "/"}, retries=False)
             assert r.status == 303
@@ -1058,7 +1058,7 @@ class TestRetry(HTTPDummyServerTestCase):
                 pool.request("GET", "/test", retries=False)
 
     def test_read_retries(self) -> None:
-        """ Should retry for status codes in the forcelist"""
+        """Should retry for status codes in the forcelist"""
         with HTTPConnectionPool(self.host, self.port) as pool:
             retry = Retry(read=1, status_forcelist=[418])
             resp = pool.request(
@@ -1070,7 +1070,7 @@ class TestRetry(HTTPDummyServerTestCase):
             assert resp.status == 200
 
     def test_read_total_retries(self) -> None:
-        """ HTTP response w/ status code in the forcelist should be retried """
+        """HTTP response w/ status code in the forcelist should be retried"""
         with HTTPConnectionPool(self.host, self.port) as pool:
             headers = {"test-name": "test_read_total_retries"}
             retry = Retry(total=1, status_forcelist=[418])
@@ -1092,7 +1092,7 @@ class TestRetry(HTTPDummyServerTestCase):
             assert resp.status == 418
 
     def test_default_method_forcelist_retried(self) -> None:
-        """ urllib3 should retry methods in the default method forcelist"""
+        """urllib3 should retry methods in the default method forcelist"""
         with HTTPConnectionPool(self.host, self.port) as pool:
             retry = Retry(total=1, status_forcelist=[418])
             resp = pool.request(
@@ -1120,7 +1120,7 @@ class TestRetry(HTTPDummyServerTestCase):
             assert resp.status == 418
 
     def test_retry_reuse_safe(self) -> None:
-        """ It should be possible to reuse a Retry object across requests """
+        """It should be possible to reuse a Retry object across requests"""
         with HTTPConnectionPool(self.host, self.port) as pool:
             headers = {"test-name": "test_retry_safe"}
             retry = Retry(total=1, status_forcelist=[418])
