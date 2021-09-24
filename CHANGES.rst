@@ -1,3 +1,12 @@
+1.26.7 (2021-09-22)
+===================
+
+* Fixed a bug with HTTPS hostname verification involving IP addresses and lack
+  of SNI. (Issue #2400)
+* Fixed a bug where IPv6 braces weren't stripped during certificate hostname
+  matching. (Issue #2240)
+
+
 1.26.6 (2021-06-25)
 ===================
 
