@@ -176,6 +176,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                 http.request("GET", "%s/" % self.http_url)
             assert type(e.value.reason) == ProxyError
 
+    @onlyPy3
     def test_https_conn_failed(self):
         """
         Simulates a misconfiguration that is common for users. The test attempts
