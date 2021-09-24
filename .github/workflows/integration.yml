@@ -12,10 +12,10 @@ jobs:
       matrix:
         python-version: [2.7, 3.9]
         downstream: [botocore, requests]
-      exclude:
-        # excludes botocore in Python 2.7
-        - python-version: 2.7
-          downstream: botocore
+        exclude:
+          # excludes botocore in Python 2.7
+          - python-version: 2.7
+            downstream: botocore
 
     runs-on: ubuntu-18.04
 
