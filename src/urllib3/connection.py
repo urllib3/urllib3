@@ -514,7 +514,7 @@ class HTTPSConnection(HTTPConnection):
             # Wrap into an HTTPSProxyError for easier diagnosis.
             # Original exception is available on original_error
             raise HTTPSProxyError(
-                f"Unable to establish a TLS connection to {hostname}", e
+                "Unable to establish a TLS connection to {}".format(hostname), e
             )
 
         if ssl_context.verify_mode != ssl.CERT_NONE and not getattr(

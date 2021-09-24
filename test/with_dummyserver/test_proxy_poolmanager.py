@@ -181,12 +181,12 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         Simulates a misconfiguration that is common for users. The test attempts
         to establish a TLS connection to a non-TLS proxy
         """
-        bad_proxy_url = f"https://{self.proxy_host}:{int(self.proxy_port)}"
+        bad_proxy_url = "https://{}:{}".format(self.proxy_host, int(self.proxy_port))
         with proxy_from_url(
             bad_proxy_url, ca_certs=DEFAULT_CA, timeout=LONG_TIMEOUT
         ) as http:
             with pytest.raises(MaxRetryError) as e:
-                http.request("GET", f"{self.https_url}/")
+                http.request("GET", "{}/".format(self.https_url))
             assert type(e.value.reason) == HTTPSProxyError
 
     def test_oldapi(self):
