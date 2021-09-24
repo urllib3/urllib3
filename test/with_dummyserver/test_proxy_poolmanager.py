@@ -22,6 +22,7 @@ from urllib3._collections import HTTPHeaderDict
 from urllib3.connectionpool import VerifiedHTTPSConnection, connection_from_url
 from urllib3.exceptions import (
     ConnectTimeoutError,
+    HTTPSProxyError,
     InsecureRequestWarning,
     MaxRetryError,
     ProxyError,
@@ -174,6 +175,20 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             with pytest.raises(MaxRetryError) as e:
                 http.request("GET", "%s/" % self.http_url)
             assert type(e.value.reason) == ProxyError
+
+    @onlyPy3
+    def test_https_conn_failed(self):
+        """
+        Simulates a misconfiguration that is common for users. The test attempts
+        to establish a TLS connection to a non-TLS proxy
+        """
+        bad_proxy_url = "https://{}:{}".format(self.proxy_host, int(self.proxy_port))
+        with proxy_from_url(
+            bad_proxy_url, ca_certs=DEFAULT_CA, timeout=LONG_TIMEOUT
+        ) as http:
+            with pytest.raises(MaxRetryError) as e:
+                http.request("GET", "{}/".format(self.https_url))
+            assert type(e.value.reason) == HTTPSProxyError
 
     def test_oldapi(self):
         with ProxyManager(
