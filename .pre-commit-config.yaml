@@ -1,13 +1,13 @@
 repos:
   - repo: https://github.com/psf/black
-    rev: 21.5b1
+    rev: 21.9b0
     hooks:
       - id: black
         additional_dependencies: ['.[python2]']
         args: ["--target-version", "py27"]
 
   - repo: https://github.com/PyCQA/isort
-    rev: 5.8.0
+    rev: 5.9.3
     hooks:
       - id: isort
 
