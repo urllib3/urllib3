@@ -10,4 +10,4 @@ cryptography==3.4.7
 requests
 backports.zoneinfo==0.2.1;python_version<"3.9"
 # https://github.com/twisted/towncrier/pull/356
-git+https://github.com/pquentin/towncrier.git@stop-writing-title-twice
+git+https://github.com/twisted/towncrier.git
