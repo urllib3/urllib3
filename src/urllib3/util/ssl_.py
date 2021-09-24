@@ -67,6 +67,20 @@ try:  # Do we have ssl at all?
     )
     PROTOCOL_SSLv23 = PROTOCOL_TLS
 
+    # https://github.com/urllib3/urllib3/issues/2192#issuecomment-821832963
+    if sys.implementation.name == "cpython":
+        major = sys.version_info[:2]
+        minor = sys.version_info[2]
+        reliable_hostname_checks_common_name = (
+            (major == (3, 8) and minor >= 9)
+            or (major == (3, 9) and minor >= 3)
+            or major >= (3, 10)
+        )
+        # we could also check for the OpenSSL version but it seems unlikely to have the
+        # OpenSSL fix without the CPython one.
+        if HAS_NEVER_CHECK_COMMON_NAME and not reliable_hostname_checks_common_name:
+            HAS_NEVER_CHECK_COMMON_NAME = False
+
     # Need to be careful here in case old TLS versions get
     # removed in future 'ssl' module implementations.
     for attr in ("TLSv1", "TLSv1_1", "TLSv1_2"):

@@ -978,8 +978,13 @@ class TestHTTPS_Hostname:
             cert_reqs="CERT_REQUIRED",
             ca_certs=no_san_server.ca_certs,
         ) as https_pool:
-            with pytest.raises(MaxRetryError, match="no appropriate subjectAltName"):
+            with pytest.raises(
+                MaxRetryError,
+            ) as e:
                 https_pool.request("GET", "/")
+            assert "mismatch, certificate is not valid" in str(
+                e.value
+            ) or "no appropriate subjectAltName" in str(e.value)
 
     def test_strip_square_brackets_before_validating(
         self, ipv6_san_server: ServerConfig
