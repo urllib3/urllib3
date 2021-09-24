@@ -170,7 +170,6 @@ def mypy(session: nox.Session) -> None:
         "test/with_dummyserver/test_connectionpool.py",
         "test/with_dummyserver/test_chunked_transfer.py",
         "test/with_dummyserver/test_https.py",
-        "test/with_dummyserver/test_integration.py",
         "test/with_dummyserver/test_no_ssl.py",
         "test/with_dummyserver/test_poolmanager.py",
         "test/with_dummyserver/test_proxy_poolmanager.py",
