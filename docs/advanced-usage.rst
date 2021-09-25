@@ -239,9 +239,9 @@ and not ``https://``:
 
 .. code-block:: bash
 
-     # Check environment variables in bash
+     # Check your existing environment variables in bash
      $ env | grep "_PROXY"
-     HTTP_PROXY=https://127.0.0.1:8888
+     HTTP_PROXY=http://127.0.0.1:8888
      HTTPS_PROXY=https://127.0.0.1:8888  # <--- This setting is the problem!
      
      # Make the fix in your current session and test your script

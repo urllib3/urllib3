@@ -30,7 +30,7 @@ from dummyserver.server import (
     get_unreachable_address,
 )
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
-from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, util
+from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, ProxyManager, util
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import HTTPConnection, _get_default_user_agent
 from urllib3.exceptions import (
@@ -1150,21 +1150,24 @@ class TestProxyManager(SocketDummyServerTestCase):
     def test_https_proxymanager_connected_to_http_proxy(
         self, target_scheme: str
     ) -> None:
+
+        errored = Event()
+
         def http_socket_handler(listener):
             sock = listener.accept()[0]
-            sock.send(
-                b"HTTP/1.0 501 Not Implemented\r\n" b"Connection: close\r\n" b"\r\n"
-            )
+            sock.send(b"HTTP/1.0 501 Not Implemented\r\nConnection: close\r\n\r\n")
+            errored.wait()
             sock.close()
 
         self._start_server(http_socket_handler)
         base_url = f"https://{self.host}:{self.port}"
 
-        import urllib3
-
-        with urllib3.ProxyManager(base_url, cert_reqs="NONE") as proxy:
+        with ProxyManager(base_url, cert_reqs="NONE") as proxy:
             with pytest.raises(MaxRetryError) as e:
                 proxy.request("GET", f"{target_scheme}://example.com", retries=0)
+
+            errored.set()  # Avoid a ConnectionAbortedError on Windows.
+
             assert type(e.value.reason) == HTTPSProxyError
             assert "Your proxy appears to only use HTTP and not HTTPS" in str(
                 e.value.reason

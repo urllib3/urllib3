@@ -45,7 +45,6 @@ from .exceptions import (
     HTTPSProxyError,
     NameResolutionError,
     NewConnectionError,
-    ProxyError,
     SystemTimeWarning,
 )
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
@@ -595,8 +594,6 @@ def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
 
 def _should_wrap_https_proxy_error(err: Exception) -> bool:
     """Detects if the error should be wrapped into :class:`urllib3.exceptions.HTTPSProxyError`"""
-    if isinstance(err, ProxyError):
-        err = err.original_error
     return isinstance(err, (CertificateError, BaseSSLError, ssl_.SSLError))  # type: ignore[attr-defined]
 
 
@@ -604,8 +601,6 @@ def _wrap_https_proxy_error(err: Exception, hostname: str) -> "NoReturn":
     # Look for the phrase 'wrong version number', if found
     # then we should warn the user that we're very sure that
     # this proxy is HTTP-only and they have a configuration issue.
-    if isinstance(err, ProxyError):
-        err = err.original_error
     error_normalized = " ".join(re.split("[^a-z]", str(err).lower()))
     is_likely_http_proxy = "wrong version number" in error_normalized
     http_proxy_warning = (
