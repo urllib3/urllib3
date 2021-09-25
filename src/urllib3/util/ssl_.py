@@ -67,6 +67,8 @@ try:  # Do we have ssl at all?
     )
     PROTOCOL_SSLv23 = PROTOCOL_TLS
 
+    # Setting SSLContext.hostname_checks_common_name = False didn't work before CPython
+    # 3.8.9, 3.9.3, and 3.10" (but OK on PyPy) or OpenSSL 1.1.1l / OpenSSL 3.0.0-alpha15
     # https://github.com/urllib3/urllib3/issues/2192#issuecomment-821832963
     if sys.implementation.name == "cpython":
         major = sys.version_info[:2]

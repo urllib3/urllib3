@@ -49,7 +49,7 @@ jobs:
           - python-version: 3.9.2
             os: ubuntu-latest
             experimental: false
-            nox-session: test-3.8
+            nox-session: test-3.9
           - python-version: 3.10.0-rc.2
             os: ubuntu-latest
             experimental: false
