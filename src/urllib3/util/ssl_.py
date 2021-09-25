@@ -36,6 +36,19 @@ def _is_ge_openssl_v1_1_1(
     )
 
 
+def _is_ge_openssl_v1_1_1l(
+    openssl_version_text: str, openssl_version_number: int
+) -> bool:
+    """Returns True for OpenSSL 1.1.1l+ (>=0x101010cf)
+    LibreSSL reports a version number of 0x20000000 for
+    OpenSSL version number so we need to filter out LibreSSL.
+    """
+    return (
+        not openssl_version_text.startswith("LibreSSL")
+        and openssl_version_number >= 0x101010CF
+    )
+
+
 if TYPE_CHECKING:
     from typing_extensions import Literal
 
@@ -70,17 +83,21 @@ try:  # Do we have ssl at all?
     # Setting SSLContext.hostname_checks_common_name = False didn't work before CPython
     # 3.8.9, 3.9.3, and 3.10" (but OK on PyPy) or OpenSSL 1.1.1l / OpenSSL 3.0.0-alpha15
     # https://github.com/urllib3/urllib3/issues/2192#issuecomment-821832963
-    if sys.implementation.name == "cpython":
-        major = sys.version_info[:2]
-        minor = sys.version_info[2]
-        reliable_hostname_checks_common_name = (
-            (major == (3, 8) and minor >= 9)
-            or (major == (3, 9) and minor >= 3)
-            or major >= (3, 10)
-        )
-        # we could also check for the OpenSSL version but it seems unlikely to have the
-        # OpenSSL fix without the CPython one.
-        if HAS_NEVER_CHECK_COMMON_NAME and not reliable_hostname_checks_common_name:
+    # https://foss.heptapod.net/pypy/pypy/-/issues/3539#
+    if HAS_NEVER_CHECK_COMMON_NAME:
+        if sys.implementation.name == "cpython":
+            major = sys.version_info[:2]
+            minor = sys.version_info[2]
+            reliable_hostname_checks_common_name = (
+                (major == (3, 8) and minor >= 9)
+                or (major == (3, 9) and minor >= 3)
+                or major >= (3, 10)
+            )
+            if not reliable_hostname_checks_common_name:
+                HAS_NEVER_CHECK_COMMON_NAME = False
+
+        # This will produce a false negative on OpenSSL 3.0 alphas, which is OK.
+        if not _is_ge_openssl_v1_1_1l(OPENSSL_VERSION, OPENSSL_VERSION_NUMBER):
             HAS_NEVER_CHECK_COMMON_NAME = False
 
     # Need to be careful here in case old TLS versions get
