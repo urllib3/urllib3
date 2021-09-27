@@ -53,7 +53,7 @@ from .exceptions import (
     SystemTimeWarning,
 )
 from .packages.ssl_match_hostname import CertificateError, match_hostname
-from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection
+from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
 from .util.ssl_ import (
     assert_fingerprint,
     create_urllib3_context,
@@ -513,9 +513,9 @@ class HTTPSConnection(HTTPConnection):
         except Exception as e:
             # Wrap into an HTTPSProxyError for easier diagnosis.
             # Original exception is available on original_error
-            raise HTTPSProxyError(
-                "Unable to establish a TLS connection to {}".format(hostname), e
-            )
+            if not _should_wrap_https_proxy_error(e):
+                raise
+            return _wrap_https_proxy_error(e, hostname)
 
         if ssl_context.verify_mode != ssl.CERT_NONE and not getattr(
             ssl_context, "check_hostname", False
@@ -560,6 +560,32 @@ def _match_hostname(cert, asserted_hostname):
         # the cert when catching the exception, if they want to
         e._peer_cert = cert
         raise
+
+
+def _should_wrap_https_proxy_error(err):
+    """Detects if the error should be wrapped into :class:`urllib3.exceptions.HTTPSProxyError`"""
+    return isinstance(err, (CertificateError, BaseSSLError, ssl_.SSLError))
+
+
+def _wrap_https_proxy_error(err, hostname):
+    # Look for the phrase 'wrong version number', if found
+    # then we should warn the user that we're very sure that
+    # this proxy is HTTP-only and they have a configuration issue.
+    error_normalized = " ".join(re.split("[^a-z]", str(err).lower()))
+    is_likely_http_proxy = "wrong version number" in error_normalized
+    http_proxy_warning = (
+        ". Your proxy appears to only use HTTP and not HTTPS, "
+        "did you intend to set a proxy URL using HTTPS instead of HTTP?"
+    )
+
+    # Wrap into an HTTPSProxyError for easier diagnosis.
+    # Original exception is available on original_error and
+    # as __cause__.
+    raise HTTPSProxyError(
+        "Unable to establish a TLS connection to %s%s"
+        % (hostname, http_proxy_warning if is_likely_http_proxy else ""),
+        err,
+    ) from err
 
 
 def _get_default_user_agent():

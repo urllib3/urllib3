@@ -16,6 +16,8 @@ from .connection import (
     HTTPException,
     HTTPSConnection,
     VerifiedHTTPSConnection,
+    _should_wrap_https_proxy_error,
+    _wrap_https_proxy_error,
     port_by_scheme,
 )
 from .exceptions import (
@@ -1008,8 +1010,18 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         super(HTTPSConnectionPool, self)._validate_conn(conn)
 
         # Force connect early to allow us to validate the connection.
-        if not getattr(conn, "sock", None):  # AppEngine might not have  `.sock`
-            conn.connect()
+        try:
+            if not getattr(conn, "sock", None):  # AppEngine might not have  `.sock`
+                conn.connect()
+        except Exception as e:
+            # We only want to wrap errors for HTTPS proxies
+            if (
+                not self.proxy
+                or self.proxy.scheme != "https"
+                or not _should_wrap_https_proxy_error(e)
+            ):
+                raise
+            return _wrap_https_proxy_error(e, self.proxy.host)
 
         if not conn.is_verified:
             warnings.warn(

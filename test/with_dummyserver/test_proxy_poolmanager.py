@@ -2,6 +2,7 @@ import json
 import os.path
 import shutil
 import socket
+import ssl
 import tempfile
 import warnings
 from test import (
@@ -16,6 +17,7 @@ from test import (
 import pytest
 import trustme
 
+import urllib3.exceptions
 from dummyserver.server import DEFAULT_CA, HAS_IPV6, get_unreachable_address
 from dummyserver.testcase import HTTPDummyProxyTestCase, IPv6HTTPDummyProxyTestCase
 from urllib3._collections import HTTPHeaderDict
@@ -28,6 +30,7 @@ from urllib3.exceptions import (
     ProxyError,
     ProxySchemeUnknown,
     ProxySchemeUnsupported,
+    ReadTimeoutError,
     SSLError,
     SubjectAltNameWarning,
 )
@@ -162,33 +165,44 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             finally:
                 conn.close()
 
-    def test_proxy_conn_fail(self):
+    @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
+    @pytest.mark.parametrize("target_scheme", ["http", "https"])
+    def test_proxy_conn_fail_from_dns(
+        self, proxy_scheme: str, target_scheme: str
+    ) -> None:
         host, port = get_unreachable_address()
         with proxy_from_url(
-            "http://%s:%s/" % (host, port), retries=1, timeout=LONG_TIMEOUT
+            f"{proxy_scheme}://{host}:{port}/", retries=1, timeout=LONG_TIMEOUT
         ) as http:
-            with pytest.raises(MaxRetryError):
-                http.request("GET", "%s/" % self.https_url)
-            with pytest.raises(MaxRetryError):
-                http.request("GET", "%s/" % self.http_url)
+            if target_scheme == "https":
+                target_url = self.https_url
+            else:
+                target_url = self.http_url
 
             with pytest.raises(MaxRetryError) as e:
-                http.request("GET", "%s/" % self.http_url)
+                http.request("GET", f"{target_url}/")
             assert type(e.value.reason) == ProxyError
+            assert (
+                type(e.value.reason.original_error)
+                == urllib3.exceptions.NewConnectionError
+            )
 
     @onlyPy3
-    def test_https_conn_failed(self):
-        """
-        Simulates a misconfiguration that is common for users. The test attempts
-        to establish a TLS connection to a non-TLS proxy
-        """
+    @pytest.mark.parametrize("target_scheme", ["http", "https"])
+    def test_https_proxy_error_doesnt_wrap_timeouts(self, target_scheme: str) -> None:
         bad_proxy_url = "https://{}:{}".format(self.proxy_host, int(self.proxy_port))
         with proxy_from_url(
             bad_proxy_url, ca_certs=DEFAULT_CA, timeout=LONG_TIMEOUT
         ) as http:
             with pytest.raises(MaxRetryError) as e:
-                http.request("GET", "{}/".format(self.https_url))
-            assert type(e.value.reason) == HTTPSProxyError
+                http.request(
+                    "GET", f"{target_scheme}://{self.http_host}:{self.http_port}"
+                )
+
+            if type(e.value.reason) == ProxyError:
+                assert type(e.value.reason.original_error) == socket.timeout
+            else:
+                assert type(e.value.reason) == ReadTimeoutError
 
     def test_oldapi(self):
         with ProxyManager(
@@ -592,12 +606,14 @@ class TestHTTPSProxyVerification:
         with proxy_from_url(bad_proxy_url, ca_certs=bad_server.ca_certs) as https:
             with pytest.raises(MaxRetryError) as e:
                 https.request("GET", "http://%s/" % test_url)
-            assert isinstance(e.value.reason, SSLError)
+            assert isinstance(e.value.reason, HTTPSProxyError)
+            assert isinstance(e.value.reason.original_error, ssl.SSLError)
             assert "hostname 'localhost' doesn't match" in str(e.value.reason)
 
             with pytest.raises(MaxRetryError) as e:
                 https.request("GET", "https://%s/" % test_url)
-            assert isinstance(e.value.reason, SSLError)
+            assert isinstance(e.value.reason, HTTPSProxyError)
+            assert isinstance(e.value.reason.original_error, ssl.SSLError)
             assert "hostname 'localhost' doesn't match" in str(
                 e.value.reason
             ) or "Hostname mismatch" in str(e.value.reason)
