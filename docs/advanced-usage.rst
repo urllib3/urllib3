@@ -210,6 +210,78 @@ an `absolute URI <https://tools.ietf.org/html/rfc7230#section-5.3.2>`_ if the
 **only use this option with trusted or corporate proxies** as the proxy will have
 full visibility of your requests.
 
+.. _https_proxy_error_http_proxy:
+
+How to fix HTTPSProxyError?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you're receiving the :class:`~urllib3.exceptions.HTTPSProxyError` and it mentions
+your proxy only speaks HTTP and not HTTPS here's what to do to solve your issue:
+
+If you're using ``urllib3`` directly, make sure the URL you're passing into :class:`urllib3.ProxyManager`
+starts with ``http://`` instead of ``https://``:
+
+.. code-block:: python
+
+     # Do this:
+     http = urllib3.ProxyManager("http://...")
+     
+     # Not this:
+     http = urllib3.ProxyManager("https://...")
+
+If instead you're using ``urllib3`` through another library like Requests
+there are multiple ways your proxy could be mis-configured. You need to figure out
+where the configuration isn't correct and make the fix there. Some common places
+to look are environment variables like ``HTTP_PROXY``, ``HTTPS_PROXY``, and ``ALL_PROXY``.
+
+Ensure that the values for all of these environment variables starts with ``http://``
+and not ``https://``:
+
+.. code-block:: bash
+
+     # Check your existing environment variables in bash
+     $ env | grep "_PROXY"
+     HTTP_PROXY=http://127.0.0.1:8888
+     HTTPS_PROXY=https://127.0.0.1:8888  # <--- This setting is the problem!
+     
+     # Make the fix in your current session and test your script
+     $ export HTTPS_PROXY="http://127.0.0.1:8888"
+     $ python test-proxy.py  # This should now pass.
+     
+     # Persist your change in your shell 'profile' (~/.bashrc, ~/.profile, ~/.bash_profile, etc)
+     # You may need to logout and log back in to ensure this works across all programs.
+     $ vim ~/.bashrc
+
+If you're on Windows or macOS your proxy may be getting set at a system level.
+To check this first ensure that the above environment variables aren't set
+then run the following:
+
+.. code-block:: bash
+
+    $ python -c 'import urllib.request; print(urllib.request.getproxies())'
+
+If the output of the above command isn't empty and looks like this:
+
+.. code-block:: python
+
+    {
+      "http": "http://127.0.0.1:8888",
+      "https": "https://127.0.0.1:8888"  # <--- This setting is the problem!
+    }
+
+Search how to configure proxies on your operating system and change the ``https://...`` URL into ``http://``.
+After you make the change the return value of ``urllib.request.getproxies()`` should be:
+
+.. code-block:: python
+
+    {  # Everything is good here! :)
+      "http": "http://127.0.0.1:8888",
+      "https": "http://127.0.0.1:8888"
+    }
+
+If you still can't figure out how to configure your proxy after all these steps
+please `join our community Discord <https://discord.gg/urllib3>`_ and we'll try to help you with your issue.
+
 SOCKS Proxies
 ~~~~~~~~~~~~~
 

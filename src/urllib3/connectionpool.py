@@ -7,7 +7,17 @@ import warnings
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, TypeVar, Union, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Mapping,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 from ._request_methods import RequestMethods
 from .connection import (
@@ -20,6 +30,8 @@ from .connection import (
     HTTPSConnection,
     ProxyConfig,
     VerifiedHTTPSConnection,
+    _should_wrap_https_proxy_error,
+    _wrap_https_proxy_error,
 )
 from .connection import port_by_scheme as port_by_scheme
 from .exceptions import (
@@ -1017,8 +1029,18 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         super()._validate_conn(conn)
 
         # Force connect early to allow us to validate the connection.
-        if not conn.sock:
-            conn.connect()
+        try:
+            if not conn.sock:
+                conn.connect()
+        except Exception as e:
+            # We only want to wrap errors for HTTPS proxies
+            if (
+                not self.proxy
+                or self.proxy.scheme != "https"
+                or not _should_wrap_https_proxy_error(e)
+            ):
+                raise
+            _wrap_https_proxy_error(e, cast(str, self.proxy.host))
 
         if not conn.is_verified:
             warnings.warn(
