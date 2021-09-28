@@ -94,6 +94,23 @@ further parameterize pytest for local testing.
 For all valid arguments, check `the pytest documentation
 <https://docs.pytest.org/en/stable/usage.html#stopping-after-the-first-or-n-failures>`_.
 
+Running local proxies
+---------------------
+
+If the feature you are developing involves a proxy, you can rely on scripts we have developed to run a proxy locally.
+
+Run an HTTP proxy locally:
+
+.. code-block:: bash
+
+   $ python -m dummyserver.proxy
+
+Run an HTTPS proxy locally:
+
+.. code-block:: bash
+
+   $ python -m dummyserver.https_proxy
+
 Contributing to documentation
 -----------------------------
 

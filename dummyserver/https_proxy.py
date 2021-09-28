@@ -17,7 +17,7 @@ def run_proxy(port: int, certs: Dict[str, Any] = DEFAULT_CERTS) -> None:
 
     Example usage:
 
-    python -m dummyserver.proxy
+    python -m dummyserver.https_proxy
 
     You'll need to ensure you have access to certain packages such as trustme,
     tornado, urllib3.
