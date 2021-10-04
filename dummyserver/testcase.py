@@ -40,6 +40,13 @@ class SocketDummyServerTestCase:
     server_thread: ClassVar[SocketServerThread]
     port: ClassVar[int]
 
+    tmpdir: ClassVar[str]
+    ca_path: ClassVar[str]
+    cert_combined_path: ClassVar[str]
+    cert_path: ClassVar[str]
+    key_path: ClassVar[str]
+    password_key_path: ClassVar[str]
+
     @classmethod
     def _start_server(cls, socket_handler: Callable[[socket.socket], None]) -> None:
         ready_event = threading.Event()
