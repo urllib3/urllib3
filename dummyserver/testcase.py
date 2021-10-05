@@ -1,7 +1,8 @@
 import socket
+import ssl
 import threading
 from contextlib import contextmanager
-from typing import Any, Callable, ClassVar, Dict, Generator, Iterable, Optional
+from typing import Any, Callable, ClassVar, Dict, Generator, Iterable, Optional, Union
 
 import pytest
 from tornado import httpserver, ioloop, web
@@ -16,12 +17,16 @@ from dummyserver.server import (
     run_tornado_app,
 )
 from urllib3.connection import HTTPConnection
+from urllib3.util.ssltransport import SSLTransport
 
 
-def consume_socket(sock: socket.socket, chunks: int = 65536) -> bytearray:
+def consume_socket(
+    sock: Union[SSLTransport, socket.socket], chunks: int = 65536
+) -> bytearray:
     consumed = bytearray()
     while True:
         b = sock.recv(chunks)
+        assert isinstance(b, bytes)
         consumed += b
         if b.endswith(b"\r\n\r\n"):
             break
@@ -46,6 +51,11 @@ class SocketDummyServerTestCase:
     cert_path: ClassVar[str]
     key_path: ClassVar[str]
     password_key_path: ClassVar[str]
+
+    server_context: ClassVar[ssl.SSLContext]
+    client_context: ClassVar[ssl.SSLContext]
+
+    proxy_server: ClassVar["SocketDummyServerTestCase"]
 
     @classmethod
     def _start_server(cls, socket_handler: Callable[[socket.socket], None]) -> None:

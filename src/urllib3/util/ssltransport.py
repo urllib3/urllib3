@@ -100,7 +100,10 @@ class SSLTransport:
         return self._wrap_ssl_read(buflen)
 
     def recv_into(
-        self, buffer: _WriteBuffer, nbytes: Optional[int] = None, flags: int = 0
+        self,
+        buffer: Optional[_WriteBuffer],
+        nbytes: Optional[int] = None,
+        flags: int = 0,
     ) -> Union[None, int, bytes]:
         if flags != 0:
             raise ValueError("non-zero flags not allowed in calls to recv_into")
@@ -124,6 +127,7 @@ class SSLTransport:
         if flags != 0:
             raise ValueError("non-zero flags not allowed in calls to send")
         return self._ssl_io_loop(self.sslobj.write, data)
+
 
     def makefile(
         self,
