@@ -15,3 +15,7 @@ but can also be used independently.
 .. automodule:: urllib3.util
     :members:
     :show-inheritance:
+
+.. automodule:: urllib3.util.ssl_
+    :members:
+    :show-inheritance:
