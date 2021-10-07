@@ -6,6 +6,7 @@ import sys
 import warnings
 from binascii import hexlify, unhexlify
 from hashlib import md5, sha1, sha256
+from typing import Dict, Tuple, Union
 
 from ..exceptions import (
     InsecurePlatformWarning,
@@ -26,6 +27,11 @@ ALPN_PROTOCOLS = ["http/1.1"]
 # Maps the length of a digest to a possible hash function producing this digest
 HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
 
+
+_PCTRTT = Tuple[Tuple[str, str], ...]
+_PCTRTTT = Tuple[_PCTRTT, ...]
+PeerCertRetDictType = Dict[str, Union[str, _PCTRTTT, _PCTRTT]]
+PeerCertRetType = Union[PeerCertRetDictType, bytes, None]
 
 def _const_compare_digest_backport(a, b):
     """
