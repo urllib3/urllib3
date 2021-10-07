@@ -36,7 +36,7 @@ from .exceptions import (
 )
 from .packages import six
 from .packages.six.moves import queue
-from .packages.ssl_match_hostname import CertificateError
+from .util.ssl_match_hostname import CertificateError
 from .request import RequestMethods
 from .response import HTTPResponse
 from .util.connection import is_connection_dropped

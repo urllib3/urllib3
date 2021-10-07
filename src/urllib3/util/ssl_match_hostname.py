@@ -3,17 +3,11 @@
 # Note: This file is under the PSF license as the code comes from the python
 # stdlib.   http://docs.python.org/3/license.html
 
+import ipaddress
 import re
-import sys
+from typing import Any, Match, Optional, Union
 
-# ipaddress has been backported to 2.6+ in pypi.  If it is installed on the
-# system, use it to handle IPAddress ServerAltnames (this was added in
-# python-3.5) otherwise only do DNS matching.  This allows
-# backports.ssl_match_hostname to continue to be used in Python 2.7.
-try:
-    import ipaddress
-except ImportError:
-    ipaddress = None
+from .ssl_ import PeerCertRetType
 
 __version__ = "3.5.0.1"
 
@@ -22,7 +16,9 @@ class CertificateError(ValueError):
     pass
 
 
-def _dnsname_match(dn, hostname, max_wildcards=1):
+def _dnsname_match(
+    dn: Any, hostname: str, max_wildcards: int = 1
+) -> Union[Optional[Match[str]], bool]:
     """Matching according to RFC 6125, section 6.4.3
 
     http://tools.ietf.org/html/rfc6125#section-6.4.3
@@ -49,7 +45,7 @@ def _dnsname_match(dn, hostname, max_wildcards=1):
 
     # speed up common case w/o wildcards
     if not wildcards:
-        return dn.lower() == hostname.lower()
+        return bool(dn.lower() == hostname.lower())
 
     # RFC 6125, section 6.4.3, subitem 1.
     # The client SHOULD NOT attempt to match a presented identifier in which
@@ -76,13 +72,7 @@ def _dnsname_match(dn, hostname, max_wildcards=1):
     return pat.match(hostname)
 
 
-def _to_unicode(obj):
-    if isinstance(obj, str) and sys.version_info < (3,):
-        obj = unicode(obj, encoding="ascii", errors="strict")
-    return obj
-
-
-def _ipaddress_match(ipname, host_ip):
+def _ipaddress_match(ipname: Any, host_ip: str) -> bool:
     """Exact matching of IP addresses.
 
     RFC 6125 explicitly doesn't define an algorithm for this
@@ -90,11 +80,11 @@ def _ipaddress_match(ipname, host_ip):
     """
     # OpenSSL may add a trailing newline to a subjectAltName's IP address
     # Divergence from upstream: ipaddress can't handle byte str
-    ip = ipaddress.ip_address(_to_unicode(ipname).rstrip())
-    return ip == host_ip
+    ip = ipaddress.ip_address(ipname.rstrip())
+    return bool(ip == host_ip)
 
 
-def match_hostname(cert, hostname):
+def match_hostname(cert: PeerCertRetType, hostname: str) -> None:
     """Verify that *cert* (in decoded format as returned by
     SSLSocket.getpeercert()) matches the *hostname*.  RFC 2818 and RFC 6125
     rules are followed, but IP addresses are not accepted for *hostname*.
@@ -110,24 +100,13 @@ def match_hostname(cert, hostname):
         )
     try:
         # Divergence from upstream: ipaddress can't handle byte str
-        host_ip = ipaddress.ip_address(_to_unicode(hostname))
+        host_ip = ipaddress.ip_address(hostname)
     except ValueError:
         # Not an IP address (common case)
         host_ip = None
-    except UnicodeError:
-        # Divergence from upstream: Have to deal with ipaddress not taking
-        # byte strings.  addresses should be all ascii, so we consider it not
-        # an ipaddress in this case
-        host_ip = None
-    except AttributeError:
-        # Divergence from upstream: Make ipaddress library optional
-        if ipaddress is None:
-            host_ip = None
-        else:
-            raise
     dnsnames = []
-    san = cert.get("subjectAltName", ())
-    for key, value in san:
+    san = cert.get("subjectAltName", ())  # type: ignore
+    for key, value in san:  # type: ignore
         if key == "DNS":
             if host_ip is None and _dnsname_match(value, hostname):
                 return
@@ -136,25 +115,12 @@ def match_hostname(cert, hostname):
             if host_ip is not None and _ipaddress_match(value, host_ip):
                 return
             dnsnames.append(value)
-    if not dnsnames:
-        # The subject is only checked when there is no dNSName entry
-        # in subjectAltName
-        for sub in cert.get("subject", ()):
-            for key, value in sub:
-                # XXX according to RFC 2818, the most specific Common Name
-                # must be used.
-                if key == "commonName":
-                    if _dnsname_match(value, hostname):
-                        return
-                    dnsnames.append(value)
     if len(dnsnames) > 1:
         raise CertificateError(
             "hostname %r "
             "doesn't match either of %s" % (hostname, ", ".join(map(repr, dnsnames)))
         )
     elif len(dnsnames) == 1:
-        raise CertificateError("hostname %r doesn't match %r" % (hostname, dnsnames[0]))
+        raise CertificateError(f"hostname {hostname!r} doesn't match {dnsnames[0]!r}")
     else:
-        raise CertificateError(
-            "no appropriate commonName or subjectAltName fields were found"
-        )
+        raise CertificateError("no appropriate subjectAltName fields were found")
