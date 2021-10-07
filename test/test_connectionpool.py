@@ -29,8 +29,8 @@ from urllib3.exceptions import (
 from urllib3.packages.six.moves import http_client as httplib
 from urllib3.packages.six.moves.http_client import HTTPException
 from urllib3.packages.six.moves.queue import Empty
-from urllib3.util.ssl_match_hostname import CertificateError
 from urllib3.response import HTTPResponse
+from urllib3.util.ssl_match_hostname import CertificateError
 from urllib3.util.timeout import Timeout
 
 from .test_response import MockChunkedEncodingResponse, MockSock

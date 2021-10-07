@@ -33,6 +33,7 @@ _PCTRTTT = Tuple[_PCTRTT, ...]
 PeerCertRetDictType = Dict[str, Union[str, _PCTRTTT, _PCTRTT]]
 PeerCertRetType = Union[PeerCertRetDictType, bytes, None]
 
+
 def _const_compare_digest_backport(a, b):
     """
     Compare two digests of equal length in constant time.

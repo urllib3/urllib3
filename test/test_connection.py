@@ -8,6 +8,8 @@ from urllib3.util.ssl_match_hostname import (
     CertificateError as ImplementationCertificateError,
 )
 from urllib3.util.ssl_match_hostname import match_hostname
+
+
 class TestConnection:
     """
     Tests in this suite should not make any network requests or connections.
