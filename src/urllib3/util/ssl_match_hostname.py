@@ -4,8 +4,7 @@
 # stdlib.   http://docs.python.org/3/license.html
 
 import re
-
-from ..packages import six
+import sys
 
 # ipaddress has been backported to 2.6+ in pypi.  If it is installed on the
 # system, use it to handle IPAddress ServerAltnames (this was added in
@@ -77,6 +76,13 @@ def _dnsname_match(dn, hostname, max_wildcards=1):
     return pat.match(hostname)
 
 
+def _to_unicode(obj):
+    if isinstance(obj, str) and sys.version_info < (3,):
+        # ignored flake8 # F821 to support python 2.7 function
+        obj = unicode(obj, encoding="ascii", errors="strict")
+    return obj
+
+
 def _ipaddress_match(ipname, host_ip):
     """Exact matching of IP addresses.
 
@@ -85,7 +91,7 @@ def _ipaddress_match(ipname, host_ip):
     """
     # OpenSSL may add a trailing newline to a subjectAltName's IP address
     # Divergence from upstream: ipaddress can't handle byte str
-    ip = ipaddress.ip_address(six.ensure_text(ipname).rstrip())
+    ip = ipaddress.ip_address(_to_unicode(ipname).rstrip())
     return ip == host_ip
 
 
@@ -105,7 +111,7 @@ def match_hostname(cert, hostname):
         )
     try:
         # Divergence from upstream: ipaddress can't handle byte str
-        host_ip = ipaddress.ip_address(six.ensure_text(hostname))
+        host_ip = ipaddress.ip_address(_to_unicode(hostname))
     except ValueError:
         # Not an IP address (common case)
         host_ip = None
