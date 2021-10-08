@@ -1162,9 +1162,7 @@ class TestProxyManager(SocketDummyServerTestCase):
                 self.fail("Invalid IPv6 format in HTTP CONNECT request")
 
     @pytest.mark.parametrize("target_scheme", ["http", "https"])
-    def test_https_proxymanager_connected_to_http_proxy(
-        self, target_scheme: str
-    ) -> None:
+    def test_https_proxymanager_connected_to_http_proxy(self, target_scheme):
 
         errored = Event()
 
@@ -1175,11 +1173,13 @@ class TestProxyManager(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(http_socket_handler)
-        base_url = f"https://{self.host}:{self.port}"
+        base_url = "https://{}:{}".format(self.host, self.port)
 
         with ProxyManager(base_url, cert_reqs="NONE") as proxy:
             with pytest.raises(MaxRetryError) as e:
-                proxy.request("GET", f"{target_scheme}://example.com", retries=0)
+                proxy.request(
+                    "GET", "{}://example.com".format(target_scheme), retries=0
+                )
 
             errored.set()  # Avoid a ConnectionAbortedError on Windows.
 

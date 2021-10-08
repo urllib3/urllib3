@@ -167,12 +167,12 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
     @pytest.mark.parametrize("target_scheme", ["http", "https"])
-    def test_proxy_conn_fail_from_dns(
-        self, proxy_scheme: str, target_scheme: str
-    ) -> None:
+    def test_proxy_conn_fail_from_dns(self, proxy_scheme, target_scheme):
         host, port = get_unreachable_address()
         with proxy_from_url(
-            f"{proxy_scheme}://{host}:{port}/", retries=1, timeout=LONG_TIMEOUT
+            "{}://{}:{}/".format(proxy_scheme, host, port),
+            retries=1,
+            timeout=LONG_TIMEOUT,
         ) as http:
             if target_scheme == "https":
                 target_url = self.https_url
@@ -180,7 +180,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                 target_url = self.http_url
 
             with pytest.raises(MaxRetryError) as e:
-                http.request("GET", f"{target_url}/")
+                http.request("GET", "{}/".format(target_url))
             assert type(e.value.reason) == ProxyError
             assert (
                 type(e.value.reason.original_error)
@@ -189,14 +189,15 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     @onlyPy3
     @pytest.mark.parametrize("target_scheme", ["http", "https"])
-    def test_https_proxy_error_doesnt_wrap_timeouts(self, target_scheme: str) -> None:
+    def test_https_proxy_error_doesnt_wrap_timeouts(self, target_scheme):
         bad_proxy_url = "https://{}:{}".format(self.proxy_host, int(self.proxy_port))
         with proxy_from_url(
             bad_proxy_url, ca_certs=DEFAULT_CA, timeout=LONG_TIMEOUT
         ) as http:
             with pytest.raises(MaxRetryError) as e:
                 http.request(
-                    "GET", f"{target_scheme}://{self.http_host}:{self.http_port}"
+                    "GET",
+                    "{}://{}:{}".format(target_scheme, self.http_host, self.http_port),
                 )
 
             if type(e.value.reason) == ProxyError:

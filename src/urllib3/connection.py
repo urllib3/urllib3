@@ -581,11 +581,14 @@ def _wrap_https_proxy_error(err, hostname):
     # Wrap into an HTTPSProxyError for easier diagnosis.
     # Original exception is available on original_error and
     # as __cause__.
-    raise HTTPSProxyError(
-        "Unable to establish a TLS connection to %s%s"
-        % (hostname, http_proxy_warning if is_likely_http_proxy else ""),
+    six.raise_from(
+        HTTPSProxyError(
+            "Unable to establish a TLS connection to %s%s"
+            % (hostname, http_proxy_warning if is_likely_http_proxy else ""),
+            err,
+        ),
         err,
-    ) from err
+    )
 
 
 def _get_default_user_agent():
