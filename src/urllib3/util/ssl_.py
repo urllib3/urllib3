@@ -43,6 +43,8 @@ def _is_openssl_issue_14579_fixed(
 ) -> bool:
     """
     Returns True for OpenSSL 1.1.1l+ (>=0x101010cf) where this issue was fixed.
+    Before the fix, the SSL_new() API was not copying hostflags like
+    X509_CHECK_FLAG_NEVER_CHECK_SUBJECT, which tripped up CPython.
     https://github.com/openssl/openssl/issues/14579
 
     LibreSSL reports a version number of 0x20000000 for
