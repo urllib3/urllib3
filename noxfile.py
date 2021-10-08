@@ -177,6 +177,7 @@ def mypy(session: nox.Session) -> None:
         "test/conftest.py",
         "test/contrib/test_pyopenssl_dependencies.py",
         "test/contrib/test_pyopenssl.py",
+        "test/contrib/test_securetransport.py",
         "test/contrib/test_socks.py",
         "test/port_helpers.py",
         "test/test_collections.py",
