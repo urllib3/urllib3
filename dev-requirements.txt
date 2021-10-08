@@ -13,5 +13,8 @@ flaky==3.7.0
 trustme==0.7.0
 cryptography==3.2.1;python_version<"3.6"
 cryptography==3.4.7;python_version>="3.6"
-gcp-devrel-py-tools==0.0.16
 python-dateutil==2.8.1
+
+# https://github.com/GrahamDumpleton/wrapt/issues/189
+wrapt==1.12.1; python_version<="2.7" and sys_platform=="win32"
+gcp-devrel-py-tools==0.0.16
