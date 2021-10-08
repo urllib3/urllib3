@@ -527,7 +527,8 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
             ) as destination_sock:
 
                 destination_sock.send(sample_request())
-                response = destination_sock.recv_into(None)
+                response = destination_sock.recv_into(bytearray())
+                response = bytes(response)
                 assert isinstance(response, bytes)
                 validate_response(response)
 
@@ -556,10 +557,10 @@ class TestSSLTransportWithMock:
             ssl_transport.recv(flags=1)
 
         with pytest.raises(ValueError):
-            ssl_transport.recv_into(None, flags=1)
+            ssl_transport.recv_into(bytearray(), flags=1)
 
         with pytest.raises(ValueError):
-            ssl_transport.sendall(None, flags=1)  # type: ignore[arg-type]
+            ssl_transport.sendall(bytearray(), flags=1)
 
         with pytest.raises(ValueError):
             ssl_transport.send(None, flags=1)  # type: ignore[arg-type]

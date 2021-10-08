@@ -101,15 +101,15 @@ class SSLTransport:
 
     def recv_into(
         self,
-        buffer: Optional[_WriteBuffer],
+        buffer: _WriteBuffer,
         nbytes: Optional[int] = None,
         flags: int = 0,
     ) -> Union[None, int, bytes]:
         if flags != 0:
             raise ValueError("non-zero flags not allowed in calls to recv_into")
-        if buffer and (nbytes is None):
+        if nbytes is None:
             nbytes = len(buffer)
-        elif nbytes is None:
+        else:
             nbytes = 1024
         return self.read(nbytes, buffer)
 
