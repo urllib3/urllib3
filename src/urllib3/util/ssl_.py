@@ -19,6 +19,8 @@ IS_SECURETRANSPORT = False
 ALPN_PROTOCOLS = ["http/1.1"]
 USE_DEFAULT_SSLCONTEXT_CIPHERS = False
 
+_TYPE_VERSION_INFO = Tuple[int, int, int, str, int]
+
 # Maps the length of a digest to a possible hash function producing this digest
 HASHFUNC_MAP = {32: md5, 40: sha1, 64: sha256}
 
@@ -34,6 +36,55 @@ def _is_ge_openssl_v1_1_1(
         not openssl_version_text.startswith("LibreSSL")
         and openssl_version_number >= 0x10101000
     )
+
+
+def _is_openssl_issue_14579_fixed(
+    openssl_version_text: str, openssl_version_number: int
+) -> bool:
+    """
+    Returns True for OpenSSL 1.1.1l+ (>=0x101010cf) where this issue was fixed.
+    Before the fix, the SSL_new() API was not copying hostflags like
+    X509_CHECK_FLAG_NEVER_CHECK_SUBJECT, which tripped up CPython.
+    https://github.com/openssl/openssl/issues/14579
+
+    LibreSSL reports a version number of 0x20000000 for
+    OpenSSL version number so we need to filter out LibreSSL.
+    """
+    return (
+        not openssl_version_text.startswith("LibreSSL")
+        and openssl_version_number >= 0x101010CF
+    )
+
+
+def _is_bpo_43522_fixed(
+    implementation_name: str, version_info: _TYPE_VERSION_INFO
+) -> bool:
+    """Return True if PyPy or CPython 3.8.9+, 3.9.3+ or 3.10+ where setting
+    SSLContext.hostname_checks_common_name to False works.
+    https://github.com/urllib3/urllib3/issues/2192#issuecomment-821832963
+    https://foss.heptapod.net/pypy/pypy/-/issues/3539#
+    """
+    if implementation_name != "cpython":
+        return True
+
+    major_minor = version_info[:2]
+    micro = version_info[2]
+    return (
+        (major_minor == (3, 8) and micro >= 9)
+        or (major_minor == (3, 9) and micro >= 3)
+        or major_minor >= (3, 10)
+    )
+
+
+def _is_has_never_check_common_name_reliable(
+    openssl_version: str,
+    openssl_version_number: int,
+    implementation_name: str,
+    version_info: _TYPE_VERSION_INFO,
+) -> bool:
+    return _is_openssl_issue_14579_fixed(
+        openssl_version, openssl_version_number
+    ) or _is_bpo_43522_fixed(implementation_name, version_info)
 
 
 if TYPE_CHECKING:
@@ -66,6 +117,16 @@ try:  # Do we have ssl at all?
         OPENSSL_VERSION, OPENSSL_VERSION_NUMBER
     )
     PROTOCOL_SSLv23 = PROTOCOL_TLS
+
+    # Setting SSLContext.hostname_checks_common_name = False didn't work before CPython
+    # 3.8.9, 3.9.3, and 3.10 (but OK on PyPy) or OpenSSL 1.1.1l+
+    if HAS_NEVER_CHECK_COMMON_NAME and not _is_has_never_check_common_name_reliable(
+        OPENSSL_VERSION,
+        OPENSSL_VERSION_NUMBER,
+        sys.implementation.name,
+        sys.version_info,
+    ):
+        HAS_NEVER_CHECK_COMMON_NAME = False
 
     # Need to be careful here in case old TLS versions get
     # removed in future 'ssl' module implementations.

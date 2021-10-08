@@ -483,10 +483,7 @@ class HTTPSConnection(HTTPConnection):
                 # We still support OpenSSL 1.0.2, which prevents us from verifying
                 # hostnames easily: https://github.com/pyca/pyopenssl/pull/933
                 or ssl_.IS_PYOPENSSL
-                # context.hostname_checks_common_name seems ignored, and it's more
-                # important to reject certs without SANs than to rely on the standard
-                # library. See https://bugs.python.org/issue43522 for details.
-                or True
+                or not ssl_.HAS_NEVER_CHECK_COMMON_NAME
             ):
                 self.ssl_context.check_hostname = False
 
