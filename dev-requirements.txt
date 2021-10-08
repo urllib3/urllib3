@@ -14,8 +14,4 @@ trustme==0.7.0
 cryptography==3.2.1;python_version<"3.6"
 cryptography==3.4.7;python_version>="3.6"
 gcp-devrel-py-tools==0.0.16
-
-# https://github.com/GoogleCloudPlatform/python-repo-tools/issues/23
-pylint<2.0;python_version<="2.7"
-
 python-dateutil==2.8.1
