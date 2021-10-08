@@ -24,7 +24,13 @@ from urllib3.util.connection import _has_ipv6, allowed_gai_family, create_connec
 from urllib3.util.proxy import connection_requires_http_tunnel, create_proxy_ssl_context
 from urllib3.util.request import _FAILEDTELL, make_headers, rewind_body
 from urllib3.util.response import assert_header_parsing
-from urllib3.util.ssl_ import resolve_cert_reqs, resolve_ssl_version, ssl_wrap_socket
+from urllib3.util.ssl_ import (
+    _TYPE_VERSION_INFO,
+    _is_has_never_check_common_name_reliable,
+    resolve_cert_reqs,
+    resolve_ssl_version,
+    ssl_wrap_socket,
+)
 from urllib3.util.timeout import Timeout
 from urllib3.util.url import Url, _encode_invalid_chars, parse_url
 from urllib3.util.util import to_bytes, to_str
@@ -922,6 +928,40 @@ class TestUtilSSL:
         context, warn = self._wrap_socket_and_mock_warn(sock, None)
         context.wrap_socket.assert_called_once_with(sock, server_hostname=None)
         warn.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "openssl_version, openssl_version_number, implementation_name, version_info, reliable",
+        [
+            # OpenSSL and Python OK -> reliable
+            ("OpenSSL 1.1.1l", 0x101010CF, "cpython", (3, 9, 3), True),
+            # Python OK -> reliable
+            ("OpenSSL 1.1.1", 0x10101000, "cpython", (3, 9, 3), True),
+            ("OpenSSL 1.1.1", 0x10101000, "pypy", (3, 6, 9), True),
+            ("LibreSSL 3.3.5", 0x101010CF, "pypy", (3, 6, 9), True),
+            # OpenSSL OK -> reliable
+            ("OpenSSL", 0x101010CF, "cpython", (3, 9, 2), True),
+            # unreliable
+            ("OpenSSL", 0x10101000, "cpython", (3, 9, 2), False),
+            ("LibreSSL", 0x101010CF, "cpython", (3, 9, 2), False),
+        ],
+    )
+    def test_is_has_never_check_common_name_reliable(
+        self,
+        openssl_version: str,
+        openssl_version_number: int,
+        implementation_name: str,
+        version_info: _TYPE_VERSION_INFO,
+        reliable: bool,
+    ) -> None:
+        assert (
+            _is_has_never_check_common_name_reliable(
+                openssl_version,
+                openssl_version_number,
+                implementation_name,
+                version_info,
+            )
+            == reliable
+        )
 
 
 idna_blocker = ImportBlocker("idna")

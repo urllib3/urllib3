@@ -45,6 +45,11 @@ jobs:
             os: ubuntu-latest
             experimental: false
             nox-session: test_brotlipy
+          # Test CPython with a broken hostname_checks_common_name (the fix is in 3.9.3)
+          - python-version: "3.9.2"
+            os: ubuntu-latest
+            experimental: false
+            nox-session: test-3.9
 
     runs-on: ${{ matrix.os }}
     name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
