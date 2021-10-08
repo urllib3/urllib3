@@ -16,7 +16,7 @@ jobs:
       - name: Set up Python 3.7
         uses: actions/setup-python@v2
         with:
-          python-version: 3.7
+          python-version: "3.7"
       - name: Check packages
         run: |
           python3.7 -m pip install wheel twine rstcheck;
@@ -27,31 +27,28 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [2.7, 3.5, 3.6, 3.7, 3.8, 3.9]
+        python-version: ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "3.10"]
         os: [macos-latest, windows-latest, ubuntu-latest]
         experimental: [false]
         nox-session: ['']
         include:
-          - python-version: 3.10-dev
-            os: ubuntu-latest
-            experimental: false
-          - python-version: pypy3
+          - python-version: "pypy3"
             os: ubuntu-latest
             experimental: false
             nox-session: test-pypy
-          - python-version: pypy2
+          - python-version: "pypy2"
             os: ubuntu-latest
             experimental: false
             nox-session: test-pypy
-          - python-version: 2.7
+          - python-version: "2.7"
             os: ubuntu-latest
             experimental: false
             nox-session: google_brotli-2
-          - python-version: 3.9
+          - python-version: "3.9"
             os: ubuntu-latest
             experimental: false
             nox-session: google_brotli-3
-          - python-version: 2.7
+          - python-version: "2.7"
             os: ubuntu-latest
             experimental: false
             nox-session: app_engine
@@ -72,7 +69,7 @@ jobs:
         if: matrix.python-version != '3.7'
         uses: actions/setup-python@v2
         with:
-          python-version: 3
+          python-version: "3"
 
       - name: Install Dependencies
         run: python -m pip install --upgrade nox
