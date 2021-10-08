@@ -190,6 +190,7 @@ def mypy(session: nox.Session) -> None:
         "test/test_queue_monkeypatch.py",
         "test/test_retry.py",
         "test/test_ssl.py",
+        "test/test_util.py",
         "test/test_wait.py",
         "test/tz_stub.py",
     )
