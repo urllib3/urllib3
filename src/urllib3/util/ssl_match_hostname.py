@@ -79,7 +79,7 @@ def _dnsname_match(dn, hostname, max_wildcards=1):
 def _to_unicode(obj):
     if isinstance(obj, str) and sys.version_info < (3,):
         # ignored flake8 # F821 to support python 2.7 function
-        obj = unicode(obj, encoding="ascii", errors="strict")
+        obj = unicode(obj, encoding="ascii", errors="strict")  # noqa: F821
     return obj
 
 
