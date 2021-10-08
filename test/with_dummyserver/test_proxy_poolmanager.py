@@ -3,6 +3,7 @@ import os.path
 import shutil
 import socket
 import ssl
+import sys
 import tempfile
 import warnings
 from test import (
@@ -168,6 +169,8 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
     @pytest.mark.parametrize("target_scheme", ["http", "https"])
     def test_proxy_conn_fail_from_dns(self, proxy_scheme, target_scheme):
+        if target_scheme == "https" and sys.version_info <= (3,):
+            pytest.skip("HTTPS proxies are not supported on Python 2")
         host, port = get_unreachable_address()
         with proxy_from_url(
             "{}://{}:{}/".format(proxy_scheme, host, port),

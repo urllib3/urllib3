@@ -1161,6 +1161,7 @@ class TestProxyManager(SocketDummyServerTestCase):
             except MaxRetryError:
                 self.fail("Invalid IPv6 format in HTTP CONNECT request")
 
+    @onlyPy3
     @pytest.mark.parametrize("target_scheme", ["http", "https"])
     def test_https_proxymanager_connected_to_http_proxy(self, target_scheme):
 
