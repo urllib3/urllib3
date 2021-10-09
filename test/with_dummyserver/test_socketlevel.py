@@ -38,8 +38,8 @@ from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, ProxyManager, util
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import HTTPConnection, _get_default_user_agent
 from urllib3.exceptions import (
-    HTTPSProxyError,
     MaxRetryError,
+    NameResolutionError,
     ProtocolError,
     ProxyError,
     ReadTimeoutError,
@@ -1180,10 +1180,120 @@ class TestProxyManager(SocketDummyServerTestCase):
 
             errored.set()  # Avoid a ConnectionAbortedError on Windows.
 
-            assert type(e.value.reason) == HTTPSProxyError
+            assert type(e.value.reason) == ProxyError
             assert "Your proxy appears to only use HTTP and not HTTPS" in str(
                 e.value.reason
             )
+
+    @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
+    def test_tls_error_after_tunnel_not_wrapped_in_proxy_error(
+        self, proxy_scheme: str
+    ) -> None:
+        # Tests that a ProxyError isn't raised after the proxy tunnel stage
+        errored = Event()
+
+        def http_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+
+            if proxy_scheme == "https":
+                sock = ssl.wrap_socket(
+                    sock,
+                    server_side=True,
+                    keyfile=DEFAULT_CERTS["keyfile"],
+                    certfile=DEFAULT_CERTS["certfile"],
+                )
+
+            # Response 200 OK to the CONNECT request
+            buf = b""
+            while not buf.endswith(b"\r\n\r\n"):
+                buf += sock.recv(65536)
+            assert buf == b"CONNECT example.com:443 HTTP/1.0\r\n\r\n"
+            sock.send(b"HTTP/1.0 200 Connection Established\r\n\r\n")
+
+            # Then keep speaking HTTP even though the tunnel asked for HTTPS
+            buf = b""
+            while not buf:
+                buf += sock.recv(65536)
+            sock.send(b"HTTP/1.0 501 Not Implemented\r\nConnection: close\r\n\r\n")
+
+            errored.wait()
+            sock.close()
+
+        self._start_server(http_socket_handler)
+        base_url = f"{proxy_scheme}://{self.host}:{self.port}"
+
+        with ProxyManager(base_url, cert_reqs="NONE") as proxy:
+            with pytest.raises(MaxRetryError) as e:
+                proxy.request("GET", "https://example.com", retries=0)
+
+            errored.set()  # Avoid a ConnectionAbortedError on Windows.
+
+            assert type(e.value.reason) == SSLError
+            assert "wrong version number" in str(e.value.reason)
+
+    @pytest.mark.parametrize("target_scheme", ["http", "https"])
+    @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
+    @pytest.mark.parametrize("timeout_after_handshake", [True, False])
+    def test_timeout_error_wrapped_in_proxy_error(
+        self, proxy_scheme: str, target_scheme: str, timeout_after_handshake: bool
+    ) -> None:
+
+        if proxy_scheme == "http" and timeout_after_handshake is True:
+            pytest.skip("Skipped as there is no handshake to timeout for HTTP proxies")
+
+        errored = Event()
+
+        def http_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            if timeout_after_handshake and proxy_scheme == "https":
+                sock = ssl.wrap_socket(
+                    sock,
+                    server_side=True,
+                    keyfile=DEFAULT_CERTS["keyfile"],
+                    certfile=DEFAULT_CERTS["certfile"],
+                    ca_certs=DEFAULT_CA,
+                )
+
+            errored.wait()
+            sock.close()
+
+        self._start_server(http_socket_handler)
+        base_url = f"{proxy_scheme}://{self.host}:{self.port}"
+
+        with ProxyManager(base_url, cert_reqs="NONE", timeout=LONG_TIMEOUT) as proxy:
+            with pytest.raises(MaxRetryError) as e:
+                proxy.request("GET", f"{target_scheme}://example.com", retries=0)
+
+            errored.set()  # Avoid a ConnectionAbortedError on Windows.
+
+            # All of the HTTP targets will 'ReadTimeoutError' because forward proxying is used.
+            # We can't chalk the timeout to the proxy as the origin may be timing out for
+            # the proxy so these timeouts won't be wrapped.
+            if target_scheme == "http" and (
+                proxy_scheme == "http" or timeout_after_handshake
+            ):
+                assert type(e.value.reason) == ReadTimeoutError
+
+            # Otherwise the timeout is happening during the proxy connect phase,
+            # either before or after the proxy TLS handshake.
+            else:
+                assert type(e.value.reason) == ProxyError
+                assert type(e.value.reason.original_error) == socket.timeout
+
+    @pytest.mark.parametrize("proxy_scheme", ["http", "https"])
+    @pytest.mark.parametrize("target_scheme", ["http", "https"])
+    def test_dns_error_wrapped_in_proxy_error(
+        self, proxy_scheme: str, target_scheme: str
+    ) -> None:
+        # No matter the configuration DNS errors are counted as a ProxyError
+        base_url = f"{proxy_scheme}://badhost.invalid"
+
+        with ProxyManager(base_url, cert_reqs="NONE") as proxy:
+            with pytest.raises(MaxRetryError) as e:
+                proxy.request("GET", f"{target_scheme}://example.com", retries=0)
+
+            assert type(e.value.reason) == ProxyError
+            assert type(e.value.reason.original_error) == NameResolutionError
 
 
 class TestSSL(SocketDummyServerTestCase):

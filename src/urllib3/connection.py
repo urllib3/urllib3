@@ -42,9 +42,9 @@ except (ImportError, AttributeError):  # Platform-specific: No SSL.
 from ._version import __version__
 from .exceptions import (
     ConnectTimeoutError,
-    HTTPSProxyError,
     NameResolutionError,
     NewConnectionError,
+    ProxyError,
     SystemTimeWarning,
 )
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
@@ -569,9 +569,7 @@ class HTTPSConnection(HTTPConnection):
                 ssl_context=ssl_context,
             )
         except Exception as e:
-            if not _should_wrap_https_proxy_error(e):
-                raise
-            _wrap_https_proxy_error(e, hostname)
+            _wrap_proxy_error(e, hostname)
 
 
 def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
@@ -589,12 +587,7 @@ def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
         raise
 
 
-def _should_wrap_https_proxy_error(err: Exception) -> bool:
-    """Detects if the error should be wrapped into :class:`urllib3.exceptions.HTTPSProxyError`"""
-    return isinstance(err, (CertificateError, BaseSSLError, ssl_.SSLError))  # type: ignore[attr-defined]
-
-
-def _wrap_https_proxy_error(err: Exception, hostname: str) -> "NoReturn":
+def _wrap_proxy_error(err: Exception, hostname: str) -> "NoReturn":
     # Look for the phrase 'wrong version number', if found
     # then we should warn the user that we're very sure that
     # this proxy is HTTP-only and they have a configuration issue.
@@ -605,10 +598,10 @@ def _wrap_https_proxy_error(err: Exception, hostname: str) -> "NoReturn":
         "did you intend to set a proxy URL using HTTPS instead of HTTP?"
     )
 
-    # Wrap into an HTTPSProxyError for easier diagnosis.
+    # Wrap into an ProxyError for easier diagnosis.
     # Original exception is available on original_error and
     # as __cause__.
-    raise HTTPSProxyError(
+    raise ProxyError(
         f"Unable to establish a TLS connection to {hostname}"
         f"{http_proxy_warning if is_likely_http_proxy else ''}",
         err,

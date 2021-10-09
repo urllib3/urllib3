@@ -30,8 +30,7 @@ from .connection import (
     HTTPSConnection,
     ProxyConfig,
     VerifiedHTTPSConnection,
-    _should_wrap_https_proxy_error,
-    _wrap_https_proxy_error,
+    _wrap_proxy_error,
 )
 from .connection import port_by_scheme as port_by_scheme
 from .exceptions import (
@@ -40,7 +39,6 @@ from .exceptions import (
     FullPoolError,
     HeaderParsingError,
     HostChangedError,
-    HTTPSProxyError,
     InsecureRequestWarning,
     LocationValueError,
     MaxRetryError,
@@ -757,7 +755,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             BaseSSLError,
             SSLError,
             CertificateError,
-            HTTPSProxyError,
+            ProxyError,
         ) as e:
             # Discard the connection for these exceptions. It will be
             # replaced during the next _get_conn() call.
@@ -1033,14 +1031,11 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             if not conn.sock:
                 conn.connect()
         except Exception as e:
-            # We only want to wrap errors for HTTPS proxies
-            if (
-                not self.proxy
-                or self.proxy.scheme != "https"
-                or not _should_wrap_https_proxy_error(e)
-            ):
+            # We only want to wrap errors for HTTPS proxies because when
+            # a proxy is using HTTPS the TLS connection is established here.
+            if not self.proxy or self.proxy.scheme != "https":
                 raise
-            _wrap_https_proxy_error(e, cast(str, self.proxy.host))
+            _wrap_proxy_error(e, cast(str, self.proxy.host))
 
         if not conn.is_verified:
             warnings.warn(

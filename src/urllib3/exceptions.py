@@ -69,12 +69,6 @@ class ProxyError(HTTPError):
         self.original_error = error
 
 
-class HTTPSProxyError(ProxyError):
-    """Used only when establishing a TLS connection to a proxy"""
-
-    pass
-
-
 class DecodeError(HTTPError):
     """Raised when automatic decoding based on Content-Type fails."""
 
