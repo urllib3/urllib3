@@ -2,6 +2,7 @@ import platform
 import select
 import socket
 import ssl
+from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union, overload
 from unittest import mock
 
 import pytest
@@ -11,11 +12,14 @@ from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
 from urllib3.util import ssl_
 from urllib3.util.ssltransport import SSLTransport
 
+if TYPE_CHECKING:
+    from typing_extensions import Literal
+
 # consume_socket can iterate forever, we add timeouts to prevent halting.
 PER_TEST_TIMEOUT = 60
 
 
-def server_client_ssl_contexts():
+def server_client_ssl_contexts() -> Tuple[ssl.SSLContext, ssl.SSLContext]:
     if hasattr(ssl, "PROTOCOL_TLS_SERVER"):
         server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     server_context.load_cert_chain(DEFAULT_CERTS["certfile"], DEFAULT_CERTS["keyfile"])
@@ -27,7 +31,17 @@ def server_client_ssl_contexts():
     return server_context, client_context
 
 
-def sample_request(binary=True):
+@overload
+def sample_request(binary: "Literal[True]" = ...) -> bytes:
+    ...
+
+
+@overload
+def sample_request(binary: "Literal[False]") -> str:
+    ...
+
+
+def sample_request(binary: bool = True) -> Union[bytes, str]:
     request = (
         b"GET http://www.testing.com/ HTTP/1.1\r\n"
         b"Host: www.testing.com\r\n"
@@ -37,24 +51,43 @@ def sample_request(binary=True):
     return request if binary else request.decode("utf-8")
 
 
-def validate_request(provided_request, binary=True):
+def validate_request(
+    provided_request: bytearray, binary: "Literal[False, True]" = True
+) -> None:
     assert provided_request is not None
     expected_request = sample_request(binary)
     assert provided_request == expected_request
 
 
-def sample_response(binary=True):
+@overload
+def sample_response(binary: "Literal[True]" = ...) -> bytes:
+    ...
+
+
+@overload
+def sample_response(binary: "Literal[False]") -> str:
+    ...
+
+
+@overload
+def sample_response(binary: bool = ...) -> Union[bytes, str]:
+    ...
+
+
+def sample_response(binary: bool = True) -> Union[bytes, str]:
     response = b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"
     return response if binary else response.decode("utf-8")
 
 
-def validate_response(provided_response, binary=True):
+def validate_response(
+    provided_response: Union[bytes, bytearray, str], binary: bool = True
+) -> None:
     assert provided_response is not None
     expected_response = sample_response(binary)
     assert provided_response == expected_response
 
 
-def validate_peercert(ssl_socket):
+def validate_peercert(ssl_socket: SSLTransport) -> None:
 
     binary_cert = ssl_socket.getpeercert(binary_form=True)
     assert type(binary_cert) == bytes
@@ -73,11 +106,13 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
     """
 
     @classmethod
-    def setup_class(cls):
+    def setup_class(cls) -> None:
         cls.server_context, cls.client_context = server_client_ssl_contexts()
 
-    def start_dummy_server(self, handler=None):
-        def socket_handler(listener):
+    def start_dummy_server(
+        self, handler: Optional[Callable[[socket.socket], None]] = None
+    ) -> None:
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             with self.server_context.wrap_socket(sock, server_side=True) as ssock:
                 request = consume_socket(ssock)
@@ -88,7 +123,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
         self._start_server(chosen_handler)
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
-    def test_start_closed_socket(self):
+    def test_start_closed_socket(self) -> None:
         """Errors generated from an unconnected socket should bubble up."""
         sock = socket.socket(socket.AF_INET)
         context = ssl.create_default_context()
@@ -97,7 +132,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
             SSLTransport(sock, context)
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
-    def test_close_after_handshake(self):
+    def test_close_after_handshake(self) -> None:
         """Socket errors should be bubbled up"""
         self.start_dummy_server()
 
@@ -110,7 +145,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
                 ssock.send(b"blaaargh")
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
-    def test_wrap_existing_socket(self):
+    def test_wrap_existing_socket(self) -> None:
         """Validates a single TLS layer can be established."""
         self.start_dummy_server()
 
@@ -124,7 +159,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
             validate_response(response)
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
-    def test_unbuffered_text_makefile(self):
+    def test_unbuffered_text_makefile(self) -> None:
         self.start_dummy_server()
 
         sock = socket.create_connection((self.host, self.port))
@@ -138,13 +173,13 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
             validate_response(response)
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
-    def test_unwrap_existing_socket(self):
+    def test_unwrap_existing_socket(self) -> None:
         """
         Validates we can break up the TLS layer
         A full request/response is sent over TLS, and later over plain text.
         """
 
-        def shutdown_handler(listener):
+        def shutdown_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             ssl_sock = self.server_context.wrap_socket(sock, server_side=True)
 
@@ -174,7 +209,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
         validate_response(response)
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
-    def test_ssl_object_attributes(self):
+    def test_ssl_object_attributes(self) -> None:
         """Ensures common ssl attributes are exposed"""
         self.start_dummy_server()
 
@@ -202,7 +237,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
             validate_response(response)
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
-    def test_socket_object_attributes(self):
+    def test_socket_object_attributes(self) -> None:
         """Ensures common socket attributes are exposed"""
         self.start_dummy_server()
 
@@ -227,20 +262,22 @@ class SocketProxyDummyServer(SocketDummyServerTestCase):
     socket.
     """
 
-    def __init__(self, destination_server_host, destination_server_port):
+    def __init__(
+        self, destination_server_host: str, destination_server_port: int
+    ) -> None:
         self.destination_server_host = destination_server_host
         self.destination_server_port = destination_server_port
-        self.server_context, self.client_context = server_client_ssl_contexts()
+        self.server_ctx, _ = server_client_ssl_contexts()
 
-    def start_proxy_handler(self):
+    def start_proxy_handler(self) -> None:
         """
         Socket handler for the proxy. Terminates the first TLS layer and tunnels
         any bytes needed for client <-> server communicatin.
         """
 
-        def proxy_handler(listener):
+        def proxy_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
-            with self.server_context.wrap_socket(sock, server_side=True) as client_sock:
+            with self.server_ctx.wrap_socket(sock, server_side=True) as client_sock:
                 upstream_sock = socket.create_connection(
                     (self.destination_server_host, self.destination_server_port)
                 )
@@ -250,7 +287,12 @@ class SocketProxyDummyServer(SocketDummyServerTestCase):
 
         self._start_server(proxy_handler)
 
-    def _read_write_loop(self, client_sock, server_sock, chunks=65536):
+    def _read_write_loop(
+        self,
+        client_sock: socket.socket,
+        server_sock: socket.socket,
+        chunks: int = 65536,
+    ) -> None:
         inputs = [client_sock, server_sock]
         output = [client_sock, server_sock]
 
@@ -298,30 +340,30 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
     """
 
     @classmethod
-    def setup_class(cls):
+    def setup_class(cls) -> None:
         cls.server_context, cls.client_context = server_client_ssl_contexts()
 
     @classmethod
-    def start_proxy_server(cls):
+    def start_proxy_server(cls) -> None:
         # Proxy server will handle the first TLS connection and create a
         # connection to the destination server.
         cls.proxy_server = SocketProxyDummyServer(cls.host, cls.port)
         cls.proxy_server.start_proxy_handler()
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_class(cls) -> None:
         if hasattr(cls, "proxy_server"):
             cls.proxy_server.teardown_class()
         super().teardown_class()
 
     @classmethod
-    def start_destination_server(cls):
+    def start_destination_server(cls) -> None:
         """
         Socket handler for the destination_server. Terminates the second TLS
         layer and send a basic HTTP response.
         """
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             with cls.server_context.wrap_socket(sock, server_side=True) as ssock:
                 request = consume_socket(ssock)
@@ -332,7 +374,7 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
         cls._start_server(socket_handler)
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
-    def test_tls_in_tls_tunnel(self):
+    def test_tls_in_tls_tunnel(self) -> None:
         """
         Basic communication over the TLS in TLS tunnel.
         """
@@ -354,7 +396,7 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 validate_response(response)
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
-    def test_wrong_sni_hint(self):
+    def test_wrong_sni_hint(self) -> None:
         """
         Provides a wrong sni hint to validate an exception is thrown.
         """
@@ -374,7 +416,7 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     @pytest.mark.parametrize("buffering", [None, 0])
-    def test_tls_in_tls_makefile_raw_rw_binary(self, buffering):
+    def test_tls_in_tls_makefile_raw_rw_binary(self, buffering: Optional[int]) -> None:
         """
         Uses makefile with read, write and binary modes without buffering.
         """
@@ -392,11 +434,11 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
             ) as destination_sock:
 
                 file = destination_sock.makefile("rwb", buffering)
-                file.write(sample_request())
+                file.write(sample_request())  # type: ignore[arg-type]
                 file.flush()
 
                 response = bytearray(65536)
-                wrote = file.readinto(response)
+                wrote = file.readinto(response)  # type: ignore[union-attr]
                 assert wrote is not None
                 # Allocated response is bigger than the actual response, we
                 # rtrim remaining x00 bytes.
@@ -409,7 +451,7 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
         reason="Skipping windows due to text makefile support",
     )
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
-    def test_tls_in_tls_makefile_rw_text(self):
+    def test_tls_in_tls_makefile_rw_text(self) -> None:
         """
         Creates a separate buffer for reading and writing using text mode and
         utf-8 encoding.
@@ -430,18 +472,19 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 read = destination_sock.makefile("r", encoding="utf-8")
                 write = destination_sock.makefile("w", encoding="utf-8")
 
-                write.write(sample_request(binary=False))
+                write.write(sample_request(binary=False))  # type: ignore[arg-type]
                 write.flush()
 
                 response = read.read()
                 if "\r" not in response:
                     # Carriage return will be removed when reading as a file on
                     # some platforms.  We add it before the comparison.
+                    assert isinstance(response, str)
                     response = response.replace("\n", "\r\n")
                 validate_response(response, binary=False)
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
-    def test_tls_in_tls_recv_into_sendall(self):
+    def test_tls_in_tls_recv_into_sendall(self) -> None:
         """
         Valides recv_into and sendall also work as expected. Other tests are
         using recv/send.
@@ -465,31 +508,9 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 str_response = response.decode("utf-8").rstrip("\x00")
                 validate_response(str_response, binary=False)
 
-    @pytest.mark.timeout(PER_TEST_TIMEOUT)
-    def test_tls_in_tls_recv_into_unbuffered(self):
-        """
-        Valides recv_into without a preallocated buffer.
-        """
-        self.start_destination_server()
-        self.start_proxy_server()
-
-        sock = socket.create_connection(
-            (self.proxy_server.host, self.proxy_server.port)
-        )
-        with self.client_context.wrap_socket(
-            sock, server_hostname="localhost"
-        ) as proxy_sock:
-            with SSLTransport(
-                proxy_sock, self.client_context, server_hostname="localhost"
-            ) as destination_sock:
-
-                destination_sock.send(sample_request())
-                response = destination_sock.recv_into(None)
-                validate_response(response)
-
 
 class TestSSLTransportWithMock:
-    def test_constructor_params(self):
+    def test_constructor_params(self) -> None:
         server_hostname = "example-domain.com"
         sock = mock.Mock()
         context = mock.create_autospec(ssl_.SSLContext)
@@ -501,7 +522,7 @@ class TestSSLTransportWithMock:
         )
         assert not ssl_transport.suppress_ragged_eofs
 
-    def test_various_flags_errors(self):
+    def test_various_flags_errors(self) -> None:
         server_hostname = "example-domain.com"
         sock = mock.Mock()
         context = mock.create_autospec(ssl_.SSLContext)
@@ -512,15 +533,15 @@ class TestSSLTransportWithMock:
             ssl_transport.recv(flags=1)
 
         with pytest.raises(ValueError):
-            ssl_transport.recv_into(None, flags=1)
+            ssl_transport.recv_into(bytearray(), flags=1)
 
         with pytest.raises(ValueError):
-            ssl_transport.sendall(None, flags=1)
+            ssl_transport.sendall(bytearray(), flags=1)
 
         with pytest.raises(ValueError):
-            ssl_transport.send(None, flags=1)
+            ssl_transport.send(None, flags=1)  # type: ignore[arg-type]
 
-    def test_makefile_wrong_mode_error(self):
+    def test_makefile_wrong_mode_error(self) -> None:
         server_hostname = "example-domain.com"
         sock = mock.Mock()
         context = mock.create_autospec(ssl_.SSLContext)
@@ -530,7 +551,7 @@ class TestSSLTransportWithMock:
         with pytest.raises(ValueError):
             ssl_transport.makefile(mode="x")
 
-    def test_wrap_ssl_read_error(self):
+    def test_wrap_ssl_read_error(self) -> None:
         server_hostname = "example-domain.com"
         sock = mock.Mock()
         context = mock.create_autospec(ssl_.SSLContext)

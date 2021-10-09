@@ -100,14 +100,15 @@ class SSLTransport:
         return self._wrap_ssl_read(buflen)
 
     def recv_into(
-        self, buffer: _WriteBuffer, nbytes: Optional[int] = None, flags: int = 0
+        self,
+        buffer: _WriteBuffer,
+        nbytes: Optional[int] = None,
+        flags: int = 0,
     ) -> Union[None, int, bytes]:
         if flags != 0:
             raise ValueError("non-zero flags not allowed in calls to recv_into")
-        if buffer and (nbytes is None):
+        if nbytes is None:
             nbytes = len(buffer)
-        elif nbytes is None:
-            nbytes = 1024
         return self.read(nbytes, buffer)
 
     def sendall(self, data: bytes, flags: int = 0) -> None:
