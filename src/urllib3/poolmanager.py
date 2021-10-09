@@ -18,6 +18,7 @@ from typing import (
 from urllib.parse import urljoin
 
 from ._collections import RecentlyUsedContainer
+from ._request_methods import RequestMethods
 from .connection import ProxyConfig
 from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool, port_by_scheme
 from .exceptions import (
@@ -26,7 +27,6 @@ from .exceptions import (
     ProxySchemeUnknown,
     URLSchemeUnknown,
 )
-from .request import RequestMethods
 from .response import BaseHTTPResponse
 from .util.connection import _TYPE_SOCKET_OPTIONS
 from .util.proxy import connection_requires_http_tunnel
@@ -50,10 +50,15 @@ SSL_KEYWORDS = (
     "cert_reqs",
     "ca_certs",
     "ssl_version",
+    "ssl_minimum_version",
+    "ssl_maximum_version",
     "ca_cert_dir",
     "ssl_context",
     "key_password",
 )
+# Default value for `blocksize` - a new parameter introduced to
+# http.client.HTTPConnection & http.client.HTTPSConnection in Python 3.7
+_DEFAULT_BLOCKSIZE = 16384
 
 _SelfT = TypeVar("_SelfT")
 
@@ -79,6 +84,8 @@ class PoolKey(NamedTuple):
     key_cert_reqs: Optional[str]
     key_ca_certs: Optional[str]
     key_ssl_version: Optional[Union[int, str]]
+    key_ssl_minimum_version: Optional["ssl.TLSVersion"]
+    key_ssl_maximum_version: Optional["ssl.TLSVersion"]
     key_ca_cert_dir: Optional[str]
     key_ssl_context: Optional["ssl.SSLContext"]
     key_maxsize: Optional[int]
@@ -91,6 +98,7 @@ class PoolKey(NamedTuple):
     key_assert_hostname: Optional[Union[bool, str]]
     key_assert_fingerprint: Optional[str]
     key_server_hostname: Optional[str]
+    key_blocksize: Optional[int]
 
 
 def _default_key_normalizer(
@@ -140,6 +148,10 @@ def _default_key_normalizer(
     for field in key_class._fields:
         if field not in context:
             context[field] = None
+
+    # Default key_blocksize to _DEFAULT_BLOCKSIZE if missing from the context
+    if context.get("key_blocksize") is None:
+        context["key_blocksize"] = _DEFAULT_BLOCKSIZE
 
     return key_class(**context)
 
@@ -245,6 +257,11 @@ class PoolManager(RequestMethods):
         pool_cls: Type[HTTPConnectionPool] = self.pool_classes_by_scheme[scheme]
         if request_context is None:
             request_context = self.connection_pool_kw.copy()
+
+        # Default blocksize to _DEFAULT_BLOCKSIZE if missing or explicitly
+        # set to 'None' in the request_context.
+        if request_context.get("blocksize") is None:
+            request_context["blocksize"] = _DEFAULT_BLOCKSIZE
 
         # Although the context has everything necessary to create the pool,
         # this function has historically only used the scheme, host, and port
@@ -530,8 +547,10 @@ class ProxyManager(PoolManager):
     ) -> None:
 
         if isinstance(proxy_url, HTTPConnectionPool):
-            proxy_url = f"{proxy_url.scheme}://{proxy_url.host}:{proxy_url.port}"
-        proxy = parse_url(proxy_url)
+            str_proxy_url = f"{proxy_url.scheme}://{proxy_url.host}:{proxy_url.port}"
+        else:
+            str_proxy_url = proxy_url
+        proxy = parse_url(str_proxy_url)
 
         if proxy.scheme not in ("http", "https"):
             raise ProxySchemeUnknown(proxy.scheme)

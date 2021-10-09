@@ -23,7 +23,7 @@ from typing import (
 )
 
 if TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing_extensions import Literal, NoReturn
 
 from .util.proxy import create_proxy_ssl_context
 from .util.util import to_bytes, to_str
@@ -155,9 +155,9 @@ class HTTPConnection(_HTTPConnection):
 
     # https://github.com/python/mypy/issues/4125
     # Mypy treats this as LSP violation, which is considered a bug.
-    # If `host` is made a property it violates LSP, because a writeable attribute is overriden with a read-only one.
+    # If `host` is made a property it violates LSP, because a writeable attribute is overridden with a read-only one.
     # However, there is also a `host` setter so LSP is not violated.
-    # Potentailly, a `@host.deleter` might be needed depending on how this issue will be fixed.
+    # Potentially, a `@host.deleter` might be needed depending on how this issue will be fixed.
     @property  # type: ignore[override]
     def host(self) -> str:  # type: ignore[override]
         """
@@ -201,15 +201,17 @@ class HTTPConnection(_HTTPConnection):
                 socket_options=self.socket_options,
             )
         except socket.gaierror as e:
-            raise NameResolutionError(self.host, self, e)
-        except SocketTimeout:
+            raise NameResolutionError(self.host, self, e) from e
+        except SocketTimeout as e:
             raise ConnectTimeoutError(
                 self,
                 f"Connection to {self.host} timed out. (connect timeout={self.timeout})",
-            )
+            ) from e
 
         except OSError as e:
-            raise NewConnectionError(self, f"Failed to establish a new connection: {e}")
+            raise NewConnectionError(
+                self, f"Failed to establish a new connection: {e}"
+            ) from e
 
         return conn
 
@@ -347,6 +349,8 @@ class HTTPSConnection(HTTPConnection):
     ca_cert_dir: Optional[str] = None
     ca_cert_data: Union[None, str, bytes] = None
     ssl_version: Optional[Union[int, str]] = None
+    ssl_minimum_version: Optional[int] = None
+    ssl_maximum_version: Optional[int] = None
     assert_fingerprint: Optional[str] = None
     tls_in_tls_required: bool = False
 
@@ -385,6 +389,9 @@ class HTTPSConnection(HTTPConnection):
         self.key_password = key_password
         self.ssl_context = ssl_context
         self.server_hostname = server_hostname
+        self.ssl_version = None
+        self.ssl_minimum_version = None
+        self.ssl_maximum_version = None
 
     def set_cert(
         self,
@@ -464,6 +471,8 @@ class HTTPSConnection(HTTPConnection):
             default_ssl_context = True
             self.ssl_context = create_urllib3_context(
                 ssl_version=resolve_ssl_version(self.ssl_version),
+                ssl_minimum_version=self.ssl_minimum_version,
+                ssl_maximum_version=self.ssl_maximum_version,
                 cert_reqs=resolve_cert_reqs(self.cert_reqs),
             )
             # In some cases, we want to verify hostnames ourselves
@@ -474,10 +483,7 @@ class HTTPSConnection(HTTPConnection):
                 # We still support OpenSSL 1.0.2, which prevents us from verifying
                 # hostnames easily: https://github.com/pyca/pyopenssl/pull/933
                 or ssl_.IS_PYOPENSSL
-                # context.hostname_checks_common_name seems ignored, and it's more
-                # important to reject certs without SANs than to rely on the standard
-                # libary. See https://bugs.python.org/issue43522 for details.
-                or True
+                or not ssl_.HAS_NEVER_CHECK_COMMON_NAME
             ):
                 self.ssl_context.check_hostname = False
 
@@ -508,23 +514,6 @@ class HTTPSConnection(HTTPConnection):
             tls_in_tls=tls_in_tls,
         )
 
-        # If we're using all defaults and the connection
-        # is TLSv1 or TLSv1.1 we throw a DeprecationWarning
-        # for the host.
-        if (
-            default_ssl_context
-            and self.ssl_version is None
-            and hasattr(self.sock, "version")
-            and self.sock.version() in {"TLSv1", "TLSv1.1"}
-        ):
-            warnings.warn(
-                "Negotiating TLSv1/TLSv1.1 by default is deprecated "
-                "and will be disabled in urllib3 v2.0.0. Connecting to "
-                f"'{self.host}' with '{self.sock.version()}' can be "
-                "enabled by explicitly opting-in with 'ssl_version'",
-                DeprecationWarning,
-            )
-
         if self.assert_fingerprint:
             assert_fingerprint(
                 self.sock.getpeercert(binary_form=True), self.assert_fingerprint
@@ -541,9 +530,7 @@ class HTTPSConnection(HTTPConnection):
             self.assert_fingerprint
         )
 
-    def _connect_tls_proxy(
-        self, hostname: Optional[str], conn: socket.socket
-    ) -> "ssl.SSLSocket":
+    def _connect_tls_proxy(self, hostname: str, conn: socket.socket) -> "ssl.SSLSocket":
         """
         Establish a TLS connection to the proxy using the provided SSL context.
         """
@@ -582,11 +569,9 @@ class HTTPSConnection(HTTPConnection):
                 ssl_context=ssl_context,
             )
         except Exception as e:
-            # Wrap into an HTTPSProxyError for easier diagnosis.
-            # Original exception is available on original_error
-            raise HTTPSProxyError(
-                f"Unable to establish a TLS connection to {hostname}", e
-            )
+            if not _should_wrap_https_proxy_error(e):
+                raise
+            _wrap_https_proxy_error(e, hostname)
 
 
 def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
@@ -602,6 +587,32 @@ def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
         # the cert when catching the exception, if they want to
         e._peer_cert = cert  # type: ignore[attr-defined]
         raise
+
+
+def _should_wrap_https_proxy_error(err: Exception) -> bool:
+    """Detects if the error should be wrapped into :class:`urllib3.exceptions.HTTPSProxyError`"""
+    return isinstance(err, (CertificateError, BaseSSLError, ssl_.SSLError))  # type: ignore[attr-defined]
+
+
+def _wrap_https_proxy_error(err: Exception, hostname: str) -> "NoReturn":
+    # Look for the phrase 'wrong version number', if found
+    # then we should warn the user that we're very sure that
+    # this proxy is HTTP-only and they have a configuration issue.
+    error_normalized = " ".join(re.split("[^a-z]", str(err).lower()))
+    is_likely_http_proxy = "wrong version number" in error_normalized
+    http_proxy_warning = (
+        ". Your proxy appears to only use HTTP and not HTTPS, "
+        "did you intend to set a proxy URL using HTTPS instead of HTTP?"
+    )
+
+    # Wrap into an HTTPSProxyError for easier diagnosis.
+    # Original exception is available on original_error and
+    # as __cause__.
+    raise HTTPSProxyError(
+        f"Unable to establish a TLS connection to {hostname}"
+        f"{http_proxy_warning if is_likely_http_proxy else ''}",
+        err,
+    ) from err
 
 
 def _get_default_user_agent() -> str:

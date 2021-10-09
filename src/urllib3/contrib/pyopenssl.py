@@ -107,6 +107,44 @@ _stdlib_to_openssl_verify = {
 }
 _openssl_to_stdlib_verify = {v: k for k, v in _stdlib_to_openssl_verify.items()}
 
+# The SSLvX values are the most likely to be missing in the future
+# but we check them all just to be sure.
+_OP_NO_SSLv2: int = getattr(OpenSSL.SSL, "OP_NO_SSLv2", 0)
+_OP_NO_SSLv3: int = getattr(OpenSSL.SSL, "OP_NO_SSLv3", 0)
+_OP_NO_TLSv1: int = getattr(OpenSSL.SSL, "OP_NO_TLSv1", 0)
+_OP_NO_TLSv1_1: int = getattr(OpenSSL.SSL, "OP_NO_TLSv1_1", 0)
+_OP_NO_TLSv1_2: int = getattr(OpenSSL.SSL, "OP_NO_TLSv1_2", 0)
+_OP_NO_TLSv1_3: int = getattr(OpenSSL.SSL, "OP_NO_TLSv1_3", 0)
+
+_openssl_to_ssl_minimum_version: Dict[int, int] = {
+    ssl.TLSVersion.MINIMUM_SUPPORTED: _OP_NO_SSLv2,
+    ssl.TLSVersion.SSLv3: _OP_NO_SSLv2,
+    ssl.TLSVersion.TLSv1: _OP_NO_SSLv2 | _OP_NO_SSLv3,
+    ssl.TLSVersion.TLSv1_1: _OP_NO_SSLv2 | _OP_NO_SSLv3 | _OP_NO_TLSv1,
+    ssl.TLSVersion.TLSv1_2: _OP_NO_SSLv2 | _OP_NO_SSLv3 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1,
+    ssl.TLSVersion.TLSv1_3: (
+        _OP_NO_SSLv2 | _OP_NO_SSLv3 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2
+    ),
+    ssl.TLSVersion.MAXIMUM_SUPPORTED: (
+        _OP_NO_SSLv2 | _OP_NO_SSLv3 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2
+    ),
+}
+_openssl_to_ssl_maximum_version: Dict[int, int] = {
+    ssl.TLSVersion.MINIMUM_SUPPORTED: (
+        _OP_NO_SSLv2 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2 | _OP_NO_TLSv1_3
+    ),
+    ssl.TLSVersion.SSLv3: (
+        _OP_NO_SSLv2 | _OP_NO_TLSv1 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2 | _OP_NO_TLSv1_3
+    ),
+    ssl.TLSVersion.TLSv1: (
+        _OP_NO_SSLv2 | _OP_NO_TLSv1_1 | _OP_NO_TLSv1_2 | _OP_NO_TLSv1_3
+    ),
+    ssl.TLSVersion.TLSv1_1: _OP_NO_SSLv2 | _OP_NO_TLSv1_2 | _OP_NO_TLSv1_3,
+    ssl.TLSVersion.TLSv1_2: _OP_NO_SSLv2 | _OP_NO_TLSv1_3,
+    ssl.TLSVersion.TLSv1_3: _OP_NO_SSLv2,
+    ssl.TLSVersion.MAXIMUM_SUPPORTED: _OP_NO_SSLv2,
+}
+
 # OpenSSL will only write 16K at a time
 SSL_WRITE_BLOCKSIZE = 16384
 
@@ -221,7 +259,7 @@ def get_subj_alt_name(peer_cert: "CRL") -> List[Tuple[str, str]]:
     else:
         # This is technically using private APIs, but should work across all
         # relevant versions before PyOpenSSL got a proper API for this.
-        cert = _Certificate(openssl_backend, peer_cert._x509)  # type: ignore[no-untyped-call]
+        cert = _Certificate(openssl_backend, peer_cert._x509)
 
     # We want to find the SAN extension. Ask Cryptography to locate it (it's
     # faster than looping in Python)
@@ -297,21 +335,21 @@ class WrappedSocket:
             if self.suppress_ragged_eofs and e.args == (-1, "Unexpected EOF"):
                 return b""
             else:
-                raise OSError(e.args[0], str(e))
+                raise OSError(e.args[0], str(e)) from e
         except OpenSSL.SSL.ZeroReturnError:
             if self.connection.get_shutdown() == OpenSSL.SSL.RECEIVED_SHUTDOWN:
                 return b""
             else:
                 raise
-        except OpenSSL.SSL.WantReadError:
+        except OpenSSL.SSL.WantReadError as e:
             if not util.wait_for_read(self.socket, self.socket.gettimeout()):
-                raise timeout("The read operation timed out")  # type: ignore[arg-type]
+                raise timeout("The read operation timed out") from e  # type: ignore[arg-type]
             else:
                 return self.recv(*args, **kwargs)
 
         # TLS 1.3 post-handshake authentication
         except OpenSSL.SSL.Error as e:
-            raise ssl.SSLError(f"read error: {e!r}")
+            raise ssl.SSLError(f"read error: {e!r}") from e
         else:
             return data  # type: ignore[no-any-return]
 
@@ -322,21 +360,21 @@ class WrappedSocket:
             if self.suppress_ragged_eofs and e.args == (-1, "Unexpected EOF"):
                 return 0
             else:
-                raise OSError(e.args[0], str(e))
+                raise OSError(e.args[0], str(e)) from e
         except OpenSSL.SSL.ZeroReturnError:
             if self.connection.get_shutdown() == OpenSSL.SSL.RECEIVED_SHUTDOWN:
                 return 0
             else:
                 raise
-        except OpenSSL.SSL.WantReadError:
+        except OpenSSL.SSL.WantReadError as e:
             if not util.wait_for_read(self.socket, self.socket.gettimeout()):
-                raise timeout("The read operation timed out")  # type: ignore[arg-type]
+                raise timeout("The read operation timed out") from e  # type: ignore[arg-type]
             else:
                 return self.recv_into(*args, **kwargs)
 
         # TLS 1.3 post-handshake authentication
         except OpenSSL.SSL.Error as e:
-            raise ssl.SSLError(f"read error: {e!r}")
+            raise ssl.SSLError(f"read error: {e!r}") from e
 
     def settimeout(self, timeout: float) -> None:
         return self.socket.settimeout(timeout)
@@ -345,12 +383,12 @@ class WrappedSocket:
         while True:
             try:
                 return self.connection.send(data)  # type: ignore[no-any-return]
-            except OpenSSL.SSL.WantWriteError:
+            except OpenSSL.SSL.WantWriteError as e:
                 if not util.wait_for_write(self.socket, self.socket.gettimeout()):
-                    raise timeout()
+                    raise timeout() from e
                 continue
             except OpenSSL.SSL.SysCallError as e:
-                raise OSError(e.args[0], str(e))
+                raise OSError(e.args[0], str(e)) from e
 
     def sendall(self, data: bytes) -> None:
         total_sent = 0
@@ -407,6 +445,8 @@ class PyOpenSSLContext:
         self._ctx = OpenSSL.SSL.Context(self.protocol)
         self._options = 0
         self.check_hostname = False
+        self._minimum_version: int = ssl.TLSVersion.MINIMUM_SUPPORTED
+        self._maximum_version: int = ssl.TLSVersion.MAXIMUM_SUPPORTED
 
     @property
     def options(self) -> int:
@@ -415,7 +455,7 @@ class PyOpenSSLContext:
     @options.setter
     def options(self, value: int) -> None:
         self._options = value
-        self._ctx.set_options(value)
+        self._set_ctx_options()
 
     @property
     def verify_mode(self) -> int:
@@ -448,7 +488,7 @@ class PyOpenSSLContext:
             if cadata is not None:
                 self._ctx.load_verify_locations(BytesIO(cadata))
         except OpenSSL.SSL.Error as e:
-            raise ssl.SSLError(f"unable to load trusted certificates: {e!r}")
+            raise ssl.SSLError(f"unable to load trusted certificates: {e!r}") from e
 
     def load_cert_chain(
         self,
@@ -488,15 +528,40 @@ class PyOpenSSLContext:
         while True:
             try:
                 cnx.do_handshake()
-            except OpenSSL.SSL.WantReadError:
+            except OpenSSL.SSL.WantReadError as e:
                 if not util.wait_for_read(sock, sock.gettimeout()):
-                    raise timeout("select timed out")  # type: ignore[arg-type]
+                    raise timeout("select timed out") from e  # type: ignore[arg-type]
                 continue
             except OpenSSL.SSL.Error as e:
-                raise ssl.SSLError(f"bad handshake: {e!r}")
+                raise ssl.SSLError(f"bad handshake: {e!r}") from e
             break
 
         return WrappedSocket(cnx, sock)
+
+    def _set_ctx_options(self) -> None:
+        self._ctx.set_options(
+            self._options
+            | _openssl_to_ssl_minimum_version[self._minimum_version]
+            | _openssl_to_ssl_maximum_version[self._maximum_version]
+        )
+
+    @property
+    def minimum_version(self) -> int:
+        return self._minimum_version
+
+    @minimum_version.setter
+    def minimum_version(self, minimum_version: int) -> None:
+        self._minimum_version = minimum_version
+        self._set_ctx_options()
+
+    @property
+    def maximum_version(self) -> int:
+        return self._maximum_version
+
+    @maximum_version.setter
+    def maximum_version(self, maximum_version: int) -> None:
+        self._maximum_version = maximum_version
+        self._set_ctx_options()
 
 
 def _verify_callback(

@@ -1,13 +1,12 @@
-coverage==5.5
+coverage==6.0
 tornado==6.1
 PySocks==1.7.1
-pytest==6.2.4
+pytest==6.2.5
 pytest-timeout==1.4.2
 pytest-freezegun==0.4.2
 flaky==3.7.0
 trustme==0.9.0
-cryptography==3.4.7
-python-dateutil==2.8.1
-requests
+cryptography==35.0.0
+backports.zoneinfo==0.2.1;python_version<"3.9"
 # https://github.com/twisted/towncrier/pull/356
-git+https://github.com/pquentin/towncrier.git@stop-writing-title-twice
+git+https://github.com/twisted/towncrier.git

@@ -4,7 +4,16 @@ import re
 import time
 from itertools import takewhile
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Collection, NamedTuple, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Collection,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from ..exceptions import (
     ConnectTimeoutError,
@@ -185,6 +194,9 @@ class Retry:
     #: Maximum backoff time.
     BACKOFF_MAX = 120
 
+    # Backward compatibility; assigned outside of the class.
+    DEFAULT: ClassVar["Retry"]
+
     def __init__(
         self,
         total: Optional[Union[bool, int]] = 10,
@@ -223,7 +235,7 @@ class Retry:
         self.history = history or ()
         self.respect_retry_after_header = respect_retry_after_header
         self.remove_headers_on_redirect = frozenset(
-            [h.lower() for h in remove_headers_on_redirect]
+            h.lower() for h in remove_headers_on_redirect
         )
 
     def new(self, **kw: Any) -> "Retry":
@@ -254,9 +266,9 @@ class Retry:
         redirect: Optional[Union[bool, int]] = True,
         default: Optional[Union["Retry", bool, int]] = None,
     ) -> "Retry":
-        """ Backwards-compatibility for the old retries format."""
+        """Backwards-compatibility for the old retries format."""
         if retries is None:
-            retries = default if default is not None else cls.DEFAULT  # type: ignore[attr-defined]
+            retries = default if default is not None else cls.DEFAULT
 
         if isinstance(retries, Retry):
             return retries
@@ -301,7 +313,7 @@ class Retry:
         return seconds
 
     def get_retry_after(self, response: "HTTPResponse") -> Optional[float]:
-        """ Get the value of Retry-After in seconds. """
+        """Get the value of Retry-After in seconds."""
 
         retry_after = response.getheader("Retry-After")
 
@@ -385,7 +397,7 @@ class Retry:
         )
 
     def is_exhausted(self) -> bool:
-        """ Are we out of retries? """
+        """Are we out of retries?"""
         retry_counts = [
             x
             for x in (
@@ -493,7 +505,8 @@ class Retry:
         )
 
         if new_retry.is_exhausted():
-            raise MaxRetryError(_pool, url, error or ResponseError(cause))  # type: ignore[arg-type]
+            reason = error or ResponseError(cause)
+            raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
 
         log.debug("Incremented Retry for (url='%s'): %r", url, new_retry)
 
@@ -507,4 +520,4 @@ class Retry:
 
 
 # For backwards compatibility (equivalent to pre-v1.9):
-Retry.DEFAULT = Retry(3)  # type: ignore[attr-defined]
+Retry.DEFAULT = Retry(3)

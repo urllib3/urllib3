@@ -15,8 +15,8 @@ If you wish to add a new feature or fix a bug:
    as expected.
 #. Format your changes with black using command `$ nox -rs format` and lint your
    changes using command `nox -rs lint`.
-#. Add a changelog entry using `towncrier
-   <https://towncrier.readthedocs.io/en/actual-freaking-docs/quickstart.html#creating-news-fragments>`__.
+#. Add a `changelog entry
+   <https://github.com/urllib3/urllib3/blob/main/changelog/README.rst>`__.
 #. Send a pull request and bug the maintainer until it gets merged and published.
 
 
@@ -93,6 +93,23 @@ further parameterize pytest for local testing.
 
 For all valid arguments, check `the pytest documentation
 <https://docs.pytest.org/en/stable/usage.html#stopping-after-the-first-or-n-failures>`_.
+
+Running local proxies
+---------------------
+
+If the feature you are developing involves a proxy, you can rely on scripts we have developed to run a proxy locally.
+
+Run an HTTP proxy locally:
+
+.. code-block:: bash
+
+   $ python -m dummyserver.proxy
+
+Run an HTTPS proxy locally:
+
+.. code-block:: bash
+
+   $ python -m dummyserver.https_proxy
 
 Contributing to documentation
 -----------------------------

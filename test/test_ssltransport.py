@@ -89,7 +89,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_start_closed_socket(self):
-        """ Errors generated from an unconnected socket should bubble up."""
+        """Errors generated from an unconnected socket should bubble up."""
         sock = socket.socket(socket.AF_INET)
         context = ssl.create_default_context()
         sock.close()
@@ -98,7 +98,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_close_after_handshake(self):
-        """ Socket errors should be bubbled up """
+        """Socket errors should be bubbled up"""
         self.start_dummy_server()
 
         sock = socket.create_connection((self.host, self.port))
@@ -111,7 +111,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_wrap_existing_socket(self):
-        """ Validates a single TLS layer can be established.  """
+        """Validates a single TLS layer can be established."""
         self.start_dummy_server()
 
         sock = socket.create_connection((self.host, self.port))
@@ -175,7 +175,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_ssl_object_attributes(self):
-        """ Ensures common ssl attributes are exposed """
+        """Ensures common ssl attributes are exposed"""
         self.start_dummy_server()
 
         sock = socket.create_connection((self.host, self.port))
@@ -203,7 +203,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)
     def test_socket_object_attributes(self):
-        """ Ensures common socket attributes are exposed """
+        """Ensures common socket attributes are exposed"""
         self.start_dummy_server()
 
         sock = socket.create_connection((self.host, self.port))
@@ -258,7 +258,7 @@ class SocketProxyDummyServer(SocketDummyServerTestCase):
             readable, writable, exception = select.select(inputs, output, inputs)
 
             if exception:
-                # Error ocurred with either of the sockets, time to
+                # Error occurred with either of the sockets, time to
                 # wrap up, parent func will close sockets.
                 break
 
@@ -271,7 +271,7 @@ class SocketProxyDummyServer(SocketDummyServerTestCase):
                     read_socket = server_sock
                     write_socket = client_sock
 
-                # Ensure buffer is not full before writting
+                # Ensure buffer is not full before writing
                 if write_socket in writable:
                     try:
                         b = read_socket.recv(chunks)

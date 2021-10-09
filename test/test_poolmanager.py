@@ -1,18 +1,27 @@
 import socket
 from test import resolvesLocalhostFQDN
+from typing import Optional
+from unittest import mock
 from unittest.mock import patch
 
 import pytest
 
 from urllib3 import connection_from_url
+from urllib3.connectionpool import HTTPSConnectionPool
 from urllib3.exceptions import ClosedPoolError, LocationValueError
-from urllib3.poolmanager import PoolKey, PoolManager, key_fn_by_scheme
+from urllib3.poolmanager import (
+    _DEFAULT_BLOCKSIZE,
+    PoolKey,
+    PoolManager,
+    key_fn_by_scheme,
+)
 from urllib3.util import retry, timeout
+from urllib3.util.url import Url
 
 
 class TestPoolManager:
     @resolvesLocalhostFQDN()
-    def test_same_url(self):
+    def test_same_url(self) -> None:
         # Convince ourselves that normally we don't get the same object
         conn1 = connection_from_url("http://localhost:8081/foo")
         conn2 = connection_from_url("http://localhost:8081/bar")
@@ -35,7 +44,7 @@ class TestPoolManager:
 
         assert conn1 != conn2
 
-    def test_many_urls(self):
+    def test_many_urls(self) -> None:
         urls = [
             "http://localhost:8081/foo",
             "http://www.google.com/mail",
@@ -57,7 +66,7 @@ class TestPoolManager:
 
         assert len(connections) == 5
 
-    def test_manager_clear(self):
+    def test_manager_clear(self) -> None:
         p = PoolManager(5)
 
         conn_pool = p.connection_from_url("http://google.com")
@@ -79,12 +88,12 @@ class TestPoolManager:
         assert len(p.pools) == 0
 
     @pytest.mark.parametrize("url", ["http://@", None])
-    def test_nohost(self, url):
+    def test_nohost(self, url: Optional[str]) -> None:
         p = PoolManager(5)
         with pytest.raises(LocationValueError):
-            p.connection_from_url(url=url)
+            p.connection_from_url(url=url)  # type: ignore[arg-type]
 
-    def test_contextmanager(self):
+    def test_contextmanager(self) -> None:
         with PoolManager(1) as p:
             conn_pool = p.connection_from_url("http://google.com")
             assert len(p.pools) == 1
@@ -102,13 +111,14 @@ class TestPoolManager:
 
         assert len(p.pools) == 0
 
-    def test_http_pool_key_fields(self):
+    def test_http_pool_key_fields(self) -> None:
         """Assert the HTTPPoolKey fields are honored when selecting a pool."""
         connection_pool_kw = {
             "timeout": timeout.Timeout(3.14),
             "retries": retry.Retry(total=6, connect=2),
             "block": True,
             "source_address": "127.0.0.1",
+            "blocksize": _DEFAULT_BLOCKSIZE + 1,
         }
         p = PoolManager()
         conn_pools = [
@@ -129,7 +139,7 @@ class TestPoolManager:
         )
         assert all(isinstance(key, PoolKey) for key in p.pools.keys())
 
-    def test_https_pool_key_fields(self):
+    def test_https_pool_key_fields(self) -> None:
         """Assert the HTTPSPoolKey fields are honored when selecting a pool."""
         connection_pool_kw = {
             "timeout": timeout.Timeout(3.14),
@@ -141,6 +151,7 @@ class TestPoolManager:
             "cert_reqs": "CERT_REQUIRED",
             "ca_certs": "/root/path_to_pem",
             "ssl_version": "SSLv23_METHOD",
+            "blocksize": _DEFAULT_BLOCKSIZE + 1,
         }
         p = PoolManager()
         conn_pools = [
@@ -166,13 +177,13 @@ class TestPoolManager:
         assert all(pool in conn_pools for pool in dup_pools)
         assert all(isinstance(key, PoolKey) for key in p.pools.keys())
 
-    def test_default_pool_key_funcs_copy(self):
+    def test_default_pool_key_funcs_copy(self) -> None:
         """Assert each PoolManager gets a copy of ``pool_keys_by_scheme``."""
         p = PoolManager()
         assert p.key_fn_by_scheme == p.key_fn_by_scheme
         assert p.key_fn_by_scheme is not key_fn_by_scheme
 
-    def test_pools_keyed_with_from_host(self):
+    def test_pools_keyed_with_from_host(self) -> None:
         """Assert pools are still keyed correctly with connection_from_host."""
         ssl_kw = {
             "key_file": "/root/totally_legit.key",
@@ -181,7 +192,7 @@ class TestPoolManager:
             "ca_certs": "/root/path_to_pem",
             "ssl_version": "SSLv23_METHOD",
         }
-        p = PoolManager(5, **ssl_kw)
+        p = PoolManager(5, **ssl_kw)  # type: ignore[arg-type]
         conns = [p.connection_from_host("example.com", 443, scheme="https")]
 
         for k in ssl_kw:
@@ -195,7 +206,7 @@ class TestPoolManager:
             if i != j
         )
 
-    def test_https_connection_from_url_case_insensitive(self):
+    def test_https_connection_from_url_case_insensitive(self) -> None:
         """Assert scheme case is ignored when pooling HTTPS connections."""
         p = PoolManager()
         pool = p.connection_from_url("https://example.com/")
@@ -205,7 +216,7 @@ class TestPoolManager:
         assert pool is other_pool
         assert all(isinstance(key, PoolKey) for key in p.pools.keys())
 
-    def test_https_connection_from_host_case_insensitive(self):
+    def test_https_connection_from_host_case_insensitive(self) -> None:
         """Assert scheme case is ignored when getting the https key class."""
         p = PoolManager()
         pool = p.connection_from_host("example.com", scheme="https")
@@ -215,7 +226,7 @@ class TestPoolManager:
         assert pool is other_pool
         assert all(isinstance(key, PoolKey) for key in p.pools.keys())
 
-    def test_https_connection_from_context_case_insensitive(self):
+    def test_https_connection_from_context_case_insensitive(self) -> None:
         """Assert scheme case is ignored when getting the https key class."""
         p = PoolManager()
         context = {"scheme": "https", "host": "example.com", "port": "443"}
@@ -227,7 +238,7 @@ class TestPoolManager:
         assert pool is other_pool
         assert all(isinstance(key, PoolKey) for key in p.pools.keys())
 
-    def test_http_connection_from_url_case_insensitive(self):
+    def test_http_connection_from_url_case_insensitive(self) -> None:
         """Assert scheme case is ignored when pooling HTTP connections."""
         p = PoolManager()
         pool = p.connection_from_url("http://example.com/")
@@ -237,7 +248,7 @@ class TestPoolManager:
         assert pool is other_pool
         assert all(isinstance(key, PoolKey) for key in p.pools.keys())
 
-    def test_http_connection_from_host_case_insensitive(self):
+    def test_http_connection_from_host_case_insensitive(self) -> None:
         """Assert scheme case is ignored when getting the https key class."""
         p = PoolManager()
         pool = p.connection_from_host("example.com", scheme="http")
@@ -247,16 +258,17 @@ class TestPoolManager:
         assert pool is other_pool
         assert all(isinstance(key, PoolKey) for key in p.pools.keys())
 
-    def test_assert_hostname_and_fingerprint_flag(self):
+    def test_assert_hostname_and_fingerprint_flag(self) -> None:
         """Assert that pool manager can accept hostname and fingerprint flags."""
         fingerprint = "92:81:FE:85:F7:0C:26:60:EC:D6:B3:BF:93:CF:F9:71:CC:07:7D:0A"
         p = PoolManager(assert_hostname=True, assert_fingerprint=fingerprint)
         pool = p.connection_from_url("https://example.com/")
         assert 1 == len(p.pools)
+        assert isinstance(pool, HTTPSConnectionPool)
         assert pool.assert_hostname
         assert fingerprint == pool.assert_fingerprint
 
-    def test_http_connection_from_context_case_insensitive(self):
+    def test_http_connection_from_context_case_insensitive(self) -> None:
         """Assert scheme case is ignored when getting the https key class."""
         p = PoolManager()
         context = {"scheme": "http", "host": "example.com", "port": "8080"}
@@ -269,7 +281,9 @@ class TestPoolManager:
         assert all(isinstance(key, PoolKey) for key in p.pools.keys())
 
     @patch("urllib3.poolmanager.PoolManager.connection_from_pool_key")
-    def test_connection_from_context_strict_param(self, connection_from_pool_key):
+    def test_connection_from_context_strict_param(
+        self, connection_from_pool_key: mock.MagicMock
+    ) -> None:
         p = PoolManager()
         context = {
             "scheme": "http",
@@ -284,7 +298,9 @@ class TestPoolManager:
             "The 'strict' parameter is no longer needed on Python 3+. "
             "This will raise an error in urllib3 v3.0.0."
         )
-        assert any(record.message.args[0] == msg for record in records)
+        record = records[0]
+        assert isinstance(record.message, Warning)
+        assert record.message.args[0] == msg
 
         _, kwargs = connection_from_pool_key.call_args
         assert kwargs["request_context"] == {
@@ -293,11 +309,11 @@ class TestPoolManager:
             "port": 8080,
         }
 
-    def test_custom_pool_key(self):
+    def test_custom_pool_key(self) -> None:
         """Assert it is possible to define a custom key function."""
         p = PoolManager(10)
 
-        p.key_fn_by_scheme["http"] = lambda x: tuple(x["key"])
+        p.key_fn_by_scheme["http"] = lambda x: tuple(x["key"])  # type: ignore[assignment]
         pool1 = p.connection_from_url(
             "http://example.com", pool_kwargs={"key": "value"}
         )
@@ -312,7 +328,7 @@ class TestPoolManager:
         assert pool1 is pool3
         assert pool1 is not pool2
 
-    def test_override_pool_kwargs_url(self):
+    def test_override_pool_kwargs_url(self) -> None:
         """Assert overriding pool kwargs works with connection_from_url."""
         p = PoolManager()
         pool_kwargs = {"retries": 100, "block": True}
@@ -328,7 +344,7 @@ class TestPoolManager:
         assert 100 == override_pool.retries
         assert override_pool.block
 
-    def test_override_pool_kwargs_host(self):
+    def test_override_pool_kwargs_host(self) -> None:
         """Assert overriding pool kwargs works with connection_from_host"""
         p = PoolManager()
         pool_kwargs = {"retries": 100, "block": True}
@@ -344,7 +360,7 @@ class TestPoolManager:
         assert 100 == override_pool.retries
         assert override_pool.block
 
-    def test_pool_kwargs_socket_options(self):
+    def test_pool_kwargs_socket_options(self) -> None:
         """Assert passing socket options works with connection_from_host"""
         p = PoolManager(socket_options=[])
         override_opts = [
@@ -361,13 +377,13 @@ class TestPoolManager:
         assert default_pool.conn_kw["socket_options"] == []
         assert override_pool.conn_kw["socket_options"] == override_opts
 
-    def test_merge_pool_kwargs(self):
+    def test_merge_pool_kwargs(self) -> None:
         """Assert _merge_pool_kwargs works in the happy case"""
         p = PoolManager(retries=100)
         merged = p._merge_pool_kwargs({"new_key": "value"})
         assert {"retries": 100, "new_key": "value"} == merged
 
-    def test_merge_pool_kwargs_none(self):
+    def test_merge_pool_kwargs_none(self) -> None:
         """Assert false-y values to _merge_pool_kwargs result in defaults"""
         p = PoolManager(retries=100)
         merged = p._merge_pool_kwargs({})
@@ -375,20 +391,40 @@ class TestPoolManager:
         merged = p._merge_pool_kwargs(None)
         assert p.connection_pool_kw == merged
 
-    def test_merge_pool_kwargs_remove_key(self):
+    def test_merge_pool_kwargs_remove_key(self) -> None:
         """Assert keys can be removed with _merge_pool_kwargs"""
         p = PoolManager(retries=100)
         merged = p._merge_pool_kwargs({"retries": None})
         assert "retries" not in merged
 
-    def test_merge_pool_kwargs_invalid_key(self):
+    def test_merge_pool_kwargs_invalid_key(self) -> None:
         """Assert removing invalid keys with _merge_pool_kwargs doesn't break"""
         p = PoolManager(retries=100)
         merged = p._merge_pool_kwargs({"invalid_key": None})
         assert p.connection_pool_kw == merged
 
-    def test_pool_manager_no_url_absolute_form(self):
+    def test_pool_manager_no_url_absolute_form(self) -> None:
         """Valides we won't send a request with absolute form without a proxy"""
         p = PoolManager()
-        assert p._proxy_requires_url_absolute_form("http://example.com") is False
-        assert p._proxy_requires_url_absolute_form("https://example.com") is False
+        assert p._proxy_requires_url_absolute_form(Url("http://example.com")) is False
+        assert p._proxy_requires_url_absolute_form(Url("https://example.com")) is False
+
+    @pytest.mark.parametrize(
+        "input_blocksize,expected_blocksize",
+        [
+            (_DEFAULT_BLOCKSIZE, _DEFAULT_BLOCKSIZE),
+            (None, _DEFAULT_BLOCKSIZE),
+            (8192, 8192),
+        ],
+    )
+    def test_poolmanager_blocksize(
+        self, input_blocksize: int, expected_blocksize: int
+    ) -> None:
+        """Assert PoolManager sets blocksize properly"""
+        p = PoolManager()
+
+        pool_blocksize = p.connection_from_url(
+            "http://example.com", {"blocksize": input_blocksize}
+        )
+        assert pool_blocksize.conn_kw["blocksize"] == expected_blocksize
+        assert pool_blocksize._get_conn().blocksize == expected_blocksize  # type: ignore[attr-defined]

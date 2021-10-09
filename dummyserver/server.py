@@ -12,7 +12,7 @@ import sys
 import threading
 import warnings
 from datetime import datetime
-from typing import Callable, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import tornado.httpserver
 import tornado.ioloop
@@ -28,7 +28,7 @@ from urllib3.util import ALPN_PROTOCOLS, resolve_cert_reqs, resolve_ssl_version
 log = logging.getLogger(__name__)
 
 CERTS_PATH = os.path.join(os.path.dirname(__file__), "certs")
-DEFAULT_CERTS = {
+DEFAULT_CERTS: Dict[str, Any] = {
     "certfile": os.path.join(CERTS_PATH, "server.crt"),
     "keyfile": os.path.join(CERTS_PATH, "server.key"),
     "cert_reqs": ssl.CERT_OPTIONAL,
@@ -224,7 +224,7 @@ if __name__ == "__main__":
 
 def encrypt_key_pem(private_key_pem: trustme.Blob, password: bytes) -> trustme.Blob:
     private_key = serialization.load_pem_private_key(
-        private_key_pem.bytes(), password=None, backend=default_backend()  # type: ignore[no-untyped-call]
+        private_key_pem.bytes(), password=None, backend=default_backend()
     )
     encrypted_key = private_key.private_bytes(
         serialization.Encoding.PEM,

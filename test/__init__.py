@@ -5,6 +5,7 @@ import platform
 import socket
 import sys
 import warnings
+from importlib.abc import Loader, MetaPathFinder
 from types import ModuleType, TracebackType
 from typing import (
     TYPE_CHECKING,
@@ -13,8 +14,10 @@ from typing import (
     Dict,
     List,
     Optional,
+    Sequence,
     Type,
     TypeVar,
+    Union,
     cast,
 )
 
@@ -31,6 +34,7 @@ except ImportError:
 import functools
 
 from urllib3 import util
+from urllib3.connectionpool import ConnectionPool
 from urllib3.exceptions import HTTPWarning
 from urllib3.util import ssl_
 
@@ -77,9 +81,11 @@ LONG_TIMEOUT = 0.01
 if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS") == "true":
     LONG_TIMEOUT = 0.5
 
+DUMMY_POOL = ConnectionPool("dummy")
+
 
 def _can_resolve(host: str) -> bool:
-    """ Returns True if the system can resolve host to an address. """
+    """Returns True if the system can resolve host to an address."""
     try:
         socket.getaddrinfo(host, None, socket.AF_UNSPEC)
         return True
@@ -88,7 +94,7 @@ def _can_resolve(host: str) -> bool:
 
 
 def has_alpn(ctx_cls: Optional[Type["ssl.SSLContext"]] = None) -> bool:
-    """ Detect if ALPN support is enabled. """
+    """Detect if ALPN support is enabled."""
     ctx_cls = ctx_cls or util.SSLContext
     ctx = ctx_cls(protocol=ssl_.PROTOCOL_TLS)  # type: ignore[misc]
     try:
@@ -270,7 +276,12 @@ class LogRecorder:
         return False
 
 
-class ImportBlocker:
+class ImportBlockerLoader(Loader):
+    def load_module(self, fullname: str) -> ModuleType:
+        raise ImportError(f"import of {fullname} is blocked")
+
+
+class ImportBlocker(MetaPathFinder):
     """
     Block Imports
 
@@ -282,17 +293,14 @@ class ImportBlocker:
         self.namestoblock = namestoblock
 
     def find_module(
-        self, fullname: str, path: Optional[str] = None
-    ) -> Optional["ImportBlocker"]:
+        self, fullname: str, path: Optional[Sequence[Union[bytes, str]]] = None
+    ) -> Optional[Loader]:
         if fullname in self.namestoblock:
-            return self
+            return ImportBlockerLoader()
         return None
 
-    def load_module(self, fullname: str) -> None:
-        raise ImportError(f"import of {fullname} is blocked")
 
-
-class ModuleStash:
+class ModuleStash(MetaPathFinder):
     """
     Stashes away previously imported modules
 

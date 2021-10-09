@@ -67,6 +67,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     BinaryIO,
+    Dict,
     Generator,
     List,
     Optional,
@@ -163,6 +164,15 @@ if hasattr(ssl, "PROTOCOL_TLSv1_2"):
         SecurityConst.kTLSProtocol12,
         SecurityConst.kTLSProtocol12,
     )
+
+
+_tls_version_to_st: Dict[int, int] = {
+    ssl.TLSVersion.MINIMUM_SUPPORTED: SecurityConst.kTLSProtocol1,
+    ssl.TLSVersion.TLSv1: SecurityConst.kTLSProtocol1,
+    ssl.TLSVersion.TLSv1_1: SecurityConst.kTLSProtocol11,
+    ssl.TLSVersion.TLSv1_2: SecurityConst.kTLSProtocol12,
+    ssl.TLSVersion.MAXIMUM_SUPPORTED: SecurityConst.kTLSProtocol12,
+}
 
 
 def inject_into_urllib3() -> None:
@@ -385,9 +395,11 @@ class WrappedSocket:
             if trust_result in successes:
                 return
             reason = f"error code: {int(trust_result)}"
+            exc = None
         except Exception as e:
             # Do not trust on error
             reason = f"exception: {e!r}"
+            exc = e
 
         # SecureTransport does not send an alert nor shuts down the connection.
         rec = _build_tls_unknown_ca_alert(self.version())
@@ -398,7 +410,7 @@ class WrappedSocket:
         opts = struct.pack("ii", 1, 0)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, opts)
         self.close()
-        raise ssl.SSLError(f"certificate verify failed, {reason}")
+        raise ssl.SSLError(f"certificate verify failed, {reason}") from exc
 
     def _evaluate_trust(self, trust_bundle: bytes) -> int:
         # We want data in memory, so load it up.
@@ -751,7 +763,11 @@ class SecureTransportContext:
     """
 
     def __init__(self, protocol: int) -> None:
-        self._min_version, self._max_version = _protocol_to_min_max[protocol]
+        self._minimum_version: int = ssl.TLSVersion.MINIMUM_SUPPORTED
+        self._maximum_version: int = ssl.TLSVersion.MAXIMUM_SUPPORTED
+        if protocol not in (None, ssl.PROTOCOL_TLS, ssl.PROTOCOL_TLS_CLIENT):
+            self._min_version, self._max_version = _protocol_to_min_max[protocol]
+
         self._options = 0
         self._verify = False
         self._trust_bundle: Optional[bytes] = None
@@ -880,11 +896,27 @@ class SecureTransportContext:
             server_hostname,
             self._verify,
             self._trust_bundle,
-            self._min_version,
-            self._max_version,
+            _tls_version_to_st[self._minimum_version],
+            _tls_version_to_st[self._maximum_version],
             self._client_cert,
             self._client_key,
             self._client_key_passphrase,
             self._alpn_protocols,
         )
         return wrapped_socket
+
+    @property
+    def minimum_version(self) -> int:
+        return self._minimum_version
+
+    @minimum_version.setter
+    def minimum_version(self, minimum_version: int) -> None:
+        self._minimum_version = minimum_version
+
+    @property
+    def maximum_version(self) -> int:
+        return self._maximum_version
+
+    @maximum_version.setter
+    def maximum_version(self, maximum_version: int) -> None:
+        self._maximum_version = maximum_version

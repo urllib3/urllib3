@@ -2,7 +2,7 @@ import binascii
 import codecs
 import os
 from io import BytesIO
-from typing import Dict, Iterable, Optional, Sequence, Tuple, Union
+from typing import Iterable, Mapping, Optional, Sequence, Tuple, Union
 
 from .fields import _TYPE_FIELD_VALUE_TUPLE, RequestField
 
@@ -13,7 +13,7 @@ _TYPE_FIELDS_SEQUENCE = Sequence[
 ]
 _TYPE_FIELDS = Union[
     _TYPE_FIELDS_SEQUENCE,
-    Dict[str, _TYPE_FIELD_VALUE_TUPLE],
+    Mapping[str, _TYPE_FIELD_VALUE_TUPLE],
 ]
 
 
@@ -34,7 +34,7 @@ def iter_field_objects(fields: _TYPE_FIELDS) -> Iterable[RequestField]:
     """
     iterable: Iterable[Union[RequestField, Tuple[str, _TYPE_FIELD_VALUE_TUPLE]]]
 
-    if isinstance(fields, dict):
+    if isinstance(fields, Mapping):
         iterable = fields.items()
     else:
         iterable = fields

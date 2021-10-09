@@ -7,8 +7,19 @@ import warnings
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, TypeVar, Union, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Mapping,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
+from ._request_methods import RequestMethods
 from .connection import (
     _TYPE_BODY,
     BaseSSLError,
@@ -19,6 +30,8 @@ from .connection import (
     HTTPSConnection,
     ProxyConfig,
     VerifiedHTTPSConnection,
+    _should_wrap_https_proxy_error,
+    _wrap_https_proxy_error,
 )
 from .connection import port_by_scheme as port_by_scheme
 from .exceptions import (
@@ -38,7 +51,6 @@ from .exceptions import (
     SSLError,
     TimeoutError,
 )
-from .request import RequestMethods
 from .response import BaseHTTPResponse, HTTPResponse
 from .util.connection import is_connection_dropped
 from .util.proxy import connection_requires_http_tunnel
@@ -53,6 +65,8 @@ from .util.url import parse_url
 from .util.util import to_str
 
 if TYPE_CHECKING:
+    import ssl
+
     from typing_extensions import Literal
 
 log = logging.getLogger(__name__)
@@ -192,7 +206,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             timeout = Timeout.from_float(timeout)
 
         if retries is None:
-            retries = Retry.DEFAULT  # type: ignore[attr-defined]
+            retries = Retry.DEFAULT
 
         self.timeout = timeout
         self.retries = retries
@@ -263,14 +277,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             conn = self.pool.get(block=self.block, timeout=timeout)
 
         except AttributeError:  # self.pool is None
-            raise ClosedPoolError(self, "Pool is closed.")  # Defensive:
+            raise ClosedPoolError(self, "Pool is closed.") from None  # Defensive:
 
         except queue.Empty:
             if self.block:
                 raise EmptyPoolError(
                     self,
                     "Pool is empty and a new connection can't be opened due to blocking mode.",
-                )
+                ) from None
             pass  # Oh well, we'll create a new connection then
 
         # If this is a persistent connection, check if it got disconnected
@@ -317,7 +331,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     raise FullPoolError(
                         self,
                         "Pool reached maximum size and no more connections are allowed.",
-                    )
+                    ) from None
 
                 log.warning(
                     "Connection pool is full, discarding connection: %s", self.host
@@ -338,7 +352,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         pass
 
     def _get_timeout(self, timeout: _TYPE_TIMEOUT) -> Timeout:
-        """ Helper that always returns a :class:`urllib3.util.Timeout` """
+        """Helper that always returns a :class:`urllib3.util.Timeout`"""
         if timeout is _Default:
             return self.timeout.clone()
 
@@ -360,13 +374,13 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         if isinstance(err, SocketTimeout):
             raise ReadTimeoutError(
                 self, url, f"Read timed out. (read timeout={timeout_value})"
-            )
+            ) from err
 
         # See the above comment about EAGAIN in Python 3.
         if hasattr(err, "errno") and err.errno in _blocking_errnos:
             raise ReadTimeoutError(
                 self, url, f"Read timed out. (read timeout={timeout_value})"
-            )
+            ) from err
 
     def _make_request(
         self,
@@ -902,6 +916,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         key_password: Optional[str] = None,
         ca_certs: Optional[str] = None,
         ssl_version: Optional[Union[int, str]] = None,
+        ssl_minimum_version: Optional["ssl.TLSVersion"] = None,
+        ssl_maximum_version: Optional["ssl.TLSVersion"] = None,
         assert_hostname: Optional[Union[str, "Literal[False]"]] = None,
         assert_fingerprint: Optional[str] = None,
         ca_cert_dir: Optional[str] = None,
@@ -928,6 +944,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self.ca_certs = ca_certs
         self.ca_cert_dir = ca_cert_dir
         self.ssl_version = ssl_version
+        self.ssl_minimum_version = ssl_minimum_version
+        self.ssl_maximum_version = ssl_maximum_version
         self.assert_hostname = assert_hostname
         self.assert_fingerprint = assert_fingerprint
 
@@ -949,6 +967,9 @@ class HTTPSConnectionPool(HTTPConnectionPool):
                 assert_fingerprint=self.assert_fingerprint,
             )
             conn.ssl_version = self.ssl_version
+            conn.ssl_minimum_version = self.ssl_minimum_version
+            conn.ssl_maximum_version = self.ssl_maximum_version
+
         return conn
 
     def _prepare_proxy(self, conn: HTTPSConnection) -> None:  # type: ignore[override]
@@ -1008,8 +1029,18 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         super()._validate_conn(conn)
 
         # Force connect early to allow us to validate the connection.
-        if not conn.sock:
-            conn.connect()
+        try:
+            if not conn.sock:
+                conn.connect()
+        except Exception as e:
+            # We only want to wrap errors for HTTPS proxies
+            if (
+                not self.proxy
+                or self.proxy.scheme != "https"
+                or not _should_wrap_https_proxy_error(e)
+            ):
+                raise
+            _wrap_https_proxy_error(e, cast(str, self.proxy.host))
 
         if not conn.is_verified:
             warnings.warn(
@@ -1023,7 +1054,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             )
 
 
-def connection_from_url(url: str, **kw: Any) -> ConnectionPool:
+def connection_from_url(url: str, **kw: Any) -> HTTPConnectionPool:
     """
     Given a url, return an :class:`.ConnectionPool` instance of its host.
 

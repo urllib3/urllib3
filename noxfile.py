@@ -159,23 +159,41 @@ def lint(session: nox.Session) -> None:
 @nox.session(python="3.8")
 def mypy(session: nox.Session) -> None:
     """Run mypy."""
-    session.install("mypy==0.910")
-    session.install("idna>=2.0.0")
-    session.install("cryptography>=1.3.4")
-    session.install("tornado>=6.1")
-    session.install("pytest>=6.2")
-    session.install("trustme==0.9.0")
-    session.install("types-python-dateutil")
-    session.install("nox")
+    session.install("-r", "mypy-requirements.txt")
     session.run("mypy", "--version")
     session.run(
         "mypy",
-        "src/urllib3",
         "dummyserver",
         "noxfile.py",
+        "src/urllib3",
         "test/__init__.py",
+        "test/with_dummyserver/test_connectionpool.py",
+        "test/with_dummyserver/test_chunked_transfer.py",
+        "test/with_dummyserver/test_https.py",
+        "test/with_dummyserver/test_no_ssl.py",
+        "test/with_dummyserver/test_poolmanager.py",
+        "test/with_dummyserver/test_proxy_poolmanager.py",
+        "test/with_dummyserver/test_socketlevel.py",
         "test/conftest.py",
+        "test/contrib/test_pyopenssl_dependencies.py",
+        "test/contrib/test_pyopenssl.py",
+        "test/contrib/test_securetransport.py",
+        "test/contrib/test_socks.py",
         "test/port_helpers.py",
+        "test/test_collections.py",
+        "test/test_compatibility.py",
+        "test/test_connection.py",
+        "test/test_exceptions.py",
+        "test/test_fields.py",
+        "test/test_filepost.py",
+        "test/test_no_ssl.py",
+        "test/test_poolmanager.py",
+        "test/test_proxymanager.py",
+        "test/test_queue_monkeypatch.py",
+        "test/test_retry.py",
+        "test/test_ssl.py",
+        "test/test_util.py",
+        "test/test_wait.py",
         "test/tz_stub.py",
     )
 

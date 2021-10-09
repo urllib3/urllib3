@@ -1,4 +1,5 @@
 import io
+import json as _json
 import logging
 import zlib
 from contextlib import contextmanager
@@ -200,6 +201,7 @@ class BaseHTTPResponse(io.IOBase):
         reason: Optional[str],
         decode_content: bool,
         request_url: Optional[str],
+        retries: Optional[Retry] = None,
     ) -> None:
         if isinstance(headers, HTTPHeaderDict):
             self.headers = headers
@@ -210,6 +212,7 @@ class BaseHTTPResponse(io.IOBase):
         self.reason = reason
         self.decode_content = decode_content
         self.request_url: Optional[str]
+        self.retries = retries
 
         self.chunked = False
         tr_enc = self.headers.get("transfer-encoding", "").lower()
@@ -236,6 +239,19 @@ class BaseHTTPResponse(io.IOBase):
     def data(self) -> bytes:
         raise NotImplementedError()
 
+    def json(self) -> Any:
+        """
+        Parses the body of the HTTP response as JSON.
+
+        To use a custom JSON decoder pass the result of :attr:`HTTPResponse.data` to the decoder.
+
+        This method can raise either `UnicodeDecodeError` or `json.JSONDecodeError`.
+
+        Read more :ref:`here <json>`.
+        """
+        data = self.data.decode("utf-8")
+        return _json.loads(data)
+
     @property
     def url(self) -> Optional[str]:
         raise NotImplementedError()
@@ -249,7 +265,7 @@ class BaseHTTPResponse(io.IOBase):
         raise NotImplementedError()
 
     def stream(
-        self, amt: int = 2 ** 16, decode_content: Optional[bool] = None
+        self, amt: Optional[int] = 2 ** 16, decode_content: Optional[bool] = None
     ) -> Iterator[bytes]:
         raise NotImplementedError()
 
@@ -314,7 +330,7 @@ class BaseHTTPResponse(io.IOBase):
                 "Received response with content-encoding: %s, but "
                 "failed to decode it." % content_encoding,
                 e,
-            )
+            ) from e
         if flush_decoder:
             data += self._flush_decoder()
 
@@ -415,9 +431,9 @@ class HTTPResponse(BaseHTTPResponse):
             reason=reason,
             decode_content=decode_content,
             request_url=request_url,
+            retries=retries,
         )
 
-        self.retries = retries
         self.enforce_content_length = enforce_content_length
         self.auto_close = auto_close
 
@@ -565,22 +581,22 @@ class HTTPResponse(BaseHTTPResponse):
             try:
                 yield
 
-            except SocketTimeout:
+            except SocketTimeout as e:
                 # FIXME: Ideally we'd like to include the url in the ReadTimeoutError but
                 # there is yet no clean way to get at it from this context.
-                raise ReadTimeoutError(self._pool, None, "Read timed out.")  # type: ignore[arg-type]
+                raise ReadTimeoutError(self._pool, None, "Read timed out.") from e  # type: ignore[arg-type]
 
             except BaseSSLError as e:
                 # FIXME: Is there a better way to differentiate between SSLErrors?
                 if "read operation timed out" not in str(e):
                     # SSL errors related to framing/MAC get wrapped and reraised here
-                    raise SSLError(e)
+                    raise SSLError(e) from e
 
-                raise ReadTimeoutError(self._pool, None, "Read timed out.")  # type: ignore[arg-type]
+                raise ReadTimeoutError(self._pool, None, "Read timed out.") from e  # type: ignore[arg-type]
 
             except (HTTPException, OSError) as e:
                 # This includes IncompleteRead.
-                raise ProtocolError(f"Connection broken: {e!r}", e)
+                raise ProtocolError(f"Connection broken: {e!r}", e) from e
 
             # If no exception is thrown, we should avoid cleaning up
             # unnecessarily.
@@ -687,7 +703,7 @@ class HTTPResponse(BaseHTTPResponse):
         return data
 
     def stream(
-        self, amt: int = 2 ** 16, decode_content: Optional[bool] = None
+        self, amt: Optional[int] = 2 ** 16, decode_content: Optional[bool] = None
     ) -> Generator[bytes, None, None]:
         """
         A generator wrapper for the read() method. A call will block until
@@ -804,7 +820,7 @@ class HTTPResponse(BaseHTTPResponse):
         except ValueError:
             # Invalid chunked protocol response, abort.
             self.close()
-            raise InvalidChunkLength(self, line)
+            raise InvalidChunkLength(self, line) from None
 
     def _handle_chunk(self, amt: Optional[int]) -> bytes:
         returned_chunk = None

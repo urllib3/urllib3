@@ -28,7 +28,7 @@ v1.26.x Security and Bug Fixes
 
 Thanks to support from `Tidelift <https://tidelift.com/subscription/pkg/pypi-urllib3>`_
 we're able to continue supporting v1.26.x releases with
-both security and bug fixes for the forseeable future 💖
+both security and bug fixes for the foreseeable future 💖
 
 If your organization relies on urllib3 and is interested in continuing support you can learn
 more about the `Tidelift Subscription for Enterprise <https://tidelift.com/subscription/pkg/pypi-urllib3?utm_source=pypi-urllib3&utm_medium=referral&utm_campaign=docs>`_.
@@ -55,7 +55,7 @@ over the wire.
 
 If you still need to use TLS 1.0 or 1.1 in your application
 you can still upgrade to v2.0, you'll only need to set
-``ssl_version`` to the proper values to continue using
+``ssl_minimum_version`` to the proper value to continue using
 legacy TLS versions.
 
 

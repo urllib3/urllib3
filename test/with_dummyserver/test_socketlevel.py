@@ -9,6 +9,7 @@ import socket
 import ssl
 import tempfile
 from collections import OrderedDict
+from pathlib import Path
 from test import (
     LONG_TIMEOUT,
     SHORT_TIMEOUT,
@@ -18,6 +19,9 @@ from test import (
     resolvesLocalhostFQDN,
 )
 from threading import Event
+from typing import Any, List, Optional
+from typing import OrderedDict as OrderedDictType
+from typing import Tuple, Union
 from unittest import mock
 
 import pytest
@@ -30,10 +34,11 @@ from dummyserver.server import (
     get_unreachable_address,
 )
 from dummyserver.testcase import SocketDummyServerTestCase, consume_socket
-from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, util
+from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, ProxyManager, util
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import HTTPConnection, _get_default_user_agent
 from urllib3.exceptions import (
+    HTTPSProxyError,
     MaxRetryError,
     ProtocolError,
     ProxyError,
@@ -52,8 +57,8 @@ pytestmark = pytest.mark.flaky
 
 
 class TestCookies(SocketDummyServerTestCase):
-    def test_multi_setcookie(self):
-        def multicookie_response_handler(listener):
+    def test_multi_setcookie(self) -> None:
+        def multicookie_response_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
             buf = b""
@@ -76,13 +81,13 @@ class TestCookies(SocketDummyServerTestCase):
 
 
 class TestSNI(SocketDummyServerTestCase):
-    def test_hostname_in_first_request_packet(self):
+    def test_hostname_in_first_request_packet(self) -> None:
         if not util.HAS_SNI:
             pytest.skip("SNI-support not available")
         done_receiving = Event()
         self.buf = b""
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
             self.buf = sock.recv(65536)  # We only accept one packet
@@ -103,14 +108,14 @@ class TestSNI(SocketDummyServerTestCase):
 
 
 class TestALPN(SocketDummyServerTestCase):
-    def test_alpn_protocol_in_first_request_packet(self):
+    def test_alpn_protocol_in_first_request_packet(self) -> None:
         if not has_alpn():
             pytest.skip("ALPN-support not available")
 
         done_receiving = Event()
         self.buf = b""
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
             self.buf = sock.recv(65536)  # We only accept one packet
@@ -137,7 +142,7 @@ class TestClientCerts(SocketDummyServerTestCase):
     """
 
     @classmethod
-    def setup_class(cls):
+    def setup_class(cls) -> None:
         cls.tmpdir = tempfile.mkdtemp()
         ca = trustme.CA()
         cert = ca.issue_cert("localhost")
@@ -155,10 +160,11 @@ class TestClientCerts(SocketDummyServerTestCase):
         cert.private_key_pem.write_to_path(cls.key_path)
         encrypted_key.write_to_path(cls.password_key_path)
 
-    def teardown_class(cls):
+    @classmethod
+    def teardown_class(cls) -> None:
         shutil.rmtree(cls.tmpdir)
 
-    def _wrap_in_ssl(self, sock):
+    def _wrap_in_ssl(self, sock: socket.socket) -> ssl.SSLSocket:
         """
         Given a single socket, wraps it in TLS.
         """
@@ -172,7 +178,7 @@ class TestClientCerts(SocketDummyServerTestCase):
             server_side=True,
         )
 
-    def test_client_certs_two_files(self):
+    def test_client_certs_two_files(self) -> None:
         """
         Having a client cert in a separate file to its associated key works
         properly.
@@ -180,7 +186,7 @@ class TestClientCerts(SocketDummyServerTestCase):
         done_receiving = Event()
         client_certs = []
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             sock = self._wrap_in_ssl(sock)
 
@@ -216,7 +222,7 @@ class TestClientCerts(SocketDummyServerTestCase):
 
             assert len(client_certs) == 1
 
-    def test_client_certs_one_file(self):
+    def test_client_certs_one_file(self) -> None:
         """
         Having a client cert and its associated private key in just one file
         works properly.
@@ -224,7 +230,7 @@ class TestClientCerts(SocketDummyServerTestCase):
         done_receiving = Event()
         client_certs = []
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             sock = self._wrap_in_ssl(sock)
 
@@ -259,13 +265,13 @@ class TestClientCerts(SocketDummyServerTestCase):
 
             assert len(client_certs) == 1
 
-    def test_missing_client_certs_raises_error(self):
+    def test_missing_client_certs_raises_error(self) -> None:
         """
         Having client certs not be present causes an error.
         """
         done_receiving = Event()
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
             try:
@@ -286,21 +292,21 @@ class TestClientCerts(SocketDummyServerTestCase):
             done_receiving.set()
 
     @requires_ssl_context_keyfile_password()
-    def test_client_cert_with_string_password(self):
+    def test_client_cert_with_string_password(self) -> None:
         self.run_client_cert_with_password_test("letmein")
 
     @requires_ssl_context_keyfile_password()
-    def test_client_cert_with_bytes_password(self):
+    def test_client_cert_with_bytes_password(self) -> None:
         self.run_client_cert_with_password_test(b"letmein")
 
-    def run_client_cert_with_password_test(self, password):
+    def run_client_cert_with_password_test(self, password: Union[bytes, str]) -> None:
         """
         Tests client certificate password functionality
         """
         done_receiving = Event()
         client_certs = []
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             sock = self._wrap_in_ssl(sock)
 
@@ -323,6 +329,7 @@ class TestClientCerts(SocketDummyServerTestCase):
             sock.close()
 
         self._start_server(socket_handler)
+        assert ssl_.SSLContext is not None
         ssl_context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
         ssl_context.load_cert_chain(
             certfile=self.cert_path, keyfile=self.password_key_path, password=password
@@ -341,12 +348,13 @@ class TestClientCerts(SocketDummyServerTestCase):
             assert len(client_certs) == 1
 
     @requires_ssl_context_keyfile_password()
-    def test_load_keyfile_with_invalid_password(self):
+    def test_load_keyfile_with_invalid_password(self) -> None:
+        assert ssl_.SSLContext is not None
         context = ssl_.SSLContext(ssl_.PROTOCOL_SSLv23)
 
         # Different error is raised depending on context.
         if ssl_.IS_PYOPENSSL:
-            from OpenSSL.SSL import Error
+            from OpenSSL.SSL import Error  # type: ignore[import]
 
             expected_error = Error
         else:
@@ -361,14 +369,14 @@ class TestClientCerts(SocketDummyServerTestCase):
 
 
 class TestSocketClosing(SocketDummyServerTestCase):
-    def test_recovery_when_server_closes_connection(self):
+    def test_recovery_when_server_closes_connection(self) -> None:
         # Does the pool work seamlessly if an open connection in the
         # connection pool gets hung up on by the server, then reaches
         # the front of the queue again?
 
         done_closing = Event()
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             for i in 0, 1:
                 sock = listener.accept()[0]
 
@@ -402,18 +410,19 @@ class TestSocketClosing(SocketDummyServerTestCase):
             assert response.status == 200
             assert response.data == b"Response 1"
 
-    def test_connection_refused(self):
+    def test_connection_refused(self) -> None:
         # Does the pool retry if there is no listener on the port?
         host, port = get_unreachable_address()
         with HTTPConnectionPool(host, port, maxsize=3, block=True) as http:
             with pytest.raises(MaxRetryError):
                 http.request("GET", "/", retries=0, release_conn=False)
+            assert http.pool is not None
             assert http.pool.qsize() == http.pool.maxsize
 
-    def test_connection_read_timeout(self):
+    def test_connection_read_timeout(self) -> None:
         timed_out = Event()
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             while not sock.recv(65536).endswith(b"\r\n\r\n"):
                 pass
@@ -436,12 +445,13 @@ class TestSocketClosing(SocketDummyServerTestCase):
             finally:
                 timed_out.set()
 
+            assert http.pool is not None
             assert http.pool.qsize() == http.pool.maxsize
 
-    def test_read_timeout_dont_retry_method_not_in_allowlist(self):
+    def test_read_timeout_dont_retry_method_not_in_allowlist(self) -> None:
         timed_out = Event()
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             sock.recv(65536)
             timed_out.wait()
@@ -457,11 +467,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
             finally:
                 timed_out.set()
 
-    def test_https_connection_read_timeout(self):
-        """ Handshake timeouts should fail with a Timeout"""
+    def test_https_connection_read_timeout(self) -> None:
+        """Handshake timeouts should fail with a Timeout"""
         timed_out = Event()
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             while not sock.recv(65536):
                 pass
@@ -482,13 +492,13 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         # second ReadTimeoutError due to errno
         with HTTPSConnectionPool(host=self.host):
-            err = mock.Mock()
+            err = OSError()
             err.errno = errno.EAGAIN
             with pytest.raises(ReadTimeoutError):
                 pool._raise_timeout(err, "", 0)
 
-    def test_timeout_errors_cause_retries(self):
-        def socket_handler(listener):
+    def test_timeout_errors_cause_retries(self) -> None:
+        def socket_handler(listener: socket.socket) -> None:
             sock_timeout = listener.accept()[0]
 
             # Wait for a second request before closing the first socket.
@@ -531,10 +541,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
         finally:
             socket.setdefaulttimeout(default_timeout)
 
-    def test_delayed_body_read_timeout(self):
+    def test_delayed_body_read_timeout(self) -> None:
         timed_out = Event()
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             buf = b""
             body = "Hi"
@@ -568,10 +578,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
             finally:
                 timed_out.set()
 
-    def test_delayed_body_read_timeout_with_preload(self):
+    def test_delayed_body_read_timeout_with_preload(self) -> None:
         timed_out = Event()
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             buf = b""
             body = "Hi"
@@ -598,11 +608,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
             finally:
                 timed_out.set()
 
-    def test_incomplete_response(self):
+    def test_incomplete_response(self) -> None:
         body = "Response"
         partial_body = body[:2]
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
             # Consume request
@@ -628,10 +638,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
             with pytest.raises(ProtocolError):
                 response.read()
 
-    def test_retry_weird_http_version(self):
-        """ Retry class should handle httplib.BadStatusLine errors properly """
+    def test_retry_weird_http_version(self) -> None:
+        """Retry class should handle httplib.BadStatusLine errors properly"""
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             # First request.
             # Pause before responding so the first request times out.
@@ -678,10 +688,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
             assert response.status == 200
             assert response.data == b"foo"
 
-    def test_connection_cleanup_on_read_timeout(self):
+    def test_connection_cleanup_on_read_timeout(self) -> None:
         timed_out = Event()
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             buf = b""
             body = "Hi"
@@ -701,6 +711,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
         with HTTPConnectionPool(self.host, self.port) as pool:
+            assert pool.pool is not None
             poolsize = pool.pool.qsize()
             response = pool.urlopen(
                 "GET", "/", retries=0, preload_content=False, timeout=LONG_TIMEOUT
@@ -712,11 +723,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
             finally:
                 timed_out.set()
 
-    def test_connection_cleanup_on_protocol_error_during_read(self):
+    def test_connection_cleanup_on_protocol_error_during_read(self) -> None:
         body = "Response"
         partial_body = body[:2]
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
             # Consume request
@@ -738,6 +749,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
         with HTTPConnectionPool(self.host, self.port) as pool:
+            assert pool.pool is not None
             poolsize = pool.pool.qsize()
             response = pool.request("GET", "/", retries=0, preload_content=False)
 
@@ -745,10 +757,10 @@ class TestSocketClosing(SocketDummyServerTestCase):
                 response.read()
             assert poolsize == pool.pool.qsize()
 
-    def test_connection_closed_on_read_timeout_preload_false(self):
+    def test_connection_closed_on_read_timeout_preload_false(self) -> None:
         timed_out = Event()
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
             # Consume request
@@ -812,11 +824,11 @@ class TestSocketClosing(SocketDummyServerTestCase):
             )
             assert len(response.read()) == 8
 
-    def test_closing_response_actually_closes_connection(self):
+    def test_closing_response_actually_closes_connection(self) -> None:
         done_closing = Event()
         complete = Event()
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
             buf = b""
@@ -851,7 +863,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             successful = complete.wait(timeout=LONG_TIMEOUT)
             assert successful, "Timed out waiting for connection close"
 
-    def test_release_conn_param_is_respected_after_timeout_retry(self):
+    def test_release_conn_param_is_respected_after_timeout_retry(self) -> None:
         """For successful ```urlopen(release_conn=False)```,
         the connection isn't released, even after a retry.
 
@@ -864,7 +876,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
         [1] <https://github.com/urllib3/urllib3/issues/651>
         """
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             consume_socket(sock)
 
@@ -910,6 +922,7 @@ class TestSocketClosing(SocketDummyServerTestCase):
             # The connection should still be on the response object, and none
             # should be in the pool. We opened two though.
             assert pool.num_connections == 2
+            assert pool.pool is not None
             assert pool.pool.qsize() == 0
             assert response.connection is not None
 
@@ -920,8 +933,8 @@ class TestSocketClosing(SocketDummyServerTestCase):
 
 
 class TestProxyManager(SocketDummyServerTestCase):
-    def test_simple(self):
-        def echo_socket_handler(listener):
+    def test_simple(self) -> None:
+        def echo_socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
             buf = b""
@@ -960,8 +973,8 @@ class TestProxyManager(SocketDummyServerTestCase):
                 ]
             )
 
-    def test_headers(self):
-        def echo_socket_handler(listener):
+    def test_headers(self) -> None:
+        def echo_socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
             buf = b""
@@ -995,10 +1008,10 @@ class TestProxyManager(SocketDummyServerTestCase):
             # OrderedDict/MultiDict).
             assert b"For The Proxy: YEAH!\r\n" in r.data
 
-    def test_retries(self):
+    def test_retries(self) -> None:
         close_event = Event()
 
-        def echo_socket_handler(listener):
+        def echo_socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             # First request, which should fail
             sock.close()
@@ -1042,8 +1055,8 @@ class TestProxyManager(SocketDummyServerTestCase):
                     retries=False,
                 )
 
-    def test_connect_reconn(self):
-        def proxy_ssl_one(listener):
+    def test_connect_reconn(self) -> None:
+        def proxy_ssl_one(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
             buf = b""
@@ -1083,7 +1096,7 @@ class TestProxyManager(SocketDummyServerTestCase):
             )
             ssl_sock.close()
 
-        def echo_socket_handler(listener):
+        def echo_socket_handler(listener: socket.socket) -> None:
             proxy_ssl_one(listener)
             proxy_ssl_one(listener)
 
@@ -1098,10 +1111,10 @@ class TestProxyManager(SocketDummyServerTestCase):
             r = conn.urlopen("GET", url, retries=0)
             assert r.status == 200
 
-    def test_connect_ipv6_addr(self):
+    def test_connect_ipv6_addr(self) -> None:
         ipv6_addr = "2001:4998:c:a06::2:4008"
 
-        def echo_socket_handler(listener):
+        def echo_socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
             buf = b""
@@ -1143,12 +1156,39 @@ class TestProxyManager(SocketDummyServerTestCase):
                 r = conn.urlopen("GET", url, retries=0)
                 assert r.status == 200
             except MaxRetryError:
-                self.fail("Invalid IPv6 format in HTTP CONNECT request")
+                pytest.fail("Invalid IPv6 format in HTTP CONNECT request")
+
+    @pytest.mark.parametrize("target_scheme", ["http", "https"])
+    def test_https_proxymanager_connected_to_http_proxy(
+        self, target_scheme: str
+    ) -> None:
+
+        errored = Event()
+
+        def http_socket_handler(listener: socket.socket) -> None:
+            sock = listener.accept()[0]
+            sock.send(b"HTTP/1.0 501 Not Implemented\r\nConnection: close\r\n\r\n")
+            errored.wait()
+            sock.close()
+
+        self._start_server(http_socket_handler)
+        base_url = f"https://{self.host}:{self.port}"
+
+        with ProxyManager(base_url, cert_reqs="NONE") as proxy:
+            with pytest.raises(MaxRetryError) as e:
+                proxy.request("GET", f"{target_scheme}://example.com", retries=0)
+
+            errored.set()  # Avoid a ConnectionAbortedError on Windows.
+
+            assert type(e.value.reason) == HTTPSProxyError
+            assert "Your proxy appears to only use HTTP and not HTTPS" in str(
+                e.value.reason
+            )
 
 
 class TestSSL(SocketDummyServerTestCase):
-    def test_ssl_failure_midway_through_conn(self):
-        def socket_handler(listener):
+    def test_ssl_failure_midway_through_conn(self) -> None:
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             sock2 = sock.dup()
             ssl_sock = ssl.wrap_socket(
@@ -1181,10 +1221,10 @@ class TestSSL(SocketDummyServerTestCase):
             assert isinstance(cm.value.reason, SSLError)
 
     @notSecureTransport()
-    def test_ssl_read_timeout(self):
+    def test_ssl_read_timeout(self) -> None:
         timed_out = Event()
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             ssl_sock = ssl.wrap_socket(
                 sock,
@@ -1221,8 +1261,8 @@ class TestSSL(SocketDummyServerTestCase):
             finally:
                 timed_out.set()
 
-    def test_ssl_failed_fingerprint_verification(self):
-        def socket_handler(listener):
+    def test_ssl_failed_fingerprint_verification(self) -> None:
+        def socket_handler(listener: socket.socket) -> None:
             for i in range(2):
                 sock = listener.accept()[0]
                 ssl_sock = ssl.wrap_socket(
@@ -1247,7 +1287,7 @@ class TestSSL(SocketDummyServerTestCase):
         # GitHub's fingerprint. Valid, but not matching.
         fingerprint = "A0:C4:A7:46:00:ED:A7:2D:C0:BE:CB:9A:8C:B6:07:CA:58:EE:74:5E"
 
-        def request():
+        def request() -> None:
             pool = HTTPSConnectionPool(
                 self.host, self.port, assert_fingerprint=fingerprint
             )
@@ -1267,8 +1307,8 @@ class TestSSL(SocketDummyServerTestCase):
         with pytest.raises(MaxRetryError):
             request()
 
-    def test_retry_ssl_error(self):
-        def socket_handler(listener):
+    def test_retry_ssl_error(self) -> None:
+        def socket_handler(listener: socket.socket) -> None:
             # first request, trigger an SSLError
             sock = listener.accept()[0]
             sock2 = sock.dup()
@@ -1318,8 +1358,8 @@ class TestSSL(SocketDummyServerTestCase):
             response = pool.urlopen("GET", "/", retries=1)
             assert response.data == b"Success"
 
-    def test_ssl_load_default_certs_when_empty(self):
-        def socket_handler(listener):
+    def test_ssl_load_default_certs_when_empty(self) -> None:
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             ssl_sock = ssl.wrap_socket(
                 sock,
@@ -1357,8 +1397,8 @@ class TestSSL(SocketDummyServerTestCase):
                     pool.request("GET", "/", timeout=SHORT_TIMEOUT)
                 context.load_default_certs.assert_called_with()
 
-    def test_ssl_dont_load_default_certs_when_given(self):
-        def socket_handler(listener):
+    def test_ssl_dont_load_default_certs_when_given(self) -> None:
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             ssl_sock = ssl.wrap_socket(
                 sock,
@@ -1401,27 +1441,27 @@ class TestSSL(SocketDummyServerTestCase):
                         pool.request("GET", "/", timeout=SHORT_TIMEOUT)
                     context.load_default_certs.assert_not_called()
 
-    def test_load_verify_locations_exception(self):
+    def test_load_verify_locations_exception(self) -> None:
         """
         Ensure that load_verify_locations raises SSLError for all backends
         """
         with pytest.raises(SSLError):
-            ssl_wrap_socket(None, ca_certs="/tmp/fake-file")
+            ssl_wrap_socket(None, ca_certs="/tmp/fake-file")  # type: ignore[call-overload]
 
-    def test_ssl_custom_validation_failure_terminates(self, tmpdir):
+    def test_ssl_custom_validation_failure_terminates(self, tmpdir: Path) -> None:
         """
         Ensure that the underlying socket is terminated if custom validation fails.
         """
         server_closed = Event()
 
-        def is_closed_socket(sock):
+        def is_closed_socket(sock: socket.socket) -> bool:
             try:
                 sock.settimeout(SHORT_TIMEOUT)
             except OSError:
                 return True
             return False
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
             try:
                 _ = ssl.wrap_socket(
@@ -1452,7 +1492,7 @@ class TestSSL(SocketDummyServerTestCase):
 
 
 class TestErrorWrapping(SocketDummyServerTestCase):
-    def test_bad_statusline(self):
+    def test_bad_statusline(self) -> None:
         self.start_response_handler(
             b"HTTP/1.1 Omg What Is This?\r\n" b"Content-Length: 0\r\n" b"\r\n"
         )
@@ -1460,7 +1500,7 @@ class TestErrorWrapping(SocketDummyServerTestCase):
             with pytest.raises(ProtocolError):
                 pool.request("GET", "/")
 
-    def test_unknown_protocol(self):
+    def test_unknown_protocol(self) -> None:
         self.start_response_handler(
             b"HTTP/1000 200 OK\r\n" b"Content-Length: 0\r\n" b"\r\n"
         )
@@ -1470,7 +1510,7 @@ class TestErrorWrapping(SocketDummyServerTestCase):
 
 
 class TestHeaders(SocketDummyServerTestCase):
-    def test_httplib_headers_case_insensitive(self):
+    def test_httplib_headers_case_insensitive(self) -> None:
         self.start_response_handler(
             b"HTTP/1.1 200 OK\r\n"
             b"Content-Length: 0\r\n"
@@ -1482,11 +1522,11 @@ class TestHeaders(SocketDummyServerTestCase):
             r = pool.request("GET", "/")
             assert HEADERS == dict(r.headers.items())  # to preserve case sensitivity
 
-    def start_parsing_handler(self):
-        self.parsed_headers = OrderedDict()
-        self.received_headers = []
+    def start_parsing_handler(self) -> None:
+        self.parsed_headers: OrderedDictType[str, str] = OrderedDict()
+        self.received_headers: List[bytes] = []
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
             buf = b""
@@ -1507,7 +1547,7 @@ class TestHeaders(SocketDummyServerTestCase):
 
         self._start_server(socket_handler)
 
-    def test_headers_are_sent_with_the_original_case(self):
+    def test_headers_are_sent_with_the_original_case(self) -> None:
         headers = {"foo": "bar", "bAz": "quux"}
 
         self.start_parsing_handler()
@@ -1522,7 +1562,7 @@ class TestHeaders(SocketDummyServerTestCase):
             pool.request("GET", "/", headers=HTTPHeaderDict(headers))
             assert expected_headers == self.parsed_headers
 
-    def test_ua_header_can_be_overridden(self):
+    def test_ua_header_can_be_overridden(self) -> None:
         headers = {"uSeR-AgENt": "Definitely not urllib3!"}
 
         self.start_parsing_handler()
@@ -1536,7 +1576,7 @@ class TestHeaders(SocketDummyServerTestCase):
             pool.request("GET", "/", headers=HTTPHeaderDict(headers))
             assert expected_headers == self.parsed_headers
 
-    def test_request_headers_are_sent_in_the_original_order(self):
+    def test_request_headers_are_sent_in_the_original_order(self) -> None:
         # NOTE: Probability this test gives a false negative is 1/(K!)
         K = 16
         # NOTE: Provide headers in non-sorted order (i.e. reversed)
@@ -1546,20 +1586,17 @@ class TestHeaders(SocketDummyServerTestCase):
             (f"X-Header-{int(i)}", str(i)) for i in reversed(range(K))
         ]
 
-        def filter_non_x_headers(d):
+        def filter_non_x_headers(d: OrderedDictType[str, str]) -> List[Tuple[str, str]]:
             return [(k, v) for (k, v) in d.items() if k.startswith("X-Header-")]
-
-        request_headers = OrderedDict()
 
         self.start_parsing_handler()
 
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             pool.request("GET", "/", headers=OrderedDict(expected_request_headers))
-            request_headers = filter_non_x_headers(self.parsed_headers)
-            assert expected_request_headers == request_headers
+            assert expected_request_headers == filter_non_x_headers(self.parsed_headers)
 
     @resolvesLocalhostFQDN()
-    def test_request_host_header_ignores_fqdn_dot(self):
+    def test_request_host_header_ignores_fqdn_dot(self) -> None:
         self.start_parsing_handler()
 
         with HTTPConnectionPool(self.host + ".", self.port, retries=False) as pool:
@@ -1568,7 +1605,7 @@ class TestHeaders(SocketDummyServerTestCase):
                 self.received_headers, "Host", f"{self.host}:{self.port}"
             )
 
-    def test_response_headers_are_returned_in_the_original_order(self):
+    def test_response_headers_are_returned_in_the_original_order(self) -> None:
         # NOTE: Probability this test gives a false negative is 1/(K!)
         K = 16
         # NOTE: Provide headers in non-sorted order (i.e. reversed)
@@ -1578,7 +1615,7 @@ class TestHeaders(SocketDummyServerTestCase):
             (f"X-Header-{int(i)}", str(i)) for i in reversed(range(K))
         ]
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
             buf = b""
@@ -1607,7 +1644,9 @@ class TestHeaders(SocketDummyServerTestCase):
 
 
 class TestBrokenHeaders(SocketDummyServerTestCase):
-    def _test_broken_header_parsing(self, headers, unparsed_data_check=None):
+    def _test_broken_header_parsing(
+        self, headers: List[bytes], unparsed_data_check: Optional[str] = None
+    ) -> None:
         self.start_response_handler(
             (
                 b"HTTP/1.1 200 OK\r\n"
@@ -1625,6 +1664,7 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
             for record in logs:
                 if (
                     "Failed to parse headers" in record.msg
+                    and isinstance(record.args, tuple)
                     and pool._absolute_url("/") == record.args[0]
                 ):
                     if (
@@ -1632,22 +1672,22 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
                         or unparsed_data_check in record.getMessage()
                     ):
                         return
-            self.fail("Missing log about unparsed headers")
+            pytest.fail("Missing log about unparsed headers")
 
-    def test_header_without_name(self):
+    def test_header_without_name(self) -> None:
         self._test_broken_header_parsing([b": Value", b"Another: Header"])
 
-    def test_header_without_name_or_value(self):
+    def test_header_without_name_or_value(self) -> None:
         self._test_broken_header_parsing([b":", b"Another: Header"])
 
-    def test_header_without_colon_or_value(self):
+    def test_header_without_colon_or_value(self) -> None:
         self._test_broken_header_parsing(
             [b"Broken Header", b"Another: Header"], "Broken Header"
         )
 
 
 class TestHeaderParsingContentType(SocketDummyServerTestCase):
-    def _test_okay_header_parsing(self, header):
+    def _test_okay_header_parsing(self, header: bytes) -> None:
         self.start_response_handler(
             (b"HTTP/1.1 200 OK\r\n" b"Content-Length: 0\r\n") + header + b"\r\n\r\n"
         )
@@ -1659,15 +1699,15 @@ class TestHeaderParsingContentType(SocketDummyServerTestCase):
             for record in logs:
                 assert "Failed to parse headers" not in record.msg
 
-    def test_header_text_plain(self):
+    def test_header_text_plain(self) -> None:
         self._test_okay_header_parsing(b"Content-type: text/plain")
 
-    def test_header_message_rfc822(self):
+    def test_header_message_rfc822(self) -> None:
         self._test_okay_header_parsing(b"Content-type: message/rfc822")
 
 
 class TestHEAD(SocketDummyServerTestCase):
-    def test_chunked_head_response_does_not_hang(self):
+    def test_chunked_head_response_does_not_hang(self) -> None:
         self.start_response_handler(
             b"HTTP/1.1 200 OK\r\n"
             b"Transfer-Encoding: chunked\r\n"
@@ -1680,7 +1720,7 @@ class TestHEAD(SocketDummyServerTestCase):
             # stream will use the read_chunked method here.
             assert [] == list(r.stream())
 
-    def test_empty_head_response_does_not_hang(self):
+    def test_empty_head_response_does_not_hang(self) -> None:
         self.start_response_handler(
             b"HTTP/1.1 200 OK\r\n"
             b"Content-Length: 256\r\n"
@@ -1695,10 +1735,10 @@ class TestHEAD(SocketDummyServerTestCase):
 
 
 class TestStream(SocketDummyServerTestCase):
-    def test_stream_none_unchunked_response_does_not_hang(self):
+    def test_stream_none_unchunked_response_does_not_hang(self) -> None:
         done_event = Event()
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
             buf = b""
@@ -1726,10 +1766,10 @@ class TestStream(SocketDummyServerTestCase):
 
 
 class TestBadContentLength(SocketDummyServerTestCase):
-    def test_enforce_content_length_get(self):
+    def test_enforce_content_length_get(self) -> None:
         done_event = Event()
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
             buf = b""
@@ -1764,10 +1804,10 @@ class TestBadContentLength(SocketDummyServerTestCase):
 
             done_event.set()
 
-    def test_enforce_content_length_no_body(self):
+    def test_enforce_content_length_no_body(self) -> None:
         done_event = Event()
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             sock = listener.accept()[0]
 
             buf = b""
@@ -1796,8 +1836,8 @@ class TestBadContentLength(SocketDummyServerTestCase):
 
 
 class TestRetryPoolSizeDrainFail(SocketDummyServerTestCase):
-    def test_pool_size_retry_drain_fail(self):
-        def socket_handler(listener):
+    def test_pool_size_retry_drain_fail(self) -> None:
+        def socket_handler(listener: socket.socket) -> None:
             for _ in range(2):
                 sock = listener.accept()[0]
                 while not sock.recv(65536).endswith(b"\r\n\r\n"):
@@ -1824,7 +1864,7 @@ class TestRetryPoolSizeDrainFail(SocketDummyServerTestCase):
 
 class TestBrokenPipe(SocketDummyServerTestCase):
     @notWindows()
-    def test_ignore_broken_pipe_errors(self, monkeypatch):
+    def test_ignore_broken_pipe_errors(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # On Windows an aborted connection raises an error on
         # attempts to read data out of a socket that's been closed.
         sock_shut = Event()
@@ -1832,12 +1872,12 @@ class TestBrokenPipe(SocketDummyServerTestCase):
         # a buffer that will cause two sendall calls
         buf = "a" * 1024 * 1024 * 4
 
-        def connect_and_wait(*args, **kw):
+        def connect_and_wait(*args: Any, **kw: Any) -> None:
             ret = orig_connect(*args, **kw)
             assert sock_shut.wait(5)
             return ret
 
-        def socket_handler(listener):
+        def socket_handler(listener: socket.socket) -> None:
             for i in range(2):
                 sock = listener.accept()[0]
                 sock.send(
@@ -1866,8 +1906,8 @@ class TestBrokenPipe(SocketDummyServerTestCase):
 
 
 class TestMultipartResponse(SocketDummyServerTestCase):
-    def test_multipart_assert_header_parsing_no_defects(self):
-        def socket_handler(listener):
+    def test_multipart_assert_header_parsing_no_defects(self) -> None:
+        def socket_handler(listener: socket.socket) -> None:
             for _ in range(2):
                 sock = listener.accept()[0]
                 while not sock.recv(65536).endswith(b"\r\n\r\n"):

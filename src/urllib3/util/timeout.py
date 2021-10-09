@@ -150,7 +150,7 @@ class Timeout:
             raise ValueError(
                 "Timeout value %s was %s, but it must be an "
                 "int, float or None." % (name, value)
-            )
+            ) from None
 
         try:
             if value <= 0:  # type: ignore[operator]
@@ -164,7 +164,7 @@ class Timeout:
             raise ValueError(
                 "Timeout value %s was %s, but it must be an "
                 "int, float or None." % (name, value)
-            )
+            ) from None
 
         return value
 
