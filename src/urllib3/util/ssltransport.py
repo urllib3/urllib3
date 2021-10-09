@@ -109,8 +109,6 @@ class SSLTransport:
             raise ValueError("non-zero flags not allowed in calls to recv_into")
         if nbytes is None:
             nbytes = len(buffer)
-        else:
-            nbytes = 1024
         return self.read(nbytes, buffer)
 
     def sendall(self, data: bytes, flags: int = 0) -> None:
@@ -127,7 +125,6 @@ class SSLTransport:
         if flags != 0:
             raise ValueError("non-zero flags not allowed in calls to send")
         return self._ssl_io_loop(self.sslobj.write, data)
-
 
     def makefile(
         self,

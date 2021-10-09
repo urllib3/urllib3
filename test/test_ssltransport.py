@@ -508,30 +508,6 @@ class TlsInTlsTestCase(SocketDummyServerTestCase):
                 str_response = response.decode("utf-8").rstrip("\x00")
                 validate_response(str_response, binary=False)
 
-    @pytest.mark.timeout(PER_TEST_TIMEOUT)
-    def test_tls_in_tls_recv_into_unbuffered(self) -> None:
-        """
-        Valides recv_into without a preallocated buffer.
-        """
-        self.start_destination_server()
-        self.start_proxy_server()
-
-        sock = socket.create_connection(
-            (self.proxy_server.host, self.proxy_server.port)
-        )
-        with self.client_context.wrap_socket(
-            sock, server_hostname="localhost"
-        ) as proxy_sock:
-            with SSLTransport(
-                proxy_sock, self.client_context, server_hostname="localhost"
-            ) as destination_sock:
-
-                destination_sock.send(sample_request())
-                response = destination_sock.recv_into(bytearray())
-                response = bytes(response)
-                assert isinstance(response, bytes)
-                validate_response(response)
-
 
 class TestSSLTransportWithMock:
     def test_constructor_params(self) -> None:
