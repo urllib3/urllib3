@@ -45,6 +45,9 @@ from .util.response import is_fp_closed, is_response_to_head
 from .util.retry import Retry
 
 if TYPE_CHECKING:
+    from array import array
+    from mmap import mmap
+
     from typing_extensions import Literal
 
     from .connectionpool import HTTPConnectionPool
@@ -182,7 +185,7 @@ def _get_decoder(mode: str) -> ContentDecoder:
     return DeflateDecoder()
 
 
-class BaseHTTPResponse(io.IOBase):
+class BaseHTTPResponse(io.BytesIO):
     CONTENT_DECODERS = ["gzip", "deflate"]
     if brotli is not None:
         CONTENT_DECODERS += ["br"]
@@ -349,12 +352,12 @@ class BaseHTTPResponse(io.IOBase):
     def readable(self) -> bool:
         return True
 
-    def readinto(self, b: bytearray) -> int:
+    def readinto(self, b: Union[bytearray, memoryview, "array[Any]", "mmap"]) -> int:
         temp = self.read(len(b))
         if len(temp) == 0:
             return 0
         else:
-            b[: len(temp)] = temp
+            b[: len(temp)] = temp  # type: ignore[call-overload]
             return len(temp)
 
     # Compatibility methods for http.client.HTTPResponse
