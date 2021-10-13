@@ -135,10 +135,10 @@ class TestResponse:
         assert r.read(3) == b""
         # Buffer in case we need to switch to the raw stream
         assert r._decoder is not None
-        assert r._decoder._data is not None
+        assert r._decoder._data is not None  # type: ignore[attr-defined]
         assert r.read(1) == b"f"
         # Now that we've decoded data, we just stream through the decoder
-        assert r._decoder._data is None
+        assert r._decoder._data is None  # type: ignore[attr-defined]
         assert r.read(2) == b"oo"
         assert r.read() == b""
         assert r.read() == b""
@@ -157,7 +157,7 @@ class TestResponse:
         assert r.read(1) == b"f"
         # Once we've decoded data, we just stream to the decoder; no buffering
         assert r._decoder is not None
-        assert r._decoder._data is None
+        assert r._decoder._data is None  # type: ignore[attr-defined]
         assert r.read(2) == b"oo"
         assert r.read() == b""
         assert r.read() == b""
@@ -330,7 +330,7 @@ class TestResponse:
     def test_io_closed_consistently(self, sock: socket.socket) -> None:
         try:
             hlr = httplib.HTTPResponse(sock)
-            hlr.fp = BytesIO(b"foo")
+            hlr.fp = BytesIO(b"foo")  # type: ignore[attr-defined]
             hlr.chunked = 0
             hlr.length = 3
             with HTTPResponse(hlr, preload_content=False) as resp:
@@ -516,7 +516,7 @@ class TestResponse:
 
                 assert b"".join(self.payloads) == payload
 
-            def read(self, _: int) -> bytes:
+            def read(self, _: int) -> bytes:  # type: ignore[override]
                 # Amount is unused.
                 if len(self.payloads) > 0:
                     return self.payloads.pop(0)
@@ -688,7 +688,7 @@ class TestResponse:
         stream = [b"fo", b"o", b"bar"]
         fp = MockChunkedEncodingResponse(stream)
         r = httplib.HTTPResponse(MockSock)
-        r.fp = fp
+        r.fp = fp  # type: ignore[attr-defined]
         resp = HTTPResponse(
             r, preload_content=False, headers={"transfer-encoding": "chunked"}
         )
@@ -709,7 +709,7 @@ class TestResponse:
 
         fp = MockChunkedEncodingResponse(list(stream()))
         r = httplib.HTTPResponse(MockSock)
-        r.fp = fp
+        r.fp = fp  # type: ignore[attr-defined]
         headers = {"transfer-encoding": "chunked", "content-encoding": "gzip"}
         resp = HTTPResponse(r, preload_content=False, headers=headers)
 
@@ -723,7 +723,7 @@ class TestResponse:
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedEncodingResponse(stream)
         r = httplib.HTTPResponse(MockSock)
-        r.fp = fp
+        r.fp = fp  # type: ignore[attr-defined]
         r.chunked = True
         r.chunk_left = None
         resp = HTTPResponse(
@@ -737,7 +737,7 @@ class TestResponse:
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedEncodingResponse(stream)
         r = httplib.HTTPResponse(MockSock)
-        r.fp = fp
+        r.fp = fp  # type: ignore[attr-defined]
         r.chunked = True
         r.chunk_left = None
         resp = HTTPResponse(
@@ -784,7 +784,7 @@ class TestResponse:
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedIncompleteRead(stream)
         r = httplib.HTTPResponse(MockSock)
-        r.fp = fp
+        r.fp = fp  # type: ignore[attr-defined]
         r.chunked = True
         r.chunk_left = None
         resp = HTTPResponse(
@@ -800,7 +800,7 @@ class TestResponse:
         stream = [b"foooo", b"bbbbaaaaar"]
         fp = MockChunkedInvalidChunkLength(stream)
         r = httplib.HTTPResponse(MockSock)
-        r.fp = fp
+        r.fp = fp  # type: ignore[attr-defined]
         r.chunked = True
         r.chunk_left = None
         resp = HTTPResponse(
@@ -817,7 +817,7 @@ class TestResponse:
         stream = [b"foo", b"bar", b"baz"]
         fp = MockChunkedEncodingWithoutCRLFOnEnd(stream)
         r = httplib.HTTPResponse(MockSock)
-        r.fp = fp
+        r.fp = fp  # type: ignore[attr-defined]
         r.chunked = True
         r.chunk_left = None
         resp = HTTPResponse(
@@ -829,7 +829,7 @@ class TestResponse:
         stream = [b"foo", b"bar"]
         fp = MockChunkedEncodingWithExtensions(stream)
         r = httplib.HTTPResponse(MockSock)
-        r.fp = fp
+        r.fp = fp  # type: ignore[attr-defined]
         r.chunked = True
         r.chunk_left = None
         resp = HTTPResponse(
@@ -853,7 +853,7 @@ class TestResponse:
         setattr(resp, "release_conn", mock.Mock())
         for _ in resp.stream():
             continue
-        resp.release_conn.assert_called_once_with()
+        resp.release_conn.assert_called_once_with()  # type: ignore[attr-defined]
 
     def test_get_case_insensitive_headers(self) -> None:
         headers = {"host": "example.com"}
@@ -1046,29 +1046,29 @@ class MockChunkedEncodingResponse:
 
 
 class MockChunkedIncompleteRead(MockChunkedEncodingResponse):
-    def _encode_chunk(self, chunk: bytes) -> str:
-        return f"9999\r\n{chunk.decode()}\r\n"
+    def _encode_chunk(self, chunk: bytes) -> bytes:
+        return f"9999\r\n{chunk.decode()}\r\n".encode()
 
 
 class MockChunkedInvalidChunkLength(MockChunkedEncodingResponse):
     BAD_LENGTH_LINE = "ZZZ\r\n"
 
-    def _encode_chunk(self, chunk: bytes) -> str:
-        return f"{self.BAD_LENGTH_LINE}{chunk.decode()}\r\n"
+    def _encode_chunk(self, chunk: bytes) -> bytes:
+        return f"{self.BAD_LENGTH_LINE}{chunk.decode()}\r\n".encode()
 
 
 class MockChunkedEncodingWithoutCRLFOnEnd(MockChunkedEncodingResponse):
-    def _encode_chunk(self, chunk: bytes) -> str:
+    def _encode_chunk(self, chunk: bytes) -> bytes:
         return "{:X}\r\n{}{}".format(
             len(chunk),
             chunk.decode(),
             "\r\n" if len(chunk) > 0 else "",
-        )
+        ).encode()
 
 
 class MockChunkedEncodingWithExtensions(MockChunkedEncodingResponse):
-    def _encode_chunk(self, chunk: bytes) -> str:
-        return f"{len(chunk):X};asd=qwe\r\n{chunk.decode()}\r\n"
+    def _encode_chunk(self, chunk: bytes) -> bytes:
+        return f"{len(chunk):X};asd=qwe\r\n{chunk.decode()}\r\n".encode()
 
 
 class MockSock:
