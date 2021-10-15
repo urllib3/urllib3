@@ -2,7 +2,6 @@ import socket
 from typing import Optional, Sequence, Tuple, Union
 
 from ..exceptions import LocationParseError
-
 from .wait import wait_for_read
 
 SOCKET_GLOBAL_DEFAULT_TIMEOUT = socket._GLOBAL_DEFAULT_TIMEOUT  # type: ignore[attr-defined]
