@@ -6,7 +6,7 @@ from .url import Url
 if TYPE_CHECKING:
     import ssl
 
-    from urllib3.connection import ProxyConfig
+    from ..connection import ProxyConfig
 
 
 def connection_requires_http_tunnel(

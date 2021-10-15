@@ -5,10 +5,10 @@ from http.client import IncompleteRead as httplib_IncompleteRead
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
 if TYPE_CHECKING:
-    from urllib3.connection import HTTPConnection
-    from urllib3.connectionpool import ConnectionPool
-    from urllib3.response import HTTPResponse
-    from urllib3.util.retry import Retry
+    from .connection import HTTPConnection
+    from .connectionpool import ConnectionPool
+    from .response import HTTPResponse
+    from .util.retry import Retry
 
 # Base Exceptions
 

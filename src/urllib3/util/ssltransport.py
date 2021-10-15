@@ -16,7 +16,7 @@ from typing import (
     overload,
 )
 
-from urllib3.exceptions import ProxySchemeUnsupported
+from ..exceptions import ProxySchemeUnsupported
 
 if TYPE_CHECKING:
 
