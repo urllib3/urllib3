@@ -27,8 +27,8 @@ from ..exceptions import (
 from .util import reraise
 
 if TYPE_CHECKING:
-    from urllib3.connectionpool import ConnectionPool
-    from urllib3.response import HTTPResponse
+    from ..connectionpool import ConnectionPool
+    from ..response import HTTPResponse
 
 log = logging.getLogger(__name__)
 

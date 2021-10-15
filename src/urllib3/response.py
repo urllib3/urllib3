@@ -47,7 +47,7 @@ from .util.retry import Retry
 if TYPE_CHECKING:
     from typing_extensions import Literal
 
-    from urllib3.connectionpool import HTTPConnectionPool
+    from .connectionpool import HTTPConnectionPool
 
 log = logging.getLogger(__name__)
 

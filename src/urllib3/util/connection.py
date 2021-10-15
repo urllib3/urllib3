@@ -1,7 +1,7 @@
 import socket
 from typing import Optional, Sequence, Tuple, Union
 
-from urllib3.exceptions import LocationParseError
+from ..exceptions import LocationParseError
 
 from .wait import wait_for_read
 
