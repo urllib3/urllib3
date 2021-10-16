@@ -810,6 +810,11 @@ class TestResponse:
             next(resp.read_chunked())
 
         orig_ex = ctx.value.args[1]
+        msg = (
+            "(\"Connection broken: InvalidChunkLength(got length b'ZZZ\\\\r\\\\n', 0 bytes read)\", "
+            "InvalidChunkLength(got length b'ZZZ\\r\\n', 0 bytes read))"
+        )
+        assert str(ctx.value) == msg
         assert isinstance(orig_ex, InvalidChunkLength)
         assert orig_ex.length == fp.BAD_LENGTH_LINE.encode()
 
