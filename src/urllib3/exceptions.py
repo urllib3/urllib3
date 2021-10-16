@@ -309,7 +309,7 @@ class IncompleteRead(HTTPError, httplib_IncompleteRead):
 class InvalidChunkLength(HTTPError, httplib_IncompleteRead):
     """Invalid chunk length in a chunked response."""
 
-    def __init__(self, response: "HTTPResponse", length: int) -> None:
+    def __init__(self, response: "HTTPResponse", length: bytes) -> None:
         self.partial: int = response.tell()
         self.expected: Optional[int] = response.length_remaining
         self.response = response

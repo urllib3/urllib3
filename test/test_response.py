@@ -74,7 +74,7 @@ class TestResponse:
         assert r.data is None
 
     def test_none(self) -> None:
-        r = HTTPResponse(None)
+        r = HTTPResponse(None)  # type: ignore[arg-type]
         assert r.data is None
 
     def test_preload(self) -> None:
@@ -320,7 +320,7 @@ class TestResponse:
         with pytest.raises(IOError):
             resp3.fileno()
 
-        resp3._fp = 2
+        resp3._fp = 2  # type: ignore[assignment]
         # A corner case where _fp is present but doesn't have `closed`,
         # `isclosed`, or `fileno`.  Unlikely, but possible.
         assert resp3.closed
@@ -350,7 +350,7 @@ class TestResponse:
     def test_io_bufferedreader(self) -> None:
         fp = BytesIO(b"foo")
         resp = HTTPResponse(fp, preload_content=False)
-        br = BufferedReader(resp)
+        br = BufferedReader(resp)  # type: ignore[arg-type]
 
         assert br.read() == b"foo"
 
@@ -362,12 +362,12 @@ class TestResponse:
         fp = BytesIO(b"hello\nworld")
         resp = HTTPResponse(fp, preload_content=False)
         with pytest.raises(ValueError, match="readline of closed file"):
-            list(BufferedReader(resp))
+            list(BufferedReader(resp))  # type: ignore[arg-type]
 
         b = b"fooandahalf"
         fp = BytesIO(b)
         resp = HTTPResponse(fp, preload_content=False)
-        br = BufferedReader(resp, 5)
+        br = BufferedReader(resp, 5)  # type: ignore[arg-type]
 
         br.read(1)  # sets up the buffer, reading 5
         assert len(fp.read()) == (len(b) - 5)
@@ -380,7 +380,7 @@ class TestResponse:
     def test_io_not_autoclose_bufferedreader(self) -> None:
         fp = BytesIO(b"hello\nworld")
         resp = HTTPResponse(fp, preload_content=False, auto_close=False)
-        reader = BufferedReader(resp)
+        reader = BufferedReader(resp)  # type: ignore[arg-type]
         assert list(reader) == [b"hello\n", b"world"]
 
         assert not reader.closed
@@ -397,7 +397,7 @@ class TestResponse:
     def test_io_textiowrapper(self) -> None:
         fp = BytesIO(b"\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f")
         resp = HTTPResponse(fp, preload_content=False)
-        br = TextIOWrapper(resp, encoding="utf8")
+        br = TextIOWrapper(resp, encoding="utf8")  # type: ignore[arg-type]
 
         assert br.read() == "äöüß"
 
@@ -411,14 +411,14 @@ class TestResponse:
         )
         resp = HTTPResponse(fp, preload_content=False)
         with pytest.raises(ValueError, match="I/O operation on closed file.?"):
-            list(TextIOWrapper(resp))
+            list(TextIOWrapper(resp))  # type: ignore[arg-type]
 
     def test_io_not_autoclose_textiowrapper(self) -> None:
         fp = BytesIO(
             b"\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f\n\xce\xb1\xce\xb2\xce\xb3\xce\xb4"
         )
         resp = HTTPResponse(fp, preload_content=False, auto_close=False)
-        reader = TextIOWrapper(resp, encoding="utf8")
+        reader = TextIOWrapper(resp, encoding="utf8")  # type: ignore[arg-type]
         assert list(reader) == ["äöüß\n", "αβγδ"]
 
         assert not reader.closed
@@ -676,7 +676,7 @@ class TestResponse:
         bio = BytesIO(b"foo")
         fp = MockHTTPRequest()
         fp.fp = bio
-        resp = HTTPResponse(fp, preload_content=False)
+        resp = HTTPResponse(fp, preload_content=False)  # type: ignore[arg-type]
         stream = resp.stream(2)
 
         assert next(stream) == b"fo"
