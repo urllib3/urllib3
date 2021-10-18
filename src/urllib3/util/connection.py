@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 import socket
 
-from urllib3.exceptions import LocationParseError
+from ..exceptions import LocationParseError
 
 from ..contrib import _appengine_environ
 from ..packages import six
