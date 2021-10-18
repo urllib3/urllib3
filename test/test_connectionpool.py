@@ -236,14 +236,13 @@ class TestConnectionPool:
             # but this pool._get_conn call will not raise EmptyPoolError because block is False
             conn2 = pool._get_conn()
 
-            conn1.close = Mock()
-            conn2.close = Mock()
+            with patch.object(conn1, "close") as conn1_close:
+                with patch.object(conn2, "close") as conn2_close:
+                    pool._put_conn(conn1)
+                    pool._put_conn(conn2)
 
-            pool._put_conn(conn1)
-            pool._put_conn(conn2)
-
-            assert conn1.close.called is False
-            assert conn2.close.called is True
+            assert conn1_close.called is False
+            assert conn2_close.called is True
 
             assert conn1 == pool._get_conn()
             assert conn2 != pool._get_conn()
@@ -259,31 +258,30 @@ class TestConnectionPool:
             conn1 = pool._get_conn()
             conn2 = pool._new_conn()
 
-            conn1.close = Mock()
-            conn2.close = Mock()
+            with patch.object(conn1, "close") as conn1_close:
+                with patch.object(conn2, "close") as conn2_close:
+                    pool._put_conn(conn1)
+                    with pytest.raises(FullPoolError):
+                        pool._put_conn(conn2)
 
-            pool._put_conn(conn1)
-            with pytest.raises(FullPoolError):
-                pool._put_conn(conn2)
-
-            assert conn1.close.called is False
-            assert conn2.close.called is True
+            assert conn1_close.called is False
+            assert conn2_close.called is True
 
             assert conn1 == pool._get_conn()
 
     def test_put_conn_closed_pool(self) -> None:
         with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
             conn1 = pool._get_conn()
-            conn1.close = Mock()
+            with patch.object(conn1, "close") as conn1_close:
+                pool.close()
 
-            pool.close()
-            assert pool.pool is None
+                assert pool.pool is None
 
-            # Accessing pool.pool will raise AttributeError, which will get
-            # caught and will close conn1
-            pool._put_conn(conn1)
+                # Accessing pool.pool will raise AttributeError, which will get
+                # caught and will close conn1
+                pool._put_conn(conn1)
 
-            assert conn1.close.called is True
+            assert conn1_close.called is True
 
     def test_exception_str(self) -> None:
         assert (
@@ -315,19 +313,16 @@ class TestConnectionPool:
             host="localhost", maxsize=POOL_SIZE, block=True
         ) as pool:
 
-            def _raise(ex: Type[BaseException]) -> None:
-                raise ex()
-
             def _test(
                 exception: Type[BaseException],
                 expect: Type[BaseException],
                 reason: Optional[Type[BaseException]] = None,
             ) -> None:
-                pool._make_request = lambda *args, **kwargs: _raise(exception)
-                with pytest.raises(expect) as excinfo:
-                    pool.request("GET", "/")
+                with patch.object(pool, "_make_request", side_effect=exception()):
+                    with pytest.raises(expect) as excinfo:
+                        pool.request("GET", "/")
                 if reason is not None:
-                    assert isinstance(excinfo.value.reason, reason)
+                    assert isinstance(excinfo.value.reason, reason)  # type: ignore[attr-defined]
                 assert pool.pool is not None
                 assert pool.pool.qsize() == POOL_SIZE
 
@@ -340,9 +335,9 @@ class TestConnectionPool:
             # being raised, a retry will be triggered, but that retry will
             # fail, eventually raising MaxRetryError, not EmptyPoolError
             # See: https://github.com/urllib3/urllib3/issues/76
-            pool._make_request = lambda *args, **kwargs: _raise(HTTPException)
-            with pytest.raises(MaxRetryError):
-                pool.request("GET", "/", retries=1, pool_timeout=SHORT_TIMEOUT)
+            with patch.object(pool, "_make_request", side_effect=HTTPException()):
+                with pytest.raises(MaxRetryError):
+                    pool.request("GET", "/", retries=1, pool_timeout=SHORT_TIMEOUT)
             assert pool.pool is not None
             assert pool.pool.qsize() == POOL_SIZE
 
@@ -350,10 +345,16 @@ class TestConnectionPool:
         """Do not put None back in the pool if the pool was empty"""
 
         with HTTPConnectionPool(host="localhost", maxsize=1, block=True) as pool:
-            pool._get_conn = Mock(side_effect=EmptyPoolError(pool, "Pool is empty"))
-            pool._put_conn = Mock(side_effect=AssertionError("Unexpected _put_conn"))
-            with pytest.raises(EmptyPoolError):
-                pool.request("GET", "/")
+            with patch.object(
+                pool, "_get_conn", side_effect=EmptyPoolError(pool, "Pool is empty")
+            ):
+                with patch.object(
+                    pool,
+                    "_put_conn",
+                    side_effect=AssertionError("Unexpected _put_conn"),
+                ):
+                    with pytest.raises(EmptyPoolError):
+                        pool.request("GET", "/")
 
     def test_assert_same_host(self) -> None:
         with connection_from_url("http://google.com:80") as c:
@@ -469,17 +470,16 @@ class TestConnectionPool:
             raise RealBad()
 
         with connection_from_url("http://localhost:80") as c:
-            c._make_request = kaboom
+            with patch.object(c, "_make_request", kaboom):
+                assert c.pool is not None
+                initial_pool_size = c.pool.qsize()
 
-            assert c.pool is not None
-            initial_pool_size = c.pool.qsize()
-
-            try:
-                # We need to release_conn this way or we'd put it away
-                # regardless.
-                c.urlopen("GET", "/", release_conn=False)
-            except RealBad:
-                pass
+                try:
+                    # We need to release_conn this way or we'd put it away
+                    # regardless.
+                    c.urlopen("GET", "/", release_conn=False)
+                except RealBad:
+                    pass
 
             new_pool_size = c.pool.qsize()
             assert initial_pool_size == new_pool_size
@@ -520,15 +520,17 @@ class TestConnectionPool:
                 # Verify that the request succeeds after two attempts, and that the
                 # connection is left on the response object, instead of being
                 # released back into the pool.
-                pool._make_request = _raise_once_make_request_function(exception)
-                response = pool.urlopen(
-                    "GET",
-                    "/",
-                    retries=1,
-                    release_conn=False,
-                    preload_content=False,
-                    chunked=True,
-                )
+                with patch.object(
+                    pool, "_make_request", _raise_once_make_request_function(exception)
+                ):
+                    response = pool.urlopen(
+                        "GET",
+                        "/",
+                        retries=1,
+                        release_conn=False,
+                        preload_content=False,
+                        chunked=True,
+                    )
                 assert pool.pool is not None
                 assert pool.pool.qsize() == 0
                 assert pool.num_connections == 2
