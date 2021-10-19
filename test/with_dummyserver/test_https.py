@@ -616,9 +616,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             conn = https_pool._new_conn()
             try:
                 conn.set_tunnel(self.host, self.port)
-                conn._tunnel = mock.Mock()  # type: ignore[assignment]
-                https_pool._make_request(conn, "GET", "/")
-                conn._tunnel.assert_called_once_with()
+                with mock.patch.object(
+                    conn, "_tunnel", create=True, return_value=None
+                ) as conn_tunnel:
+                    https_pool._make_request(conn, "GET", "/")
+                conn_tunnel.assert_called_once_with()
             finally:
                 conn.close()
 
