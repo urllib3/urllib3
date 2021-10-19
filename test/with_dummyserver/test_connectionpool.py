@@ -392,9 +392,11 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             conn = pool._get_conn()
             try:
                 conn.set_tunnel(self.host, self.port)
-                conn._tunnel = mock.Mock(return_value=None)  # type: ignore[assignment]
-                pool._make_request(conn, "GET", "/")
-                conn._tunnel.assert_called_once_with()
+                with mock.patch.object(
+                    conn, "_tunnel", create=True, return_value=None
+                ) as conn_tunnel:
+                    pool._make_request(conn, "GET", "/")
+                conn_tunnel.assert_called_once_with()
             finally:
                 conn.close()
 
@@ -403,9 +405,11 @@ class TestConnectionPool(HTTPDummyServerTestCase):
         with HTTPConnectionPool(self.host, self.port, timeout=timeout) as pool:
             conn = pool._get_conn()
             try:
-                conn._tunnel = mock.Mock(return_value=None)  # type: ignore[assignment]
-                pool._make_request(conn, "GET", "/")
-                assert not conn._tunnel.called
+                with mock.patch.object(
+                    conn, "_tunnel", create=True, return_value=None
+                ) as conn_tunnel:
+                    pool._make_request(conn, "GET", "/")
+                assert not conn_tunnel.called
             finally:
                 conn.close()
 
