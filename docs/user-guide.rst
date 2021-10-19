@@ -171,24 +171,6 @@ to ``False``. By default HTTP responses are closed after reading all bytes, this
     # </body>
     # </html>
 
-Cookies
-~~~~~~~
-
-Cookies provided by the server are stored in the ``Set-Cookie`` header. 
-
-.. code-block:: python
-
-    import urllib3
-
-    resp = urllib3.request(
-        "GET",
-        "https://httpbin.org/cookies/set/session/f3efe9db",
-        redirect=False
-    )
-
-    print(resp.headers["Set-Cookie"])
-    # session=f3efe9db; Path=/
-
 .. _request_data:
 
 Request Data
@@ -238,7 +220,7 @@ Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers:
 Cookies
 ~~~~~~~
 
-Cookies are specified in a similar way, using the ``Cookies`` keyword and then passing in a string containing the key-value pairs. The key-value list is ``;`` separated.
+Cookies are specified in a similar way, using the ``Cookies`` keyword and then passing in a string containing the ``;`` delimited key-value pairs:
 
 .. code-block:: python
 
@@ -254,6 +236,21 @@ Cookies are specified in a similar way, using the ``Cookies`` keyword and then p
 
     print(resp.json())
     # {"cookies": {"id": "30", "session": "f3efe9db"}}  
+
+Cookies provided by the server are stored in the ``Set-Cookie`` header:
+
+.. code-block:: python
+
+    import urllib3
+
+    resp = urllib3.request(
+        "GET",
+        "https://httpbin.org/cookies/set/session/f3efe9db",
+        redirect=False
+    )
+
+    print(resp.headers["Set-Cookie"])
+    # session=f3efe9db; Path=/
 
 Query Parameters
 ~~~~~~~~~~~~~~~~
