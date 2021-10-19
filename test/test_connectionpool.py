@@ -454,7 +454,7 @@ class TestConnectionPool:
     def test_ca_certs_default_cert_required(self) -> None:
         with connection_from_url("https://google.com:80", ca_certs=DEFAULT_CA) as pool:
             conn = pool._get_conn()
-            assert conn.cert_reqs == ssl.CERT_REQUIRED
+            assert conn.cert_reqs == ssl.CERT_REQUIRED  # type: ignore[attr-defined]
 
     def test_cleanup_on_extreme_connection_error(self) -> None:
         """
