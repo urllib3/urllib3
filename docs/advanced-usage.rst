@@ -559,7 +559,7 @@ Custom SSL Contexts
 You can exercise fine-grained control over the urllib3 SSL configuration by
 providing a :class:`ssl.SSLContext <python:ssl.SSLContext>` object. For purposes
 of compatibility, we recommend you obtain one from
-:func:`~urllib3.util.ssl_.create_urllib3_context`.
+:func:`~urllib3.util.create_urllib3_context`.
 
 Once you have a context object, you can mutate it to achieve whatever effect
 you'd like. For example, the code below loads the default SSL certificates, sets
@@ -581,5 +581,5 @@ flag that isn't set by default, and then makes a HTTPS request:
         pool.request("GET", "https://www.google.com/")
 
 Note that this is different from passing an ``options`` argument to
-:func:`~urllib3.util.ssl_.create_urllib3_context` because we don't overwrite
+:func:`~urllib3.util.create_urllib3_context` because we don't overwrite
 the default options: we only add a new one.
