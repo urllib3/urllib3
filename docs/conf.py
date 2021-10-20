@@ -82,5 +82,3 @@ html_theme_options = {
 }
 
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
-
-nitpicky = True
