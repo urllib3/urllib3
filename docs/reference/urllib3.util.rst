@@ -15,5 +15,3 @@ but can also be used independently.
 .. automodule:: urllib3.util
     :members:
     :show-inheritance:
-
-.. autofunction:: urllib3.util.ssl_.create_urllib3_context
