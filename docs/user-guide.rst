@@ -227,12 +227,13 @@ the ``;`` delimited key-value pairs:
 
     import urllib3
 
+    headers = urllib3.HTTPHeaderDict()
+    headers.add("Cookie", "session=f3efe9db;id=30")
+
     resp = urllib3.request(
         "GET",
         "https://httpbin.org/cookies",
-        headers={
-            "Cookie": "session=f3efe9db;id=30"
-        }
+        headers=headers
     )
 
     print(resp.json())
