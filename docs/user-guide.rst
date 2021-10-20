@@ -220,7 +220,8 @@ Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers:
 Cookies
 ~~~~~~~
 
-Cookies are specified in a similar way, using the ``Cookies`` keyword and then passing in a string containing the ``;`` delimited key-value pairs:
+Cookies are specified in a similar way, using the ``Cookies`` keyword
+and then passing in a string containing the ``;`` delimited key-value pairs:
 
 .. code-block:: python
 
