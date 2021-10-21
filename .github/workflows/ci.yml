@@ -92,6 +92,7 @@ jobs:
           NOX_SESSION: ${{ matrix.nox-session }}
 
       - name: Upload Coverage
+        if: ${{ matrix.nox-session != 'unsupported_python2' }}
         uses: codecov/codecov-action@v2
         with:
           fail_ci_if_error: true
