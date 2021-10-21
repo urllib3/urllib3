@@ -84,6 +84,10 @@ jobs:
           NOX_SESSION: ${{ matrix.nox-session }}
 
       - name: Upload Coverage
-        run: ./ci/upload_coverage.sh
-        env:
-          JOB_NAME: "${{ runner.os }} (${{ matrix.python-version }})"
+        if: ${{ matrix.nox-session != 'unsupported_python2' }}
+        uses: codecov/codecov-action@v2
+        with:
+          fail_ci_if_error: true
+          name: "${{ runner.os }} (${{ matrix.python-version }})"
+          files: ./coverage.xml
+          verbose: true
