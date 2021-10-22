@@ -336,7 +336,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 log.warning(
                     "Connection pool is full, discarding connection: %s. Connection pool size: %s",
                     self.host,
-                    queue.qsize()
+                    queue.qsize(),
                 )
 
         # Connection never got put back into the pool, close it.
