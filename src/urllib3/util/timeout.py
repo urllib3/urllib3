@@ -7,12 +7,27 @@ from typing import Optional, Union
 
 from ..exceptions import TimeoutStateError
 
-# A sentinel value to indicate that no timeout was specified by the user in
-# urllib3
-_Default = object()
+
+class Default:
+
+    pass
 
 
-_TYPE_TIMEOUT = Optional[Union[float, int, object]]
+class SocketGlobalDefault(Default):
+    """Sentinel class to indicate the default from socket module"""
+
+    pass
+
+
+class Urllib3Default(Default):
+    """Sentinel class to indicate that no timeout was specified by the user in urllib3"""
+
+    pass
+
+
+URLLIB3_DEFAULT = Urllib3Default()
+
+_TYPE_TIMEOUT = Optional[Union[float, int, Default]]
 
 
 class Timeout:
@@ -101,13 +116,13 @@ class Timeout:
     """
 
     #: A sentinel object representing the default timeout value
-    DEFAULT_TIMEOUT: object = _GLOBAL_DEFAULT_TIMEOUT
+    DEFAULT_TIMEOUT: SocketGlobalDefault = _GLOBAL_DEFAULT_TIMEOUT
 
     def __init__(
         self,
         total: _TYPE_TIMEOUT = None,
-        connect: _TYPE_TIMEOUT = _Default,
-        read: _TYPE_TIMEOUT = _Default,
+        connect: _TYPE_TIMEOUT = URLLIB3_DEFAULT,
+        read: _TYPE_TIMEOUT = URLLIB3_DEFAULT,
     ) -> None:
         self._connect = self._validate_timeout(connect, "connect")
         self._read = self._validate_timeout(read, "read")
@@ -123,7 +138,7 @@ class Timeout:
     @classmethod
     def _validate_timeout(
         cls, value: _TYPE_TIMEOUT, name: str
-    ) -> Optional[Union[float, object]]:
+    ) -> Optional[Union[float, Default]]:
         """Check that a timeout attribute is valid.
 
         :param value: The timeout value to validate
@@ -133,7 +148,7 @@ class Timeout:
         :raises ValueError: If it is a numeric value less than or equal to
             zero, or the type is not an integer, float, or None.
         """
-        if value is _Default:
+        if value is URLLIB3_DEFAULT:
             return cls.DEFAULT_TIMEOUT
 
         if value is None or value is cls.DEFAULT_TIMEOUT:
@@ -169,7 +184,7 @@ class Timeout:
         return value
 
     @classmethod
-    def from_float(cls, timeout: Optional[Union[int, float, object]]) -> "Timeout":
+    def from_float(cls, timeout: Optional[Union[int, float, Default]]) -> "Timeout":
         """Create a new Timeout from a legacy timeout value.
 
         The timeout value used by httplib.py sets the same timeout on the
@@ -239,7 +254,7 @@ class Timeout:
         if self._connect is None or self._connect is self.DEFAULT_TIMEOUT:
             return self.total
 
-        return min(self._connect, self.total)  # type: ignore[no-any-return, call-overload]
+        return min(self._connect, self.total)  # type: ignore[type-var]
 
     @property
     def read_timeout(self) -> _TYPE_TIMEOUT:
@@ -267,7 +282,7 @@ class Timeout:
             # In case the connect timeout has not yet been established.
             if self._start_connect is None:
                 return self._read
-            return max(0, min(self.total - self.get_connect_duration(), self._read))  # type: ignore[no-any-return, call-overload, operator]
+            return max(0, min(self.total - self.get_connect_duration(), self._read))  # type: ignore[type-var, operator]
         elif self.total is not None and self.total is not self.DEFAULT_TIMEOUT:
             return max(0, self.total - self.get_connect_duration())  # type: ignore[operator]
         else:
