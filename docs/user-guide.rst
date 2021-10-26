@@ -231,7 +231,7 @@ the ``;`` delimited key-value pairs:
         "GET",
         "https://httpbin.org/cookies",
         headers={
-            "Cookie": "session=f3efe9db;id=30"
+            "Cookie": "session=f3efe9db; id=30"
         }
     )
 
