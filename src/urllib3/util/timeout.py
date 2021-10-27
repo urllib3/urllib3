@@ -16,6 +16,7 @@ class _TYPE_DEFAULT:
 _Default = _TYPE_DEFAULT()
 
 _TYPE_TIMEOUT = Optional[Union[float, int, _TYPE_DEFAULT]]
+_TYPE_TIMEOUT_RESOLVED = Optional[Union[float, int]]
 
 
 class Timeout:
@@ -122,6 +123,10 @@ class Timeout:
 
     # __str__ provided for backwards compatibility
     __str__ = __repr__
+
+    @classmethod
+    def resolve_default_timeout(cls, timeout: _TYPE_TIMEOUT) -> _TYPE_TIMEOUT_RESOLVED:
+        return getdefaulttimeout() if timeout is _Default else timeout  # type: ignore[return-value]
 
     @classmethod
     def _validate_timeout(
@@ -245,7 +250,7 @@ class Timeout:
         return min(self._connect, self.total)  # type: ignore[type-var]
 
     @property
-    def read_timeout(self) -> _TYPE_TIMEOUT:
+    def read_timeout(self) -> _TYPE_TIMEOUT_RESOLVED:
         """Get the value for the read timeout.
 
         This assumes some time has elapsed in the connection timeout and
@@ -268,10 +273,11 @@ class Timeout:
             and self._read is not self.DEFAULT_TIMEOUT
         ):
             # In case the connect timeout has not yet been established.
+            resolved_read = self.resolve_default_timeout(self._read)
             if self._start_connect is None:
-                return self._read
-            return max(0, min(self.total - self.get_connect_duration(), self._read))  # type: ignore[type-var, operator]
+                return resolved_read
+            return max(0, min(self.resolve_default_timeout(self.total) - self.get_connect_duration(), resolved_read))  # type: ignore[type-var, operator]
         elif self.total is not None and self.total is not self.DEFAULT_TIMEOUT:
             return max(0, self.total - self.get_connect_duration())  # type: ignore[operator]
         else:
-            return self._read
+            return self.resolve_default_timeout(self._read)

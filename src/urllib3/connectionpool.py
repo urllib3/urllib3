@@ -1,7 +1,6 @@
 import errno
 import logging
 import queue
-import socket
 import sys
 import warnings
 from http.client import HTTPResponse as _HttplibHTTPResponse
@@ -448,10 +447,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 raise ReadTimeoutError(
                     self, url, f"Read timed out. (read timeout={read_timeout})"
                 )
-            if read_timeout is Timeout.DEFAULT_TIMEOUT:
-                conn.sock.settimeout(socket.getdefaulttimeout())
-            else:  # None or a value
-                conn.sock.settimeout(read_timeout)
+            conn.sock.settimeout(read_timeout)
 
         # Receive the response from the server
         try:
