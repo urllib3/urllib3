@@ -58,7 +58,7 @@ from .util.request import set_file_position
 from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.ssl_match_hostname import CertificateError
-from .util.timeout import URLLIB3_DEFAULT, Default, Timeout
+from .util.timeout import _TYPE_DEFAULT, Timeout, _Default
 from .util.url import Url, _encode_target
 from .util.url import _normalize_host as normalize_host
 from .util.url import parse_url
@@ -71,7 +71,7 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-_TYPE_TIMEOUT = Union[Timeout, int, float, Default]
+_TYPE_TIMEOUT = Union[Timeout, int, float, _TYPE_DEFAULT]
 
 _SelfT = TypeVar("_SelfT")
 
@@ -350,7 +350,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def _get_timeout(self, timeout: _TYPE_TIMEOUT) -> Timeout:
         """Helper that always returns a :class:`urllib3.util.Timeout`"""
-        if timeout is URLLIB3_DEFAULT:
+        if timeout is _Default:
             return self.timeout.clone()
 
         if isinstance(timeout, Timeout):
@@ -384,7 +384,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn: HTTPConnection,
         method: str,
         url: str,
-        timeout: _TYPE_TIMEOUT = URLLIB3_DEFAULT,
+        timeout: _TYPE_TIMEOUT = _Default,
         chunked: bool = False,
         **httplib_request_kw: Any,
     ) -> _HttplibHTTPResponse:
@@ -537,7 +537,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         retries: Optional[Union[Retry, bool, int]] = None,
         redirect: bool = True,
         assert_same_host: bool = True,
-        timeout: _TYPE_TIMEOUT = URLLIB3_DEFAULT,
+        timeout: _TYPE_TIMEOUT = _Default,
         pool_timeout: Optional[int] = None,
         release_conn: Optional[bool] = None,
         chunked: bool = False,
@@ -900,7 +900,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self,
         host: str,
         port: Optional[int] = None,
-        timeout: _TYPE_TIMEOUT = Timeout.DEFAULT_TIMEOUT,
+        timeout: Optional[_TYPE_TIMEOUT] = Timeout.DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
         headers: Optional[Mapping[str, str]] = None,
