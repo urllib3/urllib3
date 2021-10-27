@@ -253,10 +253,12 @@ Cookies provided by the server are stored in the ``Set-Cookie`` header:
     print(resp.headers["Set-Cookie"])
     # session=f3efe9db; Path=/
 
-Alternatively, the `cookiejar <https://docs.python.org/3/library/http.cookiejar.html>`_ class from
-the standard library can be used to manage cookies. This facilitates the handling of more complex
-cases. Due to the implementation of both ``urllib3`` and ``cookiejar`` it is necessary to use
-a dummy request object from ``urllib``.
+You can also use the `cookiejar <https://docs.python.org/3/library/http.cookiejar.html>`_
+library for more complex use cases. This library was created for use with ``urllib``,
+so some slight concessions are required to integrate it with ``urllib3``. First, a request
+object is needed for many of the functions. This request object isn't used for parsing
+cookies, so a dummy ``urllib`` request object may be used. Second, the cookies need
+to be explicitly included in the request's header.
 
 .. code-block:: python
 
