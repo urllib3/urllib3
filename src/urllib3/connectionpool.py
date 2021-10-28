@@ -185,7 +185,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self,
         host: str,
         port: Optional[int] = None,
-        timeout: Optional[_TYPE_TIMEOUT] = Timeout.DEFAULT_TIMEOUT,
+        timeout: Optional[_TYPE_TIMEOUT] = _Default,
         maxsize: int = 1,
         block: bool = False,
         headers: Optional[Mapping[str, str]] = None,
@@ -247,7 +247,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn = self.ConnectionCls(
             host=self.host,
             port=self.port,
-            timeout=self.timeout.connect_timeout,  # type: ignore[arg-type]
+            timeout=self.timeout.connect_timeout,
             **self.conn_kw,
         )
         return conn
@@ -896,7 +896,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self,
         host: str,
         port: Optional[int] = None,
-        timeout: Optional[_TYPE_TIMEOUT] = Timeout.DEFAULT_TIMEOUT,
+        timeout: Optional[_TYPE_TIMEOUT] = _Default,
         maxsize: int = 1,
         block: bool = False,
         headers: Optional[Mapping[str, str]] = None,
@@ -1006,7 +1006,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         conn = self.ConnectionCls(
             host=actual_host,
             port=actual_port,
-            timeout=self.timeout.connect_timeout,  # type: ignore[arg-type]
+            timeout=self.timeout.connect_timeout,
             cert_file=self.cert_file,
             key_file=self.key_file,
             key_password=self.key_password,
