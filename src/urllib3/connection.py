@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from typing_extensions import Literal, NoReturn
 
 from .util.proxy import create_proxy_ssl_context
-from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
+from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_bytes, to_str
 
 try:  # Compiled with SSL?
@@ -149,7 +149,7 @@ class HTTPConnection(_HTTPConnection):
         super().__init__(
             host=host,
             port=port,
-            timeout=timeout,  # type: ignore[arg-type]
+            timeout=Timeout.resolve_default_timeout(timeout),
             source_address=source_address,
             blocksize=blocksize,
         )
