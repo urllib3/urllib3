@@ -1,7 +1,6 @@
 import errno
 import logging
 import queue
-import socket
 import sys
 import warnings
 from http.client import HTTPResponse as _HttplibHTTPResponse
@@ -58,7 +57,7 @@ from .util.request import set_file_position
 from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.ssl_match_hostname import CertificateError
-from .util.timeout import Timeout
+from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_DEFAULT, Timeout
 from .util.url import Url, _encode_target
 from .util.url import _normalize_host as normalize_host
 from .util.url import parse_url
@@ -71,10 +70,7 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-_Default = object()
-
-
-_TYPE_TIMEOUT = Union[Timeout, int, float, object]
+_TYPE_TIMEOUT = Union[Timeout, float, _TYPE_DEFAULT]
 
 _SelfT = TypeVar("_SelfT")
 
@@ -189,7 +185,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self,
         host: str,
         port: Optional[int] = None,
-        timeout: Optional[Union[Timeout, float, int, object]] = Timeout.DEFAULT_TIMEOUT,
+        timeout: Optional[_TYPE_TIMEOUT] = _DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
         headers: Optional[Mapping[str, str]] = None,
@@ -251,7 +247,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn = self.ConnectionCls(
             host=self.host,
             port=self.port,
-            timeout=self.timeout.connect_timeout,  # type: ignore[arg-type]
+            timeout=self.timeout.connect_timeout,
             **self.conn_kw,
         )
         return conn
@@ -353,7 +349,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
     def _get_timeout(self, timeout: _TYPE_TIMEOUT) -> Timeout:
         """Helper that always returns a :class:`urllib3.util.Timeout`"""
-        if timeout is _Default:
+        if timeout is _DEFAULT_TIMEOUT:
             return self.timeout.clone()
 
         if isinstance(timeout, Timeout):
@@ -367,7 +363,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self,
         err: Union[BaseSSLError, OSError, SocketTimeout],
         url: str,
-        timeout_value: _TYPE_TIMEOUT,
+        timeout_value: Optional[_TYPE_TIMEOUT],
     ) -> None:
         """Is the error actually a timeout? Will raise a ReadTimeout or pass"""
 
@@ -387,7 +383,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn: HTTPConnection,
         method: str,
         url: str,
-        timeout: _TYPE_TIMEOUT = _Default,
+        timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         chunked: bool = False,
         **httplib_request_kw: Any,
     ) -> _HttplibHTTPResponse:
@@ -451,10 +447,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 raise ReadTimeoutError(
                     self, url, f"Read timed out. (read timeout={read_timeout})"
                 )
-            if read_timeout is Timeout.DEFAULT_TIMEOUT:
-                conn.sock.settimeout(socket.getdefaulttimeout())
-            else:  # None or a value
-                conn.sock.settimeout(read_timeout)
+            conn.sock.settimeout(read_timeout)
 
         # Receive the response from the server
         try:
@@ -540,7 +533,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         retries: Optional[Union[Retry, bool, int]] = None,
         redirect: bool = True,
         assert_same_host: bool = True,
-        timeout: _TYPE_TIMEOUT = _Default,
+        timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         pool_timeout: Optional[int] = None,
         release_conn: Optional[bool] = None,
         chunked: bool = False,
@@ -903,7 +896,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self,
         host: str,
         port: Optional[int] = None,
-        timeout: _TYPE_TIMEOUT = Timeout.DEFAULT_TIMEOUT,
+        timeout: Optional[_TYPE_TIMEOUT] = _DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
         headers: Optional[Mapping[str, str]] = None,
@@ -1013,7 +1006,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         conn = self.ConnectionCls(
             host=actual_host,
             port=actual_port,
-            timeout=self.timeout.connect_timeout,  # type: ignore[arg-type]
+            timeout=self.timeout.connect_timeout,
             cert_file=self.cert_file,
             key_file=self.key_file,
             key_password=self.key_password,
