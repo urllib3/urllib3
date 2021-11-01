@@ -70,7 +70,7 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-_TYPE_TIMEOUT = Union[Timeout, int, float, _TYPE_DEFAULT]
+_TYPE_TIMEOUT = Union[Timeout, float, _TYPE_DEFAULT]
 
 _SelfT = TypeVar("_SelfT")
 
