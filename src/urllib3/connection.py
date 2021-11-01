@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from typing_extensions import Literal, NoReturn
 
 from .util.proxy import create_proxy_ssl_context
-from .util.timeout import _TYPE_TIMEOUT, _Default
+from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 from .util.util import to_bytes, to_str
 
 try:  # Compiled with SSL?
@@ -128,7 +128,7 @@ class HTTPConnection(_HTTPConnection):
         self,
         host: str,
         port: Optional[int] = None,
-        timeout: _TYPE_TIMEOUT = _Default,
+        timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
         socket_options: Optional[
@@ -362,7 +362,7 @@ class HTTPSConnection(HTTPConnection):
         key_file: Optional[str] = None,
         cert_file: Optional[str] = None,
         key_password: Optional[str] = None,
-        timeout: _TYPE_TIMEOUT = _Default,
+        timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         ssl_context: Optional["ssl.SSLContext"] = None,
         server_hostname: Optional[str] = None,
         source_address: Optional[Tuple[str, int]] = None,

@@ -33,7 +33,7 @@ from urllib3.util.ssl_ import (
     resolve_ssl_version,
     ssl_wrap_socket,
 )
-from urllib3.util.timeout import Timeout, _Default
+from urllib3.util.timeout import _DEFAULT_TIMEOUT, Timeout
 from urllib3.util.url import Url, _encode_invalid_chars, parse_url
 from urllib3.util.util import to_bytes, to_str
 
@@ -602,7 +602,7 @@ class TestUtil:
         assert timeout.connect_timeout == 2
 
         timeout = Timeout()
-        assert timeout.connect_timeout == _Default
+        assert timeout.connect_timeout == _DEFAULT_TIMEOUT
 
         # Connect takes 5 seconds, leaving 5 seconds for read
         timeout = Timeout(total=10, read=7)
@@ -629,7 +629,8 @@ class TestUtil:
         timeout = Timeout(5)
         assert timeout.total == 5
 
-    def test_timeout_default(self) -> None:
+    def test_timeout_default_resolve(self) -> None:
+        """The timeout default is resolved when read_timeout is accessed."""
         timeout = Timeout()
         with patch("urllib3.util.timeout.getdefaulttimeout", return_value=2):
             assert timeout.read_timeout == 2

@@ -31,7 +31,7 @@ from urllib3.exceptions import (
 )
 from urllib3.response import HTTPResponse
 from urllib3.util.ssl_match_hostname import CertificateError
-from urllib3.util.timeout import Timeout, _Default
+from urllib3.util.timeout import _DEFAULT_TIMEOUT, Timeout
 
 from .test_response import MockChunkedEncodingResponse, MockSock
 
@@ -410,8 +410,8 @@ class TestConnectionPool:
             conn = pool._new_conn()
             assert conn.__class__ == HTTPConnection
             assert pool.timeout.__class__ == Timeout
-            assert pool.timeout._read == _Default
-            assert pool.timeout._connect == _Default
+            assert pool.timeout._read == _DEFAULT_TIMEOUT
+            assert pool.timeout._connect == _DEFAULT_TIMEOUT
             assert pool.timeout.total is None
 
             pool = HTTPConnectionPool(host="localhost", timeout=SHORT_TIMEOUT)
