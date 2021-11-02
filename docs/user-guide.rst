@@ -216,7 +216,42 @@ Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers:
 
     print(resp.json()["headers"])
     # {"Accept": "application/json, text/plain", ...}
-   
+
+Cookies
+~~~~~~~
+
+Cookies are specified using the ``Cookie`` header with a string containing
+the ``;`` delimited key-value pairs:
+
+.. code-block:: python
+
+    import urllib3
+
+    resp = urllib3.request(
+        "GET",
+        "https://httpbin.org/cookies",
+        headers={
+            "Cookie": "session=f3efe9db; id=30"
+        }
+    )
+
+    print(resp.json())
+    # {"cookies": {"id": "30", "session": "f3efe9db"}}  
+
+Cookies provided by the server are stored in the ``Set-Cookie`` header:
+
+.. code-block:: python
+
+    import urllib3
+
+    resp = urllib3.request(
+        "GET",
+        "https://httpbin.org/cookies/set/session/f3efe9db",
+        redirect=False
+    )
+
+    print(resp.headers["Set-Cookie"])
+    # session=f3efe9db; Path=/
 
 Query Parameters
 ~~~~~~~~~~~~~~~~

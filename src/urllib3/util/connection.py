@@ -2,9 +2,9 @@ import socket
 from typing import Optional, Sequence, Tuple, Union
 
 from ..exceptions import LocationParseError
+from .timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT
 from .wait import wait_for_read
 
-SOCKET_GLOBAL_DEFAULT_TIMEOUT = socket._GLOBAL_DEFAULT_TIMEOUT  # type: ignore[attr-defined]
 _TYPE_SOCKET_OPTIONS = Sequence[Tuple[int, int, Union[int, bytes]]]
 
 
@@ -28,7 +28,7 @@ def is_connection_dropped(conn: socket.socket) -> bool:  # Platform-specific
 # discovered in DNS if the system doesn't have IPv6 functionality.
 def create_connection(
     address: Tuple[str, int],
-    timeout: Optional[float] = SOCKET_GLOBAL_DEFAULT_TIMEOUT,
+    timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
     source_address: Optional[Tuple[str, int]] = None,
     socket_options: Optional[_TYPE_SOCKET_OPTIONS] = None,
 ) -> socket.socket:
@@ -68,7 +68,7 @@ def create_connection(
             # If provided, set socket level options before connecting.
             _set_socket_options(sock, socket_options)
 
-            if timeout is not SOCKET_GLOBAL_DEFAULT_TIMEOUT:
+            if timeout is not _DEFAULT_TIMEOUT:
                 sock.settimeout(timeout)
             if source_address:
                 sock.bind(source_address)
