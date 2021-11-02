@@ -1,4 +1,5 @@
 import http.client as httplib
+import logging
 import ssl
 from http.client import HTTPException
 from queue import Empty
@@ -32,6 +33,7 @@ from urllib3.exceptions import (
 from urllib3.response import HTTPResponse
 from urllib3.util.ssl_match_hostname import CertificateError
 from urllib3.util.timeout import Timeout
+LOGGER = logging.getLogger(__name__)
 
 from .test_response import MockChunkedEncodingResponse, MockSock
 
@@ -225,6 +227,32 @@ class TestConnectionPool:
 
             assert pool.num_connections == 1
 
+    def test_put_conn_message_when_pool_is_full_nonblocking(self, caplog) -> None:
+        """
+        If maxsize = n and we _put_conn n + 1 conns, the n + 1th conn will
+        get closed and will not get added to the pool.
+        """
+        caplog.set_level(logging.WARNING):
+        with HTTPConnectionPool(host="localhost", maxsize=1, block=False) as pool:
+            conn1 = pool._get_conn()
+            # pool.pool is empty because we popped the one None that pool.pool was initialized with
+            # but this pool._get_conn call will not raise EmptyPoolError because block is False
+            conn2 = pool._get_conn()
+
+            with patch.object(conn1, "close") as conn1_close:
+                with patch.object(conn2, "close") as conn2_close:
+                    pool._put_conn(conn1)
+                    pool._put_conn(conn2)
+
+            assert conn1_close.called is False
+            assert conn2_close.called is True
+
+            assert conn1 == pool._get_conn()
+            assert conn2 != pool._get_conn()
+
+            assert pool.num_connections == 3
+            assert 'Connection pool size: 3' in caplog.text
+
     def test_put_conn_when_pool_is_full_nonblocking(self) -> None:
         """
         If maxsize = n and we _put_conn n + 1 conns, the n + 1th conn will
@@ -247,7 +275,7 @@ class TestConnectionPool:
             assert conn1 == pool._get_conn()
             assert conn2 != pool._get_conn()
 
-            assert pool.num_connections == 3
+            assert pool.num_connections == 3            
 
     def test_put_conn_when_pool_is_full_blocking(self) -> None:
         """
