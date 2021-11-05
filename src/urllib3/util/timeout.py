@@ -162,7 +162,6 @@ class Timeout:
                     "than or equal to 0." % (name, value)
                 )
         except TypeError:
-            # Python 3
             raise ValueError(
                 "Timeout value %s was %s, but it must be an "
                 "int, float or None." % (name, value)
