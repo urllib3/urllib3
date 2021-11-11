@@ -74,7 +74,7 @@ jobs:
 
       - name: Set Up Python - ${{ matrix.python-version }}
         uses: actions/setup-python@v2
-        if: "!endsWith(matrix.python-version, '-dev') && matrix.python-version != 'nightly'"
+        if: "(!endsWith(matrix.python-version, '-dev')) && matrix.python-version != 'nightly'"
         with:
           python-version: ${{ matrix.python-version }}
 
