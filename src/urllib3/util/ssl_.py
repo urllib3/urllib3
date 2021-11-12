@@ -5,7 +5,7 @@ import sys
 import warnings
 from binascii import unhexlify
 from hashlib import md5, sha1, sha256
-from typing import TYPE_CHECKING, Dict, Mapping, Optional, Tuple, Union, cast, overload
+from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union, cast, overload
 
 from ..exceptions import ProxySchemeUnsupported, SNIMissingWarning, SSLError
 from .url import _BRACELESS_IPV6_ADDRZ_RE, _IPV4_RE
@@ -59,13 +59,22 @@ def _is_openssl_issue_14579_fixed(
 def _is_bpo_43522_fixed(
     implementation_name: str, version_info: _TYPE_VERSION_INFO
 ) -> bool:
-    """Return True if PyPy or CPython 3.8.9+, 3.9.3+ or 3.10+ where setting
+    """Return True for CPython 3.8.9+, 3.9.3+ or 3.10+ where setting
     SSLContext.hostname_checks_common_name to False works.
+
+    PyPy 7.3.7 doesn't work as it doesn't ship with OpenSSL 1.1.1l+
+    so we're waiting for a version of PyPy that works before
+    allowing this function to return 'True'.
+
+    Outside of CPython and PyPy we don't know which implementations work
+    or not so we conseratively use our hostname matching as we know that works
+    on all implementations.
+
     https://github.com/urllib3/urllib3/issues/2192#issuecomment-821832963
     https://foss.heptapod.net/pypy/pypy/-/issues/3539#
     """
     if implementation_name != "cpython":
-        return True
+        return False
 
     major_minor = version_info[:2]
     micro = version_info[2]
@@ -90,9 +99,15 @@ def _is_has_never_check_common_name_reliable(
 if TYPE_CHECKING:
     from ssl import VerifyMode
 
-    from typing_extensions import Literal
+    from typing_extensions import Literal, TypedDict
 
     from .ssltransport import SSLTransport as SSLTransportType
+
+    class _TYPE_PEER_CERT_RET_DICT(TypedDict, total=False):
+        subjectAltName: Tuple[Tuple[str, str], ...]
+        subject: Tuple[Tuple[Tuple[str, str], ...], ...]
+        serialNumber: str
+
 
 # Mapping from 'ssl.PROTOCOL_TLSX' to 'TLSVersion.X'
 _SSL_VERSION_TO_TLS_VERSION: Dict[int, int] = {}
@@ -150,10 +165,7 @@ except ImportError:
     PROTOCOL_TLS_CLIENT = 16  # type: ignore[assignment]
 
 
-_PCTRTT = Tuple[Tuple[str, str], ...]
-_PCTRTTT = Tuple[_PCTRTT, ...]
-_TYPE_PEER_CERT_RET_DICT = Mapping[str, Union[str, _PCTRTTT, _PCTRTT]]
-_TYPE_PEER_CERT_RET = Union[_TYPE_PEER_CERT_RET_DICT, bytes, None]
+_TYPE_PEER_CERT_RET = Union["_TYPE_PEER_CERT_RET_DICT", bytes, None]
 
 # A secure default.
 # Sources for more information on TLS ciphers:
@@ -396,15 +408,19 @@ def create_urllib3_context(
     # The order of the below lines setting verify_mode and check_hostname
     # matter due to safe-guards SSLContext has to prevent an SSLContext with
     # check_hostname=True, verify_mode=NONE/OPTIONAL.
-    if cert_reqs == ssl.CERT_REQUIRED:
+    # We always set 'check_hostname=False' for pyOpenSSL so we rely on our own
+    # 'ssl.match_hostname()' implementation.
+    if cert_reqs == ssl.CERT_REQUIRED and not IS_PYOPENSSL:
         context.verify_mode = cert_reqs
         context.check_hostname = True
     else:
         context.check_hostname = False
         context.verify_mode = cert_reqs
 
-    if HAS_NEVER_CHECK_COMMON_NAME:
+    try:
         context.hostname_checks_common_name = False
+    except AttributeError:
+        pass
 
     # Enable logging of TLS session keys via defacto standard environment variable
     # 'SSLKEYLOGFILE', if the feature is available (Python 3.8+). Skip empty values.
