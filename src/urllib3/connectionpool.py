@@ -800,7 +800,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             err = e
 
         finally:
-
             if not clean_exit:
                 # We hit some kind of exception, handled or otherwise. We need
                 # to throw the connection away unless explicitly told not to.
