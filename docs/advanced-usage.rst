@@ -212,10 +212,10 @@ full visibility of your requests.
 
 .. _https_proxy_error_http_proxy:
 
-How to fix HTTPSProxyError?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Your proxy appears to only use HTTP and not HTTPS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you're receiving the :class:`~urllib3.exceptions.HTTPSProxyError` and it mentions
+If you're receiving the :class:`~urllib3.exceptions.ProxyError` and it mentions
 your proxy only speaks HTTP and not HTTPS here's what to do to solve your issue:
 
 If you're using ``urllib3`` directly, make sure the URL you're passing into :class:`urllib3.ProxyManager`
