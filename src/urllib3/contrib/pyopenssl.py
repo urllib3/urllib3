@@ -259,7 +259,7 @@ def get_subj_alt_name(peer_cert: "CRL") -> List[Tuple[str, str]]:
     else:
         # This is technically using private APIs, but should work across all
         # relevant versions before PyOpenSSL got a proper API for this.
-        cert = _Certificate(openssl_backend, peer_cert._x509)
+        cert = _Certificate(openssl_backend, peer_cert._x509)  # type: ignore[no-untyped-call]
 
     # We want to find the SAN extension. Ask Cryptography to locate it (it's
     # faster than looping in Python)

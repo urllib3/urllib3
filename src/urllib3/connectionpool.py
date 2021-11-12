@@ -710,13 +710,14 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 conn, "sock", None
             )
             if is_new_proxy_conn:
+                assert isinstance(self.proxy, Url)
                 conn._connecting_to_proxy = True
                 if http_tunnel_required:
                     try:
                         self._prepare_proxy(conn)
-                    except Exception as e:
+                    except (BaseSSLError, OSError, SocketTimeout) as e:
                         self._raise_timeout(
-                            err=e, url=self.proxy, timeout_value=conn.timeout
+                            err=e, url=self.proxy.url, timeout_value=conn.timeout
                         )
                         raise
 

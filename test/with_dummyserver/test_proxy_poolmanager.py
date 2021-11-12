@@ -457,7 +457,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         ],
     )
     def test_forwarding_proxy_request_timeout(
-        self, proxy_scheme, target_scheme, use_forwarding_for_https
+        self, proxy_scheme: str, target_scheme: str, use_forwarding_for_https: bool
     ) -> None:
         proxy_url = self.https_proxy_url if proxy_scheme == "https" else self.proxy_url
         target_url = f"{target_scheme}://{TARPIT_HOST}"
@@ -480,7 +480,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     @pytest.mark.parametrize(
         ["proxy_scheme", "target_scheme"], [("http", "https"), ("https", "https")]
     )
-    def test_tunneling_proxy_request_timeout(self, proxy_scheme, target_scheme) -> None:
+    def test_tunneling_proxy_request_timeout(
+        self, proxy_scheme: str, target_scheme: str
+    ) -> None:
         proxy_url = self.https_proxy_url if proxy_scheme == "https" else self.proxy_url
         target_url = f"{target_scheme}://{TARPIT_HOST}"
 
@@ -505,7 +507,7 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
         ],
     )
     def test_forwarding_proxy_connect_timeout(
-        self, proxy_scheme, target_scheme, use_forwarding_for_https
+        self, proxy_scheme: str, target_scheme: str, use_forwarding_for_https: bool
     ) -> None:
         proxy_url = f"{proxy_scheme}://{TARPIT_HOST}"
         target_url = self.https_url if target_scheme == "https" else self.http_url
@@ -524,7 +526,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     @pytest.mark.parametrize(
         ["proxy_scheme", "target_scheme"], [("http", "https"), ("https", "https")]
     )
-    def test_tunneling_proxy_connect_timeout(self, proxy_scheme, target_scheme) -> None:
+    def test_tunneling_proxy_connect_timeout(
+        self, proxy_scheme: str, target_scheme: str
+    ) -> None:
         proxy_url = f"{proxy_scheme}://{TARPIT_HOST}"
         target_url = self.https_url if target_scheme == "https" else self.http_url
 
@@ -547,7 +551,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             ("https", True),
         ],
     )
-    def test_https_proxy_tls_error(self, target_scheme, use_forwarding_for_https):
+    def test_https_proxy_tls_error(
+        self, target_scheme: str, use_forwarding_for_https: str
+    ) -> None:
         target_url = self.https_url if target_scheme == "https" else self.http_url
         proxy_ctx = ssl.create_default_context()
         with proxy_from_url(self.https_proxy_url, proxy_ssl_context=proxy_ctx) as proxy:
@@ -566,7 +572,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             ("https", True),
         ],
     )
-    def test_proxy_https_target_tls_error(self, proxy_scheme, use_forwarding_for_https):
+    def test_proxy_https_target_tls_error(
+        self, proxy_scheme: str, use_forwarding_for_https: str
+    ) -> None:
         proxy_url = self.https_proxy_url if proxy_scheme == "https" else self.proxy_url
         proxy_ctx = ssl.create_default_context()
         proxy_ctx.load_verify_locations(DEFAULT_CA)

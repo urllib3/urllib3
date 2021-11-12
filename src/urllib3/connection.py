@@ -23,7 +23,7 @@ from typing import (
 )
 
 if TYPE_CHECKING:
-    from typing_extensions import Literal, NoReturn
+    from typing_extensions import Literal
 
 from .util.proxy import create_proxy_ssl_context
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
@@ -598,7 +598,7 @@ def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
         raise
 
 
-def _wrap_proxy_error(err: Exception) -> "NoReturn":
+def _wrap_proxy_error(err: Exception) -> ProxyError:
     # Look for the phrase 'wrong version number', if found
     # then we should warn the user that we're very sure that
     # this proxy is HTTP-only and they have a configuration issue.
