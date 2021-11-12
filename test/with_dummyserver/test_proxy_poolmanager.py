@@ -446,7 +446,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert sc2 != sc3
             assert sc3 == sc4
 
-    @pytest.mark.timeout(0.5)
     @requires_network()
     @pytest.mark.parametrize(
         ["proxy_scheme", "target_scheme", "use_forwarding_for_https"],
@@ -477,7 +476,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             # target so we put the blame on the target.
             assert type(e.value.reason) == ReadTimeoutError
 
-    @pytest.mark.timeout(0.5)
     @requires_network()
     @pytest.mark.parametrize(
         ["proxy_scheme", "target_scheme"], [("http", "https"), ("https", "https")]
@@ -498,7 +496,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
             assert type(e.value.reason) == ReadTimeoutError
 
-    @pytest.mark.timeout(0.5)
     @requires_network()
     @pytest.mark.parametrize(
         ["proxy_scheme", "target_scheme", "use_forwarding_for_https"],
@@ -524,7 +521,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert type(e.value.reason) == ProxyError
             assert type(e.value.reason.original_error) == ConnectTimeoutError
 
-    @pytest.mark.timeout(0.5)
     @requires_network()
     @pytest.mark.parametrize(
         ["proxy_scheme", "target_scheme"], [("http", "https"), ("https", "https")]
@@ -544,7 +540,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert type(e.value.reason) == ProxyError
             assert type(e.value.reason.original_error) == ConnectTimeoutError
 
-    @pytest.mark.timeout(0.5)
     @requires_network()
     @pytest.mark.parametrize(
         ["target_scheme", "use_forwarding_for_https"],
@@ -565,7 +560,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert type(e.value.reason) == ProxyError
             assert type(e.value.reason.original_error) == SSLError
 
-    @pytest.mark.timeout(0.5)
     @requires_network()
     @pytest.mark.parametrize(
         ["proxy_scheme", "use_forwarding_for_https"],
