@@ -26,6 +26,7 @@ from urllib3.exceptions import (
 )
 from urllib3.poolmanager import ProxyManager, proxy_from_url
 from urllib3.util.ssl_ import create_urllib3_context
+from urllib3.util.timeout import Timeout
 
 from .. import TARPIT_HOST, requires_network
 
@@ -468,7 +469,8 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             use_forwarding_for_https=use_forwarding_for_https,
         ) as proxy:
             with pytest.raises(MaxRetryError) as e:
-                proxy.request("GET", target_url, timeout=SHORT_TIMEOUT)
+                timeout = Timeout(connect=LONG_TIMEOUT, read=SHORT_TIMEOUT)
+                proxy.request("GET", target_url, timeout=timeout)
 
             # We sent the request to the proxy but didn't get any response
             # so we're not sure if that's being caused by the proxy or the
@@ -491,7 +493,8 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             ca_certs=DEFAULT_CA,
         ) as proxy:
             with pytest.raises(MaxRetryError) as e:
-                proxy.request("GET", target_url, timeout=SHORT_TIMEOUT)
+                timeout = Timeout(connect=LONG_TIMEOUT, read=SHORT_TIMEOUT)
+                proxy.request("GET", target_url, timeout=timeout)
 
             assert type(e.value.reason) == ReadTimeoutError
 
