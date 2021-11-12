@@ -1,5 +1,6 @@
 import datetime
 import socket
+import typing
 from unittest import mock
 
 import pytest
@@ -10,11 +11,13 @@ from urllib3.connection import (  # type: ignore[attr-defined]
     HTTPSConnection,
     _match_hostname,
 )
-from urllib3.util.ssl_ import _TYPE_PEER_CERT_RET
 from urllib3.util.ssl_match_hostname import (
     CertificateError as ImplementationCertificateError,
 )
 from urllib3.util.ssl_match_hostname import _dnsname_match, match_hostname
+
+if typing.TYPE_CHECKING:
+    from urllib3.util.ssl_ import _TYPE_PEER_CERT_RET_DICT
 
 
 class TestConnection:
@@ -29,18 +32,18 @@ class TestConnection:
             _match_hostname(cert, asserted_hostname)
 
     def test_match_hostname_empty_cert(self) -> None:
-        cert: _TYPE_PEER_CERT_RET = {}
+        cert: "_TYPE_PEER_CERT_RET_DICT" = {}
         asserted_hostname = "foo"
         with pytest.raises(ValueError):
             _match_hostname(cert, asserted_hostname)
 
     def test_match_hostname_match(self) -> None:
-        cert: _TYPE_PEER_CERT_RET = {"subjectAltName": (("DNS", "foo"),)}
+        cert: "_TYPE_PEER_CERT_RET_DICT" = {"subjectAltName": (("DNS", "foo"),)}
         asserted_hostname = "foo"
         _match_hostname(cert, asserted_hostname)
 
     def test_match_hostname_mismatch(self) -> None:
-        cert: _TYPE_PEER_CERT_RET = {"subjectAltName": (("DNS", "foo"),)}
+        cert: "_TYPE_PEER_CERT_RET_DICT" = {"subjectAltName": (("DNS", "foo"),)}
         asserted_hostname = "bar"
         try:
             with mock.patch("urllib3.connection.log.warning") as mock_log:
@@ -55,7 +58,7 @@ class TestConnection:
             assert e._peer_cert == cert
 
     def test_match_hostname_no_dns(self) -> None:
-        cert: _TYPE_PEER_CERT_RET = {"subjectAltName": (("DNS", ""),)}
+        cert: "_TYPE_PEER_CERT_RET_DICT" = {"subjectAltName": (("DNS", ""),)}
         asserted_hostname = "bar"
         try:
             with mock.patch("urllib3.connection.log.warning") as mock_log:
@@ -70,24 +73,24 @@ class TestConnection:
             assert e._peer_cert == cert
 
     def test_match_hostname_startwith_wildcard(self) -> None:
-        cert: _TYPE_PEER_CERT_RET = {"subjectAltName": (("DNS", "*"),)}
+        cert: "_TYPE_PEER_CERT_RET_DICT" = {"subjectAltName": (("DNS", "*"),)}
         asserted_hostname = "foo"
         _match_hostname(cert, asserted_hostname)
 
     def test_match_hostname_dnsname(self) -> None:
-        cert: _TYPE_PEER_CERT_RET = {
+        cert: "_TYPE_PEER_CERT_RET_DICT" = {
             "subjectAltName": (("DNS", "xn--p1b6ci4b4b3a*.xn--11b5bs8d"),)
         }
         asserted_hostname = "xn--p1b6ci4b4b3a*.xn--11b5bs8d"
         _match_hostname(cert, asserted_hostname)
 
     def test_match_hostname_include_wildcard(self) -> None:
-        cert: _TYPE_PEER_CERT_RET = {"subjectAltName": (("DNS", "foo*"),)}
+        cert: "_TYPE_PEER_CERT_RET_DICT" = {"subjectAltName": (("DNS", "foo*"),)}
         asserted_hostname = "foobar"
         _match_hostname(cert, asserted_hostname)
 
     def test_match_hostname_more_than_one_dnsname_error(self) -> None:
-        cert: _TYPE_PEER_CERT_RET = {
+        cert: "_TYPE_PEER_CERT_RET_DICT" = {
             "subjectAltName": (("DNS", "foo*"), ("DNS", "fo*"))
         }
         asserted_hostname = "bar"
@@ -99,7 +102,7 @@ class TestConnection:
             _dnsname_match("foo**", "foobar")
 
     def test_match_hostname_ignore_common_name(self) -> None:
-        cert: _TYPE_PEER_CERT_RET = {"subject": (("commonName", "foo"),)}
+        cert: "_TYPE_PEER_CERT_RET_DICT" = {"subject": ((("commonName", "foo"),),)}
         asserted_hostname = "foo"
         with pytest.raises(
             ImplementationCertificateError,
@@ -107,8 +110,15 @@ class TestConnection:
         ):
             match_hostname(cert, asserted_hostname)
 
+    def test_match_hostname_check_common_name(self) -> None:
+        cert: "_TYPE_PEER_CERT_RET_DICT" = {"subject": ((("commonName", "foo"),),)}
+        asserted_hostname = "foo"
+        match_hostname(cert, asserted_hostname, True)
+
     def test_match_hostname_ip_address(self) -> None:
-        cert: _TYPE_PEER_CERT_RET = {"subjectAltName": (("IP Address", "1.1.1.1"),)}
+        cert: "_TYPE_PEER_CERT_RET_DICT" = {
+            "subjectAltName": (("IP Address", "1.1.1.1"),)
+        }
         asserted_hostname = "1.1.1.2"
         try:
             with mock.patch("urllib3.connection.log.warning") as mock_log:

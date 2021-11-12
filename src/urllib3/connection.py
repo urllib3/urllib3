@@ -24,6 +24,7 @@ from typing import (
 
 if TYPE_CHECKING:
     from typing_extensions import Literal, NoReturn
+    from .util.ssl_ import _TYPE_PEER_CERT_RET_DICT
 
 from .util.proxy import create_proxy_ssl_context
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
@@ -50,7 +51,6 @@ from .exceptions import (
 )
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
 from .util.ssl_ import (
-    _TYPE_PEER_CERT_RET,
     assert_fingerprint,
     create_urllib3_context,
     resolve_cert_reqs,
@@ -476,17 +476,18 @@ class HTTPSConnection(HTTPConnection):
                 ssl_maximum_version=self.ssl_maximum_version,
                 cert_reqs=resolve_cert_reqs(self.cert_reqs),
             )
-            # In some cases, we want to verify hostnames ourselves
-            if (
-                # `ssl` can't verify fingerprints or alternate hostnames
-                self.assert_fingerprint
-                or self.assert_hostname
-                # We still support OpenSSL 1.0.2, which prevents us from verifying
-                # hostnames easily: https://github.com/pyca/pyopenssl/pull/933
-                or ssl_.IS_PYOPENSSL
-                or not ssl_.HAS_NEVER_CHECK_COMMON_NAME
-            ):
-                self.ssl_context.check_hostname = False
+
+        # In some cases, we want to verify hostnames ourselves
+        if (
+            # `ssl` can't verify fingerprints or alternate hostnames
+            self.assert_fingerprint
+            or self.assert_hostname
+            # We still support OpenSSL 1.0.2, which prevents us from verifying
+            # hostnames easily: https://github.com/pyca/pyopenssl/pull/933
+            or ssl_.IS_PYOPENSSL
+            or not ssl_.HAS_NEVER_CHECK_COMMON_NAME
+        ):
+            self.ssl_context.check_hostname = False
 
         context = self.ssl_context
         context.verify_mode = resolve_cert_reqs(self.cert_reqs)
@@ -524,8 +525,17 @@ class HTTPSConnection(HTTPConnection):
             and not context.check_hostname
             and self.assert_hostname is not False
         ):
-            cert = self.sock.getpeercert()
-            _match_hostname(cert, self.assert_hostname or server_hostname)
+            cert: "_TYPE_PEER_CERT_RET_DICT" = self.sock.getpeercert()  # type: ignore[assignment]
+
+            # Need to signal to our match_hostname whether to use 'commonName' or not.
+            hostname_checks_common_name: bool = (
+                getattr(context, "hostname_checks_common_name", False) or False
+            )
+            _match_hostname(
+                cert,
+                self.assert_hostname or server_hostname,
+                hostname_checks_common_name,
+            )
 
         self.is_verified = context.verify_mode == ssl.CERT_REQUIRED or bool(
             self.assert_fingerprint
@@ -575,9 +585,13 @@ class HTTPSConnection(HTTPConnection):
             _wrap_https_proxy_error(e, hostname)
 
 
-def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
+def _match_hostname(
+    cert: Optional["_TYPE_PEER_CERT_RET_DICT"],
+    asserted_hostname: str,
+    hostname_checks_common_name: bool = False,
+) -> None:
     try:
-        match_hostname(cert, asserted_hostname)
+        match_hostname(cert, asserted_hostname, hostname_checks_common_name)
     except CertificateError as e:
         log.warning(
             "Certificate did not match expected hostname: %s. Certificate: %s",

@@ -5,7 +5,7 @@ import sys
 import warnings
 from binascii import unhexlify
 from hashlib import md5, sha1, sha256
-from typing import TYPE_CHECKING, Dict, Mapping, Optional, Tuple, Union, cast, overload
+from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union, cast, overload
 
 from ..exceptions import ProxySchemeUnsupported, SNIMissingWarning, SSLError
 from .url import _BRACELESS_IPV6_ADDRZ_RE, _IPV4_RE
@@ -88,9 +88,14 @@ def _is_has_never_check_common_name_reliable(
 
 
 if TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing_extensions import Literal, TypedDict
 
     from .ssltransport import SSLTransport as SSLTransportType
+
+    class _TYPE_PEER_CERT_RET_DICT(TypedDict, total=False):
+        subjectAltName: Tuple[Tuple[str, str], ...]
+        subject: Tuple[Tuple[Tuple[str, str], ...], ...]
+
 
 # Mapping from 'ssl.PROTOCOL_TLSX' to 'TLSVersion.X'
 _SSL_VERSION_TO_TLS_VERSION: Dict[int, int] = {}
@@ -148,10 +153,7 @@ except ImportError:
     PROTOCOL_TLS_CLIENT = 16
 
 
-_PCTRTT = Tuple[Tuple[str, str], ...]
-_PCTRTTT = Tuple[_PCTRTT, ...]
-_TYPE_PEER_CERT_RET_DICT = Mapping[str, Union[str, _PCTRTTT, _PCTRTT]]
-_TYPE_PEER_CERT_RET = Union[_TYPE_PEER_CERT_RET_DICT, bytes, None]
+_TYPE_PEER_CERT_RET = Union["_TYPE_PEER_CERT_RET_DICT", bytes, None]
 
 # A secure default.
 # Sources for more information on TLS ciphers:
@@ -394,7 +396,9 @@ def create_urllib3_context(
     # The order of the below lines setting verify_mode and check_hostname
     # matter due to safe-guards SSLContext has to prevent an SSLContext with
     # check_hostname=True, verify_mode=NONE/OPTIONAL.
-    if cert_reqs == ssl.CERT_REQUIRED:
+    # We always set 'check_hostname=False' for pyOpenSSL so we rely on our own
+    # 'ssl.match_hostname()' implementation.
+    if cert_reqs == ssl.CERT_REQUIRED and not IS_PYOPENSSL:
         context.verify_mode = cert_reqs
         context.check_hostname = True
     else:

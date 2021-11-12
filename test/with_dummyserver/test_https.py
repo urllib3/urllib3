@@ -33,7 +33,7 @@ from dummyserver.server import (
 )
 from dummyserver.testcase import HTTPSDummyServerTestCase
 from urllib3 import HTTPSConnectionPool, PoolManager
-from urllib3.connection import RECENT_DATE, VerifiedHTTPSConnection
+from urllib3.connection import RECENT_DATE, CertificateError, VerifiedHTTPSConnection
 from urllib3.exceptions import (
     ConnectTimeoutError,
     InsecureRequestWarning,
@@ -987,6 +987,50 @@ class TestHTTPS_Hostname:
             assert "mismatch, certificate is not valid" in str(
                 e.value
             ) or "no appropriate subjectAltName" in str(e.value)
+
+    @pytest.mark.parametrize("use_assert_hostname", [True, False])
+    def test_hostname_checks_common_name_respected(
+        self, no_san_server: ServerConfig, use_assert_hostname: bool
+    ) -> None:
+        ctx = urllib3.util.ssl_.create_urllib3_context()
+        if not hasattr(ctx, "hostname_checks_common_name"):
+            pytest.skip("Test requires 'SSLContext.hostname_checks_common_name'")
+        ctx.load_verify_locations(no_san_server.ca_certs)
+        try:
+            ctx.hostname_checks_common_name = True
+        except AttributeError:
+            pytest.skip("Couldn't set 'SSLContext.hostname_checks_common_name'")
+
+        err: Optional[MaxRetryError]
+        try:
+            with HTTPSConnectionPool(
+                no_san_server.host,
+                no_san_server.port,
+                cert_reqs="CERT_REQUIRED",
+                ssl_context=ctx,
+                **(
+                    {"assert_hostname": no_san_server.host}
+                    if use_assert_hostname
+                    else {}
+                ),
+            ) as https_pool:
+                https_pool.request("GET", "/")
+        except MaxRetryError as e:
+            err = e
+        else:
+            err = None
+
+        # commonName is only valid for DNS names, not IP addresses.
+        if no_san_server.host == "localhost":
+            assert err is None
+
+        # IP addresses should fail for commonName.
+        else:
+            assert err is not None
+            assert type(err.reason) == SSLError
+            assert isinstance(
+                err.reason.args[0], (ssl.SSLCertVerificationError, CertificateError)
+            )
 
     def test_strip_square_brackets_before_validating(
         self, ipv6_san_server: ServerConfig

@@ -194,14 +194,8 @@ class SSLTransport:
     def getpeercert(self, binary_form: "Literal[True]") -> Optional[bytes]:
         ...
 
-    @overload
-    def getpeercert(self, binary_form: bool) -> "_TYPE_PEER_CERT_RET":
-        ...
-
-    def getpeercert(
-        self, binary_form: bool = False
-    ) -> Union[None, bytes, "_TYPE_PEER_CERT_RET_DICT", "_TYPE_PEER_CERT_RET"]:
-        return self.sslobj.getpeercert(binary_form)
+    def getpeercert(self, binary_form: bool = False) -> "_TYPE_PEER_CERT_RET":
+        return self.sslobj.getpeercert(binary_form)  # type: ignore[return-value]
 
     def version(self) -> Optional[str]:
         return self.sslobj.version()
