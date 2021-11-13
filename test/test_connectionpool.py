@@ -277,7 +277,7 @@ class TestConnectionPool:
             assert conn1 == pool._get_conn()
             assert conn2 != pool._get_conn()
 
-            assert pool.num_connections == 3            
+            assert pool.num_connections == 3
 
     def test_put_conn_when_pool_is_full_blocking(self) -> None:
         """
