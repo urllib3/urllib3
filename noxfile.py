@@ -57,7 +57,7 @@ def tests_impl(
     session.run("coverage", "xml")
 
 
-@nox.session(python=["3.7", "3.8", "3.9", "3.10", "pypy"])
+@nox.session(python=["3.7", "3.8", "3.9", "3.10", "3.11", "pypy"])
 def test(session: nox.Session) -> None:
     tests_impl(session)
 
