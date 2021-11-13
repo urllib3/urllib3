@@ -233,7 +233,7 @@ class TestConnectionPool:
         If maxsize = n and we _put_conn n + 1 conns, the n + 1th conn will
         get closed and will not get added to the pool.
         """
-        caplog.set_level(logging.WARNING):
+        caplog.set_level(logging.WARNING)
         with HTTPConnectionPool(host="localhost", maxsize=1, block=False) as pool:
             conn1 = pool._get_conn()
             # pool.pool is empty because we popped the one None that pool.pool was initialized with
