@@ -35,6 +35,7 @@ from urllib3.util.ssl_match_hostname import CertificateError
 from urllib3.util.timeout import _DEFAULT_TIMEOUT, Timeout
 
 from .test_response import MockChunkedEncodingResponse, MockSock
+
 LOGGER = logging.getLogger(__name__)
 
 
