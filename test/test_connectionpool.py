@@ -34,10 +34,8 @@ from urllib3.response import HTTPResponse
 from urllib3.util.ssl_match_hostname import CertificateError
 from urllib3.util.timeout import _DEFAULT_TIMEOUT, Timeout
 
-LOGGER = logging.getLogger(__name__)
-
-
 from .test_response import MockChunkedEncodingResponse, MockSock
+LOGGER = logging.getLogger(__name__)
 
 
 class HTTPUnixConnection(HTTPConnection):
