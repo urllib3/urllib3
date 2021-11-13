@@ -228,7 +228,7 @@ class TestConnectionPool:
 
             assert pool.num_connections == 1
 
-    def test_put_conn_message_when_pool_is_full_nonblocking(self, caplog) -> None:
+    def test_put_conn_message_when_pool_is_full_nonblocking(self, caplog: Any) -> None:
         """
         If maxsize = n and we _put_conn n + 1 conns, the n + 1th conn will
         get closed and will not get added to the pool.
