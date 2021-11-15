@@ -6,17 +6,7 @@ import warnings
 from http.client import HTTPResponse as _HttplibHTTPResponse
 from socket import timeout as SocketTimeout
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Mapping,
-    Optional,
-    Type,
-    TypeVar,
-    Union,
-    cast,
-    overload,
-)
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Type, TypeVar, Union, overload
 
 from ._request_methods import RequestMethods
 from .connection import (
@@ -29,8 +19,7 @@ from .connection import (
     HTTPSConnection,
     ProxyConfig,
     VerifiedHTTPSConnection,
-    _should_wrap_https_proxy_error,
-    _wrap_https_proxy_error,
+    _wrap_proxy_error,
 )
 from .connection import port_by_scheme as port_by_scheme
 from .exceptions import (
@@ -39,7 +28,6 @@ from .exceptions import (
     FullPoolError,
     HeaderParsingError,
     HostChangedError,
-    HTTPSProxyError,
     InsecureRequestWarning,
     LocationValueError,
     MaxRetryError,
@@ -407,12 +395,32 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         timeout_obj.start_connect()
         conn.timeout = timeout_obj.connect_timeout  # type: ignore[assignment]
 
-        # Trigger any extra validation we need to do.
         try:
-            self._validate_conn(conn)
-        except (SocketTimeout, BaseSSLError) as e:
-            self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
-            raise
+            # Trigger any extra validation we need to do.
+            try:
+                self._validate_conn(conn)
+            except (SocketTimeout, BaseSSLError) as e:
+                self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
+                raise
+
+        # _validate_conn() starts the connection to an HTTPS proxy
+        # so we need to wrap errors with 'ProxyError' here too.
+        except (
+            OSError,
+            NewConnectionError,
+            TimeoutError,
+            BaseSSLError,
+            CertificateError,
+            SSLError,
+        ) as e:
+            new_e: Exception = e
+            if isinstance(e, (BaseSSLError, CertificateError)):
+                new_e = SSLError(e)
+            if isinstance(
+                new_e, (OSError, NewConnectionError, TimeoutError, SSLError)
+            ) and (conn and conn._connecting_to_proxy):
+                new_e = _wrap_proxy_error(new_e)
+            raise new_e
 
         # conn.request() calls http.client.*.request, not the method in
         # urllib3.request. It also calls makefile (recv) on the socket.
@@ -701,8 +709,17 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             is_new_proxy_conn = self.proxy is not None and not getattr(
                 conn, "sock", None
             )
-            if is_new_proxy_conn and http_tunnel_required:
-                self._prepare_proxy(conn)
+            if is_new_proxy_conn:
+                assert isinstance(self.proxy, Url)
+                conn._connecting_to_proxy = True
+                if http_tunnel_required:
+                    try:
+                        self._prepare_proxy(conn)
+                    except (BaseSSLError, OSError, SocketTimeout) as e:
+                        self._raise_timeout(
+                            err=e, url=self.proxy.url, timeout_value=conn.timeout
+                        )
+                        raise
 
             # Make the request on the httplib connection object.
             httplib_response = self._make_request(
@@ -750,7 +767,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             BaseSSLError,
             SSLError,
             CertificateError,
-            HTTPSProxyError,
+            ProxyError,
         ) as e:
             # Discard the connection for these exceptions. It will be
             # replaced during the next _get_conn() call.
@@ -758,10 +775,22 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             new_e: Exception = e
             if isinstance(e, (BaseSSLError, CertificateError)):
                 new_e = SSLError(e)
-            elif isinstance(e, (OSError, NewConnectionError)) and self.proxy:
-                new_e = ProxyError("Cannot connect to proxy.", e)
-            elif isinstance(e, (OSError, HTTPException)):
-                new_e = ProtocolError("Connection aborted.", e)
+            if (
+                isinstance(
+                    new_e,
+                    (
+                        OSError,
+                        NewConnectionError,
+                        TimeoutError,
+                        SSLError,
+                        HTTPException,
+                    ),
+                )
+                and (conn and conn._connecting_to_proxy)
+            ):
+                new_e = _wrap_proxy_error(new_e)
+            elif isinstance(new_e, (OSError, HTTPException)):
+                new_e = ProtocolError("Connection aborted.", new_e)
 
             retries = retries.increment(
                 method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
@@ -972,7 +1001,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         Tunnel connection is established early because otherwise httplib would
         improperly set Host: header to proxy's IP:port.
         """
-
         conn.set_tunnel(self._proxy_host, self.port, self.proxy_headers)
 
         if self.proxy and self.proxy.scheme == "https":
@@ -1022,18 +1050,8 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         super()._validate_conn(conn)
 
         # Force connect early to allow us to validate the connection.
-        try:
-            if not conn.sock:
-                conn.connect()
-        except Exception as e:
-            # We only want to wrap errors for HTTPS proxies
-            if (
-                not self.proxy
-                or self.proxy.scheme != "https"
-                or not _should_wrap_https_proxy_error(e)
-            ):
-                raise
-            _wrap_https_proxy_error(e, cast(str, self.proxy.host))
+        if not conn.sock:
+            conn.connect()
 
         if not conn.is_verified:
             warnings.warn(
