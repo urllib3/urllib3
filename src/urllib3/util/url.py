@@ -413,8 +413,8 @@ def parse_url(url: str) -> Url:
         if normalize_uri and fragment:
             fragment = _encode_invalid_chars(fragment, _FRAGMENT_CHARS)
 
-    except (ValueError, AttributeError):
-        raise LocationParseError(source_url) from None
+    except (ValueError, AttributeError) as e:
+        raise LocationParseError(source_url) from e
 
     # For the sake of backwards compatibility we put empty
     # string values for path if there are any defined values
