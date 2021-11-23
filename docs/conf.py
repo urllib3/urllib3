@@ -33,6 +33,7 @@ extensions = [
     "sphinx_copybutton",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
+    "sphinx_codeautolink",
 ]
 
 # Test code blocks only when explicitly specified
@@ -82,3 +83,4 @@ html_theme_options = {
 }
 
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
+codeautolink_global_preface = "import urllib3"
