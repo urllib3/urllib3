@@ -1,5 +1,4 @@
 import datetime
-import json
 import logging
 import os.path
 import shutil
@@ -33,7 +32,7 @@ from dummyserver.server import (
     encrypt_key_pem,
 )
 from dummyserver.testcase import HTTPSDummyServerTestCase
-from urllib3 import HTTPSConnectionPool
+from urllib3 import HTTPSConnectionPool, PoolManager
 from urllib3.connection import RECENT_DATE, VerifiedHTTPSConnection
 from urllib3.exceptions import (
     ConnectTimeoutError,
@@ -178,7 +177,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
             r = https_pool.request("GET", "/certificate")
-            subject = json.loads(r.data.decode("utf-8"))
+            subject = r.json()
             assert subject["organizationalUnitName"].startswith("Testing cert")
 
     def test_client_no_intermediate(self) -> None:
@@ -210,7 +209,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             ssl_minimum_version=self.tls_version(),
         ) as https_pool:
             r = https_pool.request("GET", "/certificate")
-            subject = json.loads(r.data.decode("utf-8"))
+            subject = r.json()
             assert subject["organizationalUnitName"].startswith("Testing cert")
 
     @requires_ssl_context_keyfile_password()
@@ -366,7 +365,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             assert isinstance(cm.value.reason, SSLError)
 
     def test_unverified_ssl(self) -> None:
-        """ Test that bare HTTPSConnection can connect, make requests """
+        """Test that bare HTTPSConnection can connect, make requests"""
         with HTTPSConnectionPool(
             self.host,
             self.port,
@@ -605,7 +604,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             https_pool.request("GET", "/")
 
     def test_tunnel(self) -> None:
-        """ test the _tunnel behavior """
+        """test the _tunnel behavior"""
         timeout = Timeout(total=None)
         with HTTPSConnectionPool(
             self.host,
@@ -617,9 +616,11 @@ class TestHTTPS(HTTPSDummyServerTestCase):
             conn = https_pool._new_conn()
             try:
                 conn.set_tunnel(self.host, self.port)
-                conn._tunnel = mock.Mock()  # type: ignore[assignment]
-                https_pool._make_request(conn, "GET", "/")
-                conn._tunnel.assert_called_once_with()
+                with mock.patch.object(
+                    conn, "_tunnel", create=True, return_value=None
+                ) as conn_tunnel:
+                    https_pool._make_request(conn, "GET", "/")
+                conn_tunnel.assert_called_once_with()
             finally:
                 conn.close()
 
@@ -960,7 +961,18 @@ class TestHTTPS_TLSv1_3(TestHTTPS):
     certs = TLSv1_3_CERTS
 
 
-class TestHTTPS_NoSAN:
+class TestHTTPS_Hostname:
+    def test_can_validate_san(self, san_server: ServerConfig) -> None:
+        """Ensure that urllib3 can validate SANs with IP addresses in them."""
+        with HTTPSConnectionPool(
+            san_server.host,
+            san_server.port,
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=san_server.ca_certs,
+        ) as https_pool:
+            r = https_pool.request("GET", "/")
+            assert r.status == 200
+
     def test_common_name_without_san_fails(self, no_san_server: ServerConfig) -> None:
         with HTTPSConnectionPool(
             no_san_server.host,
@@ -968,34 +980,13 @@ class TestHTTPS_NoSAN:
             cert_reqs="CERT_REQUIRED",
             ca_certs=no_san_server.ca_certs,
         ) as https_pool:
-            with pytest.raises(MaxRetryError, match="no appropriate subjectAltName"):
+            with pytest.raises(
+                MaxRetryError,
+            ) as e:
                 https_pool.request("GET", "/")
-
-
-class TestHTTPS_IPSAN:
-    def test_can_validate_ip_san(self, ip_san_server: ServerConfig) -> None:
-        """Ensure that urllib3 can validate SANs with IP addresses in them."""
-        with HTTPSConnectionPool(
-            ip_san_server.host,
-            ip_san_server.port,
-            cert_reqs="CERT_REQUIRED",
-            ca_certs=ip_san_server.ca_certs,
-        ) as https_pool:
-            r = https_pool.request("GET", "/")
-            assert r.status == 200
-
-
-class TestHTTPS_IPV6SAN:
-    def test_can_validate_ipv6_san(self, ipv6_san_server: ServerConfig) -> None:
-        """Ensure that urllib3 can validate SANs with IPv6 addresses in them."""
-        with HTTPSConnectionPool(
-            "[::1]",
-            ipv6_san_server.port,
-            cert_reqs="CERT_REQUIRED",
-            ca_certs=ipv6_san_server.ca_certs,
-        ) as https_pool:
-            r = https_pool.request("GET", "/")
-            assert r.status == 200
+            assert "mismatch, certificate is not valid" in str(
+                e.value
+            ) or "no appropriate subjectAltName" in str(e.value)
 
     def test_strip_square_brackets_before_validating(
         self, ipv6_san_server: ServerConfig
@@ -1008,4 +999,12 @@ class TestHTTPS_IPV6SAN:
             ca_certs=ipv6_san_server.ca_certs,
         ) as https_pool:
             r = https_pool.request("GET", "/")
+            assert r.status == 200
+
+    def test_request_from_poolmanager(self, san_server: ServerConfig) -> None:
+        with PoolManager(
+            cert_reqs="CERT_REQUIRED",
+            ca_certs=san_server.ca_certs,
+        ) as pool:
+            r = pool.request("GET", san_server.base_url)
             assert r.status == 200

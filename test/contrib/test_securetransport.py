@@ -11,7 +11,7 @@ except ImportError:
     pass
 
 
-def setup_module():
+def setup_module() -> None:
     try:
         from urllib3.contrib.securetransport import inject_into_urllib3
 
@@ -20,7 +20,7 @@ def setup_module():
         pytest.skip(f"Could not import SecureTransport: {repr(e)}")
 
 
-def teardown_module():
+def teardown_module() -> None:
     try:
         from urllib3.contrib.securetransport import extract_from_urllib3
 
@@ -47,14 +47,14 @@ from ..with_dummyserver.test_socketlevel import (  # noqa: E402, F401
 )
 
 
-def test_no_crash_with_empty_trust_bundle():
+def test_no_crash_with_empty_trust_bundle() -> None:
     with contextlib.closing(socket.socket()) as s:
         ws = WrappedSocket(s)
         with pytest.raises(ssl.SSLError):
             ws._custom_validate(True, b"")
 
 
-def test_no_crash_with_invalid_trust_bundle():
+def test_no_crash_with_invalid_trust_bundle() -> None:
     invalid_cert = base64.b64encode(b"invalid-cert")
     cert_bundle = (
         b"-----BEGIN CERTIFICATE-----\n" + invalid_cert + b"\n-----END CERTIFICATE-----"

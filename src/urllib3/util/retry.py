@@ -27,8 +27,8 @@ from ..exceptions import (
 from .util import reraise
 
 if TYPE_CHECKING:
-    from urllib3.connectionpool import ConnectionPool
-    from urllib3.response import HTTPResponse
+    from ..connectionpool import ConnectionPool
+    from ..response import HTTPResponse
 
 log = logging.getLogger(__name__)
 
@@ -237,7 +237,7 @@ class Retry:
         self.history = history or ()
         self.respect_retry_after_header = respect_retry_after_header
         self.remove_headers_on_redirect = frozenset(
-            [h.lower() for h in remove_headers_on_redirect]
+            h.lower() for h in remove_headers_on_redirect
         )
 
     def new(self, **kw: Any) -> "Retry":
@@ -269,7 +269,7 @@ class Retry:
         redirect: Optional[Union[bool, int]] = True,
         default: Optional[Union["Retry", bool, int]] = None,
     ) -> "Retry":
-        """ Backwards-compatibility for the old retries format."""
+        """Backwards-compatibility for the old retries format."""
         if retries is None:
             retries = default if default is not None else cls.DEFAULT
 
@@ -316,7 +316,7 @@ class Retry:
         return seconds
 
     def get_retry_after(self, response: "HTTPResponse") -> Optional[float]:
-        """ Get the value of Retry-After in seconds. """
+        """Get the value of Retry-After in seconds."""
 
         retry_after = response.getheader("Retry-After")
 
@@ -400,7 +400,7 @@ class Retry:
         )
 
     def is_exhausted(self) -> bool:
-        """ Are we out of retries? """
+        """Are we out of retries?"""
         retry_counts = [
             x
             for x in (

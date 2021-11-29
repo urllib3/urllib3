@@ -16,7 +16,7 @@ from typing import (
     overload,
 )
 
-from urllib3.exceptions import ProxySchemeUnsupported
+from ..exceptions import ProxySchemeUnsupported
 
 if TYPE_CHECKING:
 
@@ -100,14 +100,15 @@ class SSLTransport:
         return self._wrap_ssl_read(buflen)
 
     def recv_into(
-        self, buffer: _WriteBuffer, nbytes: Optional[int] = None, flags: int = 0
+        self,
+        buffer: _WriteBuffer,
+        nbytes: Optional[int] = None,
+        flags: int = 0,
     ) -> Union[None, int, bytes]:
         if flags != 0:
             raise ValueError("non-zero flags not allowed in calls to recv_into")
-        if buffer and (nbytes is None):
+        if nbytes is None:
             nbytes = len(buffer)
-        elif nbytes is None:
-            nbytes = 1024
         return self.read(nbytes, buffer)
 
     def sendall(self, data: bytes, flags: int = 0) -> None:
@@ -266,7 +267,7 @@ class SSLTransport:
         arg1: Union[None, bytes, int] = None,
         arg2: Optional[bytearray] = None,
     ) -> _ReturnValue:
-        """ Performs an I/O loop between incoming/outgoing and the socket."""
+        """Performs an I/O loop between incoming/outgoing and the socket."""
         should_loop = True
         ret = None
 

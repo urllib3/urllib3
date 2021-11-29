@@ -5,14 +5,14 @@ import pytest
 
 try:
     from cryptography import x509
-    from OpenSSL.crypto import FILETYPE_PEM, load_certificate
+    from OpenSSL.crypto import FILETYPE_PEM, load_certificate  # type: ignore[import]
 
     from urllib3.contrib.pyopenssl import _dnsname_to_stdlib, get_subj_alt_name
 except ImportError:
     pass
 
 
-def setup_module():
+def setup_module() -> None:
     try:
         from urllib3.contrib.pyopenssl import inject_into_urllib3
 
@@ -21,7 +21,7 @@ def setup_module():
         pytest.skip(f"Could not import PyOpenSSL: {e!r}")
 
 
-def teardown_module():
+def teardown_module() -> None:
     try:
         from urllib3.contrib.pyopenssl import extract_from_urllib3
 
@@ -34,8 +34,7 @@ from ..test_ssl import TestSSL  # noqa: E402, F401
 from ..test_util import TestUtilSSL  # noqa: E402, F401
 from ..with_dummyserver.test_https import (  # noqa: E402, F401
     TestHTTPS,
-    TestHTTPS_IPSAN,
-    TestHTTPS_IPV6SAN,
+    TestHTTPS_Hostname,
     TestHTTPS_TLSv1,
     TestHTTPS_TLSv1_1,
     TestHTTPS_TLSv1_2,
@@ -56,7 +55,7 @@ class TestPyOpenSSLHelpers:
     Tests for PyOpenSSL helper functions.
     """
 
-    def test_dnsname_to_stdlib_simple(self):
+    def test_dnsname_to_stdlib_simple(self) -> None:
         """
         We can convert a dnsname to a native string when the domain is simple.
         """
@@ -65,7 +64,7 @@ class TestPyOpenSSLHelpers:
 
         assert _dnsname_to_stdlib(name) == expected_result
 
-    def test_dnsname_to_stdlib_leading_period(self):
+    def test_dnsname_to_stdlib_leading_period(self) -> None:
         """
         If there is a . in front of the domain name we correctly encode it.
         """
@@ -74,7 +73,7 @@ class TestPyOpenSSLHelpers:
 
         assert _dnsname_to_stdlib(name) == expected_result
 
-    def test_dnsname_to_stdlib_leading_splat(self):
+    def test_dnsname_to_stdlib_leading_splat(self) -> None:
         """
         If there's a wildcard character in the front of the string we handle it
         appropriately.
@@ -85,7 +84,7 @@ class TestPyOpenSSLHelpers:
         assert _dnsname_to_stdlib(name) == expected_result
 
     @mock.patch("urllib3.contrib.pyopenssl.log.warning")
-    def test_get_subj_alt_name(self, mock_warning):
+    def test_get_subj_alt_name(self, mock_warning: mock.MagicMock) -> None:
         """
         If a certificate has two subject alternative names, cryptography raises
         an x509.DuplicateExtension exception.

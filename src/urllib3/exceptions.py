@@ -5,10 +5,10 @@ from http.client import IncompleteRead as httplib_IncompleteRead
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
 if TYPE_CHECKING:
-    from urllib3.connection import HTTPConnection
-    from urllib3.connectionpool import ConnectionPool
-    from urllib3.response import HTTPResponse
-    from urllib3.util.retry import Retry
+    from .connection import HTTPConnection
+    from .connectionpool import ConnectionPool
+    from .response import HTTPResponse
+    from .util.retry import Retry
 
 # Base Exceptions
 
@@ -67,12 +67,6 @@ class ProxyError(HTTPError):
     def __init__(self, message: str, error: Exception) -> None:
         super().__init__(message, error)
         self.original_error = error
-
-
-class HTTPSProxyError(ProxyError):
-    """Used only when establishing a TLS connection to a proxy"""
-
-    pass
 
 
 class DecodeError(HTTPError):
@@ -309,7 +303,7 @@ class IncompleteRead(HTTPError, httplib_IncompleteRead):
 class InvalidChunkLength(HTTPError, httplib_IncompleteRead):
     """Invalid chunk length in a chunked response."""
 
-    def __init__(self, response: "HTTPResponse", length: int) -> None:
+    def __init__(self, response: "HTTPResponse", length: bytes) -> None:
         self.partial: int = response.tell()
         self.expected: Optional[int] = response.length_remaining
         self.response = response

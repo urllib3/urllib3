@@ -1,3 +1,4 @@
+import json as _json
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 from urllib.parse import urlencode
 
@@ -68,6 +69,7 @@ class RequestMethods:
         body: Optional[_TYPE_BODY] = None,
         fields: Optional[_TYPE_FIELDS] = None,
         headers: Optional[Mapping[str, str]] = None,
+        json: Optional[Any] = None,
         **urlopen_kw: Any,
     ) -> BaseHTTPResponse:
         """
@@ -83,6 +85,21 @@ class RequestMethods:
         method = method.upper()
 
         urlopen_kw["request_url"] = url
+
+        if json is not None and body is not None:
+            raise TypeError(
+                "request got values for both 'body' and 'json' parameters which are mutually exclusive"
+            )
+
+        if json is not None:
+            if headers is None:
+                headers = self.headers.copy()  # type: ignore
+            if not ("content-type" in map(str.lower, headers.keys())):
+                headers["Content-Type"] = "application/json"  # type: ignore
+
+            body = _json.dumps(json, separators=(",", ":"), ensure_ascii=False).encode(
+                "utf-8"
+            )
 
         if body is not None:
             urlopen_kw["body"] = body

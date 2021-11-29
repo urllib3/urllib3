@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from typing_extensions import Literal
 
 from .util.proxy import create_proxy_ssl_context
+from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
 from .util.util import to_bytes, to_str
 
 try:  # Compiled with SSL?
@@ -42,9 +43,9 @@ except (ImportError, AttributeError):  # Platform-specific: No SSL.
 from ._version import __version__
 from .exceptions import (
     ConnectTimeoutError,
-    HTTPSProxyError,
     NameResolutionError,
     NewConnectionError,
+    ProxyError,
     SystemTimeWarning,
 )
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
@@ -122,12 +123,13 @@ class HTTPConnection(_HTTPConnection):
     socket_options: Optional[connection._TYPE_SOCKET_OPTIONS]
     _tunnel_host: Optional[str]
     _tunnel: Callable[["HTTPConnection"], None]
+    _connecting_to_proxy: bool
 
     def __init__(
         self,
         host: str,
         port: Optional[int] = None,
-        timeout: Optional[float] = connection.SOCKET_GLOBAL_DEFAULT_TIMEOUT,
+        timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         source_address: Optional[Tuple[str, int]] = None,
         blocksize: int = 8192,
         socket_options: Optional[
@@ -148,16 +150,18 @@ class HTTPConnection(_HTTPConnection):
         super().__init__(
             host=host,
             port=port,
-            timeout=timeout,
+            timeout=Timeout.resolve_default_timeout(timeout),
             source_address=source_address,
             blocksize=blocksize,
         )
 
+        self._connecting_to_proxy = False
+
     # https://github.com/python/mypy/issues/4125
     # Mypy treats this as LSP violation, which is considered a bug.
-    # If `host` is made a property it violates LSP, because a writeable attribute is overriden with a read-only one.
+    # If `host` is made a property it violates LSP, because a writeable attribute is overridden with a read-only one.
     # However, there is also a `host` setter so LSP is not violated.
-    # Potentailly, a `@host.deleter` might be needed depending on how this issue will be fixed.
+    # Potentially, a `@host.deleter` might be needed depending on how this issue will be fixed.
     @property  # type: ignore[override]
     def host(self) -> str:  # type: ignore[override]
         """
@@ -223,12 +227,19 @@ class HTTPConnection(_HTTPConnection):
         if self._is_using_tunnel():
             # TODO: Fix tunnel so it doesn't depend on self.sock state.
             self._tunnel()
+            self._connecting_to_proxy = False
             # Mark this connection as not reusable
             self.auto_open = 0
 
     def connect(self) -> None:
+        self._connecting_to_proxy = bool(self.proxy)
         conn = self._new_conn()
         self._prepare_conn(conn)
+        self._connecting_to_proxy = False
+
+    def close(self) -> None:
+        self._connecting_to_proxy = False
+        super().close()
 
     def putrequest(
         self,
@@ -361,7 +372,7 @@ class HTTPSConnection(HTTPConnection):
         key_file: Optional[str] = None,
         cert_file: Optional[str] = None,
         key_password: Optional[str] = None,
-        timeout: Optional[float] = connection.SOCKET_GLOBAL_DEFAULT_TIMEOUT,
+        timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         ssl_context: Optional["ssl.SSLContext"] = None,
         server_hostname: Optional[str] = None,
         source_address: Optional[Tuple[str, int]] = None,
@@ -427,6 +438,7 @@ class HTTPSConnection(HTTPConnection):
         self.ca_cert_data = ca_cert_data
 
     def connect(self) -> None:
+        self._connecting_to_proxy = bool(self.proxy)
         # Add certificate verification
         conn = self._new_conn()
         hostname: str = self.host
@@ -437,6 +449,7 @@ class HTTPSConnection(HTTPConnection):
                 conn = self._connect_tls_proxy(hostname, conn)
                 tls_in_tls = True
 
+            self._connecting_to_proxy = False
             self.sock = conn
 
             # Calls self._set_hostport(), so self.host is
@@ -483,10 +496,7 @@ class HTTPSConnection(HTTPConnection):
                 # We still support OpenSSL 1.0.2, which prevents us from verifying
                 # hostnames easily: https://github.com/pyca/pyopenssl/pull/933
                 or ssl_.IS_PYOPENSSL
-                # context.hostname_checks_common_name seems ignored, and it's more
-                # important to reject certs without SANs than to rely on the standard
-                # libary. See https://bugs.python.org/issue43522 for details.
-                or True
+                or not ssl_.HAS_NEVER_CHECK_COMMON_NAME
             ):
                 self.ssl_context.check_hostname = False
 
@@ -516,6 +526,7 @@ class HTTPSConnection(HTTPConnection):
             ssl_context=context,
             tls_in_tls=tls_in_tls,
         )
+        self._connecting_to_proxy = False
 
         if self.assert_fingerprint:
             assert_fingerprint(
@@ -533,9 +544,7 @@ class HTTPSConnection(HTTPConnection):
             self.assert_fingerprint
         )
 
-    def _connect_tls_proxy(
-        self, hostname: Optional[str], conn: socket.socket
-    ) -> "ssl.SSLSocket":
+    def _connect_tls_proxy(self, hostname: str, conn: socket.socket) -> "ssl.SSLSocket":
         """
         Establish a TLS connection to the proxy using the provided SSL context.
         """
@@ -545,41 +554,33 @@ class HTTPSConnection(HTTPConnection):
         )  # `_connect_tls_proxy` is called when self._is_using_tunnel() is truthy.
         ssl_context = proxy_config.ssl_context
 
-        try:
-            if ssl_context:
-                # If the user provided a proxy context, we assume CA and client
-                # certificates have already been set
-                return ssl_wrap_socket(
-                    sock=conn,
-                    server_hostname=hostname,
-                    ssl_context=ssl_context,
-                )
-
-            ssl_context = create_proxy_ssl_context(
-                self.ssl_version,
-                self.cert_reqs,
-                self.ca_certs,
-                self.ca_cert_dir,
-                self.ca_cert_data,
-            )
-
-            # If no cert was provided, use only the default options for server
-            # certificate validation
+        if ssl_context:
+            # If the user provided a proxy context, we assume CA and client
+            # certificates have already been set
             return ssl_wrap_socket(
                 sock=conn,
-                ca_certs=self.ca_certs,
-                ca_cert_dir=self.ca_cert_dir,
-                ca_cert_data=self.ca_cert_data,
                 server_hostname=hostname,
                 ssl_context=ssl_context,
             )
-        except Exception as e:
-            # Wrap into an HTTPSProxyError for easier diagnosis.
-            # Original exception is available on original_error and
-            # as __cause__.
-            raise HTTPSProxyError(
-                f"Unable to establish a TLS connection to {hostname}", e
-            ) from e
+
+        ssl_context = create_proxy_ssl_context(
+            self.ssl_version,
+            self.cert_reqs,
+            self.ca_certs,
+            self.ca_cert_dir,
+            self.ca_cert_data,
+        )
+
+        # If no cert was provided, use only the default options for server
+        # certificate validation
+        return ssl_wrap_socket(
+            sock=conn,
+            ca_certs=self.ca_certs,
+            ca_cert_dir=self.ca_cert_dir,
+            ca_cert_data=self.ca_cert_data,
+            server_hostname=hostname,
+            ssl_context=ssl_context,
+        )
 
 
 def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
@@ -595,6 +596,25 @@ def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
         # the cert when catching the exception, if they want to
         e._peer_cert = cert  # type: ignore[attr-defined]
         raise
+
+
+def _wrap_proxy_error(err: Exception) -> ProxyError:
+    # Look for the phrase 'wrong version number', if found
+    # then we should warn the user that we're very sure that
+    # this proxy is HTTP-only and they have a configuration issue.
+    error_normalized = " ".join(re.split("[^a-z]", str(err).lower()))
+    is_likely_http_proxy = "wrong version number" in error_normalized
+    http_proxy_warning = (
+        ". Your proxy appears to only use HTTP and not HTTPS, "
+        "did you intend to set a proxy URL using HTTPS instead of HTTP?"
+    )
+    new_err = ProxyError(
+        f"Unable to connect to proxy"
+        f"{http_proxy_warning if is_likely_http_proxy else ''}",
+        err,
+    )
+    new_err.__cause__ = err
+    return new_err
 
 
 def _get_default_user_agent() -> str:

@@ -101,19 +101,32 @@ The :class:`~response.HTTPResponse` object provides
 
 JSON Content
 ~~~~~~~~~~~~
-
-JSON content can be loaded by decoding and deserializing the
-:attr:`~response.HTTPResponse.data` attribute of the request:
+JSON content can be loaded by :meth:`~response.HTTPResponse.json` 
+method of the response:
 
 .. code-block:: python
 
-    import json
     import urllib3
 
     resp = urllib3.request("GET", "https://httpbin.org/ip")
 
-    print(json.loads(resp.data.decode("utf-8")))
+    print(resp.json())
     # {"origin": "127.0.0.1"}
+
+Alternatively, Custom JSON libraries such as `orjson` can be used to encode data,
+retrieve data by decoding and deserializing the :attr:`~response.HTTPResponse.data` 
+attribute of the request:
+
+.. code-block:: python
+
+    import orjson
+    import urllib3
+
+    encoded_data = orjson.dumps({"attribute": "value"})
+    resp = urllib3.request(method="POST", url="http://httpbin.org/post", body=encoded_data)
+
+    print(orjson.loads(resp.data)["json"])
+    # {'attribute': 'value'}
 
 Binary Content
 ~~~~~~~~~~~~~~
@@ -170,7 +183,6 @@ You can specify headers as a dictionary in the ``headers`` argument in :meth:`~p
 
 .. code-block:: python
 
-    import json
     import urllib3
 
     resp = urllib3.request(
@@ -181,14 +193,13 @@ You can specify headers as a dictionary in the ``headers`` argument in :meth:`~p
         }
     )
 
-    print(json.loads(resp.data.decode("utf-8"))["headers"])
+    print(resp.json()["headers"])
     # {"X-Something": "value", ...}
 
 Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers:
 
 .. code-block:: python
 
-    import json
     import urllib3
 
     # Create an HTTPHeaderDict and add headers
@@ -203,9 +214,44 @@ Or you can use the ``HTTPHeaderDict`` class to create multi-valued HTTP headers:
         headers=headers
     )
 
-    print(json.loads(resp.data.decode("utf-8"))["headers"])
+    print(resp.json()["headers"])
     # {"Accept": "application/json, text/plain", ...}
-   
+
+Cookies
+~~~~~~~
+
+Cookies are specified using the ``Cookie`` header with a string containing
+the ``;`` delimited key-value pairs:
+
+.. code-block:: python
+
+    import urllib3
+
+    resp = urllib3.request(
+        "GET",
+        "https://httpbin.org/cookies",
+        headers={
+            "Cookie": "session=f3efe9db; id=30"
+        }
+    )
+
+    print(resp.json())
+    # {"cookies": {"id": "30", "session": "f3efe9db"}}  
+
+Cookies provided by the server are stored in the ``Set-Cookie`` header:
+
+.. code-block:: python
+
+    import urllib3
+
+    resp = urllib3.request(
+        "GET",
+        "https://httpbin.org/cookies/set/session/f3efe9db",
+        redirect=False
+    )
+
+    print(resp.headers["Set-Cookie"])
+    # session=f3efe9db; Path=/
 
 Query Parameters
 ~~~~~~~~~~~~~~~~
@@ -216,7 +262,6 @@ arguments as a dictionary in the ``fields`` argument to
 
 .. code-block:: python
 
-    import json
     import urllib3
 
     resp = urllib3.request(
@@ -225,7 +270,7 @@ arguments as a dictionary in the ``fields`` argument to
         fields={"arg": "value"}
     )
 
-    print(json.loads(resp.data.decode("utf-8"))["args"])
+    print(resp.json()["args"])
     # {"arg": "value"}
 
 For ``POST`` and ``PUT`` requests, you need to manually encode query parameters
@@ -233,7 +278,6 @@ in the URL:
 
 .. code-block:: python
 
-    import json
     from urllib.parse import urlencode
     import urllib3
 
@@ -244,9 +288,8 @@ in the URL:
     url = "https://httpbin.org/post?" + encoded_args
     resp = urllib3.request("POST", url)
 
-    print(json.loads(resp.data.decode("utf-8"))["args"])
+    print(resp.json()["args"])
     # {"arg": "value"}
-
 
 
 .. _form_data:
@@ -260,7 +303,6 @@ dictionary in the ``fields`` argument provided to
 
 .. code-block:: python
 
-    import json
     import urllib3
 
     resp = urllib3.request(
@@ -269,34 +311,34 @@ dictionary in the ``fields`` argument provided to
         fields={"field": "value"}
     )
     
-    print(json.loads(resp.data.decode("utf-8"))["form"])
+    print(resp.json()["form"])
     # {"field": "value"}
+
+.. _json:
 
 JSON
 ~~~~
 
-You can send a JSON request by specifying the encoded data as the ``body``
-argument and setting the ``Content-Type`` header when calling
+You can send a JSON request by specifying the data as ``json`` argument,
+urllib3 automatically encodes data using ``json`` module with ``UTF-8`` 
+encoding. Also by default ``"Content-Type"`` in headers is set to 
+``"application/json"`` if not specified when calling
 :meth:`~poolmanager.PoolManager.request`:
 
 .. code-block:: python
 
-    import json
     import urllib3
 
     data = {"attribute": "value"}
 
-    # Encoding the data in JSON format.
-    encoded_data = json.dumps(data).encode("utf-8")
-
     resp = urllib3.request(
         "POST",
         "https://httpbin.org/post",
-        body=encoded_data, # Embedding JSON data into request body.
+        body=data,
         headers={"Content-Type": "application/json"}
     )
 
-    print(json.loads(resp.data.decode("utf-8"))["json"])
+    print(resp.json())
     # {"attribute": "value"}
 
 Files & Binary Data
@@ -308,7 +350,6 @@ approach as :ref:`form_data` and specify the file field as a tuple of
 
 .. code-block:: python
 
-    import json
     import urllib3
 
     # Reading the text file from local storage.
@@ -324,7 +365,7 @@ approach as :ref:`form_data` and specify the file field as a tuple of
         }
     )
     
-    print(json.loads(resp.data.decode("utf-8"))["files"])
+    print(resp.json()["files"])
     # {"filefield": "..."}
 
 While specifying the filename is not strictly required, it's recommended in
@@ -346,7 +387,6 @@ recommended to set the ``Content-Type`` header:
 
 .. code-block:: python
 
-    import json
     import urllib3
 
     with open("/home/samad/example.jpg", "rb") as fp:
@@ -359,7 +399,7 @@ recommended to set the ``Content-Type`` header:
         headers={"Content-Type": "image/jpeg"}
     )
 
-    print(json.loads(resp.data.decode("utf-8"))["data"])
+    print(resp.json()["data"])
     # data:application/octet-stream;base64,...
 
 .. _ssl:

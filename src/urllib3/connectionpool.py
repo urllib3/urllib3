@@ -1,7 +1,6 @@
 import errno
 import logging
 import queue
-import socket
 import sys
 import warnings
 from http.client import HTTPResponse as _HttplibHTTPResponse
@@ -20,6 +19,7 @@ from .connection import (
     HTTPSConnection,
     ProxyConfig,
     VerifiedHTTPSConnection,
+    _wrap_proxy_error,
 )
 from .connection import port_by_scheme as port_by_scheme
 from .exceptions import (
@@ -28,7 +28,6 @@ from .exceptions import (
     FullPoolError,
     HeaderParsingError,
     HostChangedError,
-    HTTPSProxyError,
     InsecureRequestWarning,
     LocationValueError,
     MaxRetryError,
@@ -46,7 +45,7 @@ from .util.request import set_file_position
 from .util.response import assert_header_parsing
 from .util.retry import Retry
 from .util.ssl_match_hostname import CertificateError
-from .util.timeout import Timeout
+from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_DEFAULT, Timeout
 from .util.url import Url, _encode_target
 from .util.url import _normalize_host as normalize_host
 from .util.url import parse_url
@@ -59,10 +58,7 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-_Default = object()
-
-
-_TYPE_TIMEOUT = Union[Timeout, int, float, object]
+_TYPE_TIMEOUT = Union[Timeout, float, _TYPE_DEFAULT]
 
 _SelfT = TypeVar("_SelfT")
 
@@ -177,7 +173,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self,
         host: str,
         port: Optional[int] = None,
-        timeout: Optional[Union[Timeout, float, int, object]] = Timeout.DEFAULT_TIMEOUT,
+        timeout: Optional[_TYPE_TIMEOUT] = _DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
         headers: Optional[Mapping[str, str]] = None,
@@ -239,7 +235,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn = self.ConnectionCls(
             host=self.host,
             port=self.port,
-            timeout=self.timeout.connect_timeout,  # type: ignore[arg-type]
+            timeout=self.timeout.connect_timeout,
             **self.conn_kw,
         )
         return conn
@@ -340,8 +336,8 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         pass
 
     def _get_timeout(self, timeout: _TYPE_TIMEOUT) -> Timeout:
-        """ Helper that always returns a :class:`urllib3.util.Timeout` """
-        if timeout is _Default:
+        """Helper that always returns a :class:`urllib3.util.Timeout`"""
+        if timeout is _DEFAULT_TIMEOUT:
             return self.timeout.clone()
 
         if isinstance(timeout, Timeout):
@@ -355,7 +351,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         self,
         err: Union[BaseSSLError, OSError, SocketTimeout],
         url: str,
-        timeout_value: _TYPE_TIMEOUT,
+        timeout_value: Optional[_TYPE_TIMEOUT],
     ) -> None:
         """Is the error actually a timeout? Will raise a ReadTimeout or pass"""
 
@@ -375,7 +371,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         conn: HTTPConnection,
         method: str,
         url: str,
-        timeout: _TYPE_TIMEOUT = _Default,
+        timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         chunked: bool = False,
         **httplib_request_kw: Any,
     ) -> _HttplibHTTPResponse:
@@ -399,12 +395,32 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         timeout_obj.start_connect()
         conn.timeout = timeout_obj.connect_timeout  # type: ignore[assignment]
 
-        # Trigger any extra validation we need to do.
         try:
-            self._validate_conn(conn)
-        except (SocketTimeout, BaseSSLError) as e:
-            self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
-            raise
+            # Trigger any extra validation we need to do.
+            try:
+                self._validate_conn(conn)
+            except (SocketTimeout, BaseSSLError) as e:
+                self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
+                raise
+
+        # _validate_conn() starts the connection to an HTTPS proxy
+        # so we need to wrap errors with 'ProxyError' here too.
+        except (
+            OSError,
+            NewConnectionError,
+            TimeoutError,
+            BaseSSLError,
+            CertificateError,
+            SSLError,
+        ) as e:
+            new_e: Exception = e
+            if isinstance(e, (BaseSSLError, CertificateError)):
+                new_e = SSLError(e)
+            if isinstance(
+                new_e, (OSError, NewConnectionError, TimeoutError, SSLError)
+            ) and (conn and conn._connecting_to_proxy):
+                new_e = _wrap_proxy_error(new_e)
+            raise new_e
 
         # conn.request() calls http.client.*.request, not the method in
         # urllib3.request. It also calls makefile (recv) on the socket.
@@ -439,10 +455,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 raise ReadTimeoutError(
                     self, url, f"Read timed out. (read timeout={read_timeout})"
                 )
-            if read_timeout is Timeout.DEFAULT_TIMEOUT:
-                conn.sock.settimeout(socket.getdefaulttimeout())
-            else:  # None or a value
-                conn.sock.settimeout(read_timeout)
+            conn.sock.settimeout(read_timeout)
 
         # Receive the response from the server
         try:
@@ -528,7 +541,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
         retries: Optional[Union[Retry, bool, int]] = None,
         redirect: bool = True,
         assert_same_host: bool = True,
-        timeout: _TYPE_TIMEOUT = _Default,
+        timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
         pool_timeout: Optional[int] = None,
         release_conn: Optional[bool] = None,
         chunked: bool = False,
@@ -696,8 +709,17 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             is_new_proxy_conn = self.proxy is not None and not getattr(
                 conn, "sock", None
             )
-            if is_new_proxy_conn and http_tunnel_required:
-                self._prepare_proxy(conn)
+            if is_new_proxy_conn:
+                assert isinstance(self.proxy, Url)
+                conn._connecting_to_proxy = True
+                if http_tunnel_required:
+                    try:
+                        self._prepare_proxy(conn)
+                    except (BaseSSLError, OSError, SocketTimeout) as e:
+                        self._raise_timeout(
+                            err=e, url=self.proxy.url, timeout_value=conn.timeout
+                        )
+                        raise
 
             # Make the request on the httplib connection object.
             httplib_response = self._make_request(
@@ -745,7 +767,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             BaseSSLError,
             SSLError,
             CertificateError,
-            HTTPSProxyError,
+            ProxyError,
         ) as e:
             # Discard the connection for these exceptions. It will be
             # replaced during the next _get_conn() call.
@@ -753,10 +775,22 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             new_e: Exception = e
             if isinstance(e, (BaseSSLError, CertificateError)):
                 new_e = SSLError(e)
-            elif isinstance(e, (OSError, NewConnectionError)) and self.proxy:
-                new_e = ProxyError("Cannot connect to proxy.", e)
-            elif isinstance(e, (OSError, HTTPException)):
-                new_e = ProtocolError("Connection aborted.", e)
+            if (
+                isinstance(
+                    new_e,
+                    (
+                        OSError,
+                        NewConnectionError,
+                        TimeoutError,
+                        SSLError,
+                        HTTPException,
+                    ),
+                )
+                and (conn and conn._connecting_to_proxy)
+            ):
+                new_e = _wrap_proxy_error(new_e)
+            elif isinstance(new_e, (OSError, HTTPException)):
+                new_e = ProtocolError("Connection aborted.", new_e)
 
             retries = retries.increment(
                 method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
@@ -891,7 +925,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         self,
         host: str,
         port: Optional[int] = None,
-        timeout: _TYPE_TIMEOUT = Timeout.DEFAULT_TIMEOUT,
+        timeout: Optional[_TYPE_TIMEOUT] = _DEFAULT_TIMEOUT,
         maxsize: int = 1,
         block: bool = False,
         headers: Optional[Mapping[str, str]] = None,
@@ -967,7 +1001,6 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         Tunnel connection is established early because otherwise httplib would
         improperly set Host: header to proxy's IP:port.
         """
-
         conn.set_tunnel(self._proxy_host, self.port, self.proxy_headers)
 
         if self.proxy and self.proxy.scheme == "https":
@@ -1001,7 +1034,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         conn = self.ConnectionCls(
             host=actual_host,
             port=actual_port,
-            timeout=self.timeout.connect_timeout,  # type: ignore[arg-type]
+            timeout=self.timeout.connect_timeout,
             cert_file=self.cert_file,
             key_file=self.key_file,
             key_password=self.key_password,
@@ -1032,7 +1065,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
             )
 
 
-def connection_from_url(url: str, **kw: Any) -> ConnectionPool:
+def connection_from_url(url: str, **kw: Any) -> HTTPConnectionPool:
     """
     Given a url, return an :class:`.ConnectionPool` instance of its host.
 

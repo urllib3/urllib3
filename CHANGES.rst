@@ -1,3 +1,23 @@
+1.26.7 (2021-09-22)
+===================
+
+* Fixed a bug with HTTPS hostname verification involving IP addresses and lack
+  of SNI. (Issue #2400)
+* Fixed a bug where IPv6 braces weren't stripped during certificate hostname
+  matching. (Issue #2240)
+
+
+1.26.6 (2021-06-25)
+===================
+
+* Deprecated the ``urllib3.contrib.ntlmpool`` module. urllib3 is not able to support
+  it properly due to `reasons listed in this issue <https://github.com/urllib3/urllib3/issues/2282>`_.
+  If you are a user of this module please leave a comment.
+* Changed ``HTTPConnection.request_chunked()`` to not erroneously emit multiple
+  ``Transfer-Encoding`` headers in the case that one is already specified.
+* Fixed typo in deprecation message to recommend ``Retry.DEFAULT_ALLOWED_METHODS``.
+
+
 1.26.5 (2021-05-26)
 ===================
 

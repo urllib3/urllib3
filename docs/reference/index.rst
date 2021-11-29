@@ -3,6 +3,7 @@ API Reference
 
 .. toctree::
 
+   urllib3.request
    urllib3.poolmanager
    urllib3.connectionpool
    urllib3.connection
