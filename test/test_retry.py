@@ -130,7 +130,7 @@ class TestRetry:
             retry.increment(response=resp)
 
     def test_backoff(self) -> None:
-        """ Backoff is computed correctly """
+        """Backoff is computed correctly"""
         max_backoff = Retry.DEFAULT_BACKOFF_MAX
 
         retry = Retry(total=100, backoff_factor=0.2)
@@ -156,7 +156,7 @@ class TestRetry:
         assert retry.get_backoff_time() == max_backoff
 
     def test_configurable_backoff_max(self) -> None:
-        """ Configurable backoff is computed correctly """
+        """Configurable backoff is computed correctly"""
         max_backoff = 1
 
         retry = Retry(total=100, backoff_factor=0.2, backoff_max=max_backoff)
