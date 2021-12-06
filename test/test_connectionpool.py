@@ -251,7 +251,6 @@ class TestConnectionPool:
             
             # Primary objective is making sure the pool size is explicitly listed
             assert "Connection pool size: 1" in caplog.text
-
             assert pool.num_connections == 3
 
     def test_put_conn_when_pool_is_full_blocking(self) -> None:
