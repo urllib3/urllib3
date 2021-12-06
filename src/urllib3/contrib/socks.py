@@ -80,7 +80,6 @@ try:
         password: Optional[str]
         rdns: bool
 
-
 except ImportError:  # Python 3.7
     _TYPE_SOCKS_OPTIONS = Dict[str, Any]  # type: ignore[misc, assignment]
 
