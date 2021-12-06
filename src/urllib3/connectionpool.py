@@ -302,8 +302,11 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             pass
         except queue.Full:
             # This should never happen if self.block == True
-            log.warning("Connection pool is full, discarding connection: %s", self.host)
-
+            log.warning(
+                "Connection pool is full, discarding connection: %s. Connection pool size: %s",
+                self.host,
+                self.pool.qsize(),
+            )
         # Connection never got put back into the pool, close it.
         if conn:
             conn.close()
