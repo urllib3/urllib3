@@ -225,7 +225,7 @@ class TestConnectionPool(object):
 
             assert pool.num_connections == 1
 
-    def test_pool_edgecases(self):
+    def test_pool_edgecases(self, caplog: pytest.LogCaptureFixture):
         with HTTPConnectionPool(host="localhost", maxsize=1, block=False) as pool:
             conn1 = pool._get_conn()
             conn2 = pool._get_conn()  # New because block=False
@@ -237,6 +237,8 @@ class TestConnectionPool(object):
             assert conn2 != pool._get_conn()
 
             assert pool.num_connections == 3
+            # Primary objective is making sure the pool size is explicitly listed
+            assert "Connection pool size: 1" in caplog.text
 
     def test_exception_str(self):
         assert (
