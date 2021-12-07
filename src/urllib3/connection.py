@@ -23,7 +23,7 @@ from typing import (
 )
 
 if TYPE_CHECKING:
-    from typing_extensions import Literal, NoReturn
+    from typing_extensions import Literal
 
 from .util.proxy import create_proxy_ssl_context
 from .util.timeout import _DEFAULT_TIMEOUT, _TYPE_TIMEOUT, Timeout
@@ -43,9 +43,9 @@ except (ImportError, AttributeError):  # Platform-specific: No SSL.
 from ._version import __version__
 from .exceptions import (
     ConnectTimeoutError,
-    HTTPSProxyError,
     NameResolutionError,
     NewConnectionError,
+    ProxyError,
     SystemTimeWarning,
 )
 from .util import SKIP_HEADER, SKIPPABLE_HEADERS, connection, ssl_
@@ -123,6 +123,7 @@ class HTTPConnection(_HTTPConnection):
     socket_options: Optional[connection._TYPE_SOCKET_OPTIONS]
     _tunnel_host: Optional[str]
     _tunnel: Callable[["HTTPConnection"], None]
+    _connecting_to_proxy: bool
 
     def __init__(
         self,
@@ -153,6 +154,8 @@ class HTTPConnection(_HTTPConnection):
             source_address=source_address,
             blocksize=blocksize,
         )
+
+        self._connecting_to_proxy = False
 
     # https://github.com/python/mypy/issues/4125
     # Mypy treats this as LSP violation, which is considered a bug.
@@ -224,12 +227,19 @@ class HTTPConnection(_HTTPConnection):
         if self._is_using_tunnel():
             # TODO: Fix tunnel so it doesn't depend on self.sock state.
             self._tunnel()
+            self._connecting_to_proxy = False
             # Mark this connection as not reusable
             self.auto_open = 0
 
     def connect(self) -> None:
+        self._connecting_to_proxy = bool(self.proxy)
         conn = self._new_conn()
         self._prepare_conn(conn)
+        self._connecting_to_proxy = False
+
+    def close(self) -> None:
+        self._connecting_to_proxy = False
+        super().close()
 
     def putrequest(
         self,
@@ -428,6 +438,7 @@ class HTTPSConnection(HTTPConnection):
         self.ca_cert_data = ca_cert_data
 
     def connect(self) -> None:
+        self._connecting_to_proxy = bool(self.proxy)
         # Add certificate verification
         conn = self._new_conn()
         hostname: str = self.host
@@ -438,6 +449,7 @@ class HTTPSConnection(HTTPConnection):
                 conn = self._connect_tls_proxy(hostname, conn)
                 tls_in_tls = True
 
+            self._connecting_to_proxy = False
             self.sock = conn
 
             # Calls self._set_hostport(), so self.host is
@@ -514,6 +526,7 @@ class HTTPSConnection(HTTPConnection):
             ssl_context=context,
             tls_in_tls=tls_in_tls,
         )
+        self._connecting_to_proxy = False
 
         if self.assert_fingerprint:
             assert_fingerprint(
@@ -541,38 +554,33 @@ class HTTPSConnection(HTTPConnection):
         )  # `_connect_tls_proxy` is called when self._is_using_tunnel() is truthy.
         ssl_context = proxy_config.ssl_context
 
-        try:
-            if ssl_context:
-                # If the user provided a proxy context, we assume CA and client
-                # certificates have already been set
-                return ssl_wrap_socket(
-                    sock=conn,
-                    server_hostname=hostname,
-                    ssl_context=ssl_context,
-                )
-
-            ssl_context = create_proxy_ssl_context(
-                self.ssl_version,
-                self.cert_reqs,
-                self.ca_certs,
-                self.ca_cert_dir,
-                self.ca_cert_data,
-            )
-
-            # If no cert was provided, use only the default options for server
-            # certificate validation
+        if ssl_context:
+            # If the user provided a proxy context, we assume CA and client
+            # certificates have already been set
             return ssl_wrap_socket(
                 sock=conn,
-                ca_certs=self.ca_certs,
-                ca_cert_dir=self.ca_cert_dir,
-                ca_cert_data=self.ca_cert_data,
                 server_hostname=hostname,
                 ssl_context=ssl_context,
             )
-        except Exception as e:
-            if not _should_wrap_https_proxy_error(e):
-                raise
-            _wrap_https_proxy_error(e, hostname)
+
+        ssl_context = create_proxy_ssl_context(
+            self.ssl_version,
+            self.cert_reqs,
+            self.ca_certs,
+            self.ca_cert_dir,
+            self.ca_cert_data,
+        )
+
+        # If no cert was provided, use only the default options for server
+        # certificate validation
+        return ssl_wrap_socket(
+            sock=conn,
+            ca_certs=self.ca_certs,
+            ca_cert_dir=self.ca_cert_dir,
+            ca_cert_data=self.ca_cert_data,
+            server_hostname=hostname,
+            ssl_context=ssl_context,
+        )
 
 
 def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
@@ -590,12 +598,7 @@ def _match_hostname(cert: _TYPE_PEER_CERT_RET, asserted_hostname: str) -> None:
         raise
 
 
-def _should_wrap_https_proxy_error(err: Exception) -> bool:
-    """Detects if the error should be wrapped into :class:`urllib3.exceptions.HTTPSProxyError`"""
-    return isinstance(err, (CertificateError, BaseSSLError, ssl_.SSLError))  # type: ignore[attr-defined]
-
-
-def _wrap_https_proxy_error(err: Exception, hostname: str) -> "NoReturn":
+def _wrap_proxy_error(err: Exception) -> ProxyError:
     # Look for the phrase 'wrong version number', if found
     # then we should warn the user that we're very sure that
     # this proxy is HTTP-only and they have a configuration issue.
@@ -605,15 +608,13 @@ def _wrap_https_proxy_error(err: Exception, hostname: str) -> "NoReturn":
         ". Your proxy appears to only use HTTP and not HTTPS, "
         "did you intend to set a proxy URL using HTTPS instead of HTTP?"
     )
-
-    # Wrap into an HTTPSProxyError for easier diagnosis.
-    # Original exception is available on original_error and
-    # as __cause__.
-    raise HTTPSProxyError(
-        f"Unable to establish a TLS connection to {hostname}"
+    new_err = ProxyError(
+        f"Unable to connect to proxy"
         f"{http_proxy_warning if is_likely_http_proxy else ''}",
         err,
-    ) from err
+    )
+    new_err.__cause__ = err
+    return new_err
 
 
 def _get_default_user_agent() -> str:

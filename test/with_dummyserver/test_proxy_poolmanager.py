@@ -1,6 +1,7 @@
 import os.path
 import shutil
 import socket
+import ssl
 import tempfile
 from test import LONG_TIMEOUT, SHORT_TIMEOUT, onlySecureTransport, withPyOpenSSL
 
@@ -25,6 +26,7 @@ from urllib3.exceptions import (
 )
 from urllib3.poolmanager import ProxyManager, proxy_from_url
 from urllib3.util.ssl_ import create_urllib3_context
+from urllib3.util.timeout import Timeout
 
 from .. import TARPIT_HOST, requires_network
 
@@ -157,22 +159,6 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
                 type(e.value.reason.original_error)
                 == urllib3.exceptions.NameResolutionError
             )
-
-    @pytest.mark.parametrize("target_scheme", ["http", "https"])
-    def test_https_proxy_error_doesnt_wrap_timeouts(self, target_scheme: str) -> None:
-        bad_proxy_url = f"https://{self.proxy_host}:{int(self.proxy_port)}"
-        with proxy_from_url(
-            bad_proxy_url, ca_certs=DEFAULT_CA, timeout=LONG_TIMEOUT
-        ) as http:
-            with pytest.raises(MaxRetryError) as e:
-                http.request(
-                    "GET", f"{target_scheme}://{self.http_host}:{self.http_port}"
-                )
-
-            if type(e.value.reason) == ProxyError:
-                assert type(e.value.reason.original_error) == socket.timeout
-            else:
-                assert type(e.value.reason) == ReadTimeoutError
 
     def test_oldapi(self) -> None:
         with ProxyManager(
@@ -460,21 +446,143 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
             assert sc2 != sc3
             assert sc3 == sc4
 
-    @pytest.mark.timeout(0.5)
     @requires_network()
-    def test_https_proxy_timeout(self) -> None:
-        with proxy_from_url(f"https://{TARPIT_HOST}") as https:
-            with pytest.raises(MaxRetryError) as e:
-                https.request("GET", self.http_url, timeout=SHORT_TIMEOUT)
-            assert type(e.value.reason) == ConnectTimeoutError
+    @pytest.mark.parametrize(
+        ["proxy_scheme", "target_scheme", "use_forwarding_for_https"],
+        [
+            ("http", "http", False),
+            ("https", "http", False),
+            # 'use_forwarding_for_https' is only valid for HTTPS+HTTPS.
+            ("https", "https", True),
+        ],
+    )
+    def test_forwarding_proxy_request_timeout(
+        self, proxy_scheme: str, target_scheme: str, use_forwarding_for_https: bool
+    ) -> None:
+        proxy_url = self.https_proxy_url if proxy_scheme == "https" else self.proxy_url
+        target_url = f"{target_scheme}://{TARPIT_HOST}"
 
-    @pytest.mark.timeout(0.5)
-    @requires_network()
-    def test_https_proxy_pool_timeout(self) -> None:
-        with proxy_from_url(f"https://{TARPIT_HOST}", timeout=SHORT_TIMEOUT) as https:
+        with proxy_from_url(
+            proxy_url,
+            ca_certs=DEFAULT_CA,
+            use_forwarding_for_https=use_forwarding_for_https,
+        ) as proxy:
             with pytest.raises(MaxRetryError) as e:
-                https.request("GET", self.http_url)
-            assert type(e.value.reason) == ConnectTimeoutError
+                timeout = Timeout(connect=LONG_TIMEOUT, read=SHORT_TIMEOUT)
+                proxy.request("GET", target_url, timeout=timeout)
+
+            # We sent the request to the proxy but didn't get any response
+            # so we're not sure if that's being caused by the proxy or the
+            # target so we put the blame on the target.
+            assert type(e.value.reason) == ReadTimeoutError
+
+    @requires_network()
+    @pytest.mark.parametrize(
+        ["proxy_scheme", "target_scheme"], [("http", "https"), ("https", "https")]
+    )
+    def test_tunneling_proxy_request_timeout(
+        self, proxy_scheme: str, target_scheme: str
+    ) -> None:
+        proxy_url = self.https_proxy_url if proxy_scheme == "https" else self.proxy_url
+        target_url = f"{target_scheme}://{TARPIT_HOST}"
+
+        with proxy_from_url(
+            proxy_url,
+            ca_certs=DEFAULT_CA,
+        ) as proxy:
+            with pytest.raises(MaxRetryError) as e:
+                timeout = Timeout(connect=LONG_TIMEOUT, read=SHORT_TIMEOUT)
+                proxy.request("GET", target_url, timeout=timeout)
+
+            assert type(e.value.reason) == ReadTimeoutError
+
+    @requires_network()
+    @pytest.mark.parametrize(
+        ["proxy_scheme", "target_scheme", "use_forwarding_for_https"],
+        [
+            ("http", "http", False),
+            ("https", "http", False),
+            # 'use_forwarding_for_https' is only valid for HTTPS+HTTPS.
+            ("https", "https", True),
+        ],
+    )
+    def test_forwarding_proxy_connect_timeout(
+        self, proxy_scheme: str, target_scheme: str, use_forwarding_for_https: bool
+    ) -> None:
+        proxy_url = f"{proxy_scheme}://{TARPIT_HOST}"
+        target_url = self.https_url if target_scheme == "https" else self.http_url
+
+        with proxy_from_url(
+            proxy_url, ca_certs=DEFAULT_CA, timeout=SHORT_TIMEOUT
+        ) as proxy:
+            with pytest.raises(MaxRetryError) as e:
+                proxy.request("GET", target_url)
+
+            assert type(e.value.reason) == ProxyError
+            assert type(e.value.reason.original_error) == ConnectTimeoutError
+
+    @requires_network()
+    @pytest.mark.parametrize(
+        ["proxy_scheme", "target_scheme"], [("http", "https"), ("https", "https")]
+    )
+    def test_tunneling_proxy_connect_timeout(
+        self, proxy_scheme: str, target_scheme: str
+    ) -> None:
+        proxy_url = f"{proxy_scheme}://{TARPIT_HOST}"
+        target_url = self.https_url if target_scheme == "https" else self.http_url
+
+        with proxy_from_url(
+            proxy_url, ca_certs=DEFAULT_CA, timeout=SHORT_TIMEOUT
+        ) as proxy:
+            with pytest.raises(MaxRetryError) as e:
+                proxy.request("GET", target_url)
+
+            assert type(e.value.reason) == ProxyError
+            assert type(e.value.reason.original_error) == ConnectTimeoutError
+
+    @requires_network()
+    @pytest.mark.parametrize(
+        ["target_scheme", "use_forwarding_for_https"],
+        [
+            ("http", False),
+            ("https", False),
+            ("https", True),
+        ],
+    )
+    def test_https_proxy_tls_error(
+        self, target_scheme: str, use_forwarding_for_https: str
+    ) -> None:
+        target_url = self.https_url if target_scheme == "https" else self.http_url
+        proxy_ctx = ssl.create_default_context()
+        with proxy_from_url(self.https_proxy_url, proxy_ssl_context=proxy_ctx) as proxy:
+            with pytest.raises(MaxRetryError) as e:
+                proxy.request("GET", target_url)
+            assert type(e.value.reason) == ProxyError
+            assert type(e.value.reason.original_error) == SSLError
+
+    @requires_network()
+    @pytest.mark.parametrize(
+        ["proxy_scheme", "use_forwarding_for_https"],
+        [
+            ("http", False),
+            ("https", False),
+            ("https", True),
+        ],
+    )
+    def test_proxy_https_target_tls_error(
+        self, proxy_scheme: str, use_forwarding_for_https: str
+    ) -> None:
+        proxy_url = self.https_proxy_url if proxy_scheme == "https" else self.proxy_url
+        proxy_ctx = ssl.create_default_context()
+        proxy_ctx.load_verify_locations(DEFAULT_CA)
+        ctx = ssl.create_default_context()
+
+        with proxy_from_url(
+            proxy_url, proxy_ssl_context=proxy_ctx, ssl_context=ctx
+        ) as proxy:
+            with pytest.raises(MaxRetryError) as e:
+                proxy.request("GET", self.https_url)
+            assert type(e.value.reason) == SSLError
 
     def test_scheme_host_case_insensitive(self) -> None:
         """Assert that upper-case schemes and hosts are normalized."""

@@ -38,7 +38,6 @@ from urllib3 import HTTPConnectionPool, HTTPSConnectionPool, ProxyManager, util
 from urllib3._collections import HTTPHeaderDict
 from urllib3.connection import HTTPConnection, _get_default_user_agent
 from urllib3.exceptions import (
-    HTTPSProxyError,
     MaxRetryError,
     ProtocolError,
     ProxyError,
@@ -1180,7 +1179,7 @@ class TestProxyManager(SocketDummyServerTestCase):
 
             errored.set()  # Avoid a ConnectionAbortedError on Windows.
 
-            assert type(e.value.reason) == HTTPSProxyError
+            assert type(e.value.reason) == ProxyError
             assert "Your proxy appears to only use HTTP and not HTTPS" in str(
                 e.value.reason
             )

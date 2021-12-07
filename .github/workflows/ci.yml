@@ -18,6 +18,7 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: "3"
+          cache: pip
       - name: Check packages
         run: |
           python3 -m pip install wheel twine rstcheck;
@@ -50,6 +51,10 @@ jobs:
             os: ubuntu-latest
             experimental: false
             nox-session: test-3.9
+          - python-version: 3.11-dev
+            os: ubuntu-latest
+            experimental: true
+            nox-session: test-3.11
 
     runs-on: ${{ matrix.os }}
     name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
@@ -63,14 +68,16 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
 
       - name: Set Up Python - ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         if: "!endsWith(matrix.python-version, '-dev')"
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
 
-      - name: Set Up Python - ${{ matrix.python-version }}
+      - name: Set Up Python (Development version) - ${{ matrix.python-version }}
         uses: deadsnakes/action@v2.0.2
         if: endsWith(matrix.python-version, '-dev')
         with:
@@ -81,6 +88,7 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: "3"
+          cache: pip
 
       - name: Install Dependencies
         run: python -m pip install --upgrade nox

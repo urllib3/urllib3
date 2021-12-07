@@ -1,23 +1,23 @@
 repos:
   - repo: https://github.com/asottile/pyupgrade
-    rev: v2.27.0
+    rev: v2.29.1
     hooks:
       - id: pyupgrade
         args: ["--py37-plus"]
 
   - repo: https://github.com/psf/black
-    rev: 21.10b0
+    rev: 21.12b0
     hooks:
       - id: black
         args: ["--target-version", "py37"]
 
   - repo: https://github.com/PyCQA/isort
-    rev: 5.9.3
+    rev: 5.10.1
     hooks:
       - id: isort
 
   - repo: https://gitlab.com/pycqa/flake8
-    rev: 3.9.2
+    rev: 4.0.1
     hooks:
       - id: flake8
         additional_dependencies: [flake8-2020]
