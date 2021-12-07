@@ -237,7 +237,7 @@ class TestConnectionPool(object):
             assert conn2 != pool._get_conn()
 
             assert pool.num_connections == 3
-            # Primary objective is making sure the pool size is explicitly listed
+            assert "Connection pool is full, discarding connection" in caplog.text
             assert "Connection pool size: 1" in caplog.text
 
     def test_exception_str(self):
