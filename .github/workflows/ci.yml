@@ -109,6 +109,12 @@ jobs:
           path: ".coverage.*"
           if-no-files-found: error
 
+      - name: Debug
+        run: |
+          coverage combine
+          coverage report -m
+
+
   coverage:
     runs-on: "ubuntu-latest"
     needs: test
