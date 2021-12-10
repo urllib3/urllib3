@@ -8,12 +8,7 @@ omit =
     *urllib3/contrib/securetransport.py
     *urllib3/contrib/_securetransport/*
 
-[paths]
-source =
-    src/urllib3
-    .nox/*/lib/python*/site-packages/urllib3
-    .nox\*\Lib\site-packages\urllib3
-    .nox/*/site-packages/urllib3
+relative_files = True
 
 [report]
 exclude_lines =

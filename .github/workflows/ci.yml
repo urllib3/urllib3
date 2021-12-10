@@ -103,6 +103,7 @@ jobs:
 
       - name: Debug
         run: |
+          pip install coverage
           coverage combine
           coverage report -m
 
