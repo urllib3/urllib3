@@ -95,6 +95,9 @@ jobs:
           PYTHON_VERSION: ${{ matrix.python-version }}
           NOX_SESSION: ${{ matrix.nox-session }}
 
+      - name: Debug
+        run: "ls -alrth"
+
       - name: Upload Coverage
         if: ${{ matrix.nox-session != 'unsupported_python2' }}
         uses: "actions/upload-artifact@v2"
@@ -124,5 +127,8 @@ jobs:
       - name: "Combine & check coverage"
         run: |
           set -xe
+          ls -a
+          cat .coveragerc
+          ls src/urllib3
           python -m coverage combine
           python -m coverage report -i --fail-under=100 
