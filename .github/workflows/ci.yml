@@ -102,6 +102,7 @@ jobs:
           if-no-files-found: error
 
       - name: Debug
+        if: ${{ matrix.nox-session != 'unsupported_python2' }}
         run: |
           pip install coverage
           coverage combine
