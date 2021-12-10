@@ -8,8 +8,6 @@ omit =
     *urllib3/contrib/securetransport.py
     *urllib3/contrib/_securetransport/*
 
-relative_files = True
-
 [paths]
 source =
     src/urllib3
