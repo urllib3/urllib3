@@ -422,7 +422,9 @@ class TestRetry:
             )
 
             # for the default behaviour, method must be in DEFAULT_ALLOWED_METHODS
-            assert retry.is_response_retry('GET', response) == respect_retry_after_header
+            assert (
+                retry.is_response_retry("GET", response) == respect_retry_after_header
+            )
 
             retry.sleep(response)
 
