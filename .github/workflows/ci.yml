@@ -33,6 +33,10 @@ jobs:
         experimental: [false]
         nox-session: ['']
         include:
+          - python-version: "pypy-3.7"
+            os: ubuntu-latest
+            experimental: false
+            nox-session: test-pypy
           - python-version: "2.7"
             os: ubuntu-latest
             experimental: false
@@ -46,6 +50,10 @@ jobs:
             os: ubuntu-latest
             experimental: false
             nox-session: test-3.9
+          - python-version: 3.11-dev
+            os: ubuntu-latest
+            experimental: true
+            nox-session: test-3.11
 
     runs-on: ${{ matrix.os }}
     name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
@@ -81,17 +89,11 @@ jobs:
       - name: Install Dependencies
         run: python -m pip install --upgrade nox
 
-      - name: Debug
-        run: "ls -alrth"
-
       - name: Run Tests
         run: ./ci/run_tests.sh
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
           NOX_SESSION: ${{ matrix.nox-session }}
-
-      - name: Debug
-        run: "ls -alrth"
 
       - name: Upload Coverage
         if: ${{ matrix.nox-session != 'unsupported_python2' }}
@@ -100,13 +102,6 @@ jobs:
           name: coverage-data
           path: ".coverage.*"
           if-no-files-found: error
-
-      - name: Debug
-        if: ${{ matrix.nox-session != 'unsupported_python2' }}
-        run: |
-          pip install coverage
-          coverage combine
-          coverage report -m
 
 
   coverage:
@@ -129,9 +124,5 @@ jobs:
 
       - name: "Combine & check coverage"
         run: |
-          set -xe
-          ls -a
-          cat .coveragerc
-          ls src/urllib3
           python -m coverage combine
           python -m coverage report -i --fail-under=100 

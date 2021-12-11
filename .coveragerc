@@ -8,7 +8,11 @@ omit =
     *urllib3/contrib/securetransport.py
     *urllib3/contrib/_securetransport/*
 
-relative_files = True
+[paths]
+source =
+    src/urllib3
+    */urllib3
+    *\urllib3
 
 [report]
 exclude_lines =
