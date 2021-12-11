@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import errno
 import logging
+import re
 import socket
 import sys
 import warnings
@@ -748,7 +749,33 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # Discard the connection for these exceptions. It will be
             # replaced during the next _get_conn() call.
             clean_exit = False
-            if isinstance(e, (BaseSSLError, CertificateError)):
+
+            def _is_ssl_error_message_from_http_proxy(ssl_error):
+                # We're trying to detect the message 'WRONG_VERSION_NUMBER' but
+                # SSLErrors are kinda all over the place when it comes to the message,
+                # so we try to cover our bases here!
+                message = " ".join(re.split("[^a-z]", str(ssl_error).lower()))
+                return (
+                    "wrong version number" in message or "unknown protocol" in message
+                )
+
+            # Try to detect a common user error with proxies which is to
+            # set an HTTP proxy to be HTTPS when it should be 'http://'
+            # (ie {'http': 'http://proxy', 'https': 'https://proxy'})
+            # Instead we add a nice error message and point to a URL.
+            if (
+                isinstance(e, BaseSSLError)
+                and self.proxy
+                and _is_ssl_error_message_from_http_proxy(e)
+            ):
+                e = ProxyError(
+                    "Your proxy appears to only use HTTP and not HTTPS, "
+                    "try changing your proxy URL to be HTTP. See: "
+                    "https://urllib3.readthedocs.io/en/1.26.x/advanced-usage.html"
+                    "#https-proxy-error-http-proxy",
+                    SSLError(e),
+                )
+            elif isinstance(e, (BaseSSLError, CertificateError)):
                 e = SSLError(e)
             elif isinstance(e, (SocketError, NewConnectionError)) and self.proxy:
                 e = ProxyError("Cannot connect to proxy.", e)
