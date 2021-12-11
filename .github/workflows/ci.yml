@@ -52,6 +52,10 @@ jobs:
             os: ubuntu-latest
             experimental: false
             nox-session: app_engine
+          - python-version: 3.11-dev
+            os: ubuntu-latest
+            experimental: true
+            nox-session: test-3.11
 
     runs-on: ${{ matrix.os }}
     name: ${{ fromJson('{"macos-latest":"macOS","windows-latest":"Windows","ubuntu-latest":"Ubuntu"}')[matrix.os] }} ${{ matrix.python-version }} ${{ matrix.nox-session}}
