@@ -23,7 +23,6 @@ from .exceptions import (
     EmptyPoolError,
     HeaderParsingError,
     HostChangedError,
-    HTTPSProxyError,
     InsecureRequestWarning,
     LocationValueError,
     MaxRetryError,
@@ -745,7 +744,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             BaseSSLError,
             SSLError,
             CertificateError,
-            HTTPSProxyError,
         ) as e:
             # Discard the connection for these exceptions. It will be
             # replaced during the next _get_conn() call.
