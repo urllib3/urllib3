@@ -81,7 +81,7 @@ class _RetryMeta(type):
     @BACKOFF_MAX.setter
     def BACKOFF_MAX(cls, value):
         warnings.warn(
-            "Using 'Retry.DEFAULT_METHOD_WHITELIST' is deprecated and "
+            "Using 'Retry.BACKOFF_MAX' is deprecated and "
             "will be removed in v2.0. Use 'Retry.DEFAULT_BACKOFF_MAX' instead",
             DeprecationWarning,
         )
