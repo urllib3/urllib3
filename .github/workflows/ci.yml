@@ -115,3 +115,10 @@ jobs:
         run: |
           python -m coverage combine
           python -m coverage report -i --fail-under=100 
+
+      - name: "Upload report if check failed"
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage-report
+          path: htmlcov
+        if: ${{ failure() }}
