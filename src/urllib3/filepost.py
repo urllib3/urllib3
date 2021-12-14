@@ -54,6 +54,7 @@ def encode_multipart_formdata(
 
     :param fields:
         Dictionary of fields or list of (key, :class:`~urllib3.fields.RequestField`).
+        Values are processed by :func:`urllib3.fields.RequestField.from_tuples`.
 
     :param boundary:
         If not specified, then a random boundary will be generated using
