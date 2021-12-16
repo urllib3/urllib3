@@ -134,7 +134,7 @@ class SSLTransport:
         encoding: Optional[str] = None,
         errors: Optional[str] = None,
         newline: Optional[str] = None,
-    ) -> Union[BinaryIO, TextIO]:
+    ) -> Union[BinaryIO, TextIO, socket.SocketIO]:
         """
         Python's httpclient uses makefile and buffered io when reading HTTP
         messages and we need to support it.
@@ -154,7 +154,7 @@ class SSLTransport:
             rawmode += "r"
         if writing:
             rawmode += "w"
-        raw = socket.SocketIO(self, rawmode)
+        raw = socket.SocketIO(self, rawmode)  # type: ignore[arg-type]
         self.socket._io_refs += 1  # type: ignore[attr-defined]
         if buffering is None:
             buffering = -1
@@ -163,7 +163,7 @@ class SSLTransport:
         if buffering == 0:
             if not binary:
                 raise ValueError("unbuffered streams must be binary")
-            return raw  # type: ignore[no-any-return]
+            return raw
         buffer: BinaryIO
         if reading and writing:
             buffer = io.BufferedRWPair(raw, raw, buffering)  # type: ignore[assignment]

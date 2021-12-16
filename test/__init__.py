@@ -114,11 +114,11 @@ RESOLVES_LOCALHOST_FQDN = _can_resolve("localhost.")
 
 def clear_warnings(cls: Type[Warning] = HTTPWarning) -> None:
     new_filters = []
-    for f in warnings.filters:  # type: ignore[attr-defined]
+    for f in warnings.filters:
         if issubclass(f[2], cls):
             continue
         new_filters.append(f)
-    warnings.filters[:] = new_filters  # type: ignore[attr-defined]
+    warnings.filters[:] = new_filters  # type: ignore[index]
 
 
 def setUp() -> None:

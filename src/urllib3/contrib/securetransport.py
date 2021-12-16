@@ -536,7 +536,7 @@ class WrappedSocket:
                 result = Security.SSLHandshake(self.context)
 
                 if result == SecurityConst.errSSLWouldBlock:
-                    raise socket.timeout("handshake timed out")  # type: ignore[arg-type]
+                    raise socket.timeout("handshake timed out")
                 elif result == SecurityConst.errSSLServerAuthCompleted:
                     self._custom_validate(verify, trust_bundle)
                     continue
@@ -588,7 +588,7 @@ class WrappedSocket:
             # and return.
             if processed_bytes.value == 0:
                 # Timed out, no data read.
-                raise socket.timeout("recv timed out")  # type: ignore[arg-type]
+                raise socket.timeout("recv timed out")
         elif result in (
             SecurityConst.errSSLClosedGraceful,
             SecurityConst.errSSLClosedNoNotify,
@@ -621,7 +621,7 @@ class WrappedSocket:
 
         if result == SecurityConst.errSSLWouldBlock and processed_bytes.value == 0:
             # Timed out
-            raise socket.timeout("send timed out")  # type: ignore[arg-type]
+            raise socket.timeout("send timed out")
         else:
             _assert_no_error(result)
 

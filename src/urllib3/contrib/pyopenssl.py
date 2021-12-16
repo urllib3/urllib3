@@ -343,7 +343,7 @@ class WrappedSocket:
                 raise
         except OpenSSL.SSL.WantReadError as e:
             if not util.wait_for_read(self.socket, self.socket.gettimeout()):
-                raise timeout("The read operation timed out") from e  # type: ignore[arg-type]
+                raise timeout("The read operation timed out") from e
             else:
                 return self.recv(*args, **kwargs)
 
@@ -368,7 +368,7 @@ class WrappedSocket:
                 raise
         except OpenSSL.SSL.WantReadError as e:
             if not util.wait_for_read(self.socket, self.socket.gettimeout()):
-                raise timeout("The read operation timed out") from e  # type: ignore[arg-type]
+                raise timeout("The read operation timed out") from e
             else:
                 return self.recv_into(*args, **kwargs)
 
@@ -462,7 +462,7 @@ class PyOpenSSLContext:
         return _openssl_to_stdlib_verify[self._ctx.get_verify_mode()]
 
     @verify_mode.setter
-    def verify_mode(self, value: int) -> None:
+    def verify_mode(self, value: ssl.VerifyMode) -> None:
         self._ctx.set_verify(_stdlib_to_openssl_verify[value], _verify_callback)
 
     def set_default_verify_paths(self) -> None:
@@ -530,7 +530,7 @@ class PyOpenSSLContext:
                 cnx.do_handshake()
             except OpenSSL.SSL.WantReadError as e:
                 if not util.wait_for_read(sock, sock.gettimeout()):
-                    raise timeout("select timed out") from e  # type: ignore[arg-type]
+                    raise timeout("select timed out") from e
                 continue
             except OpenSSL.SSL.Error as e:
                 raise ssl.SSLError(f"bad handshake: {e!r}") from e

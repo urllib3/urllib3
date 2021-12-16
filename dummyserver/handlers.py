@@ -134,7 +134,7 @@ class TestingApp(RequestHandler):
 
     def source_address(self, request: httputil.HTTPServerRequest) -> Response:
         """Return the requester's IP address."""
-        return Response(request.remote_ip)
+        return Response(request.remote_ip)  # type: ignore[arg-type]
 
     def set_up(self, request: httputil.HTTPServerRequest) -> Response:
         params = request_params(request)
